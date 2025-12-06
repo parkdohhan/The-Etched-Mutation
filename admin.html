@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 — The Etched Mutation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0a0a0c;
+            --bg-surface: #12121a;
+            --text-primary: #e8e4df;
+            --text-muted: #6b6b7b;
+            --text-ghost: #3a3a4a;
+            --accent-memory: #c4a882;
+            --accent-interpretation: #7b8fa8;
+            --accent-live: #a87b7b;
+            --accent-fear: #4a5a7a;
+            --accent-anger: #8a4a4a;
+            --accent-shame: #5a4a5a;
+            --accent-joy: #8a9a6a;
+            --accent-connected: #7a9a7a;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Noto Serif KR', serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: .03;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .password-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .password-box {
+            background: var(--bg-surface);
+            border: 1px solid rgba(196, 168, 130, .2);
+            padding: 3rem;
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+        }
+        .password-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2rem;
+            color: var(--accent-memory);
+            margin-bottom: 1.5rem;
+            letter-spacing: .1em;
+        }
+        .password-input {
+            width: 100%;
+            background: var(--bg-deep);
+            border: 1px solid var(--text-ghost);
+            padding: 1rem;
+            font-family: 'Noto Serif KR', serif;
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            transition: all .3s;
+        }
+        .password-input:focus {
+            outline: none;
+            border-color: var(--accent-memory);
+        }
+        .password-error {
+            color: var(--accent-live);
+            font-size: .9rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .password-error.visible {
+            display: block;
+        }
+        .password-btn {
+            background: transparent;
+            border: 1px solid var(--accent-memory);
+            color: var(--accent-memory);
+            padding: .8rem 2.5rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all .3s;
+            pointer-events: auto;
+            z-index: 10;
+        }
+        .password-btn:hover {
+            background: var(--accent-memory);
+            color: var(--bg-deep);
+        }
+        .admin-dashboard {
+            display: none;
+        }
+        .admin-dashboard.active {
+            display: block;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2rem 0;
+            border-bottom: 1px solid rgba(196, 168, 130, .2);
+            margin-bottom: 2rem;
+        }
+        .admin-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.5rem;
+            color: var(--accent-memory);
+            letter-spacing: .2em;
+        }
+        .admin-logout-btn {
+            background: transparent;
+            border: 1px solid var(--text-ghost);
+            color: var(--text-muted);
+            padding: .6rem 1.5rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: .9rem;
+            cursor: pointer;
+            transition: all .3s;
+        }
+        .admin-logout-btn:hover {
+            border-color: var(--accent-live);
+            color: var(--accent-live);
+        }
+        .admin-actions {
+            margin-bottom: 2rem;
+        }
+        .add-memory-btn {
+            background: var(--accent-memory);
+            border: none;
+            color: var(--bg-deep);
+            padding: .8rem 2rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all .3s;
+        }
+        .add-memory-btn:hover {
+            opacity: .9;
+        }
+        .memories-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-surface);
+            border: 1px solid rgba(196, 168, 130, .1);
+        }
+        .memories-table th,
+        .memories-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(196, 168, 130, .1);
+        }
+        .memories-table th {
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--accent-memory);
+            font-size: 1rem;
+            letter-spacing: .1em;
+        }
+        .memories-table td {
+            color: var(--text-primary);
+            font-size: .9rem;
+        }
+        .table-btn {
+            background: transparent;
+            border: 1px solid var(--text-ghost);
+            color: var(--text-muted);
+            padding: .4rem 1rem;
+            font-size: .85rem;
+            cursor: pointer;
+            margin-right: .5rem;
+            transition: all .3s;
+        }
+        .table-btn:hover {
+            border-color: var(--accent-memory);
+            color: var(--accent-memory);
+        }
+        .editor-screen {
+            display: none;
+        }
+        .editor-screen.active {
+            display: block;
+        }
+        .editor-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(196, 168, 130, .2);
+        }
+        .editor-tab {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            padding: 1rem 2rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all .3s;
+        }
+        .editor-tab.active {
+            color: var(--accent-memory);
+            border-bottom-color: var(--accent-memory);
+        }
+        .editor-content {
+            display: none;
+        }
+        .editor-content.active {
+            display: block;
+        }
+        .editor-section {
+            margin-bottom: 2rem;
+        }
+        .editor-section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            color: var(--accent-memory);
+            margin-bottom: 1rem;
+        }
+        .editor-input-group {
+            margin-bottom: 1.5rem;
+        }
+        .editor-label {
+            display: block;
+            font-size: .9rem;
+            color: var(--text-muted);
+            margin-bottom: .5rem;
+        }
+        .editor-input,
+        .editor-textarea {
+            width: 100%;
+            background: var(--bg-deep);
+            border: 1px solid var(--text-ghost);
+            padding: 1rem;
+            font-family: 'Noto Serif KR', serif;
+            font-size: 1rem;
+            color: var(--text-primary);
+            transition: all .3s;
+        }
+        .editor-input:focus,
+        .editor-textarea:focus {
+            outline: none;
+            border-color: var(--accent-memory);
+        }
+        .editor-textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        .scene-block {
+            background: var(--bg-surface);
+            border: 1px solid rgba(196, 168, 130, .2);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .scene-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .scene-number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.2rem;
+            color: var(--accent-memory);
+        }
+        .scene-controls {
+            display: flex;
+            gap: .5rem;
+        }
+        .scene-btn {
+            background: transparent;
+            border: 1px solid var(--text-ghost);
+            color: var(--text-muted);
+            padding: .4rem .8rem;
+            font-size: .85rem;
+            cursor: pointer;
+            transition: all .3s;
+        }
+        .scene-btn:hover {
+            border-color: var(--accent-memory);
+            color: var(--accent-memory);
+        }
+        .choice-item {
+            background: var(--bg-deep);
+            border: 1px solid rgba(196, 168, 130, .1);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .choice-controls {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 1rem;
+            align-items: end;
+        }
+        .choice-text-input {
+            width: 100%;
+            background: var(--bg-deep);
+            border: 1px solid var(--text-ghost);
+            padding: .8rem;
+            font-family: 'Noto Serif KR', serif;
+            font-size: .95rem;
+            color: var(--text-primary);
+        }
+        .choice-text-input:focus {
+            outline: none;
+            border-color: var(--accent-memory);
+        }
+        .choice-emotion-select,
+        .choice-next-scene-select {
+            background: var(--bg-deep);
+            border: 1px solid var(--text-ghost);
+            padding: .8rem;
+            font-family: 'Noto Serif KR', serif;
+            font-size: .95rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        .choice-emotion-select:focus,
+        .choice-next-scene-select:focus {
+            outline: none;
+            border-color: var(--accent-memory);
+        }
+        .choice-intensity-container {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+        .choice-intensity-slider {
+            flex: 1;
+            height: 4px;
+            background: var(--bg-deep);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .choice-intensity-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-memory);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .choice-intensity-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--accent-memory);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        .choice-intensity-value {
+            min-width: 30px;
+            text-align: center;
+            font-size: .9rem;
+            color: var(--text-muted);
+        }
+        .choice-delete-btn {
+            background: transparent;
+            border: 1px solid var(--accent-live);
+            color: var(--accent-live);
+            padding: .4rem .8rem;
+            font-size: .85rem;
+            cursor: pointer;
+            transition: all .3s;
+        }
+        .choice-delete-btn:hover {
+            background: var(--accent-live);
+            color: var(--bg-deep);
+        }
+        .add-choice-btn,
+        .add-scene-btn {
+            background: transparent;
+            border: 1px solid var(--accent-memory);
+            color: var(--accent-memory);
+            padding: .6rem 1.5rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: .9rem;
+            cursor: pointer;
+            transition: all .3s;
+            margin-top: 1rem;
+        }
+        .add-choice-btn:hover,
+        .add-scene-btn:hover {
+            background: var(--accent-memory);
+            color: var(--bg-deep);
+        }
+        .editor-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(196, 168, 130, .2);
+        }
+        .editor-save-btn,
+        .editor-cancel-btn {
+            padding: .8rem 2rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all .3s;
+        }
+        .editor-save-btn {
+            background: var(--accent-memory);
+            border: none;
+            color: var(--bg-deep);
+        }
+        .editor-save-btn:hover {
+            opacity: .9;
+        }
+        .editor-cancel-btn {
+            background: transparent;
+            border: 1px solid var(--text-ghost);
+            color: var(--text-muted);
+        }
+        .editor-cancel-btn:hover {
+            border-color: var(--text-muted);
+            color: var(--text-primary);
+        }
+        .preview-content {
+            display: none;
+        }
+        .preview-content.active {
+            display: block;
+        }
+        .preview-scene {
+            margin-bottom: 3rem;
+        }
+        .preview-scene-text {
+            font-size: 1.25rem;
+            line-height: 2;
+            color: var(--text-primary);
+            margin-bottom: 2rem;
+            min-height: 100px;
+        }
+        .preview-choices {
+            margin-top: 2rem;
+        }
+        .preview-choice-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: 1px solid rgba(168, 123, 123, .3);
+            padding: 1.2rem 1.5rem;
+            margin-bottom: 1rem;
+            font-family: 'Noto Serif KR', serif;
+            font-size: 1rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all .4s;
+        }
+        .preview-choice-btn:hover {
+            border-color: var(--accent-live);
+            padding-left: 2rem;
+        }
+        .preview-wave-container {
+            height: 100px;
+            background: var(--bg-surface);
+            border: 1px solid rgba(168, 123, 123, .1);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .preview-wave-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        @media (max-width: 768px) {
+            .choice-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="password-screen" id="passwordScreen">
+        <div class="password-box">
+            <h2 class="password-title">관리자 인증</h2>
+            <div class="password-error" id="passwordError">비밀번호가 틀렸습니다</div>
+            <input type="password" class="password-input" id="passwordInput" placeholder="비밀번호를 입력하세요" autocomplete="off">
+            <button class="password-btn" onclick="checkPassword()">확인</button>
+        </div>
+    </div>
+
+    <div class="admin-dashboard" id="adminDashboard">
+        <div class="container">
+            <div class="admin-header">
+                <h1 class="admin-title">관리자 페이지</h1>
+                <button class="admin-logout-btn" onclick="logout()">로그아웃</button>
+            </div>
+
+            <div class="admin-actions">
+                <button class="add-memory-btn" onclick="addNewMemory()">+ 새 기억 추가</button>
+            </div>
+
+            <table class="memories-table">
+                <thead>
+                    <tr>
+                        <th>코드</th>
+                        <th>제목</th>
+                        <th>해석 레이어</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody id="memoriesTableBody">
+                    <!-- 동적으로 생성됨 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="editor-screen" id="editorScreen">
+        <div class="container">
+            <div class="editor-tabs">
+                <button class="editor-tab active" onclick="switchTab('edit')">편집</button>
+                <button class="editor-tab" onclick="switchTab('preview')">미리보기</button>
+            </div>
+
+            <div class="editor-content active" id="editContent">
+                <div class="editor-section">
+                    <h3 class="editor-section-title">기본 정보</h3>
+                    <div class="editor-input-group">
+                        <label class="editor-label">제목</label>
+                        <input type="text" class="editor-input" id="memoryTitle" placeholder="기억의 제목을 입력하세요">
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">코드</label>
+                        <input type="text" class="editor-input" id="memoryCode" placeholder="A-001">
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">설명</label>
+                        <textarea class="editor-textarea" id="memoryDescription" placeholder="기억에 대한 설명을 입력하세요"></textarea>
+                    </div>
+                </div>
+
+                <div class="editor-section">
+                    <h3 class="editor-section-title">장면 에디터</h3>
+                    <div id="scenesContainer">
+                        <!-- 동적으로 생성됨 -->
+                    </div>
+                    <button class="add-scene-btn" onclick="addScene()">+ 장면 추가</button>
+                </div>
+
+                <div class="editor-buttons">
+                    <button class="editor-save-btn" onclick="saveMemory()">저장</button>
+                    <button class="editor-cancel-btn" onclick="cancelEdit()">취소</button>
+                </div>
+                <div class="export-section" style="margin-top: 2rem; padding: 2rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2);">
+                    <h3 class="editor-section-title">데이터 내보내기 / 가져오기</h3>
+                    <div style="margin-bottom: 1.5rem;">
+                        <button class="editor-save-btn" onclick="exportMemoriesJSON()" style="margin-right: 1rem;">JSON 다운로드</button>
+                        <label for="importFile" class="editor-save-btn" style="display: inline-block; cursor: pointer; margin: 0;">
+                            JSON 불러오기
+                            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importMemoriesJSON(event)">
+                        </label>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-deep); border: 1px solid rgba(196, 168, 130, .1); font-size: .85rem; color: var(--text-muted); line-height: 1.6;">
+                        <strong style="color: var(--accent-memory);">안내:</strong> 다운로드한 JSON 파일의 내용을 <code style="color: var(--accent-memory);">data/memories.js</code> 파일의 <code style="color: var(--accent-memory);">memoriesData</code> 배열에 붙여넣으면 메인 페이지에 반영됩니다.
+                    </div>
+                </div>
+            </div>
+
+            <div class="editor-content" id="previewContent">
+                <div class="preview-content" id="previewSceneContainer">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+                <div class="preview-wave-container">
+                    <canvas class="preview-wave-canvas" id="previewWaveCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_PASSWORD = 'admin8231';
+        let memories = [];
+        let currentScenes = [];
+        let currentMemoryIndex = null;
+        let previewCurrentScene = 0;
+        let previewWaveAnimationId = null;
+
+        // 비밀번호 확인
+        function checkPassword() {
+            const input = document.getElementById('passwordInput');
+            const error = document.getElementById('passwordError');
+            
+            if (input.value === ADMIN_PASSWORD) {
+                document.getElementById('passwordScreen').style.display = 'none';
+                document.getElementById('adminDashboard').classList.add('active');
+                loadMemories();
+            } else {
+                error.classList.add('visible');
+                input.value = '';
+                setTimeout(() => {
+                    error.classList.remove('visible');
+                }, 3000);
+            }
+        }
+
+        // Enter 키로 비밀번호 확인
+        document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        // 로그아웃
+        function logout() {
+            if (confirm('로그아웃하시겠습니까?')) {
+                document.getElementById('adminDashboard').classList.remove('active');
+                document.getElementById('editorScreen').classList.remove('active');
+                document.getElementById('passwordScreen').style.display = 'flex';
+                document.getElementById('passwordInput').value = '';
+                currentMemoryIndex = null;
+                currentScenes = [];
+            }
+        }
+
+        // 기억 목록 로드
+        function loadMemories() {
+            // 로컬 스토리지에서 불러오기
+            const stored = localStorage.getItem('adminMemories');
+            if (stored) {
+                memories = JSON.parse(stored);
+            } else {
+                // localStorage에 데이터가 없으면 memoriesData에서 불러오기
+                if (typeof memoriesData !== 'undefined' && memoriesData.length > 0) {
+                    // memoriesData 형식에서 admin 형식으로 변환
+                    memories = memoriesData.map(memory => ({
+                        title: memory.title || '',
+                        code: memory.code || '',
+                        description: '',
+                        scenes: memory.scenes.map(scene => ({
+                            text: scene.text || '',
+                            sceneType: scene.sceneType || 'normal',
+                            echoWords: scene.echoWords || [],
+                            choices: scene.choices.map(choice => ({
+                                text: choice.text || '',
+                                emotion: choice.emotion || 'fear',
+                                intensity: choice.intensity || 5,
+                                nextScene: choice.nextScene || 'end',
+                                percentage: choice.percentage || 0
+                            })),
+                            originalChoice: scene.originalChoice !== undefined ? scene.originalChoice : 0,
+                            originalReason: scene.originalReason || ''
+                        })),
+                        interpretationLayers: memory.layers || 0,
+                        visible: true
+                    }));
+                    // 변환된 데이터를 localStorage에 저장
+                    saveMemoriesToStorage();
+                } else {
+                    memories = [];
+                }
+            }
+            renderMemoriesTable();
+        }
+
+        // 기억 목록 테이블 렌더링
+        function renderMemoriesTable() {
+            const tbody = document.getElementById('memoriesTableBody');
+            tbody.innerHTML = '';
+
+            if (memories.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">등록된 기억이 없습니다</td></tr>';
+                return;
+            }
+
+            memories.forEach((memory, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${memory.code || '—'}</td>
+                    <td>${memory.title || '—'}</td>
+                    <td>${memory.interpretationLayers || 0}개</td>
+                    <td>${memory.visible ? '공개' : '숨김'}</td>
+                    <td>
+                        <button class="table-btn" onclick="editMemory(${index})">수정</button>
+                        <button class="table-btn" onclick="toggleMemoryVisibility(${index})">${memory.visible ? '숨김' : '공개'}</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 새 기억 추가
+        function addNewMemory() {
+            currentMemoryIndex = null;
+            currentScenes = [];
+            document.getElementById('memoryTitle').value = '';
+            document.getElementById('memoryCode').value = '';
+            document.getElementById('memoryDescription').value = '';
+            document.getElementById('scenesContainer').innerHTML = '';
+            document.getElementById('adminDashboard').classList.remove('active');
+            document.getElementById('editorScreen').classList.add('active');
+            switchTab('edit');
+        }
+
+        // 기억 수정
+        function editMemory(index) {
+            currentMemoryIndex = index;
+            const memory = memories[index];
+            document.getElementById('memoryTitle').value = memory.title || '';
+            document.getElementById('memoryCode').value = memory.code || '';
+            document.getElementById('memoryDescription').value = memory.description || '';
+            currentScenes = memory.scenes ? JSON.parse(JSON.stringify(memory.scenes)) : [];
+            renderScenes();
+            document.getElementById('adminDashboard').classList.remove('active');
+            document.getElementById('editorScreen').classList.add('active');
+            switchTab('edit');
+        }
+
+        // 기억 가시성 토글
+        function toggleMemoryVisibility(index) {
+            memories[index].visible = !memories[index].visible;
+            saveMemoriesToStorage();
+            renderMemoriesTable();
+        }
+
+        // 장면 추가
+        function addScene() {
+            currentScenes.push({
+                text: '',
+                sceneType: 'normal',
+                echoWords: [],
+                choices: [],
+                originalChoice: 0,
+                originalReason: ''
+            });
+            renderScenes();
+        }
+
+        // 장면 렌더링
+        function renderScenes() {
+            const container = document.getElementById('scenesContainer');
+            container.innerHTML = '';
+
+            currentScenes.forEach((scene, sceneIndex) => {
+                const sceneBlock = document.createElement('div');
+                sceneBlock.className = 'scene-block';
+                sceneBlock.innerHTML = `
+                    <div class="scene-header">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div class="scene-number">장면 ${sceneIndex + 1}</div>
+                            <select class="editor-input scene-type-select" data-scene-index="${sceneIndex}" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.9rem;">
+                                <option value="normal" ${(scene.sceneType || 'normal') === 'normal' ? 'selected' : ''}>일반</option>
+                                <option value="branch" ${scene.sceneType === 'branch' ? 'selected' : ''}>분기</option>
+                                <option value="ending" ${scene.sceneType === 'ending' ? 'selected' : ''}>엔딩</option>
+                            </select>
+                        </div>
+                        <div class="scene-controls">
+                            <button class="scene-btn" onclick="moveSceneUp(${sceneIndex})" ${sceneIndex === 0 ? 'disabled style="opacity:.5"' : ''}>위로</button>
+                            <button class="scene-btn" onclick="moveSceneDown(${sceneIndex})" ${sceneIndex === currentScenes.length - 1 ? 'disabled style="opacity:.5"' : ''}>아래로</button>
+                            <button class="scene-btn" onclick="deleteScene(${sceneIndex})">삭제</button>
+                        </div>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">본문</label>
+                        <textarea class="editor-textarea scene-text-input" data-scene-index="${sceneIndex}" placeholder="장면 본문을 입력하세요">${scene.text || ''}</textarea>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">잔향 단어</label>
+                        <input type="text" class="editor-input scene-echo-words-input" data-scene-index="${sceneIndex}" placeholder="무서웠어, 미안해, 후회했어 (콤마로 구분)" value="${(scene.echoWords || []).join(', ')}">
+                    </div>
+                    <div class="editor-input-group scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'};">
+                        <label class="editor-label">원본 선택</label>
+                        <select class="editor-input scene-original-choice-select" data-scene-index="${sceneIndex}">
+                            ${renderOriginalChoiceOptions(scene.choices || [], scene.originalChoice || 0)}
+                        </select>
+                    </div>
+                    <div class="editor-input-group scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'};">
+                        <label class="editor-label">원본 이유</label>
+                        <input type="text" class="editor-input scene-original-reason-input" data-scene-index="${sceneIndex}" placeholder="왜 그 선택을 했나요?" value="${scene.originalReason || ''}">
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">선택지</label>
+                        <div class="choices-list" data-scene-index="${sceneIndex}">
+                            ${renderChoices(scene.choices || [], sceneIndex)}
+                        </div>
+                        <button class="add-choice-btn" onclick="addChoice(${sceneIndex})">+ 선택지 추가</button>
+                    </div>
+                `;
+                container.appendChild(sceneBlock);
+            });
+
+            // 이벤트 리스너 연결
+            attachSceneListeners();
+        }
+
+        // 선택지 렌더링
+        function renderChoices(choices, sceneIndex) {
+            if (!choices || choices.length === 0) {
+                return '<div style="color:var(--text-muted);padding:1rem;text-align:center;">선택지가 없습니다</div>';
+            }
+
+            return choices.map((choice, choiceIndex) => `
+                <div class="choice-item">
+                    <div class="choice-controls">
+                        <input type="text" class="choice-text-input" data-scene-index="${sceneIndex}" data-choice-index="${choiceIndex}" placeholder="선택지 텍스트" value="${choice.text || ''}">
+                        <select class="choice-emotion-select" data-scene-index="${sceneIndex}" data-choice-index="${choiceIndex}">
+                            <option value="fear" ${choice.emotion === 'fear' ? 'selected' : ''}>공포</option>
+                            <option value="sadness" ${choice.emotion === 'sadness' ? 'selected' : ''}>슬픔</option>
+                            <option value="guilt" ${choice.emotion === 'guilt' ? 'selected' : ''}>죄책감</option>
+                            <option value="anger" ${choice.emotion === 'anger' ? 'selected' : ''}>분노</option>
+                            <option value="longing" ${choice.emotion === 'longing' ? 'selected' : ''}>그리움</option>
+                            <option value="isolation" ${choice.emotion === 'isolation' ? 'selected' : ''}>고립감</option>
+                            <option value="numbness" ${choice.emotion === 'numbness' ? 'selected' : ''}>무감각</option>
+                            <option value="moralPain" ${choice.emotion === 'moralPain' ? 'selected' : ''}>도덕적 고통</option>
+                        </select>
+                        <div class="choice-intensity-container">
+                            <input type="range" class="choice-intensity-slider" data-scene-index="${sceneIndex}" data-choice-index="${choiceIndex}" min="1" max="10" value="${choice.intensity || 5}">
+                            <span class="choice-intensity-value">${choice.intensity || 5}</span>
+                        </div>
+                        <select class="choice-next-scene-select" data-scene-index="${sceneIndex}" data-choice-index="${choiceIndex}">
+                            ${renderNextSceneOptions(sceneIndex, choice.nextScene)}
+                        </select>
+                        <button class="choice-delete-btn" onclick="deleteChoice(${sceneIndex}, ${choiceIndex})">삭제</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 원본 선택 옵션 렌더링
+        function renderOriginalChoiceOptions(choices, selectedValue) {
+            if (!choices || choices.length === 0) {
+                return '<option value="0">선택지 없음</option>';
+            }
+            return choices.map((choice, index) => 
+                `<option value="${index}" ${selectedValue === index ? 'selected' : ''}>선택지 ${index + 1}: ${choice.text || '(텍스트 없음)'}</option>`
+            ).join('');
+        }
+
+        // 다음 장면 옵션 렌더링
+        function renderNextSceneOptions(currentSceneIndex, selectedValue) {
+            let options = '';
+            for (let i = 0; i < currentScenes.length; i++) {
+                options += `<option value="${i}" ${selectedValue === i ? 'selected' : ''}>장면 ${i + 1}</option>`;
+            }
+            options += `<option value="end" ${selectedValue === 'end' ? 'selected' : ''}>엔딩</option>`;
+            return options;
+        }
+
+        // 장면 이벤트 리스너 연결
+        function attachSceneListeners() {
+            // 장면 본문
+            document.querySelectorAll('.scene-text-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    currentScenes[sceneIndex].text = this.value;
+                });
+            });
+
+            // 잔향 단어
+            document.querySelectorAll('.scene-echo-words-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    const value = this.value.trim();
+                    // 콤마로 구분하여 배열로 변환
+                    currentScenes[sceneIndex].echoWords = value ? value.split(',').map(w => w.trim()).filter(w => w) : [];
+                });
+            });
+
+            // 장면 타입
+            document.querySelectorAll('.scene-type-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    currentScenes[sceneIndex].sceneType = this.value;
+                    // 타입 변경 시 원본 필드 표시/숨김 업데이트
+                    const originalFields = document.querySelectorAll(`.scene-original-fields[data-scene-index="${sceneIndex}"]`);
+                    if (this.value === 'branch' || this.value === 'ending') {
+                        originalFields.forEach(field => field.style.display = 'block');
+                    } else {
+                        originalFields.forEach(field => field.style.display = 'none');
+                    }
+                    // 다음 장면 선택 드롭다운 업데이트 (타입 표시 반영)
+                    renderScenes();
+                });
+            });
+
+            // 원본 선택
+            document.querySelectorAll('.scene-original-choice-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    currentScenes[sceneIndex].originalChoice = parseInt(this.value);
+                });
+            });
+
+            // 원본 이유
+            document.querySelectorAll('.scene-original-reason-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    currentScenes[sceneIndex].originalReason = this.value.trim();
+                });
+            });
+
+            // 선택지 텍스트
+            document.querySelectorAll('.choice-text-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    const choiceIndex = parseInt(this.dataset.choiceIndex);
+                    if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
+                    if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
+                    currentScenes[sceneIndex].choices[choiceIndex].text = this.value;
+                });
+            });
+
+            // 감정 선택
+            document.querySelectorAll('.choice-emotion-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    const choiceIndex = parseInt(this.dataset.choiceIndex);
+                    if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
+                    if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
+                    currentScenes[sceneIndex].choices[choiceIndex].emotion = this.value;
+                });
+            });
+
+            // 감정 강도
+            document.querySelectorAll('.choice-intensity-slider').forEach(slider => {
+                slider.addEventListener('input', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    const choiceIndex = parseInt(this.dataset.choiceIndex);
+                    if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
+                    if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
+                    currentScenes[sceneIndex].choices[choiceIndex].intensity = parseInt(this.value);
+                    this.parentElement.querySelector('.choice-intensity-value').textContent = this.value;
+                });
+            });
+
+            // 다음 장면 선택
+            document.querySelectorAll('.choice-next-scene-select').forEach(select => {
+                select.addEventListener('change', function() {
+                    const sceneIndex = parseInt(this.dataset.sceneIndex);
+                    const choiceIndex = parseInt(this.dataset.choiceIndex);
+                    if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
+                    if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
+                    currentScenes[sceneIndex].choices[choiceIndex].nextScene = this.value;
+                });
+            });
+        }
+
+        // 선택지 추가
+        function addChoice(sceneIndex) {
+            if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
+            currentScenes[sceneIndex].choices.push({
+                text: '',
+                emotion: 'fear',
+                intensity: 5,
+                nextScene: sceneIndex + 1 < currentScenes.length ? sceneIndex + 1 : 'end'
+            });
+            // 원본 선택이 선택지 개수를 초과하면 조정
+            if (currentScenes[sceneIndex].originalChoice >= currentScenes[sceneIndex].choices.length) {
+                currentScenes[sceneIndex].originalChoice = currentScenes[sceneIndex].choices.length - 1;
+            }
+            renderScenes();
+        }
+
+        // 선택지 삭제
+        function deleteChoice(sceneIndex, choiceIndex) {
+            if (confirm('이 선택지를 삭제하시겠습니까?')) {
+                currentScenes[sceneIndex].choices.splice(choiceIndex, 1);
+                // 원본 선택이 삭제된 인덱스보다 크거나 같으면 조정
+                if (currentScenes[sceneIndex].originalChoice >= choiceIndex) {
+                    if (currentScenes[sceneIndex].originalChoice > 0) {
+                        currentScenes[sceneIndex].originalChoice = currentScenes[sceneIndex].originalChoice - 1;
+                    } else {
+                        currentScenes[sceneIndex].originalChoice = 0;
+                    }
+                }
+                renderScenes();
+            }
+        }
+
+        // 장면 삭제
+        function deleteScene(sceneIndex) {
+            if (confirm('이 장면을 삭제하시겠습니까?')) {
+                currentScenes.splice(sceneIndex, 1);
+                renderScenes();
+            }
+        }
+
+        // 장면 위로 이동
+        function moveSceneUp(sceneIndex) {
+            if (sceneIndex > 0) {
+                [currentScenes[sceneIndex], currentScenes[sceneIndex - 1]] = [currentScenes[sceneIndex - 1], currentScenes[sceneIndex]];
+                renderScenes();
+            }
+        }
+
+        // 장면 아래로 이동
+        function moveSceneDown(sceneIndex) {
+            if (sceneIndex < currentScenes.length - 1) {
+                [currentScenes[sceneIndex], currentScenes[sceneIndex + 1]] = [currentScenes[sceneIndex + 1], currentScenes[sceneIndex]];
+                renderScenes();
+            }
+        }
+
+        // 탭 전환
+        function switchTab(tab) {
+            document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.editor-content').forEach(c => c.classList.remove('active'));
+
+            if (tab === 'edit') {
+                document.querySelector('.editor-tab').classList.add('active');
+                document.getElementById('editContent').classList.add('active');
+                stopPreviewWaveAnimation();
+            } else {
+                document.querySelectorAll('.editor-tab')[1].classList.add('active');
+                document.getElementById('previewContent').classList.add('active');
+                renderPreview();
+                startPreviewWaveAnimation();
+            }
+        }
+
+        // 미리보기 렌더링
+        function renderPreview() {
+            const container = document.getElementById('previewSceneContainer');
+            container.innerHTML = '';
+
+            if (currentScenes.length === 0) {
+                container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;">장면이 없습니다</div>';
+                return;
+            }
+
+            const scene = currentScenes[previewCurrentScene];
+            if (!scene) {
+                previewCurrentScene = 0;
+                return renderPreview();
+            }
+
+            const sceneDiv = document.createElement('div');
+            sceneDiv.className = 'preview-scene';
+            sceneDiv.innerHTML = `
+                <div class="preview-scene-text">${scene.text || '본문이 없습니다'}</div>
+                <div class="preview-choices">
+                    ${scene.choices && scene.choices.length > 0 ? scene.choices.map((choice, index) => `
+                        <button class="preview-choice-btn" onclick="previewMakeChoice(${index})">${choice.text || '선택지 텍스트 없음'}</button>
+                    `).join('') : '<div style="color:var(--text-muted);padding:1rem;">선택지가 없습니다</div>'}
+                </div>
+            `;
+            container.appendChild(sceneDiv);
+        }
+
+        // 미리보기에서 선택지 선택
+        function previewMakeChoice(choiceIndex) {
+            const scene = currentScenes[previewCurrentScene];
+            if (!scene || !scene.choices || !scene.choices[choiceIndex]) return;
+
+            const choice = scene.choices[choiceIndex];
+            const nextScene = choice.nextScene;
+
+            if (nextScene === 'end') {
+                alert('엔딩에 도달했습니다.');
+                previewCurrentScene = 0;
+            } else if (typeof nextScene === 'number' && nextScene < currentScenes.length) {
+                previewCurrentScene = nextScene;
+            } else {
+                previewCurrentScene = previewCurrentScene + 1;
+            }
+
+            if (previewCurrentScene >= currentScenes.length) {
+                previewCurrentScene = 0;
+            }
+
+            renderPreview();
+        }
+
+        // 미리보기 파동 애니메이션 시작
+        function startPreviewWaveAnimation() {
+            const canvas = document.getElementById('previewWaveCanvas');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth * 2;
+            canvas.height = canvas.offsetHeight * 2;
+            ctx.scale(2, 2);
+
+            let time = 0;
+            function animate() {
+                ctx.fillStyle = 'rgba(18, 18, 26, 0.1)';
+                ctx.fillRect(0, 0, canvas.width / 2, canvas.height / 2);
+
+                const width = canvas.width / 2;
+                const height = canvas.height / 2;
+                const centerY = height / 2;
+
+                // 현재 장면의 감정 강도 계산
+                const scene = currentScenes[previewCurrentScene];
+                let intensity = 0.5;
+                if (scene && scene.choices && scene.choices.length > 0) {
+                    const avgIntensity = scene.choices.reduce((sum, c) => sum + (c.intensity || 5), 0) / scene.choices.length;
+                    intensity = avgIntensity / 10;
+                }
+
+                ctx.beginPath();
+                ctx.strokeStyle = `rgba(196, 168, 130, ${0.4 + intensity * 0.4})`;
+                ctx.lineWidth = 1.5;
+                for (let x = 0; x < width; x++) {
+                    const y = centerY + Math.sin(x * 0.02 + time * 0.05) * (15 * intensity) + Math.sin(x * 0.01 + time * 0.03) * (10 * intensity);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                time++;
+                previewWaveAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // 미리보기 파동 애니메이션 중지
+        function stopPreviewWaveAnimation() {
+            if (previewWaveAnimationId) {
+                cancelAnimationFrame(previewWaveAnimationId);
+                previewWaveAnimationId = null;
+            }
+        }
+
+        // 기억 저장
+        function saveMemory() {
+            const title = document.getElementById('memoryTitle').value.trim();
+            const code = document.getElementById('memoryCode').value.trim();
+            const description = document.getElementById('memoryDescription').value.trim();
+
+            if (!title || !code) {
+                alert('제목과 코드를 입력해주세요');
+                return;
+            }
+
+            if (currentScenes.length === 0) {
+                alert('최소 하나의 장면을 추가해주세요');
+                return;
+            }
+
+            const memoryData = {
+                title,
+                code,
+                description,
+                scenes: currentScenes,
+                interpretationLayers: 0,
+                visible: true
+            };
+
+            if (currentMemoryIndex !== null) {
+                memories[currentMemoryIndex] = memoryData;
+            } else {
+                memories.push(memoryData);
+            }
+
+            saveMemoriesToStorage();
+            renderMemoriesTable();
+            
+            // JSON 다운로드
+            exportMemoriesJSON();
+            
+            cancelEdit();
+        }
+
+        // memoriesData 형식으로 변환
+        function convertToMemoriesDataFormat(adminMemories) {
+            return adminMemories.map((memory, index) => {
+                // 선택지에서 감정과 강도 정보 추출
+                const processedScenes = memory.scenes.map(scene => {
+                    const processedChoices = scene.choices.map(choice => ({
+                        text: choice.text,
+                        percentage: choice.percentage || 0,
+                        emotion: choice.emotion || 'fear',
+                        intensity: choice.intensity || 5,
+                        nextScene: choice.nextScene || 'end'
+                    }));
+
+                    // emotionDist 계산 (선택지의 감정 분포 기반)
+                    const emotionDist = {
+                        fear: 0,
+                        sadness: 0,
+                        guilt: 0,
+                        anger: 0,
+                        longing: 0,
+                        isolation: 0,
+                        numbness: 0,
+                        moralPain: 0
+                    };
+                    processedChoices.forEach(choice => {
+                        const intensity = (choice.intensity || 5) / 10;
+                        if (choice.emotion === 'fear') emotionDist.fear += intensity;
+                        else if (choice.emotion === 'sadness') emotionDist.sadness += intensity;
+                        else if (choice.emotion === 'guilt') emotionDist.guilt += intensity;
+                        else if (choice.emotion === 'anger') emotionDist.anger += intensity;
+                        else if (choice.emotion === 'longing') emotionDist.longing += intensity;
+                        else if (choice.emotion === 'isolation') emotionDist.isolation += intensity;
+                        else if (choice.emotion === 'numbness') emotionDist.numbness += intensity;
+                        else if (choice.emotion === 'moralPain') emotionDist.moralPain += intensity;
+                    });
+                    const total = emotionDist.fear + emotionDist.sadness + emotionDist.guilt + emotionDist.anger + 
+                                  emotionDist.longing + emotionDist.isolation + emotionDist.numbness + emotionDist.moralPain;
+                    if (total > 0) {
+                        emotionDist.fear = Math.round((emotionDist.fear / total) * 100);
+                        emotionDist.sadness = Math.round((emotionDist.sadness / total) * 100);
+                        emotionDist.guilt = Math.round((emotionDist.guilt / total) * 100);
+                        emotionDist.anger = Math.round((emotionDist.anger / total) * 100);
+                        emotionDist.longing = Math.round((emotionDist.longing / total) * 100);
+                        emotionDist.isolation = Math.round((emotionDist.isolation / total) * 100);
+                        emotionDist.numbness = Math.round((emotionDist.numbness / total) * 100);
+                        emotionDist.moralPain = Math.round((emotionDist.moralPain / total) * 100);
+                    } else {
+                        const defaultValue = Math.round(100 / 8);
+                        emotionDist.fear = defaultValue;
+                        emotionDist.sadness = defaultValue;
+                        emotionDist.guilt = defaultValue;
+                        emotionDist.anger = defaultValue;
+                        emotionDist.longing = defaultValue;
+                        emotionDist.isolation = defaultValue;
+                        emotionDist.numbness = defaultValue;
+                        emotionDist.moralPain = defaultValue;
+                    }
+
+                    return {
+                        text: scene.text || '',
+                        sceneType: scene.sceneType || 'normal',
+                        echoWords: scene.echoWords || [],
+                        choices: processedChoices,
+                        emotionDist: emotionDist,
+                        originalChoice: scene.originalChoice || 0,
+                        originalReason: scene.originalReason || ''
+                    };
+                });
+
+                return {
+                    id: index,
+                    code: memory.code || `A-${String(index + 1).padStart(3, '0')}`,
+                    title: memory.title || '제목 없음',
+                    layers: memory.interpretationLayers || 0,
+                    dilution: 50, // 기본값
+                    recentRank: index + 1, // 기본값
+                    scenes: processedScenes
+                };
+            });
+        }
+
+        // JSON 다운로드
+        async function exportMemoriesJSON() {
+            if (memories.length === 0) {
+                alert('저장된 기억이 없습니다. 먼저 기억을 추가해주세요.');
+                return;
+            }
+
+            const memoriesDataFormat = convertToMemoriesDataFormat(memories);
+            const jsonString = JSON.stringify(memoriesDataFormat, null, 2);
+            
+            // 파일 다운로드
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'memories-export.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // 클립보드에 복사
+            try {
+                await navigator.clipboard.writeText(jsonString);
+                alert('클립보드에 복사됨. data/memories.js의 memoriesData 배열에 붙여넣으세요');
+            } catch (err) {
+                // 클립보드 복사 실패 시 fallback
+                console.error('클립보드 복사 실패:', err);
+                alert('memories-export.json 파일이 다운로드되었습니다. (클립보드 복사 실패)');
+            }
+        }
+
+        // JSON 불러오기
+        function importMemoriesJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    
+                    if (!Array.isArray(jsonData)) {
+                        alert('올바른 JSON 형식이 아닙니다. 배열 형식이어야 합니다.');
+                        return;
+                    }
+
+                    // memoriesData 형식에서 admin 형식으로 변환
+                    const adminFormat = jsonData.map(memory => ({
+                        title: memory.title || '',
+                        code: memory.code || '',
+                        description: '',
+                        scenes: memory.scenes.map(scene => ({
+                            text: scene.text || '',
+                            sceneType: scene.sceneType || 'normal',
+                            echoWords: scene.echoWords || [],
+                            choices: scene.choices.map(choice => ({
+                                text: choice.text || '',
+                                emotion: choice.emotion || 'fear',
+                                intensity: choice.intensity || 5,
+                                nextScene: choice.nextScene || 'end',
+                                percentage: choice.percentage || 0
+                            })),
+                            originalChoice: scene.originalChoice !== undefined ? scene.originalChoice : 0,
+                            originalReason: scene.originalReason || ''
+                        })),
+                        interpretationLayers: memory.layers || 0,
+                        visible: true
+                    }));
+
+                    memories = adminFormat;
+                    saveMemoriesToStorage();
+                    renderMemoriesTable();
+                    alert('JSON 파일이 성공적으로 불러와졌습니다.');
+                } catch (error) {
+                    alert('JSON 파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+            
+            // 파일 입력 초기화
+            event.target.value = '';
+        }
+
+        // 로컬 스토리지에 저장
+        function saveMemoriesToStorage() {
+            localStorage.setItem('adminMemories', JSON.stringify(memories));
+        }
+
+        // 편집 취소
+        function cancelEdit() {
+            document.getElementById('editorScreen').classList.remove('active');
+            document.getElementById('adminDashboard').classList.add('active');
+            currentMemoryIndex = null;
+            currentScenes = [];
+            previewCurrentScene = 0;
+            stopPreviewWaveAnimation();
+        }
+    </script>
+    <script src="data/memories.js"></script>
+</body>
+</html>
+
+
