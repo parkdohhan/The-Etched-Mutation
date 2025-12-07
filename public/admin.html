@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>관리자 페이지 — The Etched Mutation</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --bg-deep: #0a0a0c;
@@ -597,9 +598,32 @@
 
     <script>
         const ADMIN_PASSWORD = 'admin8231';
+        const SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+        
+        let supabaseClient;
+        
+        // Supabase 클라이언트 초기화
+        function initSupabase() {
+            if (typeof window.supabase !== 'undefined') {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } else {
+                // 스크립트가 아직 로드되지 않았으면 대기
+                setTimeout(initSupabase, 100);
+            }
+        }
+        
+        // 페이지 로드 시 초기화
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSupabase);
+        } else {
+            initSupabase();
+        }
+        
         let memories = [];
         let currentScenes = [];
         let currentMemoryIndex = null;
+        let currentMemoryId = null;
         let previewCurrentScene = 0;
         let previewWaveAnimationId = null;
 
@@ -641,38 +665,110 @@
         }
 
         // 기억 목록 로드
-        function loadMemories() {
-            // 로컬 스토리지에서 불러오기
-            const stored = localStorage.getItem('adminMemories');
-            if (stored) {
-                memories = JSON.parse(stored);
-            } else {
-                // localStorage에 데이터가 없으면 memoriesData에서 불러오기
-                if (typeof memoriesData !== 'undefined' && memoriesData.length > 0) {
-                    // memoriesData 형식에서 admin 형식으로 변환
-                    memories = memoriesData.map(memory => ({
-                        title: memory.title || '',
-                        code: memory.code || '',
-                        description: '',
-                        scenes: memory.scenes.map(scene => ({
-                            text: scene.text || '',
-                            sceneType: scene.sceneType || 'normal',
-                            echoWords: scene.echoWords || [],
-                            choices: scene.choices.map(choice => ({
-                                text: choice.text || '',
-                                emotion: choice.emotion || 'fear',
-                                intensity: choice.intensity || 5,
-                                nextScene: choice.nextScene || 'end',
-                                percentage: choice.percentage || 0
-                            })),
-                            originalChoice: scene.originalChoice !== undefined ? scene.originalChoice : 0,
-                            originalReason: scene.originalReason || ''
-                        })),
-                        interpretationLayers: memory.layers || 0,
-                        visible: true
+        async function loadMemories() {
+            try {
+                // Supabase에서 불러오기
+                if (!supabaseClient) {
+                    throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+                }
+                const { data: memoriesData, error } = await supabaseClient
+                    .from('memories')
+                    .select('*')
+                    .order('id', { ascending: true });
+
+                if (error) throw error;
+
+                if (memoriesData && memoriesData.length > 0) {
+                    // 각 메모리의 scenes와 choices를 불러오기
+                    memories = await Promise.all(memoriesData.map(async (memory) => {
+                        const { data: scenesData, error: scenesError } = await supabaseClient
+                            .from('scenes')
+                            .select('*')
+                            .eq('memory_id', memory.id)
+                            .order('scene_order', { ascending: true });
+
+                        if (scenesError) throw scenesError;
+
+                        const scenes = await Promise.all((scenesData || []).map(async (scene) => {
+                            const { data: choicesData, error: choicesError } = await supabaseClient
+                                .from('choices')
+                                .select('*')
+                                .eq('scene_id', scene.id)
+                                .order('choice_order', { ascending: true });
+
+                            if (choicesError) throw choicesError;
+
+                            return {
+                                id: scene.id,
+                                text: scene.text || '',
+                                sceneType: scene.scene_type || 'normal',
+                                echoWords: Array.isArray(scene.echo_words) ? scene.echo_words : (scene.echo_words ? JSON.parse(scene.echo_words) : []),
+                                emotionDist: scene.emotion_dist || {},
+                                choices: (choicesData || []).map(choice => ({
+                                    id: choice.id,
+                                    text: choice.text || '',
+                                    emotion: choice.emotion || 'fear',
+                                    intensity: choice.intensity || 5,
+                                    nextScene: 'end',
+                                    percentage: 0
+                                })),
+                                originalChoice: 0,
+                                originalReason: ''
+                            };
+                        }));
+
+                        return {
+                            id: memory.id,
+                            title: memory.title || '',
+                            code: memory.code || '',
+                            description: '',
+                            scenes: scenes,
+                            interpretationLayers: memory.layers || 0,
+                            visible: memory.is_public !== undefined ? memory.is_public : true
+                        };
                     }));
-                    // 변환된 데이터를 localStorage에 저장
+
+                    // 백업용으로 localStorage에도 저장
                     saveMemoriesToStorage();
+                } else {
+                    // Supabase에 데이터가 없으면 localStorage에서 불러오기 (마이그레이션)
+                    const stored = localStorage.getItem('adminMemories');
+                    if (stored) {
+                        memories = JSON.parse(stored);
+                    } else if (typeof memoriesData !== 'undefined' && memoriesData.length > 0) {
+                        // memoriesData 형식에서 admin 형식으로 변환
+                        memories = memoriesData.map(memory => ({
+                            title: memory.title || '',
+                            code: memory.code || '',
+                            description: '',
+                            scenes: memory.scenes.map(scene => ({
+                                text: scene.text || '',
+                                sceneType: scene.sceneType || 'normal',
+                                echoWords: scene.echoWords || [],
+                                choices: scene.choices.map(choice => ({
+                                    text: choice.text || '',
+                                    emotion: choice.emotion || 'fear',
+                                    intensity: choice.intensity || 5,
+                                    nextScene: choice.nextScene || 'end',
+                                    percentage: choice.percentage || 0
+                                })),
+                                originalChoice: scene.originalChoice !== undefined ? scene.originalChoice : 0,
+                                originalReason: scene.originalReason || ''
+                            })),
+                            interpretationLayers: memory.layers || 0,
+                            visible: true
+                        }));
+                    } else {
+                        memories = [];
+                    }
+                }
+            } catch (error) {
+                console.error('loadMemories error:', error);
+                alert('기억을 불러오는 중 오류가 발생했습니다: ' + error.message);
+                // 에러 발생 시 localStorage에서 불러오기
+                const stored = localStorage.getItem('adminMemories');
+                if (stored) {
+                    memories = JSON.parse(stored);
                 } else {
                     memories = [];
                 }
@@ -700,6 +796,7 @@
                     <td>
                         <button class="table-btn" onclick="editMemory(${index})">수정</button>
                         <button class="table-btn" onclick="toggleMemoryVisibility(${index})">${memory.visible ? '숨김' : '공개'}</button>
+                        <button class="table-btn" onclick="deleteMemory(${index})" style="border-color:var(--accent-live);color:var(--accent-live)">삭제</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -709,6 +806,7 @@
         // 새 기억 추가
         function addNewMemory() {
             currentMemoryIndex = null;
+            currentMemoryId = null;
             currentScenes = [];
             document.getElementById('memoryTitle').value = '';
             document.getElementById('memoryCode').value = '';
@@ -723,6 +821,7 @@
         function editMemory(index) {
             currentMemoryIndex = index;
             const memory = memories[index];
+            currentMemoryId = memory.id || null;
             document.getElementById('memoryTitle').value = memory.title || '';
             document.getElementById('memoryCode').value = memory.code || '';
             document.getElementById('memoryDescription').value = memory.description || '';
@@ -734,10 +833,79 @@
         }
 
         // 기억 가시성 토글
-        function toggleMemoryVisibility(index) {
-            memories[index].visible = !memories[index].visible;
-            saveMemoriesToStorage();
-            renderMemoriesTable();
+        async function toggleMemoryVisibility(index) {
+            const memory = memories[index];
+            const newVisibility = !memory.visible;
+            
+            try {
+                if (!supabaseClient) {
+                    throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+                }
+                
+                if (memory.id) {
+                    const { error } = await supabaseClient
+                        .from('memories')
+                        .update({ is_public: newVisibility })
+                        .eq('id', memory.id);
+                    
+                    if (error) throw error;
+                }
+                
+                memories[index].visible = newVisibility;
+                saveMemoriesToStorage(); // 백업용
+                renderMemoriesTable();
+            } catch (error) {
+                console.error('toggleMemoryVisibility error:', error);
+                alert('가시성 변경 중 오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        // 기억 삭제
+        async function deleteMemory(index) {
+            const memory = memories[index];
+            
+            if (!confirm(`"${memory.title || memory.code}" 기억을 삭제하시겠습니까?`)) {
+                return;
+            }
+
+            try {
+                if (!supabaseClient) {
+                    throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+                }
+                
+                if (memory.id) {
+                    // Supabase에서 관련 데이터 삭제
+                    // 먼저 scenes를 가져와서 choices 삭제
+                    const { data: scenesData } = await supabaseClient
+                        .from('scenes')
+                        .select('id')
+                        .eq('memory_id', memory.id);
+                    
+                    if (scenesData && scenesData.length > 0) {
+                        const sceneIds = scenesData.map(s => s.id);
+                        await supabaseClient.from('choices').delete().in('scene_id', sceneIds);
+                        await supabaseClient.from('scenes').delete().eq('memory_id', memory.id);
+                    }
+                    
+                    // 메모리 삭제
+                    const { error } = await supabaseClient
+                        .from('memories')
+                        .delete()
+                        .eq('id', memory.id);
+                    
+                    if (error) throw error;
+                }
+                
+                // 로컬 배열에서 제거
+                memories.splice(index, 1);
+                saveMemoriesToStorage(); // 백업용
+                renderMemoriesTable();
+                
+                alert('기억이 삭제되었습니다.');
+            } catch (error) {
+                console.error('deleteMemory error:', error);
+                alert('삭제 중 오류가 발생했습니다: ' + error.message);
+            }
         }
 
         // 장면 추가
@@ -1140,7 +1308,7 @@
         }
 
         // 기억 저장
-        function saveMemory() {
+        async function saveMemory() {
             const title = document.getElementById('memoryTitle').value.trim();
             const code = document.getElementById('memoryCode').value.trim();
             const description = document.getElementById('memoryDescription').value.trim();
@@ -1155,28 +1323,269 @@
                 return;
             }
 
-            const memoryData = {
-                title,
-                code,
-                description,
-                scenes: currentScenes,
-                interpretationLayers: 0,
-                visible: true
-            };
+            try {
+                let memoryId;
+                
+                console.log('[saveMemory] 시작', { currentMemoryId, scenesCount: currentScenes.length });
+                
+                // 메모리 저장 또는 업데이트
+                if (!supabaseClient) {
+                    throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+                }
+                
+                if (currentMemoryId) {
+                    console.log('[saveMemory] 메모리 업데이트 시작', { memoryId: currentMemoryId });
+                    // 업데이트
+                    const { data: updateData, error } = await supabaseClient
+                        .from('memories')
+                        .update({
+                            code: code,
+                            title: title,
+                            layers: 0,
+                            dilution: 50,
+                            is_public: true
+                        })
+                        .eq('id', currentMemoryId)
+                        .select();
+                    
+                    if (error) {
+                        console.error('[saveMemory] 메모리 업데이트 실패', error);
+                        throw error;
+                    }
+                    console.log('[saveMemory] 메모리 업데이트 성공', updateData);
+                    memoryId = currentMemoryId;
+                    
+                    // 기존 scenes와 choices 삭제
+                    console.log('[saveMemory] 기존 scenes 조회 시작', { memoryId });
+                    const { data: existingScenes, error: scenesSelectError } = await supabaseClient
+                        .from('scenes')
+                        .select('id')
+                        .eq('memory_id', memoryId);
+                    
+                    if (scenesSelectError) {
+                        console.error('[saveMemory] 기존 scenes 조회 실패', scenesSelectError);
+                        throw scenesSelectError;
+                    }
+                    console.log('[saveMemory] 기존 scenes 조회 성공', { count: existingScenes?.length || 0 });
+                    
+                    if (existingScenes && existingScenes.length > 0) {
+                        const sceneIds = existingScenes.map(s => s.id);
+                        console.log('[saveMemory] 기존 choices 삭제 시작', { sceneIds });
+                        const { error: choicesDeleteError } = await supabaseClient
+                            .from('choices')
+                            .delete()
+                            .in('scene_id', sceneIds);
+                        
+                        if (choicesDeleteError) {
+                            console.error('[saveMemory] 기존 choices 삭제 실패', choicesDeleteError);
+                            throw choicesDeleteError;
+                        }
+                        console.log('[saveMemory] 기존 choices 삭제 성공');
+                        
+                        console.log('[saveMemory] 기존 scenes 삭제 시작', { memoryId });
+                        const { error: scenesDeleteError } = await supabaseClient
+                            .from('scenes')
+                            .delete()
+                            .eq('memory_id', memoryId);
+                        
+                        if (scenesDeleteError) {
+                            console.error('[saveMemory] 기존 scenes 삭제 실패', scenesDeleteError);
+                            throw scenesDeleteError;
+                        }
+                        console.log('[saveMemory] 기존 scenes 삭제 성공');
+                    }
+                } else {
+                    console.log('[saveMemory] 새 메모리 생성 시작');
+                    // 새로 생성
+                    const { data, error } = await supabaseClient
+                        .from('memories')
+                        .insert({
+                            code: code,
+                            title: title,
+                            layers: 0,
+                            dilution: 50,
+                            is_public: true
+                        })
+                        .select()
+                        .single();
+                    
+                    if (error) {
+                        console.error('[saveMemory] 새 메모리 생성 실패', error);
+                        throw error;
+                    }
+                    
+                    if (!data || !data.id) {
+                        console.error('[saveMemory] 새 메모리 생성 응답 데이터 없음', { data, error });
+                        throw new Error('메모리 생성 후 응답 데이터를 받지 못했습니다.');
+                    }
+                    
+                    console.log('[saveMemory] 새 메모리 생성 성공', data);
+                    memoryId = data.id;
+                }
 
-            if (currentMemoryIndex !== null) {
-                memories[currentMemoryIndex] = memoryData;
-            } else {
-                memories.push(memoryData);
+                // Scenes 저장
+                console.log('[saveMemory] Scenes 저장 시작', { scenesCount: currentScenes.length, memoryId });
+                for (let i = 0; i < currentScenes.length; i++) {
+                    const scene = currentScenes[i];
+                    console.log(`[saveMemory] Scene ${i + 1}/${currentScenes.length} 처리 시작`, {
+                        text: scene.text?.substring(0, 50),
+                        sceneType: scene.sceneType,
+                        choicesCount: scene.choices?.length || 0
+                    });
+                    
+                    // emotionDist 계산
+                    const emotionDist = {
+                        fear: 0, sadness: 0, guilt: 0, anger: 0,
+                        longing: 0, isolation: 0, numbness: 0, moralPain: 0
+                    };
+                    
+                    if (scene.choices && scene.choices.length > 0) {
+                        scene.choices.forEach(choice => {
+                            const intensity = (choice.intensity || 5) / 10;
+                            if (emotionDist.hasOwnProperty(choice.emotion)) {
+                                emotionDist[choice.emotion] += intensity;
+                            }
+                        });
+                    }
+                    
+                    const total = Object.values(emotionDist).reduce((sum, val) => sum + val, 0);
+                    if (total > 0) {
+                        Object.keys(emotionDist).forEach(key => {
+                            emotionDist[key] = Math.round((emotionDist[key] / total) * 100);
+                        });
+                    }
+
+                    const echoWords = scene.echoWords || [];
+                    const emotionDistObj = emotionDist;
+                    
+                    console.log(`[saveMemory] Scene ${i + 1} INSERT 시작`, {
+                        memory_id: memoryId,
+                        scene_order: i,
+                        text_length: scene.text?.length || 0,
+                        echo_words: echoWords,
+                        emotion_dist: emotionDistObj,
+                        scene_type: scene.sceneType || 'normal'
+                    });
+
+                    const insertData = {
+                        memory_id: memoryId,
+                        scene_order: i,
+                        text: scene.text || '',
+                        echo_words: echoWords,
+                        emotion_dist: emotionDistObj,
+                        scene_type: scene.sceneType || 'normal'
+                    };
+                    
+                    console.log(`[saveMemory] Scene ${i + 1} INSERT 데이터`, JSON.stringify(insertData, null, 2));
+
+                    const { data: sceneData, error: sceneError } = await supabaseClient
+                        .from('scenes')
+                        .insert(insertData)
+                        .select()
+                        .single();
+                    
+                    if (sceneError) {
+                        console.error(`[saveMemory] Scene ${i + 1} INSERT 실패`, sceneError, {
+                            errorDetails: {
+                                message: sceneError.message,
+                                details: sceneError.details,
+                                hint: sceneError.hint,
+                                code: sceneError.code
+                            },
+                            insertData: insertData
+                        });
+                        throw sceneError;
+                    }
+                    
+                    if (!sceneData || !sceneData.id) {
+                        console.error(`[saveMemory] Scene ${i + 1} INSERT 응답 데이터 없음`, { sceneData, sceneError });
+                        throw new Error(`Scene ${i + 1} 저장 후 응답 데이터를 받지 못했습니다.`);
+                    }
+                    
+                    console.log(`[saveMemory] Scene ${i + 1} INSERT 성공`, { sceneId: sceneData.id, sceneData });
+
+                    // Choices 저장
+                    const choicesCount = (scene.choices || []).length;
+                    console.log(`[saveMemory] Scene ${i + 1} Choices 저장 시작`, { choicesCount, sceneId: sceneData.id });
+                    
+                    if (choicesCount > 0) {
+                        for (let j = 0; j < choicesCount; j++) {
+                            const choice = scene.choices[j];
+                            console.log(`[saveMemory] Scene ${i + 1} Choice ${j + 1}/${choicesCount} INSERT 시작`, {
+                                scene_id: sceneData.id,
+                                choice_order: j,
+                                text: choice.text?.substring(0, 30),
+                                emotion: choice.emotion,
+                                intensity: choice.intensity
+                            });
+                            
+                            const { error: choiceError } = await supabaseClient
+                                .from('choices')
+                                .insert({
+                                    scene_id: sceneData.id,
+                                    choice_order: j,
+                                    text: choice.text || '',
+                                    emotion: choice.emotion || 'fear',
+                                    intensity: choice.intensity || 5
+                                });
+                            
+                            if (choiceError) {
+                                console.error(`[saveMemory] Scene ${i + 1} Choice ${j + 1} INSERT 실패`, choiceError, {
+                                    choiceData: {
+                                        scene_id: sceneData.id,
+                                        choice_order: j,
+                                        text: choice.text || '',
+                                        emotion: choice.emotion || 'fear',
+                                        intensity: choice.intensity || 5
+                                    }
+                                });
+                                throw choiceError;
+                            }
+                            console.log(`[saveMemory] Scene ${i + 1} Choice ${j + 1} INSERT 성공`);
+                        }
+                    } else {
+                        console.log(`[saveMemory] Scene ${i + 1}에는 choices가 없습니다`);
+                    }
+                    console.log(`[saveMemory] Scene ${i + 1} 완료`);
+                }
+                console.log('[saveMemory] 모든 Scenes 저장 완료');
+
+                // 로컬 메모리 업데이트
+                const memoryData = {
+                    id: memoryId,
+                    title,
+                    code,
+                    description,
+                    scenes: currentScenes,
+                    interpretationLayers: 0,
+                    visible: true
+                };
+
+                if (currentMemoryIndex !== null) {
+                    memories[currentMemoryIndex] = memoryData;
+                } else {
+                    memories.push(memoryData);
+                }
+
+                saveMemoriesToStorage(); // 백업용
+                renderMemoriesTable();
+                
+                // JSON 다운로드
+                exportMemoriesJSON();
+                
+                console.log('[saveMemory] 전체 저장 완료');
+                cancelEdit();
+            } catch (error) {
+                console.error('[saveMemory] 전체 에러 발생', error);
+                console.error('[saveMemory] 에러 상세:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code,
+                    stack: error.stack
+                });
+                alert('저장 중 오류가 발생했습니다: ' + (error.message || error.toString()) + '\n\n콘솔을 확인해주세요.');
             }
-
-            saveMemoriesToStorage();
-            renderMemoriesTable();
-            
-            // JSON 다운로드
-            exportMemoriesJSON();
-            
-            cancelEdit();
         }
 
         // memoriesData 형식으로 변환
