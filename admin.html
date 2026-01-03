@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 — The Etched Mutation</title>
+    <link rel="icon" href="data:,">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="password-screen" id="passwordScreen">
+        <div class="password-box">
+            <h2 class="password-title">관리자 인증</h2>
+            <div class="password-error" id="passwordError">비밀번호가 틀렸습니다</div>
+            <input type="password" class="password-input" id="passwordInput" placeholder="비밀번호를 입력하세요" autocomplete="off">
+            <button class="password-btn" onclick="checkPassword()">확인</button>
+        </div>
+    </div>
+
+    <div class="admin-dashboard" id="adminDashboard">
+        <div class="container">
+            <div class="admin-header">
+                <h1 class="admin-title">관리자 페이지</h1>
+                <button class="admin-logout-btn" onclick="logout()">로그아웃</button>
+            </div>
+
+            <div class="admin-actions">
+                <button class="add-memory-btn" onclick="addNewMemory()">+ 새 기억 추가</button>
+            </div>
+
+            <div id="sessionsListSection">
+                <div class="filter-buttons">
+                    <button class="filter-btn active" onclick="filterSessions('all')">전체</button>
+                    <button class="filter-btn" onclick="filterSessions('archive')">아카이브</button>
+                    <button class="filter-btn" onclick="filterSessions('live')">라이브</button>
+                </div>
+                <div class="session-controls">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="selectAllSessions" onchange="toggleSelectAll(this.checked)">
+                        전체 선택
+                    </label>
+                    <span id="selectedCount" style="margin-left: 1rem; color: var(--text-muted);">0개 선택됨</span>
+                    <button class="delete-selected-btn" onclick="deleteSelectedSessions()" style="margin-left: auto;">선택 삭제</button>
+                </div>
+                <div id="sessionsListContainer" class="sessions-grid"></div>
+            </div>
+
+            <div id="sessionDetailContainer" style="display:none"></div>
+        </div>
+    </div>
+
+    <div class="editor-screen" id="editorScreen">
+        <div class="container">
+            <div class="editor-tabs">
+                <button class="editor-tab active" onclick="switchTab('edit')">편집</button>
+                <button class="editor-tab" onclick="switchTab('preview')">미리보기</button>
+                <button class="editor-tab" onclick="switchTab('archive')">Archive</button>
+            </div>
+
+            <div class="editor-content active" id="editContent">
+                <div class="editor-section">
+                    <h3 class="editor-section-title">기본 정보</h3>
+                    <div class="editor-input-group">
+                        <label class="editor-label">제목</label>
+                        <input type="text" class="editor-input" id="memoryTitle" placeholder="기억의 제목을 입력하세요">
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">코드</label>
+                        <input type="text" class="editor-input" id="memoryCode" placeholder="A-001">
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">설명</label>
+                        <textarea class="editor-textarea" id="memoryDescription" placeholder="기억에 대한 설명을 입력하세요"></textarea>
+                    </div>
+                </div>
+
+                <div class="editor-section">
+                    <h3 class="editor-section-title">장면 에디터</h3>
+                    <div id="scenesContainer">
+                        <!-- 동적으로 생성됨 -->
+                    </div>
+                    <button class="add-scene-btn" onclick="addScene()">+ 장면 추가</button>
+                </div>
+
+                <div class="editor-buttons">
+                    <button class="editor-save-btn" onclick="saveMemory()">저장</button>
+                    <button class="editor-cancel-btn" onclick="cancelEdit()">취소</button>
+                </div>
+                <div class="export-section" style="margin-top: 2rem; padding: 2rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2);">
+                    <h3 class="editor-section-title">데이터 내보내기 / 가져오기</h3>
+                    <div style="margin-bottom: 1.5rem;">
+                        <button class="editor-save-btn" onclick="exportMemoriesJSON()" style="margin-right: 1rem;">JSON 다운로드</button>
+                        <label for="importFile" class="editor-save-btn" style="display: inline-block; cursor: pointer; margin: 0;">
+                            JSON 불러오기
+                            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importMemoriesJSON(event)">
+                        </label>
+                    </div>
+                    <div style="padding: 1rem; background: var(--bg-deep); border: 1px solid rgba(196, 168, 130, .1); font-size: .85rem; color: var(--text-muted); line-height: 1.6;">
+                        <strong style="color: var(--accent-memory);">안내:</strong> 다운로드한 JSON 파일의 내용을 <code style="color: var(--accent-memory);">data/memories.js</code> 파일의 <code style="color: var(--accent-memory);">memoriesData</code> 배열에 붙여넣으면 메인 페이지에 반영됩니다.
+                    </div>
+                </div>
+            </div>
+
+            <div class="editor-content" id="previewContent">
+                <div class="preview-content" id="previewSceneContainer">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+                <div class="preview-wave-container">
+                    <canvas class="preview-wave-canvas" id="previewWaveCanvas"></canvas>
+                </div>
+                <div class="preview-controls" style="margin-top: 1rem; text-align: center;">
+                    <button id="simulateLayer" class="editor-btn" style="padding: 0.8rem 2rem; font-size: 1rem;">다음 층 쌓기</button>
+                </div>
+            </div>
+
+            <div class="editor-content" id="archiveContent">
+                <div class="archive-section" style="padding: 2rem;">
+                    <h3 class="editor-section-title" style="margin-bottom: 1.5rem;">Archive Layer 시각화</h3>
+                    <div class="archive-canvas-container" style="background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); padding: 1rem; border-radius: 4px;">
+                        <canvas id="archiveCanvas" width="1000" height="600" style="width: 100%; height: auto; max-width: 1000px; display: block; margin: 0 auto;"></canvas>
+                    </div>
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button class="editor-btn" onclick="loadArchiveLayers(currentMemoryId)" style="padding: 0.8rem 2rem; font-size: 1rem;">Archive 로드</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데이터 복구 도구 — The Etched Mutation</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/admin-recovery.css">
+</head>
+<body>
+    <h1>🔧 데이터 복구 도구</h1>
+    
+    <div class="recovery-section">
+        <h2>1. localStorage 백업 확인</h2>
+        <button onclick="checkLocalStorage()">localStorage 백업 확인</button>
+        <div id="localStorageResult"></div>
+    </div>
+
+    <div class="recovery-section">
+        <h2>2. Supabase 데이터 확인</h2>
+        <button onclick="checkSupabase()">Supabase에서 메모리 확인</button>
+        <div id="supabaseResult"></div>
+    </div>
+
+    <div class="recovery-section">
+        <h2>3. 데이터 복구</h2>
+        <p class="info">localStorage 백업이 있다면 아래 버튼으로 복구할 수 있습니다.</p>
+        <button onclick="recoverFromLocalStorage()">localStorage에서 복구</button>
+        <div id="recoveryResult"></div>
+    </div>
+
+    <script type="module" src="js/admin-recovery.js"></script>
+</body>
+</html>

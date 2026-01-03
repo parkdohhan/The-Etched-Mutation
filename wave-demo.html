@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Wave - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0b;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .control-btn {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #888;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .control-btn.active {
+            background: rgba(201, 169, 110, 0.2);
+            border-color: rgba(201, 169, 110, 0.5);
+            color: #c9a96e;
+        }
+        
+        .info {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: #444;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        EMOTION WAVE VISUALIZATION<br>
+        <span style="color: #666;">drag to interact</span>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+    
+    <div class="controls">
+        <button class="control-btn active" onclick="setEmotion('calm')">CALM</button>
+        <button class="control-btn" onclick="setEmotion('anxiety')">ANXIETY</button>
+        <button class="control-btn" onclick="setEmotion('sadness')">SADNESS</button>
+        <button class="control-btn" onclick="setEmotion('anger')">ANGER</button>
+        <button class="control-btn" onclick="setEmotion('joy')">JOY</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let time = 0;
+        let mouseX = 0, mouseY = 0;
+        let isMouseDown = false;
+        
+        // 잔상 저장용 배열
+        const trailFrames = [];
+        const maxTrails = 12;
+        
+        // 감정 설정
+        const emotions = {
+            calm: {
+                color: { r: 100, g: 140, b: 180 },
+                speed: 0.3,
+                amplitude: 30,
+                frequency: 0.008,
+                chaos: 0.1,
+                lineCount: 8,
+                trailOpacity: 0.15
+            },
+            anxiety: {
+                color: { r: 180, g: 100, b: 120 },
+                speed: 1.2,
+                amplitude: 60,
+                frequency: 0.015,
+                chaos: 0.8,
+                lineCount: 15,
+                trailOpacity: 0.08
+            },
+            sadness: {
+                color: { r: 80, g: 100, b: 160 },
+                speed: 0.15,
+                amplitude: 40,
+                frequency: 0.005,
+                chaos: 0.2,
+                lineCount: 6,
+                trailOpacity: 0.25
+            },
+            anger: {
+                color: { r: 200, g: 80, b: 80 },
+                speed: 2.0,
+                amplitude: 80,
+                frequency: 0.02,
+                chaos: 1.0,
+                lineCount: 20,
+                trailOpacity: 0.05
+            },
+            joy: {
+                color: { r: 200, g: 180, b: 100 },
+                speed: 0.8,
+                amplitude: 50,
+                frequency: 0.012,
+                chaos: 0.4,
+                lineCount: 12,
+                trailOpacity: 0.12
+            }
+        };
+        
+        let currentEmotion = emotions.calm;
+        let targetEmotion = emotions.calm;
+        
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+        
+        function lerpColor(a, b, t) {
+            return {
+                r: lerp(a.r, b.r, t),
+                g: lerp(a.g, b.g, t),
+                b: lerp(a.b, b.b, t)
+            };
+        }
+        
+        function noise(x, y, z) {
+            // 간단한 노이즈 함수
+            const n = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
+            return n - Math.floor(n);
+        }
+        
+        function drawWave(offsetY, lineIndex, opacity, timeOffset = 0) {
+            const emotion = currentEmotion;
+            const t = time + timeOffset;
+            
+            ctx.beginPath();
+            
+            const points = [];
+            const segments = 200;
+            
+            for (let i = 0; i <= segments; i++) {
+                const x = (i / segments) * width;
+                const normalizedX = x / width;
+                
+                // 기본 사인파
+                let y = Math.sin(x * emotion.frequency + t * emotion.speed) * emotion.amplitude;
+                
+                // 두 번째 파동 (하모닉)
+                y += Math.sin(x * emotion.frequency * 2.3 + t * emotion.speed * 0.7) * (emotion.amplitude * 0.4);
+                
+                // 세 번째 파동 (느린 큰 파동)
+                y += Math.sin(x * emotion.frequency * 0.4 + t * emotion.speed * 0.3) * (emotion.amplitude * 0.6);
+                
+                // 카오스 (떨림)
+                const chaosAmount = emotion.chaos * 20;
+                y += (noise(x * 0.01, t * 0.1, lineIndex) - 0.5) * chaosAmount;
+                y += (noise(x * 0.02, t * 0.15, lineIndex + 100) - 0.5) * chaosAmount * 0.5;
+                
+                // 마우스 인터랙션
+                if (isMouseDown) {
+                    const dx = x - mouseX;
+                    const dy = offsetY - mouseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const influence = Math.max(0, 1 - dist / 300);
+                    y += Math.sin(dist * 0.02 - t * 2) * influence * 100;
+                }
+                
+                // 가장자리 페이드
+                const edgeFade = Math.sin(normalizedX * Math.PI);
+                y *= edgeFade;
+                
+                points.push({ x, y: offsetY + y });
+            }
+            
+            // 부드러운 곡선으로 연결
+            ctx.moveTo(points[0].x, points[0].y);
+            
+            for (let i = 1; i < points.length - 2; i++) {
+                const xc = (points[i].x + points[i + 1].x) / 2;
+                const yc = (points[i].y + points[i + 1].y) / 2;
+                ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+            }
+            
+            // 선 스타일
+            const color = emotion.color;
+            ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${opacity})`;
+            ctx.lineWidth = 1.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+        }
+        
+        function saveTrailFrame() {
+            // 현재 프레임을 이미지로 저장
+            const imageData = ctx.getImageData(0, 0, width, height);
+            trailFrames.push(imageData);
+            
+            if (trailFrames.length > maxTrails) {
+                trailFrames.shift();
+            }
+        }
+        
+        function drawTrails() {
+            // 잔상 그리기
+            for (let i = 0; i < trailFrames.length; i++) {
+                const opacity = (i / trailFrames.length) * currentEmotion.trailOpacity;
+                ctx.globalAlpha = opacity;
+                ctx.putImageData(trailFrames[i], 0, 0);
+            }
+            ctx.globalAlpha = 1;
+        }
+        
+        function draw() {
+            // 배경 (약간의 잔상 효과)
+            ctx.fillStyle = `rgba(10, 10, 11, ${0.15 + (1 - currentEmotion.trailOpacity) * 0.3})`;
+            ctx.fillRect(0, 0, width, height);
+            
+            // 감정 보간
+            const lerpSpeed = 0.02;
+            currentEmotion = {
+                color: lerpColor(currentEmotion.color, targetEmotion.color, lerpSpeed),
+                speed: lerp(currentEmotion.speed, targetEmotion.speed, lerpSpeed),
+                amplitude: lerp(currentEmotion.amplitude, targetEmotion.amplitude, lerpSpeed),
+                frequency: lerp(currentEmotion.frequency, targetEmotion.frequency, lerpSpeed),
+                chaos: lerp(currentEmotion.chaos, targetEmotion.chaos, lerpSpeed),
+                lineCount: Math.round(lerp(currentEmotion.lineCount, targetEmotion.lineCount, lerpSpeed)),
+                trailOpacity: lerp(currentEmotion.trailOpacity, targetEmotion.trailOpacity, lerpSpeed)
+            };
+            
+            // 파동 그리기
+            const lineCount = currentEmotion.lineCount;
+            const spacing = height / (lineCount + 1);
+            
+            for (let i = 0; i < lineCount; i++) {
+                const offsetY = spacing * (i + 1);
+                const lineOpacity = 0.3 + (Math.sin(i * 0.5 + time * 0.1) * 0.2);
+                
+                // 각 라인마다 약간 다른 타이밍
+                drawWave(offsetY, i, lineOpacity, i * 0.3);
+            }
+            
+            // 글로우 효과 (중앙 라인)
+            ctx.save();
+            ctx.filter = 'blur(8px)';
+            const centerLine = Math.floor(lineCount / 2);
+            const centerY = spacing * (centerLine + 1);
+            drawWave(centerY, centerLine, 0.15, centerLine * 0.3);
+            ctx.restore();
+            
+            time += 0.016;
+            requestAnimationFrame(draw);
+        }
+        
+        function setEmotion(emotionName) {
+            targetEmotion = emotions[emotionName];
+            
+            // 버튼 상태 업데이트
+            document.querySelectorAll('.control-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+        
+        // 이벤트
+        window.addEventListener('resize', resize);
+        
+        canvas.addEventListener('mousedown', (e) => {
+            isMouseDown = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isMouseDown = false;
+        });
+        
+        // 터치 지원
+        canvas.addEventListener('touchstart', (e) => {
+            isMouseDown = true;
+            mouseX = e.touches[0].clientX;
+            mouseY = e.touches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            mouseX = e.touches[0].clientX;
+            mouseY = e.touches[0].clientY;
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            isMouseDown = false;
+        });
+        
+        // 시작
+        resize();
+        draw();
+    </script>
+</body>
+</html>

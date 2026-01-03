@@ -1,0 +1,814 @@
+:root {
+    --bg-deep: #0a0a0c;
+    --bg-surface: #12121a;
+    --text-primary: #e8e4df;
+    --text-muted: #6b6b7b;
+    --text-ghost: #3a3a4a;
+    --accent-memory: #c4a882;
+    --accent-interpretation: #7b8fa8;
+    --accent-live: #a87b7b;
+    --accent-fear: #4a5a7a;
+    --accent-anger: #8a4a4a;
+    --accent-shame: #5a4a5a;
+    --accent-joy: #8a9a6a;
+    --accent-connected: #7a9a7a;
+}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: 'Noto Serif KR', serif;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: .03;
+    pointer-events: none;
+    z-index: 9999;
+}
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+.password-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+.password-box {
+    background: var(--bg-surface);
+    border: 1px solid rgba(196, 168, 130, .2);
+    padding: 3rem;
+    text-align: center;
+    max-width: 450px;
+    width: 90%;
+}
+.password-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    color: var(--accent-memory);
+    margin-bottom: 1.5rem;
+    letter-spacing: .1em;
+}
+.password-input {
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid var(--text-ghost);
+    padding: 1rem;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    transition: all .3s;
+}
+.password-input:focus {
+    outline: none;
+    border-color: var(--accent-memory);
+}
+.password-error {
+    color: var(--accent-live);
+    font-size: .9rem;
+    margin-bottom: 1rem;
+    display: none;
+}
+.password-error.visible {
+    display: block;
+}
+.password-btn {
+    background: transparent;
+    border: 1px solid var(--accent-memory);
+    color: var(--accent-memory);
+    padding: .8rem 2.5rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all .3s;
+    pointer-events: auto;
+    z-index: 10;
+}
+.password-btn:hover {
+    background: var(--accent-memory);
+    color: var(--bg-deep);
+}
+.admin-dashboard {
+    display: none;
+}
+.admin-dashboard.active {
+    display: block;
+}
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 0;
+    border-bottom: 1px solid rgba(196, 168, 130, .2);
+    margin-bottom: 2rem;
+}
+.admin-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.5rem;
+    color: var(--accent-memory);
+    letter-spacing: .2em;
+}
+.admin-logout-btn {
+    background: transparent;
+    border: 1px solid var(--text-ghost);
+    color: var(--text-muted);
+    padding: .6rem 1.5rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: all .3s;
+}
+.admin-logout-btn:hover {
+    border-color: var(--accent-live);
+    color: var(--accent-live);
+}
+.admin-actions {
+    margin-bottom: 2rem;
+}
+.add-memory-btn {
+    background: var(--accent-memory);
+    border: none;
+    color: var(--bg-deep);
+    padding: .8rem 2rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all .3s;
+}
+.add-memory-btn:hover {
+    opacity: .9;
+}
+.memories-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-surface);
+    border: 1px solid rgba(196, 168, 130, .1);
+}
+.memories-table th,
+.memories-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(196, 168, 130, .1);
+}
+.memories-table th {
+    font-family: 'Cormorant Garamond', serif;
+    color: var(--accent-memory);
+    font-size: 1rem;
+    letter-spacing: .1em;
+}
+.memories-table td {
+    color: var(--text-primary);
+    font-size: .9rem;
+}
+.table-btn {
+    background: transparent;
+    border: 1px solid var(--text-ghost);
+    color: var(--text-muted);
+    padding: .4rem 1rem;
+    font-size: .85rem;
+    cursor: pointer;
+    margin-right: .5rem;
+    transition: all .3s;
+}
+.table-btn:hover {
+    border-color: var(--accent-memory);
+    color: var(--accent-memory);
+}
+.editor-screen {
+    display: none;
+}
+.editor-screen.active {
+    display: block;
+}
+.editor-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid rgba(196, 168, 130, .2);
+}
+.editor-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    padding: 1rem 2rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all .3s;
+}
+.editor-tab.active {
+    color: var(--accent-memory);
+    border-bottom-color: var(--accent-memory);
+}
+.editor-content {
+    display: none;
+}
+.editor-content.active {
+    display: block;
+}
+.editor-section {
+    margin-bottom: 2rem;
+}
+.editor-section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    color: var(--accent-memory);
+    margin-bottom: 1rem;
+}
+.editor-input-group {
+    margin-bottom: 1.5rem;
+}
+.editor-label {
+    display: block;
+    font-size: .9rem;
+    color: var(--text-muted);
+    margin-bottom: .5rem;
+}
+.editor-input,
+.editor-textarea {
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid var(--text-ghost);
+    padding: 1rem;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 1rem;
+    color: var(--text-primary);
+    transition: all .3s;
+}
+.editor-input:focus,
+.editor-textarea:focus {
+    outline: none;
+    border-color: var(--accent-memory);
+}
+.editor-textarea {
+    min-height: 150px;
+    resize: vertical;
+}
+.scene-block {
+    background: var(--bg-surface);
+    border: 1px solid rgba(196, 168, 130, .2);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+.scene-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+.scene-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    color: var(--accent-memory);
+}
+.scene-controls {
+    display: flex;
+    gap: .5rem;
+}
+.scene-btn {
+    background: transparent;
+    border: 1px solid var(--text-ghost);
+    color: var(--text-muted);
+    padding: .4rem .8rem;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: all .3s;
+}
+.scene-void-section {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: rgba(196, 168, 130, .05);
+    border: 1px solid rgba(196, 168, 130, .2);
+    border-radius: 4px;
+}
+.scene-void-section h4 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    color: var(--accent-memory);
+    margin-bottom: 1rem;
+    letter-spacing: .1em;
+}
+.scene-void-section label {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .8rem;
+    font-size: .9rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.scene-void-section input[type="checkbox"] {
+    width: auto;
+    cursor: pointer;
+}
+.auto-detect-void-btn {
+    background: transparent;
+    border: 1px solid var(--accent-memory);
+    color: var(--accent-memory);
+    padding: .5rem 1rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: all .3s;
+    margin-top: .5rem;
+}
+.auto-detect-void-btn:hover {
+    background: var(--accent-memory);
+    color: var(--bg-deep);
+}
+.void-level-display {
+    margin-top: 1rem;
+    font-size: .9rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+.void-level-display.high {
+    color: var(--accent-live);
+}
+.scene-btn:hover {
+    border-color: var(--accent-memory);
+    color: var(--accent-memory);
+}
+.choice-item {
+    background: var(--bg-deep);
+    border: 1px solid rgba(196, 168, 130, .1);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+.choice-controls {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 1rem;
+    align-items: end;
+}
+.choice-text-input {
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid var(--text-ghost);
+    padding: .8rem;
+    font-family: 'Noto Serif KR', serif;
+    font-size: .95rem;
+    color: var(--text-primary);
+}
+.choice-text-input:focus {
+    outline: none;
+    border-color: var(--accent-memory);
+}
+.choice-emotion-select,
+.choice-next-scene-select {
+    background: var(--bg-deep);
+    border: 1px solid var(--text-ghost);
+    padding: .8rem;
+    font-family: 'Noto Serif KR', serif;
+    font-size: .95rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.choice-emotion-select:focus,
+.choice-next-scene-select:focus {
+    outline: none;
+    border-color: var(--accent-memory);
+}
+.choice-intensity-container {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.choice-intensity-slider {
+    flex: 1;
+    height: 4px;
+    background: var(--bg-deep);
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+}
+.choice-intensity-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-memory);
+    border-radius: 50%;
+    cursor: pointer;
+}
+.choice-intensity-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--accent-memory);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+.choice-intensity-value {
+    min-width: 30px;
+    text-align: center;
+    font-size: .9rem;
+    color: var(--text-muted);
+}
+.choice-delete-btn {
+    background: transparent;
+    border: 1px solid var(--accent-live);
+    color: var(--accent-live);
+    padding: .4rem .8rem;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: all .3s;
+}
+.choice-delete-btn:hover {
+    background: var(--accent-live);
+    color: var(--bg-deep);
+}
+.add-choice-btn,
+.add-scene-btn {
+    background: transparent;
+    border: 1px solid var(--accent-memory);
+    color: var(--accent-memory);
+    padding: .6rem 1.5rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: all .3s;
+    margin-top: 1rem;
+}
+.add-choice-btn:hover,
+.add-scene-btn:hover {
+    background: var(--accent-memory);
+    color: var(--bg-deep);
+}
+.editor-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(196, 168, 130, .2);
+}
+.editor-save-btn,
+.editor-cancel-btn {
+    padding: .8rem 2rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all .3s;
+}
+.editor-save-btn {
+    background: var(--accent-memory);
+    border: none;
+    color: var(--bg-deep);
+}
+.editor-save-btn:hover {
+    opacity: .9;
+}
+.editor-cancel-btn {
+    background: transparent;
+    border: 1px solid var(--text-ghost);
+    color: var(--text-muted);
+}
+.editor-cancel-btn:hover {
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+}
+.preview-content {
+    display: none;
+}
+.preview-content.active {
+    display: block;
+}
+.preview-scene {
+    margin-bottom: 3rem;
+}
+.preview-scene-text {
+    font-size: 1.25rem;
+    line-height: 2;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    min-height: 100px;
+}
+.preview-choices {
+    margin-top: 2rem;
+}
+.preview-choice-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 1px solid rgba(168, 123, 123, .3);
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 1rem;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 1rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all .4s;
+}
+.preview-choice-btn:hover {
+    border-color: var(--accent-live);
+    padding-left: 2rem;
+}
+.preview-wave-container {
+    height: 100px;
+    background: var(--bg-surface);
+    border: 1px solid rgba(168, 123, 123, .1);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+.preview-wave-canvas {
+    width: 100%;
+    height: 100%;
+}
+@media (max-width: 768px) {
+    .choice-controls {
+        grid-template-columns: 1fr;
+    }
+}
+/* 통합 세션 목록 스타일 */
+.filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+.filter-btn {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+.filter-btn:hover,
+.filter-btn.active {
+    border-color: var(--accent-memory);
+    background: rgba(196,168,130,0.1);
+}
+.sessions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+.session-card {
+    background: rgba(255,255,255,0.05);
+    padding: 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid rgba(196,168,130,0.2);
+    transition: all 0.2s;
+}
+.session-card:hover {
+    border-color: var(--accent-memory);
+    transform: translateY(-2px);
+}
+.session-card.live {
+    border-left: 3px solid var(--accent-memory);
+}
+.session-card {
+    position: relative;
+}
+.session-card .session-checkbox {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+}
+.session-controls {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.select-all-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+.delete-selected-btn {
+    background: rgba(200, 80, 80, 0.2);
+    border: 1px solid rgba(200, 80, 80, 0.5);
+    color: #e88;
+    padding: 0.5rem 1rem;
+    font-family: 'Cormorant Garamond', serif;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+.delete-selected-btn:hover {
+    background: rgba(200, 80, 80, 0.4);
+}
+.session-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--accent-memory, #c4a882);
+}
+.session-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.session-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.live-tag {
+    background: rgba(196,168,130,0.3);
+    color: var(--accent-memory);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-left: 0.5rem;
+}
+.session-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.5);
+}
+/* 세션 상세 스타일 */
+.detail-header {
+    margin-bottom: 2rem;
+}
+.detail-header h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    color: var(--text-primary);
+    margin: 1rem 0 0.5rem;
+}
+.detail-header p {
+    color: var(--text-muted);
+}
+.back-btn {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.3);
+    color: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.back-btn:hover {
+    border-color: var(--accent-memory);
+}
+.scene-item {
+    background: rgba(255,255,255,0.03);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-memory);
+}
+.scene-item .scene-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.scene-item .scene-header h3 {
+    font-size: 1rem;
+    color: var(--accent-memory);
+}
+.void-icons {
+    color: var(--accent-memory);
+    font-size: 1.1rem;
+    letter-spacing: 0.3rem;
+}
+.scene-text-box,
+.emotion-text-box {
+    padding: 1rem;
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+.scene-text-box p {
+    line-height: 1.6;
+}
+.emotion-text-box p {
+    color: rgba(255,255,255,0.7);
+    font-style: italic;
+}
+.scene-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+.control-btn {
+    padding: 0.4rem 0.8rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.control-btn:hover {
+    border-color: var(--accent-memory);
+}
+.vector-panel,
+.void-panel {
+    background: rgba(0,0,0,0.2);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+.vector-panel h4,
+.void-panel h4 {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.8rem;
+    margin-top: 1rem;
+}
+.vector-panel h4:first-child {
+    margin-top: 0;
+}
+.vector-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.vector-label {
+    font-size: 0.9rem;
+}
+.vector-num {
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--accent-memory);
+}
+.vector-edit input[type="number"] {
+    width: 80px;
+    padding: 0.3rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: inherit;
+    border-radius: 4px;
+    font-family: inherit;
+}
+.edit-btn,
+.save-btn,
+.cancel-btn {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.edit-btn {
+    background: rgba(196,168,130,0.3);
+    color: var(--accent-memory);
+}
+.edit-btn:hover {
+    background: rgba(196,168,130,0.5);
+}
+.save-btn {
+    background: rgba(100,200,100,0.3);
+    color: #8f8;
+    margin-right: 0.5rem;
+}
+.save-btn:hover {
+    background: rgba(100,200,100,0.5);
+}
+.cancel-btn {
+    background: rgba(200,100,100,0.2);
+    color: #f88;
+}
+.cancel-btn:hover {
+    background: rgba(200,100,100,0.4);
+}
+.edit-buttons {
+    margin-top: 1rem;
+}
+.void-checkboxes label {
+    display: block;
+    margin: 0.5rem 0;
+    cursor: pointer;
+}
+.void-checkboxes input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+    </style>

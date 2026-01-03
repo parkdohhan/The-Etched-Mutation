@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Etched Mutation — Live & Archive</title>
+    <link rel="icon" href="data:,">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+    <div class="opening-screen" id="openingScreen">
+        <div class="opening-wave-container" id="openingWaveContainer">
+            <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
+        </div>
+        <div class="opening-dialogue" id="openingDialogue"></div>
+        <div class="opening-start-hint" id="openingStartHint">[ 시작하려면 키를 누르거나 클릭하세요 ]</div>
+    </div>
+    <audio id="openingSound" preload="auto">
+        <source src="sounds/ambient-opening.mp3.mp3" type="audio/mpeg">
+    </audio>
+    <div class="intro-screen" id="introScreen">
+        <div class="intro-top-buttons">
+            <button class="portfolio-btn" onclick="openPortfolio()">PORTFOLIO</button>
+            <button class="mypage-btn" onclick="openMypage()">MYPAGE</button>
+        </div>
+        <div class="intro-center-wrapper">
+        <h1 class="intro-logo">THE ETCHED MUTATION</h1>
+        <p class="intro-subtitle">기억의 영생</p>
+        <div class="intro-buttons">
+            <button class="intro-btn live-btn" onclick="showModeSelection()">LIVE<span class="intro-btn-label">실시간 기억 공유</span></button>
+            <button class="intro-btn" onclick="enterArchive()">ARCHIVE<span class="intro-btn-label">축적된 해석의 공간</span></button>
+        </div>
+        </div>
+        <div class="npc-intro-dialogue" id="npcIntroDialogue"></div>
+    </div>
+    <div class="login-modal" id="loginModal">
+        <div class="login-box">
+            <h2 class="login-title">로그인</h2>
+            <div class="social-login-buttons">
+                <button class="social-btn google" onclick="handleSocialLogin('google')">
+                    <span class="social-btn-icon">🔍</span>
+                    <span>구글로 시작하기</span>
+                </button>
+                <button class="social-btn facebook" onclick="handleSocialLogin('facebook')">
+                    <span class="social-btn-icon">📘</span>
+                    <span>페이스북으로 시작하기</span>
+                </button>
+            </div>
+            <div class="social-login-divider"><span>또는</span></div>
+            <input type="text" class="login-input" id="loginUsername" placeholder="이메일" autocomplete="email">
+            <input type="password" class="login-input" id="loginPassword" placeholder="비밀번호" autocomplete="current-password">
+            <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
+                <button class="login-btn" onclick="handleLogin()">로그인</button>
+                <button class="login-close-btn" onclick="closeLogin()">취소</button>
+            </div>
+            <div class="auth-switch-link" onclick="switchToSignup()">계정이 없으신가요? 회원가입</div>
+        </div>
+    </div>
+    <div class="signup-modal" id="signupModal">
+        <div class="signup-box">
+            <h2 class="signup-title">회원가입</h2>
+            <div class="social-login-buttons">
+                <button class="social-btn google" onclick="handleSocialLogin('google')">
+                    <span class="social-btn-icon">🔍</span>
+                    <span>구글로 시작하기</span>
+                </button>
+                <button class="social-btn facebook" onclick="handleSocialLogin('facebook')">
+                    <span class="social-btn-icon">📘</span>
+                    <span>페이스북으로 시작하기</span>
+                </button>
+            </div>
+            <div class="social-login-divider"><span>또는</span></div>
+            <input type="text" class="signup-input" id="signupUsername" placeholder="사용자명" autocomplete="username">
+            <input type="email" class="signup-input" id="signupEmail" placeholder="이메일" autocomplete="email">
+            <input type="password" class="signup-input" id="signupPassword" placeholder="비밀번호" autocomplete="new-password">
+            <input type="password" class="signup-input" id="signupPasswordConfirm" placeholder="비밀번호 확인" autocomplete="new-password">
+            <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
+                <button class="signup-btn" onclick="handleSignup()">회원가입</button>
+                <button class="signup-close-btn" onclick="closeSignup()">취소</button>
+            </div>
+            <div class="auth-switch-link" onclick="switchToLogin()">이미 계정이 있으신가요? 로그인</div>
+        </div>
+    </div>
+    <div class="mypage-screen" id="mypageScreen">
+        <div class="mypage-box">
+            <h2 class="mypage-title">MYPAGE</h2>
+            <div class="mypage-content">
+                <div class="mypage-section">
+                    <h3 class="mypage-section-title">사용자 정보</h3>
+                    <div class="mypage-info" id="mypageUsername">사용자명: <span id="displayUsername">—</span></div>
+                    <div class="mypage-info">이메일: <span id="displayEmail">—</span></div>
+                    <div class="mypage-info">가입일: <span id="displayJoinDate">—</span></div>
+                    <div class="mypage-info" id="displayLoginMethod" style="display:none">로그인 방법: <span id="loginMethodText">—</span></div>
+                </div>
+                <div class="mypage-section">
+                    <h3 class="mypage-section-title">활동 통계</h3>
+                    <div class="mypage-info">참여한 Live 세션: <span id="displayLiveSessions">0</span>회</div>
+                    <div class="mypage-info">체험한 기억: <span id="displayMemories">0</span>개</div>
+                    <div class="mypage-info">남긴 해석: <span id="displayInterpretations">0</span>개</div>
+                </div>
+                <div class="mypage-section">
+                    <h3 class="mypage-section-title">세션 기록</h3>
+                    <div id="sessionHistoryList" style="max-height:300px;overflow-y:auto">
+                        <div class="mypage-info" style="color:var(--text-ghost);font-style:italic">불러오는 중...</div>
+                    </div>
+                </div>
+                <div class="mypage-section">
+                    <h3 class="mypage-section-title">나의 기억</h3>
+                    <div id="myMemoriesList" style="max-height:300px;overflow-y:auto">
+                        <div class="mypage-info" style="color:var(--text-ghost);font-style:italic">불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+            <button class="mypage-logout-btn" onclick="handleLogout()">로그아웃</button>
+            <button class="back-btn-simple" onclick="closeMypage()" style="margin-top:1rem">← 돌아가기</button>
+        </div>
+    </div>
+    <div class="matching-selection" id="matchingSelection">
+        <h2 class="mode-title">LIVE</h2>
+        <p class="mode-subtitle">Live 모드는 두 사람의 실시간 연결입니다.<br>매칭 방식을 선택하세요.</p>
+        <div class="mode-cards">
+            <div class="mode-card" onclick="selectMatching('session')"><div class="mode-card-icon">🔗</div><h3 class="mode-card-title">세션 매칭</h3><p class="mode-card-desc">세션 코드를 통해<br>직접 연결합니다.</p></div>
+            <div class="mode-card disabled" onclick="return false;"><div class="mode-card-icon">⚡</div><h3 class="mode-card-title">자동 매칭</h3><p class="mode-card-desc">Coming Soon<br>곧 만나요</p></div>
+        </div>
+        <button class="back-btn-simple" onclick="backToIntro()">← 돌아가기</button>
+    </div>
+    <div class="mode-selection" id="modeSelection">
+        <h2 class="mode-title">역할 선택</h2>
+        <p class="mode-subtitle">Live 모드에서의 역할을 선택하세요.<br>화자는 자신의 기억을 상연하고, 체험자는 그 기억 속으로 들어갑니다.</p>
+        <div class="mode-cards">
+            <div class="mode-card" onclick="selectRole('A')"><div class="mode-card-icon">◎</div><h3 class="mode-card-title">화자</h3><p class="mode-card-desc">당신의 기억을 상연합니다.<br>누군가가 당신의 음각을 따라 걷습니다.</p></div>
+            <div class="mode-card" onclick="selectRole('B')"><div class="mode-card-icon">○</div><h3 class="mode-card-title">체험자</h3><p class="mode-card-desc">타인의 기억을 체험합니다.<br>그 안에서 당신 자신을 발견합니다.</p></div>
+        </div>
+        <button class="back-btn-simple" onclick="backToMatchingSelection()">← 매칭 선택으로</button>
+    </div>
+    <div class="session-setup" id="sessionSetup">
+        <div class="session-box" id="narratorSetup" style="display:none"><h3 class="session-title">세션 생성</h3><p class="session-desc">아래 코드를 체험자(B)에게 공유하세요.</p><div class="session-code-display" id="sessionCode">-----</div><button class="session-btn" onclick="copySessionCode()">코드 복사</button><div class="session-waiting" id="waitingForB"><span class="waiting-dots">체험자를 기다리는 중</span></div></div>
+        <div class="session-box" id="experiencerSetup" style="display:none"><h3 class="session-title">세션 참가</h3><p class="session-desc">화자(A)에게 받은 세션 코드를 입력하세요.</p><input type="text" class="session-input" id="sessionCodeInput" placeholder="코드 입력" maxlength="5"><button class="session-btn" onclick="joinSession()">접속하기</button></div>
+        <button class="back-btn-simple" onclick="backToModeSelection()">← 역할 선택으로</button>
+    </div>
+    <div class="container">
+        <div class="live-container" id="liveContainer">
+            <div class="experiencer-status-float left" id="experiencerStatusFloat" style="display:none">
+                체험자가 장면을 기다리고 있습니다...
+            </div>
+            <div class="live-header">
+                <div class="live-header-left">
+                    <div class="live-dot-green"></div>
+                    <span class="live-text">Live</span>
+                </div>
+                <button class="live-exit-btn" onclick="exitLive()">세션종료</button>
+            </div>
+            <div class="live-content">
+                <div class="narrator-panel" id="narratorPanel">
+                <div class="alignment-section">
+                    <div class="alignment-label-top">정렬도</div>
+                    <div class="alignment-percentage" id="alignmentPercentage">00%</div>
+                    <div class="alignment-wave-container">
+                        <canvas class="alignment-wave-canvas" id="alignmentWaveCanvas"></canvas>
+                    </div>
+                </div>
+                <div class="generated-section">
+                    <div class="generated-section-header">
+                        <div class="generated-tabs">
+                            <button class="generated-tab active" onclick="switchGeneratedTab('scene')">생성된 장면</button>
+                            <button class="generated-tab" onclick="switchGeneratedTab('emotion')">생성된 감정</button>
+                        </div>
+                        <button class="edit-toggle-btn" onclick="toggleEditMode()">수정</button>
+                    </div>
+                    <div class="generated-content">
+                        <div class="generated-tab-content" id="generatedSceneContent">
+                            <div class="generated-text"></div>
+                            <textarea class="generated-edit-textarea" id="editSceneTextarea" style="display:none" placeholder="장면을 수정하세요..."></textarea>
+                        </div>
+                        <div class="generated-tab-content" id="generatedEmotionContent" style="display:none">
+                            <div class="generated-text"></div>
+                            <textarea class="generated-edit-textarea" id="editEmotionTextarea" style="display:none" placeholder="감정을 수정하세요..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="interpretation-trace-section">
+                    <div class="interpretation-trace-header">나와의 대화</div>
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-message ai">
+                            <div class="chat-message-label">또다른 나</div>
+                            <div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="voice-input-section">
+                    <div class="voice-wave-section" id="voiceWaveSection">
+                        <canvas class="voice-wave-canvas-live" id="voiceWaveCanvasLive"></canvas>
+                        <button class="voice-record-btn" id="voiceBtn" onclick="toggleRecording(event)" style="position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);background:transparent;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.6rem 1.5rem;font-family:'Cormorant Garamond',serif;font-size:.9rem;cursor:pointer;transition:all .3s;border-radius:4px;z-index:10;pointer-events:auto">🎤 음성 입력</button>
+                    </div>
+                    <button class="text-switch-btn" onclick="switchToTextInput()">텍스트로 전환</button>
+                </div>
+                </div>
+                <div class="experiencer-panel" id="experiencerPanel">
+                    <div class="alignment-section">
+                        <div class="alignment-label-top">정렬도</div>
+                        <div class="alignment-percentage" id="expAlignmentPercentage">00%</div>
+                        <div class="alignment-wave-container">
+                            <canvas class="alignment-wave-canvas" id="expAlignmentWaveCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="exp-scene-display" id="expGeneratedSceneContent">
+                        <div class="exp-scene-text" id="expSceneText">화자가 기억을 불러오고 있습니다<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
+                    </div>
+                    <div class="exp-emotion-display" id="expGeneratedEmotionContent" style="display:none">
+                        <div class="exp-emotion-text" id="expEmotionText"></div>
+                    </div>
+                    <div class="chat-messages" id="expChatMessages"></div>
+                    <div class="text-input-container-live">
+                        <div class="chat-input-wrapper">
+                            <textarea class="chat-input-textarea" id="expTextInput" rows="2" placeholder="이 장면에서 어떤 감정이 느껴지나요?"></textarea>
+                            <button class="chat-send-btn" id="expChatSendBtn" onclick="sendExpChatMessage()">전송</button>
+                        </div>
+                    </div>
+                    <div class="voice-input-section" style="margin-top:1rem">
+                        <div class="voice-wave-section" id="expVoiceWaveSection">
+                            <canvas class="voice-wave-canvas-live" id="expVoiceWaveCanvas"></canvas>
+                            <button class="voice-record-btn" id="expVoiceBtn" onclick="toggleExpRecording(event)" style="position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);background:transparent;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.6rem 1.5rem;font-family:'Cormorant Garamond',serif;font-size:.9rem;cursor:pointer;transition:all .3s;border-radius:4px;z-index:10;pointer-events:auto">🎤 음성 입력</button>
+                        </div>
+                        <button class="text-switch-btn" onclick="switchExpToTextInput()">텍스트로 전환</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="archive-container" id="archiveContainer">
+            <button class="archive-back-btn" onclick="backToIntro()">← 처음으로</button>
+            <header class="archive-header"><h1 class="archive-title">ARCHIVE</h1><p class="archive-subtitle">타인의 해석이 남긴 음각을 마주하는 공간</p></header>
+            <div class="archive-controls" id="archiveControls">
+                <input type="text" class="archive-search" id="archiveSearch" placeholder="기억 코드 검색 (예: A-001)" oninput="filterMemories()">
+                <div class="archive-category-filters">
+                    <button class="category-btn active" data-category="all" onclick="filterByCategory('all',this)">전체</button>
+                    <button class="category-btn" data-category="live" onclick="filterByCategory('live',this)">라이브</button>
+                    <button class="category-btn" data-category="archive" onclick="filterByCategory('archive',this)">아카이브</button>
+                </div>
+                <div class="archive-filters">
+                    <button class="filter-btn active" data-sort="all" onclick="sortMemories('all',this)">전체</button>
+                    <button class="filter-btn" data-sort="popular" onclick="sortMemories('popular',this)">인기순</button>
+                    <button class="filter-btn" data-sort="recent" onclick="sortMemories('recent',this)">최신순</button>
+                </div>
+            </div>
+            <div class="memory-list" id="memoryList">
+                <!-- 동적으로 생성됨 -->
+            </div>
+            <div class="scene-viewer" id="sceneViewer">
+                <div class="scene-header"><button class="back-btn" onclick="backToList()">← 목록으로</button><div class="progress-indicator"><span>장면</span><div class="progress-dots" id="progressDots"></div><span id="sceneCounter">1/5</span></div></div>
+                <div class="scene-content">
+                    <div class="scene-main"><div class="echo-layer" id="echoLayer"></div><div class="scene-text" id="sceneText"></div><div class="choices-container" id="choicesContainer"></div><div class="free-input-container"><textarea class="free-input" id="freeInput" rows="2" placeholder="다른 행동을 입력하세요..."></textarea></div></div>
+                    <div class="sidebar"><div class="sidebar-section"><h4 class="sidebar-title">감정 파동</h4><div class="wave-container"><canvas class="wave-canvas" id="waveCanvas"></canvas></div></div><div class="sidebar-section"><div class="emotion-dist"><div class="emotion-dist-title">이 장면의 감정 분포</div><div class="emotion-bar"><span class="emotion-label">공포</span><div class="emotion-fill-container"><div class="emotion-fill fear" id="emotionFear"></div></div><span class="emotion-value" id="emotionFearVal">0%</span></div><div class="emotion-bar"><span class="emotion-label">슬픔</span><div class="emotion-fill-container"><div class="emotion-fill sadness" id="emotionSadness"></div></div><span class="emotion-value" id="emotionSadnessVal">0%</span></div><div class="emotion-bar"><span class="emotion-label">죄책감</span><div class="emotion-fill-container"><div class="emotion-fill guilt" id="emotionGuilt"></div></div><span class="emotion-value" id="emotionGuiltVal">0%</span></div><div class="emotion-bar"><span class="emotion-label">분노</span><div class="emotion-fill-container"><div class="emotion-fill anger" id="emotionAnger"></div></div><span class="emotion-value" id="emotionAngerVal">0%</span></div><div class="emotion-bar"><span class="emotion-label">그리움</span><div class="emotion-fill-container"><div class="emotion-fill longing" id="emotionLonging"></div></div><span class="emotion-value" id="emotionLongingVal">0%</span></div><div class="emotion-bar"><span class="emotion-label">고립감</span><div class="emotion-fill-container"><div class="emotion-fill isolation" id="emotionIsolation"></div></div><span class="emotion-value" id="emotionIsolationVal">0%</span></div><div class="emotion-bar"><span class="emotion-label">무감각</span><div class="emotion-fill-container"><div class="emotion-fill numbness" id="emotionNumbness"></div></div><span class="emotion-value" id="emotionNumbnessVal">0%</span></div><div class="emotion-bar"><span class="emotion-label">도덕적 고통</span><div class="emotion-fill-container"><div class="emotion-fill moralPain" id="emotionMoralPain"></div></div><span class="emotion-value" id="emotionMoralPainVal">0%</span></div></div></div><div class="sidebar-section"><div class="alignment-meter"><div class="alignment-label">감정 구조 정렬도</div><div class="alignment-value" id="alignmentValue">0.00</div><div class="alignment-bar"><div class="alignment-fill" id="alignmentFill" style="width:0%"></div></div><div class="alignment-note">트루엔딩 조건: 0.80 이상</div></div></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="end-screen" id="endScreen">
+            <div class="end-strata-animation" id="endStrataAnimation">
+                <div class="end-strata-container" id="endStrataContainer"></div>
+                <div class="end-strata-message" id="endStrataMessage">당신의 해석이 지층에 추가되었습니다</div>
+            </div>
+            <div class="end-content" id="endContent" style="opacity:0">
+                <div class="true-ending-badge" id="trueEndingBadge">TRUE ENDING</div>
+                <h2 class="end-title" id="endTitle">기억의 끝에서</h2>
+                <div class="comparison-grid"><div class="comparison-col"><div class="comparison-label">당신의 선택</div><div class="comparison-choice" id="yourChoice">—</div><div class="comparison-reason" id="yourReason">"—"</div></div><div class="comparison-col"><div class="comparison-label">그 사람의 선택</div><div class="comparison-choice" id="theirChoice">—</div><div class="comparison-reason" id="theirReason">"—"</div></div></div>
+                <div class="final-alignment" id="finalAlignment">감정 구조 정렬도: 0.00</div>
+                <p class="final-message" id="finalMessage">당신은 누군가의 기억 속에 있었습니다.</p>
+                <div class="end-buttons"><button class="end-btn" onclick="saveMemory()">기억 저장하기</button><button class="end-btn" onclick="goToIntro()">처음으로</button></div>
+            </div>
+        </div>
+        <div class="comparison-view" id="comparisonView" style="display:none">
+            <div class="comparison-header">
+                <button class="back-btn" onclick="closeComparisonView()">← 목록으로</button>
+                <h2 class="comparison-title">감정 비교</h2>
+                <div class="comparison-scene-indicator">
+                    <span id="comparisonSceneCounter">1 / 1</span>
+                </div>
+            </div>
+            <div class="comparison-swiper" id="comparisonSwiper">
+                <div class="comparison-scenes-container" id="comparisonScenesContainer"></div>
+            </div>
+            <div class="comparison-controls">
+                <button class="comparison-nav-btn prev" id="comparisonPrevBtn" onclick="navigateComparison(-1)">←</button>
+                <div class="comparison-dots" id="comparisonDots"></div>
+                <button class="comparison-nav-btn next" id="comparisonNextBtn" onclick="navigateComparison(1)">→</button>
+            </div>
+            <div class="comparison-alignment-section">
+                <div class="comparison-alignment-label">현재 장면 정렬도</div>
+                <div class="comparison-alignment-value" id="comparisonAlignmentValue">0.00</div>
+                <div class="comparison-alignment-bar">
+                    <div class="comparison-alignment-fill" id="comparisonAlignmentFill" style="width:0%"></div>
+                </div>
+                <div class="comparison-alignment-label" style="margin-top:2rem">평균 정렬도</div>
+                <div class="comparison-alignment-value" id="comparisonAverageAlignmentValue">0.00</div>
+                <div class="comparison-alignment-bar">
+                    <div class="comparison-alignment-fill" id="comparisonAverageAlignmentFill" style="width:0%"></div>
+                </div>
+                <div id="comparisonTrueEndingBadge" class="true-ending-badge" style="margin-top:1.5rem;display:none">TRUE ENDING</div>
+            </div>
+        </div>
+    </div>
+    <div class="emotion-modal" id="emotionModal"><div class="emotion-modal-content"><p class="emotion-question" id="emotionQuestion">왜 그렇게 했어?</p><input type="text" class="emotion-input-field" id="emotionInputField" placeholder="당신의 이유를 말해주세요"><button class="emotion-submit" onclick="submitEmotion()">확인</button></div></div>
+    <div class="emotion-modal" id="memoryFateModal"><div class="emotion-modal-content"><p class="emotion-question">이 기억의 운명을 선택하세요</p><div class="fate-buttons"><button class="fate-btn" onclick="selectMemoryFate('preserve')">보존</button><button class="fate-btn" onclick="selectMemoryFate('dilute')">자연 소멸</button><button class="fate-btn" onclick="selectMemoryFate('anonymous')">완전 익명</button></div><div class="fate-descriptions"><div class="fate-desc" id="fateDescPreserve">원본 구조를 끝까지 유지</div><div class="fate-desc" id="fateDescDilute">레이어 누적으로 서서히 희석</div><div class="fate-desc" id="fateDescAnonymous">처음부터 공동 기억으로 출발</div></div></div></div>
+    <div class="session-detail-modal" id="sessionDetailModal"><div class="session-detail-modal-content"><div class="session-detail-header"><h2 class="session-detail-title" id="sessionDetailTitle">세션 정보</h2><button class="session-detail-close-btn" onclick="closeSessionDetail()">✕</button></div><div class="session-detail-body" id="sessionDetailBody"><div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div></div></div></div>
+    <div class="npc-dialogue" id="npcDialogue"><div class="npc-name">또다른 나</div><div id="npcText"></div></div>
+    <div class="notification" id="notification"></div>
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-line">
+                <span>응급 상담 핫라인:</span>
+                <span>자살예방상담전화 1393</span>
+                <span class="footer-divider">|</span>
+                <span>정신건강위기상담전화 1577-0199</span>
+            </div>
+            <div class="footer-line">
+                <a href="mailto:dohhan92947@gmail.com" class="footer-link">dohhan92947@gmail.com</a>
+            </div>
+            <div class="footer-line">
+                <span>© 2025 박도한. All rights reserved.</span>
+            </div>
+            <div class="footer-line">
+                <span>@dohhan_</span>
+            </div>
+        </div>
+    </footer>
+    <script src="data/memories.js"></script>
+    <script type="module" src="js/index.js"></script>
+</body>
+</html>
+
