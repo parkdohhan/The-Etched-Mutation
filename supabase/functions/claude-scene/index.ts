@@ -34,18 +34,27 @@ serve(async (req) => {
       
       console.log('감정 분석 요청:', { emotionText, reasonText });
 
-      const prompt = `다음 감정 표현을 분석하고 변환해줘.
+      const prompt = `당신은 한국어 감정 분석 전문가입니다.
 
 입력된 감정: "${emotionText}"
 입력된 이유: "${reasonText}"
 
-두 가지를 해줘:
-1. 이 감정을 2-3문장의 서정적이고 감각적인 문장으로 변환해줘. 원문을 그대로 반복하지 말고, 체험자가 느낄 수 있는 감각적 표현으로 바꿔줘.
-2. 감정을 수치로 분석해줘.
+## 중요 규칙
+- "무서웠어", "두려웠어", "공포", "무섭다" → fear를 0.7 이상으로
+- "슬펐어", "울었어", "슬프다" → sadness를 0.7 이상으로
+- "그리웠어", "보고싶었어" → longing을 0.7 이상으로
+- "화났어", "열받았어", "분노" → anger를 0.7 이상으로
+- "죄책감", "미안했어" → guilt를 0.7 이상으로
 
-반드시 아래 JSON 형식으로만 응답해 (다른 텍스트 없이 순수 JSON만):
+명시적 감정 단어가 있으면 해당 감정은 절대 0이 아님!
+
+두 가지를 해줘:
+1. 이 감정을 2-3문장의 서정적이고 감각적인 문장으로 변환
+2. 감정을 수치로 분석
+
+반드시 아래 JSON 형식으로만 응답해:
 {
-  "generatedEmotion": "변환된 감정 표현 (원문과 달라야 함)",
+  "generatedEmotion": "변환된 감정 표현",
   "analysis": {
     "base": {
       "fear": 0.0,
@@ -55,13 +64,11 @@ serve(async (req) => {
       "longing": 0.0,
       "guilt": 0.0
     },
-    "detailed": ["세부감정1", "세부감정2"],
+    "detailed": [],
     "intensity": 0.5,
     "confidence": 0.8
   }
-}
-
-각 감정 수치는 0부터 1 사이의 소수점 숫자로.`;
+}`;
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",

@@ -18,7 +18,7 @@
         <div class="opening-start-hint" id="openingStartHint">[ 시작하려면 키를 누르거나 클릭하세요 ]</div>
     </div>
     <audio id="openingSound" preload="auto">
-        <source src="sounds/ambient-opening.mp3.mp3" type="audio/mpeg">
+        <source src="sounds/ambient-opening.mp3" type="audio/mpeg">
     </audio>
     <div class="intro-screen" id="introScreen">
         <div class="intro-top-buttons">
@@ -262,7 +262,9 @@
             </div>
             <div class="end-content" id="endContent" style="opacity:0">
                 <div class="true-ending-badge" id="trueEndingBadge">TRUE ENDING</div>
+                <div class="normal-ending-badge" id="normalEndingBadge">ENDING</div>
                 <h2 class="end-title" id="endTitle">기억의 끝에서</h2>
+                <h3 class="end-subtitle" id="endSubtitle"></h3>
                 <div class="comparison-grid"><div class="comparison-col"><div class="comparison-label">당신의 선택</div><div class="comparison-choice" id="yourChoice">—</div><div class="comparison-reason" id="yourReason">"—"</div></div><div class="comparison-col"><div class="comparison-label">그 사람의 선택</div><div class="comparison-choice" id="theirChoice">—</div><div class="comparison-reason" id="theirReason">"—"</div></div></div>
                 <div class="final-alignment" id="finalAlignment">감정 구조 정렬도: 0.00</div>
                 <p class="final-message" id="finalMessage">당신은 누군가의 기억 속에 있었습니다.</p>
@@ -271,10 +273,12 @@
         </div>
         <div class="comparison-view" id="comparisonView" style="display:none">
             <div class="comparison-header">
-                <button class="back-btn" onclick="closeComparisonView()">← 목록으로</button>
                 <h2 class="comparison-title">감정 비교</h2>
-                <div class="comparison-scene-indicator">
-                    <span id="comparisonSceneCounter">1 / 1</span>
+                <div style="display:flex;align-items:center;gap:2rem">
+                    <div class="comparison-scene-indicator">
+                        <span id="comparisonSceneCounter">1 / 1</span>
+                    </div>
+                    <button class="live-exit-btn" onclick="endComparisonSession()">세션종료</button>
                 </div>
             </div>
             <div class="comparison-swiper" id="comparisonSwiper">
