@@ -57,7 +57,8 @@ export async function listMemoriesWithScenesChoices(client) {
                 })),
                 originalChoice: scene.original_choice || 0,
                 originalReason: scene.original_reason || '',
-                originalEmotion: scene.original_emotion ? (typeof scene.original_emotion === 'string' ? JSON.parse(scene.original_emotion) : scene.original_emotion) : null
+                originalEmotion: scene.original_emotion ? (typeof scene.original_emotion === 'string' ? JSON.parse(scene.original_emotion) : scene.original_emotion) : null,
+                originalReasonVector: scene.original_reason_vector || null
             };
         }));
 

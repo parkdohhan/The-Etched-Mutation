@@ -32,43 +32,60 @@ serve(async (req) => {
       const emotionText = body.emotion || '';
       const reasonText = body.reason || '';
       
-      console.log('감정 분석 요청:', { emotionText, reasonText });
+      console.log('감정 및 이유 분석 요청:', { emotionText, reasonText });
 
-      const prompt = `당신은 한국어 감정 분석 전문가입니다.
+      // 프롬프트 수정: 이유 분석 규칙 추가
+      const prompt = `다음 감정 표현과 그 이유를 분석해줘.
 
 입력된 감정: "${emotionText}"
 입력된 이유: "${reasonText}"
 
-## 중요 규칙
+**분석 목표 1: 감정 분석 (기존 규칙 유지)**
+- fear, sadness, anger, joy, longing, guilt 중 해당되는 감정 수치화 (0.0 ~ 1.0)
 - "무서웠어", "두려웠어", "공포", "무섭다" → fear를 0.7 이상으로
 - "슬펐어", "울었어", "슬프다" → sadness를 0.7 이상으로
 - "그리웠어", "보고싶었어" → longing을 0.7 이상으로
 - "화났어", "열받았어", "분노" → anger를 0.7 이상으로
 - "죄책감", "미안했어" → guilt를 0.7 이상으로
+- 명시적 감정 단어가 있으면 해당 감정은 절대 0이 아님!
 
-명시적 감정 단어가 있으면 해당 감정은 절대 0이 아님!
+**분석 목표 2: 이유 벡터(Reason Vector) 추출**
+입력된 '이유' 텍스트를 분석하여 다음 3가지 필드를 도출해줘.
 
-두 가지를 해줘:
-1. 이 감정을 2-3문장의 서정적이고 감각적인 문장으로 변환
-2. 감정을 수치로 분석
+1. attribution (귀인 방향 - 누구 탓인가?)
+   - "self_blame": 내 탓, 내가 부족해서, 내가 잘못해서
+   - "other_blame": 타인 탓, 그 사람 때문에, 엄마/아빠/친구가
+   - "fate_blame": 운명, 어쩔 수 없는 상황, 우연히, 그냥 그렇게 됨
+   - (판단 불가 시 가장 가까운 것 선택)
 
-반드시 아래 JSON 형식으로만 응답해:
+2. core_fear (핵심 두려움 - 무엇이 가장 두려운가?)
+   - "abandonment": 버림받음, 혼자 남음, 떠날까봐, 고립
+   - "death": 죽음, 소멸, 끝남, 다침
+   - "rejection": 거절, 미움받음, 비난, 인정받지 못함
+   - "failure": 실패, 못함, 실수, 능력 부족
+   - (해당없으면 "none" 또는 가장 문맥에 맞는 것)
+
+3. is_void (공백 여부)
+   - true: "모르겠어", "말하고 싶지 않아", "기억 안 나", 또는 빈 입력("")
+   - false: 구체적인 이유가 있는 경우
+
+**응답 형식 (반드시 JSON만 출력):**
 {
-  "generatedEmotion": "변환된 감정 표현",
+  "generatedEmotion": "변환된 감정 표현 (2-3문장)",
   "analysis": {
-    "base": {
-      "fear": 0.0,
-      "sadness": 0.0,
-      "anger": 0.0,
-      "joy": 0.0,
-      "longing": 0.0,
-      "guilt": 0.0
-    },
+    "base": { "fear": 0.0, "sadness": 0.0, "anger": 0.0, "joy": 0.0, "longing": 0.0, "guilt": 0.0 },
     "detailed": [],
     "intensity": 0.5,
     "confidence": 0.8
+  },
+  "reason_analysis": {
+    "attribution": "self_blame", 
+    "core_fear": "abandonment",
+    "is_void": false
   }
 }`;
+
+      const systemPrompt = `너는 심리 분석 AI야. 텍스트에서 감정의 종류뿐만 아니라, 그 감정의 '원인'이 어디로 향하는지(귀인), 그리고 기저에 깔린 근원적 공포(Core Fear)가 무엇인지 정확하게 분류해야 해. JSON 형식을 엄격히 지켜줘.`;
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -80,6 +97,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1024,
+          system: systemPrompt,
           messages: [{ role: "user", content: prompt }]
         })
       });
@@ -94,6 +112,11 @@ serve(async (req) => {
             detailed: [],
             intensity: 0.5,
             confidence: 0.3
+          },
+          reason_analysis: {
+            attribution: "fate_blame",
+            core_fear: "none",
+            is_void: true
           }
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -133,6 +156,11 @@ serve(async (req) => {
             detailed: [],
             intensity: 0.5,
             confidence: 0.3
+          },
+          reason_analysis: {
+            attribution: "fate_blame",
+            core_fear: "none",
+            is_void: true
           }
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" }
