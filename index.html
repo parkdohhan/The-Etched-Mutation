@@ -18,7 +18,7 @@
         <div class="opening-start-hint" id="openingStartHint">[ 시작하려면 키를 누르거나 클릭하세요 ]</div>
     </div>
     <audio id="openingSound" preload="auto">
-        <source src="sounds/ambient-opening.mp3" type="audio/mpeg">
+        <source src="sounds/ambient-opening.mp3.mp3" type="audio/mpeg">
     </audio>
     <div class="intro-screen" id="introScreen">
         <div class="intro-top-buttons">
@@ -270,13 +270,11 @@
             </div>
         </div>
         <div class="comparison-view" id="comparisonView" style="display:none">
-            <div class="comparison-header" style="display:flex;justify-content:space-between;align-items:center">
+            <div class="comparison-header">
+                <button class="back-btn" onclick="closeComparisonView()">← 목록으로</button>
                 <h2 class="comparison-title">감정 비교</h2>
-                <div style="display:flex;align-items:center;gap:1rem">
-                    <div class="comparison-scene-indicator">
-                        <span id="comparisonSceneCounter">1 / 1</span>
-                    </div>
-                    <button class="back-btn" onclick="endComparisonSession()">세션종료</button>
+                <div class="comparison-scene-indicator">
+                    <span id="comparisonSceneCounter">1 / 1</span>
                 </div>
             </div>
             <div class="comparison-swiper" id="comparisonSwiper">
