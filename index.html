@@ -232,7 +232,10 @@
             <button class="archive-back-btn" onclick="backToIntro()">← 처음으로</button>
             <header class="archive-header"><h1 class="archive-title">ARCHIVE</h1><p class="archive-subtitle">타인의 해석이 남긴 음각을 마주하는 공간</p></header>
             <div class="archive-controls" id="archiveControls">
-                <input type="text" class="archive-search" id="archiveSearch" placeholder="기억 코드 검색 (예: A-001)" oninput="filterMemories()">
+                <div class="archive-search-row">
+                    <input type="text" class="archive-search" id="archiveSearch" placeholder="기억 코드 검색 (예: A-001)" oninput="filterMemories()">
+                    <button class="register-memory-btn" id="registerMemoryBtn">기억 등록</button>
+                </div>
                 <div class="archive-category-filters">
                     <button class="category-btn active" data-category="all" onclick="filterByCategory('all',this)">전체</button>
                     <button class="category-btn" data-category="live" onclick="filterByCategory('live',this)">라이브</button>
@@ -308,6 +311,7 @@
     <div class="emotion-modal" id="memoryFateModal"><div class="emotion-modal-content"><p class="emotion-question">이 기억의 운명을 선택하세요</p><div class="fate-buttons"><button class="fate-btn" onclick="selectMemoryFate('preserve')">보존</button><button class="fate-btn" onclick="selectMemoryFate('dilute')">자연 소멸</button><button class="fate-btn" onclick="selectMemoryFate('anonymous')">완전 익명</button></div><div class="fate-descriptions"><div class="fate-desc" id="fateDescPreserve">원본 구조를 끝까지 유지</div><div class="fate-desc" id="fateDescDilute">레이어 누적으로 서서히 희석</div><div class="fate-desc" id="fateDescAnonymous">처음부터 공동 기억으로 출발</div></div></div></div>
     <div class="session-detail-modal" id="sessionDetailModal"><div class="session-detail-modal-content"><div class="session-detail-header"><h2 class="session-detail-title" id="sessionDetailTitle">세션 정보</h2><button class="session-detail-close-btn" onclick="closeSessionDetail()">✕</button></div><div class="session-detail-body" id="sessionDetailBody"><div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div></div></div></div>
     <div class="npc-dialogue" id="npcDialogue"><div class="npc-name">또다른 나</div><div id="npcText"></div></div>
+    <div class="system-message" id="systemMessage"></div>
     <div class="notification" id="notification"></div>
     <footer class="footer">
         <div class="footer-content">
@@ -328,6 +332,118 @@
             </div>
         </div>
     </footer>
+    
+    <!-- 기억 등록 화면 -->
+    <div id="memory-registration-screen" class="hidden">
+        <div class="registration-progress">
+            <span class="scene-count">장면 0개 수집됨</span>
+            <button class="finish-registration-btn hidden">등록 완료</button>
+            <button class="close-registration-btn">✕ 닫기</button>
+        </div>
+        
+        <!-- 대화 영역 (collecting phase) -->
+        <div id="registration-conversation" class="registration-phase">
+            <div class="registration-wave-container">
+                <canvas id="registrationWaveCanvas" class="registration-wave-canvas"></canvas>
+            </div>
+            <div class="registration-npc-dialogue"></div>
+            <div class="registration-user-input-area">
+                <textarea id="registrationTextInput" class="memory-input" placeholder="기억을 입력하세요..."></textarea>
+                <div class="registration-input-actions">
+                    <button class="voice-input-btn" id="registrationVoiceBtn">🎤</button>
+                    <button class="send-btn" id="registrationSendBtn">전송</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 장면 확인/수정 영역 (reviewing phase) -->
+        <div id="registration-review" class="registration-phase hidden">
+            <h3 class="review-title">장면 확인</h3>
+            
+            <div class="review-section">
+                <label>장면 텍스트</label>
+                <textarea id="reviewText" class="review-text"></textarea>
+            </div>
+            
+            <div class="review-section">
+                <label>선택지</label>
+                <div class="review-choices" id="reviewChoices">
+                    <input type="text" class="choice-input" placeholder="선택지 1">
+                    <input type="text" class="choice-input" placeholder="선택지 2">
+                </div>
+                <button class="add-choice-btn" id="addChoiceBtn">+ 선택지 추가</button>
+            </div>
+            
+            <div class="review-section">
+                <label>원본 감정</label>
+                <div class="review-emotion" id="reviewEmotion">
+                    <div class="emotion-slider">
+                        <span>fear</span>
+                        <input type="range" min="0" max="1" step="0.1" data-emotion="fear" value="0">
+                        <span class="emotion-value">0.0</span>
+                    </div>
+                    <div class="emotion-slider">
+                        <span>sadness</span>
+                        <input type="range" min="0" max="1" step="0.1" data-emotion="sadness" value="0">
+                        <span class="emotion-value">0.0</span>
+                    </div>
+                    <div class="emotion-slider">
+                        <span>anger</span>
+                        <input type="range" min="0" max="1" step="0.1" data-emotion="anger" value="0">
+                        <span class="emotion-value">0.0</span>
+                    </div>
+                    <div class="emotion-slider">
+                        <span>joy</span>
+                        <input type="range" min="0" max="1" step="0.1" data-emotion="joy" value="0">
+                        <span class="emotion-value">0.0</span>
+                    </div>
+                    <div class="emotion-slider">
+                        <span>longing</span>
+                        <input type="range" min="0" max="1" step="0.1" data-emotion="longing" value="0">
+                        <span class="emotion-value">0.0</span>
+                    </div>
+                    <div class="emotion-slider">
+                        <span>guilt</span>
+                        <input type="range" min="0" max="1" step="0.1" data-emotion="guilt" value="0">
+                        <span class="emotion-value">0.0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="review-section">
+                <label>원본 이유</label>
+                <textarea id="reviewReason" class="review-reason" placeholder="왜 그렇게 느꼈는지..."></textarea>
+            </div>
+            
+            <div class="review-section">
+                <label>이유 벡터</label>
+                <div class="review-reason-vector">
+                    <select id="reviewAttribution" class="review-attribution">
+                        <option value="self_blame">내 탓</option>
+                        <option value="other_blame">남 탓</option>
+                        <option value="fate_blame">운명</option>
+                    </select>
+                    <select id="reviewCoreFear" class="review-core-fear">
+                        <option value="none">없음</option>
+                        <option value="abandonment">버림받음</option>
+                        <option value="death">죽음</option>
+                        <option value="rejection">거절</option>
+                        <option value="failure">실패</option>
+                    </select>
+                    <label class="void-checkbox-label">
+                        <input type="checkbox" id="reviewIsVoid" class="review-is-void">
+                        <span>VOID (이유 없음)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="review-actions">
+                <button class="review-back-btn" id="reviewBackBtn">다시 대화하기</button>
+                <button class="review-confirm-btn" id="reviewConfirmBtn">이 장면 확정</button>
+            </div>
+        </div>
+    </div>
+    
     <script src="data/memories.js"></script>
     <script type="module" src="js/index.js"></script>
 </body>

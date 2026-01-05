@@ -218,6 +218,7 @@ function addScene() {
         originalChoice: 0,
         originalReason: '',
         originalEmotion: null,
+        originalReasonVector: null,
         voidInfo: null
     });
     renderScenes();
@@ -281,6 +282,35 @@ function renderScenes() {
                         ${renderOriginalEmotions(scene.originalEmotion || {}, sceneIndex)}
                     </div>
                     <button class="add-emotion-btn" onclick="addOriginalEmotion(${sceneIndex})" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--accent-memory); color: var(--bg-deep); border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">+ 감정 추가</button>
+                </div>
+                <div class="editor-input-group" style="margin-bottom: 1.5rem;">
+                    <label class="editor-label">원본 이유 벡터 (Reason Vector)</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">귀인 (Attribution)</label>
+                            <select class="editor-input original-reason-vector-attribution" data-scene-index="${sceneIndex}" style="width: 100%;">
+                                <option value="self_blame" ${scene.originalReasonVector?.attribution === 'self_blame' ? 'selected' : ''}>내 탓 (self_blame)</option>
+                                <option value="other_blame" ${scene.originalReasonVector?.attribution === 'other_blame' ? 'selected' : ''}>타인 탓 (other_blame)</option>
+                                <option value="fate_blame" ${scene.originalReasonVector?.attribution === 'fate_blame' ? 'selected' : ''}>운명 탓 (fate_blame)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">핵심 두려움 (Core Fear)</label>
+                            <select class="editor-input original-reason-vector-core-fear" data-scene-index="${sceneIndex}" style="width: 100%;">
+                                <option value="abandonment" ${scene.originalReasonVector?.core_fear === 'abandonment' ? 'selected' : ''}>버림받음 (abandonment)</option>
+                                <option value="death" ${scene.originalReasonVector?.core_fear === 'death' ? 'selected' : ''}>죽음 (death)</option>
+                                <option value="rejection" ${scene.originalReasonVector?.core_fear === 'rejection' ? 'selected' : ''}>거절 (rejection)</option>
+                                <option value="failure" ${scene.originalReasonVector?.core_fear === 'failure' ? 'selected' : ''}>실패 (failure)</option>
+                                <option value="none" ${scene.originalReasonVector?.core_fear === 'none' || !scene.originalReasonVector?.core_fear ? 'selected' : ''}>없음 (none)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem;">
+                            <input type="checkbox" class="original-reason-vector-is-void" data-scene-index="${sceneIndex}" ${scene.originalReasonVector?.is_void ? 'checked' : ''}>
+                            <span>공백 여부 (is_void)</span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div class="editor-input-group">
@@ -540,6 +570,49 @@ function attachSceneListeners() {
         input.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             currentScenes[sceneIndex].originalReason = this.value.trim();
+        });
+    });
+
+    // 원본 이유 벡터 업데이트
+    document.querySelectorAll('.original-reason-vector-attribution').forEach(select => {
+        select.addEventListener('change', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            if (!currentScenes[sceneIndex].originalReasonVector) {
+                currentScenes[sceneIndex].originalReasonVector = {
+                    attribution: 'fate_blame',
+                    core_fear: 'none',
+                    is_void: false
+                };
+            }
+            currentScenes[sceneIndex].originalReasonVector.attribution = this.value;
+        });
+    });
+
+    document.querySelectorAll('.original-reason-vector-core-fear').forEach(select => {
+        select.addEventListener('change', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            if (!currentScenes[sceneIndex].originalReasonVector) {
+                currentScenes[sceneIndex].originalReasonVector = {
+                    attribution: 'fate_blame',
+                    core_fear: 'none',
+                    is_void: false
+                };
+            }
+            currentScenes[sceneIndex].originalReasonVector.core_fear = this.value;
+        });
+    });
+
+    document.querySelectorAll('.original-reason-vector-is-void').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            if (!currentScenes[sceneIndex].originalReasonVector) {
+                currentScenes[sceneIndex].originalReasonVector = {
+                    attribution: 'fate_blame',
+                    core_fear: 'none',
+                    is_void: false
+                };
+            }
+            currentScenes[sceneIndex].originalReasonVector.is_void = this.checked;
         });
     });
 

@@ -58,7 +58,10 @@ export async function listMemoriesWithScenesChoices(client) {
                 originalChoice: scene.original_choice || 0,
                 originalReason: scene.original_reason || '',
                 originalEmotion: scene.original_emotion ? (typeof scene.original_emotion === 'string' ? JSON.parse(scene.original_emotion) : scene.original_emotion) : null,
-                originalReasonVector: scene.original_reason_vector || null
+                originalReasonVector: scene.original_reason_vector ? (typeof scene.original_reason_vector === 'string' ? JSON.parse(scene.original_reason_vector) : scene.original_reason_vector) : null,
+                text_stage_1: scene.text_stage_1 || null,
+                text_stage_2: scene.text_stage_2 || null,
+                text_stage_3: scene.text_stage_3 || null
             };
         }));
 
@@ -198,7 +201,8 @@ export async function saveMemoryGraph(client, memoryPayload) {
             void_info: scene.voidInfo || null,
             original_choice: scene.originalChoice !== undefined ? scene.originalChoice : null,
             original_reason: scene.originalReason || null,
-            original_emotion: scene.originalEmotion ? (typeof scene.originalEmotion === 'string' ? scene.originalEmotion : JSON.stringify(scene.originalEmotion)) : null
+            original_emotion: scene.originalEmotion ? (typeof scene.originalEmotion === 'string' ? scene.originalEmotion : JSON.stringify(scene.originalEmotion)) : null,
+            original_reason_vector: scene.originalReasonVector ? (typeof scene.originalReasonVector === 'string' ? scene.originalReasonVector : JSON.stringify(scene.originalReasonVector)) : null
         };
 
         const { data: sceneData, error: sceneError } = await client
