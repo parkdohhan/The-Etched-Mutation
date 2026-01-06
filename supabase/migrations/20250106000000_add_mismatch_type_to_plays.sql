@@ -9,3 +9,5 @@ CREATE INDEX IF NOT EXISTS idx_plays_mismatch_type ON public.plays (mismatch_typ
 CREATE INDEX IF NOT EXISTS idx_plays_memory_mismatch ON public.plays (memory_id, mismatch_type) 
 WHERE mismatch_type IS NOT NULL;
 
+
+

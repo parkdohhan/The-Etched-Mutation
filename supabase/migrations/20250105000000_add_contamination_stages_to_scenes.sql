@@ -11,3 +11,5 @@ CREATE INDEX IF NOT EXISTS idx_scenes_text_stage_1 ON scenes(text_stage_1) WHERE
 CREATE INDEX IF NOT EXISTS idx_scenes_text_stage_2 ON scenes(text_stage_2) WHERE text_stage_2 IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_scenes_text_stage_3 ON scenes(text_stage_3) WHERE text_stage_3 IS NOT NULL;
 
+
+
