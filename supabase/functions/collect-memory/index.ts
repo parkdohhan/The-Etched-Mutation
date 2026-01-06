@@ -4,7 +4,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json"
+  "Content-Type": "text/event-stream"
 };
 
 serve(async (req) => {
@@ -12,7 +12,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { 
       status: 200,
-      headers: corsHeaders 
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      }
     });
   }
 
@@ -23,7 +26,10 @@ serve(async (req) => {
     if (!conversation || !Array.isArray(conversation)) {
       return new Response(JSON.stringify({ error: "대화 기록이 필요합니다." }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { 
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json" 
+        }
       });
     }
 
@@ -32,7 +38,10 @@ serve(async (req) => {
       console.error('API 키가 설정되지 않았습니다.');
       return new Response(JSON.stringify({ error: 'API 키가 설정되지 않았습니다.' }), {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { 
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json" 
+        }
       });
     }
 
@@ -71,6 +80,7 @@ JSON 형식:
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1024,
+        stream: true,
         system: systemPrompt || "당신은 사용자의 기억을 수집하는 AI입니다.",
         messages: [
           ...messages,
@@ -80,59 +90,127 @@ JSON 형식:
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       console.error('Claude API 오류:', errorData);
       return new Response(JSON.stringify({ 
         error: errorData.error?.message || "Claude API 호출 실패",
         reply: "죄송해요, 잠시 문제가 생겼어요. 다시 말해줄 수 있어?"
       }), {
         status: response.status,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { 
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json" 
+        }
       });
     }
 
-    const data = await response.json();
-    const replyText = data.content[0]?.text || "";
-    
-    const sceneComplete = replyText.includes('[SCENE_COMPLETE]');
-    let extractedScene = null;
+    // 스트리밍 응답 생성
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+        let buffer = "";
 
-    if (sceneComplete) {
-      try {
-        const jsonMatch = replyText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          extractedScene = JSON.parse(jsonMatch[0]);
-        } else {
-          extractedScene = {
-            text: "",
-            choices: [],
-            emotion: "",
-            reason: ""
-          };
+        if (!reader) {
+          controller.close();
+          return;
         }
-      } catch (e) {
-        console.error('JSON 파싱 오류:', e);
-        extractedScene = {
-          text: "",
-          choices: [],
-          emotion: "",
-          reason: ""
-        };
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+
+                try {
+                  const json = JSON.parse(data);
+                  
+                  if (json.type === 'content_block_delta' && json.delta?.type === 'text_delta') {
+                    const text = json.delta.text;
+                    fullText += text;
+                    
+                    // SSE 형식으로 텍스트 청크 전송
+                    controller.enqueue(
+                      new TextEncoder().encode(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`)
+                    );
+                  }
+
+                  if (json.type === 'message_stop') {
+                    // 최종 응답 처리
+                    const sceneComplete = fullText.includes('[SCENE_COMPLETE]');
+                    let extractedScene = null;
+
+                    if (sceneComplete) {
+                      try {
+                        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                          extractedScene = JSON.parse(jsonMatch[0]);
+                        } else {
+                          extractedScene = {
+                            text: "",
+                            choices: [],
+                            emotion: "",
+                            reason: ""
+                          };
+                        }
+                      } catch (e) {
+                        console.error('JSON 파싱 오류:', e);
+                        extractedScene = {
+                          text: "",
+                          choices: [],
+                          emotion: "",
+                          reason: ""
+                        };
+                      }
+                    }
+
+                    const cleanReply = fullText.replace(/\[SCENE_COMPLETE\][\s\S]*/, '').trim();
+
+                    // 최종 메타데이터 전송
+                    controller.enqueue(
+                      new TextEncoder().encode(
+                        `data: ${JSON.stringify({ 
+                          type: 'done', 
+                          reply: cleanReply,
+                          sceneComplete: sceneComplete,
+                          extractedScene: extractedScene
+                        })}\n\n`
+                      )
+                    );
+                  }
+                } catch (e) {
+                  // JSON 파싱 오류 무시 (일부 라인은 JSON이 아닐 수 있음)
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('스트리밍 오류:', error);
+          controller.enqueue(
+            new TextEncoder().encode(
+              `data: ${JSON.stringify({ 
+                type: 'error', 
+                error: error.message || "스트리밍 오류 발생"
+              })}\n\n`
+            )
+          );
+        } finally {
+          controller.close();
+        }
       }
-    }
+    });
 
-    const cleanReply = replyText.replace(/\[SCENE_COMPLETE\][\s\S]*/, '').trim();
-
-    console.log('=== collect-memory 응답 ===');
-    console.log('장면 완성:', sceneComplete);
-    console.log('추출된 장면:', extractedScene);
-
-    return new Response(JSON.stringify({
-      reply: cleanReply,
-      sceneComplete: sceneComplete,
-      extractedScene: extractedScene
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    return new Response(stream, {
+      headers: corsHeaders
     });
 
   } catch (error) {
@@ -142,7 +220,10 @@ JSON 형식:
       reply: "죄송해요, 잠시 문제가 생겼어요. 다시 말해줄 수 있어?"
     }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: { 
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json" 
+      }
     });
   }
 });

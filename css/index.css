@@ -6,3 +6,214 @@
 #memory-registration-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0a0c;z-index:1000;display:none;flex-direction:column}#memory-registration-screen:not(.hidden){display:flex}.registration-progress{padding:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(212,175,55,.2)}.scene-count{color:#d4af37;font-family:'Cormorant Garamond',serif;font-size:14px;letter-spacing:.1em}.finish-registration-btn,.close-registration-btn{padding:10px 20px;background:transparent;border:1px solid rgba(212,175,55,.4);color:#d4af37;font-family:'Cormorant Garamond',serif;font-size:14px;cursor:pointer;transition:all .3s}.finish-registration-btn:hover,.close-registration-btn:hover{background:rgba(212,175,55,.1);border-color:rgba(212,175,55,.6)}.finish-registration-btn.hidden{display:none}.registration-phase{flex:1;display:flex;flex-direction:column;padding:20px;max-width:800px;margin:0 auto;width:100%}.registration-phase.hidden{display:none}.registration-wave-container{width:100%;height:200px;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;position:relative;overflow:hidden;margin-bottom:20px}.registration-wave-canvas{width:100%;height:100%}.registration-npc-dialogue{min-height:100px;padding:20px;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:8px;margin-bottom:20px;color:var(--text-primary);font-size:1rem;line-height:1.8}.registration-user-input-area{display:flex;flex-direction:column;gap:12px}.memory-input{width:100%;min-height:120px;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);padding:15px;font-family:'Noto Serif KR',serif;font-size:1rem;color:var(--text-primary);line-height:1.8;resize:vertical}.memory-input:focus{outline:none;border-color:var(--accent-memory)}.memory-input::placeholder{color:var(--text-ghost)}.registration-input-actions{display:flex;gap:12px;justify-content:flex-end}.voice-input-btn,.send-btn{padding:12px 24px;background:transparent;border:1px solid var(--accent-memory);color:var(--accent-memory);font-family:'Cormorant Garamond',serif;font-size:14px;cursor:pointer;transition:all .3s}.voice-input-btn:hover,.send-btn:hover{background:var(--accent-memory);color:var(--bg-deep)}#registration-review{max-width:600px;overflow-y:auto}.review-title{font-family:'Cormorant Garamond',serif;font-size:1.8rem;color:var(--accent-memory);margin-bottom:30px;text-align:center}.review-section{margin-bottom:25px}.review-section label{display:block;color:#d4af37;margin-bottom:8px;font-size:14px;font-family:'Cormorant Garamond',serif;letter-spacing:.1em}.review-text,.review-reason{width:100%;min-height:100px;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(212,175,55,.3);color:#fff;font-family:'Noto Serif KR',serif;font-size:1rem;line-height:1.6;resize:vertical}.review-text:focus,.review-reason:focus{outline:none;border-color:rgba(212,175,55,.6)}.review-choices{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}.choice-input{width:100%;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(212,175,55,.3);color:#fff;font-family:'Noto Serif KR',serif;font-size:1rem}.choice-input:focus{outline:none;border-color:rgba(212,175,55,.6)}.add-choice-btn{padding:8px 16px;background:transparent;border:1px solid rgba(212,175,55,.3);color:#d4af37;font-size:12px;cursor:pointer;transition:all .3s}.add-choice-btn:hover{background:rgba(212,175,55,.1)}.review-emotion{display:flex;flex-direction:column;gap:15px}.emotion-slider{display:flex;align-items:center;gap:12px}.emotion-slider span:first-child{width:80px;color:var(--text-muted);font-size:14px}.emotion-slider input[type=range]{flex:1;height:6px;background:var(--bg-deep);border-radius:3px;outline:none}.emotion-slider input[type=range]::-webkit-slider-thumb{appearance:none;width:16px;height:16px;background:#d4af37;border-radius:50%;cursor:pointer}.emotion-value{width:50px;text-align:right;color:var(--text-primary);font-size:14px}.review-reason-vector{display:flex;flex-direction:column;gap:12px}.review-attribution,.review-core-fear{width:100%;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(212,175,55,.3);color:#fff;font-family:'Noto Serif KR',serif;font-size:1rem}.review-attribution:focus,.review-core-fear:focus{outline:none;border-color:rgba(212,175,55,.6)}.void-checkbox-label{display:flex;align-items:center;gap:8px;color:var(--text-primary);cursor:pointer}.void-checkbox-label input[type=checkbox]{width:18px;height:18px;cursor:pointer}.review-actions{display:flex;gap:12px;margin-top:30px}.review-back-btn,.review-confirm-btn{flex:1;padding:15px;background:transparent;border:1px solid #d4af37;color:#d4af37;font-family:'Cormorant Garamond',serif;font-size:14px;cursor:pointer;transition:all .3s}.review-confirm-btn{background:rgba(212,175,55,.2)}.review-back-btn:hover,.review-confirm-btn:hover{background:rgba(212,175,55,.3);border-color:rgba(212,175,55,.6)}
 
 .hidden{display:none!important}
+
+/* ============================================ PHASE 2: ANIMATION & IMMERSION (추�?) ============================================ */
+/* 1. 글리치 ?�과 (주�????�각?? */
+.glitch-anim {
+    animation: glitch-shake 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+    border-color: rgba(255, 0, 0, 0.5) !important;
+    color: rgba(255, 100, 100, 0.8);
+}
+@keyframes glitch-shake {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+}
+/* 2. ?�?�핑 ?�커??(?�도 ?�현) */
+.confession-content {
+    transition: filter 0.5s ease, transform 0.5s ease;
+}
+/* ?�력 중일 ?�는 배경?????�둡�?*/
+.focus-mode-active #confession-overlay {
+    background: rgba(0, 0, 0, 0.95);
+}
+/* 3. 비네??(Vignette) - 주�?부 ?�전 ?�과 */
+.vignette-layer {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle, transparent 40%, #000 90%);
+    pointer-events: none;
+    z-index: 1;
+}
+/* 4. ?�운??�??�릭 ???�동 ?�과 */
+@keyframes pulse-gold {
+    0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+}
+.sensory-chip {
+    background: transparent;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    color: #d4af37;
+    padding: 12px 24px;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin: 8px;
+    letter-spacing: 0.05em;
+}
+.sensory-chip:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.6);
+    transform: translateY(-2px);
+}
+.sensory-chip.selected {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: #d4af37;
+    animation: pulse-gold 1s infinite;
+}
+.sensory-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 40px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ============================================ The Confession Overlay ============================================ */
+#confession-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 12, 0.98);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+#confession-overlay.hidden {
+    display: none;
+}
+.confession-progress {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    z-index: 10;
+}
+.step-indicator {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 14px;
+    color: #d4af37;
+    letter-spacing: 0.1em;
+}
+.confession-exit-btn {
+    background: transparent;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    color: #d4af37;
+    padding: 8px 16px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.confession-exit-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.6);
+}
+.confession-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    overflow-y: auto;
+    position: relative;
+    z-index: 2;
+}
+.confession-step {
+    max-width: 800px;
+    width: 100%;
+    text-align: center;
+}
+.confession-step.hidden {
+    display: none;
+}
+.confession-text {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 1.5rem;
+    line-height: 2;
+    color: var(--text-primary);
+    margin-bottom: 40px;
+    min-height: 60px;
+}
+.confession-enter-btn {
+    background: transparent;
+    border: 1px solid #d4af37;
+    color: #d4af37;
+    padding: 15px 40px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 0.1em;
+}
+.confession-enter-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.8);
+}
+.confession-enter-btn.hidden {
+    display: none;
+}
+body.confession-active {
+    overflow: hidden;
+}
+body.confession-active::before {
+    filter: blur(5px);
+    opacity: 0.3;
+}
+
+/* 결과 ?�면 ?��???*/
+.step-result {
+    max-width: 800px;
+    width: 100%;
+    text-align: center;
+}
+.step-result h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    color: #d4af37;
+    margin-bottom: 30px;
+    letter-spacing: 0.1em;
+}
+.result-preview {
+    min-height: 200px;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 8px;
+    margin-bottom: 30px;
+    text-align: left;
+}
+.result-preview p {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 1.1rem;
+    line-height: 2;
+    color: var(--text-primary);
+}
+.confession-complete-btn {
+    background: transparent;
+    border: 1px solid #d4af37;
+    color: #d4af37;
+    padding: 15px 40px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 0.1em;
+}
+.confession-complete-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.8);
+}

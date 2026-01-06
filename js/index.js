@@ -1737,53 +1737,151 @@ async function handleRegistrationInput(userInput) {
             showNotification('Supabase 클라이언트가 없습니다');
             return;
         }
+
+        // Supabase URL과 anon key 가져오기
+        const { SUPABASE_URL, SUPABASE_ANON_KEY } = await import('./lib/config.js');
+        const supabaseUrl = SUPABASE_URL || 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
         
-        console.log('collect-memory 호출 시작:', {
+        // 세션 토큰 가져오기 (없어도 anon key로 동작)
+        let authToken = '';
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            authToken = session?.access_token || '';
+        } catch (e) {
+            console.warn('세션 가져오기 실패, anon key만 사용:', e);
+        }
+        
+        console.log('collect-memory 스트리밍 호출 시작:', {
             conversationLength: memoryRegistrationState.conversationHistory.length,
-            systemPrompt: memoryCollectionSystemPrompt.substring(0, 50) + '...'
+            systemPrompt: memoryCollectionSystemPrompt.substring(0, 50) + '...',
+            hasAuthToken: !!authToken
         });
         
-        const { data, error } = await supabaseClient.functions.invoke('collect-memory', {
-            body: {
+        // 스트리밍 요청 (인증 토큰이 없으면 anon key만 사용)
+        const headers = {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY || ''
+        };
+        
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
+        const response = await fetch(`${supabaseUrl}/functions/v1/collect-memory`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
                 conversation: memoryRegistrationState.conversationHistory,
                 systemPrompt: memoryCollectionSystemPrompt
-            }
+            })
         });
         
-        if (error) {
-            console.error('collect-memory 함수 오류:', error);
-            console.error('오류 상세:', JSON.stringify(error, null, 2));
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('collect-memory 함수 오류:', errorData);
             
-            if (error.message && error.message.includes('CORS')) {
+            if (response.status === 0 || errorData.error?.includes('CORS')) {
                 showNotification('Edge Function이 배포되지 않았거나 CORS 설정에 문제가 있습니다. collect-memory 함수를 배포해주세요.');
             } else {
-                showNotification('대화 처리 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
+                showNotification('대화 처리 중 오류가 발생했습니다: ' + (errorData.error || '알 수 없는 오류'));
             }
             return;
         }
         
-        if (data && data.reply) {
-            addRegistrationNpcDialogue(data.reply);
+        // 스트리밍 응답 읽기
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        
+        if (!reader) {
+            showNotification('스트리밍 응답을 읽을 수 없습니다');
+            return;
+        }
+        
+        let accumulatedText = '';
+        let buffer = '';
+        let finalData = null;
+        
+        // NPC 대화 영역 초기화
+        const dialogueEl = document.querySelector('.registration-npc-dialogue');
+        if (dialogueEl) {
+            dialogueEl.textContent = '';
+        }
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const dataStr = line.slice(6);
+                    if (dataStr === '[DONE]') continue;
+                    
+                    try {
+                        const data = JSON.parse(dataStr);
+                        
+                        if (data.type === 'chunk' && data.text) {
+                            // 텍스트 추가
+                            accumulatedText += data.text;
+                            
+                            // 실시간으로 표시 (단어 단위로 자연스럽게)
+                            if (dialogueEl) {
+                                dialogueEl.textContent = accumulatedText;
+                                
+                                // 스크롤을 맨 아래로
+                                const conversationContainer = dialogueEl.closest('.registration-conversation');
+                                if (conversationContainer) {
+                                    conversationContainer.scrollTop = conversationContainer.scrollHeight;
+                                }
+                            }
+                        }
+                        
+                        if (data.type === 'done') {
+                            finalData = data;
+                        }
+                        
+                        if (data.type === 'error') {
+                            console.error('스트리밍 오류:', data.error);
+                            showNotification('스트리밍 중 오류가 발생했습니다: ' + (data.error || '알 수 없는 오류'));
+                            return;
+                        }
+                    } catch (e) {
+                        // JSON 파싱 오류 무시
+                    }
+                }
+            }
+        }
+        
+        // 최종 응답 처리
+        if (finalData && finalData.reply) {
+            // 최종 텍스트로 업데이트 (누락된 부분이 있을 수 있음)
+            if (dialogueEl) {
+                dialogueEl.textContent = finalData.reply;
+            }
+            
             memoryRegistrationState.conversationHistory.push({
                 role: 'assistant',
-                content: data.reply
+                content: finalData.reply
             });
         }
         
-        if (data && data.sceneComplete && data.extractedScene) {
-            console.log('장면 완성:', data.extractedScene);
+        if (finalData && finalData.sceneComplete && finalData.extractedScene) {
+            console.log('장면 완성:', finalData.extractedScene);
             memoryRegistrationState.currentScene = {
-                text: data.extractedScene.text || '',
-                choices: data.extractedScene.choices || [],
-                originalEmotion: data.extractedScene.emotion ? parseEmotionFromText(data.extractedScene.emotion) : {},
-                originalReason: data.extractedScene.reason || '',
+                text: finalData.extractedScene.text || '',
+                choices: finalData.extractedScene.choices || [],
+                originalEmotion: finalData.extractedScene.emotion ? parseEmotionFromText(finalData.extractedScene.emotion) : {},
+                originalReason: finalData.extractedScene.reason || '',
                 original_reason_vector: {}
             };
             showReviewPhase();
         }
     } catch (e) {
         console.error('handleRegistrationInput error:', e);
-        showNotification('입력 처리 중 오류가 발생했습니다');
+        showNotification('입력 처리 중 오류가 발생했습니다: ' + (e.message || '알 수 없는 오류'));
     }
 }
 
@@ -2051,6 +2149,9 @@ async function saveMemoryToDB(memory) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // The Confession 리스너 설정
+    setupConfessionListeners();
+    
     const registrationScreen = document.getElementById('memory-registration-screen');
     if (registrationScreen) {
         const sendBtn = document.getElementById('registrationSendBtn');
@@ -2187,4 +2288,545 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.startMemoryRegistration = startMemoryRegistration;
+
+// ==================== The Confession ====================
+
+// The Confession 상태 관리
+const confessionState = {
+    currentStep: 0,
+    ritualData: {
+        sensory: { temperature: '', smell: '', sound: '' },
+        anchorObject: '',
+        action: '',
+        conflict: '',
+        emotionWord: ''
+    },
+    audioState: {
+        base: null,
+        ambience: null,
+        tension: null
+    },
+    conversationHistory: [],
+    scenes: [],
+    generatedScene: null
+};
+
+// 감각 칩 데이터
+const sensoryChips = {
+    smell: [
+        { label: '비릿한 물 냄새', key: 'rain_heavy' },
+        { label: '매캐한 먼지', key: 'dust' },
+        { label: '소독약 냄새', key: 'hospital' },
+        { label: '차가운 공기', key: 'cold_air' },
+        { label: '따뜻한 바람', key: 'warm_wind' }
+    ],
+    sound: [
+        { label: '빗소리', key: 'rain' },
+        { label: '적막', key: 'silence' },
+        { label: '웅성거림', key: 'crowd' },
+        { label: '기계 소음', key: 'machine' },
+        { label: '바람 소리', key: 'wind' }
+    ]
+};
+
+// 단계별 렌더링
+function renderStep(step) {
+    // 모든 step 숨기기
+    document.querySelectorAll('.confession-step').forEach(el => {
+        el.classList.add('hidden');
+    });
+    
+    // 현재 step만 표시
+    const currentStepEl = document.querySelector(`.step-${step}`);
+    if (currentStepEl) {
+        currentStepEl.classList.remove('hidden');
+    }
+    
+    // step indicator 업데이트 (step 0은 입장 단계이므로 표시하지 않음)
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        if (step === 0 || step === 'result') {
+            stepIndicator.textContent = '';
+        } else if (typeof step === 'number') {
+            stepIndicator.textContent = `${step} / 5`;
+        }
+    }
+    
+    // 단계별 초기화 로직
+    if (typeof step === 'number') {
+        switch(step) {
+            case 0:
+                initStep0();
+                break;
+            case 1:
+                initStep1();
+                break;
+            case 2:
+                initStep2();
+                break;
+            case 3:
+                initStep3();
+                break;
+            case 4:
+                initStep4();
+                break;
+            case 5:
+                initStep5();
+                break;
+        }
+        confessionState.currentStep = step;
+    } else if (step === 'result') {
+        confessionState.currentStep = 'result';
+    }
+    
+    console.log('=== Confession ===');
+    console.log('Step:', confessionState.currentStep);
+    console.log('Ritual Data:', confessionState.ritualData);
+}
+
+// 다음 단계로
+function nextStep() {
+    if (typeof confessionState.currentStep === 'number') {
+        renderStep(confessionState.currentStep + 1);
+    }
+}
+
+// Confession 시작
+function startConfession() {
+    const overlay = document.getElementById('confession-overlay');
+    if (overlay) {
+        overlay.classList.remove('hidden');
+        document.body.classList.add('confession-active'); // 배경 블러용
+        renderStep(0);
+    }
+}
+
+// Confession 종료
+function endConfession() {
+    const overlay = document.getElementById('confession-overlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+        document.body.classList.remove('confession-active');
+    }
+    
+    // 상태 초기화
+    confessionState.currentStep = 0;
+    confessionState.ritualData = {
+        sensory: { temperature: '', smell: '', sound: '' },
+        anchorObject: '',
+        action: '',
+        conflict: '',
+        emotionWord: ''
+    };
+    confessionState.conversationHistory = [];
+    confessionState.scenes = [];
+    confessionState.generatedScene = null;
+}
+
+// 타이핑 엔진 (한 글자씩 출력)
+function typeWriter(element, text, speed = 50, callback) {
+    if (!element) return;
+    
+    let i = 0;
+    element.textContent = '';
+    
+    function type() {
+        if (i < text.length) {
+            element.textContent += text.charAt(i);
+            i++;
+            
+            // 문장 부호 뒤에는 딜레이
+            const char = text.charAt(i - 1);
+            const delay = (char === '.' || char === '?' || char === ',') ? 300 : speed;
+            
+            setTimeout(type, delay);
+        } else if (callback) {
+            callback();
+        }
+    }
+    
+    type();
+}
+
+// Step 0: 입장
+function initStep0() {
+    const textEl = document.querySelector('.step-0 .confession-text');
+    const enterBtn = document.querySelector('.confession-enter-btn');
+    
+    if (textEl) {
+        typeWriter(textEl, '문이 닫혀있다. 열까?', 50, () => {
+            if (enterBtn) {
+                enterBtn.classList.remove('hidden');
+            }
+        });
+    }
+}
+
+// Step 1: 튜닝 (감각 칩)
+function initStep1() {
+    const textEl = document.querySelector('.step-1 .confession-text');
+    const chipsContainer = document.querySelector('.step-1 .sensory-chips');
+    
+    if (textEl) {
+        typeWriter(textEl, '무엇이 느껴지나?', 50);
+    }
+    
+    // 감각 칩 렌더링
+    if (chipsContainer) {
+        chipsContainer.innerHTML = '';
+        
+        // 모든 감각 칩을 하나의 배열로 합치기
+        const allChips = [
+            ...sensoryChips.smell.map(chip => ({ ...chip, type: 'smell' })),
+            ...sensoryChips.sound.map(chip => ({ ...chip, type: 'sound' }))
+        ];
+        
+        // 칩 버튼 생성
+        allChips.forEach(chip => {
+            const chipBtn = document.createElement('button');
+            chipBtn.className = 'sensory-chip';
+            chipBtn.textContent = chip.label;
+            chipBtn.dataset.type = chip.type;
+            chipBtn.dataset.key = chip.key;
+            
+            // 클릭 이벤트
+            chipBtn.addEventListener('click', () => {
+                // 다른 칩들의 selected 제거
+                chipsContainer.querySelectorAll('.sensory-chip').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                
+                // 현재 칩 선택
+                chipBtn.classList.add('selected');
+                
+                // ritualData에 저장
+                if (chip.type === 'smell') {
+                    confessionState.ritualData.sensory.smell = chip.key;
+                } else if (chip.type === 'sound') {
+                    confessionState.ritualData.sensory.sound = chip.key;
+                }
+                
+                console.log('감각 칩 선택:', chip.type, chip.key);
+                console.log('ritualData.sensory:', confessionState.ritualData.sensory);
+                
+                // 0.5초 후 다음 단계로
+                setTimeout(() => {
+                    nextStep();
+                }, 500);
+            });
+            
+            chipsContainer.appendChild(chipBtn);
+        });
+    }
+}
+
+// Step 2: 앵커링 (사물 입력)
+function initStep2() {
+    const textEl = document.querySelector('.step-2 .confession-text');
+    const anchorInput = document.querySelector('.anchor-input');
+    
+    if (textEl) {
+        typeWriter(textEl, '무엇을 보았나?', 50);
+    }
+    
+    if (anchorInput) {
+        anchorInput.value = '';
+        anchorInput.focus();
+    }
+}
+
+// Step 3: 발화 (Leading Sentence)
+function initStep3() {
+    const textEl = document.querySelector('.step-3 .confession-text');
+    const leadInput = document.querySelector('.lead-input');
+    
+    if (textEl) {
+        typeWriter(textEl, '무엇을 했나?', 50);
+    }
+    
+    if (leadInput) {
+        leadInput.value = '';
+        leadInput.focus();
+    }
+}
+
+// Step 4: 충돌
+function initStep4() {
+    const textEl = document.querySelector('.step-4 .confession-text');
+    const crashInput = document.querySelector('.crash-input');
+    
+    if (textEl) {
+        typeWriter(textEl, '무슨 일이 일어났나?', 50);
+    }
+    
+    if (crashInput) {
+        crashInput.value = '';
+        crashInput.focus();
+    }
+}
+
+// Step 5: 봉인
+function initStep5() {
+    const textEl = document.querySelector('.step-5 .confession-text');
+    const sealInput = document.querySelector('.seal-input');
+    const saveBtn = document.querySelector('.confession-save-btn');
+    
+    if (textEl) {
+        typeWriter(textEl, '이제 그 공간에서 나옵니다. 문을 닫습니다. 문 너머에 남겨진 감정을 단 하나의 단어로 정의한다면?', 50);
+    }
+    
+    if (sealInput) {
+        sealInput.value = '';
+        sealInput.focus();
+    }
+    
+    if (saveBtn) {
+        saveBtn.classList.add('hidden');
+    }
+}
+
+// 이벤트 리스너 설정 (DOMContentLoaded 내부에서 호출)
+function setupConfessionListeners() {
+    // 기억 등록 버튼 → The Confession 시작
+    const registerBtn = document.getElementById('registerMemoryBtn') || document.querySelector('.register-memory-btn');
+    if (registerBtn) {
+        // 기존 클릭 이벤트 제거 후 startConfession()에 연결
+        registerBtn.onclick = null; // 기존 onclick 제거
+        registerBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            startConfession();
+        });
+    }
+    
+    // 종료 버튼
+    const exitBtn = document.querySelector('.confession-exit-btn');
+    if (exitBtn) {
+        exitBtn.addEventListener('click', () => {
+            if (confirm('기억 등록을 중단하시겠습니까?')) {
+                endConfession();
+            }
+        });
+    }
+    
+    // Step 0: 입장 버튼
+    const enterBtn = document.querySelector('.confession-enter-btn');
+    if (enterBtn) {
+        enterBtn.addEventListener('click', () => {
+            nextStep();
+        });
+    }
+    
+    // Step 2: 앵커 입력
+    const anchorInput = document.querySelector('.anchor-input');
+    if (anchorInput) {
+        anchorInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && anchorInput.value.trim()) {
+                confessionState.ritualData.anchorObject = anchorInput.value.trim();
+                const pinnedEl = document.querySelector('.anchor-pinned');
+                if (pinnedEl) {
+                    pinnedEl.textContent = anchorInput.value.trim();
+                    pinnedEl.classList.remove('hidden');
+                }
+                setTimeout(() => nextStep(), 500);
+            }
+        });
+    }
+    
+    // Step 3: 발화 입력
+    const leadInput = document.querySelector('.lead-input');
+    if (leadInput) {
+        leadInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && leadInput.value.trim()) {
+                confessionState.ritualData.action = leadInput.value.trim();
+                setTimeout(() => nextStep(), 500);
+            }
+        });
+    }
+    
+    // Step 4: 충돌 입력
+    const crashInput = document.querySelector('.crash-input');
+    if (crashInput) {
+        crashInput.addEventListener('blur', () => {
+            if (crashInput.value.trim()) {
+                confessionState.ritualData.conflict = crashInput.value.trim();
+                setTimeout(() => nextStep(), 500);
+            }
+        });
+    }
+    
+    // Step 5: 봉인 입력
+    const sealInput = document.querySelector('.seal-input');
+    const saveBtn = document.querySelector('.confession-save-btn');
+    if (sealInput) {
+        sealInput.addEventListener('input', () => {
+            if (sealInput.value.trim() && saveBtn) {
+                saveBtn.classList.remove('hidden');
+            } else if (saveBtn) {
+                saveBtn.classList.add('hidden');
+            }
+        });
+        
+        sealInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && sealInput.value.trim() && saveBtn) {
+                saveBtn.click();
+            }
+        });
+    }
+    
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            if (sealInput && sealInput.value.trim()) {
+                confessionState.ritualData.emotionWord = sealInput.value.trim();
+                generateSceneFromRitual();
+            }
+        });
+    }
+    
+    // 결과 화면 완료 버튼
+    const completeBtn = document.querySelector('.confession-complete-btn');
+    if (completeBtn) {
+        completeBtn.addEventListener('click', async () => {
+            // 장면을 scenes 배열에 추가
+            if (!confessionState.scenes) confessionState.scenes = [];
+            if (confessionState.generatedScene) {
+                confessionState.scenes.push(confessionState.generatedScene);
+            }
+            
+            // 다음 장면 수집할지 물어보기
+            const continueMore = confirm(`장면 ${confessionState.scenes.length}개 수집됨. 다음 장면을 추가할까요?`);
+            
+            if (continueMore) {
+                // 상태 초기화하고 Step 0부터 다시
+                confessionState.ritualData = {
+                    sensory: { temperature: '', smell: '', sound: '' },
+                    anchorObject: '',
+                    action: '',
+                    conflict: '',
+                    emotionWord: ''
+                };
+                confessionState.generatedScene = null;
+                renderStep(0);
+            } else {
+                // 최종 저장
+                await saveConfessionToDB();
+            }
+        });
+    }
+}
+
+// AI 장면 생성
+async function generateSceneFromRitual() {
+    // 로딩 표시
+    renderStep('result');
+    const resultPreview = document.querySelector('.result-preview');
+    if (resultPreview) {
+        resultPreview.innerHTML = '<p>기억을 현상 중입니다...</p>';
+    }
+    
+    try {
+        supabaseClient = getSupabaseClient();
+        if (!supabaseClient) {
+            throw new Error('Supabase 클라이언트가 없습니다');
+        }
+        
+        // AI에게 ritualData 전달해서 장면 텍스트 생성
+        const { data, error } = await supabaseClient.functions.invoke('generate-scene-from-ritual', {
+            body: {
+                ritualData: confessionState.ritualData
+            }
+        });
+        
+        if (error) throw error;
+        
+        const sceneText = data.sceneText || data.text || '장면 생성에 실패했습니다.';
+        
+        // 결과 표시
+        if (resultPreview) {
+            resultPreview.innerHTML = `<p style="line-height: 2; font-size: 1.1rem;">${sceneText}</p>`;
+        }
+        
+        // 생성된 장면 저장
+        confessionState.generatedScene = {
+            text: sceneText,
+            originalEmotion: { [confessionState.ritualData.emotionWord]: 0.8 },
+            sensory: confessionState.ritualData.sensory
+        };
+        
+        console.log('장면 생성 완료:', confessionState.generatedScene);
+        
+    } catch (error) {
+        console.error('장면 생성 오류:', error);
+        if (resultPreview) {
+            resultPreview.innerHTML = '<p>기억 현상에 실패했습니다. 다시 시도해주세요.</p>';
+        }
+    }
+}
+
+// DB 저장
+async function saveConfessionToDB() {
+    const title = prompt('이 기억의 제목을 입력하세요:');
+    if (!title || !title.trim()) return;
+    
+    try {
+        supabaseClient = getSupabaseClient();
+        if (!supabaseClient) {
+            throw new Error('Supabase 클라이언트가 없습니다');
+        }
+        
+        // memories 테이블에 저장
+        const { data: memoryData, error: memoryError } = await supabaseClient
+            .from('memories')
+            .insert({
+                title: title.trim(),
+                status: 'nascent',
+                created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+        
+        if (memoryError) throw memoryError;
+        
+        console.log('메모리 저장 완료:', memoryData);
+        
+        // scenes 테이블에 각 장면 저장
+        for (let i = 0; i < confessionState.scenes.length; i++) {
+            const scene = confessionState.scenes[i];
+            const { data: sceneData, error: sceneError } = await supabaseClient
+                .from('scenes')
+                .insert({
+                    memory_id: memoryData.id,
+                    scene_order: i + 1,
+                    text: scene.text,
+                    original_emotion: scene.originalEmotion || {},
+                    scene_type: i === confessionState.scenes.length - 1 ? 'ending' : 'branch'
+                })
+                .select()
+                .single();
+            
+            if (sceneError) {
+                console.error(`장면 ${i + 1} 저장 실패:`, sceneError);
+                throw sceneError;
+            }
+            
+            console.log(`장면 ${i + 1} 저장 완료:`, sceneData);
+        }
+        
+        alert('기억이 지층에 묻혔습니다.');
+        endConfession();
+        
+        // Archive 모드면 목록 새로고침
+        if (currentMode === 'archive') {
+            await loadMemoriesFromSupabase();
+            renderMemoryList();
+        }
+        
+    } catch (error) {
+        console.error('저장 오류:', error);
+        alert('저장에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+    }
+}
+
+window.startConfession = startConfession;
+window.endConfession = endConfession;
 

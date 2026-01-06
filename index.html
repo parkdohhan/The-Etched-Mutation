@@ -444,6 +444,73 @@
         </div>
     </div>
     
+    <!-- The Confession 오버레이 -->
+    <div id="confession-overlay" class="hidden">
+        <!-- 비네팅 레이어 -->
+        <div class="vignette-layer"></div>
+        
+        <!-- 진행 표시 -->
+        <div class="confession-progress">
+            <span class="step-indicator">1 / 5</span>
+            <button class="confession-exit-btn">✕</button>
+        </div>
+        
+        <!-- 메인 콘텐츠 영역 -->
+        <div class="confession-content">
+            <!-- Step 0: 입장 -->
+            <div class="confession-step step-0">
+                <p class="confession-text"></p>
+                <button class="confession-enter-btn hidden">문 열기</button>
+            </div>
+            
+            <!-- Step 1: 튜닝 (감각 칩) -->
+            <div class="confession-step step-1 hidden">
+                <p class="confession-text"></p>
+                <div class="sensory-chips">
+                    <!-- 동적 생성 -->
+                </div>
+            </div>
+            
+            <!-- Step 2: 앵커링 (사물 입력) -->
+            <div class="confession-step step-2 hidden">
+                <p class="confession-text"></p>
+                <div class="anchor-container">
+                    <input type="text" class="anchor-input" placeholder="단어를 입력하세요" autocomplete="off">
+                    <span class="anchor-pinned hidden"></span>
+                </div>
+            </div>
+            
+            <!-- Step 3: 발화 (Leading Sentence) -->
+            <div class="confession-step step-3 hidden">
+                <p class="confession-text"></p>
+                <div class="leading-sentence">
+                    <span class="lead-prefix">나는 손을 뻗어</span>
+                    <input type="text" class="lead-input" placeholder="..." autocomplete="off">
+                </div>
+            </div>
+            
+            <!-- Step 4: 충돌 -->
+            <div class="confession-step step-4 hidden">
+                <p class="confession-text"></p>
+                <textarea class="crash-input" placeholder="무슨 일이 일어났나요..."></textarea>
+            </div>
+            
+            <!-- Step 5: 봉인 -->
+            <div class="confession-step step-5 hidden">
+                <p class="confession-text"></p>
+                <input type="text" class="seal-input" placeholder="단 하나의 단어" autocomplete="off">
+                <button class="confession-save-btn hidden">이 기억을 봉인합니다</button>
+            </div>
+            
+            <!-- 결과 화면 -->
+            <div class="confession-step step-result hidden">
+                <h3>기억이 현상되었습니다</h3>
+                <div class="result-preview"></div>
+                <button class="confession-complete-btn">지층에 묻기</button>
+            </div>
+        </div>
+    </div>
+    
     <script src="data/memories.js"></script>
     <script type="module" src="js/index.js"></script>
 </body>
