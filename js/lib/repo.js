@@ -59,6 +59,7 @@ export async function listMemoriesWithScenesChoices(client) {
                 originalReason: scene.original_reason || '',
                 originalEmotion: scene.original_emotion ? (typeof scene.original_emotion === 'string' ? JSON.parse(scene.original_emotion) : scene.original_emotion) : null,
                 originalReasonVector: scene.original_reason_vector ? (typeof scene.original_reason_vector === 'string' ? JSON.parse(scene.original_reason_vector) : scene.original_reason_vector) : null,
+                anchor_emotions: scene.anchor_emotions ? (Array.isArray(scene.anchor_emotions) ? scene.anchor_emotions : (typeof scene.anchor_emotions === 'string' ? JSON.parse(scene.anchor_emotions) : scene.anchor_emotions)) : null,
                 text_stage_1: scene.text_stage_1 || null,
                 text_stage_2: scene.text_stage_2 || null,
                 text_stage_3: scene.text_stage_3 || null
@@ -69,7 +70,9 @@ export async function listMemoriesWithScenesChoices(client) {
             id: memory.id,
             title: memory.title || '',
             code: memory.code || '',
-            description: '',
+            description: memory.description || '',
+            author_note: memory.author_note || null,
+            status: memory.status || 'nascent',
             scenes: scenes,
             interpretationLayers: memory.layers || 0,
             visible: memory.is_public !== undefined ? memory.is_public : true
@@ -94,7 +97,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
     }
 
-    const { memoryId, code, title, scenes, memoryWaveData } = memoryPayload;
+    const { memoryId, code, title, description, author_note, status, scenes, memoryWaveData } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
@@ -106,6 +109,9 @@ export async function saveMemoryGraph(client, memoryPayload) {
             .update({
                 code: code,
                 title: title,
+                description: description || null,
+                author_note: author_note || null,
+                status: status || 'nascent',
                 layers: 0,
                 dilution: 50,
                 is_public: true
@@ -146,6 +152,9 @@ export async function saveMemoryGraph(client, memoryPayload) {
             .insert({
                 code: code,
                 title: title,
+                description: description || null,
+                author_note: author_note || null,
+                status: status || 'nascent',
                 layers: 0,
                 dilution: 50,
                 is_public: true
@@ -202,7 +211,11 @@ export async function saveMemoryGraph(client, memoryPayload) {
             original_choice: scene.originalChoice !== undefined ? scene.originalChoice : null,
             original_reason: scene.originalReason || null,
             original_emotion: scene.originalEmotion ? (typeof scene.originalEmotion === 'string' ? scene.originalEmotion : JSON.stringify(scene.originalEmotion)) : null,
-            original_reason_vector: scene.originalReasonVector ? (typeof scene.originalReasonVector === 'string' ? scene.originalReasonVector : JSON.stringify(scene.originalReasonVector)) : null
+            original_reason_vector: scene.originalReasonVector ? (typeof scene.originalReasonVector === 'string' ? scene.originalReasonVector : JSON.stringify(scene.originalReasonVector)) : null,
+            anchor_emotions: scene.anchor_emotions ? (Array.isArray(scene.anchor_emotions) ? scene.anchor_emotions : JSON.stringify(scene.anchor_emotions)) : null,
+            text_stage_1: scene.text_stage_1 || null,
+            text_stage_2: scene.text_stage_2 || null,
+            text_stage_3: scene.text_stage_3 || null
         };
 
         const { data: sceneData, error: sceneError } = await client

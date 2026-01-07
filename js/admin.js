@@ -124,6 +124,8 @@ function addNewMemory() {
     document.getElementById('memoryTitle').value = '';
     document.getElementById('memoryCode').value = '';
     document.getElementById('memoryDescription').value = '';
+    document.getElementById('authorNote').value = '';
+    document.getElementById('memoryStatus').value = 'nascent';
     document.getElementById('scenesContainer').innerHTML = '';
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
@@ -139,6 +141,8 @@ function editMemory(index) {
     document.getElementById('memoryTitle').value = memory.title || '';
     document.getElementById('memoryCode').value = memory.code || '';
     document.getElementById('memoryDescription').value = memory.description || '';
+    document.getElementById('authorNote').value = memory.author_note || '';
+    document.getElementById('memoryStatus').value = memory.status || 'nascent';
     currentScenes = memory.scenes ? JSON.parse(JSON.stringify(memory.scenes)) : [];
     renderScenes();
     document.getElementById('adminDashboard').classList.remove('active');
@@ -219,6 +223,7 @@ function addScene() {
         originalReason: '',
         originalEmotion: null,
         originalReasonVector: null,
+        anchor_emotions: null,
         voidInfo: null
     });
     renderScenes();
@@ -252,6 +257,25 @@ function renderScenes() {
                 <label class="editor-label">본문</label>
                 <textarea class="editor-textarea scene-text-input" data-scene-index="${sceneIndex}" placeholder="장면 본문을 입력하세요">${scene.text || ''}</textarea>
             </div>
+            <div class="contamination-section">
+                <button type="button" class="toggle-contamination-btn" onclick="toggleContamination(${sceneIndex})">
+                    ▶ 오염 버전 편집
+                </button>
+                <div class="contamination-fields" id="contamination-${sceneIndex}" style="display: none;">
+                    <div class="editor-input-group">
+                        <label class="editor-label">Stage 1 (객체화: 0.3~0.6)</label>
+                        <textarea class="editor-textarea scene-text-stage-1" data-scene-index="${sceneIndex}" rows="3" placeholder="감정이 객체화되기 시작...">${scene.text_stage_1 || ''}</textarea>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">Stage 2 (추상화: 0.6~0.9)</label>
+                        <textarea class="editor-textarea scene-text-stage-2" data-scene-index="${sceneIndex}" rows="3" placeholder="디테일이 사라지고 추상화...">${scene.text_stage_2 || ''}</textarea>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">Stage 3 (소거: 0.9~1.0)</label>
+                        <textarea class="editor-textarea scene-text-stage-3" data-scene-index="${sceneIndex}" rows="3" placeholder="거의 소거된 상태...">${scene.text_stage_3 || ''}</textarea>
+                    </div>
+                </div>
+            </div>
             <div class="editor-input-group">
                 <label class="editor-label">잔향 단어</label>
                 <input type="text" class="editor-input scene-echo-words-input" data-scene-index="${sceneIndex}" placeholder="무서웠어, 미안해, 후회했어 (콤마로 구분)" value="${(scene.echoWords || []).join(', ')}">
@@ -276,6 +300,15 @@ function renderScenes() {
             </div>
             <div class="editor-section scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'}; margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
                 <h3 class="editor-section-title" style="margin-bottom: 1rem;">원본 감정/이유 (정렬도 비교용)</h3>
+                <div class="editor-input-group" style="margin-bottom: 1.5rem;">
+                    <label class="editor-label">감정 앵커 (쉼표로 구분, 자유 입력 가능)</label>
+                    <input type="text" class="editor-input anchor-emotions-input" data-scene-index="${sceneIndex}" 
+                           value="${(scene.anchor_emotions && Array.isArray(scene.anchor_emotions)) ? scene.anchor_emotions.join(', ') : (scene.anchor_emotions || '')}" 
+                           placeholder="공포, 죄책감, 희망, 안도">
+                    <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+                        이 장면에서 측정할 감정들. 한글/영문 모두 가능. 비워두면 기본 앵커 사용.
+                    </small>
+                </div>
                 <div class="editor-input-group" style="margin-bottom: 1.5rem;">
                     <label class="editor-label">원본 감정</label>
                     <div class="original-emotion-list" data-scene-index="${sceneIndex}">
@@ -524,6 +557,20 @@ function attachSceneListeners() {
             if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
                 renderWavePreview();
             }
+        });
+    });
+
+    // anchor_emotions 입력 이벤트
+    document.querySelectorAll('.anchor-emotions-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            const value = this.value.trim();
+            // 콤마로 구분된 문자열을 배열로 변환
+            currentScenes[sceneIndex].anchor_emotions = value
+                ? value.split(',').map(s => s.trim()).filter(s => s)
+                : null;
+            console.log('=== Admin 에디터 개선 ===');
+            console.log('anchor_emotions 업데이트:', currentScenes[sceneIndex].anchor_emotions);
         });
     });
 
@@ -799,6 +846,31 @@ function attachSceneListeners() {
             if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
             if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
             currentScenes[sceneIndex].choices[choiceIndex].nextScene = this.value;
+        });
+    });
+
+    // text_stage_1 이벤트
+    document.querySelectorAll('.scene-text-stage-1').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            currentScenes[sceneIndex].text_stage_1 = this.value.trim() || null;
+            console.log('text_stage_1/2/3 저장됨');
+        });
+    });
+
+    // text_stage_2 이벤트
+    document.querySelectorAll('.scene-text-stage-2').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            currentScenes[sceneIndex].text_stage_2 = this.value.trim() || null;
+        });
+    });
+
+    // text_stage_3 이벤트
+    document.querySelectorAll('.scene-text-stage-3').forEach(textarea => {
+        textarea.addEventListener('input', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            currentScenes[sceneIndex].text_stage_3 = this.value.trim() || null;
         });
     });
 }
@@ -1339,6 +1411,7 @@ async function saveMemory() {
     const title = document.getElementById('memoryTitle').value.trim();
     const code = document.getElementById('memoryCode').value.trim();
     const description = document.getElementById('memoryDescription').value.trim();
+    const authorNote = document.getElementById('authorNote').value.trim();
 
     if (!title || !code) {
         alert('제목과 코드를 입력해주세요');
@@ -1431,13 +1504,25 @@ async function saveMemory() {
             scenesCount: scenesWithWaveData.length 
         });
         
+        const status = document.getElementById('memoryStatus').value;
+        
+        console.log('=== Memory 저장 ===');
+        console.log('status:', status);
+        console.log('description:', description);
+        
         const finalMemoryId = await saveMemoryGraph(supabaseClient, {
             memoryId: currentMemoryId,
             code: code,
             title: title,
+            description: description || null,
+            author_note: authorNote || null,
+            status: status,
             scenes: scenesWithWaveData,
             memoryWaveData: memoryWaveData
         });
+        
+        console.log('=== Admin 에디터 개선 ===');
+        console.log('author_note:', authorNote);
         
         console.log('[saveMemory] saveMemoryGraph 완료', { finalMemoryId });
         memoryId = finalMemoryId;
@@ -2296,4 +2381,19 @@ window.loadArchiveLayers = loadArchiveLayers;
 window.updateSelectedCount = updateSelectedCount;
 window.addOriginalEmotion = addOriginalEmotion;
 window.removeOriginalEmotion = removeOriginalEmotion;
+
+// 오염 버전 토글 함수
+function toggleContamination(sceneIndex) {
+    const fields = document.getElementById(`contamination-${sceneIndex}`);
+    const btn = fields.previousElementSibling;
+    if (fields.style.display === 'none') {
+        fields.style.display = 'block';
+        btn.textContent = '▼ 오염 버전 접기';
+    } else {
+        fields.style.display = 'none';
+        btn.textContent = '▶ 오염 버전 편집';
+    }
+}
+
+window.toggleContamination = toggleContamination;
 

@@ -74,6 +74,19 @@
                         <label class="editor-label">설명</label>
                         <textarea class="editor-textarea" id="memoryDescription" placeholder="기억에 대한 설명을 입력하세요"></textarea>
                     </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">기록자 쪽지 (트루엔딩 보상)</label>
+                        <textarea class="editor-textarea" id="authorNote" placeholder="트루엔딩 달성 시 체험자에게 보여줄 메시지..." rows="3"></textarea>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">100자 이내 권장</small>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">상태</label>
+                        <select id="memoryStatus" class="editor-input">
+                            <option value="nascent">nascent (미출산)</option>
+                            <option value="alive">alive (살아있음)</option>
+                        </select>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">nascent: 아직 아무도 체험 안 함 / alive: 체험 중</small>
+                    </div>
                 </div>
 
                 <div class="editor-section">

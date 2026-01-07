@@ -31,17 +31,29 @@ serve(async (req) => {
     if (body.type === 'emotion_analysis') {
       const emotionText = body.emotion || '';
       const reasonText = body.reason || '';
+      const anchorEmotions = body.anchorEmotions || [];
       
-      console.log('감정 및 이유 분석 요청:', { emotionText, reasonText });
+      console.log('감정 및 이유 분석 요청:', { emotionText, reasonText, anchorEmotions });
 
-      // 프롬프트 수정: 이유 분석 규칙 추가
+      // 감정 앵커 목록 동적 생성
+      const defaultAnchors = 'fear, sadness, anger, joy, hope, relief, longing, guilt, isolation, numbness, shame, peace, love, gratitude';
+      const emotionList = anchorEmotions && anchorEmotions.length > 0
+        ? anchorEmotions.join(', ')
+        : defaultAnchors;
+
+      // 프롬프트 수정: 이유 분석 규칙 추가 + 동적 앵커
       const prompt = `다음 감정 표현과 그 이유를 분석해줘.
 
 입력된 감정: "${emotionText}"
 입력된 이유: "${reasonText}"
 
-**분석 목표 1: 감정 분석 (기존 규칙 유지)**
-- fear, sadness, anger, joy, longing, guilt 중 해당되는 감정 수치화 (0.0 ~ 1.0)
+**분석 목표 1: 감정 분석 (동적 앵커 기반)**
+다음 감정 앵커들에 대한 근접도를 0.0~1.0으로 측정하세요: ${emotionList}
+
+- 입력된 텍스트에서 해당 감정이 느껴지면 0.5 이상
+- 강하게 느껴지면 0.7 이상
+- 매핑에 없는 자유 앵커도 맥락상 판단하여 수치화
+- 명시적 감정 단어가 있으면 해당 감정은 절대 0이 아님!
 - "무서웠어", "두려웠어", "공포", "무섭다" → fear를 0.7 이상으로
 - "슬펐어", "울었어", "슬프다" → sadness를 0.7 이상으로
 - "그리웠어", "보고싶었어" → longing을 0.7 이상으로
@@ -73,7 +85,7 @@ serve(async (req) => {
 {
   "generatedEmotion": "변환된 감정 표현 (2-3문장)",
   "analysis": {
-    "base": { "fear": 0.0, "sadness": 0.0, "anger": 0.0, "joy": 0.0, "longing": 0.0, "guilt": 0.0 },
+    "base": { 각 앵커에 대한 수치 (0.0~1.0) - 요청된 앵커 목록의 모든 감정 포함 },
     "detailed": [],
     "intensity": 0.5,
     "confidence": 0.8
@@ -83,7 +95,9 @@ serve(async (req) => {
     "core_fear": "abandonment",
     "is_void": false
   }
-}`;
+}
+
+**중요**: base 객체에는 요청된 앵커 목록(${emotionList})의 모든 감정에 대해 수치를 포함해야 합니다.`;
 
       const systemPrompt = `너는 심리 분석 AI야. 텍스트에서 감정의 종류뿐만 아니라, 그 감정의 '원인'이 어디로 향하는지(귀인), 그리고 기저에 깔린 근원적 공포(Core Fear)가 무엇인지 정확하게 분류해야 해. JSON 형식을 엄격히 지켜줘.`;
 
@@ -105,10 +119,24 @@ serve(async (req) => {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Claude API 에러 (emotion):', errorData);
+        // 기본 감정 벡터 생성 (앵커 기반)
+        const defaultBase = {};
+        if (anchorEmotions && anchorEmotions.length > 0) {
+          anchorEmotions.forEach(anchor => {
+            defaultBase[anchor.toLowerCase()] = 0;
+          });
+        } else {
+          defaultBase.fear = 0;
+          defaultBase.sadness = 0.3;
+          defaultBase.anger = 0;
+          defaultBase.joy = 0;
+          defaultBase.longing = 0.2;
+          defaultBase.guilt = 0;
+        }
         return new Response(JSON.stringify({
           generatedEmotion: `그 순간, ${emotionText || '알 수 없는'} 감정이 밀려왔다.`,
           analysis: {
-            base: { fear: 0, sadness: 0.3, anger: 0, joy: 0, longing: 0.2, guilt: 0 },
+            base: defaultBase,
             detailed: [],
             intensity: 0.5,
             confidence: 0.3
@@ -148,11 +176,24 @@ serve(async (req) => {
       } catch (e) {
         console.error('JSON parse error:', e, 'text:', text);
         
-        // 파싱 실패 시 기본값
+        // 파싱 실패 시 기본값 (앵커 기반)
+        const defaultBase = {};
+        if (anchorEmotions && anchorEmotions.length > 0) {
+          anchorEmotions.forEach(anchor => {
+            defaultBase[anchor.toLowerCase()] = 0;
+          });
+        } else {
+          defaultBase.fear = 0;
+          defaultBase.sadness = 0.3;
+          defaultBase.anger = 0;
+          defaultBase.joy = 0;
+          defaultBase.longing = 0.2;
+          defaultBase.guilt = 0;
+        }
         return new Response(JSON.stringify({
           generatedEmotion: `그 순간, ${emotionText || '알 수 없는'} 감정이 밀려왔다.`,
           analysis: {
-            base: { fear: 0, sadness: 0.3, anger: 0, joy: 0, longing: 0.2, guilt: 0 },
+            base: defaultBase,
             detailed: [],
             intensity: 0.5,
             confidence: 0.3

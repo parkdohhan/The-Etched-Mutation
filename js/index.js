@@ -1,5 +1,74 @@
 import { getSupabaseClient } from './lib/supabaseClient.js';
-import { SUPABASE_ANON_KEY } from './lib/config.js';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from './lib/config.js';
+import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from './safety.js';
+
+// 감정 앵커 시스템
+// 기본 감정 앵커 (anchor_emotions 없을 때 폴백)
+const DEFAULT_EMOTION_ANCHORS = [
+  // 부정/고통
+  'fear', 'sadness', 'anger', 'guilt', 'shame',
+  'isolation', 'numbness', 'moral_pain', 'helplessness', 'despair',
+  // 긍정/회복
+  'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort',
+  // 복합/중립
+  'longing', 'nostalgia', 'acceptance', 'confusion'
+];
+
+// 한글-영문 매핑 (확장)
+const EMOTION_ANCHOR_MAP = {
+  // 부정/고통
+  '공포': 'fear',
+  '두려움': 'fear',
+  '무서움': 'fear',
+  '슬픔': 'sadness',
+  '우울': 'sadness',
+  '비애': 'sadness',
+  '분노': 'anger',
+  '화': 'anger',
+  '짜증': 'anger',
+  '죄책감': 'guilt',
+  '수치심': 'shame',
+  '창피함': 'shame',
+  '고립': 'isolation',
+  '외로움': 'isolation',
+  '무감각': 'numbness',
+  '공허': 'numbness',
+  '도덕적 고통': 'moral_pain',
+  '무력감': 'helplessness',
+  '절망': 'despair',
+  
+  // 긍정/회복
+  '기쁨': 'joy',
+  '행복': 'joy',
+  '희망': 'hope',
+  '기대': 'hope',
+  '안도': 'relief',
+  '감사': 'gratitude',
+  '고마움': 'gratitude',
+  '사랑': 'love',
+  '애정': 'love',
+  '평온': 'peace',
+  '고요': 'peace',
+  '위안': 'comfort',
+  '따뜻함': 'comfort',
+  
+  // 복합/중립
+  '그리움': 'longing',
+  '향수': 'nostalgia',
+  '수용': 'acceptance',
+  '받아들임': 'acceptance',
+  '혼란': 'confusion',
+  '당혹': 'confusion'
+};
+
+// 기록자가 자유 입력한 앵커도 허용 (매핑에 없으면 그대로 사용)
+function normalizeAnchor(anchor) {
+  if (!anchor || typeof anchor !== 'string') {
+    return String(anchor || '').toLowerCase();
+  }
+  const trimmed = anchor.trim();
+  return EMOTION_ANCHOR_MAP[trimmed] || trimmed.toLowerCase();
+}
 
 let supabaseClient;
 let storyData;
@@ -237,7 +306,7 @@ function subscribeToLiveScenes(){
                     expSceneText.textContent=sceneText;
                     switchExpGeneratedTab('scene');
                     expCurrentPhase='interpret';
-                    const emotionCueMsg=window.lastSceneData?.emotionCue||'이 장면에서 어떤 감정이 느껴져?';
+                    const emotionCueMsg=window.lastSceneData?.emotionCue||NPC_DIALOGUES.live.emotionCue;
                     addExpChatMessage('ai','화자의 기억이 도착했어. '+emotionCueMsg);
                     const expTextInput=document.getElementById('expTextInput');
                     if(expTextInput){
@@ -258,9 +327,9 @@ function displayExperiencerEmotionForNarrator(interpretation){console.log('displ
 function subscribeToExperiencerChoices(){supabaseClient = getSupabaseClient(); if(!supabaseClient){console.error('subscribeToExperiencerChoices: supabaseClient 없음');return}if(!currentSessionId){console.error('subscribeToExperiencerChoices: currentSessionId 없음');return}console.log('체험자 감정 구독 시작, 세션:',currentSessionId);const channel=supabaseClient.channel('choices-'+currentSessionId).on('postgres_changes',{event:'INSERT',schema:'public',table:'choices',filter:`live_session_id=eq.${currentSessionId}`},(payload)=>{console.log('체험자 감정 수신 (choices 테이블):',payload);console.log('payload.new:',payload.new);if(payload.new&&payload.new.emotion_vector){onExperiencerChoiceReceived(payload.new)}else{console.error('payload.new 또는 emotion_vector가 없습니다')}}).subscribe((status)=>{if(status==='SUBSCRIBED'){console.log('choices 테이블 구독 성공!')}else if(status==='CHANNEL_ERROR'){console.log('choices 테이블 구독 실패 (무시됨)')}});window.experiencerChoicesChannel=channel;console.log('choices 채널 생성 완료:',channel)}
 function onExperiencerChoiceReceived(choice){console.log('체험자 감정 도착 (choices 테이블):',choice);console.log('emotion_vector:',choice.emotion_vector);if(!choice||!choice.emotion_vector){console.error('choice 또는 emotion_vector가 없습니다');return}const emotionVector=choice.emotion_vector;console.log('화자 화면에 체험자 감정 반영 시작:',emotionVector);window.experiencerEmotionVector=emotionVector;const experiencerWave=computeWaveFromEmotion({base:emotionVector});window.currentExperiencerWave=experiencerWave;updateAlignmentWave();if(window.narratorEmotionVector){const similarity=cosineSimilarity(window.narratorEmotionVector,emotionVector);const alignment=Math.max(0,Math.min(1,similarity));currentAlignment=alignment;updateLiveAlignment(0);console.log('정렬도 계산 완료 (choices):',alignment)}showNotification('체험자가 감정을 입력했습니다 (choices)');console.log('체험자 감정 파동 업데이트 완료 (choices)')}
 function subscribeToScenes(){supabaseClient = getSupabaseClient(); if(!supabaseClient){console.error('subscribeToScenes: supabaseClient 없음');return}if(!currentSessionId){console.error('subscribeToScenes: currentSessionId 없음');return}console.log('장면 구독 시작, 세션 ID:',currentSessionId);const channel=supabaseClient.channel('scenes-'+currentSessionId).on('postgres_changes',{event:'INSERT',schema:'public',table:'scenes',filter:`live_session_id=eq.${currentSessionId}`},(payload)=>{console.log('새 장면 수신 (scenes 테이블):',payload);console.log('payload.new:',payload.new);if(payload.new){displaySceneForExperiencer(payload.new)}else{console.error('payload.new가 없습니다')}}).subscribe((status)=>{if(status==='SUBSCRIBED'){console.log('scenes 테이블 구독 성공!')}else if(status==='CHANNEL_ERROR'){console.log('scenes 테이블 구독 실패 (무시됨)')}});window.scenesChannel=channel;console.log('scenes 채널 생성 완료:',channel)}
-function displaySceneForExperiencer(scene){console.log('displaySceneForExperiencer 호출:',scene);if(!scene){console.error('장면 객체가 없습니다');return}if(!scene.text){console.error('장면 텍스트가 없습니다. scene:',JSON.stringify(scene));return}console.log('체험자 화면에 장면 표시 시작:',scene.text);const expSceneText=document.getElementById('expSceneText');if(expSceneText){expSceneText.textContent=scene.text;console.log('장면 텍스트 업데이트 완료');switchExpGeneratedTab('scene');expCurrentPhase='interpret';window.currentSceneId=scene.id||null;const expChatMessages=document.getElementById('expChatMessages');if(expChatMessages){expChatMessages.style.display='block';expChatMessages.innerHTML=''}const emotionCueMsg=window.lastSceneData?.emotionCue||'이 장면에서 어떤 감정이 느껴져?';addExpChatMessage('ai','화자의 기억이 도착했어.');addExpChatMessage('ai',emotionCueMsg);const expTextInput=document.getElementById('expTextInput');if(expTextInput){expTextInput.value='';expTextInput.focus();expTextInput.placeholder='감정을 입력하세요...'}showNotification('새 장면이 도착했습니다')}else{console.error('expSceneText 요소를 찾을 수 없습니다')}}
-function cosineSimilarity(vec1,vec2){if(!vec1||!vec2)return 0;const keys=['fear','sadness','anger','joy','longing','guilt','isolation','numbness','shame','moral_pain'];let dotProduct=0;let mag1=0;let mag2=0;keys.forEach(key=>{const v1=vec1[key]||0;const v2=vec2[key]||0;dotProduct+=v1*v2;mag1+=v1*v1;mag2+=v2*v2});mag1=Math.sqrt(mag1);mag2=Math.sqrt(mag2);if(mag1===0||mag2===0)return 0;return dotProduct/(mag1*mag2)}function getMismatchType(userVector,originalVector){if(!userVector||!originalVector)return null;const emotionSimilarity=cosineSimilarity(userVector.base,originalVector.base||originalVector);const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 미스매치 판정 ===');console.log('감정 유사도:',emotionSimilarity);console.log('귀인 비교:',userReason.attribution,'vs',origReason.attribution);console.log('핵심 두려움 비교:',userReason.core_fear,'vs',origReason.core_fear);console.log('VOID 비교:',userReason.is_void,'vs',origReason.is_void);if(!!userReason.is_void!==!!origReason.is_void){console.log('미스매치 타입: void_mismatch');return'void_mismatch'}if(emotionSimilarity<0.5){console.log('미스매치 타입: emotion_mismatch');return'emotion_mismatch'}if(userReason.attribution&&origReason.attribution&&userReason.attribution!==origReason.attribution){console.log('미스매치 타입: attribution_mismatch');return'attribution_mismatch'}if(userReason.core_fear&&origReason.core_fear&&userReason.core_fear!==origReason.core_fear){console.log('미스매치 타입: target_displacement');return'target_displacement'}console.log('미스매치 타입: null (일치)');return null}
-function calculateComplexAlignment(userVector,originalVector){if(!userVector||!originalVector)return 0;const emotionScore=cosineSimilarity(userVector.base,originalVector.base||originalVector);let reasonScore=0;const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 정렬도 계산 디버깅 ===');console.log('origReason 값:',origReason);console.log('scene.original_reason_vector:',originalVector.reason_analysis);console.log('userReason:',userReason);const attributionMatch=userReason.attribution&&origReason.attribution&&userReason.attribution===origReason.attribution;const coreFearMatch=userReason.core_fear&&origReason.core_fear&&userReason.core_fear===origReason.core_fear;console.log(`attribution 비교: "${userReason.attribution}" === "${origReason.attribution}" → ${attributionMatch}`);console.log(`core_fear 비교: "${userReason.core_fear}" === "${origReason.core_fear}" → ${coreFearMatch}`);if(attributionMatch){reasonScore+=0.5}if(coreFearMatch){reasonScore+=0.5}console.log(`이유 점수: ${reasonScore} (attribution: ${attributionMatch?'0.5':'0'}, core_fear: ${coreFearMatch?'0.5':'0'})`);let voidScore=0;if(!!userReason.is_void===!!origReason.is_void){voidScore=1.0}const totalAlignment=(emotionScore*0.4)+(reasonScore*0.4)+(voidScore*0.2);console.log('=== 정렬도 계산 상세 ===');console.log(`감정: ${(emotionScore*0.4).toFixed(2)}, 이유: ${(reasonScore*0.4).toFixed(2)}, VOID: ${(voidScore*0.2).toFixed(2)}`);console.log(`최종: ${totalAlignment.toFixed(2)}`);return totalAlignment}
+function displaySceneForExperiencer(scene){console.log('displaySceneForExperiencer 호출:',scene);if(!scene){console.error('장면 객체가 없습니다');return}if(!scene.text){console.error('장면 텍스트가 없습니다. scene:',JSON.stringify(scene));return}console.log('체험자 화면에 장면 표시 시작:',scene.text);const expSceneText=document.getElementById('expSceneText');if(expSceneText){expSceneText.textContent=scene.text;console.log('장면 텍스트 업데이트 완료');switchExpGeneratedTab('scene');expCurrentPhase='interpret';window.currentSceneId=scene.id||null;const expChatMessages=document.getElementById('expChatMessages');if(expChatMessages){expChatMessages.style.display='block';expChatMessages.innerHTML=''}const emotionCueMsg=window.lastSceneData?.emotionCue||NPC_DIALOGUES.live.emotionCue;addExpChatMessage('ai',NPC_DIALOGUES.live.sceneArrived);addExpChatMessage('ai',emotionCueMsg);const expTextInput=document.getElementById('expTextInput');if(expTextInput){expTextInput.value='';expTextInput.focus();expTextInput.placeholder='감정을 입력하세요...'}showNotification('새 장면이 도착했습니다')}else{console.error('expSceneText 요소를 찾을 수 없습니다')}}
+function cosineSimilarity(vec1,vec2,anchorEmotions=null){if(!vec1||!vec2)return 0;let keys;if(anchorEmotions&&Array.isArray(anchorEmotions)&&anchorEmotions.length>0){keys=anchorEmotions.map(anchor=>normalizeAnchor(String(anchor)))}else{keys=DEFAULT_EMOTION_ANCHORS}let dotProduct=0;let mag1=0;let mag2=0;keys.forEach(key=>{const v1=vec1[key]||0;const v2=vec2[key]||0;dotProduct+=v1*v2;mag1+=v1*v1;mag2+=v2*v2});mag1=Math.sqrt(mag1);mag2=Math.sqrt(mag2);if(mag1===0||mag2===0)return 0;return dotProduct/(mag1*mag2)}function getMismatchType(userVector,originalVector){if(!userVector||!originalVector)return null;const emotionSimilarity=cosineSimilarity(userVector.base,originalVector.base||originalVector);const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 미스매치 판정 ===');console.log('감정 유사도:',emotionSimilarity);console.log('귀인 비교:',userReason.attribution,'vs',origReason.attribution);console.log('핵심 두려움 비교:',userReason.core_fear,'vs',origReason.core_fear);console.log('VOID 비교:',userReason.is_void,'vs',origReason.is_void);if(!!userReason.is_void!==!!origReason.is_void){console.log('미스매치 타입: void_mismatch');return'void_mismatch'}if(emotionSimilarity<0.5){console.log('미스매치 타입: emotion_mismatch');return'emotion_mismatch'}if(userReason.attribution&&origReason.attribution&&userReason.attribution!==origReason.attribution){console.log('미스매치 타입: attribution_mismatch');return'attribution_mismatch'}if(userReason.core_fear&&origReason.core_fear&&userReason.core_fear!==origReason.core_fear){console.log('미스매치 타입: target_displacement');return'target_displacement'}console.log('미스매치 타입: null (일치)');return null}
+function calculateComplexAlignment(userVector,originalVector,anchorEmotions=null){if(!userVector||!originalVector)return 0;const emotionScore=cosineSimilarity(userVector.base||userVector,originalVector.base||originalVector,anchorEmotions);let reasonScore=0;const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 정렬도 계산 디버깅 ===');console.log('origReason 값:',origReason);console.log('scene.original_reason_vector:',originalVector.reason_analysis);console.log('userReason:',userReason);if(anchorEmotions&&anchorEmotions.length>0){console.log('=== 감정 앵커 시스템 ===');console.log('장면 앵커:',anchorEmotions)}const attributionMatch=userReason.attribution&&origReason.attribution&&userReason.attribution===origReason.attribution;const coreFearMatch=userReason.core_fear&&origReason.core_fear&&userReason.core_fear===origReason.core_fear;console.log(`attribution 비교: "${userReason.attribution}" === "${origReason.attribution}" → ${attributionMatch}`);console.log(`core_fear 비교: "${userReason.core_fear}" === "${origReason.core_fear}" → ${coreFearMatch}`);if(attributionMatch){reasonScore+=0.5}if(coreFearMatch){reasonScore+=0.5}console.log(`이유 점수: ${reasonScore} (attribution: ${attributionMatch?'0.5':'0'}, core_fear: ${coreFearMatch?'0.5':'0'})`);let voidScore=0;if(!!userReason.is_void===!!origReason.is_void){voidScore=1.0}const totalAlignment=(emotionScore*0.4)+(reasonScore*0.4)+(voidScore*0.2);console.log('=== 정렬도 계산 상세 ===');console.log(`감정: ${(emotionScore*0.4).toFixed(2)}, 이유: ${(reasonScore*0.4).toFixed(2)}, VOID: ${(voidScore*0.2).toFixed(2)}`);console.log(`최종: ${totalAlignment.toFixed(2)}`);return totalAlignment}
 function updateAlignmentDisplay(){const alignmentValueEl=document.getElementById('alignmentValue');const alignmentFillEl=document.getElementById('alignmentFill');if(alignmentValueEl){alignmentValueEl.textContent=currentAlignment.toFixed(2)}if(alignmentFillEl){alignmentFillEl.style.width=(currentAlignment*100)+'%'}}
 function renderArchiveEmotionWave(emotionVector){if(!emotionVector)return;const canvas=document.getElementById('waveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');const width=canvas.width/2;const height=canvas.height/2;const centerY=height/2;ctx.fillStyle='rgba(18,18,26,0.1)';ctx.fillRect(0,0,width,height);const waveData=computeWaveFromEmotion({base:emotionVector,intensity:0.5,confidence:0.8});ctx.beginPath();ctx.strokeStyle=waveData.color||'rgba(196,168,130,0.6)';ctx.lineWidth=1.5;let time=Date.now()*0.001;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*waveData.frequency+time)*waveData.amplitude*20;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();console.log('Archive emotion wave rendered:',waveData)}
 async function saveArchiveEmotionToPlays(userEmotionVector,userReason,scene,currentData,sceneAlignment,reasonVector=null,mismatchType=null){try{supabaseClient = getSupabaseClient(); if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 plays 테이블에 저장하지 않습니다');return}const memoryId=currentData.id||(allMemoriesData[currentMemory]&&allMemoriesData[currentMemory].id);if(!memoryId){console.warn('memory_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');return}const sceneId=scene.id;if(!sceneId){console.warn('scene_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');return}const sceneText=scene.text||'';const voidLevel=scene.voidInfo?.voidLevel||'low';const waveData=computeArchiveWaveData(userEmotionVector,sceneText.length,voidLevel);const insertData={memory_id:memoryId,scene_id:sceneId,user_emotion:userEmotionVector,user_reason:userReason,wave_data:waveData,layer_id:0,alignment:sceneAlignment!==undefined?sceneAlignment:null,reason_vector:reasonVector,mismatch_type:mismatchType};console.log('Archive plays 저장 시도:',insertData);const{data,error}=await supabaseClient.from('plays').insert(insertData).select().single();if(error){console.error('Archive plays 저장 실패:',error);return}console.log('Archive plays 저장 성공:',data)}catch(e){console.error('saveArchiveEmotionToPlays error:',e)}}
@@ -442,7 +511,7 @@ async function handleUnifiedSubmit(providedText){console.log('handleUnifiedSubmi
 let recognition=null;let audioContext=null;let analyser=null;let microphone=null;let voiceAnimationId=null;let recognizedText='';
 const SUPABASE_FUNCTION_URL='https://bxmppaxpzbkwebfbgpsm.supabase.co/functions/v1/claude-scene';
 async function generateSceneAI(inputText){try{const response=await fetch(SUPABASE_FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`},body:JSON.stringify({text:inputText})});if(!response.ok){const error=await response.json();throw new Error(error.error||error.details||'API 호출 실패')}const data=await response.json();console.log('generateSceneAI response:',data);if(data.scene){window.lastSceneData={scene:data.scene,voidHint:data.voidHint||'',emotionCue:data.emotionCue||''};return data.scene}else{throw new Error(data.error||'장면 변환 실패')}}catch(error){console.error('generateSceneAI error:',error);throw error}}
-async function analyzeEmotionWithVector(emotionText,reasonText){console.log('analyzeEmotionWithVector 호출:',{emotionText,reasonText});try{const requestBody={type:'emotion_analysis',emotion:emotionText||'',reason:reasonText||''};console.log('API 요청 body:',JSON.stringify(requestBody));const response=await fetch(SUPABASE_FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`},body:JSON.stringify(requestBody)});console.log('API 응답 status:',response.status);if(!response.ok){const errorText=await response.text();console.error('API 오류 응답:',errorText);throw new Error('API 호출 실패: '+response.status)}const data=await response.json();console.log('API 응답 data:',JSON.stringify(data));if(!data.generatedEmotion){console.warn('generatedEmotion이 응답에 없음')}return data}catch(error){console.error('analyzeEmotionWithVector error:',error);return{generatedEmotion:null,analysis:{base:{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},detailed:[],intensity:0.5,confidence:0.3}}}}
+async function analyzeEmotionWithVector(emotionText,reasonText,anchorEmotions=null){console.log('analyzeEmotionWithVector 호출:',{emotionText,reasonText,anchorEmotions});try{const requestBody={type:'emotion_analysis',emotion:emotionText||'',reason:reasonText||'',anchorEmotions:anchorEmotions||[]};console.log('API 요청 body:',JSON.stringify(requestBody));const response=await fetch(`${SUPABASE_URL}/functions/v1/claude-scene`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify(requestBody)});console.log('API 응답 status:',response.status);if(!response.ok){const errorText=await response.text();console.error('API 오류 응답:',errorText);throw new Error('API 호출 실패: '+response.status)}const data=await response.json();console.log('API 응답 data:',JSON.stringify(data));if(!data.generatedEmotion){console.warn('generatedEmotion이 응답에 없음')}return data}catch(error){console.error('analyzeEmotionWithVector error:',error);return{generatedEmotion:null,analysis:{base:{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},detailed:[],intensity:0.5,confidence:0.3}}}}
 function startVoiceMode(){document.getElementById('voiceStartPrompt').style.display='none';document.getElementById('textInputContainer').style.display='none';document.getElementById('voiceWaveContainer').style.display='flex';isVoiceMode=true;startSpeechRecognition();startVoiceVisualization()}
 function switchToTextMode(){if(recognition){recognition.stop()}stopVoiceVisualization();document.getElementById('voiceStartPrompt').style.display='none';document.getElementById('voiceWaveContainer').style.display='none';document.getElementById('textInputContainer').style.display='block';isVoiceMode=false;if(recognizedText){document.getElementById('sceneTextInput').value=recognizedText}}
 function startSpeechRecognition(){if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){showNotification('이 브라우저는 음성 인식을 지원하지 않습니다');switchToTextMode();return}const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;recognition=new SpeechRecognition();recognition.lang='ko-KR';recognition.continuous=true;recognition.interimResults=true;recognition.onresult=function(event){let interim='';let final='';for(let i=event.resultIndex;i<event.results.length;i++){if(event.results[i].isFinal){final+=event.results[i][0].transcript}else{interim+=event.results[i][0].transcript}}if(final){recognizedText+=final+' '}};recognition.onerror=function(event){console.error('Speech recognition error:',event.error);if(event.error==='not-allowed'){showNotification('마이크 권한이 필요합니다')}};recognition.onend=function(){if(isVoiceMode){recognition.start()}};recognition.start();showNotification('음성 인식이 시작되었습니다')}
@@ -486,7 +555,7 @@ function simulateNarratorInput(sceneText){
         }
         switchExpGeneratedTab('scene');
         expCurrentPhase='interpret';
-        const emotionCueMsg=window.lastSceneData?.emotionCue||'이 장면에서 어떤 감정이 느껴져?';
+        const emotionCueMsg=window.lastSceneData?.emotionCue||NPC_DIALOGUES.live.emotionCue;
         addExpChatMessage('ai','화자의 기억이 도착했어. '+emotionCueMsg);
         const expTextInput=document.getElementById('expTextInput');
         if(expTextInput){
@@ -886,7 +955,7 @@ function renderChoices(choices){const container=document.getElementById('choices
 function makeChoice(choiceIndex){try{userChoices.push(choiceIndex);const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}const scene=currentData.scenes[currentScene];const sceneType=scene.sceneType||'normal';if(sceneType==='branch'||sceneType==='ending'){const questionEl=document.getElementById('emotionQuestion');if(questionEl)questionEl.textContent=currentScene===0?"왜 그렇게 했어?":"왜 그런 선택을 했어?";const modalEl=document.getElementById('emotionModal');if(modalEl)modalEl.classList.add('active');const inputEl=document.getElementById('emotionInputField');if(inputEl)inputEl.focus()}else{proceedToNextScene()}}catch(e){console.error('makeChoice error:',e);showNotification('오류가 발생했습니다')}}
 function proceedToNextScene(){try{const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}if(currentScene<currentData.scenes.length-1){currentScene++;renderScene()}else{showEndScreen()}}catch(e){console.error('proceedToNextScene error:',e);showNotification('오류가 발생했습니다')}}
 function proceedToNextSceneLive(){try{const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}if(currentScene<currentData.scenes.length-1){currentScene++;simulateNarratorInput()}else{showEndScreen()}}catch(e){console.error('proceedToNextSceneLive error:',e);showNotification('오류가 발생했습니다')}}
-async function submitEmotion(){try{const reason=document.getElementById('emotionInputField').value||"말하고 싶지 않아";userReasons.push(reason);updateUserStats('interpretation',1);const modalEl=document.getElementById('emotionModal');if(modalEl)modalEl.classList.remove('active');const inputEl=document.getElementById('emotionInputField');if(inputEl)inputEl.value='';const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}const scene=currentData.scenes[currentScene];let userEmotionVector=null;let sceneAlignment=null;if(currentMode==='archive'&&(scene.sceneType==='branch'||scene.sceneType==='ending')){showNotification('감정을 분석하고 있습니다...');try{const emotionResult=await analyzeEmotionWithVector('',reason);console.log('Archive emotion analysis result:',emotionResult);if(emotionResult&&emotionResult.analysis&&emotionResult.analysis.base){userEmotionVector=emotionResult.analysis.base;const reasonVector=emotionResult.reason_analysis||null;if(!window.archiveUserEmotions){window.archiveUserEmotions=[]}window.archiveUserEmotions[currentScene]={emotion:userEmotionVector,reason:reason,sceneId:scene.id||currentScene};if(scene.originalEmotion&&typeof scene.originalEmotion==='object'){console.log('[submitEmotion] scene.originalReasonVector:',scene.originalReasonVector);console.log('[submitEmotion] scene 객체:',scene);let originalVectorCombined={base:scene.originalEmotion,reason_analysis:scene.originalReasonVector||{attribution:'unknown',core_fear:'unknown',is_void:false}};console.log('[submitEmotion] originalVectorCombined:',originalVectorCombined);let userVectorCombined={base:userEmotionVector,reason_analysis:reasonVector};sceneAlignment=calculateComplexAlignment(userVectorCombined,originalVectorCombined);console.log('Archive scene alignment:',sceneAlignment);const mismatchType=getMismatchType(userVectorCombined,originalVectorCombined);if(!window.archiveSceneAlignments){window.archiveSceneAlignments=[]}window.archiveSceneAlignments[currentScene]=sceneAlignment;currentAlignment=sceneAlignment;updateAlignmentDisplay();renderArchiveEmotionWave(userEmotionVector);showNotification(`장면 정렬도: ${(sceneAlignment*100).toFixed(0)}%`);const dominantEmotion=getDominantEmotion(userEmotionVector);emotionHistory.push(dominantEmotion);if(emotionHistory.length>10)emotionHistory.shift();const newBucket=getBucket(sceneAlignment,currentBucket,emotionHistory);console.log('=== 버킷 판정 ===');console.log('정렬도:',sceneAlignment);console.log('이전 버킷:',currentBucket);console.log('감정 히스토리:',emotionHistory);console.log('새 버킷:',newBucket);if(newBucket!==currentBucket){currentBucket=newBucket;showBucketFeedback(newBucket,sceneAlignment)}else{currentBucket=newBucket}}else{console.warn('원본 감정이 없어 정렬도를 계산할 수 없습니다');sceneAlignment=null}await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,sceneAlignment,reasonVector,mismatchType)}else{console.warn('감정 분석 결과가 올바르지 않습니다');if(userEmotionVector){await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,null,null,null)}}}catch(e){console.error('Archive emotion analysis error:',e);showNotification('감정 분석 중 오류가 발생했습니다');if(userEmotionVector){await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,null,null,null)}}}if(userChoices[currentScene]===scene.originalChoice)showNpcDialogue("같은 선택... 하지만 이유도 같을까?",3000);else showNpcDialogue("다른 길을 걸었네. 그것도 하나의 해석이야.",3000);setTimeout(async()=>{if(currentScene<currentData.scenes.length-1){currentScene++;if(currentMode==='archive')renderScene();else simulateNarratorInput()}else{if(currentMode==='archive'){const alignmentResult=await calculateAverageAlignment();showEndScreen(alignmentResult)}else{showEndScreen()}}},1500)}catch(e){console.error('submitEmotion error:',e);showNotification('감정을 제출하는 중 오류가 발생했습니다')}}
+async function submitEmotion(){try{const reason=document.getElementById('emotionInputField').value||"말하고 싶지 않아";userReasons.push(reason);updateUserStats('interpretation',1);const modalEl=document.getElementById('emotionModal');if(modalEl)modalEl.classList.remove('active');const inputEl=document.getElementById('emotionInputField');if(inputEl)inputEl.value='';const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}const scene=currentData.scenes[currentScene];let anchorEmotions=scene.anchor_emotions||null;if(anchorEmotions&&typeof anchorEmotions==='string'){try{anchorEmotions=JSON.parse(anchorEmotions)}catch(e){console.warn('anchor_emotions 파싱 실패:',e);anchorEmotions=null}}if(anchorEmotions&&!Array.isArray(anchorEmotions)){anchorEmotions=null}let userEmotionVector=null;let sceneAlignment=null;let mismatchType=null;if(currentMode==='archive'&&(scene.sceneType==='branch'||scene.sceneType==='ending')){showNotification('감정을 분석하고 있습니다...');try{const emotionResult=await analyzeEmotionWithVector('',reason,anchorEmotions);console.log('Archive emotion analysis result:',emotionResult);if(emotionResult&&emotionResult.analysis&&emotionResult.analysis.base){userEmotionVector=emotionResult.analysis.base;const reasonVector=emotionResult.reason_analysis||null;if(!window.archiveUserEmotions){window.archiveUserEmotions=[]}window.archiveUserEmotions[currentScene]={emotion:userEmotionVector,reason:reason,sceneId:scene.id||currentScene};if(scene.originalEmotion&&typeof scene.originalEmotion==='object'){console.log('[submitEmotion] scene.originalReasonVector:',scene.originalReasonVector);console.log('[submitEmotion] scene 객체:',scene);let originalVectorCombined={base:scene.originalEmotion,reason_analysis:scene.originalReasonVector||{attribution:'unknown',core_fear:'unknown',is_void:false}};console.log('[submitEmotion] originalVectorCombined:',originalVectorCombined);let userVectorCombined={base:userEmotionVector,reason_analysis:reasonVector};sceneAlignment=calculateComplexAlignment(userVectorCombined,originalVectorCombined,anchorEmotions);console.log('Archive scene alignment:',sceneAlignment);mismatchType=getMismatchType(userVectorCombined,originalVectorCombined);if(!window.archiveSceneAlignments){window.archiveSceneAlignments=[]}window.archiveSceneAlignments[currentScene]=sceneAlignment;currentAlignment=sceneAlignment;updateAlignmentDisplay();renderArchiveEmotionWave(userEmotionVector);showNotification(`장면 정렬도: ${(sceneAlignment*100).toFixed(0)}%`);const dominantEmotion=getDominantEmotion(userEmotionVector);emotionHistory.push(dominantEmotion);if(emotionHistory.length>10)emotionHistory.shift();const newBucket=getBucket(sceneAlignment,currentBucket,emotionHistory);console.log('=== 버킷 판정 ===');console.log('정렬도:',sceneAlignment);console.log('이전 버킷:',currentBucket);console.log('감정 히스토리:',emotionHistory);console.log('새 버킷:',newBucket);if(newBucket!==currentBucket){currentBucket=newBucket;showBucketFeedback(newBucket,sceneAlignment)}else{currentBucket=newBucket}}else{console.warn('원본 감정이 없어 정렬도를 계산할 수 없습니다');sceneAlignment=null}await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,sceneAlignment,reasonVector,mismatchType)}else{console.warn('감정 분석 결과가 올바르지 않습니다');if(userEmotionVector){await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,null,null,null)}}}catch(e){console.error('Archive emotion analysis error:',e);showNotification('감정 분석 중 오류가 발생했습니다');if(userEmotionVector){await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,null,null,null)}}}if(userChoices[currentScene]===scene.originalChoice)showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade),3000);else showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade),3000);setTimeout(async()=>{if(currentScene<currentData.scenes.length-1){currentScene++;if(currentMode==='archive')renderScene();else simulateNarratorInput()}else{if(currentMode==='archive'){const alignmentResult=await calculateAverageAlignment();showEndScreen(alignmentResult)}else{showEndScreen()}}},1500)}catch(e){console.error('submitEmotion error:',e);showNotification('감정을 제출하는 중 오류가 발생했습니다')}}
 function updateStrata(){const originalPercent=70-(currentScene*10),interpretPercent=30+(currentScene*10);document.getElementById('strataOriginal').style.height=originalPercent+'%';document.getElementById('strataInterpretation').style.height=interpretPercent+'%';document.getElementById('strataInterpretation').style.bottom=originalPercent+'%'}
 function updateEmotionDist(dist){document.getElementById('emotionFear').style.width=(dist.fear||0)+'%';document.getElementById('emotionFearVal').textContent=(dist.fear||0)+'%';document.getElementById('emotionSadness').style.width=(dist.sadness||0)+'%';document.getElementById('emotionSadnessVal').textContent=(dist.sadness||0)+'%';document.getElementById('emotionGuilt').style.width=(dist.guilt||0)+'%';document.getElementById('emotionGuiltVal').textContent=(dist.guilt||0)+'%';document.getElementById('emotionAnger').style.width=(dist.anger||0)+'%';document.getElementById('emotionAngerVal').textContent=(dist.anger||0)+'%';document.getElementById('emotionLonging').style.width=(dist.longing||0)+'%';document.getElementById('emotionLongingVal').textContent=(dist.longing||0)+'%';document.getElementById('emotionIsolation').style.width=(dist.isolation||0)+'%';document.getElementById('emotionIsolationVal').textContent=(dist.isolation||0)+'%';document.getElementById('emotionNumbness').style.width=(dist.numbness||0)+'%';document.getElementById('emotionNumbnessVal').textContent=(dist.numbness||0)+'%';document.getElementById('emotionMoralPain').style.width=(dist.moralPain||0)+'%';document.getElementById('emotionMoralPainVal').textContent=(dist.moralPain||0)+'%'}
 function getAlignmentLevel(alignment){if(alignment>=0.95)return'FIXATED';if(alignment>=0.8)return'HIGH';if(alignment>=0.5)return'MID';return'LOW'}function startWaveAnimation(){const canvas=document.getElementById('waveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth*2;canvas.height=canvas.offsetHeight*2;ctx.scale(2,2);let time=0;const alignmentLevel=getAlignmentLevel(currentAlignment);function animate(){const width=canvas.width/2,height=canvas.height/2,centerY=height/2;ctx.fillStyle='rgba(18,18,26,0.1)';ctx.fillRect(0,0,width,height);if(alignmentLevel==='HIGH'){ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.8)';ctx.lineWidth=2;const syncPhase=time*0.05;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.02+syncPhase)*15+Math.sin(x*0.01+syncPhase*0.6)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(122,154,122,0.7)';ctx.lineWidth=2;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.02+syncPhase+Math.PI*0.1)*15+Math.sin(x*0.01+syncPhase*0.6+Math.PI*0.1)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='MID'){ctx.save();ctx.filter='blur(1px)';const irregularity=Math.sin(time*0.1)*0.3+0.7;ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.6)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const noise=Math.random()*5-2.5;const y=centerY+Math.sin(x*0.02+time*0.05+noise*0.1)*15*irregularity+Math.sin(x*0.01+time*0.03+noise*0.05)*10*irregularity;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.restore();ctx.beginPath();ctx.strokeStyle='rgba(123,143,168,0.5)';ctx.lineWidth=1.5;const offset=(1-currentAlignment)*30;for(let x=0;x<width;x++){const noise=Math.random()*3-1.5;const y=centerY+Math.sin(x*0.02+time*0.05+offset+noise*0.1)*15+Math.sin(x*0.01+time*0.03+offset*0.5+noise*0.05)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='LOW'){const glitch=Math.random()>0.9;if(glitch){ctx.save();ctx.filter='invert(1)';ctx.fillStyle='rgba(217,74,74,0.3)';ctx.fillRect(0,0,width,height);ctx.restore()}const noiseAmplitude=10+Math.random()*10;ctx.beginPath();ctx.strokeStyle=glitch?'rgba(217,74,74,0.8)':'rgba(196,168,130,0.4)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const noise=Math.random()*noiseAmplitude-noiseAmplitude/2;const y=centerY+Math.sin(x*0.02+time*0.05+noise*0.2)*15+Math.sin(x*0.01+time*0.03+noise*0.1)*10+noise;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle=glitch?'rgba(217,74,74,0.6)':'rgba(123,143,168,0.3)';ctx.lineWidth=1.5;const offset=(1-currentAlignment)*30;for(let x=0;x<width;x++){const noise=Math.random()*noiseAmplitude-noiseAmplitude/2;const y=centerY+Math.sin(x*0.02+time*0.05+offset+noise*0.2)*15+Math.sin(x*0.01+time*0.03+offset*0.5+noise*0.1)*10+noise;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='FIXATED'){const slowTime=time*0.02;const vignetteGradient=ctx.createRadialGradient(width/2,height/2,0,width/2,height/2,Math.max(width,height));vignetteGradient.addColorStop(0,'rgba(0,0,0,0)');vignetteGradient.addColorStop(1,'rgba(0,0,0,0.4)');ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.9)';ctx.lineWidth=2.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.015+slowTime)*12+Math.sin(x*0.008+slowTime*0.5)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(122,154,122,0.8)';ctx.lineWidth=2.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.015+slowTime+Math.PI*0.05)*12+Math.sin(x*0.008+slowTime*0.5+Math.PI*0.05)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.fillStyle=vignetteGradient;ctx.fillRect(0,0,width,height)}time++;waveAnimationId=requestAnimationFrame(animate)}animate()}
@@ -894,7 +963,7 @@ function startLiveWaveAnimation(){const canvas=document.getElementById('liveWave
 function stopWaveAnimation(){if(waveAnimationId){cancelAnimationFrame(waveAnimationId);waveAnimationId=null}}
 function stopLiveWaveAnimation(){if(liveWaveAnimationId){cancelAnimationFrame(liveWaveAnimationId);liveWaveAnimationId=null}}
 function stopAllAnimations(){stopWaveAnimation();stopLiveWaveAnimation();stopAlignmentWaveAnimation();stopVoiceWaveLiveAnimation();stopLiveVoiceInput()}
-async function showEndScreen(alignmentResult,forceEndScreen=false){stopAllAnimations();const liveContainerEl=document.getElementById('liveContainer');if(liveContainerEl){liveContainerEl.classList.remove('active');liveContainerEl.style.display='none'}const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl){archiveContainerEl.classList.remove('active');archiveContainerEl.style.display='none'}const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}if(currentMode==='archive'&&!forceEndScreen){if(!alignmentResult){alignmentResult=await calculateAverageAlignment()}window.archiveAlignmentResult=alignmentResult;showComparisonView();return}let finalAlignment=currentAlignment;let isTrueEnding=false;if(alignmentResult){finalAlignment=alignmentResult.averageAlignment;isTrueEnding=alignmentResult.isTrueEnding}else if(currentMode==='archive'){const calculated=await calculateAverageAlignment();finalAlignment=calculated.averageAlignment;isTrueEnding=calculated.isTrueEnding}const endScreenEl=document.getElementById('endScreen');if(endScreenEl){endScreenEl.classList.add('active');endScreenEl.style.cssText='display:flex !important'}const currentData=window.currentStoryData||storyData;const lastScene=currentData.scenes[currentData.scenes.length-1];const lastChoiceIndex=userChoices.length>0?userChoices[userChoices.length-1]:0;const lastReason=userReasons.length>0?userReasons[userReasons.length-1]:"—";document.getElementById('yourChoice').textContent=lastScene.choices[lastChoiceIndex]?lastScene.choices[lastChoiceIndex].text:"—";document.getElementById('yourReason').textContent='"'+lastReason+'"';document.getElementById('theirChoice').textContent=lastScene.choices[lastScene.originalChoice].text;document.getElementById('theirReason').textContent='"'+lastScene.originalReason+'"';document.getElementById('finalAlignment').textContent='감정 구조 정렬도: '+finalAlignment.toFixed(2);if(isTrueEnding){const trueBadge=document.getElementById('trueEndingBadge');const normalBadge=document.getElementById('normalEndingBadge');const subtitle=document.getElementById('endSubtitle');if(trueBadge)trueBadge.classList.add('active');if(normalBadge)normalBadge.classList.remove('active');if(subtitle)subtitle.style.display='none';document.getElementById('endTitle').textContent='음각에 닿다';document.getElementById('finalMessage').innerHTML='<strong>트루엔딩에 도달했습니다.</strong><br><br>당신은 그 사람의 감정 구조에 거의 겹쳐졌습니다.<br>이 일치는 원본 지층에 깊게 새겨질 거예요.'}else{const trueBadge=document.getElementById('trueEndingBadge');const normalBadge=document.getElementById('normalEndingBadge');const subtitle=document.getElementById('endSubtitle');if(trueBadge)trueBadge.classList.remove('active');if(normalBadge)normalBadge.classList.add('active');if(subtitle){subtitle.style.display='block';subtitle.textContent='다른 결로 느끼다'}document.getElementById('endTitle').textContent='ENDING';document.getElementById('finalMessage').innerHTML='당신은 이 기억을 다른 방식으로 체험했습니다.<br>같은 장면, 다른 감정.<br>그것도 하나의 해석입니다.'}startEndStrataAnimation();setTimeout(()=>{if(currentMode==='live'){showNpcDialogue("이제 이 기억은 Live에서 Archive로 넘겨질 거야. 당신의 해석도 함께.",6000)}else{showNpcDialogue("이 기억의 지층 어딘가에, 방금 너의 선택과 이유가 얇은 층으로 남았어.",6000)}},2000);const footer=document.querySelector('.footer');if(footer)footer.classList.add('visible')}
+async function showEndScreen(alignmentResult,forceEndScreen=false){stopAllAnimations();const liveContainerEl=document.getElementById('liveContainer');if(liveContainerEl){liveContainerEl.classList.remove('active');liveContainerEl.style.display='none'}const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl){archiveContainerEl.classList.remove('active');archiveContainerEl.style.display='none'}const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}if(currentMode==='archive'&&!forceEndScreen){if(!alignmentResult){alignmentResult=await calculateAverageAlignment()}window.archiveAlignmentResult=alignmentResult;showComparisonView();return}let finalAlignment=currentAlignment;let isTrueEnding=false;if(alignmentResult){finalAlignment=alignmentResult.averageAlignment;isTrueEnding=alignmentResult.isTrueEnding}else if(currentMode==='archive'){const calculated=await calculateAverageAlignment();finalAlignment=calculated.averageAlignment;isTrueEnding=calculated.isTrueEnding}const endScreenEl=document.getElementById('endScreen');if(endScreenEl){endScreenEl.classList.add('active');endScreenEl.style.cssText='display:flex !important'}const currentData=window.currentStoryData||storyData;const lastScene=currentData.scenes[currentData.scenes.length-1];const lastChoiceIndex=userChoices.length>0?userChoices[userChoices.length-1]:0;const lastReason=userReasons.length>0?userReasons[userReasons.length-1]:"—";document.getElementById('yourChoice').textContent=lastScene.choices[lastChoiceIndex]?lastScene.choices[lastChoiceIndex].text:"—";document.getElementById('yourReason').textContent='"'+lastReason+'"';document.getElementById('theirChoice').textContent=lastScene.choices[lastScene.originalChoice].text;document.getElementById('theirReason').textContent='"'+lastScene.originalReason+'"';document.getElementById('finalAlignment').textContent='감정 구조 정렬도: '+finalAlignment.toFixed(2);if(isTrueEnding){const trueBadge=document.getElementById('trueEndingBadge');const normalBadge=document.getElementById('normalEndingBadge');const subtitle=document.getElementById('endSubtitle');if(trueBadge)trueBadge.classList.add('active');if(normalBadge)normalBadge.classList.remove('active');if(subtitle)subtitle.style.display='none';document.getElementById('endTitle').textContent='음각에 닿다';document.getElementById('finalMessage').innerHTML='<strong>트루엔딩에 도달했습니다.</strong><br><br>당신은 그 사람의 감정 구조에 거의 겹쳐졌습니다.<br>이 일치는 원본 지층에 깊게 새겨질 거예요.';const memoryId=currentData.id||(allMemoriesData[currentMemory]&&allMemoriesData[currentMemory].id);if(memoryId&&currentMode==='archive'){const endButtons=document.querySelector('.end-buttons');if(endButtons){const existingOriginalBtn=endButtons.querySelector('.original-view-btn');if(existingOriginalBtn)existingOriginalBtn.remove();const originalButton=document.createElement('button');originalButton.className='original-view-btn';originalButton.textContent='원본 기억 열람하기';originalButton.onclick=()=>showOriginalMemory(memoryId);endButtons.appendChild(originalButton)}try{supabaseClient=getSupabaseClient();if(supabaseClient){const{data:memoryData}=await supabaseClient.from('memories').select('author_note,source_session_id').eq('id',memoryId).single();if(memoryData&&memoryData.source_session_id){const{data:sessionData}=await supabaseClient.from('live_sessions').select('narrator_id').eq('id',memoryData.source_session_id).single();if(sessionData&&sessionData.narrator_id){setTimeout(()=>{showTrueEndingNoteUI(memoryData.author_note,sessionData.narrator_id,memoryId)},3000)}}}}catch(e){console.error('트루엔딩 쪽지 UI 로드 오류:',e)}}else{const trueBadge=document.getElementById('trueEndingBadge');const normalBadge=document.getElementById('normalEndingBadge');const subtitle=document.getElementById('endSubtitle');if(trueBadge)trueBadge.classList.remove('active');if(normalBadge)normalBadge.classList.add('active');if(subtitle){subtitle.style.display='block';subtitle.textContent='다른 결로 느끼다'}document.getElementById('endTitle').textContent='ENDING';document.getElementById('finalMessage').innerHTML='당신은 이 기억을 다른 방식으로 체험했습니다.<br>같은 장면, 다른 감정.<br>그것도 하나의 해석입니다.'}startEndStrataAnimation();setTimeout(()=>{if(currentMode==='live'){showNpcDialogue(NPC_DIALOGUES.live.memoryTransition,6000)}else{showNpcDialogue(NPC_DIALOGUES.archive.trueEnding,6000)}},2000);const footer=document.querySelector('.footer');if(footer)footer.classList.add('visible')}}
 function startEndStrataAnimation(){const container=document.getElementById('endStrataContainer');const messageEl=document.getElementById('endStrataMessage');const contentEl=document.getElementById('endContent');const animationEl=document.getElementById('endStrataAnimation');if(!container||!messageEl||!contentEl||!animationEl)return;container.innerHTML='';const totalHeight=400;const layerHeight=totalHeight/6;const previousLayers=[{emotion:'fear',height:layerHeight},{emotion:'anger',height:layerHeight},{emotion:'shame',height:layerHeight},{emotion:'joy',height:layerHeight}];let currentBottom=totalHeight;const originalLayer=document.createElement('div');originalLayer.className='end-strata-layer end-strata-layer-original';originalLayer.style.height=layerHeight*2+'px';originalLayer.style.bottom=(currentBottom-layerHeight*2)+'px';container.appendChild(originalLayer);currentBottom-=layerHeight*2;previousLayers.forEach((layer,idx)=>{const layerEl=document.createElement('div');layerEl.className='end-strata-layer end-strata-layer-interpretation '+layer.emotion;layerEl.style.height=layer.height+'px';layerEl.style.bottom=(currentBottom-layer.height)+'px';layerEl.style.opacity='0';container.appendChild(layerEl);setTimeout(()=>{layerEl.style.opacity='1'},100*idx);currentBottom-=layer.height});const userEmotion=getUserDominantEmotion();const newLayer=document.createElement('div');newLayer.className='end-strata-layer end-strata-layer-new '+userEmotion;newLayer.style.height=layerHeight+'px';newLayer.style.bottom=totalHeight+'px';container.appendChild(newLayer);setTimeout(()=>{newLayer.style.transform='translateY(0)';newLayer.style.opacity='1';messageEl.classList.add('visible')},500);setTimeout(()=>{animationEl.style.transform='translate(-50%,-50%) scale(0.3)';animationEl.style.top='10%';animationEl.style.transition='all 1s ease-out';contentEl.style.opacity='1'},1500)}
 function getUserDominantEmotion(){const emotions=['fear','sadness','guilt','anger','longing','isolation','numbness','moralPain'];const lastScene=window.currentStoryData?.scenes?.[window.currentStoryData.scenes.length-1];if(lastScene&&lastScene.emotionDist){const dist=lastScene.emotionDist;let max=0,dominant='fear';if((dist.fear||0)>max){max=dist.fear;dominant='fear'}if((dist.sadness||0)>max){max=dist.sadness;dominant='sadness'}if((dist.guilt||0)>max){max=dist.guilt;dominant='guilt'}if((dist.anger||0)>max){max=dist.anger;dominant='anger'}if((dist.longing||0)>max){max=dist.longing;dominant='longing'}if((dist.isolation||0)>max){max=dist.isolation;dominant='isolation'}if((dist.numbness||0)>max){max=dist.numbness;dominant='numbness'}if((dist.moralPain||0)>max){max=dist.moralPain;dominant='moralPain'}return dominant}return emotions[Math.floor(Math.random()*emotions.length)]}
 function restart(){currentMode=null;currentRole=null;sessionCode=null;currentMemory=null;currentScene=0;userChoices=[];userReasons=[];currentAlignment=0;currentBucket=null;emotionHistory=[];liveSceneNum=1;liveFragments=0;liveMatches=0;const endScreenEl=document.getElementById('endScreen');if(endScreenEl){endScreenEl.classList.remove('active');endScreenEl.style.display='none'}const liveContainerEl=document.getElementById('liveContainer');if(liveContainerEl){liveContainerEl.classList.remove('active');liveContainerEl.style.display='none'}const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl){archiveContainerEl.classList.remove('active');archiveContainerEl.style.display='none'}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='grid';const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}const introScreen=document.getElementById('introScreen');if(introScreen){introScreen.classList.remove('hidden');introScreen.classList.add('visible');introScreen.style.cssText='display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important'}const narratorPanelEl=document.getElementById('narratorPanel');if(narratorPanelEl)narratorPanelEl.classList.remove('active');const experiencerPanelEl=document.getElementById('experiencerPanel');if(experiencerPanelEl)experiencerPanelEl.classList.remove('active');const interpretationTraceEl=document.getElementById('interpretationTrace');if(interpretationTraceEl)interpretationTraceEl.style.display='none';const liveSceneContentEl=document.getElementById('liveSceneContent');if(liveSceneContentEl)liveSceneContentEl.textContent='화자가 기억을 불러오고 있습니다...';const feelingInput=document.getElementById('experiencerFeelingInput');if(feelingInput)feelingInput.value='';const memoryTraceContent=document.getElementById('memoryTraceContent');if(memoryTraceContent)memoryTraceContent.textContent='—';const liveAlignmentValueEl=document.getElementById('liveAlignmentValue');if(liveAlignmentValueEl){liveAlignmentValueEl.textContent='0.00';liveAlignmentValueEl.classList.remove('high')}const liveAlignmentFillEl=document.getElementById('liveAlignmentFill');if(liveAlignmentFillEl)liveAlignmentFillEl.style.width='0%';const liveSceneNumEl=document.getElementById('liveSceneNum');if(liveSceneNumEl)liveSceneNumEl.textContent='1';const liveFragmentsEl=document.getElementById('liveFragments');if(liveFragmentsEl)liveFragmentsEl.textContent='0';const liveMatchesEl=document.getElementById('liveMatches');if(liveMatchesEl)liveMatchesEl.textContent='0';const footer=document.querySelector('.footer');if(footer)footer.classList.remove('visible')}
@@ -944,9 +1013,9 @@ function showMemoryFateModal(){
 }
 async function selectMemoryFate(fate){const modalEl=document.getElementById('memoryFateModal');if(modalEl)modalEl.classList.remove('active');window.selectedMemoryFate=fate;if(supabaseClient&&currentSessionId){try{await supabaseClient.from('live_sessions').update({memory_fate:fate}).eq('id',currentSessionId);console.log('Memory fate saved:',fate)}catch(e){console.error('Memory fate save error:',e)}}await saveLiveToArchive(fate);setTimeout(()=>{proceedSaveMemory()},500)}
 async function saveLiveToArchive(fate){if(!supabaseClient||!currentSessionId){console.log('No session to save to archive');return}try{const{data:sessionData}=await supabaseClient.from('live_sessions').select('*').eq('id',currentSessionId).single();if(!sessionData){console.error('Session not found');return}const{data:scenesData}=await supabaseClient.from('live_scenes').select('*').eq('session_id',currentSessionId).order('scene_index',{ascending:true});if(!scenesData||scenesData.length===0){console.log('No scenes to save');return}const memoryCode='L-'+sessionData.session_code;const memoryTitle='라이브 기억 #'+sessionData.session_code;const dilutionValue=fate==='preserve'?100:fate==='dilute'?50:0;const{data:newMemory,error:memoryError}=await supabaseClient.from('memories').insert({code:memoryCode,title:memoryTitle,layers:1,dilution:dilutionValue,is_public:true,source_type:'live',source_session_id:currentSessionId,memory_fate:fate}).select().single();if(memoryError){console.error('Memory insert error:',memoryError);return}for(let i=0;i<scenesData.length;i++){const scene=scenesData[i];const emotionVector=scene.emotion_vector||{};const dominantEmotion=getDominantEmotion(emotionVector);const{data:newScene}=await supabaseClient.from('scenes').insert({memory_id:newMemory.id,scene_order:scene.scene_index||i+1,text:scene.scene_text||'',scene_type:'normal',echo_words:[],emotion_dist:emotionVector}).select().single();if(newScene){await supabaseClient.from('choices').insert({scene_id:newScene.id,choice_order:0,text:scene.generated_emotion||'느껴진 감정',emotion:dominantEmotion,intensity:Math.round((scene.intensity||0.5)*10)})}}console.log('Live session saved to archive');showNotification('기억이 아카이브에 저장되었습니다')}catch(e){console.error('saveLiveToArchive error:',e)}}
-function getDominantEmotion(vector){if(!vector||typeof vector!=='object')return'sadness';const entries=Object.entries(vector);if(entries.length===0)return'sadness';return entries.sort((a,b)=>(b[1]||0)-(a[1]||0))[0][0]}function getBucket(alignment,previousBucket,emotionHistory){if(emotionHistory&&emotionHistory.length>=3){const last3=emotionHistory.slice(-3);if(last3[0]===last3[1]&&last3[1]===last3[2]){return'FIXATED'}}if(previousBucket==='HIGH'&&alignment>=0.45)return'HIGH';if(previousBucket==='LOW'&&alignment<=0.25)return'LOW';if(alignment>=0.55)return'HIGH';if(alignment<0.35)return'LOW';return'MID'}const bucketDialogue={HIGH:"그 마음은 이해할 수 있을 것 같아",MID:"아직 형체가 분명하지 않아",LOW:"너는 다르게 느끼는구나",FIXATED:"계속 같은 자리에 돌아오고 있어"};const bucketSystemMessage={HIGH:"[ 동기화 안정 ]",MID:"[ 신호 불안정 ]",LOW:"[ 왜곡 감지 ]",FIXATED:"[ 루프 감지 ]"};function showBucketFeedback(bucket,alignment){if(bucket&&bucketDialogue[bucket]){showNpcDialogue(bucketDialogue[bucket],4000)}if(bucket&&bucketSystemMessage[bucket]){showSystemMessage(bucketSystemMessage[bucket])}}function showSystemMessage(message){const systemMsgEl=document.getElementById('systemMessage');if(systemMsgEl){systemMsgEl.textContent=message;systemMsgEl.classList.add('visible');setTimeout(()=>{systemMsgEl.classList.remove('visible')},2000)}}async function getContaminationLevel(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염도를 계산할 수 없습니다');return 0}const{count,error}=await supabaseClient.from('plays').select('*',{count:'exact',head:true}).eq('memory_id',memoryId);if(error){console.error('오염도 계산 오류:',error);return 0}const maxLayers=100;const contamination=Math.min((count||0)/maxLayers,1.0);console.log('=== 오염도 계산 ===');console.log('memory_id:',memoryId);console.log('plays 수:',count);console.log('오염도:',contamination);return contamination}catch(e){console.error('getContaminationLevel error:',e);return 0}}function getContaminationStage(contamination){if(contamination>=0.9)return 3;if(contamination>=0.6)return 2;if(contamination>=0.3)return 1;return 0}async function getContaminationDirection(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염 방향을 결정할 수 없습니다');return'default'}const{data:plays,error}=await supabaseClient.from('plays').select('mismatch_type').eq('memory_id',memoryId).not('mismatch_type','is',null);if(error){console.error('오염 방향 결정 오류:',error);return'default'}if(!plays||plays.length===0){console.log('=== 오염 방향 ===');console.log('plays 데이터 없음, 기본값 사용');return'default'}const counts={emotion_mismatch:0,target_displacement:0,attribution_mismatch:0,void_mismatch:0};plays.forEach(p=>{if(p.mismatch_type&&counts[p.mismatch_type]!==undefined){counts[p.mismatch_type]++}});const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];console.log('=== 오염 방향 ===');console.log('미스매치 통계:',counts);console.log('지배적 타입:',dominant[0],`(${dominant[1]}회)`);return dominant[1]>0?dominant[0]:'default'}catch(e){console.error('getContaminationDirection error:',e);return'default'}}async function getContaminatedText(scene,stage,memoryId,direction='default'){if(stage===0)return scene.text;const stageKey=`text_stage_${stage}_${direction}`;if(scene[stageKey]){console.log(`Stage ${stage} (${direction}) 캐시 사용`);return scene[stageKey]}console.log(`Stage ${stage} (${direction}) AI 생성 중...`);const contaminatedText=await generateContaminatedText(scene.text,stage,direction);if(contaminatedText&&scene.id){try{supabaseClient=getSupabaseClient();if(supabaseClient){await supabaseClient.from('scenes').update({[stageKey]:contaminatedText}).eq('id',scene.id);console.log(`Stage ${stage} (${direction}) 캐시 저장 완료`)}else{console.warn('Supabase 클라이언트가 없어 캐시를 저장할 수 없습니다')}}catch(e){console.error('캐시 저장 오류:',e)}}return contaminatedText||scene.text}async function generateContaminatedText(originalText,stage,direction='default'){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.error('Supabase 클라이언트가 없습니다');return originalText}const{data,error}=await supabaseClient.functions.invoke('contaminate-text',{body:{text:originalText,stage:stage,direction:direction}});if(error){console.error('contaminate-text 함수 오류:',error);return originalText}if(data&&data.contaminatedText){return data.contaminatedText}return originalText}catch(e){console.error('generateContaminatedText error:',e);return originalText}}async function loadSceneWithContamination(scene,memoryId){const contamination=await getContaminationLevel(memoryId);const stage=getContaminationStage(contamination);const direction=await getContaminationDirection(memoryId);console.log('=== 오염 적용 ===');console.log('오염도:',contamination);console.log('Stage:',stage);console.log('방향:',direction);const displayText=await getContaminatedText(scene,stage,memoryId,direction);return{...scene,displayText,contaminationStage:stage,contaminationDirection:direction}}
+function getDominantEmotion(vector){if(!vector||typeof vector!=='object')return'sadness';const entries=Object.entries(vector);if(entries.length===0)return'sadness';return entries.sort((a,b)=>(b[1]||0)-(a[1]||0))[0][0]}function getBucket(alignment,previousBucket,emotionHistory){if(emotionHistory&&emotionHistory.length>=3){const last3=emotionHistory.slice(-3);if(last3[0]===last3[1]&&last3[1]===last3[2]){return'FIXATED'}}if(previousBucket==='HIGH'&&alignment>=0.45)return'HIGH';if(previousBucket==='LOW'&&alignment<=0.25)return'LOW';if(alignment>=0.55)return'HIGH';if(alignment<0.35)return'LOW';return'MID'}const bucketDialogue={HIGH:NPC_DIALOGUES.bucket.HIGH,MID:NPC_DIALOGUES.bucket.MID,LOW:NPC_DIALOGUES.bucket.LOW,FIXATED:NPC_DIALOGUES.bucket.FIXATED};const bucketSystemMessage={HIGH:"[ 동기화 안정 ]",MID:"[ 신호 불안정 ]",LOW:"[ 왜곡 감지 ]",FIXATED:"[ 루프 감지 ]"};function showBucketFeedback(bucket,alignment){if(bucket&&bucketDialogue[bucket]){showNpcDialogue(bucketDialogue[bucket],4000)}if(bucket&&bucketSystemMessage[bucket]){showSystemMessage(bucketSystemMessage[bucket])}}function showSystemMessage(message){const systemMsgEl=document.getElementById('systemMessage');if(systemMsgEl){systemMsgEl.textContent=message;systemMsgEl.classList.add('visible');setTimeout(()=>{systemMsgEl.classList.remove('visible')},2000)}}async function getContaminationLevel(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염도를 계산할 수 없습니다');return 0}const{count,error}=await supabaseClient.from('plays').select('*',{count:'exact',head:true}).eq('memory_id',memoryId);if(error){console.error('오염도 계산 오류:',error);return 0}const maxLayers=100;const contamination=Math.min((count||0)/maxLayers,1.0);console.log('=== 오염도 계산 ===');console.log('memory_id:',memoryId);console.log('plays 수:',count);console.log('오염도:',contamination);return contamination}catch(e){console.error('getContaminationLevel error:',e);return 0}}function getContaminationStage(contamination){if(contamination>=0.9)return 3;if(contamination>=0.6)return 2;if(contamination>=0.3)return 1;return 0}async function getContaminationDirection(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염 방향을 결정할 수 없습니다');return'default'}const{data:plays,error}=await supabaseClient.from('plays').select('mismatch_type').eq('memory_id',memoryId).not('mismatch_type','is',null);if(error){console.error('오염 방향 결정 오류:',error);return'default'}if(!plays||plays.length===0){console.log('=== 오염 방향 ===');console.log('plays 데이터 없음, 기본값 사용');return'default'}const counts={emotion_mismatch:0,target_displacement:0,attribution_mismatch:0,void_mismatch:0};plays.forEach(p=>{if(p.mismatch_type&&counts[p.mismatch_type]!==undefined){counts[p.mismatch_type]++}});const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];console.log('=== 오염 방향 ===');console.log('미스매치 통계:',counts);console.log('지배적 타입:',dominant[0],`(${dominant[1]}회)`);return dominant[1]>0?dominant[0]:'default'}catch(e){console.error('getContaminationDirection error:',e);return'default'}}async function getContaminatedText(scene,stage,memoryId,direction='default'){if(stage===0)return scene.text;const stageKey=`text_stage_${stage}_${direction}`;if(scene[stageKey]){console.log(`Stage ${stage} (${direction}) 캐시 사용`);return scene[stageKey]}console.log(`Stage ${stage} (${direction}) AI 생성 중...`);const contaminatedText=await generateContaminatedText(scene.text,stage,direction);if(contaminatedText&&scene.id){try{supabaseClient=getSupabaseClient();if(supabaseClient){await supabaseClient.from('scenes').update({[stageKey]:contaminatedText}).eq('id',scene.id);console.log(`Stage ${stage} (${direction}) 캐시 저장 완료`)}else{console.warn('Supabase 클라이언트가 없어 캐시를 저장할 수 없습니다')}}catch(e){console.error('캐시 저장 오류:',e)}}return contaminatedText||scene.text}async function generateContaminatedText(originalText,stage,direction='default'){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.error('Supabase 클라이언트가 없습니다');return originalText}const{data,error}=await supabaseClient.functions.invoke('contaminate-text',{body:{text:originalText,stage:stage,direction:direction}});if(error){console.error('contaminate-text 함수 오류:',error);return originalText}if(data&&data.contaminatedText){return data.contaminatedText}return originalText}catch(e){console.error('generateContaminatedText error:',e);return originalText}}async function loadSceneWithContamination(scene,memoryId){const contamination=await getContaminationLevel(memoryId);const stage=getContaminationStage(contamination);const direction=await getContaminationDirection(memoryId);console.log('=== 오염 적용 ===');console.log('오염도:',contamination);console.log('Stage:',stage);console.log('방향:',direction);const displayText=await getContaminatedText(scene,stage,memoryId,direction);return{...scene,displayText,contaminationStage:stage,contaminationDirection:direction}}
 function saveSessionRecord(){if(!isLoggedIn||!currentUser)return;if(!currentUser.sessionHistory)currentUser.sessionHistory=[];const sessionRecord={id:Date.now(),date:new Date().toLocaleString('ko-KR'),role:currentRole||'—',memoryFate:window.selectedMemoryFate||'—',alignment:currentAlignment.toFixed(2),scenes:liveSceneNum||currentScene+1,fragments:liveFragments||0,matches:liveMatches||0};currentUser.sessionHistory.unshift(sessionRecord);if(currentUser.sessionHistory.length>50)currentUser.sessionHistory=currentUser.sessionHistory.slice(0,50)}
-async function loadMypageDataFromDB(){if(!supabaseClient||!currentUser?.id){renderSessionHistoryEmpty();renderMyMemoriesEmpty();return}try{const[sessionsResult,memoriesResult,statsResult]=await Promise.all([loadSessionHistoryFromDB(),loadMyMemoriesFromDB(),loadUserStatsFromDB()]);renderSessionHistoryList(sessionsResult);renderMyMemoriesList(memoriesResult);updateMypageStats(statsResult)}catch(e){console.error('loadMypageDataFromDB error:',e);renderSessionHistoryEmpty();renderMyMemoriesEmpty()}}
+async function loadMypageDataFromDB(){if(!supabaseClient||!currentUser?.id){renderSessionHistoryEmpty();renderMyMemoriesEmpty();return}try{const[sessionsResult,memoriesResult,statsResult]=await Promise.all([loadSessionHistoryFromDB(),loadMyMemoriesFromDB(),loadUserStatsFromDB()]);renderSessionHistoryList(sessionsResult);renderMyMemoriesList(memoriesResult);updateMypageStats(statsResult);await renderReceivedNotes()}catch(e){console.error('loadMypageDataFromDB error:',e);renderSessionHistoryEmpty();renderMyMemoriesEmpty()}}
 async function loadSessionHistoryFromDB(){if(!supabaseClient||!currentUser?.id)return[];try{const{data,error}=await supabaseClient.from('live_sessions').select('*').or(`narrator_id.eq.${currentUser.id},experiencer_id.eq.${currentUser.id}`).order('created_at',{ascending:false}).limit(50);if(error)throw error;return data||[]}catch(e){console.error('loadSessionHistoryFromDB error:',e);return[]}}
 async function loadMyMemoriesFromDB(){
     if(!supabaseClient||!currentUser?.id)return[];
@@ -987,13 +1056,22 @@ function renderMyMemoriesEmpty(){const listEl=document.getElementById('myMemorie
 function renderSessionHistoryList(sessions){const listEl=document.getElementById('sessionHistoryList');if(!listEl){return}if(!sessions||sessions.length===0){renderSessionHistoryEmpty();return}listEl.innerHTML='';sessions.forEach(session=>{const sessionItem=document.createElement('div');sessionItem.style.padding='.8rem';sessionItem.style.marginBottom='.5rem';sessionItem.style.background='var(--bg-surface)';sessionItem.style.border='1px solid rgba(196,168,130,.1)';sessionItem.style.borderRadius='4px';sessionItem.style.cursor='pointer';sessionItem.style.transition='all .3s';sessionItem.onmouseenter=()=>{sessionItem.style.borderColor='var(--accent-memory)';sessionItem.style.transform='translateX(4px)'};sessionItem.onmouseleave=()=>{sessionItem.style.borderColor='rgba(196,168,130,.1)';sessionItem.style.transform='translateX(0)'};const date=session.created_at?new Date(session.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';const role=session.narrator_id===currentUser?.id?'화자':session.experiencer_id===currentUser?.id?'체험자':'—';const status=session.ended_at?'완료':'진행중';const alignment=session.alignment?Math.round(session.alignment*100)+'%':'0%';const fate=session.memory_fate==='preserve'?'보존':session.memory_fate==='dilute'?'자연 소멸':session.memory_fate==='anonymous'?'완전 익명':'—';sessionItem.innerHTML=`<div style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>${date}</strong> <span style="color:var(--accent-memory);font-size:.75rem">[${session.session_code||'—'}]</span></div><div style="font-size:.75rem;color:var(--text-muted);line-height:1.6">역할: ${role} | 상태: ${status}<br>정렬도: ${alignment} | 운명: ${fate}</div>`;sessionItem.onclick=()=>{showSessionDetail(session.id)};listEl.appendChild(sessionItem)})}
 function renderMyMemoriesList(memories){const listEl=document.getElementById('myMemoriesList');if(!listEl){return}if(!memories||memories.length===0){renderMyMemoriesEmpty();return}listEl.innerHTML='';memories.forEach(memory=>{const memoryItem=document.createElement('div');memoryItem.style.padding='.8rem';memoryItem.style.marginBottom='.5rem';memoryItem.style.background='var(--bg-surface)';memoryItem.style.border='1px solid rgba(196,168,130,.1)';memoryItem.style.borderRadius='4px';memoryItem.style.cursor='pointer';const date=memory.created_at?new Date(memory.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'}):'—';const title=memory.title||memory.code||'무제';const dilution=memory.dilution!==undefined?memory.dilution+'%':'—';const fate=memory.memory_fate==='preserve'?'보존':memory.memory_fate==='dilute'?'자연 소멸':memory.memory_fate==='anonymous'?'완전 익명':'—';memoryItem.innerHTML=`<div style="font-size:.9rem;color:var(--text-primary);margin-bottom:.3rem"><strong>${title}</strong></div><div style="font-size:.75rem;color:var(--text-muted);line-height:1.6">${date} | 희석도: ${dilution} | 운명: ${fate}</div>`;memoryItem.onclick=()=>{closeMypage();viewMemoryFromArchive(memory.id)};listEl.appendChild(memoryItem)})}
 function updateMypageStats(stats){document.getElementById('displayLiveSessions').textContent=stats.sessions||0;document.getElementById('displayMemories').textContent=stats.memories||0;document.getElementById('displayInterpretations').textContent=stats.interpretations||0}
+// 트루엔딩 쪽지 UI 표시
+function showTrueEndingNoteUI(authorNote,authorId,memoryId){const endContent=document.getElementById('endContent');if(!endContent)return;const endButtons=endContent.querySelector('.end-buttons');if(!endButtons)return;const existingNoteSection=endContent.querySelector('.note-section');if(existingNoteSection)existingNoteSection.remove();const noteSection=document.createElement('div');noteSection.className='note-section';noteSection.innerHTML=(authorNote?`<div class="author-note-box"><p class="note-label">체험자가 남긴 쪽지</p><p class="note-content">${authorNote}</p></div>`:'')+`<div class="reply-section"><p class="reply-label">기억을 남긴 사람에게 한 마디를 남길 수 있습니다</p><textarea class="reply-input" id="replyInput" maxlength="100" placeholder="100자 이내로 작성해주세요..."></textarea><div class="reply-counter"><span id="replyCount">0</span>/100</div><div class="reply-buttons"><button class="reply-submit-btn" id="replySubmitBtn">쪽지 보내기</button><button class="reply-skip-btn" id="replySkipBtn">건너뛰기</button></div></div>`;endContent.insertBefore(noteSection,endButtons);const replyInput=document.getElementById('replyInput');const replyCount=document.getElementById('replyCount');if(replyInput&&replyCount){replyInput.addEventListener('input',()=>{replyCount.textContent=replyInput.value.length})}const replySubmitBtn=document.getElementById('replySubmitBtn');if(replySubmitBtn){replySubmitBtn.addEventListener('click',async()=>{const message=replyInput.value.trim();if(!message){alert('메시지를 입력해주세요.');return}const safetyResult=detectCrisis(message);if(safetyResult.level==='high'){handleCrisis('high',replyInput);return}await sendNoteToAuthor(authorId,memoryId,message)})}const replySkipBtn=document.getElementById('replySkipBtn');if(replySkipBtn){replySkipBtn.addEventListener('click',()=>{noteSection.remove()})}}
+// 기억을 남긴 사람에게 쪽지 전송
+async function sendNoteToAuthor(authorId,memoryId,message){try{supabaseClient=getSupabaseClient();if(!supabaseClient){alert('Supabase 클라이언트가 초기화되지 않았습니다.');return}const{data:{user}}=await supabaseClient.auth.getUser();if(!user){alert('쪽지를 보내려면 로그인이 필요합니다.');return}const{error}=await supabaseClient.from('notes').insert({memory_id:memoryId,sender_id:user.id,recipient_id:authorId,message:message,note_type:'player_to_author'});if(error){console.error('쪽지 전송 오류:',error);alert('쪽지 전송에 실패했습니다.');return}const noteSection=document.querySelector('.note-section');if(noteSection){noteSection.innerHTML='<div class="note-sent-message"><p>기억을 남긴 사람에게 전달되었습니다.</p></div>'}console.log('=== 쪽지 전송 완료 ===')}catch(e){console.error('sendNoteToAuthor error:',e);alert('쪽지 전송 중 오류가 발생했습니다.')}}
+// 받은 쪽지 로드
+async function loadReceivedNotes(){try{supabaseClient=getSupabaseClient();if(!supabaseClient)return[];const{data:{user}}=await supabaseClient.auth.getUser();if(!user)return[];const{data:notes,error}=await supabaseClient.from('notes').select('*,memories(title)').eq('recipient_id',user.id).order('created_at',{ascending:false});if(error){console.error('쪽지 로드 오류:',error);return[]}return notes||[]}catch(e){console.error('loadReceivedNotes error:',e);return[]}}
+// 받은 쪽지 렌더링
+async function renderReceivedNotes(){const notes=await loadReceivedNotes();const container=document.getElementById('mypageNotesList');if(!container)return;if(notes.length===0){container.innerHTML='<p class="no-notes" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:1rem">받은 쪽지가 없습니다.</p>';return}container.innerHTML=notes.map(note=>{const memoryTitle=note.memories?.title||'알 수 없음';const date=new Date(note.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'});const unreadClass=note.is_read?'read':'unread';const unreadBadge=note.is_read?'':'<span class="unread-badge" style="display:inline-block;padding:.2rem .5rem;background:rgba(212,175,55,.2);border:1px solid rgba(212,175,55,.4);color:#d4af37;font-size:.7rem;letter-spacing:.1em;margin-left:.5rem">NEW</span>';return`<div class="note-card ${unreadClass}" data-note-id="${note.id}" style="padding:.8rem;margin-bottom:.5rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.1);border-radius:4px;cursor:pointer;transition:all .3s"><p class="note-memory" style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>기억: ${memoryTitle}</strong>${unreadBadge}</p><p class="note-message" style="font-size:.9rem;color:var(--text-primary);line-height:1.6;margin-bottom:.5rem">${note.message}</p><p class="note-date" style="font-size:.75rem;color:var(--text-muted)">${date}</p></div>`}).join('');container.querySelectorAll('.note-card.unread').forEach(card=>{card.addEventListener('click',async()=>{const noteId=card.dataset.noteId;try{supabaseClient=getSupabaseClient();if(supabaseClient){await supabaseClient.from('notes').update({is_read:true}).eq('id',noteId);card.classList.remove('unread');card.classList.add('read');const badge=card.querySelector('.unread-badge');if(badge)badge.remove()}}catch(e){console.error('쪽지 읽음 처리 오류:',e)}})})}
 function viewMemoryFromArchive(memoryId){enterArchive();setTimeout(()=>{const memory=allMemoriesData.find(m=>m.id===memoryId);if(memory){selectMemory(memory)}},500)}
 async function showSessionDetail(sessionId){supabaseClient = getSupabaseClient(); if(!supabaseClient){showNotification('Supabase 클라이언트가 초기화되지 않았습니다');return}const modal=document.getElementById('sessionDetailModal');const body=document.getElementById('sessionDetailBody');if(!modal||!body){return}modal.classList.add('active');body.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div>';try{const{data:sessionData,error:sessionError}=await supabaseClient.from('live_sessions').select('*').eq('id',sessionId).single();if(sessionError)throw sessionError;const{data:scenesData,error:scenesError}=await supabaseClient.from('live_scenes').select('*').eq('session_id',sessionId).order('scene_index',{ascending:true});if(scenesError)throw scenesError;const date=sessionData.created_at?new Date(sessionData.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';const endDate=sessionData.ended_at?new Date(sessionData.ended_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';const role=sessionData.narrator_id===currentUser?.id?'화자':sessionData.experiencer_id===currentUser?.id?'체험자':'—';const status=sessionData.ended_at?'완료':'진행중';const alignment=sessionData.alignment?Math.round(sessionData.alignment*100)+'%':'0%';const fate=sessionData.memory_fate==='preserve'?'보존':sessionData.memory_fate==='dilute'?'자연 소멸':sessionData.memory_fate==='anonymous'?'완전 익명':'미정';document.getElementById('sessionDetailTitle').textContent=sessionData.session_code||'세션 정보';let scenesHtml='';if(scenesData&&scenesData.length>0){scenesHtml='<div class="session-detail-scenes"><h3 style="font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:var(--accent-memory);margin-bottom:1rem;letter-spacing:.1em">장면 목록</h3>';scenesData.forEach((scene,index)=>{const sceneText=scene.text||'[텍스트 없음]';const sceneType=scene.scene_type||'normal';const voidInfo=scene.void_info;scenesHtml+=`<div class="session-detail-scene-item"><div class="session-detail-scene-header">장면 ${index+1}${sceneType==='void'?' (기억의 공백)':''}</div><div class="session-detail-scene-text">${sceneText}</div>${voidInfo&&voidInfo.reason?`<div style="font-size:.85rem;color:var(--text-muted);font-style:italic;margin-top:.5rem">공백 이유: ${voidInfo.reason}</div>`:''}</div>`});scenesHtml+='</div>'}else{scenesHtml='<div style="text-align:center;padding:2rem;color:var(--text-muted);font-style:italic">저장된 장면이 없습니다.</div>'}body.innerHTML=`<div class="session-detail-info-item"><div class="session-detail-info-label">세션 코드</div><div class="session-detail-info-value">${sessionData.session_code||'—'}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">시작일시</div><div class="session-detail-info-value">${date}</div></div>${sessionData.ended_at?`<div class="session-detail-info-item"><div class="session-detail-info-label">종료일시</div><div class="session-detail-info-value">${endDate}</div></div>`:''}<div class="session-detail-info-item"><div class="session-detail-info-label">역할</div><div class="session-detail-info-value">${role}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">상태</div><div class="session-detail-info-value">${status}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">정렬도</div><div class="session-detail-info-value">${alignment}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">운명</div><div class="session-detail-info-value">${fate}</div></div>${scenesHtml}`}catch(e){console.error('showSessionDetail error:',e);body.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">세션 정보를 불러오는 중 오류가 발생했습니다.</div>';showNotification('세션 정보를 불러오는 중 오류가 발생했습니다')}}
 function closeSessionDetail(){const modal=document.getElementById('sessionDetailModal');if(modal){modal.classList.remove('active')}}
 function renderSessionHistory_DEPRECATED(){const listEl=document.getElementById('sessionHistoryList');if(!listEl||!currentUser||!currentUser.sessionHistory||currentUser.sessionHistory.length===0){if(listEl)listEl.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic">저장된 세션이 없습니다.</div>';return}listEl.innerHTML='';currentUser.sessionHistory.forEach(session=>{const sessionItem=document.createElement('div');sessionItem.style.padding='.8rem';sessionItem.style.marginBottom='.5rem';sessionItem.style.background='var(--bg-surface)';sessionItem.style.border='1px solid rgba(196,168,130,.1)';sessionItem.innerHTML=`<div style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>${session.date}</strong></div><div style="font-size:.75rem;color:var(--text-muted);line-height:1.6">역할: ${session.role} | 운명: ${session.memoryFate==='preserve'?'보존':session.memoryFate==='dilute'?'자연 소멸':session.memoryFate==='anonymous'?'완전 익명':'—'}<br>정렬도: ${session.alignment} | 장면: ${session.scenes} | 조각: ${session.fragments} | 일치: ${session.matches}</div>`;listEl.appendChild(sessionItem)})}
 function showNpcDialogue(text,duration=4000){const dialogue=document.getElementById('npcDialogue');if(dialogue){document.getElementById('npcText').textContent=text;dialogue.classList.add('visible');setTimeout(()=>{dialogue.classList.remove('visible')},duration)}}
+function escapeHtml(text){if(!text)return'—';const div=document.createElement('div');div.textContent=text;return div.innerHTML}async function showOriginalMemory(memoryId){try{console.log('=== 원본 열람 ===');console.log('Memory ID:',memoryId);supabaseClient=getSupabaseClient();if(!supabaseClient){alert('Supabase 클라이언트가 초기화되지 않았습니다.');return}const{data:scenes,error}=await supabaseClient.from('scenes').select('scene_order,text,original_emotion,original_reason').eq('memory_id',memoryId).order('scene_order');if(error){console.error('원본 기억 로드 오류:',error);alert('원본 기억을 불러오는 중 오류가 발생했습니다.');return}console.log('Scenes:',scenes.length);const modal=document.createElement('div');modal.className='original-memory-modal';modal.innerHTML=`<div class="original-memory-content"><h2>원본 기억</h2><p class="original-note">이것이 기록자가 남긴 원래의 기억입니다.</p><div class="original-scenes">${scenes.map((scene,i)=>`<div class="original-scene"><span class="scene-number">${i+1}</span><p class="scene-text">${escapeHtml(scene.text)}</p></div>`).join('')}</div><button class="close-original-btn" onclick="this.closest('.original-memory-modal').remove()">닫기</button></div>`;document.body.appendChild(modal);modal.addEventListener('click',(e)=>{if(e.target===modal){modal.remove()}})}catch(e){console.error('showOriginalMemory error:',e);alert('원본 기억을 불러오는 중 오류가 발생했습니다.')}}
 function showNotification(text){const notification=document.getElementById('notification');if(notification){notification.textContent=text;notification.classList.add('visible');setTimeout(()=>{notification.classList.remove('visible')},3000)}}
-const freeInputEl=document.getElementById('freeInput');if(freeInputEl){freeInputEl.addEventListener('keypress',function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();const customAction=this.value.trim();if(customAction){this.value='';userChoices.push(-1);showNpcDialogue('"'+customAction+'"... 흥미로운 선택이야.',3000);document.getElementById('emotionQuestion').textContent="왜 그런 선택을 했어?";document.getElementById('emotionModal').classList.add('active');document.getElementById('emotionInputField').focus()}}})}
+const freeInputEl=document.getElementById('freeInput');if(freeInputEl){freeInputEl.addEventListener('keypress',function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();const customAction=this.value.trim();if(customAction){this.value='';userChoices.push(-1);showNpcDialogue(NPC_DIALOGUES.archive.customAction(customAction),3000);document.getElementById('emotionQuestion').textContent="왜 그런 선택을 했어?";document.getElementById('emotionModal').classList.add('active');document.getElementById('emotionInputField').focus()}}})}
 const experiencerFeelingInputEl=document.getElementById('experiencerFeelingInput');if(experiencerFeelingInputEl){experiencerFeelingInputEl.addEventListener('keypress',function(e){if(e.key==='Enter'&&e.ctrlKey&&!e.isComposing){e.preventDefault();submitExperiencerFeeling()}})}
 const emotionInputFieldEl=document.getElementById('emotionInputField');if(emotionInputFieldEl){emotionInputFieldEl.addEventListener('keypress',function(e){if(e.key==='Enter'&&!e.isComposing){e.preventDefault();submitEmotion()}})}
 const sessionCodeInputEl=document.getElementById('sessionCodeInput');if(sessionCodeInputEl){sessionCodeInputEl.addEventListener('input',function(e){this.value=this.value.toUpperCase()})}
@@ -1005,17 +1083,19 @@ const signupEmailEl=document.getElementById('signupEmail');if(signupEmailEl){sig
 const signupUsernameEl=document.getElementById('signupUsername');if(signupUsernameEl){signupUsernameEl.addEventListener('keypress',function(e){if(e.key==='Enter'&&!e.isComposing){document.getElementById('signupEmail').focus()}})}
 function typeText(element,text,callback){let index=0;element.textContent='';element.classList.add('typing');function typeChar(){if(index<text.length){element.textContent+=text.charAt(index);index++;setTimeout(typeChar,50)}else{element.classList.remove('typing');if(callback)callback()}}typeChar()}
 function typeTextAsync(element,text,speed=80){return new Promise(resolve=>{element.classList.add('typing');let i=0;element.textContent='';const timer=setInterval(()=>{if(i<text.length){element.textContent+=text.charAt(i);i++}else{clearInterval(timer);element.classList.remove('typing');resolve()}},speed)})}
-async function playNpcIntro(){const centerWrapper=document.querySelector('.intro-center-wrapper');const dialogue=document.getElementById('npcIntroDialogue');if(!centerWrapper||!dialogue)return;await new Promise(r=>setTimeout(r,2000));centerWrapper.classList.add('lifted');await new Promise(r=>setTimeout(r,1000));dialogue.classList.add('visible');await typeTextAsync(dialogue,'처음이야?',100);await new Promise(r=>setTimeout(r,1500));dialogue.textContent='';await typeTextAsync(dialogue,'내가 필요하면 언제든 불러.',80);await new Promise(r=>setTimeout(r,2000));dialogue.classList.remove('visible');await new Promise(r=>setTimeout(r,500));centerWrapper.classList.remove('lifted')}
+function typeDots(element,callback){element.textContent='\n';element.classList.add('typing');let dotCount=0;function addDot(){if(dotCount<3){element.textContent+='.';dotCount++;setTimeout(addDot,300)}else{element.classList.remove('typing');if(callback)callback()}}addDot()}
+async function playNpcIntro(){const centerWrapper=document.querySelector('.intro-center-wrapper');const dialogue=document.getElementById('npcIntroDialogue');if(!centerWrapper||!dialogue)return;await new Promise(r=>setTimeout(r,2000));centerWrapper.classList.add('lifted');await new Promise(r=>setTimeout(r,1000));dialogue.classList.add('visible');await typeTextAsync(dialogue,NPC_DIALOGUES.intro.firstVisit,100);await new Promise(r=>setTimeout(r,1500));dialogue.textContent='';await typeTextAsync(dialogue,NPC_DIALOGUES.intro.returning,80);await new Promise(r=>setTimeout(r,2000));dialogue.classList.remove('visible');await new Promise(r=>setTimeout(r,500));centerWrapper.classList.remove('lifted')}
 let openingSkipped=false;let openingWaveAnimationId=null;let openingMouseX=-100;let openingMouseY=-100;let hasZoomedIn=false;let openingSequenceStarted=false;let openingSound=null;let fadeOutAnimationId=null;let fadeOutInterval=null;let crossfadeTimeUpdateHandler=null;let crossfadeEndedHandler=null;
 function fadeInSound(audio,targetVolume=0.6,duration=4000){if(!audio){console.error('fadeInSound: audio 요소가 없습니다');return}audio.volume=0;const playPromise=audio.play();if(playPromise!==undefined){playPromise.then(()=>{console.log('오프닝 사운드 재생 시작');const steps=60;const step=targetVolume/steps;const interval=duration/steps;let currentStep=0;const fade=setInterval(()=>{currentStep++;if(currentStep<steps){audio.volume=Math.min(1,Math.max(0,Math.min(step*currentStep,targetVolume)))}else{audio.volume=Math.min(1,Math.max(0,targetVolume));clearInterval(fade)}},interval)}).catch(e=>{console.error('오프닝 사운드 재생 실패:',e);console.error('오디오 상태:',{readyState:audio.readyState,networkState:audio.networkState,error:audio.error})})}}
 function fadeOutSound(audio,duration=3000){if(!audio)return;if(fadeOutAnimationId){cancelAnimationFrame(fadeOutAnimationId);fadeOutAnimationId=null}if(crossfadeTimeUpdateHandler&&audio){audio.removeEventListener('timeupdate',crossfadeTimeUpdateHandler);crossfadeTimeUpdateHandler=null}if(crossfadeEndedHandler&&audio){audio.removeEventListener('ended',crossfadeEndedHandler);crossfadeEndedHandler=null}const startVolume=Math.max(audio.volume||0,0.01);if(startVolume<=0){audio.pause();audio.currentTime=0;return}if(audio.paused){audio.play().catch(()=>{})}const startTime=performance.now();let lastVolume=startVolume;let pauseCheckInterval=setInterval(()=>{if(audio&&audio.paused&&lastVolume>0.01){audio.play().catch(()=>{})}},50);function animateFadeOut(currentTime){if(!audio){if(fadeOutAnimationId){cancelAnimationFrame(fadeOutAnimationId);fadeOutAnimationId=null}if(pauseCheckInterval){clearInterval(pauseCheckInterval);pauseCheckInterval=null}return}if(audio.paused&&lastVolume>0.01){audio.play().catch(()=>{})}const elapsed=currentTime-startTime;const progress=Math.min(elapsed/duration,1);const newVolume=Math.max(startVolume*(1-progress),0);lastVolume=newVolume;try{if(audio){audio.volume=Math.min(1,Math.max(0.001,Math.max(newVolume,0.001)))}}catch(e){console.error('Volume update error:',e)}if(progress>=1||newVolume<=0.01){if(pauseCheckInterval){clearInterval(pauseCheckInterval);pauseCheckInterval=null}setTimeout(()=>{try{if(audio){audio.volume=0;audio.pause();audio.currentTime=0}}catch(e){console.error('Audio pause error:',e)}if(fadeOutAnimationId){cancelAnimationFrame(fadeOutAnimationId);fadeOutAnimationId=null}},200)}else{fadeOutAnimationId=requestAnimationFrame(animateFadeOut)}}fadeOutAnimationId=requestAnimationFrame(animateFadeOut)}
 function setupLoopWithCrossfade(audio,targetVolume=0.6,fadeDuration=2){if(!audio)return;if(crossfadeTimeUpdateHandler){audio.removeEventListener('timeupdate',crossfadeTimeUpdateHandler)}if(crossfadeEndedHandler){audio.removeEventListener('ended',crossfadeEndedHandler)}crossfadeTimeUpdateHandler=function(){if(fadeOutInterval)return;const timeLeft=audio.duration-audio.currentTime;if(timeLeft<=fadeDuration&&timeLeft>0){audio.volume=Math.min(1,Math.max(0,targetVolume*(timeLeft/fadeDuration)))}};crossfadeEndedHandler=function(){if(fadeOutInterval)return;audio.currentTime=0;fadeInSound(audio,targetVolume,fadeDuration*1000)};audio.addEventListener('timeupdate',crossfadeTimeUpdateHandler);audio.addEventListener('ended',crossfadeEndedHandler)}
 function skipToIntro(){openingSequenceStarted=true;skipOpening()}
 function showContinueButton(){if(openingSkipped)return;const startHint=document.getElementById('openingStartHint');if(startHint){startHint.style.opacity='';startHint.classList.add('visible')}}
-function showFourthText(dialogue){if(openingSkipped)return;typeText(dialogue,'\n아니면… 누군가의 기억을 먼저 들여다볼래?',function(){if(openingSkipped)return;setTimeout(showContinueButton,500)})}
-function showThirdText(dialogue){if(openingSkipped)return;typeText(dialogue,'\n무슨 기억을 남기고 싶어?',function(){if(openingSkipped)return;setTimeout(function(){showFourthText(dialogue)},800)})}
-function showSecondText(dialogue){if(openingSkipped)return;typeText(dialogue,'\n나는 또다른 너야.',function(){if(openingSkipped)return;setTimeout(function(){showThirdText(dialogue)},800)})}
-function showFirstText(dialogue){if(openingSkipped)return;typeText(dialogue,'\n안녕.',function(){if(openingSkipped)return;setTimeout(function(){showSecondText(dialogue)},800)})}
+function showFourthText(dialogue){if(openingSkipped)return;typeText(dialogue,'\n들어와. 네가 원하는 걸 찾을 수 있을진 모르겠지만..',function(){if(openingSkipped)return;setTimeout(showContinueButton,500)})}
+function showThirdText(dialogue){if(openingSkipped)return;typeDots(dialogue,function(){if(openingSkipped)return;setTimeout(function(){showFourthText(dialogue)},1200)})}
+function showSecondText(dialogue){if(openingSkipped)return;typeText(dialogue,'\n...기억을 찾으러 왔다고?',function(){if(openingSkipped)return;setTimeout(function(){showThirdText(dialogue)},1200)})}
+function showFirstTextPart1(dialogue){if(openingSkipped)return;typeText(dialogue,'\n안녕.',function(){if(openingSkipped)return;setTimeout(function(){showFirstTextPart2(dialogue)},1500)})}
+function showFirstTextPart2(dialogue){if(openingSkipped)return;typeText(dialogue,'\n왔구나. 오랜만이야.',function(){if(openingSkipped)return;setTimeout(function(){showSecondText(dialogue)},1200)})}
 function startOpeningWaveAnimation(canvas) {
     const ctx = canvas.getContext('2d');
     canvas.width = canvas.offsetWidth * 2;
@@ -1087,7 +1167,7 @@ function startOpeningWaveAnimation(canvas) {
     
     animate();
 }
-function startOpeningSequence(){if(openingSkipped)return;const waveContainer=document.getElementById('openingWaveContainer');if(waveContainer){waveContainer.style.transform='scale(1)';waveContainer.style.opacity='1';waveContainer.classList.add('visible')}const canvas=document.getElementById('openingWaveCanvas');if(canvas)startOpeningWaveAnimation(canvas);setTimeout(function(){if(openingSkipped)return;const dialogue=document.getElementById('openingDialogue');if(dialogue)showFirstText(dialogue)},2500)}
+function startOpeningSequence(){if(openingSkipped)return;const waveContainer=document.getElementById('openingWaveContainer');if(waveContainer){waveContainer.style.transform='scale(1)';waveContainer.style.opacity='1';waveContainer.classList.add('visible')}const canvas=document.getElementById('openingWaveCanvas');if(canvas)startOpeningWaveAnimation(canvas);setTimeout(function(){if(openingSkipped)return;const dialogue=document.getElementById('openingDialogue');if(dialogue)showFirstTextPart1(dialogue)},2500)}
 function skipOpening(){if(openingSkipped)return;openingSkipped=true;if(openingWaveAnimationId){cancelAnimationFrame(openingWaveAnimationId);openingWaveAnimationId=null}if(openingSound){if(crossfadeTimeUpdateHandler&&openingSound){openingSound.removeEventListener('timeupdate',crossfadeTimeUpdateHandler);crossfadeTimeUpdateHandler=null}if(crossfadeEndedHandler&&openingSound){openingSound.removeEventListener('ended',crossfadeEndedHandler);crossfadeEndedHandler=null}fadeOutSound(openingSound,500);setTimeout(()=>{finishOpeningSequence()},600)}else{finishOpeningSequence()}}
 function handleOpeningKeydown(e){if(!openingSkipped){e.preventDefault();skipOpening()}}
 function finishOpeningSequence(){const openingScreen=document.getElementById('openingScreen');const introScreen=document.getElementById('introScreen');if(openingScreen){openingScreen.removeEventListener('click',skipOpening);openingScreen.style.cssText='display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important';openingScreen.classList.add('hidden')}document.removeEventListener('keydown',handleOpeningKeydown);if(introScreen){introScreen.style.cssText='display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important';introScreen.classList.add('visible');introScreen.classList.remove('hidden')}playNpcIntro()}
@@ -1171,13 +1251,16 @@ async function calculateAverageAlignment() {
                         if (playData.alignment !== null && playData.alignment !== undefined) {
                             alignment = playData.alignment;
                         } else if (playData.user_emotion && scene.originalEmotion) {
-                            alignment = cosineSimilarity(playData.user_emotion, scene.originalEmotion);
+                            const anchorEmotions = scene.anchor_emotions || null;
+                            alignment = cosineSimilarity(playData.user_emotion, scene.originalEmotion, anchorEmotions);
                         }
                     } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && scene.originalEmotion) {
-                        alignment = cosineSimilarity(window.archiveUserEmotions[i].emotion, scene.originalEmotion);
+                        const anchorEmotions = scene.anchor_emotions || null;
+                        alignment = cosineSimilarity(window.archiveUserEmotions[i].emotion, scene.originalEmotion, anchorEmotions);
                     }
                 } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && scene.originalEmotion) {
-                    alignment = cosineSimilarity(window.archiveUserEmotions[i].emotion, scene.originalEmotion);
+                    const anchorEmotions = scene.anchor_emotions || null;
+                    alignment = cosineSimilarity(window.archiveUserEmotions[i].emotion, scene.originalEmotion, anchorEmotions);
                 }
                 if (alignment !== null && alignment !== undefined) {
                     sceneAlignments.push(alignment);
@@ -1479,7 +1562,9 @@ function updateComparisonAlignment() {
         console.log(`[updateComparisonAlignment] 저장된 정렬도 사용: ${alignment}`);
     } else if (item.userEmotion && item.originalEmotion) {
         console.log(`[updateComparisonAlignment] 정렬도 계산 시작...`);
-        alignment = cosineSimilarity(item.userEmotion, item.originalEmotion);
+        let anchorEmotions = item.scene?.anchor_emotions || null;
+        if(anchorEmotions&&typeof anchorEmotions==='string'){try{anchorEmotions=JSON.parse(anchorEmotions)}catch(e){anchorEmotions=null}}if(anchorEmotions&&!Array.isArray(anchorEmotions)){anchorEmotions=null}
+        alignment = cosineSimilarity(item.userEmotion, item.originalEmotion, anchorEmotions);
         console.log(`[updateComparisonAlignment] 계산된 정렬도: ${alignment}`);
     } else {
         console.warn(`[updateComparisonAlignment] 정렬도를 계산할 수 없습니다:`, {
@@ -1706,10 +1791,10 @@ function closeRegistrationScreen() {
 }
 
 function startConversation() {
-    addRegistrationNpcDialogue("그날의 기억을 말해줘");
+    addRegistrationNpcDialogue(NPC_DIALOGUES.registration.start);
     memoryRegistrationState.conversationHistory = [{
         role: 'assistant',
-        content: '그날의 기억을 말해줘'
+        content: NPC_DIALOGUES.registration.start
     }];
 }
 
@@ -2019,10 +2104,10 @@ function confirmScene() {
     const textInput = document.getElementById('registrationTextInput');
     if (textInput) textInput.value = '';
     
-    addRegistrationNpcDialogue("좋아, 이 장면은 기록했어. 다음 기억이 있어?");
+    addRegistrationNpcDialogue(NPC_DIALOGUES.registration.sceneComplete);
     memoryRegistrationState.conversationHistory = [{
         role: 'assistant',
-        content: "좋아, 이 장면은 기록했어. 다음 기억이 있어?"
+        content: NPC_DIALOGUES.registration.sceneComplete
     }];
 }
 
@@ -2376,6 +2461,19 @@ function renderStep(step) {
         }
         confessionState.currentStep = step;
     } else if (step === 'result') {
+        // 모든 step 숨기기
+        document.querySelectorAll('.confession-step').forEach(el => {
+            el.classList.add('hidden');
+        });
+        
+        // result step만 표시
+        const resultStepEl = document.querySelector('.step-result');
+        if (resultStepEl) {
+            resultStepEl.classList.remove('hidden');
+        } else {
+            console.error('step-result 요소를 찾을 수 없습니다!');
+        }
+        
         confessionState.currentStep = 'result';
     }
     
@@ -2585,6 +2683,92 @@ function initStep5() {
     }
 }
 
+// 안전 리소스 팝업 표시
+function showSafetyResources() {
+    const popup = document.createElement('div');
+    popup.className = 'safety-popup';
+    popup.innerHTML = `
+        <div class="safety-popup-content">
+            <p class="safety-message">누군가에게는, 솔직하게 말해도 괜찮아.</p>
+            <div class="safety-resources">
+                ${SAFETY_RESOURCES.map(r => `
+                    <a href="${r.action}" class="safety-resource">
+                        <span class="resource-name">${r.name}</span>
+                        <span class="resource-number">${r.number}</span>
+                        <span class="resource-desc">${r.desc}</span>
+                    </a>
+                `).join('')}
+            </div>
+            <button class="safety-close-btn">닫기</button>
+        </div>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    popup.querySelector('.safety-close-btn').addEventListener('click', () => {
+        popup.remove();
+    });
+}
+
+// NPC 대화 표시 (Confession용)
+function showConfessionNPCDialogue(text) {
+    const dialogueEl = document.querySelector('.confession-text');
+    if (dialogueEl) {
+        dialogueEl.textContent = text;
+    }
+}
+
+// 위기 감지 시 처리
+function handleCrisis(level, inputElement) {
+    console.log('=== 안전 시스템 ===');
+    console.log('감지 레벨:', level);
+    
+    if (level === 'high') {
+        // 입력 마스킹
+        if (inputElement) {
+            inputElement.value = '■'.repeat(inputElement.value.length);
+            inputElement.disabled = true;
+        }
+        
+        // 위기 대사 출력
+        const dialogue = getRandomDialogue(CRISIS_DIALOGUES);
+        showConfessionNPCDialogue(dialogue);
+        
+        // 안전 리소스 표시
+        setTimeout(() => showSafetyResources(), 1500);
+        
+        return false; // AI 전송 차단
+    }
+    
+    if (level === 'mid') {
+        // 경고 대사만 출력, 전송은 허용
+        const dialogue = getRandomDialogue(CRISIS_DIALOGUES);
+        showConfessionNPCDialogue(dialogue);
+        
+        return true; // AI 전송 허용
+    }
+    
+    return true;
+}
+
+// 입력 제출 시 안전 체크
+function checkSafetyBeforeSubmit(inputValue, inputElement) {
+    const result = detectCrisis(inputValue);
+    
+    console.log('=== 안전 시스템 ===');
+    console.log('감지 레벨:', result.level);
+    console.log('키워드:', result.keyword);
+    
+    if (result.level !== 'safe') {
+        const canProceed = handleCrisis(result.level, inputElement);
+        if (!canProceed) {
+            return false; // 전송 차단
+        }
+    }
+    
+    return true; // 전송 허용
+}
+
 // 이벤트 리스너 설정 (DOMContentLoaded 내부에서 호출)
 function setupConfessionListeners() {
     // 기억 등록 버튼 → The Confession 시작
@@ -2622,6 +2806,11 @@ function setupConfessionListeners() {
     if (anchorInput) {
         anchorInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && anchorInput.value.trim()) {
+                // 안전 체크
+                if (!checkSafetyBeforeSubmit(anchorInput.value.trim(), anchorInput)) {
+                    return; // 위기 감지 시 차단
+                }
+                
                 confessionState.ritualData.anchorObject = anchorInput.value.trim();
                 const pinnedEl = document.querySelector('.anchor-pinned');
                 if (pinnedEl) {
@@ -2638,6 +2827,11 @@ function setupConfessionListeners() {
     if (leadInput) {
         leadInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && leadInput.value.trim()) {
+                // 안전 체크
+                if (!checkSafetyBeforeSubmit(leadInput.value.trim(), leadInput)) {
+                    return; // 위기 감지 시 차단
+                }
+                
                 confessionState.ritualData.action = leadInput.value.trim();
                 setTimeout(() => nextStep(), 500);
             }
@@ -2649,6 +2843,11 @@ function setupConfessionListeners() {
     if (crashInput) {
         crashInput.addEventListener('blur', () => {
             if (crashInput.value.trim()) {
+                // 안전 체크
+                if (!checkSafetyBeforeSubmit(crashInput.value.trim(), crashInput)) {
+                    return; // 위기 감지 시 차단
+                }
+                
                 confessionState.ritualData.conflict = crashInput.value.trim();
                 setTimeout(() => nextStep(), 500);
             }
@@ -2668,8 +2867,29 @@ function setupConfessionListeners() {
         });
         
         sealInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && sealInput.value.trim() && saveBtn) {
-                saveBtn.click();
+            if (e.key === 'Enter' && sealInput.value.trim()) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const inputValue = sealInput.value.trim();
+                
+                // 안전 체크
+                if (!checkSafetyBeforeSubmit(inputValue, sealInput)) {
+                    return; // 위기 감지 시 차단
+                }
+                
+                // 즉시 UI 업데이트 (비동기 작업 전에)
+                confessionState.ritualData.emotionWord = inputValue;
+                sealInput.value = ''; // 입력창 바로 비우기
+                sealInput.blur(); // 포커스 제거
+                if (saveBtn) {
+                    saveBtn.classList.add('hidden');
+                }
+                
+                // 비동기 작업은 다음 틱에 실행
+                setTimeout(() => {
+                    generateSceneFromRitual();
+                }, 0);
             }
         });
     }
@@ -2677,7 +2897,16 @@ function setupConfessionListeners() {
     if (saveBtn) {
         saveBtn.addEventListener('click', () => {
             if (sealInput && sealInput.value.trim()) {
-                confessionState.ritualData.emotionWord = sealInput.value.trim();
+                const inputValue = sealInput.value.trim();
+                
+                // 안전 체크
+                if (!checkSafetyBeforeSubmit(inputValue, sealInput)) {
+                    return; // 위기 감지 시 차단
+                }
+                
+                confessionState.ritualData.emotionWord = inputValue;
+                sealInput.value = ''; // 입력창 바로 비우기
+                saveBtn.classList.add('hidden');
                 generateSceneFromRitual();
             }
         });
@@ -2715,38 +2944,104 @@ function setupConfessionListeners() {
     }
 }
 
+// 스트리밍 AI 응답 함수
+async function streamAIResponse(ritualData, targetElement) {
+    const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/generate-scene-from-ritual`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'apikey': SUPABASE_ANON_KEY
+            },
+            body: JSON.stringify({ ritualData })
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    if (!response.body) {
+        throw new Error('응답 본문이 없습니다');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    let buffer = '';
+    let fullText = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine.startsWith('data: ')) continue;
+            
+            const data = trimmedLine.slice(6);
+            if (data === '[DONE]') continue;
+
+            try {
+                const parsed = JSON.parse(data);
+                
+                if (parsed.type === 'chunk') {
+                    const text = parsed.text || '';
+                    if (text) {
+                        fullText += text;
+                        if (targetElement) {
+                            targetElement.textContent = fullText;
+                        }
+                    }
+                }
+                
+                if (parsed.type === 'done') {
+                    return parsed.sceneText || fullText.trim();
+                }
+                
+                if (parsed.type === 'error') {
+                    throw new Error(parsed.error || '스트리밍 오류 발생');
+                }
+            } catch (e) {
+                console.error('JSON 파싱 에러:', e);
+            }
+        }
+    }
+
+    return fullText.trim();
+}
+
 // AI 장면 생성
 async function generateSceneFromRitual() {
-    // 로딩 표시
     renderStep('result');
     const resultPreview = document.querySelector('.result-preview');
-    if (resultPreview) {
-        resultPreview.innerHTML = '<p>기억을 현상 중입니다...</p>';
+    
+    if (!resultPreview) {
+        console.error('result-preview 요소를 찾을 수 없습니다!');
+        return;
     }
     
+    resultPreview.innerHTML = '<p class="streaming-text"></p>';
+    
+    const streamingEl = resultPreview.querySelector('.streaming-text');
+    
     try {
-        supabaseClient = getSupabaseClient();
-        if (!supabaseClient) {
-            throw new Error('Supabase 클라이언트가 없습니다');
+        const sceneText = await streamAIResponse(
+            confessionState.ritualData,
+            streamingEl
+        );
+        
+        if (streamingEl) {
+            streamingEl.classList.add('done');
         }
         
-        // AI에게 ritualData 전달해서 장면 텍스트 생성
-        const { data, error } = await supabaseClient.functions.invoke('generate-scene-from-ritual', {
-            body: {
-                ritualData: confessionState.ritualData
-            }
-        });
-        
-        if (error) throw error;
-        
-        const sceneText = data.sceneText || data.text || '장면 생성에 실패했습니다.';
-        
-        // 결과 표시
-        if (resultPreview) {
-            resultPreview.innerHTML = `<p style="line-height: 2; font-size: 1.1rem;">${sceneText}</p>`;
-        }
-        
-        // 생성된 장면 저장
         confessionState.generatedScene = {
             text: sceneText,
             originalEmotion: { [confessionState.ritualData.emotionWord]: 0.8 },
@@ -2756,7 +3051,7 @@ async function generateSceneFromRitual() {
         console.log('장면 생성 완료:', confessionState.generatedScene);
         
     } catch (error) {
-        console.error('장면 생성 오류:', error);
+        console.error('스트리밍 오류:', error);
         if (resultPreview) {
             resultPreview.innerHTML = '<p>기억 현상에 실패했습니다. 다시 시도해주세요.</p>';
         }

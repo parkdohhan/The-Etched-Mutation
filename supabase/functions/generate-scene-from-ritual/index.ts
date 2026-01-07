@@ -3,8 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json"
+  "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
 serve(async (req) => {
@@ -71,6 +70,7 @@ ${ritualData.emotionWord ? `핵심 감정: ${ritualData.emotionWord}` : ''}
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 500,
+        stream: true,
         messages: [
           { role: "user", content: prompt }
         ]
@@ -84,20 +84,120 @@ ${ritualData.emotionWord ? `핵심 감정: ${ritualData.emotionWord}` : ''}
         error: errorData.error?.message || "Claude API 호출 실패"
       }), {
         status: response.status,
-        headers: corsHeaders
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    const data = await response.json();
-    const sceneText = data.content[0]?.text || "";
+    // 스트리밍 응답 생성
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullText = "";
 
-    console.log('=== 장면 생성 완료 ===');
-    console.log('생성된 텍스트:', sceneText.substring(0, 100) + '...');
+        if (!reader) {
+          controller.close();
+          return;
+        }
 
-    return new Response(JSON.stringify({
-      sceneText: sceneText.trim()
-    }), {
-      headers: corsHeaders
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+
+                try {
+                  const json = JSON.parse(data);
+                  
+                  // 모든 이벤트 타입 로깅 (디버깅용)
+                  if (json.type) {
+                    console.log('Edge Function: 이벤트 타입:', json.type);
+                  }
+                  
+                  if (json.type === 'content_block_delta' && json.delta?.type === 'text_delta') {
+                    const text = json.delta.text;
+                    if (text) {
+                      fullText += text;
+                      console.log('Edge Function: 텍스트 청크 수신, 길이:', text.length, '전체 길이:', fullText.length);
+                      
+                      // SSE 형식으로 텍스트 청크 전송
+                      controller.enqueue(
+                        new TextEncoder().encode(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`)
+                      );
+                    } else {
+                      console.warn('Edge Function: text_delta가 비어있음');
+                    }
+                  }
+
+                  // message_stop 또는 message_delta 등 다른 이벤트도 확인
+                  if (json.type === 'message_stop' || json.type === 'message_delta') {
+                    // 최종 텍스트 전송
+                    console.log('=== Edge Function: message 종료 이벤트 수신, 타입:', json.type, 'fullText 길이:', fullText.length);
+                    console.log('Edge Function: fullText 내용:', fullText.substring(0, 100));
+                    
+                    // fullText가 비어있으면 에러 전송
+                    if (!fullText.trim()) {
+                      console.error('Edge Function: fullText가 비어있습니다!');
+                      controller.enqueue(
+                        new TextEncoder().encode(
+                          `data: ${JSON.stringify({ 
+                            type: 'error', 
+                            error: '텍스트를 생성하지 못했습니다'
+                          })}\n\n`
+                        )
+                      );
+                    } else {
+                      controller.enqueue(
+                        new TextEncoder().encode(
+                          `data: ${JSON.stringify({ 
+                            type: 'done', 
+                            sceneText: fullText.trim()
+                          })}\n\n`
+                        )
+                      );
+                    }
+                    controller.close();
+                    return;
+                  }
+                } catch (e) {
+                  // JSON 파싱 오류 무시 (일부 라인은 JSON이 아닐 수 있음)
+                  console.warn('Edge Function JSON 파싱 오류:', e.message, 'data:', data.substring(0, 100));
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('스트리밍 오류:', error);
+          controller.enqueue(
+            new TextEncoder().encode(
+              `data: ${JSON.stringify({ 
+                type: 'error', 
+                error: error.message || "스트리밍 오류 발생"
+              })}\n\n`
+            )
+          );
+        } finally {
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive"
+      }
     });
 
   } catch (error) {
@@ -106,7 +206,7 @@ ${ritualData.emotionWord ? `핵심 감정: ${ritualData.emotionWord}` : ''}
       error: error.message || "알 수 없는 오류 발생"
     }), {
       status: 500,
-      headers: corsHeaders
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 });
