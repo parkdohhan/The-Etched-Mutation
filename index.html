@@ -29,7 +29,7 @@
         <h1 class="intro-logo">THE ETCHED MUTATION</h1>
         <p class="intro-subtitle">기억의 영생</p>
         <div class="intro-buttons">
-            <button class="intro-btn live-btn" onclick="showModeSelection()">LIVE<span class="intro-btn-label">실시간 기억 공유</span></button>
+            <button class="intro-btn live-btn" onclick="showConfessionHub()">THE CONFESSION<span class="intro-btn-label">기억을 남기시겠습니까?</span></button>
             <button class="intro-btn" onclick="enterArchive()">ARCHIVE<span class="intro-btn-label">축적된 해석의 공간</span></button>
         </div>
         </div>
@@ -122,6 +122,31 @@
             <button class="mypage-logout-btn" onclick="handleLogout()">로그아웃</button>
             <button class="back-btn-simple" onclick="closeMypage()" style="margin-top:1rem">← 돌아가기</button>
         </div>
+    </div>
+    <div class="confession-hub hidden" id="confessionHub">
+        <h1 class="mode-title">THE CONFESSION</h1>
+        <p class="hub-subtitle">어떤 방식으로 기억을 남기시겠습니까?</p>
+        <div class="confession-modes">
+            <div class="mode-card" onclick="startBeginner()">
+                <div class="mode-icon">💭</div>
+                <h2>Beginner</h2>
+                <p>가볍게 남기기</p>
+                <small>대화를 통해 기억을 끌어냅니다</small>
+            </div>
+            <div class="mode-card" onclick="startRitual()">
+                <div class="mode-icon">🎭</div>
+                <h2>Ritual</h2>
+                <p>깊게 파고들기</p>
+                <small>5개의 장면을 직접 구성합니다</small>
+            </div>
+            <div class="mode-card mode-locked" onclick="showArchitectLocked()">
+                <div class="mode-icon">🔒</div>
+                <h2>The Architect</h2>
+                <p>구조 설계하기</p>
+                <small>준비 중입니다</small>
+            </div>
+        </div>
+        <button class="back-btn-simple" onclick="showMainMenu()">← 돌아가기</button>
     </div>
     <div class="matching-selection" id="matchingSelection">
         <h2 class="mode-title">LIVE</h2>

@@ -811,7 +811,13 @@ async function handleConfirm(answer){
                 console.log('pendingSceneText로 복구:',pendingSceneText);
             }
             console.log('저장할 finalSceneObject:',JSON.stringify(finalSceneObject));
-            await saveLiveScene(finalSceneObject);
+            
+            // Ritual 모드일 때는 saveRitualScene 호출
+            if (currentMode === 'ritual') {
+                await saveRitualScene(finalSceneObject);
+            } else {
+                await saveLiveScene(finalSceneObject);
+            }
             if(finalSceneObject?.emotionAnalysis){
                 updateNarratorWave(finalSceneObject.emotionAnalysis);
                 window.narratorEmotionVector=finalSceneObject.emotionAnalysis?.base||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0};
@@ -1788,6 +1794,9 @@ function closeRegistrationScreen() {
     }
     memoryRegistrationState.isActive = false;
     memoryRegistrationState.phase = 'collecting';
+    
+    // Confession Hub로 돌아가기
+    showConfessionHub();
 }
 
 function startConversation() {
@@ -2519,6 +2528,9 @@ function endConfession() {
     confessionState.conversationHistory = [];
     confessionState.scenes = [];
     confessionState.generatedScene = null;
+    
+    // Confession Hub로 돌아가기
+    showConfessionHub();
 }
 
 // 타이핑 엔진 (한 글자씩 출력)
@@ -3124,4 +3136,300 @@ async function saveConfessionToDB() {
 
 window.startConfession = startConfession;
 window.endConfession = endConfession;
+
+// ==================== Confession Hub ====================
+
+// Confession Hub 표시
+function showConfessionHub() {
+    console.log('=== Confession Hub 표시 ===');
+    const introScreen = document.getElementById('introScreen');
+    if (introScreen) {
+        introScreen.classList.add('hidden');
+        introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important';
+    }
+    
+    hideAllScreens();
+    
+    const confessionHub = document.getElementById('confessionHub');
+    if (confessionHub) {
+        confessionHub.classList.remove('hidden');
+        confessionHub.style.display = 'flex';
+        confessionHub.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
+    }
+}
+
+// Beginner 모드 시작 (기존 Create Memory 플로우)
+function startBeginner() {
+    console.log('=== Confession Hub ===');
+    console.log('Mode: beginner');
+    hideAllScreens();
+    startConfessionFlow('beginner');
+}
+
+// Ritual 모드 시작 (기존 Live 화자 플로우, 소켓 제거)
+function startRitual() {
+    console.log('=== Confession Hub ===');
+    console.log('Mode: ritual');
+    hideAllScreens();
+    startRitualFlow();
+}
+
+// The Architect 잠금 메시지
+function showArchitectLocked() {
+    alert('준비 중입니다. 곧 공개됩니다.');
+}
+
+// 메인 메뉴로 돌아가기
+function showMainMenu() {
+    const introScreen = document.getElementById('introScreen');
+    const confessionHub = document.getElementById('confessionHub');
+    
+    if (confessionHub) {
+        confessionHub.classList.add('hidden');
+        confessionHub.style.display = 'none';
+    }
+    
+    if (introScreen) {
+        introScreen.classList.remove('hidden');
+        introScreen.classList.add('visible');
+        introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important';
+    }
+}
+
+// 모든 화면 숨기기 헬퍼 함수
+function hideAllScreens() {
+    ['modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal', 'confessionHub'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('active');
+            el.classList.add('hidden');
+            el.style.display = 'none';
+        }
+    });
+}
+
+// Confession 플로우 시작 (Beginner 모드용)
+function startConfessionFlow(mode) {
+    currentMode = mode;
+    startConfession(); // 기존 startConfession 함수 호출
+}
+
+// Ritual 플로우 시작 (소켓 제거 버전)
+let currentSceneIndex = 0;
+let ritualScenes = [];
+
+async function startRitualFlow() {
+    console.log('=== Ritual Flow 시작 ===');
+    currentMode = 'ritual';
+    currentRole = 'A'; // 화자 역할 설정
+    currentSceneIndex = 0;
+    ritualScenes = [];
+    
+    // 모든 화면 숨기기
+    hideAllScreens();
+    
+    // Live 화자 화면 표시 (소켓 없이)
+    try {
+        currentSceneOrder = 1;
+        window.currentStoryData = storyData;
+        currentScene = 0;
+        userChoices = [];
+        userReasons = [];
+        conversationHistory = [];
+        currentGeneratedSceneObj = null;
+        currentGeneratedEmotion = null;
+        currentAlignment = 0;
+        currentPhase = 'scene';
+        pendingSceneText = '';
+        pendingEmotionText = '';
+        currentGeneratedScene = '';
+        finalSceneObject = null;
+        isEditMode = false;
+        
+        // UI 초기화
+        const sceneContent = document.querySelector('#generatedSceneContent .generated-text');
+        if (sceneContent) sceneContent.textContent = '';
+        
+        const emotionContent = document.querySelector('#generatedEmotionContent .generated-text');
+        if (emotionContent) emotionContent.textContent = '';
+        
+        const chatMessages = document.getElementById('chatMessages');
+        if (chatMessages) {
+            chatMessages.innerHTML = '<div class="chat-message ai"><div class="chat-message-label">또다른 나</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>';
+        }
+        
+        const editBtn = document.querySelector('.edit-toggle-btn');
+        if (editBtn) {
+            editBtn.textContent = '수정';
+            editBtn.classList.remove('active');
+        }
+        
+        const sceneTextarea = document.getElementById('editSceneTextarea');
+        if (sceneTextarea) {
+            sceneTextarea.style.display = 'none';
+            sceneTextarea.value = '';
+        }
+        
+        const emotionTextarea = document.getElementById('editEmotionTextarea');
+        if (emotionTextarea) {
+            emotionTextarea.style.display = 'none';
+            emotionTextarea.value = '';
+        }
+        
+        const sceneTextEl = document.querySelector('#generatedSceneContent .generated-text');
+        if (sceneTextEl) sceneTextEl.style.display = 'block';
+        
+        switchGeneratedTab('scene');
+        
+        // Live Container 표시
+        const liveContainerEl = document.getElementById('liveContainer');
+        if (liveContainerEl) {
+            liveContainerEl.classList.add('active');
+            liveContainerEl.style.cssText = 'display:block !important';
+        }
+        
+        const liveContentEl = document.querySelector('.live-content');
+        if (liveContentEl) {
+            liveContentEl.classList.add('narrator-mode');
+        }
+        
+        // Narrator Panel 활성화
+        const narratorPanelEl = document.getElementById('narratorPanel');
+        if (narratorPanelEl) {
+            narratorPanelEl.classList.add('active');
+        }
+        
+        const interpretationTrace = document.getElementById('interpretationTrace');
+        const traceContent = document.getElementById('traceContent');
+        if (interpretationTrace && traceContent) {
+            interpretationTrace.style.display = 'block';
+            traceContent.textContent = '5개의 장면을 생성하세요. 각 장면을 입력하고 저장하면 다음 장면으로 넘어갑니다.';
+        }
+        
+        showNpcDialogue("당신의 기억을 불러오세요. 5개의 장면을 직접 구성합니다.", 4000);
+        
+        startAlignmentWaveAnimation();
+        setTimeout(() => {
+            startVoiceWaveLiveAnimation();
+        }, 300);
+        
+        const footer = document.querySelector('.footer');
+        if (footer) footer.classList.add('visible');
+        
+        console.log('Ritual 모드 Live 화자 화면 표시 완료');
+    } catch (e) {
+        console.error('startRitualFlow error:', e);
+        showNotification('Ritual 모드를 시작하는 중 오류가 발생했습니다: ' + e.message);
+    }
+}
+
+// Ritual 장면 저장 (소켓 대신 로컬 저장)
+async function saveRitualScene(sceneData) {
+    console.log('=== Ritual 장면 저장 ===');
+    console.log('sceneData:', JSON.stringify(sceneData));
+    
+    ritualScenes.push(sceneData);
+    console.log(`Ritual 장면 저장됨: ${ritualScenes.length}/5`);
+    
+    // UI 업데이트
+    const traceContent = document.getElementById('traceContent');
+    if (traceContent) {
+        traceContent.textContent = `장면 ${ritualScenes.length}/5 저장됨. ${ritualScenes.length < 5 ? '다음 장면을 입력하세요.' : '모든 장면이 저장되었습니다.'}`;
+    }
+    
+    // 다음 장면을 위한 초기화
+    currentPhase = 'scene';
+    currentGeneratedScene = '';
+    pendingSceneText = '';
+    finalSceneObject = null;
+    
+    const sceneContent = document.querySelector('#generatedSceneContent .generated-text');
+    if (sceneContent) sceneContent.textContent = '';
+    
+    const emotionContent = document.querySelector('#generatedEmotionContent .generated-text');
+    if (emotionContent) emotionContent.textContent = '';
+    
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages) {
+        chatMessages.innerHTML = '<div class="chat-message ai"><div class="chat-message-label">또다른 나</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>';
+    }
+    
+    if (ritualScenes.length >= 5) {
+        showNotification('5개의 장면이 모두 저장되었습니다. 메모리를 저장합니다...');
+        await saveRitualToMemories();
+    } else {
+        currentSceneIndex = ritualScenes.length;
+        showNotification(`장면 ${ritualScenes.length}/5 저장됨. 다음 장면을 입력하세요.`);
+    }
+}
+
+// Ritual 완료 시 memories/scenes 테이블에 저장
+async function saveRitualToMemories() {
+    console.log('=== Ritual 완료, 메모리 저장 ===');
+    
+    const memoryData = {
+        title: ritualScenes[0]?.coreObject || '무제',
+        source: 'ritual',
+        status: 'nascent'
+    };
+    
+    console.log('Source:', memoryData.source);
+    
+    try {
+        const { saveMemoryGraph } = await import('./lib/repo.js');
+        supabaseClient = getSupabaseClient();
+        
+        if (!supabaseClient) {
+            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+        }
+        
+        const memoryId = await saveMemoryGraph(supabaseClient, {
+            memoryId: null,
+            code: generateMemoryCode(),
+            title: memoryData.title,
+            description: null,
+            author_note: null,
+            status: memoryData.status,
+            source: memoryData.source,
+            scenes: ritualScenes.map((scene, index) => ({
+                text: scene.text || '',
+                sceneType: scene.sceneType || 'normal',
+                echoWords: scene.echoWords || [],
+                emotionDist: scene.emotionDist || {},
+                voidInfo: scene.voidInfo || null,
+                choices: scene.choices || [],
+                originalChoice: scene.originalChoice || 0,
+                originalReason: scene.originalReason || '',
+                originalEmotion: scene.originalEmotion || null,
+                originalReasonVector: scene.originalReasonVector || null
+            }))
+        });
+        
+        showRitualComplete(memoryId);
+    } catch (error) {
+        console.error('Ritual 저장 오류:', error);
+        alert('저장에 실패했습니다: ' + (error.message || '알 수 없는 오류'));
+    }
+}
+
+function showRitualComplete(memoryId) {
+    alert(`Ritual 기억이 저장되었습니다. (ID: ${memoryId})`);
+    showMainMenu();
+}
+
+function generateMemoryCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+// 전역 스코프 노출
+window.showConfessionHub = showConfessionHub;
+window.startBeginner = startBeginner;
+window.startRitual = startRitual;
+window.showArchitectLocked = showArchitectLocked;
+window.showMainMenu = showMainMenu;
 
