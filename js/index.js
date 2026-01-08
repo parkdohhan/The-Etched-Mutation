@@ -2,77 +2,52 @@ import { getSupabaseClient } from './lib/supabaseClient.js';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './lib/config.js';
 import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from './safety.js';
 
-// 감정 앵커 시스템
-// 기본 감정 앵커 (anchor_emotions 없을 때 폴백)
-const DEFAULT_EMOTION_ANCHORS = [
-  // 부정/고통
-  'fear', 'sadness', 'anger', 'guilt', 'shame',
-  'isolation', 'numbness', 'moral_pain', 'helplessness', 'despair',
-  // 긍정/회복
-  'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort',
-  // 복합/중립
-  'longing', 'nostalgia', 'acceptance', 'confusion'
-];
+// Shared modules
+import { fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus } from './shared/api.js';
+import { playSound, stopSound, setVolume, SOUNDS } from './shared/audio.js';
+import { cosineSimilarity, normalizeVector, addVectors, calculateAlignment, getBucket, checkFixated, getDominantEmotion, normalizeAnchor } from './shared/math.js';
+import { AppState, resetState, updateState, updateStates } from './shared/state.js';
 
-// 한글-영문 매핑 (확장)
-const EMOTION_ANCHOR_MAP = {
-  // 부정/고통
-  '공포': 'fear',
-  '두려움': 'fear',
-  '무서움': 'fear',
-  '슬픔': 'sadness',
-  '우울': 'sadness',
-  '비애': 'sadness',
-  '분노': 'anger',
-  '화': 'anger',
-  '짜증': 'anger',
-  '죄책감': 'guilt',
-  '수치심': 'shame',
-  '창피함': 'shame',
-  '고립': 'isolation',
-  '외로움': 'isolation',
-  '무감각': 'numbness',
-  '공허': 'numbness',
-  '도덕적 고통': 'moral_pain',
-  '무력감': 'helplessness',
-  '절망': 'despair',
-  
-  // 긍정/회복
-  '기쁨': 'joy',
-  '행복': 'joy',
-  '희망': 'hope',
-  '기대': 'hope',
-  '안도': 'relief',
-  '감사': 'gratitude',
-  '고마움': 'gratitude',
-  '사랑': 'love',
-  '애정': 'love',
-  '평온': 'peace',
-  '고요': 'peace',
-  '위안': 'comfort',
-  '따뜻함': 'comfort',
-  
-  // 복합/중립
-  '그리움': 'longing',
-  '향수': 'nostalgia',
-  '수용': 'acceptance',
-  '받아들임': 'acceptance',
-  '혼란': 'confusion',
-  '당혹': 'confusion'
-};
+console.log('=== Shared Modules Loaded ===');
+console.log('API:', typeof fetchMemories);
+console.log('Audio:', typeof playSound);
+console.log('Math:', typeof cosineSimilarity);
+console.log('State:', AppState);
 
-// 기록자가 자유 입력한 앵커도 허용 (매핑에 없으면 그대로 사용)
-function normalizeAnchor(anchor) {
-  if (!anchor || typeof anchor !== 'string') {
-    return String(anchor || '').toLowerCase();
-  }
-  const trimmed = anchor.trim();
-  return EMOTION_ANCHOR_MAP[trimmed] || trimmed.toLowerCase();
-}
+// 감정 앵커 시스템은 /js/shared/math.js로 이동됨
 
+// 전역 변수 (AppState와 호환성을 위해 유지, 점진적으로 AppState로 마이그레이션)
 let supabaseClient;
 let storyData;
 let allMemoriesData=[];let currentMode=null,currentRole=null,sessionCode=null,currentMemory=null,currentScene=0,userChoices=[],userReasons=[],currentAlignment=0,waveAnimationId=null,liveWaveAnimationId=null,liveSceneNum=1,liveFragments=0,liveMatches=0,isLoggedIn=false,currentUser=null,currentSessionId=null,currentSceneOrder=1;let currentSort='all';let currentCategory='all';let currentBucket=null;let emotionHistory=[];
+
+// AppState와 전역 변수 동기화 헬퍼
+function syncToAppState() {
+  AppState.supabaseClient = supabaseClient;
+  AppState.storyData = storyData;
+  AppState.allMemoriesData = allMemoriesData;
+  AppState.currentMode = currentMode;
+  AppState.currentRole = currentRole;
+  AppState.sessionCode = sessionCode;
+  AppState.currentMemory = currentMemory;
+  AppState.currentScene = currentScene;
+  AppState.currentSceneOrder = currentSceneOrder;
+  AppState.userChoices = userChoices;
+  AppState.userReasons = userReasons;
+  AppState.currentAlignment = currentAlignment;
+  AppState.waveAnimationId = waveAnimationId;
+  AppState.liveWaveAnimationId = liveWaveAnimationId;
+  AppState.liveSceneNum = liveSceneNum;
+  AppState.liveFragments = liveFragments;
+  AppState.liveMatches = liveMatches;
+  AppState.isLoggedIn = isLoggedIn;
+  AppState.currentUser = currentUser;
+  AppState.currentSessionId = currentSessionId;
+  AppState.currentSort = currentSort;
+  AppState.currentCategory = currentCategory;
+  AppState.currentBucket = currentBucket;
+  AppState.emotionHistory = emotionHistory;
+}
 const USE_LIVE_INTERPRETATIONS_TABLE=false;
 
 // DOMContentLoaded 시 초기화
@@ -88,6 +63,11 @@ function initApp() {
     window.currentStoryData = storyData;
     allMemoriesData = [...memoriesDataArray.map(m=>({...m,live_session_id:null,is_live:false}))];
     if(document.getElementById('memoryList')) renderMemoryCards();
+    
+    // 3D Carousel 초기화
+    setTimeout(() => {
+        init3DCarousel();
+    }, 100);
 }
 function openPortfolio(){
     // Next.js 개발 서버 사용 (포트 3000)
@@ -133,7 +113,7 @@ function backToModeSelection(){const sessionSetupEl=document.getElementById('ses
 async function enterArchive(){const introScreen=document.getElementById('introScreen');const archiveContainer=document.getElementById('archiveContainer');if(introScreen){introScreen.classList.add('hidden');introScreen.style.cssText='display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important'}['modeSelection','endScreen','liveContainer','sceneViewer'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('active');el.style.display='none'}});if(archiveContainer){archiveContainer.classList.add('active');archiveContainer.style.cssText='display:block !important;z-index:1900 !important'}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='grid';const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='flex';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='block';currentMode='archive';stopAllAnimations();await loadMemoriesFromSupabase();setTimeout(()=>showNpcDialogue("여기는 아카이브야. 한 번 상연된 기억 위에, 다른 사람들의 해석이 지층처럼 쌓여 있어.",5000),1000);const archiveSearchEl=document.getElementById('archiveSearch');if(archiveSearchEl)archiveSearchEl.value='';renderMemoryCards();sortMemories('all');const footer=document.querySelector('.footer');if(footer)footer.classList.add('visible')}
 function filterByCategory(category,btnElement){if(!category)return;currentCategory=category;const categoryBtns=document.querySelectorAll('.category-btn');categoryBtns.forEach(btn=>btn.classList.remove('active'));if(btnElement)btnElement.classList.add('active');renderMemoryCards()}
 async function loadMemoriesFromSupabase(){try{supabaseClient = getSupabaseClient(); if(!supabaseClient){console.log('[loadMemoriesFromSupabase] Supabase 클라이언트가 아직 초기화되지 않았습니다');return}console.log('[loadMemoriesFromSupabase] Supabase에서 기억 불러오기 시작');const{data:memoriesDataSupabase,error:memoriesError}=await supabaseClient.from('memories').select('*').eq('is_public',true).order('id',{ascending:true});if(memoriesError){console.error('[loadMemoriesFromSupabase] memories 조회 실패',memoriesError);return}if(!memoriesDataSupabase||memoriesDataSupabase.length===0){console.log('[loadMemoriesFromSupabase] Supabase에 공개된 기억이 없습니다');allMemoriesData=[];return}console.log(`[loadMemoriesFromSupabase] ${memoriesDataSupabase.length}개의 메모리 발견`);const supabaseMemories=await Promise.all(memoriesDataSupabase.map(async(memory)=>{const{data:scenesData,error:scenesError}=await supabaseClient.from('scenes').select('*').eq('memory_id',memory.id).order('scene_order',{ascending:true});if(scenesError){console.error(`[loadMemoriesFromSupabase] Memory ${memory.id} scenes 조회 실패`,scenesError);return null}const scenes=await Promise.all((scenesData||[]).map(async(scene)=>{const{data:choicesData,error:choicesError}=await supabaseClient.from('choices').select('*').eq('scene_id',scene.id).order('choice_order',{ascending:true});if(choicesError){console.error(`[loadMemoriesFromSupabase] Scene ${scene.id} choices 조회 실패`,choicesError);return null}const echoWords=Array.isArray(scene.echo_words)?scene.echo_words:(typeof scene.echo_words==='string'?JSON.parse(scene.echo_words):[]);const emotionDist=scene.emotion_dist||{};console.log(`[loadMemoriesFromSupabase] Scene ${scene.id} original_reason_vector:`,scene.original_reason_vector);console.log(`[loadMemoriesFromSupabase] Scene ${scene.id} 전체 scene 객체:`,scene);return{id:scene.id,text:scene.text||'',sceneType:scene.scene_type||'normal',echoWords:echoWords,choices:(choicesData||[]).map(choice=>({text:choice.text||'',emotion:choice.emotion||'fear',intensity:choice.intensity||5,nextScene:choice.nextScene||'end',percentage:0})),emotionDist:emotionDist,voidInfo:scene.void_info||null,originalChoice:scene.original_choice!==undefined?scene.original_choice:0,originalReason:scene.original_reason||'',originalEmotion:scene.original_emotion?(typeof scene.original_emotion==='string'?JSON.parse(scene.original_emotion):scene.original_emotion):null,originalReasonVector:scene.original_reason_vector?(typeof scene.original_reason_vector==='string'?JSON.parse(scene.original_reason_vector):scene.original_reason_vector):null,text_stage_1:scene.text_stage_1||null,text_stage_2:scene.text_stage_2||null,text_stage_3:scene.text_stage_3||null}}));const validScenes=scenes.filter(s=>s!==null);const isLive=!!memory.live_session_id;return{id:memory.id,code:memory.code||'',title:memory.title||'',layers:memory.layers||0,dilution:memory.dilution||50,recentRank:memory.id||0,scenes:validScenes,live_session_id:memory.live_session_id,is_live:isLive}}));const validSupabaseMemories=supabaseMemories.filter(m=>m!==null);allMemoriesData=validSupabaseMemories||[];console.log(`[loadMemoriesFromSupabase] Supabase에서 ${allMemoriesData.length}개의 기억을 로드했습니다`)}catch(error){console.error('[loadMemoriesFromSupabase] 에러 발생',error);allMemoriesData=[]}}
-function renderMemoryCards(){const list=document.getElementById('memoryList');if(!list)return;if(!allMemoriesData||allMemoriesData.length===0){list.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">기억이 없습니다.</div>';return}let filteredMemories=[...allMemoriesData];if(currentCategory==='live'){filteredMemories=filteredMemories.filter(m=>(m.live_session_id||m.is_live))}else if(currentCategory==='archive'){filteredMemories=filteredMemories.filter(m=>(!m.live_session_id&&!m.is_live))}let sortedMemories;if(currentSort==='all'){sortedMemories=filteredMemories}else if(currentSort==='popular'){sortedMemories=[...filteredMemories].sort((a,b)=>(b.layers||0)-(a.layers||0))}else if(currentSort==='recent'){sortedMemories=[...filteredMemories].sort((a,b)=>(b.recentRank||0)-(a.recentRank||0))}list.innerHTML='';if(sortedMemories.length===0){list.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">해당 카테고리의 기억이 없습니다.</div>';return}sortedMemories.forEach((memory,index)=>{const originalIndex=allMemoriesData.findIndex(m=>m.id===memory.id);const card=document.createElement('div');card.className='memory-card';card.setAttribute('data-code',memory.code||'');card.setAttribute('data-layers',memory.layers||0);card.setAttribute('data-recent',memory.recentRank||0);const isLive=!!(memory.live_session_id||memory.is_live);card.setAttribute('data-category',isLive?'live':'archive');card.setAttribute('onclick',`selectMemory(${originalIndex>=0?originalIndex:index})`);const categoryLabel=isLive?'<span class="memory-category-badge live">라이브</span>':'<span class="memory-category-badge archive">아카이브</span>';card.innerHTML=`${categoryLabel}<h3 class="memory-card-title">${memory.title||'제목 없음'}</h3><p class="memory-card-meta">원본: ${memory.code||'—'} · 해석 레이어: ${memory.layers||0}개</p><div class="memory-card-dilution"><span>원본</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution||50}%"></div></div><span>${memory.dilution||50}%</span></div>`;list.appendChild(card)});filterMemories()}
+function renderMemoryCards(){const list=document.getElementById('memoryList');if(!list)return;if(!allMemoriesData||allMemoriesData.length===0){list.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">기억이 없습니다.</div>';return}let filteredMemories=[...allMemoriesData];if(currentCategory==='live'){filteredMemories=filteredMemories.filter(m=>(m.live_session_id||m.is_live))}else if(currentCategory==='archive'){filteredMemories=filteredMemories.filter(m=>(!m.live_session_id&&!m.is_live))}let sortedMemories;if(currentSort==='all'){sortedMemories=filteredMemories}else if(currentSort==='popular'){sortedMemories=[...filteredMemories].sort((a,b)=>(b.layers||0)-(a.layers||0))}else if(currentSort==='recent'){sortedMemories=[...filteredMemories].sort((a,b)=>(b.recentRank||0)-(a.recentRank||0))}list.innerHTML='';if(sortedMemories.length===0){list.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">해당 카테고리의 기억이 없습니다.</div>';return}sortedMemories.forEach((memory,index)=>{const originalIndex=allMemoriesData.findIndex(m=>m.id===memory.id);const card=document.createElement('div');card.className='memory-card';card.setAttribute('data-code',memory.code||'');card.setAttribute('data-layers',memory.layers||0);card.setAttribute('data-recent',memory.recentRank||0);const isLive=!!(memory.live_session_id||memory.is_live);card.setAttribute('data-category',isLive?'live':'archive');card.setAttribute('onclick',`selectMemory(${originalIndex>=0?originalIndex:index})`);const categoryLabel=isLive?'<span class="memory-category-badge live">라이브</span>':'';const isFetus=!memory.status||memory.status==='Fetus';const statusBadge=isFetus?'<div class="status-badge Fetus">Fetus</div>':'';console.log('[Memory] Rendering card:',memory.title,'status:',memory.status);card.innerHTML=`${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title||'제목 없음'}</h3><p class="memory-card-meta">원본: ${memory.code||'—'} · 해석 레이어: ${memory.layers||0}개</p><div class="memory-card-dilution"><span>원본</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution||50}%"></div></div><span>${memory.dilution||50}%</span></div>`;list.appendChild(card)});filterMemories()}
 function filterMemories(){const searchValue=document.getElementById('archiveSearch').value.toUpperCase().trim();const cards=document.querySelectorAll('.memory-card');cards.forEach(card=>{const code=card.getAttribute('data-code')||'';const category=card.getAttribute('data-category')||'archive';let shouldShow=true;if(currentCategory==='live'&&category!=='live')shouldShow=false;else if(currentCategory==='archive'&&category!=='archive')shouldShow=false;if(shouldShow&&(searchValue===''||code.includes(searchValue))){card.classList.remove('hidden');card.style.display='block';if(searchValue!==''&&code===searchValue){setTimeout(()=>{card.scrollIntoView({behavior:'smooth',block:'center'});card.style.transform='scale(1.05)';setTimeout(()=>card.style.transform='',500)},100)}}else{card.classList.add('hidden');card.style.display='none'}})}
 function sortMemories(sortType,btnElement){currentSort=sortType;const filterBtns=document.querySelectorAll('.filter-btn');filterBtns.forEach(btn=>btn.classList.remove('active'));if(btnElement)btnElement.classList.add('active');renderMemoryCards()}
 function selectRole(role){try{currentRole=role;currentMode='live';const modeSelectionEl=document.getElementById('modeSelection');if(modeSelectionEl){modeSelectionEl.classList.remove('active');modeSelectionEl.style.display='none'}const sessionSetupEl=document.getElementById('sessionSetup');if(sessionSetupEl){sessionSetupEl.classList.add('active');sessionSetupEl.style.cssText='display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important'}if(role==='A'){const narratorSetupEl=document.getElementById('narratorSetup');const experiencerSetupEl=document.getElementById('experiencerSetup');if(narratorSetupEl)narratorSetupEl.style.display='block';if(experiencerSetupEl)experiencerSetupEl.style.display='none';generateSessionCode()}else{const narratorSetupEl=document.getElementById('narratorSetup');const experiencerSetupEl=document.getElementById('experiencerSetup');if(narratorSetupEl)narratorSetupEl.style.display='none';if(experiencerSetupEl)experiencerSetupEl.style.display='block'}}catch(e){console.error('selectRole error:',e);showNotification('역할을 선택하는 중 오류가 발생했습니다')}}
@@ -328,7 +308,8 @@ function subscribeToExperiencerChoices(){supabaseClient = getSupabaseClient(); i
 function onExperiencerChoiceReceived(choice){console.log('체험자 감정 도착 (choices 테이블):',choice);console.log('emotion_vector:',choice.emotion_vector);if(!choice||!choice.emotion_vector){console.error('choice 또는 emotion_vector가 없습니다');return}const emotionVector=choice.emotion_vector;console.log('화자 화면에 체험자 감정 반영 시작:',emotionVector);window.experiencerEmotionVector=emotionVector;const experiencerWave=computeWaveFromEmotion({base:emotionVector});window.currentExperiencerWave=experiencerWave;updateAlignmentWave();if(window.narratorEmotionVector){const similarity=cosineSimilarity(window.narratorEmotionVector,emotionVector);const alignment=Math.max(0,Math.min(1,similarity));currentAlignment=alignment;updateLiveAlignment(0);console.log('정렬도 계산 완료 (choices):',alignment)}showNotification('체험자가 감정을 입력했습니다 (choices)');console.log('체험자 감정 파동 업데이트 완료 (choices)')}
 function subscribeToScenes(){supabaseClient = getSupabaseClient(); if(!supabaseClient){console.error('subscribeToScenes: supabaseClient 없음');return}if(!currentSessionId){console.error('subscribeToScenes: currentSessionId 없음');return}console.log('장면 구독 시작, 세션 ID:',currentSessionId);const channel=supabaseClient.channel('scenes-'+currentSessionId).on('postgres_changes',{event:'INSERT',schema:'public',table:'scenes',filter:`live_session_id=eq.${currentSessionId}`},(payload)=>{console.log('새 장면 수신 (scenes 테이블):',payload);console.log('payload.new:',payload.new);if(payload.new){displaySceneForExperiencer(payload.new)}else{console.error('payload.new가 없습니다')}}).subscribe((status)=>{if(status==='SUBSCRIBED'){console.log('scenes 테이블 구독 성공!')}else if(status==='CHANNEL_ERROR'){console.log('scenes 테이블 구독 실패 (무시됨)')}});window.scenesChannel=channel;console.log('scenes 채널 생성 완료:',channel)}
 function displaySceneForExperiencer(scene){console.log('displaySceneForExperiencer 호출:',scene);if(!scene){console.error('장면 객체가 없습니다');return}if(!scene.text){console.error('장면 텍스트가 없습니다. scene:',JSON.stringify(scene));return}console.log('체험자 화면에 장면 표시 시작:',scene.text);const expSceneText=document.getElementById('expSceneText');if(expSceneText){expSceneText.textContent=scene.text;console.log('장면 텍스트 업데이트 완료');switchExpGeneratedTab('scene');expCurrentPhase='interpret';window.currentSceneId=scene.id||null;const expChatMessages=document.getElementById('expChatMessages');if(expChatMessages){expChatMessages.style.display='block';expChatMessages.innerHTML=''}const emotionCueMsg=window.lastSceneData?.emotionCue||NPC_DIALOGUES.live.emotionCue;addExpChatMessage('ai',NPC_DIALOGUES.live.sceneArrived);addExpChatMessage('ai',emotionCueMsg);const expTextInput=document.getElementById('expTextInput');if(expTextInput){expTextInput.value='';expTextInput.focus();expTextInput.placeholder='감정을 입력하세요...'}showNotification('새 장면이 도착했습니다')}else{console.error('expSceneText 요소를 찾을 수 없습니다')}}
-function cosineSimilarity(vec1,vec2,anchorEmotions=null){if(!vec1||!vec2)return 0;let keys;if(anchorEmotions&&Array.isArray(anchorEmotions)&&anchorEmotions.length>0){keys=anchorEmotions.map(anchor=>normalizeAnchor(String(anchor)))}else{keys=DEFAULT_EMOTION_ANCHORS}let dotProduct=0;let mag1=0;let mag2=0;keys.forEach(key=>{const v1=vec1[key]||0;const v2=vec2[key]||0;dotProduct+=v1*v2;mag1+=v1*v1;mag2+=v2*v2});mag1=Math.sqrt(mag1);mag2=Math.sqrt(mag2);if(mag1===0||mag2===0)return 0;return dotProduct/(mag1*mag2)}function getMismatchType(userVector,originalVector){if(!userVector||!originalVector)return null;const emotionSimilarity=cosineSimilarity(userVector.base,originalVector.base||originalVector);const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 미스매치 판정 ===');console.log('감정 유사도:',emotionSimilarity);console.log('귀인 비교:',userReason.attribution,'vs',origReason.attribution);console.log('핵심 두려움 비교:',userReason.core_fear,'vs',origReason.core_fear);console.log('VOID 비교:',userReason.is_void,'vs',origReason.is_void);if(!!userReason.is_void!==!!origReason.is_void){console.log('미스매치 타입: void_mismatch');return'void_mismatch'}if(emotionSimilarity<0.5){console.log('미스매치 타입: emotion_mismatch');return'emotion_mismatch'}if(userReason.attribution&&origReason.attribution&&userReason.attribution!==origReason.attribution){console.log('미스매치 타입: attribution_mismatch');return'attribution_mismatch'}if(userReason.core_fear&&origReason.core_fear&&userReason.core_fear!==origReason.core_fear){console.log('미스매치 타입: target_displacement');return'target_displacement'}console.log('미스매치 타입: null (일치)');return null}
+// cosineSimilarity는 /js/shared/math.js에서 import됨
+function getMismatchType(userVector,originalVector){if(!userVector||!originalVector)return null;const emotionSimilarity=cosineSimilarity(userVector.base,originalVector.base||originalVector);const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 미스매치 판정 ===');console.log('감정 유사도:',emotionSimilarity);console.log('귀인 비교:',userReason.attribution,'vs',origReason.attribution);console.log('핵심 두려움 비교:',userReason.core_fear,'vs',origReason.core_fear);console.log('VOID 비교:',userReason.is_void,'vs',origReason.is_void);if(!!userReason.is_void!==!!origReason.is_void){console.log('미스매치 타입: void_mismatch');return'void_mismatch'}if(emotionSimilarity<0.5){console.log('미스매치 타입: emotion_mismatch');return'emotion_mismatch'}if(userReason.attribution&&origReason.attribution&&userReason.attribution!==origReason.attribution){console.log('미스매치 타입: attribution_mismatch');return'attribution_mismatch'}if(userReason.core_fear&&origReason.core_fear&&userReason.core_fear!==origReason.core_fear){console.log('미스매치 타입: target_displacement');return'target_displacement'}console.log('미스매치 타입: null (일치)');return null}
 function calculateComplexAlignment(userVector,originalVector,anchorEmotions=null){if(!userVector||!originalVector)return 0;const emotionScore=cosineSimilarity(userVector.base||userVector,originalVector.base||originalVector,anchorEmotions);let reasonScore=0;const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 정렬도 계산 디버깅 ===');console.log('origReason 값:',origReason);console.log('scene.original_reason_vector:',originalVector.reason_analysis);console.log('userReason:',userReason);if(anchorEmotions&&anchorEmotions.length>0){console.log('=== 감정 앵커 시스템 ===');console.log('장면 앵커:',anchorEmotions)}const attributionMatch=userReason.attribution&&origReason.attribution&&userReason.attribution===origReason.attribution;const coreFearMatch=userReason.core_fear&&origReason.core_fear&&userReason.core_fear===origReason.core_fear;console.log(`attribution 비교: "${userReason.attribution}" === "${origReason.attribution}" → ${attributionMatch}`);console.log(`core_fear 비교: "${userReason.core_fear}" === "${origReason.core_fear}" → ${coreFearMatch}`);if(attributionMatch){reasonScore+=0.5}if(coreFearMatch){reasonScore+=0.5}console.log(`이유 점수: ${reasonScore} (attribution: ${attributionMatch?'0.5':'0'}, core_fear: ${coreFearMatch?'0.5':'0'})`);let voidScore=0;if(!!userReason.is_void===!!origReason.is_void){voidScore=1.0}const totalAlignment=(emotionScore*0.4)+(reasonScore*0.4)+(voidScore*0.2);console.log('=== 정렬도 계산 상세 ===');console.log(`감정: ${(emotionScore*0.4).toFixed(2)}, 이유: ${(reasonScore*0.4).toFixed(2)}, VOID: ${(voidScore*0.2).toFixed(2)}`);console.log(`최종: ${totalAlignment.toFixed(2)}`);return totalAlignment}
 function updateAlignmentDisplay(){const alignmentValueEl=document.getElementById('alignmentValue');const alignmentFillEl=document.getElementById('alignmentFill');if(alignmentValueEl){alignmentValueEl.textContent=currentAlignment.toFixed(2)}if(alignmentFillEl){alignmentFillEl.style.width=(currentAlignment*100)+'%'}}
 function renderArchiveEmotionWave(emotionVector){if(!emotionVector)return;const canvas=document.getElementById('waveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');const width=canvas.width/2;const height=canvas.height/2;const centerY=height/2;ctx.fillStyle='rgba(18,18,26,0.1)';ctx.fillRect(0,0,width,height);const waveData=computeWaveFromEmotion({base:emotionVector,intensity:0.5,confidence:0.8});ctx.beginPath();ctx.strokeStyle=waveData.color||'rgba(196,168,130,0.6)';ctx.lineWidth=1.5;let time=Date.now()*0.001;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*waveData.frequency+time)*waveData.amplitude*20;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();console.log('Archive emotion wave rendered:',waveData)}
@@ -951,7 +932,7 @@ function startVoiceWaveLiveAnimation(){
 }
 function stopVoiceWaveLiveAnimation(){if(voiceWaveLiveAnimationId){cancelAnimationFrame(voiceWaveLiveAnimationId);voiceWaveLiveAnimationId=null}}
 let alignmentWaveAnimationId=null;let voiceWaveLiveAnimationId=null;let comparisonWaveAnimationId=null;let comparisonWaveTime=0;
-function selectMemory(index){try{currentMemory=index;currentScene=0;userChoices=[];userReasons=[];currentAlignment=0;currentBucket=null;emotionHistory=[];updateUserStats('memory',index);const selectedMemory=allMemoriesData[index]||allMemoriesData[0];if(!selectedMemory){showNotification('기억을 불러올 수 없습니다');return}window.currentStoryData=selectedMemory;const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl&&!archiveContainerEl.classList.contains('active')){archiveContainerEl.classList.add('active')}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='none';const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='none';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='none';const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.add('active');sceneViewerEl.style.cssText='display:block !important;opacity:1 !important';setTimeout(()=>{initProgressDots();renderScene();startWaveAnimation();setTimeout(()=>showNpcDialogue("이 기억의 주인은 아래층에, 다른 사람들의 해석은 위층에 쌓여 있어. 천천히 그 지층을 따라가 봐.",4000),100)},100)}else{showNotification('장면 뷰어를 찾을 수 없습니다')}}catch(e){console.error('selectMemory error:',e);console.error('Error details:',{index,memoriesDataLength:memoriesData.length,selectedMemory:memoriesData[index]});showNotification('기억을 불러오는 중 오류가 발생했습니다')}}
+function selectMemory(index){try{currentMemory=index;currentScene=0;userChoices=[];userReasons=[];currentAlignment=0;currentBucket=null;emotionHistory=[];updateUserStats('memory',index);const selectedMemory=allMemoriesData[index]||allMemoriesData[0];if(!selectedMemory){showNotification('기억을 불러올 수 없습니다');return}const memoryId=selectedMemory.id;if(memoryId){activateMemoryIfFetus(memoryId);}window.currentStoryData=selectedMemory;const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl&&!archiveContainerEl.classList.contains('active')){archiveContainerEl.classList.add('active')}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='none';const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='none';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='none';const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.add('active');sceneViewerEl.style.cssText='display:block !important;opacity:1 !important';setTimeout(()=>{initProgressDots();renderScene();startWaveAnimation();setTimeout(()=>showNpcDialogue("이 기억의 주인은 아래층에, 다른 사람들의 해석은 위층에 쌓여 있어. 천천히 그 지층을 따라가 봐.",4000),100)},100)}else{showNotification('장면 뷰어를 찾을 수 없습니다')}}catch(e){console.error('selectMemory error:',e);console.error('Error details:',{index,memoriesDataLength:memoriesData.length,selectedMemory:memoriesData[index]});showNotification('기억을 불러오는 중 오류가 발생했습니다')}}
 function backToList(){document.getElementById('memoryList').style.display='grid';const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='flex';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='block';stopWaveAnimation()}
 function initProgressDots(){const currentData=window.currentStoryData||storyData;const dotsContainer=document.getElementById('progressDots');if(!dotsContainer)return;dotsContainer.innerHTML='';if(!currentData||!currentData.scenes)return;for(let i=0;i<currentData.scenes.length;i++){const dot=document.createElement('div');dot.className='progress-dot'+(i===0?' active':'');dot.onclick=function(){goToScene(i)};dotsContainer.appendChild(dot)}}
 function goToScene(index){if(index<=currentScene){currentScene=index;renderScene()}}
@@ -1019,7 +1000,8 @@ function showMemoryFateModal(){
 }
 async function selectMemoryFate(fate){const modalEl=document.getElementById('memoryFateModal');if(modalEl)modalEl.classList.remove('active');window.selectedMemoryFate=fate;if(supabaseClient&&currentSessionId){try{await supabaseClient.from('live_sessions').update({memory_fate:fate}).eq('id',currentSessionId);console.log('Memory fate saved:',fate)}catch(e){console.error('Memory fate save error:',e)}}await saveLiveToArchive(fate);setTimeout(()=>{proceedSaveMemory()},500)}
 async function saveLiveToArchive(fate){if(!supabaseClient||!currentSessionId){console.log('No session to save to archive');return}try{const{data:sessionData}=await supabaseClient.from('live_sessions').select('*').eq('id',currentSessionId).single();if(!sessionData){console.error('Session not found');return}const{data:scenesData}=await supabaseClient.from('live_scenes').select('*').eq('session_id',currentSessionId).order('scene_index',{ascending:true});if(!scenesData||scenesData.length===0){console.log('No scenes to save');return}const memoryCode='L-'+sessionData.session_code;const memoryTitle='라이브 기억 #'+sessionData.session_code;const dilutionValue=fate==='preserve'?100:fate==='dilute'?50:0;const{data:newMemory,error:memoryError}=await supabaseClient.from('memories').insert({code:memoryCode,title:memoryTitle,layers:1,dilution:dilutionValue,is_public:true,source_type:'live',source_session_id:currentSessionId,memory_fate:fate}).select().single();if(memoryError){console.error('Memory insert error:',memoryError);return}for(let i=0;i<scenesData.length;i++){const scene=scenesData[i];const emotionVector=scene.emotion_vector||{};const dominantEmotion=getDominantEmotion(emotionVector);const{data:newScene}=await supabaseClient.from('scenes').insert({memory_id:newMemory.id,scene_order:scene.scene_index||i+1,text:scene.scene_text||'',scene_type:'normal',echo_words:[],emotion_dist:emotionVector}).select().single();if(newScene){await supabaseClient.from('choices').insert({scene_id:newScene.id,choice_order:0,text:scene.generated_emotion||'느껴진 감정',emotion:dominantEmotion,intensity:Math.round((scene.intensity||0.5)*10)})}}console.log('Live session saved to archive');showNotification('기억이 아카이브에 저장되었습니다')}catch(e){console.error('saveLiveToArchive error:',e)}}
-function getDominantEmotion(vector){if(!vector||typeof vector!=='object')return'sadness';const entries=Object.entries(vector);if(entries.length===0)return'sadness';return entries.sort((a,b)=>(b[1]||0)-(a[1]||0))[0][0]}function getBucket(alignment,previousBucket,emotionHistory){if(emotionHistory&&emotionHistory.length>=3){const last3=emotionHistory.slice(-3);if(last3[0]===last3[1]&&last3[1]===last3[2]){return'FIXATED'}}if(previousBucket==='HIGH'&&alignment>=0.45)return'HIGH';if(previousBucket==='LOW'&&alignment<=0.25)return'LOW';if(alignment>=0.55)return'HIGH';if(alignment<0.35)return'LOW';return'MID'}const bucketDialogue={HIGH:NPC_DIALOGUES.bucket.HIGH,MID:NPC_DIALOGUES.bucket.MID,LOW:NPC_DIALOGUES.bucket.LOW,FIXATED:NPC_DIALOGUES.bucket.FIXATED};const bucketSystemMessage={HIGH:"[ 동기화 안정 ]",MID:"[ 신호 불안정 ]",LOW:"[ 왜곡 감지 ]",FIXATED:"[ 루프 감지 ]"};function showBucketFeedback(bucket,alignment){if(bucket&&bucketDialogue[bucket]){showNpcDialogue(bucketDialogue[bucket],4000)}if(bucket&&bucketSystemMessage[bucket]){showSystemMessage(bucketSystemMessage[bucket])}}function showSystemMessage(message){const systemMsgEl=document.getElementById('systemMessage');if(systemMsgEl){systemMsgEl.textContent=message;systemMsgEl.classList.add('visible');setTimeout(()=>{systemMsgEl.classList.remove('visible')},2000)}}async function getContaminationLevel(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염도를 계산할 수 없습니다');return 0}const{count,error}=await supabaseClient.from('plays').select('*',{count:'exact',head:true}).eq('memory_id',memoryId);if(error){console.error('오염도 계산 오류:',error);return 0}const maxLayers=100;const contamination=Math.min((count||0)/maxLayers,1.0);console.log('=== 오염도 계산 ===');console.log('memory_id:',memoryId);console.log('plays 수:',count);console.log('오염도:',contamination);return contamination}catch(e){console.error('getContaminationLevel error:',e);return 0}}function getContaminationStage(contamination){if(contamination>=0.9)return 3;if(contamination>=0.6)return 2;if(contamination>=0.3)return 1;return 0}async function getContaminationDirection(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염 방향을 결정할 수 없습니다');return'default'}const{data:plays,error}=await supabaseClient.from('plays').select('mismatch_type').eq('memory_id',memoryId).not('mismatch_type','is',null);if(error){console.error('오염 방향 결정 오류:',error);return'default'}if(!plays||plays.length===0){console.log('=== 오염 방향 ===');console.log('plays 데이터 없음, 기본값 사용');return'default'}const counts={emotion_mismatch:0,target_displacement:0,attribution_mismatch:0,void_mismatch:0};plays.forEach(p=>{if(p.mismatch_type&&counts[p.mismatch_type]!==undefined){counts[p.mismatch_type]++}});const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];console.log('=== 오염 방향 ===');console.log('미스매치 통계:',counts);console.log('지배적 타입:',dominant[0],`(${dominant[1]}회)`);return dominant[1]>0?dominant[0]:'default'}catch(e){console.error('getContaminationDirection error:',e);return'default'}}async function getContaminatedText(scene,stage,memoryId,direction='default'){if(stage===0)return scene.text;const stageKey=`text_stage_${stage}_${direction}`;if(scene[stageKey]){console.log(`Stage ${stage} (${direction}) 캐시 사용`);return scene[stageKey]}console.log(`Stage ${stage} (${direction}) AI 생성 중...`);const contaminatedText=await generateContaminatedText(scene.text,stage,direction);if(contaminatedText&&scene.id){try{supabaseClient=getSupabaseClient();if(supabaseClient){await supabaseClient.from('scenes').update({[stageKey]:contaminatedText}).eq('id',scene.id);console.log(`Stage ${stage} (${direction}) 캐시 저장 완료`)}else{console.warn('Supabase 클라이언트가 없어 캐시를 저장할 수 없습니다')}}catch(e){console.error('캐시 저장 오류:',e)}}return contaminatedText||scene.text}async function generateContaminatedText(originalText,stage,direction='default'){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.error('Supabase 클라이언트가 없습니다');return originalText}const{data,error}=await supabaseClient.functions.invoke('contaminate-text',{body:{text:originalText,stage:stage,direction:direction}});if(error){console.error('contaminate-text 함수 오류:',error);return originalText}if(data&&data.contaminatedText){return data.contaminatedText}return originalText}catch(e){console.error('generateContaminatedText error:',e);return originalText}}async function loadSceneWithContamination(scene,memoryId){const contamination=await getContaminationLevel(memoryId);const stage=getContaminationStage(contamination);const direction=await getContaminationDirection(memoryId);console.log('=== 오염 적용 ===');console.log('오염도:',contamination);console.log('Stage:',stage);console.log('방향:',direction);const displayText=await getContaminatedText(scene,stage,memoryId,direction);return{...scene,displayText,contaminationStage:stage,contaminationDirection:direction}}
+// getDominantEmotion과 getBucket은 /js/shared/math.js에서 import됨
+const bucketDialogue={HIGH:NPC_DIALOGUES.bucket.HIGH,MID:NPC_DIALOGUES.bucket.MID,LOW:NPC_DIALOGUES.bucket.LOW,FIXATED:NPC_DIALOGUES.bucket.FIXATED};const bucketSystemMessage={HIGH:"[ 동기화 안정 ]",MID:"[ 신호 불안정 ]",LOW:"[ 왜곡 감지 ]",FIXATED:"[ 루프 감지 ]"};function showBucketFeedback(bucket,alignment){if(bucket&&bucketDialogue[bucket]){showNpcDialogue(bucketDialogue[bucket],4000)}if(bucket&&bucketSystemMessage[bucket]){showSystemMessage(bucketSystemMessage[bucket])}}function showSystemMessage(message){const systemMsgEl=document.getElementById('systemMessage');if(systemMsgEl){systemMsgEl.textContent=message;systemMsgEl.classList.add('visible');setTimeout(()=>{systemMsgEl.classList.remove('visible')},2000)}}async function getContaminationLevel(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염도를 계산할 수 없습니다');return 0}const{count,error}=await supabaseClient.from('plays').select('*',{count:'exact',head:true}).eq('memory_id',memoryId);if(error){console.error('오염도 계산 오류:',error);return 0}const maxLayers=100;const contamination=Math.min((count||0)/maxLayers,1.0);console.log('=== 오염도 계산 ===');console.log('memory_id:',memoryId);console.log('plays 수:',count);console.log('오염도:',contamination);return contamination}catch(e){console.error('getContaminationLevel error:',e);return 0}}function getContaminationStage(contamination){if(contamination>=0.9)return 3;if(contamination>=0.6)return 2;if(contamination>=0.3)return 1;return 0}async function getContaminationDirection(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염 방향을 결정할 수 없습니다');return'default'}const{data:plays,error}=await supabaseClient.from('plays').select('mismatch_type').eq('memory_id',memoryId).not('mismatch_type','is',null);if(error){console.error('오염 방향 결정 오류:',error);return'default'}if(!plays||plays.length===0){console.log('=== 오염 방향 ===');console.log('plays 데이터 없음, 기본값 사용');return'default'}const counts={emotion_mismatch:0,target_displacement:0,attribution_mismatch:0,void_mismatch:0};plays.forEach(p=>{if(p.mismatch_type&&counts[p.mismatch_type]!==undefined){counts[p.mismatch_type]++}});const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];console.log('=== 오염 방향 ===');console.log('미스매치 통계:',counts);console.log('지배적 타입:',dominant[0],`(${dominant[1]}회)`);return dominant[1]>0?dominant[0]:'default'}catch(e){console.error('getContaminationDirection error:',e);return'default'}}async function getContaminatedText(scene,stage,memoryId,direction='default'){if(stage===0)return scene.text;const stageKey=`text_stage_${stage}_${direction}`;if(scene[stageKey]){console.log(`Stage ${stage} (${direction}) 캐시 사용`);return scene[stageKey]}console.log(`Stage ${stage} (${direction}) AI 생성 중...`);const contaminatedText=await generateContaminatedText(scene.text,stage,direction);if(contaminatedText&&scene.id){try{supabaseClient=getSupabaseClient();if(supabaseClient){await supabaseClient.from('scenes').update({[stageKey]:contaminatedText}).eq('id',scene.id);console.log(`Stage ${stage} (${direction}) 캐시 저장 완료`)}else{console.warn('Supabase 클라이언트가 없어 캐시를 저장할 수 없습니다')}}catch(e){console.error('캐시 저장 오류:',e)}}return contaminatedText||scene.text}async function generateContaminatedText(originalText,stage,direction='default'){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.error('Supabase 클라이언트가 없습니다');return originalText}const{data,error}=await supabaseClient.functions.invoke('contaminate-text',{body:{text:originalText,stage:stage,direction:direction}});if(error){console.error('contaminate-text 함수 오류:',error);return originalText}if(data&&data.contaminatedText){return data.contaminatedText}return originalText}catch(e){console.error('generateContaminatedText error:',e);return originalText}}async function loadSceneWithContamination(scene,memoryId){const contamination=await getContaminationLevel(memoryId);const stage=getContaminationStage(contamination);const direction=await getContaminationDirection(memoryId);console.log('=== 오염 적용 ===');console.log('오염도:',contamination);console.log('Stage:',stage);console.log('방향:',direction);const displayText=await getContaminatedText(scene,stage,memoryId,direction);return{...scene,displayText,contaminationStage:stage,contaminationDirection:direction}}
 function saveSessionRecord(){if(!isLoggedIn||!currentUser)return;if(!currentUser.sessionHistory)currentUser.sessionHistory=[];const sessionRecord={id:Date.now(),date:new Date().toLocaleString('ko-KR'),role:currentRole||'—',memoryFate:window.selectedMemoryFate||'—',alignment:currentAlignment.toFixed(2),scenes:liveSceneNum||currentScene+1,fragments:liveFragments||0,matches:liveMatches||0};currentUser.sessionHistory.unshift(sessionRecord);if(currentUser.sessionHistory.length>50)currentUser.sessionHistory=currentUser.sessionHistory.slice(0,50)}
 async function loadMypageDataFromDB(){if(!supabaseClient||!currentUser?.id){renderSessionHistoryEmpty();renderMyMemoriesEmpty();return}try{const[sessionsResult,memoriesResult,statsResult]=await Promise.all([loadSessionHistoryFromDB(),loadMyMemoriesFromDB(),loadUserStatsFromDB()]);renderSessionHistoryList(sessionsResult);renderMyMemoriesList(memoriesResult);updateMypageStats(statsResult);await renderReceivedNotes()}catch(e){console.error('loadMypageDataFromDB error:',e);renderSessionHistoryEmpty();renderMyMemoriesEmpty()}}
 async function loadSessionHistoryFromDB(){if(!supabaseClient||!currentUser?.id)return[];try{const{data,error}=await supabaseClient.from('live_sessions').select('*').or(`narrator_id.eq.${currentUser.id},experiencer_id.eq.${currentUser.id}`).order('created_at',{ascending:false}).limit(50);if(error)throw error;return data||[]}catch(e){console.error('loadSessionHistoryFromDB error:',e);return[]}}
@@ -1181,6 +1163,141 @@ document.addEventListener('DOMContentLoaded',function(){openingSound=document.ge
 const openingScreenEl=document.getElementById('openingScreen');if(openingScreenEl){openingScreenEl.addEventListener('click',function(e){if(hasZoomedIn){skipToIntro();return}hasZoomedIn=true;const waveContainer=document.getElementById('openingWaveContainer');if(waveContainer){waveContainer.style.transform='scale(1)';waveContainer.style.opacity='1'}if(openingSound){setupLoopWithCrossfade(openingSound,0.6,2);fadeInSound(openingSound,0.6,4000)}const hint=document.getElementById('openingStartHint');if(hint)hint.style.opacity='0';setTimeout(()=>{if(!openingSequenceStarted){openingSequenceStarted=true;startOpeningSequence()}},800)})}document.addEventListener('keydown',handleOpeningKeydown);
 async function checkSession(){supabaseClient = getSupabaseClient(); if(!supabaseClient)return;const{data:{session}}=await supabaseClient.auth.getSession();if(session){isLoggedIn=true;currentUser={id:session.user.id,username:session.user.user_metadata?.username||session.user.email.split('@')[0],email:session.user.email,joinDate:new Date(session.user.created_at).toLocaleDateString('ko-KR'),liveSessions:0,memories:0,interpretations:0,visitedMemories:[],sessionHistory:[]}}}
 (async function(){await checkSession()})();
+
+// ==================== 3D Carousel Navigation ====================
+let carouselCurrentIndex = 0;
+const carouselItems = [
+  { action: 'enterArchive', label: 'ARCHIVE' },
+  { action: 'showConfessionHub', label: 'RECORD' },
+  { action: 'openMypage', label: 'MYPAGE' },
+  { action: 'openPortfolio', label: 'PORTFOLIO' }
+];
+
+function init3DCarousel() {
+  const wrapper = document.getElementById('carousel3DWrapper');
+  const items = wrapper?.querySelectorAll('.carousel-item');
+  const prevBtn = document.getElementById('carouselPrev');
+  const nextBtn = document.getElementById('carouselNext');
+  
+  if (!wrapper || !items || items.length === 0) return;
+  
+  // 초기 위치 설정
+  updateCarouselPosition();
+  
+  // 네비게이션 버튼 이벤트
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => navigateCarousel(-1));
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => navigateCarousel(1));
+  }
+  
+  // 키보드 네비게이션
+  document.addEventListener('keydown', (e) => {
+    const introScreen = document.getElementById('introScreen');
+    if (!introScreen || introScreen.classList.contains('hidden')) return;
+    
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      navigateCarousel(-1);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      navigateCarousel(1);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      activateCurrentCarouselItem();
+    }
+  });
+  
+  // 아이템 클릭 이벤트
+  items.forEach((item, index) => {
+    item.addEventListener('click', () => {
+      if (index === carouselCurrentIndex) {
+        activateCurrentCarouselItem();
+      } else {
+        const diff = index - carouselCurrentIndex;
+        navigateCarousel(diff > 0 ? 1 : -1, Math.abs(diff));
+      }
+    });
+  });
+  
+  // 양옆 아이템 클릭으로도 이동 가능
+  items.forEach((item) => {
+    item.addEventListener('click', (e) => {
+      const index = parseInt(item.dataset.index);
+      if (index !== carouselCurrentIndex) {
+        const diff = index - carouselCurrentIndex;
+        navigateCarousel(diff > 0 ? 1 : -1, Math.abs(diff));
+      }
+    });
+  });
+}
+
+function navigateCarousel(direction, steps = 1) {
+  const totalItems = carouselItems.length;
+  carouselCurrentIndex = (carouselCurrentIndex + direction * steps + totalItems) % totalItems;
+  updateCarouselPosition();
+}
+
+function updateCarouselPosition() {
+  const wrapper = document.getElementById('carousel3DWrapper');
+  const items = wrapper?.querySelectorAll('.carousel-item');
+  if (!wrapper || !items) return;
+  
+  const totalItems = items.length;
+  
+  items.forEach((item, index) => {
+    item.classList.remove('active', 'prev-1', 'prev-2', 'next-1', 'next-2', 'hidden');
+    
+    const diff = index - carouselCurrentIndex;
+    const absDiff = Math.abs(diff);
+    
+    if (diff === 0) {
+      item.classList.add('active');
+    } else if (diff === -1 || (diff === -(totalItems - 1) && totalItems > 2)) {
+      item.classList.add('prev-1');
+    } else if (diff === -2 || (diff === -(totalItems - 2) && totalItems > 3)) {
+      item.classList.add('prev-2');
+    } else if (diff === 1 || (diff === (totalItems - 1) && totalItems > 2)) {
+      item.classList.add('next-1');
+    } else if (diff === 2 || (diff === (totalItems - 2) && totalItems > 3)) {
+      item.classList.add('next-2');
+    } else {
+      item.classList.add('hidden');
+    }
+  });
+}
+
+function activateCurrentCarouselItem() {
+  const currentItem = carouselItems[carouselCurrentIndex];
+  if (!currentItem) return;
+  
+  const action = currentItem.action;
+  
+  // 액션 실행
+  switch (action) {
+    case 'enterArchive':
+      if (typeof enterArchive === 'function') {
+        enterArchive();
+      }
+      break;
+    case 'showConfessionHub':
+      if (typeof showConfessionHub === 'function') {
+        showConfessionHub();
+      }
+      break;
+    case 'openMypage':
+      if (typeof openMypage === 'function') {
+        openMypage();
+      }
+      break;
+    case 'openPortfolio':
+      if (typeof openPortfolio === 'function') {
+        openPortfolio();
+      }
+      break;
+  }
+}
 
 // 전역 스코프에 함수 노출 (onclick 속성에서 사용하기 위해)
 window.openPortfolio = openPortfolio;
@@ -2182,7 +2299,7 @@ async function saveMemoryToDB(memory) {
         .from('memories')
         .insert({
             title: memory.title,
-            status: 'nascent',
+            status: 'Fetus',
             created_at: new Date().toISOString()
         })
         .select()
@@ -2193,6 +2310,7 @@ async function saveMemoryToDB(memory) {
         throw memoryError;
     }
     
+    console.log('[Memory] New memory created with status: Fetus');
     console.log('메모리 저장 성공:', memoryData);
     
     for (let i = 0; i < memory.scenes.length; i++) {
@@ -3086,7 +3204,7 @@ async function saveConfessionToDB() {
             .from('memories')
             .insert({
                 title: title.trim(),
-                status: 'nascent',
+                status: 'Fetus',
                 created_at: new Date().toISOString()
             })
             .select()
@@ -3094,6 +3212,7 @@ async function saveConfessionToDB() {
         
         if (memoryError) throw memoryError;
         
+        console.log('[Memory] New memory created with status: Fetus');
         console.log('메모리 저장 완료:', memoryData);
         
         // scenes 테이블에 각 장면 저장
@@ -3370,7 +3489,7 @@ async function saveRitualToMemories() {
     const memoryData = {
         title: ritualScenes[0]?.coreObject || '무제',
         source: 'ritual',
-        status: 'nascent'
+        status: 'Fetus'
     };
     
     console.log('Source:', memoryData.source);
@@ -3383,6 +3502,7 @@ async function saveRitualToMemories() {
             throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
         }
         
+        console.log('[Memory] New memory created with status: Fetus');
         const memoryId = await saveMemoryGraph(supabaseClient, {
             memoryId: null,
             code: generateMemoryCode(),

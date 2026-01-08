@@ -21,17 +21,43 @@
         <source src="sounds/ambient-opening.mp3" type="audio/mpeg">
     </audio>
     <div class="intro-screen" id="introScreen">
-        <div class="intro-top-buttons">
-            <button class="portfolio-btn" onclick="openPortfolio()">PORTFOLIO</button>
-            <button class="mypage-btn" onclick="openMypage()">MYPAGE</button>
-        </div>
         <div class="intro-center-wrapper">
-        <h1 class="intro-logo">THE ETCHED MUTATION</h1>
-        <p class="intro-subtitle">기억의 영생</p>
-        <div class="intro-buttons">
-            <button class="intro-btn live-btn" onclick="showConfessionHub()">THE CONFESSION<span class="intro-btn-label">기억을 남기시겠습니까?</span></button>
-            <button class="intro-btn" onclick="enterArchive()">ARCHIVE<span class="intro-btn-label">축적된 해석의 공간</span></button>
-        </div>
+            <h1 class="intro-logo">THE ETCHED MUTATION</h1>
+            <p class="intro-subtitle">기억의 영생</p>
+            
+            <!-- 3D Carousel Navigation -->
+            <div class="carousel-3d-container">
+                <div class="carousel-3d-wrapper" id="carousel3DWrapper">
+                    <div class="carousel-item" data-index="0" data-action="enterArchive">
+                        <div class="carousel-item-content">
+                            <div class="carousel-item-label">ARCHIVE</div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" data-index="1" data-action="showConfessionHub">
+                        <div class="carousel-item-content">
+                            <div class="carousel-item-label">RECORD</div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" data-index="2" data-action="openMypage">
+                        <div class="carousel-item-content">
+                            <div class="carousel-item-label">MYPAGE</div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" data-index="3" data-action="openPortfolio">
+                        <div class="carousel-item-content">
+                            <div class="carousel-item-label">PORTFOLIO</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Navigation Arrows -->
+                <button class="carousel-nav carousel-nav-prev" id="carouselPrev" aria-label="Previous">
+                    <span class="carousel-nav-icon">‹</span>
+                </button>
+                <button class="carousel-nav carousel-nav-next" id="carouselNext" aria-label="Next">
+                    <span class="carousel-nav-icon">›</span>
+                </button>
+            </div>
         </div>
         <div class="npc-intro-dialogue" id="npcIntroDialogue"></div>
     </div>
@@ -124,7 +150,7 @@
         </div>
     </div>
     <div class="confession-hub hidden" id="confessionHub">
-        <h1 class="mode-title">THE CONFESSION</h1>
+        <h1 class="mode-title">RECORD</h1>
         <p class="hub-subtitle">어떤 방식으로 기억을 남기시겠습니까?</p>
         <div class="confession-modes">
             <div class="mode-card" onclick="startBeginner()">
@@ -265,7 +291,6 @@
             <div class="archive-controls" id="archiveControls">
                 <div class="archive-search-row">
                     <input type="text" class="archive-search" id="archiveSearch" placeholder="기억 코드 검색 (예: A-001)" oninput="filterMemories()">
-                    <button class="register-memory-btn" id="registerMemoryBtn">기억 등록</button>
                 </div>
                 <div class="archive-category-filters">
                     <button class="category-btn active" data-category="all" onclick="filterByCategory('all',this)">전체</button>

@@ -125,7 +125,7 @@ function addNewMemory() {
     document.getElementById('memoryCode').value = '';
     document.getElementById('memoryDescription').value = '';
     document.getElementById('authorNote').value = '';
-    document.getElementById('memoryStatus').value = 'nascent';
+    document.getElementById('memoryStatus').value = 'Fetus';
     document.getElementById('scenesContainer').innerHTML = '';
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
@@ -142,7 +142,7 @@ function editMemory(index) {
     document.getElementById('memoryCode').value = memory.code || '';
     document.getElementById('memoryDescription').value = memory.description || '';
     document.getElementById('authorNote').value = memory.author_note || '';
-    document.getElementById('memoryStatus').value = memory.status || 'nascent';
+    document.getElementById('memoryStatus').value = memory.status || 'Fetus';
     currentScenes = memory.scenes ? JSON.parse(JSON.stringify(memory.scenes)) : [];
     renderScenes();
     document.getElementById('adminDashboard').classList.remove('active');
