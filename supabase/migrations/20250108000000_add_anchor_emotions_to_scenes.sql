@@ -10,3 +10,4 @@ COMMENT ON COLUMN scenes.anchor_emotions IS 'Custom emotion anchors defined by n
 -- Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
 
+

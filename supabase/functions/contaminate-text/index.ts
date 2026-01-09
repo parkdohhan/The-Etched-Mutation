@@ -124,8 +124,9 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  let body: any = null;
   try {
-    const body = await req.json();
+    body = await req.json();
     const { text, stage, direction = 'default' } = body;
 
     if (!text || typeof text !== 'string') {
@@ -178,7 +179,7 @@ serve(async (req) => {
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20240620",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1024,
         system: systemPrompt,
         messages: [{ role: "user", content: prompt }]
@@ -190,6 +191,7 @@ serve(async (req) => {
       console.error('Claude API 오류:', errorText);
       return new Response(JSON.stringify({ 
         error: '텍스트 변형 실패',
+        claude_error: errorText,
         contaminatedText: text // 실패 시 원본 반환
       }), {
         status: 500,

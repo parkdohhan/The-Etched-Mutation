@@ -14,3 +14,4 @@ CREATE INDEX IF NOT EXISTS idx_scenes_text_stage_3 ON scenes(text_stage_3) WHERE
 
 
 
+

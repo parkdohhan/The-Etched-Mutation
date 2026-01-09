@@ -50,3 +50,4 @@ COMMENT ON COLUMN notes.is_read IS 'Whether the recipient has read the note';
 -- Reload PostgREST schema cache
 NOTIFY pgrst, 'reload schema';
 
+
