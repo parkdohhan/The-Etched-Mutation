@@ -124,6 +124,8 @@ function addNewMemory() {
     document.getElementById('memoryTitle').value = '';
     document.getElementById('memoryCode').value = '';
     document.getElementById('memoryDescription').value = '';
+    document.getElementById('memoryWords').value = '';
+    document.getElementById('completedSentence').value = '';
     document.getElementById('authorNote').value = '';
     document.getElementById('memoryStatus').value = 'Fetus';
     document.getElementById('scenesContainer').innerHTML = '';
@@ -141,6 +143,8 @@ function editMemory(index) {
     document.getElementById('memoryTitle').value = memory.title || '';
     document.getElementById('memoryCode').value = memory.code || '';
     document.getElementById('memoryDescription').value = memory.description || '';
+    document.getElementById('memoryWords').value = memory.memory_words || '';
+    document.getElementById('completedSentence').value = memory.completed_sentence || '';
     document.getElementById('authorNote').value = memory.author_note || '';
     document.getElementById('memoryStatus').value = memory.status || 'Fetus';
     currentScenes = memory.scenes ? JSON.parse(JSON.stringify(memory.scenes)) : [];
@@ -1411,6 +1415,8 @@ async function saveMemory() {
     const title = document.getElementById('memoryTitle').value.trim();
     const code = document.getElementById('memoryCode').value.trim();
     const description = document.getElementById('memoryDescription').value.trim();
+    const memoryWords = document.getElementById('memoryWords').value.trim();
+    const completedSentence = document.getElementById('completedSentence').value.trim();
     const authorNote = document.getElementById('authorNote').value.trim();
 
     if (!title || !code) {
@@ -1515,6 +1521,8 @@ async function saveMemory() {
             code: code,
             title: title,
             description: description || null,
+            memory_words: memoryWords || null,
+            completed_sentence: completedSentence || null,
             author_note: authorNote || null,
             status: status,
             scenes: scenesWithWaveData,
@@ -1533,6 +1541,8 @@ async function saveMemory() {
             title,
             code,
             description,
+            memory_words: memoryWords || null,
+            completed_sentence: completedSentence || null,
             scenes: currentScenes,
             interpretationLayers: 0,
             visible: true

@@ -71,6 +71,8 @@ export async function listMemoriesWithScenesChoices(client) {
             title: memory.title || '',
             code: memory.code || '',
             description: memory.description || '',
+            memory_words: memory.memory_words || null,
+            completed_sentence: memory.completed_sentence || null,
             author_note: memory.author_note || null,
             status: memory.status || 'Fetus',
             scenes: scenes,
@@ -97,7 +99,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
     }
 
-    const { memoryId, code, title, description, author_note, status, source, scenes, memoryWaveData } = memoryPayload;
+    const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
@@ -110,6 +112,8 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 code: code,
                 title: title,
                 description: description || null,
+                memory_words: memory_words || null,
+                completed_sentence: completed_sentence || null,
                 author_note: author_note || null,
                 status: status || 'Fetus',
                 source: source || 'beginner',
@@ -154,6 +158,8 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 code: code,
                 title: title,
                 description: description || null,
+                memory_words: memory_words || null,
+                completed_sentence: completed_sentence || null,
                 author_note: author_note || null,
                 status: status || 'Fetus',
                 source: source || 'beginner',

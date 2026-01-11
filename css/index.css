@@ -999,3 +999,219 @@ body.confession-active::before {
     right: 5px;
   }
 }
+
+/* 동의 시퀀스 스타일 */
+.consent-sequence {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.consent-black-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  z-index: 1;
+}
+
+.consent-thread-container {
+  position: relative;
+  width: 100vw;
+  height: 3px;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 2rem;
+}
+
+.consent-thread {
+  width: 100%;
+  height: 3px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+}
+
+/* 실이 나풀거리는 애니메이션 */
+.consent-thread {
+  animation: threadSway 2.5s ease-in-out infinite;
+}
+
+@keyframes threadSway {
+  0%, 100% {
+    transform: translateY(0) scaleY(1);
+  }
+  20% {
+    transform: translateY(3px) scaleY(0.95);
+  }
+  40% {
+    transform: translateY(-2px) scaleY(1.05);
+  }
+  60% {
+    transform: translateY(2px) scaleY(0.98);
+  }
+  80% {
+    transform: translateY(-3px) scaleY(1.02);
+  }
+}
+
+/* 마우스 호버 시 실이 팽팽해짐 */
+.consent-thread-container:hover .consent-thread {
+  animation: none;
+  transform: translateY(0) scaleY(1);
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.7));
+}
+
+.consent-thread-container:hover .consent-thread line {
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 1.2;
+}
+
+/* 클릭 시 빨간색으로 물들기 */
+.consent-thread.clicked {
+  animation: none;
+}
+
+.consent-thread.clicked line {
+  stroke: #d94a4a;
+  stroke-width: 1.2;
+  transition: stroke 0.3s ease, stroke-width 0.3s ease;
+}
+
+/* 화면이 어두워지는 효과 */
+.consent-sequence.fading {
+  animation: fadeToBlack 1.5s ease-out forwards;
+}
+
+@keyframes fadeToBlack {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* 단어/문장 타자 효과 시퀀스 스타일 */
+.word-sentence-sequence {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2001;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.word-sentence-black-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  z-index: 1;
+}
+
+.word-sentence-container {
+  position: relative;
+  width: 100%;
+  max-width: 90vw;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.word-sentence-content {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 2.5rem;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.2em;
+}
+
+.sentence-prefix,
+.sentence-suffix {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.sentence-prefix.visible,
+.sentence-suffix.visible {
+  opacity: 1;
+}
+
+.word-highlight {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.word-highlight.visible {
+  opacity: 1;
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  color: rgba(255, 255, 255, 0.8);
+  animation: blinkCursor 1s infinite;
+  margin-left: 0.1em;
+}
+
+.typewriter-cursor.hidden {
+  display: none;
+}
+
+@keyframes blinkCursor {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+/* 화면이 어두워지는 효과 */
+.word-sentence-sequence.fading {
+  animation: fadeToBlack 1.5s ease-out forwards;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .word-sentence-content {
+    font-size: 1.8rem;
+    line-height: 1.6;
+  }
+  
+  .word-sentence-container {
+    padding: 1rem;
+  }
+}
+
+/* 감정 비교 화면 - 원본(A) 감정 파동 숨기기 */
+.comparison-wave-item-original {
+  display: none !important;
+}

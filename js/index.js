@@ -112,7 +112,7 @@ function backToIntro(){const introScreen=document.getElementById('introScreen');
 function backToModeSelection(){const sessionSetupEl=document.getElementById('sessionSetup');if(sessionSetupEl){sessionSetupEl.classList.remove('active');sessionSetupEl.style.display='none'}const modeSelectionEl=document.getElementById('modeSelection');if(modeSelectionEl){modeSelectionEl.classList.add('active');modeSelectionEl.style.cssText='display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important'}}
 async function enterArchive(){const introScreen=document.getElementById('introScreen');const archiveContainer=document.getElementById('archiveContainer');if(introScreen){introScreen.classList.add('hidden');introScreen.style.cssText='display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important'}['modeSelection','endScreen','liveContainer','sceneViewer'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('active');el.style.display='none'}});if(archiveContainer){archiveContainer.classList.add('active');archiveContainer.style.cssText='display:block !important;z-index:1900 !important'}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='grid';const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='flex';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='block';currentMode='archive';stopAllAnimations();await loadMemoriesFromSupabase();setTimeout(()=>showNpcDialogue("여기는 아카이브야. 한 번 상연된 기억 위에, 다른 사람들의 해석이 지층처럼 쌓여 있어.",5000),1000);const archiveSearchEl=document.getElementById('archiveSearch');if(archiveSearchEl)archiveSearchEl.value='';renderMemoryCards();sortMemories('all');const footer=document.querySelector('.footer');if(footer)footer.classList.add('visible')}
 function filterByCategory(category,btnElement){if(!category)return;currentCategory=category;const categoryBtns=document.querySelectorAll('.category-btn');categoryBtns.forEach(btn=>btn.classList.remove('active'));if(btnElement)btnElement.classList.add('active');renderMemoryCards()}
-async function loadMemoriesFromSupabase(){try{supabaseClient = getSupabaseClient(); if(!supabaseClient){console.log('[loadMemoriesFromSupabase] Supabase 클라이언트가 아직 초기화되지 않았습니다');return}console.log('[loadMemoriesFromSupabase] Supabase에서 기억 불러오기 시작');const{data:memoriesDataSupabase,error:memoriesError}=await supabaseClient.from('memories').select('*').eq('is_public',true).order('id',{ascending:true});if(memoriesError){console.error('[loadMemoriesFromSupabase] memories 조회 실패',memoriesError);return}if(!memoriesDataSupabase||memoriesDataSupabase.length===0){console.log('[loadMemoriesFromSupabase] Supabase에 공개된 기억이 없습니다');allMemoriesData=[];return}console.log(`[loadMemoriesFromSupabase] ${memoriesDataSupabase.length}개의 메모리 발견`);const supabaseMemories=await Promise.all(memoriesDataSupabase.map(async(memory)=>{const{data:scenesData,error:scenesError}=await supabaseClient.from('scenes').select('*').eq('memory_id',memory.id).order('scene_order',{ascending:true});if(scenesError){console.error(`[loadMemoriesFromSupabase] Memory ${memory.id} scenes 조회 실패`,scenesError);return null}const scenes=await Promise.all((scenesData||[]).map(async(scene)=>{const{data:choicesData,error:choicesError}=await supabaseClient.from('choices').select('*').eq('scene_id',scene.id).order('choice_order',{ascending:true});if(choicesError){console.error(`[loadMemoriesFromSupabase] Scene ${scene.id} choices 조회 실패`,choicesError);return null}const echoWords=Array.isArray(scene.echo_words)?scene.echo_words:(typeof scene.echo_words==='string'?JSON.parse(scene.echo_words):[]);const emotionDist=scene.emotion_dist||{};console.log(`[loadMemoriesFromSupabase] Scene ${scene.id} original_reason_vector:`,scene.original_reason_vector);console.log(`[loadMemoriesFromSupabase] Scene ${scene.id} 전체 scene 객체:`,scene);return{id:scene.id,text:scene.text||'',sceneType:scene.scene_type||'normal',echoWords:echoWords,choices:(choicesData||[]).map(choice=>({text:choice.text||'',emotion:choice.emotion||'fear',intensity:choice.intensity||5,nextScene:choice.nextScene||'end',percentage:0})),emotionDist:emotionDist,voidInfo:scene.void_info||null,originalChoice:scene.original_choice!==undefined?scene.original_choice:0,originalReason:scene.original_reason||'',originalEmotion:scene.original_emotion?(typeof scene.original_emotion==='string'?JSON.parse(scene.original_emotion):scene.original_emotion):null,originalReasonVector:scene.original_reason_vector?(typeof scene.original_reason_vector==='string'?JSON.parse(scene.original_reason_vector):scene.original_reason_vector):null,text_stage_1:scene.text_stage_1||null,text_stage_2:scene.text_stage_2||null,text_stage_3:scene.text_stage_3||null}}));const validScenes=scenes.filter(s=>s!==null);const isLive=!!memory.live_session_id;return{id:memory.id,code:memory.code||'',title:memory.title||'',layers:memory.layers||0,dilution:memory.dilution||50,recentRank:memory.id||0,scenes:validScenes,live_session_id:memory.live_session_id,is_live:isLive}}));const validSupabaseMemories=supabaseMemories.filter(m=>m!==null);allMemoriesData=validSupabaseMemories||[];console.log(`[loadMemoriesFromSupabase] Supabase에서 ${allMemoriesData.length}개의 기억을 로드했습니다`)}catch(error){console.error('[loadMemoriesFromSupabase] 에러 발생',error);allMemoriesData=[]}}
+async function loadMemoriesFromSupabase(){try{supabaseClient = getSupabaseClient(); if(!supabaseClient){console.log('[loadMemoriesFromSupabase] Supabase 클라이언트가 아직 초기화되지 않았습니다');return}console.log('[loadMemoriesFromSupabase] Supabase에서 기억 불러오기 시작');const{data:memoriesDataSupabase,error:memoriesError}=await supabaseClient.from('memories').select('*').eq('is_public',true).order('id',{ascending:true});if(memoriesError){console.error('[loadMemoriesFromSupabase] memories 조회 실패',memoriesError);return}if(!memoriesDataSupabase||memoriesDataSupabase.length===0){console.log('[loadMemoriesFromSupabase] Supabase에 공개된 기억이 없습니다');allMemoriesData=[];return}console.log(`[loadMemoriesFromSupabase] ${memoriesDataSupabase.length}개의 메모리 발견`);const supabaseMemories=await Promise.all(memoriesDataSupabase.map(async(memory)=>{const{data:scenesData,error:scenesError}=await supabaseClient.from('scenes').select('*').eq('memory_id',memory.id).order('scene_order',{ascending:true});if(scenesError){console.error(`[loadMemoriesFromSupabase] Memory ${memory.id} scenes 조회 실패`,scenesError);return null}const scenes=await Promise.all((scenesData||[]).map(async(scene)=>{const{data:choicesData,error:choicesError}=await supabaseClient.from('choices').select('*').eq('scene_id',scene.id).order('choice_order',{ascending:true});if(choicesError){console.error(`[loadMemoriesFromSupabase] Scene ${scene.id} choices 조회 실패`,choicesError);return null}const echoWords=Array.isArray(scene.echo_words)?scene.echo_words:(typeof scene.echo_words==='string'?JSON.parse(scene.echo_words):[]);const emotionDist=scene.emotion_dist||{};console.log(`[loadMemoriesFromSupabase] Scene ${scene.id} original_reason_vector:`,scene.original_reason_vector);console.log(`[loadMemoriesFromSupabase] Scene ${scene.id} 전체 scene 객체:`,scene);return{id:scene.id,text:scene.text||'',sceneType:scene.scene_type||'normal',echoWords:echoWords,choices:(choicesData||[]).map(choice=>({text:choice.text||'',emotion:choice.emotion||'fear',intensity:choice.intensity||5,nextScene:choice.nextScene||'end',percentage:0})),emotionDist:emotionDist,voidInfo:scene.void_info||null,originalChoice:scene.original_choice!==undefined?scene.original_choice:0,originalReason:scene.original_reason||'',originalEmotion:scene.original_emotion?(typeof scene.original_emotion==='string'?JSON.parse(scene.original_emotion):scene.original_emotion):null,originalReasonVector:scene.original_reason_vector?(typeof scene.original_reason_vector==='string'?JSON.parse(scene.original_reason_vector):scene.original_reason_vector):null,text_stage_1:scene.text_stage_1||null,text_stage_2:scene.text_stage_2||null,text_stage_3:scene.text_stage_3||null}}));const validScenes=scenes.filter(s=>s!==null);const isLive=!!memory.live_session_id;return{id:memory.id,code:memory.code||'',title:memory.title||'',memory_words:memory.memory_words||null,completed_sentence:memory.completed_sentence||null,layers:memory.layers||0,dilution:memory.dilution||50,recentRank:memory.id||0,scenes:validScenes,live_session_id:memory.live_session_id,is_live:isLive}}));const validSupabaseMemories=supabaseMemories.filter(m=>m!==null);allMemoriesData=validSupabaseMemories||[];console.log(`[loadMemoriesFromSupabase] Supabase에서 ${allMemoriesData.length}개의 기억을 로드했습니다`)}catch(error){console.error('[loadMemoriesFromSupabase] 에러 발생',error);allMemoriesData=[]}}
 function renderMemoryCards(){const list=document.getElementById('memoryList');if(!list)return;if(!allMemoriesData||allMemoriesData.length===0){list.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">기억이 없습니다.</div>';return}let filteredMemories=[...allMemoriesData];if(currentCategory==='live'){filteredMemories=filteredMemories.filter(m=>(m.live_session_id||m.is_live))}else if(currentCategory==='archive'){filteredMemories=filteredMemories.filter(m=>(!m.live_session_id&&!m.is_live))}let sortedMemories;if(currentSort==='all'){sortedMemories=filteredMemories}else if(currentSort==='popular'){sortedMemories=[...filteredMemories].sort((a,b)=>(b.layers||0)-(a.layers||0))}else if(currentSort==='recent'){sortedMemories=[...filteredMemories].sort((a,b)=>(b.recentRank||0)-(a.recentRank||0))}list.innerHTML='';if(sortedMemories.length===0){list.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">해당 카테고리의 기억이 없습니다.</div>';return}sortedMemories.forEach((memory,index)=>{const originalIndex=allMemoriesData.findIndex(m=>m.id===memory.id);const card=document.createElement('div');card.className='memory-card';card.setAttribute('data-code',memory.code||'');card.setAttribute('data-layers',memory.layers||0);card.setAttribute('data-recent',memory.recentRank||0);const isLive=!!(memory.live_session_id||memory.is_live);card.setAttribute('data-category',isLive?'live':'archive');card.setAttribute('onclick',`selectMemory(${originalIndex>=0?originalIndex:index})`);const categoryLabel=isLive?'<span class="memory-category-badge live">라이브</span>':'';const isFetus=!memory.status||memory.status==='Fetus';const statusBadge=isFetus?'<div class="status-badge Fetus">Fetus</div>':'';console.log('[Memory] Rendering card:',memory.title,'status:',memory.status);card.innerHTML=`${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title||'제목 없음'}</h3><p class="memory-card-meta">원본: ${memory.code||'—'} · 해석 레이어: ${memory.layers||0}개</p><div class="memory-card-dilution"><span>원본</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution||50}%"></div></div><span>${memory.dilution||50}%</span></div>`;list.appendChild(card)});filterMemories()}
 function filterMemories(){const searchValue=document.getElementById('archiveSearch').value.toUpperCase().trim();const cards=document.querySelectorAll('.memory-card');cards.forEach(card=>{const code=card.getAttribute('data-code')||'';const category=card.getAttribute('data-category')||'archive';let shouldShow=true;if(currentCategory==='live'&&category!=='live')shouldShow=false;else if(currentCategory==='archive'&&category!=='archive')shouldShow=false;if(shouldShow&&(searchValue===''||code.includes(searchValue))){card.classList.remove('hidden');card.style.display='block';if(searchValue!==''&&code===searchValue){setTimeout(()=>{card.scrollIntoView({behavior:'smooth',block:'center'});card.style.transform='scale(1.05)';setTimeout(()=>card.style.transform='',500)},100)}}else{card.classList.add('hidden');card.style.display='none'}})}
 function sortMemories(sortType,btnElement){currentSort=sortType;const filterBtns=document.querySelectorAll('.filter-btn');filterBtns.forEach(btn=>btn.classList.remove('active'));if(btnElement)btnElement.classList.add('active');renderMemoryCards()}
@@ -797,7 +797,7 @@ async function handleConfirm(answer){
             if (currentMode === 'ritual') {
                 await saveRitualScene(finalSceneObject);
             } else {
-                await saveLiveScene(finalSceneObject);
+            await saveLiveScene(finalSceneObject);
             }
             if(finalSceneObject?.emotionAnalysis){
                 updateNarratorWave(finalSceneObject.emotionAnalysis);
@@ -932,11 +932,325 @@ function startVoiceWaveLiveAnimation(){
 }
 function stopVoiceWaveLiveAnimation(){if(voiceWaveLiveAnimationId){cancelAnimationFrame(voiceWaveLiveAnimationId);voiceWaveLiveAnimationId=null}}
 let alignmentWaveAnimationId=null;let voiceWaveLiveAnimationId=null;let comparisonWaveAnimationId=null;let comparisonWaveTime=0;
-function selectMemory(index){try{currentMemory=index;currentScene=0;userChoices=[];userReasons=[];currentAlignment=0;currentBucket=null;emotionHistory=[];updateUserStats('memory',index);const selectedMemory=allMemoriesData[index]||allMemoriesData[0];if(!selectedMemory){showNotification('기억을 불러올 수 없습니다');return}const memoryId=selectedMemory.id;if(memoryId){activateMemoryIfFetus(memoryId);}window.currentStoryData=selectedMemory;const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl&&!archiveContainerEl.classList.contains('active')){archiveContainerEl.classList.add('active')}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='none';const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='none';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='none';const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.add('active');sceneViewerEl.style.cssText='display:block !important;opacity:1 !important';setTimeout(()=>{initProgressDots();renderScene();startWaveAnimation();setTimeout(()=>showNpcDialogue("이 기억의 주인은 아래층에, 다른 사람들의 해석은 위층에 쌓여 있어. 천천히 그 지층을 따라가 봐.",4000),100)},100)}else{showNotification('장면 뷰어를 찾을 수 없습니다')}}catch(e){console.error('selectMemory error:',e);console.error('Error details:',{index,memoriesDataLength:memoriesData.length,selectedMemory:memoriesData[index]});showNotification('기억을 불러오는 중 오류가 발생했습니다')}}
+function selectMemory(index){try{currentMemory=index;currentScene=0;userChoices=[];userReasons=[];currentAlignment=0;currentBucket=null;emotionHistory=[];updateUserStats('memory',index);const selectedMemory=allMemoriesData[index]||allMemoriesData[0];if(!selectedMemory){showNotification('기억을 불러올 수 없습니다');return}const memoryId=selectedMemory.id;if(memoryId){activateMemoryIfFetus(memoryId);}window.currentStoryData=selectedMemory;const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl&&!archiveContainerEl.classList.contains('active')){archiveContainerEl.classList.add('active')}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='none';const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='none';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='none';showConsentSequence(index);}catch(e){console.error('selectMemory error:',e);console.error('Error details:',{index,memoriesDataLength:memoriesData.length,selectedMemory:memoriesData[index]});showNotification('기억을 불러오는 중 오류가 발생했습니다')}}
+function showConsentSequence(memoryIndex){
+    const consentSequenceEl=document.getElementById('consentSequence');
+    if(!consentSequenceEl){
+        console.error('동의 시퀀스 요소를 찾을 수 없습니다');
+        startArchivePlay(memoryIndex);
+        return;
+    }
+    consentSequenceEl.style.display='flex';
+    const threadEl=document.getElementById('consentThread');
+    if(!threadEl){
+        console.error('실 요소를 찾을 수 없습니다');
+        startArchivePlay(memoryIndex);
+        return;
+    }
+    let isClicked=false;
+    const handleThreadClick=(e)=>{
+        if(isClicked)return;
+        isClicked=true;
+        const clickX=e.clientX;
+        const container=threadEl.closest('.consent-thread-container');
+        const containerRect=container.getBoundingClientRect();
+        const relativeX=clickX-containerRect.left;
+        const totalWidth=containerRect.width;
+        const clickPercent=Math.max(0,Math.min(100,(relativeX/totalWidth)*100));
+        threadEl.classList.add('clicked');
+        const line=threadEl.querySelector('line');
+        if(line){
+            let defs=threadEl.querySelector('defs');
+            if(!defs){
+                defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+                threadEl.insertBefore(defs,threadEl.firstChild);
+            }
+            let gradient=defs.querySelector('#threadGradient');
+            if(gradient){
+                defs.removeChild(gradient);
+            }
+            gradient=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+            gradient.setAttribute('id','threadGradient');
+            gradient.setAttribute('x1','0%');
+            gradient.setAttribute('y1','0%');
+            gradient.setAttribute('x2','100%');
+            gradient.setAttribute('y2','0%');
+            const stop1=document.createElementNS('http://www.w3.org/2000/svg','stop');
+            stop1.setAttribute('offset','0%');
+            stop1.setAttribute('stop-color','rgba(255,255,255,0.7)');
+            const stop2=document.createElementNS('http://www.w3.org/2000/svg','stop');
+            stop2.setAttribute('offset',clickPercent+'%');
+            stop2.setAttribute('stop-color','rgba(255,255,255,0.7)');
+            const stop3=document.createElementNS('http://www.w3.org/2000/svg','stop');
+            stop3.setAttribute('offset',clickPercent+'%');
+            stop3.setAttribute('stop-color','#d94a4a');
+            const stop4=document.createElementNS('http://www.w3.org/2000/svg','stop');
+            stop4.setAttribute('offset','100%');
+            stop4.setAttribute('stop-color','#d94a4a');
+            gradient.appendChild(stop1);
+            gradient.appendChild(stop2);
+            gradient.appendChild(stop3);
+            gradient.appendChild(stop4);
+            defs.appendChild(gradient);
+            line.setAttribute('stroke','url(#threadGradient)');
+            line.setAttribute('stroke-width','1');
+        }
+        setTimeout(()=>{
+            consentSequenceEl.classList.add('fading');
+            setTimeout(()=>{
+                consentSequenceEl.style.display='none';
+                consentSequenceEl.classList.remove('fading');
+                threadEl.classList.remove('clicked');
+                const defs=threadEl.querySelector('defs');
+                if(defs){
+                    defs.remove();
+                }
+                showWordSentenceSequence(memoryIndex);
+            },1500);
+        },500);
+    };
+    threadEl.addEventListener('click',handleThreadClick);
+    const container=threadEl.closest('.consent-thread-container');
+    if(container){
+        container.addEventListener('click',handleThreadClick);
+    }
+}
+function showWordSentenceSequence(memoryIndex){
+    const sequenceEl=document.getElementById('wordSentenceSequence');
+    if(!sequenceEl){
+        console.error('단어/문장 시퀀스 요소를 찾을 수 없습니다');
+        startArchivePlay(memoryIndex);
+        return;
+    }
+    const selectedMemory=allMemoriesData[memoryIndex];
+    if(!selectedMemory){
+        console.error('메모리 데이터를 찾을 수 없습니다');
+        startArchivePlay(memoryIndex);
+        return;
+    }
+    const memoryWords=(selectedMemory.memory_words||'').trim();
+    const completedSentence=(selectedMemory.completed_sentence||'').trim();
+    const hasWords=memoryWords.length>0;
+    const hasSentence=completedSentence.length>0;
+    sequenceEl.style.display='flex';
+    const prefixEl=document.getElementById('sentencePrefix');
+    const wordEl=document.getElementById('wordHighlight');
+    const suffixEl=document.getElementById('sentenceSuffix');
+    const cursorEl=document.getElementById('typewriterCursor');
+    if(!prefixEl||!wordEl||!suffixEl||!cursorEl){
+        console.error('시퀀스 요소를 찾을 수 없습니다');
+        startArchivePlay(memoryIndex);
+        return;
+    }
+    prefixEl.textContent='';
+    wordEl.textContent='';
+    suffixEl.textContent='';
+    prefixEl.classList.remove('visible');
+    wordEl.classList.remove('visible');
+    suffixEl.classList.remove('visible');
+    cursorEl.classList.remove('hidden');
+    const finishSequence=()=>{
+        cursorEl.classList.add('hidden');
+        setTimeout(()=>{
+            sequenceEl.classList.add('fading');
+            setTimeout(()=>{
+                sequenceEl.style.display='none';
+                sequenceEl.classList.remove('fading');
+                startArchivePlay(memoryIndex);
+            },1500);
+        },1500);
+    };
+    if(!hasWords&&!hasSentence){
+        const typeText=(text,element,callback)=>{
+            let index=0;
+            const type=()=>{
+                if(index<text.length){
+                    element.textContent=text.substring(0,index+1);
+                    index++;
+                    setTimeout(type,60);
+                }else{
+                    element.classList.add('visible');
+                    if(callback)callback();
+                }
+            };
+            type();
+        };
+        wordEl.textContent='기억이 잘 안나.';
+        wordEl.style.color='rgba(255,255,255,0.9)';
+        typeText('기억이 잘 안나.',wordEl,()=>{
+            finishSequence();
+        });
+    }else if(hasWords&&!hasSentence){
+        const words=memoryWords.split(',').map(w=>w.trim()).filter(w=>w.length>0);
+        if(words.length===0){
+            startArchivePlay(memoryIndex);
+            return;
+        }
+        const firstWord=words[0];
+        const typeText=(text,element,callback)=>{
+            let index=0;
+            const type=()=>{
+                if(index<text.length){
+                    element.textContent=text.substring(0,index+1);
+                    index++;
+                    setTimeout(type,60);
+                }else{
+                    element.classList.add('visible');
+                    if(callback)callback();
+                }
+            };
+            type();
+        };
+        wordEl.textContent='';
+        wordEl.style.color='rgba(255,255,255,0.9)';
+        typeText(firstWord+'...',wordEl,()=>{
+            setTimeout(()=>{
+                prefixEl.textContent='';
+                suffixEl.textContent='';
+                wordEl.textContent='';
+                wordEl.style.color='rgba(255,255,255,0.9)';
+                typeText('잘 기억이 안나네.',wordEl,()=>{
+                    finishSequence();
+                });
+            },800);
+        });
+    }else if(!hasWords&&hasSentence){
+        const typeText=(text,element,callback)=>{
+            let index=0;
+            const type=()=>{
+                if(index<text.length){
+                    element.textContent=text.substring(0,index+1);
+                    index++;
+                    setTimeout(type,60);
+                }else{
+                    element.classList.add('visible');
+                    if(callback)callback();
+                }
+            };
+            type();
+        };
+        wordEl.textContent='';
+        wordEl.style.color='rgba(255,255,255,0.9)';
+        typeText(completedSentence,wordEl,()=>{
+            finishSequence();
+        });
+    }else{
+        const words=memoryWords.split(',').map(w=>w.trim()).filter(w=>w.length>0);
+        if(words.length===0){
+            wordEl.textContent='';
+            wordEl.style.color='rgba(255,255,255,0.9)';
+            let index=0;
+            const type=()=>{
+                if(index<completedSentence.length){
+                    wordEl.textContent=completedSentence.substring(0,index+1);
+                    index++;
+                    setTimeout(type,60);
+                }else{
+                    wordEl.classList.add('visible');
+                    finishSequence();
+                }
+            };
+            type();
+            return;
+        }
+        const firstWord=words[0];
+        const wordIndex=completedSentence.indexOf(firstWord);
+        if(wordIndex===-1){
+            wordEl.textContent='';
+            wordEl.style.color='rgba(255,255,255,0.9)';
+            let index=0;
+            const type=()=>{
+                if(index<completedSentence.length){
+                    wordEl.textContent=completedSentence.substring(0,index+1);
+                    index++;
+                    setTimeout(type,60);
+                }else{
+                    wordEl.classList.add('visible');
+                    finishSequence();
+                }
+            };
+            type();
+            return;
+        }
+        const prefix=completedSentence.substring(0,wordIndex);
+        const suffix=completedSentence.substring(wordIndex+firstWord.length);
+        let currentIndex=0;
+        const typeWord=()=>{
+            if(currentIndex<firstWord.length){
+                wordEl.textContent=firstWord.substring(0,currentIndex+1);
+                currentIndex++;
+                setTimeout(typeWord,80);
+            }else{
+                wordEl.classList.add('visible');
+                setTimeout(()=>{
+                    let prefixIndex=0;
+                    const typePrefix=()=>{
+                        if(prefixIndex<prefix.length){
+                            prefixEl.textContent=prefix.substring(0,prefixIndex+1);
+                            prefixIndex++;
+                            setTimeout(typePrefix,60);
+                        }else{
+                            prefixEl.classList.add('visible');
+                            setTimeout(()=>{
+                                let suffixIndex=0;
+                                const typeSuffix=()=>{
+                                    if(suffixIndex<suffix.length){
+                                        suffixEl.textContent=suffix.substring(0,suffixIndex+1);
+                                        suffixIndex++;
+                                        setTimeout(typeSuffix,60);
+                                    }else{
+                                        suffixEl.classList.add('visible');
+                                        finishSequence();
+                                    }
+                                };
+                                typeSuffix();
+                            },300);
+                        }
+                    };
+                    if(prefix.length>0){
+                        typePrefix();
+                    }else{
+                        prefixEl.classList.add('visible');
+                        setTimeout(()=>{
+                            let suffixIndex=0;
+                            const typeSuffix=()=>{
+                                if(suffixIndex<suffix.length){
+                                    suffixEl.textContent=suffix.substring(0,suffixIndex+1);
+                                    suffixIndex++;
+                                    setTimeout(typeSuffix,60);
+                                }else{
+                                    suffixEl.classList.add('visible');
+                                    finishSequence();
+                                }
+                            };
+                            typeSuffix();
+                        },300);
+                    }
+                },500);
+            }
+        };
+        setTimeout(()=>typeWord(),500);
+    }
+}
+function startArchivePlay(memoryIndex){
+    const sceneViewerEl=document.getElementById('sceneViewer');
+    if(sceneViewerEl){
+        sceneViewerEl.classList.add('active');
+        sceneViewerEl.style.cssText='display:block !important;opacity:1 !important';
+        setTimeout(()=>{
+            initProgressDots();
+            renderScene();
+            startWaveAnimation();
+            setTimeout(()=>showNpcDialogue("이 기억의 주인은 아래층에, 다른 사람들의 해석은 위층에 쌓여 있어. 천천히 그 지층을 따라가 봐.",4000),100);
+        },100);
+    }else{
+        showNotification('장면 뷰어를 찾을 수 없습니다');
+    }
+}
 function backToList(){document.getElementById('memoryList').style.display='grid';const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='flex';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='block';stopWaveAnimation()}
 function initProgressDots(){const currentData=window.currentStoryData||storyData;const dotsContainer=document.getElementById('progressDots');if(!dotsContainer)return;dotsContainer.innerHTML='';if(!currentData||!currentData.scenes)return;for(let i=0;i<currentData.scenes.length;i++){const dot=document.createElement('div');dot.className='progress-dot'+(i===0?' active':'');dot.onclick=function(){goToScene(i)};dotsContainer.appendChild(dot)}}
 function goToScene(index){if(index<=currentScene){currentScene=index;renderScene()}}
-async function renderScene(){try{const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면을 불러올 수 없습니다');return}const scene=currentData.scenes[currentScene];if(!scene||!scene.text){showNotification('장면 텍스트를 불러올 수 없습니다');return}const memoryId=currentData.id||(allMemoriesData[currentMemory]&&allMemoriesData[currentMemory].id);let displayScene=scene;if(currentMode==='archive'&&memoryId){displayScene=await loadSceneWithContamination(scene,memoryId)}const sceneTextEl=document.getElementById('sceneText');if(sceneTextEl)sceneTextEl.textContent=displayScene.displayText||displayScene.text;if(scene.echoWords)renderEchoLayer(scene.echoWords);if(scene.choices)renderChoices(scene.choices);if(scene.emotionDist)updateEmotionDist(scene.emotionDist);const sceneCounterEl=document.getElementById('sceneCounter');if(sceneCounterEl)sceneCounterEl.textContent=(currentScene+1)+'/'+currentData.scenes.length;const dots=document.querySelectorAll('#progressDots .progress-dot');dots.forEach((dot,i)=>{dot.className='progress-dot';if(i<currentScene)dot.classList.add('visited');if(i===currentScene)dot.classList.add('active')});const alignmentValueEl=document.getElementById('alignmentValue');if(alignmentValueEl)alignmentValueEl.textContent=currentAlignment.toFixed(2);const alignmentFillEl=document.getElementById('alignmentFill');if(alignmentFillEl)alignmentFillEl.style.width=(currentAlignment*100)+'%'}catch(e){console.error('renderScene error:',e);showNotification('장면을 렌더링하는 중 오류가 발생했습니다')}}
+async function renderScene(){try{const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면을 불러올 수 없습니다');return}const scene=currentData.scenes[currentScene];if(!scene||!scene.text){showNotification('장면 텍스트를 불러올 수 없습니다');return}const memoryId=currentData.id||(allMemoriesData[currentMemory]&&allMemoriesData[currentMemory].id);let displayScene=scene;if(currentMode==='archive'&&memoryId){displayScene=await loadSceneWithContamination(scene,memoryId)}const sceneTextEl=document.getElementById('sceneText');if(sceneTextEl)sceneTextEl.textContent=displayScene.displayText||displayScene.text;if(scene.echoWords)renderEchoLayer(scene.echoWords);if(scene.choices)renderChoices(scene.choices);const sceneCounterEl=document.getElementById('sceneCounter');if(sceneCounterEl)sceneCounterEl.textContent=(currentScene+1)+'/'+currentData.scenes.length;const dots=document.querySelectorAll('#progressDots .progress-dot');dots.forEach((dot,i)=>{dot.className='progress-dot';if(i<currentScene)dot.classList.add('visited');if(i===currentScene)dot.classList.add('active')});const alignmentValueEl=document.getElementById('alignmentValue');if(alignmentValueEl)alignmentValueEl.textContent=currentAlignment.toFixed(2);const alignmentFillEl=document.getElementById('alignmentFill');if(alignmentFillEl)alignmentFillEl.style.width=(currentAlignment*100)+'%'}catch(e){console.error('renderScene error:',e);showNotification('장면을 렌더링하는 중 오류가 발생했습니다')}}
 function renderEchoLayer(words){const layer=document.getElementById('echoLayer');if(!layer)return;layer.innerHTML='';if(!words||!Array.isArray(words))return;words.forEach(word=>{const span=document.createElement('span');span.className='echo-word';span.textContent=word;span.style.top=(20+Math.random()*60)+'%';span.style.left=(10+Math.random()*80)+'%';layer.appendChild(span)})}
 function renderChoices(choices){const container=document.getElementById('choicesContainer');if(!container)return;container.innerHTML='';if(!choices||!Array.isArray(choices))return;choices.forEach((choice,i)=>{const btn=document.createElement('button');btn.className='choice-btn';btn.textContent=choice.text;btn.onclick=function(){makeChoice(i)};container.appendChild(btn)})}
 function makeChoice(choiceIndex){try{userChoices.push(choiceIndex);const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}const scene=currentData.scenes[currentScene];const sceneType=scene.sceneType||'normal';if(sceneType==='branch'||sceneType==='ending'){const questionEl=document.getElementById('emotionQuestion');if(questionEl)questionEl.textContent=currentScene===0?"왜 그렇게 했어?":"왜 그런 선택을 했어?";const modalEl=document.getElementById('emotionModal');if(modalEl)modalEl.classList.add('active');const inputEl=document.getElementById('emotionInputField');if(inputEl)inputEl.focus()}else{proceedToNextScene()}}catch(e){console.error('makeChoice error:',e);showNotification('오류가 발생했습니다')}}
@@ -944,13 +1258,134 @@ function proceedToNextScene(){try{const currentData=window.currentStoryData||sto
 function proceedToNextSceneLive(){try{const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}if(currentScene<currentData.scenes.length-1){currentScene++;simulateNarratorInput()}else{showEndScreen()}}catch(e){console.error('proceedToNextSceneLive error:',e);showNotification('오류가 발생했습니다')}}
 async function submitEmotion(){try{const reason=document.getElementById('emotionInputField').value||"말하고 싶지 않아";userReasons.push(reason);updateUserStats('interpretation',1);const modalEl=document.getElementById('emotionModal');if(modalEl)modalEl.classList.remove('active');const inputEl=document.getElementById('emotionInputField');if(inputEl)inputEl.value='';const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}const scene=currentData.scenes[currentScene];let anchorEmotions=scene.anchor_emotions||null;if(anchorEmotions&&typeof anchorEmotions==='string'){try{anchorEmotions=JSON.parse(anchorEmotions)}catch(e){console.warn('anchor_emotions 파싱 실패:',e);anchorEmotions=null}}if(anchorEmotions&&!Array.isArray(anchorEmotions)){anchorEmotions=null}let userEmotionVector=null;let sceneAlignment=null;let mismatchType=null;if(currentMode==='archive'&&(scene.sceneType==='branch'||scene.sceneType==='ending')){showNotification('감정을 분석하고 있습니다...');try{const emotionResult=await analyzeEmotionWithVector('',reason,anchorEmotions);console.log('Archive emotion analysis result:',emotionResult);if(emotionResult&&emotionResult.analysis&&emotionResult.analysis.base){userEmotionVector=emotionResult.analysis.base;const reasonVector=emotionResult.reason_analysis||null;if(!window.archiveUserEmotions){window.archiveUserEmotions=[]}window.archiveUserEmotions[currentScene]={emotion:userEmotionVector,reason:reason,sceneId:scene.id||currentScene};try{const vad=projectEmotionToVAD(userEmotionVector,anchorEmotions);const terrainPos=vadToTerrainXZ(vad,100);if(!window.archiveUserEmotions[currentScene]._vad)window.archiveUserEmotions[currentScene]._vad=vad;if(!window.archiveUserEmotions[currentScene]._terrain_pos)window.archiveUserEmotions[currentScene]._terrain_pos=terrainPos;console.log('[VAD] Projected:',vad,'→ Terrain:',terrainPos);}catch(vadError){console.error('[VAD] 투영 오류:',vadError);console.error('[VAD] userEmotionVector:',userEmotionVector);console.error('[VAD] anchorEmotions:',anchorEmotions);}if(scene.originalEmotion&&typeof scene.originalEmotion==='object'){console.log('[submitEmotion] scene.originalReasonVector:',scene.originalReasonVector);console.log('[submitEmotion] scene 객체:',scene);let originalVectorCombined={base:scene.originalEmotion,reason_analysis:scene.originalReasonVector||{attribution:'unknown',core_fear:'unknown',is_void:false}};console.log('[submitEmotion] originalVectorCombined:',originalVectorCombined);let userVectorCombined={base:userEmotionVector,reason_analysis:reasonVector};sceneAlignment=calculateComplexAlignment(userVectorCombined,originalVectorCombined,anchorEmotions);console.log('Archive scene alignment:',sceneAlignment);mismatchType=getMismatchType(userVectorCombined,originalVectorCombined);if(!window.archiveSceneAlignments){window.archiveSceneAlignments=[]}window.archiveSceneAlignments[currentScene]=sceneAlignment;currentAlignment=sceneAlignment;updateAlignmentDisplay();renderArchiveEmotionWave(userEmotionVector);showNotification(`장면 정렬도: ${(sceneAlignment*100).toFixed(0)}%`);const dominantEmotion=getDominantEmotion(userEmotionVector);emotionHistory.push(dominantEmotion);if(emotionHistory.length>10)emotionHistory.shift();const newBucket=getBucket(sceneAlignment,currentBucket,emotionHistory);console.log('=== 버킷 판정 ===');console.log('정렬도:',sceneAlignment);console.log('이전 버킷:',currentBucket);console.log('감정 히스토리:',emotionHistory);console.log('새 버킷:',newBucket);if(newBucket!==currentBucket){currentBucket=newBucket;showBucketFeedback(newBucket,sceneAlignment)}else{currentBucket=newBucket}}else{console.warn('원본 감정이 없어 정렬도를 계산할 수 없습니다');sceneAlignment=null}await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,sceneAlignment,reasonVector,mismatchType)}else{console.warn('감정 분석 결과가 올바르지 않습니다');if(userEmotionVector){await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,null,null,null)}}}catch(e){console.error('Archive emotion analysis error:',e);showNotification('감정 분석 중 오류가 발생했습니다');if(userEmotionVector){await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,null,null,null)}}}if(userChoices[currentScene]===scene.originalChoice)showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade),3000);else showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade),3000);setTimeout(async()=>{if(currentScene<currentData.scenes.length-1){currentScene++;if(currentMode==='archive')renderScene();else simulateNarratorInput()}else{if(currentMode==='archive'){const alignmentResult=await calculateAverageAlignment();showEndScreen(alignmentResult)}else{showEndScreen()}}},1500)}catch(e){console.error('submitEmotion error:',e);showNotification('감정을 제출하는 중 오류가 발생했습니다')}}
 function updateStrata(){const originalPercent=70-(currentScene*10),interpretPercent=30+(currentScene*10);document.getElementById('strataOriginal').style.height=originalPercent+'%';document.getElementById('strataInterpretation').style.height=interpretPercent+'%';document.getElementById('strataInterpretation').style.bottom=originalPercent+'%'}
-function updateEmotionDist(dist){document.getElementById('emotionFear').style.width=(dist.fear||0)+'%';document.getElementById('emotionFearVal').textContent=(dist.fear||0)+'%';document.getElementById('emotionSadness').style.width=(dist.sadness||0)+'%';document.getElementById('emotionSadnessVal').textContent=(dist.sadness||0)+'%';document.getElementById('emotionGuilt').style.width=(dist.guilt||0)+'%';document.getElementById('emotionGuiltVal').textContent=(dist.guilt||0)+'%';document.getElementById('emotionAnger').style.width=(dist.anger||0)+'%';document.getElementById('emotionAngerVal').textContent=(dist.anger||0)+'%';document.getElementById('emotionLonging').style.width=(dist.longing||0)+'%';document.getElementById('emotionLongingVal').textContent=(dist.longing||0)+'%';document.getElementById('emotionIsolation').style.width=(dist.isolation||0)+'%';document.getElementById('emotionIsolationVal').textContent=(dist.isolation||0)+'%';document.getElementById('emotionNumbness').style.width=(dist.numbness||0)+'%';document.getElementById('emotionNumbnessVal').textContent=(dist.numbness||0)+'%';document.getElementById('emotionMoralPain').style.width=(dist.moralPain||0)+'%';document.getElementById('emotionMoralPainVal').textContent=(dist.moralPain||0)+'%'}
 function getAlignmentLevel(alignment){if(alignment>=0.95)return'FIXATED';if(alignment>=0.8)return'HIGH';if(alignment>=0.5)return'MID';return'LOW'}function startWaveAnimation(){const canvas=document.getElementById('waveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth*2;canvas.height=canvas.offsetHeight*2;ctx.scale(2,2);let time=0;const alignmentLevel=getAlignmentLevel(currentAlignment);function animate(){const width=canvas.width/2,height=canvas.height/2,centerY=height/2;ctx.fillStyle='rgba(18,18,26,0.1)';ctx.fillRect(0,0,width,height);if(alignmentLevel==='HIGH'){ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.8)';ctx.lineWidth=2;const syncPhase=time*0.05;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.02+syncPhase)*15+Math.sin(x*0.01+syncPhase*0.6)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(122,154,122,0.7)';ctx.lineWidth=2;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.02+syncPhase+Math.PI*0.1)*15+Math.sin(x*0.01+syncPhase*0.6+Math.PI*0.1)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='MID'){ctx.save();ctx.filter='blur(1px)';const irregularity=Math.sin(time*0.1)*0.3+0.7;ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.6)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const noise=Math.random()*5-2.5;const y=centerY+Math.sin(x*0.02+time*0.05+noise*0.1)*15*irregularity+Math.sin(x*0.01+time*0.03+noise*0.05)*10*irregularity;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.restore();ctx.beginPath();ctx.strokeStyle='rgba(123,143,168,0.5)';ctx.lineWidth=1.5;const offset=(1-currentAlignment)*30;for(let x=0;x<width;x++){const noise=Math.random()*3-1.5;const y=centerY+Math.sin(x*0.02+time*0.05+offset+noise*0.1)*15+Math.sin(x*0.01+time*0.03+offset*0.5+noise*0.05)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='LOW'){const glitch=Math.random()>0.9;if(glitch){ctx.save();ctx.filter='invert(1)';ctx.fillStyle='rgba(217,74,74,0.3)';ctx.fillRect(0,0,width,height);ctx.restore()}const noiseAmplitude=10+Math.random()*10;ctx.beginPath();ctx.strokeStyle=glitch?'rgba(217,74,74,0.8)':'rgba(196,168,130,0.4)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const noise=Math.random()*noiseAmplitude-noiseAmplitude/2;const y=centerY+Math.sin(x*0.02+time*0.05+noise*0.2)*15+Math.sin(x*0.01+time*0.03+noise*0.1)*10+noise;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle=glitch?'rgba(217,74,74,0.6)':'rgba(123,143,168,0.3)';ctx.lineWidth=1.5;const offset=(1-currentAlignment)*30;for(let x=0;x<width;x++){const noise=Math.random()*noiseAmplitude-noiseAmplitude/2;const y=centerY+Math.sin(x*0.02+time*0.05+offset+noise*0.2)*15+Math.sin(x*0.01+time*0.03+offset*0.5+noise*0.1)*10+noise;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='FIXATED'){const slowTime=time*0.02;const vignetteGradient=ctx.createRadialGradient(width/2,height/2,0,width/2,height/2,Math.max(width,height));vignetteGradient.addColorStop(0,'rgba(0,0,0,0)');vignetteGradient.addColorStop(1,'rgba(0,0,0,0.4)');ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.9)';ctx.lineWidth=2.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.015+slowTime)*12+Math.sin(x*0.008+slowTime*0.5)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(122,154,122,0.8)';ctx.lineWidth=2.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.015+slowTime+Math.PI*0.05)*12+Math.sin(x*0.008+slowTime*0.5+Math.PI*0.05)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.fillStyle=vignetteGradient;ctx.fillRect(0,0,width,height)}time++;waveAnimationId=requestAnimationFrame(animate)}animate()}
 function startLiveWaveAnimation(){const canvas=document.getElementById('liveWaveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth*2;canvas.height=canvas.offsetHeight*2;ctx.scale(2,2);let time=0;function animate(){ctx.fillStyle='rgba(18,18,26,0.15)';ctx.fillRect(0,0,canvas.width/2,canvas.height/2);const width=canvas.width/2,height=canvas.height/2,centerY=height/2;ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.7)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.025+time*0.04)*12+Math.sin(x*0.015+time*0.025)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(123,143,168,0.7)';ctx.lineWidth=1.5;const offset=(1-currentAlignment)*25;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.025+time*0.04+offset)*12+Math.sin(x*0.015+time*0.025+offset*0.6)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();time++;liveWaveAnimationId=requestAnimationFrame(animate)}animate()}
 function stopWaveAnimation(){if(waveAnimationId){cancelAnimationFrame(waveAnimationId);waveAnimationId=null}}
 function stopLiveWaveAnimation(){if(liveWaveAnimationId){cancelAnimationFrame(liveWaveAnimationId);liveWaveAnimationId=null}}
 function stopAllAnimations(){stopWaveAnimation();stopLiveWaveAnimation();stopAlignmentWaveAnimation();stopVoiceWaveLiveAnimation();stopLiveVoiceInput()}
-async function showEndScreen(alignmentResult,forceEndScreen=false){stopAllAnimations();const liveContainerEl=document.getElementById('liveContainer');if(liveContainerEl){liveContainerEl.classList.remove('active');liveContainerEl.style.display='none'}const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl){archiveContainerEl.classList.remove('active');archiveContainerEl.style.display='none'}const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}if(currentMode==='archive'&&!forceEndScreen){if(!alignmentResult){alignmentResult=await calculateAverageAlignment()}window.archiveAlignmentResult=alignmentResult;showComparisonView();return}let finalAlignment=currentAlignment;let isTrueEnding=false;if(alignmentResult){finalAlignment=alignmentResult.averageAlignment;isTrueEnding=alignmentResult.isTrueEnding}else if(currentMode==='archive'){const calculated=await calculateAverageAlignment();finalAlignment=calculated.averageAlignment;isTrueEnding=calculated.isTrueEnding}const endScreenEl=document.getElementById('endScreen');if(endScreenEl){endScreenEl.classList.add('active');endScreenEl.style.cssText='display:flex !important'}const currentData=window.currentStoryData||storyData;const lastScene=currentData.scenes[currentData.scenes.length-1];const lastChoiceIndex=userChoices.length>0?userChoices[userChoices.length-1]:0;const lastReason=userReasons.length>0?userReasons[userReasons.length-1]:"—";document.getElementById('yourChoice').textContent=lastScene.choices[lastChoiceIndex]?lastScene.choices[lastChoiceIndex].text:"—";document.getElementById('yourReason').textContent='"'+lastReason+'"';document.getElementById('theirChoice').textContent=lastScene.choices[lastScene.originalChoice].text;document.getElementById('theirReason').textContent='"'+lastScene.originalReason+'"';document.getElementById('finalAlignment').textContent='감정 구조 정렬도: '+finalAlignment.toFixed(2);if(isTrueEnding){const trueBadge=document.getElementById('trueEndingBadge');const normalBadge=document.getElementById('normalEndingBadge');const subtitle=document.getElementById('endSubtitle');if(trueBadge)trueBadge.classList.add('active');if(normalBadge)normalBadge.classList.remove('active');if(subtitle)subtitle.style.display='none';document.getElementById('endTitle').textContent='음각에 닿다';document.getElementById('finalMessage').innerHTML='<strong>트루엔딩에 도달했습니다.</strong><br><br>당신은 그 사람의 감정 구조에 거의 겹쳐졌습니다.<br>이 일치는 원본 지층에 깊게 새겨질 거예요.';const memoryId=currentData.id||(allMemoriesData[currentMemory]&&allMemoriesData[currentMemory].id);if(memoryId&&currentMode==='archive'){const endButtons=document.querySelector('.end-buttons');if(endButtons){const existingOriginalBtn=endButtons.querySelector('.original-view-btn');if(existingOriginalBtn)existingOriginalBtn.remove();const originalButton=document.createElement('button');originalButton.className='original-view-btn';originalButton.textContent='원본 기억 열람하기';originalButton.onclick=()=>showOriginalMemory(memoryId);endButtons.appendChild(originalButton)}try{supabaseClient=getSupabaseClient();if(supabaseClient){const{data:memoryData}=await supabaseClient.from('memories').select('author_note,source_session_id').eq('id',memoryId).single();if(memoryData&&memoryData.source_session_id){const{data:sessionData}=await supabaseClient.from('live_sessions').select('narrator_id').eq('id',memoryData.source_session_id).single();if(sessionData&&sessionData.narrator_id){setTimeout(()=>{showTrueEndingNoteUI(memoryData.author_note,sessionData.narrator_id,memoryId)},3000)}}}}catch(e){console.error('트루엔딩 쪽지 UI 로드 오류:',e)}}else{const trueBadge=document.getElementById('trueEndingBadge');const normalBadge=document.getElementById('normalEndingBadge');const subtitle=document.getElementById('endSubtitle');if(trueBadge)trueBadge.classList.remove('active');if(normalBadge)normalBadge.classList.add('active');if(subtitle){subtitle.style.display='block';subtitle.textContent='다른 결로 느끼다'}document.getElementById('endTitle').textContent='ENDING';document.getElementById('finalMessage').innerHTML='당신은 이 기억을 다른 방식으로 체험했습니다.<br>같은 장면, 다른 감정.<br>그것도 하나의 해석입니다.'}startEndStrataAnimation();setTimeout(()=>{if(currentMode==='live'){showNpcDialogue(NPC_DIALOGUES.live.memoryTransition,6000)}else{showNpcDialogue(NPC_DIALOGUES.archive.trueEnding,6000)}},2000);const footer=document.querySelector('.footer');if(footer)footer.classList.add('visible')}}
+async function showEndScreen(alignmentResult,forceEndScreen=false){
+    console.log('[엔딩] showEndScreen 호출:', { alignmentResult, forceEndScreen, currentMode });
+    try {
+        stopAllAnimations();
+        const liveContainerEl=document.getElementById('liveContainer');
+        if(liveContainerEl){liveContainerEl.classList.remove('active');liveContainerEl.style.display='none'}
+        const archiveContainerEl=document.getElementById('archiveContainer');
+        if(archiveContainerEl){archiveContainerEl.classList.remove('active');archiveContainerEl.style.display='none'}
+        const sceneViewerEl=document.getElementById('sceneViewer');
+        if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}
+        
+        // 아카이브 모드이고 forceEndScreen이 false면 비교 화면으로 이동
+        if(currentMode==='archive'&&!forceEndScreen){
+            console.log('[엔딩] 아카이브 모드 - 비교 화면으로 이동');
+            if(!alignmentResult){
+                alignmentResult=await calculateAverageAlignment();
+            }
+            window.archiveAlignmentResult=alignmentResult;
+            showComparisonView();
+            return;
+        }
+        
+        console.log('[엔딩] 엔딩 화면 표시 시작');
+        let finalAlignment=currentAlignment;
+        let isTrueEnding=false;
+        if(alignmentResult){
+            finalAlignment=alignmentResult.averageAlignment;
+            isTrueEnding=alignmentResult.isTrueEnding;
+        }else if(currentMode==='archive'){
+            const calculated=await calculateAverageAlignment();
+            finalAlignment=calculated.averageAlignment;
+            isTrueEnding=calculated.isTrueEnding;
+        }
+        console.log('[엔딩] 정렬도 계산 완료:', { finalAlignment, isTrueEnding });
+        
+        const endScreenEl=document.getElementById('endScreen');
+        if(endScreenEl){
+            endScreenEl.classList.add('active');
+            endScreenEl.style.cssText='display:flex !important';
+            console.log('[엔딩] 엔딩 화면 요소 표시됨');
+        }else{
+            console.error('[엔딩] endScreen 요소를 찾을 수 없습니다!');
+        }
+        
+        const currentData=window.currentStoryData||storyData;
+        const lastScene=currentData.scenes[currentData.scenes.length-1];
+        const lastChoiceIndex=userChoices.length>0?userChoices[userChoices.length-1]:0;
+        const lastReason=userReasons.length>0?userReasons[userReasons.length-1]:"—";
+        
+        document.getElementById('yourChoice').textContent=lastScene.choices[lastChoiceIndex]?lastScene.choices[lastChoiceIndex].text:"—";
+        document.getElementById('yourReason').textContent='"'+lastReason+'"';
+        document.getElementById('theirChoice').textContent=lastScene.choices[lastScene.originalChoice].text;
+        document.getElementById('theirReason').textContent='"'+lastScene.originalReason+'"';
+        document.getElementById('finalAlignment').textContent='감정 구조 정렬도: '+finalAlignment.toFixed(2);
+        
+        if(isTrueEnding){
+            console.log('[엔딩] 트루엔딩 표시');
+            const trueBadge=document.getElementById('trueEndingBadge');
+            const normalBadge=document.getElementById('normalEndingBadge');
+            const subtitle=document.getElementById('endSubtitle');
+            if(trueBadge)trueBadge.classList.add('active');
+            if(normalBadge)normalBadge.classList.remove('active');
+            if(subtitle)subtitle.style.display='none';
+            document.getElementById('endTitle').textContent='음각에 닿다';
+            document.getElementById('finalMessage').innerHTML='<strong>트루엔딩에 도달했습니다.</strong><br><br>당신은 그 사람의 감정 구조에 거의 겹쳐졌습니다.<br>이 일치는 원본 지층에 깊게 새겨질 거예요.';
+            const memoryId=currentData.id||(allMemoriesData[currentMemory]&&allMemoriesData[currentMemory].id);
+            if(memoryId&&currentMode==='archive'){
+                const endButtons=document.querySelector('.end-buttons');
+                if(endButtons){
+                    const existingOriginalBtn=endButtons.querySelector('.original-view-btn');
+                    if(existingOriginalBtn)existingOriginalBtn.remove();
+                    const originalButton=document.createElement('button');
+                    originalButton.className='original-view-btn';
+                    originalButton.textContent='원본 기억 열람하기';
+                    originalButton.onclick=()=>showOriginalMemory(memoryId);
+                    endButtons.appendChild(originalButton);
+                }
+                try{
+                    supabaseClient=getSupabaseClient();
+                    if(supabaseClient){
+                        const{data:memoryData}=await supabaseClient.from('memories').select('author_note,source_session_id').eq('id',memoryId).single();
+                        if(memoryData&&memoryData.source_session_id){
+                            const{data:sessionData}=await supabaseClient.from('live_sessions').select('narrator_id').eq('id',memoryData.source_session_id).single();
+                            if(sessionData&&sessionData.narrator_id){
+                                setTimeout(()=>{showTrueEndingNoteUI(memoryData.author_note,sessionData.narrator_id,memoryId)},3000);
+                            }
+                        }
+                    }
+                }catch(e){
+                    console.error('트루엔딩 쪽지 UI 로드 오류:',e);
+                }
+            }
+        }else{
+            console.log('[엔딩] 일반 엔딩 표시');
+            const trueBadge=document.getElementById('trueEndingBadge');
+            const normalBadge=document.getElementById('normalEndingBadge');
+            const subtitle=document.getElementById('endSubtitle');
+            if(trueBadge)trueBadge.classList.remove('active');
+            if(normalBadge)normalBadge.classList.add('active');
+            if(subtitle){
+                subtitle.style.display='block';
+                subtitle.textContent='다른 결로 느끼다';
+            }
+            document.getElementById('endTitle').textContent='ENDING';
+            document.getElementById('finalMessage').innerHTML='당신은 이 기억을 다른 방식으로 체험했습니다.<br>같은 장면, 다른 감정.<br>그것도 하나의 해석입니다.';
+        }
+        
+        console.log('[엔딩] 지층 애니메이션 시작');
+        startEndStrataAnimation();
+        setTimeout(()=>{
+            if(currentMode==='live'){
+                showNpcDialogue(NPC_DIALOGUES.live.memoryTransition,6000);
+            }else{
+                showNpcDialogue(NPC_DIALOGUES.archive.trueEnding,6000);
+            }
+        },2000);
+        const footer=document.querySelector('.footer');
+        if(footer)footer.classList.add('visible');
+        console.log('[엔딩] showEndScreen 완료');
+    }catch(e){
+        console.error('[엔딩] showEndScreen 오류:', e);
+    }
+}
 function startEndStrataAnimation(){const container=document.getElementById('endStrataContainer');const messageEl=document.getElementById('endStrataMessage');const contentEl=document.getElementById('endContent');const animationEl=document.getElementById('endStrataAnimation');if(!container||!messageEl||!contentEl||!animationEl)return;container.innerHTML='';const totalHeight=400;const layerHeight=totalHeight/6;const previousLayers=[{emotion:'fear',height:layerHeight},{emotion:'anger',height:layerHeight},{emotion:'shame',height:layerHeight},{emotion:'joy',height:layerHeight}];let currentBottom=totalHeight;const originalLayer=document.createElement('div');originalLayer.className='end-strata-layer end-strata-layer-original';originalLayer.style.height=layerHeight*2+'px';originalLayer.style.bottom=(currentBottom-layerHeight*2)+'px';container.appendChild(originalLayer);currentBottom-=layerHeight*2;previousLayers.forEach((layer,idx)=>{const layerEl=document.createElement('div');layerEl.className='end-strata-layer end-strata-layer-interpretation '+layer.emotion;layerEl.style.height=layer.height+'px';layerEl.style.bottom=(currentBottom-layer.height)+'px';layerEl.style.opacity='0';container.appendChild(layerEl);setTimeout(()=>{layerEl.style.opacity='1'},100*idx);currentBottom-=layer.height});const userEmotion=getUserDominantEmotion();const newLayer=document.createElement('div');newLayer.className='end-strata-layer end-strata-layer-new '+userEmotion;newLayer.style.height=layerHeight+'px';newLayer.style.bottom=totalHeight+'px';container.appendChild(newLayer);setTimeout(()=>{newLayer.style.transform='translateY(0)';newLayer.style.opacity='1';messageEl.classList.add('visible')},500);setTimeout(()=>{animationEl.style.transform='translate(-50%,-50%) scale(0.3)';animationEl.style.top='10%';animationEl.style.transition='all 1s ease-out';contentEl.style.opacity='1'},1500)}
 function getUserDominantEmotion(){const emotions=['fear','sadness','guilt','anger','longing','isolation','numbness','moralPain'];const lastScene=window.currentStoryData?.scenes?.[window.currentStoryData.scenes.length-1];if(lastScene&&lastScene.emotionDist){const dist=lastScene.emotionDist;let max=0,dominant='fear';if((dist.fear||0)>max){max=dist.fear;dominant='fear'}if((dist.sadness||0)>max){max=dist.sadness;dominant='sadness'}if((dist.guilt||0)>max){max=dist.guilt;dominant='guilt'}if((dist.anger||0)>max){max=dist.anger;dominant='anger'}if((dist.longing||0)>max){max=dist.longing;dominant='longing'}if((dist.isolation||0)>max){max=dist.isolation;dominant='isolation'}if((dist.numbness||0)>max){max=dist.numbness;dominant='numbness'}if((dist.moralPain||0)>max){max=dist.moralPain;dominant='moralPain'}return dominant}return emotions[Math.floor(Math.random()*emotions.length)]}
 function restart(){currentMode=null;currentRole=null;sessionCode=null;currentMemory=null;currentScene=0;userChoices=[];userReasons=[];currentAlignment=0;currentBucket=null;emotionHistory=[];liveSceneNum=1;liveFragments=0;liveMatches=0;const endScreenEl=document.getElementById('endScreen');if(endScreenEl){endScreenEl.classList.remove('active');endScreenEl.style.display='none'}const liveContainerEl=document.getElementById('liveContainer');if(liveContainerEl){liveContainerEl.classList.remove('active');liveContainerEl.style.display='none'}const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl){archiveContainerEl.classList.remove('active');archiveContainerEl.style.display='none'}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='grid';const sceneViewerEl=document.getElementById('sceneViewer');if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}const introScreen=document.getElementById('introScreen');if(introScreen){introScreen.classList.remove('hidden');introScreen.classList.add('visible');introScreen.style.cssText='display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important'}const narratorPanelEl=document.getElementById('narratorPanel');if(narratorPanelEl)narratorPanelEl.classList.remove('active');const experiencerPanelEl=document.getElementById('experiencerPanel');if(experiencerPanelEl)experiencerPanelEl.classList.remove('active');const interpretationTraceEl=document.getElementById('interpretationTrace');if(interpretationTraceEl)interpretationTraceEl.style.display='none';const liveSceneContentEl=document.getElementById('liveSceneContent');if(liveSceneContentEl)liveSceneContentEl.textContent='화자가 기억을 불러오고 있습니다...';const feelingInput=document.getElementById('experiencerFeelingInput');if(feelingInput)feelingInput.value='';const memoryTraceContent=document.getElementById('memoryTraceContent');if(memoryTraceContent)memoryTraceContent.textContent='—';const liveAlignmentValueEl=document.getElementById('liveAlignmentValue');if(liveAlignmentValueEl){liveAlignmentValueEl.textContent='0.00';liveAlignmentValueEl.classList.remove('high')}const liveAlignmentFillEl=document.getElementById('liveAlignmentFill');if(liveAlignmentFillEl)liveAlignmentFillEl.style.width='0%';const liveSceneNumEl=document.getElementById('liveSceneNum');if(liveSceneNumEl)liveSceneNumEl.textContent='1';const liveFragmentsEl=document.getElementById('liveFragments');if(liveFragmentsEl)liveFragmentsEl.textContent='0';const liveMatchesEl=document.getElementById('liveMatches');if(liveMatchesEl)liveMatchesEl.textContent='0';const footer=document.querySelector('.footer');if(footer)footer.classList.remove('visible')}
@@ -1516,6 +1951,20 @@ async function showComparisonView() {
         }
         renderComparisonView();
         setupComparisonSwipe();
+        // 세션종료 버튼에 이벤트 리스너 추가
+        const endSessionBtn = comparisonViewEl.querySelector('.live-exit-btn');
+        if (endSessionBtn) {
+            // 기존 이벤트 제거 후 새로 추가
+            endSessionBtn.replaceWith(endSessionBtn.cloneNode(true));
+            const newEndSessionBtn = comparisonViewEl.querySelector('.live-exit-btn');
+            newEndSessionBtn.addEventListener('click', async () => {
+                console.log('[엔딩] 세션종료 버튼 클릭됨');
+                await endComparisonSession();
+            });
+            console.log('[엔딩] 세션종료 버튼 이벤트 리스너 추가됨');
+        } else {
+            console.warn('[엔딩] 세션종료 버튼을 찾을 수 없습니다');
+        }
     } catch (e) {
         console.error('showComparisonView error:', e);
         showEndScreen();
@@ -1542,7 +1991,7 @@ function renderComparisonView() {
                         <div class="comparison-tooltip">${item.userReason || '이유 없음'}</div>
                     </div>
                 </div>
-                <div class="comparison-wave-item">
+                <div class="comparison-wave-item comparison-wave-item-original">
                     <div class="comparison-wave-label original">원본 (A)의 감정</div>
                     <div class="comparison-wave-canvas-container">
                         <canvas class="comparison-wave-canvas" data-type="original" data-index="${index}"></canvas>
@@ -1820,14 +2269,32 @@ function closeComparisonView() {
     const alignmentResult = window.archiveAlignmentResult || { averageAlignment: 0, isTrueEnding: false };
     showEndScreen(alignmentResult);
 }
-function endComparisonSession() {
+async function endComparisonSession() {
+    console.log('[엔딩] endComparisonSession 호출됨');
+    try {
     stopComparisonWaveAnimation();
     const comparisonViewEl = document.getElementById('comparisonView');
     if (comparisonViewEl) {
         comparisonViewEl.style.display = 'none';
+            comparisonViewEl.style.zIndex = '-1';
+        }
+        // 정렬도 결과가 없으면 계산
+        let alignmentResult = window.archiveAlignmentResult;
+        if (!alignmentResult) {
+            console.log('[엔딩] 정렬도 계산 중...');
+            alignmentResult = await calculateAverageAlignment();
+            window.archiveAlignmentResult = alignmentResult;
+            console.log('[엔딩] 정렬도 계산 완료:', alignmentResult);
+        } else {
+            console.log('[엔딩] 기존 정렬도 사용:', alignmentResult);
+        }
+        // 엔딩 화면 표시 (forceEndScreen=true로 전달하여 비교 화면을 건너뛰고 바로 엔딩 화면 표시)
+        console.log('[엔딩] showEndScreen 호출:', { alignmentResult, forceEndScreen: true, currentMode });
+        await showEndScreen(alignmentResult, true);
+        console.log('[엔딩] showEndScreen 완료');
+    } catch (e) {
+        console.error('[엔딩] endComparisonSession 오류:', e);
     }
-    const alignmentResult = window.archiveAlignmentResult || { averageAlignment: 0, isTrueEnding: false };
-    showEndScreen(alignmentResult, true);
 }
 window.navigateComparison = navigateComparison;
 window.closeComparisonView = closeComparisonView;
