@@ -12,3 +12,4 @@ NOTIFY pgrst, 'reload schema';
 COMMENT ON COLUMN memories.memory_words IS 'Key words representing the memory (comma-separated). Used in archive memory play typewriter sequence.';
 COMMENT ON COLUMN memories.completed_sentence IS 'Completed sentence that includes the memory words. Used in archive memory play typewriter sequence.';
 
+
