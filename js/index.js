@@ -7,8 +7,12 @@ import { fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMem
 import { playSound, stopSound, setVolume, SOUNDS } from './shared/audio.js';
 import { cosineSimilarity, normalizeVector, addVectors, calculateAlignment, getBucket, checkFixated, getDominantEmotion, normalizeAnchor, projectEmotionToVAD, vadToTerrainXZ } from './shared/math.js';
 import { AppState, resetState, updateState, updateStates } from './shared/state.js';
-import { calculateStep } from './core/ByeoriEngine.js';
+import { ByeoriEngine } from './core/ByeoriEngine.js';
 import { createStore } from './core/store.js';
+import { networkService } from './services/NetworkService.js';
+import { realtimeService } from './services/RealtimeService.js';
+import { uiManager } from './ui/UIManager.js';
+import { visualizer } from './ui/Visualizer.js';
 
 console.log('=== Shared Modules Loaded ===');
 console.log('API:', typeof fetchMemories);
@@ -104,7 +108,16 @@ function initApp() {
     storyData = memoriesDataArray[0];
     window.currentStoryData = storyData;
     appStore.setState({allMemoriesData:[...memoriesDataArray.map(m=>({...m,live_session_id:null,is_live:false}))]});
-    if(document.getElementById('memoryList')) renderMemoryCards();
+    if(document.getElementById('memoryList')) {
+        const state = appStore.getState();
+        uiManager.renderMemoryCards(
+            state.allMemoriesData,
+            state.currentCategory,
+            state.currentSort,
+            selectMemory,
+            filterMemories
+        );
+    }
     
     // 3D Carousel 초기화
     setTimeout(() => {
@@ -136,8 +149,17 @@ function openPortfolio(){
     }
 }
 function openMypage(){if(!isLoggedIn){const loginModal=document.getElementById('loginModal');if(loginModal){loginModal.classList.add('active');loginModal.style.cssText='display:flex !important;z-index:2100 !important'}document.getElementById('loginUsername').focus()}else{showMypage()}}
-async function showMypage(){if(!isLoggedIn)return;if(pendingSaveAction==='save')return;const introScreen=document.getElementById('introScreen');if(introScreen){introScreen.classList.add('hidden');introScreen.style.cssText='display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important'}['modeSelection','sessionSetup','liveContainer','archiveContainer','endScreen','loginModal','signupModal'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('active');el.style.display='none'}});const mypageScreen=document.getElementById('mypageScreen');if(mypageScreen){mypageScreen.classList.add('active');mypageScreen.style.cssText='display:flex !important;z-index:2100 !important'}if(currentUser){document.getElementById('displayUsername').textContent=currentUser.username;document.getElementById('displayEmail').textContent=currentUser.email||'—';document.getElementById('displayJoinDate').textContent=currentUser.joinDate||'—';if(currentUser.loginMethod){document.getElementById('displayLoginMethod').style.display='block';const methodText=currentUser.loginMethod==='google'?'구글':currentUser.loginMethod==='facebook'?'페이스북':'일반';document.getElementById('loginMethodText').textContent=methodText}else{document.getElementById('displayLoginMethod').style.display='none'}await loadMypageDataFromDB()}}
-function closeMypage(){const mypageScreen=document.getElementById('mypageScreen');if(mypageScreen){mypageScreen.classList.remove('active');mypageScreen.style.display='none'}const introScreen=document.getElementById('introScreen');if(introScreen){introScreen.classList.remove('hidden');introScreen.classList.add('visible');introScreen.style.cssText='display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important'}}
+async function showMypage(){
+    const state = appStore.getState();
+    if (!state.isLoggedIn) return;
+    if (pendingSaveAction === 'save') return;
+    
+    uiManager.showMypage(state.currentUser);
+    await loadMypageDataFromDB();
+}
+function closeMypage(){
+    uiManager.closeMypage();
+}
 async function handleLogin(){const email=document.getElementById('loginUsername').value.trim();const password=document.getElementById('loginPassword').value.trim();if(!email||!password){showNotification('이메일과 비밀번호를 입력해주세요');return}supabaseClient = getSupabaseClient(); if(!supabaseClient){showNotification('Supabase 클라이언트가 초기화되지 않았습니다');return}const{data,error}=await supabaseClient.auth.signInWithPassword({email:email,password:password});if(error){showNotification('로그인 실패: '+error.message);return}appStore.setState({isLoggedIn:true,currentUser:{id:data.user.id,username:data.user.user_metadata?.username||email.split('@')[0],email:email,joinDate:new Date(data.user.created_at).toLocaleDateString('ko-KR'),liveSessions:0,memories:0,interpretations:0,visitedMemories:[],sessionHistory:[]}});const loginModal=document.getElementById('loginModal');if(loginModal){loginModal.classList.remove('active');loginModal.style.display='none'}document.getElementById('loginUsername').value='';document.getElementById('loginPassword').value='';showNotification('로그인되었습니다');if(pendingSaveAction==='save'){pendingSaveAction=null;setTimeout(()=>{saveMemory()},300)}else{showMypage()}}
 function closeLogin(){const loginModal=document.getElementById('loginModal');if(loginModal){loginModal.classList.remove('active');loginModal.style.display='none'}document.getElementById('loginUsername').value='';document.getElementById('loginPassword').value='';pendingSaveAction=null}
 function switchToSignup(){const loginModal=document.getElementById('loginModal');if(loginModal){loginModal.classList.remove('active');loginModal.style.display='none'}const signupModal=document.getElementById('signupModal');if(signupModal){signupModal.classList.add('active');signupModal.style.cssText='display:flex !important;z-index:2100 !important'}document.getElementById('signupUsername').focus()}
@@ -153,11 +175,38 @@ function backToMatchingSelection(){const matchingSelection=document.getElementBy
 function backToIntro(){const introScreen=document.getElementById('introScreen');if(introScreen){introScreen.classList.remove('hidden');introScreen.classList.add('visible');introScreen.style.cssText='display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important'}['matchingSelection','modeSelection','sessionSetup','liveContainer','archiveContainer','endScreen','mypageScreen','loginModal','signupModal'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('active');el.style.display='none'}});const footer=document.querySelector('.footer');if(footer)footer.classList.remove('visible');stopAllAnimations()}
 function backToModeSelection(){const sessionSetupEl=document.getElementById('sessionSetup');if(sessionSetupEl){sessionSetupEl.classList.remove('active');sessionSetupEl.style.display='none'}const modeSelectionEl=document.getElementById('modeSelection');if(modeSelectionEl){modeSelectionEl.classList.add('active');modeSelectionEl.style.cssText='display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important'}}
 async function enterArchive(){const introScreen=document.getElementById('introScreen');const archiveContainer=document.getElementById('archiveContainer');if(introScreen){introScreen.classList.add('hidden');introScreen.style.cssText='display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important'}['modeSelection','endScreen','liveContainer','sceneViewer'].forEach(id=>{const el=document.getElementById(id);if(el){el.classList.remove('active');el.style.display='none'}});if(archiveContainer){archiveContainer.classList.add('active');archiveContainer.style.cssText='display:block !important;z-index:1900 !important'}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='grid';const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='flex';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='block';currentMode='archive';stopAllAnimations();await loadMemoriesFromSupabase();setTimeout(()=>showNpcDialogue("여기는 아카이브야. 한 번 상연된 기억 위에, 다른 사람들의 해석이 지층처럼 쌓여 있어.",5000),1000);const archiveSearchEl=document.getElementById('archiveSearch');if(archiveSearchEl)archiveSearchEl.value='';renderMemoryCards();sortMemories('all');const footer=document.querySelector('.footer');if(footer)footer.classList.add('visible')}
-function filterByCategory(category,btnElement){if(!category)return;currentCategory=category;const categoryBtns=document.querySelectorAll('.category-btn');categoryBtns.forEach(btn=>btn.classList.remove('active'));if(btnElement)btnElement.classList.add('active');renderMemoryCards()}
-async function loadMemoriesFromSupabase(){try{supabaseClient = getSupabaseClient(); if(!supabaseClient){console.log('[loadMemoriesFromSupabase] Supabase 클라이언트가 아직 초기화되지 않았습니다');return}console.log('[loadMemoriesFromSupabase] Supabase에서 기억 불러오기 시작');const{data:memoriesDataSupabase,error:memoriesError}=await supabaseClient.from('memories').select('*').eq('is_public',true).order('id',{ascending:true});if(memoriesError){console.error('[loadMemoriesFromSupabase] memories 조회 실패',memoriesError);return}if(!memoriesDataSupabase||memoriesDataSupabase.length===0){console.log('[loadMemoriesFromSupabase] Supabase에 공개된 기억이 없습니다');appStore.setState({allMemoriesData:[]});return}console.log(`[loadMemoriesFromSupabase] ${memoriesDataSupabase.length}개의 메모리 발견`);const supabaseMemories=await Promise.all(memoriesDataSupabase.map(async(memory)=>{const{data:scenesData,error:scenesError}=await supabaseClient.from('scenes').select('*').eq('memory_id',memory.id).order('scene_order',{ascending:true});if(scenesError){console.error(`[loadMemoriesFromSupabase] Memory ${memory.id} scenes 조회 실패`,scenesError);return null}const scenes=await Promise.all((scenesData||[]).map(async(scene)=>{const{data:choicesData,error:choicesError}=await supabaseClient.from('choices').select('*').eq('scene_id',scene.id).order('choice_order',{ascending:true});if(choicesError){console.error(`[loadMemoriesFromSupabase] Scene ${scene.id} choices 조회 실패`,choicesError);return null}const echoWords=Array.isArray(scene.echo_words)?scene.echo_words:(typeof scene.echo_words==='string'?JSON.parse(scene.echo_words):[]);const emotionDist=scene.emotion_dist||{};console.log(`[loadMemoriesFromSupabase] Scene ${scene.id} original_reason_vector:`,scene.original_reason_vector);console.log(`[loadMemoriesFromSupabase] Scene ${scene.id} 전체 scene 객체:`,scene);return{id:scene.id,text:scene.text||'',sceneType:scene.scene_type||'normal',echoWords:echoWords,choices:(choicesData||[]).map(choice=>({text:choice.text||'',emotion:choice.emotion||'fear',intensity:choice.intensity||5,nextScene:choice.nextScene||'end',percentage:0})),emotionDist:emotionDist,voidInfo:scene.void_info||null,originalChoice:scene.original_choice!==undefined?scene.original_choice:0,originalReason:scene.original_reason||'',originalEmotion:scene.original_emotion?(typeof scene.original_emotion==='string'?JSON.parse(scene.original_emotion):scene.original_emotion):null,originalReasonVector:scene.original_reason_vector?(typeof scene.original_reason_vector==='string'?JSON.parse(scene.original_reason_vector):scene.original_reason_vector):null,text_stage_1:scene.text_stage_1||null,text_stage_2:scene.text_stage_2||null,text_stage_3:scene.text_stage_3||null}}));const validScenes=scenes.filter(s=>s!==null);const isLive=!!memory.live_session_id;return{id:memory.id,code:memory.code||'',title:memory.title||'',memory_words:memory.memory_words||null,completed_sentence:memory.completed_sentence||null,layers:memory.layers||0,dilution:memory.dilution||50,recentRank:memory.id||0,scenes:validScenes,live_session_id:memory.live_session_id,is_live:isLive}}));const validSupabaseMemories=supabaseMemories.filter(m=>m!==null);appStore.setState({allMemoriesData:validSupabaseMemories||[]});const state=appStore.getState();console.log(`[loadMemoriesFromSupabase] Supabase에서 ${state.allMemoriesData.length}개의 기억을 로드했습니다`)}catch(error){console.error('[loadMemoriesFromSupabase] 에러 발생',error);appStore.setState({allMemoriesData:[]})}}
-function renderMemoryCards(){const list=document.getElementById('memoryList');if(!list)return;const state=appStore.getState();if(!state.allMemoriesData||state.allMemoriesData.length===0){list.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">기억이 없습니다.</div>';return}let filteredMemories=[...state.allMemoriesData];if(state.currentCategory==='live'){filteredMemories=filteredMemories.filter(m=>(m.live_session_id||m.is_live))}else if(state.currentCategory==='archive'){filteredMemories=filteredMemories.filter(m=>(!m.live_session_id&&!m.is_live))}let sortedMemories;if(state.currentSort==='all'){sortedMemories=filteredMemories}else if(currentSort==='popular'){sortedMemories=[...filteredMemories].sort((a,b)=>(b.layers||0)-(a.layers||0))}else if(currentSort==='recent'){sortedMemories=[...filteredMemories].sort((a,b)=>(b.recentRank||0)-(a.recentRank||0))}list.innerHTML='';if(sortedMemories.length===0){list.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">해당 카테고리의 기억이 없습니다.</div>';return}sortedMemories.forEach((memory,index)=>{const currentState=appStore.getState();const originalIndex=currentState.allMemoriesData.findIndex(m=>m.id===memory.id);const card=document.createElement('div');card.className='memory-card';card.setAttribute('data-code',memory.code||'');card.setAttribute('data-layers',memory.layers||0);card.setAttribute('data-recent',memory.recentRank||0);const isLive=!!(memory.live_session_id||memory.is_live);card.setAttribute('data-category',isLive?'live':'archive');card.setAttribute('onclick',`selectMemory(${originalIndex>=0?originalIndex:index})`);const categoryLabel=isLive?'<span class="memory-category-badge live">라이브</span>':'';const isFetus=!memory.status||memory.status==='Fetus';const statusBadge=isFetus?'<div class="status-badge Fetus">Fetus</div>':'';console.log('[Memory] Rendering card:',memory.title,'status:',memory.status);card.innerHTML=`${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title||'제목 없음'}</h3><p class="memory-card-meta">원본: ${memory.code||'—'} · 해석 레이어: ${memory.layers||0}개</p><div class="memory-card-dilution"><span>원본</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution||50}%"></div></div><span>${memory.dilution||50}%</span></div>`;list.appendChild(card)});filterMemories()}
+function filterByCategory(category,btnElement){
+    if(!category)return;
+    const state = appStore.getState();
+    appStore.setState({currentCategory:category});
+    const categoryBtns=document.querySelectorAll('.category-btn');
+    categoryBtns.forEach(btn=>btn.classList.remove('active'));
+    if(btnElement)btnElement.classList.add('active');
+    const updatedState = appStore.getState();
+    uiManager.renderMemoryCards(
+        updatedState.allMemoriesData,
+        updatedState.currentCategory,
+        updatedState.currentSort,
+        selectMemory,
+        filterMemories
+    );
+}
+async function loadMemoriesFromSupabase(){try{console.log('[loadMemoriesFromSupabase] Supabase에서 기억 불러오기 시작');const result=await networkService.fetchMemories();if(!result.ok){console.error('[loadMemoriesFromSupabase] 조회 실패',result.error);return}if(!result.data||result.data.length===0){console.log('[loadMemoriesFromSupabase] Supabase에 공개된 기억이 없습니다');appStore.setState({allMemoriesData:[]});return}console.log(`[loadMemoriesFromSupabase] ${result.data.length}개의 메모리 발견`);appStore.setState({allMemoriesData:result.data});const state=appStore.getState();console.log(`[loadMemoriesFromSupabase] Supabase에서 ${state.allMemoriesData.length}개의 기억을 로드했습니다`)}catch(error){console.error('[loadMemoriesFromSupabase] 에러 발생',error);appStore.setState({allMemoriesData:[]})}}
 function filterMemories(){const searchValue=document.getElementById('archiveSearch').value.toUpperCase().trim();const cards=document.querySelectorAll('.memory-card');const state=appStore.getState();cards.forEach(card=>{const code=card.getAttribute('data-code')||'';const category=card.getAttribute('data-category')||'archive';let shouldShow=true;if(state.currentCategory==='live'&&category!=='live')shouldShow=false;else if(state.currentCategory==='archive'&&category!=='archive')shouldShow=false;if(shouldShow&&(searchValue===''||code.includes(searchValue))){card.classList.remove('hidden');card.style.display='block';if(searchValue!==''&&code===searchValue){setTimeout(()=>{card.scrollIntoView({behavior:'smooth',block:'center'});card.style.transform='scale(1.05)';setTimeout(()=>card.style.transform='',500)},100)}}else{card.classList.add('hidden');card.style.display='none'}})}
-function sortMemories(sortType,btnElement){appStore.setState({currentSort:sortType});const filterBtns=document.querySelectorAll('.filter-btn');filterBtns.forEach(btn=>btn.classList.remove('active'));if(btnElement)btnElement.classList.add('active');renderMemoryCards()}
+function sortMemories(sortType,btnElement){
+    appStore.setState({currentSort:sortType});
+    const filterBtns=document.querySelectorAll('.filter-btn');
+    filterBtns.forEach(btn=>btn.classList.remove('active'));
+    if(btnElement)btnElement.classList.add('active');
+    const state = appStore.getState();
+    uiManager.renderMemoryCards(
+        state.allMemoriesData,
+        state.currentCategory,
+        state.currentSort,
+        selectMemory,
+        filterMemories
+    );
+}
 function selectRole(role){try{appStore.setState({currentRole:role,currentMode:'live'});const modeSelectionEl=document.getElementById('modeSelection');if(modeSelectionEl){modeSelectionEl.classList.remove('active');modeSelectionEl.style.display='none'}const sessionSetupEl=document.getElementById('sessionSetup');if(sessionSetupEl){sessionSetupEl.classList.add('active');sessionSetupEl.style.cssText='display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important'}if(role==='A'){const narratorSetupEl=document.getElementById('narratorSetup');const experiencerSetupEl=document.getElementById('experiencerSetup');if(narratorSetupEl)narratorSetupEl.style.display='block';if(experiencerSetupEl)experiencerSetupEl.style.display='none';generateSessionCode()}else{const narratorSetupEl=document.getElementById('narratorSetup');const experiencerSetupEl=document.getElementById('experiencerSetup');if(narratorSetupEl)narratorSetupEl.style.display='none';if(experiencerSetupEl)experiencerSetupEl.style.display='block'}}catch(e){console.error('selectRole error:',e);showNotification('역할을 선택하는 중 오류가 발생했습니다')}}
 function generateSessionCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let code='';for(let i=0;i<5;i++)code+=chars.charAt(Math.floor(Math.random()*chars.length));sessionCode=code;document.getElementById('sessionCode').textContent=code;document.getElementById('waitingForB').classList.add('active');createLiveSession()}
 function copySessionCode(){navigator.clipboard.writeText(sessionCode);showNotification('코드가 복사되었습니다')}
@@ -195,9 +244,7 @@ async function createLiveSession(){
     }
     
     let userId;
-    if(currentUser){
-        userId=currentUser.id;
-    }else{
+    const state=appStore.getState();if(state.currentUser){userId=state.currentUser.id}else{
         if(!window.anonymousUserId){
             window.anonymousUserId=crypto.randomUUID();
         }
@@ -229,46 +276,29 @@ async function createLiveSession(){
         console.log('세션 데이터 삽입 시도:', sessionData);
         console.log('Supabase URL:', supabaseClient.supabaseUrl);
         
-        let data, error;
-        try {
-            const result = await supabaseClient
-                .from('live_sessions')
-                .insert(sessionData)
-                .select()
-                .single();
-            data = result.data;
-            error = result.error;
-        } catch (fetchError) {
-            console.error('Fetch 오류 발생:', fetchError);
-            console.error('Fetch 오류 타입:', fetchError.constructor.name);
-            console.error('Fetch 오류 메시지:', fetchError.message);
-            
-            // DNS 해석 실패 또는 네트워크 오류
-            if (fetchError.message && (
-                fetchError.message.includes('Failed to fetch') ||
-                fetchError.message.includes('ERR_NAME_NOT_RESOLVED') ||
-                fetchError.message.includes('ERR_INTERNET_DISCONNECTED')
-            )) {
-                const errorMsg = '인터넷 연결을 확인할 수 없습니다.\n\n' +
+        const result = await networkService.createSession(sessionData);
+        
+        if(!result.ok){
+            console.error('세션 생성 실패:', result.error);
+            if(result.error && result.error.message){
+                const errorMsg = result.error.message.includes('Failed to fetch') || 
+                               result.error.message.includes('ERR_NAME_NOT_RESOLVED') ||
+                               result.error.message.includes('ERR_INTERNET_DISCONNECTED')
+                    ? '인터넷 연결을 확인할 수 없습니다.\n\n' +
                     '확인 사항:\n' +
                     '1. 인터넷 연결 상태 확인\n' +
                     '2. 방화벽/프록시 설정 확인\n' +
                     '3. DNS 서버 설정 확인\n' +
-                    '4. Supabase 서비스 상태 확인';
+                      '4. Supabase 서비스 상태 확인'
+                    : '세션 생성에 실패했습니다: ' + result.error.message;
                 showNotification(errorMsg);
-                throw new Error(errorMsg);
+            } else {
+                showNotification('세션 생성에 실패했습니다');
             }
-            throw fetchError;
+            return null;
         }
         
-        if(error){
-            console.error('세션 생성 DB 오류:', error);
-            console.error('DB 오류 코드:', error.code);
-            console.error('DB 오류 메시지:', error.message);
-            console.error('DB 오류 상세:', error.details);
-            throw error;
-        }
-        
+        const data = result.data;
         if(!data){
             console.error('세션이 생성되지 않았습니다 (data가 null)');
             showNotification('세션 생성에 실패했습니다: 데이터가 반환되지 않았습니다');
@@ -278,21 +308,6 @@ async function createLiveSession(){
         console.log('Session created successfully:', data);
         console.log('Session ID:', data.id);
         console.log('Session Code:', data.session_code);
-        
-        // 생성된 세션이 실제로 DB에 있는지 확인
-        const{data:verifyData,error:verifyError}=await supabaseClient
-            .from('live_sessions')
-            .select('*')
-            .eq('id', data.id)
-            .single();
-        
-        if(verifyError || !verifyData){
-            console.error('세션 검증 실패:', verifyError);
-            showNotification('세션이 생성되었지만 검증에 실패했습니다');
-            return null;
-        }
-        
-        console.log('세션 검증 성공:', verifyData);
         
         appStore.setState({currentSessionId:data.id});
         subscribeToSessionJoin();
@@ -308,63 +323,163 @@ async function createLiveSession(){
         return null;
     }
 }
-function subscribeToSessionJoin(){if(!supabaseClient||!currentSessionId){console.log('구독 실패: supabaseClient 또는 currentSessionId 없음',{supabaseClient:!!supabaseClient,currentSessionId});return}console.log('구독 시작, 세션 ID:',currentSessionId);const channel=supabaseClient.channel('session-join-'+currentSessionId).on('postgres_changes',{event:'UPDATE',schema:'public',table:'live_sessions',filter:`id=eq.${currentSessionId}`},(payload)=>{console.log('이벤트 수신:',payload);if(payload.new.experiencer_id){console.log('체험자 참여 감지!',payload.new.experiencer_id);showNotification('체험자가 참여했습니다!');const sessionSetupEl=document.getElementById('sessionSetup');if(sessionSetupEl){sessionSetupEl.classList.remove('active');sessionSetupEl.style.display='none'}setTimeout(()=>startLiveSession(),500)}}).subscribe((status)=>{console.log('구독 상태:',status);if(status==='SUBSCRIBED'){console.log('구독 성공, 폴링 시작');checkExperiencerJoin()}});window.sessionJoinChannel=channel;console.log('구독 채널 생성 완료:',channel);checkExperiencerJoin()}
-async function checkExperiencerJoin(){const state=appStore.getState();if(!supabaseClient||!state.currentSessionId||state.currentRole!=='A')return;if(window.experiencerCheckInterval){clearInterval(window.experiencerCheckInterval)}window.experiencerCheckInterval=setInterval(async()=>{try{const currentState=appStore.getState();const{data:session,error}=await supabaseClient.from('live_sessions').select('experiencer_id').eq('id',currentState.currentSessionId).single();if(error){console.error('세션 조회 오류:',error);return}if(session&&session.experiencer_id){console.log('폴링으로 체험자 참여 감지!',session.experiencer_id);clearInterval(window.experiencerCheckInterval);window.experiencerCheckInterval=null;showNotification('체험자가 참여했습니다!');const sessionSetupEl=document.getElementById('sessionSetup');if(sessionSetupEl){sessionSetupEl.classList.remove('active');sessionSetupEl.style.display='none'}setTimeout(()=>startLiveSession(),500)}}catch(e){console.error('checkExperiencerJoin error:',e)}},2000);setTimeout(()=>{if(window.experiencerCheckInterval){clearInterval(window.experiencerCheckInterval);window.experiencerCheckInterval=null;console.log('폴링 종료 (30초 경과)')}},30000)}
+function subscribeToSessionJoin(){
+    const state = appStore.getState();
+    const sessionId = state.currentSessionId;
+    if (!sessionId) {
+        console.log('구독 실패: currentSessionId 없음');
+        return;
+    }
+    realtimeService.subscribeToSessionJoin(sessionId, {
+        onExperiencerJoin: (sessionData) => {
+            console.log('체험자 참여 감지!', sessionData.experiencer_id);
+            showNotification('체험자가 참여했습니다!');
+            const sessionSetupEl = document.getElementById('sessionSetup');
+            if (sessionSetupEl) {
+                sessionSetupEl.classList.remove('active');
+                sessionSetupEl.style.display = 'none';
+            }
+            setTimeout(() => startLiveSession(), 500);
+        },
+        onSubscribed: () => {
+            checkExperiencerJoin();
+        }
+    });
+}
+async function checkExperiencerJoin(){
+    const state = appStore.getState();
+    if (!state.currentSessionId || state.currentRole !== 'A') return;
+    
+    // 기존 인터벌이 있으면 정리
+    realtimeService.clearInterval('experiencerCheck');
+    
+    const intervalId = setInterval(async () => {
+        try {
+            const currentState = appStore.getState();
+            const result = await networkService.getSessionExperiencerId(currentState.currentSessionId);
+            if (!result.ok) {
+                console.error('세션 조회 오류:', result.error);
+                return;
+            }
+            if (result.data && result.data.experiencer_id) {
+                console.log('폴링으로 체험자 참여 감지!', result.data.experiencer_id);
+                realtimeService.clearInterval('experiencerCheck');
+                showNotification('체험자가 참여했습니다!');
+                const sessionSetupEl = document.getElementById('sessionSetup');
+                if (sessionSetupEl) {
+                    sessionSetupEl.classList.remove('active');
+                    sessionSetupEl.style.display = 'none';
+                }
+                setTimeout(() => startLiveSession(), 500);
+            }
+        } catch (e) {
+            console.error('checkExperiencerJoin error:', e);
+        }
+    }, 2000);
+    
+    realtimeService.registerInterval('experiencerCheck', intervalId);
+    
+    setTimeout(() => {
+        realtimeService.clearInterval('experiencerCheck');
+        console.log('폴링 종료 (30초 경과)');
+    }, 30000);
+}
 function subscribeToLiveScenes(){
-    if(!supabaseClient||!currentSessionId){return}
-    console.log('live_scenes 구독 시작, 세션 ID:',currentSessionId);
-    const channel=supabaseClient.channel('live-scenes-'+currentSessionId).on('postgres_changes',{
-        event:'INSERT',
-        schema:'public',
-        table:'live_scenes',
-        filter:`session_id=eq.${currentSessionId}`
-    },(payload)=>{
-        console.log('새 장면 수신:',payload);
-        const roleState=appStore.getState();if(roleState.currentRole==='B'){
-            const sceneText=payload.new.scene_text;
-            if(sceneText){
-                const expSceneText=document.getElementById('expSceneText');
-                if(expSceneText){
-                    expSceneText.textContent=sceneText;
+    const state = appStore.getState();
+    const sessionId = state.currentSessionId;
+    if (!sessionId) return;
+    
+    realtimeService.subscribeToLiveScenes(sessionId, {
+        onSceneInsert: (sceneData) => {
+            const roleState = appStore.getState();
+            if (roleState.currentRole === 'B') {
+                const sceneText = sceneData.scene_text;
+                if (sceneText) {
+                    const expSceneText = document.getElementById('expSceneText');
+                    if (expSceneText) {
+                        expSceneText.textContent = sceneText;
                     switchExpGeneratedTab('scene');
-                    expCurrentPhase='interpret';
-                    const emotionCueMsg=window.lastSceneData?.emotionCue||NPC_DIALOGUES.live.emotionCue;
-                    addExpChatMessage('ai','화자의 기억이 도착했어. '+emotionCueMsg);
-                    const expTextInput=document.getElementById('expTextInput');
-                    if(expTextInput){
-                        expTextInput.value='';
+                        expCurrentPhase = 'interpret';
+                        const emotionCueMsg = window.lastSceneData?.emotionCue || NPC_DIALOGUES.live.emotionCue;
+                        addExpChatMessage('ai', '화자의 기억이 도착했어. ' + emotionCueMsg);
+                        const expTextInput = document.getElementById('expTextInput');
+                        if (expTextInput) {
+                            expTextInput.value = '';
                         expTextInput.focus();
                     }
                 }
             }
         }
-    }).subscribe((status)=>{if(status==='SUBSCRIBED'){console.log('live_scenes 구독 성공')}else if(status==='CHANNEL_ERROR'){console.log('live_scenes 구독 실패 (무시됨)')}});
-    window.liveScenesChannel=channel;
+        }
+    });
 }
 function subscribeToLiveInterpretations(){
     // live_interpretations 테이블이 없으므로 완전히 비활성화
-    return;
+    realtimeService.subscribeToLiveInterpretations();
 }
 function displayExperiencerEmotionForNarrator(interpretation){console.log('displayExperiencerEmotionForNarrator 호출:',interpretation);if(!interpretation||!interpretation.emotion_vector){console.error('해석 데이터 또는 감정 벡터가 없습니다');return}const emotionVector=interpretation.emotion_vector;console.log('화자 화면에 체험자 감정 표시:',emotionVector);window.experiencerEmotionVector=emotionVector;const experiencerWave=computeWaveFromEmotion({base:emotionVector});window.currentExperiencerWave=experiencerWave;updateAlignmentWave();showNotification('체험자가 감정을 입력했습니다');console.log('체험자 감정 파동 업데이트 완료')}
-function subscribeToExperiencerChoices(){supabaseClient = getSupabaseClient(); if(!supabaseClient){console.error('subscribeToExperiencerChoices: supabaseClient 없음');return}if(!currentSessionId){console.error('subscribeToExperiencerChoices: currentSessionId 없음');return}console.log('체험자 감정 구독 시작, 세션:',currentSessionId);const channel=supabaseClient.channel('choices-'+currentSessionId).on('postgres_changes',{event:'INSERT',schema:'public',table:'choices',filter:`live_session_id=eq.${currentSessionId}`},(payload)=>{console.log('체험자 감정 수신 (choices 테이블):',payload);console.log('payload.new:',payload.new);if(payload.new&&payload.new.emotion_vector){onExperiencerChoiceReceived(payload.new)}else{console.error('payload.new 또는 emotion_vector가 없습니다')}}).subscribe((status)=>{if(status==='SUBSCRIBED'){console.log('choices 테이블 구독 성공!')}else if(status==='CHANNEL_ERROR'){console.log('choices 테이블 구독 실패 (무시됨)')}});window.experiencerChoicesChannel=channel;console.log('choices 채널 생성 완료:',channel)}
-function onExperiencerChoiceReceived(choice){console.log('체험자 감정 도착 (choices 테이블):',choice);console.log('emotion_vector:',choice.emotion_vector);if(!choice||!choice.emotion_vector){console.error('choice 또는 emotion_vector가 없습니다');return}const emotionVector=choice.emotion_vector;console.log('화자 화면에 체험자 감정 반영 시작:',emotionVector);window.experiencerEmotionVector=emotionVector;const experiencerWave=computeWaveFromEmotion({base:emotionVector});window.currentExperiencerWave=experiencerWave;updateAlignmentWave();if(window.narratorEmotionVector){const similarity=cosineSimilarity(window.narratorEmotionVector,emotionVector);const alignment=Math.max(0,Math.min(1,similarity));appStore.setState({currentAlignment:alignment});updateLiveAlignment(0);console.log('정렬도 계산 완료 (choices):',alignment)}showNotification('체험자가 감정을 입력했습니다 (choices)');console.log('체험자 감정 파동 업데이트 완료 (choices)')}
-function subscribeToScenes(){supabaseClient = getSupabaseClient(); if(!supabaseClient){console.error('subscribeToScenes: supabaseClient 없음');return}const state=appStore.getState();if(!state.currentSessionId){console.error('subscribeToScenes: currentSessionId 없음');return}console.log('장면 구독 시작, 세션 ID:',state.currentSessionId);const channel=supabaseClient.channel('scenes-'+state.currentSessionId).on('postgres_changes',{event:'INSERT',schema:'public',table:'scenes',filter:`live_session_id=eq.${currentSessionId}`},(payload)=>{console.log('새 장면 수신 (scenes 테이블):',payload);console.log('payload.new:',payload.new);if(payload.new){displaySceneForExperiencer(payload.new)}else{console.error('payload.new가 없습니다')}}).subscribe((status)=>{if(status==='SUBSCRIBED'){console.log('scenes 테이블 구독 성공!')}else if(status==='CHANNEL_ERROR'){console.log('scenes 테이블 구독 실패 (무시됨)')}});window.scenesChannel=channel;console.log('scenes 채널 생성 완료:',channel)}
-function displaySceneForExperiencer(scene){console.log('displaySceneForExperiencer 호출:',scene);if(!scene){console.error('장면 객체가 없습니다');return}if(!scene.text){console.error('장면 텍스트가 없습니다. scene:',JSON.stringify(scene));return}console.log('체험자 화면에 장면 표시 시작:',scene.text);const expSceneText=document.getElementById('expSceneText');if(expSceneText){expSceneText.textContent=scene.text;console.log('장면 텍스트 업데이트 완료');switchExpGeneratedTab('scene');expCurrentPhase='interpret';window.currentSceneId=scene.id||null;const expChatMessages=document.getElementById('expChatMessages');if(expChatMessages){expChatMessages.style.display='block';expChatMessages.innerHTML=''}const emotionCueMsg=window.lastSceneData?.emotionCue||NPC_DIALOGUES.live.emotionCue;addExpChatMessage('ai',NPC_DIALOGUES.live.sceneArrived);addExpChatMessage('ai',emotionCueMsg);const expTextInput=document.getElementById('expTextInput');if(expTextInput){expTextInput.value='';expTextInput.focus();expTextInput.placeholder='감정을 입력하세요...'}showNotification('새 장면이 도착했습니다')}else{console.error('expSceneText 요소를 찾을 수 없습니다')}}
+function subscribeToExperiencerChoices(){
+    const state = appStore.getState();
+    const sessionId = state.currentSessionId;
+    if (!sessionId) {
+        console.error('subscribeToExperiencerChoices: currentSessionId 없음');
+        return;
+    }
+    
+    realtimeService.subscribeToExperiencerChoices(sessionId, {
+        onChoiceInsert: (choiceData) => {
+            onExperiencerChoiceReceived(choiceData);
+        }
+    });
+}
+function onExperiencerChoiceReceived(choice){console.log('체험자 감정 도착 (choices 테이블):',choice);console.log('emotion_vector:',choice.emotion_vector);if(!choice||!choice.emotion_vector){console.error('choice 또는 emotion_vector가 없습니다');return}const emotionVector=choice.emotion_vector;console.log('화자 화면에 체험자 감정 반영 시작:',emotionVector);window.experiencerEmotionVector=emotionVector;const experiencerWave=computeWaveFromEmotion({base:emotionVector});window.currentExperiencerWave=experiencerWave;updateAlignmentWave();if(window.narratorEmotionVector){const engineResult=byeoriEngine.calculateStep({userVector:{base:emotionVector},originalVector:{base:window.narratorEmotionVector}},{});const alignment=engineResult.alignment_score;appStore.setState({currentAlignment:alignment});updateLiveAlignment(0);console.log('정렬도 계산 완료 (choices):',alignment)}showNotification('체험자가 감정을 입력했습니다 (choices)');console.log('체험자 감정 파동 업데이트 완료 (choices)')}
+function subscribeToScenes(){
+    const state = appStore.getState();
+    const sessionId = state.currentSessionId;
+    if (!sessionId) {
+        console.error('subscribeToScenes: currentSessionId 없음');
+        return;
+    }
+    
+    realtimeService.subscribeToScenes(sessionId, {
+        onSceneInsert: (sceneData) => {
+            expCurrentPhase = 'interpret';
+            const emotionCueMsg = window.lastSceneData?.emotionCue || NPC_DIALOGUES.live.emotionCue;
+            uiManager.displaySceneForExperiencer(sceneData, {
+                onSwitchTab: switchExpGeneratedTab,
+                onAddChatMessage: addExpChatMessage,
+                onShowNotification: showNotification
+            }, emotionCueMsg, NPC_DIALOGUES.live.sceneArrived);
+        }
+    });
+}
 // cosineSimilarity는 /js/shared/math.js에서 import됨
-// DEPRECATED: ByeoriEngine.calculateStep()을 사용하세요
-function getMismatchType(userVector,originalVector){console.warn('[DEPRECATED] getMismatchType은 deprecated되었습니다. ByeoriEngine.calculateStep()을 사용하세요.');if(!userVector||!originalVector)return null;const emotionSimilarity=cosineSimilarity(userVector.base,originalVector.base||originalVector);const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 미스매치 판정 ===');console.log('감정 유사도:',emotionSimilarity);console.log('귀인 비교:',userReason.attribution,'vs',origReason.attribution);console.log('핵심 두려움 비교:',userReason.core_fear,'vs',origReason.core_fear);console.log('VOID 비교:',userReason.is_void,'vs',origReason.is_void);if(!!userReason.is_void!==!!origReason.is_void){console.log('미스매치 타입: void_mismatch');return'void_mismatch'}if(emotionSimilarity<0.5){console.log('미스매치 타입: emotion_mismatch');return'emotion_mismatch'}if(userReason.attribution&&origReason.attribution&&userReason.attribution!==origReason.attribution){console.log('미스매치 타입: attribution_mismatch');return'attribution_mismatch'}if(userReason.core_fear&&origReason.core_fear&&userReason.core_fear!==origReason.core_fear){console.log('미스매치 타입: target_displacement');return'target_displacement'}console.log('미스매치 타입: null (일치)');return null}
-// DEPRECATED: ByeoriEngine.calculateStep()을 사용하세요
-function calculateComplexAlignment(userVector,originalVector,anchorEmotions=null){console.warn('[DEPRECATED] calculateComplexAlignment는 deprecated되었습니다. ByeoriEngine.calculateStep()을 사용하세요.');if(!userVector||!originalVector)return 0;const emotionScore=cosineSimilarity(userVector.base||userVector,originalVector.base||originalVector,anchorEmotions);let reasonScore=0;const userReason=userVector.reason_analysis||{};const origReason=originalVector.reason_analysis||{};console.log('=== 정렬도 계산 디버깅 ===');console.log('origReason 값:',origReason);console.log('scene.original_reason_vector:',originalVector.reason_analysis);console.log('userReason:',userReason);if(anchorEmotions&&anchorEmotions.length>0){console.log('=== 감정 앵커 시스템 ===');console.log('장면 앵커:',anchorEmotions)}const attributionMatch=userReason.attribution&&origReason.attribution&&userReason.attribution===origReason.attribution;const coreFearMatch=userReason.core_fear&&origReason.core_fear&&userReason.core_fear===origReason.core_fear;console.log(`attribution 비교: "${userReason.attribution}" === "${origReason.attribution}" → ${attributionMatch}`);console.log(`core_fear 비교: "${userReason.core_fear}" === "${origReason.core_fear}" → ${coreFearMatch}`);if(attributionMatch){reasonScore+=0.5}if(coreFearMatch){reasonScore+=0.5}console.log(`이유 점수: ${reasonScore} (attribution: ${attributionMatch?'0.5':'0'}, core_fear: ${coreFearMatch?'0.5':'0'})`);let voidScore=0;if(!!userReason.is_void===!!origReason.is_void){voidScore=1.0}const totalAlignment=(emotionScore*0.4)+(reasonScore*0.4)+(voidScore*0.2);console.log('=== 정렬도 계산 상세 ===');console.log(`감정: ${(emotionScore*0.4).toFixed(2)}, 이유: ${(reasonScore*0.4).toFixed(2)}, VOID: ${(voidScore*0.2).toFixed(2)}`);console.log(`최종: ${totalAlignment.toFixed(2)}`);return totalAlignment}
-function updateAlignmentDisplay(){const state=appStore.getState();const alignmentValueEl=document.getElementById('alignmentValue');const alignmentFillEl=document.getElementById('alignmentFill');if(alignmentValueEl){alignmentValueEl.textContent=state.currentAlignment.toFixed(2)}if(alignmentFillEl){alignmentFillEl.style.width=(state.currentAlignment*100)+'%'}}
-function renderArchiveEmotionWave(emotionVector){if(!emotionVector)return;const canvas=document.getElementById('waveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');const width=canvas.width/2;const height=canvas.height/2;const centerY=height/2;ctx.fillStyle='rgba(18,18,26,0.1)';ctx.fillRect(0,0,width,height);const waveData=computeWaveFromEmotion({base:emotionVector,intensity:0.5,confidence:0.8});ctx.beginPath();ctx.strokeStyle=waveData.color||'rgba(196,168,130,0.6)';ctx.lineWidth=1.5;let time=Date.now()*0.001;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*waveData.frequency+time)*waveData.amplitude*20;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();console.log('Archive emotion wave rendered:',waveData)}
-async function saveArchiveEmotionToPlays(userEmotionVector,userReason,scene,currentData,sceneAlignment,reasonVector=null,mismatchType=null){try{supabaseClient = getSupabaseClient(); if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 plays 테이블에 저장하지 않습니다');return}const memoryId=currentData.id||(allMemoriesData[currentMemory]&&allMemoriesData[currentMemory].id);if(!memoryId){console.warn('memory_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');return}const sceneId=scene.id;if(!sceneId){console.warn('scene_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');return}const sceneText=scene.text||'';const voidLevel=scene.voidInfo?.voidLevel||'low';const waveData=computeArchiveWaveData(userEmotionVector,sceneText.length,voidLevel);const insertData={memory_id:memoryId,scene_id:sceneId,user_emotion:userEmotionVector,user_reason:userReason,wave_data:waveData,layer_id:0,alignment:sceneAlignment!==undefined?sceneAlignment:null,reason_vector:reasonVector,mismatch_type:mismatchType};console.log('Archive plays 저장 시도:',insertData);const{data,error}=await supabaseClient.from('plays').insert(insertData).select().single();if(error){console.error('Archive plays 저장 실패:',error);return}console.log('Archive plays 저장 성공:',data)}catch(e){console.error('saveArchiveEmotionToPlays error:',e)}}
+function updateAlignmentDisplay(){
+    const state = appStore.getState();
+    uiManager.updateAlignmentDisplay(state.currentAlignment);
+}
+function renderArchiveEmotionWave(emotionVector){
+    if (!emotionVector) return;
+    const canvas = document.getElementById('waveCanvas');
+    if (!canvas) return;
+    
+    // 계산은 여기서 수행 (Visualizer는 숫자만 받음)
+    const waveData = computeWaveFromEmotion({ base: emotionVector, intensity: 0.5, confidence: 0.8 });
+    const time = Date.now() * 0.001;
+    
+    // Visualizer에 계산된 데이터 전달
+    visualizer.renderArchiveEmotionWave(canvas, waveData, time);
+    console.log('Archive emotion wave rendered:', waveData);
+}
+async function saveArchiveEmotionToPlays(userEmotionVector,userReason,scene,currentData,sceneAlignment,reasonVector=null,mismatchType=null){try{const state=appStore.getState();const memoryId=currentData.id||(state.allMemoriesData[state.currentMemory]&&state.allMemoriesData[state.currentMemory].id);if(!memoryId){console.warn('memory_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');return}const sceneId=scene.id;if(!sceneId){console.warn('scene_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');return}const sceneText=scene.text||'';const voidLevel=scene.voidInfo?.voidLevel||'low';const waveData=computeArchiveWaveData(userEmotionVector,sceneText.length,voidLevel);const insertData={memory_id:memoryId,scene_id:sceneId,user_emotion:userEmotionVector,user_reason:userReason,wave_data:waveData,layer_id:0,alignment:sceneAlignment!==undefined?sceneAlignment:null,reason_vector:reasonVector,mismatch_type:mismatchType};console.log('Archive plays 저장 시도:',insertData);const result=await networkService.savePlay(insertData);if(!result.ok){console.error('Archive plays 저장 실패:',result.error);return}console.log('Archive plays 저장 성공:',result.data)}catch(e){console.error('saveArchiveEmotionToPlays error:',e)}}
 function computeArchiveWaveData(emotionVector,sceneTextLength,voidLevel){const totalEmotion=Object.values(emotionVector).reduce((sum,val)=>sum+(val||0),0);const normalizedEmotion=totalEmotion>0?Object.keys(emotionVector).reduce((acc,key)=>{acc[key]=(emotionVector[key]||0)/totalEmotion;return acc},{}):emotionVector;const intensity=Math.min(1,Math.max(0.3,totalEmotion/8));const wavePoints=[];const width=Math.max(100,Math.min(500,sceneTextLength*10));for(let i=0;i<width;i++){const x=i/width;const baseY=0.5;const amplitude=voidLevel==='high'?0.15:0.25;const frequency=0.02+intensity*0.01;const y=baseY+Math.sin(x*Math.PI*2*frequency*10)*amplitude;wavePoints.push({x,y})}const dominantEmotion=Object.keys(normalizedEmotion).reduce((a,b)=>normalizedEmotion[a]>normalizedEmotion[b]?a:b,'fear');const emotionColors={'fear':'rgba(74,144,217,0.8)','sadness':'rgba(90,122,154,0.8)','guilt':'rgba(139,115,85,0.8)','anger':'rgba(217,74,74,0.8)','longing':'rgba(196,168,130,0.8)','isolation':'rgba(74,74,90,0.8)','numbness':'rgba(106,106,106,0.8)','shame':'rgba(155,89,182,0.8)','moral_pain':'rgba(155,89,182,0.8)'};return{wavePoints,color:emotionColors[dominantEmotion]||'rgba(196,168,130,0.8)',intensity,voidLevel}}
 async function checkAlignment(){
-    if(!supabaseClient||!currentSessionId)return;
+    const state=appStore.getState();
+    if(!state.currentSessionId)return;
     if(window.narratorEmotionVector&&window.experiencerEmotionVector){
-        const similarity=cosineSimilarity(window.narratorEmotionVector,window.experiencerEmotionVector);
-        const alignment=Math.max(0,Math.min(1,similarity));
-        currentAlignment=alignment;
+        const engineResult=byeoriEngine.calculateStep({userVector:{base:window.experiencerEmotionVector},originalVector:{base:window.narratorEmotionVector}},{});
+        const alignment=engineResult.alignment_score;
+        appStore.setState({currentAlignment:alignment});
         updateLiveAlignment(0);
         updateAlignmentWave();
         console.log('정렬도 계산 완료:',alignment);
@@ -409,9 +524,7 @@ async function joinLiveSession(){
     }
     
     let userId;
-    if(currentUser){
-        userId=currentUser.id;
-    }else{
+    const state=appStore.getState();if(state.currentUser){userId=state.currentUser.id}else{
         if(!window.anonymousUserId){
             window.anonymousUserId=crypto.randomUUID();
         }
@@ -424,51 +537,19 @@ async function joinLiveSession(){
         console.log('세션 검색 시작, 코드:', code);
         console.log('Supabase URL:', supabaseClient.supabaseUrl);
         
-        let sessions, error;
-        try {
-            const result = await supabaseClient
-                .from('live_sessions')
-                .select('*')
-                .eq('session_code',code)
-                .limit(10);
-            sessions = result.data;
-            error = result.error;
-        } catch (fetchError) {
-            console.error('Fetch 오류 발생:', fetchError);
-            console.error('Fetch 오류 타입:', fetchError.constructor.name);
-            console.error('Fetch 오류 메시지:', fetchError.message);
-            
-            // DNS 해석 실패 또는 네트워크 오류
-            if (fetchError.message && (
-                fetchError.message.includes('Failed to fetch') ||
-                fetchError.message.includes('ERR_NAME_NOT_RESOLVED') ||
-                fetchError.message.includes('ERR_INTERNET_DISCONNECTED')
-            )) {
-                const errorMsg = '인터넷 연결을 확인할 수 없습니다.\n\n' +
-                    '확인 사항:\n' +
-                    '1. 인터넷 연결 상태 확인\n' +
-                    '2. 방화벽/프록시 설정 확인\n' +
-                    '3. DNS 서버 설정 확인\n' +
-                    '4. Supabase 서비스 상태 확인';
-                showNotification(errorMsg);
+        const findResult = await networkService.findSessionsByCode(code);
+        
+        if(!findResult.ok){
+            console.error('joinLiveSession query error:', findResult.error);
+            showNotification('세션을 찾을 수 없습니다. 코드를 확인해주세요.');
                 return;
-            }
-            throw fetchError;
         }
         
-        if(error){
-            console.error('joinLiveSession query error:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            console.error('Error details:', error.details);
-            showNotification('세션을 찾을 수 없습니다. 코드를 확인해주세요. (오류: ' + (error.message || '알 수 없는 오류') + ')');
-            return;
-        }
-        
+        const sessions = findResult.data || [];
         console.log('검색된 세션들:', sessions);
-        console.log('검색된 세션 수:', sessions?.length || 0);
+        console.log('검색된 세션 수:', sessions.length);
         
-        if(!sessions || sessions.length === 0){
+        if(sessions.length === 0){
             console.warn('세션을 찾을 수 없음 - 코드:', code);
             showNotification('세션을 찾을 수 없습니다. 코드를 확인해주세요.');
             return;
@@ -496,21 +577,15 @@ async function joinLiveSession(){
         
         console.log('세션 참여 시도, 세션 ID:', session.id);
         
-        const{data:updateData,error:updateError}=await supabaseClient
-            .from('live_sessions')
-            .update({experiencer_id:userId})
-            .eq('id',session.id)
-            .select()
-            .single();
+        const joinResult = await networkService.joinSession(session.id, userId);
         
-        if(updateError){
-            console.error('참여 실패:', updateError);
-            console.error('Error details:', JSON.stringify(updateError, null, 2));
-            showNotification('세션 참여에 실패했습니다: ' + updateError.message);
+        if(!joinResult.ok){
+            console.error('참여 실패:', joinResult.error);
+            showNotification('세션 참여에 실패했습니다: ' + (joinResult.error?.message || '알 수 없는 오류'));
             return;
         }
         
-        console.log('세션 참여 성공:', updateData);
+        console.log('세션 참여 성공:', joinResult.data);
         
         sessionCode=code;
         appStore.setState({currentSessionId:session.id});
@@ -524,11 +599,44 @@ async function joinLiveSession(){
         showNotification('세션 참여 중 오류가 발생했습니다: ' + (e.message || '알 수 없는 오류'));
     }
 }
-function subscribeToNarratorEmotion(){if(!supabaseClient||!currentSessionId){console.error('subscribeToNarratorEmotion: supabaseClient 또는 currentSessionId 없음');return}console.log('화자 감정 구독 시작, 세션 ID:',currentSessionId);const channel=supabaseClient.channel('narrator-scenes-'+currentSessionId).on('postgres_changes',{event:'INSERT',schema:'public',table:'scenes',filter:`live_session_id=eq.${currentSessionId}`},(payload)=>{console.log('화자 장면/감정 수신:',payload.new);if(payload.new&&payload.new.emotion_vector){window.narratorEmotionVector=payload.new.emotion_vector;console.log('화자 감정 벡터 저장:',window.narratorEmotionVector);updateExperiencerAlignment()}}).subscribe((status)=>{console.log('화자 감정 구독 상태:',status);if(status==='SUBSCRIBED'){console.log('화자 감정 구독 성공!')}else if(status==='CHANNEL_ERROR'){console.error('화자 감정 구독 실패')}});window.narratorEmotionChannel=channel;console.log('화자 감정 채널 생성 완료:',channel)}
-function updateExperiencerAlignment(){if(!window.narratorEmotionVector||!window.experiencerEmotionVector){console.log('정렬도 계산 불가: 감정 벡터 없음',{narrator:!!window.narratorEmotionVector,experiencer:!!window.experiencerEmotionVector});return}const similarity=cosineSimilarity(window.narratorEmotionVector,window.experiencerEmotionVector);const alignment=Math.max(0,Math.min(1,similarity));appStore.setState({currentAlignment:alignment});const expAlignmentPercentage=document.getElementById('expAlignmentPercentage');if(expAlignmentPercentage){expAlignmentPercentage.textContent=String(Math.round(alignment*100)).padStart(2,'0')+'%'}updateAlignmentWave();console.log('체험자 화면 정렬도 업데이트:',alignment)}
-async function saveLiveScene(sceneData){console.log('=== saveLiveScene 호출 ===');console.log('sceneData:',JSON.stringify(sceneData));const state=appStore.getState();console.log('currentSessionId:',state.currentSessionId);console.log('liveSceneNum:',state.liveSceneNum);console.log('currentGeneratedScene:',currentGeneratedScene);supabaseClient = getSupabaseClient(); if(!supabaseClient){console.error('supabaseClient가 없습니다!');showNotification('Supabase 클라이언트가 초기화되지 않았습니다');return}if(!state.currentSessionId){console.error('currentSessionId가 없습니다!');showNotification('세션이 없습니다');return}const sceneText=sceneData.text||currentGeneratedScene||pendingSceneText||'';if(!sceneText||sceneText==='(장면 없음)'){console.error('장면 텍스트가 없습니다!');showNotification('저장할 장면이 없습니다');return}const insertData={session_id:state.currentSessionId,scene_index:state.liveSceneNum,scene_text:sceneText,emotion_raw:sceneData.emotionRaw||'',reason_raw:sceneData.reasonRaw||'',generated_emotion:sceneData.generatedEmotion||'',emotion_vector:sceneData.emotionAnalysis?.base||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},intensity:sceneData.emotionAnalysis?.intensity||0.5,confidence:sceneData.emotionAnalysis?.confidence||0.5,void_scene:sceneData.voidInfo?.sceneVoid||false,void_emotion:sceneData.voidInfo?.emotionVoid||false,void_reason:sceneData.voidInfo?.reasonVoid||false};console.log('insertData:',JSON.stringify(insertData));try{const{data,error}=await supabaseClient.from('live_scenes').insert(insertData).select();if(error){console.error('live_scenes INSERT error:',error);throw error}console.log('live_scenes 저장 성공:',data);await saveSceneToLiveSession({text:sceneText,emotion_vector:sceneData.emotionAnalysis?.base||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0}});showNotification('장면이 체험자에게 전송되었습니다')}catch(e){console.error('saveLiveScene error:',e);showNotification('장면 저장 실패: '+e.message)}}
-async function saveSceneToLiveSession(sceneData){console.log('=== saveSceneToLiveSession 호출 ===');console.log('sceneData:',JSON.stringify(sceneData));console.log('currentSessionId:',currentSessionId);console.log('currentSceneOrder:',currentSceneOrder);supabaseClient = getSupabaseClient(); if(!supabaseClient){console.error('supabaseClient가 없습니다!');showNotification('Supabase 클라이언트가 초기화되지 않았습니다');return}if(!currentSessionId){console.error('currentSessionId가 없습니다!');showNotification('세션이 없습니다');return}const sceneText=sceneData.text||'';if(!sceneText){console.error('장면 텍스트가 없습니다!');showNotification('저장할 장면이 없습니다');return}try{const insertData={live_session_id:currentSessionId,scene_order:currentSceneOrder,text:sceneText,emotion_vector:sceneData.emotion_vector||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},created_at:new Date().toISOString()};console.log('scenes INSERT 데이터:',JSON.stringify(insertData));const{data,error}=await supabaseClient.from('scenes').insert(insertData).select().single();if(error){console.error('scenes INSERT error:',error);console.error('에러 상세:',JSON.stringify(error));throw error}console.log('scenes 저장 완료:',data);currentSceneOrder++;showNotification('장면이 scenes 테이블에 저장되었습니다')}catch(e){console.error('saveSceneToLiveSession error:',e);showNotification('scenes 테이블 저장 실패: '+e.message)}}
-async function endLiveSession(){if(!supabaseClient||!currentSessionId)return;try{await supabaseClient.from('live_sessions').update({ended_at:new Date().toISOString(),alignment:currentAlignment}).eq('id',currentSessionId);console.log('Session ended')}catch(e){console.error('endLiveSession error:',e)}}
+function subscribeToNarratorEmotion(){
+    const state = appStore.getState();
+    const sessionId = state.currentSessionId;
+    if (!sessionId) {
+        console.error('subscribeToNarratorEmotion: currentSessionId 없음');
+        return;
+    }
+    
+    realtimeService.subscribeToNarratorEmotion(sessionId, {
+        onNarratorEmotionInsert: (sceneData) => {
+            window.narratorEmotionVector = sceneData.emotion_vector;
+            console.log('화자 감정 벡터 저장:', window.narratorEmotionVector);
+            updateExperiencerAlignment();
+        }
+    });
+}
+function updateExperiencerAlignment(){
+    if (!window.narratorEmotionVector || !window.experiencerEmotionVector) {
+        console.log('정렬도 계산 불가: 감정 벡터 없음', { narrator: !!window.narratorEmotionVector, experiencer: !!window.experiencerEmotionVector });
+        return;
+    }
+    
+    // 계산은 엔진에서 수행
+    const engineResult = byeoriEngine.calculateStep({
+        userVector: { base: window.experiencerEmotionVector },
+        originalVector: { base: window.narratorEmotionVector }
+    }, {});
+    const alignment = engineResult.alignment_score;
+    appStore.setState({ currentAlignment: alignment });
+    
+    // UI 업데이트는 UIManager에 위임
+    uiManager.updateExperiencerAlignmentDisplay(alignment);
+    updateAlignmentWave();
+    console.log('체험자 화면 정렬도 업데이트:', alignment);
+}
+async function saveLiveScene(sceneData){console.log('=== saveLiveScene 호출 ===');console.log('sceneData:',JSON.stringify(sceneData));const state=appStore.getState();console.log('currentSessionId:',state.currentSessionId);console.log('liveSceneNum:',state.liveSceneNum);console.log('currentGeneratedScene:',currentGeneratedScene);if(!state.currentSessionId){console.error('currentSessionId가 없습니다!');showNotification('세션이 없습니다');return}const sceneText=sceneData.text||currentGeneratedScene||pendingSceneText||'';if(!sceneText||sceneText==='(장면 없음)'){console.error('장면 텍스트가 없습니다!');showNotification('저장할 장면이 없습니다');return}const insertData={session_id:state.currentSessionId,scene_index:state.liveSceneNum,scene_text:sceneText,emotion_raw:sceneData.emotionRaw||'',reason_raw:sceneData.reasonRaw||'',generated_emotion:sceneData.generatedEmotion||'',emotion_vector:sceneData.emotionAnalysis?.base||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},intensity:sceneData.emotionAnalysis?.intensity||0.5,confidence:sceneData.emotionAnalysis?.confidence||0.5,void_scene:sceneData.voidInfo?.sceneVoid||false,void_emotion:sceneData.voidInfo?.emotionVoid||false,void_reason:sceneData.voidInfo?.reasonVoid||false};console.log('insertData:',JSON.stringify(insertData));try{const result=await networkService.saveLiveScene(insertData);if(!result.ok){console.error('live_scenes INSERT error:',result.error);throw result.error}console.log('live_scenes 저장 성공:',result.data);await saveSceneToLiveSession({text:sceneText,emotion_vector:sceneData.emotionAnalysis?.base||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0}});showNotification('장면이 체험자에게 전송되었습니다')}catch(e){console.error('saveLiveScene error:',e);showNotification('장면 저장 실패: '+e.message)}}
+async function saveSceneToLiveSession(sceneData){console.log('=== saveSceneToLiveSession 호출 ===');console.log('sceneData:',JSON.stringify(sceneData));const state=appStore.getState();console.log('currentSessionId:',state.currentSessionId);console.log('currentSceneOrder:',state.currentSceneOrder);if(!state.currentSessionId){console.error('currentSessionId가 없습니다!');showNotification('세션이 없습니다');return}const sceneText=sceneData.text||'';if(!sceneText){console.error('장면 텍스트가 없습니다!');showNotification('저장할 장면이 없습니다');return}try{const insertData={live_session_id:state.currentSessionId,scene_order:state.currentSceneOrder,text:sceneText,emotion_vector:sceneData.emotion_vector||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},created_at:new Date().toISOString()};console.log('scenes INSERT 데이터:',JSON.stringify(insertData));const result=await networkService.saveScene(insertData);if(!result.ok){console.error('scenes INSERT error:',result.error);throw result.error}console.log('scenes 저장 완료:',result.data);appStore.setState({currentSceneOrder:state.currentSceneOrder+1});showNotification('장면이 scenes 테이블에 저장되었습니다')}catch(e){console.error('saveSceneToLiveSession error:',e);showNotification('scenes 테이블 저장 실패: '+e.message)}}
+async function endLiveSession(){const state=appStore.getState();if(!state.currentSessionId)return;try{const result=await networkService.endSession(state.currentSessionId,state.currentAlignment);if(!result.ok){console.error('endLiveSession error:',result.error);return}console.log('Session ended')}catch(e){console.error('endLiveSession error:',e)}}
 async function startLiveSession(){try{const state=appStore.getState();if(!state.currentSessionId&&state.currentRole==='B'){console.warn('체험자 세션 ID가 없습니다');return}let sessionId=state.currentSessionId;if(!sessionId&&state.currentRole==='A'){sessionId=await createLiveSession();if(!sessionId){console.warn('세션 생성 실패, 계속 진행합니다')}else{appStore.setState({currentSessionId:sessionId})}}subscribeToLiveScenes();subscribeToScenes();appStore.setState({currentSceneOrder:1,currentScene:0,userChoices:[],userReasons:[],currentAlignment:0});window.currentStoryData=storyData;conversationHistory=[];currentGeneratedSceneObj=null;currentGeneratedEmotion=null;currentPhase='scene';pendingSceneText='';pendingEmotionText='';currentGeneratedScene='';finalSceneObject=null;isEditMode=false;const sceneContent=document.querySelector('#generatedSceneContent .generated-text');if(sceneContent)sceneContent.textContent='';const emotionContent=document.querySelector('#generatedEmotionContent .generated-text');if(emotionContent)emotionContent.textContent='';const chatMessages=document.getElementById('chatMessages');if(chatMessages){chatMessages.innerHTML='<div class="chat-message ai"><div class="chat-message-label">또다른 나</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>'}const editBtn=document.querySelector('.edit-toggle-btn');if(editBtn){editBtn.textContent='수정';editBtn.classList.remove('active')}const sceneTextarea=document.getElementById('editSceneTextarea');if(sceneTextarea){sceneTextarea.style.display='none';sceneTextarea.value=''}const emotionTextarea=document.getElementById('editEmotionTextarea');if(emotionTextarea){emotionTextarea.style.display='none';emotionTextarea.value=''}const sceneTextEl=document.querySelector('#generatedSceneContent .generated-text');if(sceneTextEl)sceneTextEl.style.display='block';switchGeneratedTab('scene');updateUserStats('liveSession',1);const sessionSetupEl=document.getElementById('sessionSetup');if(sessionSetupEl){sessionSetupEl.classList.remove('active');sessionSetupEl.style.display='none'}const liveContainerEl=document.getElementById('liveContainer');if(liveContainerEl){liveContainerEl.classList.add('active');liveContainerEl.style.cssText='display:block !important'}const liveContentEl=document.querySelector('.live-content');const roleState=appStore.getState();if(liveContentEl){if(roleState.currentRole==='A'){liveContentEl.classList.add('narrator-mode')}else{liveContentEl.classList.remove('narrator-mode')}};const narratorLastChoiceSection=document.getElementById('narratorLastChoiceSection');if(narratorLastChoiceSection)narratorLastChoiceSection.style.display='none';const liveProgressSection=document.getElementById('liveProgressSection');if(liveProgressSection)liveProgressSection.style.display=roleState.currentRole==='A'?'block':'none';const traceLabel=document.getElementById('traceLabel');if(traceLabel)traceLabel.textContent=roleState.currentRole==='A'?'해석의 흔적':'기억의 흔적';if(roleState.currentRole==='A'){const narratorPanelEl=document.getElementById('narratorPanel');if(narratorPanelEl)narratorPanelEl.classList.add('active');const interpretationTrace=document.getElementById('interpretationTrace');const traceContent=document.getElementById('traceContent');if(interpretationTrace&&traceContent){interpretationTrace.style.display='block';traceContent.textContent='체험자가 장면을 기다리고있습니다...'}showNpcDialogue("당신의 기억을 불러오세요. 지금 입력하는 장면이 이 기억의 원본 음각이 됩니다.",4000)}else{const experiencerPanelEl=document.getElementById('experiencerPanel');if(experiencerPanelEl){experiencerPanelEl.classList.add('active');expCurrentPhase='waiting';expPendingEmotion='';expGeneratedEmotion='';expFinalObject=null;const expSceneText=document.getElementById('expSceneText');if(expSceneText)expSceneText.innerHTML='화자가 기억을 불러오고 있습니다<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>';const expEmotionText=document.getElementById('expEmotionText');if(expEmotionText)expEmotionText.textContent='';const sceneDisplay=document.getElementById('expGeneratedSceneContent');if(sceneDisplay)sceneDisplay.style.display='block';const emotionDisplay=document.getElementById('expGeneratedEmotionContent');if(emotionDisplay)emotionDisplay.style.display='none';showNpcDialogue("곧 누군가의 원본 기억이 열릴 거야. 그 안에서 네 감정을 솔직하게 남겨줘.",4000)}else{showNotification('체험자 패널을 찾을 수 없습니다')}}startAlignmentWaveAnimation();setTimeout(()=>{startVoiceWaveLiveAnimation()},300);const footer=document.querySelector('.footer');if(footer)footer.classList.add('visible')}catch(e){console.error('startLiveSession error:',e);showNotification('세션을 시작하는 중 오류가 발생했습니다: '+e.message)}}
 async function sendNarratorInput(){console.log('sendNarratorInput called');const input=document.getElementById('narratorInput');if(!input||!input.value.trim()){showNotification('기억을 입력해주세요');return}const inputText=input.value.trim();const sendBtn=document.querySelector('.narrator-send-btn');if(sendBtn)sendBtn.disabled=true;if(sendBtn)sendBtn.textContent='AI가 장면을 변환 중...';showNotification('AI가 장면을 변환하고 있습니다...');try{const convertedScene=await generateSceneAI(inputText);const liveSceneContent=document.getElementById('liveSceneContent');if(liveSceneContent){liveSceneContent.textContent=convertedScene}const experiencerPanel=document.getElementById('experiencerPanel');if(experiencerPanel){experiencerPanel.classList.add('active')}const traceContent=document.getElementById('traceContent');if(traceContent){traceContent.textContent='장면이 체험자에게 전송되었습니다'}showNotification('장면이 체험자에게 전송되었습니다');input.value='';const reasonInput=document.getElementById('narratorReason');if(reasonInput)reasonInput.value='';updateLiveAlignment(0.15);liveSceneNum++;const liveSceneNumEl=document.getElementById('liveSceneNum');if(liveSceneNumEl)liveSceneNumEl.textContent=liveSceneNum}catch(error){console.error('sendNarratorInput error:',error);showNotification('장면 변환 중 오류가 발생했습니다: '+error.message);const liveSceneContent=document.getElementById('liveSceneContent');if(liveSceneContent){liveSceneContent.textContent=inputText}}finally{if(sendBtn){sendBtn.disabled=false;sendBtn.textContent='전송'}}}
 let inputPhase='scene';let currentSceneText='';let isVoiceMode=false;
@@ -592,15 +700,12 @@ function simulateNarratorInput(sceneText){
         showNotification('장면을 불러오는 중 오류가 발생했습니다');
     }
 }
-function renderLiveChoices(choices){const container=document.getElementById('liveChoices');if(!container)return;container.innerHTML='';if(!choices||!Array.isArray(choices))return;choices.forEach((choice,i)=>{const btn=document.createElement('button');btn.className='choice-btn';btn.textContent=choice.text;btn.onclick=function(){makeLiveChoice(i)};container.appendChild(btn)})}
 function renderLiveEchoLayer(words){const layer=document.getElementById('liveEchoLayer');if(!layer)return;layer.innerHTML='';if(!words||!Array.isArray(words))return;words.forEach(word=>{const span=document.createElement('span');span.className='echo-word';span.textContent=word;span.style.top=(20+Math.random()*60)+'%';span.style.left=(10+Math.random()*80)+'%';layer.appendChild(span)})}
 function makeLiveChoice(choiceIndex){try{const state=appStore.getState();appStore.setState({userChoices:[...state.userChoices,choiceIndex]});const currentData=window.currentStoryData||storyData;const updatedState=appStore.getState();if(!currentData||!currentData.scenes||!currentData.scenes[updatedState.currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}const scene=currentData.scenes[updatedState.currentScene];if(choiceIndex===scene.originalChoice){appStore.setState({liveMatches:updatedState.liveMatches+1});const matchesEl=document.getElementById('liveMatches');if(matchesEl)matchesEl.textContent=updatedState.liveMatches+1}appStore.setState({liveFragments:updatedState.liveFragments+1});const fragmentsEl=document.getElementById('liveFragments');if(fragmentsEl)fragmentsEl.textContent=updatedState.liveFragments+1;const sceneType=scene.sceneType||'normal';if(sceneType==='branch'||sceneType==='ending'){const questionEl=document.getElementById('emotionQuestion');if(questionEl)questionEl.textContent=updatedState.currentScene===0?"왜 그렇게 했어?":"지금 어떤 감정이 들어?";const modalEl=document.getElementById('emotionModal');if(modalEl)modalEl.classList.add('active');const inputEl=document.getElementById('emotionInputField');if(inputEl)inputEl.focus()}else{proceedToNextSceneLive()}}catch(e){console.error('makeLiveChoice error:',e);showNotification('오류가 발생했습니다')}}
 function submitExperiencerFeeling(){try{const feelingInput=document.getElementById('experiencerFeelingInput');if(!feelingInput){showNotification('입력 필드를 찾을 수 없습니다');return}const feeling=feelingInput.value.trim();if(!feeling){showNotification('화자가 어떻게 느꼈을지 적어주세요');return}const state=appStore.getState();appStore.setState({userReasons:[...state.userReasons,feeling],liveFragments:state.liveFragments+1});const updatedState=appStore.getState();const fragmentsEl=document.getElementById('liveFragments');if(fragmentsEl)fragmentsEl.textContent=updatedState.liveFragments;updateLiveAlignment(0.1+Math.random()*0.15);showNotification('감정이 기록되었습니다');feelingInput.value='';setTimeout(()=>{proceedToNextSceneLive()},1000)}catch(e){console.error('submitExperiencerFeeling error:',e);showNotification('오류가 발생했습니다')}}
 function updateLiveAlignment(delta){const state=appStore.getState();const newAlignment=Math.min(1,state.currentAlignment+delta);appStore.setState({currentAlignment:newAlignment});const updatedState=appStore.getState();const liveAlignmentValue=document.getElementById('liveAlignmentValue');if(liveAlignmentValue){liveAlignmentValue.textContent=updatedState.currentAlignment.toFixed(2);if(updatedState.currentAlignment>=0.8)liveAlignmentValue.classList.add('high')}const liveAlignmentFill=document.getElementById('liveAlignmentFill');if(liveAlignmentFill)liveAlignmentFill.style.width=(updatedState.currentAlignment*100)+'%';const alignmentPercentage=document.getElementById('alignmentPercentage');if(alignmentPercentage)alignmentPercentage.textContent=String(Math.round(updatedState.currentAlignment*100)).padStart(2,'0')+'%';const expAlignmentPercentage=document.getElementById('expAlignmentPercentage');if(expAlignmentPercentage)expAlignmentPercentage.textContent=String(Math.round(updatedState.currentAlignment*100)).padStart(2,'0')+'%'}
 let currentNarratorWave=null;
-let alignmentWaveTime=0;
-let alignmentMouseX=0,alignmentMouseY=0;
-let alignmentIsMouseDown=false;
+// alignmentWaveTime, alignmentMouseX, alignmentMouseY, alignmentIsMouseDown는 Visualizer 내부에서 관리됨
 function lerp(a,b,t){return a+(b-a)*t}
 function lerpColor(a,b,t){return{r:lerp(a.r,b.r,t),g:lerp(a.g,b.g,t),b:lerp(a.b,b.b,t)}}
 function noise(x,y,z){const n=Math.sin(x*12.9898+y*78.233+(z||0)*37.719)*43758.5453;return n-Math.floor(n)}
@@ -609,126 +714,10 @@ function getDominantEmotionColor(base){const entries=Object.entries(base||{});if
 function getEmotionComplexity(base){if(!base)return 1;return Object.values(base).filter(v=>v>=0.2).length||1}
 function computeWaveFromEmotion(emotionAnalysis){if(!emotionAnalysis){return{amplitude:0.5,frequency:0.015,color:'rgba(196,168,130,'}}return{amplitude:emotionAnalysis.intensity||0.5,frequency:0.01+getEmotionComplexity(emotionAnalysis.base)*0.005,color:getDominantEmotionColor(emotionAnalysis.base)}}
 function updateNarratorWave(emotionAnalysis){currentNarratorWave=computeWaveFromEmotion(emotionAnalysis);console.log('화자 파동 업데이트:',currentNarratorWave)}
-function stopAllLiveSubscriptions(){if(window.sessionJoinChannel){window.sessionJoinChannel.unsubscribe();window.sessionJoinChannel=null}if(window.liveScenesChannel){window.liveScenesChannel.unsubscribe();window.liveScenesChannel=null}if(window.liveInterpretationsChannel){window.liveInterpretationsChannel.unsubscribe();window.liveInterpretationsChannel=null}if(window.experiencerChoicesChannel){window.experiencerChoicesChannel.unsubscribe();window.experiencerChoicesChannel=null}if(window.scenesChannel){window.scenesChannel.unsubscribe();window.scenesChannel=null}if(window.narratorEmotionChannel){window.narratorEmotionChannel.unsubscribe();window.narratorEmotionChannel=null}if(window.experiencerCheckInterval){clearInterval(window.experiencerCheckInterval);window.experiencerCheckInterval=null}}
+function stopAllLiveSubscriptions(){
+    realtimeService.cleanup();
+}
 async function exitLive(){if(confirm('세션을 종료하시겠습니까?')){const state=appStore.getState();const wasRoleA=state.currentRole==='A';const wasFirstScene=state.liveSceneNum===1;stopAllLiveSubscriptions();stopAllAnimations();await endLiveSession();const liveContainerEl=document.getElementById('liveContainer');if(liveContainerEl){liveContainerEl.classList.remove('active');liveContainerEl.style.display='none'}appStore.setState({currentSessionId:null,currentRole:null,sessionCode:null});if(wasRoleA&&wasFirstScene){restart()}else{showEndScreen()}}}
-function drawAlignmentWave(canvas,offsetY,opacity,timeOffset,emotionVector){
-    if(!canvas||!emotionVector)return;
-    const ctx=canvas.getContext('2d');
-    const width=canvas.width/2;
-    const height=canvas.height/2;
-    const t=alignmentWaveTime+timeOffset;
-    const waveStyle=emotionVectorToWaveStyle(emotionVector);
-    const points=[];
-    const segments=100;
-    for(let i=0;i<=segments;i++){
-        const x=(i/segments)*width;
-        const normalizedX=x/width;
-        let y=Math.sin(x*waveStyle.frequency+t*waveStyle.speed)*waveStyle.amplitude;
-        y+=Math.sin(x*waveStyle.frequency*2.3+t*waveStyle.speed*0.7)*(waveStyle.amplitude*0.4);
-        y+=Math.sin(x*waveStyle.frequency*0.4+t*waveStyle.speed*0.3)*(waveStyle.amplitude*0.6);
-        const chaosAmount=waveStyle.chaos*15;
-        y+=(noise(x*0.01,t*0.1,0)-0.5)*chaosAmount;
-        if(alignmentIsMouseDown){
-            const rect=canvas.getBoundingClientRect();
-            const canvasMouseX=alignmentMouseX-rect.left;
-            const canvasMouseY=alignmentMouseY-rect.top;
-            const dx=x-canvasMouseX;
-            const dy=offsetY-canvasMouseY;
-            const dist=Math.sqrt(dx*dx+dy*dy);
-            const influence=Math.max(0,1-dist/300);
-            y+=Math.sin(dist*0.02-t*2)*influence*80;
-        }
-        const edgeFade=Math.sin(normalizedX*Math.PI);
-        y*=edgeFade;
-        points.push({x,y:offsetY+y});
-    }
-    ctx.beginPath();
-    ctx.moveTo(points[0].x,points[0].y);
-    for(let i=1;i<points.length-2;i++){
-        const xc=(points[i].x+points[i+1].x)/2;
-        const yc=(points[i].y+points[i+1].y)/2;
-        ctx.quadraticCurveTo(points[i].x,points[i].y,xc,yc);
-    }
-    const color=waveStyle.color;
-    ctx.strokeStyle=`rgba(${color.r},${color.g},${color.b},${opacity})`;
-    ctx.lineWidth=2;
-    ctx.lineCap='round';
-    ctx.lineJoin='round';
-    ctx.stroke();
-}
-function startAlignmentWaveAnimation(){
-    const narratorCanvas=document.getElementById('alignmentWaveCanvas');
-    const experiencerCanvas=document.getElementById('expAlignmentWaveCanvas');
-    let narratorInitialized=false;
-    let experiencerInitialized=false;
-    function initializeCanvas(canvas){
-        if(!canvas)return false;
-        if(canvas.offsetWidth===0||canvas.offsetHeight===0)return false;
-        try{
-            const ctx=canvas.getContext('2d');
-            canvas.width=canvas.offsetWidth*2;
-            canvas.height=canvas.offsetHeight*2;
-            ctx.scale(2,2);
-            canvas.addEventListener('mousedown',(e)=>{alignmentIsMouseDown=true;const rect=canvas.getBoundingClientRect();alignmentMouseX=e.clientX;alignmentMouseY=e.clientY});
-            canvas.addEventListener('mousemove',(e)=>{alignmentMouseX=e.clientX;alignmentMouseY=e.clientY});
-            canvas.addEventListener('mouseup',()=>{alignmentIsMouseDown=false});
-            canvas.addEventListener('mouseleave',()=>{alignmentIsMouseDown=false});
-            return true;
-        }catch(e){
-            return false;
-        }
-    }
-    function animateWave(canvas){
-        if(!canvas)return;
-        try{
-            const ctx=canvas.getContext('2d');
-            const width=canvas.width/2;
-            const height=canvas.height/2;
-            const alignmentValue=currentAlignment||0;
-            const alignmentPercent=Math.round(alignmentValue*100);
-            const percentageEl=document.getElementById('alignmentPercentage');
-            if(percentageEl)percentageEl.textContent=String(alignmentPercent).padStart(2,'0')+'%';
-            const expPercentageEl=document.getElementById('expAlignmentPercentage');
-            if(expPercentageEl)expPercentageEl.textContent=String(alignmentPercent).padStart(2,'0')+'%';
-            ctx.fillStyle='rgba(10,10,12,0.85)';
-            ctx.fillRect(0,0,width,height);
-            if(window.narratorEmotionVector){
-                const narratorY=height*0.3;
-                drawAlignmentWave(canvas,narratorY,0.7,0,window.narratorEmotionVector);
-            }
-            if(window.experiencerEmotionVector){
-                const experiencerY=height*0.7;
-                drawAlignmentWave(canvas,experiencerY,0.7,50,window.experiencerEmotionVector);
-            }
-        }catch(e){
-            console.error('Alignment wave animation error:',e);
-        }
-    }
-    function animate(){
-        if(narratorCanvas){
-            if(!narratorInitialized){
-                narratorInitialized=initializeCanvas(narratorCanvas);
-            }
-            if(narratorInitialized){
-                animateWave(narratorCanvas);
-            }
-        }
-        if(experiencerCanvas){
-            if(!experiencerInitialized){
-                experiencerInitialized=initializeCanvas(experiencerCanvas);
-            }
-            if(experiencerInitialized){
-                animateWave(experiencerCanvas);
-            }else if(experiencerCanvas.offsetWidth>0&&experiencerCanvas.offsetHeight>0){
-                experiencerInitialized=initializeCanvas(experiencerCanvas);
-            }
-        }
-        alignmentWaveTime+=0.016;
-        alignmentWaveAnimationId=requestAnimationFrame(animate);
-    }
-    animate();
-}
-function stopAlignmentWaveAnimation(){if(alignmentWaveAnimationId){cancelAnimationFrame(alignmentWaveAnimationId);alignmentWaveAnimationId=null}}
 function switchGeneratedTab(tab){document.querySelectorAll('.generated-tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.generated-tab-content').forEach(c=>c.style.display='none');if(tab==='scene'){document.querySelectorAll('.generated-tab')[0].classList.add('active');document.getElementById('generatedSceneContent').style.display='block'}else if(tab==='emotion'){document.querySelectorAll('.generated-tab')[1].classList.add('active');document.getElementById('generatedEmotionContent').style.display='block'}}
 let expCurrentPhase='waiting';let expPendingEmotion='';let expGeneratedEmotion='';let expFinalObject=null;let expConversationHistory=[];
 function switchExpGeneratedTab(tab){const sceneDisplay=document.getElementById('expGeneratedSceneContent');const emotionDisplay=document.getElementById('expGeneratedEmotionContent');if(tab==='scene'){if(sceneDisplay)sceneDisplay.style.display='block';if(emotionDisplay)emotionDisplay.style.display='none'}else if(tab==='emotion'){if(sceneDisplay)sceneDisplay.style.display='none';if(emotionDisplay)emotionDisplay.style.display='block'}}
@@ -743,7 +732,7 @@ async function saveExpInterpretation(data){
     // live_interpretations 테이블이 없으므로 완전히 비활성화
     return;
 }
-async function saveExperiencerChoice(emotionVector){console.log('=== saveExperiencerChoice 호출 ===');console.log('emotionVector:',JSON.stringify(emotionVector));console.log('currentSessionId:',currentSessionId);console.log('liveSceneNum:',liveSceneNum);if(!currentSessionId){console.error('currentSessionId가 없습니다!');return}supabaseClient = getSupabaseClient(); if(!supabaseClient){console.error('supabaseClient가 없습니다!');return}let userId;if(currentUser){userId=currentUser.id}else{if(!window.anonymousUserId){window.anonymousUserId=crypto.randomUUID()}userId=window.anonymousUserId}const insertData={live_session_id:currentSessionId,scene_id:null,user_id:userId,emotion_vector:emotionVector||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},created_at:new Date().toISOString()};console.log('choices INSERT 데이터:',JSON.stringify(insertData));try{const{data,error}=await supabaseClient.from('choices').insert(insertData).select().single();if(error){console.error('choices INSERT error:',error);throw error}console.log('체험자 감정 저장 완료:',data);showNotification('감정이 choices 테이블에 저장되었습니다')}catch(e){console.error('saveExperiencerChoice error:',e);showNotification('choices 테이블 저장 실패: '+e.message)}}
+async function saveExperiencerChoice(emotionVector){console.log('=== saveExperiencerChoice 호출 ===');console.log('emotionVector:',JSON.stringify(emotionVector));const state=appStore.getState();console.log('currentSessionId:',state.currentSessionId);console.log('liveSceneNum:',state.liveSceneNum);if(!state.currentSessionId){console.error('currentSessionId가 없습니다!');return}let userId;if(state.currentUser){userId=state.currentUser.id}else{if(!window.anonymousUserId){window.anonymousUserId=crypto.randomUUID()}userId=window.anonymousUserId}const insertData={live_session_id:state.currentSessionId,scene_id:null,user_id:userId,emotion_vector:emotionVector||{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},created_at:new Date().toISOString()};console.log('choices INSERT 데이터:',JSON.stringify(insertData));try{const result=await networkService.saveChoice(insertData);if(!result.ok){console.error('choices INSERT error:',result.error);throw result.error}console.log('체험자 감정 저장 완료:',result.data);showNotification('감정이 choices 테이블에 저장되었습니다')}catch(e){console.error('saveExperiencerChoice error:',e);showNotification('choices 테이블 저장 실패: '+e.message)}}
 function switchExpToTextInput(){if(isExpRecording){if(expMediaRecorder&&expMediaRecorder.state!=='inactive'){expMediaRecorder.stop();isExpRecording=false}}const waveSection=document.getElementById('expVoiceWaveSection');const switchBtn=document.querySelector('.experiencer-panel .text-switch-btn');if(waveSection&&switchBtn){waveSection.style.display='none';const textInputContainer=document.createElement('div');textInputContainer.className='text-input-container-live';textInputContainer.style.width='100%';textInputContainer.innerHTML=`<div class="chat-input-wrapper"><textarea class="chat-input-textarea" id="expTextInput" placeholder="감정을 입력하세요..." rows="3"></textarea><button class="chat-send-btn" id="expChatSendBtn" onclick="sendExpChatMessage()">전송</button></div>`;switchBtn.parentElement.insertBefore(textInputContainer,switchBtn);switchBtn.textContent='음성으로 전환';switchBtn.onclick=function(){switchExpToVoiceInput()};const input=document.getElementById('expTextInput');if(input){input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();sendExpChatMessage()}});input.focus()}}}
 function switchExpToVoiceInput(){const textContainer=document.querySelector('.experiencer-panel .text-input-container-live');const switchBtn=document.querySelector('.experiencer-panel .text-switch-btn');const waveSection=document.getElementById('expVoiceWaveSection');if(textContainer){textContainer.remove()}if(waveSection){waveSection.style.display='block'}if(switchBtn){switchBtn.textContent='텍스트로 전환';switchBtn.onclick=function(){switchExpToTextInput()}}}
 let isEditMode=false;
@@ -975,7 +964,8 @@ function startVoiceWaveLiveAnimation(){
     }
 }
 function stopVoiceWaveLiveAnimation(){if(voiceWaveLiveAnimationId){cancelAnimationFrame(voiceWaveLiveAnimationId);voiceWaveLiveAnimationId=null}}
-let alignmentWaveAnimationId=null;let voiceWaveLiveAnimationId=null;let comparisonWaveAnimationId=null;let comparisonWaveTime=0;
+// alignmentWaveAnimationId, comparisonWaveAnimationId, comparisonWaveTime는 Visualizer 내부에서 관리됨
+let voiceWaveLiveAnimationId=null;
 function selectMemory(index){try{appStore.setState({currentMemory:index,currentScene:0,userChoices:[],userReasons:[],currentAlignment:0,currentBucket:null,emotionHistory:[]});const state=appStore.getState();updateUserStats('memory',index);const stateAfter=appStore.getState();const selectedMemory=stateAfter.allMemoriesData[index]||stateAfter.allMemoriesData[0];if(!selectedMemory){showNotification('기억을 불러올 수 없습니다');return}const memoryId=selectedMemory.id;if(memoryId){activateMemoryIfFetus(memoryId);}window.currentStoryData=selectedMemory;const archiveContainerEl=document.getElementById('archiveContainer');if(archiveContainerEl&&!archiveContainerEl.classList.contains('active')){archiveContainerEl.classList.add('active')}const memoryListEl=document.getElementById('memoryList');if(memoryListEl)memoryListEl.style.display='none';const archiveControlsEl=document.getElementById('archiveControls');if(archiveControlsEl)archiveControlsEl.style.display='none';const archiveHeaderEl=document.querySelector('.archive-header');if(archiveHeaderEl)archiveHeaderEl.style.display='none';showConsentSequence(index);}catch(e){console.error('selectMemory error:',e);console.error('Error details:',{index,memoriesDataLength:memoriesData.length,selectedMemory:memoriesData[index]});showNotification('기억을 불러오는 중 오류가 발생했습니다')}}
 function showConsentSequence(memoryIndex){
     const consentSequenceEl=document.getElementById('consentSequence');
@@ -1306,7 +1296,13 @@ function getAlignmentLevel(alignment){if(alignment>=0.95)return'FIXATED';if(alig
 function startLiveWaveAnimation(){const canvas=document.getElementById('liveWaveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth*2;canvas.height=canvas.offsetHeight*2;ctx.scale(2,2);let time=0;function animate(){ctx.fillStyle='rgba(18,18,26,0.15)';ctx.fillRect(0,0,canvas.width/2,canvas.height/2);const width=canvas.width/2,height=canvas.height/2,centerY=height/2;ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.7)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.025+time*0.04)*12+Math.sin(x*0.015+time*0.025)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(123,143,168,0.7)';ctx.lineWidth=1.5;const offset=(1-currentAlignment)*25;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.025+time*0.04+offset)*12+Math.sin(x*0.015+time*0.025+offset*0.6)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();time++;const animId=requestAnimationFrame(animate);appStore.setState({liveWaveAnimationId:animId})}animate()}
 function stopWaveAnimation(){const state=appStore.getState();if(state.waveAnimationId){cancelAnimationFrame(state.waveAnimationId);appStore.setState({waveAnimationId:null})}}
 function stopLiveWaveAnimation(){const state=appStore.getState();if(state.liveWaveAnimationId){cancelAnimationFrame(state.liveWaveAnimationId);appStore.setState({liveWaveAnimationId:null})}}
-function stopAllAnimations(){stopWaveAnimation();stopLiveWaveAnimation();stopAlignmentWaveAnimation();stopVoiceWaveLiveAnimation();stopLiveVoiceInput()}
+function stopAllAnimations(){
+    stopWaveAnimation();
+    stopLiveWaveAnimation();
+    visualizer.stopAlignmentWaveAnimation();
+    stopVoiceWaveLiveAnimation();
+    stopLiveVoiceInput();
+}
 async function showEndScreen(alignmentResult,forceEndScreen=false){
     console.log('[엔딩] showEndScreen 호출:', { alignmentResult, forceEndScreen, currentMode });
     try {
@@ -1387,11 +1383,12 @@ async function showEndScreen(alignmentResult,forceEndScreen=false){
                 try{
                     supabaseClient=getSupabaseClient();
                     if(supabaseClient){
-                        const{data:memoryData}=await supabaseClient.from('memories').select('author_note,source_session_id').eq('id',memoryId).single();
-                        if(memoryData&&memoryData.source_session_id){
-                            const{data:sessionData}=await supabaseClient.from('live_sessions').select('narrator_id').eq('id',memoryData.source_session_id).single();
-                            if(sessionData&&sessionData.narrator_id){
-                                setTimeout(()=>{showTrueEndingNoteUI(memoryData.author_note,sessionData.narrator_id,memoryId)},3000);
+                        const memoryResult=await networkService.getMemoryById(memoryId);
+                        if(memoryResult.ok&&memoryResult.data&&memoryResult.data.source_session_id){
+                            const sessionResult=await networkService.getSessionNarratorId(memoryResult.data.source_session_id);
+                            if(sessionResult.ok&&sessionResult.data){
+                                const sessionData=sessionResult.data;
+                                setTimeout(()=>{showTrueEndingNoteUI(memoryResult.data.author_note,sessionData.narrator_id,memoryId)},3000);
                             }
                         }
                     }
@@ -1476,22 +1473,22 @@ function showMemoryFateModal(){
         console.error('memoryFateModal 요소를 찾을 수 없습니다!');
     }
 }
-async function selectMemoryFate(fate){const modalEl=document.getElementById('memoryFateModal');if(modalEl)modalEl.classList.remove('active');window.selectedMemoryFate=fate;if(supabaseClient&&currentSessionId){try{await supabaseClient.from('live_sessions').update({memory_fate:fate}).eq('id',currentSessionId);console.log('Memory fate saved:',fate)}catch(e){console.error('Memory fate save error:',e)}}await saveLiveToArchive(fate);setTimeout(()=>{proceedSaveMemory()},500)}
-async function saveLiveToArchive(fate){if(!supabaseClient||!currentSessionId){console.log('No session to save to archive');return}try{const{data:sessionData}=await supabaseClient.from('live_sessions').select('*').eq('id',currentSessionId).single();if(!sessionData){console.error('Session not found');return}const{data:scenesData}=await supabaseClient.from('live_scenes').select('*').eq('session_id',currentSessionId).order('scene_index',{ascending:true});if(!scenesData||scenesData.length===0){console.log('No scenes to save');return}const memoryCode='L-'+sessionData.session_code;const memoryTitle='라이브 기억 #'+sessionData.session_code;const dilutionValue=fate==='preserve'?100:fate==='dilute'?50:0;const{data:newMemory,error:memoryError}=await supabaseClient.from('memories').insert({code:memoryCode,title:memoryTitle,layers:1,dilution:dilutionValue,is_public:true,source_type:'live',source_session_id:currentSessionId,memory_fate:fate}).select().single();if(memoryError){console.error('Memory insert error:',memoryError);return}for(let i=0;i<scenesData.length;i++){const scene=scenesData[i];const emotionVector=scene.emotion_vector||{};const dominantEmotion=getDominantEmotion(emotionVector);const{data:newScene}=await supabaseClient.from('scenes').insert({memory_id:newMemory.id,scene_order:scene.scene_index||i+1,text:scene.scene_text||'',scene_type:'normal',echo_words:[],emotion_dist:emotionVector}).select().single();if(newScene){await supabaseClient.from('choices').insert({scene_id:newScene.id,choice_order:0,text:scene.generated_emotion||'느껴진 감정',emotion:dominantEmotion,intensity:Math.round((scene.intensity||0.5)*10)})}}console.log('Live session saved to archive');showNotification('기억이 아카이브에 저장되었습니다')}catch(e){console.error('saveLiveToArchive error:',e)}}
+async function selectMemoryFate(fate){const modalEl=document.getElementById('memoryFateModal');if(modalEl)modalEl.classList.remove('active');window.selectedMemoryFate=fate;const state=appStore.getState();if(state.currentSessionId){try{const result=await networkService.updateSessionMemoryFate(state.currentSessionId,fate);if(!result.ok){console.error('Memory fate save error:',result.error)}else{console.log('Memory fate saved:',fate)}}catch(e){console.error('Memory fate save error:',e)}}await saveLiveToArchive(fate);setTimeout(()=>{proceedSaveMemory()},500)}
+async function saveLiveToArchive(fate){const state=appStore.getState();if(!state.currentSessionId){console.log('No session to save to archive');return}try{const sessionResult=await networkService.getSessionById(state.currentSessionId);if(!sessionResult.ok||!sessionResult.data){console.error('Session not found');return}const sessionData=sessionResult.data;const scenesResult=await networkService.getLiveScenesBySessionId(state.currentSessionId);if(!scenesResult.ok||!scenesResult.data||scenesResult.data.length===0){console.log('No scenes to save');return}const scenesData=scenesResult.data;const memoryCode='L-'+sessionData.session_code;const memoryTitle='라이브 기억 #'+sessionData.session_code;const dilutionValue=fate==='preserve'?100:fate==='dilute'?50:0;const memoryResult=await networkService.saveMemory({code:memoryCode,title:memoryTitle,layers:1,dilution:dilutionValue,is_public:true,source_type:'live',source_session_id:state.currentSessionId,memory_fate:fate});if(!memoryResult.ok||!memoryResult.data){console.error('Memory insert error:',memoryResult.error);return}const newMemory=memoryResult.data;for(let i=0;i<scenesData.length;i++){const scene=scenesData[i];const emotionVector=scene.emotion_vector||{};const dominantEmotion=getDominantEmotion(emotionVector);const sceneResult=await networkService.saveScene({memory_id:newMemory.id,scene_order:scene.scene_index||i+1,text:scene.scene_text||'',scene_type:'normal',echo_words:[],emotion_dist:emotionVector});if(sceneResult.ok&&sceneResult.data){await networkService.saveChoice({scene_id:sceneResult.data.id,choice_order:0,text:scene.generated_emotion||'느껴진 감정',emotion:dominantEmotion,intensity:Math.round((scene.intensity||0.5)*10)})}}console.log('Live session saved to archive');showNotification('기억이 아카이브에 저장되었습니다')}catch(e){console.error('saveLiveToArchive error:',e)}}
 // getDominantEmotion과 getBucket은 /js/shared/math.js에서 import됨
-const bucketDialogue={HIGH:NPC_DIALOGUES.bucket.HIGH,MID:NPC_DIALOGUES.bucket.MID,LOW:NPC_DIALOGUES.bucket.LOW,FIXATED:NPC_DIALOGUES.bucket.FIXATED};const bucketSystemMessage={HIGH:"[ 동기화 안정 ]",MID:"[ 신호 불안정 ]",LOW:"[ 왜곡 감지 ]",FIXATED:"[ 루프 감지 ]"};function showBucketFeedback(bucket,alignment){if(bucket&&bucketDialogue[bucket]){showNpcDialogue(bucketDialogue[bucket],4000)}if(bucket&&bucketSystemMessage[bucket]){showSystemMessage(bucketSystemMessage[bucket])}}function showSystemMessage(message){const systemMsgEl=document.getElementById('systemMessage');if(systemMsgEl){systemMsgEl.textContent=message;systemMsgEl.classList.add('visible');setTimeout(()=>{systemMsgEl.classList.remove('visible')},2000)}}async function getContaminationLevel(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염도를 계산할 수 없습니다');return 0}const{count,error}=await supabaseClient.from('plays').select('*',{count:'exact',head:true}).eq('memory_id',memoryId);if(error){console.error('오염도 계산 오류:',error);return 0}const maxLayers=100;const contamination=Math.min((count||0)/maxLayers,1.0);console.log('=== 오염도 계산 ===');console.log('memory_id:',memoryId);console.log('plays 수:',count);console.log('오염도:',contamination);return contamination}catch(e){console.error('getContaminationLevel error:',e);return 0}}function getContaminationStage(contamination){if(contamination>=0.9)return 3;if(contamination>=0.6)return 2;if(contamination>=0.3)return 1;return 0}async function getContaminationDirection(memoryId){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.warn('Supabase 클라이언트가 없어 오염 방향을 결정할 수 없습니다');return'default'}const{data:plays,error}=await supabaseClient.from('plays').select('mismatch_type').eq('memory_id',memoryId).not('mismatch_type','is',null);if(error){console.error('오염 방향 결정 오류:',error);return'default'}if(!plays||plays.length===0){console.log('=== 오염 방향 ===');console.log('plays 데이터 없음, 기본값 사용');return'default'}const counts={emotion_mismatch:0,target_displacement:0,attribution_mismatch:0,void_mismatch:0};plays.forEach(p=>{if(p.mismatch_type&&counts[p.mismatch_type]!==undefined){counts[p.mismatch_type]++}});const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];console.log('=== 오염 방향 ===');console.log('미스매치 통계:',counts);console.log('지배적 타입:',dominant[0],`(${dominant[1]}회)`);return dominant[1]>0?dominant[0]:'default'}catch(e){console.error('getContaminationDirection error:',e);return'default'}}async function getContaminatedText(scene,stage,memoryId,direction='default'){if(stage===0)return scene.text;const stageKey=`text_stage_${stage}_${direction}`;if(scene[stageKey]){console.log(`Stage ${stage} (${direction}) 캐시 사용`);return scene[stageKey]}console.log(`Stage ${stage} (${direction}) AI 생성 중...`);const contaminatedText=await generateContaminatedText(scene.text,stage,direction);if(contaminatedText&&scene.id){try{supabaseClient=getSupabaseClient();if(supabaseClient){await supabaseClient.from('scenes').update({[stageKey]:contaminatedText}).eq('id',scene.id);console.log(`Stage ${stage} (${direction}) 캐시 저장 완료`)}else{console.warn('Supabase 클라이언트가 없어 캐시를 저장할 수 없습니다')}}catch(e){console.error('캐시 저장 오류:',e)}}return contaminatedText||scene.text}async function generateContaminatedText(originalText,stage,direction='default'){try{supabaseClient=getSupabaseClient();if(!supabaseClient){console.error('Supabase 클라이언트가 없습니다');return originalText}const{data,error}=await supabaseClient.functions.invoke('contaminate-text',{body:{text:originalText,stage:stage,direction:direction}});if(error){console.error('contaminate-text 함수 오류:',error);return originalText}if(data&&data.contaminatedText){return data.contaminatedText}return originalText}catch(e){console.error('generateContaminatedText error:',e);return originalText}}async function loadSceneWithContamination(scene,memoryId){const contamination=await getContaminationLevel(memoryId);const stage=getContaminationStage(contamination);const direction=await getContaminationDirection(memoryId);console.log('=== 오염 적용 ===');console.log('오염도:',contamination);console.log('Stage:',stage);console.log('방향:',direction);const displayText=await getContaminatedText(scene,stage,memoryId,direction);return{...scene,displayText,contaminationStage:stage,contaminationDirection:direction}}
+const bucketDialogue={HIGH:NPC_DIALOGUES.bucket.HIGH,MID:NPC_DIALOGUES.bucket.MID,LOW:NPC_DIALOGUES.bucket.LOW,FIXATED:NPC_DIALOGUES.bucket.FIXATED};const bucketSystemMessage={HIGH:"[ 동기화 안정 ]",MID:"[ 신호 불안정 ]",LOW:"[ 왜곡 감지 ]",FIXATED:"[ 루프 감지 ]"};function showBucketFeedback(bucket,alignment){if(bucket&&bucketDialogue[bucket]){showNpcDialogue(bucketDialogue[bucket],4000)}if(bucket&&bucketSystemMessage[bucket]){showSystemMessage(bucketSystemMessage[bucket])}}function showSystemMessage(message){const systemMsgEl=document.getElementById('systemMessage');if(systemMsgEl){systemMsgEl.textContent=message;systemMsgEl.classList.add('visible');setTimeout(()=>{systemMsgEl.classList.remove('visible')},2000)}}async function getContaminationLevel(memoryId){try{const result=await networkService.getContaminationLevel(memoryId);if(!result.ok){console.error('오염도 계산 오류:',result.error);return 0}const maxLayers=100;const contamination=Math.min((result.data||0)/maxLayers,1.0);console.log('=== 오염도 계산 ===');console.log('memory_id:',memoryId);console.log('plays 수:',result.data);console.log('오염도:',contamination);return contamination}catch(e){console.error('getContaminationLevel error:',e);return 0}}function getContaminationStage(contamination){if(contamination>=0.9)return 3;if(contamination>=0.6)return 2;if(contamination>=0.3)return 1;return 0}async function getContaminationDirection(memoryId){try{const result=await networkService.getPlaysMismatchTypes(memoryId);if(!result.ok){console.error('오염 방향 결정 오류:',result.error);return'default'}const plays=result.data||[];if(plays.length===0){console.log('=== 오염 방향 ===');console.log('plays 데이터 없음, 기본값 사용');return'default'}const counts={emotion_mismatch:0,target_displacement:0,attribution_mismatch:0,void_mismatch:0};plays.forEach(p=>{if(p.mismatch_type&&counts[p.mismatch_type]!==undefined){counts[p.mismatch_type]++}});const dominant=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];console.log('=== 오염 방향 ===');console.log('미스매치 통계:',counts);console.log('지배적 타입:',dominant[0],`(${dominant[1]}회)`);return dominant[1]>0?dominant[0]:'default'}catch(e){console.error('getContaminationDirection error:',e);return'default'}}async function getContaminatedText(scene,stage,memoryId,direction='default'){if(stage===0)return scene.text;const stageKey=`text_stage_${stage}_${direction}`;if(scene[stageKey]){console.log(`Stage ${stage} (${direction}) 캐시 사용`);return scene[stageKey]}console.log(`Stage ${stage} (${direction}) AI 생성 중...`);const contaminatedText=await generateContaminatedText(scene.text,stage,direction);if(contaminatedText&&scene.id){try{const result=await networkService.updateScene(scene.id,{[stageKey]:contaminatedText});if(result.ok){console.log(`Stage ${stage} (${direction}) 캐시 저장 완료`)}else{console.warn('캐시 저장 실패:',result.error)}}catch(e){console.error('캐시 저장 오류:',e)}}return contaminatedText||scene.text}async function generateContaminatedText(originalText,stage,direction='default'){try{const result=await networkService.invokeFunction('contaminate-text',{text:originalText,stage:stage,direction:direction});if(!result.ok){console.error('contaminate-text 함수 오류:',result.error);return originalText}if(result.data&&result.data.contaminatedText){return result.data.contaminatedText}return originalText}catch(e){console.error('generateContaminatedText error:',e);return originalText}}async function loadSceneWithContamination(scene,memoryId){const contamination=await getContaminationLevel(memoryId);const stage=getContaminationStage(contamination);const direction=await getContaminationDirection(memoryId);console.log('=== 오염 적용 ===');console.log('오염도:',contamination);console.log('Stage:',stage);console.log('방향:',direction);const displayText=await getContaminatedText(scene,stage,memoryId,direction);return{...scene,displayText,contaminationStage:stage,contaminationDirection:direction}}
 function saveSessionRecord(){const state=appStore.getState();if(!state.isLoggedIn||!state.currentUser)return;const user=state.currentUser;if(!user.sessionHistory)user.sessionHistory=[];const sessionRecord={id:Date.now(),date:new Date().toLocaleString('ko-KR'),role:state.currentRole||'—',memoryFate:window.selectedMemoryFate||'—',alignment:state.currentAlignment.toFixed(2),scenes:state.liveSceneNum||state.currentScene+1,fragments:state.liveFragments||0,matches:state.liveMatches||0};user.sessionHistory.unshift(sessionRecord);if(user.sessionHistory.length>50)user.sessionHistory=user.sessionHistory.slice(0,50);appStore.setState({currentUser:user})}
-async function loadMypageDataFromDB(){if(!supabaseClient||!currentUser?.id){renderSessionHistoryEmpty();renderMyMemoriesEmpty();return}try{const[sessionsResult,memoriesResult,statsResult]=await Promise.all([loadSessionHistoryFromDB(),loadMyMemoriesFromDB(),loadUserStatsFromDB()]);renderSessionHistoryList(sessionsResult);renderMyMemoriesList(memoriesResult);updateMypageStats(statsResult);await renderReceivedNotes()}catch(e){console.error('loadMypageDataFromDB error:',e);renderSessionHistoryEmpty();renderMyMemoriesEmpty()}}
-async function loadSessionHistoryFromDB(){if(!supabaseClient||!currentUser?.id)return[];try{const{data,error}=await supabaseClient.from('live_sessions').select('*').or(`narrator_id.eq.${currentUser.id},experiencer_id.eq.${currentUser.id}`).order('created_at',{ascending:false}).limit(50);if(error)throw error;return data||[]}catch(e){console.error('loadSessionHistoryFromDB error:',e);return[]}}
+async function loadMypageDataFromDB(){const state=appStore.getState();if(!state.currentUser?.id){renderSessionHistoryEmpty();renderMyMemoriesEmpty();return}try{const[sessionsResult,memoriesResult,statsResult]=await Promise.all([loadSessionHistoryFromDB(),loadMyMemoriesFromDB(),loadUserStatsFromDB()]);renderSessionHistoryList(sessionsResult);renderMyMemoriesList(memoriesResult);updateMypageStats(statsResult);await renderReceivedNotes()}catch(e){console.error('loadMypageDataFromDB error:',e);renderSessionHistoryEmpty();renderMyMemoriesEmpty()}}
+async function loadSessionHistoryFromDB(){const state=appStore.getState();if(!state.currentUser?.id)return[];try{const result=await networkService.getUserSessionHistory(state.currentUser.id,50);if(!result.ok)return[];return result.data||[]}catch(e){console.error('loadSessionHistoryFromDB error:',e);return[]}}
 async function loadMyMemoriesFromDB(){
-    if(!supabaseClient||!currentUser?.id)return[];
+    const state=appStore.getState();
+    if(!state.currentUser?.id)return[];
     try{
-        // JOIN 쿼리의 or 연산자 문법 문제로 인해 fallback 로직만 사용
-        const{data:sessionIds}=await supabaseClient.from('live_sessions').select('id').or(`narrator_id.eq.${currentUser.id},experiencer_id.eq.${currentUser.id}`);
-        if(sessionIds&&sessionIds.length>0){
-            const ids=sessionIds.map(s=>s.id);
-            const{data:fallbackData}=await supabaseClient.from('memories').select('*').in('source_session_id',ids).order('created_at',{ascending:false}).limit(50);
-            return fallbackData||[];
+        const sessionIdsResult=await networkService.getUserSessionIds(state.currentUser.id);
+        if(sessionIdsResult.ok&&sessionIdsResult.data&&sessionIdsResult.data.length>0){
+            const ids=sessionIdsResult.data.map(s=>s.id);
+            const memoriesResult=await networkService.getMemoriesBySessionIds(ids,50);
+            if(memoriesResult.ok)return memoriesResult.data||[];
         }
         return[];
     }catch(e){
@@ -1500,18 +1497,19 @@ async function loadMyMemoriesFromDB(){
     }
 }
 async function loadUserStatsFromDB(){
-    if(!supabaseClient||!currentUser?.id)return{sessions:0,memories:0,interpretations:0};
+    const state=appStore.getState();
+    if(!state.currentUser?.id)return{sessions:0,memories:0,interpretations:0};
     try{
-        const{data:sessionsData}=await supabaseClient.from('live_sessions').select('id').or(`narrator_id.eq.${currentUser.id},experiencer_id.eq.${currentUser.id}`);
-        const sessionIds=(sessionsData||[]).map(s=>s.id);
+        const sessionsResult=await networkService.getUserSessionIds(state.currentUser.id);
+        const sessionIds=(sessionsResult.ok&&sessionsResult.data)?sessionsResult.data.map(s=>s.id):[];
         let memoriesCount=0;
         if(sessionIds.length>0){
-            const{data:memoriesData}=await supabaseClient.from('memories').select('id').in('source_session_id',sessionIds);
-            memoriesCount=memoriesData?.length||0;
+            const memoriesResult=await networkService.getMemoryIdsBySessionIds(sessionIds);
+            memoriesCount=(memoriesResult.ok&&memoriesResult.data)?memoriesResult.data.length:0;
         }
         // live_interpretations 테이블이 없으므로 interpretationsCount는 항상 0
         const interpretationsCount=0;
-        return{sessions:sessionsData?.length||0,memories:memoriesCount,interpretations:interpretationsCount};
+        return{sessions:sessionIds.length,memories:memoriesCount,interpretations:interpretationsCount};
     }catch(e){
         console.error('loadUserStatsFromDB error:',e);
         return{sessions:0,memories:0,interpretations:0};
@@ -1525,17 +1523,17 @@ function updateMypageStats(stats){document.getElementById('displayMemories').tex
 // 트루엔딩 쪽지 UI 표시
 function showTrueEndingNoteUI(authorNote,authorId,memoryId){const endContent=document.getElementById('endContent');if(!endContent)return;const endButtons=endContent.querySelector('.end-buttons');if(!endButtons)return;const existingNoteSection=endContent.querySelector('.note-section');if(existingNoteSection)existingNoteSection.remove();const noteSection=document.createElement('div');noteSection.className='note-section';noteSection.innerHTML=(authorNote?`<div class="author-note-box"><p class="note-label">체험자가 남긴 쪽지</p><p class="note-content">${authorNote}</p></div>`:'')+`<div class="reply-section"><p class="reply-label">기억을 남긴 사람에게 한 마디를 남길 수 있습니다</p><textarea class="reply-input" id="replyInput" maxlength="100" placeholder="100자 이내로 작성해주세요..."></textarea><div class="reply-counter"><span id="replyCount">0</span>/100</div><div class="reply-buttons"><button class="reply-submit-btn" id="replySubmitBtn">쪽지 보내기</button><button class="reply-skip-btn" id="replySkipBtn">건너뛰기</button></div></div>`;endContent.insertBefore(noteSection,endButtons);const replyInput=document.getElementById('replyInput');const replyCount=document.getElementById('replyCount');if(replyInput&&replyCount){replyInput.addEventListener('input',()=>{replyCount.textContent=replyInput.value.length})}const replySubmitBtn=document.getElementById('replySubmitBtn');if(replySubmitBtn){replySubmitBtn.addEventListener('click',async()=>{const message=replyInput.value.trim();if(!message){alert('메시지를 입력해주세요.');return}const safetyResult=detectCrisis(message);if(safetyResult.level==='high'){handleCrisis('high',replyInput);return}await sendNoteToAuthor(authorId,memoryId,message)})}const replySkipBtn=document.getElementById('replySkipBtn');if(replySkipBtn){replySkipBtn.addEventListener('click',()=>{noteSection.remove()})}}
 // 기억을 남긴 사람에게 쪽지 전송
-async function sendNoteToAuthor(authorId,memoryId,message){try{supabaseClient=getSupabaseClient();if(!supabaseClient){alert('Supabase 클라이언트가 초기화되지 않았습니다.');return}const{data:{user}}=await supabaseClient.auth.getUser();if(!user){alert('쪽지를 보내려면 로그인이 필요합니다.');return}const{error}=await supabaseClient.from('notes').insert({memory_id:memoryId,sender_id:user.id,recipient_id:authorId,message:message,note_type:'player_to_author'});if(error){console.error('쪽지 전송 오류:',error);alert('쪽지 전송에 실패했습니다.');return}const noteSection=document.querySelector('.note-section');if(noteSection){noteSection.innerHTML='<div class="note-sent-message"><p>기억을 남긴 사람에게 전달되었습니다.</p></div>'}console.log('=== 쪽지 전송 완료 ===')}catch(e){console.error('sendNoteToAuthor error:',e);alert('쪽지 전송 중 오류가 발생했습니다.')}}
+async function sendNoteToAuthor(authorId,memoryId,message){try{const client=networkService.getClient();if(!client){alert('Supabase 클라이언트가 초기화되지 않았습니다.');return}const{data:{user}}=await client.auth.getUser();if(!user){alert('쪽지를 보내려면 로그인이 필요합니다.');return}const result=await networkService.sendNote({memory_id:memoryId,sender_id:user.id,recipient_id:authorId,message:message,note_type:'player_to_author'});if(!result.ok){console.error('쪽지 전송 오류:',result.error);alert('쪽지 전송에 실패했습니다.');return}const noteSection=document.querySelector('.note-section');if(noteSection){noteSection.innerHTML='<div class="note-sent-message"><p>기억을 남긴 사람에게 전달되었습니다.</p></div>'}console.log('=== 쪽지 전송 완료 ===')}catch(e){console.error('sendNoteToAuthor error:',e);alert('쪽지 전송 중 오류가 발생했습니다.')}}
 // 받은 쪽지 로드
-async function loadReceivedNotes(){try{supabaseClient=getSupabaseClient();if(!supabaseClient)return[];const{data:{user}}=await supabaseClient.auth.getUser();if(!user)return[];const{data:notes,error}=await supabaseClient.from('notes').select('*,memories(title)').eq('recipient_id',user.id).order('created_at',{ascending:false});if(error){console.error('쪽지 로드 오류:',error);return[]}return notes||[]}catch(e){console.error('loadReceivedNotes error:',e);return[]}}
+async function loadReceivedNotes(){try{const client=networkService.getClient();if(!client)return[];const{data:{user}}=await client.auth.getUser();if(!user)return[];const result=await networkService.loadReceivedNotes(user.id);if(!result.ok){console.error('쪽지 로드 오류:',result.error);return[]}return result.data||[]}catch(e){console.error('loadReceivedNotes error:',e);return[]}}
 // 받은 쪽지 렌더링
-async function renderReceivedNotes(){const notes=await loadReceivedNotes();const container=document.getElementById('mypageNotesList');if(!container)return;if(notes.length===0){container.innerHTML='<p class="no-notes" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:1rem">받은 쪽지가 없습니다.</p>';return}container.innerHTML=notes.map(note=>{const memoryTitle=note.memories?.title||'알 수 없음';const date=new Date(note.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'});const unreadClass=note.is_read?'read':'unread';const unreadBadge=note.is_read?'':'<span class="unread-badge" style="display:inline-block;padding:.2rem .5rem;background:rgba(212,175,55,.2);border:1px solid rgba(212,175,55,.4);color:#d4af37;font-size:.7rem;letter-spacing:.1em;margin-left:.5rem">NEW</span>';return`<div class="note-card ${unreadClass}" data-note-id="${note.id}" style="padding:.8rem;margin-bottom:.5rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.1);border-radius:4px;cursor:pointer;transition:all .3s"><p class="note-memory" style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>기억: ${memoryTitle}</strong>${unreadBadge}</p><p class="note-message" style="font-size:.9rem;color:var(--text-primary);line-height:1.6;margin-bottom:.5rem">${note.message}</p><p class="note-date" style="font-size:.75rem;color:var(--text-muted)">${date}</p></div>`}).join('');container.querySelectorAll('.note-card.unread').forEach(card=>{card.addEventListener('click',async()=>{const noteId=card.dataset.noteId;try{supabaseClient=getSupabaseClient();if(supabaseClient){await supabaseClient.from('notes').update({is_read:true}).eq('id',noteId);card.classList.remove('unread');card.classList.add('read');const badge=card.querySelector('.unread-badge');if(badge)badge.remove()}}catch(e){console.error('쪽지 읽음 처리 오류:',e)}})})}
+async function renderReceivedNotes(){const notes=await loadReceivedNotes();const container=document.getElementById('mypageNotesList');if(!container)return;if(notes.length===0){container.innerHTML='<p class="no-notes" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:1rem">받은 쪽지가 없습니다.</p>';return}container.innerHTML=notes.map(note=>{const memoryTitle=note.memories?.title||'알 수 없음';const date=new Date(note.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short',day:'numeric'});const unreadClass=note.is_read?'read':'unread';const unreadBadge=note.is_read?'':'<span class="unread-badge" style="display:inline-block;padding:.2rem .5rem;background:rgba(212,175,55,.2);border:1px solid rgba(212,175,55,.4);color:#d4af37;font-size:.7rem;letter-spacing:.1em;margin-left:.5rem">NEW</span>';return`<div class="note-card ${unreadClass}" data-note-id="${note.id}" style="padding:.8rem;margin-bottom:.5rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.1);border-radius:4px;cursor:pointer;transition:all .3s"><p class="note-memory" style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>기억: ${memoryTitle}</strong>${unreadBadge}</p><p class="note-message" style="font-size:.9rem;color:var(--text-primary);line-height:1.6;margin-bottom:.5rem">${note.message}</p><p class="note-date" style="font-size:.75rem;color:var(--text-muted)">${date}</p></div>`}).join('');container.querySelectorAll('.note-card.unread').forEach(card=>{card.addEventListener('click',async()=>{const noteId=card.dataset.noteId;try{const result=await networkService.markNoteAsRead(noteId);if(result.ok){card.classList.remove('unread');card.classList.add('read');const badge=card.querySelector('.unread-badge');if(badge)badge.remove()}}catch(e){console.error('쪽지 읽음 처리 오류:',e)}})})}
 function viewMemoryFromArchive(memoryId){enterArchive();setTimeout(()=>{const memory=allMemoriesData.find(m=>m.id===memoryId);if(memory){selectMemory(memory)}},500)}
-async function showSessionDetail(sessionId){supabaseClient = getSupabaseClient(); if(!supabaseClient){showNotification('Supabase 클라이언트가 초기화되지 않았습니다');return}const modal=document.getElementById('sessionDetailModal');const body=document.getElementById('sessionDetailBody');if(!modal||!body){return}modal.classList.add('active');body.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div>';try{const{data:sessionData,error:sessionError}=await supabaseClient.from('live_sessions').select('*').eq('id',sessionId).single();if(sessionError)throw sessionError;const{data:scenesData,error:scenesError}=await supabaseClient.from('live_scenes').select('*').eq('session_id',sessionId).order('scene_index',{ascending:true});if(scenesError)throw scenesError;const date=sessionData.created_at?new Date(sessionData.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';const endDate=sessionData.ended_at?new Date(sessionData.ended_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';const role=sessionData.narrator_id===currentUser?.id?'화자':sessionData.experiencer_id===currentUser?.id?'체험자':'—';const status=sessionData.ended_at?'완료':'진행중';const alignment=sessionData.alignment?Math.round(sessionData.alignment*100)+'%':'0%';const fate=sessionData.memory_fate==='preserve'?'보존':sessionData.memory_fate==='dilute'?'자연 소멸':sessionData.memory_fate==='anonymous'?'완전 익명':'미정';document.getElementById('sessionDetailTitle').textContent=sessionData.session_code||'세션 정보';let scenesHtml='';if(scenesData&&scenesData.length>0){scenesHtml='<div class="session-detail-scenes"><h3 style="font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:var(--accent-memory);margin-bottom:1rem;letter-spacing:.1em">장면 목록</h3>';scenesData.forEach((scene,index)=>{const sceneText=scene.text||'[텍스트 없음]';const sceneType=scene.scene_type||'normal';const voidInfo=scene.void_info;scenesHtml+=`<div class="session-detail-scene-item"><div class="session-detail-scene-header">장면 ${index+1}${sceneType==='void'?' (기억의 공백)':''}</div><div class="session-detail-scene-text">${sceneText}</div>${voidInfo&&voidInfo.reason?`<div style="font-size:.85rem;color:var(--text-muted);font-style:italic;margin-top:.5rem">공백 이유: ${voidInfo.reason}</div>`:''}</div>`});scenesHtml+='</div>'}else{scenesHtml='<div style="text-align:center;padding:2rem;color:var(--text-muted);font-style:italic">저장된 장면이 없습니다.</div>'}body.innerHTML=`<div class="session-detail-info-item"><div class="session-detail-info-label">세션 코드</div><div class="session-detail-info-value">${sessionData.session_code||'—'}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">시작일시</div><div class="session-detail-info-value">${date}</div></div>${sessionData.ended_at?`<div class="session-detail-info-item"><div class="session-detail-info-label">종료일시</div><div class="session-detail-info-value">${endDate}</div></div>`:''}<div class="session-detail-info-item"><div class="session-detail-info-label">역할</div><div class="session-detail-info-value">${role}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">상태</div><div class="session-detail-info-value">${status}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">정렬도</div><div class="session-detail-info-value">${alignment}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">운명</div><div class="session-detail-info-value">${fate}</div></div>${scenesHtml}`}catch(e){console.error('showSessionDetail error:',e);body.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">세션 정보를 불러오는 중 오류가 발생했습니다.</div>';showNotification('세션 정보를 불러오는 중 오류가 발생했습니다')}}
+async function showSessionDetail(sessionId){const modal=document.getElementById('sessionDetailModal');const body=document.getElementById('sessionDetailBody');if(!modal||!body){return}modal.classList.add('active');body.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div>';try{const sessionResult=await networkService.getSessionById(sessionId);if(!sessionResult.ok)throw sessionResult.error;const sessionData=sessionResult.data;const scenesResult=await networkService.getLiveScenesBySessionId(sessionId);if(!scenesResult.ok)throw scenesResult.error;const scenesData=scenesResult.data;const date=sessionData.created_at?new Date(sessionData.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';const endDate=sessionData.ended_at?new Date(sessionData.ended_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';const role=sessionData.narrator_id===currentUser?.id?'화자':sessionData.experiencer_id===currentUser?.id?'체험자':'—';const status=sessionData.ended_at?'완료':'진행중';const alignment=sessionData.alignment?Math.round(sessionData.alignment*100)+'%':'0%';const fate=sessionData.memory_fate==='preserve'?'보존':sessionData.memory_fate==='dilute'?'자연 소멸':sessionData.memory_fate==='anonymous'?'완전 익명':'미정';document.getElementById('sessionDetailTitle').textContent=sessionData.session_code||'세션 정보';let scenesHtml='';if(scenesData&&scenesData.length>0){scenesHtml='<div class="session-detail-scenes"><h3 style="font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:var(--accent-memory);margin-bottom:1rem;letter-spacing:.1em">장면 목록</h3>';scenesData.forEach((scene,index)=>{const sceneText=scene.text||'[텍스트 없음]';const sceneType=scene.scene_type||'normal';const voidInfo=scene.void_info;scenesHtml+=`<div class="session-detail-scene-item"><div class="session-detail-scene-header">장면 ${index+1}${sceneType==='void'?' (기억의 공백)':''}</div><div class="session-detail-scene-text">${sceneText}</div>${voidInfo&&voidInfo.reason?`<div style="font-size:.85rem;color:var(--text-muted);font-style:italic;margin-top:.5rem">공백 이유: ${voidInfo.reason}</div>`:''}</div>`});scenesHtml+='</div>'}else{scenesHtml='<div style="text-align:center;padding:2rem;color:var(--text-muted);font-style:italic">저장된 장면이 없습니다.</div>'}body.innerHTML=`<div class="session-detail-info-item"><div class="session-detail-info-label">세션 코드</div><div class="session-detail-info-value">${sessionData.session_code||'—'}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">시작일시</div><div class="session-detail-info-value">${date}</div></div>${sessionData.ended_at?`<div class="session-detail-info-item"><div class="session-detail-info-label">종료일시</div><div class="session-detail-info-value">${endDate}</div></div>`:''}<div class="session-detail-info-item"><div class="session-detail-info-label">역할</div><div class="session-detail-info-value">${role}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">상태</div><div class="session-detail-info-value">${status}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">정렬도</div><div class="session-detail-info-value">${alignment}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">운명</div><div class="session-detail-info-value">${fate}</div></div>${scenesHtml}`}catch(e){console.error('showSessionDetail error:',e);body.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">세션 정보를 불러오는 중 오류가 발생했습니다.</div>';showNotification('세션 정보를 불러오는 중 오류가 발생했습니다')}}
 function closeSessionDetail(){const modal=document.getElementById('sessionDetailModal');if(modal){modal.classList.remove('active')}}
 function renderSessionHistory_DEPRECATED(){const listEl=document.getElementById('sessionHistoryList');if(!listEl||!currentUser||!currentUser.sessionHistory||currentUser.sessionHistory.length===0){if(listEl)listEl.innerHTML='<div class="mypage-info" style="color:var(--text-ghost);font-style:italic">저장된 세션이 없습니다.</div>';return}listEl.innerHTML='';currentUser.sessionHistory.forEach(session=>{const sessionItem=document.createElement('div');sessionItem.style.padding='.8rem';sessionItem.style.marginBottom='.5rem';sessionItem.style.background='var(--bg-surface)';sessionItem.style.border='1px solid rgba(196,168,130,.1)';sessionItem.innerHTML=`<div style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>${session.date}</strong></div><div style="font-size:.75rem;color:var(--text-muted);line-height:1.6">역할: ${session.role} | 운명: ${session.memoryFate==='preserve'?'보존':session.memoryFate==='dilute'?'자연 소멸':session.memoryFate==='anonymous'?'완전 익명':'—'}<br>정렬도: ${session.alignment} | 장면: ${session.scenes} | 조각: ${session.fragments} | 일치: ${session.matches}</div>`;listEl.appendChild(sessionItem)})}
 function showNpcDialogue(text,duration=4000){const dialogue=document.getElementById('npcDialogue');if(dialogue){document.getElementById('npcText').textContent=text;dialogue.classList.add('visible');setTimeout(()=>{dialogue.classList.remove('visible')},duration)}}
-function escapeHtml(text){if(!text)return'—';const div=document.createElement('div');div.textContent=text;return div.innerHTML}async function showOriginalMemory(memoryId){try{console.log('=== 원본 열람 ===');console.log('Memory ID:',memoryId);supabaseClient=getSupabaseClient();if(!supabaseClient){alert('Supabase 클라이언트가 초기화되지 않았습니다.');return}const{data:scenes,error}=await supabaseClient.from('scenes').select('scene_order,text,original_emotion,original_reason').eq('memory_id',memoryId).order('scene_order');if(error){console.error('원본 기억 로드 오류:',error);alert('원본 기억을 불러오는 중 오류가 발생했습니다.');return}console.log('Scenes:',scenes.length);const modal=document.createElement('div');modal.className='original-memory-modal';modal.innerHTML=`<div class="original-memory-content"><h2>원본 기억</h2><p class="original-note">이것이 기록자가 남긴 원래의 기억입니다.</p><div class="original-scenes">${scenes.map((scene,i)=>`<div class="original-scene"><span class="scene-number">${i+1}</span><p class="scene-text">${escapeHtml(scene.text)}</p></div>`).join('')}</div><button class="close-original-btn" onclick="this.closest('.original-memory-modal').remove()">닫기</button></div>`;document.body.appendChild(modal);modal.addEventListener('click',(e)=>{if(e.target===modal){modal.remove()}})}catch(e){console.error('showOriginalMemory error:',e);alert('원본 기억을 불러오는 중 오류가 발생했습니다.')}}
+function escapeHtml(text){if(!text)return'—';const div=document.createElement('div');div.textContent=text;return div.innerHTML}async function showOriginalMemory(memoryId){try{console.log('=== 원본 열람 ===');console.log('Memory ID:',memoryId);const scenesResult=await networkService.getScenesByMemoryId(memoryId);if(!scenesResult.ok){console.error('원본 기억 로드 오류:',scenesResult.error);alert('원본 기억을 불러오는 중 오류가 발생했습니다.');return}const scenes=scenesResult.data||[];console.log('Scenes:',scenes.length);const modal=document.createElement('div');modal.className='original-memory-modal';modal.innerHTML=`<div class="original-memory-content"><h2>원본 기억</h2><p class="original-note">이것이 기록자가 남긴 원래의 기억입니다.</p><div class="original-scenes">${scenes.map((scene,i)=>`<div class="original-scene"><span class="scene-number">${i+1}</span><p class="scene-text">${escapeHtml(scene.text)}</p></div>`).join('')}</div><button class="close-original-btn" onclick="this.closest('.original-memory-modal').remove()">닫기</button></div>`;document.body.appendChild(modal);modal.addEventListener('click',(e)=>{if(e.target===modal){modal.remove()}})}catch(e){console.error('showOriginalMemory error:',e);alert('원본 기억을 불러오는 중 오류가 발생했습니다.')}}
 function showNotification(text){const notification=document.getElementById('notification');if(notification){notification.textContent=text;notification.classList.add('visible');setTimeout(()=>{notification.classList.remove('visible')},3000)}}
 const freeInputEl=document.getElementById('freeInput');if(freeInputEl){freeInputEl.addEventListener('keypress',function(e){if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();const customAction=this.value.trim();if(customAction){this.value='';userChoices.push(-1);showNpcDialogue(NPC_DIALOGUES.archive.customAction(customAction),3000);document.getElementById('emotionQuestion').textContent="왜 그런 선택을 했어?";document.getElementById('emotionModal').classList.add('active');document.getElementById('emotionInputField').focus()}}})}
 const experiencerFeelingInputEl=document.getElementById('experiencerFeelingInput');if(experiencerFeelingInputEl){experiencerFeelingInputEl.addEventListener('keypress',function(e){if(e.key==='Enter'&&e.ctrlKey&&!e.isComposing){e.preventDefault();submitExperiencerFeeling()}})}
@@ -1839,29 +1837,38 @@ async function calculateAverageAlignment() {
                 let alignment = null;
                 if (window.archiveSceneAlignments && window.archiveSceneAlignments[i] !== undefined) {
                     alignment = window.archiveSceneAlignments[i];
-                } else if (supabaseClient && scene.id) {
-                    const { data: playData } = await supabaseClient
-                        .from('plays')
-                        .select('alignment, user_emotion')
-                        .eq('scene_id', scene.id)
-                        .eq('memory_id', memoryId)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .single();
-                    if (playData) {
+                } else if (scene.id) {
+                    const playResult = await networkService.getPlayBySceneAndMemory(scene.id, memoryId);
+                    if (playResult.ok && playResult.data) {
+                        const playData = playResult.data;
                         if (playData.alignment !== null && playData.alignment !== undefined) {
                             alignment = playData.alignment;
                         } else if (playData.user_emotion && scene.originalEmotion) {
                             const anchorEmotions = scene.anchor_emotions || null;
-                            alignment = cosineSimilarity(playData.user_emotion, scene.originalEmotion, anchorEmotions);
+                            const engineResult = byeoriEngine.calculateStep({
+                                userVector: { base: playData.user_emotion },
+                                originalVector: { base: scene.originalEmotion },
+                                anchorEmotions: anchorEmotions
+                            }, {});
+                            alignment = engineResult.alignment_score;
                         }
                     } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && scene.originalEmotion) {
                         const anchorEmotions = scene.anchor_emotions || null;
-                        alignment = cosineSimilarity(window.archiveUserEmotions[i].emotion, scene.originalEmotion, anchorEmotions);
+                        const engineResult = byeoriEngine.calculateStep({
+                            userVector: { base: window.archiveUserEmotions[i].emotion },
+                            originalVector: { base: scene.originalEmotion },
+                            anchorEmotions: anchorEmotions
+                        }, {});
+                        alignment = engineResult.alignment_score;
                     }
                 } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && scene.originalEmotion) {
                     const anchorEmotions = scene.anchor_emotions || null;
-                    alignment = cosineSimilarity(window.archiveUserEmotions[i].emotion, scene.originalEmotion, anchorEmotions);
+                    const engineResult = byeoriEngine.calculateStep({
+                        userVector: { base: window.archiveUserEmotions[i].emotion },
+                        originalVector: { base: scene.originalEmotion },
+                        anchorEmotions: anchorEmotions
+                    }, {});
+                    alignment = engineResult.alignment_score;
                 }
                 if (alignment !== null && alignment !== undefined) {
                     sceneAlignments.push(alignment);
@@ -2052,110 +2059,19 @@ function renderComparisonView() {
     });
     counterEl.textContent = `${comparisonCurrentIndex + 1} / ${comparisonScenes.length}`;
     updateComparisonNavigation();
-    renderComparisonWaves();
+    console.log('[renderComparisonWaves] 시작, comparisonScenes:', comparisonScenes);
+    
+    // 계산은 index.js에서 수행 (Visualizer는 숫자만 받음)
+    const scenesWithWaveStyles = comparisonScenes.map(item => ({
+        userEmotion: item.userEmotion,
+        originalEmotion: item.originalEmotion,
+        userWaveStyle: item.userEmotion ? emotionVectorToWaveStyle(item.userEmotion) : null,
+        originalWaveStyle: item.originalEmotion ? emotionVectorToWaveStyle(item.originalEmotion) : null
+    }));
+    
+    visualizer.renderComparisonWaves(scenesWithWaveStyles);
     updateComparisonAlignment();
     updateComparisonAverageAlignment();
-}
-function renderComparisonWaves() {
-    console.log('[renderComparisonWaves] 시작, comparisonScenes:', comparisonScenes);
-    stopComparisonWaveAnimation();
-    startComparisonWaveAnimation();
-}
-function startComparisonWaveAnimation() {
-    if (comparisonWaveAnimationId) {
-        cancelAnimationFrame(comparisonWaveAnimationId);
-    }
-    comparisonWaveTime = 0;
-    const initializedCanvases = new Map();
-    function initializeCanvas(canvas) {
-        if (!canvas) return false;
-        if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) return false;
-        if (initializedCanvases.has(canvas)) return true;
-        try {
-            const ctx = canvas.getContext('2d');
-            canvas.width = canvas.offsetWidth * 2;
-            canvas.height = canvas.offsetHeight * 2;
-            ctx.scale(2, 2);
-            initializedCanvases.set(canvas, true);
-            return true;
-        } catch (e) {
-            console.error('Comparison canvas initialization error:', e);
-            return false;
-        }
-    }
-    function drawComparisonWave(canvas, emotionVector, timeOffset, type) {
-        if (!canvas || !emotionVector) return;
-        const ctx = canvas.getContext('2d');
-        const width = canvas.width / 2;
-        const height = canvas.height / 2;
-        const centerY = height / 2;
-        const t = comparisonWaveTime + timeOffset;
-        const waveStyle = emotionVectorToWaveStyle(emotionVector);
-        const points = [];
-        const segments = 100;
-        for (let i = 0; i <= segments; i++) {
-            const x = (i / segments) * width;
-            const normalizedX = x / width;
-            let y = Math.sin(x * waveStyle.frequency + t * waveStyle.speed) * waveStyle.amplitude;
-            y += Math.sin(x * waveStyle.frequency * 2.3 + t * waveStyle.speed * 0.7) * (waveStyle.amplitude * 0.4);
-            y += Math.sin(x * waveStyle.frequency * 0.4 + t * waveStyle.speed * 0.3) * (waveStyle.amplitude * 0.6);
-            const chaosAmount = waveStyle.chaos * 15;
-            y += (noise(x * 0.01, t * 0.1, 0) - 0.5) * chaosAmount;
-            const edgeFade = Math.sin(normalizedX * Math.PI);
-            y *= edgeFade;
-            points.push({ x, y: centerY + y });
-        }
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length - 2; i++) {
-            const xc = (points[i].x + points[i + 1].x) / 2;
-            const yc = (points[i].y + points[i + 1].y) / 2;
-            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
-        }
-        const color = waveStyle.color;
-        ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},0.8)`;
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-    }
-    function animate() {
-        comparisonScenes.forEach((item, index) => {
-            const userCanvas = document.querySelector(`canvas[data-type="user"][data-index="${index}"]`);
-            const originalCanvas = document.querySelector(`canvas[data-type="original"][data-index="${index}"]`);
-            if (userCanvas && item.userEmotion) {
-                if (initializeCanvas(userCanvas)) {
-                    const ctx = userCanvas.getContext('2d');
-                    const width = userCanvas.width / 2;
-                    const height = userCanvas.height / 2;
-                    ctx.clearRect(0, 0, width, height);
-                    ctx.fillStyle = 'rgba(18, 18, 26, 1)';
-                    ctx.fillRect(0, 0, width, height);
-                    drawComparisonWave(userCanvas, item.userEmotion, 0, 'user');
-                }
-            }
-            if (originalCanvas && item.originalEmotion) {
-                if (initializeCanvas(originalCanvas)) {
-                    const ctx = originalCanvas.getContext('2d');
-                    const width = originalCanvas.width / 2;
-                    const height = originalCanvas.height / 2;
-                    ctx.clearRect(0, 0, width, height);
-                    ctx.fillStyle = 'rgba(18, 18, 26, 1)';
-                    ctx.fillRect(0, 0, width, height);
-                    drawComparisonWave(originalCanvas, item.originalEmotion, 50, 'original');
-                }
-            }
-        });
-        comparisonWaveTime += 0.016;
-        comparisonWaveAnimationId = requestAnimationFrame(animate);
-    }
-    animate();
-}
-function stopComparisonWaveAnimation() {
-    if (comparisonWaveAnimationId) {
-        cancelAnimationFrame(comparisonWaveAnimationId);
-        comparisonWaveAnimationId = null;
-    }
 }
 function updateComparisonAlignment() {
     if (comparisonScenes.length === 0 || comparisonCurrentIndex >= comparisonScenes.length) {
@@ -2179,7 +2095,12 @@ function updateComparisonAlignment() {
         console.log(`[updateComparisonAlignment] 정렬도 계산 시작...`);
         let anchorEmotions = item.scene?.anchor_emotions || null;
         if(anchorEmotions&&typeof anchorEmotions==='string'){try{anchorEmotions=JSON.parse(anchorEmotions)}catch(e){anchorEmotions=null}}if(anchorEmotions&&!Array.isArray(anchorEmotions)){anchorEmotions=null}
-        alignment = cosineSimilarity(item.userEmotion, item.originalEmotion, anchorEmotions);
+        const engineResult = byeoriEngine.calculateStep({
+            userVector: { base: item.userEmotion },
+            originalVector: { base: item.originalEmotion },
+            anchorEmotions: anchorEmotions
+        }, {});
+        alignment = engineResult.alignment_score;
         console.log(`[updateComparisonAlignment] 계산된 정렬도: ${alignment}`);
     } else {
         console.warn(`[updateComparisonAlignment] 정렬도를 계산할 수 없습니다:`, {
@@ -2304,7 +2225,7 @@ function setupComparisonSwipe() {
     });
 }
 function closeComparisonView() {
-    stopComparisonWaveAnimation();
+    visualizer.stopComparisonWaveAnimation();
     const comparisonViewEl = document.getElementById('comparisonView');
     if (comparisonViewEl) {
         comparisonViewEl.style.display = 'none';
@@ -2315,7 +2236,7 @@ function closeComparisonView() {
 async function endComparisonSession() {
     console.log('[엔딩] endComparisonSession 호출됨');
     try {
-    stopComparisonWaveAnimation();
+    visualizer.stopComparisonWaveAnimation();
     const comparisonViewEl = document.getElementById('comparisonView');
     if (comparisonViewEl) {
         comparisonViewEl.style.display = 'none';
@@ -3937,7 +3858,28 @@ async function startRitualFlow() {
         
         showNpcDialogue("당신의 기억을 불러오세요. 5개의 장면을 직접 구성합니다.", 4000);
         
-        startAlignmentWaveAnimation();
+        const narratorCanvas = document.getElementById('alignmentWaveCanvas');
+        const experiencerCanvas = document.getElementById('expAlignmentWaveCanvas');
+        const state = appStore.getState();
+        
+        // 계산은 index.js에서 수행 (Visualizer는 숫자만 받음)
+        const narratorWaveStyle = window.narratorEmotionVector ? emotionVectorToWaveStyle(window.narratorEmotionVector) : null;
+        const experiencerWaveStyle = window.experiencerEmotionVector ? emotionVectorToWaveStyle(window.experiencerEmotionVector) : null;
+        
+        visualizer.startAlignmentWaveAnimation(narratorCanvas, experiencerCanvas, {
+            alignment: state.currentAlignment,
+            narratorEmotionVector: window.narratorEmotionVector,
+            experiencerEmotionVector: window.experiencerEmotionVector,
+            narratorWaveStyle: narratorWaveStyle,
+            experiencerWaveStyle: experiencerWaveStyle,
+            onUpdateAlignmentDisplay: (alignmentValue) => {
+                const alignmentPercent = Math.round(alignmentValue * 100);
+                const percentageEl = document.getElementById('alignmentPercentage');
+                if (percentageEl) percentageEl.textContent = String(alignmentPercent).padStart(2, '0') + '%';
+                const expPercentageEl = document.getElementById('expAlignmentPercentage');
+                if (expPercentageEl) expPercentageEl.textContent = String(alignmentPercent).padStart(2, '0') + '%';
+            }
+        });
         setTimeout(() => {
             startVoiceWaveLiveAnimation();
         }, 300);
