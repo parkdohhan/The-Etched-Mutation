@@ -7,7 +7,7 @@ import { fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMem
 import { playSound, stopSound, setVolume, SOUNDS } from './shared/audio.js';
 import { cosineSimilarity, normalizeVector, addVectors, calculateAlignment, getBucket, checkFixated, getDominantEmotion, normalizeAnchor, projectEmotionToVAD, vadToTerrainXZ } from './shared/math.js';
 import { AppState, resetState, updateState, updateStates } from './shared/state.js';
-import { ByeoriEngine } from './core/ByeoriEngine.js';
+import { ByeoriEngine, byeoriEngine } from './core/ByeoriEngine.js';
 import { createStore } from './core/store.js';
 import { networkService } from './services/NetworkService.js';
 import { realtimeService } from './services/RealtimeService.js';
@@ -32,35 +32,35 @@ const appStore = createStore({
   currentRole: null,
   sessionCode: null,
   currentSessionId: null,
-  
+
   // 기억/장면
   allMemoriesData: [],
   currentMemory: null,
   currentScene: 0,
   currentSceneOrder: 1,
-  
+
   // 사용자 입력
   userChoices: [],
   userReasons: [],
-  
+
   // 정렬도/버킷
   currentAlignment: 0,
   currentBucket: null,
   emotionHistory: [],
-  
+
   // Live 모드
   liveSceneNum: 1,
   liveFragments: 0,
   liveMatches: 0,
-  
+
   // 애니메이션 ID
   waveAnimationId: null,
   liveWaveAnimationId: null,
-  
+
   // 인증
   isLoggedIn: false,
   currentUser: null,
-  
+
   // 필터/정렬
   currentSort: 'all',
   currentCategory: 'all'
@@ -118,7 +118,7 @@ function initApp() {
             filterMemories
         );
     }
-    
+
     // 3D Carousel 초기화
     setTimeout(() => {
         init3DCarousel();
@@ -153,7 +153,7 @@ async function showMypage(){
     const state = appStore.getState();
     if (!state.isLoggedIn) return;
     if (pendingSaveAction === 'save') return;
-    
+
     uiManager.showMypage(state.currentUser);
     await loadMypageDataFromDB();
 }
@@ -277,11 +277,11 @@ async function createLiveSession(){
         console.log('Supabase URL:', supabaseClient.supabaseUrl);
         
         const result = await networkService.createSession(sessionData);
-        
+
         if(!result.ok){
             console.error('세션 생성 실패:', result.error);
             if(result.error && result.error.message){
-                const errorMsg = result.error.message.includes('Failed to fetch') || 
+                const errorMsg = result.error.message.includes('Failed to fetch') ||
                                result.error.message.includes('ERR_NAME_NOT_RESOLVED') ||
                                result.error.message.includes('ERR_INTERNET_DISCONNECTED')
                     ? '인터넷 연결을 확인할 수 없습니다.\n\n' +
@@ -297,7 +297,7 @@ async function createLiveSession(){
             }
             return null;
         }
-        
+
         const data = result.data;
         if(!data){
             console.error('세션이 생성되지 않았습니다 (data가 null)');
@@ -349,10 +349,10 @@ function subscribeToSessionJoin(){
 async function checkExperiencerJoin(){
     const state = appStore.getState();
     if (!state.currentSessionId || state.currentRole !== 'A') return;
-    
+
     // 기존 인터벌이 있으면 정리
     realtimeService.clearInterval('experiencerCheck');
-    
+
     const intervalId = setInterval(async () => {
         try {
             const currentState = appStore.getState();
@@ -376,9 +376,9 @@ async function checkExperiencerJoin(){
             console.error('checkExperiencerJoin error:', e);
         }
     }, 2000);
-    
+
     realtimeService.registerInterval('experiencerCheck', intervalId);
-    
+
     setTimeout(() => {
         realtimeService.clearInterval('experiencerCheck');
         console.log('폴링 종료 (30초 경과)');
@@ -388,7 +388,7 @@ function subscribeToLiveScenes(){
     const state = appStore.getState();
     const sessionId = state.currentSessionId;
     if (!sessionId) return;
-    
+
     realtimeService.subscribeToLiveScenes(sessionId, {
         onSceneInsert: (sceneData) => {
             const roleState = appStore.getState();
@@ -425,7 +425,7 @@ function subscribeToExperiencerChoices(){
         console.error('subscribeToExperiencerChoices: currentSessionId 없음');
         return;
     }
-    
+
     realtimeService.subscribeToExperiencerChoices(sessionId, {
         onChoiceInsert: (choiceData) => {
             onExperiencerChoiceReceived(choiceData);
@@ -440,7 +440,7 @@ function subscribeToScenes(){
         console.error('subscribeToScenes: currentSessionId 없음');
         return;
     }
-    
+
     realtimeService.subscribeToScenes(sessionId, {
         onSceneInsert: (sceneData) => {
             expCurrentPhase = 'interpret';
@@ -462,11 +462,11 @@ function renderArchiveEmotionWave(emotionVector){
     if (!emotionVector) return;
     const canvas = document.getElementById('waveCanvas');
     if (!canvas) return;
-    
+
     // 계산은 여기서 수행 (Visualizer는 숫자만 받음)
     const waveData = computeWaveFromEmotion({ base: emotionVector, intensity: 0.5, confidence: 0.8 });
     const time = Date.now() * 0.001;
-    
+
     // Visualizer에 계산된 데이터 전달
     visualizer.renderArchiveEmotionWave(canvas, waveData, time);
     console.log('Archive emotion wave rendered:', waveData);
@@ -538,13 +538,13 @@ async function joinLiveSession(){
         console.log('Supabase URL:', supabaseClient.supabaseUrl);
         
         const findResult = await networkService.findSessionsByCode(code);
-        
+
         if(!findResult.ok){
             console.error('joinLiveSession query error:', findResult.error);
             showNotification('세션을 찾을 수 없습니다. 코드를 확인해주세요.');
                 return;
         }
-        
+
         const sessions = findResult.data || [];
         console.log('검색된 세션들:', sessions);
         console.log('검색된 세션 수:', sessions.length);
@@ -578,7 +578,7 @@ async function joinLiveSession(){
         console.log('세션 참여 시도, 세션 ID:', session.id);
         
         const joinResult = await networkService.joinSession(session.id, userId);
-        
+
         if(!joinResult.ok){
             console.error('참여 실패:', joinResult.error);
             showNotification('세션 참여에 실패했습니다: ' + (joinResult.error?.message || '알 수 없는 오류'));
@@ -606,7 +606,7 @@ function subscribeToNarratorEmotion(){
         console.error('subscribeToNarratorEmotion: currentSessionId 없음');
         return;
     }
-    
+
     realtimeService.subscribeToNarratorEmotion(sessionId, {
         onNarratorEmotionInsert: (sceneData) => {
             window.narratorEmotionVector = sceneData.emotion_vector;
@@ -620,7 +620,7 @@ function updateExperiencerAlignment(){
         console.log('정렬도 계산 불가: 감정 벡터 없음', { narrator: !!window.narratorEmotionVector, experiencer: !!window.experiencerEmotionVector });
         return;
     }
-    
+
     // 계산은 엔진에서 수행
     const engineResult = byeoriEngine.calculateStep({
         userVector: { base: window.experiencerEmotionVector },
@@ -628,7 +628,7 @@ function updateExperiencerAlignment(){
     }, {});
     const alignment = engineResult.alignment_score;
     appStore.setState({ currentAlignment: alignment });
-    
+
     // UI 업데이트는 UIManager에 위임
     uiManager.updateExperiencerAlignmentDisplay(alignment);
     updateAlignmentWave();
@@ -724,8 +724,434 @@ function switchExpGeneratedTab(tab){const sceneDisplay=document.getElementById('
 function addExpChatMessage(role,content){const messagesContainer=document.getElementById('expChatMessages');if(!messagesContainer)return;const messageDiv=document.createElement('div');messageDiv.className='chat-message '+role;const label=role==='user'?'나':'또다른 나';messageDiv.innerHTML='<div class="chat-message-label">'+label+'</div><div class="chat-message-content">'+content.replace(/\n/g,'<br>')+'</div>';messagesContainer.appendChild(messageDiv);messagesContainer.scrollTop=messagesContainer.scrollHeight}
 function addExpChatMessageWithConfirm(role,content){const messagesContainer=document.getElementById('expChatMessages');if(!messagesContainer)return;const messageDiv=document.createElement('div');messageDiv.className='chat-message '+role;const label=role==='user'?'나':'또다른 나';messageDiv.innerHTML='<div class="chat-message-label">'+label+'</div><div class="chat-message-content">'+content.replace(/\n/g,'<br>')+'</div><div class="confirm-buttons"><button class="confirm-btn yes" onclick="handleExpConfirm(\'yes\')">예</button><button class="confirm-btn no" onclick="handleExpConfirm(\'no\')">아니오</button></div>';messagesContainer.appendChild(messageDiv);messagesContainer.scrollTop=messagesContainer.scrollHeight}
 function removeExpConfirmButtons(){const panel=document.getElementById('experiencerPanel');if(!panel)return;const buttons=panel.querySelectorAll('.confirm-buttons');buttons.forEach(btn=>btn.remove())}
-async function sendExpChatMessage(){const input=document.getElementById('expTextInput');if(!input||!input.value.trim()){showNotification('메시지를 입력해주세요');return}const userMessage=input.value.trim();input.value='';addExpChatMessage('user',userMessage);if(expCurrentPhase==='interpret'){expPendingEmotion=userMessage;addExpChatMessage('ai','감정을 분석하고 있습니다...');let emotionResult=null;try{emotionResult=await analyzeEmotionWithVector(userMessage,'');console.log('Exp emotionResult (raw):',JSON.stringify(emotionResult))}catch(e){console.error('Exp emotion analysis failed:',e);addExpChatMessage('ai','감정 분석에 실패했습니다. 다시 시도해주세요.');return}if(!emotionResult||!emotionResult.generatedEmotion||emotionResult.generatedEmotion===userMessage){console.warn('AI 감정 변환 실패 (체험자)');emotionResult={generatedEmotion:userMessage,analysis:emotionResult?.analysis||{base:{fear:0,sadness:0,anger:0,joy:0,longing:0,guilt:0},detailed:[],intensity:0.5,confidence:0.3}}}const parsed=parseEmotionInput(userMessage);const emotionText=document.getElementById('expEmotionText');if(emotionText)emotionText.textContent=emotionResult.generatedEmotion;switchExpGeneratedTab('emotion');expFinalObject={emotion:parsed.emotion,reason:parsed.reason,generatedEmotion:emotionResult.generatedEmotion,emotionAnalysis:emotionResult.analysis};const emotionDisplay=formatEmotionVector(emotionResult.analysis?.base||{});addExpChatMessage('ai','당신의 감정: '+emotionDisplay);if(emotionResult.analysis?.base){const baseVec=emotionResult.analysis.base;const currentSceneData=window.currentStoryData?.scenes?.[currentScene]||null;const anchors=currentSceneData?.anchor_emotions||null;try{const vad=projectEmotionToVAD(baseVec,anchors);const terrainPos=vadToTerrainXZ(vad,100);if(!expFinalObject._vad)expFinalObject._vad=vad;if(!expFinalObject._terrain_pos)expFinalObject._terrain_pos=terrainPos;console.log('[VAD] Projected (Live):',vad,'→ Terrain:',terrainPos);}catch(vadError){console.error('[VAD] 투영 오류 (Live):',vadError);console.error('[VAD] baseVec:',baseVec);console.error('[VAD] anchors:',anchors);}}addExpChatMessageWithConfirm('ai','이 감정이 맞아?')}else{addExpChatMessage('ai','화자의 기억이 도착하면, 그 안에서 네가 느끼는 걸 말해줘.')}}
-function formatEmotionVector(emotionVector){if(!emotionVector)return'감정 없음';const emotions=[];if(emotionVector.fear>0.1)emotions.push(`두려움 ${Math.round(emotionVector.fear*100)}%`);if(emotionVector.sadness>0.1)emotions.push(`슬픔 ${Math.round(emotionVector.sadness*100)}%`);if(emotionVector.anger>0.1)emotions.push(`분노 ${Math.round(emotionVector.anger*100)}%`);if(emotionVector.joy>0.1)emotions.push(`기쁨 ${Math.round(emotionVector.joy*100)}%`);if(emotionVector.longing>0.1)emotions.push(`그리움 ${Math.round(emotionVector.longing*100)}%`);if(emotionVector.guilt>0.1)emotions.push(`죄책감 ${Math.round(emotionVector.guilt*100)}%`);return emotions.length>0?emotions.join(', '):'감정 없음'}
+// ───── sendExpChatMessage / sendChatMessage 리팩토링: 하위 함수들 ─────
+
+/**
+ * 메시지 입력 수집 및 검증
+ * @param {string} inputId - 입력 필드 ID
+ * @returns {string|null} 사용자 메시지 또는 null (실패 시)
+ */
+function collectChatMessage(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input || !input.value.trim()) {
+        showNotification('메시지를 입력해주세요');
+        return null;
+    }
+    const userMessage = input.value.trim();
+    input.value = '';
+    return userMessage;
+}
+
+/**
+ * UI에 메시지 반영 (체험자용)
+ * @param {string} userMessage - 사용자 메시지
+ */
+function reflectExpChatMessageUI(userMessage) {
+    addExpChatMessage('user', userMessage);
+}
+
+/**
+ * UI에 메시지 반영 (화자용)
+ * @param {string} userMessage - 사용자 메시지
+ */
+function reflectChatMessageUI(userMessage) {
+    addChatMessage('user', userMessage);
+    conversationHistory.push({ role: 'user', content: userMessage });
+}
+
+/**
+ * 감정 분석 결과 검증
+ * @param {Object} obj - 검증할 객체
+ * @returns {boolean} 검증 통과 여부
+ * @throws {Error} 검증 실패 시 에러
+ */
+function validateEmotionAnalysisResult(obj) {
+    if (!obj || typeof obj !== 'object') {
+        throw new Error('응답 형식 오류: 객체가 아닙니다');
+    }
+    
+    // generatedEmotion 필수
+    if (!obj.generatedEmotion || typeof obj.generatedEmotion !== 'string' || obj.generatedEmotion.trim() === '') {
+        throw new Error('응답 형식 오류: generatedEmotion이 유효하지 않습니다');
+    }
+    
+    // analysis 필수
+    if (!obj.analysis || typeof obj.analysis !== 'object') {
+        throw new Error('응답 형식 오류: analysis가 없습니다');
+    }
+    
+    // analysis.base 필수
+    if (!obj.analysis.base || typeof obj.analysis.base !== 'object') {
+        throw new Error('응답 형식 오류: analysis.base가 없습니다');
+    }
+    
+    // analysis.base의 감정 필드 검증
+    const requiredEmotions = ['fear', 'sadness', 'anger', 'joy', 'longing', 'guilt'];
+    for (const emotion of requiredEmotions) {
+        if (typeof obj.analysis.base[emotion] !== 'number' || 
+            obj.analysis.base[emotion] < 0 || 
+            obj.analysis.base[emotion] > 1) {
+            throw new Error(`응답 형식 오류: analysis.base.${emotion}가 유효하지 않습니다 (0-1 범위의 숫자여야 함)`);
+        }
+    }
+    
+    // analysis.detailed는 배열이어야 함 (선택)
+    if (obj.analysis.detailed !== undefined && !Array.isArray(obj.analysis.detailed)) {
+        throw new Error('응답 형식 오류: analysis.detailed가 배열이 아닙니다');
+    }
+    
+    // analysis.intensity는 0-1 범위의 숫자여야 함 (선택)
+    if (obj.analysis.intensity !== undefined) {
+        if (typeof obj.analysis.intensity !== 'number' || 
+            obj.analysis.intensity < 0 || 
+            obj.analysis.intensity > 1) {
+            throw new Error('응답 형식 오류: analysis.intensity가 유효하지 않습니다 (0-1 범위의 숫자여야 함)');
+        }
+    }
+    
+    // analysis.confidence는 0-1 범위의 숫자여야 함 (선택)
+    if (obj.analysis.confidence !== undefined) {
+        if (typeof obj.analysis.confidence !== 'number' || 
+            obj.analysis.confidence < 0 || 
+            obj.analysis.confidence > 1) {
+            throw new Error('응답 형식 오류: analysis.confidence가 유효하지 않습니다 (0-1 범위의 숫자여야 함)');
+        }
+    }
+    
+    // reason_analysis는 선택 (있으면 객체여야 함)
+    if (obj.reason_analysis !== undefined && (typeof obj.reason_analysis !== 'object' || obj.reason_analysis === null)) {
+        throw new Error('응답 형식 오류: reason_analysis가 객체가 아닙니다');
+    }
+    
+            return true;
+}
+
+/**
+ * 장면 생성 결과 검증
+ * @param {Object} obj - 검증할 객체
+ * @returns {boolean} 검증 통과 여부
+ * @throws {Error} 검증 실패 시 에러
+ */
+function validateSceneGenerationResult(obj) {
+    if (!obj || typeof obj !== 'object') {
+        throw new Error('응답 형식 오류: 객체가 아닙니다');
+    }
+    
+    // response 필수
+    if (!obj.response || typeof obj.response !== 'string' || obj.response.trim() === '') {
+        throw new Error('응답 형식 오류: response가 유효하지 않습니다');
+    }
+    
+    return true;
+}
+
+/**
+ * AI 호출 통일 함수 (나중에 AIService로 이동 예정)
+ * @param {string} prompt - 사용자 입력 프롬프트
+ * @param {Object} meta - 메타데이터 { type, reasonText?, anchorEmotions?, conversationHistory?, systemPrompt? }
+ * @returns {Promise<Object>} 검증된 AI 응답 결과
+ * @throws {Error} API 호출 실패 또는 검증 실패 시 에러
+ */
+async function callAI(prompt, meta = {}) {
+    const { type, reasonText, anchorEmotions, conversationHistory, systemPrompt } = meta;
+    
+    try {
+        if (type === 'emotion_analysis') {
+            // 감정 분석 API 호출
+            console.log('callAI: emotion_analysis 호출:', { prompt, reasonText, anchorEmotions });
+            const requestBody = {
+                type: 'emotion_analysis',
+                emotion: prompt || '',
+                reason: reasonText || '',
+                anchorEmotions: anchorEmotions || []
+            };
+            console.log('API 요청 body:', JSON.stringify(requestBody));
+            
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/claude-scene`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            console.log('API 응답 status:', response.status);
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API 오류 응답:', errorText);
+                throw new Error('API 호출 실패: ' + response.status);
+            }
+            
+            const data = await response.json();
+            console.log('API 응답 data:', JSON.stringify(data));
+            
+            // 검증 수행
+            validateEmotionAnalysisResult(data);
+            
+            return data;
+            
+        } else if (type === 'scene_generation') {
+            // 장면 생성 API 호출
+            console.log('callAI: scene_generation 호출:', { prompt, conversationHistory });
+            const messages = conversationHistory && conversationHistory.length > 0 
+                ? conversationHistory 
+                : [{ role: 'user', content: prompt }];
+            
+            if (conversationHistory && conversationHistory.length === 0 || 
+                (conversationHistory && conversationHistory[conversationHistory.length - 1].role !== 'user')) {
+                messages.push({ role: 'user', content: prompt });
+            }
+            
+            const response = await fetch(SUPABASE_FUNCTION_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                    text: prompt,
+                    conversationHistory: messages,
+                    systemPrompt: systemPrompt || AI_SYSTEM_PROMPT
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || error.details || 'API 호출 실패');
+            }
+            
+            const data = await response.json();
+            let result;
+            
+            // 응답 형식 정규화
+            if (data.scene) {
+                result = { response: data.scene };
+            } else if (data.response) {
+                result = { response: data.response };
+            } else {
+                throw new Error('응답을 받을 수 없습니다');
+            }
+            
+            // 검증 수행
+            validateSceneGenerationResult(result);
+            
+            return result;
+        } else {
+            throw new Error(`Unknown AI call type: ${type}`);
+        }
+    } catch (error) {
+        console.error('callAI error:', error);
+        throw error;
+    }
+}
+
+/**
+ * 감정 분석 결과 파싱 (validate 통과한 객체만 받음)
+ * @param {Object} emotionResult - 검증된 AI 응답 결과
+ * @returns {Object} 파싱된 감정 결과
+ */
+function parseEmotionAnalysisResult(emotionResult) {
+    // validate 통과한 객체만 받으므로 추가 검증 불필요
+    // 관대한 파싱/추정 금지
+    return emotionResult;
+}
+
+/**
+ * 장면 생성 결과 파싱 (validate 통과한 객체만 받음)
+ * @param {Object} aiResponse - 검증된 AI 응답 결과
+ * @returns {string} 생성된 장면 텍스트
+ */
+function parseSceneGenerationResult(aiResponse) {
+    // validate 통과한 객체만 받으므로 response 필드가 보장됨
+    // 관대한 파싱/추정 금지
+    return aiResponse.response.trim();
+}
+
+/**
+ * 체험자 감정 결과 저장 및 로그
+ * @param {Object} emotionResult - 감정 분석 결과
+ * @param {string} userMessage - 사용자 메시지
+ */
+function persistExpEmotionResult(emotionResult, userMessage) {
+    const parsed = parseEmotionInput(userMessage);
+    const emotionText = document.getElementById('expEmotionText');
+    if (emotionText) {
+        emotionText.textContent = emotionResult.generatedEmotion;
+    }
+    switchExpGeneratedTab('emotion');
+    
+    // TODO: window.expFinalObject를 store로 이동
+    expFinalObject = {
+        emotion: parsed.emotion,
+        reason: parsed.reason,
+        generatedEmotion: emotionResult.generatedEmotion,
+        emotionAnalysis: emotionResult.analysis
+    };
+    
+    const emotionDisplay = formatEmotionVector(emotionResult.analysis?.base || {});
+    addExpChatMessage('ai', '당신의 감정: ' + emotionDisplay);
+    
+    // VAD 투영 및 terrain 위치 계산
+    if (emotionResult.analysis?.base) {
+        const baseVec = emotionResult.analysis.base;
+        // TODO: window.currentStoryData를 store에서 읽도록 변경
+        const currentSceneData = window.currentStoryData?.scenes?.[currentScene] || null;
+        const anchors = currentSceneData?.anchor_emotions || null;
+        
+        try {
+            const vad = projectEmotionToVAD(baseVec, anchors);
+            const terrainPos = vadToTerrainXZ(vad, 100);
+            if (!expFinalObject._vad) {
+                expFinalObject._vad = vad;
+            }
+            if (!expFinalObject._terrain_pos) {
+                expFinalObject._terrain_pos = terrainPos;
+            }
+            console.log('[VAD] Projected (Live):', vad, '→ Terrain:', terrainPos);
+        } catch (vadError) {
+            console.error('[VAD] 투영 오류 (Live):', vadError);
+            console.error('[VAD] baseVec:', baseVec);
+            console.error('[VAD] anchors:', anchors);
+        }
+    }
+}
+
+/**
+ * 장면 생성 결과 저장 및 로그
+ * @param {string} generatedText - 생성된 장면 텍스트
+ */
+function persistSceneGenerationResult(generatedText) {
+    // TODO: window.pendingSceneText를 store로 이동
+    pendingSceneText = generatedText;
+    const sceneContent = document.querySelector('#generatedSceneContent .generated-text');
+    if (sceneContent) {
+        sceneContent.textContent = generatedText;
+    }
+    switchGeneratedTab('scene');
+}
+
+/**
+ * sendExpChatMessage 메인 함수 (오케스트레이터)
+ */
+async function sendExpChatMessage() {
+    // 1. 입력 수집 및 검증
+    const userMessage = collectChatMessage('expTextInput');
+    if (!userMessage) {
+        return;
+    }
+    
+    // 2. UI 반영
+    reflectExpChatMessageUI(userMessage);
+    
+    // 3. AI 호출 및 결과 처리
+    if (expCurrentPhase === 'interpret') {
+        // TODO: window.expPendingEmotion을 store로 이동
+        expPendingEmotion = userMessage;
+        addExpChatMessage('ai', '감정을 분석하고 있습니다...');
+        
+        let emotionResult = null;
+        try {
+            // AI 호출 (내부에서 validate 수행)
+            emotionResult = await callAI(userMessage, {
+                type: 'emotion_analysis',
+                reasonText: ''
+            });
+            console.log('Exp emotionResult (raw):', JSON.stringify(emotionResult));
+        } catch (e) {
+            console.error('Exp emotion analysis failed:', e);
+            // validate 실패 또는 API 호출 실패
+            const errorMessage = e.message && e.message.includes('응답 형식 오류') 
+                ? '응답 형식 오류, 다시 시도해주세요.' 
+                : '감정 분석에 실패했습니다. 다시 시도해주세요.';
+            addExpChatMessage('ai', errorMessage);
+            // DB 저장 및 주요 상태 업데이트 하지 않음
+            return;
+        }
+        
+        // 4. 결과 파싱 (validate는 callAI 내부에서 이미 통과)
+        const parsedResult = parseEmotionAnalysisResult(emotionResult);
+        
+        // 5. 저장 및 로그
+        persistExpEmotionResult(parsedResult, userMessage);
+        
+        // 6. 확인 요청
+        addExpChatMessageWithConfirm('ai', '이 감정이 맞아?');
+    } else {
+        addExpChatMessage('ai', '화자의 기억이 도착하면, 그 안에서 네가 느끼는 걸 말해줘.');
+    }
+}
+
+/**
+ * sendChatMessage 메인 함수 (오케스트레이터)
+ */
+async function sendChatMessage() {
+    console.log('sendChatMessage called');
+    // TODO: window.currentPhase를 store에서 읽도록 변경
+    console.log('sendChatMessage currentPhase:', currentPhase);
+    
+    // 1. 입력 수집 및 검증
+    const userMessage = collectChatMessage('liveTextInput');
+    if (!userMessage) {
+        return;
+    }
+    
+    // 2. emotion phase 처리
+    if (currentPhase === 'emotion') {
+        console.log('emotion phase detected, calling handleUnifiedSubmit');
+        await handleUnifiedSubmit(userMessage);
+        const input = document.getElementById('liveTextInput');
+        if (input) input.value = '';
+        const sendBtn = document.getElementById('chatSendBtn');
+        if (sendBtn) sendBtn.disabled = false;
+        if (input) input.focus();
+        return;
+    }
+    
+    // 3. UI 반영
+    reflectChatMessageUI(userMessage);
+    
+    // 4. scene phase 처리
+    if (currentPhase === 'scene') {
+        updateExperiencerStatus('체험자가 장면을 기다리고 있습니다...');
+        
+        try {
+            // AI 호출 (내부에서 validate 수행)
+            const aiResponse = await callAI(userMessage, {
+                type: 'scene_generation',
+                conversationHistory: conversationHistory,
+                systemPrompt: AI_SYSTEM_PROMPT
+            });
+            
+            // 5. 결과 파싱 (validate는 callAI 내부에서 이미 통과)
+            const generatedText = parseSceneGenerationResult(aiResponse);
+            
+            // 6. 저장 및 로그
+            conversationHistory.push({ role: 'assistant', content: aiResponse.response });
+            persistSceneGenerationResult(generatedText);
+            
+            // 7. UI 업데이트
+            addChatMessageWithConfirm('ai', '이 기억이 맞아?');
+            updateExperiencerStatus('체험자가 장면을 읽고 있습니다...');
+        } catch (error) {
+            console.error('AI API error:', error);
+            // validate 실패 또는 API 호출 실패
+            const errorMessage = error.message && error.message.includes('응답 형식 오류')
+                ? '응답 형식 오류, 다시 시도해주세요.'
+                : '죄송해, 잠시 문제가 생겼어. 다시 말해줄 수 있어?';
+            addChatMessage('ai', errorMessage);
+            showNotification('AI 응답 중 오류가 발생했습니다');
+            // DB 저장 및 주요 상태 업데이트 하지 않음
+        }
+    }
+    
+    // 8. UI 상태 복원
+    const sendBtn = document.getElementById('chatSendBtn');
+    if (sendBtn) sendBtn.disabled = false;
+    const input = document.getElementById('liveTextInput');
+    if (input) input.focus();
+}function formatEmotionVector(emotionVector){if(!emotionVector)return'감정 없음';const emotions=[];if(emotionVector.fear>0.1)emotions.push(`두려움 ${Math.round(emotionVector.fear*100)}%`);if(emotionVector.sadness>0.1)emotions.push(`슬픔 ${Math.round(emotionVector.sadness*100)}%`);if(emotionVector.anger>0.1)emotions.push(`분노 ${Math.round(emotionVector.anger*100)}%`);if(emotionVector.joy>0.1)emotions.push(`기쁨 ${Math.round(emotionVector.joy*100)}%`);if(emotionVector.longing>0.1)emotions.push(`그리움 ${Math.round(emotionVector.longing*100)}%`);if(emotionVector.guilt>0.1)emotions.push(`죄책감 ${Math.round(emotionVector.guilt*100)}%`);return emotions.length>0?emotions.join(', '):'감정 없음'}
 function renderExperiencerWave(emotionAnalysis){console.log('체험자 파동 렌더링:',emotionAnalysis);if(!emotionAnalysis||!emotionAnalysis.base){console.error('emotionAnalysis 또는 base가 없습니다');return}const emotionVector=emotionAnalysis.base;window.experiencerEmotionVector=emotionVector;const experiencerWave=computeWaveFromEmotion(emotionAnalysis);window.currentExperiencerWave=experiencerWave;updateAlignmentWave();console.log('체험자 파동 렌더링 완료:',experiencerWave)}
 async function handleExpConfirm(answer){removeExpConfirmButtons();if(answer==='yes'){addExpChatMessage('user','예');if(expFinalObject){addExpChatMessage('ai','감정을 파동으로 변환합니다...');await saveExpInterpretation(expFinalObject);if(expFinalObject.emotionAnalysis&&currentSessionId){await saveExperiencerChoice(expFinalObject.emotionAnalysis.base)}if(expFinalObject.emotionAnalysis){window.experiencerEmotionVector=expFinalObject.emotionAnalysis.base;const experiencerWave=computeWaveFromEmotion(expFinalObject.emotionAnalysis);window.currentExperiencerWave=experiencerWave;updateAlignmentWave();renderExperiencerWave(expFinalObject.emotionAnalysis);updateExperiencerAlignment()}setTimeout(()=>checkAlignment(),1000)}addExpChatMessage('ai','감정이 전송되었습니다.');expCurrentPhase='waiting';expPendingEmotion='';expGeneratedEmotion='';expFinalObject=null;const emotionText=document.getElementById('expEmotionText');if(emotionText)emotionText.textContent='';switchExpGeneratedTab('scene');addExpChatMessage('ai','다음 기억을 기다리고 있어.')}else{addExpChatMessage('user','아니오');addExpChatMessage('ai','다시 감정을 입력해주세요.');const expTextInput=document.getElementById('expTextInput');if(expTextInput){expTextInput.focus()}}}
 async function saveExpInterpretation(data){
@@ -765,7 +1191,6 @@ const AI_SYSTEM_PROMPT=`너는 "또다른 나"야. 상대방의 기억을 함께
 응답 형식:
 - 일반 대화: 짧게 묻고, 상황과 감각에 집중
 - 기억이 충분하면: "기억을 변환할게." 라고만 말하기`;
-async function sendChatMessage(){console.log('sendChatMessage called');console.log('sendChatMessage currentPhase:',currentPhase);const input=document.getElementById('liveTextInput');if(!input||!input.value.trim()){showNotification('메시지를 입력해주세요');return}const userMessage=input.value.trim();if(currentPhase==='emotion'){console.log('emotion phase detected, calling handleUnifiedSubmit');await handleUnifiedSubmit(userMessage);input.value='';const sendBtn=document.getElementById('chatSendBtn');if(sendBtn)sendBtn.disabled=false;if(input)input.focus();return}input.value='';const sendBtn=document.getElementById('chatSendBtn');if(sendBtn)sendBtn.disabled=true;addChatMessage('user',userMessage);conversationHistory.push({role:'user',content:userMessage});if(currentPhase==='scene'){updateExperiencerStatus('체험자가 장면을 기다리고 있습니다...');try{const aiResponse=await callClaudeAPI(userMessage);conversationHistory.push({role:'assistant',content:aiResponse});const generatedText=extractGeneratedText(aiResponse);pendingSceneText=generatedText;const sceneContent=document.querySelector('#generatedSceneContent .generated-text');if(sceneContent)sceneContent.textContent=generatedText;switchGeneratedTab('scene');addChatMessageWithConfirm('ai','이 기억이 맞아?');updateExperiencerStatus('체험자가 장면을 읽고 있습니다...')}catch(error){console.error('AI API error:',error);addChatMessage('ai','죄송해, 잠시 문제가 생겼어. 다시 말해줄 수 있어?');showNotification('AI 응답 중 오류가 발생했습니다')}}if(sendBtn)sendBtn.disabled=false;if(input)input.focus()}
 function extractGeneratedText(aiResponse){if(aiResponse.includes('[SCENE_READY]')){try{const jsonStr=aiResponse.substring(aiResponse.indexOf('[SCENE_READY]')+'[SCENE_READY]'.length).trim();const data=JSON.parse(jsonStr);if(currentPhase==='scene'&&data.scene)return data.scene.text||data.scene;if(currentPhase==='emotion'&&data.emotion)return data.emotion.text||data.emotion}catch(e){}}return aiResponse.replace(/\[SCENE_READY\].*$/,'').trim()||aiResponse}
 function parseEmotionInput(text){const parts=text.split(/[,.]/).map(s=>s.trim()).filter(Boolean);return{emotion:parts[0]||null,reason:parts[1]||null}}
 function addChatMessageWithConfirm(role,content){const messagesContainer=document.getElementById('chatMessages');if(!messagesContainer)return;const messageDiv=document.createElement('div');messageDiv.className=`chat-message ${role}`;const label=role==='user'?'나':'또다른 나';messageDiv.innerHTML=`<div class="chat-message-label">${label}</div><div class="chat-message-content">${content.replace(/\n/g,'<br>')}</div><div class="confirm-buttons"><button class="confirm-btn yes" onclick="handleConfirm('yes')">예</button><button class="confirm-btn no" onclick="handleConfirm('no')">아니오</button></div>`;messagesContainer.appendChild(messageDiv);messagesContainer.scrollTop=messagesContainer.scrollHeight}
@@ -825,7 +1250,7 @@ async function handleConfirm(answer){
                 console.log('pendingSceneText로 복구:',pendingSceneText);
             }
             console.log('저장할 finalSceneObject:',JSON.stringify(finalSceneObject));
-            
+
             // Ritual 모드일 때는 saveRitualScene 호출
             if (currentMode === 'ritual') {
                 await saveRitualScene(finalSceneObject);
@@ -1290,7 +1715,337 @@ function renderChoices(choices){const container=document.getElementById('choices
 function makeChoice(choiceIndex){try{const state=appStore.getState();appStore.setState({userChoices:[...state.userChoices,choiceIndex]});const currentData=window.currentStoryData||storyData;const updatedState=appStore.getState();if(!currentData||!currentData.scenes||!currentData.scenes[updatedState.currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}const scene=currentData.scenes[updatedState.currentScene];const sceneType=scene.sceneType||'normal';if(sceneType==='branch'||sceneType==='ending'){const questionEl=document.getElementById('emotionQuestion');if(questionEl)questionEl.textContent=updatedState.currentScene===0?"왜 그렇게 했어?":"왜 그런 선택을 했어?";const modalEl=document.getElementById('emotionModal');if(modalEl)modalEl.classList.add('active');const inputEl=document.getElementById('emotionInputField');if(inputEl)inputEl.focus()}else{proceedToNextScene()}}catch(e){console.error('makeChoice error:',e);showNotification('오류가 발생했습니다')}}
 function proceedToNextScene(){try{const currentData=window.currentStoryData||storyData;const state=appStore.getState();if(!currentData||!currentData.scenes||!currentData.scenes[state.currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}if(state.currentScene<currentData.scenes.length-1){appStore.setState({currentScene:state.currentScene+1});renderScene()}else{showEndScreen()}}catch(e){console.error('proceedToNextScene error:',e);showNotification('오류가 발생했습니다')}}
 function proceedToNextSceneLive(){try{const currentData=window.currentStoryData||storyData;const state=appStore.getState();if(!currentData||!currentData.scenes||!currentData.scenes[state.currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}if(state.currentScene<currentData.scenes.length-1){appStore.setState({currentScene:state.currentScene+1});simulateNarratorInput()}else{showEndScreen()}}catch(e){console.error('proceedToNextSceneLive error:',e);showNotification('오류가 발생했습니다')}}
-async function submitEmotion(){try{const reason=document.getElementById('emotionInputField').value||"말하고 싶지 않아";const state=appStore.getState();appStore.setState({userReasons:[...state.userReasons,reason]});updateUserStats('interpretation',1);const modalEl=document.getElementById('emotionModal');if(modalEl)modalEl.classList.remove('active');const inputEl=document.getElementById('emotionInputField');if(inputEl)inputEl.value='';const currentData=window.currentStoryData||storyData;if(!currentData||!currentData.scenes||!currentData.scenes[currentScene]){showNotification('장면 데이터를 불러올 수 없습니다');return}const scene=currentData.scenes[currentScene];let anchorEmotions=scene.anchor_emotions||null;if(anchorEmotions&&typeof anchorEmotions==='string'){try{anchorEmotions=JSON.parse(anchorEmotions)}catch(e){console.warn('anchor_emotions 파싱 실패:',e);anchorEmotions=null}}if(anchorEmotions&&!Array.isArray(anchorEmotions)){anchorEmotions=null}let userEmotionVector=null;let sceneAlignment=null;let mismatchType=null;const modeState=appStore.getState();if(modeState.currentMode==='archive'&&(scene.sceneType==='branch'||scene.sceneType==='ending')){showNotification('감정을 분석하고 있습니다...');try{const emotionResult=await analyzeEmotionWithVector('',reason,anchorEmotions);console.log('Archive emotion analysis result:',emotionResult);if(emotionResult&&emotionResult.analysis&&emotionResult.analysis.base){userEmotionVector=emotionResult.analysis.base;const reasonVector=emotionResult.reason_analysis||null;if(!window.archiveUserEmotions){window.archiveUserEmotions=[]}const sceneState=appStore.getState();window.archiveUserEmotions[sceneState.currentScene]={emotion:userEmotionVector,reason:reason,sceneId:scene.id||sceneState.currentScene};try{const vad=projectEmotionToVAD(userEmotionVector,anchorEmotions);const terrainPos=vadToTerrainXZ(vad,100);if(!window.archiveUserEmotions[currentScene]._vad)window.archiveUserEmotions[currentScene]._vad=vad;if(!window.archiveUserEmotions[currentScene]._terrain_pos)window.archiveUserEmotions[currentScene]._terrain_pos=terrainPos;console.log('[VAD] Projected:',vad,'→ Terrain:',terrainPos);}catch(vadError){console.error('[VAD] 투영 오류:',vadError);console.error('[VAD] userEmotionVector:',userEmotionVector);console.error('[VAD] anchorEmotions:',anchorEmotions);}if(scene.originalEmotion&&typeof scene.originalEmotion==='object'){console.log('[submitEmotion] scene.originalReasonVector:',scene.originalReasonVector);console.log('[submitEmotion] scene 객체:',scene);let originalVectorCombined={base:scene.originalEmotion,reason_analysis:scene.originalReasonVector||{attribution:'unknown',core_fear:'unknown',is_void:false}};console.log('[submitEmotion] originalVectorCombined:',originalVectorCombined);let userVectorCombined={base:userEmotionVector,reason_analysis:reasonVector};const dominantEmotion=getDominantEmotion(userEmotionVector);const currentState=appStore.getState();const updatedHistory=[...currentState.emotionHistory,dominantEmotion];if(updatedHistory.length>10)updatedHistory.shift();appStore.setState({emotionHistory:updatedHistory});const state=appStore.getState();const engineResult=calculateStep({userVector:userVectorCombined,originalVector:originalVectorCombined,anchorEmotions:anchorEmotions},{previousBucket:state.currentBucket,emotionHistory:state.emotionHistory});sceneAlignment=engineResult.alignment_score;mismatchType=engineResult.mismatch_type;const newBucket=engineResult.alignment_bucket;console.log('=== ByeoriEngine 계산 결과 ===');console.log('정렬도:',sceneAlignment);console.log('버킷:',newBucket);console.log('미스매치:',mismatchType);if(!window.archiveSceneAlignments){window.archiveSceneAlignments=[]}const currentState=appStore.getState();window.archiveSceneAlignments[currentState.currentScene]=sceneAlignment;appStore.setState({currentAlignment:sceneAlignment,currentBucket:newBucket});updateAlignmentDisplay();renderArchiveEmotionWave(userEmotionVector);showNotification(`장면 정렬도: ${(sceneAlignment*100).toFixed(0)}%`);console.log('=== 버킷 판정 ===');console.log('정렬도:',sceneAlignment);console.log('이전 버킷:',currentState.currentBucket);console.log('감정 히스토리:',currentState.emotionHistory);console.log('새 버킷:',newBucket);if(newBucket!==currentState.currentBucket){showBucketFeedback(newBucket,sceneAlignment)}}else{console.warn('원본 감정이 없어 정렬도를 계산할 수 없습니다');sceneAlignment=null}await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,sceneAlignment,reasonVector,mismatchType)}else{console.warn('감정 분석 결과가 올바르지 않습니다');if(userEmotionVector){await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,null,null,null)}}}catch(e){console.error('Archive emotion analysis error:',e);showNotification('감정 분석 중 오류가 발생했습니다');if(userEmotionVector){await saveArchiveEmotionToPlays(userEmotionVector,reason,scene,currentData,null,null,null)}}}const finalState=appStore.getState();if(finalState.userChoices[finalState.currentScene]===scene.originalChoice)showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade),3000);else showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade),3000);setTimeout(async()=>{const nextState=appStore.getState();if(nextState.currentScene<currentData.scenes.length-1){appStore.setState({currentScene:nextState.currentScene+1});if(nextState.currentMode==='archive')renderScene();else simulateNarratorInput()}else{if(nextState.currentMode==='archive'){const alignmentResult=await calculateAverageAlignment();showEndScreen(alignmentResult)}else{showEndScreen()}}},1500)}catch(e){console.error('submitEmotion error:',e);showNotification('감정을 제출하는 중 오류가 발생했습니다')}}
+// ───── submitEmotion 리팩토링: 하위 함수들 ─────
+
+/**
+ * DOM/store에서 감정 입력 수집 및 검증
+ * @returns {Object} { reason, scene, currentData, anchorEmotions } 또는 null (실패 시)
+ */
+function collectEmotionInput() {
+    const reason = document.getElementById('emotionInputField')?.value || "말하고 싶지 않아";
+    const state = appStore.getState();
+    
+    // userReasons 업데이트
+    appStore.setState({ userReasons: [...state.userReasons, reason] });
+    updateUserStats('interpretation', 1);
+    
+    // 모달 닫기 및 입력 필드 초기화
+    const modalEl = document.getElementById('emotionModal');
+    if (modalEl) modalEl.classList.remove('active');
+    const inputEl = document.getElementById('emotionInputField');
+    if (inputEl) inputEl.value = '';
+    
+    // 장면 데이터 검증
+    const currentData = window.currentStoryData || storyData;
+    if (!currentData || !currentData.scenes || !currentData.scenes[currentScene]) {
+        showNotification('장면 데이터를 불러올 수 없습니다');
+        return null;
+    }
+    
+    const scene = currentData.scenes[currentScene];
+    
+    // anchor_emotions 파싱
+    let anchorEmotions = scene.anchor_emotions || null;
+    if (anchorEmotions && typeof anchorEmotions === 'string') {
+        try {
+            anchorEmotions = JSON.parse(anchorEmotions);
+        } catch (e) {
+            console.warn('anchor_emotions 파싱 실패:', e);
+            anchorEmotions = null;
+        }
+    }
+    if (anchorEmotions && !Array.isArray(anchorEmotions)) {
+        anchorEmotions = null;
+    }
+    
+    return { reason, scene, currentData, anchorEmotions };
+}
+
+/**
+ * 감정 분석 수행 (archive 모드일 때만)
+ * @param {string} reason - 사용자 입력 이유
+ * @param {Array} anchorEmotions - 앵커 감정 목록
+ * @returns {Object} { userEmotionVector, reasonVector } 또는 null
+ */
+async function analyzeEmotionForArchive(reason, anchorEmotions) {
+    const modeState = appStore.getState();
+    const scene = (window.currentStoryData || storyData)?.scenes?.[currentScene];
+    
+    if (modeState.currentMode !== 'archive' || (scene.sceneType !== 'branch' && scene.sceneType !== 'ending')) {
+        return null;
+    }
+    
+    showNotification('감정을 분석하고 있습니다...');
+    
+    try {
+        const emotionResult = await analyzeEmotionWithVector('', reason, anchorEmotions);
+        console.log('Archive emotion analysis result:', emotionResult);
+        
+        if (!emotionResult || !emotionResult.analysis || !emotionResult.analysis.base) {
+            console.warn('감정 분석 결과가 올바르지 않습니다');
+            return null;
+        }
+        
+        const userEmotionVector = emotionResult.analysis.base;
+        const reasonVector = emotionResult.reason_analysis || null;
+        
+        // window.archiveUserEmotions에 저장
+        if (!window.archiveUserEmotions) {
+            window.archiveUserEmotions = [];
+        }
+        const sceneState = appStore.getState();
+        window.archiveUserEmotions[sceneState.currentScene] = {
+            emotion: userEmotionVector,
+            reason: reason,
+            sceneId: scene.id || sceneState.currentScene
+        };
+        
+        // VAD 투영 및 terrain 위치 계산
+        try {
+            const vad = projectEmotionToVAD(userEmotionVector, anchorEmotions);
+            const terrainPos = vadToTerrainXZ(vad, 100);
+            if (!window.archiveUserEmotions[currentScene]._vad) {
+                window.archiveUserEmotions[currentScene]._vad = vad;
+            }
+            if (!window.archiveUserEmotions[currentScene]._terrain_pos) {
+                window.archiveUserEmotions[currentScene]._terrain_pos = terrainPos;
+            }
+            console.log('[VAD] Projected:', vad, '→ Terrain:', terrainPos);
+        } catch (vadError) {
+            console.error('[VAD] 투영 오류:', vadError);
+            console.error('[VAD] userEmotionVector:', userEmotionVector);
+            console.error('[VAD] anchorEmotions:', anchorEmotions);
+        }
+        
+        return { userEmotionVector, reasonVector };
+    } catch (e) {
+        console.error('Archive emotion analysis error:', e);
+        showNotification('감정 분석 중 오류가 발생했습니다');
+        return null;
+    }
+}
+
+/**
+ * ByeoriEngine.calculateStep() 호출만 수행
+ * @param {Object} input - { userVector, originalVector, anchorEmotions }
+ * @param {Object} context - { previousBucket, emotionHistory }
+ * @returns {Object} 엔진 계산 결과
+ */
+function runEngineStep(input, context) {
+    return byeoriEngine.calculateStep(input, context);
+}
+
+/**
+ * 엔진 결과를 store에 적용
+ * @param {Object} engineResult - 엔진 계산 결과
+ * @param {Object} userEmotionVector - 사용자 감정 벡터
+ * @returns {Object} { sceneAlignment, newBucket, stateAfterUpdate }
+ */
+function applyEngineResult(engineResult, userEmotionVector) {
+    const sceneAlignment = engineResult.alignment_score;
+    const newBucket = engineResult.alignment_bucket;
+    
+    // 감정 히스토리 업데이트
+    const dominantEmotion = getDominantEmotion(userEmotionVector);
+    const currentState = appStore.getState();
+    const updatedHistory = [...currentState.emotionHistory, dominantEmotion];
+    if (updatedHistory.length > 10) {
+        updatedHistory.shift();
+    }
+    appStore.setState({ emotionHistory: updatedHistory });
+    
+    // 정렬도 및 버킷 업데이트
+    const state = appStore.getState();
+    appStore.setState({
+        currentAlignment: sceneAlignment,
+        currentBucket: newBucket
+    });
+    
+    // window.archiveSceneAlignments에 저장
+    if (!window.archiveSceneAlignments) {
+        window.archiveSceneAlignments = [];
+    }
+    const stateAfterUpdate = appStore.getState();
+    window.archiveSceneAlignments[stateAfterUpdate.currentScene] = sceneAlignment;
+    
+    return { sceneAlignment, newBucket, stateAfterUpdate };
+}
+
+/**
+ * UI 업데이트 (UIManager/Visualizer 호출)
+ * @param {Object} state - 현재 store 상태
+ * @param {Object} result - { sceneAlignment, newBucket, userEmotionVector }
+ */
+function updateUIAfterSubmit(state, result) {
+    const { sceneAlignment, newBucket, userEmotionVector } = result;
+    
+    // 정렬도 표시 업데이트
+    updateAlignmentDisplay();
+    
+    // 파동 렌더링
+    renderArchiveEmotionWave(userEmotionVector);
+    
+    // 알림 표시
+    showNotification(`장면 정렬도: ${(sceneAlignment * 100).toFixed(0)}%`);
+    
+    // 버킷 피드백
+    console.log('=== 버킷 판정 ===');
+    console.log('정렬도:', sceneAlignment);
+    console.log('이전 버킷:', state.currentBucket);
+    console.log('감정 히스토리:', state.emotionHistory);
+    console.log('새 버킷:', newBucket);
+    
+    if (newBucket !== state.currentBucket) {
+        showBucketFeedback(newBucket, sceneAlignment);
+    }
+}
+
+/**
+ * NetworkService를 통한 저장
+ * @param {Object} params - { userEmotionVector, reason, scene, currentData, sceneAlignment, reasonVector, mismatchType }
+ */
+async function persistAfterSubmit(params) {
+    const { userEmotionVector, reason, scene, currentData, sceneAlignment, reasonVector, mismatchType } = params;
+    
+    if (!userEmotionVector) {
+        return;
+    }
+    
+    await saveArchiveEmotionToPlays(
+        userEmotionVector,
+        reason,
+        scene,
+        currentData,
+        sceneAlignment,
+        reasonVector,
+        mismatchType
+    );
+}
+
+/**
+ * submitEmotion 메인 함수 (오케스트레이터)
+ */
+async function submitEmotion() {
+    try {
+        // 1. 입력 수집 및 검증
+        const inputData = collectEmotionInput();
+        if (!inputData) {
+            return;
+        }
+        
+        const { reason, scene, currentData, anchorEmotions } = inputData;
+        let userEmotionVector = null;
+        let sceneAlignment = null;
+        let mismatchType = null;
+        let reasonVector = null;
+        
+        // 2. 감정 분석 (archive 모드일 때만)
+        const analysisResult = await analyzeEmotionForArchive(reason, anchorEmotions);
+        if (analysisResult) {
+            userEmotionVector = analysisResult.userEmotionVector;
+            reasonVector = analysisResult.reasonVector;
+        }
+        
+        // 3. 엔진 계산 (원본 감정이 있을 때만)
+        if (userEmotionVector && scene.originalEmotion && typeof scene.originalEmotion === 'object') {
+            console.log('[submitEmotion] scene.originalReasonVector:', scene.originalReasonVector);
+            console.log('[submitEmotion] scene 객체:', scene);
+            
+            const originalVectorCombined = {
+                base: scene.originalEmotion,
+                reason_analysis: scene.originalReasonVector || {
+                    attribution: 'unknown',
+                    core_fear: 'unknown',
+                    is_void: false
+                }
+            };
+            console.log('[submitEmotion] originalVectorCombined:', originalVectorCombined);
+            
+            const userVectorCombined = {
+                base: userEmotionVector,
+                reason_analysis: reasonVector
+            };
+            
+            const state = appStore.getState();
+            const engineResult = runEngineStep(
+                {
+                    userVector: userVectorCombined,
+                    originalVector: originalVectorCombined,
+                    anchorEmotions: anchorEmotions
+                },
+                {
+                    previousBucket: state.currentBucket,
+                    emotionHistory: state.emotionHistory
+                }
+            );
+            
+            sceneAlignment = engineResult.alignment_score;
+            mismatchType = engineResult.mismatch_type;
+            const newBucket = engineResult.alignment_bucket;
+            
+            console.log('=== ByeoriEngine 계산 결과 ===');
+            console.log('정렬도:', sceneAlignment);
+            console.log('버킷:', newBucket);
+            console.log('미스매치:', mismatchType);
+            
+            // 4. 엔진 결과 적용 (store 업데이트)
+            const applyResult = applyEngineResult(engineResult, userEmotionVector);
+            const { stateAfterUpdate } = applyResult;
+            
+            // 5. UI 업데이트
+            updateUIAfterSubmit(stateAfterUpdate, {
+                sceneAlignment,
+                newBucket,
+                userEmotionVector
+            });
+        } else {
+            console.warn('원본 감정이 없어 정렬도를 계산할 수 없습니다');
+            sceneAlignment = null;
+        }
+        
+        // 6. 저장
+        await persistAfterSubmit({
+            userEmotionVector,
+            reason,
+            scene,
+            currentData,
+            sceneAlignment,
+            reasonVector,
+            mismatchType
+        });
+        
+        // 7. 다음 장면으로 이동 또는 엔딩 화면 표시
+        const finalState = appStore.getState();
+        if (finalState.userChoices[finalState.currentScene] === scene.originalChoice) {
+            showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade), 3000);
+        } else {
+            showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade), 3000);
+        }
+        
+        setTimeout(async () => {
+            const nextState = appStore.getState();
+            if (nextState.currentScene < currentData.scenes.length - 1) {
+                appStore.setState({ currentScene: nextState.currentScene + 1 });
+                if (nextState.currentMode === 'archive') {
+                    renderScene();
+                } else {
+                    simulateNarratorInput();
+                }
+            } else {
+                if (nextState.currentMode === 'archive') {
+                    const alignmentResult = await calculateAverageAlignment();
+                    showEndScreen(alignmentResult);
+                } else {
+                    showEndScreen();
+                }
+            }
+        }, 1500);
+        
+    } catch (e) {
+        console.error('submitEmotion error:', e);
+        showNotification('감정을 제출하는 중 오류가 발생했습니다');
+    }
+}
 function updateStrata(){const state=appStore.getState();const originalPercent=70-(state.currentScene*10),interpretPercent=30+(state.currentScene*10);document.getElementById('strataOriginal').style.height=originalPercent+'%';document.getElementById('strataInterpretation').style.height=interpretPercent+'%';document.getElementById('strataInterpretation').style.bottom=originalPercent+'%'}
 function getAlignmentLevel(alignment){if(alignment>=0.95)return'FIXATED';if(alignment>=0.8)return'HIGH';if(alignment>=0.5)return'MID';return'LOW'}function startWaveAnimation(){const canvas=document.getElementById('waveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth*2;canvas.height=canvas.offsetHeight*2;ctx.scale(2,2);let time=0;const state=appStore.getState();const alignmentLevel=getAlignmentLevel(state.currentAlignment);function animate(){const width=canvas.width/2,height=canvas.height/2,centerY=height/2;ctx.fillStyle='rgba(18,18,26,0.1)';ctx.fillRect(0,0,width,height);if(alignmentLevel==='HIGH'){ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.8)';ctx.lineWidth=2;const syncPhase=time*0.05;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.02+syncPhase)*15+Math.sin(x*0.01+syncPhase*0.6)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(122,154,122,0.7)';ctx.lineWidth=2;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.02+syncPhase+Math.PI*0.1)*15+Math.sin(x*0.01+syncPhase*0.6+Math.PI*0.1)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='MID'){ctx.save();ctx.filter='blur(1px)';const irregularity=Math.sin(time*0.1)*0.3+0.7;ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.6)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const noise=Math.random()*5-2.5;const y=centerY+Math.sin(x*0.02+time*0.05+noise*0.1)*15*irregularity+Math.sin(x*0.01+time*0.03+noise*0.05)*10*irregularity;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.restore();ctx.beginPath();ctx.strokeStyle='rgba(123,143,168,0.5)';ctx.lineWidth=1.5;const state=appStore.getState();const offset=(1-state.currentAlignment)*30;for(let x=0;x<width;x++){const noise=Math.random()*3-1.5;const y=centerY+Math.sin(x*0.02+time*0.05+offset+noise*0.1)*15+Math.sin(x*0.01+time*0.03+offset*0.5+noise*0.05)*10;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='LOW'){const glitch=Math.random()>0.9;if(glitch){ctx.save();ctx.filter='invert(1)';ctx.fillStyle='rgba(217,74,74,0.3)';ctx.fillRect(0,0,width,height);ctx.restore()}const noiseAmplitude=10+Math.random()*10;ctx.beginPath();ctx.strokeStyle=glitch?'rgba(217,74,74,0.8)':'rgba(196,168,130,0.4)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const noise=Math.random()*noiseAmplitude-noiseAmplitude/2;const y=centerY+Math.sin(x*0.02+time*0.05+noise*0.2)*15+Math.sin(x*0.01+time*0.03+noise*0.1)*10+noise;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle=glitch?'rgba(217,74,74,0.6)':'rgba(123,143,168,0.3)';ctx.lineWidth=1.5;const state=appStore.getState();const offset=(1-state.currentAlignment)*30;for(let x=0;x<width;x++){const noise=Math.random()*noiseAmplitude-noiseAmplitude/2;const y=centerY+Math.sin(x*0.02+time*0.05+offset+noise*0.2)*15+Math.sin(x*0.01+time*0.03+offset*0.5+noise*0.1)*10+noise;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke()}else if(alignmentLevel==='FIXATED'){const slowTime=time*0.02;const vignetteGradient=ctx.createRadialGradient(width/2,height/2,0,width/2,height/2,Math.max(width,height));vignetteGradient.addColorStop(0,'rgba(0,0,0,0)');vignetteGradient.addColorStop(1,'rgba(0,0,0,0.4)');ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.9)';ctx.lineWidth=2.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.015+slowTime)*12+Math.sin(x*0.008+slowTime*0.5)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(122,154,122,0.8)';ctx.lineWidth=2.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.015+slowTime+Math.PI*0.05)*12+Math.sin(x*0.008+slowTime*0.5+Math.PI*0.05)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.fillStyle=vignetteGradient;ctx.fillRect(0,0,width,height)}time++;const animId=requestAnimationFrame(animate);appStore.setState({waveAnimationId:animId})}animate()}
 function startLiveWaveAnimation(){const canvas=document.getElementById('liveWaveCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth*2;canvas.height=canvas.offsetHeight*2;ctx.scale(2,2);let time=0;function animate(){ctx.fillStyle='rgba(18,18,26,0.15)';ctx.fillRect(0,0,canvas.width/2,canvas.height/2);const width=canvas.width/2,height=canvas.height/2,centerY=height/2;ctx.beginPath();ctx.strokeStyle='rgba(196,168,130,0.7)';ctx.lineWidth=1.5;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.025+time*0.04)*12+Math.sin(x*0.015+time*0.025)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();ctx.beginPath();ctx.strokeStyle='rgba(123,143,168,0.7)';ctx.lineWidth=1.5;const offset=(1-currentAlignment)*25;for(let x=0;x<width;x++){const y=centerY+Math.sin(x*0.025+time*0.04+offset)*12+Math.sin(x*0.015+time*0.025+offset*0.6)*8;if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();time++;const animId=requestAnimationFrame(animate);appStore.setState({liveWaveAnimationId:animId})}animate()}
@@ -1313,7 +2068,7 @@ async function showEndScreen(alignmentResult,forceEndScreen=false){
         if(archiveContainerEl){archiveContainerEl.classList.remove('active');archiveContainerEl.style.display='none'}
         const sceneViewerEl=document.getElementById('sceneViewer');
         if(sceneViewerEl){sceneViewerEl.classList.remove('active');sceneViewerEl.style.display='none'}
-        
+
         // 아카이브 모드이고 forceEndScreen이 false면 비교 화면으로 이동
         const state=appStore.getState();if(state.currentMode==='archive'&&!forceEndScreen){
             console.log('[엔딩] 아카이브 모드 - 비교 화면으로 이동');
@@ -1324,7 +2079,7 @@ async function showEndScreen(alignmentResult,forceEndScreen=false){
             showComparisonView();
             return;
         }
-        
+
         console.log('[엔딩] 엔딩 화면 표시 시작');
         let finalAlignment=currentAlignment;
         let isTrueEnding=false;
@@ -1337,7 +2092,7 @@ async function showEndScreen(alignmentResult,forceEndScreen=false){
             isTrueEnding=calculated.isTrueEnding;
         }
         console.log('[엔딩] 정렬도 계산 완료:', { finalAlignment, isTrueEnding });
-        
+
         const endScreenEl=document.getElementById('endScreen');
         if(endScreenEl){
             endScreenEl.classList.add('active');
@@ -1346,18 +2101,18 @@ async function showEndScreen(alignmentResult,forceEndScreen=false){
         }else{
             console.error('[엔딩] endScreen 요소를 찾을 수 없습니다!');
         }
-        
+
         const currentData=window.currentStoryData||storyData;
         const lastScene=currentData.scenes[currentData.scenes.length-1];
         const lastChoiceIndex=userChoices.length>0?userChoices[userChoices.length-1]:0;
         const lastReason=userReasons.length>0?userReasons[userReasons.length-1]:"—";
-        
+
         document.getElementById('yourChoice').textContent=lastScene.choices[lastChoiceIndex]?lastScene.choices[lastChoiceIndex].text:"—";
         document.getElementById('yourReason').textContent='"'+lastReason+'"';
         document.getElementById('theirChoice').textContent=lastScene.choices[lastScene.originalChoice].text;
         document.getElementById('theirReason').textContent='"'+lastScene.originalReason+'"';
         document.getElementById('finalAlignment').textContent='감정 구조 정렬도: '+finalAlignment.toFixed(2);
-        
+
         if(isTrueEnding){
             console.log('[엔딩] 트루엔딩 표시');
             const trueBadge=document.getElementById('trueEndingBadge');
@@ -1410,7 +2165,7 @@ async function showEndScreen(alignmentResult,forceEndScreen=false){
             document.getElementById('endTitle').textContent='ENDING';
             document.getElementById('finalMessage').innerHTML='당신은 이 기억을 다른 방식으로 체험했습니다.<br>같은 장면, 다른 감정.<br>그것도 하나의 해석입니다.';
         }
-        
+
         console.log('[엔딩] 지층 애니메이션 시작');
         startEndStrataAnimation();
         setTimeout(()=>{
@@ -1637,10 +2392,10 @@ function handleOpeningKeydown(e){if(!openingSkipped){e.preventDefault();skipOpen
 function finishOpeningSequence(){const openingScreen=document.getElementById('openingScreen');const introScreen=document.getElementById('introScreen');if(openingScreen){openingScreen.removeEventListener('click',skipOpening);openingScreen.style.cssText='display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important';openingScreen.classList.add('hidden')}document.removeEventListener('keydown',handleOpeningKeydown);if(introScreen){introScreen.style.cssText='display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important';introScreen.classList.add('visible');introScreen.classList.remove('hidden')}playNpcIntro()}
 document.addEventListener('DOMContentLoaded',function(){openingSound=document.getElementById('openingSound');if(openingSound){openingSound.addEventListener('error',function(e){console.error('오프닝 사운드 로드 실패:',e);const error=openingSound.error;if(error){console.error('오디오 에러 코드:',error.code,'메시지:',error.message)}});openingSound.addEventListener('canplaythrough',function(){console.log('오프닝 사운드 로드 완료')});openingSound.load()}const openingScreen=document.getElementById('openingScreen');if(openingScreen){openingScreen.style.cssText='display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:3000 !important'}const waveContainer=document.getElementById('openingWaveContainer');if(waveContainer){waveContainer.classList.add('visible');const canvas=document.getElementById('openingWaveCanvas');if(canvas)startOpeningWaveAnimation(canvas)}const hint=document.getElementById('openingStartHint');if(hint){hint.style.opacity='1';hint.classList.add('visible')}const registerMemoryBtn=document.getElementById('registerMemoryBtn');if(registerMemoryBtn){registerMemoryBtn.addEventListener('click',startMemoryRegistration)}});
 const openingScreenEl=document.getElementById('openingScreen');if(openingScreenEl){openingScreenEl.addEventListener('click',function(e){if(hasZoomedIn){skipToIntro();return}hasZoomedIn=true;const waveContainer=document.getElementById('openingWaveContainer');if(waveContainer){waveContainer.style.transform='scale(1)';waveContainer.style.opacity='1'}if(openingSound){setupLoopWithCrossfade(openingSound,0.6,2);fadeInSound(openingSound,0.6,4000)}const hint=document.getElementById('openingStartHint');if(hint)hint.style.opacity='0';setTimeout(()=>{if(!openingSequenceStarted){openingSequenceStarted=true;startOpeningSequence()}},800)})}document.addEventListener('keydown',handleOpeningKeydown);
-async function checkSession(){supabaseClient = getSupabaseClient(); if(!supabaseClient)return;const{data:{session}}=await supabaseClient.auth.getSession();if(session){appStore.setState({isLoggedIn:true,currentUser:{id:session.user.id,username:session.user.user_metadata?.username||session.user.email.split('@')[0],email:session.user.email,joinDate:new Date(session.user.created_at).toLocaleDateString('ko-KR'),liveSessions:0,memories:0,interpretations:0,visitedMemories:[],sessionHistory:[]}})}}}
+async function checkSession(){supabaseClient = getSupabaseClient(); if(!supabaseClient)return;const {data:{session}}=await supabaseClient.auth.getSession();if(session){appStore.setState({isLoggedIn:true,currentUser:{id:session.user.id,username:session.user.user_metadata?.username||session.user.email.split('@')[0],email:session.user.email,joinDate:new Date(session.user.created_at).toLocaleDateString('ko-KR'),liveSessions:0,memories:0,interpretations:0,visitedMemories:[],sessionHistory:[]}})}}}
 (async function(){await checkSession()})();
 
-// ==================== 3D Carousel Navigation ====================
+// ───── 3D Carousel Navigation ─────
 let carouselCurrentIndex = 0;
 const carouselItems = [
   { action: 'enterArchive', label: 'ARCHIVE' },
@@ -1654,12 +2409,12 @@ function init3DCarousel() {
   const items = wrapper?.querySelectorAll('.carousel-item');
   const prevBtn = document.getElementById('carouselPrev');
   const nextBtn = document.getElementById('carouselNext');
-  
+
   if (!wrapper || !items || items.length === 0) return;
-  
+
   // 초기 위치 설정
   updateCarouselPosition();
-  
+
   // 네비게이션 버튼 이벤트
   if (prevBtn) {
     prevBtn.addEventListener('click', () => navigateCarousel(-1));
@@ -1667,12 +2422,12 @@ function init3DCarousel() {
   if (nextBtn) {
     nextBtn.addEventListener('click', () => navigateCarousel(1));
   }
-  
+
   // 키보드 네비게이션
   document.addEventListener('keydown', (e) => {
     const introScreen = document.getElementById('introScreen');
     if (!introScreen || introScreen.classList.contains('hidden')) return;
-    
+
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       navigateCarousel(-1);
@@ -1684,7 +2439,7 @@ function init3DCarousel() {
       activateCurrentCarouselItem();
     }
   });
-  
+
   // 아이템 클릭 이벤트
   items.forEach((item, index) => {
     item.addEventListener('click', () => {
@@ -1696,7 +2451,7 @@ function init3DCarousel() {
       }
     });
   });
-  
+
   // 양옆 아이템 클릭으로도 이동 가능
   items.forEach((item) => {
     item.addEventListener('click', (e) => {
@@ -1719,15 +2474,15 @@ function updateCarouselPosition() {
   const wrapper = document.getElementById('carousel3DWrapper');
   const items = wrapper?.querySelectorAll('.carousel-item');
   if (!wrapper || !items) return;
-  
+
   const totalItems = items.length;
-  
+
   items.forEach((item, index) => {
     item.classList.remove('active', 'prev-1', 'prev-2', 'next-1', 'next-2', 'hidden');
-    
+
     const diff = index - carouselCurrentIndex;
     const absDiff = Math.abs(diff);
-    
+
     if (diff === 0) {
       item.classList.add('active');
     } else if (diff === -1 || (diff === -(totalItems - 1) && totalItems > 2)) {
@@ -1747,9 +2502,9 @@ function updateCarouselPosition() {
 function activateCurrentCarouselItem() {
   const currentItem = carouselItems[carouselCurrentIndex];
   if (!currentItem) return;
-  
+
   const action = currentItem.action;
-  
+
   // 액션 실행
   switch (action) {
     case 'enterArchive':
@@ -2060,7 +2815,7 @@ function renderComparisonView() {
     counterEl.textContent = `${comparisonCurrentIndex + 1} / ${comparisonScenes.length}`;
     updateComparisonNavigation();
     console.log('[renderComparisonWaves] 시작, comparisonScenes:', comparisonScenes);
-    
+
     // 계산은 index.js에서 수행 (Visualizer는 숫자만 받음)
     const scenesWithWaveStyles = comparisonScenes.map(item => ({
         userEmotion: item.userEmotion,
@@ -2068,7 +2823,7 @@ function renderComparisonView() {
         userWaveStyle: item.userEmotion ? emotionVectorToWaveStyle(item.userEmotion) : null,
         originalWaveStyle: item.originalEmotion ? emotionVectorToWaveStyle(item.originalEmotion) : null
     }));
-    
+
     visualizer.renderComparisonWaves(scenesWithWaveStyles);
     updateComparisonAlignment();
     updateComparisonAverageAlignment();
@@ -2264,7 +3019,7 @@ window.navigateComparison = navigateComparison;
 window.closeComparisonView = closeComparisonView;
 window.endComparisonSession = endComparisonSession;
 
-// ========== 기억 등록 시스템 ==========
+// ───── 기억 등록 시스템 ─────
 const memoryRegistrationState = {
     isActive: false,
     currentMemory: {
@@ -2342,7 +3097,7 @@ function closeRegistrationScreen() {
     }
     memoryRegistrationState.isActive = false;
     memoryRegistrationState.phase = 'collecting';
-    
+
     // Confession Hub로 돌아가기
     showConfessionHub();
 }
@@ -2932,7 +3687,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 window.startMemoryRegistration = startMemoryRegistration;
 
-// ==================== The Confession ====================
+// ───── The Confession ─────
 
 // The Confession 상태 관리
 const confessionState = {
@@ -3077,7 +3832,7 @@ function endConfession() {
     confessionState.conversationHistory = [];
     confessionState.scenes = [];
     confessionState.generatedScene = null;
-    
+
     // Confession Hub로 돌아가기
     showConfessionHub();
 }
@@ -3687,7 +4442,7 @@ async function saveConfessionToDB() {
 window.startConfession = startConfession;
 window.endConfession = endConfession;
 
-// ==================== Confession Hub ====================
+// ───── Confession Hub ─────
 
 // Confession Hub 표시
 function showConfessionHub() {
@@ -3697,9 +4452,9 @@ function showConfessionHub() {
         introScreen.classList.add('hidden');
         introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important';
     }
-    
+
     hideAllScreens();
-    
+
     const confessionHub = document.getElementById('confessionHub');
     if (confessionHub) {
         confessionHub.classList.remove('hidden');
@@ -3733,12 +4488,12 @@ function showArchitectLocked() {
 function showMainMenu() {
     const introScreen = document.getElementById('introScreen');
     const confessionHub = document.getElementById('confessionHub');
-    
+
     if (confessionHub) {
         confessionHub.classList.add('hidden');
         confessionHub.style.display = 'none';
     }
-    
+
     if (introScreen) {
         introScreen.classList.remove('hidden');
         introScreen.classList.add('visible');
@@ -3774,10 +4529,10 @@ async function startRitualFlow() {
     currentRole = 'A'; // 화자 역할 설정
     currentSceneIndex = 0;
     ritualScenes = [];
-    
+
     // 모든 화면 숨기기
     hideAllScreens();
-    
+
     // Live 화자 화면 표시 (소켓 없이)
     try {
         currentSceneOrder = 1;
@@ -3795,77 +4550,77 @@ async function startRitualFlow() {
         currentGeneratedScene = '';
         finalSceneObject = null;
         isEditMode = false;
-        
+
         // UI 초기화
         const sceneContent = document.querySelector('#generatedSceneContent .generated-text');
         if (sceneContent) sceneContent.textContent = '';
-        
+
         const emotionContent = document.querySelector('#generatedEmotionContent .generated-text');
         if (emotionContent) emotionContent.textContent = '';
-        
+
         const chatMessages = document.getElementById('chatMessages');
         if (chatMessages) {
             chatMessages.innerHTML = '<div class="chat-message ai"><div class="chat-message-label">또다른 나</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>';
         }
-        
+
         const editBtn = document.querySelector('.edit-toggle-btn');
         if (editBtn) {
             editBtn.textContent = '수정';
             editBtn.classList.remove('active');
         }
-        
+
         const sceneTextarea = document.getElementById('editSceneTextarea');
         if (sceneTextarea) {
             sceneTextarea.style.display = 'none';
             sceneTextarea.value = '';
         }
-        
+
         const emotionTextarea = document.getElementById('editEmotionTextarea');
         if (emotionTextarea) {
             emotionTextarea.style.display = 'none';
             emotionTextarea.value = '';
         }
-        
+
         const sceneTextEl = document.querySelector('#generatedSceneContent .generated-text');
         if (sceneTextEl) sceneTextEl.style.display = 'block';
-        
+
         switchGeneratedTab('scene');
-        
+
         // Live Container 표시
         const liveContainerEl = document.getElementById('liveContainer');
         if (liveContainerEl) {
             liveContainerEl.classList.add('active');
             liveContainerEl.style.cssText = 'display:block !important';
         }
-        
+
         const liveContentEl = document.querySelector('.live-content');
         if (liveContentEl) {
             liveContentEl.classList.add('narrator-mode');
         }
-        
+
         // Narrator Panel 활성화
         const narratorPanelEl = document.getElementById('narratorPanel');
         if (narratorPanelEl) {
             narratorPanelEl.classList.add('active');
         }
-        
+
         const interpretationTrace = document.getElementById('interpretationTrace');
         const traceContent = document.getElementById('traceContent');
         if (interpretationTrace && traceContent) {
             interpretationTrace.style.display = 'block';
             traceContent.textContent = '5개의 장면을 생성하세요. 각 장면을 입력하고 저장하면 다음 장면으로 넘어갑니다.';
         }
-        
+
         showNpcDialogue("당신의 기억을 불러오세요. 5개의 장면을 직접 구성합니다.", 4000);
-        
+
         const narratorCanvas = document.getElementById('alignmentWaveCanvas');
         const experiencerCanvas = document.getElementById('expAlignmentWaveCanvas');
         const state = appStore.getState();
-        
+
         // 계산은 index.js에서 수행 (Visualizer는 숫자만 받음)
         const narratorWaveStyle = window.narratorEmotionVector ? emotionVectorToWaveStyle(window.narratorEmotionVector) : null;
         const experiencerWaveStyle = window.experiencerEmotionVector ? emotionVectorToWaveStyle(window.experiencerEmotionVector) : null;
-        
+
         visualizer.startAlignmentWaveAnimation(narratorCanvas, experiencerCanvas, {
             alignment: state.currentAlignment,
             narratorEmotionVector: window.narratorEmotionVector,
@@ -3883,10 +4638,10 @@ async function startRitualFlow() {
         setTimeout(() => {
             startVoiceWaveLiveAnimation();
         }, 300);
-        
+
         const footer = document.querySelector('.footer');
         if (footer) footer.classList.add('visible');
-        
+
         console.log('Ritual 모드 Live 화자 화면 표시 완료');
     } catch (e) {
         console.error('startRitualFlow error:', e);
@@ -3898,33 +4653,33 @@ async function startRitualFlow() {
 async function saveRitualScene(sceneData) {
     console.log('=== Ritual 장면 저장 ===');
     console.log('sceneData:', JSON.stringify(sceneData));
-    
+
     ritualScenes.push(sceneData);
     console.log(`Ritual 장면 저장됨: ${ritualScenes.length}/5`);
-    
+
     // UI 업데이트
     const traceContent = document.getElementById('traceContent');
     if (traceContent) {
         traceContent.textContent = `장면 ${ritualScenes.length}/5 저장됨. ${ritualScenes.length < 5 ? '다음 장면을 입력하세요.' : '모든 장면이 저장되었습니다.'}`;
     }
-    
+
     // 다음 장면을 위한 초기화
     currentPhase = 'scene';
     currentGeneratedScene = '';
     pendingSceneText = '';
     finalSceneObject = null;
-    
+
     const sceneContent = document.querySelector('#generatedSceneContent .generated-text');
     if (sceneContent) sceneContent.textContent = '';
-    
+
     const emotionContent = document.querySelector('#generatedEmotionContent .generated-text');
     if (emotionContent) emotionContent.textContent = '';
-    
+
     const chatMessages = document.getElementById('chatMessages');
     if (chatMessages) {
         chatMessages.innerHTML = '<div class="chat-message ai"><div class="chat-message-label">또다른 나</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>';
     }
-    
+
     if (ritualScenes.length >= 5) {
         showNotification('5개의 장면이 모두 저장되었습니다. 메모리를 저장합니다...');
         await saveRitualToMemories();
@@ -3937,23 +4692,23 @@ async function saveRitualScene(sceneData) {
 // Ritual 완료 시 memories/scenes 테이블에 저장
 async function saveRitualToMemories() {
     console.log('=== Ritual 완료, 메모리 저장 ===');
-    
+
     const memoryData = {
         title: ritualScenes[0]?.coreObject || '무제',
         source: 'ritual',
         status: 'Fetus'
     };
-    
+
     console.log('Source:', memoryData.source);
-    
+
     try {
         const { saveMemoryGraph } = await import('./lib/repo.js');
         supabaseClient = getSupabaseClient();
-        
+
         if (!supabaseClient) {
             throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
         }
-        
+
         console.log('[Memory] New memory created with status: Fetus');
         const memoryId = await saveMemoryGraph(supabaseClient, {
             memoryId: null,
@@ -3976,7 +4731,7 @@ async function saveRitualToMemories() {
                 originalReasonVector: scene.originalReasonVector || null
             }))
         });
-        
+
         showRitualComplete(memoryId);
     } catch (error) {
         console.error('Ritual 저장 오류:', error);
@@ -4004,4 +4759,3 @@ window.startBeginner = startBeginner;
 window.startRitual = startRitual;
 window.showArchitectLocked = showArchitectLocked;
 window.showMainMenu = showMainMenu;
-
