@@ -19,7 +19,7 @@ export function bindEvents(deps) {
 
     // ========== 전역 함수 접근 (window를 통해) ==========
     // 이벤트 핸들러에서 사용되는 전역 함수들은 window를 통해 접근
-    
+
     // ========== 1. 초기화 이벤트 ==========
     // DOMContentLoaded는 이미 index.js에서 처리되므로 여기서는 제외
     // (initApp 내부에서 bindEvents를 호출하도록 변경)
@@ -63,14 +63,14 @@ function bindOpeningEvents() {
     // 오프닝 사운드 및 UI 초기화
     const openingSound = document.getElementById('openingSound');
     if (openingSound) {
-        openingSound.addEventListener('error', function(e) {
+        openingSound.addEventListener('error', function (e) {
             console.error('오프닝 사운드 로드 실패:', e);
             const error = openingSound.error;
             if (error) {
                 console.error('오디오 에러 코드:', error.code, '메시지:', error.message);
             }
         });
-        openingSound.addEventListener('canplaythrough', function() {
+        openingSound.addEventListener('canplaythrough', function () {
             console.log('오프닝 사운드 로드 완료');
         });
         openingSound.load();
@@ -105,7 +105,7 @@ function bindOpeningEvents() {
     // 오프닝 화면 클릭 이벤트
     const openingScreenEl = document.getElementById('openingScreen');
     if (openingScreenEl) {
-        openingScreenEl.addEventListener('click', function(e) {
+        openingScreenEl.addEventListener('click', function (e) {
             if (window.hasZoomedIn) {
                 if (window.skipToIntro) window.skipToIntro();
                 return;
@@ -113,7 +113,7 @@ function bindOpeningEvents() {
             window.hasZoomedIn = true;
             const waveContainer = document.getElementById('openingWaveContainer');
             if (waveContainer) {
-                waveContainer.style.transform = 'scale(1)';
+                waveContainer.style.transform = 'scale(5, 1)';
                 waveContainer.style.opacity = '1';
             }
             const openingSound = document.getElementById('openingSound');
@@ -145,7 +145,7 @@ function bindOpeningEvents() {
 function bindAuthEvents() {
     const loginPasswordEl = document.getElementById('loginPassword');
     if (loginPasswordEl) {
-        loginPasswordEl.addEventListener('keypress', function(e) {
+        loginPasswordEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter' && window.handleLogin) {
                 window.handleLogin();
             }
@@ -154,7 +154,7 @@ function bindAuthEvents() {
 
     const loginUsernameEl = document.getElementById('loginUsername');
     if (loginUsernameEl) {
-        loginUsernameEl.addEventListener('keypress', function(e) {
+        loginUsernameEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 const passwordEl = document.getElementById('loginPassword');
                 if (passwordEl) passwordEl.focus();
@@ -164,7 +164,7 @@ function bindAuthEvents() {
 
     const signupPasswordConfirmEl = document.getElementById('signupPasswordConfirm');
     if (signupPasswordConfirmEl) {
-        signupPasswordConfirmEl.addEventListener('keypress', function(e) {
+        signupPasswordConfirmEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter' && window.handleSignup) {
                 window.handleSignup();
             }
@@ -173,7 +173,7 @@ function bindAuthEvents() {
 
     const signupPasswordEl = document.getElementById('signupPassword');
     if (signupPasswordEl) {
-        signupPasswordEl.addEventListener('keypress', function(e) {
+        signupPasswordEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 const confirmEl = document.getElementById('signupPasswordConfirm');
                 if (confirmEl) confirmEl.focus();
@@ -183,7 +183,7 @@ function bindAuthEvents() {
 
     const signupEmailEl = document.getElementById('signupEmail');
     if (signupEmailEl) {
-        signupEmailEl.addEventListener('keypress', function(e) {
+        signupEmailEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 const passwordEl = document.getElementById('signupPassword');
                 if (passwordEl) passwordEl.focus();
@@ -193,7 +193,7 @@ function bindAuthEvents() {
 
     const signupUsernameEl = document.getElementById('signupUsername');
     if (signupUsernameEl) {
-        signupUsernameEl.addEventListener('keypress', function(e) {
+        signupUsernameEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter' && !e.isComposing) {
                 const emailEl = document.getElementById('signupEmail');
                 if (emailEl) emailEl.focus();
@@ -207,7 +207,7 @@ function bindArchiveEvents() {
     // 자유 입력 필드
     const freeInputEl = document.getElementById('freeInput');
     if (freeInputEl) {
-        freeInputEl.addEventListener('keypress', function(e) {
+        freeInputEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
                 e.preventDefault();
                 const customAction = this.value.trim();
@@ -231,7 +231,7 @@ function bindArchiveEvents() {
     // 감정 입력 필드
     const emotionInputFieldEl = document.getElementById('emotionInputField');
     if (emotionInputFieldEl) {
-        emotionInputFieldEl.addEventListener('keypress', function(e) {
+        emotionInputFieldEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter' && !e.isComposing && window.submitEmotion) {
                 e.preventDefault();
                 window.submitEmotion();
@@ -248,7 +248,7 @@ function bindLiveEvents() {
     // Experiencer 감정 입력
     const experiencerFeelingInputEl = document.getElementById('experiencerFeelingInput');
     if (experiencerFeelingInputEl) {
-        experiencerFeelingInputEl.addEventListener('keypress', function(e) {
+        experiencerFeelingInputEl.addEventListener('keypress', function (e) {
             if (e.key === 'Enter' && e.ctrlKey && !e.isComposing && window.submitExperiencerFeeling) {
                 e.preventDefault();
                 window.submitExperiencerFeeling();
@@ -269,7 +269,7 @@ function bindEmotionInputEvents() {
 function bindSessionCodeEvents() {
     const sessionCodeInputEl = document.getElementById('sessionCodeInput');
     if (sessionCodeInputEl) {
-        sessionCodeInputEl.addEventListener('input', function(e) {
+        sessionCodeInputEl.addEventListener('input', function (e) {
             this.value = this.value.toUpperCase();
         });
     }
@@ -285,7 +285,7 @@ function bindCarouselEvents() {
 
 // ========== 메모리 등록 이벤트 ==========
 function bindMemoryRegistrationEvents() {
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const registrationScreen = document.getElementById('memory-registration-screen');
         if (!registrationScreen) return;
 
@@ -441,7 +441,7 @@ function bindConfessionEvents() {
             if (window.startConfession) window.startConfession();
         });
     }
-    
+
     // 종료 버튼
     const exitBtn = document.querySelector('.confession-exit-btn');
     if (exitBtn) {
@@ -451,7 +451,7 @@ function bindConfessionEvents() {
             }
         });
     }
-    
+
     // Step 0: 입장 버튼
     const enterBtn = document.querySelector('.confession-enter-btn');
     if (enterBtn) {
@@ -459,7 +459,7 @@ function bindConfessionEvents() {
             if (window.nextStep) window.nextStep();
         });
     }
-    
+
     // Step 2: 앵커 입력
     const anchorInput = document.querySelector('.anchor-input');
     if (anchorInput) {
@@ -469,7 +469,7 @@ function bindConfessionEvents() {
                 if (window.checkSafetyBeforeSubmit && !window.checkSafetyBeforeSubmit(anchorInput.value.trim(), anchorInput)) {
                     return; // 위기 감지 시 차단
                 }
-                
+
                 if (window.confessionState) {
                     window.confessionState.ritualData.anchorObject = anchorInput.value.trim();
                 }
@@ -484,7 +484,7 @@ function bindConfessionEvents() {
             }
         });
     }
-    
+
     // Step 3: 발화 입력
     const leadInput = document.querySelector('.lead-input');
     if (leadInput) {
@@ -494,7 +494,7 @@ function bindConfessionEvents() {
                 if (window.checkSafetyBeforeSubmit && !window.checkSafetyBeforeSubmit(leadInput.value.trim(), leadInput)) {
                     return; // 위기 감지 시 차단
                 }
-                
+
                 if (window.confessionState) {
                     window.confessionState.ritualData.action = leadInput.value.trim();
                 }
@@ -504,7 +504,7 @@ function bindConfessionEvents() {
             }
         });
     }
-    
+
     // Step 4: 충돌 입력
     const crashInput = document.querySelector('.crash-input');
     if (crashInput) {
@@ -514,7 +514,7 @@ function bindConfessionEvents() {
                 if (window.checkSafetyBeforeSubmit && !window.checkSafetyBeforeSubmit(crashInput.value.trim(), crashInput)) {
                     return; // 위기 감지 시 차단
                 }
-                
+
                 if (window.confessionState) {
                     window.confessionState.ritualData.conflict = crashInput.value.trim();
                 }
@@ -524,7 +524,7 @@ function bindConfessionEvents() {
             }
         });
     }
-    
+
     // Step 5: 봉인 입력
     const sealInput = document.querySelector('.seal-input');
     const saveBtn = document.querySelector('.confession-save-btn');
@@ -536,19 +536,19 @@ function bindConfessionEvents() {
                 saveBtn.classList.add('hidden');
             }
         });
-        
+
         sealInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && sealInput.value.trim()) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const inputValue = sealInput.value.trim();
-                
+
                 // 안전 체크
                 if (window.checkSafetyBeforeSubmit && !window.checkSafetyBeforeSubmit(inputValue, sealInput)) {
                     return; // 위기 감지 시 차단
                 }
-                
+
                 // 즉시 UI 업데이트 (비동기 작업 전에)
                 if (window.confessionState) {
                     window.confessionState.ritualData.emotionWord = inputValue;
@@ -558,7 +558,7 @@ function bindConfessionEvents() {
                 if (saveBtn) {
                     saveBtn.classList.add('hidden');
                 }
-                
+
                 // 비동기 작업은 다음 틱에 실행
                 setTimeout(() => {
                     if (window.generateSceneFromRitual) window.generateSceneFromRitual();
@@ -566,17 +566,17 @@ function bindConfessionEvents() {
             }
         });
     }
-    
+
     if (saveBtn) {
         saveBtn.addEventListener('click', () => {
             if (sealInput && sealInput.value.trim()) {
                 const inputValue = sealInput.value.trim();
-                
+
                 // 안전 체크
                 if (window.checkSafetyBeforeSubmit && !window.checkSafetyBeforeSubmit(inputValue, sealInput)) {
                     return; // 위기 감지 시 차단
                 }
-                
+
                 if (window.confessionState) {
                     window.confessionState.ritualData.emotionWord = inputValue;
                 }
@@ -586,7 +586,7 @@ function bindConfessionEvents() {
             }
         });
     }
-    
+
     // 결과 화면 완료 버튼
     const completeBtn = document.querySelector('.confession-complete-btn');
     if (completeBtn) {
@@ -597,10 +597,10 @@ function bindConfessionEvents() {
                 if (window.confessionState.generatedScene) {
                     window.confessionState.scenes.push(window.confessionState.generatedScene);
                 }
-                
+
                 // 다음 장면 수집할지 물어보기
                 const continueMore = confirm(`장면 ${window.confessionState.scenes.length}개 수집됨. 다음 장면을 추가할까요?`);
-                
+
                 if (continueMore) {
                     // 상태 초기화하고 Step 0부터 다시
                     window.confessionState.ritualData = {
