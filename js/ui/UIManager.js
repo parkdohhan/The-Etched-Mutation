@@ -263,6 +263,27 @@ export class UIManager {
             container.appendChild(btn);
         });
     }
+
+    // ========== 감정 입력 수집 ==========
+
+    /**
+     * 감정 입력 필드에서 값 수집
+     * @returns {string} 입력된 이유 텍스트 (기본값: "말하고 싶지 않아")
+     */
+    collectEmotionInput() {
+        const inputEl = document.getElementById('emotionInputField');
+        return inputEl?.value || "말하고 싶지 않아";
+    }
+
+    /**
+     * 감정 모달 닫기 및 입력 필드 초기화
+     */
+    closeEmotionModal() {
+        const modalEl = document.getElementById('emotionModal');
+        if (modalEl) modalEl.classList.remove('active');
+        const inputEl = document.getElementById('emotionInputField');
+        if (inputEl) inputEl.value = '';
+    }
 }
 
 export const uiManager = new UIManager();

@@ -171,6 +171,9 @@ function getDialogueByKey(path) {
 }
 
 // 내보내기
+export { NPC_DIALOGUES, getRandomDialogue, getDialogueByKey };
+
+// CommonJS 호환성 (Node.js 환경)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { NPC_DIALOGUES, getRandomDialogue, getDialogueByKey };
 }
