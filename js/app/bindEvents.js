@@ -60,48 +60,47 @@ export function bindEvents(deps) {
 
 // ========== 오프닝 화면 이벤트 ==========
 function bindOpeningEvents() {
-    // 오프닝 사운드 이벤트
-    document.addEventListener('DOMContentLoaded', function() {
-        const openingSound = document.getElementById('openingSound');
-        if (openingSound) {
-            openingSound.addEventListener('error', function(e) {
-                console.error('오프닝 사운드 로드 실패:', e);
-                const error = openingSound.error;
-                if (error) {
-                    console.error('오디오 에러 코드:', error.code, '메시지:', error.message);
-                }
-            });
-            openingSound.addEventListener('canplaythrough', function() {
-                console.log('오프닝 사운드 로드 완료');
-            });
-            openingSound.load();
-        }
-
-        const openingScreen = document.getElementById('openingScreen');
-        if (openingScreen) {
-            openingScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:3000 !important';
-        }
-
-        const waveContainer = document.getElementById('openingWaveContainer');
-        if (waveContainer) {
-            waveContainer.classList.add('visible');
-            const canvas = document.getElementById('openingWaveCanvas');
-            if (canvas && window.startOpeningWaveAnimation) {
-                window.startOpeningWaveAnimation(canvas);
+    // 오프닝 사운드 및 UI 초기화
+    const openingSound = document.getElementById('openingSound');
+    if (openingSound) {
+        openingSound.addEventListener('error', function(e) {
+            console.error('오프닝 사운드 로드 실패:', e);
+            const error = openingSound.error;
+            if (error) {
+                console.error('오디오 에러 코드:', error.code, '메시지:', error.message);
             }
-        }
+        });
+        openingSound.addEventListener('canplaythrough', function() {
+            console.log('오프닝 사운드 로드 완료');
+        });
+        openingSound.load();
+    }
 
-        const hint = document.getElementById('openingStartHint');
-        if (hint) {
-            hint.style.opacity = '1';
-            hint.classList.add('visible');
-        }
+    const openingScreen = document.getElementById('openingScreen');
+    if (openingScreen) {
+        openingScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:3000 !important';
+    }
 
-        const registerMemoryBtn = document.getElementById('registerMemoryBtn');
-        if (registerMemoryBtn && window.startMemoryRegistration) {
-            registerMemoryBtn.addEventListener('click', window.startMemoryRegistration);
+    const waveContainer = document.getElementById('openingWaveContainer');
+    if (waveContainer) {
+        waveContainer.classList.add('visible');
+        const canvas = document.getElementById('openingWaveCanvas');
+        // startOpeningWaveAnimation는 index.js에서 window에 노출됨
+        if (canvas && window.startOpeningWaveAnimation) {
+            window.startOpeningWaveAnimation(canvas);
         }
-    });
+    }
+
+    const hint = document.getElementById('openingStartHint');
+    if (hint) {
+        hint.style.opacity = '1';
+        hint.classList.add('visible');
+    }
+
+    const registerMemoryBtn = document.getElementById('registerMemoryBtn');
+    if (registerMemoryBtn && window.startMemoryRegistration) {
+        registerMemoryBtn.addEventListener('click', window.startMemoryRegistration);
+    }
 
     // 오프닝 화면 클릭 이벤트
     const openingScreenEl = document.getElementById('openingScreen');

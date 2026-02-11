@@ -170,7 +170,14 @@ function getDialogueByKey(path) {
   return getRandomDialogue(current);
 }
 
-// 내보내기
+// 브라우저 글로벌 노출 (window)
+if (typeof window !== 'undefined') {
+  window.NPC_DIALOGUES = NPC_DIALOGUES;
+  window.getRandomDialogue = getRandomDialogue;
+  window.getDialogueByKey = getDialogueByKey;
+}
+
+// ES 모듈 내보내기
 export { NPC_DIALOGUES, getRandomDialogue, getDialogueByKey };
 
 // CommonJS 호환성 (Node.js 환경)

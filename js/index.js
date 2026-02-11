@@ -3480,17 +3480,19 @@ async function finishRegistration() {
  */
 async function saveMemoryToDB(memory) {
     const result = await MemoryService.saveMemory({ memory });
-    
+        
     if (!result.ok) {
         throw result.error || new Error('메모리 저장 실패');
-    }
-    
-    return result.data;
 }
+
+    return result.data;
+                }
 
 // 메모리 등록 및 The Confession 이벤트 바인딩은 bindEvents.js로 이동됨
 
 window.startMemoryRegistration = startMemoryRegistration;
+window.startOpeningWaveAnimation = startOpeningWaveAnimation;
+window.handleOpeningKeydown = handleOpeningKeydown;
 
 // ───── The Confession ─────
 
