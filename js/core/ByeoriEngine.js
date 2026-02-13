@@ -6,9 +6,18 @@ import {
   cosineSimilarity, 
   calculateAlignment, 
   getBucket, 
-  projectEmotionToVAD 
+  projectEmotionToVAD,
+  calculateVADSimilarity,
+  calculateEmbeddingSimilarity
 } from '../shared/math.js';
 import { TEM_ANCHOR_VAD, TEM_ANCHOR_VAD_EXTENDED } from '../shared/tem_geo_map.js';
+
+// ==================== V2 튜닝 상수 ====================
+const EMB_WEIGHT = 0.65;
+const VAD_WEIGHT = 0.35;
+const EMB_EXPONENT = 1.35;  // 나중에 1.35~1.45로 쉽게 튜닝 가능
+const VAD_K = 3.0;
+const VOID_PENALTY = 0.7;
 
 /**
  * ByeoriEngine - 별이 엔진 메인 클래스
@@ -51,17 +60,16 @@ export class ByeoriEngine {
       return this._createEmptyResult();
     }
 
-    // 1. 복합 정렬도 계산 (감정 40% + 이유 40% + VOID 20%)
-    const alignmentScore = this._calculateComplexAlignment(
+    // 1. V2 정렬도 계산 (Embedding + VAD 중심)
+    const alignmentResult = this._calculateSimplerAlignment(
       userVector, 
-      originalVector, 
-      anchorEmotions
+      originalVector
     );
 
     // 2. 버킷 판정 (히스테리시스 + FIXATED 포함)
-    const alignmentBucket = getBucket(alignmentScore, previousBucket, emotionHistory);
+    const alignmentBucket = getBucket(alignmentResult.finalScore, previousBucket, emotionHistory);
 
-    // 3. 미스매치 판정
+    // 3. 미스매치 판정 (narrative tag 분류용)
     const mismatchType = this._getMismatchType(userVector, originalVector);
 
     // 4. VAD 투영 (시각화용)
@@ -73,15 +81,20 @@ export class ByeoriEngine {
     // 5. 전이 패턴 (현재는 null, 추후 구현)
     const transitionPattern = null;
 
-    // 6. 디버그 정보 (선택)
+    // 6. 디버그 정보 (V2)
     const debug = {
-      E: alignmentScore, // E = 정렬도
-      // R, A는 추후 필요시 추가
+      vad_score: alignmentResult.vad_score,
+      emb_score_raw: alignmentResult.emb_score_raw,
+      emb_score_adj: alignmentResult.emb_score_adj,
+      void_penalty: alignmentResult.void_penalty,
+      weights: { emb: EMB_WEIGHT, vad: VAD_WEIGHT },
+      exponent: EMB_EXPONENT,
+      k: VAD_K
     };
 
     return {
       affective_position: affectivePosition,
-      alignment_score: alignmentScore,
+      alignment_score: alignmentResult.finalScore,
       alignment_bucket: alignmentBucket,
       transition_pattern: transitionPattern,
       mismatch_type: mismatchType,
@@ -90,49 +103,70 @@ export class ByeoriEngine {
   }
 
   /**
-   * 복합 정렬도 계산 (감정 40% + 이유 40% + VOID 20%)
+   * V2 정렬도 계산 (Embedding + VAD 중심)
    * 
    * @private
-   * @param {Object} userVector - 사용자 벡터
-   * @param {Object} originalVector - 원본 벡터
-   * @param {Array<string>} anchorEmotions - 앵커 감정 목록
-   * @returns {number} 정렬도 (0..1)
+   * @param {Object} userVector - 사용자 벡터 { base, embedding?, reason_analysis? }
+   * @param {Object} originalVector - 원본 벡터 { base, embedding?, reason_analysis? }
+   * @returns {Object} 계산 결과 { finalScore, vad_score, emb_score_raw, emb_score_adj, void_penalty }
    */
-  _calculateComplexAlignment(userVector, originalVector, anchorEmotions = null) {
-    if (!userVector || !originalVector) return 0;
-
-    // 감정 유사도 (40%)
-    const emotionScore = cosineSimilarity(
-      userVector.base || userVector,
-      originalVector.base || originalVector,
-      anchorEmotions
-    );
-
-    // 이유 분석 일치도 (40%)
-    let reasonScore = 0;
-    const userReason = userVector.reason_analysis || {};
-    const origReason = originalVector.reason_analysis || {};
-
-    const attributionMatch = userReason.attribution && 
-                             origReason.attribution && 
-                             userReason.attribution === origReason.attribution;
-    const coreFearMatch = userReason.core_fear && 
-                          origReason.core_fear && 
-                          userReason.core_fear === origReason.core_fear;
-
-    if (attributionMatch) reasonScore += 0.5;
-    if (coreFearMatch) reasonScore += 0.5;
-
-    // VOID 상태 일치도 (20%)
-    let voidScore = 0;
-    if (!!userReason.is_void === !!origReason.is_void) {
-      voidScore = 1.0;
+  _calculateSimplerAlignment(userVector, originalVector) {
+    if (!userVector || !originalVector) {
+      return {
+        finalScore: 0,
+        vad_score: 0,
+        emb_score_raw: null,
+        emb_score_adj: 0,
+        void_penalty: 1.0
+      };
     }
 
-    // 최종 정렬도 계산
-    const totalAlignment = (emotionScore * 0.4) + (reasonScore * 0.4) + (voidScore * 0.2);
+    // ========== Embedding Score ==========
+    let emb_score_raw = null;
+    let emb_score_adj = 0;
 
-    return Math.max(0, Math.min(1, totalAlignment)); // 0..1 클램프
+    const userEmbedding = userVector.embedding;
+    const origEmbedding = originalVector.embedding;
+
+    if (userEmbedding && origEmbedding && 
+        Array.isArray(userEmbedding) && Array.isArray(origEmbedding) &&
+        userEmbedding.length > 0 && origEmbedding.length > 0) {
+      // Embedding이 둘 다 있으면 calculateEmbeddingSimilarity 사용
+      emb_score_raw = calculateEmbeddingSimilarity(userEmbedding, origEmbedding);
+      emb_score_adj = Math.pow(emb_score_raw, EMB_EXPONENT);
+    } else {
+      // Embedding이 없으면 VAD로 대체
+      const userVAD = projectEmotionToVAD(userVector.base || userVector);
+      const origVAD = projectEmotionToVAD(originalVector.base || originalVector);
+      const vadFallback = calculateVADSimilarity(userVAD, origVAD, VAD_K);
+      emb_score_raw = vadFallback;
+      emb_score_adj = Math.pow(vadFallback, EMB_EXPONENT);
+    }
+
+    // ========== VAD Score ==========
+    const userVAD = projectEmotionToVAD(userVector.base || userVector);
+    const origVAD = projectEmotionToVAD(originalVector.base || originalVector);
+    const vad_score = calculateVADSimilarity(userVAD, origVAD, VAD_K);
+
+    // ========== Raw Score ==========
+    const rawScore = (emb_score_adj * EMB_WEIGHT) + (vad_score * VAD_WEIGHT);
+
+    // ========== Void Penalty ==========
+    const userReason = userVector.reason_analysis || {};
+    const origReason = originalVector.reason_analysis || {};
+    const voidMismatch = !!userReason.is_void !== !!origReason.is_void;
+    const void_penalty = voidMismatch ? VOID_PENALTY : 1.0;
+
+    // ========== Final Score ==========
+    const finalScore = Math.max(0, Math.min(1, rawScore * void_penalty));
+
+    return {
+      finalScore,
+      vad_score,
+      emb_score_raw,
+      emb_score_adj,
+      void_penalty
+    };
   }
 
   /**
@@ -143,39 +177,46 @@ export class ByeoriEngine {
    * @param {Object} originalVector - 원본 벡터
    * @returns {string|null} 미스매치 타입 또는 null
    */
+  /**
+   * 미스매치 타입 판정 (narrative tag 분류용, 점수에는 관여하지 않음)
+   * 
+   * @private
+   * @param {Object} userVector - 사용자 벡터
+   * @param {Object} originalVector - 원본 벡터
+   * @returns {string|null} 미스매치 타입 또는 null
+   */
   _getMismatchType(userVector, originalVector) {
     if (!userVector || !originalVector) return null;
-
-    const emotionSimilarity = cosineSimilarity(
-      userVector.base,
-      originalVector.base || originalVector
-    );
 
     const userReason = userVector.reason_analysis || {};
     const origReason = originalVector.reason_analysis || {};
 
-    // 1. VOID 미스매치 (최우선)
+    // 1. void_mismatch (최우선)
     if (!!userReason.is_void !== !!origReason.is_void) {
       return 'void_mismatch';
     }
 
-    // 2. 감정 미스매치
-    if (emotionSimilarity < 0.5) {
-      return 'emotion_mismatch';
-    }
-
-    // 3. 귀인 미스매치
+    // 2. attribution_mismatch (attribution 존재할 때만)
     if (userReason.attribution && 
         origReason.attribution && 
         userReason.attribution !== origReason.attribution) {
       return 'attribution_mismatch';
     }
 
-    // 4. 대상 전위 (target_displacement)
+    // 3. core_fear_mismatch (core_fear 존재할 때만)
     if (userReason.core_fear && 
         origReason.core_fear && 
         userReason.core_fear !== origReason.core_fear) {
-      return 'target_displacement';
+      return 'core_fear_mismatch';
+    }
+
+    // 4. emotion_mismatch (fallback)
+    const emotionSimilarity = cosineSimilarity(
+      userVector.base || userVector,
+      originalVector.base || originalVector
+    );
+    if (emotionSimilarity < 0.5) {
+      return 'emotion_mismatch';
     }
 
     // 일치 (미스매치 없음)

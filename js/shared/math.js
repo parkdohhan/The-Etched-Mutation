@@ -93,7 +93,99 @@ export function normalizeAnchor(anchor) {
   return EMOTION_ANCHOR_MAP[trimmed] || trimmed.toLowerCase();
 }
 
-// 코사인 유사도
+/**
+ * VAD 유사도 계산 (3D 유클리드 거리 + 정규화 + 지수 감쇠)
+ * 
+ * @param {Object} userVAD - {v, a, d} 형태의 사용자 VAD 좌표
+ * @param {Object} originVAD - {v, a, d} 형태의 원본 VAD 좌표
+ * @param {number} k - 지수 감쇠 계수 (기본값: 3.0)
+ * @returns {number} 0~1 범위의 유사도 (1에 가까울수록 유사)
+ */
+export function calculateVADSimilarity(userVAD, originVAD, k = 3.0) {
+  // 입력 검증
+  if (!userVAD || !originVAD) return 0;
+  
+  const v1 = Number(userVAD.v);
+  const a1 = Number(userVAD.a);
+  const d1 = Number(userVAD.d);
+  const v2 = Number(originVAD.v);
+  const a2 = Number(originVAD.a);
+  const d2 = Number(originVAD.d);
+  
+  // NaN 방어
+  if (isNaN(v1) || isNaN(a1) || isNaN(d1) || isNaN(v2) || isNaN(a2) || isNaN(d2)) {
+    return 0;
+  }
+  
+  // 3D 유클리드 거리 계산
+  const dv = v1 - v2;
+  const da = a1 - a2;
+  const dd = d1 - d2;
+  const dist = Math.sqrt(dv * dv + da * da + dd * dd);
+  
+  // 최대 거리: VAD가 [-1, 1] 범위라고 가정하면 최대 거리는 sqrt(12)
+  const maxDist = Math.sqrt(12);
+  
+  // 정규화된 거리 (0~1 범위)
+  const normalizedDist = Math.max(0, Math.min(1, dist / maxDist));
+  
+  // 지수 감쇠: exp(-k * normalizedDist)
+  return Math.exp(-k * normalizedDist);
+}
+
+/**
+ * 임베딩 유사도 계산 (코사인 유사도, 음수는 0으로 클램프)
+ * 
+ * @param {Array<number>} vecA - 첫 번째 임베딩 벡터
+ * @param {Array<number>} vecB - 두 번째 임베딩 벡터
+ * @returns {number} 0~1 범위의 유사도 (음수는 0으로 클램프)
+ */
+export function calculateEmbeddingSimilarity(vecA, vecB) {
+  // 입력 검증
+  if (!vecA || !vecB || !Array.isArray(vecA) || !Array.isArray(vecB)) {
+    return 0;
+  }
+  
+  // 길이 불일치 또는 빈 벡터
+  if (vecA.length === 0 || vecB.length === 0 || vecA.length !== vecB.length) {
+    return 0;
+  }
+  
+  // 코사인 유사도 계산
+  let dotProduct = 0;
+  let magA = 0;
+  let magB = 0;
+  
+  for (let i = 0; i < vecA.length; i++) {
+    const a = Number(vecA[i]) || 0;
+    const b = Number(vecB[i]) || 0;
+    dotProduct += a * b;
+    magA += a * a;
+    magB += b * b;
+  }
+  
+  magA = Math.sqrt(magA);
+  magB = Math.sqrt(magB);
+  
+  if (magA === 0 || magB === 0) return 0;
+  
+  const similarity = dotProduct / (magA * magB);
+  
+  // 음수는 0으로 클램프
+  return Math.max(0, similarity);
+}
+
+/**
+ * @deprecated 이 함수는 구형 감정 벡터 유사도 계산용입니다.
+ * 새로운 임베딩 유사도 계산에는 calculateEmbeddingSimilarity를 사용하세요.
+ * 
+ * 코사인 유사도 (감정 벡터용 - 하위 호환성 유지)
+ * 
+ * @param {Object} vec1 - 첫 번째 감정 벡터
+ * @param {Object} vec2 - 두 번째 감정 벡터
+ * @param {Array<string>} anchorEmotions - 사용할 앵커 목록 (선택적)
+ * @returns {number} -1~1 범위의 코사인 유사도
+ */
 export function cosineSimilarity(vec1, vec2, anchorEmotions = null) {
   if (!vec1 || !vec2) return 0;
   
@@ -161,8 +253,16 @@ export function calculateAlignment(emotionSim, reasonSim, voidMatch) {
  * 버킷 판정 (의미 레이어)
  * 
  * ⚠️ VAD 사용 금지 - 정렬도 값만 사용 ⚠️
+ * 
+ * 임계값:
+ * - HIGH: >= 0.76
+ * - LOW: < 0.52
+ * - MID: 0.52 <= alignment < 0.76
+ * 
+ * 히스테리시스:
+ * - HIGH 유지: >= 0.70 (HIGH에서 떨어질 때)
+ * - LOW 유지: <= 0.58 (LOW에서 올라갈 때)
  */
-// 버킷 판정
 export function getBucket(alignment, previousBucket = null, emotionHistory = null) {
   // FIXATED 체크
   if (emotionHistory && emotionHistory.length >= 3) {
@@ -172,13 +272,13 @@ export function getBucket(alignment, previousBucket = null, emotionHistory = nul
     }
   }
   
-  // 히스테리시스 적용
-  if (previousBucket === 'HIGH' && alignment >= 0.45) return 'HIGH';
-  if (previousBucket === 'LOW' && alignment <= 0.25) return 'LOW';
+  // 히스테리시스 적용 (HIGH 유지 기준: 0.70, LOW 유지 기준: 0.58)
+  if (previousBucket === 'HIGH' && alignment >= 0.70) return 'HIGH';
+  if (previousBucket === 'LOW' && alignment <= 0.58) return 'LOW';
   
   // 첫 판정 또는 MID
-  if (alignment >= 0.55) return 'HIGH';
-  if (alignment < 0.35) return 'LOW';
+  if (alignment >= 0.76) return 'HIGH';
+  if (alignment < 0.52) return 'LOW';
   return 'MID';
 }
 

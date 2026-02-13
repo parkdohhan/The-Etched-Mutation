@@ -24,7 +24,7 @@ function validateEmotionAnalysisResult(obj) {
         throw new Error('응답 형식 오류: analysis가 없습니다');
     }
     
-    // analysis.base 필수
+    // analysis.base 필수 (핵심 좌표)
     if (!obj.analysis.base || typeof obj.analysis.base !== 'object') {
         throw new Error('응답 형식 오류: analysis.base가 없습니다');
     }
@@ -36,6 +36,26 @@ function validateEmotionAnalysisResult(obj) {
             obj.analysis.base[emotion] < 0 || 
             obj.analysis.base[emotion] > 1) {
             throw new Error(`응답 형식 오류: analysis.base.${emotion}가 유효하지 않습니다 (0-1 범위의 숫자여야 함)`);
+        }
+    }
+    
+    // analysis.embedding 검증 (있으면 검증, 없으면 통과)
+    if (obj.analysis.embedding !== undefined) {
+        if (!Array.isArray(obj.analysis.embedding)) {
+            throw new Error('응답 형식 오류: analysis.embedding이 배열이 아닙니다');
+        }
+        
+        // 모든 원소가 number이고 NaN이 아닌지 확인
+        for (let i = 0; i < obj.analysis.embedding.length; i++) {
+            const val = obj.analysis.embedding[i];
+            if (typeof val !== 'number' || isNaN(val)) {
+                throw new Error(`응답 형식 오류: analysis.embedding[${i}]가 유효한 숫자가 아닙니다`);
+            }
+        }
+        
+        // 길이가 너무 짧으면 경고만 (실패로 처리하지 않음)
+        if (obj.analysis.embedding.length < 10) {
+            console.warn(`[AIService] analysis.embedding 길이가 짧습니다 (${obj.analysis.embedding.length}). 환경별 임베딩 차이를 허용합니다.`);
         }
     }
     
@@ -62,9 +82,19 @@ function validateEmotionAnalysisResult(obj) {
         }
     }
     
-    // reason_analysis는 선택 (있으면 객체여야 함)
-    if (obj.reason_analysis !== undefined && (typeof obj.reason_analysis !== 'object' || obj.reason_analysis === null)) {
-        throw new Error('응답 형식 오류: reason_analysis가 객체가 아닙니다');
+    // analysis.reason_analysis는 선택 (있으면 검증, 없으면 통과)
+    if (obj.analysis.reason_analysis !== undefined) {
+        if (typeof obj.analysis.reason_analysis !== 'object' || obj.analysis.reason_analysis === null) {
+            throw new Error('응답 형식 오류: analysis.reason_analysis가 객체가 아닙니다');
+        }
+        // reason_analysis 내부 필드 검증 (필요시 추가)
+    }
+    
+    // 하위 호환성: 최상위 레벨 reason_analysis도 허용 (있으면 검증)
+    if (obj.reason_analysis !== undefined) {
+        if (typeof obj.reason_analysis !== 'object' || obj.reason_analysis === null) {
+            throw new Error('응답 형식 오류: reason_analysis가 객체가 아닙니다');
+        }
     }
     
     return true;

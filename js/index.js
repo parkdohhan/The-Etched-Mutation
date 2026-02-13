@@ -2313,8 +2313,10 @@ function startOpeningWaveAnimation(canvas) {
     // 커서 호버 효과를 위한 이벤트 리스너
     canvas.addEventListener('mousemove', function (e) {
         const rect = canvas.getBoundingClientRect();
-        openingMouseX = (e.clientX - rect.left) * 2;
-        openingMouseY = (e.clientY - rect.top) * 2;
+        // ctx.scale(2, 2)로 스케일링되어 있으므로, 그리기 좌표계는 canvas.width/2 범위
+        // 따라서 마우스 위치도 그에 맞게 변환 (스케일링된 좌표계 기준)
+        openingMouseX = (e.clientX - rect.left) * (canvas.width / 2 / rect.width);
+        openingMouseY = (e.clientY - rect.top) * (canvas.height / 2 / rect.height);
     });
     canvas.addEventListener('mouseleave', function () {
         openingMouseX = -100;
@@ -2323,15 +2325,18 @@ function startOpeningWaveAnimation(canvas) {
 
     const width = canvas.width / 2;
     const height = canvas.height / 2;
+    
+    // 캔버스 높이에 비례하여 최대 진폭 제한 (잘림 방지)
+    const maxAmplitude = height * 0.35;
 
     const waves = [
-        { color: 'rgba(100,130,150,', baseOpacity: 0.10, speed: 0.010, amplitude: 50, phase: 0, freq: 0.020 },
-        { color: 'rgba(120,150,170,', baseOpacity: 0.15, speed: 0.014, amplitude: 40, phase: 0.6, freq: 0.025 },
-        { color: 'rgba(130,155,175,', baseOpacity: 0.20, speed: 0.018, amplitude: 35, phase: 1.2, freq: 0.030 },
-        { color: 'rgba(140,165,185,', baseOpacity: 0.26, speed: 0.022, amplitude: 30, phase: 1.9, freq: 0.035 },
-        { color: 'rgba(155,175,195,', baseOpacity: 0.33, speed: 0.026, amplitude: 25, phase: 2.6, freq: 0.040 },
-        { color: 'rgba(170,190,205,', baseOpacity: 0.42, speed: 0.030, amplitude: 20, phase: 3.3, freq: 0.045 },
-        { color: 'rgba(190,205,215,', baseOpacity: 0.52, speed: 0.034, amplitude: 15, phase: 4.0, freq: 0.050 },
+        { color: 'rgba(100,130,150,', baseOpacity: 0.10, speed: 0.010, amplitude: Math.min(80, maxAmplitude), phase: 0, freq: 0.020, noiseScale: 0.8 },
+        { color: 'rgba(120,150,170,', baseOpacity: 0.15, speed: 0.014, amplitude: Math.min(70, maxAmplitude * 0.9), phase: 0.6, freq: 0.025, noiseScale: 0.7 },
+        { color: 'rgba(130,155,175,', baseOpacity: 0.20, speed: 0.018, amplitude: Math.min(60, maxAmplitude * 0.8), phase: 1.2, freq: 0.030, noiseScale: 0.6 },
+        { color: 'rgba(140,165,185,', baseOpacity: 0.26, speed: 0.022, amplitude: Math.min(55, maxAmplitude * 0.7), phase: 1.9, freq: 0.035, noiseScale: 0.5 },
+        { color: 'rgba(155,175,195,', baseOpacity: 0.33, speed: 0.026, amplitude: Math.min(45, maxAmplitude * 0.6), phase: 2.6, freq: 0.040, noiseScale: 0.4 },
+        { color: 'rgba(170,190,205,', baseOpacity: 0.42, speed: 0.030, amplitude: Math.min(35, maxAmplitude * 0.5), phase: 3.3, freq: 0.045, noiseScale: 0.3 },
+        { color: 'rgba(190,205,215,', baseOpacity: 0.52, speed: 0.034, amplitude: Math.min(28, maxAmplitude * 0.4), phase: 4.0, freq: 0.050, noiseScale: 0.25 },
     ];
 
     let time = 0;
@@ -2348,19 +2353,57 @@ function startOpeningWaveAnimation(canvas) {
             ctx.lineWidth = 1.2;
 
             for (let x = 0; x < width; x++) {
-                // 커서 반응 (openingMouseX, openingMouseY 전역변수 사용)
-                const dist = Math.sqrt(Math.pow(x - openingMouseX, 2) + Math.pow(centerY - openingMouseY, 2));
-                const influence = Math.max(0, 1 - dist / 180);
+                // 기본 파동 계산
+                const baseY = centerY
+                    + Math.sin(x * wave.freq + time * wave.speed + wave.phase) * wave.amplitude
+                    + Math.sin(x * wave.freq * 0.5 + time * wave.speed * 0.6 + wave.phase * 1.4) * (wave.amplitude * 0.4)
+                    + Math.sin(x * wave.freq * 2.3 + time * wave.speed * 1.3) * (wave.amplitude * 0.15)
+                    + Math.sin(x * wave.freq * 0.3 + time * wave.speed * 0.4 + wave.phase * 2.1) * (wave.amplitude * 0.25)
+                    + Math.sin(x * wave.freq * 3.7 + time * wave.speed * 1.8 + wave.phase * 0.7) * (wave.amplitude * 0.1);
 
-                const amp = wave.amplitude * (1 + influence * 1.65);
+                // 불규칙성을 위한 노이즈 (위치와 시간에 따라 변하는)
+                const noise = Math.sin(x * 0.003 + time * 0.02) * Math.cos(x * 0.007 + time * 0.015) * wave.noiseScale;
+                const irregularOffset = wave.amplitude * noise * 0.4;
 
-                // 복합 사인파
-                const y = centerY
-                    + Math.sin(x * wave.freq + time * wave.speed + wave.phase) * amp
-                    + Math.sin(x * wave.freq * 0.5 + time * wave.speed * 0.6 + wave.phase * 1.4) * (amp * 0.4)
-                    + Math.sin(x * wave.freq * 2.3 + time * wave.speed * 1.3) * (amp * 0.15);
+                // 커서 호버 효과: 커서 위치에서 파동을 밀어내는 느낌 (드라마틱하게)
+                let hoverPush = 0;
+                if (openingMouseX >= 0 && openingMouseY >= 0) {
+                    const distX = Math.abs(x - openingMouseX);
+                    const distY = Math.abs(baseY - openingMouseY);
+                    const dist = Math.sqrt(distX * distX + distY * distY);
+                    
+                    // 더 넓은 영향력 반경과 부드러운 감쇠 곡선
+                    const influenceRadius = 200;
+                    const normalizedDist = Math.min(dist / influenceRadius, 1);
+                    // 부드러운 easing 함수 (ease-out cubic)로 더 드라마틱한 반응
+                    const influence = Math.pow(1 - normalizedDist, 3);
+                    
+                    if (influence > 0) {
+                        // 커서 Y 위치 방향으로 파동을 강하게 밀어내기
+                        const pushDirection = openingMouseY - baseY;
+                        // X 거리에 따른 영향력 (더 부드러운 감쇠)
+                        const xNormalized = Math.min(distX / influenceRadius, 1);
+                        const xInfluence = Math.pow(1 - xNormalized, 2);
+                        
+                        // 더 강한 푸시 효과
+                        hoverPush = pushDirection * influence * xInfluence * 1.8;
+                        
+                        // 커서 주변에서 큰 진폭 증가 (손을 대는 느낌을 강조)
+                        const amplitudeBoost = influence * 0.8;
+                        hoverPush += (baseY - centerY) * amplitudeBoost;
+                        
+                        // 추가: 커서 위치에서 파동이 더 크게 퍼지는 효과
+                        const rippleEffect = Math.sin(distX * 0.05) * influence * 15;
+                        hoverPush += rippleEffect;
+                    }
+                }
 
-                x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                const y = baseY + irregularOffset + hoverPush;
+                
+                // Y 좌표가 캔버스 범위를 벗어나지 않도록 제한
+                const clampedY = Math.max(2, Math.min(height - 2, y));
+
+                x === 0 ? ctx.moveTo(x, clampedY) : ctx.lineTo(x, clampedY);
             }
 
             ctx.strokeStyle = wave.color + wave.baseOpacity + ')';
