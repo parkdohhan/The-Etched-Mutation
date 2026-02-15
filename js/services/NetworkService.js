@@ -35,7 +35,6 @@ class NetworkService {
       const { data: memoriesDataSupabase, error: memoriesError } = await client
         .from('memories')
         .select('*')
-        .eq('is_public', true)
         .order('id', { ascending: true });
 
       if (memoriesError) {
@@ -58,7 +57,21 @@ class NetworkService {
 
           if (scenesError) {
             console.error(`[NetworkService.fetchMemories] Memory ${memory.id} scenes 조회 실패`, scenesError);
-            return null;
+            // scenes 에러가 있어도 메모리는 반환 (빈 scenes 배열로)
+            const isLive = !!memory.live_session_id;
+            return {
+              id: memory.id,
+              code: memory.code || '',
+              title: memory.title || '',
+              memory_words: memory.memory_words || null,
+              completed_sentence: memory.completed_sentence || null,
+              layers: memory.layers || 0,
+              dilution: memory.dilution || 50,
+              recentRank: memory.id || 0,
+              scenes: [],
+              live_session_id: memory.live_session_id,
+              is_live: isLive
+            };
           }
 
           const scenes = await Promise.all(

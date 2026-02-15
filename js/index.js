@@ -195,13 +195,13 @@ async function handleSignup() { const username = document.getElementById('signup
 function closeSignup() { const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } document.getElementById('signupUsername').value = ''; document.getElementById('signupEmail').value = ''; document.getElementById('signupPassword').value = ''; document.getElementById('signupPasswordConfirm').value = '' }
 async function handleSocialLogin(provider) { if (provider === 'google') { supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase 클라이언트가 초기화되지 않았습니다'); return } const { data, error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } }); if (error) { showNotification('구글 로그인 실패: ' + error.message) } } else { showNotification('준비 중입니다') } }
 async function handleLogout() { if (confirm('로그아웃하시겠습니까?')) { supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase 클라이언트가 초기화되지 않았습니다'); return } await supabaseClient.auth.signOut(); appStore.setState({ isLoggedIn: false, currentUser: null }); closeMypage(); showNotification('로그아웃되었습니다') } }
-function updateUserStats(type, value = 1) { if (!isLoggedIn || !currentUser) return; if (type === 'liveSession') { currentUser.liveSessions = (currentUser.liveSessions || 0) + value } else if (type === 'memory') { if (!currentUser.visitedMemories) currentUser.visitedMemories = []; if (!currentUser.visitedMemories.includes(value)) { currentUser.visitedMemories.push(value); currentUser.memories = (currentUser.memories || 0) + 1 } } else if (type === 'interpretation') { currentUser.interpretations = (currentUser.interpretations || 0) + value } if (document.getElementById('mypageScreen') && document.getElementById('mypageScreen').classList.contains('active')) { showMypage() } }
+function updateUserStats(type, value = 1) { const state = appStore.getState(); if (!state.isLoggedIn || !state.currentUser) return; const currentUser = state.currentUser; if (type === 'liveSession') { currentUser.liveSessions = (currentUser.liveSessions || 0) + value } else if (type === 'memory') { if (!currentUser.visitedMemories) currentUser.visitedMemories = []; if (!currentUser.visitedMemories.includes(value)) { currentUser.visitedMemories.push(value); currentUser.memories = (currentUser.memories || 0) + 1 } } else if (type === 'interpretation') { currentUser.interpretations = (currentUser.interpretations || 0) + value } appStore.setState({ currentUser: currentUser }); if (document.getElementById('mypageScreen') && document.getElementById('mypageScreen').classList.contains('active')) { showMypage() } }
 function showModeSelection() { const introScreen = document.getElementById('introScreen'); const matchingSelection = document.getElementById('matchingSelection'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } if (matchingSelection) { matchingSelection.classList.add('active'); matchingSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
 function selectMatching(type) { if (type === 'session') { const matchingSelection = document.getElementById('matchingSelection'); const modeSelection = document.getElementById('modeSelection'); if (matchingSelection) { matchingSelection.classList.remove('active'); matchingSelection.style.display = 'none' } if (modeSelection) { modeSelection.classList.add('active'); modeSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } } else { showNotification('곧 만나요') } }
 function backToMatchingSelection() { const matchingSelection = document.getElementById('matchingSelection'); const modeSelection = document.getElementById('modeSelection'); if (modeSelection) { modeSelection.classList.remove('active'); modeSelection.style.display = 'none' } if (matchingSelection) { matchingSelection.classList.add('active'); matchingSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
 function backToIntro() { const introScreen = document.getElementById('introScreen'); if (introScreen) { introScreen.classList.remove('hidden'); introScreen.classList.add('visible'); introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important' } ['matchingSelection', 'modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible'); stopAllAnimations() }
 function backToModeSelection() { const sessionSetupEl = document.getElementById('sessionSetup'); if (sessionSetupEl) { sessionSetupEl.classList.remove('active'); sessionSetupEl.style.display = 'none' } const modeSelectionEl = document.getElementById('modeSelection'); if (modeSelectionEl) { modeSelectionEl.classList.add('active'); modeSelectionEl.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
-async function enterArchive() { const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'grid'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; currentMode = 'archive'; stopAllAnimations(); await loadMemoriesFromSupabase(); setTimeout(() => showNpcDialogue("여기는 아카이브야. 한 번 상연된 기억 위에, 다른 사람들의 해석이 지층처럼 쌓여 있어.", 5000), 1000); const archiveSearchEl = document.getElementById('archiveSearch'); if (archiveSearchEl) archiveSearchEl.value = ''; renderMemoryCards(); sortMemories('all'); const footer = document.querySelector('.footer'); if (footer) footer.classList.add('visible') }
+async function enterArchive() { const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'grid'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; appStore.setState({ currentMode: 'archive' }); stopAllAnimations(); await loadMemoriesFromSupabase(); setTimeout(() => showNpcDialogue("여기는 아카이브야. 한 번 상연된 기억 위에, 다른 사람들의 해석이 지층처럼 쌓여 있어.", 5000), 1000); const archiveSearchEl = document.getElementById('archiveSearch'); if (archiveSearchEl) archiveSearchEl.value = ''; const state = appStore.getState(); console.log('[enterArchive] 로드된 메모리 수:', state.allMemoriesData.length); console.log('[enterArchive] 메모리 데이터:', state.allMemoriesData); sortMemories('all'); const footer = document.querySelector('.footer'); if (footer) footer.classList.add('visible') }
 function filterByCategory(category, btnElement) {
     if (!category) return;
     const state = appStore.getState();
@@ -218,7 +218,7 @@ function filterByCategory(category, btnElement) {
         filterMemories
     );
 }
-async function loadMemoriesFromSupabase() { try { console.log('[loadMemoriesFromSupabase] Supabase에서 기억 불러오기 시작'); const result = await networkService.fetchMemories(); if (!result.ok) { console.error('[loadMemoriesFromSupabase] 조회 실패', result.error); return } if (!result.data || result.data.length === 0) { console.log('[loadMemoriesFromSupabase] Supabase에 공개된 기억이 없습니다'); appStore.setState({ allMemoriesData: [] }); return } console.log(`[loadMemoriesFromSupabase] ${result.data.length}개의 메모리 발견`); appStore.setState({ allMemoriesData: result.data }); const state = appStore.getState(); console.log(`[loadMemoriesFromSupabase] Supabase에서 ${state.allMemoriesData.length}개의 기억을 로드했습니다`) } catch (error) { console.error('[loadMemoriesFromSupabase] 에러 발생', error); appStore.setState({ allMemoriesData: [] }) } }
+async function loadMemoriesFromSupabase() { try { console.log('[loadMemoriesFromSupabase] Supabase에서 기억 불러오기 시작'); const result = await networkService.fetchMemories(); console.log('[loadMemoriesFromSupabase] fetchMemories 결과:', result); if (!result.ok) { console.error('[loadMemoriesFromSupabase] 조회 실패', result.error); appStore.setState({ allMemoriesData: [] }); return } if (!result.data || result.data.length === 0) { console.log('[loadMemoriesFromSupabase] Supabase에 공개된 기억이 없습니다'); appStore.setState({ allMemoriesData: [] }); return } console.log(`[loadMemoriesFromSupabase] ${result.data.length}개의 메모리 발견`); console.log('[loadMemoriesFromSupabase] 메모리 데이터 샘플:', result.data[0]); appStore.setState({ allMemoriesData: result.data }); const state = appStore.getState(); console.log(`[loadMemoriesFromSupabase] Supabase에서 ${state.allMemoriesData.length}개의 기억을 로드했습니다`); console.log('[loadMemoriesFromSupabase] State 업데이트 후:', state.allMemoriesData); } catch (error) { console.error('[loadMemoriesFromSupabase] 에러 발생', error); appStore.setState({ allMemoriesData: [] }) } }
 function filterMemories() { const searchValue = document.getElementById('archiveSearch').value.toUpperCase().trim(); const cards = document.querySelectorAll('.memory-card'); const state = appStore.getState(); cards.forEach(card => { const code = card.getAttribute('data-code') || ''; const category = card.getAttribute('data-category') || 'archive'; let shouldShow = true; if (state.currentCategory === 'live' && category !== 'live') shouldShow = false; else if (state.currentCategory === 'archive' && category !== 'archive') shouldShow = false; if (shouldShow && (searchValue === '' || code.includes(searchValue))) { card.classList.remove('hidden'); card.style.display = 'block'; if (searchValue !== '' && code === searchValue) { setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transform = 'scale(1.05)'; setTimeout(() => card.style.transform = '', 500) }, 100) } } else { card.classList.add('hidden'); card.style.display = 'none' } }) }
 function sortMemories(sortType, btnElement) {
     appStore.setState({ currentSort: sortType });
@@ -694,7 +694,8 @@ function simulateNarratorInput(sceneText) {
         if (sceneText) {
             textToDisplay = sceneText;
         } else {
-            if (currentMode === 'live') {
+            const state = appStore.getState();
+            if (state.currentMode === 'live') {
                 return;
             }
             const currentData = window.currentStoryData || storyData;
@@ -1240,7 +1241,8 @@ async function handleConfirm(answer) {
             console.log('저장할 finalSceneObject:', JSON.stringify(finalSceneObject));
 
             // Ritual 모드일 때는 saveRitualScene 호출
-            if (currentMode === 'ritual') {
+            const state = appStore.getState();
+            if (state.currentMode === 'ritual') {
                 await saveRitualScene(finalSceneObject);
             } else {
                 await saveLiveScene(finalSceneObject);
@@ -1379,7 +1381,7 @@ function startVoiceWaveLiveAnimation() {
 function stopVoiceWaveLiveAnimation() { if (voiceWaveLiveAnimationId) { cancelAnimationFrame(voiceWaveLiveAnimationId); voiceWaveLiveAnimationId = null } }
 // alignmentWaveAnimationId, comparisonWaveAnimationId, comparisonWaveTime는 Visualizer 내부에서 관리됨
 let voiceWaveLiveAnimationId = null;
-function selectMemory(index) { try { appStore.setState({ currentMemory: index, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [] }); const state = appStore.getState(); updateUserStats('memory', index); const stateAfter = appStore.getState(); const selectedMemory = stateAfter.allMemoriesData[index] || stateAfter.allMemoriesData[0]; if (!selectedMemory) { showNotification('기억을 불러올 수 없습니다'); return } const memoryId = selectedMemory.id; if (memoryId) { activateMemoryIfFetus(memoryId); } window.currentStoryData = selectedMemory; const archiveContainerEl = document.getElementById('archiveContainer'); if (archiveContainerEl && !archiveContainerEl.classList.contains('active')) { archiveContainerEl.classList.add('active') } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'none'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'none'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'none'; showConsentSequence(index); } catch (e) { console.error('selectMemory error:', e); console.error('Error details:', { index, memoriesDataLength: memoriesData.length, selectedMemory: memoriesData[index] }); showNotification('기억을 불러오는 중 오류가 발생했습니다') } }
+function selectMemory(index) { try { appStore.setState({ currentMemory: index, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [] }); const state = appStore.getState(); updateUserStats('memory', index); const stateAfter = appStore.getState(); const selectedMemory = stateAfter.allMemoriesData[index] || stateAfter.allMemoriesData[0]; if (!selectedMemory) { showNotification('기억을 불러올 수 없습니다'); return } const memoryId = selectedMemory.id; if (memoryId) { activateMemoryIfFetus(memoryId); } window.currentStoryData = selectedMemory; const archiveContainerEl = document.getElementById('archiveContainer'); if (archiveContainerEl && !archiveContainerEl.classList.contains('active')) { archiveContainerEl.classList.add('active') } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'none'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'none'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'none'; showConsentSequence(index); } catch (e) { console.error('selectMemory error:', e); const errorState = appStore.getState(); console.error('Error details:', { index, memoriesDataLength: errorState.allMemoriesData.length, selectedMemory: errorState.allMemoriesData[index] }); showNotification('기억을 불러오는 중 오류가 발생했습니다') } }
 function showConsentSequence(memoryIndex) {
     const consentSequenceEl = document.getElementById('consentSequence');
     if (!consentSequenceEl) {
@@ -1469,7 +1471,8 @@ function showWordSentenceSequence(memoryIndex) {
         startArchivePlay(memoryIndex);
         return;
     }
-    const selectedMemory = allMemoriesData[memoryIndex];
+    const state = appStore.getState();
+    const selectedMemory = state.allMemoriesData[memoryIndex];
     if (!selectedMemory) {
         console.error('메모리 데이터를 찾을 수 없습니다');
         startArchivePlay(memoryIndex);
@@ -2056,7 +2059,8 @@ function stopAllAnimations() {
     stopLiveVoiceInput();
 }
 async function showEndScreen(alignmentResult, forceEndScreen = false) {
-    console.log('[엔딩] showEndScreen 호출:', { alignmentResult, forceEndScreen, currentMode });
+    const state = appStore.getState();
+    console.log('[엔딩] showEndScreen 호출:', { alignmentResult, forceEndScreen, currentMode: state.currentMode });
     try {
         stopAllAnimations();
         const liveContainerEl = document.getElementById('liveContainer');
@@ -2078,7 +2082,7 @@ async function showEndScreen(alignmentResult, forceEndScreen = false) {
         }
 
         console.log('[엔딩] 엔딩 화면 표시 시작');
-        let finalAlignment = currentAlignment;
+        let finalAlignment = state.currentAlignment;
         let isTrueEnding = false;
         if (alignmentResult) {
             finalAlignment = alignmentResult.averageAlignment;
@@ -2101,8 +2105,8 @@ async function showEndScreen(alignmentResult, forceEndScreen = false) {
 
         const currentData = window.currentStoryData || storyData;
         const lastScene = currentData.scenes[currentData.scenes.length - 1];
-        const lastChoiceIndex = userChoices.length > 0 ? userChoices[userChoices.length - 1] : 0;
-        const lastReason = userReasons.length > 0 ? userReasons[userReasons.length - 1] : "—";
+        const lastChoiceIndex = state.userChoices.length > 0 ? state.userChoices[state.userChoices.length - 1] : 0;
+        const lastReason = state.userReasons.length > 0 ? state.userReasons[state.userReasons.length - 1] : "—";
 
         document.getElementById('yourChoice').textContent = lastScene.choices[lastChoiceIndex] ? lastScene.choices[lastChoiceIndex].text : "—";
         document.getElementById('yourReason').textContent = '"' + lastReason + '"';
@@ -2120,7 +2124,8 @@ async function showEndScreen(alignmentResult, forceEndScreen = false) {
             if (subtitle) subtitle.style.display = 'none';
             document.getElementById('endTitle').textContent = '음각에 닿다';
             document.getElementById('finalMessage').innerHTML = '<strong>트루엔딩에 도달했습니다.</strong><br><br>당신은 그 사람의 감정 구조에 거의 겹쳐졌습니다.<br>이 일치는 원본 지층에 깊게 새겨질 거예요.';
-            const memoryId = currentData.id || (allMemoriesData[currentMemory] && allMemoriesData[currentMemory].id);
+            const state = appStore.getState();
+            const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
             const modeState = appStore.getState(); if (memoryId && modeState.currentMode === 'archive') {
                 const endButtons = document.querySelector('.end-buttons');
                 if (endButtons) {
@@ -2166,7 +2171,8 @@ async function showEndScreen(alignmentResult, forceEndScreen = false) {
         console.log('[엔딩] 지층 애니메이션 시작');
         startEndStrataAnimation();
         setTimeout(() => {
-            if (currentMode === 'live') {
+            const state = appStore.getState();
+            if (state.currentMode === 'live') {
                 showNpcDialogue(NPC_DIALOGUES.live.memoryTransition, 6000);
             } else {
                 showNpcDialogue(NPC_DIALOGUES.archive.trueEnding, 6000);
@@ -2281,7 +2287,7 @@ async function sendNoteToAuthor(authorId, memoryId, message) { try { const clien
 async function loadReceivedNotes() { try { const client = networkService.getClient(); if (!client) return []; const { data: { user } } = await client.auth.getUser(); if (!user) return []; const result = await networkService.loadReceivedNotes(user.id); if (!result.ok) { console.error('쪽지 로드 오류:', result.error); return [] } return result.data || [] } catch (e) { console.error('loadReceivedNotes error:', e); return [] } }
 // 받은 쪽지 렌더링
 async function renderReceivedNotes() { const notes = await loadReceivedNotes(); const container = document.getElementById('mypageNotesList'); if (!container) return; if (notes.length === 0) { container.innerHTML = '<p class="no-notes" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:1rem">받은 쪽지가 없습니다.</p>'; return } container.innerHTML = notes.map(note => { const memoryTitle = note.memories?.title || '알 수 없음'; const date = new Date(note.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' }); const unreadClass = note.is_read ? 'read' : 'unread'; const unreadBadge = note.is_read ? '' : '<span class="unread-badge" style="display:inline-block;padding:.2rem .5rem;background:rgba(212,175,55,.2);border:1px solid rgba(212,175,55,.4);color:#d4af37;font-size:.7rem;letter-spacing:.1em;margin-left:.5rem">NEW</span>'; return `<div class="note-card ${unreadClass}" data-note-id="${note.id}" style="padding:.8rem;margin-bottom:.5rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.1);border-radius:4px;cursor:pointer;transition:all .3s"><p class="note-memory" style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>기억: ${memoryTitle}</strong>${unreadBadge}</p><p class="note-message" style="font-size:.9rem;color:var(--text-primary);line-height:1.6;margin-bottom:.5rem">${note.message}</p><p class="note-date" style="font-size:.75rem;color:var(--text-muted)">${date}</p></div>` }).join(''); container.querySelectorAll('.note-card.unread').forEach(card => { card.addEventListener('click', async () => { const noteId = card.dataset.noteId; try { const result = await networkService.markNoteAsRead(noteId); if (result.ok) { card.classList.remove('unread'); card.classList.add('read'); const badge = card.querySelector('.unread-badge'); if (badge) badge.remove() } } catch (e) { console.error('쪽지 읽음 처리 오류:', e) } }) }) }
-function viewMemoryFromArchive(memoryId) { enterArchive(); setTimeout(() => { const memory = allMemoriesData.find(m => m.id === memoryId); if (memory) { selectMemory(memory) } }, 500) }
+function viewMemoryFromArchive(memoryId) { enterArchive(); setTimeout(() => { const state = appStore.getState(); const memoryIndex = state.allMemoriesData.findIndex(m => m.id === memoryId); if (memoryIndex >= 0) { selectMemory(memoryIndex) } }, 500) }
 async function showSessionDetail(sessionId) { const modal = document.getElementById('sessionDetailModal'); const body = document.getElementById('sessionDetailBody'); if (!modal || !body) { return } modal.classList.add('active'); body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div>'; try { const sessionResult = await networkService.getSessionById(sessionId); if (!sessionResult.ok) throw sessionResult.error; const sessionData = sessionResult.data; const scenesResult = await networkService.getLiveScenesBySessionId(sessionId); if (!scenesResult.ok) throw scenesResult.error; const scenesData = scenesResult.data; const date = sessionData.created_at ? new Date(sessionData.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; const endDate = sessionData.ended_at ? new Date(sessionData.ended_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; const role = sessionData.narrator_id === currentUser?.id ? '화자' : sessionData.experiencer_id === currentUser?.id ? '체험자' : '—'; const status = sessionData.ended_at ? '완료' : '진행중'; const alignment = sessionData.alignment ? Math.round(sessionData.alignment * 100) + '%' : '0%'; const fate = sessionData.memory_fate === 'preserve' ? '보존' : sessionData.memory_fate === 'dilute' ? '자연 소멸' : sessionData.memory_fate === 'anonymous' ? '완전 익명' : '미정'; document.getElementById('sessionDetailTitle').textContent = sessionData.session_code || '세션 정보'; let scenesHtml = ''; if (scenesData && scenesData.length > 0) { scenesHtml = '<div class="session-detail-scenes"><h3 style="font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:var(--accent-memory);margin-bottom:1rem;letter-spacing:.1em">장면 목록</h3>'; scenesData.forEach((scene, index) => { const sceneText = scene.text || '[텍스트 없음]'; const sceneType = scene.scene_type || 'normal'; const voidInfo = scene.void_info; scenesHtml += `<div class="session-detail-scene-item"><div class="session-detail-scene-header">장면 ${index + 1}${sceneType === 'void' ? ' (기억의 공백)' : ''}</div><div class="session-detail-scene-text">${sceneText}</div>${voidInfo && voidInfo.reason ? `<div style="font-size:.85rem;color:var(--text-muted);font-style:italic;margin-top:.5rem">공백 이유: ${voidInfo.reason}</div>` : ''}</div>` }); scenesHtml += '</div>' } else { scenesHtml = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-style:italic">저장된 장면이 없습니다.</div>' } body.innerHTML = `<div class="session-detail-info-item"><div class="session-detail-info-label">세션 코드</div><div class="session-detail-info-value">${sessionData.session_code || '—'}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">시작일시</div><div class="session-detail-info-value">${date}</div></div>${sessionData.ended_at ? `<div class="session-detail-info-item"><div class="session-detail-info-label">종료일시</div><div class="session-detail-info-value">${endDate}</div></div>` : ''}<div class="session-detail-info-item"><div class="session-detail-info-label">역할</div><div class="session-detail-info-value">${role}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">상태</div><div class="session-detail-info-value">${status}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">정렬도</div><div class="session-detail-info-value">${alignment}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">운명</div><div class="session-detail-info-value">${fate}</div></div>${scenesHtml}` } catch (e) { console.error('showSessionDetail error:', e); body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">세션 정보를 불러오는 중 오류가 발생했습니다.</div>'; showNotification('세션 정보를 불러오는 중 오류가 발생했습니다') } }
 function closeSessionDetail() { const modal = document.getElementById('sessionDetailModal'); if (modal) { modal.classList.remove('active') } }
 function renderSessionHistory_DEPRECATED() { const listEl = document.getElementById('sessionHistoryList'); if (!listEl || !currentUser || !currentUser.sessionHistory || currentUser.sessionHistory.length === 0) { if (listEl) listEl.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic">저장된 세션이 없습니다.</div>'; return } listEl.innerHTML = ''; currentUser.sessionHistory.forEach(session => { const sessionItem = document.createElement('div'); sessionItem.style.padding = '.8rem'; sessionItem.style.marginBottom = '.5rem'; sessionItem.style.background = 'var(--bg-surface)'; sessionItem.style.border = '1px solid rgba(196,168,130,.1)'; sessionItem.innerHTML = `<div style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>${session.date}</strong></div><div style="font-size:.75rem;color:var(--text-muted);line-height:1.6">역할: ${session.role} | 운명: ${session.memoryFate === 'preserve' ? '보존' : session.memoryFate === 'dilute' ? '자연 소멸' : session.memoryFate === 'anonymous' ? '완전 익명' : '—'}<br>정렬도: ${session.alignment} | 장면: ${session.scenes} | 조각: ${session.fragments} | 일치: ${session.matches}</div>`; listEl.appendChild(sessionItem) }) }
@@ -2631,7 +2637,8 @@ async function calculateAverageAlignment() {
         if (!currentData || !currentData.scenes) {
             return { averageAlignment: 0, isTrueEnding: false };
         }
-        const memoryId = currentData.id || (allMemoriesData[currentMemory] && allMemoriesData[currentMemory].id);
+        const state = appStore.getState();
+        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
         if (!memoryId) {
             return { averageAlignment: 0, isTrueEnding: false };
         }
@@ -2700,7 +2707,8 @@ async function showComparisonView() {
             console.error('비교 화면: 장면 데이터가 없습니다');
             return;
         }
-        const memoryId = currentData.id || (allMemoriesData[currentMemory] && allMemoriesData[currentMemory].id);
+        const state = appStore.getState();
+        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
         if (!memoryId) {
             console.error('비교 화면: memory_id를 찾을 수 없습니다');
             return;
@@ -3058,12 +3066,45 @@ async function endComparisonSession() {
         } else {
             console.log('[엔딩] 기존 정렬도 사용:', alignmentResult);
         }
-        // 엔딩 화면 표시 (forceEndScreen=true로 전달하여 비교 화면을 건너뛰고 바로 엔딩 화면 표시)
-        console.log('[엔딩] showEndScreen 호출:', { alignmentResult, forceEndScreen: true, currentMode });
-        await showEndScreen(alignmentResult, true);
-        console.log('[엔딩] showEndScreen 완료');
+        
+        // Strata 3D 지층 뷰 표시
+        const currentData = window.currentStoryData || storyData;
+        const state = appStore.getState();
+        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
+
+        console.log('[엔딩] Strata 뷰 체크:', {
+            memoryId: memoryId,
+            hasShowStrataView: typeof window.showStrataView === 'function',
+            currentData: currentData,
+            currentMemory: state.currentMemory,
+            allMemoriesDataLength: state.allMemoriesData.length
+        });
+
+        if (memoryId && typeof window.showStrataView === 'function') {
+            console.log('[엔딩] Strata 뷰 표시 시작:', memoryId);
+            try {
+                await window.showStrataView(memoryId, alignmentResult, () => {
+                    console.log('[엔딩] Strata 뷰 닫힘, 엔딩 화면으로 이동');
+                    showEndScreen(alignmentResult, true);
+                });
+                console.log('[엔딩] Strata 뷰 표시 완료');
+            } catch (strataError) {
+                console.error('[엔딩] Strata 뷰 표시 중 오류:', strataError);
+                await showEndScreen(alignmentResult, true);
+            }
+        } else {
+            if (!memoryId) {
+                console.warn('[엔딩] memoryId를 찾을 수 없습니다. currentData:', currentData);
+            }
+            if (typeof window.showStrataView !== 'function') {
+                console.warn('[엔딩] window.showStrataView가 정의되지 않았습니다. strataView.js가 로드되었는지 확인하세요.');
+            }
+            console.log('[엔딩] Strata 뷰 사용 불가, 바로 엔딩 화면으로 이동');
+            await showEndScreen(alignmentResult, true);
+        }
     } catch (e) {
         console.error('[엔딩] endComparisonSession 오류:', e);
+        showEndScreen(null, true);
     }
 }
 window.navigateComparison = navigateComparison;
@@ -3512,9 +3553,10 @@ async function finishRegistration() {
         showNotification('기억이 등록되었습니다!');
         closeRegistrationScreen();
 
-        if (currentMode === 'archive') {
+        const state = appStore.getState();
+        if (state.currentMode === 'archive') {
             await loadMemoriesFromSupabase();
-            renderMemoryList();
+            sortMemories('all');
         }
     } catch (e) {
         console.error('finishRegistration error:', e);
@@ -4111,9 +4153,10 @@ async function saveConfessionToDB() {
         endConfession();
 
         // Archive 모드면 목록 새로고침
-        if (currentMode === 'archive') {
+        const state = appStore.getState();
+        if (state.currentMode === 'archive') {
             await loadMemoriesFromSupabase();
-            renderMemoryList();
+            sortMemories('all');
         }
 
     } catch (error) {
@@ -4198,7 +4241,7 @@ function hideAllScreens() {
 
 // Confession 플로우 시작 (Beginner 모드용)
 function startConfessionFlow(mode) {
-    currentMode = mode;
+    appStore.setState({ currentMode: mode });
     startConfession(); // 기존 startConfession 함수 호출
 }
 
@@ -4208,8 +4251,9 @@ let ritualScenes = [];
 
 async function startRitualFlow() {
     console.log('=== Ritual Flow 시작 ===');
-    currentMode = 'ritual';
-    currentRole = 'A'; // 화자 역할 설정
+    appStore.setState({ currentMode: 'ritual', currentRole: 'A' });
+    const state = appStore.getState();
+    currentRole = state.currentRole; // 하위 호환성을 위해 전역 변수에도 설정
     currentSceneIndex = 0;
     ritualScenes = [];
 
@@ -4450,6 +4494,115 @@ window.parseEmotionAnalysisResult = parseEmotionAnalysisResult;
 window.parseSceneGenerationResult = parseSceneGenerationResult;
 window.AIService = AIService; // 테스트에서 모킹할 수 있도록 노출
 window.MemoryService = MemoryService; // 테스트에서 사용할 수 있도록 노출
+window.getSupabaseClient = getSupabaseClient; // Strata 뷰에서 사용
+window.networkService = networkService; // Strata 뷰에서 사용
+
+// 디버깅 헬퍼 함수들 (콘솔에서 바로 사용 가능)
+window.debug = {
+    // 아카이브로 이동
+    goToArchive: async () => {
+        await enterArchive();
+        console.log('✅ 아카이브로 이동했습니다');
+    },
+    
+    // 메모리 선택 (인덱스 또는 ID)
+    selectMemory: async (indexOrId) => {
+        const state = appStore.getState();
+        let index;
+        if (typeof indexOrId === 'number') {
+            index = indexOrId;
+        } else {
+            index = state.allMemoriesData.findIndex(m => m.id === indexOrId);
+            if (index === -1) {
+                console.error('❌ 메모리를 찾을 수 없습니다:', indexOrId);
+                return;
+            }
+        }
+        if (index >= state.allMemoriesData.length) {
+            console.error('❌ 인덱스가 범위를 벗어났습니다:', index);
+            return;
+        }
+        selectMemory(index);
+        console.log(`✅ 메모리 ${index} 선택했습니다:`, state.allMemoriesData[index]?.title);
+    },
+    
+    // 시퀀스 건너뛰고 바로 플레이 시작
+    skipToPlay: (memoryIndex = 0) => {
+        const state = appStore.getState();
+        if (memoryIndex >= state.allMemoriesData.length) {
+            console.error('❌ 인덱스가 범위를 벗어났습니다:', memoryIndex);
+            return;
+        }
+        const memory = state.allMemoriesData[memoryIndex];
+        if (!memory) {
+            console.error('❌ 메모리를 찾을 수 없습니다:', memoryIndex);
+            return;
+        }
+        appStore.setState({ currentMemory: memoryIndex, currentScene: 0 });
+        window.currentStoryData = memory;
+        startArchivePlay(memoryIndex);
+        console.log(`✅ 플레이 시작:`, memory.title);
+    },
+    
+    // 특정 장면으로 이동
+    goToScene: (sceneIndex = 0) => {
+        const state = appStore.getState();
+        appStore.setState({ currentScene: sceneIndex });
+        renderScene();
+        console.log(`✅ 장면 ${sceneIndex}로 이동했습니다`);
+    },
+    
+    // 엔딩 화면으로 바로 이동
+    skipToEnd: async (alignment = 0.85) => {
+        const alignmentResult = {
+            averageAlignment: alignment,
+            isTrueEnding: alignment >= 0.8
+        };
+        await showEndScreen(alignmentResult, true);
+        console.log(`✅ 엔딩 화면으로 이동했습니다 (정렬도: ${alignment})`);
+    },
+    
+    // 현재 상태 확인
+    showState: () => {
+        const state = appStore.getState();
+        console.log('📊 현재 상태:', {
+            currentMode: state.currentMode,
+            currentMemory: state.currentMemory,
+            currentScene: state.currentScene,
+            allMemoriesCount: state.allMemoriesData.length,
+            currentMemoryData: state.allMemoriesData[state.currentMemory],
+            currentAlignment: state.currentAlignment
+        });
+        return state;
+    },
+    
+    // 메모리 목록 확인
+    listMemories: () => {
+        const state = appStore.getState();
+        console.log('📚 메모리 목록:');
+        state.allMemoriesData.forEach((m, i) => {
+            console.log(`  [${i}] ${m.title || '제목 없음'} (ID: ${m.id}, Code: ${m.code})`);
+        });
+        return state.allMemoriesData;
+    },
+    
+    // 비교 화면으로 이동
+    showComparison: async () => {
+        const alignmentResult = await calculateAverageAlignment();
+        showComparisonView();
+        console.log('✅ 비교 화면으로 이동했습니다');
+    }
+};
+
+console.log('🔧 디버깅 헬퍼 함수가 로드되었습니다. window.debug를 사용하세요.');
+console.log('📖 사용법:');
+console.log('  - debug.goToArchive() - 아카이브로 이동');
+console.log('  - debug.selectMemory(0) - 첫 번째 메모리 선택');
+console.log('  - debug.skipToPlay(0) - 시퀀스 건너뛰고 바로 플레이');
+console.log('  - debug.goToScene(0) - 첫 번째 장면으로 이동');
+console.log('  - debug.skipToEnd(0.85) - 엔딩 화면으로 이동');
+console.log('  - debug.showState() - 현재 상태 확인');
+console.log('  - debug.listMemories() - 메모리 목록 확인');
 
 // DOMContentLoaded 시 초기화 (모든 변수 선언 후 실행 보장)
 if (document.readyState === 'loading') {

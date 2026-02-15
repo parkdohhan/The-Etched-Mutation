@@ -120,19 +120,32 @@ export class UIManager {
      * @param {Function} onFilterMemories - 필터링 콜백 () => void
      */
     renderMemoryCards(allMemoriesData, currentCategory, currentSort, onSelectMemory, onFilterMemories) {
+        console.log('[UIManager.renderMemoryCards] 호출됨');
+        console.log('[UIManager.renderMemoryCards] allMemoriesData:', allMemoriesData);
+        console.log('[UIManager.renderMemoryCards] currentCategory:', currentCategory);
+        console.log('[UIManager.renderMemoryCards] currentSort:', currentSort);
         const list = document.getElementById('memoryList');
-        if (!list) return;
+        if (!list) {
+            console.error('[UIManager.renderMemoryCards] memoryList 요소를 찾을 수 없습니다');
+            return;
+        }
         
         if (!allMemoriesData || allMemoriesData.length === 0) {
+            console.log('[UIManager.renderMemoryCards] 메모리 데이터가 없습니다');
             list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">기억이 없습니다.</div>';
             return;
         }
         
         let filteredMemories = [...allMemoriesData];
+        console.log('[UIManager.renderMemoryCards] 필터링 전 메모리 수:', filteredMemories.length);
         if (currentCategory === 'live') {
             filteredMemories = filteredMemories.filter(m => (m.live_session_id || m.is_live));
+            console.log('[UIManager.renderMemoryCards] live 필터링 후:', filteredMemories.length);
         } else if (currentCategory === 'archive') {
             filteredMemories = filteredMemories.filter(m => (!m.live_session_id && !m.is_live));
+            console.log('[UIManager.renderMemoryCards] archive 필터링 후:', filteredMemories.length);
+        } else {
+            console.log('[UIManager.renderMemoryCards] 전체 카테고리 - 필터링 없음');
         }
         
         let sortedMemories;

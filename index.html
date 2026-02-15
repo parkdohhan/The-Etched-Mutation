@@ -7,6 +7,7 @@
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
@@ -381,6 +382,22 @@
             </div>
         </div>
     </div>
+    <div id="strataView" style="display:none;position:fixed;inset:0;z-index:2600;background:#0a0a0f;">
+        <canvas id="strataCanvas" style="width:100%;height:100%;"></canvas>
+        <div class="strata-hud strata-h-tl"><div class="strata-tsm">감정의 지질학</div><div class="strata-tlg">S T R A T A</div></div>
+        <div class="strata-hud strata-h-tr" id="strataHudTR"></div>
+        <div class="strata-hud strata-h-bl">
+            <div class="strata-dlb">지층 구조</div>
+            <div class="strata-dvl" id="strataDv">위에서: 감정 지형<br>옆에서: 시간 단층</div>
+        </div>
+        <div class="strata-hud strata-h-br">
+            <div class="strata-ct">오염도<div class="strata-ct-tk"><div class="strata-ct-fl" id="strataCtFl" style="width:0%"></div></div><span id="strataCtVal">0.00</span></div>
+        </div>
+        <div class="strata-hint">drag to rotate — view from side to see cross-section</div>
+        <div class="strata-grain"></div>
+        <div id="strataLc"></div>
+        <button id="strataCloseBtn" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:120;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:12px 32px;font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:3px;cursor:pointer;transition:all 0.3s;">지층을 뒤로하다</button>
+    </div>
     <div class="emotion-modal" id="emotionModal"><div class="emotion-modal-content"><p class="emotion-question" id="emotionQuestion">왜 그렇게 했어?</p><input type="text" class="emotion-input-field" id="emotionInputField" placeholder="당신의 이유를 말해주세요"><button class="emotion-submit" onclick="submitEmotion()">확인</button></div></div>
     <div class="emotion-modal" id="memoryFateModal"><div class="emotion-modal-content"><p class="emotion-question">이 기억의 운명을 선택하세요</p><div class="fate-buttons"><button class="fate-btn" onclick="selectMemoryFate('preserve')">보존</button><button class="fate-btn" onclick="selectMemoryFate('dilute')">자연 소멸</button><button class="fate-btn" onclick="selectMemoryFate('anonymous')">완전 익명</button></div><div class="fate-descriptions"><div class="fate-desc" id="fateDescPreserve">원본 구조를 끝까지 유지</div><div class="fate-desc" id="fateDescDilute">레이어 누적으로 서서히 희석</div><div class="fate-desc" id="fateDescAnonymous">처음부터 공동 기억으로 출발</div></div></div></div>
     <div class="session-detail-modal" id="sessionDetailModal"><div class="session-detail-modal-content"><div class="session-detail-header"><h2 class="session-detail-title" id="sessionDetailTitle">세션 정보</h2><button class="session-detail-close-btn" onclick="closeSessionDetail()">✕</button></div><div class="session-detail-body" id="sessionDetailBody"><div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div></div></div></div>
@@ -586,6 +603,7 @@
     </div>
     
     <script src="data/memories.js"></script>
+    <script src="js/ui/strataView.js"></script>
     <script type="module" src="js/index.js?v=3"></script>
 </body>
 </html>
