@@ -1950,15 +1950,8 @@ function makeChoice(choiceIndex) {
         if (typeof startExpInterview === 'function') {
             console.log('[makeChoice] startExpInterview 호출');
             startExpInterview(scene);
-        } else if (sceneType === 'branch' || sceneType === 'ending') {
-            // 기존 emotionModal 로직 (expInterview 없을 때만)
-            const questionEl = document.getElementById('emotionQuestion');
-            if (questionEl) questionEl.textContent = updatedState.currentScene === 0 ? "왜 그렇게 했어?" : "왜 그런 선택을 했어?";
-            const modalEl = document.getElementById('emotionModal');
-            if (modalEl) modalEl.classList.add('active');
-            const inputEl = document.getElementById('emotionInputField');
-            if (inputEl) inputEl.focus();
         } else {
+            // expInterview가 없으면 바로 다음 장면으로
             proceedToNextScene();
         }
     } catch (e) { 
@@ -2027,62 +2020,7 @@ function collectEmotionInput() {
  * @param {Object} scene - 현재 장면 객체
  * @returns {Object} { userEmotionVector, reasonVector } 또는 null
  */
-async function analyzeEmotionForArchive(reason, anchorEmotions, scene) {
-    const modeState = appStore.getState();
-
-    if (modeState.currentMode !== 'archive' || (scene.sceneType !== 'branch' && scene.sceneType !== 'ending')) {
-        return null;
-    }
-
-    showNotification('감정을 분석하고 있습니다...');
-
-    try {
-        const emotionResult = await analyzeEmotionWithVector('', reason, anchorEmotions);
-        console.log('Archive emotion analysis result:', emotionResult);
-
-        if (!emotionResult || !emotionResult.analysis || !emotionResult.analysis.base) {
-            console.warn('감정 분석 결과가 올바르지 않습니다');
-            return null;
-        }
-
-        const userEmotionVector = emotionResult.analysis.base;
-        const reasonVector = emotionResult.reason_analysis || null;
-
-        // window.archiveUserEmotions에 저장 (하위 호환성 유지)
-        if (!window.archiveUserEmotions) {
-            window.archiveUserEmotions = [];
-        }
-        const sceneState = appStore.getState();
-        window.archiveUserEmotions[sceneState.currentScene] = {
-            emotion: userEmotionVector,
-            reason: reason,
-            sceneId: scene.id || sceneState.currentScene
-        };
-
-        // VAD 투영 및 terrain 위치 계산
-        try {
-            const vad = projectEmotionToVAD(userEmotionVector, anchorEmotions);
-            const terrainPos = vadToTerrainXZ(vad, 100);
-            if (!window.archiveUserEmotions[sceneState.currentScene]._vad) {
-                window.archiveUserEmotions[sceneState.currentScene]._vad = vad;
-            }
-            if (!window.archiveUserEmotions[sceneState.currentScene]._terrain_pos) {
-                window.archiveUserEmotions[sceneState.currentScene]._terrain_pos = terrainPos;
-            }
-            console.log('[VAD] Projected:', vad, '→ Terrain:', terrainPos);
-        } catch (vadError) {
-            console.error('[VAD] 투영 오류:', vadError);
-            console.error('[VAD] userEmotionVector:', userEmotionVector);
-            console.error('[VAD] anchorEmotions:', anchorEmotions);
-        }
-
-        return { userEmotionVector, reasonVector };
-    } catch (e) {
-        console.error('Archive emotion analysis error:', e);
-        showNotification('감정 분석 중 오류가 발생했습니다');
-        return null;
-    }
-}
+// analyzeEmotionForArchive 함수는 expInterview 모듈로 대체됨
 
 /**
  * ByeoriEngine.calculateStep() 호출만 수행
@@ -2218,102 +2156,7 @@ async function proceedToNextSceneOrEnd(currentData, scene) {
     }, 1500);
 }
 
-/**
- * submitEmotion 메인 함수 (오케스트레이터)
- */
-async function submitEmotion() {
-    try {
-        // 1. 입력 수집 및 검증
-        const inputData = collectEmotionInput();
-        if (!inputData) {
-            return;
-        }
-
-        const { reason, scene, currentData, anchorEmotions } = inputData;
-        let userEmotionVector = null;
-        let sceneAlignment = null;
-        let mismatchType = null;
-        let reasonVector = null;
-
-        // 2. 감정 분석 (archive 모드일 때만)
-        const analysisResult = await analyzeEmotionForArchive(reason, anchorEmotions, scene);
-        if (analysisResult) {
-            userEmotionVector = analysisResult.userEmotionVector;
-            reasonVector = analysisResult.reasonVector;
-        }
-
-        // 3. 엔진 계산 (원본 감정이 있을 때만)
-        if (userEmotionVector && scene.originalEmotion && typeof scene.originalEmotion === 'object') {
-            const originalVectorCombined = {
-                base: scene.originalEmotion,
-                reason_analysis: scene.originalReasonVector || {
-                    attribution: 'unknown',
-                    core_fear: 'unknown',
-                    is_void: false
-                }
-            };
-
-            const userVectorCombined = {
-                base: userEmotionVector,
-                reason_analysis: reasonVector
-            };
-
-            const state = appStore.getState();
-            const engineResult = runEngineStep(
-                {
-                    userVector: userVectorCombined,
-                    originalVector: originalVectorCombined,
-                    anchorEmotions: anchorEmotions
-                },
-                {
-                    previousBucket: state.currentBucket,
-                    emotionHistory: state.emotionHistory
-                }
-            );
-
-            sceneAlignment = engineResult.alignment_score;
-            mismatchType = engineResult.mismatch_type;
-            const newBucket = engineResult.alignment_bucket;
-
-            console.log('=== ByeoriEngine 계산 결과 ===');
-            console.log('정렬도:', sceneAlignment);
-            console.log('버킷:', newBucket);
-            console.log('미스매치:', mismatchType);
-
-            // 4. 엔진 결과 적용 (store 업데이트)
-            const applyResult = applyEngineResult(engineResult, userEmotionVector);
-            const { stateAfterUpdate } = applyResult;
-
-            // 5. UI 업데이트
-            updateUIAfterSubmit(stateAfterUpdate, {
-                sceneAlignment,
-                newBucket,
-                userEmotionVector
-            });
-        } else {
-            console.warn('원본 감정이 없어 정렬도를 계산할 수 없습니다');
-            sceneAlignment = null;
-        }
-
-        // 6. 저장
-        await persistAfterSubmit({
-            userEmotionVector,
-            reason,
-            scene,
-            currentData,
-            sceneAlignment,
-            reasonVector,
-            mismatchType
-        });
-
-        // 7. 다음 장면으로 이동 또는 엔딩 화면 표시
-        await proceedToNextSceneOrEnd(currentData, scene);
-
-    } catch (e) {
-        console.error('submitEmotion error:', e);
-        showNotification('감정을 제출하는 중 오류가 발생했습니다');
-    }
-}
+// submitEmotion 함수는 expInterview 모듈로 대체됨
 function updateStrata() { const state = appStore.getState(); const originalPercent = 70 - (state.currentScene * 10), interpretPercent = 30 + (state.currentScene * 10); document.getElementById('strataOriginal').style.height = originalPercent + '%'; document.getElementById('strataInterpretation').style.height = interpretPercent + '%'; document.getElementById('strataInterpretation').style.bottom = originalPercent + '%' }
 function getAlignmentLevel(alignment) { if (alignment >= 0.55) return 'HIGH'; if (alignment >= 0.35) return 'MID'; return 'LOW' } function startWaveAnimation() { const canvas = document.getElementById('waveCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); let time = 0; const state = appStore.getState(); const alignmentLevel = getAlignmentLevel(state.currentAlignment); function animate() { const width = canvas.width / 2, height = canvas.height / 2, centerY = height / 2; ctx.fillStyle = 'rgba(18,18,26,0.1)'; ctx.fillRect(0, 0, width, height); if (alignmentLevel === 'HIGH') { ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.8)'; ctx.lineWidth = 2; const syncPhase = time * 0.05; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.02 + syncPhase) * 15 + Math.sin(x * 0.01 + syncPhase * 0.6) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(122,154,122,0.7)'; ctx.lineWidth = 2; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.02 + syncPhase + Math.PI * 0.1) * 15 + Math.sin(x * 0.01 + syncPhase * 0.6 + Math.PI * 0.1) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'MID') { ctx.save(); ctx.filter = 'blur(1px)'; const irregularity = Math.sin(time * 0.1) * 0.3 + 0.7; ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.6)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const noise = Math.random() * 5 - 2.5; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + noise * 0.1) * 15 * irregularity + Math.sin(x * 0.01 + time * 0.03 + noise * 0.05) * 10 * irregularity; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.restore(); ctx.beginPath(); ctx.strokeStyle = 'rgba(123,143,168,0.5)'; ctx.lineWidth = 1.5; const state = appStore.getState(); const offset = (1 - state.currentAlignment) * 30; for (let x = 0; x < width; x++) { const noise = Math.random() * 3 - 1.5; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + offset + noise * 0.1) * 15 + Math.sin(x * 0.01 + time * 0.03 + offset * 0.5 + noise * 0.05) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'LOW') { const glitch = Math.random() > 0.9; if (glitch) { ctx.save(); ctx.filter = 'invert(1)'; ctx.fillStyle = 'rgba(217,74,74,0.3)'; ctx.fillRect(0, 0, width, height); ctx.restore() } const noiseAmplitude = 10 + Math.random() * 10; ctx.beginPath(); ctx.strokeStyle = glitch ? 'rgba(217,74,74,0.8)' : 'rgba(196,168,130,0.4)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const noise = Math.random() * noiseAmplitude - noiseAmplitude / 2; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + noise * 0.2) * 15 + Math.sin(x * 0.01 + time * 0.03 + noise * 0.1) * 10 + noise; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = glitch ? 'rgba(217,74,74,0.6)' : 'rgba(123,143,168,0.3)'; ctx.lineWidth = 1.5; const state = appStore.getState(); const offset = (1 - state.currentAlignment) * 30; for (let x = 0; x < width; x++) { const noise = Math.random() * noiseAmplitude - noiseAmplitude / 2; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + offset + noise * 0.2) * 15 + Math.sin(x * 0.01 + time * 0.03 + offset * 0.5 + noise * 0.1) * 10 + noise; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'FIXATED') { const slowTime = time * 0.02; const vignetteGradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height)); vignetteGradient.addColorStop(0, 'rgba(0,0,0,0)'); vignetteGradient.addColorStop(1, 'rgba(0,0,0,0.4)'); ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.9)'; ctx.lineWidth = 2.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.015 + slowTime) * 12 + Math.sin(x * 0.008 + slowTime * 0.5) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(122,154,122,0.8)'; ctx.lineWidth = 2.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.015 + slowTime + Math.PI * 0.05) * 12 + Math.sin(x * 0.008 + slowTime * 0.5 + Math.PI * 0.05) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.fillStyle = vignetteGradient; ctx.fillRect(0, 0, width, height) } time++; const animId = requestAnimationFrame(animate); appStore.setState({ waveAnimationId: animId }) } animate() }
 function startLiveWaveAnimation() { const canvas = document.getElementById('liveWaveCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); let time = 0; function animate() { ctx.fillStyle = 'rgba(18,18,26,0.15)'; ctx.fillRect(0, 0, canvas.width / 2, canvas.height / 2); const width = canvas.width / 2, height = canvas.height / 2, centerY = height / 2; ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.7)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.025 + time * 0.04) * 12 + Math.sin(x * 0.015 + time * 0.025) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(123,143,168,0.7)'; ctx.lineWidth = 1.5; const offset = (1 - currentAlignment) * 25; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.025 + time * 0.04 + offset) * 12 + Math.sin(x * 0.015 + time * 0.025 + offset * 0.6) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); time++; const animId = requestAnimationFrame(animate); appStore.setState({ liveWaveAnimationId: animId }) } animate() }
@@ -2900,7 +2743,7 @@ window.switchExpToTextInput = switchExpToTextInput;
 window.backToList = backToList;
 window.saveMemory = saveMemory;
 window.goToIntro = goToIntro;
-window.submitEmotion = submitEmotion;
+// window.submitEmotion은 expInterview 모듈로 대체됨
 window.selectMemoryFate = selectMemoryFate;
 window.closeSessionDetail = closeSessionDetail;
 window.sendChatMessage = sendChatMessage;
@@ -4470,130 +4313,7 @@ function typeWriter(element, text, speed = 50, callback) {
     type();
 }
 
-// Step 1: 튜닝 (감각 칩)
-function initStep1() {
-    const textEl = document.querySelector('.step-1 .confession-text');
-    const chipsContainer = document.querySelector('.step-1 .sensory-chips');
-
-    if (textEl) {
-        // 텍스트 초기화 (중복 방지)
-        textEl.textContent = '';
-        typeWriter(textEl, '무엇이 느껴지나?', 50);
-    }
-
-    // 감각 칩 렌더링
-    if (chipsContainer) {
-        chipsContainer.innerHTML = '';
-
-        // 모든 감각 칩을 하나의 배열로 합치기
-        const allChips = [
-            ...sensoryChips.smell.map(chip => ({ ...chip, type: 'smell' })),
-            ...sensoryChips.sound.map(chip => ({ ...chip, type: 'sound' }))
-        ];
-
-        // 칩 버튼 생성
-        allChips.forEach(chip => {
-            const chipBtn = document.createElement('button');
-            chipBtn.className = 'sensory-chip';
-            chipBtn.textContent = chip.label;
-            chipBtn.dataset.type = chip.type;
-            chipBtn.dataset.key = chip.key;
-
-            // 클릭 이벤트
-            chipBtn.addEventListener('click', () => {
-                // 다른 칩들의 selected 제거
-                chipsContainer.querySelectorAll('.sensory-chip').forEach(btn => {
-                    btn.classList.remove('selected');
-                });
-
-                // 현재 칩 선택
-                chipBtn.classList.add('selected');
-
-                // ritualData에 저장
-                if (chip.type === 'smell') {
-                    confessionState.ritualData.sensory.smell = chip.key;
-                } else if (chip.type === 'sound') {
-                    confessionState.ritualData.sensory.sound = chip.key;
-                }
-
-                console.log('감각 칩 선택:', chip.type, chip.key);
-                console.log('ritualData.sensory:', confessionState.ritualData.sensory);
-
-                // 0.5초 후 다음 단계로
-                setTimeout(() => {
-                    nextStep();
-                }, 500);
-            });
-
-            chipsContainer.appendChild(chipBtn);
-        });
-    }
-}
-
-// Step 2: 앵커링 (사물 입력)
-function initStep2() {
-    const textEl = document.querySelector('.step-2 .confession-text');
-    const anchorInput = document.querySelector('.anchor-input');
-
-    if (textEl) {
-        typeWriter(textEl, '무엇을 보았나?', 50);
-    }
-
-    if (anchorInput) {
-        anchorInput.value = '';
-        anchorInput.focus();
-    }
-}
-
-// Step 3: 발화 (Leading Sentence)
-function initStep3() {
-    const textEl = document.querySelector('.step-3 .confession-text');
-    const leadInput = document.querySelector('.lead-input');
-
-    if (textEl) {
-        typeWriter(textEl, '무엇을 했나?', 50);
-    }
-
-    if (leadInput) {
-        leadInput.value = '';
-        leadInput.focus();
-    }
-}
-
-// Step 4: 충돌
-function initStep4() {
-    const textEl = document.querySelector('.step-4 .confession-text');
-    const crashInput = document.querySelector('.crash-input');
-
-    if (textEl) {
-        typeWriter(textEl, '무슨 일이 일어났나?', 50);
-    }
-
-    if (crashInput) {
-        crashInput.value = '';
-        crashInput.focus();
-    }
-}
-
-// Step 5: 봉인
-function initStep5() {
-    const textEl = document.querySelector('.step-5 .confession-text');
-    const sealInput = document.querySelector('.seal-input');
-    const saveBtn = document.querySelector('.confession-save-btn');
-
-    if (textEl) {
-        typeWriter(textEl, '이제 그 공간에서 나옵니다. 문을 닫습니다. 문 너머에 남겨진 감정을 단 하나의 단어로 정의한다면?', 50);
-    }
-
-    if (sealInput) {
-        sealInput.value = '';
-        sealInput.focus();
-    }
-
-    if (saveBtn) {
-        saveBtn.classList.add('hidden');
-    }
-}
+// initStep1~5 함수들은 V2 flow로 대체됨 (renderPrompt 사용)
 
 // 안전 리소스 팝업 표시
 function showSafetyResources() {

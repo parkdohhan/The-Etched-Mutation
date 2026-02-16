@@ -383,7 +383,6 @@
         <div id="strataLc"></div>
         <button id="strataCloseBtn" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:120;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:12px 32px;font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:3px;cursor:pointer;transition:all 0.3s;">지층을 뒤로하다</button>
     </div>
-    <div class="emotion-modal" id="emotionModal"><div class="emotion-modal-content"><p class="emotion-question" id="emotionQuestion">왜 그렇게 했어?</p><input type="text" class="emotion-input-field" id="emotionInputField" placeholder="당신의 이유를 말해주세요"><button class="emotion-submit" onclick="submitEmotion()">확인</button></div></div>
     <div class="emotion-modal" id="memoryFateModal"><div class="emotion-modal-content"><p class="emotion-question">이 기억의 운명을 선택하세요</p><div class="fate-buttons"><button class="fate-btn" onclick="selectMemoryFate('preserve')">보존</button><button class="fate-btn" onclick="selectMemoryFate('dilute')">자연 소멸</button><button class="fate-btn" onclick="selectMemoryFate('anonymous')">완전 익명</button></div><div class="fate-descriptions"><div class="fate-desc" id="fateDescPreserve">원본 구조를 끝까지 유지</div><div class="fate-desc" id="fateDescDilute">레이어 누적으로 서서히 희석</div><div class="fate-desc" id="fateDescAnonymous">처음부터 공동 기억으로 출발</div></div></div></div>
     <div class="session-detail-modal" id="sessionDetailModal"><div class="session-detail-modal-content"><div class="session-detail-header"><h2 class="session-detail-title" id="sessionDetailTitle">세션 정보</h2><button class="session-detail-close-btn" onclick="closeSessionDetail()">✕</button></div><div class="session-detail-body" id="sessionDetailBody"><div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div></div></div></div>
     <div class="npc-dialogue" id="npcDialogue"><div class="npc-name">또다른 나</div><div id="npcText"></div></div>
@@ -524,7 +523,7 @@
     <div id="confession-overlay" class="hidden">
         <div class="vignette-layer"></div>
         <div class="confession-progress">
-            <span class="step-indicator" id="stepIndicator">1 / 5</span>
+            <span class="step-indicator" id="confessionStepIndicator">1 / 5</span>
             <button class="confession-exit-btn" id="confessionExitBtn">✕</button>
         </div>
         <div class="confession-flow" id="confessionFlow"></div>

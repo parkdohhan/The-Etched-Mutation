@@ -204,7 +204,7 @@ function bindAuthEvents() {
 
 // ========== 아카이브 모드 이벤트 ==========
 function bindArchiveEvents() {
-    // 자유 입력 필드
+    // 자유 입력 필드 (expInterview 모듈로 대체됨)
     const freeInputEl = document.getElementById('freeInput');
     if (freeInputEl) {
         freeInputEl.addEventListener('keypress', function (e) {
@@ -217,24 +217,16 @@ function bindArchiveEvents() {
                     if (window.showNpcDialogue && window.NPC_DIALOGUES) {
                         window.showNpcDialogue(window.NPC_DIALOGUES.archive.customAction(customAction), 3000);
                     }
-                    const emotionQuestion = document.getElementById('emotionQuestion');
-                    if (emotionQuestion) emotionQuestion.textContent = "왜 그런 선택을 했어?";
-                    const emotionModal = document.getElementById('emotionModal');
-                    if (emotionModal) emotionModal.classList.add('active');
-                    const emotionInputField = document.getElementById('emotionInputField');
-                    if (emotionInputField) emotionInputField.focus();
+                    // expInterview 모듈 사용
+                    if (typeof startExpInterview === 'function') {
+                        const state = window.appStore?.getState();
+                        const currentData = window.currentStoryData;
+                        if (currentData && currentData.scenes && state) {
+                            const scene = currentData.scenes[state.currentScene];
+                            if (scene) startExpInterview(scene);
+                        }
+                    }
                 }
-            }
-        });
-    }
-
-    // 감정 입력 필드
-    const emotionInputFieldEl = document.getElementById('emotionInputField');
-    if (emotionInputFieldEl) {
-        emotionInputFieldEl.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && !e.isComposing && window.submitEmotion) {
-                e.preventDefault();
-                window.submitEmotion();
             }
         });
     }
