@@ -9,6 +9,8 @@ import { playSound, stopSound, setVolume, SOUNDS } from './shared/audio.js';
 import { cosineSimilarity, normalizeVector, addVectors, calculateAlignment, getBucket, checkFixated, getDominantEmotion, normalizeAnchor, projectEmotionToVAD, vadToTerrainXZ } from './shared/math.js';
 import { AppState, resetState, updateState, updateStates } from './shared/state.js';
 import { ByeoriEngine, byeoriEngine } from './core/ByeoriEngine.js';
+// expInterview.js에서 접근할 수 있도록 window에 노출
+window.byeoriEngine = byeoriEngine;
 import { createStore } from './core/store.js';
 import { networkService } from './services/NetworkService.js';
 import { realtimeService } from './services/RealtimeService.js';
@@ -1486,7 +1488,17 @@ function startVoiceWaveLiveAnimation() {
 function stopVoiceWaveLiveAnimation() { if (voiceWaveLiveAnimationId) { cancelAnimationFrame(voiceWaveLiveAnimationId); voiceWaveLiveAnimationId = null } }
 // alignmentWaveAnimationId, comparisonWaveAnimationId, comparisonWaveTime는 Visualizer 내부에서 관리됨
 let voiceWaveLiveAnimationId = null;
-function selectMemory(index) { try { appStore.setState({ currentMemory: index, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [] }); const state = appStore.getState(); updateUserStats('memory', index); const stateAfter = appStore.getState(); const selectedMemory = stateAfter.allMemoriesData[index] || stateAfter.allMemoriesData[0]; if (!selectedMemory) { showNotification('기억을 불러올 수 없습니다'); return } const memoryId = selectedMemory.id; if (memoryId) { activateMemoryIfFetus(memoryId); } window.currentStoryData = selectedMemory; const archiveContainerEl = document.getElementById('archiveContainer'); if (archiveContainerEl && !archiveContainerEl.classList.contains('active')) { archiveContainerEl.classList.add('active') } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'none'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'none'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'none'; showConsentSequence(index); } catch (e) { console.error('selectMemory error:', e); const errorState = appStore.getState(); console.error('Error details:', { index, memoriesDataLength: errorState.allMemoriesData.length, selectedMemory: errorState.allMemoriesData[index] }); showNotification('기억을 불러오는 중 오류가 발생했습니다') } }
+function selectMemory(index) { try { 
+    // expInterviewState 초기화
+    if (typeof expInterviewState !== 'undefined') {
+        expInterviewState.answers = {};
+        expInterviewState.currentBucket = null;
+        expInterviewState.previousBucket = null;
+        expInterviewState.repeatCount = 0;
+        expInterviewState.alignmentHistory = [];
+        if (typeof updateWaveBucket === 'function') updateWaveBucket('IDLE');
+    }
+    appStore.setState({ currentMemory: index, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [] }); const state = appStore.getState(); updateUserStats('memory', index); const stateAfter = appStore.getState(); const selectedMemory = stateAfter.allMemoriesData[index] || stateAfter.allMemoriesData[0]; if (!selectedMemory) { showNotification('기억을 불러올 수 없습니다'); return } const memoryId = selectedMemory.id; if (memoryId) { activateMemoryIfFetus(memoryId); } window.currentStoryData = selectedMemory; const archiveContainerEl = document.getElementById('archiveContainer'); if (archiveContainerEl && !archiveContainerEl.classList.contains('active')) { archiveContainerEl.classList.add('active') } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'none'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'none'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'none'; showConsentSequence(index); } catch (e) { console.error('selectMemory error:', e); const errorState = appStore.getState(); console.error('Error details:', { index, memoriesDataLength: errorState.allMemoriesData.length, selectedMemory: errorState.allMemoriesData[index] }); showNotification('기억을 불러오는 중 오류가 발생했습니다') } }
 function showConsentSequence(memoryIndex) {
     const consentSequenceEl = document.getElementById('consentSequence');
     if (!consentSequenceEl) {
@@ -1788,6 +1800,15 @@ function showWordSentenceSequence(memoryIndex) {
     }
 }
 function startArchivePlay(memoryIndex) {
+    // expInterviewState 초기화
+    if (typeof expInterviewState !== 'undefined') {
+        expInterviewState.answers = {};
+        expInterviewState.currentBucket = null;
+        expInterviewState.previousBucket = null;
+        expInterviewState.repeatCount = 0;
+        expInterviewState.alignmentHistory = [];
+        if (typeof updateWaveBucket === 'function') updateWaveBucket('IDLE');
+    }
     const sceneViewerEl = document.getElementById('sceneViewer');
     if (sceneViewerEl) {
         sceneViewerEl.classList.add('active');
@@ -1805,7 +1826,11 @@ function startArchivePlay(memoryIndex) {
             // ---- 기존 코드 ----
             initProgressDots();
             renderScene();
-            startWaveAnimation();
+            if (typeof startBucketWaveAnimation === 'function') {
+                startBucketWaveAnimation();
+            } else {
+                startWaveAnimation();
+            }
             setTimeout(() => showNpcDialogue("이 기억의 주인은 아래층에, 다른 사람들의 해석은 위층에 쌓여 있어. 천천히 그 지층을 따라가 봐.", 4000), 100);
         }, 100);
     } else {
@@ -1818,7 +1843,7 @@ function goToScene(index) { const state = appStore.getState(); if (index <= stat
 async function renderScene() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면을 불러올 수 없습니다'); return } const scene = currentData.scenes[state.currentScene]; if (!scene || !scene.text) { showNotification('장면 텍스트를 불러올 수 없습니다'); return } const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); if (scene.choices) renderChoices(scene.choices); const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%' } catch (e) { console.error('renderScene error:', e); showNotification('장면을 렌더링하는 중 오류가 발생했습니다') } }
 function renderEchoLayer(words) { const layer = document.getElementById('echoLayer'); if (!layer) return; layer.innerHTML = ''; if (!words || !Array.isArray(words)) return; words.forEach(word => { const span = document.createElement('span'); span.className = 'echo-word'; span.textContent = word; span.style.top = (20 + Math.random() * 60) + '%'; span.style.left = (10 + Math.random() * 80) + '%'; layer.appendChild(span) }) }
 function renderChoices(choices) { const container = document.getElementById('choicesContainer'); if (!container) return; container.innerHTML = ''; if (!choices || !Array.isArray(choices)) return; choices.forEach((choice, i) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.textContent = choice.text; btn.onclick = function () { makeChoice(i) }; container.appendChild(btn) }) }
-function makeChoice(choiceIndex) { try { const state = appStore.getState(); appStore.setState({ userChoices: [...state.userChoices, choiceIndex] }); const currentData = window.currentStoryData || storyData; const updatedState = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } const scene = currentData.scenes[updatedState.currentScene]; const sceneType = scene.sceneType || 'normal'; if (sceneType === 'branch' || sceneType === 'ending') { const questionEl = document.getElementById('emotionQuestion'); if (questionEl) questionEl.textContent = updatedState.currentScene === 0 ? "왜 그렇게 했어?" : "왜 그런 선택을 했어?"; const modalEl = document.getElementById('emotionModal'); if (modalEl) modalEl.classList.add('active'); const inputEl = document.getElementById('emotionInputField'); if (inputEl) inputEl.focus() } else { proceedToNextScene() } } catch (e) { console.error('makeChoice error:', e); showNotification('오류가 발생했습니다') } }
+function makeChoice(choiceIndex) { try { const state = appStore.getState(); appStore.setState({ userChoices: [...state.userChoices, choiceIndex] }); const currentData = window.currentStoryData || storyData; const updatedState = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } const scene = currentData.scenes[updatedState.currentScene]; const sceneType = scene.sceneType || scene.scene_type || 'normal'; if (sceneType === 'branch' || sceneType === 'ending') { if (typeof startExpInterview === 'function') { startExpInterview(scene); } else { const questionEl = document.getElementById('emotionQuestion'); if (questionEl) questionEl.textContent = updatedState.currentScene === 0 ? "왜 그렇게 했어?" : "왜 그런 선택을 했어?"; const modalEl = document.getElementById('emotionModal'); if (modalEl) modalEl.classList.add('active'); const inputEl = document.getElementById('emotionInputField'); if (inputEl) inputEl.focus(); } } else { proceedToNextScene() } } catch (e) { console.error('makeChoice error:', e); showNotification('오류가 발생했습니다') } }
 function proceedToNextScene() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); if (window.soundscape) window.soundscape.onSceneTransition(); renderScene() } else { showEndScreen() } } catch (e) { console.error('proceedToNextScene error:', e); showNotification('오류가 발생했습니다') } }
 function proceedToNextSceneLive() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); simulateNarratorInput() } else { showEndScreen() } } catch (e) { console.error('proceedToNextSceneLive error:', e); showNotification('오류가 발생했습니다') } }
 // ───── submitEmotion 리팩토링: 하위 함수들 ─────

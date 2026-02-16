@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/expInterview.css">
 </head>
 <body>
     <div class="opening-screen" id="openingScreen">
@@ -313,7 +314,7 @@
                 <div class="scene-header"><button class="back-btn" onclick="backToList()">← 목록으로</button><div class="progress-indicator"><span>장면</span><div class="progress-dots" id="progressDots"></div><span id="sceneCounter">1/5</span></div></div>
                 <div class="scene-content">
                     <div class="scene-main"><div class="echo-layer" id="echoLayer"></div><div class="scene-text" id="sceneText"></div><div class="choices-container" id="choicesContainer"></div><div class="free-input-container"><textarea class="free-input" id="freeInput" rows="2" placeholder="다른 행동을 입력하세요..."></textarea></div></div>
-                    <div class="sidebar"><div class="sidebar-section"><h4 class="sidebar-title">감정 파동</h4><div class="wave-container"><canvas class="wave-canvas" id="waveCanvas"></canvas></div></div><div class="sidebar-section"><div class="alignment-meter"><div class="alignment-label">감정 구조 정렬도</div><div class="alignment-value" id="alignmentValue">0.00</div><div class="alignment-bar"><div class="alignment-fill" id="alignmentFill" style="width:0%"></div></div><div class="alignment-note">트루엔딩 조건: 0.80 이상</div></div></div></div>
+                    <div class="sidebar"><div class="sidebar-section"><h4 class="sidebar-title">감정 파동</h4><div class="wave-container"><canvas class="wave-canvas" id="waveCanvas"></canvas></div></div></div>
                 </div>
             </div>
         </div>
