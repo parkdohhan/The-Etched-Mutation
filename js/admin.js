@@ -2568,3 +2568,83 @@ function toggleContamination(sceneIndex) {
 
 window.toggleContamination = toggleContamination;
 
+// Strata 3D 지층 미리보기 로드
+async function loadStrataPreview(memoryId) {
+    // memoryId가 없으면 currentMemoryId 사용
+    if (!memoryId) {
+        memoryId = currentMemoryId;
+    }
+    
+    if (!memoryId) {
+        console.warn('[loadStrataPreview] memoryId가 없습니다.');
+        alert('메모리를 먼저 선택해주세요.');
+        return;
+    }
+
+    console.log('[Admin] Strata 미리보기 로드 시작:', memoryId);
+
+    try {
+        const loadingEl = document.getElementById('strataLoading');
+        if (loadingEl) loadingEl.textContent = 'Strata 데이터를 로드하는 중...';
+
+        // window.showStrataView 사용
+        if (window.showStrataView) {
+            // alignmentResult는 계산하지 않고 null 전달
+            await window.showStrataView(memoryId, null, () => {
+                console.log('[Admin] Strata 미리보기 닫힘');
+                const strataView = document.getElementById('strataView');
+                if (strataView) {
+                    strataView.style.display = 'none';
+                }
+                if (loadingEl) {
+                    loadingEl.style.display = 'flex';
+                    loadingEl.textContent = 'Strata 미리보기를 로드하려면 버튼을 클릭하세요';
+                }
+            });
+            
+            // admin 컨테이너에 표시
+            const strataView = document.getElementById('strataView');
+            const loadingEl = document.getElementById('strataLoading');
+            if (strataView) {
+                strataView.style.display = 'block';
+                strataView.style.position = 'relative';
+                strataView.style.width = '100%';
+                strataView.style.height = '100%';
+                strataView.style.background = '#0a0a0f';
+            }
+            if (loadingEl) loadingEl.style.display = 'none';
+
+            // canvas 크기 조정 (admin 컨테이너에 맞춤)
+            const canvas = document.getElementById('strataCanvas');
+            const container = document.getElementById('adminStrataContainer');
+            if (canvas && container) {
+                const resizeCanvas = () => {
+                    const width = container.offsetWidth;
+                    const height = container.offsetHeight;
+                    if (window.Strata && window.Strata.renderer && window.Strata.camera) {
+                        window.Strata.renderer.setSize(width, height);
+                        window.Strata.camera.aspect = width / height;
+                        window.Strata.camera.updateProjectionMatrix();
+                    }
+                };
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+            }
+
+        } else {
+            throw new Error('Strata 뷰를 사용할 수 없습니다. strataView.js가 로드되었는지 확인하세요.');
+        }
+
+    } catch (error) {
+        console.error('[Admin] Strata 미리보기 로드 오류:', error);
+        const loadingEl = document.getElementById('strataLoading');
+        if (loadingEl) {
+            loadingEl.style.display = 'flex';
+            loadingEl.textContent = '로드 실패: ' + error.message;
+        }
+        alert('Strata 미리보기 로드 실패: ' + error.message);
+    }
+}
+
+window.loadStrataPreview = loadStrataPreview;
+

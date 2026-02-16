@@ -117,7 +117,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 author_note: author_note || null,
                 status: status || 'Fetus',
                 source: source || 'beginner',
-                sound_map: sound_map || null,
+                // sound_map: sound_map || null, // 임시 주석: 컬럼이 없으면 오류 발생
                 layers: 0,
                 dilution: 50,
                 is_public: true
@@ -162,7 +162,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
             author_note: author_note || null,
             status: status || 'Fetus',
             source: source || 'beginner',
-            sound_map: sound_map || null,
+            // sound_map: sound_map || null, // 임시 주석: 컬럼이 없으면 오류 발생
             layers: 0,
             dilution: 50,
             is_public: true

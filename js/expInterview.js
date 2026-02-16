@@ -211,13 +211,22 @@ function extractExpVector(answers) {
  * choicesContainer를 숨기고, 그 자리에 칩 인터뷰를 렌더링.
  */
 function startExpInterview(scene) {
+  console.log('[expInterview] startExpInterview 호출됨, scene:', scene);
   // 선택지 숨기기
   const choicesEl = document.getElementById('choicesContainer');
-  if (choicesEl) choicesEl.style.display = 'none';
+  if (choicesEl) {
+    choicesEl.style.display = 'none';
+    console.log('[expInterview] choicesContainer 숨김');
+  } else {
+    console.warn('[expInterview] choicesContainer를 찾을 수 없음');
+  }
 
   // 자유 입력 숨기기
   const freeInput = document.querySelector('.free-input-container');
-  if (freeInput) freeInput.style.display = 'none';
+  if (freeInput) {
+    freeInput.style.display = 'none';
+    console.log('[expInterview] free-input-container 숨김');
+  }
 
   // 인터뷰 컨테이너 생성 (없으면)
   let container = document.getElementById('expInterviewZone');
@@ -227,10 +236,37 @@ function startExpInterview(scene) {
     container.className = 'exp-interview-zone';
     // scene-main 안에, choicesContainer 뒤에 삽입
     const sceneMain = document.querySelector('.scene-main');
-    if (sceneMain) sceneMain.appendChild(container);
+    if (sceneMain) {
+      sceneMain.appendChild(container);
+      console.log('[expInterview] expInterviewZone 생성 및 추가됨');
+    } else {
+      console.error('[expInterview] .scene-main을 찾을 수 없음');
+      // sceneViewer 내부에 직접 추가 시도
+      const sceneViewer = document.getElementById('sceneViewer');
+      if (sceneViewer) {
+        const sceneContent = sceneViewer.querySelector('.scene-content');
+        if (sceneContent) {
+          const sceneMain = sceneContent.querySelector('.scene-main');
+          if (sceneMain) {
+            sceneMain.appendChild(container);
+            console.log('[expInterview] sceneViewer 내부에 expInterviewZone 추가됨');
+          } else {
+            console.error('[expInterview] sceneViewer 내부에도 .scene-main을 찾을 수 없음');
+            return;
+          }
+        } else {
+          console.error('[expInterview] .scene-content를 찾을 수 없음');
+          return;
+        }
+      } else {
+        console.error('[expInterview] sceneViewer를 찾을 수 없음');
+        return;
+      }
+    }
   }
   container.innerHTML = '';
   container.style.display = 'block';
+  console.log('[expInterview] 인터뷰 컨테이너 준비 완료');
 
   // 상태 초기화
   expInterviewState.answers = {};
@@ -395,6 +431,9 @@ function onExpInterviewDone(container, scene) {
     engineResult = fallbackAlignment(userVector, originalVector);
   }
 
+  const sceneAlignment = engineResult ? engineResult.alignment_score : null;
+  const userReason = expInterviewState.answers.reason || '';
+  
   if (engineResult) {
     // Update bucket state
     expInterviewState.previousBucket = expInterviewState.currentBucket;
@@ -418,6 +457,55 @@ function onExpInterviewDone(container, scene) {
     }
   }
 
+  // Archive flow: window.archiveUserEmotions에 저장 및 DB 저장
+  if (typeof window.appStore !== 'undefined' && window.appStore.getState) {
+    const state = window.appStore.getState();
+    if (state.currentMode === 'archive') {
+      console.log('[expInterview] Archive flow: 데이터 저장 시작');
+      
+      // window.archiveUserEmotions에 저장
+      if (!window.archiveUserEmotions) {
+        window.archiveUserEmotions = [];
+      }
+      const currentScene = state.currentScene || 0;
+      window.archiveUserEmotions[currentScene] = {
+        emotion: userVector.base,
+        reason: userReason,
+        sceneId: scene.id || currentScene
+      };
+      
+      // window.archiveSceneAlignments에 저장
+      if (!window.archiveSceneAlignments) {
+        window.archiveSceneAlignments = [];
+      }
+      if (sceneAlignment !== null) {
+        window.archiveSceneAlignments[currentScene] = sceneAlignment;
+      }
+      
+      // saveArchiveEmotionToPlays 호출
+      const currentData = window.currentStoryData;
+      if (currentData && typeof window.saveArchiveEmotionToPlays === 'function') {
+        const reasonVector = userVector.reason_analysis || null;
+        const mismatchType = engineResult ? engineResult.mismatch_type : null;
+        window.saveArchiveEmotionToPlays(
+          userVector.base,
+          userReason,
+          scene,
+          currentData,
+          sceneAlignment,
+          reasonVector,
+          mismatchType
+        );
+      }
+      
+      console.log('[expInterview] Archive flow: 데이터 저장 완료', {
+        sceneIndex: currentScene,
+        alignment: sceneAlignment,
+        hasEmotion: !!window.archiveUserEmotions[currentScene]
+      });
+    }
+  }
+
   // Clean up interview zone
   container.innerHTML = '';
   container.style.display = 'none';
@@ -429,8 +517,73 @@ function onExpInterviewDone(container, scene) {
   if (freeInput) freeInput.style.display = '';
 
   // Proceed
-  if (typeof proceedToNextScene === 'function') {
-    proceedToNextScene();
+  // ritual flow인지 확인 (currentMode가 'ritual'이면 finalSceneObject 생성 후 확인 요청)
+  if (typeof window.appStore !== 'undefined' && window.appStore.getState) {
+    const state = window.appStore.getState();
+    if (state.currentMode === 'ritual') {
+      console.log('[expInterview] ritual flow 감지, finalSceneObject 생성 및 확인 요청');
+      
+      // userVector를 emotionAnalysis 형식으로 변환
+      const emotionAnalysis = {
+        base: userVector.base,
+        intensity: 0.5,
+        confidence: 0.5
+      };
+      
+      // finalSceneObject 업데이트 (전역 변수)
+      const sceneText = scene.text || window.currentGeneratedScene || state.pendingSceneText || '';
+      window.finalSceneObject = {
+        text: sceneText,
+        emotionAnalysis: emotionAnalysis,
+        reason_analysis: userVector.reason_analysis,
+        attitude: userVector.attitude,
+        emotionRaw: expInterviewState.answers.emotion || '',
+        reasonRaw: expInterviewState.answers.reason || '',
+        generatedEmotion: expInterviewState.answers.emotion ? 
+          (Array.isArray(expInterviewState.answers.emotion) ? 
+            expInterviewState.answers.emotion.map(e => EXP_EMOTION_LABEL[e] || e).join(', ') : 
+            EXP_EMOTION_LABEL[expInterviewState.answers.emotion] || expInterviewState.answers.emotion) : '',
+        voidInfo: {
+          sceneVoid: false,
+          emotionVoid: expInterviewState.answers.emotion === 'numbness' || expInterviewState.answers.body === 'nothing',
+          reasonVoid: expInterviewState.answers.reason === 'void'
+        }
+      };
+      
+      console.log('[expInterview] finalSceneObject 생성 완료:', window.finalSceneObject);
+      
+      // UI 업데이트: 생성된 감정 표시
+      const emotionContent = document.querySelector('#generatedEmotionContent .generated-text');
+      if (emotionContent) {
+        emotionContent.textContent = window.finalSceneObject.generatedEmotion || '감정이 수집되었습니다';
+      }
+      
+      // emotion 탭으로 전환
+      if (typeof window.switchGeneratedTab === 'function') {
+        window.switchGeneratedTab('emotion');
+      }
+      
+      // 확인 요청 (handleConfirm으로 바로 이동)
+      if (typeof window.addChatMessageWithConfirm === 'function') {
+        window.addChatMessageWithConfirm('ai', '이 감정이 맞아?');
+      } else {
+        // fallback: handleConfirm 직접 호출
+        console.log('[expInterview] addChatMessageWithConfirm 없음, handleConfirm 직접 호출');
+        setTimeout(() => {
+          if (typeof window.handleConfirm === 'function') {
+            // 'yes'로 자동 확인 (또는 사용자가 확인 버튼 클릭 대기)
+            console.log('[expInterview] 사용자가 확인 버튼을 클릭할 때까지 대기');
+          }
+        }, 100);
+      }
+      
+      return;
+    }
+  }
+  
+  // Archive flow
+  if (typeof window.proceedToNextScene === 'function') {
+    window.proceedToNextScene();
   }
 }
 

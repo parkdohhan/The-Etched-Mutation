@@ -84,6 +84,8 @@ const appStore = createStore({
     pendingSceneText: '',
     expPendingEmotion: ''
 });
+// expInterview.js에서 접근할 수 있도록 window에 노출
+window.appStore = appStore;
 
 // AppState와 store 동기화 헬퍼 (하위 호환성 유지)
 function syncToAppState() {
@@ -1311,7 +1313,20 @@ async function handleConfirm(answer) {
                 console.warn('currentSessionId가 없어서 저장하지 않습니다');
             }
             currentPhase = 'emotion';
-            addChatMessage('ai', '그때 어떤 마음이었어?');
+            // expInterview.js가 로드됐으면 칩 인터뷰 사용
+            if (typeof startExpInterview === 'function') {
+                console.log('[handleConfirm] expInterview 시작 (ritual flow)');
+                // ritual flow용 scene 객체 생성
+                const ritualScene = {
+                    scene_order: appStore.getState().liveSceneNum || 1,
+                    text: sceneText,
+                    original_emotion: null, // ritual에서는 아직 없음
+                    scene_type: 'branch'
+                };
+                startExpInterview(ritualScene);
+            } else {
+                addChatMessage('ai', '그때 어떤 마음이었어?');
+            }
             return;
         } else {
             addChatMessage('ai', '다시 이야기해줘.');
@@ -1488,21 +1503,60 @@ function startVoiceWaveLiveAnimation() {
 function stopVoiceWaveLiveAnimation() { if (voiceWaveLiveAnimationId) { cancelAnimationFrame(voiceWaveLiveAnimationId); voiceWaveLiveAnimationId = null } }
 // alignmentWaveAnimationId, comparisonWaveAnimationId, comparisonWaveTime는 Visualizer 내부에서 관리됨
 let voiceWaveLiveAnimationId = null;
-function selectMemory(index) { try { 
-    // expInterviewState 초기화
-    if (typeof expInterviewState !== 'undefined') {
-        expInterviewState.answers = {};
-        expInterviewState.currentBucket = null;
-        expInterviewState.previousBucket = null;
-        expInterviewState.repeatCount = 0;
-        expInterviewState.alignmentHistory = [];
-        if (typeof updateWaveBucket === 'function') updateWaveBucket('IDLE');
-    }
-    appStore.setState({ currentMemory: index, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [] }); const state = appStore.getState(); updateUserStats('memory', index); const stateAfter = appStore.getState(); const selectedMemory = stateAfter.allMemoriesData[index] || stateAfter.allMemoriesData[0]; if (!selectedMemory) { showNotification('기억을 불러올 수 없습니다'); return } const memoryId = selectedMemory.id; if (memoryId) { activateMemoryIfFetus(memoryId); } window.currentStoryData = selectedMemory; const archiveContainerEl = document.getElementById('archiveContainer'); if (archiveContainerEl && !archiveContainerEl.classList.contains('active')) { archiveContainerEl.classList.add('active') } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'none'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'none'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'none'; showConsentSequence(index); } catch (e) { console.error('selectMemory error:', e); const errorState = appStore.getState(); console.error('Error details:', { index, memoriesDataLength: errorState.allMemoriesData.length, selectedMemory: errorState.allMemoriesData[index] }); showNotification('기억을 불러오는 중 오류가 발생했습니다') } }
+function selectMemory(index) { 
+    console.log('[selectMemory] 시작, index:', index);
+    try { 
+        // expInterviewState 초기화
+        if (typeof expInterviewState !== 'undefined') {
+            expInterviewState.answers = {};
+            expInterviewState.currentBucket = null;
+            expInterviewState.previousBucket = null;
+            expInterviewState.repeatCount = 0;
+            expInterviewState.alignmentHistory = [];
+            if (typeof updateWaveBucket === 'function') updateWaveBucket('IDLE');
+        }
+        appStore.setState({ currentMemory: index, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [] }); 
+        const state = appStore.getState(); 
+        console.log('[selectMemory] state.allMemoriesData.length:', state.allMemoriesData.length);
+        updateUserStats('memory', index); 
+        const stateAfter = appStore.getState(); 
+        const selectedMemory = stateAfter.allMemoriesData[index] || stateAfter.allMemoriesData[0]; 
+        console.log('[selectMemory] selectedMemory:', selectedMemory ? { id: selectedMemory.id, title: selectedMemory.title, scenesCount: selectedMemory.scenes?.length } : null);
+        if (!selectedMemory) { 
+            console.error('[selectMemory] 기억을 찾을 수 없음');
+            showNotification('기억을 불러올 수 없습니다'); 
+            return; 
+        } 
+        const memoryId = selectedMemory.id; 
+        if (memoryId) { 
+            activateMemoryIfFetus(memoryId); 
+        } 
+        window.currentStoryData = selectedMemory; 
+        const archiveContainerEl = document.getElementById('archiveContainer'); 
+        if (archiveContainerEl && !archiveContainerEl.classList.contains('active')) { 
+            archiveContainerEl.classList.add('active'); 
+        } 
+        const memoryListEl = document.getElementById('memoryList'); 
+        if (memoryListEl) memoryListEl.style.display = 'none'; 
+        const archiveControlsEl = document.getElementById('archiveControls'); 
+        if (archiveControlsEl) archiveControlsEl.style.display = 'none'; 
+        const archiveHeaderEl = document.querySelector('.archive-header'); 
+        if (archiveHeaderEl) archiveHeaderEl.style.display = 'none'; 
+        console.log('[selectMemory] showConsentSequence 호출');
+        showConsentSequence(index); 
+    } catch (e) { 
+        console.error('[selectMemory] 오류:', e); 
+        console.error('[selectMemory] 스택:', e.stack);
+        const errorState = appStore.getState(); 
+        console.error('[selectMemory] Error details:', { index, memoriesDataLength: errorState.allMemoriesData.length, selectedMemory: errorState.allMemoriesData[index] }); 
+        showNotification('기억을 불러오는 중 오류가 발생했습니다'); 
+    } 
+}
 function showConsentSequence(memoryIndex) {
+    console.log('[showConsentSequence] 시작, memoryIndex:', memoryIndex);
     const consentSequenceEl = document.getElementById('consentSequence');
     if (!consentSequenceEl) {
-        console.error('동의 시퀀스 요소를 찾을 수 없습니다');
+        console.error('[showConsentSequence] 동의 시퀀스 요소를 찾을 수 없습니다');
         startArchivePlay(memoryIndex);
         return;
     }
@@ -1582,16 +1636,18 @@ function showConsentSequence(memoryIndex) {
     }
 }
 function showWordSentenceSequence(memoryIndex) {
+    console.log('[showWordSentenceSequence] 시작, memoryIndex:', memoryIndex);
     const sequenceEl = document.getElementById('wordSentenceSequence');
     if (!sequenceEl) {
-        console.error('단어/문장 시퀀스 요소를 찾을 수 없습니다');
+        console.error('[showWordSentenceSequence] 단어/문장 시퀀스 요소를 찾을 수 없습니다');
         startArchivePlay(memoryIndex);
         return;
     }
     const state = appStore.getState();
     const selectedMemory = state.allMemoriesData[memoryIndex];
+    console.log('[showWordSentenceSequence] selectedMemory:', selectedMemory ? { id: selectedMemory.id, title: selectedMemory.title } : null);
     if (!selectedMemory) {
-        console.error('메모리 데이터를 찾을 수 없습니다');
+        console.error('[showWordSentenceSequence] 메모리 데이터를 찾을 수 없습니다');
         startArchivePlay(memoryIndex);
         return;
     }
@@ -1800,6 +1856,7 @@ function showWordSentenceSequence(memoryIndex) {
     }
 }
 function startArchivePlay(memoryIndex) {
+    console.log('[startArchivePlay] 시작, memoryIndex:', memoryIndex);
     // expInterviewState 초기화
     if (typeof expInterviewState !== 'undefined') {
         expInterviewState.answers = {};
@@ -1810,13 +1867,16 @@ function startArchivePlay(memoryIndex) {
         if (typeof updateWaveBucket === 'function') updateWaveBucket('IDLE');
     }
     const sceneViewerEl = document.getElementById('sceneViewer');
+    console.log('[startArchivePlay] sceneViewerEl:', sceneViewerEl ? '찾음' : '없음');
     if (sceneViewerEl) {
         sceneViewerEl.classList.add('active');
         sceneViewerEl.style.cssText = 'display:block !important;opacity:1 !important';
         setTimeout(() => {
+            console.log('[startArchivePlay] setTimeout 콜백 실행');
+            const memoryData = window.currentStoryData;
+            console.log('[startArchivePlay] currentStoryData:', memoryData ? { id: memoryData.id, title: memoryData.title, scenesCount: memoryData.scenes?.length } : null);
             // ---- 사운드스케이프 시작 ----
             if (window.soundscape) {
-                var memoryData = window.currentStoryData;
                 window.soundscape.init({
                     soundMap: (memoryData && memoryData.sound_map) ? memoryData.sound_map : null,
                     volume: 0.35
@@ -1824,7 +1884,9 @@ function startArchivePlay(memoryIndex) {
                 window.soundscape.start();
             }
             // ---- 기존 코드 ----
+            console.log('[startArchivePlay] initProgressDots 호출');
             initProgressDots();
+            console.log('[startArchivePlay] renderScene 호출');
             renderScene();
             if (typeof startBucketWaveAnimation === 'function') {
                 startBucketWaveAnimation();
@@ -1834,17 +1896,79 @@ function startArchivePlay(memoryIndex) {
             setTimeout(() => showNpcDialogue("이 기억의 주인은 아래층에, 다른 사람들의 해석은 위층에 쌓여 있어. 천천히 그 지층을 따라가 봐.", 4000), 100);
         }, 100);
     } else {
+        console.error('[startArchivePlay] 장면 뷰어를 찾을 수 없습니다');
         showNotification('장면 뷰어를 찾을 수 없습니다');
     }
 }
 function backToList() { if (window.soundscape) window.soundscape.stop(); document.getElementById('memoryList').style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none' } const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; stopWaveAnimation() }
 function initProgressDots() { const currentData = window.currentStoryData || storyData; const dotsContainer = document.getElementById('progressDots'); if (!dotsContainer) return; dotsContainer.innerHTML = ''; if (!currentData || !currentData.scenes) return; for (let i = 0; i < currentData.scenes.length; i++) { const dot = document.createElement('div'); dot.className = 'progress-dot' + (i === 0 ? ' active' : ''); dot.onclick = function () { goToScene(i) }; dotsContainer.appendChild(dot) } }
 function goToScene(index) { const state = appStore.getState(); if (index <= state.currentScene) { appStore.setState({ currentScene: index }); renderScene() } }
-async function renderScene() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면을 불러올 수 없습니다'); return } const scene = currentData.scenes[state.currentScene]; if (!scene || !scene.text) { showNotification('장면 텍스트를 불러올 수 없습니다'); return } const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); if (scene.choices) renderChoices(scene.choices); const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%' } catch (e) { console.error('renderScene error:', e); showNotification('장면을 렌더링하는 중 오류가 발생했습니다') } }
+async function renderScene() { 
+    console.log('[renderScene] 시작');
+    try { 
+        const currentData = window.currentStoryData || storyData; 
+        const state = appStore.getState(); 
+        console.log('[renderScene] currentData:', currentData ? { id: currentData.id, title: currentData.title, scenesCount: currentData.scenes?.length } : null);
+        console.log('[renderScene] state.currentScene:', state.currentScene);
+        if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { 
+            console.error('[renderScene] 장면을 불러올 수 없습니다:', { 
+                hasCurrentData: !!currentData, 
+                hasScenes: !!(currentData && currentData.scenes), 
+                scenesLength: currentData?.scenes?.length, 
+                currentScene: state.currentScene 
+            });
+            showNotification('장면을 불러올 수 없습니다'); 
+            return; 
+        } 
+        const scene = currentData.scenes[state.currentScene]; 
+        console.log('[renderScene] scene:', scene ? { id: scene.id, text: scene.text?.substring(0, 50) + '...', originalVector: scene.originalVector, original_emotion: scene.original_emotion } : null);
+        if (!scene || !scene.text) { 
+            console.error('[renderScene] 장면 텍스트를 불러올 수 없습니다:', { hasScene: !!scene, hasText: !!(scene && scene.text) });
+            showNotification('장면 텍스트를 불러올 수 없습니다'); 
+            return; 
+        } 
+        // TODO: scenes 테이블에 originalVector 컬럼 추가 후 여기서 사용
+        // 현재는 expInterview.js의 fallbackAlignment()으로 동작
+        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); if (scene.choices) renderChoices(scene.choices); const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%' } catch (e) { console.error('renderScene error:', e); showNotification('장면을 렌더링하는 중 오류가 발생했습니다') } }
 function renderEchoLayer(words) { const layer = document.getElementById('echoLayer'); if (!layer) return; layer.innerHTML = ''; if (!words || !Array.isArray(words)) return; words.forEach(word => { const span = document.createElement('span'); span.className = 'echo-word'; span.textContent = word; span.style.top = (20 + Math.random() * 60) + '%'; span.style.left = (10 + Math.random() * 80) + '%'; layer.appendChild(span) }) }
 function renderChoices(choices) { const container = document.getElementById('choicesContainer'); if (!container) return; container.innerHTML = ''; if (!choices || !Array.isArray(choices)) return; choices.forEach((choice, i) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.textContent = choice.text; btn.onclick = function () { makeChoice(i) }; container.appendChild(btn) }) }
-function makeChoice(choiceIndex) { try { const state = appStore.getState(); appStore.setState({ userChoices: [...state.userChoices, choiceIndex] }); const currentData = window.currentStoryData || storyData; const updatedState = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } const scene = currentData.scenes[updatedState.currentScene]; const sceneType = scene.sceneType || scene.scene_type || 'normal'; if (sceneType === 'branch' || sceneType === 'ending') { if (typeof startExpInterview === 'function') { startExpInterview(scene); } else { const questionEl = document.getElementById('emotionQuestion'); if (questionEl) questionEl.textContent = updatedState.currentScene === 0 ? "왜 그렇게 했어?" : "왜 그런 선택을 했어?"; const modalEl = document.getElementById('emotionModal'); if (modalEl) modalEl.classList.add('active'); const inputEl = document.getElementById('emotionInputField'); if (inputEl) inputEl.focus(); } } else { proceedToNextScene() } } catch (e) { console.error('makeChoice error:', e); showNotification('오류가 발생했습니다') } }
+function makeChoice(choiceIndex) { 
+    try { 
+        const state = appStore.getState(); 
+        appStore.setState({ userChoices: [...state.userChoices, choiceIndex] }); 
+        const currentData = window.currentStoryData || storyData; 
+        const updatedState = appStore.getState(); 
+        if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { 
+            showNotification('장면 데이터를 불러올 수 없습니다'); 
+            return; 
+        } 
+        const scene = currentData.scenes[updatedState.currentScene]; 
+        const sceneType = scene.sceneType || scene.scene_type || 'normal'; 
+        
+        // expInterview.js가 로드됐으면 모든 장면에서 칩 인터뷰 사용
+        console.log('[makeChoice] startExpInterview 체크:', typeof startExpInterview);
+        if (typeof startExpInterview === 'function') {
+            console.log('[makeChoice] startExpInterview 호출');
+            startExpInterview(scene);
+        } else if (sceneType === 'branch' || sceneType === 'ending') {
+            // 기존 emotionModal 로직 (expInterview 없을 때만)
+            const questionEl = document.getElementById('emotionQuestion');
+            if (questionEl) questionEl.textContent = updatedState.currentScene === 0 ? "왜 그렇게 했어?" : "왜 그런 선택을 했어?";
+            const modalEl = document.getElementById('emotionModal');
+            if (modalEl) modalEl.classList.add('active');
+            const inputEl = document.getElementById('emotionInputField');
+            if (inputEl) inputEl.focus();
+        } else {
+            proceedToNextScene();
+        }
+    } catch (e) { 
+        console.error('makeChoice error:', e); 
+        showNotification('오류가 발생했습니다'); 
+    } 
+}
 function proceedToNextScene() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); if (window.soundscape) window.soundscape.onSceneTransition(); renderScene() } else { showEndScreen() } } catch (e) { console.error('proceedToNextScene error:', e); showNotification('오류가 발생했습니다') } }
+// expInterview.js에서 접근할 수 있도록 window에 노출
+window.proceedToNextScene = proceedToNextScene;
 function proceedToNextSceneLive() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); simulateNarratorInput() } else { showEndScreen() } } catch (e) { console.error('proceedToNextSceneLive error:', e); showNotification('오류가 발생했습니다') } }
 // ───── submitEmotion 리팩토링: 하위 함수들 ─────
 
@@ -2249,14 +2373,21 @@ async function showEndScreen(alignmentResult, forceEndScreen = false) {
         }
 
         const currentData = window.currentStoryData || storyData;
-        const lastScene = currentData.scenes[currentData.scenes.length - 1];
+        const lastScene = currentData.scenes && currentData.scenes.length > 0 ? currentData.scenes[currentData.scenes.length - 1] : null;
         const lastChoiceIndex = state.userChoices.length > 0 ? state.userChoices[state.userChoices.length - 1] : 0;
         const lastReason = state.userReasons.length > 0 ? state.userReasons[state.userReasons.length - 1] : "—";
 
-        document.getElementById('yourChoice').textContent = lastScene.choices[lastChoiceIndex] ? lastScene.choices[lastChoiceIndex].text : "—";
+        // 안전하게 choices 접근
+        const yourChoice = lastScene && lastScene.choices && lastScene.choices[lastChoiceIndex] ? lastScene.choices[lastChoiceIndex].text : "—";
+        const theirChoice = lastScene && lastScene.choices && lastScene.originalChoice !== undefined && lastScene.choices[lastScene.originalChoice] 
+            ? lastScene.choices[lastScene.originalChoice].text 
+            : "—";
+        const theirReason = lastScene && lastScene.originalReason ? lastScene.originalReason : "—";
+
+        document.getElementById('yourChoice').textContent = yourChoice;
         document.getElementById('yourReason').textContent = '"' + lastReason + '"';
-        document.getElementById('theirChoice').textContent = lastScene.choices[lastScene.originalChoice].text;
-        document.getElementById('theirReason').textContent = '"' + lastScene.originalReason + '"';
+        document.getElementById('theirChoice').textContent = theirChoice;
+        document.getElementById('theirReason').textContent = '"' + theirReason + '"';
         document.getElementById('finalAlignment').textContent = '감정 구조 정렬도: ' + finalAlignment.toFixed(2);
 
         if (isTrueEnding) {
@@ -2758,6 +2889,9 @@ window.backToModeSelection = backToModeSelection;
 window.exitLive = exitLive;
 window.switchGeneratedTab = switchGeneratedTab;
 window.toggleEditMode = toggleEditMode;
+window.handleUnifiedSubmit = handleUnifiedSubmit;
+window.addChatMessageWithConfirm = addChatMessageWithConfirm;
+window.switchGeneratedTab = switchGeneratedTab;
 window.toggleRecording = toggleRecording;
 window.switchToTextInput = switchToTextInput;
 window.sendExpChatMessage = sendExpChatMessage;
@@ -2858,11 +2992,11 @@ async function showComparisonView() {
             console.error('비교 화면: memory_id를 찾을 수 없습니다');
             return;
         }
-        const branchEndingScenes = currentData.scenes.filter((scene, index) =>
-            (scene.sceneType === 'branch' || scene.sceneType === 'ending') &&
+        // expInterview 사용 시 모든 장면에서 파동 측정되므로, 모든 장면 확인
+        const scenesWithEmotions = currentData.scenes.filter((scene, index) =>
             window.archiveUserEmotions && window.archiveUserEmotions[index]
         );
-        if (branchEndingScenes.length === 0) {
+        if (scenesWithEmotions.length === 0) {
             console.log('비교 화면: 비교할 장면이 없습니다');
             const alignmentResult = await calculateAverageAlignment();
             showEndScreen(alignmentResult);
@@ -2872,10 +3006,19 @@ async function showComparisonView() {
         supabaseClient = getSupabaseClient();
         for (let i = 0; i < currentData.scenes.length; i++) {
             const scene = currentData.scenes[i];
-            if (scene.sceneType === 'branch' || scene.sceneType === 'ending') {
-                const userEmotionData = window.archiveUserEmotions && window.archiveUserEmotions[i] ? window.archiveUserEmotions[i] : null;
+            // expInterview 사용 시 모든 장면에서 파동 측정되므로, 모든 장면 확인
+            const userEmotionData = window.archiveUserEmotions && window.archiveUserEmotions[i] ? window.archiveUserEmotions[i] : null;
+            if (userEmotionData) {
                 let playData = null;
                 let sceneAlignment = null;
+                
+                // expInterview로 수집한 최신 정렬도 우선 사용
+                if (window.archiveSceneAlignments && window.archiveSceneAlignments[i] !== undefined) {
+                    sceneAlignment = window.archiveSceneAlignments[i];
+                    console.log(`[비교 화면] Scene ${i}: expInterview 정렬도 사용:`, sceneAlignment);
+                }
+                
+                // DB에서 plays 데이터 조회 (fallback용, expInterview 데이터가 없을 때만)
                 if (supabaseClient && scene.id) {
                     const { data: playsData, error: playsError } = await supabaseClient
                         .from('plays')
@@ -2890,18 +3033,21 @@ async function showComparisonView() {
                     }
                     if (playsData) {
                         playData = playsData;
-                        sceneAlignment = playsData.alignment;
+                        // expInterview 정렬도가 없을 때만 DB 정렬도 사용
+                        if (sceneAlignment === null) {
+                            sceneAlignment = playsData.alignment;
+                        }
                     }
                 }
+                
                 if (!playData && !userEmotionData) {
                     console.log(`[비교 화면] Scene ${i} (${scene.id}): plays 데이터와 archiveUserEmotions 모두 없음, 스킵`);
                     continue;
                 }
-                if (sceneAlignment === null && window.archiveSceneAlignments && window.archiveSceneAlignments[i] !== undefined) {
-                    sceneAlignment = window.archiveSceneAlignments[i];
-                }
-                let userEmotion = playData?.user_emotion || (userEmotionData ? userEmotionData.emotion : null);
-                let originalEmotion = scene.originalEmotion;
+                // expInterview로 수집한 최신 데이터 우선 사용
+                let userEmotion = (userEmotionData ? userEmotionData.emotion : null) || playData?.user_emotion;
+                let userReason = (userEmotionData ? userEmotionData.reason : null) || playData?.user_reason;
+                let originalEmotion = scene.originalEmotion || scene.original_emotion;
                 if (typeof userEmotion === 'string') {
                     try {
                         userEmotion = JSON.parse(userEmotion);
@@ -2937,7 +3083,7 @@ async function showComparisonView() {
                     scene: scene,
                     sceneIndex: i,
                     userEmotion: userEmotion,
-                    userReason: playData?.user_reason || (userEmotionData ? userEmotionData.reason : ''),
+                    userReason: userReason || '',
                     originalEmotion: originalEmotion,
                     originalReason: scene.originalReason || '',
                     alignment: sceneAlignment
@@ -3756,106 +3902,513 @@ const confessionState = {
 };
 
 // 감각 칩 데이터
-const sensoryChips = {
+// ===== Confession Flow V2: Chip Data =====
+const CHIP_DATA = {
     smell: [
         { label: '비릿한 물 냄새', key: 'rain_heavy' },
         { label: '매캐한 먼지', key: 'dust' },
         { label: '소독약 냄새', key: 'hospital' },
-        { label: '차가운 공기', key: 'cold_air' },
-        { label: '따뜻한 바람', key: 'warm_wind' }
+        { label: '풀 냄새', key: 'grass' },
+        { label: '아무것도', key: 'nothing', void: true },
     ],
     sound: [
         { label: '빗소리', key: 'rain' },
         { label: '적막', key: 'silence' },
         { label: '웅성거림', key: 'crowd' },
-        { label: '기계 소음', key: 'machine' },
-        { label: '바람 소리', key: 'wind' }
-    ]
+        { label: '바람 소리', key: 'wind' },
+        { label: '아무것도', key: 'nothing', void: true },
+    ],
+    touch: [
+        { label: '차가운 공기', key: 'cold_air' },
+        { label: '축축한 땀', key: 'sweat' },
+        { label: '누군가의 손', key: 'someones_hand' },
+        { label: '단단한 바닥', key: 'hard_floor' },
+        { label: '아무것도', key: 'nothing', void: true },
+    ],
+    anchor_context: [
+        { label: '원래 있었어', key: 'always_there' },
+        { label: '누가 놓았어', key: 'someone_placed' },
+        { label: '모르겠어', key: 'unknown' },
+        { label: '말하고 싶지 않아', key: 'void', void: true },
+    ],
+    action_attribution: [
+        { label: '내가 선택했어', key: 'my_choice' },
+        { label: '어쩔 수 없었어', key: 'no_choice' },
+        { label: '모르겠어', key: 'unknown' },
+    ],
+    crash_body: [
+        { label: '가슴이 조였다', key: 'chest_tight' },
+        { label: '숨이 멎었다', key: 'breathless' },
+        { label: '손이 떨렸다', key: 'trembling' },
+        { label: '눈물이 났다', key: 'tears' },
+        { label: '아무것도 느끼지 못했다', key: 'nothing', void: true },
+    ],
+    crash_emotion: [
+        { label: '죄책감', key: 'guilt' },
+        { label: '두려움', key: 'fear' },
+        { label: '분노', key: 'anger' },
+        { label: '슬픔', key: 'sadness' },
+        { label: '수치심', key: 'shame' },
+        { label: '그리움', key: 'longing' },
+        { label: '안도', key: 'relief' },
+        { label: '혼란', key: 'confusion' },
+        { label: '허탈', key: 'emptiness' },
+        { label: '경외', key: 'awe' },
+        { label: '이상한 기쁨', key: 'strange_joy' },
+        { label: '무감각', key: 'numbness', void: true },
+    ],
+    crash_target: [
+        { label: '나 자신', key: 'self' },
+        { label: '그 사람', key: 'other' },
+        { label: '그 상황', key: 'situation' },
+        { label: '모르겠어', key: 'unknown' },
+    ],
+    seal_relation: [
+        { label: '아직 아픈 것', key: 'still_hurts' },
+        { label: '이제 괜찮은 것', key: 'okay_now' },
+        { label: '아직 모르는 것', key: 'dont_know' },
+        { label: '다시 보고 싶지 않은 것', key: 'never_again', void: true },
+    ],
 };
 
-// 단계별 렌더링
-function renderStep(step) {
-    // 모든 step 숨기기
-    document.querySelectorAll('.confession-step').forEach(el => {
-        el.classList.add('hidden');
-    });
+// ===== Label Maps =====
+const BODY_LABELS = {
+    chest_tight: '가슴이 조였구나',
+    breathless: '숨이 멎었구나',
+    trembling: '손이 떨렸구나',
+    tears: '눈물이 났구나',
+    nothing: '아무것도 느끼지 못했구나',
+};
 
-    // 현재 step만 표시
-    const currentStepEl = document.querySelector(`.step-${step}`);
-    if (currentStepEl) {
-        currentStepEl.classList.remove('hidden');
+const EMOTION_LABELS = {
+    guilt: '죄책감', fear: '두려움', anger: '분노',
+    sadness: '슬픔', shame: '수치심', longing: '그리움',
+    relief: '안도', confusion: '혼란', emptiness: '허탈',
+    awe: '경외', strange_joy: '이상한 기쁨', numbness: '무감각',
+};
+
+// ===== Confession Flow V2: Flow Definition =====
+const CONFESSION_FLOW = [
+    // ── Step 1: Sensory Priming ──
+    {
+        id: 'smell', step: 1,
+        question: '눈을 감아.\n그 장소에 서 있어.\n무슨 냄새가 나?',
+        type: 'chips', chipsKey: 'smell', dataPath: 'sensory.smell',
+    },
+    {
+        id: 'sound', step: 1,
+        question: (d) => {
+            const smellLabel = CHIP_DATA.smell.find(c => c.key === d.sensory.smell)?.label || '';
+            return d.sensory.smell === 'nothing'
+                ? '냄새는 없어.\n대신 무슨 소리가 들려?'
+                : `${smellLabel} 속에\n무슨 소리가 들려?`;
+        },
+        type: 'chips', chipsKey: 'sound', dataPath: 'sensory.sound',
+    },
+    {
+        id: 'touch', step: 1,
+        question: '피부에 뭐가 닿아?',
+        type: 'chips', chipsKey: 'touch', dataPath: 'sensory.touch',
+    },
+    // ── Step 2: Anchoring ──
+    {
+        id: 'anchor_object', step: 2,
+        question: '그 공간에서 네 시선이 머무는 곳이 있어.\n뭘 보고 있어?',
+        type: 'text', placeholder: '보이는 것', dataPath: 'anchor.object',
+    },
+    {
+        id: 'anchor_context', step: 2,
+        question: (d) => `${d.anchor.object}.\n그게 왜 거기 있어?`,
+        type: 'chips', chipsKey: 'anchor_context', dataPath: 'anchor.context',
+    },
+    // ── Step 3: The Action ──
+    {
+        id: 'action_what', step: 3,
+        question: '그 장소에서 넌 뭘 했어?',
+        type: 'text', placeholder: '...', dataPath: 'action.what',
+    },
+    {
+        id: 'action_attribution', step: 3,
+        question: (d) => `${d.action.what}.\n그건 네 선택이었어, 아니면 어쩔 수 없었어?`,
+        type: 'chips', chipsKey: 'action_attribution', dataPath: 'action.attribution',
+    },
+    // ── Step 4: The Crash ──
+    {
+        id: 'crash_event', step: 4,
+        question: '그리고 무슨 일이 일어났어?',
+        type: 'textarea', placeholder: '천천히, 생각나는 대로...', dataPath: 'crash.event',
+    },
+    {
+        id: 'crash_body', step: 4,
+        question: '그때 네 몸에서 뭐가 일어났어?',
+        type: 'chips', chipsKey: 'crash_body', dataPath: 'crash.bodyFeel',
+    },
+    {
+        id: 'crash_emotion', step: 4,
+        question: (d) => {
+            const bodyText = BODY_LABELS[d.crash.bodyFeel] || '';
+            return `${bodyText}.\n그건 어떤 감정이었을까?\n(두 개까지 고를 수 있어)`;
+        },
+        type: 'multi_chips', chipsKey: 'crash_emotion', dataPath: 'crash.emotion',
+        maxSelect: 2,
+    },
+    {
+        id: 'crash_target', step: 4,
+        question: (d) => {
+            const emotions = Array.isArray(d.crash.emotion) ? d.crash.emotion : [d.crash.emotion];
+            const hasNumbness = emotions.includes('numbness');
+            if (hasNumbness && emotions.length === 1) {
+                return '그 무감각은...\n뭘 느끼지 않으려는 거야?';
+            }
+            const labels = emotions.map(e => EMOTION_LABELS[e] || e).join('과 ');
+            return `그 ${labels}은...\n누구를 향한 거야?`;
+        },
+        type: 'chips', chipsKey: 'crash_target', dataPath: 'crash.target',
+    },
+    // ── Step 5: The Seal ──
+    {
+        id: 'seal_relation', step: 5,
+        question: '이 기억에서 나와.\n문을 닫아.\n\n돌아보면, 이 기억은 지금 너한테 뭐야?',
+        type: 'chips', chipsKey: 'seal_relation', dataPath: 'seal.relation',
+    },
+    {
+        id: 'seal_word', step: 5,
+        question: '마지막으로.\n이 기억을 한 단어로.',
+        type: 'text', placeholder: '단 하나의 단어', dataPath: 'seal.word',
+    },
+];
+
+// ===== Flow State =====
+const flowState = {
+    currentIndex: 0,
+    lastStep: 0,
+    data: {
+        sensory: { smell: '', sound: '', touch: '' },
+        anchor: { object: '', context: '' },
+        action: { what: '', attribution: '' },
+        crash: { event: '', bodyFeel: '', emotion: '', target: '' },
+        seal: { relation: '', word: '' },
+    },
+};
+
+// ===== V2 Flow Helpers =====
+function setNested(obj, path, val) {
+    const keys = path.split('.');
+    let cur = obj;
+    for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]];
+    cur[keys[keys.length - 1]] = val;
+}
+
+function typeWrite(el, text, speed = 40, cb) {
+    if (!el) return;
+    let i = 0;
+    el.textContent = '';
+    function tick() {
+        if (i < text.length) {
+            el.textContent += text.charAt(i);
+            i++;
+            const ch = text.charAt(i - 1);
+            const d = (ch === '.' || ch === '?' || ch === ',') ? 250
+                    : ch === '\n' ? 350
+                    : speed;
+            setTimeout(tick, d);
+        } else if (cb) cb();
+    }
+    tick();
+}
+
+// ===== V2 Flow Rendering =====
+function renderPrompt() {
+    const flowEl = document.getElementById('confessionFlow');
+    const prompt = CONFESSION_FLOW[flowState.currentIndex];
+
+    if (!prompt) {
+        onFlowComplete();
+        return;
     }
 
-    // step indicator 업데이트
-    const stepIndicator = document.querySelector('.step-indicator');
-    if (stepIndicator) {
-        if (step === 'result') {
-            stepIndicator.textContent = '';
-        } else if (typeof step === 'number') {
-            stepIndicator.textContent = `${step} / 5`;
-        }
+    // Step divider
+    if (prompt.step !== flowState.lastStep && flowState.lastStep !== 0) {
+        const divider = document.createElement('div');
+        divider.className = 'flow-divider';
+        flowEl.appendChild(divider);
     }
+    flowState.lastStep = prompt.step;
 
-    // 단계별 초기화 로직
-    if (typeof step === 'number') {
-        switch (step) {
-            case 1:
-                initStep1();
-                break;
-            case 2:
-                initStep2();
-                break;
-            case 3:
-                initStep3();
-                break;
-            case 4:
-                initStep4();
-                break;
-            case 5:
-                initStep5();
-                break;
-        }
-        confessionState.currentStep = step;
-    } else if (step === 'result') {
-        // 모든 step 숨기기
-        document.querySelectorAll('.confession-step').forEach(el => {
-            el.classList.add('hidden');
+    // Step indicator
+    const indicator = document.getElementById('stepIndicator');
+    if (indicator) indicator.textContent = `${prompt.step} / 5`;
+
+    // Prompt container
+    const promptEl = document.createElement('div');
+    promptEl.className = 'flow-prompt current';
+    promptEl.id = `prompt-${prompt.id}`;
+
+    // Question
+    const questionEl = document.createElement('p');
+    questionEl.className = 'flow-question';
+    promptEl.appendChild(questionEl);
+
+    // Input area
+    const inputArea = document.createElement('div');
+    inputArea.className = 'flow-input-area';
+    inputArea.style.opacity = '0';
+
+    if (prompt.type === 'chips') {
+        const chipsEl = document.createElement('div');
+        chipsEl.className = 'flow-chips';
+        CHIP_DATA[prompt.chipsKey].forEach(chip => {
+            const btn = document.createElement('button');
+            btn.className = 'flow-chip' + (chip.void ? ' void-chip' : '');
+            btn.textContent = chip.label;
+            btn.addEventListener('click', () => answer(chip.key, chip.label));
+            chipsEl.appendChild(btn);
+        });
+        inputArea.appendChild(chipsEl);
+    } else if (prompt.type === 'multi_chips') {
+        const maxSelect = prompt.maxSelect || 2;
+        const selected = [];
+        const chipsEl = document.createElement('div');
+        chipsEl.className = 'flow-chips';
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = 'flow-multi-confirm';
+        confirmBtn.textContent = '확인';
+
+        CHIP_DATA[prompt.chipsKey].forEach(chip => {
+            const btn = document.createElement('button');
+            btn.className = 'flow-chip' + (chip.void ? ' void-chip' : '');
+            btn.textContent = chip.label;
+            btn.addEventListener('click', () => {
+                if (chip.void) {
+                    selected.length = 0;
+                    selected.push({ key: chip.key, label: chip.label });
+                    answer([chip.key], chip.label);
+                    return;
+                }
+                const idx = selected.findIndex(s => s.key === chip.key);
+                if (idx >= 0) {
+                    selected.splice(idx, 1);
+                    btn.classList.remove('selected');
+                } else if (selected.length < maxSelect) {
+                    selected.push({ key: chip.key, label: chip.label });
+                    btn.classList.add('selected');
+                }
+                if (selected.length > 0) {
+                    confirmBtn.classList.add('visible');
+                } else {
+                    confirmBtn.classList.remove('visible');
+                }
+            });
+            chipsEl.appendChild(btn);
         });
 
-        // result step만 표시
-        const resultStepEl = document.querySelector('.step-result');
-        if (resultStepEl) {
-            resultStepEl.classList.remove('hidden');
-        } else {
-            console.error('step-result 요소를 찾을 수 없습니다!');
+        confirmBtn.addEventListener('click', () => {
+            if (selected.length > 0) {
+                const keys = selected.map(s => s.key);
+                const labels = selected.map(s => s.label).join(' + ');
+                answer(keys, labels);
+            }
+        });
+
+        inputArea.appendChild(chipsEl);
+        inputArea.appendChild(confirmBtn);
+    } else if (prompt.type === 'text') {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'flow-text-input';
+        input.placeholder = prompt.placeholder || '';
+        input.autocomplete = 'off';
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && input.value.trim()) {
+                answer(input.value.trim(), input.value.trim());
+            }
+        });
+        inputArea.appendChild(input);
+    } else if (prompt.type === 'textarea') {
+        const wrap = document.createElement('div');
+        wrap.className = 'flow-textarea-wrap';
+        const textarea = document.createElement('textarea');
+        textarea.className = 'flow-textarea-input';
+        textarea.placeholder = prompt.placeholder || '';
+        const submitBtn = document.createElement('button');
+        submitBtn.className = 'flow-submit-btn';
+        submitBtn.textContent = '→';
+        submitBtn.addEventListener('click', () => {
+            if (textarea.value.trim()) answer(textarea.value.trim(), textarea.value.trim());
+        });
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && textarea.value.trim()) {
+                answer(textarea.value.trim(), textarea.value.trim());
+            }
+        });
+        wrap.appendChild(textarea);
+        wrap.appendChild(submitBtn);
+        inputArea.appendChild(wrap);
+    }
+
+    promptEl.appendChild(inputArea);
+    flowEl.appendChild(promptEl);
+
+    setTimeout(() => {
+        flowEl.scrollTop = flowEl.scrollHeight;
+    }, 50);
+
+    const questionText = typeof prompt.question === 'function'
+        ? prompt.question(flowState.data)
+        : prompt.question;
+
+    typeWrite(questionEl, questionText, 35, () => {
+        inputArea.style.opacity = '1';
+        const focusable = inputArea.querySelector('input, textarea');
+        if (focusable) setTimeout(() => focusable.focus(), 150);
+        setTimeout(() => { flowEl.scrollTop = flowEl.scrollHeight; }, 200);
+    });
+}
+
+function answer(value, displayText) {
+    const prompt = CONFESSION_FLOW[flowState.currentIndex];
+    if (!prompt) return;
+
+    setNested(flowState.data, prompt.dataPath, value);
+
+    const promptEl = document.getElementById(`prompt-${prompt.id}`);
+    if (promptEl) {
+        promptEl.classList.remove('current');
+        promptEl.classList.add('answered');
+        const inputArea = promptEl.querySelector('.flow-input-area');
+        if (inputArea) {
+            inputArea.innerHTML = '';
+            const answerEl = document.createElement('div');
+            answerEl.className = 'flow-answer';
+            answerEl.textContent = displayText;
+            inputArea.appendChild(answerEl);
+            inputArea.style.opacity = '1';
         }
-
-        confessionState.currentStep = 'result';
     }
 
-    console.log('=== Confession ===');
-    console.log('Step:', confessionState.currentStep);
-    console.log('Ritual Data:', confessionState.ritualData);
+    flowState.currentIndex++;
+    setTimeout(() => renderPrompt(), 650);
 }
 
-// 다음 단계로
-function nextStep() {
-    if (typeof confessionState.currentStep === 'number') {
-        renderStep(confessionState.currentStep + 1);
-    }
+function onFlowComplete() {
+    const flowEl = document.getElementById('confessionFlow');
+    const completeEl = document.createElement('div');
+    completeEl.className = 'flow-complete';
+    completeEl.innerHTML = `
+        <p class="flow-complete-text">기억이 수집되었습니다.</p>
+        <button class="flow-generate-btn" onclick="generateSceneFromRitual()">이 기억을 현상합니다</button>
+    `;
+    flowEl.appendChild(completeEl);
+
+    setTimeout(() => {
+        completeEl.classList.add('visible');
+        flowEl.scrollTop = flowEl.scrollHeight;
+    }, 300);
 }
 
-// Confession 시작
+// ===== V3 Vector Extraction =====
+function extractOriginalVector(data) {
+    const emotionMap = {
+        guilt:       { fear: 0.1, sadness: 0.3, anger: 0, joy: 0, longing: 0.1, guilt: 0.8 },
+        fear:        { fear: 0.8, sadness: 0.2, anger: 0, joy: 0, longing: 0, guilt: 0.1 },
+        anger:       { fear: 0.1, sadness: 0.1, anger: 0.8, joy: 0, longing: 0, guilt: 0 },
+        sadness:     { fear: 0, sadness: 0.8, anger: 0, joy: 0, longing: 0.3, guilt: 0.1 },
+        shame:       { fear: 0.2, sadness: 0.3, anger: 0, joy: 0, longing: 0, guilt: 0.6 },
+        longing:     { fear: 0, sadness: 0.4, anger: 0, joy: 0.1, longing: 0.8, guilt: 0 },
+        relief:      { fear: 0, sadness: 0.1, anger: 0, joy: 0.5, longing: 0, guilt: 0.3 },
+        confusion:   { fear: 0.3, sadness: 0.2, anger: 0.1, joy: 0, longing: 0.1, guilt: 0.2 },
+        emptiness:   { fear: 0, sadness: 0.4, anger: 0, joy: 0, longing: 0.2, guilt: 0.1 },
+        awe:         { fear: 0.2, sadness: 0, anger: 0, joy: 0.3, longing: 0.3, guilt: 0 },
+        strange_joy: { fear: 0.1, sadness: 0.1, anger: 0, joy: 0.6, longing: 0.1, guilt: 0.3 },
+        numbness:    { fear: 0, sadness: 0, anger: 0, joy: 0, longing: 0, guilt: 0 },
+    };
+
+    const attributionMap = {
+        my_choice: 'internal',
+        no_choice: 'external',
+        unknown:   'situational',
+    };
+
+    const fearMap = {
+        guilt: 'worthlessness', fear: 'punishment', anger: 'powerlessness',
+        sadness: 'loss', shame: 'worthlessness', longing: 'loss',
+        relief: 'guilt_release', confusion: 'disorientation', emptiness: 'loss',
+        awe: 'insignificance', strange_joy: 'guilt_release', numbness: 'powerlessness',
+    };
+
+    const targetMap = {
+        self: 'self', other: 'other',
+        situation: 'situation', unknown: 'unknown',
+    };
+
+    const emotions = Array.isArray(data.crash.emotion) ? data.crash.emotion : [data.crash.emotion];
+    const keys = ['fear', 'sadness', 'anger', 'joy', 'longing', 'guilt'];
+    const blended = {};
+    keys.forEach(k => blended[k] = 0);
+
+    emotions.forEach(emo => {
+        const vec = emotionMap[emo] || emotionMap.sadness;
+        keys.forEach(k => blended[k] += vec[k] / emotions.length);
+    });
+
+    const primaryEmotion = emotions[0];
+    const is_void = emotions.includes('numbness') || data.crash.bodyFeel === 'nothing';
+    const is_compound = emotions.length > 1;
+
+    return {
+        base: blended,
+        reason_analysis: {
+            attribution: attributionMap[data.action.attribution] || 'situational',
+            core_fear: fearMap[primaryEmotion] || 'loss',
+            target: targetMap[data.crash.target] || 'unknown',
+            is_void,
+            is_compound,
+            emotions: emotions,
+        },
+        sensory: { ...data.sensory },
+        vulnerability: data.seal.relation,
+    };
+}
+
+function extractVoidFlags(data) {
+    const sensoryVoid = data.sensory.smell === 'nothing'
+        && data.sensory.sound === 'nothing'
+        && data.sensory.touch === 'nothing';
+    return {
+        sensory_void: sensoryVoid,
+        anchor_void: data.anchor.context === 'void',
+        emotion_void: data.crash.emotion === 'numbness' || data.crash.bodyFeel === 'nothing',
+        seal_void: data.seal.relation === 'never_again',
+    };
+}
+
+// ===== Confession Start/End =====
+function startFlow() {
+    flowState.currentIndex = 0;
+    flowState.lastStep = 0;
+    flowState.data = {
+        sensory: { smell: '', sound: '', touch: '' },
+        anchor: { object: '', context: '' },
+        action: { what: '', attribution: '' },
+        crash: { event: '', bodyFeel: '', emotion: '', target: '' },
+        seal: { relation: '', word: '' },
+    };
+
+    const flowEl = document.getElementById('confessionFlow');
+    if (flowEl) flowEl.innerHTML = '';
+
+    renderPrompt();
+}
+
 function startConfession() {
     const overlay = document.getElementById('confession-overlay');
     if (overlay) {
         overlay.classList.remove('hidden');
-        document.body.classList.add('confession-active'); // 배경 블러용
-        renderStep(1); // Step 0 삭제, Step 1부터 시작
+        document.body.classList.add('confession-active');
+        startFlow();
     }
 }
 
-// Confession 종료
 function endConfession() {
     const overlay = document.getElementById('confession-overlay');
     if (overlay) {
@@ -3863,20 +4416,18 @@ function endConfession() {
         document.body.classList.remove('confession-active');
     }
 
-    // 상태 초기화
-    confessionState.currentStep = 1;
-    confessionState.ritualData = {
-        sensory: { temperature: '', smell: '', sound: '' },
-        anchorObject: '',
-        action: '',
-        conflict: '',
-        emotionWord: ''
+    flowState.currentIndex = 0;
+    flowState.lastStep = 0;
+    flowState.data = {
+        sensory: { smell: '', sound: '', touch: '' },
+        anchor: { object: '', context: '' },
+        action: { what: '', attribution: '' },
+        crash: { event: '', bodyFeel: '', emotion: '', target: '' },
+        seal: { relation: '', word: '' },
     };
-    confessionState.conversationHistory = [];
-    confessionState.scenes = [];
-    confessionState.generatedScene = null;
+    const flowEl = document.getElementById('confessionFlow');
+    if (flowEl) flowEl.innerHTML = '';
 
-    // Confession Hub로 돌아가기
     showConfessionHub();
 }
 
@@ -4133,13 +4684,17 @@ function checkSafetyBeforeSubmit(inputValue, inputElement) {
 // setupConfessionListeners 함수는 bindEvents.js로 이동됨
 
 // 스트리밍 AI 응답 함수
-async function streamAIResponse(ritualData, targetElement) {
+// V2: 5장면 생성 (JSON 응답)
+async function generateScenesFromRitual(inputData) {
     // 인증 토큰 가져오기 (generate-scene-from-ritual은 로그인 필수)
     const { getAccessToken } = await import('./lib/supabaseClient.js');
     const accessToken = await getAccessToken();
     if (!accessToken) {
         throw new Error('기억을 생성하려면 로그인이 필요합니다.');
     }
+
+    // V2: flowData가 있으면 그대로 사용, 없으면 inputData를 flowData로 간주
+    const requestBody = inputData.flowData ? { flowData: inputData.flowData } : { flowData: inputData };
 
     const response = await fetch(
         `${SUPABASE_URL}/functions/v1/generate-scene-from-ritual`,
@@ -4150,164 +4705,230 @@ async function streamAIResponse(ritualData, targetElement) {
                 'Authorization': `Bearer ${accessToken}`,
                 'apikey': SUPABASE_ANON_KEY
             },
-            body: JSON.stringify({ ritualData })
+            body: JSON.stringify(requestBody)
         }
     );
 
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    if (!response.body) {
-        throw new Error('응답 본문이 없습니다');
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    let buffer = '';
-    let fullText = '';
-
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (!trimmedLine.startsWith('data: ')) continue;
-
-            const data = trimmedLine.slice(6);
-            if (data === '[DONE]') continue;
-
-            try {
-                const parsed = JSON.parse(data);
-
-                if (parsed.type === 'chunk') {
-                    const text = parsed.text || '';
-                    if (text) {
-                        fullText += text;
-                        if (targetElement) {
-                            targetElement.textContent = fullText;
-                        }
-                    }
-                }
-
-                if (parsed.type === 'done') {
-                    return parsed.sceneText || fullText.trim();
-                }
-
-                if (parsed.type === 'error') {
-                    throw new Error(parsed.error || '스트리밍 오류 발생');
-                }
-            } catch (e) {
-                console.error('JSON 파싱 에러:', e);
-            }
+        const errorText = await response.text();
+        console.error('[V2] API 오류 응답:', errorText);
+        let errorData;
+        try {
+            errorData = JSON.parse(errorText);
+        } catch (e) {
+            errorData = { error: errorText };
         }
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
-    return fullText.trim();
+    const responseData = await response.json();
+    console.log('[V2] API 응답 데이터:', responseData);
+    
+    if (responseData.error) {
+        console.error('[V2] 응답에 에러 포함:', responseData.error);
+        throw new Error(responseData.error);
+    }
+
+    // V2 응답 형식: { scenes: [...], originalVector: {...}, flowData: {...} }
+    return responseData;
 }
 
-// AI 장면 생성
+// 하위 호환: 기존 스트리밍 방식 (레거시)
+// streamAIResponse() 삭제됨 (V2에서는 스트리밍 없음)
+
+// ritualData를 flowData로 변환 (V2 구조)
+function convertRitualDataToFlowData(ritualData) {
+    // V2 flowData 구조로 변환
+    // 누락된 필드는 기본값 또는 추론값 사용
+    const flowData = {
+        sensory: {
+            smell: ritualData.sensory?.smell || '',
+            sound: ritualData.sensory?.sound || '',
+            touch: ritualData.sensory?.temperature || '' // temperature를 touch로 매핑
+        },
+        anchor: {
+            object: ritualData.anchorObject || '',
+            context: 'unknown' // 기본값 (V2에서는 anchor_context 질문이 있음)
+        },
+        action: {
+            what: ritualData.action || '',
+            attribution: 'unknown' // 기본값 (V2에서는 action_attribution 질문이 있음)
+        },
+        crash: {
+            event: ritualData.conflict || '',
+            bodyFeel: 'unknown', // 기본값 (V2에서는 crash_body 질문이 있음)
+            emotion: ritualData.emotionWord || 'sadness', // emotionWord를 emotion으로 매핑
+            target: 'unknown' // 기본값 (V2에서는 crash_target 질문이 있음)
+        },
+        seal: {
+            relation: 'dont_know', // 기본값 (V2에서는 seal_relation 질문이 있음)
+            word: ritualData.emotionWord || '' // emotionWord를 seal.word로 매핑
+        }
+    };
+    
+    console.log('[V2] ritualData → flowData 변환:', flowData);
+    return flowData;
+}
+
+// AI 장면 생성 (V2: 5장면)
 async function generateSceneFromRitual() {
-    renderStep('result');
-    const resultPreview = document.querySelector('.result-preview');
-
-    if (!resultPreview) {
-        console.error('result-preview 요소를 찾을 수 없습니다!');
-        return;
-    }
-
-    resultPreview.innerHTML = '<p class="streaming-text"></p>';
-
-    const streamingEl = resultPreview.querySelector('.streaming-text');
+    const flowData = flowState.data;
+    
+    // 클라이언트 벡터 추출
+    const clientVector = extractOriginalVector(flowData);
+    const voidFlags = extractVoidFlags(flowData);
+    
+    console.log('[V2] generateSceneFromRitual 시작');
+    console.log('[V2] flowData:', flowData);
+    console.log('[V2] clientVector:', clientVector);
+    console.log('[V2] voidFlags:', voidFlags);
 
     try {
-        const sceneText = await streamAIResponse(
-            confessionState.ritualData,
-            streamingEl
-        );
-
-        if (streamingEl) {
-            streamingEl.classList.add('done');
+        const { getAccessToken } = await import('./lib/supabaseClient.js');
+        const accessToken = await getAccessToken();
+        if (!accessToken) {
+            throw new Error('로그인이 필요합니다.');
         }
 
-        confessionState.generatedScene = {
-            text: sceneText,
-            originalEmotion: { [confessionState.ritualData.emotionWord]: 0.8 },
-            sensory: confessionState.ritualData.sensory
-        };
+        // flowData 유효성 검사
+        if (!flowData || !flowData.sensory || !flowData.anchor || !flowData.action || !flowData.crash || !flowData.seal) {
+            throw new Error('flowData가 완전하지 않습니다. 모든 질문에 답변해주세요.');
+        }
 
-        console.log('장면 생성 완료:', confessionState.generatedScene);
+        console.log('[V2] 전송할 flowData:', JSON.stringify(flowData, null, 2));
 
+        const response = await fetch(
+            `${SUPABASE_URL}/functions/v1/generate-scene-from-ritual`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                    'apikey': SUPABASE_ANON_KEY
+                },
+                body: JSON.stringify({ flowData })
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[V2] Edge Function 오류 응답:', errorText);
+            let errorMessage = `HTTP ${response.status}`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.error || errorJson.message || errorMessage;
+            } catch (e) {
+                errorMessage = errorText || errorMessage;
+            }
+            throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        
+        console.log('[V2] API 응답:', result);
+        console.log('Client vector:', clientVector);
+        console.log('Server vector:', result.originalVector);
+        
+        // confessionState에 저장
+        confessionState.generatedScenes = result.scenes;
+        confessionState.originalVector = result.originalVector;
+        confessionState.flowData = result.flowData;
+        confessionState.sealWord = result.sealWord;
+        confessionState.generatedScene = result; // 하위 호환
+        
+        // 결과 화면 렌더링
+        renderSceneResult(result);
     } catch (error) {
-        console.error('스트리밍 오류:', error);
-        if (resultPreview) {
-            resultPreview.innerHTML = '<p>기억 현상에 실패했습니다. 다시 시도해주세요.</p>';
+        console.error('[V2] 장면 생성 오류:', error);
+        const flowEl = document.getElementById('confessionFlow');
+        if (flowEl) {
+            const errorEl = document.createElement('div');
+            errorEl.className = 'flow-complete';
+            errorEl.innerHTML = `
+                <p class="flow-complete-text" style="color: #ff6b6b;">기억 현상에 실패했습니다: ${error.message || '알 수 없는 오류'}</p>
+            `;
+            flowEl.appendChild(errorEl);
         }
     }
 }
 
-// DB 저장
+function renderSceneResult(result) {
+    const flowEl = document.getElementById('confessionFlow');
+    
+    const resultEl = document.createElement('div');
+    resultEl.className = 'flow-complete';
+    resultEl.innerHTML = `
+        <p class="flow-complete-text">기억이 현상되었습니다.</p>
+        <div class="flow-answer" style="white-space:pre-line; margin:16px 0;">
+            ${result.scenes.map((s, i) => 
+                `<p style="margin-bottom:12px; opacity:${0.5 + i * 0.1};">${s.text}</p>`
+            ).join('')}
+        </div>
+        <button class="flow-generate-btn" onclick="saveAndBury()">지층에 묻기</button>
+    `;
+    flowEl.appendChild(resultEl);
+    setTimeout(() => {
+        resultEl.classList.add('visible');
+        flowEl.scrollTop = flowEl.scrollHeight;
+    }, 300);
+}
+
+// 지층에 묻기 (DB 저장)
+async function saveAndBury() {
+    await saveConfessionToDB();
+}
+
+// DB 저장 (V2: 5장면 구조)
 async function saveConfessionToDB() {
     const title = prompt('이 기억의 제목을 입력하세요:');
     if (!title || !title.trim()) return;
 
     try {
+        // V2: generatedScenes 사용 (없으면 하위 호환)
+        const scenes = confessionState.generatedScenes || confessionState.scenes || [];
+        
+        if (scenes.length === 0) {
+            throw new Error('저장할 장면이 없습니다. 먼저 기억을 현상해주세요.');
+        }
+
         supabaseClient = getSupabaseClient();
         if (!supabaseClient) {
             throw new Error('Supabase 클라이언트가 없습니다');
         }
 
-        // memories 테이블에 저장
-        const { data: memoryData, error: memoryError } = await supabaseClient
-            .from('memories')
-            .insert({
-                title: title.trim(),
-                status: 'Fetus',
-                created_at: new Date().toISOString()
-            })
-            .select()
-            .single();
+        const { saveMemoryGraph } = await import('./lib/repo.js');
+        const state = appStore.getState();
 
-        if (memoryError) throw memoryError;
+        // V2: originalVector와 함께 저장
+        const memoryId = await saveMemoryGraph(supabaseClient, {
+            memoryId: null,
+            code: generateMemoryCode(),
+            title: title.trim(),
+            description: null,
+            author_note: null,
+            status: 'Fetus',
+            source: 'confession',
+            curator_id: state.currentUser?.id || null,
+            scenes: scenes.map((scene, index) => ({
+                text: scene.text || '',
+                sceneType: scene.sceneType || scene.scene_type || (index === scenes.length - 1 ? 'ending' : 'branch'),
+                echoWords: scene.echoWords || [],
+                emotionDist: scene.emotionDist || {},
+                voidInfo: scene.voidInfo || null,
+                choices: scene.choices || [],
+                originalChoice: scene.originalChoice || 0,
+                originalReason: scene.originalReason || '',
+                // V2: originalVector 내장
+                originalEmotion: scene.originalVector?.base || confessionState.originalVector?.base || scene.originalEmotion || {},
+                originalReasonVector: scene.originalVector?.reason_analysis || confessionState.originalVector?.reason_analysis || scene.originalReasonVector || null
+            }))
+        });
 
-        console.log('[Memory] New memory created with status: Fetus');
-        console.log('메모리 저장 완료:', memoryData);
-
-        // scenes 테이블에 각 장면 저장
-        for (let i = 0; i < confessionState.scenes.length; i++) {
-            const scene = confessionState.scenes[i];
-            const { data: sceneData, error: sceneError } = await supabaseClient
-                .from('scenes')
-                .insert({
-                    memory_id: memoryData.id,
-                    scene_order: i + 1,
-                    text: scene.text,
-                    original_emotion: scene.originalEmotion || {},
-                    scene_type: i === confessionState.scenes.length - 1 ? 'ending' : 'branch'
-                })
-                .select()
-                .single();
-
-            if (sceneError) {
-                console.error(`장면 ${i + 1} 저장 실패:`, sceneError);
-                throw sceneError;
-            }
-
-            console.log(`장면 ${i + 1} 저장 완료:`, sceneData);
-        }
-
+        console.log('[Memory] V2 기억 저장 완료:', memoryId);
         alert('기억이 지층에 묻혔습니다.');
         endConfession();
 
         // Archive 모드면 목록 새로고침
-        const state = appStore.getState();
         if (state.currentMode === 'archive') {
             await loadMemoriesFromSupabase();
             sortMemories('all');
@@ -4321,6 +4942,8 @@ async function saveConfessionToDB() {
 
 window.startConfession = startConfession;
 window.endConfession = endConfession;
+window.generateSceneFromRitual = generateSceneFromRitual;
+window.saveAndBury = saveAndBury;
 
 // ───── Confession Hub ─────
 

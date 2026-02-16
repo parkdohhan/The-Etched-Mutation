@@ -3750,12 +3750,9 @@ body::before {
 
 /* 3. 비네??(Vignette) - 주�?부 ?�전 ?�과 */
 .vignette-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle, transparent 40%, #000 90%);
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -3775,41 +3772,7 @@ body::before {
   }
 }
 
-.sensory-chip {
-  background: transparent;
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  color: #d4af37;
-  padding: 12px 24px;
-  font-family: 'Noto Serif KR', serif;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s;
-  margin: 8px;
-  letter-spacing: 0.05em;
-}
-
-.sensory-chip:hover {
-  background: rgba(212, 175, 55, 0.1);
-  border-color: rgba(212, 175, 55, 0.6);
-  transform: translateY(-2px);
-}
-
-.sensory-chip.selected {
-  background: rgba(212, 175, 55, 0.2);
-  border-color: #d4af37;
-  animation: pulse-gold 1s infinite;
-}
-
-.sensory-chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 40px;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
-}
+/* sensory-chip, sensory-chips 삭제됨 (V2 flow로 대체) */
 
 /* ============================================ The Confession Overlay ============================================ */
 #confession-overlay {
@@ -3861,57 +3824,7 @@ body::before {
   border-color: rgba(212, 175, 55, 0.6);
 }
 
-.confession-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 40px;
-  overflow-y: auto;
-  position: relative;
-  z-index: 2;
-}
-
-.confession-step {
-  max-width: 800px;
-  width: 100%;
-  text-align: center;
-}
-
-.confession-step.hidden {
-  display: none;
-}
-
-.confession-text {
-  font-family: 'Noto Serif KR', serif;
-  font-size: 1.5rem;
-  line-height: 2;
-  color: var(--text-primary);
-  margin-bottom: 40px;
-  min-height: 60px;
-}
-
-.confession-enter-btn {
-  background: transparent;
-  border: 1px solid #d4af37;
-  color: #d4af37;
-  padding: 15px 40px;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.3s;
-  letter-spacing: 0.1em;
-}
-
-.confession-enter-btn:hover {
-  background: rgba(212, 175, 55, 0.1);
-  border-color: rgba(212, 175, 55, 0.8);
-}
-
-.confession-enter-btn.hidden {
-  display: none;
-}
+/* confession-content, confession-step, confession-text, confession-enter-btn 삭제됨 (V2 flow로 대체) */
 
 body.confession-active {
   overflow: hidden;
@@ -4212,22 +4125,7 @@ body.confession-active::before {
   margin-left: 0.5rem;
 }
 
-.confession-complete-btn {
-  background: transparent;
-  border: 1px solid #d4af37;
-  color: #d4af37;
-  padding: 15px 40px;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.3s;
-  letter-spacing: 0.1em;
-}
-
-.confession-complete-btn:hover {
-  background: rgba(212, 175, 55, 0.1);
-  border-color: rgba(212, 175, 55, 0.8);
-}
+/* confession-complete-btn 삭제됨 (V2 flow-generate-btn으로 대체) */
 
 /* 원본 보기 버튼 */
 .original-view-btn {
@@ -5141,4 +5039,238 @@ body.confession-active::before {
   opacity: 0.018;
   background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") repeat;
   background-size: 256px;
+}
+
+/* ===== Confession Flow V2 Styles ===== */
+.confession-flow {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 80px 24px 120px;
+  height: 100vh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.confession-flow::-webkit-scrollbar {
+  display: none;
+}
+
+.flow-prompt {
+  transition: opacity 0.8s ease;
+}
+
+.flow-prompt.answered {
+  opacity: 0.3;
+}
+
+.flow-prompt.answered .flow-question {
+  font-size: 0.85rem;
+}
+
+.flow-question {
+  color: #888;
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.7;
+  white-space: pre-line;
+  margin-bottom: 18px;
+  font-weight: 300;
+}
+
+.flow-input-area {
+  transition: opacity 0.6s ease;
+}
+
+.flow-answer {
+  color: #d4c8a8;
+  font-size: 0.95rem;
+  padding: 6px 0;
+  letter-spacing: 0.02em;
+}
+
+.flow-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.flow-chip {
+  background: transparent;
+  border: 1px solid #222;
+  color: #777;
+  padding: 9px 18px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.02em;
+}
+
+.flow-chip:hover {
+  border-color: #d4af37;
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.03);
+}
+
+.flow-chip.void-chip {
+  border-color: #1a1a1a;
+  color: #444;
+  font-style: italic;
+}
+
+.flow-chip.void-chip:hover {
+  border-color: #555;
+  color: #666;
+  background: transparent;
+}
+
+.flow-chip.selected {
+  border-color: #d4af37;
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.06);
+}
+
+.flow-multi-confirm {
+  background: none;
+  border: 1px solid #2a2a2a;
+  color: #888;
+  padding: 7px 20px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.3s;
+  opacity: 0;
+}
+
+.flow-multi-confirm.visible {
+  opacity: 1;
+}
+
+.flow-multi-confirm:hover {
+  border-color: #d4af37;
+  color: #d4af37;
+}
+
+.flow-text-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #1a1a1a;
+  color: #d4c8a8;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  padding: 10px 0;
+  width: 100%;
+  outline: none;
+  caret-color: #d4af37;
+  transition: border-color 0.3s;
+}
+
+.flow-text-input:focus {
+  border-bottom-color: #333;
+}
+
+.flow-text-input::placeholder {
+  color: #2a2a2a;
+  font-style: italic;
+}
+
+.flow-textarea-wrap {
+  position: relative;
+}
+
+.flow-textarea-input {
+  background: transparent;
+  border: 1px solid #1a1a1a;
+  color: #d4c8a8;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  padding: 14px;
+  width: 100%;
+  min-height: 80px;
+  resize: none;
+  outline: none;
+  caret-color: #d4af37;
+  transition: border-color 0.3s;
+  line-height: 1.6;
+}
+
+.flow-textarea-input:focus {
+  border-color: #2a2a2a;
+}
+
+.flow-textarea-input::placeholder {
+  color: #222;
+  font-style: italic;
+}
+
+.flow-submit-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: none;
+  border: 1px solid #222;
+  color: #555;
+  width: 32px;
+  height: 32px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-submit-btn:hover {
+  border-color: #d4af37;
+  color: #d4af37;
+}
+
+.flow-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #1a1a1a, transparent);
+  margin: 8px 0;
+}
+
+.flow-complete {
+  text-align: center;
+  padding: 40px 0;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+.flow-complete.visible {
+  opacity: 1;
+}
+
+.flow-complete-text {
+  color: #555;
+  font-size: 0.9rem;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.flow-generate-btn {
+  background: none;
+  border: 1px solid #2a2a2a;
+  color: #d4af37;
+  padding: 12px 32px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: all 0.3s;
+}
+
+.flow-generate-btn:hover {
+  background: rgba(212, 175, 55, 0.05);
+  border-color: #d4af37;
 }

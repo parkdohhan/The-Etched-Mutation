@@ -204,10 +204,47 @@
                         <button class="editor-btn" onclick="loadArchiveLayers(currentMemoryId)" style="padding: 0.8rem 2rem; font-size: 1rem;">Archive 로드</button>
                     </div>
                 </div>
+                
+                <div class="strata-section" style="padding: 2rem; margin-top: 2rem;">
+                    <h3 class="editor-section-title" style="margin-bottom: 1.5rem;">Strata 3D 지층 미리보기</h3>
+                    <div id="adminStrataContainer" style="position:relative;width:100%;height:600px;background:#0a0a0f;border:1px solid rgba(196,168,130,.2);border-radius:4px;overflow:hidden;">
+                        <!-- Strata 뷰가 여기에 동적으로 삽입됨 -->
+                        <div id="strataView" style="position:relative;width:100%;height:100%;display:none;">
+                            <canvas id="strataCanvas" style="width:100%;height:100%;"></canvas>
+                            <div class="strata-hud strata-h-tl" style="position:absolute;top:20px;left:28px;z-index:100;pointer-events:none;">
+                                <div class="strata-tsm" style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:rgba(196,168,130,0.4);font-weight:300;">감정의 지질학</div>
+                                <div class="strata-tlg" style="font-size:22px;letter-spacing:8px;color:#c4a882;font-weight:300;margin-top:4px;">S T R A T A</div>
+                            </div>
+                            <div class="strata-hud strata-h-tr" id="strataHudTR" style="position:absolute;top:20px;right:28px;z-index:100;pointer-events:none;text-align:right;font-size:11px;color:rgba(196,168,130,0.4);line-height:1.8;font-style:italic;"></div>
+                            <div class="strata-hud strata-h-bl" style="position:absolute;bottom:20px;left:28px;z-index:100;pointer-events:none;">
+                                <div class="strata-dlb" style="font-size:10px;letter-spacing:2px;color:rgba(196,168,130,0.4);text-transform:uppercase;">지층 구조</div>
+                                <div class="strata-dvl" id="strataDv" style="font-size:14px;color:#c4a882;font-weight:300;margin-top:2px;line-height:1.5;">위에서: 감정 지형<br>옆에서: 시간 단층</div>
+                            </div>
+                            <div class="strata-hud strata-h-br" style="position:absolute;bottom:20px;right:28px;z-index:100;pointer-events:none;">
+                                <div class="strata-ct" style="display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(196,168,130,0.4);">
+                                    오염도
+                                    <div class="strata-ct-tk" style="width:80px;height:2px;background:rgba(196,168,130,0.08);">
+                                        <div class="strata-ct-fl" id="strataCtFl" style="height:100%;background:#c4a882;transition:width .6s;width:0%;"></div>
+                                    </div>
+                                    <span id="strataCtVal" style="color:rgba(196,168,130,0.4);">0.00</span>
+                                </div>
+                            </div>
+                            <div id="strataLc" style="position:absolute;inset:0;z-index:110;pointer-events:none;"></div>
+                        </div>
+                        <div id="strataLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(196,168,130,0.4);font-size:14px;">
+                            Strata 미리보기를 로드하려면 버튼을 클릭하세요
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem; text-align: center;">
+                        <button class="editor-btn" onclick="loadStrataPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">Strata 미리보기 로드</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/ui/strataView.js"></script>
     <script type="module" src="js/admin.js"></script>
 </body>
 </html>
