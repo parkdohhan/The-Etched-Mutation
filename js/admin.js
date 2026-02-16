@@ -1,5 +1,4 @@
 import { getSupabaseClient } from './lib/supabaseClient.js';
-import { ADMIN_PASSWORD } from './lib/config.js';
 import { loadAdminMemories, saveAdminMemories, exportAdminMemoriesJSON, importAdminMemoriesJSON } from './lib/storage.js';
 import { listMemoriesWithScenesChoices, saveMemoryGraph, deleteMemoryGraph, listArchiveLayers } from './lib/repo.js';
 
@@ -10,44 +9,155 @@ let currentMemoryId = null;
 let previewCurrentScene = 0;
 let previewWaveAnimationId = null;
 let currentLayers = []; // Archive 레이어 추적
+let adminUser = null; // 현재 인증된 관리자
 
-// 비밀번호 확인
-function checkPassword() {
-    const input = document.getElementById('passwordInput');
+// Supabase Auth 기반 관리자 인증
+async function checkPassword() {
+    const emailInput = document.getElementById('adminEmail');
+    const passwordInput = document.getElementById('adminPassword');
     const error = document.getElementById('passwordError');
-    
-    if (input.value === ADMIN_PASSWORD) {
+    const loginForm = document.getElementById('adminLoginForm');
+    const loadingEl = document.getElementById('adminAuthLoading');
+    const noPermissionEl = document.getElementById('adminNoPermission');
+
+    const email = emailInput?.value?.trim();
+    const password = passwordInput?.value;
+
+    if (!email || !password) {
+        error.textContent = '이메일과 비밀번호를 입력하세요';
+        error.classList.add('visible');
+        setTimeout(() => error.classList.remove('visible'), 3000);
+        return;
+    }
+
+    // 로딩 표시
+    loginForm.style.display = 'none';
+    loadingEl.style.display = 'block';
+    noPermissionEl.style.display = 'none';
+
+    try {
+        const supabaseClient = getSupabaseClient();
+        if (!supabaseClient) {
+            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다');
+        }
+
+        // 1. Supabase Auth 로그인
+        const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (authError) {
+            throw new Error(authError.message);
+        }
+
+        // 2. profiles 테이블에서 role 확인
+        const { data: profile, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('role')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (profileError) {
+            console.error('[Admin] 프로필 조회 실패:', profileError);
+            throw new Error('프로필을 확인할 수 없습니다');
+        }
+
+        if (profile.role !== 'admin') {
+            // 관리자 권한 없음
+            loadingEl.style.display = 'none';
+            noPermissionEl.style.display = 'block';
+            return;
+        }
+
+        // 3. 관리자 인증 성공
+        adminUser = authData.user;
         document.getElementById('passwordScreen').style.display = 'none';
         document.getElementById('adminDashboard').classList.add('active');
         loadMemories();
         loadAllSessions();
-    } else {
+
+    } catch (err) {
+        console.error('[Admin] 인증 오류:', err);
+        loadingEl.style.display = 'none';
+        loginForm.style.display = 'block';
+        error.textContent = err.message || '인증에 실패했습니다';
         error.classList.add('visible');
-        input.value = '';
-        setTimeout(() => {
-            error.classList.remove('visible');
-        }, 3000);
+        emailInput.value = '';
+        passwordInput.value = '';
+        setTimeout(() => error.classList.remove('visible'), 3000);
     }
 }
 
-// Enter 키로 비밀번호 확인
-document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+// 페이지 로드 시 기존 세션 확인
+async function checkExistingSession() {
+    try {
+        const supabaseClient = getSupabaseClient();
+        if (!supabaseClient) return;
+
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.user) return;
+
+        // 프로필에서 role 확인
+        const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+        if (profile?.role === 'admin') {
+            adminUser = session.user;
+            document.getElementById('passwordScreen').style.display = 'none';
+            document.getElementById('adminDashboard').classList.add('active');
+            loadMemories();
+            loadAllSessions();
+        }
+    } catch (e) {
+        console.warn('[Admin] 기존 세션 확인 실패:', e.message);
+    }
+}
+
+// Enter 키로 로그인
+document.getElementById('adminPassword')?.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         checkPassword();
     }
 });
 
+// 관리자가 아닌 경우 돌아가기
+function adminLogout() {
+    const noPermissionEl = document.getElementById('adminNoPermission');
+    const loginForm = document.getElementById('adminLoginForm');
+    if (noPermissionEl) noPermissionEl.style.display = 'none';
+    if (loginForm) loginForm.style.display = 'block';
+    document.getElementById('adminEmail').value = '';
+    document.getElementById('adminPassword').value = '';
+}
+
 // 로그아웃
-function logout() {
+async function logout() {
     if (confirm('로그아웃하시겠습니까?')) {
+        try {
+            const supabaseClient = getSupabaseClient();
+            if (supabaseClient) {
+                await supabaseClient.auth.signOut();
+            }
+        } catch (e) {
+            console.warn('[Admin] 로그아웃 오류:', e);
+        }
+        adminUser = null;
         document.getElementById('adminDashboard').classList.remove('active');
         document.getElementById('editorScreen').classList.remove('active');
         document.getElementById('passwordScreen').style.display = 'flex';
-        document.getElementById('passwordInput').value = '';
+        document.getElementById('adminEmail').value = '';
+        document.getElementById('adminPassword').value = '';
         currentMemoryIndex = null;
         currentScenes = [];
     }
 }
+
+// 초기화 시 기존 세션 확인
+setTimeout(() => checkExistingSession(), 500);
 
 // 기억 목록 로드
 async function loadMemories() {
@@ -2358,6 +2468,7 @@ function closeSessionDetail() {
 
 // 전역 스코프에 함수 노출 (onclick 속성에서 사용하기 위해)
 window.checkPassword = checkPassword;
+window.adminLogout = adminLogout;
 window.logout = logout;
 window.addNewMemory = addNewMemory;
 window.editMemory = editMemory;

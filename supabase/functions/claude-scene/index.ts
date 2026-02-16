@@ -1,14 +1,12 @@
 // --- CORS + Claude API + Emotion Analysis 버전 --- //
+// 인증: 익명 허용 (anon key로 호출 가능)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+import { getCorsHeaders } from "../_shared/auth.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // ---- CORS preflight 처리 ----
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });

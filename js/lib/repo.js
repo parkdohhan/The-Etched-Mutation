@@ -99,7 +99,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
     }
 
-    const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData } = memoryPayload;
+    const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData, curator_id } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
@@ -152,21 +152,26 @@ export async function saveMemoryGraph(client, memoryPayload) {
         }
     } else {
         // 새로 생성
+        const insertPayload = {
+            code: code,
+            title: title,
+            description: description || null,
+            memory_words: memory_words || null,
+            completed_sentence: completed_sentence || null,
+            author_note: author_note || null,
+            status: status || 'Fetus',
+            source: source || 'beginner',
+            layers: 0,
+            dilution: 50,
+            is_public: true
+        };
+        // curator_id가 있으면 포함 (로그인 사용자)
+        if (curator_id) {
+            insertPayload.curator_id = curator_id;
+        }
         const { data, error } = await client
             .from('memories')
-            .insert({
-                code: code,
-                title: title,
-                description: description || null,
-                memory_words: memory_words || null,
-                completed_sentence: completed_sentence || null,
-                author_note: author_note || null,
-                status: status || 'Fetus',
-                source: source || 'beginner',
-                layers: 0,
-                dilution: 50,
-                is_public: true
-            })
+            .insert(insertPayload)
             .select()
             .single();
 

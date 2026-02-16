@@ -1,12 +1,8 @@
 // --- 텍스트 오염 변형 Edge Function --- //
+// 인증: 로그인 필수 (Claude API 비용 보호)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+import { getCorsHeaders, verifyAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 const directionPrompts: Record<string, Record<number, (text: string) => string>> = {
   emotion_mismatch: {
@@ -119,10 +115,19 @@ const directionPrompts: Record<string, Record<number, (text: string) => string>>
 };
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // ---- CORS preflight 처리 ----
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  // 인증 검증 (Claude API 비용 보호)
+  const user = await verifyAuth(req);
+  if (!user) {
+    return unauthorizedResponse(corsHeaders, "텍스트 오염 변형에는 로그인이 필요합니다.");
+  }
+  console.log(`[contaminate-text] 인증된 사용자: ${user.id}`);
 
   let body: any = null;
   try {

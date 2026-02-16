@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './lib/supabaseClient.js';
+import { getSupabaseClient, onAuthStateChange, getSession } from './lib/supabaseClient.js';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './lib/config.js';
 import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from './safety.js';
 import { NPC_DIALOGUES } from './npc-dialogues.js';
@@ -116,7 +116,7 @@ const USE_LIVE_INTERPRETATIONS_TABLE = false;
 // DOMContentLoaded 시 초기화
 // (Moved to bottom)
 
-function initApp() {
+async function initApp() {
     // memoriesData가 없을 수 있음 (테스트 환경 등)
     const memoriesDataArray = window.memoriesData || (typeof memoriesData !== 'undefined' ? memoriesData : []) || [];
     storyData = memoriesDataArray[0] || null;
@@ -131,6 +131,61 @@ function initApp() {
             selectMemory,
             filterMemories
         );
+    }
+
+    // Auth 상태 변경 리스너 등록
+    onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            if (session?.user) {
+                const user = session.user;
+                appStore.setState({
+                    isLoggedIn: true,
+                    currentUser: {
+                        id: user.id,
+                        username: user.user_metadata?.username || user.email?.split('@')[0] || '익명',
+                        email: user.email,
+                        joinDate: new Date(user.created_at).toLocaleDateString('ko-KR'),
+                        liveSessions: 0,
+                        memories: 0,
+                        interpretations: 0,
+                        visitedMemories: [],
+                        sessionHistory: []
+                    }
+                });
+                syncToAppState();
+                console.log('[Auth] 사용자 상태 복원:', user.email);
+            }
+        } else if (event === 'SIGNED_OUT') {
+            appStore.setState({ isLoggedIn: false, currentUser: null });
+            syncToAppState();
+            console.log('[Auth] 로그아웃 처리됨');
+        }
+    });
+
+    // 기존 세션 복원 (페이지 새로고침 시)
+    try {
+        const { data: { session }, error } = await getSession();
+        if (session?.user && !error) {
+            const user = session.user;
+            appStore.setState({
+                isLoggedIn: true,
+                currentUser: {
+                    id: user.id,
+                    username: user.user_metadata?.username || user.email?.split('@')[0] || '익명',
+                    email: user.email,
+                    joinDate: new Date(user.created_at).toLocaleDateString('ko-KR'),
+                    liveSessions: 0,
+                    memories: 0,
+                    interpretations: 0,
+                    visitedMemories: [],
+                    sessionHistory: []
+                }
+            });
+            syncToAppState();
+            console.log('[Auth] 기존 세션 복원:', user.email);
+        }
+    } catch (e) {
+        console.warn('[Auth] 세션 복원 실패 (무시 가능):', e.message);
     }
 
     // 3D Carousel 초기화
@@ -498,7 +553,45 @@ function renderArchiveEmotionWave(emotionVector) {
     visualizer.renderArchiveEmotionWave(canvas, waveData, time);
     console.log('Archive emotion wave rendered:', waveData);
 }
-async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, currentData, sceneAlignment, reasonVector = null, mismatchType = null) { try { const state = appStore.getState(); const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); if (!memoryId) { console.warn('memory_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다'); return } const sceneId = scene.id; if (!sceneId) { console.warn('scene_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다'); return } const sceneText = scene.text || ''; const voidLevel = scene.voidInfo?.voidLevel || 'low'; const waveData = computeArchiveWaveData(userEmotionVector, sceneText.length, voidLevel); const insertData = { memory_id: memoryId, scene_id: sceneId, user_emotion: userEmotionVector, user_reason: userReason, wave_data: waveData, layer_id: 0, alignment: sceneAlignment !== undefined ? sceneAlignment : null, reason_vector: reasonVector, mismatch_type: mismatchType }; console.log('Archive plays 저장 시도:', insertData); const result = await networkService.savePlay(insertData); if (!result.ok) { console.error('Archive plays 저장 실패:', result.error); return } console.log('Archive plays 저장 성공:', result.data) } catch (e) { console.error('saveArchiveEmotionToPlays error:', e) } }
+async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, currentData, sceneAlignment, reasonVector = null, mismatchType = null) {
+    try {
+        const state = appStore.getState();
+        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
+        if (!memoryId) {
+            console.warn('memory_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');
+            return;
+        }
+        const sceneId = scene.id;
+        if (!sceneId) {
+            console.warn('scene_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');
+            return;
+        }
+        const sceneText = scene.text || '';
+        const voidLevel = scene.voidInfo?.voidLevel || 'low';
+        const waveData = computeArchiveWaveData(userEmotionVector, sceneText.length, voidLevel);
+        const insertData = {
+            memory_id: memoryId,
+            scene_id: sceneId,
+            user_emotion: userEmotionVector,
+            user_reason: userReason,
+            wave_data: waveData,
+            layer_id: 0,
+            alignment: sceneAlignment !== undefined ? sceneAlignment : null,
+            reason_vector: reasonVector,
+            mismatch_type: mismatchType,
+            user_id: state.currentUser?.id || null
+        };
+        console.log('Archive plays 저장 시도:', insertData);
+        const result = await networkService.savePlay(insertData);
+        if (!result.ok) {
+            console.error('Archive plays 저장 실패:', result.error);
+            return;
+        }
+        console.log('Archive plays 저장 성공:', result.data);
+    } catch (e) {
+        console.error('saveArchiveEmotionToPlays error:', e);
+    }
+}
 function computeArchiveWaveData(emotionVector, sceneTextLength, voidLevel) { const totalEmotion = Object.values(emotionVector).reduce((sum, val) => sum + (val || 0), 0); const normalizedEmotion = totalEmotion > 0 ? Object.keys(emotionVector).reduce((acc, key) => { acc[key] = (emotionVector[key] || 0) / totalEmotion; return acc }, {}) : emotionVector; const intensity = Math.min(1, Math.max(0.3, totalEmotion / 8)); const wavePoints = []; const width = Math.max(100, Math.min(500, sceneTextLength * 10)); for (let i = 0; i < width; i++) { const x = i / width; const baseY = 0.5; const amplitude = voidLevel === 'high' ? 0.15 : 0.25; const frequency = 0.02 + intensity * 0.01; const y = baseY + Math.sin(x * Math.PI * 2 * frequency * 10) * amplitude; wavePoints.push({ x, y }) } const dominantEmotion = Object.keys(normalizedEmotion).reduce((a, b) => normalizedEmotion[a] > normalizedEmotion[b] ? a : b, 'fear'); const emotionColors = { 'fear': 'rgba(74,144,217,0.8)', 'sadness': 'rgba(90,122,154,0.8)', 'guilt': 'rgba(139,115,85,0.8)', 'anger': 'rgba(217,74,74,0.8)', 'longing': 'rgba(196,168,130,0.8)', 'isolation': 'rgba(74,74,90,0.8)', 'numbness': 'rgba(106,106,106,0.8)', 'shame': 'rgba(155,89,182,0.8)', 'moral_pain': 'rgba(155,89,182,0.8)' }; return { wavePoints, color: emotionColors[dominantEmotion] || 'rgba(196,168,130,0.8)', intensity, voidLevel } }
 async function checkAlignment() {
     const state = appStore.getState();
@@ -3570,7 +3663,10 @@ async function finishRegistration() {
  * @throws {Error} 저장 실패 시 에러
  */
 async function saveMemoryToDB(memory) {
-    const result = await MemoryService.saveMemory({ memory });
+    const state = appStore.getState();
+    const curator_id = state.currentUser?.id || null;
+
+    const result = await MemoryService.saveMemory({ memory, curator_id });
 
     if (!result.ok) {
         throw result.error || new Error('메모리 저장 실패');
@@ -3987,13 +4083,20 @@ function checkSafetyBeforeSubmit(inputValue, inputElement) {
 
 // 스트리밍 AI 응답 함수
 async function streamAIResponse(ritualData, targetElement) {
+    // 인증 토큰 가져오기 (generate-scene-from-ritual은 로그인 필수)
+    const { getAccessToken } = await import('./lib/supabaseClient.js');
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+        throw new Error('기억을 생성하려면 로그인이 필요합니다.');
+    }
+
     const response = await fetch(
         `${SUPABASE_URL}/functions/v1/generate-scene-from-ritual`,
         {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Authorization': `Bearer ${accessToken}`,
                 'apikey': SUPABASE_ANON_KEY
             },
             body: JSON.stringify({ ritualData })
@@ -4437,6 +4540,7 @@ async function saveRitualToMemories() {
         }
 
         console.log('[Memory] New memory created with status: Fetus');
+        const confessionState_ = appStore.getState();
         const memoryId = await saveMemoryGraph(supabaseClient, {
             memoryId: null,
             code: generateMemoryCode(),
@@ -4445,6 +4549,7 @@ async function saveRitualToMemories() {
             author_note: null,
             status: memoryData.status,
             source: memoryData.source,
+            curator_id: confessionState_.currentUser?.id || null,
             scenes: ritualScenes.map((scene, index) => ({
                 text: scene.text || '',
                 sceneType: scene.sceneType || 'normal',

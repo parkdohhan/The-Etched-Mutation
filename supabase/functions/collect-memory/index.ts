@@ -1,25 +1,35 @@
+// 인증: 로그인 필수 (대화 기반 기억 수집은 인증된 사용자만)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "text/event-stream"
-};
+import { getCorsHeaders, verifyAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
+  const corsHeaders = {
+    ...getCorsHeaders(req),
+    "Content-Type": "text/event-stream"
+  };
+
   // ---- CORS preflight 처리 ----
   if (req.method === "OPTIONS") {
-    return new Response("ok", { 
+    return new Response("ok", {
       status: 200,
       headers: {
-        ...corsHeaders,
+        ...getCorsHeaders(req),
         "Content-Type": "application/json"
       }
     });
   }
 
   try {
+    // 인증 검증
+    const user = await verifyAuth(req);
+    if (!user) {
+      return unauthorizedResponse(
+        { ...getCorsHeaders(req), "Content-Type": "application/json" },
+        "기억 수집에는 로그인이 필요합니다."
+      );
+    }
+    console.log(`[collect-memory] 인증된 사용자: ${user.id}`);
+
     const body = await req.json();
     const { conversation, systemPrompt } = body;
 

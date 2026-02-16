@@ -3,11 +3,12 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 let supabaseClient = null;
 let initStartTime = null;
 let isInitializing = false;
+let authStateCallback = null;
 const MAX_WAIT_TIME = 10000; // 10초
 
 function initSupabaseClient() {
     if (isInitializing) return;
-    
+
     if (typeof window.supabase !== 'undefined') {
         try {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -19,6 +20,9 @@ function initSupabaseClient() {
             });
             isInitializing = false;
             initStartTime = null;
+
+            // Auth 상태 변경 리스너 등록
+            _setupAuthListener();
         } catch (error) {
             console.error('Supabase 클라이언트 생성 실패:', error);
             isInitializing = false;
@@ -30,7 +34,7 @@ function initSupabaseClient() {
             initStartTime = now;
             isInitializing = true;
         }
-        
+
         const elapsed = now - initStartTime;
         if (elapsed >= MAX_WAIT_TIME) {
             console.error('Supabase CDN 로드 대기 시간 초과 (10초)');
@@ -38,9 +42,53 @@ function initSupabaseClient() {
             initStartTime = null;
             throw new Error('Supabase 클라이언트 초기화 실패: CDN 스크립트가 로드되지 않았습니다.');
         }
-        
+
         setTimeout(initSupabaseClient, 100);
     }
+}
+
+/**
+ * Auth 상태 변경 리스너 설정
+ * SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED 이벤트 처리
+ */
+function _setupAuthListener() {
+    if (!supabaseClient) return;
+
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        console.log(`[Auth] 상태 변경: ${event}`, session?.user?.email || 'no user');
+
+        if (authStateCallback) {
+            authStateCallback(event, session);
+        }
+    });
+}
+
+/**
+ * Auth 상태 변경 콜백 등록
+ * index.js에서 appStore 업데이트를 위해 사용
+ * @param {Function} callback - (event, session) => void
+ */
+export function onAuthStateChange(callback) {
+    authStateCallback = callback;
+}
+
+/**
+ * 현재 세션 가져오기 (페이지 새로고침 시 복원용)
+ * @returns {Promise<{data: {session}, error}>}
+ */
+export async function getSession() {
+    if (!supabaseClient) return { data: { session: null }, error: null };
+    return supabaseClient.auth.getSession();
+}
+
+/**
+ * 현재 세션의 access_token 가져오기 (Edge Function 호출용)
+ * @returns {Promise<string|null>}
+ */
+export async function getAccessToken() {
+    if (!supabaseClient) return null;
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    return session?.access_token || null;
 }
 
 export function getSupabaseClient() {
@@ -48,19 +96,19 @@ export function getSupabaseClient() {
         // 아직 초기화되지 않았으면 시도
         initSupabaseClient();
     }
-    
+
     // 클라이언트가 없으면 null 반환 (에러를 던지지 않음)
     if (!supabaseClient) {
         console.warn('Supabase 클라이언트가 아직 초기화되지 않았습니다');
     }
-    
+
     return supabaseClient;
 }
 
 // Supabase 클라이언트가 준비될 때까지 대기하는 함수
 export async function waitForSupabaseClient(maxWaitTime = 10000) {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < maxWaitTime) {
         const client = getSupabaseClient();
         if (client) {
@@ -68,7 +116,7 @@ export async function waitForSupabaseClient(maxWaitTime = 10000) {
         }
         await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     console.error('Supabase 클라이언트 초기화 대기 시간 초과');
     return null;
 }

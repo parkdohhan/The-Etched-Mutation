@@ -168,14 +168,20 @@ export const MemoryService = {
      * @param {Object} params - { memory: { title, scenes: [...] } }
      * @returns {Promise<{ ok: boolean, data: Object|null, error: Error|null }>}
      */
-    async saveMemory({ memory }) {
+    async saveMemory({ memory, curator_id }) {
         console.log('=== 기억 DB 저장 ===');
         console.log('기억 제목:', memory.title);
         console.log('장면 수:', memory.scenes.length);
-        
+        console.log('curator_id:', curator_id || '(없음 - 익명)');
+
         // 1. Payload 구성
         const payload = buildMemoryPayload(memory);
-        
+
+        // curator_id가 있으면 memory 페이로드에 포함
+        if (curator_id) {
+            payload.memory.curator_id = curator_id;
+        }
+
         // 2. 검증
         const validation = validateMemoryPayload(payload);
         if (!validation.valid) {
@@ -183,13 +189,13 @@ export const MemoryService = {
             console.error('[MemoryService]', error.message);
             return { ok: false, data: null, error };
         }
-        
+
         // 3. 저장
         const result = await persistMemory(payload);
-        
+
         // 4. 저장 후 업데이트
         postPersistUpdates(result);
-        
+
         return result;
     }
 };

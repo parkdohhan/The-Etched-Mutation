@@ -1,21 +1,26 @@
+// 인증: 로그인 필수 (기억 생성은 인증된 사용자만)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+import { getCorsHeaders, verifyAuth, unauthorizedResponse } from "../_shared/auth.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // ---- CORS preflight 처리 ----
   if (req.method === "OPTIONS") {
-    return new Response("ok", { 
+    return new Response("ok", {
       status: 200,
       headers: corsHeaders
     });
   }
 
   try {
+    // 인증 검증
+    const user = await verifyAuth(req);
+    if (!user) {
+      return unauthorizedResponse(corsHeaders, "기억을 생성하려면 로그인이 필요합니다.");
+    }
+    console.log(`[generate-scene-from-ritual] 인증된 사용자: ${user.id}`);
+
     const body = await req.json();
     const { ritualData } = body;
 
