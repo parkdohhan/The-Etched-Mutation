@@ -1392,7 +1392,11 @@ function addChatMessage(role, content) { const messagesContainer = document.getE
 async function callClaudeAPI(userMessage) { try { const messages = conversationHistory.length > 0 ? conversationHistory : [{ role: 'user', content: userMessage }]; if (conversationHistory.length === 0 || conversationHistory[conversationHistory.length - 1].role !== 'user') { messages.push({ role: 'user', content: userMessage }) } const response = await fetch(SUPABASE_FUNCTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }, body: JSON.stringify({ text: userMessage, conversationHistory: messages, systemPrompt: AI_SYSTEM_PROMPT }) }); if (!response.ok) { const error = await response.json(); throw new Error(error.error || error.details || 'API 호출 실패') } const data = await response.json(); if (data.scene) { return data.scene } else if (data.response) { return data.response } else { throw new Error(data.error || '응답을 받을 수 없습니다') } } catch (error) { console.error('callClaudeAPI error:', error); throw error } }
 function parseAndGenerateScene(aiResponse) { try { const sceneReadyIndex = aiResponse.indexOf('[SCENE_READY]'); if (sceneReadyIndex === -1) return; const jsonStr = aiResponse.substring(sceneReadyIndex + '[SCENE_READY]'.length).trim(); const sceneData = JSON.parse(jsonStr); currentGeneratedSceneObj = sceneData.scene; currentGeneratedEmotion = sceneData.emotion; if (sceneData.scene && sceneData.scene.text) { currentGeneratedScene = sceneData.scene.text } updateGeneratedTabs(sceneData); updateAlignmentFromScene(sceneData); showNotification('장면이 생성되었습니다') } catch (error) { console.error('Scene parsing error:', error); showNotification('장면 생성 중 오류가 발생했습니다') } }
 function updateGeneratedTabs(sceneData) { if (sceneData.scene && sceneData.scene.text) { const sceneContent = document.getElementById('generatedSceneContent').querySelector('.generated-text'); if (sceneContent) { sceneContent.textContent = sceneData.scene.text; sceneContent.classList.remove('void-scene') } const editTextarea = document.getElementById('editSceneTextarea'); if (editTextarea) editTextarea.value = sceneData.scene.text } if (sceneData.emotion && sceneData.emotion.text) { const emotionContent = document.getElementById('generatedEmotionContent').querySelector('.generated-text'); if (emotionContent) { emotionContent.textContent = sceneData.emotion.text; emotionContent.classList.remove('void-reason') } } if (sceneData.voidInfo) { const sceneContent = document.getElementById('generatedSceneContent').querySelector('.generated-text'); const emotionContent = document.getElementById('generatedEmotionContent').querySelector('.generated-text'); if (sceneData.voidInfo.sceneVoid && sceneContent) { sceneContent.classList.add('void-scene') } if (sceneData.voidInfo.reasonVoid && emotionContent) { emotionContent.classList.add('void-reason') } } }
-function updateAlignmentFromScene(sceneData) { if (!sceneData) return; let emotionObj = null; if (typeof sceneData.emotion === 'string') { emotionObj = { intensity: 5, text: sceneData.emotion } } else if (sceneData.emotion) { emotionObj = sceneData.emotion } if (!emotionObj) return; const intensity = emotionObj.intensity || 5; const alignmentIncrease = Math.min(0.15, intensity / 10 * 0.15); const state = appStore.getState(); const newAlignment = Math.min(0.95, state.currentAlignment + alignmentIncrease); appStore.setState({ currentAlignment: newAlignment }); const updatedState = appStore.getState(); const percentageEl = document.getElementById('alignmentPercentage'); if (percentageEl) percentageEl.textContent = String(Math.round(updatedState.currentAlignment * 100)).padStart(2, '0') + '%'; showNotification(`정렬도가 ${Math.round(alignmentIncrease * 100)}% 증가했습니다`) }
+// [V3 DEPRECATED] 누적 방식 정렬도 계산 제거.
+// 정렬도는 ByeoriEngine.calculateStep()에서만 계산됨.
+function updateAlignmentFromScene(sceneData) { 
+  console.log('[V3] updateAlignmentFromScene 호출됨 — 무시 (ByeoriEngine SSOT)');
+}
 let liveVoiceRecognition = null; let liveVoiceContext = null; let liveVoiceAnalyser = null; let liveVoiceMicrophone = null; let liveVoiceAnimationId = null; let liveRecognizedText = '';
 function startLiveVoiceInput() { if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { showNotification('이 브라우저는 음성 인식을 지원하지 않습니다'); return } const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition; liveVoiceRecognition = new SpeechRecognition(); liveVoiceRecognition.lang = 'ko-KR'; liveVoiceRecognition.continuous = true; liveVoiceRecognition.interimResults = true; liveRecognizedText = ''; liveVoiceRecognition.onresult = function (event) { let interim = ''; let final = ''; for (let i = event.resultIndex; i < event.results.length; i++) { if (event.results[i].isFinal) { final += event.results[i][0].transcript } else { interim += event.results[i][0].transcript } } if (final) { liveRecognizedText += final + ' ' } }; liveVoiceRecognition.onerror = function (event) { console.error('Speech recognition error:', event.error); if (event.error === 'not-allowed') { showNotification('마이크 권한이 필요합니다'); stopLiveVoiceInput() } }; liveVoiceRecognition.onend = function () { if (isLiveVoiceRecording && liveVoiceRecognition) { liveVoiceRecognition.start() } }; liveVoiceRecognition.start(); navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) { liveVoiceContext = new (window.AudioContext || window.webkitAudioContext)(); liveVoiceAnalyser = liveVoiceContext.createAnalyser(); liveVoiceMicrophone = liveVoiceContext.createMediaStreamSource(stream); liveVoiceMicrophone.connect(liveVoiceAnalyser); liveVoiceAnalyser.fftSize = 256; const bufferLength = liveVoiceAnalyser.frequencyBinCount; const dataArray = new Uint8Array(bufferLength); const canvas = document.getElementById('voiceWaveCanvasLive'); const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); function draw() { if (!isLiveVoiceRecording) return; liveVoiceAnimationId = requestAnimationFrame(draw); liveVoiceAnalyser.getByteFrequencyData(dataArray); ctx.fillStyle = 'rgba(10,10,12,0.9)'; ctx.fillRect(0, 0, canvas.width / 2, canvas.height / 2); const barWidth = (canvas.width / 2 / bufferLength) * 2.5; let x = 0; for (let i = 0; i < bufferLength; i++) { const barHeight = (dataArray[i] / 255) * canvas.height * 0.9; const gradient = ctx.createLinearGradient(0, canvas.height / 2 - barHeight, 0, canvas.height / 2); gradient.addColorStop(0, 'rgba(122,154,122,0.9)'); gradient.addColorStop(1, 'rgba(74,144,217,0.5)'); ctx.fillStyle = gradient; ctx.fillRect(x, canvas.height / 2 - barHeight, barWidth - 1, barHeight * 2); x += barWidth } } draw() }).catch(function (err) { console.error('Microphone access denied:', err); showNotification('마이크 접근이 거부되었습니다'); stopLiveVoiceInput() }); isLiveVoiceRecording = true; const waveSection = document.querySelector('.voice-wave-section'); if (waveSection) waveSection.style.border = '2px solid rgba(122,154,122,0.5)'; showNotification('음성 입력이 시작되었습니다. 말한 내용은 자동으로 전송됩니다.') }
 function stopLiveVoiceInput() { if (!isLiveVoiceRecording && !liveVoiceRecognition) return; isLiveVoiceRecording = false; if (liveVoiceRecognition) { liveVoiceRecognition.stop(); liveVoiceRecognition = null } if (liveVoiceAnimationId) { cancelAnimationFrame(liveVoiceAnimationId); liveVoiceAnimationId = null } if (liveVoiceContext) { liveVoiceContext.close(); liveVoiceContext = null } liveVoiceAnalyser = null; liveVoiceMicrophone = null; if (liveRecognizedText.trim()) { const input = document.getElementById('liveTextInput'); if (input) { input.value = liveRecognizedText.trim(); sendChatMessage(); liveRecognizedText = '' } else { addChatMessage('user', liveRecognizedText.trim()); conversationHistory.push({ role: 'user', content: liveRecognizedText.trim() }); callClaudeAPI(liveRecognizedText.trim()).then(aiResponse => { addChatMessage('ai', aiResponse); conversationHistory.push({ role: 'assistant', content: aiResponse }); if (aiResponse.includes('[SCENE_READY]')) { parseAndGenerateScene(aiResponse) } }).catch(error => { console.error('AI API error:', error); addChatMessage('ai', '죄송해, 잠시 문제가 생겼어. 다시 말해줄 수 있어?') }); liveRecognizedText = '' } } const waveSection = document.querySelector('.voice-wave-section'); if (waveSection) waveSection.style.border = 'none'; startVoiceWaveLiveAnimation(); showNotification('음성 입력이 중지되었습니다') }
@@ -2162,7 +2166,7 @@ async function submitEmotion() {
     }
 }
 function updateStrata() { const state = appStore.getState(); const originalPercent = 70 - (state.currentScene * 10), interpretPercent = 30 + (state.currentScene * 10); document.getElementById('strataOriginal').style.height = originalPercent + '%'; document.getElementById('strataInterpretation').style.height = interpretPercent + '%'; document.getElementById('strataInterpretation').style.bottom = originalPercent + '%' }
-function getAlignmentLevel(alignment) { if (alignment >= 0.95) return 'FIXATED'; if (alignment >= 0.8) return 'HIGH'; if (alignment >= 0.5) return 'MID'; return 'LOW' } function startWaveAnimation() { const canvas = document.getElementById('waveCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); let time = 0; const state = appStore.getState(); const alignmentLevel = getAlignmentLevel(state.currentAlignment); function animate() { const width = canvas.width / 2, height = canvas.height / 2, centerY = height / 2; ctx.fillStyle = 'rgba(18,18,26,0.1)'; ctx.fillRect(0, 0, width, height); if (alignmentLevel === 'HIGH') { ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.8)'; ctx.lineWidth = 2; const syncPhase = time * 0.05; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.02 + syncPhase) * 15 + Math.sin(x * 0.01 + syncPhase * 0.6) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(122,154,122,0.7)'; ctx.lineWidth = 2; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.02 + syncPhase + Math.PI * 0.1) * 15 + Math.sin(x * 0.01 + syncPhase * 0.6 + Math.PI * 0.1) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'MID') { ctx.save(); ctx.filter = 'blur(1px)'; const irregularity = Math.sin(time * 0.1) * 0.3 + 0.7; ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.6)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const noise = Math.random() * 5 - 2.5; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + noise * 0.1) * 15 * irregularity + Math.sin(x * 0.01 + time * 0.03 + noise * 0.05) * 10 * irregularity; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.restore(); ctx.beginPath(); ctx.strokeStyle = 'rgba(123,143,168,0.5)'; ctx.lineWidth = 1.5; const state = appStore.getState(); const offset = (1 - state.currentAlignment) * 30; for (let x = 0; x < width; x++) { const noise = Math.random() * 3 - 1.5; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + offset + noise * 0.1) * 15 + Math.sin(x * 0.01 + time * 0.03 + offset * 0.5 + noise * 0.05) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'LOW') { const glitch = Math.random() > 0.9; if (glitch) { ctx.save(); ctx.filter = 'invert(1)'; ctx.fillStyle = 'rgba(217,74,74,0.3)'; ctx.fillRect(0, 0, width, height); ctx.restore() } const noiseAmplitude = 10 + Math.random() * 10; ctx.beginPath(); ctx.strokeStyle = glitch ? 'rgba(217,74,74,0.8)' : 'rgba(196,168,130,0.4)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const noise = Math.random() * noiseAmplitude - noiseAmplitude / 2; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + noise * 0.2) * 15 + Math.sin(x * 0.01 + time * 0.03 + noise * 0.1) * 10 + noise; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = glitch ? 'rgba(217,74,74,0.6)' : 'rgba(123,143,168,0.3)'; ctx.lineWidth = 1.5; const state = appStore.getState(); const offset = (1 - state.currentAlignment) * 30; for (let x = 0; x < width; x++) { const noise = Math.random() * noiseAmplitude - noiseAmplitude / 2; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + offset + noise * 0.2) * 15 + Math.sin(x * 0.01 + time * 0.03 + offset * 0.5 + noise * 0.1) * 10 + noise; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'FIXATED') { const slowTime = time * 0.02; const vignetteGradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height)); vignetteGradient.addColorStop(0, 'rgba(0,0,0,0)'); vignetteGradient.addColorStop(1, 'rgba(0,0,0,0.4)'); ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.9)'; ctx.lineWidth = 2.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.015 + slowTime) * 12 + Math.sin(x * 0.008 + slowTime * 0.5) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(122,154,122,0.8)'; ctx.lineWidth = 2.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.015 + slowTime + Math.PI * 0.05) * 12 + Math.sin(x * 0.008 + slowTime * 0.5 + Math.PI * 0.05) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.fillStyle = vignetteGradient; ctx.fillRect(0, 0, width, height) } time++; const animId = requestAnimationFrame(animate); appStore.setState({ waveAnimationId: animId }) } animate() }
+function getAlignmentLevel(alignment) { if (alignment >= 0.55) return 'HIGH'; if (alignment >= 0.35) return 'MID'; return 'LOW' } function startWaveAnimation() { const canvas = document.getElementById('waveCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); let time = 0; const state = appStore.getState(); const alignmentLevel = getAlignmentLevel(state.currentAlignment); function animate() { const width = canvas.width / 2, height = canvas.height / 2, centerY = height / 2; ctx.fillStyle = 'rgba(18,18,26,0.1)'; ctx.fillRect(0, 0, width, height); if (alignmentLevel === 'HIGH') { ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.8)'; ctx.lineWidth = 2; const syncPhase = time * 0.05; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.02 + syncPhase) * 15 + Math.sin(x * 0.01 + syncPhase * 0.6) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(122,154,122,0.7)'; ctx.lineWidth = 2; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.02 + syncPhase + Math.PI * 0.1) * 15 + Math.sin(x * 0.01 + syncPhase * 0.6 + Math.PI * 0.1) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'MID') { ctx.save(); ctx.filter = 'blur(1px)'; const irregularity = Math.sin(time * 0.1) * 0.3 + 0.7; ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.6)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const noise = Math.random() * 5 - 2.5; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + noise * 0.1) * 15 * irregularity + Math.sin(x * 0.01 + time * 0.03 + noise * 0.05) * 10 * irregularity; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.restore(); ctx.beginPath(); ctx.strokeStyle = 'rgba(123,143,168,0.5)'; ctx.lineWidth = 1.5; const state = appStore.getState(); const offset = (1 - state.currentAlignment) * 30; for (let x = 0; x < width; x++) { const noise = Math.random() * 3 - 1.5; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + offset + noise * 0.1) * 15 + Math.sin(x * 0.01 + time * 0.03 + offset * 0.5 + noise * 0.05) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'LOW') { const glitch = Math.random() > 0.9; if (glitch) { ctx.save(); ctx.filter = 'invert(1)'; ctx.fillStyle = 'rgba(217,74,74,0.3)'; ctx.fillRect(0, 0, width, height); ctx.restore() } const noiseAmplitude = 10 + Math.random() * 10; ctx.beginPath(); ctx.strokeStyle = glitch ? 'rgba(217,74,74,0.8)' : 'rgba(196,168,130,0.4)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const noise = Math.random() * noiseAmplitude - noiseAmplitude / 2; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + noise * 0.2) * 15 + Math.sin(x * 0.01 + time * 0.03 + noise * 0.1) * 10 + noise; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = glitch ? 'rgba(217,74,74,0.6)' : 'rgba(123,143,168,0.3)'; ctx.lineWidth = 1.5; const state = appStore.getState(); const offset = (1 - state.currentAlignment) * 30; for (let x = 0; x < width; x++) { const noise = Math.random() * noiseAmplitude - noiseAmplitude / 2; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + offset + noise * 0.2) * 15 + Math.sin(x * 0.01 + time * 0.03 + offset * 0.5 + noise * 0.1) * 10 + noise; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'FIXATED') { const slowTime = time * 0.02; const vignetteGradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height)); vignetteGradient.addColorStop(0, 'rgba(0,0,0,0)'); vignetteGradient.addColorStop(1, 'rgba(0,0,0,0.4)'); ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.9)'; ctx.lineWidth = 2.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.015 + slowTime) * 12 + Math.sin(x * 0.008 + slowTime * 0.5) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(122,154,122,0.8)'; ctx.lineWidth = 2.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.015 + slowTime + Math.PI * 0.05) * 12 + Math.sin(x * 0.008 + slowTime * 0.5 + Math.PI * 0.05) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.fillStyle = vignetteGradient; ctx.fillRect(0, 0, width, height) } time++; const animId = requestAnimationFrame(animate); appStore.setState({ waveAnimationId: animId }) } animate() }
 function startLiveWaveAnimation() { const canvas = document.getElementById('liveWaveCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); let time = 0; function animate() { ctx.fillStyle = 'rgba(18,18,26,0.15)'; ctx.fillRect(0, 0, canvas.width / 2, canvas.height / 2); const width = canvas.width / 2, height = canvas.height / 2, centerY = height / 2; ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.7)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.025 + time * 0.04) * 12 + Math.sin(x * 0.015 + time * 0.025) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(123,143,168,0.7)'; ctx.lineWidth = 1.5; const offset = (1 - currentAlignment) * 25; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.025 + time * 0.04 + offset) * 12 + Math.sin(x * 0.015 + time * 0.025 + offset * 0.6) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); time++; const animId = requestAnimationFrame(animate); appStore.setState({ liveWaveAnimationId: animId }) } animate() }
 function stopWaveAnimation() { const state = appStore.getState(); if (state.waveAnimationId) { cancelAnimationFrame(state.waveAnimationId); appStore.setState({ waveAnimationId: null }) } }
 function stopLiveWaveAnimation() { const state = appStore.getState(); if (state.liveWaveAnimationId) { cancelAnimationFrame(state.liveWaveAnimationId); appStore.setState({ liveWaveAnimationId: null }) } }
@@ -3757,10 +3761,10 @@ function renderStep(step) {
         currentStepEl.classList.remove('hidden');
     }
 
-    // step indicator 업데이트 (step 0은 입장 단계이므로 표시하지 않음)
+    // step indicator 업데이트
     const stepIndicator = document.querySelector('.step-indicator');
     if (stepIndicator) {
-        if (step === 0 || step === 'result') {
+        if (step === 'result') {
             stepIndicator.textContent = '';
         } else if (typeof step === 'number') {
             stepIndicator.textContent = `${step} / 5`;
@@ -3770,9 +3774,6 @@ function renderStep(step) {
     // 단계별 초기화 로직
     if (typeof step === 'number') {
         switch (step) {
-            case 0:
-                initStep0();
-                break;
             case 1:
                 initStep1();
                 break;
@@ -3825,7 +3826,7 @@ function startConfession() {
     if (overlay) {
         overlay.classList.remove('hidden');
         document.body.classList.add('confession-active'); // 배경 블러용
-        renderStep(0);
+        renderStep(1); // Step 0 삭제, Step 1부터 시작
     }
 }
 
@@ -3838,7 +3839,7 @@ function endConfession() {
     }
 
     // 상태 초기화
-    confessionState.currentStep = 0;
+    confessionState.currentStep = 1;
     confessionState.ritualData = {
         sensory: { temperature: '', smell: '', sound: '' },
         anchorObject: '',
@@ -3855,8 +3856,18 @@ function endConfession() {
 }
 
 // 타이핑 엔진 (한 글자씩 출력)
+// 각 element별로 타이머를 추적하여 중복 호출 방지
+const typeWriterTimers = new WeakMap();
+
 function typeWriter(element, text, speed = 50, callback) {
     if (!element) return;
+
+    // 이전 타이머가 있으면 취소
+    const existingTimer = typeWriterTimers.get(element);
+    if (existingTimer) {
+        clearTimeout(existingTimer);
+        typeWriterTimers.delete(element);
+    }
 
     let i = 0;
     element.textContent = '';
@@ -3870,27 +3881,17 @@ function typeWriter(element, text, speed = 50, callback) {
             const char = text.charAt(i - 1);
             const delay = (char === '.' || char === '?' || char === ',') ? 300 : speed;
 
-            setTimeout(type, delay);
-        } else if (callback) {
-            callback();
+            const timer = setTimeout(type, delay);
+            typeWriterTimers.set(element, timer);
+        } else {
+            typeWriterTimers.delete(element);
+            if (callback) {
+                callback();
+            }
         }
     }
 
     type();
-}
-
-// Step 0: 입장
-function initStep0() {
-    const textEl = document.querySelector('.step-0 .confession-text');
-    const enterBtn = document.querySelector('.confession-enter-btn');
-
-    if (textEl) {
-        typeWriter(textEl, '문이 닫혀있다. 열까?', 50, () => {
-            if (enterBtn) {
-                enterBtn.classList.remove('hidden');
-            }
-        });
-    }
 }
 
 // Step 1: 튜닝 (감각 칩)
@@ -3899,6 +3900,8 @@ function initStep1() {
     const chipsContainer = document.querySelector('.step-1 .sensory-chips');
 
     if (textEl) {
+        // 텍스트 초기화 (중복 방지)
+        textEl.textContent = '';
         typeWriter(textEl, '무엇이 느껴지나?', 50);
     }
 
@@ -4313,7 +4316,164 @@ function showConfessionHub() {
         confessionHub.style.display = 'flex';
         confessionHub.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
     }
+
+    // ASCII Door 초기화
+    cancelAnimationFrame(doorRaf);
+    setTimeout(() => initDoor(), 100);
 }
+
+// ===== ASCII Door Engine =====
+const DOOR_W = 80, DOOR_H = 45;
+let doorPhase = -1;
+let doorStart = 0;
+let doorRaf = 0;
+
+function doorEase3(t) { return 1 - Math.pow(1 - t, 3); }
+function doorEase2(t) { return t * t; }
+
+function buildDoor(ph, pr) {
+  const g = Array.from({ length: DOOR_H }, () => Array(DOOR_W).fill(' '));
+  const cx = DOOR_W >> 1, cy = DOOR_H >> 1, dw = 16, dh = 28;
+  const dl = cx - (dw >> 1), dr = cx + (dw >> 1);
+  const dt = cy - (dh >> 1), db = cy + (dh >> 1);
+
+  if (ph === 0 || ph === 1) {
+    const op = ph === 1 ? doorEase3(pr) : 0;
+    for (let y = dt - 1; y <= db + 1; y++) {
+      if (y >= 0 && y < DOOR_H) {
+        if (dl - 1 >= 0) g[y][dl - 1] = '║';
+        if (dr + 1 < DOOR_W) g[y][dr + 1] = '║';
+      }
+    }
+    for (let x = dl - 1; x <= dr + 1; x++) {
+      if (x >= 0 && x < DOOR_W) {
+        if (dt - 1 >= 0) g[dt - 1][x] = '═';
+        if (db + 1 < DOOR_H) g[db + 1][x] = '═';
+      }
+    }
+    if (dt - 1 >= 0 && dl - 1 >= 0) g[dt - 1][dl - 1] = '╔';
+    if (dt - 1 >= 0 && dr + 1 < DOOR_W) g[dt - 1][dr + 1] = '╗';
+    if (db + 1 < DOOR_H && dl - 1 >= 0) g[db + 1][dl - 1] = '╚';
+    if (db + 1 < DOOR_H && dr + 1 < DOOR_W) g[db + 1][dr + 1] = '╝';
+
+    const vw = Math.max(1, Math.round(dw * (1 - op * 0.9)));
+    for (let y = dt; y <= db; y++) {
+      for (let i = 0; i < vw; i++) {
+        const x = dl + i;
+        if (x < 0 || x >= DOOR_W || y < 0 || y >= DOOR_H) continue;
+        if (y === dt || y === db) { g[y][x] = '─'; }
+        else if (i === 0 || i === vw - 1) { g[y][x] = '│'; }
+        else {
+          const py = y - dt, rh = db - dt;
+          const p1t = Math.floor(rh * 0.12), p1b = Math.floor(rh * 0.42);
+          const p2t = Math.floor(rh * 0.52), p2b = Math.floor(rh * 0.88);
+          const pl = 3, pr2 = vw - 4;
+          if (i >= pl && i <= pr2 && (py === p1t || py === p1b || py === p2t || py === p2b)) g[y][x] = '─';
+          else if (i >= pl && i <= pr2 && ((py > p1t && py < p1b) || (py > p2t && py < p2b)) && (i === pl || i === pr2)) g[y][x] = '│';
+          else g[y][x] = '░';
+        }
+      }
+      const kx = dl + vw - 3;
+      if (kx >= 0 && kx < DOOR_W && y === cy) g[y][kx] = '◉';
+    }
+  }
+
+  if (ph === 2) {
+    const t = doorEase2(pr), s = 1 + t * 7;
+    for (let y = 0; y < DOOR_H; y++) {
+      for (let x = 0; x < DOOR_W; x++) {
+        const ox = cx + (x - cx) / s, oy = cy + (y - cy) / s;
+        if (ox >= dl - 1 && ox <= dr + 1 && oy >= dt - 1 && oy <= db + 1) {
+          const onEdge = Math.abs(ox - (dl - 1)) < 0.6 || Math.abs(ox - (dr + 1)) < 0.6 ||
+            Math.abs(oy - (dt - 1)) < 0.6 || Math.abs(oy - (db + 1)) < 0.6;
+          if (onEdge && (1 - t) > 0.15) g[y][x] = (1 - t) > 0.5 ? '║' : '│';
+        }
+      }
+    }
+  }
+
+  return g;
+}
+
+function renderDoorFrame() {
+  const pre = document.getElementById('doorPre');
+  if (!pre) return;
+
+  let ph = doorPhase, pr = 0;
+  if (ph === -1 || ph === 0) { pr = 0; ph = 0; }
+  else if (ph === 1) {
+    pr = Math.min((performance.now() - doorStart) / 1200, 1);
+    if (pr >= 1) { doorPhase = 2; doorStart = performance.now() + 300; }
+  } else if (ph === 2) {
+    const el = performance.now() - doorStart;
+    if (el < 0) pr = 0;
+    else {
+      pr = Math.min(el / 1600, 1);
+      if (pr >= 1) { doorPhase = 3; }
+    }
+  } else if (ph === 3) {
+    pre.textContent = Array(DOOR_H).fill(' '.repeat(DOOR_W)).join('\n');
+    setTimeout(() => startBeginner(), 400);
+    return;
+  }
+
+  const g = buildDoor(ph, pr);
+  pre.textContent = g.map(r => r.join('')).join('\n');
+  doorRaf = requestAnimationFrame(renderDoorFrame);
+}
+
+function initDoor() {
+  doorPhase = -1;
+  const pre = document.getElementById('doorPre');
+  if (!pre) return;
+  const g = buildDoor(0, 0);
+  pre.textContent = g.map(r => r.join('')).join('\n');
+
+  const title = document.getElementById('doorTitle');
+  const subtitle = document.getElementById('doorSubtitle');
+  const backBtn = document.getElementById('doorBackBtn');
+  const hint = document.getElementById('doorHint');
+  const screen = document.getElementById('doorScreen');
+
+  if (title) { title.classList.remove('visible', 'hiding'); }
+  if (subtitle) { subtitle.classList.remove('visible', 'hiding'); }
+  if (backBtn) { backBtn.classList.remove('visible', 'hiding'); }
+  if (hint) { hint.classList.remove('hiding'); }
+  if (screen) { screen.classList.remove('done'); screen.style.cursor = 'pointer'; }
+
+  setTimeout(() => { if (title) title.classList.add('visible'); }, 300);
+  setTimeout(() => { if (subtitle) subtitle.classList.add('visible'); }, 700);
+  setTimeout(() => { if (backBtn) backBtn.classList.add('visible'); }, 1200);
+
+  doorPhase = 0;
+  doorRaf = requestAnimationFrame(renderDoorFrame);
+}
+
+function handleDoorClick() {
+  if (doorPhase !== 0) return;
+  doorPhase = 1;
+  doorStart = performance.now();
+
+  const hint = document.getElementById('doorHint');
+  if (hint) hint.classList.add('hiding');
+
+  setTimeout(() => {
+    const title = document.getElementById('doorTitle');
+    const subtitle = document.getElementById('doorSubtitle');
+    const backBtn = document.getElementById('doorBackBtn');
+    if (title) title.classList.add('hiding');
+    if (subtitle) subtitle.classList.add('hiding');
+    if (backBtn) backBtn.classList.add('hiding');
+  }, 600);
+
+  const screen = document.getElementById('doorScreen');
+  if (screen) screen.style.cursor = 'default';
+
+  doorRaf = requestAnimationFrame(renderDoorFrame);
+}
+
+window.handleDoorClick = handleDoorClick;
+window.initDoor = initDoor;
 
 // Beginner 모드 시작 (기존 Create Memory 플로우)
 function startBeginner() {

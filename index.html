@@ -150,29 +150,13 @@
         </div>
     </div>
     <div class="confession-hub hidden" id="confessionHub">
-        <h1 class="mode-title">RECORD</h1>
-        <p class="hub-subtitle">어떤 방식으로 기억을 남기시겠습니까?</p>
-        <div class="confession-modes">
-            <div class="mode-card" onclick="startBeginner()">
-                <div class="mode-icon">💭</div>
-                <h2>Beginner</h2>
-                <p>가볍게 남기기</p>
-                <small>대화를 통해 기억을 끌어냅니다</small>
-            </div>
-            <div class="mode-card" onclick="startRitual()">
-                <div class="mode-icon">🎭</div>
-                <h2>Ritual</h2>
-                <p>깊게 파고들기</p>
-                <small>5개의 장면을 직접 구성합니다</small>
-            </div>
-            <div class="mode-card mode-locked" onclick="showArchitectLocked()">
-                <div class="mode-icon">🔒</div>
-                <h2>The Architect</h2>
-                <p>구조 설계하기</p>
-                <small>준비 중입니다</small>
-            </div>
+        <div class="door-screen" id="doorScreen" onclick="handleDoorClick()">
+            <div class="door-title" id="doorTitle">RECORD</div>
+            <div class="door-subtitle" id="doorSubtitle">그날의 문을 열어보시겠습니까?</div>
+            <pre id="doorPre"></pre>
+            <div class="door-click-hint" id="doorHint">[ click ]</div>
         </div>
-        <button class="back-btn-simple" onclick="showMainMenu()">← 돌아가기</button>
+        <button class="door-back-btn" id="doorBackBtn" onclick="event.stopPropagation(); showMainMenu()">← 돌아가기</button>
     </div>
     <div class="matching-selection" id="matchingSelection">
         <h2 class="mode-title">LIVE</h2>
@@ -548,12 +532,6 @@
         
         <!-- 메인 콘텐츠 영역 -->
         <div class="confession-content">
-            <!-- Step 0: 입장 -->
-            <div class="confession-step step-0">
-                <p class="confession-text"></p>
-                <button class="confession-enter-btn hidden">문 열기</button>
-            </div>
-            
             <!-- Step 1: 튜닝 (감각 칩) -->
             <div class="confession-step step-1 hidden">
                 <p class="confession-text"></p>

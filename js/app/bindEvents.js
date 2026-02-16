@@ -452,14 +452,6 @@ function bindConfessionEvents() {
         });
     }
 
-    // Step 0: 입장 버튼
-    const enterBtn = document.querySelector('.confession-enter-btn');
-    if (enterBtn) {
-        enterBtn.addEventListener('click', () => {
-            if (window.nextStep) window.nextStep();
-        });
-    }
-
     // Step 2: 앵커 입력
     const anchorInput = document.querySelector('.anchor-input');
     if (anchorInput) {
