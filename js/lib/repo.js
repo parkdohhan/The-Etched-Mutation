@@ -99,7 +99,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
     }
 
-    const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData, curator_id } = memoryPayload;
+    const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
@@ -117,6 +117,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 author_note: author_note || null,
                 status: status || 'Fetus',
                 source: source || 'beginner',
+                sound_map: sound_map || null,
                 layers: 0,
                 dilution: 50,
                 is_public: true
@@ -161,6 +162,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
             author_note: author_note || null,
             status: status || 'Fetus',
             source: source || 'beginner',
+            sound_map: sound_map || null,
             layers: 0,
             dilution: 50,
             is_public: true

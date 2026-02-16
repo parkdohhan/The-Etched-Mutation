@@ -230,7 +230,7 @@ function openPortfolio() {
         }, 2000);
     }
 }
-function openMypage() { if (!isLoggedIn) { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('loginUsername').focus() } else { showMypage() } }
+function openMypage() { const state = appStore.getState(); if (!state.isLoggedIn) { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('loginUsername').focus() } else { showMypage() } }
 async function showMypage() {
     const state = appStore.getState();
     if (!state.isLoggedIn) return;
@@ -254,7 +254,7 @@ function updateUserStats(type, value = 1) { const state = appStore.getState(); i
 function showModeSelection() { const introScreen = document.getElementById('introScreen'); const matchingSelection = document.getElementById('matchingSelection'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } if (matchingSelection) { matchingSelection.classList.add('active'); matchingSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
 function selectMatching(type) { if (type === 'session') { const matchingSelection = document.getElementById('matchingSelection'); const modeSelection = document.getElementById('modeSelection'); if (matchingSelection) { matchingSelection.classList.remove('active'); matchingSelection.style.display = 'none' } if (modeSelection) { modeSelection.classList.add('active'); modeSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } } else { showNotification('곧 만나요') } }
 function backToMatchingSelection() { const matchingSelection = document.getElementById('matchingSelection'); const modeSelection = document.getElementById('modeSelection'); if (modeSelection) { modeSelection.classList.remove('active'); modeSelection.style.display = 'none' } if (matchingSelection) { matchingSelection.classList.add('active'); matchingSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
-function backToIntro() { const introScreen = document.getElementById('introScreen'); if (introScreen) { introScreen.classList.remove('hidden'); introScreen.classList.add('visible'); introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important' } ['matchingSelection', 'modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible'); stopAllAnimations() }
+function backToIntro() { if (window.soundscape) window.soundscape.stop(); const introScreen = document.getElementById('introScreen'); if (introScreen) { introScreen.classList.remove('hidden'); introScreen.classList.add('visible'); introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important' } ['matchingSelection', 'modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible'); stopAllAnimations() }
 function backToModeSelection() { const sessionSetupEl = document.getElementById('sessionSetup'); if (sessionSetupEl) { sessionSetupEl.classList.remove('active'); sessionSetupEl.style.display = 'none' } const modeSelectionEl = document.getElementById('modeSelection'); if (modeSelectionEl) { modeSelectionEl.classList.add('active'); modeSelectionEl.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
 async function enterArchive() { const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'grid'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; appStore.setState({ currentMode: 'archive' }); stopAllAnimations(); await loadMemoriesFromSupabase(); setTimeout(() => showNpcDialogue("여기는 아카이브야. 한 번 상연된 기억 위에, 다른 사람들의 해석이 지층처럼 쌓여 있어.", 5000), 1000); const archiveSearchEl = document.getElementById('archiveSearch'); if (archiveSearchEl) archiveSearchEl.value = ''; const state = appStore.getState(); console.log('[enterArchive] 로드된 메모리 수:', state.allMemoriesData.length); console.log('[enterArchive] 메모리 데이터:', state.allMemoriesData); sortMemories('all'); const footer = document.querySelector('.footer'); if (footer) footer.classList.add('visible') }
 function filterByCategory(category, btnElement) {
@@ -296,7 +296,8 @@ function joinSession() { joinLiveSession() }
 async function createLiveSession() {
     console.log('=== createLiveSession 시작 ===');
     console.log('sessionCode:', sessionCode);
-    console.log('currentRole:', currentRole);
+    const state = appStore.getState();
+    console.log('currentRole:', state.currentRole);
 
     // Supabase 클라이언트 초기화 대기
     let retryCount = 0;
@@ -326,7 +327,7 @@ async function createLiveSession() {
     }
 
     let userId;
-    const state = appStore.getState(); if (state.currentUser) { userId = state.currentUser.id } else {
+    if (state.currentUser) { userId = state.currentUser.id } else {
         if (!window.anonymousUserId) {
             window.anonymousUserId = crypto.randomUUID();
         }
@@ -582,6 +583,10 @@ async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, c
             user_id: state.currentUser?.id || null
         };
         console.log('Archive plays 저장 시도:', insertData);
+        // void crack 사운드
+        if (mismatchType === 'void_mismatch' && window.soundscape) {
+            window.soundscape.onVoidCrack();
+        }
         const result = await networkService.savePlay(insertData);
         if (!result.ok) {
             console.error('Archive plays 저장 실패:', result.error);
@@ -1283,13 +1288,13 @@ async function handleConfirm(answer) {
             console.log('handleConfirm - scene yes clicked, sceneText:', sceneText);
             console.log('currentGeneratedScene:', currentGeneratedScene);
             console.log('pendingSceneText:', currentState.pendingSceneText);
-            console.log('currentSessionId:', currentSessionId);
+            console.log('currentSessionId:', currentState.currentSessionId);
             if (!sceneText) {
                 console.error('장면 텍스트가 없습니다!');
                 addChatMessage('ai', '장면이 없습니다. 다시 입력해주세요.');
                 return;
             }
-            if (currentSessionId) {
+            if (currentState.currentSessionId) {
                 console.log('saveLiveScene 호출 시작');
                 await saveLiveScene({
                     text: sceneText,
@@ -1344,7 +1349,8 @@ async function handleConfirm(answer) {
                 updateNarratorWave(finalSceneObject.emotionAnalysis);
                 window.narratorEmotionVector = finalSceneObject.emotionAnalysis?.base || { fear: 0, sadness: 0, anger: 0, joy: 0, longing: 0, guilt: 0 };
                 console.log('화자 감정 벡터 저장:', window.narratorEmotionVector);
-                if (supabaseClient && currentSessionId) {
+                const checkState = appStore.getState();
+                if (supabaseClient && checkState.currentSessionId) {
                     try {
                         // live_interpretations 테이블이 없으므로 완전히 비활성화
                         // await supabaseClient.from('live_interpretations').insert({...});
@@ -1358,9 +1364,11 @@ async function handleConfirm(answer) {
             simulateNarratorInput(finalSceneObject?.text || currentGeneratedScene);
             showNotification('장면이 전송되었습니다.');
             updateLiveAlignment(0.1 + Math.random() * 0.15);
-            liveSceneNum++;
+            const updatedState = appStore.getState();
+            appStore.setState({ liveSceneNum: updatedState.liveSceneNum + 1 });
+            const newState = appStore.getState();
             const liveSceneNumEl = document.getElementById('liveSceneNum');
-            if (liveSceneNumEl) liveSceneNumEl.textContent = liveSceneNum;
+            if (liveSceneNumEl) liveSceneNumEl.textContent = newState.liveSceneNum;
             currentPhase = 'scene';
             appStore.setState({ pendingSceneText: '' });
             currentGeneratedScene = '';
@@ -1781,6 +1789,16 @@ function startArchivePlay(memoryIndex) {
         sceneViewerEl.classList.add('active');
         sceneViewerEl.style.cssText = 'display:block !important;opacity:1 !important';
         setTimeout(() => {
+            // ---- 사운드스케이프 시작 ----
+            if (window.soundscape) {
+                var memoryData = window.currentStoryData;
+                window.soundscape.init({
+                    soundMap: (memoryData && memoryData.sound_map) ? memoryData.sound_map : null,
+                    volume: 0.35
+                });
+                window.soundscape.start();
+            }
+            // ---- 기존 코드 ----
             initProgressDots();
             renderScene();
             startWaveAnimation();
@@ -1790,14 +1808,14 @@ function startArchivePlay(memoryIndex) {
         showNotification('장면 뷰어를 찾을 수 없습니다');
     }
 }
-function backToList() { document.getElementById('memoryList').style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none' } const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; stopWaveAnimation() }
+function backToList() { if (window.soundscape) window.soundscape.stop(); document.getElementById('memoryList').style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none' } const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; stopWaveAnimation() }
 function initProgressDots() { const currentData = window.currentStoryData || storyData; const dotsContainer = document.getElementById('progressDots'); if (!dotsContainer) return; dotsContainer.innerHTML = ''; if (!currentData || !currentData.scenes) return; for (let i = 0; i < currentData.scenes.length; i++) { const dot = document.createElement('div'); dot.className = 'progress-dot' + (i === 0 ? ' active' : ''); dot.onclick = function () { goToScene(i) }; dotsContainer.appendChild(dot) } }
 function goToScene(index) { const state = appStore.getState(); if (index <= state.currentScene) { appStore.setState({ currentScene: index }); renderScene() } }
 async function renderScene() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면을 불러올 수 없습니다'); return } const scene = currentData.scenes[state.currentScene]; if (!scene || !scene.text) { showNotification('장면 텍스트를 불러올 수 없습니다'); return } const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); if (scene.choices) renderChoices(scene.choices); const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%' } catch (e) { console.error('renderScene error:', e); showNotification('장면을 렌더링하는 중 오류가 발생했습니다') } }
 function renderEchoLayer(words) { const layer = document.getElementById('echoLayer'); if (!layer) return; layer.innerHTML = ''; if (!words || !Array.isArray(words)) return; words.forEach(word => { const span = document.createElement('span'); span.className = 'echo-word'; span.textContent = word; span.style.top = (20 + Math.random() * 60) + '%'; span.style.left = (10 + Math.random() * 80) + '%'; layer.appendChild(span) }) }
 function renderChoices(choices) { const container = document.getElementById('choicesContainer'); if (!container) return; container.innerHTML = ''; if (!choices || !Array.isArray(choices)) return; choices.forEach((choice, i) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.textContent = choice.text; btn.onclick = function () { makeChoice(i) }; container.appendChild(btn) }) }
 function makeChoice(choiceIndex) { try { const state = appStore.getState(); appStore.setState({ userChoices: [...state.userChoices, choiceIndex] }); const currentData = window.currentStoryData || storyData; const updatedState = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } const scene = currentData.scenes[updatedState.currentScene]; const sceneType = scene.sceneType || 'normal'; if (sceneType === 'branch' || sceneType === 'ending') { const questionEl = document.getElementById('emotionQuestion'); if (questionEl) questionEl.textContent = updatedState.currentScene === 0 ? "왜 그렇게 했어?" : "왜 그런 선택을 했어?"; const modalEl = document.getElementById('emotionModal'); if (modalEl) modalEl.classList.add('active'); const inputEl = document.getElementById('emotionInputField'); if (inputEl) inputEl.focus() } else { proceedToNextScene() } } catch (e) { console.error('makeChoice error:', e); showNotification('오류가 발생했습니다') } }
-function proceedToNextScene() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); renderScene() } else { showEndScreen() } } catch (e) { console.error('proceedToNextScene error:', e); showNotification('오류가 발생했습니다') } }
+function proceedToNextScene() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); if (window.soundscape) window.soundscape.onSceneTransition(); renderScene() } else { showEndScreen() } } catch (e) { console.error('proceedToNextScene error:', e); showNotification('오류가 발생했습니다') } }
 function proceedToNextSceneLive() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('장면 데이터를 불러올 수 없습니다'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); simulateNarratorInput() } else { showEndScreen() } } catch (e) { console.error('proceedToNextSceneLive error:', e); showNotification('오류가 발생했습니다') } }
 // ───── submitEmotion 리팩토링: 하위 함수들 ─────
 
@@ -1984,6 +2002,10 @@ function updateUIAfterSubmit(state, result) {
 
     if (newBucket !== state.currentBucket) {
         showBucketFeedback(newBucket, sceneAlignment);
+        // 사운드스케이프 버킷 전환
+        if (window.soundscape) {
+            window.soundscape.setBucket(newBucket);
+        }
     }
 }
 
@@ -2152,6 +2174,7 @@ function stopAllAnimations() {
     stopLiveVoiceInput();
 }
 async function showEndScreen(alignmentResult, forceEndScreen = false) {
+    if (window.soundscape) window.soundscape.stop();
     const state = appStore.getState();
     console.log('[엔딩] showEndScreen 호출:', { alignmentResult, forceEndScreen, currentMode: state.currentMode });
     try {
@@ -2280,7 +2303,7 @@ async function showEndScreen(alignmentResult, forceEndScreen = false) {
 }
 function startEndStrataAnimation() { const container = document.getElementById('endStrataContainer'); const messageEl = document.getElementById('endStrataMessage'); const contentEl = document.getElementById('endContent'); const animationEl = document.getElementById('endStrataAnimation'); if (!container || !messageEl || !contentEl || !animationEl) return; container.innerHTML = ''; const totalHeight = 400; const layerHeight = totalHeight / 6; const previousLayers = [{ emotion: 'fear', height: layerHeight }, { emotion: 'anger', height: layerHeight }, { emotion: 'shame', height: layerHeight }, { emotion: 'joy', height: layerHeight }]; let currentBottom = totalHeight; const originalLayer = document.createElement('div'); originalLayer.className = 'end-strata-layer end-strata-layer-original'; originalLayer.style.height = layerHeight * 2 + 'px'; originalLayer.style.bottom = (currentBottom - layerHeight * 2) + 'px'; container.appendChild(originalLayer); currentBottom -= layerHeight * 2; previousLayers.forEach((layer, idx) => { const layerEl = document.createElement('div'); layerEl.className = 'end-strata-layer end-strata-layer-interpretation ' + layer.emotion; layerEl.style.height = layer.height + 'px'; layerEl.style.bottom = (currentBottom - layer.height) + 'px'; layerEl.style.opacity = '0'; container.appendChild(layerEl); setTimeout(() => { layerEl.style.opacity = '1' }, 100 * idx); currentBottom -= layer.height }); const userEmotion = getUserDominantEmotion(); const newLayer = document.createElement('div'); newLayer.className = 'end-strata-layer end-strata-layer-new ' + userEmotion; newLayer.style.height = layerHeight + 'px'; newLayer.style.bottom = totalHeight + 'px'; container.appendChild(newLayer); setTimeout(() => { newLayer.style.transform = 'translateY(0)'; newLayer.style.opacity = '1'; messageEl.classList.add('visible') }, 500); setTimeout(() => { animationEl.style.transform = 'translate(-50%,-50%) scale(0.3)'; animationEl.style.top = '10%'; animationEl.style.transition = 'all 1s ease-out'; contentEl.style.opacity = '1' }, 1500) }
 function getUserDominantEmotion() { const emotions = ['fear', 'sadness', 'guilt', 'anger', 'longing', 'isolation', 'numbness', 'moralPain']; const lastScene = window.currentStoryData?.scenes?.[window.currentStoryData.scenes.length - 1]; if (lastScene && lastScene.emotionDist) { const dist = lastScene.emotionDist; let max = 0, dominant = 'fear'; if ((dist.fear || 0) > max) { max = dist.fear; dominant = 'fear' } if ((dist.sadness || 0) > max) { max = dist.sadness; dominant = 'sadness' } if ((dist.guilt || 0) > max) { max = dist.guilt; dominant = 'guilt' } if ((dist.anger || 0) > max) { max = dist.anger; dominant = 'anger' } if ((dist.longing || 0) > max) { max = dist.longing; dominant = 'longing' } if ((dist.isolation || 0) > max) { max = dist.isolation; dominant = 'isolation' } if ((dist.numbness || 0) > max) { max = dist.numbness; dominant = 'numbness' } if ((dist.moralPain || 0) > max) { max = dist.moralPain; dominant = 'moralPain' } return dominant } return emotions[Math.floor(Math.random() * emotions.length)] }
-function restart() { appStore.setState({ currentMode: null, currentRole: null, sessionCode: null, currentMemory: null, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [], liveSceneNum: 1, liveFragments: 0, liveMatches: 0 }); const endScreenEl = document.getElementById('endScreen'); if (endScreenEl) { endScreenEl.classList.remove('active'); endScreenEl.style.display = 'none' } const liveContainerEl = document.getElementById('liveContainer'); if (liveContainerEl) { liveContainerEl.classList.remove('active'); liveContainerEl.style.display = 'none' } const archiveContainerEl = document.getElementById('archiveContainer'); if (archiveContainerEl) { archiveContainerEl.classList.remove('active'); archiveContainerEl.style.display = 'none' } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none' } const introScreen = document.getElementById('introScreen'); if (introScreen) { introScreen.classList.remove('hidden'); introScreen.classList.add('visible'); introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important' } const narratorPanelEl = document.getElementById('narratorPanel'); if (narratorPanelEl) narratorPanelEl.classList.remove('active'); const experiencerPanelEl = document.getElementById('experiencerPanel'); if (experiencerPanelEl) experiencerPanelEl.classList.remove('active'); const interpretationTraceEl = document.getElementById('interpretationTrace'); if (interpretationTraceEl) interpretationTraceEl.style.display = 'none'; const liveSceneContentEl = document.getElementById('liveSceneContent'); if (liveSceneContentEl) liveSceneContentEl.textContent = '화자가 기억을 불러오고 있습니다...'; const feelingInput = document.getElementById('experiencerFeelingInput'); if (feelingInput) feelingInput.value = ''; const memoryTraceContent = document.getElementById('memoryTraceContent'); if (memoryTraceContent) memoryTraceContent.textContent = '—'; const liveAlignmentValueEl = document.getElementById('liveAlignmentValue'); if (liveAlignmentValueEl) { liveAlignmentValueEl.textContent = '0.00'; liveAlignmentValueEl.classList.remove('high') } const liveAlignmentFillEl = document.getElementById('liveAlignmentFill'); if (liveAlignmentFillEl) liveAlignmentFillEl.style.width = '0%'; const liveSceneNumEl = document.getElementById('liveSceneNum'); if (liveSceneNumEl) liveSceneNumEl.textContent = '1'; const liveFragmentsEl = document.getElementById('liveFragments'); if (liveFragmentsEl) liveFragmentsEl.textContent = '0'; const liveMatchesEl = document.getElementById('liveMatches'); if (liveMatchesEl) liveMatchesEl.textContent = '0'; const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible') }
+function restart() { if (window.soundscape) window.soundscape.stop(); appStore.setState({ currentMode: null, currentRole: null, sessionCode: null, currentMemory: null, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [], liveSceneNum: 1, liveFragments: 0, liveMatches: 0 }); const endScreenEl = document.getElementById('endScreen'); if (endScreenEl) { endScreenEl.classList.remove('active'); endScreenEl.style.display = 'none' } const liveContainerEl = document.getElementById('liveContainer'); if (liveContainerEl) { liveContainerEl.classList.remove('active'); liveContainerEl.style.display = 'none' } const archiveContainerEl = document.getElementById('archiveContainer'); if (archiveContainerEl) { archiveContainerEl.classList.remove('active'); archiveContainerEl.style.display = 'none' } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none' } const introScreen = document.getElementById('introScreen'); if (introScreen) { introScreen.classList.remove('hidden'); introScreen.classList.add('visible'); introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important' } const narratorPanelEl = document.getElementById('narratorPanel'); if (narratorPanelEl) narratorPanelEl.classList.remove('active'); const experiencerPanelEl = document.getElementById('experiencerPanel'); if (experiencerPanelEl) experiencerPanelEl.classList.remove('active'); const interpretationTraceEl = document.getElementById('interpretationTrace'); if (interpretationTraceEl) interpretationTraceEl.style.display = 'none'; const liveSceneContentEl = document.getElementById('liveSceneContent'); if (liveSceneContentEl) liveSceneContentEl.textContent = '화자가 기억을 불러오고 있습니다...'; const feelingInput = document.getElementById('experiencerFeelingInput'); if (feelingInput) feelingInput.value = ''; const memoryTraceContent = document.getElementById('memoryTraceContent'); if (memoryTraceContent) memoryTraceContent.textContent = '—'; const liveAlignmentValueEl = document.getElementById('liveAlignmentValue'); if (liveAlignmentValueEl) { liveAlignmentValueEl.textContent = '0.00'; liveAlignmentValueEl.classList.remove('high') } const liveAlignmentFillEl = document.getElementById('liveAlignmentFill'); if (liveAlignmentFillEl) liveAlignmentFillEl.style.width = '0%'; const liveSceneNumEl = document.getElementById('liveSceneNum'); if (liveSceneNumEl) liveSceneNumEl.textContent = '1'; const liveFragmentsEl = document.getElementById('liveFragments'); if (liveFragmentsEl) liveFragmentsEl.textContent = '0'; const liveMatchesEl = document.getElementById('liveMatches'); if (liveMatchesEl) liveMatchesEl.textContent = '0'; const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible') }
 let pendingSaveAction = null;
 function saveMemory() {
     console.log('saveMemory 호출:', { isLoggedIn, currentMode, currentRole, currentSessionId });
@@ -4356,7 +4379,6 @@ async function startRitualFlow() {
     console.log('=== Ritual Flow 시작 ===');
     appStore.setState({ currentMode: 'ritual', currentRole: 'A' });
     const state = appStore.getState();
-    currentRole = state.currentRole; // 하위 호환성을 위해 전역 변수에도 설정
     currentSceneIndex = 0;
     ritualScenes = [];
 
@@ -4365,17 +4387,19 @@ async function startRitualFlow() {
 
     // Live 화자 화면 표시 (소켓 없이)
     try {
-        currentSceneOrder = 1;
         window.currentStoryData = storyData;
-        currentScene = 0;
-        userChoices = [];
-        userReasons = [];
+        appStore.setState({ 
+            currentSceneOrder: 1,
+            currentScene: 0,
+            userChoices: [],
+            userReasons: [],
+            currentAlignment: 0,
+            pendingSceneText: ''
+        });
         conversationHistory = [];
         currentGeneratedSceneObj = null;
         currentGeneratedEmotion = null;
-        currentAlignment = 0;
         currentPhase = 'scene';
-        appStore.setState({ pendingSceneText: '' });
         pendingEmotionText = '';
         currentGeneratedScene = '';
         finalSceneObject = null;

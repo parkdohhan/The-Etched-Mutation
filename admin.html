@@ -109,6 +109,52 @@
                     </div>
                 </div>
 
+                <!-- 사운드 매핑 -->
+                <div class="editor-section">
+                    <h3 class="editor-section-title">사운드 매핑</h3>
+                    <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
+                        비워두면 기본 사운드 사용. URL은 sounds/ 폴더 경로 또는 외부 URL.
+                    </p>
+                    <div class="editor-field-group">
+                        <div class="editor-field">
+                            <label class="editor-label">Opening (인트로)</label>
+                            <div style="display:flex;gap:.5rem;align-items:center">
+                                <input type="text" class="editor-input" id="soundMapOpening" placeholder="sounds/ambient-opening.mp3">
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapOpening')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
+                            </div>
+                        </div>
+                        <div class="editor-field">
+                            <label class="editor-label">HIGH (정렬도 높음)</label>
+                            <div style="display:flex;gap:.5rem;align-items:center">
+                                <input type="text" class="editor-input" id="soundMapHigh" placeholder="sounds/Rain_indoor.mp3">
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapHigh')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
+                            </div>
+                        </div>
+                        <div class="editor-field">
+                            <label class="editor-label">MID (중간)</label>
+                            <div style="display:flex;gap:.5rem;align-items:center">
+                                <input type="text" class="editor-input" id="soundMapMid" placeholder="sounds/Base_white.mp3">
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapMid')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
+                            </div>
+                        </div>
+                        <div class="editor-field">
+                            <label class="editor-label">LOW (정렬도 낮음)</label>
+                            <div style="display:flex;gap:.5rem;align-items:center">
+                                <input type="text" class="editor-input" id="soundMapLow" placeholder="sounds/Base_Void.mp3">
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapLow')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
+                            </div>
+                        </div>
+                        <div class="editor-field">
+                            <label class="editor-label">FIXATED (루프)</label>
+                            <div style="display:flex;gap:.5rem;align-items:center">
+                                <input type="text" class="editor-input" id="soundMapFixated" placeholder="sounds/Base_Void.mp3">
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapFixated')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
+                            </div>
+                        </div>
+                        <button onclick="stopPreviewSound()" style="background:none;border:1px solid var(--text-muted);color:var(--text-muted);padding:.3rem .8rem;border-radius:3px;cursor:pointer;font-size:.75rem;margin-top:.5rem">■ 정지</button>
+                    </div>
+                </div>
+
                 <div class="editor-section">
                     <h3 class="editor-section-title">장면 에디터</h3>
                     <div id="scenesContainer">

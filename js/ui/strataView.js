@@ -219,7 +219,7 @@
         var gz = (iz / (GRID - 1) - 0.5) * SIZE;
         var localPoll = pollField[idx];
 
-        var h = 0, cr = 0.06, cg = 0.06, cb = 0.08;
+        var h = 0, cr = 0.10, cg = 0.10, cb = 0.13;
 
         for (var ei = 0; ei < events.length; ei++) {
           var ev = events[ei];
@@ -256,7 +256,7 @@
           }
         }
 
-        h += fm(gx * 0.05 + li * 0.5, gz * 0.05 + li * 0.3, 5) * 1 - 0.5;
+        h += fm(gx * 0.05 + li * 0.5, gz * 0.05 + li * 0.3, 5) * 2.5 - 1.2;
         h *= comp;
         heights[idx] = h;
 
@@ -273,6 +273,14 @@
           pr = pr * (1 - mix) + (grey * 0.7 + boneTint) * mix;
           pg = pg * (1 - mix) + (grey * 0.6 + boneTint * 0.8) * mix;
           pb = pb * (1 - mix) + (grey * 0.5 + boneTint * 0.6) * mix;
+        }
+
+        if (comp < 0.3) {
+          var fossil = (0.3 - comp) / 0.3;
+          var avg = (pr + pg + pb) / 3;
+          pr = pr * (1 - fossil * 0.5) + (avg + 0.04) * fossil * 0.5;
+          pg = pg * (1 - fossil * 0.5) + (avg + 0.03) * fossil * 0.5;
+          pb = pb * (1 - fossil * 0.5) + (avg + 0.02) * fossil * 0.5;
         }
 
         colors[idx * 3] = Math.min(1, pr);
@@ -315,7 +323,9 @@
     var cache = _layerCache[li];
     var slabGroup = new THREE.Group();
     var yBase = computeYBase(li);
-    var botY = yBase - layer.thickness;
+    var comp = layer.compaction;
+    var actualThickness = layer.thickness * (0.4 + comp * 0.6);
+    var botY = yBase - actualThickness;
     cache.yBase = yBase; cache.botY = botY;
 
     var topGeo = new THREE.PlaneGeometry(SIZE, SIZE, GRID - 1, GRID - 1);
@@ -338,11 +348,36 @@
     topMesh.rotation.x = -Math.PI / 2; topMesh.position.y = yBase;
     slabGroup.add(topMesh);
 
-    var botGeo = new THREE.PlaneGeometry(SIZE, SIZE, 1, 1);
-    var midCol = sampleCachedColor(li, 0, 0);
+    var botGeo = new THREE.PlaneGeometry(SIZE, SIZE, GRID - 1, GRID - 1);
+    var botPos = botGeo.attributes.position.array;
+    var botColors = new Float32Array(botPos.length);
+    for (var iz = 0; iz < GRID; iz++) {
+      for (var ix = 0; ix < GRID; ix++) {
+        var vi = (iz * GRID + ix) * 3;
+        var gx = (ix / (GRID - 1) - 0.5) * SIZE;
+        var gz = (iz / (GRID - 1) - 0.5) * SIZE;
+        
+        var nextLi = li + 1;
+        var botH;
+        if (nextLi < _computedLayers.length && _layerCache[nextLi]) {
+          botH = sampleCachedHeight(nextLi, gx, gz) + computeYBase(nextLi) - botY;
+        } else {
+          var comp = layer.compaction;
+          var actualThickness = layer.thickness * (0.4 + comp * 0.6);
+          botH = cache.heights[iz * GRID + ix] - actualThickness + fm(gx * 0.1 + li, gz * 0.1, 3) * 0.5;
+        }
+        botPos[vi + 2] = botH;
+        
+        var col = sampleCachedColor(li, gx, gz);
+        botColors[vi] = col.r * 0.4;
+        botColors[vi + 1] = col.g * 0.4;
+        botColors[vi + 2] = col.b * 0.4;
+      }
+    }
+    botGeo.setAttribute('color', new THREE.BufferAttribute(botColors, 3));
+    botGeo.computeVertexNormals();
     var botMesh = new THREE.Mesh(botGeo, new THREE.MeshStandardMaterial({
-      color: new THREE.Color(midCol.r * 0.5, midCol.g * 0.5, midCol.b * 0.5),
-      roughness: 0.9, metalness: 0, side: THREE.DoubleSide
+      vertexColors: true, roughness: 0.9, metalness: 0, side: THREE.DoubleSide
     }));
     botMesh.rotation.x = -Math.PI / 2; botMesh.position.y = botY;
     slabGroup.add(botMesh);
@@ -361,7 +396,18 @@
         var col = sampleCachedColor(li, gx, gz);
         if (side.axis === 'x') { wV.push(side.val, yBase + topH, pos1); } else { wV.push(pos1, yBase + topH, side.val); }
         wC.push(col.r, col.g, col.b);
-        if (side.axis === 'x') { wV.push(side.val, botY, pos1); } else { wV.push(pos1, botY, side.val); }
+        
+        var nextLi = li + 1;
+        var botH;
+        if (nextLi < _computedLayers.length && _layerCache[nextLi]) {
+          botH = sampleCachedHeight(nextLi, gx, gz) + computeYBase(nextLi) - botY;
+        } else {
+          var botIdx = Math.round((gx / SIZE + 0.5) * (GRID - 1)) + Math.round((gz / SIZE + 0.5) * (GRID - 1)) * GRID;
+          var comp = layer.compaction;
+          var actualThickness = layer.thickness * (0.4 + comp * 0.6);
+          botH = (botIdx >= 0 && botIdx < cache.heights.length) ? (cache.heights[botIdx] - actualThickness + fm(gx * 0.1 + li, gz * 0.1, 3) * 0.5) : 0;
+        }
+        if (side.axis === 'x') { wV.push(side.val, botY + botH, pos1); } else { wV.push(pos1, botY + botH, side.val); }
         wC.push(col.r * 0.4, col.g * 0.4, col.b * 0.4);
         if (s < segs) { var b = s * 2; wI.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
       }
@@ -375,9 +421,10 @@
     });
 
     var wireGeo = topGeo.clone();
+    var wireOpacity = 0.02 + (1 - comp) * 0.06;
     var wireMesh = new THREE.Mesh(wireGeo, new THREE.MeshBasicMaterial({
       color: new THREE.Color(0.15 + li * 0.02, 0.12 + li * 0.02, 0.18 + li * 0.02),
-      wireframe: true, transparent: true, opacity: 0.04
+      wireframe: true, transparent: true, opacity: wireOpacity
     }));
     wireMesh.rotation.x = -Math.PI / 2; wireMesh.position.y = yBase + 0.05;
     slabGroup.add(wireMesh);
@@ -475,14 +522,14 @@
     renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
     renderer.setSize(innerWidth, innerHeight);
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setClearColor(0x0a0a0f, 1);
+    renderer.setClearColor(0x12121a, 1);
     threeScene = new THREE.Scene();
-    threeScene.fog = new THREE.FogExp2(0x0a0a0f, 0.006);
+    threeScene.fog = new THREE.FogExp2(0x12121a, 0.004);
     camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 500);
-    threeScene.add(new THREE.AmbientLight(0x1a1520, 0.5));
-    var dl = new THREE.DirectionalLight(0xc4a882, 0.4); dl.position.set(30, 50, 20); threeScene.add(dl);
-    var dl2 = new THREE.DirectionalLight(0x6080a0, 0.15); dl2.position.set(-20, 30, -15); threeScene.add(dl2);
-    pointLight = new THREE.PointLight(0x8c3c28, 0.4, 80); pointLight.position.set(-15, 20, -10); threeScene.add(pointLight);
+    threeScene.add(new THREE.AmbientLight(0x2a2535, 1.2));
+    var dl = new THREE.DirectionalLight(0xc4a882, 0.8); dl.position.set(30, 50, 20); threeScene.add(dl);
+    var dl2 = new THREE.DirectionalLight(0x6080a0, 0.35); dl2.position.set(-20, 30, -15); threeScene.add(dl2);
+    pointLight = new THREE.PointLight(0x8c3c28, 0.7, 100); pointLight.position.set(-15, 20, -10); threeScene.add(pointLight);
     group = new THREE.Group(); 
     threeScene.add(group);
     console.log('[Strata] group 생성 완료:', group);
@@ -566,7 +613,7 @@
     }
     _layerGroups.forEach(function (g) { if (g) { group.remove(g); disposeGroup(g); } });
     _layerGroups = []; _layerCache = [];
-    for (var i = 0; i < _computedLayers.length; i++) {
+    for (var i = _computedLayers.length - 1; i >= 0; i--) {
       _layerCache[i] = bakeLayer(i);
       var slab = buildSlab(i); group.add(slab); _layerGroups[i] = slab;
     }

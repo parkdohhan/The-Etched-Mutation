@@ -10,6 +10,7 @@ let previewCurrentScene = 0;
 let previewWaveAnimationId = null;
 let currentLayers = []; // Archive 레이어 추적
 let adminUser = null; // 현재 인증된 관리자
+let previewAudio = null; // 사운드 미리듣기용
 
 // Supabase Auth 기반 관리자 인증
 async function checkPassword() {
@@ -238,6 +239,11 @@ function addNewMemory() {
     document.getElementById('completedSentence').value = '';
     document.getElementById('authorNote').value = '';
     document.getElementById('memoryStatus').value = 'Fetus';
+    document.getElementById('soundMapOpening').value = '';
+    document.getElementById('soundMapHigh').value = '';
+    document.getElementById('soundMapMid').value = '';
+    document.getElementById('soundMapLow').value = '';
+    document.getElementById('soundMapFixated').value = '';
     document.getElementById('scenesContainer').innerHTML = '';
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
@@ -257,6 +263,13 @@ function editMemory(index) {
     document.getElementById('completedSentence').value = memory.completed_sentence || '';
     document.getElementById('authorNote').value = memory.author_note || '';
     document.getElementById('memoryStatus').value = memory.status || 'Fetus';
+    // 사운드 매핑 로드
+    var soundMap = memory.sound_map || {};
+    document.getElementById('soundMapOpening').value = soundMap.opening || '';
+    document.getElementById('soundMapHigh').value = soundMap.HIGH || '';
+    document.getElementById('soundMapMid').value = soundMap.MID || '';
+    document.getElementById('soundMapLow').value = soundMap.LOW || '';
+    document.getElementById('soundMapFixated').value = soundMap.FIXATED || '';
     currentScenes = memory.scenes ? JSON.parse(JSON.stringify(memory.scenes)) : [];
     renderScenes();
     document.getElementById('adminDashboard').classList.remove('active');
@@ -1528,6 +1541,18 @@ async function saveMemory() {
     const memoryWords = document.getElementById('memoryWords').value.trim();
     const completedSentence = document.getElementById('completedSentence').value.trim();
     const authorNote = document.getElementById('authorNote').value.trim();
+    // 사운드 매핑 수집
+    var soundMap = {};
+    var smOpening = document.getElementById('soundMapOpening')?.value?.trim();
+    var smHigh = document.getElementById('soundMapHigh')?.value?.trim();
+    var smMid = document.getElementById('soundMapMid')?.value?.trim();
+    var smLow = document.getElementById('soundMapLow')?.value?.trim();
+    var smFixated = document.getElementById('soundMapFixated')?.value?.trim();
+    if (smOpening) soundMap.opening = smOpening;
+    if (smHigh) soundMap.HIGH = smHigh;
+    if (smMid) soundMap.MID = smMid;
+    if (smLow) soundMap.LOW = smLow;
+    if (smFixated) soundMap.FIXATED = smFixated;
 
     if (!title || !code) {
         alert('제목과 코드를 입력해주세요');
@@ -2471,6 +2496,31 @@ window.checkPassword = checkPassword;
 window.adminLogout = adminLogout;
 window.logout = logout;
 window.addNewMemory = addNewMemory;
+
+// 사운드 미리듣기 함수
+function previewSound(inputId) {
+    stopPreviewSound();
+    var input = document.getElementById(inputId);
+    if (!input || !input.value.trim()) {
+        alert('URL을 입력하세요');
+        return;
+    }
+    previewAudio = new Audio(input.value.trim());
+    previewAudio.volume = 0.4;
+    previewAudio.loop = true;
+    previewAudio.play().catch(function(e) { alert('재생 실패: ' + e.message); });
+}
+
+function stopPreviewSound() {
+    if (previewAudio) {
+        previewAudio.pause();
+        previewAudio.currentTime = 0;
+        previewAudio = null;
+    }
+}
+
+window.previewSound = previewSound;
+window.stopPreviewSound = stopPreviewSound;
 window.editMemory = editMemory;
 window.deleteMemory = deleteMemory;
 window.deleteSessionById = deleteSessionById;
