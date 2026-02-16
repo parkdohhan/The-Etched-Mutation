@@ -2,3 +2,7 @@
 .claude/
 .next/
 public/portfolio-site/
+
+# Supabase CLI 임시 파일
+supabase/.temp/
+supabase/functions/*/supabase/
