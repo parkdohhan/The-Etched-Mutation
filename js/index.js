@@ -4640,7 +4640,11 @@ async function saveConfessionToDB() {
                 originalReason: scene.originalReason || '',
                 // V2: originalVector 내장
                 originalEmotion: scene.originalVector?.base || confessionState.originalVector?.base || scene.originalEmotion || {},
-                originalReasonVector: scene.originalVector?.reason_analysis || confessionState.originalVector?.reason_analysis || scene.originalReasonVector || null
+                originalReasonVector: scene.originalVector?.reason_analysis || confessionState.originalVector?.reason_analysis || scene.originalReasonVector || null,
+                // TEM 오염: 장면 생성 시 또는 Admin 재생성으로 채워짐
+                text_stage_1: scene.text_stage_1 || null,
+                text_stage_2: scene.text_stage_2 || null,
+                text_stage_3: scene.text_stage_3 || null,
             }))
         });
 

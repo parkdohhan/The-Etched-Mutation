@@ -11,3 +11,4 @@ COMMENT ON COLUMN memories.sound_map IS '기억별 커스텀 사운드 매핑 (J
 
 NOTIFY pgrst, 'reload schema';
 
+

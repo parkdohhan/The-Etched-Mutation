@@ -389,16 +389,40 @@ function renderScenes() {
                     ▶ 오염 버전 편집
                 </button>
                 <div class="contamination-fields" id="contamination-${sceneIndex}" style="display: none;">
+                    <div class="contamination-direction-row">
+                        <label class="editor-label">오염 방향</label>
+                        <select class="editor-input contamination-direction" data-scene-index="${sceneIndex}">
+                            <option value="default">default</option>
+                            <option value="emotion_mismatch">emotion_mismatch</option>
+                            <option value="target_displacement">target_displacement</option>
+                            <option value="attribution_mismatch">attribution_mismatch</option>
+                            <option value="void_mismatch">void_mismatch</option>
+                        </select>
+                    </div>
                     <div class="editor-input-group">
                         <label class="editor-label">Stage 1 (객체화: 0.3~0.6)</label>
-                        <textarea class="editor-textarea scene-text-stage-1" data-scene-index="${sceneIndex}" rows="3" placeholder="감정이 객체화되기 시작...">${scene.text_stage_1 || ''}</textarea>
+                        <div class="contamination-stage-row">
+                            <textarea class="editor-textarea scene-text-stage-1" data-scene-index="${sceneIndex}" rows="3" placeholder="감정이 객체화되기 시작...">${scene.text_stage_1 || ''}</textarea>
+                            <button type="button" class="contamination-regen-btn" onclick="regenerateStage1(${sceneIndex})">재생성</button>
+                        </div>
                     </div>
                     <div class="editor-input-group">
                         <label class="editor-label">Stage 2 (추상화: 0.6~0.9)</label>
-                        <textarea class="editor-textarea scene-text-stage-2" data-scene-index="${sceneIndex}" rows="3" placeholder="디테일이 사라지고 추상화...">${scene.text_stage_2 || ''}</textarea>
+                        <div class="contamination-stage-row">
+                            <textarea class="editor-textarea scene-text-stage-2" data-scene-index="${sceneIndex}" rows="3" placeholder="디테일이 사라지고 추상화...">${scene.text_stage_2 || ''}</textarea>
+                            <button type="button" class="contamination-regen-btn" onclick="regenerateStage2(${sceneIndex})">재생성</button>
+                        </div>
                     </div>
                     <div class="editor-input-group">
                         <label class="editor-label">Stage 3 (소거: 0.9~1.0)</label>
+                        <div class="contamination-stage-3-controls">
+                            <select class="stage3-style-select editor-input" data-scene-index="${sceneIndex}">
+                                <option value="Glitch">Glitch</option>
+                                <option value="Redact">Redact</option>
+                                <option value="Dissolve">Dissolve</option>
+                            </select>
+                            <button type="button" class="contamination-regen-btn" onclick="generateStage3(${sceneIndex})">생성</button>
+                        </div>
                         <textarea class="editor-textarea scene-text-stage-3" data-scene-index="${sceneIndex}" rows="3" placeholder="거의 소거된 상태...">${scene.text_stage_3 || ''}</textarea>
                     </div>
                 </div>

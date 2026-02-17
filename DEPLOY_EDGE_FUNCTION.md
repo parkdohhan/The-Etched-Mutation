@@ -25,21 +25,26 @@ supabase link --project-ref bxmppaxpzbkwebfbgpsm
 
 ## 4. Edge Function 배포
 
+**장면 생성 (고백):**
 ```bash
 supabase functions deploy generate-scene-from-ritual
 ```
 
+**오염 텍스트 (Admin 재생성, Gemini):**
+```bash
+supabase functions deploy contaminate-text
+```
+
 ## 5. 배포 확인
 
-배포 후 다음 URL로 테스트:
-```
-https://bxmppaxpzbkwebfbgpsm.supabase.co/functions/v1/generate-scene-from-ritual
-```
+- generate-scene-from-ritual: `https://bxmppaxpzbkwebfbgpsm.supabase.co/functions/v1/generate-scene-from-ritual`
+- contaminate-text: `https://bxmppaxpzbkwebfbgpsm.supabase.co/functions/v1/contaminate-text`
 
-## 6. 환경 변수 확인
+## 6. 환경 변수 (Secrets) 확인
 
-Supabase Dashboard > Project Settings > Edge Functions > Secrets에서 다음 변수가 설정되어 있는지 확인:
-- `ANTHROPIC_API_KEY` 또는 `CLAUDE_API_KEY`
+Supabase Dashboard > **Edge Functions** > **Secrets**에서 설정:
+- `ANTHROPIC_API_KEY` 또는 `CLAUDE_API_KEY` — generate-scene-from-ritual용
+- **`GEMINI_API_KEY`** — contaminate-text용 (Admin 오염 재생성)
 
 ## 7. 로그 확인
 
@@ -58,4 +63,5 @@ supabase functions logs generate-scene-from-ritual
 1. Edge Function 로그 확인
 2. 요청 body 형식 확인 (flowData 구조)
 3. 환경 변수 설정 확인
+
 

@@ -900,4 +900,77 @@ body::before {
     background: var(--bg-deep);
     color: var(--text-primary);
 }
+
+/* TEM 오염 (contamination) 섹션 */
+.contamination-section {
+    margin-top: 1rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid rgba(196, 168, 130, .15);
+}
+.toggle-contamination-btn {
+    background: none;
+    border: none;
+    color: var(--accent-memory);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0.25rem 0;
+}
+.toggle-contamination-btn:hover {
+    text-decoration: underline;
+}
+.contamination-fields {
+    margin-top: 0.75rem;
+}
+.contamination-direction-row {
+    margin-bottom: 0.75rem;
+}
+.contamination-direction-row .editor-label {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+.contamination-direction {
+    width: 100%;
+    max-width: 240px;
+}
+.contamination-stage-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+.contamination-stage-row .editor-textarea {
+    flex: 1;
+    min-width: 200px;
+}
+.contamination-stage-row .stage3-style-select {
+    width: auto;
+    min-width: 100px;
+}
+.contamination-stage-3-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.contamination-stage-3-controls .stage3-style-select {
+    width: auto;
+    min-width: 100px;
+}
+.contamination-regen-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    background: var(--bg-deep);
+    border: 1px solid rgba(196, 168, 130, .3);
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.contamination-regen-btn:hover {
+    border-color: var(--accent-memory);
+    color: var(--accent-memory);
+}
+.contamination-regen-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
     </style>

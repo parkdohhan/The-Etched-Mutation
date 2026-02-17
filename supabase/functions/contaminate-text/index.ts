@@ -1,229 +1,130 @@
-// --- 텍스트 오염 변형 Edge Function --- //
-// 인증: 로그인 필수 (Claude API 비용 보호)
-
+// contaminate-text/index.ts — Gemini Flash로 Stage 1/2 오염 텍스트 생성 (Admin 재생성용)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getCorsHeaders, verifyAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { getCorsHeaders } from "../_shared/auth.ts";
 
-const directionPrompts: Record<string, Record<number, (text: string) => string>> = {
-  emotion_mismatch: {
-    1: (text: string) => `다음 텍스트를 "객체화" 단계로 변형하되, 감정 단어를 변형하세요.
-- "무서웠다"→"불안했다", "슬펐다"→"공허했다" 등 감정 단어를 다른 감정 단어로 변형
-- 문장 구조는 유지
-- 감정의 강도는 유지하되 표현 방식만 변경
+const corsHeaders = getCorsHeaders(new Request("http://localhost"));
 
-원본 텍스트: ${text}
-변형:`,
-    2: (text: string) => `다음 텍스트를 "추상화" 단계로 변형하되, 감정 표현을 모호하게 하세요.
-- "무서웠다"→"뭔가 느꼈다", "슬펐다"→"마음이 이상했다" 등 감정을 구체적이지 않게
-- 감정의 강도는 유지하되 표현을 흐리게
+type MismatchType = "default" | "emotion_mismatch" | "target_displacement" | "attribution_mismatch" | "void_mismatch";
 
-원본 텍스트: ${text}
-변형:`,
-    3: (text: string) => `다음 텍스트를 "소거" 단계로 변형하되, 감정 단어를 소거하세요.
-- 감정 단어를 [...] 또는 ██로 대체
-- 감정이 소거된 느낌
-- 전체 길이의 30-50%만 남기기
-
-원본 텍스트: ${text}
-변형:`
-  },
-  target_displacement: {
-    1: (text: string) => `다음 텍스트를 "객체화" 단계로 변형하세요.
-- 1인칭을 3인칭으로. "나"→"그녀", "내가"→"그녀가"
-- 문장 구조는 유지
-- 감정 표현은 유지
-
-원본 텍스트: ${text}
-변형:`,
-    2: (text: string) => `다음 텍스트를 "추상화" 단계로 변형하되, 대상을 모호하게 하세요.
-- "엄마"→"누군가", "친구"→"어떤 사람" 등 구체적 대상을 모호하게
-- 감정의 강도는 유지하되 대상을 흐리게
-
-원본 텍스트: ${text}
-변형:`,
-    3: (text: string) => `다음 텍스트를 "소거" 단계로 변형하되, 대상을 완전히 소거하세요.
-- "누군가가 [...] 했다" 형태로 대상 소거
-- 전체 길이의 30-50%만 남기기
-
-원본 텍스트: ${text}
-변형:`
-  },
-  attribution_mismatch: {
-    1: (text: string) => `다음 텍스트를 "객체화" 단계로 변형하되, 원인 표현을 변형하세요.
-- "내 탓"→"그의 탓", "운명"→"선택" 등 원인 표현 변형
-- 문장 구조는 유지
-
-원본 텍스트: ${text}
-변형:`,
-    2: (text: string) => `다음 텍스트를 "추상화" 단계로 변형하되, 원인을 모호하게 하세요.
-- "때문에"→"어쩌다", "왜냐하면"→"그냥" 등 인과관계 표현을 모호하게
-- 감정의 강도는 유지
-
-원본 텍스트: ${text}
-변형:`,
-    3: (text: string) => `다음 텍스트를 "소거" 단계로 변형하되, 원인 부분을 소거하세요.
-- 인과관계 불명확하게
-- 전체 길이의 30-50%만 남기기
-
-원본 텍스트: ${text}
-변형:`
-  },
-  void_mismatch: {
-    1: (text: string) => `다음 텍스트를 "객체화" 단계로 변형하되, 구체적 내용을 줄이고 여백을 늘리세요.
-- 문장 사이에 공백 추가
-- 감정 표현은 유지하되 내용을 간소화
-
-원본 텍스트: ${text}
-변형:`,
-    2: (text: string) => `다음 텍스트를 "추상화" 단계로 변형하되, 문장 사이에 "..." 추가하세요.
-- 기억이 끊기는 느낌
-- 감정의 흔적만 남기기
-
-원본 텍스트: ${text}
-변형:`,
-    3: (text: string) => `다음 텍스트를 "소거" 단계로 변형하되, 30% 이상 소거하세요.
-- 대부분 [...] 또는 빈 공간
-- 기억이 거의 사라진 느낌
-
-원본 텍스트: ${text}
-변형:`
-  },
-  default: {
-    1: (text: string) => `다음 텍스트를 "객체화" 단계로 변형해주세요.
-- 1인칭("나", "내가", "나는")을 3인칭("그녀", "그", "그는")으로 변경
-- 감정 표현은 유지하되 주체를 객관화
-- 문장 구조는 유지
-
-원본 텍스트: ${text}
-변형:`,
-    2: (text: string) => `다음 텍스트를 "추상화" 단계로 변형해주세요.
-- 구체적인 대상, 장소, 시간을 모호하게 변경
-- 예: "엄마"→"누군가", "집"→"어딘가", "그때"→"언젠가"
-- 감정의 강도는 유지하되 대상을 흐리게
-
-원본 텍스트: ${text}
-변형:`,
-    3: (text: string) => `다음 텍스트를 "소거" 단계로 변형해주세요.
-- 핵심 단어들을 [...] 또는 ██로 대체
-- 문장 일부를 "..."으로 생략
-- 기억이 거의 사라진 느낌
-- 전체 길이의 30-50%만 남기기
-
-원본 텍스트: ${text}
-변형:`
-  }
+const STAGE1_PROMPTS: Record<MismatchType, string> = {
+  default: "다음 한국어 문장을 '객체화' 수준(0.3~0.6)으로 변형해주세요: 1인칭을 3인칭으로 바꾸고, 감각적 디테일은 흐리게 하되 문장 구조는 유지하세요. 변형된 문장만 한 줄로 출력하세요.",
+  emotion_mismatch: "다음 한국어 문장의 감정 표현을 '객체화' 수준(0.3~0.6)으로 변형해주세요: 감정 단어를 더 거리감 있는 표현으로 바꾸세요. 변형된 문장만 한 줄로 출력하세요.",
+  target_displacement: "다음 한국어 문장에서 대상/인물을 '객체화' 수준(0.3~0.6)으로 모호하게 만드세요. 구체적 인칭·이름을 흐리게 하세요. 변형된 문장만 한 줄로 출력하세요.",
+  attribution_mismatch: "다음 한국어 문장에서 원인·귀속을 '객체화' 수준(0.3~0.6)으로 변형해주세요. 누가/무엇이 원인인지 덜 분명하게 하세요. 변형된 문장만 한 줄로 출력하세요.",
+  void_mismatch: "다음 한국어 문장을 '객체화' 수준(0.3~0.6)으로 변형해주세요: 여백을 늘리고 불필요한 디테일을 줄여 간소화하세요. 변형된 문장만 한 줄로 출력하세요.",
 };
 
-serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
+const STAGE2_PROMPTS: Record<MismatchType, string> = {
+  default: "다음 한국어 문장을 '추상화' 수준(0.6~0.9)으로 변형해주세요: 문장을 끊기게 하고, 구체적 대상은 소거하세요. 변형된 문장만 한 줄로 출력하세요.",
+  emotion_mismatch: "다음 한국어 문장의 감정을 '추상화' 수준(0.6~0.9)으로 모호하게 만드세요. 감정 표현을 거의 알아볼 수 없게 하세요. 변형된 문장만 한 줄로 출력하세요.",
+  target_displacement: "다음 한국어 문장에서 대상/인물을 '추상화' 수준(0.6~0.9)으로 완전히 소거하세요. 누구/무엇에 대한 언급을 없애세요. 변형된 문장만 한 줄로 출력하세요.",
+  attribution_mismatch: "다음 한국어 문장의 인과관계를 '추상화' 수준(0.6~0.9)으로 모호하게 만드세요. 원인과 결과가 불분명해지게 하세요. 변형된 문장만 한 줄로 출력하세요.",
+  void_mismatch: "다음 한국어 문장을 '추상화' 수준(0.6~0.9)으로 변형해주세요: 거의 끊긴 단어 나열 수준으로 줄이세요. 변형된 문장만 한 줄로 출력하세요.",
+};
 
-  // ---- CORS preflight 처리 ----
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
-  // 인증 검증 (Claude API 비용 보호)
-  const user = await verifyAuth(req);
-  if (!user) {
-    return unauthorizedResponse(corsHeaders, "텍스트 오염 변형에는 로그인이 필요합니다.");
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ error: "Method not allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
-  console.log(`[contaminate-text] 인증된 사용자: ${user.id}`);
 
-  let body: any = null;
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) {
+    console.error("[contaminate-text] GEMINI_API_KEY not set");
+    return new Response(
+      JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  let body: { text?: string; stage?: number; direction?: string };
   try {
     body = await req.json();
-    const { text, stage, direction = 'default' } = body;
+  } catch {
+    return new Response(
+      JSON.stringify({ error: "Invalid JSON body" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
-    if (!text || typeof text !== 'string') {
-      return new Response(JSON.stringify({ error: '텍스트가 필요합니다.' }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
+  const text = typeof body.text === "string" ? body.text.trim() : "";
+  const stage = body.stage === 1 || body.stage === 2 ? body.stage : 1;
+  const direction: MismatchType =
+    body.direction && STAGE1_PROMPTS[body.direction as MismatchType]
+      ? (body.direction as MismatchType)
+      : "default";
 
-    if (!stage || (stage !== 1 && stage !== 2 && stage !== 3)) {
-      return new Response(JSON.stringify({ error: '유효한 stage(1, 2, 3)가 필요합니다.' }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
+  if (!text) {
+    return new Response(
+      JSON.stringify({ error: "text is required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
-    // API 키 확인
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY");
-    if (!apiKey) {
-      console.error('API 키가 설정되지 않았습니다.');
-      return new Response(JSON.stringify({ error: 'API 키가 설정되지 않았습니다.' }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
+  const prompt = stage === 1 ? STAGE1_PROMPTS[direction] : STAGE2_PROMPTS[direction];
+  const fullPrompt = `${prompt}\n\n원문:\n${text}`;
 
-    // 방향별 프롬프트 선택
-    const directionKey = direction && directionPrompts[direction] ? direction : 'default';
-    const stagePromptsForDirection = directionPrompts[directionKey];
-    const promptGenerator = stagePromptsForDirection[stage as keyof typeof stagePromptsForDirection];
-    
-    if (!promptGenerator) {
-      return new Response(JSON.stringify({ error: '유효하지 않은 오염 방향 또는 단계입니다.' }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    const prompt = promptGenerator(text);
-
-    const systemPrompt = `너는 기억이 시간에 따라 변형되는 과정을 시뮬레이션하는 AI야. 주어진 규칙에 따라 텍스트를 정확하게 변형해야 해. 원본의 감정과 의미는 최대한 유지하면서 요청된 단계에 맞게 변형해줘.`;
-
-    console.log('텍스트 오염 변형 요청:', { stage, direction: directionKey, textLength: text.length });
-
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+  try {
+    // 무료 티어: gemini-1.5-flash (AI Studio 기본). gemini-2.0-flash는 지역/결제 제한 있을 수 있음
+    const model = "gemini-1.5-flash";
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [{ role: "user", content: prompt }]
-      })
+        contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          maxOutputTokens: 1024,
+          temperature: 0.4,
+        },
+      }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Claude API 오류:', errorText);
-      return new Response(JSON.stringify({ 
-        error: '텍스트 변형 실패',
-        claude_error: errorText,
-        contaminatedText: text // 실패 시 원본 반환
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("[contaminate-text] Gemini API error:", res.status, errText);
+      let errMessage = errText;
+      try {
+        const errJson = JSON.parse(errText);
+        errMessage = errJson?.error?.message || errJson?.error?.status || errJson?.message || errText;
+      } catch (_e) {
+        // keep errMessage as errText
+      }
+      return new Response(
+        JSON.stringify({
+          error: `Gemini ${res.status}: ${errMessage}`,
+          details: errText,
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const data = await response.json();
-    const contaminatedText = data.content?.[0]?.text?.trim() || text;
+    const data = await res.json();
+    const candidate = data?.candidates?.[0];
+    const part = candidate?.content?.parts?.[0];
+    const contaminated = part?.text?.trim() || "";
 
-    console.log('텍스트 오염 변형 완료:', { stage, originalLength: text.length, contaminatedLength: contaminatedText.length });
-
-    return new Response(JSON.stringify({ 
-      contaminatedText: contaminatedText 
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-
+    if (stage === 1) {
+      return new Response(
+        JSON.stringify({ text_stage_1: contaminated }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    return new Response(
+      JSON.stringify({ text_stage_2: contaminated }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
-    console.error('contaminate-text 함수 오류:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message || '서버 오류',
-      contaminatedText: body?.text || ''
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
+    console.error("[contaminate-text]", error);
+    return new Response(
+      JSON.stringify({ error: (error as Error).message || "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
-

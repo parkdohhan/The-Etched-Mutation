@@ -102,3 +102,4 @@ CREATE INDEX IF NOT EXISTS idx_profiles_id_role ON profiles(id, role);
 
 NOTIFY pgrst, 'reload schema';
 
+
