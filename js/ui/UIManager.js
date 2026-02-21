@@ -114,7 +114,7 @@ export class UIManager {
     /**
      * 메모리 카드 렌더링
      * @param {Array} allMemoriesData - 전체 메모리 데이터
-     * @param {string} currentCategory - 현재 카테고리 ('live'|'archive')
+     * @param {string} currentCategory - 현재 카테고리 ('story'|'archive')
      * @param {string} currentSort - 현재 정렬 방식 ('all'|'popular'|'recent')
      * @param {Function} onSelectMemory - 메모리 선택 콜백 (index) => void
      * @param {Function} onFilterMemories - 필터링 콜백 () => void
@@ -138,9 +138,9 @@ export class UIManager {
         
         let filteredMemories = [...allMemoriesData];
         console.log('[UIManager.renderMemoryCards] 필터링 전 메모리 수:', filteredMemories.length);
-        if (currentCategory === 'live') {
-            filteredMemories = filteredMemories.filter(m => (m.live_session_id || m.is_live));
-            console.log('[UIManager.renderMemoryCards] live 필터링 후:', filteredMemories.length);
+        if (currentCategory === 'story') {
+            filteredMemories = filteredMemories.filter(m => (!m.live_session_id && !m.is_live));
+            console.log('[UIManager.renderMemoryCards] story 필터링 후:', filteredMemories.length);
         } else if (currentCategory === 'archive') {
             filteredMemories = filteredMemories.filter(m => (!m.live_session_id && !m.is_live));
             console.log('[UIManager.renderMemoryCards] archive 필터링 후:', filteredMemories.length);
