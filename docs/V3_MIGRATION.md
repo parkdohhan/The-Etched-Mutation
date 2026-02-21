@@ -73,7 +73,7 @@ V3 마이그레이션은 TEM의 핵심 철학인 **"같은 감정이라도 이�
 - `normalizeAnchor()`, `EMOTION_ANCHOR_MAP`, `DEFAULT_EMOTION_ANCHORS`
 - `calculateVADSimilarity()` - ByeoriEngine의 VAD 투영에서 사용
 - `calculateEmbeddingSimilarity()` - `calculateEmotionScore` 내부에서 사용
-- `projectEmotionToVAD()`, `vadToTerrainXZ()`, `vadToTerrainProperties()`
+- `projectEmotionToVAD()`
 - `normalizeVector()`, `addVectors()`, `getDominantEmotion()`
 
 ---

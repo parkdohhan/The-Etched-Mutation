@@ -1,0 +1,346 @@
+/* V3 Confession Flow 스타일 */
+
+.v3-zone {
+  padding: 2rem;
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.v3-stage-indicator {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.9rem;
+  color: rgba(196, 168, 130, 0.5);
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.v3-prompt {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: rgba(230, 220, 200, 0.9);
+  text-align: center;
+  white-space: pre-line;
+  min-height: 4rem;
+}
+
+.v3-input-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* Textarea */
+.v3-textarea {
+  background: transparent;
+  border: 1px solid rgba(196, 168, 130, 0.15);
+  color: rgba(230, 220, 200, 0.9);
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.95rem;
+  padding: 14px;
+  width: 100%;
+  max-width: 600px;
+  min-height: 120px;
+  resize: vertical;
+  outline: none;
+  caret-color: rgba(196, 168, 130, 0.8);
+  transition: border-color 0.3s;
+  line-height: 1.6;
+}
+
+.v3-textarea:focus {
+  border-color: rgba(196, 168, 130, 0.4);
+}
+
+.v3-textarea::placeholder {
+  color: rgba(196, 168, 130, 0.3);
+  font-style: italic;
+}
+
+/* Voice Input */
+.v3-voice-hint {
+  font-size: 12px;
+  color: rgba(196, 168, 130, 0.35);
+  text-align: center;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.v3-voice-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.v3-mic-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid rgba(196, 168, 130, 0.15);
+  border-radius: 24px;
+  color: rgba(196, 168, 130, 0.6);
+  font-family: 'Noto Serif KR', serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.v3-mic-btn:hover:not(:disabled) {
+  border-color: rgba(196, 168, 130, 0.35);
+  color: rgba(196, 168, 130, 0.85);
+}
+
+.v3-mic-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.v3-mic-btn.v3-mic-active {
+  border-color: rgba(200, 80, 70, 0.5);
+  color: rgba(200, 80, 70, 0.9);
+  animation: v3-pulse 1.5s ease infinite;
+}
+
+@keyframes v3-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(200, 80, 70, 0);
+  }
+  50% {
+    box-shadow: 0 0 12px 4px rgba(200, 80, 70, 0.15);
+  }
+}
+
+/* Submit Button */
+.v3-submit-btn {
+  background: transparent;
+  border: 1px solid rgba(196, 168, 130, 0.2);
+  color: rgba(196, 168, 130, 0.6);
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.v3-submit-btn:hover:not(:disabled) {
+  border-color: rgba(196, 168, 130, 0.6);
+  color: rgba(196, 168, 130, 0.9);
+  background: rgba(196, 168, 130, 0.05);
+}
+
+.v3-submit-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Chips */
+.v3-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  max-width: 700px;
+}
+
+.v3-chip {
+  background: transparent;
+  border: 1px solid rgba(196, 168, 130, 0.15);
+  color: rgba(196, 168, 130, 0.6);
+  padding: 10px 20px;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+}
+
+.v3-chip:hover {
+  border-color: rgba(196, 168, 130, 0.4);
+  color: rgba(196, 168, 130, 0.85);
+  background: rgba(196, 168, 130, 0.03);
+}
+
+.v3-chip.v3-chip-selected {
+  border-color: rgba(196, 168, 130, 0.6);
+  color: rgba(196, 168, 130, 0.9);
+  background: rgba(196, 168, 130, 0.08);
+}
+
+.v3-chip.v3-chip-void {
+  border-color: rgba(200, 80, 70, 0.3);
+  color: rgba(200, 80, 70, 0.6);
+  font-style: italic;
+}
+
+.v3-chip.v3-chip-void:hover {
+  border-color: rgba(200, 80, 70, 0.5);
+  color: rgba(200, 80, 70, 0.8);
+}
+
+.v3-chip.v3-chip-void.v3-chip-selected {
+  border-color: rgba(200, 80, 70, 0.6);
+  color: rgba(200, 80, 70, 0.9);
+  background: rgba(200, 80, 70, 0.1);
+}
+
+/* Questions */
+.v3-questions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 600px;
+  width: 100%;
+}
+
+.v3-question {
+  background: transparent;
+  border: 1px solid rgba(196, 168, 130, 0.15);
+  border-left: 3px solid transparent;
+  color: rgba(230, 220, 200, 0.8);
+  padding: 14px 18px;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  line-height: 1.6;
+}
+
+.v3-question:hover {
+  border-color: rgba(196, 168, 130, 0.3);
+  background: rgba(196, 168, 130, 0.03);
+}
+
+.v3-question.v3-question-selected {
+  border-left-color: rgba(196, 168, 130, 0.8);
+  border-color: rgba(196, 168, 130, 0.4);
+  background: rgba(196, 168, 130, 0.06);
+  color: rgba(230, 220, 200, 0.95);
+}
+
+/* Seal Text Input */
+.v3-seal-input {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(196, 168, 130, 0.2);
+  color: rgba(230, 220, 200, 0.9);
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1.2rem;
+  padding: 12px 0;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  outline: none;
+  caret-color: rgba(196, 168, 130, 0.8);
+  transition: border-color 0.3s;
+  letter-spacing: 2px;
+}
+
+.v3-seal-input:focus {
+  border-bottom-color: rgba(196, 168, 130, 0.6);
+}
+
+.v3-seal-input::placeholder {
+  color: rgba(196, 168, 130, 0.3);
+  font-style: italic;
+}
+
+/* Processing */
+.v3-processing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 200px;
+}
+
+.v3-spinner {
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(196, 168, 130, 0.2);
+  border-top-color: rgba(196, 168, 130, 0.6);
+  border-radius: 50%;
+  animation: v3-spin 1s linear infinite;
+}
+
+@keyframes v3-spin {
+  to { transform: rotate(360deg); }
+}
+
+.v3-processing-text {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.95rem;
+  color: rgba(196, 168, 130, 0.6);
+  text-align: center;
+}
+
+.v3-error {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.9rem;
+  color: rgba(200, 80, 70, 0.7);
+  text-align: center;
+  padding: 1rem;
+}
+
+/* 전환 애니메이션 */
+.v3-zone > * {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: v3-fade-in 0.4s ease forwards;
+}
+
+@keyframes v3-fade-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 모바일 대응 */
+@media (max-width: 600px) {
+  .v3-zone {
+    padding: 1.5rem 1rem;
+    gap: 1.5rem;
+  }
+  
+  .v3-prompt {
+    font-size: 1rem;
+  }
+  
+  .v3-textarea {
+    font-size: 0.9rem;
+    padding: 12px;
+  }
+  
+  .v3-chips-container {
+    gap: 8px;
+  }
+  
+  .v3-chip {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+  }
+  
+  .v3-voice-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .v3-mic-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

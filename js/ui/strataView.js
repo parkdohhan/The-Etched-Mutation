@@ -150,6 +150,19 @@
       });
       layer.pollution = layer.events.length > 0 ? totalPoll / layer.events.length : 0;
 
+      // Arousal → 레이어 두께 증폭
+      // 각성이 높은 감정(fear, anger 등)이 많은 레이어는 더 두껍다.
+      // 기본 두께는 유지 (최소 1.0배), 고각성이면 최대 1.6배
+      if (layer.events.length > 0) {
+        var avgArousal = 0;
+        layer.events.forEach(function(ev) {
+          var vad = ev.vad || { v: 0, a: 0, d: 0 };
+          avgArousal += Math.abs(vad.a);
+        });
+        avgArousal /= layer.events.length;
+        layer.thickness *= (1.0 + avgArousal * 0.6);
+      }
+
       return layer;
     });
 
@@ -162,6 +175,22 @@
         changed.push(i);
       }
       _prevEventCounts[i] = newCount;
+    }
+
+    // 희석 시스템: 체험자 수에 따라 bedrock(원본) compaction 동적 조절
+    // 체험자 0명: compaction = 1.0 (원본 지형 100%)
+    // 체험자 늘수록: compaction 감소 (원본 묻힘)
+    var totalPlayEvents = _globalEvents.length;
+    var bedrockLayer = newLayers[newLayers.length - 1]; // bedrock은 마지막
+    if (bedrockLayer && bedrockLayer.id === 'bedrock') {
+      // 역시그모이드: 0명→1.0, 10명→~0.5, 30명→~0.25, 100명→~0.10
+      bedrockLayer.compaction = 1.0 / (1.0 + totalPlayEvents * 0.1);
+      // opacity도 연동: 0명→0.95, 많으면→0.30 (최소값)
+      bedrockLayer.opacity = Math.max(0.30, 0.95 - totalPlayEvents * 0.02);
+      // thickness도 연동: 원본만 있을 때 두껍게
+      if (totalPlayEvents === 0) {
+        bedrockLayer.thickness = Math.max(bedrockLayer.thickness, 3.5);
+      }
     }
 
     _computedLayers = newLayers;
@@ -238,8 +267,10 @@
             var sig = radius * 0.4;
             var inf = Math.exp(-(dist * dist) / (2 * sig * sig)) * ew * evInt * comp;
 
-            var aroAmp = 0.5 + Math.abs(anc.a) * 0.8;
-            var dh = ev.dominance * 6 * inf * aroAmp;
+            // 높이는 감정 weight(ew)에만 비례하도록 단순화
+            // arousal은 감정의 강도가 아니라 각성 수준이므로 높이에 직접 영향을 주지 않음
+            // ew가 클수록 (감정이 강할수록) 봉우리가 높아짐
+            var dh = ew * 15 * inf;
             dh += ev.deviation * fm(gx * 0.15 + ei * 3 + li, gz * 0.15 + ei * 2, 4) * 2.5 * inf;
             dh += ev.erosion * (hs(gx * 0.3 + ei + li, gz * 0.3) - 0.5) * 1.5 * inf;
 
@@ -256,7 +287,8 @@
           }
         }
 
-        h += fm(gx * 0.05 + li * 0.5, gz * 0.05 + li * 0.3, 5) * 2.5 - 1.2;
+        // 배경 노이즈는 감정 봉우리를 방해하지 않도록 약하게
+        h += fm(gx * 0.05 + li * 0.5, gz * 0.05 + li * 0.3, 5) * 1.0 - 0.5;
         h *= comp;
         heights[idx] = h;
 

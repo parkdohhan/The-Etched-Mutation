@@ -177,7 +177,7 @@ export class UIManager {
             const isFetus = !memory.status || memory.status === 'Fetus';
             const statusBadge = isFetus ? '<div class="status-badge Fetus">Fetus</div>' : '';
             console.log('[Memory] Rendering card:', memory.title, 'status:', memory.status);
-            card.innerHTML = `${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title || '제목 없음'}</h3><p class="memory-card-meta">원본: ${memory.code || '—'} · 해석 레이어: ${memory.layers || 0}개</p><div class="memory-card-dilution"><span>원본</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution || 50}%"></div></div><span>${memory.dilution || 50}%</span></div>`;
+            card.innerHTML = `${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title || '제목 없음'}</h3><p class="memory-card-meta">원본: ${memory.code || '—'} · 해석 레이어: ${memory.layers || 0}개</p><div class="memory-card-dilution"><span>원본</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution !== undefined ? memory.dilution : 100}%"></div></div><span>${memory.dilution !== undefined ? memory.dilution : 100}%</span></div>`;
             list.appendChild(card);
         });
         
