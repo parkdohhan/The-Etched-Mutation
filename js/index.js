@@ -546,18 +546,189 @@ function updateAlignmentDisplay() {
     uiManager.updateAlignmentDisplay(state.currentAlignment);
 }
 function renderArchiveEmotionWave(emotionVector) {
-    if (!emotionVector) return;
+    console.log('[renderArchiveEmotionWave] 호출됨, emotionVector:', emotionVector);
+    if (!emotionVector) {
+        console.warn('[renderArchiveEmotionWave] emotionVector가 없습니다');
+        return;
+    }
     const canvas = document.getElementById('waveCanvas');
-    if (!canvas) return;
+    if (!canvas) {
+        console.warn('[renderArchiveEmotionWave] waveCanvas를 찾을 수 없습니다');
+        return;
+    }
+    console.log('[renderArchiveEmotionWave] waveCanvas 찾음, computeWaveFromEmotion 호출 전');
 
     // 계산은 여기서 수행 (Visualizer는 숫자만 받음)
     const waveData = computeWaveFromEmotion({ base: emotionVector, intensity: 0.5, confidence: 0.8 });
+    console.log('[renderArchiveEmotionWave] computeWaveFromEmotion 결과:', waveData);
     const time = Date.now() * 0.001;
 
     // Visualizer에 계산된 데이터 전달
+    console.log('[renderArchiveEmotionWave] visualizer.renderArchiveEmotionWave 호출 전');
     visualizer.renderArchiveEmotionWave(canvas, waveData, time);
+    console.log('[renderArchiveEmotionWave] visualizer.renderArchiveEmotionWave 호출 후');
     console.log('Archive emotion wave rendered:', waveData);
 }
+
+// Archive 파동 애니메이션 관리
+let archiveWaveAnimationId = null;
+let archiveWaveTime = 0;
+let currentArchiveWaveStyle = null;
+let currentArchiveEmotionVector = null;
+
+/**
+ * Archive 파동 애니메이션 시작
+ * @param {Object} emotionVector - 사용자 감정 벡터
+ */
+function startArchiveWaveAnimation(emotionVector) {
+    console.log('[startArchiveWaveAnimation] 호출됨, emotionVector:', emotionVector);
+    if (!emotionVector) {
+        console.warn('[startArchiveWaveAnimation] emotionVector가 없습니다');
+        return;
+    }
+    
+    // 기존 애니메이션 중지
+    stopArchiveWaveAnimation();
+    
+    const canvas = document.getElementById('waveCanvas');
+    if (!canvas) {
+        console.warn('[startArchiveWaveAnimation] waveCanvas를 찾을 수 없습니다');
+        return;
+    }
+    
+    // 캔버스 초기화
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        console.warn('[startArchiveWaveAnimation] 캔버스 컨텍스트를 가져올 수 없습니다');
+        return;
+    }
+    
+    if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) {
+        console.warn('[startArchiveWaveAnimation] 캔버스 크기가 0입니다');
+        return;
+    }
+    
+    canvas.width = canvas.offsetWidth * 2;
+    canvas.height = canvas.offsetHeight * 2;
+    ctx.scale(2, 2);
+    
+    const width = canvas.width / 2;
+    const height = canvas.height / 2;
+    
+    // 비교 화면과 동일한 방식: emotionVectorToWaveStyle 사용
+    const waveStyle = emotionVectorToWaveStyle(emotionVector);
+    
+    // 파동이 캔버스 안에 잘 들어오도록 amplitude를 캔버스 높이에 맞게 제한
+    const maxAmplitude = height * 0.35;
+    if (waveStyle.amplitude > maxAmplitude) {
+        const scale = maxAmplitude / waveStyle.amplitude;
+        waveStyle.amplitude = maxAmplitude;
+        waveStyle.chaos = Math.max(0.1, waveStyle.chaos * scale);
+    }
+    
+    // 전역 변수에 저장
+    currentArchiveWaveStyle = waveStyle;
+    currentArchiveEmotionVector = emotionVector;
+    archiveWaveTime = 0;
+    
+    console.log('[startArchiveWaveAnimation] waveStyle:', waveStyle);
+    
+    // 애니메이션 루프 시작
+    function animate() {
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width / 2;
+        const height = canvas.height / 2;
+        
+        // 배경 지우기
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = 'rgba(18, 18, 26, 1)';
+        ctx.fillRect(0, 0, width, height);
+        
+        // visualizer의 comparisonWaveTime을 업데이트하여 파동이 움직이도록 함
+        visualizer.comparisonWaveTime = archiveWaveTime;
+        visualizer.drawComparisonWave(canvas, currentArchiveEmotionVector, 0, currentArchiveWaveStyle);
+        
+        archiveWaveTime += 0.016; // 약 60fps
+        archiveWaveAnimationId = requestAnimationFrame(animate);
+    }
+    
+    animate();
+    console.log('[startArchiveWaveAnimation] 파동 애니메이션 시작');
+}
+
+/**
+ * Archive 파동 애니메이션 중지
+ */
+function stopArchiveWaveAnimation() {
+    if (archiveWaveAnimationId) {
+        cancelAnimationFrame(archiveWaveAnimationId);
+        archiveWaveAnimationId = null;
+    }
+    archiveWaveTime = 0;
+    currentArchiveWaveStyle = null;
+    currentArchiveEmotionVector = null;
+    console.log('[stopArchiveWaveAnimation] 파동 애니메이션 중지');
+}
+
+/**
+ * Archive 파동 데이터를 화면에 렌더링 (애니메이션 버전)
+ * @param {Object} emotionVector - 사용자 감정 벡터
+ */
+function renderArchiveWaveData(emotionVector) {
+    // 애니메이션으로 시작
+    startArchiveWaveAnimation(emotionVector);
+}
+
+/**
+ * 첫 번째 장면용 회색 직선 그리기
+ */
+function renderDefaultGrayLine() {
+    const canvas = document.getElementById('waveCanvas');
+    if (!canvas) return;
+    
+    // 기존 애니메이션 중지
+    stopArchiveWaveAnimation();
+    
+    const state = appStore.getState();
+    if (state.waveAnimationId) {
+        cancelAnimationFrame(state.waveAnimationId);
+        appStore.setState({ waveAnimationId: null });
+    }
+    
+    // startBucketWaveAnimation도 중지 (expInterview.js)
+    if (typeof window._waveAnimationId !== 'undefined' && window._waveAnimationId) {
+        cancelAnimationFrame(window._waveAnimationId);
+        window._waveAnimationId = null;
+    }
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) return;
+    
+    canvas.width = canvas.offsetWidth * 2;
+    canvas.height = canvas.offsetHeight * 2;
+    ctx.scale(2, 2);
+    
+    const width = canvas.width / 2;
+    const height = canvas.height / 2;
+    const centerY = height / 2;
+    
+    // 배경
+    ctx.fillStyle = 'rgba(18, 18, 26, 1)';
+    ctx.fillRect(0, 0, width, height);
+    
+    // 회색 직선
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(0, centerY);
+    ctx.lineTo(width, centerY);
+    ctx.stroke();
+    
+    console.log('[renderDefaultGrayLine] 회색 직선 렌더링 완료');
+}
+
 async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, currentData, sceneAlignment, reasonVector = null, mismatchType = null) {
     try {
         const state = appStore.getState();
@@ -574,6 +745,21 @@ async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, c
         const sceneText = scene.text || '';
         const voidLevel = scene.voidInfo?.voidLevel || 'low';
         const waveData = computeArchiveWaveData(userEmotionVector, sceneText.length, voidLevel);
+        
+        // 파동 데이터를 저장 (다음 장면에서 표시하기 위해)
+        const currentSceneIndex = state.currentScene || 0;
+        
+        // window.archiveWaveData에 현재 장면의 파동 데이터 저장
+        if (!window.archiveWaveData) {
+            window.archiveWaveData = [];
+        }
+        window.archiveWaveData[currentSceneIndex] = {
+            emotionVector: userEmotionVector,
+            waveStyle: emotionVectorToWaveStyle(userEmotionVector),
+            timestamp: Date.now()
+        };
+        console.log('[saveArchiveEmotionToPlays] 파동 데이터 저장됨, sceneIndex:', currentSceneIndex, 'waveData:', window.archiveWaveData[currentSceneIndex]);
+        
         const insertData = {
             memory_id: memoryId,
             scene_id: sceneId,
@@ -1900,11 +2086,7 @@ function startArchivePlay(memoryIndex) {
             initProgressDots();
             console.log('[startArchivePlay] renderScene 호출');
             renderScene();
-            if (typeof startBucketWaveAnimation === 'function') {
-                startBucketWaveAnimation();
-            } else {
-                startWaveAnimation();
-            }
+            // renderScene 내부에서 파동을 처리하므로 여기서는 시작하지 않음
             setTimeout(() => showNpcDialogue("이 기억의 주인은 아래층에, 다른 사람들의 해석은 위층에 쌓여 있어. 천천히 그 지층을 따라가 봐.", 4000), 100);
         }, 100);
     } else {
@@ -1941,7 +2123,49 @@ async function renderScene() {
         } 
         // TODO: scenes 테이블에 originalVector 컬럼 추가 후 여기서 사용
         // 현재는 expInterview.js의 fallbackAlignment()으로 동작
-        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); const sceneMainEl = document.querySelector('.scene-main'); if (sceneMainEl && typeof startFloatingAnchor === 'function') { const anchorKeyword = (scene.echoWords && scene.echoWords.length > 0) ? scene.echoWords[0] : null; const alignment = state.currentAlignment || 0.5; startFloatingAnchor(sceneMainEl, anchorKeyword, alignment); } if (scene.choices) renderChoices(scene.choices); const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); if (typeof updateFloatingAnchorAlignment === 'function') updateFloatingAnchorAlignment(state.currentAlignment); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%' } catch (e) { console.error('renderScene error:', e); showNotification('장면을 렌더링하는 중 오류가 발생했습니다') } }
+        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); const sceneMainEl = document.querySelector('.scene-main'); if (sceneMainEl && typeof startFloatingAnchor === 'function') { const anchorKeyword = (scene.echoWords && scene.echoWords.length > 0) ? scene.echoWords[0] : null; const alignment = state.currentAlignment || 0.5; startFloatingAnchor(sceneMainEl, anchorKeyword, alignment); } if (scene.choices) renderChoices(scene.choices); const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); if (typeof updateFloatingAnchorAlignment === 'function') updateFloatingAnchorAlignment(state.currentAlignment); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%';
+        
+        // 파동 표시: archive 모드일 때만 처리
+        if (state.currentMode === 'archive') {
+            if (state.currentScene === 0) {
+                // 첫 번째 장면: 회색 직선만 표시
+                console.log('[renderScene] 첫 번째 장면, 회색 직선 표시');
+                setTimeout(() => {
+                    renderDefaultGrayLine();
+                }, 300);
+            } else if (state.currentScene > 0 && window.archiveWaveData) {
+                // 두 번째 장면 이후: 이전 장면의 감정 파동 표시
+                const previousSceneIndex = state.currentScene - 1;
+                const previousWaveData = window.archiveWaveData[previousSceneIndex];
+                if (previousWaveData && previousWaveData.emotionVector) {
+                    console.log('[renderScene] 이전 장면 파동 표시, previousSceneIndex:', previousSceneIndex);
+                    setTimeout(() => {
+                        renderArchiveWaveData(previousWaveData.emotionVector);
+                    }, 300);
+                } else {
+                    // 이전 파동 데이터가 없으면 회색 직선
+                    console.log('[renderScene] 이전 장면 파동 데이터 없음, 회색 직선 표시');
+                    setTimeout(() => {
+                        renderDefaultGrayLine();
+                    }, 300);
+                }
+            } else {
+                // 파동 데이터가 없으면 회색 직선
+                console.log('[renderScene] 파동 데이터 없음, 회색 직선 표시');
+                setTimeout(() => {
+                    renderDefaultGrayLine();
+                }, 300);
+            }
+        } else {
+            // archive 모드가 아니면 기본 파동 시작
+            console.log('[renderScene] archive 모드가 아님, 기본 파동 시작');
+            if (typeof startBucketWaveAnimation === 'function') {
+                startBucketWaveAnimation();
+            } else {
+                startWaveAnimation();
+            }
+        }
+    } catch (e) { console.error('renderScene error:', e); showNotification('장면을 렌더링하는 중 오류가 발생했습니다') } }
 function renderEchoLayer(words) { const layer = document.getElementById('echoLayer'); if (!layer) return; layer.innerHTML = ''; if (!words || !Array.isArray(words)) return; words.forEach(word => { const span = document.createElement('span'); span.className = 'echo-word'; span.textContent = word; span.style.top = (20 + Math.random() * 60) + '%'; span.style.left = (10 + Math.random() * 80) + '%'; layer.appendChild(span) }) }
 function renderChoices(choices) { const container = document.getElementById('choicesContainer'); if (!container) return; container.innerHTML = ''; if (!choices || !Array.isArray(choices)) return; choices.forEach((choice, i) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.textContent = choice.text; btn.onclick = function () { makeChoice(i) }; container.appendChild(btn) }) }
 function makeChoice(choiceIndex) { 
@@ -5177,6 +5401,7 @@ window.startBeginner = startBeginner;
 window.startRitual = startRitual;
 window.showArchitectLocked = showArchitectLocked;
 window.showMainMenu = showMainMenu;
+window.saveArchiveEmotionToPlays = saveArchiveEmotionToPlays; // expInterview.js에서 사용
 
 // 테스트용 함수 export (test-chat-pipeline.js에서 사용)
 window.sendExpChatMessageWithDeps = sendExpChatMessageWithDeps;

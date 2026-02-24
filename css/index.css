@@ -1955,7 +1955,10 @@ body::before {
 .scene-viewer {
   display: none;
   opacity: 0;
-  transition: opacity .5s
+  transition: opacity .5s;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100vh;
 }
 
 .scene-viewer.active {
