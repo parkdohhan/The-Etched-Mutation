@@ -1,3 +1,3 @@
 #!/bin/bash
-cd "$(dirname "$0")/portfolio-site"
+cd "$HOME/portfolio-site"
 npm run dev
