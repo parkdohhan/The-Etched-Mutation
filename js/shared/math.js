@@ -610,35 +610,3 @@ export function projectEmotionToVAD(emotionVec, anchors = null) {
   };
 }
 
-/**
- * VAD → 지형 XZ 좌표 변환
- * ⚠️ 시각화 전용 ⚠️
- * 
- * @param {Object} vad - { v, a, d }
- * @param {number} mapScale - 맵 크기 (기본 100)
- * @returns {Object} { x, z }
- */
-export function vadToTerrainXZ(vad, mapScale = 100) {
-  return {
-    x: vad.v * mapScale,  // Valence → X (동-서)
-    z: vad.d * mapScale,  // Dominance → Z (남-북)
-  };
-}
-
-/**
- * VAD → 지형 속성 (시각화용)
- * ⚠️ 시각화 전용 ⚠️
- * 
- * @param {Object} vad - { v, a, d }
- * @returns {Object} 지형 렌더링 속성
- */
-export function vadToTerrainProperties(vad) {
-  return {
-    // Arousal → 수직 노이즈/난류
-    turbulence: Math.abs(vad.a),
-    // Valence → 명도 (밝기)
-    brightness: (vad.v + 1) / 2,  // 0~1 범위로 변환
-    // Dominance → 안정성
-    stability: (vad.d + 1) / 2,
-  };
-}

@@ -953,6 +953,35 @@ class NetworkService {
   }
 
   /**
+   * 메모리의 layers/dilution 업데이트 (희석 시스템)
+   * @param {number} memoryId - 메모리 ID
+   * @param {number} layers - 총 체험 횟수
+   * @param {number} dilution - 원본 비중 (0~100)
+   */
+  async updateMemoryDilution(memoryId, layers, dilution) {
+    try {
+      const client = this._getClient();
+      if (!client) return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+
+      const { data, error } = await client
+        .from('memories')
+        .update({ layers, dilution })
+        .eq('id', memoryId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[NetworkService.updateMemoryDilution] 실패:', error);
+        return { ok: false, data: null, error };
+      }
+      return { ok: true, data, error: null };
+    } catch (error) {
+      console.error('[NetworkService.updateMemoryDilution] 에러:', error);
+      return { ok: false, data: null, error };
+    }
+  }
+
+  /**
    * Supabase Edge Function 호출
    * @param {string} functionName - 함수 이름
    * @param {Object} body - 요청 body

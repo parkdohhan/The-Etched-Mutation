@@ -25,6 +25,203 @@ serve(async (req) => {
       });
     }
 
+    // ---- V3 타입 처리 ----
+    
+    // sensory_analysis 타입
+    if (body.type === 'sensory_analysis') {
+      const text = body.text || '';
+      const prompt = `사용자가 기억 속 감각을 묘사한 텍스트를 분석하세요.
+
+입력: "${text}"
+
+감각 양식 분류:
+- "visual": 표정, 색채, 공간, 빛/어둠
+- "olfactory": 냄새, 맛 연상
+- "auditory": 목소리, 환경음, 음악
+- "somatic": 신체 감각, 온도, 긴장, 통증
+- "narrative": 3인칭 재전, 간접 회상
+
+가장 생생하게 묘사된 감각이 지배적 양식. 냄새 언급 시 olfactory 우선.
+
+JSON만 출력:
+{ "modality": "visual|olfactory|auditory|somatic|narrative", "content": "핵심 감각 묘사 1~2문장", "weight": 1.0, "all_modalities": { "visual": 0.0, "olfactory": 0.0, "auditory": 0.0, "somatic": 0.0, "narrative": 0.0 } }`;
+
+      const systemPrompt = `너는 감각 분석 AI야. 텍스트에서 가장 생생한 감각 양식을 정확히 분류해야 해. JSON 형식을 엄격히 지켜줘.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 512,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let text = data.content[0].text;
+          text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return new Response(JSON.stringify(parsed), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Sensory analysis error:', e);
+      }
+      
+      // 폴백
+      return new Response(JSON.stringify({
+        modality: 'narrative',
+        content: text.substring(0, 100),
+        weight: 1.0,
+        all_modalities: { visual: 0, olfactory: 0, auditory: 0, somatic: 0, narrative: 1.0 }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    
+    // situation_analysis 타입
+    if (body.type === 'situation_analysis') {
+      const text = body.text || '';
+      const anchor = body.sensory_anchor || {};
+      const prompt = `기억 속 상황을 분석하세요.
+
+감각 앵커: ${anchor.modality || '?'} "${anchor.content || ''}"
+상황 서술: "${text}"
+
+추출 대상:
+1. temporal: 시간적 맥락 (과거/현재/반복)
+2. spatial: 공간적 맥락 (실내/실외/이동중/불명)
+3. actors: 등장인물 배열 (역할만, 이름 없이)
+4. role: 기록자의 역할 (actor/observer/victim)
+
+JSON만 출력:
+{ "temporal": "...", "spatial": "...", "actors": ["..."], "role": "actor|observer|victim" }`;
+
+      const systemPrompt = `너는 상황 분석 AI야. 텍스트에서 시간, 공간, 등장인물, 역할을 정확히 추출해야 해. JSON 형식을 엄격히 지켜줘.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 512,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let text = data.content[0].text;
+          text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return new Response(JSON.stringify(parsed), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Situation analysis error:', e);
+      }
+      
+      // 폴백
+      return new Response(JSON.stringify({
+        temporal: 'unknown',
+        spatial: 'unknown',
+        actors: [],
+        role: 'unknown'
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    
+    // generate_questions 타입
+    if (body.type === 'generate_questions') {
+      const d = body.confession_data || {};
+      const emos = (d.emotions || []).join(', ') || 'unknown';
+      const prompt = `기록자 Confession 데이터:
+- 감각: ${d.sensory_anchor?.modality || '?'} "${d.sensory_anchor?.content || ''}"
+- 상황: "${d.situation_raw || ''}"
+- 신체: ${d.body_cluster || '?'} (${(d.body_responses || []).join(', ')})
+- 감정: ${emos}
+- 귀인: ${d.reason || '?'}
+- 대상: ${d.target || '?'}
+
+5가지 카테고리 중 적합한 2~4개 질문 생성:
+A. spotlight — 수치심+타인 대상: "걔들이 알아챘을까?"
+B. counterfactual — self_blame+후회: "그때 다르게 했으면?"
+C. attribution_error — self_blame+죄책감: "정말 내 잘못이었을까?"
+D. reality_check — 모순/혼란: "정말 그렇게 된 거 맞아?"
+E. perspective_shift — 특정 대상: "걔는 나를 어떻게 봤을까?"
+
+한국어, 구어체, 짧게. 상투적 질문 금지.
+
+JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|attribution_error|reality_check|perspective_shift" }] }`;
+
+      const systemPrompt = `임상심리 기반 자기문답 생성 AI. JSON만 출력.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 512,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let text = data.content[0].text;
+          text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return new Response(JSON.stringify(parsed), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Question generation error:', e);
+      }
+      
+      // 폴백 질문 배열
+      return new Response(JSON.stringify({
+        questions: [
+          { text: '그게 정말 그렇게 된 거 맞아?', category: 'reality_check' },
+          { text: '그때 다르게 했으면 어떻게 됐을까?', category: 'counterfactual' }
+        ]
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     // ---- 감정 분석 타입 처리 ----
     if (body.type === 'emotion_analysis') {
       const emotionText = body.emotion || '';

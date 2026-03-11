@@ -77,7 +77,10 @@ export async function listMemoriesWithScenesChoices(client) {
             status: memory.status || 'Fetus',
             scenes: scenes,
             interpretationLayers: memory.layers || 0,
-            visible: memory.is_public !== undefined ? memory.is_public : true
+            visible: memory.is_public !== undefined ? memory.is_public : true,
+            sensory_anchor: memory.sensory_anchor || null,
+            body_response: memory.body_response || null,
+            self_questions: memory.self_questions || null
         };
     }));
 
@@ -99,7 +102,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
     }
 
-    const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map } = memoryPayload;
+    const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
@@ -119,8 +122,11 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 source: source || 'beginner',
                 // sound_map: sound_map || null, // 임시 주석: 컬럼이 없으면 오류 발생
                 layers: 0,
-                dilution: 50,
-                is_public: true
+                dilution: 100,
+                is_public: true,
+                ...(sensory_anchor ? { sensory_anchor } : {}),
+                ...(body_response ? { body_response } : {}),
+                ...(self_questions ? { self_questions } : {}),
             })
             .eq('id', finalMemoryId)
             .select();
@@ -164,13 +170,17 @@ export async function saveMemoryGraph(client, memoryPayload) {
             source: source || 'beginner',
             // sound_map: sound_map || null, // 임시 주석: 컬럼이 없으면 오류 발생
             layers: 0,
-            dilution: 50,
+            dilution: 100,
             is_public: true
         };
         // curator_id가 있으면 포함 (로그인 사용자)
         if (curator_id) {
             insertPayload.curator_id = curator_id;
         }
+        // V3 메타데이터 추가
+        if (sensory_anchor) insertPayload.sensory_anchor = sensory_anchor;
+        if (body_response) insertPayload.body_response = body_response;
+        if (self_questions) insertPayload.self_questions = self_questions;
         const { data, error } = await client
             .from('memories')
             .insert(insertPayload)

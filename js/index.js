@@ -6,7 +6,7 @@ import { NPC_DIALOGUES } from './npc-dialogues.js';
 // Shared modules
 import { fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus } from './shared/api.js';
 import { playSound, stopSound, setVolume, SOUNDS } from './shared/audio.js';
-import { cosineSimilarity, normalizeVector, addVectors, calculateAlignment, getBucket, checkFixated, getDominantEmotion, normalizeAnchor, projectEmotionToVAD, vadToTerrainXZ } from './shared/math.js';
+import { cosineSimilarity, normalizeVector, addVectors, calculateAlignment, getBucket, checkFixated, getDominantEmotion, normalizeAnchor, projectEmotionToVAD } from './shared/math.js';
 import { AppState, resetState, updateState, updateStates } from './shared/state.js';
 import { ByeoriEngine, byeoriEngine } from './core/ByeoriEngine.js';
 // expInterview.js에서 접근할 수 있도록 window에 노출
@@ -310,7 +310,7 @@ function filterByCategory(category, btnElement) {
     );
 }
 async function loadMemoriesFromSupabase() { try { console.log('[loadMemoriesFromSupabase] Supabase에서 기억 불러오기 시작'); const result = await networkService.fetchMemories(); console.log('[loadMemoriesFromSupabase] fetchMemories 결과:', result); if (!result.ok) { console.error('[loadMemoriesFromSupabase] 조회 실패', result.error); appStore.setState({ allMemoriesData: [] }); return } if (!result.data || result.data.length === 0) { console.log('[loadMemoriesFromSupabase] Supabase에 공개된 기억이 없습니다'); appStore.setState({ allMemoriesData: [] }); return } console.log(`[loadMemoriesFromSupabase] ${result.data.length}개의 메모리 발견`); console.log('[loadMemoriesFromSupabase] 메모리 데이터 샘플:', result.data[0]); appStore.setState({ allMemoriesData: result.data }); const state = appStore.getState(); console.log(`[loadMemoriesFromSupabase] Supabase에서 ${state.allMemoriesData.length}개의 기억을 로드했습니다`); console.log('[loadMemoriesFromSupabase] State 업데이트 후:', state.allMemoriesData); } catch (error) { console.error('[loadMemoriesFromSupabase] 에러 발생', error); appStore.setState({ allMemoriesData: [] }) } }
-function filterMemories() { const searchValue = document.getElementById('archiveSearch').value.toUpperCase().trim(); const cards = document.querySelectorAll('.memory-card'); const state = appStore.getState(); cards.forEach(card => { const code = card.getAttribute('data-code') || ''; const category = card.getAttribute('data-category') || 'archive'; let shouldShow = true; if (state.currentCategory === 'live' && category !== 'live') shouldShow = false; else if (state.currentCategory === 'archive' && category !== 'archive') shouldShow = false; if (shouldShow && (searchValue === '' || code.includes(searchValue))) { card.classList.remove('hidden'); card.style.display = 'block'; if (searchValue !== '' && code === searchValue) { setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transform = 'scale(1.05)'; setTimeout(() => card.style.transform = '', 500) }, 100) } } else { card.classList.add('hidden'); card.style.display = 'none' } }) }
+function filterMemories() { const searchValue = document.getElementById('archiveSearch').value.toUpperCase().trim(); const cards = document.querySelectorAll('.memory-card'); const state = appStore.getState(); cards.forEach(card => { const code = card.getAttribute('data-code') || ''; const category = card.getAttribute('data-category') || 'archive'; let shouldShow = true; if (state.currentCategory === 'story' && category !== 'archive') shouldShow = false; else if (state.currentCategory === 'archive' && category !== 'archive') shouldShow = false; if (shouldShow && (searchValue === '' || code.includes(searchValue))) { card.classList.remove('hidden'); card.style.display = 'block'; if (searchValue !== '' && code === searchValue) { setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transform = 'scale(1.05)'; setTimeout(() => card.style.transform = '', 500) }, 100) } } else { card.classList.add('hidden'); card.style.display = 'none' } }) }
 function sortMemories(sortType, btnElement) {
     appStore.setState({ currentSort: sortType });
     const filterBtns = document.querySelectorAll('.filter-btn');
@@ -629,6 +629,22 @@ async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, c
             return;
         }
         console.log('Archive plays 저장 성공:', result.data);
+
+        // 희석 시스템: play 저장 후 memory의 layers/dilution 업데이트
+        try {
+            const memId = insertData.memory_id;
+            if (memId) {
+                const countResult = await networkService.getContaminationLevel(memId);
+                const playCount = countResult.ok ? (countResult.data || 0) : 0;
+                // dilution = 원본 비중 (100% → 체험자 늘수록 감소)
+                // 0명: 100, 10명: ~50, 30명: ~25, 100명: ~9
+                const newDilution = Math.round(100 / (1 + playCount * 0.1));
+                await networkService.updateMemoryDilution(memId, playCount, newDilution);
+                console.log(`[Dilution] memory ${memId}: layers=${playCount}, dilution=${newDilution}%`);
+            }
+        } catch (dilutionError) {
+            console.warn('[Dilution] 업데이트 실패 (치명적 아님):', dilutionError);
+        }
     } catch (e) {
         console.error('saveArchiveEmotionToPlays error:', e);
     }
@@ -978,14 +994,10 @@ function persistExpEmotionResult(emotionResult, userMessage) {
 
         try {
             const vad = projectEmotionToVAD(baseVec, anchors);
-            const terrainPos = vadToTerrainXZ(vad, 100);
             if (!expFinalObject._vad) {
                 expFinalObject._vad = vad;
             }
-            if (!expFinalObject._terrain_pos) {
-                expFinalObject._terrain_pos = terrainPos;
-            }
-            console.log('[VAD] Projected (Live):', vad, '→ Terrain:', terrainPos);
+            console.log('[VAD] Projected (Live):', vad);
         } catch (vadError) {
             console.error('[VAD] 투영 오류 (Live):', vadError);
             console.error('[VAD] baseVec:', baseVec);
@@ -4280,9 +4292,22 @@ function startConfession() {
     if (overlay) {
         overlay.classList.remove('hidden');
         document.body.classList.add('confession-active');
-        startFlow();
+        // V3 플로우 사용 (window.startV3Flow는 confessionV3.js에서 등록)
+        if (typeof window.startV3Flow === 'function') {
+            window.startV3Flow();
+        } else {
+            startFlow(); // V3 미로드 시 기존 플로우 폴백
+        }
     }
 }
+
+// V3 completeV3()에서 호출할 장면 생성 브릿지
+window._v3GenerateScene = function(flowData) {
+    // flowState.data를 V3가 만든 데이터로 교체
+    flowState.data = flowData;
+    // 기존 장면 생성 플로우 실행
+    generateSceneFromRitual();
+};
 
 function endConfession() {
     const overlay = document.getElementById('confession-overlay');
@@ -4652,6 +4677,8 @@ async function saveConfessionToDB() {
         const state = appStore.getState();
 
         // V2: originalVector와 함께 저장
+        // V3: confessionV3Data 포함
+        const v3Meta = window.confessionV3Data || {};
         const memoryId = await saveMemoryGraph(supabaseClient, {
             memoryId: null,
             code: generateMemoryCode(),
@@ -4661,6 +4688,9 @@ async function saveConfessionToDB() {
             status: 'Fetus',
             source: 'confession',
             curator_id: state.currentUser?.id || null,
+            sensory_anchor: v3Meta.sensory_anchor || null,
+            body_response: v3Meta.body_response || null,
+            self_questions: v3Meta.self_questions || null,
             scenes: scenes.map((scene, index) => ({
                 text: scene.text || '',
                 sceneType: scene.sceneType || scene.scene_type || (index === scenes.length - 1 ? 'ending' : 'branch'),
