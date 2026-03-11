@@ -1,0 +1,90 @@
+/* css/demo.css — 데모 전용 스타일, index.css의 wave/strata 클래스 재사용 가능 */
+
+.demo-root {
+  --demo-bg: var(--bg-surface, #12121a);
+  --demo-text: #e8e4de;
+  --demo-accent: #c4a882;
+  min-height: 100vh;
+  background: var(--demo-bg);
+  color: var(--demo-text);
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.demo-container {
+  max-width: 42rem;
+  width: 100%;
+  text-align: center;
+}
+
+.demo-step {
+  margin-bottom: 2rem;
+}
+
+.demo-step-inner {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 0.25s ease;
+}
+
+.demo-step-inner:hover {
+  opacity: 0.85;
+}
+
+.demo-step-inner[data-step-id='cta'] {
+  cursor: default;
+  margin-bottom: 1.5rem;
+}
+
+.demo-reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  min-height: 2rem;
+}
+
+.demo-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.demo-cta-wrap {
+  margin-top: 1.5rem;
+}
+
+.demo-cta-wrap.hidden {
+  display: none;
+}
+
+.demo-cta {
+  display: inline-block;
+  padding: 0.75rem 1.75rem;
+  background: transparent;
+  color: var(--demo-accent);
+  border: 1px solid var(--demo-accent);
+  text-decoration: none;
+  font-size: 0.95rem;
+  letter-spacing: 0.15em;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.demo-cta:hover {
+  background: var(--demo-accent);
+  color: var(--demo-bg);
+}
+
+/* index.css의 wave-container, strata-container 등을 데모에서 쓰려면 해당 클래스만 추가 */
+.demo-root .wave-container,
+.demo-root .wave-canvas {
+  max-width: 100%;
+}
+
+.demo-root .strata-container {
+  margin-top: 1rem;
+}

@@ -646,10 +646,10 @@ function startBucketWaveAnimation() {
 
     if (bucket === 'IDLE') {
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(196, 168, 130, 0.15)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(196, 168, 130, 0.08)'; // 더 약하게 (0.15 -> 0.08)
+      ctx.lineWidth = 0.8; // 더 얇게 (1 -> 0.8)
       for (let x = 0; x < w; x++) {
-        const y = cy + Math.sin(x * 0.015 + _waveTime * 0.02) * 6;
+        const y = cy + Math.sin(x * 0.015 + _waveTime * 0.02) * 4; // 더 작은 진폭 (6 -> 4)
         x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
       ctx.stroke();

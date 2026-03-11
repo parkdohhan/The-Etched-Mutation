@@ -2,6 +2,7 @@ node_modules/
 .claude/
 .next/
 public/portfolio-site/
+portfolio-site/
 
 # Supabase CLI 임시 파일
 supabase/.temp/
