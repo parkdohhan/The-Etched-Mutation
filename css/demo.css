@@ -1,90 +1,357 @@
-/* css/demo.css — 데모 전용 스타일, index.css의 wave/strata 클래스 재사용 가능 */
+/* demo.css — The Etched Mutation Demo */
 
-.demo-root {
-  --demo-bg: var(--bg-surface, #12121a);
+:root {
+  --demo-bg: #0a0a0e;
   --demo-text: #e8e4de;
   --demo-accent: #c4a882;
-  min-height: 100vh;
+  --demo-dim: rgba(232,228,222,0.35);
+  --demo-wave-user: rgba(196,168,130,0.8);
+  --demo-wave-ghost: rgba(120,120,140,0.12);
+  --terrain-line: rgba(196,168,130,0.5);
+  --contamination-mark: rgba(200,80,80,0.6);
+  --contamination-fade: rgba(100,100,120,0.4);
+  --contamination-spread: rgba(160,120,200,0.4);
+  --contamination-smooth: rgba(196,168,130,0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
   background: var(--demo-bg);
   color: var(--demo-text);
   font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+#demoApp {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+.demo-phase {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+.demo-phase.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* STEP 1: index 오프닝과 동일 레이아웃 (파동 컨테이너 + 캔버스) */
+.demo-opening-wrap {
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  background: var(--demo-bg);
+}
+.demo-opening-wrap .opening-wave-container {
+  width: 100%;
+  height: 200px;
+  position: relative;
+  margin-bottom: 1rem;
+  margin-top: -200px;
+  transform: scale(5, 1);
+  transform-origin: center center;
+  opacity: 1;
+  background: var(--demo-bg);
+}
+.demo-opening-wrap .opening-wave-canvas {
+  width: 100%;
+  height: 100%;
+  background: var(--demo-bg);
+}
+#phaseOpening .opening-wave-container.visible {
+  opacity: 1;
+}
+.opening-text {
+  position: relative;
+  z-index: 2;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  color: var(--demo-dim);
+  text-align: center;
+  line-height: 2;
+  cursor: pointer;
+}
+.opening-text.ready { color: var(--demo-text); cursor: pointer; }
+
+#phaseMonologue {
+  background: var(--demo-bg);
+  overflow: hidden;
+}
+#monologueCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.monologue-word {
+  position: absolute;
+  font-size: 0.95rem;
+  color: var(--demo-dim);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: color 0.2s, transform 0.2s;
+  user-select: none;
+  white-space: nowrap;
+}
+.monologue-word:hover { color: var(--demo-text); transform: scale(1.08); }
+#monologuePreviewCanvas {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+#monologuePreviewCanvas.visible { opacity: 1; }
+
+#phaseEntry {
+  background: var(--demo-bg);
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.entry-terrain-hint {
+  width: 320px;
+  height: 60px;
+  position: relative;
+  overflow: hidden;
+}
+.entry-first-line {
+  font-size: 1rem;
+  color: var(--demo-dim);
+  letter-spacing: 0.08em;
+  text-align: center;
+  max-width: 400px;
+  line-height: 1.8;
+}
+
+#phasePlay {
+  display: grid;
+  grid-template-rows: 100px 1fr 80px;
+  padding: 0;
+  gap: 0;
+  align-items: stretch;
+  justify-items: stretch;
+  flex-direction: unset;
+}
+
+.play-wave-panel {
+  width: 100%;
+  position: relative;
+  border-bottom: 1px solid rgba(196,168,130,0.1);
+}
+#playWaveCanvas { width: 100%; height: 100%; display: block; }
+.wave-status {
+  position: absolute;
+  bottom: 6px;
+  right: 16px;
+  font-size: 0.65rem;
+  color: var(--demo-dim);
+  letter-spacing: 0.1em;
+}
+
+.play-content-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 3rem;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+  position: relative;
+}
+.scene-text {
+  font-size: 1.05rem;
+  line-height: 2;
+  color: var(--demo-text);
+  text-align: left;
+  margin-bottom: 2rem;
+  letter-spacing: 0.03em;
+}
+.scene-input-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.input-prompt {
+  font-size: 0.75rem;
+  color: var(--demo-dim);
+  letter-spacing: 0.12em;
+}
+#sceneTextInput {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(196,168,130,0.3);
+  color: var(--demo-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.5rem 0;
+  resize: none;
+  outline: none;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+}
+#sceneTextInput:focus {
+  border-bottom-color: var(--demo-accent);
+}
+#sceneSubmitBtn {
+  align-self: flex-end;
+  background: transparent;
+  border: 1px solid rgba(196,168,130,0.4);
+  color: var(--demo-accent);
+  padding: 0.3rem 1rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+#sceneSubmitBtn:hover {
+  background: rgba(196,168,130,0.1);
+}
+
+.resolve-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10,10,14,0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  box-sizing: border-box;
+  backdrop-filter: blur(2px);
+}
+.resolve-overlay.hidden { display: none; }
+.resolve-text {
+  font-size: 0.8rem;
+  color: var(--demo-dim);
+  letter-spacing: 0.15em;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 }
 
-.demo-container {
-  max-width: 42rem;
+.play-terrain-panel {
   width: 100%;
-  text-align: center;
+  border-top: 1px solid rgba(196,168,130,0.1);
+  position: relative;
 }
+#terrainCanvas2D { width: 100%; height: 100%; display: block; }
 
-.demo-step {
-  margin-bottom: 2rem;
+#phaseReveal {
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem;
+  overflow-y: auto;
+  align-items: flex-start;
+  max-width: 720px;
+  margin: 0 auto;
 }
-
-.demo-step-inner {
-  font-size: 1.125rem;
-  line-height: 1.7;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: opacity 0.25s ease;
+.reveal-header {
+  font-size: 0.8rem;
+  color: var(--demo-dim);
+  letter-spacing: 0.15em;
 }
-
-.demo-step-inner:hover {
-  opacity: 0.85;
-}
-
-.demo-step-inner[data-step-id='cta'] {
-  cursor: default;
+.reveal-scene-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
   margin-bottom: 1.5rem;
+  cursor: pointer;
 }
-
-.demo-reveal {
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 0.4s ease, transform 0.4s ease;
-  min-height: 2rem;
+.reveal-wave-original,
+.reveal-wave-user {
+  height: 60px;
+  position: relative;
 }
-
-.demo-reveal.revealed {
-  opacity: 1;
-  transform: translateY(0);
+.reveal-wave-original canvas,
+.reveal-wave-user canvas {
+  width: 100%; height: 100%;
 }
-
-.demo-cta-wrap {
-  margin-top: 1.5rem;
+.reveal-label {
+  font-size: 0.65rem;
+  color: var(--demo-dim);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.3rem;
 }
-
-.demo-cta-wrap.hidden {
+.reveal-alignment {
+  font-size: 0.75rem;
+  color: var(--demo-accent);
+  letter-spacing: 0.08em;
+  margin-top: 0.5rem;
+}
+.reveal-detail-panel {
   display: none;
+  background: rgba(196,168,130,0.05);
+  border-left: 1px solid rgba(196,168,130,0.2);
+  padding: 1rem;
+  font-size: 0.75rem;
+  color: var(--demo-dim);
+  letter-spacing: 0.05em;
+  line-height: 1.8;
 }
+.reveal-scene-item.expanded .reveal-detail-panel { display: block; }
+#revealNextBtn {
+  align-self: flex-end;
+  background: transparent;
+  border: 1px solid rgba(196,168,130,0.4);
+  color: var(--demo-accent);
+  padding: 0.5rem 1.5rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  transition: all 0.2s;
+}
+#revealNextBtn:hover { background: rgba(196,168,130,0.1); }
 
+#phaseTerrain {
+  flex-direction: column;
+  gap: 2rem;
+}
+#strataViewContainer {
+  width: 100%;
+  max-width: 600px;
+  height: 300px;
+}
+.terrain-caption {
+  font-size: 0.75rem;
+  color: var(--demo-dim);
+  letter-spacing: 0.12em;
+  text-align: center;
+  max-width: 400px;
+}
 .demo-cta {
   display: inline-block;
-  padding: 0.75rem 1.75rem;
+  padding: 0.75rem 2rem;
   background: transparent;
   color: var(--demo-accent);
   border: 1px solid var(--demo-accent);
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   letter-spacing: 0.15em;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: all 0.2s;
 }
-
 .demo-cta:hover {
   background: var(--demo-accent);
   color: var(--demo-bg);
 }
 
-/* index.css의 wave-container, strata-container 등을 데모에서 쓰려면 해당 클래스만 추가 */
-.demo-root .wave-container,
-.demo-root .wave-canvas {
-  max-width: 100%;
-}
-
-.demo-root .strata-container {
-  margin-top: 1rem;
-}
+.hidden { display: none !important; }

@@ -121,6 +121,9 @@ const USE_LIVE_INTERPRETATIONS_TABLE = false;
 // (Moved to bottom)
 
 async function initApp() {
+    var fromDemo = false;
+    try { if (sessionStorage.getItem('skipOpening')) { sessionStorage.removeItem('skipOpening'); fromDemo = true; } } catch (_) {}
+
     // memoriesData가 없을 수 있음 (테스트 환경 등)
     const memoriesDataArray = window.memoriesData || (typeof memoriesData !== 'undefined' ? memoriesData : []) || [];
     storyData = memoriesDataArray[0] || null;
@@ -209,6 +212,16 @@ async function initApp() {
         memory: MemoryService,
         ai: AIService
     });
+    if (fromDemo) {
+        openingSkipped = true;
+        if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
+        var op = document.getElementById('openingScreen');
+        var intro = document.getElementById('introScreen');
+        if (op) { op.removeEventListener('click', skipOpening); op.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important'; op.classList.add('hidden'); }
+        document.removeEventListener('keydown', handleOpeningKeydown);
+        if (intro) { intro.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important'; intro.classList.add('visible'); intro.classList.remove('hidden'); }
+        if (typeof playNpcIntro === 'function') playNpcIntro();
+    }
 }
 function openPortfolio() {
     // Next.js 개발 서버 사용 (포트 3000)

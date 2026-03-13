@@ -1,28 +1,83 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Etched Mutation — Demo</title>
-    <link rel="icon" href="data:,">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/index.css">
-    <link rel="stylesheet" href="css/demo.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Etched Mutation — Demo</title>
+  <link rel="icon" href="data:,">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/demo.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <div class="demo-root" id="demoRoot">
-        <div class="demo-container" id="demoContainer">
-            <div class="demo-step" id="demoStep0" data-step="0">
-                <div class="demo-step-inner" id="demoStepInner0"></div>
-            </div>
-            <div class="demo-reveal" id="demoReveal" aria-hidden="true"></div>
-            <div class="demo-cta-wrap hidden" id="demoCtaWrap">
-                <a href="index.html" class="demo-cta" id="demoCta">기록하기</a>
-            </div>
-        </div>
+<div id="demoApp">
+
+  <!-- STEP 1: 오프닝 (index 오프닝 시퀀스와 동일 구조, 글자만 데모용) -->
+  <section id="phaseOpening" class="demo-phase active demo-opening-wrap">
+    <div class="opening-wave-container visible" id="demoOpeningWaveContainer">
+      <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
+    </div>
+    <div class="opening-text" id="openingText"></div>
+  </section>
+
+  <!-- STEP 2: 혼잣말 부유 -->
+  <section id="phaseMonologue" class="demo-phase">
+    <canvas id="monologueCanvas"></canvas>
+    <div id="monologueParticles"></div>
+    <canvas id="monologuePreviewCanvas"></canvas>
+  </section>
+
+  <!-- STEP 3: 기억 진입 -->
+  <section id="phaseEntry" class="demo-phase">
+    <div class="entry-terrain-hint" id="entryTerrainHint"></div>
+    <div class="entry-first-line" id="entryFirstLine"></div>
+  </section>
+
+  <!-- STEP 4-5: 메인 플레이 -->
+  <section id="phasePlay" class="demo-phase">
+    <div class="play-wave-panel" id="playWavePanel">
+      <canvas id="playWaveCanvas"></canvas>
+      <div class="wave-status" id="waveStatus"></div>
     </div>
 
-    <script type="module" src="js/demo/demoFlow.js"></script>
-    <script type="module" src="js/demo/demoReveal.js"></script>
+    <div class="play-content-panel" id="playContentPanel">
+      <div class="scene-text" id="demoSceneText"></div>
+      <div class="scene-input-area" id="sceneInputArea">
+        <div class="input-prompt" id="inputPrompt"></div>
+        <textarea id="sceneTextInput" rows="2" maxlength="120"></textarea>
+        <button id="sceneSubmitBtn">→</button>
+      </div>
+      <div class="resolve-overlay hidden" id="resolveOverlay">
+        <span class="resolve-text" id="resolveText">기억이 반응하고 있다...</span>
+      </div>
+    </div>
+
+    <div class="play-terrain-panel" id="playTerrainPanel">
+      <canvas id="terrainCanvas2D"></canvas>
+    </div>
+  </section>
+
+  <!-- STEP 6: Reveal -->
+  <section id="phaseReveal" class="demo-phase">
+    <div class="reveal-header" id="revealHeader"></div>
+    <div class="reveal-scenes" id="revealScenes"></div>
+    <button id="revealNextBtn">지형으로</button>
+  </section>
+
+  <!-- STEP 7: Terrain -->
+  <section id="phaseTerrain" class="demo-phase">
+    <div id="strataViewContainer"></div>
+    <div class="terrain-caption" id="terrainCaption"></div>
+    <a href="index.html" class="demo-cta" id="demoCta">
+      내 기억을 먼저 봉인하기
+    </a>
+  </section>
+
+</div>
+
+<script src="js/ui/strataView.js"></script>
+<script type="module" src="js/demo/demoFlow.js"></script>
 </body>
 </html>
