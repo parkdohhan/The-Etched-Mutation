@@ -140,6 +140,38 @@ async function initApp() {
         );
     }
 
+    // ★ OAuth 리다이렉트 감지 (onAuthStateChange 등록 직전에)
+    (function checkOAuthRedirect() {
+        const hash = window.location.hash || '';
+        const params = new URLSearchParams(window.location.search || '');
+
+        // Supabase OAuth: 해시에 access_token/refresh_token, 또는 search에 code 포함
+        if (hash.includes('access_token') || hash.includes('refresh_token') || params.has('code')) {
+            const openingScreen = document.getElementById('openingScreen');
+            if (openingScreen) {
+                openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important';
+                openingScreen.classList.add('hidden');
+            }
+
+            const introScreen = document.getElementById('introScreen');
+            if (introScreen) {
+                introScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important';
+                introScreen.classList.add('visible');
+                introScreen.classList.remove('hidden');
+            }
+
+            // 이후 오프닝 시퀀스 자동 스킵 (startOpeningSequence에서 참조)
+            window.__oauthRedirectSkipOpening = true;
+
+            // URL 해시/쿼리 정리 (토큰 노출 제거)
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', window.location.pathname);
+            }
+
+            console.log('[Auth] OAuth 리다이렉트 감지 — 오프닝 스킵');
+        }
+    })();
+
     // Auth 상태 변경 리스너 등록
     onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -2792,7 +2824,7 @@ function startOpeningWaveAnimation(canvas) {
 
     animate();
 }
-function startOpeningSequence() { if (openingSkipped) return; const waveContainer = document.getElementById('openingWaveContainer'); if (waveContainer) { waveContainer.style.transform = 'scale(5, 1)'; waveContainer.style.opacity = '1'; waveContainer.classList.add('visible') } const canvas = document.getElementById('openingWaveCanvas'); if (canvas) startOpeningWaveAnimation(canvas); setTimeout(function () { if (openingSkipped) return; const dialogue = document.getElementById('openingDialogue'); if (dialogue) showFirstTextPart1(dialogue) }, 2500) }
+function startOpeningSequence() { if (openingSkipped || window.__oauthRedirectSkipOpening) return; const waveContainer = document.getElementById('openingWaveContainer'); if (waveContainer) { waveContainer.style.transform = 'scale(5, 1)'; waveContainer.style.opacity = '1'; waveContainer.classList.add('visible') } const canvas = document.getElementById('openingWaveCanvas'); if (canvas) startOpeningWaveAnimation(canvas); setTimeout(function () { if (openingSkipped) return; const dialogue = document.getElementById('openingDialogue'); if (dialogue) showFirstTextPart1(dialogue) }, 2500) }
 function skipOpening() { if (openingSkipped) return; openingSkipped = true; if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null } const sound = openingSound || document.getElementById('openingSound'); if (sound) { if (crossfadeTimeUpdateHandler && sound) { sound.removeEventListener('timeupdate', crossfadeTimeUpdateHandler); crossfadeTimeUpdateHandler = null } if (crossfadeEndedHandler && sound) { sound.removeEventListener('ended', crossfadeEndedHandler); crossfadeEndedHandler = null } fadeOutSound(sound, 500); setTimeout(() => { finishOpeningSequence() }, 600) } else { finishOpeningSequence() } }
 function handleOpeningKeydown(e) { if (!openingSkipped) { e.preventDefault(); skipOpening() } }
 function finishOpeningSequence() { const openingScreen = document.getElementById('openingScreen'); const introScreen = document.getElementById('introScreen'); if (openingScreen) { openingScreen.removeEventListener('click', skipOpening); openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important'; openingScreen.classList.add('hidden') } document.removeEventListener('keydown', handleOpeningKeydown); if (introScreen) { introScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important'; introScreen.classList.add('visible'); introScreen.classList.remove('hidden') } playNpcIntro() }
