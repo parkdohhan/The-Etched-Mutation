@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Etched Mutation — Demo 2</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0e;
+  --text: #e8e4de;
+  --accent: #c4a882;
+  --dim: rgba(232,228,222,0.35);
+  --dim2: rgba(232,228,222,0.18);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#app {
+  width: 100vw; height: 100vh;
+  position: relative;
+}
+
+/* Phase container */
+.phase {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+.phase.active { opacity: 1; pointer-events: all; }
+
+/* ===== Phase 1: Opening ===== */
+#opening { background: var(--bg); }
+#opening canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+}
+#openingText {
+  position: relative; z-index: 2;
+  font-size: 1.15rem; font-weight: 300;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  text-align: center; line-height: 2.2;
+  cursor: pointer;
+  white-space: pre-line;
+  transition: color 0.6s;
+}
+#openingText.ready { color: var(--text); }
+
+/* ===== Phase 2: Monologue ===== */
+#monologue { background: var(--bg); overflow: hidden; }
+#monoNoise {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0.15;
+}
+.mono-word {
+  position: absolute;
+  font-size: 0.95rem; font-weight: 300;
+  color: var(--dim);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: color 0.3s, text-shadow 0.3s;
+  user-select: none;
+  white-space: nowrap;
+}
+.mono-word:hover {
+  color: var(--text);
+  text-shadow: 0 0 20px rgba(196,168,130,0.3);
+}
+#monoPreview {
+  position: absolute;
+  bottom: 50px; left: 50%; transform: translateX(-50%);
+  width: 280px; height: 64px;
+  opacity: 0; transition: opacity 0.4s;
+  pointer-events: none;
+}
+#monoPreview.visible { opacity: 1; }
+
+/* ===== Phase 3: Memory Entry ===== */
+#memEntry { background: var(--bg); flex-direction: column; gap: 1.8rem; }
+#entryTerrain { width: 340px; height: 64px; }
+#entryLine {
+  font-size: 1rem; font-weight: 300;
+  color: var(--dim); letter-spacing: 0.1em;
+  text-align: center; max-width: 420px; line-height: 2;
+  opacity: 0; transition: opacity 0.8s;
+}
+
+/* ===== Phase 4: Play ===== */
+#play {
+  display: grid;
+  grid-template-rows: 110px 1fr 90px;
+  padding: 0; gap: 0;
+  align-items: stretch; justify-items: stretch;
+  flex-direction: unset;
+}
+.wave-panel {
+  width: 100%; position: relative;
+  border-bottom: 1px solid rgba(196,168,130,0.08);
+}
+.wave-panel canvas { width: 100%; height: 100%; display: block; }
+#waveStatus {
+  position: absolute; bottom: 8px; right: 18px;
+  font-size: 0.6rem; color: var(--dim2);
+  letter-spacing: 0.12em; text-transform: uppercase;
+}
+.content-panel {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 2rem 3rem;
+  max-width: 640px; margin: 0 auto; width: 100%;
+  position: relative;
+}
+#sceneText {
+  font-size: 1.05rem; line-height: 2.2;
+  color: var(--text); text-align: left;
+  margin-bottom: 2rem; letter-spacing: 0.03em;
+  min-height: 3em;
+}
+.input-area {
+  width: 100%; display: flex;
+  flex-direction: column; gap: 0.6rem;
+}
+#inputPrompt {
+  font-size: 0.72rem; color: var(--dim);
+  letter-spacing: 0.14em;
+}
+#userInput {
+  width: 100%; background: transparent;
+  border: none; border-bottom: 1px solid rgba(196,168,130,0.25);
+  color: var(--text); font-family: inherit;
+  font-size: 0.95rem; padding: 0.6rem 0;
+  resize: none; outline: none;
+  letter-spacing: 0.04em; line-height: 1.6;
+}
+#userInput:focus { border-bottom-color: var(--accent); }
+#submitBtn {
+  align-self: flex-end;
+  background: transparent;
+  border: 1px solid rgba(196,168,130,0.35);
+  color: var(--accent); padding: 0.35rem 1.2rem;
+  cursor: pointer; font-family: inherit;
+  font-size: 0.8rem; letter-spacing: 0.08em;
+  transition: all 0.2s;
+}
+#submitBtn:hover { background: rgba(196,168,130,0.08); }
+#submitBtn:disabled { opacity: 0.3; cursor: default; }
+
+#resolveOverlay {
+  position: absolute; inset: 0;
+  background: rgba(10,10,14,0.75);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(3px);
+}
+#resolveOverlay.hidden { display: none; }
+#resolveOverlay span {
+  font-size: 0.78rem; color: var(--dim);
+  letter-spacing: 0.16em;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.terrain-panel {
+  width: 100%; position: relative;
+  border-top: 1px solid rgba(196,168,130,0.08);
+}
+.terrain-panel canvas { width: 100%; height: 100%; display: block; }
+
+/* ===== Phase 5: Reveal ===== */
+#reveal {
+  flex-direction: column; gap: 1.5rem;
+  padding: 2.5rem 2rem;
+  overflow-y: auto; align-items: center;
+}
+#revealHeader {
+  font-size: 0.95rem; color: var(--dim);
+  letter-spacing: 0.16em; text-align: center;
+  margin-bottom: 0.5rem;
+}
+#revealCards {
+  display: flex; flex-direction: column;
+  gap: 2rem; width: 100%; max-width: 640px;
+}
+.reveal-card {
+  background: rgba(196,168,130,0.03);
+  border: 1px solid rgba(196,168,130,0.08);
+  padding: 1.2rem 1.5rem;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+.reveal-card:hover { border-color: rgba(196,168,130,0.2); }
+.reveal-card.core { border-left: 2px solid var(--accent); }
+.reveal-card .rc-scene-text {
+  font-size: 0.72rem; color: var(--dim2);
+  letter-spacing: 0.06em; margin-bottom: 0.8rem;
+  line-height: 1.6;
+}
+.rc-waves {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1rem; margin-bottom: 0.8rem;
+}
+.rc-wave-label {
+  font-size: 0.6rem; color: var(--dim2);
+  letter-spacing: 0.1em; margin-bottom: 0.3rem;
+}
+.rc-wave-canvas { width: 100%; height: 54px; display: block; }
+.rc-alignment {
+  font-size: 0.75rem; color: var(--accent);
+  letter-spacing: 0.1em; margin-top: 0.2rem;
+}
+.rc-detail {
+  display: none; margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(196,168,130,0.08);
+  font-size: 0.7rem; color: var(--dim);
+  letter-spacing: 0.04em; line-height: 2;
+}
+.reveal-card.expanded .rc-detail { display: block; }
+#revealToTerrain {
+  align-self: center; margin-top: 1rem;
+  background: transparent;
+  border: 1px solid rgba(196,168,130,0.35);
+  color: var(--accent); padding: 0.6rem 2rem;
+  cursor: pointer; font-family: inherit;
+  font-size: 0.82rem; letter-spacing: 0.12em;
+  transition: all 0.2s;
+}
+#revealToTerrain:hover { background: rgba(196,168,130,0.08); }
+
+/* ===== Phase 6: Terrain ===== */
+#terrain { flex-direction: column; gap: 2rem; }
+#terrainFinal {
+  width: 90%; max-width: 700px;
+  height: 340px;
+}
+#terrainCaption {
+  font-size: 0.78rem; color: var(--dim);
+  letter-spacing: 0.14em; text-align: center;
+  max-width: 440px; line-height: 1.8;
+}
+#terrainCTA {
+  display: inline-block;
+  padding: 0.75rem 2.2rem;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  text-decoration: none;
+  font-family: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  transition: all 0.25s;
+}
+#terrainCTA:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Phase 1: Opening -->
+  <section id="opening" class="phase active">
+    <canvas id="openingCanvas"></canvas>
+    <div id="openingText"></div>
+  </section>
+
+  <!-- Phase 2: Monologue -->
+  <section id="monologue" class="phase">
+    <canvas id="monoNoise"></canvas>
+    <div id="monoWords"></div>
+    <canvas id="monoPreview"></canvas>
+  </section>
+
+  <!-- Phase 3: Memory Entry -->
+  <section id="memEntry" class="phase">
+    <canvas id="entryTerrain"></canvas>
+    <div id="entryLine"></div>
+  </section>
+
+  <!-- Phase 4: Play -->
+  <section id="play" class="phase">
+    <div class="wave-panel">
+      <canvas id="playWave"></canvas>
+      <div id="waveStatus"></div>
+    </div>
+    <div class="content-panel">
+      <div id="sceneText"></div>
+      <div class="input-area">
+        <div id="inputPrompt"></div>
+        <textarea id="userInput" rows="2" maxlength="140"></textarea>
+        <button id="submitBtn">→</button>
+      </div>
+      <div id="resolveOverlay" class="hidden">
+        <span>기억이 반응하고 있다...</span>
+      </div>
+    </div>
+    <div class="terrain-panel">
+      <canvas id="playTerrain"></canvas>
+    </div>
+  </section>
+
+  <!-- Phase 5: Reveal -->
+  <section id="reveal" class="phase">
+    <div id="revealHeader"></div>
+    <div id="revealCards"></div>
+    <button id="revealToTerrain">지형으로</button>
+  </section>
+
+  <!-- Phase 6: Terrain -->
+  <section id="terrain" class="phase">
+    <canvas id="terrainFinal"></canvas>
+    <div id="terrainCaption"></div>
+    <a href="index.html" id="terrainCTA">내 기억을 먼저 봉인하기</a>
+  </section>
+
+</div>
+
+<script>
+// =====================================================================
+// The Etched Mutation — Demo 2 (Self-contained)
+// =====================================================================
+
+// ── Keyword-based local emotion analyzer ──
+const KEYWORD_MAP = {
+  guilt: ['미안','잘못','내가','내 탓','왜 그랬','그러지 말았','후회','못한','했어야','나 때문'],
+  longing: ['보고싶','그립','다시','돌아','그때','기억','남아','아직도','생각나'],
+  sadness: ['슬프','울','눈물','힘들','아프','무너','지쳤','외로','서러'],
+  fear: ['무서','두렵','떨렸','겁','불안','피하','도망','싫었','두려'],
+  anger: ['화가','짜증','열받','억울','왜','당했','싫어','배신','화났'],
+  shame: ['창피','부끄','민망','들킬','숨기','말 못','쪽팔'],
+  numbness: ['모르겠','아무','없었','그냥','별로','신경','멍','몰라'],
+  isolation: ['혼자','아무도','없었','버려','떠났','남겨','나만'],
+  moral_pain: ['해선 안','그러면 안','잘못된','틀렸','나쁜 짓'],
+};
+const ATTRIBUTION_MAP = {
+  self: ['내가 먼저','내 잘못','내가 했','내가 안','내가 못','나 때문에','내가 그랬'],
+  other: ['걔가','그가','그녀가','상대가','저 사람','네가','그 사람이'],
+  situation: ['어쩔 수 없','할 수 없','그럴 수밖에','원래','다 그래','별 수','상황이'],
+};
+const DISTORTION_MAP = {
+  idealization: ['좋았','행복','괜찮았','원래는','사실은 좋','나쁘지 않'],
+  rationalization: ['어쩔 수 없','당연히','원래 다','그럴만','이해','맞는','어쩌겠'],
+  projection: ['걔가','그 사람이','상대가','걔 때문','그 탓','너 때문'],
+  avoidance: ['모르겠','그냥','별로','뭐','아무','상관없','신경'],
+};
+
+function localAnalyze(text) {
+  if (!text || text.trim().length < 2) return null;
+  const base = { fear:0,sadness:0,anger:0,guilt:0,shame:0,longing:0,numbness:0,isolation:0,moral_pain:0 };
+  let attribution = null, distortionTag = null;
+  for (const [emo, kws] of Object.entries(KEYWORD_MAP))
+    for (const kw of kws) if (text.includes(kw)) base[emo] = Math.min(1, (base[emo]||0)+0.4);
+  for (const [t, kws] of Object.entries(ATTRIBUTION_MAP)) {
+    for (const kw of kws) if (text.includes(kw)) { attribution = t; break; }
+    if (attribution) break;
+  }
+  if (attribution === 'self') base.guilt = Math.min(1, base.guilt+0.2);
+  if (attribution === 'other') base.anger = Math.min(1, base.anger+0.2);
+  for (const [tag, kws] of Object.entries(DISTORTION_MAP)) {
+    for (const kw of kws) if (text.includes(kw)) { distortionTag = tag; break; }
+    if (distortionTag) break;
+  }
+  const total = Object.values(base).reduce((a,b)=>a+b,0);
+  return { base, attribution, distortionTag, isVoid: total < 0.1, isRough: true };
+}
+
+// ── Simplified ByeoriEngine ──
+function cosineSim(v1, v2) {
+  const keys = ['fear','sadness','anger','guilt','shame','longing','numbness','isolation','moral_pain'];
+  let dot=0, m1=0, m2=0;
+  for (const k of keys) {
+    const a = v1[k]||0, b = v2[k]||0;
+    dot += a*b; m1 += a*a; m2 += b*b;
+  }
+  m1 = Math.sqrt(m1); m2 = Math.sqrt(m2);
+  if (m1===0||m2===0) return 0;
+  return dot/(m1*m2);
+}
+
+function calculateStep(userVec, origVec, prevBucket) {
+  const uBase = userVec.base || userVec;
+  const oBase = origVec.base || origVec;
+  const emotionScore = Math.max(0, cosineSim(uBase, oBase));
+  // simplified reason score
+  const uAttr = userVec.attribution || userVec.reason_analysis?.attribution;
+  const oAttr = origVec.attribution || origVec.reason_analysis?.attribution;
+  let reasonScore = 0.15;
+  if (uAttr && oAttr) reasonScore = uAttr === oAttr ? 0.8 : 0.15;
+  else reasonScore = emotionScore * 0.3;
+  const attitudeScore = userVec.isVoid ? 0.2 : 0.7;
+  const alignment = emotionScore*0.4 + reasonScore*0.4 + attitudeScore*0.2;
+  // bucket
+  let bucket;
+  if (prevBucket === 'HIGH' && alignment >= 0.45) bucket = 'HIGH';
+  else if (prevBucket === 'LOW' && alignment <= 0.42) bucket = 'LOW';
+  else if (alignment >= 0.55) bucket = 'HIGH';
+  else if (alignment < 0.35) bucket = 'LOW';
+  else bucket = 'MID';
+  // mismatch
+  let mismatch = null;
+  if (uAttr && oAttr && uAttr !== oAttr) mismatch = 'attribution_mismatch';
+  else if (emotionScore < 0.5) mismatch = 'emotion_mismatch';
+  // transition
+  let pattern;
+  if (bucket === 'HIGH') pattern = 'echo_follow';
+  else if (bucket === 'MID') pattern = 'bridge';
+  else {
+    if (mismatch === 'attribution_mismatch') pattern = 'contradiction';
+    else if (mismatch === 'emotion_mismatch') pattern = 'contradiction';
+    else pattern = 'bridge';
+  }
+  return { alignment_score: alignment, alignment_bucket: bucket, transition_pattern: pattern, mismatch_type: mismatch,
+    debug: { emotion_score: emotionScore, reason_score: reasonScore, attitude_score: attitudeScore }
+  };
+}
+
+// ── Terrain effect resolver ──
+function resolveTerrainEffect(distTag, mismatch, resolved) {
+  if (distTag === 'avoidance') return 'fade';
+  if (distTag === 'projection') return 'spread';
+  if (distTag === 'idealization') return 'smooth';
+  if (distTag === 'rationalization') return 'layer';
+  if (mismatch === 'attribution_mismatch' && (resolved?.base?.guilt||0)>0.4) return 'erosion';
+  if (mismatch === 'emotion_mismatch' && (resolved?.base?.longing||0)>0.3) return 'deposit';
+  return 'mark';
+}
+
+// ── Emotion → wave style ──
+const EMOTION_COLORS = {
+  fear:{r:100,g:80,b:180}, sadness:{r:80,g:100,b:160}, anger:{r:200,g:80,b:80},
+  longing:{r:80,g:180,b:180}, guilt:{r:150,g:130,b:100}, shame:{r:140,g:100,b:120},
+  numbness:{r:100,g:100,b:110}, isolation:{r:80,g:90,b:130}, moral_pain:{r:130,g:100,b:90},
+};
+function toWaveStyle(base) {
+  if (!base) return { color:{r:100,g:140,b:180}, speed:0.3, amplitude:30, frequency:0.008, chaos:0.1 };
+  const vals = Object.values(base);
+  const intensity = vals.reduce((a,b)=>a+b,0) / Math.max(6, vals.length);
+  const entries = Object.entries(base);
+  const dom = entries.length ? entries.sort((a,b)=>b[1]-a[1])[0] : ['sadness',0];
+  const c = EMOTION_COLORS[dom[0]] || EMOTION_COLORS.sadness;
+  return {
+    color: c, speed: 0.3+intensity*0.9, amplitude: 30+intensity*50,
+    frequency: 0.008+intensity*0.012, chaos: 0.1+intensity*0.7
+  };
+}
+function dominantEmo(base) {
+  if (!base) return '—';
+  const e = Object.entries(base).sort((a,b)=>b[1]-a[1])[0];
+  return e && e[1]>0 ? e[0] : '—';
+}
+
+// ── Demo data ──
+const MONOLOGUES = [
+  { text:'그러지 말았어야했어', entry:'그때는 그게 맞는다고 생각했어.', vad:{v:-0.5,a:0.2,d:-0.6}, x:0.28, y:0.32 },
+  { text:'그냥 도망치고싶었어', entry:'그것밖에 할 수 있는 게 없었잖아.', vad:{v:-0.6,a:0.7,d:-0.4}, x:0.68, y:0.42 },
+  { text:'왜 그랬는지 모르겠어', entry:'사실은 알고 있었는지도 몰라.', vad:{v:-0.4,a:0.3,d:-0.3}, x:0.42, y:0.58 },
+  { text:'그냥 없던 일이 됐으면', entry:'근데 아직 남아 있잖아.', vad:{v:-0.3,a:-0.4,d:-0.2}, x:0.22, y:0.62 },
+];
+
+const SCENES = [
+  { text:'엄마가 문을 열고 들어왔을 때, 나는 그 자리에 서 있었다.\n아무 말도 할 수 없었다.', original:{ anger:0.84, guilt:0.4, shame:0.19 } },
+  { text:'그래서 도망쳤다. 어디로 가는지도 모르면서.\n뒤돌아보지 않았다.', original:{ fear:0.79, isolation:0.56 } },
+  { text:'결국 집에 돌아왔다.\n아무도 없었다. 아무것도 변하지 않았다.', original:{ isolation:0.83, sadness:0.69 } },
+];
+
+const PROMPTS = [
+  { mode:'free', prompt:'그 순간, 먼저 떠오른 말을 써.' },
+  { mode:'free', prompt:'그때 네 안에서 뭐가 일어났어?' },
+  { mode:'short', prompt:'지금 이 기억은 너한테 ___야.' },
+];
+
+// ── State ──
+const S = {
+  phase: 'opening',
+  selectedMono: null,
+  sceneIndex: 0,
+  liveVector: null,
+  resolvedVector: null,
+  sceneHistory: [],
+  hoverLog: [],
+};
+
+// ── Canvas utility ──
+function initCanvas(c) {
+  if (!c || c.offsetWidth===0) return null;
+  const dpr = Math.min(devicePixelRatio||1, 2);
+  c.width = c.offsetWidth * dpr;
+  c.height = c.offsetHeight * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return ctx;
+}
+function cW(c) { return c.width / (Math.min(devicePixelRatio||1,2)); }
+function cH(c) { return c.height / (Math.min(devicePixelRatio||1,2)); }
+
+// ── Noise helper ──
+function noise(x,y,z) {
+  const n = Math.sin(x*12.9898+y*78.233+(z||0)*37.719)*43758.5453;
+  return n - Math.floor(n);
+}
+
+// ── Phase switching ──
+function setPhase(id) {
+  document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  S.phase = id;
+}
+
+// ── Typing ──
+function typeText(el, text, speed, done) {
+  let i = 0; el.textContent = '';
+  function run() {
+    if (i < text.length) { el.textContent += text[i++]; setTimeout(run, speed); }
+    else if (done) done();
+  }
+  run();
+}
+
+// =====================================================================
+// Phase 1: Opening
+// =====================================================================
+let openingRAF = null;
+
+function startOpening() {
+  setPhase('opening');
+  const canvas = document.getElementById('openingCanvas');
+  const textEl = document.getElementById('openingText');
+  if (!canvas) return;
+
+  requestAnimationFrame(() => {
+    const ctx = initCanvas(canvas);
+    if (!ctx) return;
+    runOpeningWave(canvas, ctx, textEl);
+  });
+}
+
+function runOpeningWave(canvas, ctx, textEl) {
+  const w = cW(canvas), h = cH(canvas);
+  const maxAmp = h * 0.3;
+  const waves = [
+    { c:'rgba(100,130,150,', o:0.10, sp:0.010, amp:Math.min(80,maxAmp),      ph:0,   fr:0.020, ns:0.8 },
+    { c:'rgba(120,150,170,', o:0.15, sp:0.014, amp:Math.min(70,maxAmp*0.9),  ph:0.6, fr:0.025, ns:0.7 },
+    { c:'rgba(130,155,175,', o:0.20, sp:0.018, amp:Math.min(60,maxAmp*0.8),  ph:1.2, fr:0.030, ns:0.6 },
+    { c:'rgba(140,165,185,', o:0.26, sp:0.022, amp:Math.min(55,maxAmp*0.7),  ph:1.9, fr:0.035, ns:0.5 },
+    { c:'rgba(155,175,195,', o:0.33, sp:0.026, amp:Math.min(45,maxAmp*0.6),  ph:2.6, fr:0.040, ns:0.4 },
+    { c:'rgba(170,190,205,', o:0.42, sp:0.030, amp:Math.min(35,maxAmp*0.5),  ph:3.3, fr:0.045, ns:0.3 },
+    { c:'rgba(190,205,215,', o:0.52, sp:0.034, amp:Math.min(28,maxAmp*0.4),  ph:4.0, fr:0.050, ns:0.25 },
+  ];
+  let t = 0;
+  let mx = -100, my = -100;
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    mx = (e.clientX - r.left) * (cW(canvas) / r.width);
+    my = (e.clientY - r.top) * (cH(canvas) / r.height);
+  });
+  canvas.addEventListener('mouseleave', () => { mx=-100; my=-100; });
+
+  function tick() {
+    ctx.fillStyle = 'rgba(10,10,12,0.92)';
+    ctx.fillRect(0, 0, w, h);
+    const cy = h / 2;
+    waves.forEach(wave => {
+      ctx.beginPath(); ctx.lineWidth = 1.2;
+      for (let x = 0; x < w; x++) {
+        let y = cy
+          + Math.sin(x*wave.fr + t*wave.sp + wave.ph) * wave.amp
+          + Math.sin(x*wave.fr*0.5 + t*wave.sp*0.6 + wave.ph*1.4) * (wave.amp*0.4)
+          + Math.sin(x*wave.fr*2.3 + t*wave.sp*1.3) * (wave.amp*0.15)
+          + Math.sin(x*wave.fr*0.3 + t*wave.sp*0.4 + wave.ph*2.1) * (wave.amp*0.25);
+        const ns = Math.sin(x*0.003+t*0.02)*Math.cos(x*0.007+t*0.015)*wave.ns;
+        y += wave.amp * ns * 0.4;
+        if (mx >= 0 && my >= 0) {
+          const dx = Math.abs(x-mx), dy = Math.abs(y-my);
+          const dist = Math.sqrt(dx*dx+dy*dy);
+          const inf = Math.pow(Math.max(0,1-dist/200),3);
+          if (inf > 0) {
+            y += (my-y)*inf*1.8 + Math.sin(dx*0.05)*inf*15;
+          }
+        }
+        y = Math.max(2, Math.min(h-2, y));
+        x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = wave.c + wave.o + ')';
+      ctx.stroke();
+    });
+    t += 0.5;
+    openingRAF = requestAnimationFrame(tick);
+  }
+  tick();
+
+  // Text sequence
+  setTimeout(() => {
+    typeText(textEl, '너의 기억을 들여다볼 준비가 됐어?', 55, () => {
+      setTimeout(() => {
+        typeText(textEl, '너의 기억을 들여다볼 준비가 됐어?\n좋아...', 45, () => {
+          textEl.classList.add('ready');
+        });
+      }, 1200);
+    });
+  }, 1000);
+
+  function goNext() {
+    if (openingRAF) { cancelAnimationFrame(openingRAF); openingRAF = null; }
+    startMonologue();
+  }
+  textEl.addEventListener('click', goNext, { once: true });
+  setTimeout(goNext, 5500);
+}
+
+// =====================================================================
+// Phase 2: Monologue
+// =====================================================================
+let monoRAF = null;
+
+function startMonologue() {
+  setPhase('monologue');
+  const container = document.getElementById('monoWords');
+  const noiseCanvas = document.getElementById('monoNoise');
+  const preview = document.getElementById('monoPreview');
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Background noise
+  const nCtx = initCanvas(noiseCanvas);
+  if (nCtx) {
+    const nw = cW(noiseCanvas), nh = cH(noiseCanvas);
+    let nt = 0;
+    function noiseTick() {
+      nCtx.fillStyle = 'rgba(10,10,12,0.95)';
+      nCtx.fillRect(0,0,nw,nh);
+      for (let i = 0; i < 3; i++) {
+        nCtx.beginPath(); nCtx.lineWidth = 0.8;
+        nCtx.strokeStyle = `rgba(100,120,140,${0.04+i*0.02})`;
+        for (let x = 0; x < nw; x += 2) {
+          const y = nh/2 + Math.sin(x*0.008+nt*0.008+i*2)*30
+            + Math.sin(x*0.003+nt*0.005+i)*20
+            + (noise(x*0.01,nt*0.01,i)-0.5)*40;
+          x===0 ? nCtx.moveTo(x,y) : nCtx.lineTo(x,y);
+        }
+        nCtx.stroke();
+      }
+      nt += 0.3;
+      monoRAF = requestAnimationFrame(noiseTick);
+    }
+    noiseTick();
+  }
+
+  // Place monologue words
+  const words = MONOLOGUES.map(m => {
+    const div = document.createElement('div');
+    div.className = 'mono-word';
+    div.textContent = m.text;
+    div.style.left = `${m.x * 100}%`;
+    div.style.top = `${m.y * 100}%`;
+    div.style.transform = 'translate(-50%, -50%)';
+    container.appendChild(div);
+    return { ...m, el: div };
+  });
+
+  // Float animation
+  let ft = 0;
+  function floatTick() {
+    ft += 0.02;
+    words.forEach((m, i) => {
+      const freq = 0.3 + Math.abs(m.vad.a) * 0.8;
+      const dy = Math.sin(ft + i*1.7) * 8 * freq;
+      const dx = Math.cos(ft*0.7 + i*2.1) * 3;
+      m.el.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    });
+    if (S.phase === 'monologue') requestAnimationFrame(floatTick);
+  }
+  floatTick();
+
+  // Preview wave
+  const previewCtx = initCanvas(preview);
+
+  words.forEach(m => {
+    m.el.addEventListener('mouseenter', () => {
+      S.hoverLog.push({ text: m.text, time: Date.now() });
+      if (previewCtx && preview) {
+        preview.classList.add('visible');
+        const rough = localAnalyze(m.text);
+        if (rough) drawMiniWave(preview, previewCtx, rough.base, 0);
+      }
+    });
+    m.el.addEventListener('mouseleave', () => {
+      if (preview) preview.classList.remove('visible');
+    });
+    m.el.addEventListener('click', () => {
+      if (monoRAF) { cancelAnimationFrame(monoRAF); monoRAF = null; }
+      S.selectedMono = m;
+      startMemoryEntry(m);
+    });
+  });
+}
+
+function drawMiniWave(canvas, ctx, base, timeOffset) {
+  const w = cW(canvas), h = cH(canvas);
+  const style = toWaveStyle(base);
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = 'rgba(10,10,14,1)';
+  ctx.fillRect(0,0,w,h);
+  const cy = h/2;
+  ctx.beginPath(); ctx.lineWidth = 1.5;
+  const c = style.color;
+  ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.7)`;
+  for (let x = 0; x < w; x++) {
+    const nx = x/w;
+    let y = Math.sin(x*style.frequency + timeOffset*style.speed)*style.amplitude*0.5
+      + Math.sin(x*style.frequency*2.3 + timeOffset*style.speed*0.7)*(style.amplitude*0.2);
+    y *= Math.sin(nx*Math.PI);
+    x===0 ? ctx.moveTo(x,cy+y) : ctx.lineTo(x,cy+y);
+  }
+  ctx.stroke();
+}
+
+// =====================================================================
+// Phase 3: Memory Entry
+// =====================================================================
+function startMemoryEntry(mono) {
+  setPhase('memEntry');
+  const terrainC = document.getElementById('entryTerrain');
+  const lineEl = document.getElementById('entryLine');
+
+  // Draw terrain hint
+  const ctx = initCanvas(terrainC);
+  if (ctx) {
+    const w = cW(terrainC), h = cH(terrainC);
+    ctx.fillStyle = 'rgba(10,10,14,1)';
+    ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = 'rgba(196,168,130,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 4) {
+      const y = h/2 + Math.sin(x*0.018)*10 + Math.sin(x*0.007)*5;
+      x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    // flash
+    let flash = 0;
+    const iv = setInterval(() => {
+      flash++;
+      if (flash % 4 === 0) {
+        ctx.strokeStyle = 'rgba(196,168,130,0.8)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(w*0.25, h/2);
+        ctx.lineTo(w*0.75, h/2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(196,168,130,0.4)';
+        ctx.lineWidth = 1.5;
+      }
+      if (flash > 20) clearInterval(iv);
+    }, 100);
+  }
+
+  // Entry line fade in
+  if (lineEl) {
+    lineEl.textContent = '';
+    lineEl.style.opacity = '0';
+    setTimeout(() => {
+      lineEl.textContent = mono.entry;
+      lineEl.style.opacity = '1';
+    }, 400);
+  }
+
+  setTimeout(startPlay, 1800);
+}
+
+// =====================================================================
+// Phase 4: Play
+// =====================================================================
+let playWaveRAF = null;
+let playWaveTime = 0;
+
+function startPlay() {
+  setPhase('play');
+  S.sceneIndex = 0;
+  S.liveVector = null;
+
+  // Start wave loop
+  const waveCanvas = document.getElementById('playWave');
+  const wCtx = initCanvas(waveCanvas);
+  if (wCtx) {
+    const w = cW(waveCanvas), h = cH(waveCanvas);
+    playWaveTime = 0;
+    function waveTick() {
+      wCtx.fillStyle = 'rgba(10,10,14,0.88)';
+      wCtx.fillRect(0,0,w,h);
+      const style = S.liveVector ? toWaveStyle(S.liveVector.base) : { color:{r:100,g:140,b:180}, speed:0.3, amplitude:20, frequency:0.006, chaos:0.05 };
+      drawWaveLine(wCtx, w, h, h/2, style, playWaveTime, 0.7);
+      // ghost trace
+      drawWaveLine(wCtx, w, h, h/2, { ...style, chaos: style.chaos*0.3 }, playWaveTime + 30, 0.15);
+      playWaveTime += 0.016;
+      playWaveRAF = requestAnimationFrame(waveTick);
+    }
+    waveTick();
+  }
+
+  // Initial terrain
+  drawPlayTerrain();
+
+  // Render first scene
+  if (SCENES.length > 0) renderScene(SCENES[0]);
+}
+
+function drawWaveLine(ctx, w, h, cy, style, t, opacity) {
+  ctx.beginPath(); ctx.lineWidth = 1.8;
+  const c = style.color;
+  ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},${opacity})`;
+  const segs = 120;
+  for (let i = 0; i <= segs; i++) {
+    const x = (i/segs)*w;
+    const nx = x/w;
+    let y = Math.sin(x*style.frequency + t*style.speed) * style.amplitude
+      + Math.sin(x*style.frequency*2.3 + t*style.speed*0.7) * (style.amplitude*0.4)
+      + Math.sin(x*style.frequency*0.4 + t*style.speed*0.3) * (style.amplitude*0.6);
+    y += (noise(x*0.01, t*0.1, 0)-0.5) * style.chaos * 15;
+    y *= Math.sin(nx * Math.PI);
+    const px = x, py = cy + y;
+    if (i === 0) ctx.moveTo(px, py);
+    else {
+      // smooth curve
+      const prevX = ((i-1)/segs)*w;
+      const midX = (prevX+px)/2;
+      ctx.quadraticCurveTo(prevX + (px-prevX)*0.5, py, px, py);
+    }
+  }
+  ctx.stroke();
+}
+
+function renderScene(scene) {
+  const textEl = document.getElementById('sceneText');
+  const promptEl = document.getElementById('inputPrompt');
+  const input = document.getElementById('userInput');
+  const btn = document.getElementById('submitBtn');
+  const statusEl = document.getElementById('waveStatus');
+
+  textEl.textContent = '';
+  typeText(textEl, scene.text, 38, () => {});
+
+  const cfg = PROMPTS[S.sceneIndex] || PROMPTS[0];
+  if (promptEl) promptEl.textContent = cfg.prompt;
+  input.value = '';
+  input.disabled = false;
+  btn.disabled = false;
+  input.focus();
+
+  // Live analyze on input
+  input.oninput = () => {
+    const raw = localAnalyze(input.value.trim());
+    S.liveVector = raw;
+    if (raw) {
+      const dom = dominantEmo(raw.base);
+      if (statusEl) statusEl.textContent = dom !== '—' ? dom : '';
+    }
+  };
+
+  btn.onclick = () => submitScene();
+  // Enter key submit
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitScene(); }
+  };
+}
+
+function submitScene() {
+  const input = document.getElementById('userInput');
+  const overlay = document.getElementById('resolveOverlay');
+  const btn = document.getElementById('submitBtn');
+  if (!input) return;
+
+  const userText = input.value.trim();
+  if (!userText) return;
+
+  input.disabled = true;
+  btn.disabled = true;
+  overlay.classList.remove('hidden');
+
+  const scene = SCENES[S.sceneIndex];
+  const liveVec = S.liveVector || localAnalyze(userText);
+  S.liveVector = liveVec;
+
+  // Simulate AI analysis delay (using local as fallback since no AI endpoint in standalone)
+  setTimeout(() => {
+    overlay.classList.add('hidden');
+    S.resolvedVector = liveVec ? { ...liveVec, isRough: true } : null;
+    processScene(scene, userText);
+  }, 800);
+}
+
+function processScene(scene, userText) {
+  const resolved = S.resolvedVector;
+  if (!resolved) { nextOrReveal(); return; }
+
+  const userVector = { base: resolved.base, reason_analysis: { attribution: resolved.attribution } };
+  const origVector = { base: scene.original, reason_analysis: {} };
+  const prev = S.sceneHistory[S.sceneHistory.length-1];
+  const engineResult = calculateStep(userVector, origVector, prev ? prev.alignmentBucket : null);
+
+  const distTag = resolved.distortionTag || null;
+  const terrainEffect = resolveTerrainEffect(distTag, engineResult.mismatch_type, resolved);
+  const contDelta = parseFloat(((1 - engineResult.alignment_score)*0.15).toFixed(3));
+  const isCore = engineResult.alignment_bucket === 'LOW'
+    || engineResult.mismatch_type === 'attribution_mismatch'
+    || engineResult.mismatch_type === 'target_displacement';
+
+  S.sceneHistory.push({
+    sceneIndex: S.sceneIndex,
+    sceneText: scene.text,
+    userText,
+    liveVector: S.liveVector,
+    resolvedVector: resolved,
+    originalVector: { base: scene.original },
+    alignmentScore: engineResult.alignment_score,
+    alignmentBucket: engineResult.alignment_bucket,
+    transitionPattern: engineResult.transition_pattern,
+    mismatchType: engineResult.mismatch_type,
+    distortionTag: distTag,
+    contaminationDelta: contDelta,
+    terrainEffectType: terrainEffect,
+    isCoreMoment: isCore,
+    debug: engineResult.debug,
+  });
+
+  // Redraw terrain
+  drawPlayTerrain();
+
+  // Apply transition effect on wave
+  applyWaveTransition(engineResult.transition_pattern);
+
+  // Next scene
+  setTimeout(() => {
+    S.sceneIndex += 1;
+    if (S.sceneIndex < SCENES.length) {
+      renderScene(SCENES[S.sceneIndex]);
+    } else {
+      if (playWaveRAF) { cancelAnimationFrame(playWaveRAF); playWaveRAF = null; }
+      startReveal();
+    }
+  }, 700);
+}
+
+function applyWaveTransition(pattern) {
+  // Briefly modify the live vector to create a visual transition effect
+  if (!S.liveVector) return;
+  const base = { ...S.liveVector.base };
+  switch (pattern) {
+    case 'contradiction':
+      // spike chaos
+      S.liveVector = { ...S.liveVector, base: { ...base, anger: Math.min(1, (base.anger||0)+0.3) } };
+      break;
+    case 'avoidance':
+      // fade all
+      for (const k in base) base[k] *= 0.3;
+      S.liveVector = { ...S.liveVector, base };
+      break;
+    case 'echo_follow':
+      // gentle
+      break;
+    case 'bridge':
+      // slight dampening
+      for (const k in base) base[k] *= 0.7;
+      S.liveVector = { ...S.liveVector, base };
+      break;
+  }
+}
+
+function nextOrReveal() {
+  S.sceneIndex += 1;
+  if (S.sceneIndex < SCENES.length) renderScene(SCENES[S.sceneIndex]);
+  else {
+    if (playWaveRAF) { cancelAnimationFrame(playWaveRAF); playWaveRAF = null; }
+    startReveal();
+  }
+}
+
+// ── Play terrain drawing ──
+function drawPlayTerrain() {
+  const canvas = document.getElementById('playTerrain');
+  const ctx = initCanvas(canvas);
+  if (!ctx) return;
+  const w = cW(canvas), h = cH(canvas);
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = 'rgba(10,10,14,1)';
+  ctx.fillRect(0,0,w,h);
+
+  const n = Math.max(1, SCENES.length);
+  const baseY = h * 0.55;
+
+  // Base terrain line
+  ctx.strokeStyle = 'rgba(196,168,130,0.4)';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  const points = [];
+  for (let i = 0; i <= n; i++) {
+    const x = (i/n)*w;
+    const em = SCENES[i]?.original || {};
+    const v = (em.anger||0)*0.3 - (em.sadness||0)*0.4 - (em.isolation||0)*0.2;
+    const y = baseY - v*20 + Math.sin(i*1.2)*5;
+    points.push({x,y});
+    if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // Contamination effects
+  S.sceneHistory.forEach(h2 => {
+    const seg = h2.sceneIndex;
+    const x0 = (seg/n)*w;
+    const x1 = ((seg+1)/n)*w;
+    const mx = (x0+x1)/2;
+    const eff = h2.terrainEffectType;
+    const segY = points[seg]?.y || baseY;
+
+    switch (eff) {
+      case 'fade':
+        ctx.fillStyle = 'rgba(100,100,120,0.25)';
+        ctx.fillRect(x0, 0, x1-x0, h);
+        break;
+      case 'spread': {
+        const grad = ctx.createRadialGradient(mx, segY, 5, mx, segY, (x1-x0)*0.8);
+        grad.addColorStop(0, 'rgba(160,120,200,0.4)');
+        grad.addColorStop(1, 'rgba(160,120,200,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(x0-20, segY-25, (x1-x0)+40, 50);
+        break;
+      }
+      case 'smooth':
+        ctx.fillStyle = 'rgba(196,168,130,0.15)';
+        ctx.fillRect(x0, segY-8, x1-x0, 16);
+        break;
+      case 'layer':
+        ctx.strokeStyle = 'rgba(196,168,130,0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x0, segY+6);
+        ctx.lineTo(x1, segY+6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x0, segY+10);
+        ctx.lineTo(x1, segY+10);
+        ctx.stroke();
+        break;
+      case 'erosion':
+        ctx.strokeStyle = 'rgba(200,120,80,0.4)';
+        ctx.lineWidth = 1.5;
+        for (let j = 0; j < 3; j++) {
+          ctx.beginPath();
+          ctx.moveTo(mx-10+j*5, segY);
+          ctx.lineTo(mx-5+j*5, segY+12+j*3);
+          ctx.stroke();
+        }
+        break;
+      case 'deposit':
+        ctx.fillStyle = 'rgba(80,180,180,0.3)';
+        ctx.beginPath();
+        ctx.moveTo(x0+5, segY);
+        ctx.lineTo(mx, segY-12);
+        ctx.lineTo(x1-5, segY);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      case 'mark':
+      default:
+        ctx.fillStyle = 'rgba(200,80,80,0.5)';
+        ctx.beginPath();
+        ctx.arc(mx, segY-4, 4, 0, Math.PI*2);
+        ctx.fill();
+        break;
+    }
+  });
+
+  // Player dot
+  const segW = w / n;
+  const playerX = (S.sceneIndex / n) * w + segW/2;
+  const playerY = points[Math.min(S.sceneIndex, points.length-1)]?.y || baseY;
+  ctx.shadowColor = 'rgba(196,168,130,0.8)';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = 'rgba(196,168,130,0.9)';
+  ctx.beginPath();
+  ctx.arc(playerX, playerY-4, 5, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+// =====================================================================
+// Phase 5: Reveal
+// =====================================================================
+let revealWaveRAF = null;
+
+function startReveal() {
+  setPhase('reveal');
+  const header = document.getElementById('revealHeader');
+  const cards = document.getElementById('revealCards');
+  const nextBtn = document.getElementById('revealToTerrain');
+
+  if (header) header.textContent = '기억이 오염된 방식';
+  cards.innerHTML = '';
+
+  // Sort: core moments first
+  const core = S.sceneHistory.filter(h => h.isCoreMoment);
+  const rest = S.sceneHistory.filter(h => !h.isCoreMoment);
+  const order = [...core, ...rest];
+
+  const waveData = [];
+
+  order.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'reveal-card' + (item.isCoreMoment ? ' core expanded' : '');
+
+    const alignPct = (item.alignmentScore * 100).toFixed(0);
+    const bucketLabel = item.alignmentBucket;
+    const dom = dominantEmo(item.resolvedVector?.base);
+
+    div.innerHTML = `
+      <div class="rc-scene-text">${item.sceneText.replace(/\n/g,'<br>')}</div>
+      <div class="rc-waves">
+        <div>
+          <div class="rc-wave-label">원본</div>
+          <canvas class="rc-wave-canvas" data-rc="orig" data-ri="${idx}"></canvas>
+        </div>
+        <div>
+          <div class="rc-wave-label">당신</div>
+          <canvas class="rc-wave-canvas" data-rc="user" data-ri="${idx}"></canvas>
+        </div>
+      </div>
+      <div class="rc-alignment">정렬도 ${alignPct}% — ${bucketLabel}</div>
+      <div class="rc-detail">
+        감정: ${dom}<br>
+        해석 기울기: ${item.distortionTag || '—'}<br>
+        귀인: ${item.resolvedVector?.attribution || '—'}<br>
+        오염 유형: ${item.terrainEffectType}
+      </div>
+    `;
+    cards.appendChild(div);
+
+    div.addEventListener('click', () => div.classList.toggle('expanded'));
+
+    const origStyle = toWaveStyle(item.originalVector?.base);
+    const userStyle = toWaveStyle(item.resolvedVector?.base);
+    userStyle.chaos = (userStyle.chaos||0.1) + Math.pow(1-item.alignmentScore,1.5)*0.5;
+
+    waveData.push({ origStyle, userStyle, origBase: item.originalVector?.base, userBase: item.resolvedVector?.base, idx });
+  });
+
+  // Animate reveal waves
+  let rt = 0;
+  function revealTick() {
+    waveData.forEach(wd => {
+      const origC = document.querySelector(`canvas[data-rc="orig"][data-ri="${wd.idx}"]`);
+      const userC = document.querySelector(`canvas[data-rc="user"][data-ri="${wd.idx}"]`);
+      if (origC && origC.offsetWidth > 0 && !origC._init) {
+        origC._init = true;
+        origC._ctx = initCanvas(origC);
+      }
+      if (userC && userC.offsetWidth > 0 && !userC._init) {
+        userC._init = true;
+        userC._ctx = initCanvas(userC);
+      }
+      if (origC && origC._ctx) {
+        const w2 = cW(origC), h2 = cH(origC);
+        origC._ctx.clearRect(0,0,w2,h2);
+        origC._ctx.fillStyle = 'rgba(10,10,14,1)';
+        origC._ctx.fillRect(0,0,w2,h2);
+        drawWaveLine(origC._ctx, w2, h2, h2/2, wd.origStyle, rt+50, 0.7);
+      }
+      if (userC && userC._ctx) {
+        const w2 = cW(userC), h2 = cH(userC);
+        userC._ctx.clearRect(0,0,w2,h2);
+        userC._ctx.fillStyle = 'rgba(10,10,14,1)';
+        userC._ctx.fillRect(0,0,w2,h2);
+        drawWaveLine(userC._ctx, w2, h2, h2/2, wd.userStyle, rt, 0.7);
+      }
+    });
+    rt += 0.016;
+    revealWaveRAF = requestAnimationFrame(revealTick);
+  }
+  revealTick();
+
+  nextBtn.onclick = () => {
+    if (revealWaveRAF) { cancelAnimationFrame(revealWaveRAF); revealWaveRAF = null; }
+    startTerrain();
+  };
+}
+
+// =====================================================================
+// Phase 6: Terrain
+// =====================================================================
+let terrainRAF = null;
+
+function startTerrain() {
+  setPhase('terrain');
+  const canvas = document.getElementById('terrainFinal');
+  const caption = document.getElementById('terrainCaption');
+  if (caption) caption.textContent = '당신이 남긴 흔적이 이 지형에 쌓였습니다.';
+
+  const ctx = initCanvas(canvas);
+  if (!ctx) return;
+  const w = cW(canvas), h = cH(canvas);
+  const n = Math.max(1, SCENES.length);
+
+  // Build terrain points with more resolution
+  const res = 200;
+  const terrainPts = [];
+  for (let i = 0; i <= res; i++) {
+    const x = (i/res)*w;
+    const sceneIdx = Math.min(Math.floor((i/res)*n), n-1);
+    const em = SCENES[sceneIdx]?.original || {};
+    const v = (em.anger||0)*0.3 - (em.sadness||0)*0.4 - (em.isolation||0)*0.2;
+    const baseY2 = h*0.45 - v*30
+      + Math.sin(i*0.05)*15
+      + Math.sin(i*0.12)*8
+      + Math.sin(i*0.03)*20;
+    terrainPts.push({ x, y: baseY2 });
+  }
+
+  // Apply contamination deformations
+  S.sceneHistory.forEach(sh => {
+    const seg = sh.sceneIndex;
+    const startI = Math.floor((seg/n)*res);
+    const endI = Math.floor(((seg+1)/n)*res);
+    const delta = sh.contaminationDelta * 100;
+
+    for (let i = startI; i <= endI && i < terrainPts.length; i++) {
+      const localT = (i-startI)/(endI-startI+1);
+      const envelope = Math.sin(localT * Math.PI);
+      switch (sh.terrainEffectType) {
+        case 'deposit':
+          terrainPts[i].y -= delta * envelope * 1.5;
+          break;
+        case 'erosion':
+          terrainPts[i].y += delta * envelope * 1.2;
+          break;
+        case 'smooth':
+          // Flatten toward average
+          if (i > 0 && i < terrainPts.length-1) {
+            terrainPts[i].y = terrainPts[i].y * 0.5 + (terrainPts[i-1].y+terrainPts[i+1].y)*0.25;
+          }
+          break;
+        case 'layer':
+          terrainPts[i].y -= delta * envelope * 0.5;
+          break;
+      }
+    }
+  });
+
+  let tt = 0;
+  function terrainTick() {
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle = 'rgba(10,10,14,1)';
+    ctx.fillRect(0,0,w,h);
+
+    // Fill below terrain
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    terrainPts.forEach((p, i) => {
+      const shimmer = Math.sin(tt*0.3 + i*0.05)*2;
+      if (i===0) ctx.lineTo(p.x, p.y + shimmer);
+      else ctx.lineTo(p.x, p.y + shimmer);
+    });
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, h*0.3, 0, h);
+    grad.addColorStop(0, 'rgba(30,28,35,0.9)');
+    grad.addColorStop(0.5, 'rgba(20,18,25,0.95)');
+    grad.addColorStop(1, 'rgba(10,10,14,1)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Terrain line
+    ctx.beginPath(); ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(196,168,130,0.5)';
+    terrainPts.forEach((p, i) => {
+      const shimmer = Math.sin(tt*0.3 + i*0.05)*2;
+      if (i===0) ctx.moveTo(p.x, p.y+shimmer);
+      else ctx.lineTo(p.x, p.y+shimmer);
+    });
+    ctx.stroke();
+
+    // Contamination visual overlays
+    S.sceneHistory.forEach(sh => {
+      const seg = sh.sceneIndex;
+      const x0 = (seg/n)*w;
+      const x1 = ((seg+1)/n)*w;
+      const mx2 = (x0+x1)/2;
+      const startI = Math.floor((seg/n)*res);
+      const refY = terrainPts[startI]?.y || h*0.45;
+      const eff = sh.terrainEffectType;
+
+      switch (eff) {
+        case 'fade': {
+          ctx.fillStyle = `rgba(100,100,120,${0.15 + Math.sin(tt*0.5)*0.05})`;
+          ctx.fillRect(x0, refY-30, x1-x0, 60);
+          break;
+        }
+        case 'spread': {
+          const r = (x1-x0)*0.6 + Math.sin(tt*0.4)*10;
+          const grd = ctx.createRadialGradient(mx2, refY, 5, mx2, refY, r);
+          grd.addColorStop(0, 'rgba(160,120,200,0.35)');
+          grd.addColorStop(1, 'rgba(160,120,200,0)');
+          ctx.fillStyle = grd;
+          ctx.fillRect(mx2-r, refY-r, r*2, r*2);
+          break;
+        }
+        case 'smooth': {
+          ctx.fillStyle = 'rgba(196,168,130,0.1)';
+          ctx.fillRect(x0, refY-5, x1-x0, 10);
+          break;
+        }
+        case 'layer': {
+          ctx.strokeStyle = `rgba(196,168,130,${0.2+Math.sin(tt*0.6)*0.1})`;
+          ctx.lineWidth = 0.8;
+          for (let l = 1; l <= 3; l++) {
+            ctx.beginPath();
+            ctx.moveTo(x0, refY + l*4);
+            ctx.lineTo(x1, refY + l*4);
+            ctx.stroke();
+          }
+          break;
+        }
+        case 'erosion': {
+          ctx.strokeStyle = 'rgba(200,120,80,0.4)';
+          ctx.lineWidth = 1;
+          for (let j = 0; j < 5; j++) {
+            const ex = x0 + (x1-x0)*Math.random();
+            ctx.beginPath();
+            ctx.moveTo(ex, refY);
+            ctx.lineTo(ex + (Math.random()-0.5)*8, refY + 10 + Math.random()*10);
+            ctx.stroke();
+          }
+          break;
+        }
+        case 'deposit': {
+          ctx.fillStyle = 'rgba(80,180,180,0.2)';
+          ctx.beginPath();
+          ctx.moveTo(x0+10, refY);
+          ctx.quadraticCurveTo(mx2, refY-20-Math.sin(tt*0.4)*5, x1-10, refY);
+          ctx.closePath();
+          ctx.fill();
+          break;
+        }
+        case 'mark': {
+          const glow = 0.4 + Math.sin(tt*0.8)*0.15;
+          ctx.fillStyle = `rgba(200,80,80,${glow})`;
+          ctx.beginPath();
+          ctx.arc(mx2, refY-3, 5, 0, Math.PI*2);
+          ctx.fill();
+          break;
+        }
+      }
+    });
+
+    // Ambient particles
+    for (let p = 0; p < 8; p++) {
+      const px = (noise(p*13.7, tt*0.02, 0))*w;
+      const py = (noise(p*7.3, tt*0.015, 1))*h*0.6 + h*0.2;
+      const alpha = 0.1 + noise(p*3.1, tt*0.03, 2)*0.15;
+      ctx.fillStyle = `rgba(196,168,130,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    tt += 0.016;
+    terrainRAF = requestAnimationFrame(terrainTick);
+  }
+  terrainTick();
+
+  // CTA
+  const cta = document.getElementById('terrainCTA');
+  if (cta) {
+    cta.addEventListener('click', () => {
+      try { sessionStorage.setItem('skipOpening','1'); } catch(_){}
+    });
+  }
+}
+
+// ── Boot ──
+document.addEventListener('DOMContentLoaded', startOpening);
+</script>
+</body>
+</html>
