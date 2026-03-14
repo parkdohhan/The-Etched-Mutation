@@ -683,6 +683,33 @@ class NetworkService {
   }
 
   /**
+   * 메모리별 플레이 목록 조회 (지층 단면용)
+   * @param {string} memoryId - 메모리 ID
+   * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
+   */
+  async getPlaysByMemoryId(memoryId) {
+    try {
+      const client = this._getClient();
+      if (!client) {
+        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+      }
+      const { data, error } = await client
+        .from('plays')
+        .select('id, user_emotion, alignment, scene_id, created_at')
+        .eq('memory_id', memoryId)
+        .order('created_at', { ascending: true });
+      if (error) {
+        console.error('[NetworkService.getPlaysByMemoryId] 조회 실패', error);
+        return { ok: false, data: null, error };
+      }
+      return { ok: true, data: data || [], error: null };
+    } catch (error) {
+      console.error('[NetworkService.getPlaysByMemoryId] 에러 발생', error);
+      return { ok: false, data: null, error };
+    }
+  }
+
+  /**
    * 메모리 저장
    * @param {Object} memoryData - 메모리 데이터
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}

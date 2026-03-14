@@ -65,8 +65,9 @@ class FloatingAnchor {
     this.width = this.el.offsetWidth || 80;
     this.height = this.el.offsetHeight || 30;
 
-    this.x = 50 + Math.random() * (containerW - this.width - 100);
-    this.y = 50 + Math.random() * (containerH - this.height - 100);
+    const extraW = containerW * 0.3;
+    this.x = -extraW + Math.random() * (containerW + extraW * 2 - this.width);
+    this.y = 20 + Math.random() * (containerH - this.height - 40);
 
     const speed = 0.15 + Math.random() * 0.25;
     const angle = Math.random() * Math.PI * 2;
@@ -86,16 +87,19 @@ class FloatingAnchor {
     const rect = this.container.getBoundingClientRect();
     const containerW = rect.width;
     const containerH = rect.height;
+    const extraW = containerW * 0.3;
+    const minX = -extraW;
+    const maxX = containerW + extraW - this.width;
 
     this.x += this.vx;
     this.y += this.vy;
 
-    if (this.x <= 0) {
-      this.x = 0;
+    if (this.x <= minX) {
+      this.x = minX;
       this.vx = Math.abs(this.vx);
       this._onBounce();
-    } else if (this.x + this.width >= containerW) {
-      this.x = containerW - this.width;
+    } else if (this.x >= maxX) {
+      this.x = maxX;
       this.vx = -Math.abs(this.vx);
       this._onBounce();
     }

@@ -635,23 +635,15 @@ function startArchiveWaveAnimation(emotionVector) {
     // 기존 애니메이션 중지
     stopArchiveWaveAnimation();
     
-    const canvas = document.getElementById('waveCanvas');
+    const canvas = document.getElementById('archiveWaveCanvas');
     if (!canvas) {
-        console.warn('[startArchiveWaveAnimation] waveCanvas를 찾을 수 없습니다');
+        console.warn('[startArchiveWaveAnimation] archiveWaveCanvas를 찾을 수 없습니다');
         return;
     }
     
-    // 캔버스 초기화
     const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        console.warn('[startArchiveWaveAnimation] 캔버스 컨텍스트를 가져올 수 없습니다');
-        return;
-    }
-    
-    if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) {
-        console.warn('[startArchiveWaveAnimation] 캔버스 크기가 0입니다');
-        return;
-    }
+    if (!ctx) return;
+    if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) return;
     
     canvas.width = canvas.offsetWidth * 2;
     canvas.height = canvas.offsetHeight * 2;
@@ -659,46 +651,44 @@ function startArchiveWaveAnimation(emotionVector) {
     
     const width = canvas.width / 2;
     const height = canvas.height / 2;
+    const centerY = height / 2;
     
-    // 비교 화면과 동일한 방식: emotionVectorToWaveStyle 사용
     const waveStyle = emotionVectorToWaveStyle(emotionVector);
+    const maxAmplitude = Math.min(height * 0.4, 20);
+    const amplitude = Math.min(waveStyle.amplitude || 18, maxAmplitude);
+    const freq = 0.015;
+    const speed = 0.02;
     
-    // 파동이 캔버스 안에 잘 들어오도록 amplitude를 캔버스 높이에 맞게 제한
-    const maxAmplitude = height * 0.35;
-    if (waveStyle.amplitude > maxAmplitude) {
-        const scale = maxAmplitude / waveStyle.amplitude;
-        waveStyle.amplitude = maxAmplitude;
-        waveStyle.chaos = Math.max(0.1, waveStyle.chaos * scale);
-    }
-    
-    // 전역 변수에 저장
     currentArchiveWaveStyle = waveStyle;
     currentArchiveEmotionVector = emotionVector;
     archiveWaveTime = 0;
     
-    console.log('[startArchiveWaveAnimation] waveStyle:', waveStyle);
-    
-    // 애니메이션 루프 시작
     function animate() {
         const ctx = canvas.getContext('2d');
         const width = canvas.width / 2;
         const height = canvas.height / 2;
+        const centerY = height / 2;
+        const t = archiveWaveTime;
         
-        // 배경 지우기
         ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = 'rgba(18, 18, 26, 1)';
-        ctx.fillRect(0, 0, width, height);
+        const c = waveStyle.color || { r: 196, g: 168, b: 130 };
+        ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.6)`;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        for (let x = 0; x <= width; x += 2) {
+            const phase = (x / width) * Math.PI * 2 + t * speed;
+            const y = centerY + Math.sin(phase) * amplitude + Math.sin(phase * 2.3 + t * 0.5) * (amplitude * 0.4);
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
         
-        // visualizer의 comparisonWaveTime을 업데이트하여 파동이 움직이도록 함
-        visualizer.comparisonWaveTime = archiveWaveTime;
-        visualizer.drawComparisonWave(canvas, currentArchiveEmotionVector, 0, currentArchiveWaveStyle);
-        
-        archiveWaveTime += 0.016; // 약 60fps
+        archiveWaveTime += 0.016;
         archiveWaveAnimationId = requestAnimationFrame(animate);
     }
-    
     animate();
-    console.log('[startArchiveWaveAnimation] 파동 애니메이션 시작');
 }
 
 /**
@@ -725,13 +715,12 @@ function renderArchiveWaveData(emotionVector) {
 }
 
 /**
- * 첫 번째 장면용 회색 직선 그리기
+ * 첫 번째 장면용 은은한 회색 파동 애니메이션
  */
 function renderDefaultGrayLine() {
-    const canvas = document.getElementById('waveCanvas');
+    const canvas = document.getElementById('archiveWaveCanvas');
     if (!canvas) return;
     
-    // 기존 애니메이션 중지
     stopArchiveWaveAnimation();
     
     const state = appStore.getState();
@@ -739,8 +728,6 @@ function renderDefaultGrayLine() {
         cancelAnimationFrame(state.waveAnimationId);
         appStore.setState({ waveAnimationId: null });
     }
-    
-    // startBucketWaveAnimation도 중지 (expInterview.js)
     if (typeof window._waveAnimationId !== 'undefined' && window._waveAnimationId) {
         cancelAnimationFrame(window._waveAnimationId);
         window._waveAnimationId = null;
@@ -748,7 +735,6 @@ function renderDefaultGrayLine() {
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
     if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) return;
     
     canvas.width = canvas.offsetWidth * 2;
@@ -758,20 +744,24 @@ function renderDefaultGrayLine() {
     const width = canvas.width / 2;
     const height = canvas.height / 2;
     const centerY = height / 2;
+    let t = 0;
     
-    // 배경
-    ctx.fillStyle = 'rgba(18, 18, 26, 1)';
-    ctx.fillRect(0, 0, width, height);
-    
-    // 회색 직선
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.moveTo(0, centerY);
-    ctx.lineTo(width, centerY);
-    ctx.stroke();
-    
-    console.log('[renderDefaultGrayLine] 회색 직선 렌더링 완료');
+    function animateGray() {
+        ctx.clearRect(0, 0, width, height);
+        ctx.strokeStyle = 'rgba(120, 120, 130, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = 0; x <= width; x += 2) {
+            const y = centerY
+                + Math.sin(x * 0.008 + t * 0.4) * 3
+                + Math.sin(x * 0.015 + t * 0.25) * 1.5;
+            x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        t += 0.016;
+        archiveWaveAnimationId = requestAnimationFrame(animateGray);
+    }
+    animateGray();
 }
 
 async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, currentData, sceneAlignment, reasonVector = null, mismatchType = null) {
@@ -1785,8 +1775,8 @@ function selectMemory(index) {
         if (archiveControlsEl) archiveControlsEl.style.display = 'none'; 
         const archiveHeaderEl = document.querySelector('.archive-header'); 
         if (archiveHeaderEl) archiveHeaderEl.style.display = 'none'; 
-        console.log('[selectMemory] showConsentSequence 호출');
-        showConsentSequence(index); 
+        console.log('[selectMemory] 아카이브 플레이 직진입 (시퀀스 스킵)');
+        startArchivePlay(index); 
     } catch (e) { 
         console.error('[selectMemory] 오류:', e); 
         console.error('[selectMemory] 스택:', e.stack);
@@ -2112,7 +2102,7 @@ function startArchivePlay(memoryIndex) {
     const sceneViewerEl = document.getElementById('sceneViewer');
     console.log('[startArchivePlay] sceneViewerEl:', sceneViewerEl ? '찾음' : '없음');
     if (sceneViewerEl) {
-        sceneViewerEl.classList.add('active');
+        sceneViewerEl.classList.add('active', 'archive-play');
         sceneViewerEl.style.cssText = 'display:block !important;opacity:1 !important';
         setTimeout(() => {
             console.log('[startArchivePlay] setTimeout 콜백 실행');
@@ -2129,9 +2119,13 @@ function startArchivePlay(memoryIndex) {
             // ---- 기존 코드 ----
             console.log('[startArchivePlay] initProgressDots 호출');
             initProgressDots();
+            window.scrollTo(0, 0);
+            sceneViewerEl.scrollTop = 0;
             console.log('[startArchivePlay] renderScene 호출');
             renderScene();
-            // renderScene 내부에서 파동을 처리하므로 여기서는 시작하지 않음
+            window._strataCompletedScenes = [];
+            const memoryId = memoryData && memoryData.id ? memoryData.id : null;
+            if (memoryId && typeof loadStrataLayers === 'function') loadStrataLayers(memoryId);
             setTimeout(() => showNpcDialogue("이 기억의 주인은 아래층에, 다른 사람들의 해석은 위층에 쌓여 있어. 천천히 그 지층을 따라가 봐.", 4000), 100);
         }, 100);
     } else {
@@ -2139,7 +2133,31 @@ function startArchivePlay(memoryIndex) {
         showNotification('장면 뷰어를 찾을 수 없습니다');
     }
 }
-function backToList() { if (typeof destroyFloatingAnchor === 'function') destroyFloatingAnchor(); if (window.soundscape) window.soundscape.stop(); document.getElementById('memoryList').style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none' } const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; stopWaveAnimation() }
+function backToList() { if (typeof destroyFloatingAnchor === 'function') destroyFloatingAnchor(); if (window.soundscape) window.soundscape.stop(); window._strataCompletedScenes = []; if (window.strataSection) window.strataSection.init(); document.getElementById('memoryList').style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active', 'archive-play'); sceneViewerEl.style.display = 'none' } const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; stopWaveAnimation() }
+async function loadStrataLayers(memoryId) {
+    if (!memoryId || !window.strataSection) return;
+    window.strataSection.init();
+
+    const currentData = window.currentStoryData || storyData;
+    const scenesArr = (currentData && currentData.scenes) ? currentData.scenes : [];
+
+    window.strataSection.setScenes(scenesArr);
+    window.strataSection.setTraces(window._strataCompletedScenes || []);
+
+    const state = appStore.getState();
+    window.strataSection.setCurrentScene(state.currentScene || 0);
+    window.strataSection.render();
+}
+
+function deriveEffectType(alignment) {
+    if (alignment >= 0.8) return 'smooth';
+    if (alignment >= 0.6) return 'layer';
+    if (alignment >= 0.4) return 'deposit';
+    if (alignment >= 0.2) return 'erosion';
+    return 'fade';
+}
+
+window._strataCompletedScenes = [];
 function initProgressDots() { const currentData = window.currentStoryData || storyData; const dotsContainer = document.getElementById('progressDots'); if (!dotsContainer) return; dotsContainer.innerHTML = ''; if (!currentData || !currentData.scenes) return; for (let i = 0; i < currentData.scenes.length; i++) { const dot = document.createElement('div'); dot.className = 'progress-dot' + (i === 0 ? ' active' : ''); dot.onclick = function () { goToScene(i) }; dotsContainer.appendChild(dot) } }
 function goToScene(index) { const state = appStore.getState(); if (index <= state.currentScene) { appStore.setState({ currentScene: index }); renderScene() } }
 async function renderScene() { 
@@ -2168,7 +2186,7 @@ async function renderScene() {
         } 
         // TODO: scenes 테이블에 originalVector 컬럼 추가 후 여기서 사용
         // 현재는 expInterview.js의 fallbackAlignment()으로 동작
-        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); const sceneMainEl = document.querySelector('.scene-main'); if (sceneMainEl && typeof startFloatingAnchor === 'function') { const anchorKeyword = (scene.echoWords && scene.echoWords.length > 0) ? scene.echoWords[0] : null; const alignment = state.currentAlignment || 0.5; startFloatingAnchor(sceneMainEl, anchorKeyword, alignment); } if (scene.choices) renderChoices(scene.choices); const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); if (typeof updateFloatingAnchorAlignment === 'function') updateFloatingAnchorAlignment(state.currentAlignment); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%';
+        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); const sceneMainEl = document.querySelector('.scene-main'); if (sceneMainEl && typeof startFloatingAnchor === 'function') { const anchorKeyword = (scene.echoWords && scene.echoWords.length > 0) ? scene.echoWords[0] : null; const alignment = state.currentAlignment || 0.5; startFloatingAnchor(sceneMainEl, anchorKeyword, alignment); } if (state.currentMode === 'archive') { renderArchiveFreeInput(scene); } else if (scene.choices) { renderChoices(scene.choices); } const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); if (typeof updateFloatingAnchorAlignment === 'function') updateFloatingAnchorAlignment(state.currentAlignment); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%';
         
         // 파동 표시: archive 모드일 때만 처리
         if (state.currentMode === 'archive') {
@@ -2210,9 +2228,106 @@ async function renderScene() {
                 startWaveAnimation();
             }
         }
+        if (state.currentMode === 'archive' && window.strataSection) {
+            const prevScene = state.currentScene > 0 ? state.currentScene - 1 : -1;
+            if (prevScene >= 0 && window._strataCompletedScenes && !window._strataCompletedScenes.some(c => c.sceneIndex === prevScene)) {
+                const prevAlign = state.currentAlignment ?? 0.5;
+                window._strataCompletedScenes.push({
+                    sceneIndex: prevScene,
+                    effectType: deriveEffectType(prevAlign),
+                    strength: 1 - prevAlign,
+                    color: window.strataSection.emotionVectorToRGB(
+                        (window.archiveUserEmotions && window.archiveUserEmotions[prevScene]) ? window.archiveUserEmotions[prevScene].emotion : null
+                    )
+                });
+            }
+            window.strataSection.setTraces(window._strataCompletedScenes || []);
+            window.strataSection.setCurrentScene(state.currentScene);
+            window.strataSection.render();
+        }
     } catch (e) { console.error('renderScene error:', e); showNotification('장면을 렌더링하는 중 오류가 발생했습니다') } }
-function renderEchoLayer(words) { const layer = document.getElementById('echoLayer'); if (!layer) return; layer.innerHTML = ''; if (!words || !Array.isArray(words)) return; words.forEach(word => { const span = document.createElement('span'); span.className = 'echo-word'; span.textContent = word; span.style.top = (20 + Math.random() * 60) + '%'; span.style.left = (10 + Math.random() * 80) + '%'; layer.appendChild(span) }) }
+function renderEchoLayer(words) { const layer = document.getElementById('echoLayer'); if (!layer) return; layer.innerHTML = ''; if (!words || !Array.isArray(words)) return; words.forEach(word => { const span = document.createElement('span'); span.className = 'echo-word'; span.textContent = word; span.style.top = (10 + Math.random() * 80) + '%'; span.style.left = (-15 + Math.random() * 130) + '%'; layer.appendChild(span) }) }
 function renderChoices(choices) { const container = document.getElementById('choicesContainer'); if (!container) return; container.innerHTML = ''; if (!choices || !Array.isArray(choices)) return; choices.forEach((choice, i) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.textContent = choice.text; btn.onclick = function () { makeChoice(i) }; container.appendChild(btn) }) }
+
+const _LIVE_KW = {
+  guilt: ['미안','잘못','내가','내 탓','왜 그랬','그러지 말았','후회','못한','했어야','나 때문'],
+  longing: ['보고싶','그립','다시','돌아','그때','기억','남아','아직도','생각나'],
+  sadness: ['슬프','울','눈물','힘들','아프','무너','지쳤','외로','서러'],
+  fear: ['무서','두렵','떨렸','겁','불안','피하','도망','싫었','두려'],
+  anger: ['화가','짜증','열받','억울','왜','당했','싫어','배신','화났'],
+  shame: ['창피','부끄','민망','들킬','숨기','말 못'],
+  numbness: ['모르겠','아무','없었','그냥','별로','신경','멍','몰라'],
+  isolation: ['혼자','아무도','버려','떠났','남겨','나만'],
+};
+function quickAnalyze(text) {
+  if (!text || text.trim().length < 2) return null;
+  const base = {};
+  for (const [em, kws] of Object.entries(_LIVE_KW)) {
+    base[em] = 0;
+    for (const kw of kws) { if (text.includes(kw)) base[em] = Math.min(1, base[em] + 0.4); }
+  }
+  const total = Object.values(base).reduce((a, b) => a + b, 0);
+  return total > 0 ? { base } : null;
+}
+
+function renderArchiveFreeInput(scene) {
+  const container = document.getElementById('choicesContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  const freeInput = document.getElementById('freeInput');
+  if (freeInput) {
+    freeInput.value = '';
+    freeInput.disabled = false;
+    freeInput.readOnly = false;
+    freeInput.placeholder = '이 장면에서 무엇이 떠오르나요...';
+    freeInput.parentElement.style.display = '';
+    freeInput.style.pointerEvents = 'auto';
+    freeInput.style.position = 'relative';
+    freeInput.style.zIndex = '10';
+    freeInput.style.opacity = '1';
+
+    const newInput = freeInput.cloneNode(true);
+    freeInput.parentNode.replaceChild(newInput, freeInput);
+
+    newInput.oninput = function () {
+      const result = quickAnalyze(newInput.value.trim());
+      if (result && result.base) {
+        const ev = result.base;
+        startArchiveWaveAnimation(ev);
+        window._archiveLiveVector = result;
+      }
+    };
+    newInput.onkeydown = function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        if (newInput.value.trim()) {
+          newInput.disabled = true;
+          const btn = container.querySelector('.choice-btn');
+          if (btn) btn.disabled = true;
+          window._archiveFreeText = newInput.value.trim();
+          makeChoice(0);
+        }
+      }
+    };
+    setTimeout(() => newInput.focus({ preventScroll: true }), 100);
+  }
+  const submitWrap = document.createElement('div');
+  submitWrap.style.cssText = 'text-align:right;margin-top:0.5rem;';
+  const submitBtn = document.createElement('button');
+  submitBtn.className = 'choice-btn';
+  submitBtn.textContent = '→';
+  submitBtn.style.cssText = 'padding:0.4rem 1.2rem;font-size:0.9rem;';
+  submitBtn.onclick = function () {
+    const fi = document.getElementById('freeInput');
+    if (fi) fi.disabled = true;
+    submitBtn.disabled = true;
+    window._archiveFreeText = (fi && fi.value) ? fi.value.trim() : '';
+    makeChoice(0);
+  };
+  container.appendChild(submitWrap);
+  submitWrap.appendChild(submitBtn);
+}
+
 function makeChoice(choiceIndex) { 
     try { 
         const state = appStore.getState(); 
@@ -2826,7 +2941,7 @@ function startOpeningWaveAnimation(canvas) {
 }
 function startOpeningSequence() { if (openingSkipped || window.__oauthRedirectSkipOpening) return; const waveContainer = document.getElementById('openingWaveContainer'); if (waveContainer) { waveContainer.style.transform = 'scale(5, 1)'; waveContainer.style.opacity = '1'; waveContainer.classList.add('visible') } const canvas = document.getElementById('openingWaveCanvas'); if (canvas) startOpeningWaveAnimation(canvas); setTimeout(function () { if (openingSkipped) return; const dialogue = document.getElementById('openingDialogue'); if (dialogue) showFirstTextPart1(dialogue) }, 2500) }
 function skipOpening() { if (openingSkipped) return; openingSkipped = true; if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null } const sound = openingSound || document.getElementById('openingSound'); if (sound) { if (crossfadeTimeUpdateHandler && sound) { sound.removeEventListener('timeupdate', crossfadeTimeUpdateHandler); crossfadeTimeUpdateHandler = null } if (crossfadeEndedHandler && sound) { sound.removeEventListener('ended', crossfadeEndedHandler); crossfadeEndedHandler = null } fadeOutSound(sound, 500); setTimeout(() => { finishOpeningSequence() }, 600) } else { finishOpeningSequence() } }
-function handleOpeningKeydown(e) { if (!openingSkipped) { e.preventDefault(); skipOpening() } }
+function handleOpeningKeydown(e) { if (!openingSkipped) { const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : ''; if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) return; e.preventDefault(); skipOpening() } }
 function finishOpeningSequence() { const openingScreen = document.getElementById('openingScreen'); const introScreen = document.getElementById('introScreen'); if (openingScreen) { openingScreen.removeEventListener('click', skipOpening); openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important'; openingScreen.classList.add('hidden') } document.removeEventListener('keydown', handleOpeningKeydown); if (introScreen) { introScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important'; introScreen.classList.add('visible'); introScreen.classList.remove('hidden') } playNpcIntro() }
 // 오프닝 화면 이벤트 바인딩은 bindEvents.js로 이동됨
 async function checkSession() {

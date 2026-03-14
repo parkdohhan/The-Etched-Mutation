@@ -44,7 +44,7 @@ body {
 }
 .demo-phase.active {
   opacity: 1;
-  pointer-events: all;
+  pointer-events: auto;
 }
 
 /* STEP 1: index 오프닝과 동일 레이아웃 (파동 컨테이너 + 캔버스) */
@@ -141,7 +141,7 @@ body {
 
 #phasePlay {
   display: grid;
-  grid-template-rows: 100px 1fr 80px;
+  grid-template-rows: 100px 1fr 180px auto;
   padding: 0;
   gap: 0;
   align-items: stretch;
@@ -249,8 +249,8 @@ body {
 
 .play-terrain-panel {
   width: 100%;
-  border-top: 1px solid rgba(196,168,130,0.1);
   position: relative;
+  overflow: hidden;
 }
 #terrainCanvas2D { width: 100%; height: 100%; display: block; }
 
@@ -352,6 +352,17 @@ body {
 .demo-cta:hover {
   background: var(--demo-accent);
   color: var(--demo-bg);
+}
+
+.play-footer {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  text-align: center;
+  font-size: 0.6rem;
+  color: rgba(232,228,222,0.25);
+  letter-spacing: 0.08em;
+  background: #0a0a0e;
+  border-top: 1px solid rgba(196,168,130,0.06);
 }
 
 .hidden { display: none !important; }

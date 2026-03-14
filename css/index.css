@@ -1757,6 +1757,10 @@ body::before {
   pointer-events: auto
 }
 
+.archive-container:has(#sceneViewer.active) .archive-back-btn {
+  display: none
+}
+
 .archive-controls {
   max-width: 800px;
   margin: 0 auto 3rem;
@@ -1964,6 +1968,127 @@ body::before {
 .scene-viewer.active {
   display: block;
   opacity: 1
+}
+
+.scene-viewer.archive-play {
+  display: flex !important;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-left: 0;
+  padding-right: 0
+}
+
+/* 아카이브 플레이: 상단 파동만 크게, 양쪽 끝까지 전체 너비 */
+.scene-viewer.archive-play .archive-wave-top {
+  display: block;
+  width: 100vw;
+  min-height: 120px;
+  height: 18vh;
+  max-height: 200px;
+  position: relative;
+  left: 50%;
+  right: auto;
+  margin-left: -50vw;
+  overflow: hidden;
+  flex-shrink: 0;
+  padding: 0
+}
+
+.scene-viewer.archive-play .archive-wave-top canvas {
+  width: 100%;
+  height: 100%;
+  display: block
+}
+
+.scene-viewer.archive-play .sidebar {
+  display: none
+}
+
+.scene-viewer.archive-play .scene-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  grid-template-columns: unset;
+  min-height: 50vh;
+  padding: 2rem 1rem;
+  position: relative
+}
+
+.scene-viewer.archive-play .scene-main {
+  width: 100%;
+  max-width: 560px;
+  text-align: center
+}
+
+.scene-viewer.archive-play .scene-text {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto
+}
+
+.scene-viewer.archive-play .choices-container {
+  justify-content: center
+}
+
+.scene-viewer.archive-play .free-input-container {
+  width: 100%;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto
+}
+
+.scene-viewer.archive-play .free-input {
+  border: none;
+  border-bottom: 1px solid rgba(196,168,130,0.3);
+  padding: 0.8rem 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  line-height: 1.6
+}
+
+.scene-viewer.archive-play .free-input:focus {
+  border-bottom-color: var(--accent-memory)
+}
+
+.scene-viewer.archive-play .scene-header {
+  position: absolute;
+  bottom: 180px;
+  left: 50%;
+  margin-left: -280px;
+  width: 560px;
+  max-width: calc(100% - 2rem);
+  margin-right: 0;
+  padding: 0 0 0.5rem 0;
+  border: none;
+  justify-content: flex-end;
+  box-sizing: border-box
+}
+
+.archive-wave-top {
+  display: none
+}
+
+.strata-panel {
+  display: none;
+  width: 100vw;
+  height: 180px;
+  flex-shrink: 0;
+  background: #09090d;
+  position: relative;
+  left: 50%;
+  margin-left: -50vw;
+  overflow: hidden
+}
+
+.scene-viewer.archive-play .strata-panel {
+  display: block
+}
+
+.strata-panel canvas {
+  width: 100%;
+  height: 100%;
+  display: block
 }
 
 .scene-header {

@@ -204,32 +204,7 @@ function bindAuthEvents() {
 
 // ========== 아카이브 모드 이벤트 ==========
 function bindArchiveEvents() {
-    // 자유 입력 필드 (expInterview 모듈로 대체됨)
-    const freeInputEl = document.getElementById('freeInput');
-    if (freeInputEl) {
-        freeInputEl.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-                e.preventDefault();
-                const customAction = this.value.trim();
-                if (customAction) {
-                    this.value = '';
-                    if (window.userChoices) window.userChoices.push(-1);
-                    if (window.showNpcDialogue && window.NPC_DIALOGUES) {
-                        window.showNpcDialogue(window.NPC_DIALOGUES.archive.customAction(customAction), 3000);
-                    }
-                    // expInterview 모듈 사용
-                    if (typeof startExpInterview === 'function') {
-                        const state = window.appStore?.getState();
-                        const currentData = window.currentStoryData;
-                        if (currentData && currentData.scenes && state) {
-                            const scene = currentData.scenes[state.currentScene];
-                            if (scene) startExpInterview(scene);
-                        }
-                    }
-                }
-            }
-        });
-    }
+    // freeInput Enter 핸들러는 renderArchiveFreeInput에서 동적으로 바인딩
 
     // 원본 기억 열람 버튼 (동적으로 생성되므로 renderChoices나 다른 곳에서 바인딩)
     // initProgressDots와 renderChoices는 함수 내부에서 바인딩하므로 여기서는 제외
