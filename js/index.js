@@ -256,29 +256,28 @@ async function initApp() {
         if (typeof playNpcIntro === 'function') playNpcIntro();
     }
 }
-function openPortfolio() {
-    // Using Next.js dev server (port 3000)
-    const portfolioUrl = 'http://localhost:3000';
-    const portfolioWindow = window.open(portfolioUrl, '_blank');
+const PORTFOLIO_BASE_URL = 'http://localhost:3000';
 
-    // Fallback in case server is not running
+function openPortfolio() {
+    const portfolioWindow = window.open(PORTFOLIO_BASE_URL, '_blank');
     if (portfolioWindow) {
         setTimeout(() => {
             try {
-                // Check if new window is still open
-                if (portfolioWindow.closed) {
-                    return;
-                }
-                // Try fetch to check if server is running
-                fetch(portfolioUrl)
-                    .catch(() => {
-                        alert('Portfolio server is not running.\n\nPlease run this in the terminal:\n\ncd portfolio-site\nnpm run dev\n\nOr run start-portfolio-server.sh');
-                    });
-            } catch (e) {
-                // May fail due to CORS etc, ignore
-            }
+                if (portfolioWindow.closed) return;
+                fetch(PORTFOLIO_BASE_URL).catch(() => {
+                    alert('Portfolio server is not running.\n\nPlease run this in the terminal:\n\ncd portfolio-site\nnpm run dev\n\nOr run start-portfolio-server.sh');
+                });
+            } catch (e) {}
         }, 2000);
     }
+}
+
+function openAbout() {
+    window.open(PORTFOLIO_BASE_URL + '/about', '_blank');
+}
+
+function openConcept() {
+    window.open(PORTFOLIO_BASE_URL + '/concept', '_blank');
 }
 function openMypage() { const state = appStore.getState(); if (!state.isLoggedIn) { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('loginUsername').focus() } else { showMypage() } }
 async function showMypage() {
@@ -2979,12 +2978,13 @@ const carouselItems = [
 ];
 
 // New intro sidebar menu (replaces carousel when present)
+// profile = mypage, about = portfolio /about, sub: concept → /concept, more-portfolio → portfolio root (원래 portfolio 경로)
 const INTRO_MENU_ITEMS = [
     { id: 'archive', label: 'ARCHIVE', subLabel: 'Space of accumulated interpretations', description: 'Browse stored fragments of the past. Review etched history.' },
     { id: 'record', label: 'RECORD', description: 'Record new memories and stage them.' },
     { id: 'profile', label: 'PROFILE', description: 'Manage your profile and sync settings.' },
     { id: 'settings', label: 'SETTINGS', description: 'Configure system parameters and visual output.' },
-    { id: 'about', label: 'ABOUT THE PROJECT', description: 'Explore the origin and designers of The Etched Mutation.', children: [
+    { id: 'about', label: 'ABOUT', description: 'Explore the origin and designers of The Etched Mutation.', children: [
         { id: 'credits', label: 'CREDITS' },
         { id: 'concept', label: 'CONCEPT' },
         { id: 'more-portfolio', label: 'MORE PORTFOLIO' }
@@ -3033,9 +3033,9 @@ function dispatchIntroMenuAction(id) {
         case 'record': if (typeof window.showConfessionHub === 'function') window.showConfessionHub(); break;
         case 'profile': if (typeof window.openMypage === 'function') window.openMypage(); break;
         case 'settings': if (typeof window.showNotification === 'function') window.showNotification('Coming soon'); break;
-        case 'about': if (typeof window.showNotification === 'function') window.showNotification('Coming soon'); break;
-        case 'credits':
-        case 'concept': if (typeof window.showNotification === 'function') window.showNotification('Coming soon'); break;
+        case 'about': if (typeof window.openAbout === 'function') window.openAbout(); break;
+        case 'credits': if (typeof window.showNotification === 'function') window.showNotification('Coming soon'); break;
+        case 'concept': if (typeof window.openConcept === 'function') window.openConcept(); break;
         case 'more-portfolio': if (typeof window.openPortfolio === 'function') window.openPortfolio(); break;
         default: if (typeof window.showNotification === 'function') window.showNotification('Coming soon');
     }
@@ -3272,6 +3272,8 @@ function activateCurrentCarouselItem() {
 
 // global 스코프 function 노출 (onclick property 서 위해)
 window.openPortfolio = openPortfolio;
+window.openAbout = openAbout;
+window.openConcept = openConcept;
 window.openMypage = openMypage;
 window.showModeSelection = showModeSelection;
 window.enterArchive = enterArchive;
@@ -5376,6 +5378,7 @@ function showConfessionHub() {
     cancelAnimationFrame(doorRaf);
     setTimeout(() => initDoor(), 100);
 }
+window.showConfessionHub = showConfessionHub; // 인트로 메뉴 클릭용 — 모듈 후반(5830) 도달 전 에러 시에도 사용 가능하도록 여기서 한 번 할당
 
 // ===== ASCII Door Engine =====
 const DOOR_W = 80, DOOR_H = 45;
