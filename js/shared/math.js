@@ -1,9 +1,9 @@
 // /js/shared/math.js
-// 수학 유틸리티 함수들
+// 수학 유틸리티 function들
 
 import { TEM_ANCHOR_VAD, TEM_ANCHOR_VAD_EXTENDED } from './tem_geo_map.js';
 
-// 전체 앵커 맵 (기본 + 확장)
+// global anchor 맵 (default + 확장)
 let ALL_ANCHOR_VAD;
 try {
   ALL_ANCHOR_VAD = { ...TEM_ANCHOR_VAD, ...TEM_ANCHOR_VAD_EXTENDED };
@@ -15,24 +15,24 @@ try {
   ALL_ANCHOR_VAD = {};
 }
 
-// 감정 앵커 시스템 (cosineSimilarity에서 사용)
-// 기본 17개 앵커 (부정/고통 10개 + 긍정/회복 7개)
+// emotion anchor 시스템 (cosineSimilarity 서 )
+// default 17개 anchor (negative/pain 10개 + positive/recovery 7개)
 export const DEFAULT_EMOTION_ANCHORS = [
-  // 부정/고통
+ // negative/pain
   'fear', 'sadness', 'anger', 'guilt', 'shame',
   'isolation', 'numbness', 'moral_pain', 'helplessness', 'despair',
-  // 긍정/회복
+ // positive/recovery
   'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort'
 ];
 
-// 확장 앵커 (복합/중립)
+// 확장 anchor (복합/중립)
 const EXTENDED_EMOTION_ANCHORS = [
   'longing', 'nostalgia', 'acceptance', 'confusion'
 ];
 
-// 한글-영문 매핑
+// 글-영문 mapping
 export const EMOTION_ANCHOR_MAP = {
-  // 부정/고통
+ // negative/pain
   '공포': 'fear',
   '두려움': 'fear',
   '무서움': 'fear',
@@ -57,7 +57,7 @@ export const EMOTION_ANCHOR_MAP = {
   '무력감': 'helplessness',
   '절망': 'despair',
   
-  // 긍정/회복
+ // positive/recovery
   '기쁨': 'joy',
   '행복': 'joy',
   '희망': 'hope',
@@ -75,7 +75,7 @@ export const EMOTION_ANCHOR_MAP = {
   '위안': 'comfort',
   '따뜻함': 'comfort',
   
-  // 확장
+ // 확장
   '그리움': 'longing',
   '향수': 'nostalgia',
   '수용': 'acceptance',
@@ -84,7 +84,7 @@ export const EMOTION_ANCHOR_MAP = {
   '당혹': 'confusion'
 };
 
-// 기록자가 자유 입력한 앵커도 허용 (매핑에 없으면 그대로 사용)
+// 기록자 자유 input anchor 허용 (mapping 없으면 그대 )
 export function normalizeAnchor(anchor) {
   if (!anchor || typeof anchor !== 'string') {
     return String(anchor || '').toLowerCase();
@@ -94,15 +94,15 @@ export function normalizeAnchor(anchor) {
 }
 
 /**
- * VAD 유사도 계산 (3D 유클리드 거리 + 정규화 + 지수 감쇠)
+ * VAD similarity calculate (3D 유클리드 거리 + normalize + 지수 감쇠)
  * 
- * @param {Object} userVAD - {v, a, d} 형태의 사용자 VAD 좌표
- * @param {Object} originVAD - {v, a, d} 형태의 원본 VAD 좌표
- * @param {number} k - 지수 감쇠 계수 (기본값: 3.0)
- * @returns {number} 0~1 범위의 유사도 (1에 가까울수록 유사)
+ * @param {Object} userVAD - {v, a, d} 형태 user VAD 좌표
+ * @param {Object} originVAD - {v, a, d} 형태 original VAD 좌표
+ * @param {number} k - 지수 감쇠 계수 (default값: 3.0)
+ * @returns {number} 0~1 범위 similarity (1 까울수록 유사)
  */
 export function calculateVADSimilarity(userVAD, originVAD, k = 3.0) {
-  // 입력 검증
+ // input validate
   if (!userVAD || !originVAD) return 0;
   
   const v1 = Number(userVAD.v);
@@ -112,46 +112,46 @@ export function calculateVADSimilarity(userVAD, originVAD, k = 3.0) {
   const a2 = Number(originVAD.a);
   const d2 = Number(originVAD.d);
   
-  // NaN 방어
+ // NaN 방어
   if (isNaN(v1) || isNaN(a1) || isNaN(d1) || isNaN(v2) || isNaN(a2) || isNaN(d2)) {
     return 0;
   }
   
-  // 3D 유클리드 거리 계산
+ // 3D 유클리드 거리 calculate
   const dv = v1 - v2;
   const da = a1 - a2;
   const dd = d1 - d2;
   const dist = Math.sqrt(dv * dv + da * da + dd * dd);
   
-  // 최대 거리: VAD가 [-1, 1] 범위라고 가정하면 최대 거리는 sqrt(12)
+ // 최대 거리: VAD [-1, 1] 범위라고 정하면 최대 거리 sqrt(12)
   const maxDist = Math.sqrt(12);
   
-  // 정규화된 거리 (0~1 범위)
+ // normalize 거리 (0~1 범위)
   const normalizedDist = Math.max(0, Math.min(1, dist / maxDist));
   
-  // 지수 감쇠: exp(-k * normalizedDist)
+ // 지수 감쇠: exp(-k * normalizedDist)
   return Math.exp(-k * normalizedDist);
 }
 
 /**
- * 임베딩 유사도 계산 (코사인 유사도, 음수는 0으로 클램프)
+ * 임베딩 similarity calculate (cosine similarity, 음수 0으 클램프)
  * 
- * @param {Array<number>} vecA - 첫 번째 임베딩 벡터
- * @param {Array<number>} vecB - 두 번째 임베딩 벡터
- * @returns {number} 0~1 범위의 유사도 (음수는 0으로 클램프)
+ * @param {Array<number>} vecA - 첫 번째 임베딩 vector
+ * @param {Array<number>} vecB - 두 번째 임베딩 vector
+ * @returns {number} 0~1 범위 similarity (음수 0으 클램프)
  */
 export function calculateEmbeddingSimilarity(vecA, vecB) {
-  // 입력 검증
+ // input validate
   if (!vecA || !vecB || !Array.isArray(vecA) || !Array.isArray(vecB)) {
     return 0;
   }
   
-  // 길이 불일치 또는 빈 벡터
+ // 길 불일치 또 빈 vector
   if (vecA.length === 0 || vecB.length === 0 || vecA.length !== vecB.length) {
     return 0;
   }
   
-  // 코사인 유사도 계산
+ // cosine similarity calculate
   let dotProduct = 0;
   let magA = 0;
   let magB = 0;
@@ -171,20 +171,20 @@ export function calculateEmbeddingSimilarity(vecA, vecB) {
   
   const similarity = dotProduct / (magA * magB);
   
-  // 음수는 0으로 클램프
+ // 음수 0으 클램프
   return Math.max(0, similarity);
 }
 
 /**
- * @deprecated 이 함수는 구형 감정 벡터 유사도 계산용입니다.
- * 새로운 임베딩 유사도 계산에는 calculateEmbeddingSimilarity를 사용하세요.
+ * @deprecated function 구형 emotion vector similarity calculate용입니다.
+ * 새 운 임베딩 similarity calculate calculateEmbeddingSimilarity 하세요.
  * 
- * 코사인 유사도 (감정 벡터용 - 하위 호환성 유지)
+ * cosine similarity (emotion vector용 - 하위 호환성 maintain)
  * 
- * @param {Object} vec1 - 첫 번째 감정 벡터
- * @param {Object} vec2 - 두 번째 감정 벡터
- * @param {Array<string>} anchorEmotions - 사용할 앵커 목록 (선택적)
- * @returns {number} -1~1 범위의 코사인 유사도
+ * @param {Object} vec1 - 첫 번째 emotion vector
+ * @param {Object} vec2 - 두 번째 emotion vector
+ * @param {Array<string>} anchorEmotions - anchor list (선택적)
+ * @returns {number} -1~1 범위 cosine similarity
  */
 export function cosineSimilarity(vec1, vec2, anchorEmotions = null) {
   if (!vec1 || !vec2) return 0;
@@ -215,7 +215,7 @@ export function cosineSimilarity(vec1, vec2, anchorEmotions = null) {
   return dotProduct / (mag1 * mag2);
 }
 
-// 벡터 정규화
+// vector normalize
 export function normalizeVector(vec) {
   const sum = Object.values(vec).reduce((a, b) => a + b, 0);
   if (sum === 0) return vec;
@@ -227,7 +227,7 @@ export function normalizeVector(vec) {
   return normalized;
 }
 
-// 벡터 합산
+// vector 합산
 export function addVectors(vecA, vecB) {
   const result = { ...vecA };
   for (const key in vecB) {
@@ -236,24 +236,24 @@ export function addVectors(vecA, vecB) {
   return result;
 }
 
-// ==================== 정렬도 3축 시스템 ====================
+// ==================== alignment 3축 시스템 ====================
 // 
-// TEM의 존재 이유: "같은 슬픔이라도 이유가 다르면 다른 경험"
+// TEM 존재 유: "같 슬픔 라 유 다르면 다른 경험"
 // 
-// 공식: 정렬도 = 감정(0.4) + 이유(0.4) + 태도(0.2)
+// 공식: alignment = emotion(0.4) + 유(0.4) + 태 (0.2)
 //
-// ⚠️ VAD 사용 금지 — 17차원 앵커 벡터만 사용
-// ⚠️ 이 3축 비율은 TEM의 정체성. 변경 시 기획서 버전 올릴 것.
+// ⚠️ VAD 금지 — 17dimension anchor vector 
+// ⚠️ 3축 비율 TEM 정체성. 변경 시 기획서 버전 올릴 것.
 
 /**
- * 감정 유사도 (Emotion Similarity)
+ * emotion similarity (Emotion Similarity)
  * 
- * 체험자와 기록자의 감정 구조가 얼마나 비슷한가.
- * 임베딩이 있으면 임베딩 우선, 없으면 17D 코사인 유사도 폴백.
+ * experiencer 기록자 emotion 구조 얼마나 비슷 .
+ * 임베딩 있으면 임베딩 우선, 없으면 17D cosine similarity fallback.
  * 
  * @param {Object} userVector - { base, embedding? }
  * @param {Object} originalVector - { base, embedding? }
- * @param {Array<string>} anchorEmotions - 장면별 앵커 (선택)
+ * @param {Array<string>} anchorEmotions - scene별 anchor (선택)
  * @returns {number} 0~1
  */
 export function calculateEmotionScore(userVector, originalVector, anchorEmotions = null) {
@@ -262,77 +262,77 @@ export function calculateEmotionScore(userVector, originalVector, anchorEmotions
   const userEmb = userVector.embedding;
   const origEmb = originalVector.embedding;
 
-  // 임베딩 둘 다 있으면 임베딩 유사도
+ // 임베딩 둘 다 있으면 임베딩 similarity
   if (userEmb && origEmb && 
       Array.isArray(userEmb) && Array.isArray(origEmb) &&
       userEmb.length > 0 && origEmb.length > 0) {
     return calculateEmbeddingSimilarity(userEmb, origEmb);
   }
 
-  // 폴백: 17D 코사인 유사도
+ // fallback: 17D cosine similarity
   const userBase = userVector.base || userVector;
   const origBase = originalVector.base || originalVector;
   return Math.max(0, cosineSimilarity(userBase, origBase, anchorEmotions));
 }
 
 /**
- * 이유 유사도 (Reason Similarity)
+ * 유 similarity (Reason Similarity)
  * 
- * "왜 그렇게 느꼈는가"의 구조적 비교.
- * 임베딩 기반 텍스트 유사도가 아니라, 귀인 방향/핵심 공포/대상의 일치를 본다.
+ * "왜 그렇게 느꼈 " 구조적 comparison.
+ * 임베딩 기반 text similarity 아니라, 귀인 방향/핵심 공포/대상 일치 본다.
  * 
  * 구성:
- *   - attribution 일치: 0.45 (self_blame vs external 등 — 가장 중요)
- *   - core_fear 일치:  0.35 (abandonment, punishment 등)
- *   - target 일치:     0.20 (감정의 대상이 같은가)
+ * - attribution 일치: 0.45 (self_blame vs external 등 — 장 중요)
+ * - core_fear 일치: 0.35 (abandonment, punishment 등)
+ * - target 일치: 0.20 (emotion 대상 같 )
  * 
- * 이유 데이터가 없으면 감정 점수로 감쇠 폴백 (0.3배)
- * → "이유를 안 물어봤으면 감정만으로 추정하되, 확신도를 낮춘다"
+ * 유 data 없으면 emotion 점수 감쇠 fallback (0.3배)
+ * → " 유 안 물어봤으면 emotion 으 추정하되, 확신 낮춘다"
  * 
  * @param {Object} userVector - { reason_analysis: { attribution, core_fear, target, is_void } }
  * @param {Object} originalVector - 동일 구조
- * @param {number} emotionScoreFallback - 이유 없을 때 감정 점수로 폴백
+ * @param {number} emotionScoreFallback - 유 없 때 emotion 점수 fallback
  * @returns {number} 0~1
  */
 export function calculateReasonScore(userVector, originalVector, emotionScoreFallback = 0) {
   const userReason = userVector?.reason_analysis;
   const origReason = originalVector?.reason_analysis;
 
-  // 둘 다 이유 데이터 없으면 → 감정 점수의 30%로 대체
+ // 둘 다 유 data 없으면 → emotion 점수 30% 대체
   if (!userReason && !origReason) {
     return emotionScoreFallback * 0.3;
   }
 
-  // 한쪽만 없으면 → 비교 불가, 낮은 점수
+ // 쪽 없으면 → comparison 불 , 낮 점수
   if (!userReason || !origReason) {
     return 0.15;
   }
 
   let score = 0;
 
-  // 1. 귀인 방향 (Attribution) — 0.45
+ // 1. 귀인 방향 (Attribution) — 0.45
   if (userReason.attribution && origReason.attribution) {
     if (userReason.attribution === origReason.attribution) {
       score += 0.45;
     } else {
-      // 부분 일치 체크 (예: self_blame과 self_doubt는 방향은 같음)
+ // 부분 일치 체크 (예: self_blame self_doubt 방향 같음)
       const userDir = getAttributionDirection(userReason.attribution);
       const origDir = getAttributionDirection(origReason.attribution);
       if (userDir === origDir) {
         score += 0.20;  // 방향은 같지만 세부가 다름
       }
-      // 정반대면 0
+ // 정반대면 0
     }
   } else if (!userReason.attribution && !origReason.attribution) {
     score += 0.15;  // 둘 다 미정의 — 중립
   }
 
-  // 2. 핵심 공포 (Core Fear) — 0.35
+ // 2. 핵심 공포 (Core Fear) — 0.35
   if (userReason.core_fear && origReason.core_fear) {
     if (userReason.core_fear === origReason.core_fear) {
       score += 0.35;
     } else {
-      // 같은 카테고리면 부분 점수
+ // 같 카테고리면 부분 점수
       const userCat = getFearCategory(userReason.core_fear);
       const origCat = getFearCategory(origReason.core_fear);
       if (userCat && userCat === origCat) {
@@ -343,12 +343,12 @@ export function calculateReasonScore(userVector, originalVector, emotionScoreFal
     score += 0.10;
   }
 
-  // 3. 대상 (Target) — 0.20
+ // 3. 대상 (Target) — 0.20
   if (userReason.target && origReason.target) {
     if (userReason.target === origReason.target) {
       score += 0.20;
     }
-    // 다르면 0 (displacement의 핵심 — 대상이 다르면 확실히 다른 이유)
+ // 다르면 0 (displacement 핵심 — 대상 다르면 확실히 다른 유)
   } else if (!userReason.target && !origReason.target) {
     score += 0.05;
   }
@@ -357,12 +357,12 @@ export function calculateReasonScore(userVector, originalVector, emotionScoreFal
 }
 
 /**
- * 태도 계수 (Attitude Coefficient)
+ * 태 계수 (Attitude Coefficient)
  * 
- * 체험자가 기억에 "어떻게 접근하는가"를 수치화.
- * - 직면(confrontation): 높은 점수
- * - 회피(avoidance): 낮은 점수
- * - VOID 공명: 원본도 VOID면 높음, 아니면 낮음
+ * experiencer memory "어떻게 접근하 " 수치화.
+ * - 직면(confrontation): 높 점수
+ * - 회피(avoidance): 낮 점수
+ * - VOID 공명: original VOID면 높음, 아니면 낮음
  * - 반복(fixation): 감쇠
  * 
  * @param {Object} userVector - { reason_analysis: { is_void } }
@@ -376,34 +376,34 @@ export function calculateAttitudeScore(userVector, originalVector, attitudeConte
   const userReason = userVector?.reason_analysis || {};
   const origReason = originalVector?.reason_analysis || {};
 
-  // 1. VOID 매칭 (가장 큰 영향)
+ // 1. VOID 매칭 ( 장 큰 영향)
   const userVoid = !!userReason.is_void;
   const origVoid = !!origReason.is_void;
 
   if (userVoid && origVoid) {
-    // VOID 공명 — 둘 다 말할 수 없는 상태 → 높은 태도 점수
+ // VOID 공명 — 둘 다 말 수 없 state → 높 태 점수
     score = 0.8;
   } else if (userVoid && !origVoid) {
-    // 유저만 회피 — 기록자는 드러냈는데 체험자가 회피
+ // 유저 회피 — 기록자 드러냈 데 experiencer 회피
     score = 0.2;
   } else if (!userVoid && origVoid) {
-    // 유저는 드러냈는데 원본이 VOID — 체험자가 기록자보다 용감
+ // 유저 드러냈 데 original VOID — experiencer 기록자보다 용감
     score = 0.6;
   } else {
-    // 둘 다 비VOID — 정상 직면
+ // 둘 다 비VOID — 정상 직면
     score = 0.7;
   }
 
-  // 2. 반복 감쇠 (fixation 경향이 있으면 태도 점수 깎임)
+ // 2. 반복 감쇠 (fixation 경향 있으면 태 점수 깎임)
   const { emotionHistory: rawHistory, skipCount = 0 } = attitudeContext;
   const emotionHistory = rawHistory || [];
   if (emotionHistory.length >= 2) {
     const fixationLevel = calculateFixationLevel(emotionHistory);
-    // fixation이 높을수록 태도 점수 감쇠 (최대 0.3 감소)
+ // fixation 높 수록 태 점수 감쇠 (최대 0.3 감소)
     score -= fixationLevel * 0.3;
   }
 
-  // 3. 스킵 감쇠 (감정 입력을 건너뛴 횟수)
+ // 3. 스킵 감쇠 (emotion input 건너뛴 횟수)
   if (skipCount > 0) {
     score -= Math.min(0.2, skipCount * 0.05);
   }
@@ -412,16 +412,16 @@ export function calculateAttitudeScore(userVector, originalVector, attitudeConte
 }
 
 /**
- * 정렬도 통합 계산
+ * alignment 통합 calculate
  * 
- * 정렬도 = 감정(0.4) + 이유(0.4) + 태도(0.2)
+ * alignment = emotion(0.4) + 유(0.4) + 태 (0.2)
  * 
- * ⚠️ 이 비율이 TEM의 정체성.
- * ⚠️ "감정이 같아도 이유가 다르면 정렬도가 낮다"를 보장하는 구조.
+ * ⚠️ 비율 TEM 정체성.
+ * ⚠️ "emotion 같아 유 다르면 alignment 낮다" 보장하 구조.
  * 
- * @param {number} emotionScore - 감정 유사도 (0~1)
- * @param {number} reasonScore - 이유 유사도 (0~1)
- * @param {number} attitudeScore - 태도 계수 (0~1)
+ * @param {number} emotionScore - emotion similarity (0~1)
+ * @param {number} reasonScore - 유 similarity (0~1)
+ * @param {number} attitudeScore - 태 계수 (0~1)
  * @returns {number} 0~1
  */
 export function calculateAlignment(emotionScore, reasonScore, attitudeScore) {
@@ -433,7 +433,7 @@ export function calculateAlignment(emotionScore, reasonScore, attitudeScore) {
 // ==================== 귀인/공포 분류 헬퍼 ====================
 
 /**
- * 귀인 방향 분류 (내부 vs 외부 vs 상황)
+ * 귀인 방향 분류 (내부 vs external vs 상황)
  */
 function getAttributionDirection(attribution) {
   if (!attribution) return null;
@@ -464,24 +464,24 @@ function getFearCategory(coreFear) {
   return null;
 }
 
-// ==================== 버킷 판정 ====================
+// ==================== bucket 판정 ====================
 //
-// 기획서 원본 기준으로 복원.
+// 기획서 original 기준으 restore.
 // HIGH ≥ 0.55, LOW < 0.35
-// 히스테리시스: HIGH 유지 ≥ 0.45, LOW 유지 ≤ 0.42
+// 히스테리시스: HIGH maintain ≥ 0.45, LOW maintain ≤ 0.42
 //
-// ⚠️ VAD 사용 금지 — 정렬도 값만 사용
+// ⚠️ VAD 금지 — alignment 값 
 
 /**
- * 버킷 판정
+ * bucket 판정
  * 
- * @param {number} alignment - 정렬도 (0~1)
- * @param {string|null} previousBucket - 이전 버킷
- * @param {Array} emotionHistory - 감정 히스토리 (벡터 배열)
+ * @param {number} alignment - alignment (0~1)
+ * @param {string|null} previousBucket - 전 bucket
+ * @param {Array} emotionHistory - emotion 히스토리 (vector array)
  * @returns {string} 'HIGH' | 'MID' | 'LOW' | 'FIXATED'
  */
 export function getBucket(alignment, previousBucket = null, emotionHistory = null) {
-  // FIXATED 체크 (버킷 판정보다 우선)
+ // FIXATED 체크 (bucket 판정보다 우선)
   if (emotionHistory && emotionHistory.length >= 3) {
     const fixLevel = calculateFixationLevel(emotionHistory);
     if (fixLevel >= 0.85) {
@@ -489,24 +489,24 @@ export function getBucket(alignment, previousBucket = null, emotionHistory = nul
     }
   }
   
-  // 히스테리시스 적용
+ // 히스테리시스 적용
   if (previousBucket === 'HIGH' && alignment >= 0.45) return 'HIGH';
   if (previousBucket === 'LOW' && alignment <= 0.42) return 'LOW';
   
-  // 표준 판정
+ // 표준 판정
   if (alignment >= 0.55) return 'HIGH';
   if (alignment < 0.35) return 'LOW';
   return 'MID';
 }
 
 /**
- * FIXATED 레벨 계산 (연속 유사도 기반)
+ * FIXATED 레벨 calculate (연속 similarity 기반)
  * 
- * 단순 === 비교가 아니라, 최근 N개 감정 벡터의 코사인 유사도 평균으로 판정.
- * "비슷한 감정 패턴의 반복"을 잡는다.
+ * 단순 === comparison 아니라, 최근 N개 emotion vector cosine similarity 평균으 판정.
+ * "비슷 emotion 패턴 반복" 잡 다.
  * 
- * @param {Array} emotionHistory - 감정 벡터 배열 (최소 2개)
- * @returns {number} 0~1 (1에 가까울수록 반복)
+ * @param {Array} emotionHistory - emotion vector array (최소 2개)
+ * @returns {number} 0~1 (1 까울수록 반복)
  */
 export function calculateFixationLevel(emotionHistory) {
   if (!emotionHistory || emotionHistory.length < 2) return 0;
@@ -524,7 +524,7 @@ export function calculateFixationLevel(emotionHistory) {
       
       if (!a || !b) continue;
       
-      // 벡터면 코사인 유사도, 문자열이면 일치 체크
+ // vector면 cosine similarity, 문자열 면 일치 체크
       if (typeof a === 'object' && typeof b === 'object') {
         totalSim += Math.max(0, cosineSimilarity(a, b));
       } else if (typeof a === 'string' && typeof b === 'string') {
@@ -538,12 +538,12 @@ export function calculateFixationLevel(emotionHistory) {
   return totalSim / pairs;
 }
 
-// 하위 호환성 유지
+// 하위 호환성 maintain
 export function checkFixated(emotionHistory, threshold = 3) {
   return calculateFixationLevel(emotionHistory) >= 0.85;
 }
 
-// 지배적 감정 가져오기
+// 지배적 emotion 져오기
 export function getDominantEmotion(vector) {
   if (!vector || typeof vector !== 'object') return 'sadness';
   const entries = Object.entries(vector);
@@ -551,18 +551,18 @@ export function getDominantEmotion(vector) {
   return entries.sort((a, b) => (b[1] || 0) - (a[1] || 0))[0][0];
 }
 
-// ==================== VAD 투영 시스템 (시각화 전용) ====================
+// ==================== VAD projection 시스템 (시각화 only) ====================
 
 /**
- * 17D 감정 벡터 → VAD 좌표 투영
- * ⚠️ 시각화 전용 - 정렬도/분기 로직에 절대 사용 금지 ⚠️
+ * 17D emotion vector → VAD 좌표 projection
+ * ⚠️ 시각화 only - alignment/분기 직 절대 금지 ⚠️
  * 
  * @param {Object} emotionVec - { fear: 0.3, sadness: 0.5, ... }
- * @param {Array} anchors - 사용할 앵커 목록 (없으면 전체 사용)
+ * @param {Array} anchors - anchor list (없으면 global )
  * @returns {Object} { v, a, d } 범위: -1 ~ 1
  */
 export function projectEmotionToVAD(emotionVec, anchors = null) {
-  // 디버깅: ALL_ANCHOR_VAD 확인
+ // 디버깅: ALL_ANCHOR_VAD check
   if (!ALL_ANCHOR_VAD || Object.keys(ALL_ANCHOR_VAD).length === 0) {
     console.error('[VAD] ALL_ANCHOR_VAD가 로드되지 않았습니다!');
     console.error('[VAD] TEM_ANCHOR_VAD:', typeof TEM_ANCHOR_VAD);
@@ -581,7 +581,7 @@ export function projectEmotionToVAD(emotionVec, anchors = null) {
     
     const mapping = ALL_ANCHOR_VAD[k];
     if (!mapping) {
-      console.warn(`[VAD] 앵커 "${k}"에 대한 매핑이 없습니다.`);
+      console.warn(`[VAD] 앵커 "${k}"에 대한 매핑이 not found.`);
       continue;
     }
     
@@ -591,18 +591,18 @@ export function projectEmotionToVAD(emotionVec, anchors = null) {
     wSum += weight;
   }
   
-  // 가중치 합이 0이면 중립
+ // weight 합 0 면 중립
   if (wSum <= 0) {
     console.warn('[VAD] 가중치 합이 0입니다. emotionVec:', emotionVec);
     return { v: 0, a: 0, d: 0 };
   }
   
-  // 정규화
+ // normalize
   V /= wSum;
   A /= wSum;
   D /= wSum;
   
-  // [-1, 1] 클램프
+ // [-1, 1] 클램프
   return {
     v: Math.max(-1, Math.min(1, V)),
     a: Math.max(-1, Math.min(1, A)),

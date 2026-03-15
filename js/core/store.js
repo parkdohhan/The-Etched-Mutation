@@ -1,10 +1,10 @@
 // js/core/store.js
-// Simple Store - 전역 상태 관리
+// Simple Store - global state manage
 
 /**
- * createStore - 간단한 상태 관리 스토어 생성
+ * createStore - 간단 state manage 스토어 create
  * 
- * @param {Object} initialState - 초기 상태 객체
+ * @param {Object} initialState - 초기 state object
  * @returns {Object} { getState, setState, subscribe }
  */
 export function createStore(initialState = {}) {
@@ -12,16 +12,16 @@ export function createStore(initialState = {}) {
   let listeners = [];
 
   /**
-   * 현재 상태 반환
-   * @returns {Object} 현재 상태의 복사본
+ * 현재 state return
+ * @returns {Object} 현재 state copy본
    */
   function getState() {
     return { ...state };
   }
 
   /**
-   * 상태 업데이트 (shallow merge)
-   * @param {Object} partial - 업데이트할 부분 상태
+ * state 업데 트 (shallow merge)
+ * @param {Object} partial - 업데 트 부분 state
    */
   function setState(partial) {
     if (!partial || typeof partial !== 'object') {
@@ -32,7 +32,7 @@ export function createStore(initialState = {}) {
     const prevState = { ...state };
     state = { ...state, ...partial };
     
-    // 구독자들에게 변경 알림
+ // subscribe자들 게 변경 notification
     listeners.forEach(listener => {
       try {
         listener(state, prevState);
@@ -43,9 +43,9 @@ export function createStore(initialState = {}) {
   }
 
   /**
-   * 상태 변경 구독
-   * @param {Function} fn - 상태 변경 시 호출될 함수 (newState, prevState) => {}
-   * @returns {Function} unsubscribe 함수
+ * state 변경 subscribe
+ * @param {Function} fn - state 변경 시 call될 function (newState, prevState) => {}
+ * @returns {Function} unsubscribe function
    */
   function subscribe(fn) {
     if (typeof fn !== 'function') {
@@ -55,7 +55,7 @@ export function createStore(initialState = {}) {
     
     listeners.push(fn);
     
-    // unsubscribe 함수 반환
+ // unsubscribe function return
     return function unsubscribe() {
       const index = listeners.indexOf(fn);
       if (index > -1) {

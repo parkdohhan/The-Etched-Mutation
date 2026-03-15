@@ -1,14 +1,14 @@
 /**
- * FloatingAnchor — DVD 화면보호기 스타일 플로팅 앵커
- * scene-main 내부에서 앵커 오브젝트가 유유히 떠다니며 벽에 부딪히면 튕긴다.
+ * FloatingAnchor — DVD screen보호기 스타일 floating anchor
+ * scene-main 내부 서 anchor 오브젝트 유유히 떠다니며 벽 부딪히면 튕긴다.
  */
 
 class FloatingAnchor {
   /**
-   * @param {HTMLElement} container - scene-main 엘리먼트 (바운딩 영역)
+ * @param {HTMLElement} container - scene-main 엘리먼트 (바운딩 영역)
    * @param {Object} options
-   * @param {string} options.keyword - 앵커 키워드 (예: "조개껍질", "낡은 의자")
-   * @param {number} options.alignment - 정렬도 0.0~1.0
+ * @param {string} options.keyword - anchor keyword (예: "조개껍질", "낡 자")
+ * @param {number} options.alignment - alignment 0.0~1.0
    */
   constructor(container, options = {}) {
     this.container = container;
@@ -153,8 +153,8 @@ let currentFloatingAnchor = null;
 
 /**
  * @param {HTMLElement} container - scene-main 엘리먼트
- * @param {string} keyword - 앵커 키워드
- * @param {number} alignment - 정렬도
+ * @param {string} keyword - anchor keyword
+ * @param {number} alignment - alignment
  */
 function startFloatingAnchor(container, keyword, alignment) {
   if (currentFloatingAnchor) {

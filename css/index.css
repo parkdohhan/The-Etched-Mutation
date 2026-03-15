@@ -163,7 +163,8 @@ body::before {
 .intro-screen.visible {
   opacity: 1;
   visibility: visible;
-  display: flex
+  display: flex;
+  pointer-events: auto;
 }
 
 .intro-top-buttons {
@@ -534,6 +535,388 @@ body::before {
   content: '|';
   animation: blink 1s infinite;
   color: rgba(255, 255, 200, 0.8)
+}
+
+/* New intro layout (sidebar + bg) */
+.intro-screen {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.intro-screen .intro-container {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.intro-screen .intro-center-wrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.intro-screen .intro-center-wrapper .npc-intro-dialogue {
+  pointer-events: auto;
+}
+
+.intro-screen .intro-bg-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.7;
+  background-image: url('../img/bg-terrain.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.intro-screen .intro-left-gradient {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30vw;
+  height: 100%;
+  background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0.45), rgba(0,0,0,0));
+  z-index: 5;
+  pointer-events: none;
+}
+
+.intro-screen .intro-grid-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.intro-screen .intro-vertical-line {
+  position: absolute;
+  left: 96px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(229, 213, 188, 0.2);
+}
+
+.intro-screen .intro-horizontal-line {
+  position: absolute;
+  left: 0;
+  top: 128px;
+  width: 100vw;
+  height: 1px;
+  background: linear-gradient(to right, rgba(229, 213, 188, 0.3), transparent);
+}
+
+.intro-screen .intro-content {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  height: 100%;
+  pointer-events: auto;
+}
+
+.intro-screen .intro-sidebar {
+  width: 500px;
+  padding-left: 128px;
+  padding-top: 160px;
+  padding-bottom: 96px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+.intro-screen .intro-menu-list {
+  pointer-events: auto;
+}
+
+.intro-screen .intro-menu-item {
+  pointer-events: auto;
+}
+
+.intro-screen .intro-submenu-item {
+  pointer-events: auto;
+}
+
+.intro-screen .intro-header {
+  position: relative;
+  margin-bottom: 64px;
+  padding-left: 24px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-left: 4px solid #E5D5BC;
+  overflow: visible;
+}
+
+.intro-screen .intro-header-title {
+  position: relative;
+  z-index: 10;
+  font-size: 30px;
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #E5D5BC;
+}
+
+.intro-screen .intro-header-title span {
+  font-weight: 700;
+}
+
+.intro-screen .intro-title-flare {
+  position: absolute;
+  top: 50%;
+  left: -40px;
+  width: 300px;
+  height: 60px;
+  transform: translateY(-50%) scale(0.75);
+  transform-origin: left;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.intro-screen .intro-menu-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.intro-screen .intro-menu-item {
+  position: relative;
+  padding-left: 24px;
+  cursor: pointer;
+  transition: all 0.5s ease;
+}
+
+.intro-screen .intro-menu-item.inactive {
+  color: rgba(229, 213, 188, 0.4);
+}
+
+.intro-screen .intro-menu-item.inactive:hover {
+  color: rgba(229, 213, 188, 0.7);
+}
+
+.intro-screen .intro-menu-item.active,
+.intro-screen .intro-menu-item.hovered {
+  color: #E5D5BC;
+  transform: translateX(24px);
+}
+
+.intro-screen .intro-menu-label {
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: font-weight 0.5s ease;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.intro-screen .intro-menu-item.active .intro-menu-label,
+.intro-screen .intro-menu-item.hovered .intro-menu-label {
+  font-weight: 700;
+}
+
+.intro-screen .intro-menu-item.inactive .intro-menu-label {
+  font-weight: 300;
+}
+
+.intro-screen .intro-menu-sublabel {
+  font-size: 12px;
+  color: rgba(229, 213, 188, 0.6);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -0.02em;
+  margin-left: 16px;
+}
+
+.intro-screen .intro-submenu {
+  margin-left: 48px;
+  margin-top: 8px;
+  border-left: 1px solid rgba(229, 213, 188, 0.2);
+  padding-left: 16px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.intro-screen .intro-submenu.open {
+  max-height: 200px;
+  opacity: 1;
+}
+
+.intro-screen .intro-submenu-item {
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  color: rgba(229, 213, 188, 0.5);
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.intro-screen .intro-submenu-item:hover {
+  color: rgba(229, 213, 188, 0.8);
+}
+
+.intro-screen .intro-submenu-item.active {
+  color: #E5D5BC;
+  font-weight: 700;
+}
+
+.intro-screen .intro-bokeh-flare {
+  position: absolute;
+  top: 50%;
+  left: -300px;
+  width: 600px;
+  height: 80px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s ease, top 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.intro-screen .intro-bokeh-flare.active {
+  opacity: 0.9;
+}
+
+.intro-screen .intro-bokeh-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  mask-image: linear-gradient(to right, transparent 0%, black 20%, black 60%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 20%, black 60%, transparent 100%);
+}
+
+.intro-screen .intro-flare-streak-base {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  top: 50%;
+  background: linear-gradient(to right, transparent, #E5D5BC, transparent);
+  opacity: 0.4;
+  filter: blur(2px);
+}
+
+.intro-screen .intro-flare-glow-red {
+  position: absolute;
+  left: 15%;
+  top: 50%;
+  width: 40%;
+  height: 40px;
+  transform: translateY(-50%);
+  background: rgba(127, 29, 29, 0.4);
+  filter: blur(30px);
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+.intro-screen .intro-flare-block-a {
+  position: absolute;
+  left: 30%;
+  top: 50%;
+  width: 120px;
+  height: 20px;
+  transform: translateY(-50%);
+  background: rgba(217, 119, 6, 0.3);
+  filter: blur(10px);
+  border-radius: 1px;
+  mix-blend-mode: screen;
+}
+
+.intro-screen .intro-flare-block-b {
+  position: absolute;
+  left: 40%;
+  top: 50%;
+  width: 60px;
+  height: 4px;
+  transform: translateY(-50%);
+  background: rgba(255, 248, 231, 0.7);
+  filter: blur(4px);
+  border-radius: 1px;
+  mix-blend-mode: screen;
+}
+
+.intro-screen .intro-flare-block-c {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100px;
+  height: 16px;
+  transform: translateY(-50%);
+  background: rgba(202, 138, 4, 0.2);
+  filter: blur(12px);
+  border-radius: 1px;
+  mix-blend-mode: screen;
+}
+
+.intro-screen .intro-flare-block-d {
+  position: absolute;
+  left: 42%;
+  top: 50%;
+  width: 40px;
+  height: 2px;
+  transform: translateY(-50%);
+  background: white;
+  filter: blur(1px);
+  mix-blend-mode: screen;
+  box-shadow: 0 0 10px rgba(255,255,255,0.8);
+}
+
+.intro-screen .intro-flare-line {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(229, 213, 188, 0.4), transparent);
+  opacity: 0.6;
+}
+
+.intro-screen .intro-description {
+  margin-top: 30px;
+  padding-left: 24px;
+  max-width: 280px;
+  position: relative;
+  overflow: hidden;
+  min-height: 60px;
+}
+
+.intro-screen .intro-description-text {
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: rgba(255, 255, 255, 0.55);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  position: absolute;
+}
+
+.intro-screen .intro-description-text.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.intro-screen .intro-right-content {
+  flex: 1;
+  position: relative;
+}
+
+.intro-screen .intro-vertical-accent {
+  position: absolute;
+  top: 50%;
+  left: 80px;
+  width: 1px;
+  height: 256px;
+  transform: translateY(-50%);
+  background: linear-gradient(to bottom, transparent, rgba(229, 213, 188, 0.2), transparent);
 }
 
 @keyframes fadeIn {
@@ -1382,7 +1765,7 @@ body::before {
   opacity: .25
 }
 
-/* ── 플로팅 앵커 ── */
+/* ── Floating Anchors ── */
 .floating-anchor-layer {
   position: absolute;
   top: 0;
@@ -1978,7 +2361,7 @@ body::before {
   padding-right: 0
 }
 
-/* 아카이브 플레이: 상단 파동만 크게, 양쪽 끝까지 전체 너비 */
+/* Archive play: large top wave, full width edge to edge */
 .scene-viewer.archive-play .archive-wave-top {
   display: block;
   width: 100vw;
@@ -3399,7 +3782,7 @@ body::before {
 }
 
 .void-scene::before {
-  content: '[기억의 공백] ';
+  content: '[void in memory] ';
   color: var(--accent-memory)
 }
 
@@ -3408,7 +3791,7 @@ body::before {
 }
 
 .void-reason::after {
-  content: ' (이유 없음)';
+  content: ' (no reason)';
   color: var(--text-muted);
   font-size: 0.9em
 }
@@ -3887,8 +4270,8 @@ body::before {
   display: none !important
 }
 
-/* ============================================ PHASE 2: ANIMATION & IMMERSION (추�?) ============================================ */
-/* 1. 글리치 ?�과 (주�????�각?? */
+/* ============================================ PHASE 2: ANIMATION & IMMERSION (additions) ============================================ */
+/* 1. Glitch effect (attention/visual) */
 .glitch-anim {
   animation: glitch-shake 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
   border-color: rgba(255, 0, 0, 0.5) !important;
@@ -3921,17 +4304,17 @@ body::before {
   }
 }
 
-/* 2. ?�?�핑 ?�커??(?�도 ?�현) */
+/* 2. Deepening darkness (depth expression) */
 .confession-content {
   transition: filter 0.5s ease, transform 0.5s ease;
 }
 
-/* ?�력 중일 ?�는 배경?????�둡�?*/
+/* Darken background during input */
 .focus-mode-active #confession-overlay {
   background: rgba(0, 0, 0, 0.95);
 }
 
-/* 3. 비네??(Vignette) - 주�?부 ?�전 ?�과 */
+/* 3. Vignette - peripheral darkening effect */
 .vignette-layer {
   position: fixed;
   inset: 0;
@@ -3940,7 +4323,7 @@ body::before {
   z-index: 1;
 }
 
-/* 4. ?�운??�??�릭 ???�동 ?�과 */
+/* 4. Countdown click pulse effect */
 @keyframes pulse-gold {
   0% {
     box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7);
@@ -3955,7 +4338,7 @@ body::before {
   }
 }
 
-/* sensory-chip, sensory-chips 삭제됨 (V2 flow로 대체) */
+/* sensory-chip, sensory-chips removed (replaced by V2 flow) */
 
 /* ============================================ The Confession Overlay ============================================ */
 #confession-overlay {
@@ -4007,7 +4390,7 @@ body::before {
   border-color: rgba(212, 175, 55, 0.6);
 }
 
-/* confession-content, confession-step, confession-text, confession-enter-btn 삭제됨 (V2 flow로 대체) */
+/* confession-content, confession-step, confession-text, confession-enter-btn removed (replaced by V2 flow) */
 
 body.confession-active {
   overflow: hidden;
@@ -4018,7 +4401,7 @@ body.confession-active::before {
   opacity: 0.3;
 }
 
-/* 결과 ?�면 ?��???*/
+/* Result screen styles */
 .step-result {
   max-width: 800px;
   width: 100%;
@@ -4050,7 +4433,7 @@ body.confession-active::before {
   color: var(--text-primary);
 }
 
-/* 스트리밍 텍스트 스타일 */
+/* Streaming text styles */
 .streaming-text {
   font-family: 'Cormorant Garamond', serif;
   line-height: 1.8;
@@ -4085,7 +4468,7 @@ body.confession-active::before {
   }
 }
 
-/* 안전 팝업 */
+/* Safety popup */
 .safety-popup {
   position: fixed;
   top: 0;
@@ -4174,7 +4557,7 @@ body.confession-active::before {
   color: #fff;
 }
 
-/* 트루엔딩 쪽지 시스템 */
+/* True ending note system */
 .note-section {
   margin: 30px 0;
   padding: 20px;
@@ -4308,9 +4691,9 @@ body.confession-active::before {
   margin-left: 0.5rem;
 }
 
-/* confession-complete-btn 삭제됨 (V2 flow-generate-btn으로 대체) */
+/* confession-complete-btn removed (replaced by V2 flow-generate-btn) */
 
-/* 원본 보기 버튼 */
+/* Original view button */
 .original-view-btn {
   background: transparent;
   border: 1px solid #d4af37;
@@ -4329,7 +4712,7 @@ body.confession-active::before {
   color: #0a0a0a;
 }
 
-/* 원본 열람 모달 */
+/* Original memory modal */
 .original-memory-modal {
   position: fixed;
   top: 0;
@@ -4510,7 +4893,7 @@ body.confession-active::before {
 .door-back-btn.hiding { opacity: 0; transition: opacity 0.4s; }
 .door-back-btn:hover { color: #666; }
 
-/* 하위 호환 유지 */
+/* Backward compatibility */
 .hub-subtitle {
   color: #888;
   margin-bottom: 40px;
@@ -4527,7 +4910,7 @@ body.confession-active::before {
 }
 
 /* ============================================ Memory Status Badge ============================================ */
-/* 상태 배지 기본 스타일 */
+/* Status badge base styles */
 .status-badge {
   font-size: 0.75rem;
   padding: 4px 8px;
@@ -4538,7 +4921,7 @@ body.confession-active::before {
   letter-spacing: 0.05em;
 }
 
-/* Fetus 상태: 어두운 배경에서 은은하게 빛나는 금색 */
+/* Fetus state: subtle gold glow on dark background */
 .status-badge.Fetus {
   background: rgba(212, 175, 55, 0.15);
   color: #d4af37;
@@ -4546,7 +4929,7 @@ body.confession-active::before {
   font-style: italic;
 }
 
-/* 숨 쉬는 애니메이션 */
+/* Breathing animation */
 @keyframes pulse-gold {
   0% {
     box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
@@ -4606,7 +4989,7 @@ body.confession-active::before {
   width: 100%;
   height: 100%;
   background: linear-gradient(145deg, rgba(18, 18, 26, 0.6), rgba(10, 10, 12, 0.8));
-  border: 1px solid rgba(196, 168, 130, 0.2);
+  border: none;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -4652,7 +5035,6 @@ body.confession-active::before {
 }
 
 .carousel-item.active .carousel-item-content {
-  border-color: rgba(196, 168, 130, 0.6);
   box-shadow: 0 20px 60px rgba(196, 168, 130, 0.3),
     0 0 40px rgba(196, 168, 130, 0.1);
   background: linear-gradient(145deg, rgba(18, 18, 26, 0.9), rgba(10, 10, 12, 0.95));
@@ -4673,7 +5055,6 @@ body.confession-active::before {
 }
 
 .carousel-item.prev-1 .carousel-item-content {
-  border-color: rgba(196, 168, 130, 0.15);
   filter: blur(1px);
 }
 
@@ -4690,7 +5071,6 @@ body.confession-active::before {
 }
 
 .carousel-item.prev-2 .carousel-item-content {
-  border-color: rgba(196, 168, 130, 0.05);
   filter: blur(4px);
 }
 
@@ -4708,7 +5088,6 @@ body.confession-active::before {
 }
 
 .carousel-item.next-1 .carousel-item-content {
-  border-color: rgba(196, 168, 130, 0.15);
   filter: blur(1px);
 }
 
@@ -4725,7 +5104,6 @@ body.confession-active::before {
 }
 
 .carousel-item.next-2 .carousel-item-content {
-  border-color: rgba(196, 168, 130, 0.05);
   filter: blur(4px);
 }
 
@@ -4795,7 +5173,6 @@ body.confession-active::before {
 
 /* Hover Effect on Active Item */
 .carousel-item.active:hover .carousel-item-content {
-  border-color: rgba(196, 168, 130, 0.8);
   box-shadow: 0 25px 70px rgba(196, 168, 130, 0.4),
     0 0 50px rgba(196, 168, 130, 0.15);
   transform: translateY(-5px);
@@ -4874,7 +5251,7 @@ body.confession-active::before {
   }
 }
 
-/* 동의 시퀀스 스타일 */
+/* Consent sequence styles */
 .consent-sequence {
   position: fixed;
   top: 0;
@@ -4917,7 +5294,7 @@ body.confession-active::before {
   filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
 }
 
-/* 실이 나풀거리는 애니메이션 */
+/* Thread fluttering animation */
 .consent-thread {
   animation: threadSway 2.5s ease-in-out infinite;
 }
@@ -4946,7 +5323,7 @@ body.confession-active::before {
   }
 }
 
-/* 마우스 호버 시 실이 팽팽해짐 */
+/* Thread tautens on mouse hover */
 .consent-thread-container:hover .consent-thread {
   animation: none;
   transform: translateY(0) scaleY(1);
@@ -4958,7 +5335,7 @@ body.confession-active::before {
   stroke-width: 1.2;
 }
 
-/* 클릭 시 빨간색으로 물들기 */
+/* Turn red on click */
 .consent-thread.clicked {
   animation: none;
 }
@@ -4969,7 +5346,7 @@ body.confession-active::before {
   transition: stroke 0.3s ease, stroke-width 0.3s ease;
 }
 
-/* 화면이 어두워지는 효과 */
+/* Screen darkening effect */
 .consent-sequence.fading {
   animation: fadeToBlack 1.5s ease-out forwards;
 }
@@ -4985,7 +5362,7 @@ body.confession-active::before {
   }
 }
 
-/* 단어/문장 타자 효과 시퀀스 스타일 */
+/* Word/sentence typing effect sequence styles */
 .word-sentence-sequence {
   position: fixed;
   top: 0;
@@ -5079,12 +5456,12 @@ body.confession-active::before {
   }
 }
 
-/* 화면이 어두워지는 효과 */
+/* Screen darkening effect */
 .word-sentence-sequence.fading {
   animation: fadeToBlack 1.5s ease-out forwards;
 }
 
-/* 모바일 반응형 */
+/* Mobile responsive */
 @media (max-width: 768px) {
   .word-sentence-content {
     font-size: 1.8rem;
@@ -5096,13 +5473,13 @@ body.confession-active::before {
   }
 }
 
-/* 감정 비교 화면 - 원본(A) 감정 파동 숨기기 */
+/* Emotion comparison screen - hide original(A) emotion wave */
 .comparison-wave-item-original {
   display: none !important;
 }
 
 /* ================================================================
-   STRATA v3 — 3D 지층 시각화 스타일
+   STRATA v3 — 3D stratum visualization styles
    ================================================================ */
 .strata-hud {
   position: fixed;

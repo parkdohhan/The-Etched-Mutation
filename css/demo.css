@@ -47,7 +47,7 @@ body {
   pointer-events: auto;
 }
 
-/* STEP 1: index 오프닝과 동일 레이아웃 (파동 컨테이너 + 캔버스) */
+/* STEP 1: index 오프닝 동일 레 아웃 (wave container + canvas) */
 .demo-opening-wrap {
   justify-content: center;
   align-items: center;

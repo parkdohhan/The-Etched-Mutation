@@ -1,35 +1,35 @@
 // js/services/NetworkService.js
-// 네트워크 호출을 중앙화하는 서비스
+// 네트워크 call 중앙화하 service
 
 import { getSupabaseClient } from '../lib/supabaseClient.js';
 
 /**
- * NetworkService - Supabase 호출을 중앙화
- * 모든 네트워크 호출은 이 서비스를 통해 이루어지며,
- * { ok, data, error } 형태로 반환합니다.
+ * NetworkService - Supabase call 중앙화
+ * 모든 네트워크 call service 루어지며,
+ * { ok, data, error } 형태 return .
  */
 class NetworkService {
   /**
-   * Supabase 클라이언트 가져오기
-   * @returns {Object|null} Supabase 클라이언트 또는 null
+ * Supabase client 져오기
+ * @returns {Object|null} Supabase client 또 null
    */
   _getClient() {
     const client = getSupabaseClient();
     if (!client) {
-      console.warn('[NetworkService] Supabase 클라이언트가 초기화되지 않았습니다');
+      console.warn('[NetworkService] Supabase client not initialized');
     }
     return client;
   }
 
   /**
-   * 공개된 메모리 목록 조회 (scenes, choices 포함)
+ * 공개 memory list query (scenes, choices )
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async fetchMemories() {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data: memoriesDataSupabase, error: memoriesError } = await client
@@ -38,7 +38,7 @@ class NetworkService {
         .order('id', { ascending: true });
 
       if (memoriesError) {
-        console.error('[NetworkService.fetchMemories] memories 조회 실패', memoriesError);
+        console.error('[NetworkService.fetchMemories] memories Query failed', memoriesError);
         return { ok: false, data: null, error: memoriesError };
       }
 
@@ -46,7 +46,7 @@ class NetworkService {
         return { ok: true, data: [], error: null };
       }
 
-      // 각 메모리의 scenes와 choices를 불러오기
+ // 각 memory scenes choices 불러오기
       const supabaseMemories = await Promise.all(
         memoriesDataSupabase.map(async (memory) => {
           const { data: scenesData, error: scenesError } = await client
@@ -56,8 +56,8 @@ class NetworkService {
             .order('scene_order', { ascending: true });
 
           if (scenesError) {
-            console.error(`[NetworkService.fetchMemories] Memory ${memory.id} scenes 조회 실패`, scenesError);
-            // scenes 에러가 있어도 메모리는 반환 (빈 scenes 배열로)
+            console.error(`[NetworkService.fetchMemories] Memory ${memory.id} scenes Query failed`, scenesError);
+ // scenes 러 있어 memory return (빈 scenes array )
             const isLive = !!memory.live_session_id;
             return {
               id: memory.id,
@@ -83,7 +83,7 @@ class NetworkService {
                 .order('choice_order', { ascending: true });
 
               if (choicesError) {
-                console.error(`[NetworkService.fetchMemories] Scene ${scene.id} choices 조회 실패`, choicesError);
+                console.error(`[NetworkService.fetchMemories] Scene ${scene.id} choices Query failed`, choicesError);
                 return null;
               }
 
@@ -151,21 +151,21 @@ class NetworkService {
 
       return { ok: true, data: validSupabaseMemories, error: null };
     } catch (error) {
-      console.error('[NetworkService.fetchMemories] 에러 발생', error);
+      console.error('[NetworkService.fetchMemories] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 메모리 ID로 메모리 정보 조회
-   * @param {number} memoryId - 메모리 ID
+ * memory ID memory 정보 query
+ * @param {number} memoryId - memory ID
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async getMemoryById(memoryId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -175,27 +175,27 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.getMemoryById] 조회 실패', error);
+        console.error('[NetworkService.getMemoryById] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.getMemoryById] 에러 발생', error);
+      console.error('[NetworkService.getMemoryById] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 라이브 세션 생성
-   * @param {Object} sessionData - 세션 데이터
+ * live session create
+ * @param {Object} sessionData - session data
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async createSession(sessionData) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const result = await client
@@ -209,7 +209,7 @@ class NetworkService {
         return { ok: false, data: null, error: result.error };
       }
 
-      // 생성된 세션이 실제로 DB에 있는지 확인
+ // create session 실제 DB 있 지 check
       const { data: verifyData, error: verifyError } = await client
         .from('live_sessions')
         .select('*')
@@ -223,21 +223,21 @@ class NetworkService {
 
       return { ok: true, data: result.data, error: null };
     } catch (error) {
-      console.error('[NetworkService.createSession] 에러 발생', error);
+      console.error('[NetworkService.createSession] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션 코드로 세션 조회
-   * @param {string} sessionCode - 세션 코드
+ * session 코드 session query
+ * @param {string} sessionCode - session 코드
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async findSessionsByCode(sessionCode) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -247,28 +247,28 @@ class NetworkService {
         .is('ended_at', null);
 
       if (error) {
-        console.error('[NetworkService.findSessionsByCode] 조회 실패', error);
+        console.error('[NetworkService.findSessionsByCode] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.findSessionsByCode] 에러 발생', error);
+      console.error('[NetworkService.findSessionsByCode] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션에 체험자 참여
-   * @param {number} sessionId - 세션 ID
-   * @param {string} userId - 사용자 ID
+ * session experiencer 참여
+ * @param {number} sessionId - session ID
+ * @param {string} userId - user ID
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async joinSession(sessionId, userId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -285,22 +285,22 @@ class NetworkService {
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.joinSession] 에러 발생', error);
+      console.error('[NetworkService.joinSession] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션 종료
-   * @param {number} sessionId - 세션 ID
-   * @param {number} alignment - 정렬도
+ * session end
+ * @param {number} sessionId - session ID
+ * @param {number} alignment - alignment
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async endSession(sessionId, alignment) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -318,22 +318,22 @@ class NetworkService {
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.endSession] 에러 발생', error);
+      console.error('[NetworkService.endSession] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션의 메모리 운명 업데이트
-   * @param {number} sessionId - 세션 ID
-   * @param {string} fate - 운명 ('preserve', 'dilute', 'erase')
+ * session memory 운명 업데 트
+ * @param {number} sessionId - session ID
+ * @param {string} fate - 운명 ('preserve', 'dilute', 'erase')
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async updateSessionMemoryFate(sessionId, fate) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -342,27 +342,27 @@ class NetworkService {
         .eq('id', sessionId);
 
       if (error) {
-        console.error('[NetworkService.updateSessionMemoryFate] 업데이트 실패', error);
+        console.error('[NetworkService.updateSessionMemoryFate] Update failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.updateSessionMemoryFate] 에러 발생', error);
+      console.error('[NetworkService.updateSessionMemoryFate] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션 정보 조회
-   * @param {number} sessionId - 세션 ID
+ * session 정보 query
+ * @param {number} sessionId - session ID
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async getSessionById(sessionId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -372,27 +372,27 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.getSessionById] 조회 실패', error);
+        console.error('[NetworkService.getSessionById] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.getSessionById] 에러 발생', error);
+      console.error('[NetworkService.getSessionById] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션의 체험자 ID 조회
-   * @param {number} sessionId - 세션 ID
+ * session experiencer ID query
+ * @param {number} sessionId - session ID
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async getSessionExperiencerId(sessionId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -402,28 +402,28 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.getSessionExperiencerId] 조회 실패', error);
+        console.error('[NetworkService.getSessionExperiencerId] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.getSessionExperiencerId] 에러 발생', error);
+      console.error('[NetworkService.getSessionExperiencerId] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 사용자의 세션 히스토리 조회
-   * @param {string} userId - 사용자 ID
-   * @param {number} limit - 조회 제한 수
+ * user session 히스토리 query
+ * @param {string} userId - user ID
+ * @param {number} limit - query 제 수
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async getUserSessionHistory(userId, limit = 50) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -434,27 +434,27 @@ class NetworkService {
         .limit(limit);
 
       if (error) {
-        console.error('[NetworkService.getUserSessionHistory] 조회 실패', error);
+        console.error('[NetworkService.getUserSessionHistory] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.getUserSessionHistory] 에러 발생', error);
+      console.error('[NetworkService.getUserSessionHistory] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 사용자의 세션 ID 목록 조회
-   * @param {string} userId - 사용자 ID
+ * user session ID list query
+ * @param {string} userId - user ID
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async getUserSessionIds(userId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -463,27 +463,27 @@ class NetworkService {
         .or(`narrator_id.eq.${userId},experiencer_id.eq.${userId}`);
 
       if (error) {
-        console.error('[NetworkService.getUserSessionIds] 조회 실패', error);
+        console.error('[NetworkService.getUserSessionIds] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.getUserSessionIds] 에러 발생', error);
+      console.error('[NetworkService.getUserSessionIds] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션 ID 목록으로 세션의 화자 ID 조회
-   * @param {number} sessionId - 세션 ID
+ * session ID list으 session narrator ID query
+ * @param {number} sessionId - session ID
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async getSessionNarratorId(sessionId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -493,27 +493,27 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.getSessionNarratorId] 조회 실패', error);
+        console.error('[NetworkService.getSessionNarratorId] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.getSessionNarratorId] 에러 발생', error);
+      console.error('[NetworkService.getSessionNarratorId] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 장면 저장 (scenes 테이블)
-   * @param {Object} sceneData - 장면 데이터
+ * scene save (scenes 테 블)
+ * @param {Object} sceneData - scene data
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async saveScene(sceneData) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -523,27 +523,27 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.saveScene] 저장 실패', error);
+        console.error('[NetworkService.saveScene] Save failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.saveScene] 에러 발생', error);
+      console.error('[NetworkService.saveScene] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 라이브 장면 저장 (live_scenes 테이블)
-   * @param {Object} sceneData - 장면 데이터
+ * live scene save (live_scenes 테 블)
+ * @param {Object} sceneData - scene data
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async saveLiveScene(sceneData) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -552,27 +552,27 @@ class NetworkService {
         .select();
 
       if (error) {
-        console.error('[NetworkService.saveLiveScene] 저장 실패', error);
+        console.error('[NetworkService.saveLiveScene] Save failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.saveLiveScene] 에러 발생', error);
+      console.error('[NetworkService.saveLiveScene] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션의 라이브 장면 목록 조회
-   * @param {number} sessionId - 세션 ID
+ * session live scene list query
+ * @param {number} sessionId - session ID
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async getLiveScenesBySessionId(sessionId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -582,27 +582,27 @@ class NetworkService {
         .order('scene_index', { ascending: true });
 
       if (error) {
-        console.error('[NetworkService.getLiveScenesBySessionId] 조회 실패', error);
+        console.error('[NetworkService.getLiveScenesBySessionId] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.getLiveScenesBySessionId] 에러 발생', error);
+      console.error('[NetworkService.getLiveScenesBySessionId] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 선택 저장 (choices 테이블)
-   * @param {Object} choiceData - 선택 데이터
+ * 선택 save (choices 테 블)
+ * @param {Object} choiceData - 선택 data
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async saveChoice(choiceData) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -612,27 +612,27 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.saveChoice] 저장 실패', error);
+        console.error('[NetworkService.saveChoice] Save failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.saveChoice] 에러 발생', error);
+      console.error('[NetworkService.saveChoice] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 플레이 저장 (plays 테이블)
-   * @param {Object} playData - 플레이 데이터
+ * play save (plays 테 블)
+ * @param {Object} playData - play data
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async savePlay(playData) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -642,27 +642,27 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.savePlay] 저장 실패', error);
+        console.error('[NetworkService.savePlay] Save failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.savePlay] 에러 발생', error);
+      console.error('[NetworkService.savePlay] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 메모리의 오염도 조회 (plays 테이블 count)
-   * @param {number} memoryId - 메모리 ID
+ * memory contamination query (plays 테 블 count)
+ * @param {number} memoryId - memory ID
    * @returns {Promise<{ok: boolean, data: number|null, error: Error|null}>}
    */
   async getContaminationLevel(memoryId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { count, error } = await client
@@ -671,27 +671,27 @@ class NetworkService {
         .eq('memory_id', memoryId);
 
       if (error) {
-        console.error('[NetworkService.getContaminationLevel] 조회 실패', error);
+        console.error('[NetworkService.getContaminationLevel] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: count || 0, error: null };
     } catch (error) {
-      console.error('[NetworkService.getContaminationLevel] 에러 발생', error);
+      console.error('[NetworkService.getContaminationLevel] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 메모리별 플레이 목록 조회 (지층 단면용)
-   * @param {string} memoryId - 메모리 ID
+ * memory별 play list query (strata 단면용)
+ * @param {string} memoryId - memory ID
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async getPlaysByMemoryId(memoryId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
       const { data, error } = await client
         .from('plays')
@@ -699,26 +699,26 @@ class NetworkService {
         .eq('memory_id', memoryId)
         .order('created_at', { ascending: true });
       if (error) {
-        console.error('[NetworkService.getPlaysByMemoryId] 조회 실패', error);
+        console.error('[NetworkService.getPlaysByMemoryId] Query failed', error);
         return { ok: false, data: null, error };
       }
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.getPlaysByMemoryId] 에러 발생', error);
+      console.error('[NetworkService.getPlaysByMemoryId] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 메모리 저장
-   * @param {Object} memoryData - 메모리 데이터
+ * memory save
+ * @param {Object} memoryData - memory data
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async saveMemory(memoryData) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -728,28 +728,28 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.saveMemory] 저장 실패', error);
+        console.error('[NetworkService.saveMemory] Save failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.saveMemory] 에러 발생', error);
+      console.error('[NetworkService.saveMemory] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션 ID 목록으로 메모리 조회
-   * @param {Array<number>} sessionIds - 세션 ID 배열
-   * @param {number} limit - 조회 제한 수
+ * session ID list으 memory query
+ * @param {Array<number>} sessionIds - session ID array
+ * @param {number} limit - query 제 수
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async getMemoriesBySessionIds(sessionIds, limit = 50) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -760,27 +760,27 @@ class NetworkService {
         .limit(limit);
 
       if (error) {
-        console.error('[NetworkService.getMemoriesBySessionIds] 조회 실패', error);
+        console.error('[NetworkService.getMemoriesBySessionIds] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.getMemoriesBySessionIds] 에러 발생', error);
+      console.error('[NetworkService.getMemoriesBySessionIds] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 세션 ID 목록으로 메모리 ID 목록 조회
-   * @param {Array<number>} sessionIds - 세션 ID 배열
+ * session ID list으 memory ID list query
+ * @param {Array<number>} sessionIds - session ID array
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async getMemoryIdsBySessionIds(sessionIds) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -789,27 +789,27 @@ class NetworkService {
         .in('source_session_id', sessionIds);
 
       if (error) {
-        console.error('[NetworkService.getMemoryIdsBySessionIds] 조회 실패', error);
+        console.error('[NetworkService.getMemoryIdsBySessionIds] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.getMemoryIdsBySessionIds] 에러 발생', error);
+      console.error('[NetworkService.getMemoryIdsBySessionIds] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 쪽지 전송
-   * @param {Object} noteData - 쪽지 데이터
+ * note 전송
+ * @param {Object} noteData - note data
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async sendNote(noteData) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { error } = await client.from('notes').insert(noteData);
@@ -821,22 +821,22 @@ class NetworkService {
 
       return { ok: true, data: null, error: null };
     } catch (error) {
-      console.error('[NetworkService.sendNote] 에러 발생', error);
+      console.error('[NetworkService.sendNote] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 플레이 조회 (scene_id와 memory_id로)
-   * @param {number} sceneId - 장면 ID
-   * @param {number} memoryId - 메모리 ID
+ * play query (scene_id memory_id )
+ * @param {number} sceneId - scene ID
+ * @param {number} memoryId - memory ID
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async getPlayBySceneAndMemory(sceneId, memoryId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -849,27 +849,27 @@ class NetworkService {
         .single();
 
       if (error) {
-        console.error('[NetworkService.getPlayBySceneAndMemory] 조회 실패', error);
+        console.error('[NetworkService.getPlayBySceneAndMemory] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.getPlayBySceneAndMemory] 에러 발생', error);
+      console.error('[NetworkService.getPlayBySceneAndMemory] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 장면 목록 조회 (memory_id로)
-   * @param {number} memoryId - 메모리 ID
+ * scene list query (memory_id )
+ * @param {number} memoryId - memory ID
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async getScenesByMemoryId(memoryId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -879,27 +879,27 @@ class NetworkService {
         .order('scene_order');
 
       if (error) {
-        console.error('[NetworkService.getScenesByMemoryId] 조회 실패', error);
+        console.error('[NetworkService.getScenesByMemoryId] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.getScenesByMemoryId] 에러 발생', error);
+      console.error('[NetworkService.getScenesByMemoryId] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 쪽지 읽음 처리
-   * @param {number} noteId - 쪽지 ID
+ * note 읽음 process
+ * @param {number} noteId - note ID
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async markNoteAsRead(noteId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -908,27 +908,27 @@ class NetworkService {
         .eq('id', noteId);
 
       if (error) {
-        console.error('[NetworkService.markNoteAsRead] 업데이트 실패', error);
+        console.error('[NetworkService.markNoteAsRead] Update failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.markNoteAsRead] 에러 발생', error);
+      console.error('[NetworkService.markNoteAsRead] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 플레이의 mismatch_type 목록 조회
-   * @param {number} memoryId - 메모리 ID
+ * play mismatch_type list query
+ * @param {number} memoryId - memory ID
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async getPlaysMismatchTypes(memoryId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -938,28 +938,28 @@ class NetworkService {
         .not('mismatch_type', 'is', null);
 
       if (error) {
-        console.error('[NetworkService.getPlaysMismatchTypes] 조회 실패', error);
+        console.error('[NetworkService.getPlaysMismatchTypes] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.getPlaysMismatchTypes] 에러 발생', error);
+      console.error('[NetworkService.getPlaysMismatchTypes] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 장면 업데이트
-   * @param {number} sceneId - 장면 ID
-   * @param {Object} updateData - 업데이트 데이터
+ * scene 업데 트
+ * @param {number} sceneId - scene ID
+ * @param {Object} updateData - 업데 트 data
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async updateScene(sceneId, updateData) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -968,27 +968,27 @@ class NetworkService {
         .eq('id', sceneId);
 
       if (error) {
-        console.error('[NetworkService.updateScene] 업데이트 실패', error);
+        console.error('[NetworkService.updateScene] Update failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error('[NetworkService.updateScene] 에러 발생', error);
+      console.error('[NetworkService.updateScene] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 메모리의 layers/dilution 업데이트 (희석 시스템)
-   * @param {number} memoryId - 메모리 ID
-   * @param {number} layers - 총 체험 횟수
-   * @param {number} dilution - 원본 비중 (0~100)
+ * memory layers/dilution 업데 트 (희석 시스템)
+ * @param {number} memoryId - memory ID
+ * @param {number} layers - 총 체험 횟수
+ * @param {number} dilution - original 비중 (0~100)
    */
   async updateMemoryDilution(memoryId, layers, dilution) {
     try {
       const client = this._getClient();
-      if (!client) return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+      if (!client) return { ok: false, data: null, error: new Error('No Supabase client') };
 
       const { data, error } = await client
         .from('memories')
@@ -1009,16 +1009,16 @@ class NetworkService {
   }
 
   /**
-   * Supabase Edge Function 호출
-   * @param {string} functionName - 함수 이름
-   * @param {Object} body - 요청 body
+ * Supabase Edge Function call
+ * @param {string} functionName - function 름
+ * @param {Object} body - request body
    * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
    */
   async invokeFunction(functionName, body) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client.functions.invoke(functionName, { body });
@@ -1030,21 +1030,21 @@ class NetworkService {
 
       return { ok: true, data, error: null };
     } catch (error) {
-      console.error(`[NetworkService.invokeFunction] ${functionName} 에러 발생`, error);
+      console.error(`[NetworkService.invokeFunction] ${functionName} Error occurred`, error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * 받은 쪽지 목록 조회
-   * @param {string} userId - 사용자 ID
+ * 받 note list query
+ * @param {string} userId - user ID
    * @returns {Promise<{ok: boolean, data: Array|null, error: Error|null}>}
    */
   async loadReceivedNotes(userId) {
     try {
       const client = this._getClient();
       if (!client) {
-        return { ok: false, data: null, error: new Error('Supabase 클라이언트가 없습니다') };
+        return { ok: false, data: null, error: new Error('No Supabase client') };
       }
 
       const { data, error } = await client
@@ -1054,20 +1054,20 @@ class NetworkService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('[NetworkService.loadReceivedNotes] 조회 실패', error);
+        console.error('[NetworkService.loadReceivedNotes] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: data || [], error: null };
     } catch (error) {
-      console.error('[NetworkService.loadReceivedNotes] 에러 발생', error);
+      console.error('[NetworkService.loadReceivedNotes] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
 
   /**
-   * Supabase 클라이언트 반환 (구독 등에 필요)
-   * @returns {Object|null} Supabase 클라이언트
+ * Supabase client return (subscribe 등 needed)
+ * @returns {Object|null} Supabase client
    */
   getClient() {
     return this._getClient();

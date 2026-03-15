@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>관리자 페이지 — The Etched Mutation</title>
+    <title>Admin — The Etched Mutation</title>
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -12,18 +12,18 @@
 <body>
     <div class="password-screen" id="passwordScreen">
         <div class="password-box">
-            <h2 class="password-title">관리자 인증</h2>
-            <div class="password-error" id="passwordError">인증에 실패했습니다</div>
+            <h2 class="password-title">Admin Authentication</h2>
+            <div class="password-error" id="passwordError">인증에 failed</div>
             <div id="adminLoginForm">
-                <input type="email" class="password-input" id="adminEmail" placeholder="이메일" autocomplete="email">
+                <input type="email" class="password-input" id="adminEmail" placeholder="Email" autocomplete="email">
                 <input type="password" class="password-input" id="adminPassword" placeholder="비밀번호" autocomplete="current-password" style="margin-top: 0.5rem;">
-                <button class="password-btn" onclick="checkPassword()" style="margin-top: 0.5rem;">로그인</button>
+                <button class="password-btn" onclick="checkPassword()" style="margin-top: 0.5rem;">Sign In</button>
             </div>
             <div id="adminAuthLoading" style="display:none; text-align:center; color:var(--text-muted); padding:1rem;">
                 인증 확인 중...
             </div>
             <div id="adminNoPermission" style="display:none;">
-                <p style="color:var(--text-muted); text-align:center; padding:1rem;">관리자 권한이 없습니다.</p>
+                <p style="color:var(--text-muted); text-align:center; padding:1rem;">관리자 권한이 not found.</p>
                 <button class="password-btn" onclick="adminLogout()" style="margin-top: 0.5rem;">돌아가기</button>
             </div>
         </div>
@@ -33,7 +33,7 @@
         <div class="container">
             <div class="admin-header">
                 <h1 class="admin-title">관리자 페이지</h1>
-                <button class="admin-logout-btn" onclick="logout()">로그아웃</button>
+                <button class="admin-logout-btn" onclick="logout()">Sign Out</button>
             </div>
 
             <div class="admin-actions">

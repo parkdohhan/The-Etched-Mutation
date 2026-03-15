@@ -1,9 +1,9 @@
 /**
- * strataSection.js — Terrain Profile Renderer (플레이 UI 하단 전용)
- * strataView.js(3D)와 완전 독립.
+ * strataSection.js — Terrain Profile Renderer (play UI bottom only)
+ * strataView.js(3D) 완전 독립.
  *
- * 3D terrain과 계통이 같은 대표 고저선 + underlayer + trace + marker.
- * "정확한 단면도"가 아니라 "읽기 쉬운 terrain profile".
+ * 3D terrain 계통 같 대표 고저선 + underlayer + trace + marker.
+ * "정확 단면 " 아니라 "읽기 쉬운 terrain profile".
  *
  * API:
  *   window.strataSection.init()
@@ -14,7 +14,7 @@
  *   window.strataSection.emotionVectorToRGB(ev)
  */
 
-/* ── deterministic noise (strataView.js와 동일 계통) ── */
+/* ── deterministic noise (strataView.js 동일 계통) ── */
 
 function _hs(x, y) { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
 function _sn(x, y) {
@@ -84,7 +84,7 @@ function buildProfileFromScenes(scenes, sampleCount) {
     const lo = Math.floor(t), hi = Math.min(lo + 1, n - 1);
     const frac = t - lo;
     const a = raw[lo], b = raw[hi];
-    const noise = (_fm(i * 0.15, 0.5, 4) - 0.35) * 1.5;
+    const noise = (_fm(i * 0.12, 0.5, 5) - 0.35) * 2.8;
     pts.push({
       h: a.h * (1 - frac) + b.h * frac + noise,
       r: a.r * (1 - frac) + b.r * frac,
@@ -98,9 +98,9 @@ function buildProfileFromScenes(scenes, sampleCount) {
 /* ── canvas setup ── */
 
 function setupCanvas(canvas) {
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  const w = rect.width, h = rect.height;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
   if (w <= 0 || h <= 0) return null;
   const needW = Math.round(w * dpr), needH = Math.round(h * dpr);
   if (canvas.width !== needW || canvas.height !== needH) {
@@ -156,15 +156,15 @@ function renderTerrainProfile(canvas, scenes, traces, currentSceneIndex) {
     ctx.beginPath();
     for (let i = 0; i < sampleCount; i++) {
       const x = (i / (sampleCount - 1)) * w;
-      const baseOffset = (profileY[i] - profileBottom) * dampening * 0.2;
-      const noise = (_fm(i * 0.12 + li * 2.7, li * 1.3, 3) - 0.35) * layerGap * 0.15 * dampening;
+      const baseOffset = (profileY[i] - profileBottom) * dampening * 0.25;
+      const noise = (_fm(i * 0.08 + li * 2.7, li * 1.3, 5) - 0.35) * layerGap * 0.32 * dampening;
       const y = layerTopBase + baseOffset + noise;
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     for (let i = sampleCount - 1; i >= 0; i--) {
       const x = (i / (sampleCount - 1)) * w;
-      const baseOffset = (profileY[i] - profileBottom) * dampening * 0.1;
-      const noise = (_fm(i * 0.09 + li * 3.1 + 5, li * 1.7 + 2, 3) - 0.35) * layerGap * 0.08 * dampening;
+      const baseOffset = (profileY[i] - profileBottom) * dampening * 0.15;
+      const noise = (_fm(i * 0.07 + li * 3.1 + 5, li * 1.7 + 2, 5) - 0.35) * layerGap * 0.18 * dampening;
       const y = layerBotBase + baseOffset + noise;
       ctx.lineTo(x, y);
     }

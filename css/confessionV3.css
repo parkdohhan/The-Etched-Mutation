@@ -295,7 +295,7 @@
   padding: 1rem;
 }
 
-/* 전환 애니메이션 */
+/* switch 애니메 션 */
 .v3-zone > * {
   opacity: 0;
   transform: translateY(10px);

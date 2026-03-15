@@ -1,12 +1,12 @@
 // js/demo/demoReveal.js
-// 데모 리빌: 스텝별 노출/애니메이션, demoFlow와 연동
+// 데모 리빌: 스텝별 노출/애니메 션, demoFlow 연동
 
 const revealState = {
   revealedSteps: new Set([0]),
 };
 
 /**
- * 스텝 인덱스에 맞춰 리빌 영역 갱신 (demoFlow에서 호출 가능)
+ * 스텝 index 맞춰 리빌 영역 갱신 (demoFlow 서 call possible)
  * @param {number} stepIndex
  */
 function demoRevealStep(stepIndex) {
@@ -18,7 +18,7 @@ function demoRevealStep(stepIndex) {
 }
 
 /**
- * 데모 리빌 영역에 텍스트/엘리먼트 표시
+ * 데모 리빌 영역 text/엘리먼트 display
  * @param {string} htmlOrText
  */
 function setRevealContent(htmlOrText) {
@@ -32,7 +32,7 @@ function setRevealContent(htmlOrText) {
 }
 
 /**
- * 리빌 영역 초기화
+ * 리빌 영역 init
  */
 function clearReveal() {
   const el = document.getElementById('demoReveal');
@@ -45,7 +45,7 @@ function clearReveal() {
   revealState.revealedSteps.add(0);
 }
 
-// demoFlow에서 호출할 수 있도록 전역 노출
+// demoFlow 서 call 수 있 록 global 노출
 window.demoRevealStep = demoRevealStep;
 window.setRevealContent = setRevealContent;
 window.clearReveal = clearReveal;

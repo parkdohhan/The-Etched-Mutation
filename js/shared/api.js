@@ -1,13 +1,13 @@
 // /js/shared/api.js
-// Supabase API 유틸리티 함수들
+// Supabase API 유틸리티 function들
 
 import { getSupabaseClient } from '../lib/supabaseClient.js';
 
-// 기억 목록 가져오기
+// memory list 져오기
 export async function fetchMemories() {
   const supabaseClient = getSupabaseClient();
   if (!supabaseClient) {
-    console.error('fetchMemories: Supabase 클라이언트가 초기화되지 않았습니다');
+    console.error('fetchMemories: Supabase client not initialized');
     return [];
   }
 
@@ -25,11 +25,11 @@ export async function fetchMemories() {
   return data || [];
 }
 
-// 장면 가져오기
+// scene 져오기
 export async function fetchScenes(memoryId) {
   const supabaseClient = getSupabaseClient();
   if (!supabaseClient) {
-    console.error('fetchScenes: Supabase 클라이언트가 초기화되지 않았습니다');
+    console.error('fetchScenes: Supabase client not initialized');
     return [];
   }
 
@@ -47,11 +47,11 @@ export async function fetchScenes(memoryId) {
   return data || [];
 }
 
-// 플레이 저장
+// play save
 export async function savePlay(playData) {
   const supabaseClient = getSupabaseClient();
   if (!supabaseClient) {
-    console.error('savePlay: Supabase 클라이언트가 초기화되지 않았습니다');
+    console.error('savePlay: Supabase client not initialized');
     return null;
   }
 
@@ -69,11 +69,11 @@ export async function savePlay(playData) {
   return data;
 }
 
-// 쪽지 저장
+// note save
 export async function saveNote(noteData) {
   const supabaseClient = getSupabaseClient();
   if (!supabaseClient) {
-    console.error('saveNote: Supabase 클라이언트가 초기화되지 않았습니다');
+    console.error('saveNote: Supabase client not initialized');
     return null;
   }
 
@@ -91,11 +91,11 @@ export async function saveNote(noteData) {
   return data;
 }
 
-// 쪽지 가져오기
+// note 져오기
 export async function fetchNotes(userId) {
   const supabaseClient = getSupabaseClient();
   if (!supabaseClient) {
-    console.error('fetchNotes: Supabase 클라이언트가 초기화되지 않았습니다');
+    console.error('fetchNotes: Supabase client not initialized');
     return [];
   }
 
@@ -114,17 +114,17 @@ export async function fetchNotes(userId) {
 }
 
 /**
- * 기억이 'Fetus' 상태라면 'alive'로 활성화 (첫 목격)
- * DB 호출을 1번으로 줄여 최적화함
+ * memory 'Fetus' state라면 'alive' active화 (첫 목격)
+ * DB call 1번으 줄여 최적화함
  */
 export async function activateMemoryIfFetus(memoryId) {
   const supabaseClient = getSupabaseClient();
   if (!supabaseClient) {
-    console.error('activateMemoryIfFetus: Supabase 클라이언트가 초기화되지 않았습니다');
+    console.error('activateMemoryIfFetus: Supabase client not initialized');
     return;
   }
 
-  // 조건: id가 일치하고 AND status가 'Fetus'인 경우에만 업데이트
+ // 조건: id 일치하고 AND status 'Fetus'인 업데 트
   const { data, error } = await supabaseClient
     .from('memories')
     .update({ status: 'alive' })
@@ -137,10 +137,10 @@ export async function activateMemoryIfFetus(memoryId) {
     return;
   }
 
-  // 데이터가 반환되었다면 업데이트가 성공했다는 뜻 (즉, 방금 깨어남)
+ // data return되었다면 업데 트 success했다 뜻 (즉, 방금 깨어남)
   if (data && data.length > 0) {
     console.log(`[Memory] Status Activated: ${memoryId} (Fetus → alive)`);
-    // 필요시 여기서 "첫 번째 목격자가 되셨습니다" 알림 처리 가능
+ // needed시 여기서 "첫 번째 목격자 되셨습니다" notification process possible
   }
 }
 

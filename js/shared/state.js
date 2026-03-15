@@ -1,56 +1,56 @@
 // /js/shared/state.js
-// 전역 상태 관리
+// global state manage
 
-// 전역 상태 객체
+// global state object
 export const AppState = {
-  // Supabase 클라이언트
+ // Supabase client
   supabaseClient: null,
   
-  // 스토리 데이터
+ // 스토리 data
   storyData: null,
   
-  // 인증
+ // auth
   isLoggedIn: false,
   currentUser: null,
   
-  // 현재 모드
+ // 현재 mode
   currentMode: null,  // 'archive', 'beginner', 'ritual', 'live'
   currentRole: null,  // 'A' (화자), 'B' (체험자)
   
-  // 세션
+ // session
   sessionCode: null,
   currentSessionId: null,
   
-  // 기억/장면
+ // memory/scene
   allMemoriesData: [],
   currentMemory: null,
   currentScene: 0,
   currentSceneOrder: 1,
   
-  // 사용자 입력
+ // user input
   userChoices: [],
   userReasons: [],
   
-  // 정렬도
+ // alignment
   currentAlignment: 0,
   currentBucket: null,
   emotionHistory: [],
   
-  // Live 모드
+ // Live mode
   liveSceneNum: 1,
   liveFragments: 0,
   liveMatches: 0,
   
-  // 애니메이션
+ // 애니메 션
   waveAnimationId: null,
   liveWaveAnimationId: null,
   
-  // 필터/정렬
+ // filter/정렬
   currentSort: 'all',
   currentCategory: 'all'
 };
 
-// 상태 초기화
+// state init
 export function resetState() {
   AppState.currentMode = null;
   AppState.currentRole = null;
@@ -71,7 +71,7 @@ export function resetState() {
   AppState.liveWaveAnimationId = null;
 }
 
-// 상태 업데이트 (로깅 포함)
+// state 업데 트 ( 깅 )
 export function updateState(key, value) {
   if (key in AppState) {
     AppState[key] = value;
@@ -81,7 +81,7 @@ export function updateState(key, value) {
   }
 }
 
-// 여러 상태 한번에 업데이트
+// 여러 state 번 업데 트
 export function updateStates(updates) {
   Object.keys(updates).forEach(key => {
     updateState(key, updates[key]);

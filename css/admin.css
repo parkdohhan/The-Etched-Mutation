@@ -536,7 +536,7 @@ body::before {
         grid-template-columns: 1fr;
     }
 }
-/* 통합 세션 목록 스타일 */
+/* 통합 session list 스타일 */
 .filter-buttons {
     display: flex;
     gap: 0.5rem;
@@ -645,7 +645,7 @@ body::before {
     font-size: 0.8rem;
     color: rgba(255,255,255,0.5);
 }
-/* 세션 상세 스타일 */
+/* session 상세 스타일 */
 .detail-header {
     margin-bottom: 2rem;
 }
@@ -812,7 +812,7 @@ body::before {
     margin-right: 0.5rem;
 }
 
-/* 오염 버전 섹션 */
+/* contamination 버전 섹션 */
 .contamination-section {
     margin-top: 15px;
     border-top: 1px solid rgba(196, 168, 130, 0.2);
@@ -901,7 +901,7 @@ body::before {
     color: var(--text-primary);
 }
 
-/* TEM 오염 (contamination) 섹션 */
+/* TEM contamination (contamination) 섹션 */
 .contamination-section {
     margin-top: 1rem;
     padding: 0.75rem 0;

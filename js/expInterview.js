@@ -1,59 +1,69 @@
 // ═══════════════════════════════════════════════════
-//  expInterview.js — 기존 sceneViewer에 끼우는 모듈
-//  emotionModal 교체 + sidebar 파동 버킷화
+//  expInterview.js — Module that plugs into existing sceneViewer
+//  emotionModal replacement + sidebar wave bucketing
 // ═══════════════════════════════════════════════════
 
 // ===== Chip Data =====
 const EXP_CHIPS = {
   body: [
-    { label: '가슴이 조였다', key: 'chest_tight' },
-    { label: '숨이 멎었다', key: 'breathless' },
-    { label: '손이 떨렸다', key: 'trembling' },
-    { label: '눈물이 났다', key: 'tears' },
-    { label: '아무것도 느끼지 못했다', key: 'nothing', void: true },
+    { label: 'chest tightened', key: 'chest_tight' },
+    { label: 'breath stopped', key: 'breathless' },
+    { label: 'hands trembled', key: 'trembling' },
+    { label: 'tears came', key: 'tears' },
+    { label: 'felt nothing', key: 'nothing', void: true },
   ],
   emotion: [
-    { label: '죄책감', key: 'guilt' },
-    { label: '두려움', key: 'fear' },
-    { label: '분노', key: 'anger' },
-    { label: '슬픔', key: 'sadness' },
-    { label: '수치심', key: 'shame' },
-    { label: '그리움', key: 'longing' },
-    { label: '안도', key: 'relief' },
-    { label: '혼란', key: 'confusion' },
-    { label: '허탈', key: 'emptiness' },
-    { label: '경외', key: 'awe' },
-    { label: '이상한 기쁨', key: 'strange_joy' },
-    { label: '무감각', key: 'numbness', void: true },
+    { label: 'guilt', key: 'guilt' },
+    { label: 'fear', key: 'fear' },
+    { label: 'anger', key: 'anger' },
+    { label: 'sadness', key: 'sadness' },
+    { label: 'shame', key: 'shame' },
+    { label: 'longing', key: 'longing' },
+    { label: 'relief', key: 'relief' },
+    { label: 'confusion', key: 'confusion' },
+    { label: 'emptiness', key: 'emptiness' },
+    { label: 'awe', key: 'awe' },
+    { label: 'strange joy', key: 'strange_joy' },
+    { label: 'numbness', key: 'numbness', void: true },
   ],
   reason: [
-    { label: '내 잘못인 것 같아서', key: 'self_blame' },
-    { label: '어쩔 수 없었으니까', key: 'helpless' },
-    { label: '누군가가 배신했으니까', key: 'betrayal' },
-    { label: '말하고 싶지 않아', key: 'void', void: true },
+    { label: 'because it felt like my fault', key: 'self_blame' },
+    { label: 'because it was unavoidable', key: 'helpless' },
+    { label: 'because someone betrayed', key: 'betrayal' },
+    { label: 'I don\'t want to say', key: 'void', void: true },
   ],
   target: [
-    { label: '화자 자신', key: 'narrator_self' },
-    { label: '화자의 상대', key: 'narrator_other' },
-    { label: '나 자신', key: 'experiencer_self' },
-    { label: '아무도 아냐', key: 'nobody' },
+    { label: 'the narrator', key: 'narrator_self' },
+    { label: 'the narrator\'s other', key: 'narrator_other' },
+    { label: 'myself', key: 'experiencer_self' },
+    { label: 'no one', key: 'nobody' },
   ],
 };
 
 const EXP_BODY_LABEL = {
-  chest_tight: '가슴이 조였구나',
-  breathless: '숨이 멎었구나',
-  trembling: '손이 떨렸구나',
-  tears: '눈물이 났구나',
-  nothing: '아무것도 느끼지 못했구나',
+  chest_tight: 'Your chest tightened',
+  breathless: 'Your breath stopped',
+  trembling: 'Your hands trembled',
+  tears: 'Tears came',
+  nothing: 'You felt nothing',
 };
 
 const EXP_EMOTION_LABEL = {
-  guilt: '죄책감', fear: '두려움', anger: '분노',
-  sadness: '슬픔', shame: '수치심', longing: '그리움',
-  relief: '안도', confusion: '혼란', emptiness: '허탈',
-  awe: '경외', strange_joy: '이상한 기쁨', numbness: '무감각',
+  guilt: 'guilt', fear: 'fear', anger: 'anger',
+  sadness: 'sadness', shame: 'shame', longing: 'longing',
+  relief: 'relief', confusion: 'confusion', emptiness: 'emptiness',
+  awe: 'awe', strange_joy: 'strange joy', numbness: 'numbness',
 };
+
+function _hasBatchim(str) {
+  if (!str) return false;
+  const last = str.charCodeAt(str.length - 1);
+  if (last < 0xAC00 || last > 0xD7A3) return false;
+  return (last - 0xAC00) % 28 !== 0;
+}
+function _josa(word, withBatchim, withoutBatchim) {
+  return word + (_hasBatchim(word) ? withBatchim : withoutBatchim);
+}
 
 
 // ===== Interview State =====
@@ -88,8 +98,8 @@ function buildExpInterviewQuestions(bucket, sceneOrder) {
     questions.push({
       id: 'body',
       question: isFixated
-        ? '이번엔 다르게 느껴봐.\n몸에서 뭐가 일어나?'
-        : '이 장면을 읽으면서\n몸에서 뭘 느꼈어?',
+        ? 'Try to feel it differently this time.\nWhat happened in your body?'
+        : 'As you read this scene,\nwhat did you feel in your body?',
       type: 'chips',
       chipsKey: 'body',
     });
@@ -99,8 +109,8 @@ function buildExpInterviewQuestions(bucket, sceneOrder) {
       question: (data) => {
         const bodyText = EXP_BODY_LABEL[data.body] || '';
         return isFixated
-          ? `${bodyText}.\n저번이랑 같은 감정이야?\n(두 개까지 고를 수 있어)`
-          : `${bodyText}.\n그게 어떤 감정이었을까?\n(두 개까지 고를 수 있어)`;
+          ? `${bodyText}.\nIs it the same feeling as last time?\n(You can choose up to two)`
+          : `${bodyText}.\nWhat emotion was that?\n(You can choose up to two)`;
       },
       type: 'multi_chips',
       chipsKey: 'emotion',
@@ -113,9 +123,15 @@ function buildExpInterviewQuestions(bucket, sceneOrder) {
       id: 'reason',
       question: (data) => {
         const emotions = Array.isArray(data.emotion) ? data.emotion : [data.emotion];
-        if (emotions.includes('numbness') && emotions.length === 1) return '왜 아무것도 느끼지 못했을까?';
-        const labels = emotions.map(e => EXP_EMOTION_LABEL[e] || e).join('과 ');
-        return `왜 ${labels}을 느꼈을까?`;
+        if (emotions.includes('numbness') && emotions.length === 1) return 'Why couldn\'t you feel anything?';
+        const labels = emotions.map(e => EXP_EMOTION_LABEL[e] || e);
+        let joined;
+        if (labels.length === 1) {
+          joined = labels[0];
+        } else {
+          joined = labels[0] + ' and ' + labels[1];
+        }
+        return `Why did you feel ${joined}?`;
       },
       type: 'chips',
       chipsKey: 'reason',
@@ -127,8 +143,14 @@ function buildExpInterviewQuestions(bucket, sceneOrder) {
       id: 'target',
       question: (data) => {
         const emotions = Array.isArray(data.emotion) ? data.emotion : [data.emotion];
-        const labels = emotions.map(e => EXP_EMOTION_LABEL[e] || e).join('과 ');
-        return `그 ${labels}은 누구를 향한 거야?`;
+        const labels = emotions.map(e => EXP_EMOTION_LABEL[e] || e);
+        let joined;
+        if (labels.length === 1) {
+          joined = labels[0];
+        } else {
+          joined = labels[0] + ' and ' + labels[1];
+        }
+        return `Who was that ${joined} directed at?`;
       },
       type: 'chips',
       chipsKey: 'target',
@@ -202,46 +224,46 @@ function extractExpVector(answers) {
 
 
 // ═══════════════════════════════════════════
-//  Render — choicesContainer 아래에 끼워넣기
+//  Render — inject below choicesContainer
 // ═══════════════════════════════════════════
 
 /**
- * emotionModal 대신 호출됨.
- * 기존 makeChoice() → emotionModal 대신 이 함수를 호출.
- * choicesContainer를 숨기고, 그 자리에 칩 인터뷰를 렌더링.
+ * Called instead of emotionModal.
+ * Called in place of makeChoice() → emotionModal.
+ * Hides choicesContainer and renders chip interview in its place.
  */
 function startExpInterview(scene) {
-  console.log('[expInterview] startExpInterview 호출됨, scene:', scene);
-  // 선택지 숨기기
+  console.log('[expInterview] startExpInterview called, scene:', scene);
+  // Hide choices
   const choicesEl = document.getElementById('choicesContainer');
   if (choicesEl) {
     choicesEl.style.display = 'none';
-    console.log('[expInterview] choicesContainer 숨김');
+    console.log('[expInterview] choicesContainer hidden');
   } else {
-    console.warn('[expInterview] choicesContainer를 찾을 수 없음');
+    console.warn('[expInterview] choicesContainer not found');
   }
 
-  // 자유 입력 숨기기
+  // Hide free input
   const freeInput = document.querySelector('.free-input-container');
   if (freeInput) {
     freeInput.style.display = 'none';
-    console.log('[expInterview] free-input-container 숨김');
+    console.log('[expInterview] free-input-container hidden');
   }
 
-  // 인터뷰 컨테이너 생성 (없으면)
+  // Create interview container (if not present)
   let container = document.getElementById('expInterviewZone');
   if (!container) {
     container = document.createElement('div');
     container.id = 'expInterviewZone';
     container.className = 'exp-interview-zone';
-    // scene-main 안에, choicesContainer 뒤에 삽입
+    // Insert inside scene-main, after choicesContainer
     const sceneMain = document.querySelector('.scene-main');
     if (sceneMain) {
       sceneMain.appendChild(container);
-      console.log('[expInterview] expInterviewZone 생성 및 추가됨');
+      console.log('[expInterview] expInterviewZone created and appended');
     } else {
-      console.error('[expInterview] .scene-main을 찾을 수 없음');
-      // sceneViewer 내부에 직접 추가 시도
+      console.error('[expInterview] .scene-main not found');
+      // Try adding directly inside sceneViewer
       const sceneViewer = document.getElementById('sceneViewer');
       if (sceneViewer) {
         const sceneContent = sceneViewer.querySelector('.scene-content');
@@ -249,33 +271,33 @@ function startExpInterview(scene) {
           const sceneMain = sceneContent.querySelector('.scene-main');
           if (sceneMain) {
             sceneMain.appendChild(container);
-            console.log('[expInterview] sceneViewer 내부에 expInterviewZone 추가됨');
+            console.log('[expInterview] expInterviewZone appended inside sceneViewer');
           } else {
-            console.error('[expInterview] sceneViewer 내부에도 .scene-main을 찾을 수 없음');
+            console.error('[expInterview] .scene-main not found inside sceneViewer either');
             return;
           }
         } else {
-          console.error('[expInterview] .scene-content를 찾을 수 없음');
+          console.error('[expInterview] .scene-content not found');
           return;
         }
       } else {
-        console.error('[expInterview] sceneViewer를 찾을 수 없음');
+        console.error('[expInterview] sceneViewer not found');
         return;
       }
     }
   }
   container.innerHTML = '';
   container.style.display = 'block';
-  console.log('[expInterview] 인터뷰 컨테이너 준비 완료');
+  console.log('[expInterview] interview container ready');
 
-  // 상태 초기화
+  // Reset state
   expInterviewState.answers = {};
 
   const bucket = expInterviewState.currentBucket || 'MID';
   const sceneOrder = scene.scene_order || scene.order || ((typeof appStore !== 'undefined' && appStore.getState) ? appStore.getState().currentScene + 1 : 1);
   const questions = buildExpInterviewQuestions(bucket, sceneOrder);
 
-  // 버킷 메시지
+  // Bucket message
   const bucketMsg = getExpBucketMessage(bucket);
   if (bucketMsg) {
     const msgEl = document.createElement('p');
@@ -289,9 +311,9 @@ function startExpInterview(scene) {
 
 function getExpBucketMessage(bucket) {
   switch (bucket) {
-    case 'MID':     return '조금 더 들어볼게.';
-    case 'LOW':     return '어디서 갈라졌는지 찾아보자.';
-    case 'FIXATED': return '계속 같은 곳을 맴돌고 있어.';
+    case 'MID':     return 'Let me listen a little more.';
+    case 'LOW':     return 'Let\'s find where things diverged.';
+    case 'FIXATED': return 'You keep circling the same place.';
     default:        return null;
   }
 }
@@ -323,12 +345,12 @@ function renderExpIvQuestion(container, questions, index, scene) {
   chipsEl.className = 'exp-iv-chips';
 
   if (q.type === 'multi_chips') {
-    // ── Multi-select (감정) ──
+    // ── Multi-select (emotion) ──
     const maxSelect = q.maxSelect || 2;
     const selected = [];
     const confirmBtn = document.createElement('button');
     confirmBtn.className = 'exp-iv-confirm';
-    confirmBtn.textContent = '확인';
+    confirmBtn.textContent = 'Confirm';
 
     EXP_CHIPS[q.chipsKey].forEach(chip => {
       const btn = document.createElement('button');
@@ -457,13 +479,13 @@ function onExpInterviewDone(container, scene) {
     }
   }
 
-  // Archive flow: window.archiveUserEmotions에 저장 및 DB 저장
+  // Archive flow: save to window.archiveUserEmotions and DB
   if (typeof window.appStore !== 'undefined' && window.appStore.getState) {
     const state = window.appStore.getState();
     if (state.currentMode === 'archive') {
-      console.log('[expInterview] Archive flow: 데이터 저장 시작');
+      console.log('[expInterview] Archive flow: saving data');
       
-      // window.archiveUserEmotions에 저장
+      // Save to window.archiveUserEmotions
       if (!window.archiveUserEmotions) {
         window.archiveUserEmotions = [];
       }
@@ -474,7 +496,7 @@ function onExpInterviewDone(container, scene) {
         sceneId: scene.id || currentScene
       };
       
-      // window.archiveSceneAlignments에 저장
+      // Save to window.archiveSceneAlignments
       if (!window.archiveSceneAlignments) {
         window.archiveSceneAlignments = [];
       }
@@ -482,7 +504,7 @@ function onExpInterviewDone(container, scene) {
         window.archiveSceneAlignments[currentScene] = sceneAlignment;
       }
       
-      // saveArchiveEmotionToPlays 호출
+      // Call saveArchiveEmotionToPlays
       const currentData = window.currentStoryData;
       if (currentData && typeof window.saveArchiveEmotionToPlays === 'function') {
         const reasonVector = userVector.reason_analysis || null;
@@ -498,7 +520,7 @@ function onExpInterviewDone(container, scene) {
         );
       }
       
-      console.log('[expInterview] Archive flow: 데이터 저장 완료', {
+      console.log('[expInterview] Archive flow: data saved', {
         sceneIndex: currentScene,
         alignment: sceneAlignment,
         hasEmotion: !!window.archiveUserEmotions[currentScene]
@@ -516,21 +538,20 @@ function onExpInterviewDone(container, scene) {
   const freeInput = document.querySelector('.free-input-container');
   if (freeInput) freeInput.style.display = '';
 
-  // Proceed
-  // ritual flow인지 확인 (currentMode가 'ritual'이면 finalSceneObject 생성 후 확인 요청)
+  // Check if ritual flow (if currentMode is 'ritual', create finalSceneObject and request confirmation)
   if (typeof window.appStore !== 'undefined' && window.appStore.getState) {
     const state = window.appStore.getState();
     if (state.currentMode === 'ritual') {
-      console.log('[expInterview] ritual flow 감지, finalSceneObject 생성 및 확인 요청');
+      console.log('[expInterview] Ritual flow detected, creating finalSceneObject and requesting confirmation');
       
-      // userVector를 emotionAnalysis 형식으로 변환
+      // Convert userVector to emotionAnalysis format
       const emotionAnalysis = {
         base: userVector.base,
         intensity: 0.5,
         confidence: 0.5
       };
       
-      // finalSceneObject 업데이트 (전역 변수)
+      // Update finalSceneObject (global variable)
       const sceneText = scene.text || window.currentGeneratedScene || state.pendingSceneText || '';
       window.finalSceneObject = {
         text: sceneText,
@@ -550,29 +571,28 @@ function onExpInterviewDone(container, scene) {
         }
       };
       
-      console.log('[expInterview] finalSceneObject 생성 완료:', window.finalSceneObject);
+      console.log('[expInterview] finalSceneObject created:', window.finalSceneObject);
       
-      // UI 업데이트: 생성된 감정 표시
+      // UI update: display generated emotion
       const emotionContent = document.querySelector('#generatedEmotionContent .generated-text');
       if (emotionContent) {
-        emotionContent.textContent = window.finalSceneObject.generatedEmotion || '감정이 수집되었습니다';
+        emotionContent.textContent = window.finalSceneObject.generatedEmotion || 'Emotions have been collected';
       }
       
-      // emotion 탭으로 전환
+      // Switch to emotion tab
       if (typeof window.switchGeneratedTab === 'function') {
         window.switchGeneratedTab('emotion');
       }
       
-      // 확인 요청 (handleConfirm으로 바로 이동)
+      // Request confirmation (go directly to handleConfirm)
       if (typeof window.addChatMessageWithConfirm === 'function') {
-        window.addChatMessageWithConfirm('ai', '이 감정이 맞아?');
+        window.addChatMessageWithConfirm('ai', 'Does this emotion feel right?');
       } else {
-        // fallback: handleConfirm 직접 호출
-        console.log('[expInterview] addChatMessageWithConfirm 없음, handleConfirm 직접 호출');
+        // fallback: call handleConfirm directly
+        console.log('[expInterview] addChatMessageWithConfirm not found, calling handleConfirm directly');
         setTimeout(() => {
           if (typeof window.handleConfirm === 'function') {
-            // 'yes'로 자동 확인 (또는 사용자가 확인 버튼 클릭 대기)
-            console.log('[expInterview] 사용자가 확인 버튼을 클릭할 때까지 대기');
+            console.log('[expInterview] Waiting for user to click confirm button');
           }
         }, 100);
       }
@@ -608,8 +628,8 @@ function fallbackAlignment(userVector, originalVector) {
 
 
 // ═══════════════════════════════════════════
-//  Sidebar Wave — 버킷별 교체
-//  기존 startWaveAnimation() 을 override
+//  Sidebar Wave — bucket-specific replacement
+//  Overrides existing startWaveAnimation()
 // ═══════════════════════════════════════════
 
 let _waveBucket = 'IDLE';
@@ -621,8 +641,8 @@ function updateWaveBucket(bucket) {
 }
 
 /**
- * 기존 startWaveAnimation()을 이 함수로 교체.
- * 기존 waveCanvas (#waveCanvas)에 그림.
+ * Replaces existing startWaveAnimation() with this function.
+ * Draws on existing waveCanvas (#waveCanvas).
  */
 function startBucketWaveAnimation() {
   const canvas = document.getElementById('waveCanvas');
@@ -646,10 +666,10 @@ function startBucketWaveAnimation() {
 
     if (bucket === 'IDLE') {
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(196, 168, 130, 0.08)'; // 더 약하게 (0.15 -> 0.08)
-      ctx.lineWidth = 0.8; // 더 얇게 (1 -> 0.8)
+      ctx.strokeStyle = 'rgba(196, 168, 130, 0.08)'; // weaker (0.15 -> 0.08)
+      ctx.lineWidth = 0.8; // thinner (1 -> 0.8)
       for (let x = 0; x < w; x++) {
-        const y = cy + Math.sin(x * 0.015 + _waveTime * 0.02) * 4; // 더 작은 진폭 (6 -> 4)
+        const y = cy + Math.sin(x * 0.015 + _waveTime * 0.02) * 4; // smaller amplitude (6 -> 4)
         x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
       ctx.stroke();
@@ -772,4 +792,3 @@ function expTypeWrite(el, text, speed, cb) {
   }
   tick();
 }
-

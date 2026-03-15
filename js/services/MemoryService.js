@@ -1,12 +1,12 @@
 // js/services/MemoryService.js
-// 메모리 저장 로직을 중앙화하는 서비스
+// memory save 직 중앙화하 service
 
 import { networkService } from './NetworkService.js';
 
 /**
- * 메모리 저장을 위한 payload 구성
- * @param {Object} memory - 메모리 객체 { title, scenes: [...] }
- * @returns {Object} 저장을 위한 payload 객체
+ * memory save 위 payload 구성
+ * @param {Object} memory - memory object { title, scenes: [...] }
+ * @returns {Object} save 위 payload object
  */
 function buildMemoryPayload(memory) {
     return {
@@ -33,13 +33,13 @@ function buildMemoryPayload(memory) {
 }
 
 /**
- * 메모리 payload 검증
- * @param {Object} payload - buildMemoryPayload의 결과
- * @returns {{ valid: boolean, error?: string }} 검증 결과
+ * memory payload validate
+ * @param {Object} payload - buildMemoryPayload result
+ * @returns {{ valid: boolean, error?: string }} validate result
  */
 function validateMemoryPayload(payload) {
     if (!payload.memory) {
-        return { valid: false, error: 'memory 필드가 없습니다' };
+        return { valid: false, error: 'memory 필드가 not found' };
     }
     
     if (!payload.memory.title || typeof payload.memory.title !== 'string' || payload.memory.title.trim() === '') {
@@ -53,7 +53,7 @@ function validateMemoryPayload(payload) {
     for (let i = 0; i < payload.scenes.length; i++) {
         const sceneItem = payload.scenes[i];
         if (!sceneItem.scene) {
-            return { valid: false, error: `scenes[${i}].scene이 없습니다` };
+            return { valid: false, error: `scenes[${i}].scene이 not found` };
         }
         
         if (!sceneItem.scene.text || typeof sceneItem.scene.text !== 'string' || sceneItem.scene.text.trim() === '') {
@@ -76,16 +76,16 @@ function validateMemoryPayload(payload) {
 }
 
 /**
- * 메모리를 DB에 저장 (NetworkService 사용)
- * @param {Object} payload - buildMemoryPayload의 결과
+ * memory DB save (NetworkService )
+ * @param {Object} payload - buildMemoryPayload result
  * @returns {Promise<{ ok: boolean, data: Object|null, error: Error|null }>}
  */
 async function persistMemory(payload) {
     try {
-        // 1. 메모리 저장
+ // 1. memory save
         const memoryResult = await networkService.saveMemory(payload.memory);
         if (!memoryResult.ok) {
-            console.error('[MemoryService] 메모리 저장 실패:', memoryResult.error);
+            console.error('[MemoryService] 메모리 Save failed:', memoryResult.error);
             return { ok: false, data: null, error: memoryResult.error };
         }
         
@@ -93,7 +93,7 @@ async function persistMemory(payload) {
         console.log('[Memory] New memory created with status: Fetus');
         console.log('메모리 저장 성공:', memoryData);
         
-        // 2. 각 장면 저장
+ // 2. 각 scene save
         const savedScenes = [];
         for (let i = 0; i < payload.scenes.length; i++) {
             const sceneItem = payload.scenes[i];
@@ -104,18 +104,18 @@ async function persistMemory(payload) {
             
             const sceneResult = await networkService.saveScene(sceneData);
             if (!sceneResult.ok) {
-                console.error(`[MemoryService] Scene ${i + 1} 저장 실패:`, sceneResult.error);
-                // 기존 코드와 동일하게 continue (에러가 있어도 다음 scene 저장 시도)
+                console.error(`[MemoryService] Scene ${i + 1} Save failed:`, sceneResult.error);
+ // existing 코드 동일하게 continue ( 러 있어 다음 scene save 시 )
                 continue;
             }
             
             console.log(`Scene ${i + 1} 저장 성공:`, sceneResult.data);
             savedScenes.push(sceneResult.data);
             
-            // 3. 각 선택지 저장
+ // 3. 각 choices save
             for (let j = 0; j < sceneItem.choices.length; j++) {
                 const choice = sceneItem.choices[j];
-                // 빈 선택지는 건너뛰기 (기존 로직과 동일)
+ // 빈 choices 건너뛰기 (existing 직 동일)
                 if (!choice.text || choice.text.trim().length === 0) {
                     continue;
                 }
@@ -128,8 +128,8 @@ async function persistMemory(payload) {
                 
                 const choiceResult = await networkService.saveChoice(choiceData);
                 if (!choiceResult.ok) {
-                    console.error(`[MemoryService] Choice ${j + 1} 저장 실패:`, choiceResult.error);
-                    // 기존 코드와 동일하게 에러 로그만 남기고 계속 진행
+                    console.error(`[MemoryService] Choice ${j + 1} Save failed:`, choiceResult.error);
+ // existing 코드 동일하게 러 그 남기고 계속 진행
                 }
             }
         }
@@ -143,28 +143,28 @@ async function persistMemory(payload) {
             error: null
         };
     } catch (error) {
-        console.error('[MemoryService] persistMemory 에러 발생:', error);
+        console.error('[MemoryService] persistMemory Error occurred:', error);
         return { ok: false, data: null, error };
     }
 }
 
 /**
- * 저장 후 필요한 업데이트 (현재는 로그만, 나중에 확장 가능)
- * @param {Object} result - persistMemory의 결과
+ * save 후 needed 업데 트 (현재 그 , 나중 확장 possible)
+ * @param {Object} result - persistMemory result
  */
 function postPersistUpdates(result) {
     if (result.ok) {
         console.log('기억 저장 완료');
     }
-    // 나중에 store 업데이트나 UI 업데이트가 필요하면 여기에 추가
+ // 나중 store 업데 트나 UI 업데 트 needed하면 여기 add
 }
 
 /**
- * MemoryService - 메모리 저장을 중앙화
+ * MemoryService - memory save 중앙화
  */
 export const MemoryService = {
     /**
-     * 메모리 저장
+ * memory save
      * @param {Object} params - { memory: { title, scenes: [...] } }
      * @returns {Promise<{ ok: boolean, data: Object|null, error: Error|null }>}
      */
@@ -174,15 +174,15 @@ export const MemoryService = {
         console.log('장면 수:', memory.scenes.length);
         console.log('curator_id:', curator_id || '(없음 - 익명)');
 
-        // 1. Payload 구성
+ // 1. Payload 구성
         const payload = buildMemoryPayload(memory);
 
-        // curator_id가 있으면 memory 페이로드에 포함
+ // curator_id 있으면 memory 페 load 
         if (curator_id) {
             payload.memory.curator_id = curator_id;
         }
 
-        // 2. 검증
+ // 2. validate
         const validation = validateMemoryPayload(payload);
         if (!validation.valid) {
             const error = new Error(`메모리 payload 검증 실패: ${validation.error}`);
@@ -190,10 +190,10 @@ export const MemoryService = {
             return { ok: false, data: null, error };
         }
 
-        // 3. 저장
+ // 3. save
         const result = await persistMemory(payload);
 
-        // 4. 저장 후 업데이트
+ // 4. save 후 업데 트
         postPersistUpdates(result);
 
         return result;

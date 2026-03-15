@@ -1,5 +1,5 @@
 // js/demo/demoEmotionLocal.js
-// 키워드 매핑 기반 즉시 rough vector 생성
+// keyword mapping 기반 즉시 rough vector create
 
 const KEYWORD_MAP = {
   guilt: ['미안', '잘못', '내가', '내 탓', '왜 그랬', '그러지 말았', '후회', '못한', '했어야', '나 때문'],

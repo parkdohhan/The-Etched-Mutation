@@ -1,4 +1,4 @@
-// js/demo/demoFlow.js — 데모 플로우 전면 구현 (index.html / index.js 수정 없음)
+// js/demo/demoFlow.js — 데모 플 우 전면 구현 (index.html / index.js edit 없음)
 
 import { ByeoriEngine } from '../core/ByeoriEngine.js';
 import { Visualizer } from '../ui/Visualizer.js';
@@ -11,7 +11,7 @@ import { networkService } from '../services/NetworkService.js';
 const engine = new ByeoriEngine();
 const visualizer = new Visualizer();
 
-// ——— 인라인: index.js emotionVectorToWaveStyle (math.js 수정 금지) ———
+// ——— 인라인: index.js emotionVectorToWaveStyle (math.js edit 금지) ———
 function emotionVectorToWaveStyle(emotionVector) {
   if (!emotionVector) return { color: { r: 100, g: 140, b: 180 }, speed: 0.3, amplitude: 30, frequency: 0.008, chaos: 0.1, lineCount: 8, trailOpacity: 0.15 };
   const values = Object.values(emotionVector);
@@ -43,7 +43,7 @@ function emotionVectorToWaveStyle(emotionVector) {
 }
 
 const MONOLOGUES = [
-  { text: '그러지 말았어야했어', entryLine: '그때는 그게 맞는다고 생각했어.', vad: { v: -0.5, a: 0.2, d: -0.6 }, x: 0.3, y: 0.35 },
+  { text: 'I shouldn\'t have done that', entryLine: '그때는 그게 맞는다고 생각했어.', vad: { v: -0.5, a: 0.2, d: -0.6 }, x: 0.3, y: 0.35 },
   { text: '그냥 도망치고싶었어', entryLine: '그것밖에 할 수 있는 게 없었잖아.', vad: { v: -0.6, a: 0.7, d: -0.4 }, x: 0.65, y: 0.45 },
   { text: '왜 그랬는지 모르겠어', entryLine: '사실은 알고 있었는지도 몰라.', vad: { v: -0.4, a: 0.3, d: -0.3 }, x: 0.45, y: 0.6 },
   { text: '그냥 없던 일이 됐으면', entryLine: '근데 아직 남아 있잖아.', vad: { v: -0.3, a: -0.4, d: -0.2 }, x: 0.2, y: 0.55 },
@@ -52,7 +52,7 @@ const MONOLOGUES = [
 const DEMO_MEMORY_ID = '8fe034ef-6db0-4ba1-b291-66954fea2e08';
 
 const SCENE_INPUT_CONFIG = [
-  { mode: 'free', prompt: '그 순간, 먼저 떠오른 말을 써.' },
+  { mode: 'free', prompt: 'In that moment, write the first words that come to mind.' },
   { mode: 'free', prompt: '그때 네 안에서 뭐가 일어났어?' },
   { mode: 'short', prompt: '지금 이 기억은 너한테 ___야.' },
 ];
@@ -65,11 +65,11 @@ const SEED_GHOST_VECTORS = [
   { base: { anger: 0.5, shame: 0.4, guilt: 0.2 } },
 ];
 
-// 시드 장면 (Supabase 실패 시)
+// 시드 scene (Supabase failure 시)
 const SEED_SCENES = [
-  { scene_order: 0, text: '엄마가 들어와서 소리를 질렀어...', original_emotion: { anger: 0.84, guilt: 0.4, shame: 0.19 } },
-  { scene_order: 1, text: '그래서 도망치고 도망치고...', original_emotion: { fear: 0.79, isolation: 0.56 } },
-  { scene_order: 2, text: '난 어떻게 집에 돌아왔고...', original_emotion: { isolation: 0.83, sadness: 0.69 } },
+  { scene_order: 0, text: 'Mom came in and started yelling...', original_emotion: { anger: 0.84, guilt: 0.4, shame: 0.19 } },
+  { scene_order: 1, text: 'So I ran and kept running...', original_emotion: { fear: 0.79, isolation: 0.56 } },
+  { scene_order: 2, text: 'Somehow I made it back home...', original_emotion: { isolation: 0.83, sadness: 0.69 } },
 ];
 
 let openingWaveId = null;
@@ -110,7 +110,7 @@ function startOpening() {
   const textEl = document.getElementById('openingText');
   if (!canvas || !textEl) return;
 
-  // index 오프닝과 동일: 컨테이너 기준 크기 확정 후 파동 시작
+ // index 오프닝 동일: container 기준 크기 확정 후 wave start
   requestAnimationFrame(() => {
     if (!canvas.parentElement || canvas.offsetWidth === 0) return;
     startOpeningWaveLoop(canvas, textEl);

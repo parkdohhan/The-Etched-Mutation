@@ -12,7 +12,7 @@ let currentLayers = []; // Archive 레이어 추적
 let adminUser = null; // 현재 인증된 관리자
 let previewAudio = null; // 사운드 미리듣기용
 
-// Supabase Auth 기반 관리자 인증
+// Supabase Auth 기반 manage자 auth
 async function checkPassword() {
     const emailInput = document.getElementById('adminEmail');
     const passwordInput = document.getElementById('adminPassword');
@@ -25,13 +25,13 @@ async function checkPassword() {
     const password = passwordInput?.value;
 
     if (!email || !password) {
-        error.textContent = '이메일과 비밀번호를 입력하세요';
+        error.textContent = 'Please enter email and password';
         error.classList.add('visible');
         setTimeout(() => error.classList.remove('visible'), 3000);
         return;
     }
 
-    // 로딩 표시
+ // 딩 display
     loginForm.style.display = 'none';
     loadingEl.style.display = 'block';
     noPermissionEl.style.display = 'none';
@@ -39,10 +39,10 @@ async function checkPassword() {
     try {
         const supabaseClient = getSupabaseClient();
         if (!supabaseClient) {
-            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다');
+            throw new Error('Supabase client not initialized');
         }
 
-        // 1. Supabase Auth 로그인
+ // 1. Supabase Auth 그인
         const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
             email,
             password
@@ -52,7 +52,7 @@ async function checkPassword() {
             throw new Error(authError.message);
         }
 
-        // 2. profiles 테이블에서 role 확인
+ // 2. profiles 테 블 서 role check
         const { data: profile, error: profileError } = await supabaseClient
             .from('profiles')
             .select('role')
@@ -60,18 +60,18 @@ async function checkPassword() {
             .single();
 
         if (profileError) {
-            console.error('[Admin] 프로필 조회 실패:', profileError);
-            throw new Error('프로필을 확인할 수 없습니다');
+            console.error('[Admin] 프로필 Query failed:', profileError);
+            throw new Error('프로필을 확인할 수 not found');
         }
 
         if (profile.role !== 'admin') {
-            // 관리자 권한 없음
+ // manage자 권 없음
             loadingEl.style.display = 'none';
             noPermissionEl.style.display = 'block';
             return;
         }
 
-        // 3. 관리자 인증 성공
+ // 3. manage자 auth success
         adminUser = authData.user;
         document.getElementById('passwordScreen').style.display = 'none';
         document.getElementById('adminDashboard').classList.add('active');
@@ -82,7 +82,7 @@ async function checkPassword() {
         console.error('[Admin] 인증 오류:', err);
         loadingEl.style.display = 'none';
         loginForm.style.display = 'block';
-        error.textContent = err.message || '인증에 실패했습니다';
+        error.textContent = err.message || '인증에 failed';
         error.classList.add('visible');
         emailInput.value = '';
         passwordInput.value = '';
@@ -90,7 +90,7 @@ async function checkPassword() {
     }
 }
 
-// 페이지 로드 시 기존 세션 확인
+// 페 지 load 시 existing session check
 async function checkExistingSession() {
     try {
         const supabaseClient = getSupabaseClient();
@@ -99,7 +99,7 @@ async function checkExistingSession() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session?.user) return;
 
-        // 프로필에서 role 확인
+ // profile 서 role check
         const { data: profile } = await supabaseClient
             .from('profiles')
             .select('role')
@@ -118,14 +118,14 @@ async function checkExistingSession() {
     }
 }
 
-// Enter 키로 로그인
+// Enter 키 그인
 document.getElementById('adminPassword')?.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         checkPassword();
     }
 });
 
-// 관리자가 아닌 경우 돌아가기
+// manage자 돌아 기
 function adminLogout() {
     const noPermissionEl = document.getElementById('adminNoPermission');
     const loginForm = document.getElementById('adminLoginForm');
@@ -135,7 +135,7 @@ function adminLogout() {
     document.getElementById('adminPassword').value = '';
 }
 
-// 로그아웃
+// 그아웃
 async function logout() {
     if (confirm('로그아웃하시겠습니까?')) {
         try {
@@ -157,26 +157,26 @@ async function logout() {
     }
 }
 
-// 초기화 시 기존 세션 확인
+// init 시 existing session check
 setTimeout(() => checkExistingSession(), 500);
 
-// 기억 목록 로드
+// memory list load
 async function loadMemories() {
     try {
-        // Supabase에서 불러오기
+ // Supabase 서 불러오기
         const supabaseClient = await getSupabaseClient();
         if (!supabaseClient) {
-            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+            throw new Error('Supabase client not initialized.');
         }
         
         const memoriesData = await listMemoriesWithScenesChoices(supabaseClient);
 
         if (memoriesData && memoriesData.length > 0) {
             memories = memoriesData;
-            // 백업용으로 localStorage에도 저장
+ // 백업용으 localStorage save
             saveMemoriesToStorage();
         } else {
-            // Supabase에 데이터가 없으면 localStorage에서 불러오기 (마이그레이션)
+ // Supabase data 없으면 localStorage 서 불러오기 (마 그레 션)
             const stored = loadAdminMemories();
             if (stored && stored.length > 0) {
                 memories = stored;
@@ -186,8 +186,8 @@ async function loadMemories() {
         }
     } catch (error) {
         console.error('loadMemories error:', error);
-        alert('기억을 불러오는 중 오류가 발생했습니다: ' + error.message);
-        // 에러 발생 시 localStorage에서 불러오기
+        alert('기억을 Loading 오류가 발생했습니다: ' + error.message);
+ // Error occurred 시 localStorage 서 불러오기
         const stored = loadAdminMemories();
         if (stored && stored.length > 0) {
             memories = stored;
@@ -198,14 +198,14 @@ async function loadMemories() {
     renderMemoriesTable();
 }
 
-// 기억 목록 테이블 렌더링
+// memory list 테 블 렌더링
 function renderMemoriesTable() {
     const tbody = document.getElementById('memoriesTableBody');
     if (!tbody) return; // 통합 목록으로 대체됨
     tbody.innerHTML = '';
 
     if (memories.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">등록된 기억이 없습니다</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">등록된 기억이 not found</td></tr>';
         return;
     }
 
@@ -226,7 +226,7 @@ function renderMemoriesTable() {
     });
 }
 
-// 새 기억 추가
+// 새 memory add
 function addNewMemory() {
     currentMemoryIndex = null;
     currentMemoryId = null;
@@ -250,7 +250,7 @@ function addNewMemory() {
     switchTab('edit');
 }
 
-// 기억 수정
+// memory edit
 function editMemory(index) {
     currentMemoryIndex = index;
     const memory = memories[index];
@@ -263,7 +263,7 @@ function editMemory(index) {
     document.getElementById('completedSentence').value = memory.completed_sentence || '';
     document.getElementById('authorNote').value = memory.author_note || '';
     document.getElementById('memoryStatus').value = memory.status || 'Fetus';
-    // 사운드 매핑 로드
+ // sound mapping load
     var soundMap = memory.sound_map || {};
     document.getElementById('soundMapOpening').value = soundMap.opening || '';
     document.getElementById('soundMapHigh').value = soundMap.HIGH || '';
@@ -277,7 +277,7 @@ function editMemory(index) {
     switchTab('edit');
 }
 
-// 기억 가시성 토글
+// memory 시성 토글
         async function toggleMemoryVisibility(index) {
             const memory = memories[index];
             const newVisibility = !memory.visible;
@@ -285,7 +285,7 @@ function editMemory(index) {
             try {
                 const supabaseClient = await getSupabaseClient();
                 if (!supabaseClient) {
-                    throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+                    throw new Error('Supabase client not initialized.');
                 }
         
                 if (memory.id) {
@@ -306,7 +306,7 @@ function editMemory(index) {
     }
 }
 
-// 기억 삭제
+// memory delete
 async function deleteMemory(index) {
     const memory = memories[index];
     
@@ -317,18 +317,18 @@ async function deleteMemory(index) {
     try {
         const supabaseClient = await getSupabaseClient();
         if (!supabaseClient) {
-            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+            throw new Error('Supabase client not initialized.');
         }
         
         if (memory.id) {
             await deleteMemoryGraph(supabaseClient, memory.id);
         }
         
-        // 로컬 배열에서 제거
+ // local array 서 remove
         memories.splice(index, 1);
         saveMemoriesToStorage(); // 백업용
         
-        // 목록 갱신
+ // list 갱신
         await loadMemories(); // memories 배열 최신화
         await loadAllSessions(); // 통합 목록 갱신
         
@@ -339,7 +339,7 @@ async function deleteMemory(index) {
     }
 }
 
-// 장면 추가
+// scene add
 function addScene() {
         currentScenes.push({
         text: '',
@@ -356,7 +356,7 @@ function addScene() {
     renderScenes();
 }
 
-// 장면 렌더링
+// scene 렌더링
 function renderScenes() {
     const container = document.getElementById('scenesContainer');
     container.innerHTML = '';
@@ -508,14 +508,14 @@ function renderScenes() {
         container.appendChild(sceneBlock);
     });
 
-    // 이벤트 리스너 연결
+ // 벤트 listener connect
     attachSceneListeners();
 }
 
-// 선택지 렌더링
+// choices 렌더링
 function renderChoices(choices, sceneIndex) {
     if (!choices || choices.length === 0) {
-        return '<div style="color:var(--text-muted);padding:1rem;text-align:center;">선택지가 없습니다</div>';
+        return '<div style="color:var(--text-muted);padding:1rem;text-align:center;">선택지가 not found</div>';
     }
 
     return choices.map((choice, choiceIndex) => `
@@ -545,7 +545,7 @@ function renderChoices(choices, sceneIndex) {
     `).join('');
 }
 
-// 원본 선택 옵션 렌더링
+// original 선택 옵션 렌더링
 function renderOriginalChoiceOptions(choices, selectedValue) {
     if (!choices || choices.length === 0) {
         return '<option value="0">선택지 없음</option>';
@@ -555,10 +555,10 @@ function renderOriginalChoiceOptions(choices, selectedValue) {
     ).join('');
 }
 
-// 원본 감정 렌더링
+// original emotion 렌더링
 function renderOriginalEmotions(originalEmotion, sceneIndex) {
     if (!originalEmotion || Object.keys(originalEmotion).length === 0) {
-        return '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">감정이 없습니다</div>';
+        return '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">감정이 not found</div>';
     }
     
     const emotionLabels = {
@@ -593,7 +593,7 @@ function renderOriginalEmotions(originalEmotion, sceneIndex) {
     `).join('');
 }
 
-// 다음 장면 옵션 렌더링
+// 다음 scene 옵션 렌더링
 function renderNextSceneOptions(currentSceneIndex, selectedValue) {
     let options = '';
     for (let i = 0; i < currentScenes.length; i++) {
@@ -603,9 +603,9 @@ function renderNextSceneOptions(currentSceneIndex, selectedValue) {
     return options;
 }
 
-// 감정 벡터를 색상으로 보간하는 함수
+// emotion vector color으 보간하 function
 function interpolateColors(emotionVector) {
-    // 감정별 색상 매핑 (RGB)
+ // emotion별 color mapping (RGB)
     const emotionColors = {
         fear: { r: 74, g: 144, b: 217 },      // #4A90D9
         sadness: { r: 90, g: 122, b: 154 },   // #5A7A9A
@@ -635,7 +635,7 @@ function interpolateColors(emotionVector) {
         g = Math.round(g / totalWeight);
         b = Math.round(b / totalWeight);
     } else {
-        // 기본값 (회색)
+ // default값 (회색)
         r = 128;
         g = 128;
         b = 128;
@@ -644,7 +644,7 @@ function interpolateColors(emotionVector) {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-// 파동 데이터 생성 함수
+// wave data create function
 function computeWaveData(emotionVector, sceneTextLength, voidLevel) {
     const wavePoints = [];
     const freq = 0.02;
@@ -668,9 +668,9 @@ function computeWaveData(emotionVector, sceneTextLength, voidLevel) {
     return { wavePoints, color: avgColor };
 }
 
-// VOID 자동 감지 함수
+// VOID 자동 감지 function
 function detectVoid(sceneText, emotionReasonText, emotionVector) {
-    // 1) Scene Void (텍스트 모호성 중심)
+ // 1) Scene Void (text 모호성 중심)
     const vagueSceneKeywords = ["기억이 안", "흐릿", "모르겠", "잘 기억", "대충", "애매"];
     
     const sceneVoid =
@@ -685,38 +685,38 @@ function detectVoid(sceneText, emotionReasonText, emotionVector) {
         emotionReasonText.trim().length === 0 ||
         vagueReasonKeywords.some(k => emotionReasonText.includes(k));
     
-    // 3) Emotion Void (emotionVector 기반)
+ // 3) Emotion Void (emotionVector 기반)
     const emotionSum = Object.values(emotionVector || {}).reduce((a, b) => a + b, 0);
     const emotionVoid = emotionSum === 0;  // 감정 입력 없음
     
-    // 최종 VOID Level
+ // 최종 VOID Level
     const voidCount = [sceneVoid, reasonVoid, emotionVoid].filter(v => v).length;
     const voidLevel = voidCount >= 2 ? "high" : "low";
     
     return { sceneVoid, reasonVoid, emotionVoid, voidLevel };
 }
 
-// 장면 이벤트 리스너 연결
+// scene 벤트 listener connect
 function attachSceneListeners() {
-    // 장면 본문
+ // scene 본문
     document.querySelectorAll('.scene-text-input').forEach(input => {
         input.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             currentScenes[sceneIndex].text = this.value;
             
-            // Preview 탭이 활성화되어 있고 현재 장면이면 파동 업데이트
+ // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
             if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
                 renderWavePreview();
             }
         });
     });
 
-    // anchor_emotions 입력 이벤트
+ // anchor_emotions input 벤트
     document.querySelectorAll('.anchor-emotions-input').forEach(input => {
         input.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             const value = this.value.trim();
-            // 콤마로 구분된 문자열을 배열로 변환
+ // 콤마 구분 문자열 array convert
             currentScenes[sceneIndex].anchor_emotions = value
                 ? value.split(',').map(s => s.trim()).filter(s => s)
                 : null;
@@ -725,22 +725,22 @@ function attachSceneListeners() {
         });
     });
 
-    // 잔향 단어
+ // 잔향 단어
     document.querySelectorAll('.scene-echo-words-input').forEach(input => {
         input.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             const value = this.value.trim();
-            // 콤마로 구분하여 배열로 변환
+ // 콤마 구분하여 array convert
             currentScenes[sceneIndex].echoWords = value ? value.split(',').map(w => w.trim()).filter(w => w) : [];
         });
     });
 
-    // 장면 타입
+ // scene 타입
     document.querySelectorAll('.scene-type-select').forEach(select => {
         select.addEventListener('change', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             currentScenes[sceneIndex].sceneType = this.value;
-            // 타입 변경 시 원본 필드 표시/숨김 업데이트
+ // 타입 변경 시 original 필드 display/숨김 업데 트
             const originalFields = document.querySelectorAll(`.scene-original-fields[data-scene-index="${sceneIndex}"]`);
             const originalSection = document.querySelector(`.editor-section.scene-original-fields[data-scene-index="${sceneIndex}"]`);
             if (this.value === 'branch' || this.value === 'ending') {
@@ -750,12 +750,12 @@ function attachSceneListeners() {
                 originalFields.forEach(field => field.style.display = 'none');
                 if (originalSection) originalSection.style.display = 'none';
             }
-            // 다음 장면 선택 드롭다운 업데이트 (타입 표시 반영)
+ // 다음 scene 선택 드롭다운 업데 트 (타입 display 반영)
             renderScenes();
         });
     });
 
-    // 원본 선택
+ // original 선택
     document.querySelectorAll('.scene-original-choice-select').forEach(select => {
         select.addEventListener('change', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -763,7 +763,7 @@ function attachSceneListeners() {
         });
     });
 
-    // 원본 이유
+ // original 유
     document.querySelectorAll('.scene-original-reason-input').forEach(input => {
         input.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -771,7 +771,7 @@ function attachSceneListeners() {
         });
     });
 
-    // 원본 이유 벡터 업데이트
+ // original 유 vector 업데 트
     document.querySelectorAll('.original-reason-vector-attribution').forEach(select => {
         select.addEventListener('change', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -814,7 +814,7 @@ function attachSceneListeners() {
         });
     });
 
-    // 원본 감정 선택 변경
+ // original emotion 선택 변경
     document.querySelectorAll('.original-emotion-select').forEach(select => {
         select.addEventListener('change', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -823,7 +823,7 @@ function attachSceneListeners() {
         });
     });
 
-    // 원본 감정 강도 변경
+ // original emotion 강 변경
     document.querySelectorAll('.original-emotion-intensity').forEach(slider => {
         slider.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -837,7 +837,7 @@ function attachSceneListeners() {
         });
     });
 
-    // VOID 체크박스
+ // VOID 체크박스
     document.querySelectorAll('.scene-void-toggle').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -858,7 +858,7 @@ function attachSceneListeners() {
             currentScenes[sceneIndex].voidInfo.emotionVoid = this.checked;
             updateVoidLevel(sceneIndex);
             
-            // Preview 탭이 활성화되어 있고 현재 장면이면 파동 업데이트
+ // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
             if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
                 renderWavePreview();
             }
@@ -874,14 +874,14 @@ function attachSceneListeners() {
             currentScenes[sceneIndex].voidInfo.reasonVoid = this.checked;
             updateVoidLevel(sceneIndex);
             
-            // Preview 탭이 활성화되어 있고 현재 장면이면 파동 업데이트
+ // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
             if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
                 renderWavePreview();
             }
         });
     });
 
-    // 자동 감지 버튼
+ // 자동 감지 button
     document.querySelectorAll('.auto-detect-void-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -893,7 +893,7 @@ function attachSceneListeners() {
             const sceneText = sceneTextInput ? sceneTextInput.value : '';
             const emotionReasonText = emotionReasonInput ? emotionReasonInput.value : '';
             
-            // 감정 벡터 계산
+ // emotion vector calculate
             const emotionVector = {
                 fear: 0, sadness: 0, guilt: 0, anger: 0,
                 longing: 0, isolation: 0, numbness: 0, moralPain: 0
@@ -907,7 +907,7 @@ function attachSceneListeners() {
                     }
                 });
                 
-                // 정규화
+ // normalize
                 const total = Object.values(emotionVector).reduce((sum, val) => sum + val, 0);
                 if (total > 0) {
                     Object.keys(emotionVector).forEach(key => {
@@ -918,7 +918,7 @@ function attachSceneListeners() {
             
             const voidInfo = detectVoid(sceneText, emotionReasonText, emotionVector);
             
-            // 체크박스 업데이트
+ // 체크박스 업데 트
             const sceneVoidCheckbox = document.querySelector(`.scene-void-toggle[data-scene-index="${sceneIndex}"]`);
             const emotionVoidCheckbox = document.querySelector(`.emotion-void-toggle[data-scene-index="${sceneIndex}"]`);
             const reasonVoidCheckbox = document.querySelector(`.reason-void-toggle[data-scene-index="${sceneIndex}"]`);
@@ -927,20 +927,20 @@ function attachSceneListeners() {
             if (emotionVoidCheckbox) emotionVoidCheckbox.checked = voidInfo.emotionVoid;
             if (reasonVoidCheckbox) reasonVoidCheckbox.checked = voidInfo.reasonVoid;
             
-            // voidInfo 저장
+ // voidInfo save
             currentScenes[sceneIndex].voidInfo = voidInfo;
             
-            // 레벨 표시 업데이트
+ // 레벨 display 업데 트
             updateVoidLevel(sceneIndex);
             
-            // Preview 탭이 활성화되어 있고 현재 장면이면 파동 업데이트
+ // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
             if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
                 renderWavePreview();
             }
         });
     });
 
-    // 선택지 텍스트
+ // choices text
     document.querySelectorAll('.choice-text-input').forEach(input => {
         input.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -949,14 +949,14 @@ function attachSceneListeners() {
             if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
             currentScenes[sceneIndex].choices[choiceIndex].text = this.value;
             
-            // Preview 탭이 활성화되어 있고 현재 장면이면 파동 업데이트
+ // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
             if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
                 renderWavePreview();
             }
         });
     });
 
-    // 감정 선택
+ // emotion 선택
     document.querySelectorAll('.choice-emotion-select').forEach(select => {
         select.addEventListener('change', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -965,14 +965,14 @@ function attachSceneListeners() {
             if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
             currentScenes[sceneIndex].choices[choiceIndex].emotion = this.value;
             
-            // Preview 탭이 활성화되어 있고 현재 장면이면 파동 업데이트
+ // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
             if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
                 renderWavePreview();
             }
         });
     });
 
-    // 감정 강도
+ // emotion 강 
     document.querySelectorAll('.choice-intensity-slider').forEach(slider => {
         slider.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -982,14 +982,14 @@ function attachSceneListeners() {
             currentScenes[sceneIndex].choices[choiceIndex].intensity = parseInt(this.value);
             this.parentElement.querySelector('.choice-intensity-value').textContent = this.value;
             
-            // Preview 탭이 활성화되어 있고 현재 장면이면 파동 업데이트
+ // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
             if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
                 renderWavePreview();
             }
         });
     });
 
-    // 다음 장면 선택
+ // 다음 scene 선택
     document.querySelectorAll('.choice-next-scene-select').forEach(select => {
         select.addEventListener('change', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -1000,7 +1000,7 @@ function attachSceneListeners() {
         });
     });
 
-    // text_stage_1 이벤트
+ // text_stage_1 벤트
     document.querySelectorAll('.scene-text-stage-1').forEach(textarea => {
         textarea.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -1009,7 +1009,7 @@ function attachSceneListeners() {
         });
     });
 
-    // text_stage_2 이벤트
+ // text_stage_2 벤트
     document.querySelectorAll('.scene-text-stage-2').forEach(textarea => {
         textarea.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -1017,7 +1017,7 @@ function attachSceneListeners() {
         });
     });
 
-    // text_stage_3 이벤트
+ // text_stage_3 벤트
     document.querySelectorAll('.scene-text-stage-3').forEach(textarea => {
         textarea.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
@@ -1026,7 +1026,7 @@ function attachSceneListeners() {
     });
 }
 
-// VOID 레벨 업데이트
+// VOID 레벨 업데 트
 function updateVoidLevel(sceneIndex) {
     const scene = currentScenes[sceneIndex];
     if (!scene.voidInfo) {
@@ -1046,32 +1046,32 @@ function updateVoidLevel(sceneIndex) {
     }
 }
 
-// 원본 감정 추가
+// original emotion add
 function addOriginalEmotion(sceneIndex) {
     if (!currentScenes[sceneIndex].originalEmotion) {
         currentScenes[sceneIndex].originalEmotion = {};
     }
     
-    // 사용 가능한 감정 목록
+ // possible emotion list
     const availableEmotions = ['fear', 'sadness', 'guilt', 'anger', 'longing', 'isolation', 'numbness', 'shame', 'moral_pain'];
     
-    // 이미 추가된 감정 목록
+ // 미 add emotion list
     const existingEmotions = Object.keys(currentScenes[sceneIndex].originalEmotion);
     
-    // 아직 추가되지 않은 첫 번째 감정 찾기
+ // 아직 add되지 않 첫 번째 emotion 찾기
     const newEmotion = availableEmotions.find(emotion => !existingEmotions.includes(emotion));
     
     if (newEmotion) {
-        // 새로운 감정 추가
+ // 새 운 emotion add
         currentScenes[sceneIndex].originalEmotion[newEmotion] = 0.5;
         renderScenes();
     } else {
-        // 모든 감정이 이미 추가된 경우
+ // 모든 emotion 미 add 
         alert('모든 감정이 이미 추가되었습니다.');
     }
 }
 
-// 원본 감정 삭제
+// original emotion delete
 function removeOriginalEmotion(sceneIndex, emotionIndex) {
     if (!currentScenes[sceneIndex].originalEmotion) return;
     
@@ -1080,7 +1080,7 @@ function removeOriginalEmotion(sceneIndex, emotionIndex) {
         const emotionKey = emotions[emotionIndex];
         delete currentScenes[sceneIndex].originalEmotion[emotionKey];
         
-        // 빈 객체가 되면 null로 설정
+ // 빈 object 되면 null config
         if (Object.keys(currentScenes[sceneIndex].originalEmotion).length === 0) {
             currentScenes[sceneIndex].originalEmotion = null;
         }
@@ -1088,7 +1088,7 @@ function removeOriginalEmotion(sceneIndex, emotionIndex) {
     }
 }
 
-// 원본 감정 업데이트
+// original emotion 업데 트
 function updateOriginalEmotion(sceneIndex, emotionIndex) {
     if (!currentScenes[sceneIndex].originalEmotion) {
         currentScenes[sceneIndex].originalEmotion = {};
@@ -1104,16 +1104,16 @@ function updateOriginalEmotion(sceneIndex, emotionIndex) {
             const newEmotionKey = select.value;
             const intensity = parseFloat(slider.value);
             
-            // 기존 감정 삭제
+ // existing emotion delete
             delete currentScenes[sceneIndex].originalEmotion[oldEmotionKey];
             
-            // 새 감정 추가
+ // 새 emotion add
             currentScenes[sceneIndex].originalEmotion[newEmotionKey] = intensity;
         }
     }
 }
 
-// 선택지 추가
+// choices add
 function addChoice(sceneIndex) {
     if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
     currentScenes[sceneIndex].choices.push({
@@ -1122,18 +1122,18 @@ function addChoice(sceneIndex) {
         intensity: 5,
         nextScene: sceneIndex + 1 < currentScenes.length ? sceneIndex + 1 : 'end'
     });
-    // 원본 선택이 선택지 개수를 초과하면 조정
+ // original 선택 choices 개수 초 하면 조정
     if (currentScenes[sceneIndex].originalChoice >= currentScenes[sceneIndex].choices.length) {
         currentScenes[sceneIndex].originalChoice = currentScenes[sceneIndex].choices.length - 1;
     }
     renderScenes();
 }
 
-// 선택지 삭제
+// choices delete
 function deleteChoice(sceneIndex, choiceIndex) {
     if (confirm('이 선택지를 삭제하시겠습니까?')) {
         currentScenes[sceneIndex].choices.splice(choiceIndex, 1);
-        // 원본 선택이 삭제된 인덱스보다 크거나 같으면 조정
+ // original 선택 delete index보다 크거나 같으면 조정
         if (currentScenes[sceneIndex].originalChoice >= choiceIndex) {
             if (currentScenes[sceneIndex].originalChoice > 0) {
                 currentScenes[sceneIndex].originalChoice = currentScenes[sceneIndex].originalChoice - 1;
@@ -1145,7 +1145,7 @@ function deleteChoice(sceneIndex, choiceIndex) {
     }
 }
 
-// 장면 삭제
+// scene delete
 function deleteScene(sceneIndex) {
     if (confirm('이 장면을 삭제하시겠습니까?')) {
         currentScenes.splice(sceneIndex, 1);
@@ -1153,7 +1153,7 @@ function deleteScene(sceneIndex) {
     }
 }
 
-// 장면 위로 이동
+// scene 위 navigate
 function moveSceneUp(sceneIndex) {
     if (sceneIndex > 0) {
         [currentScenes[sceneIndex], currentScenes[sceneIndex - 1]] = [currentScenes[sceneIndex - 1], currentScenes[sceneIndex]];
@@ -1161,7 +1161,7 @@ function moveSceneUp(sceneIndex) {
     }
 }
 
-// 장면 아래로 이동
+// scene 아래 navigate
 function moveSceneDown(sceneIndex) {
     if (sceneIndex < currentScenes.length - 1) {
         [currentScenes[sceneIndex], currentScenes[sceneIndex + 1]] = [currentScenes[sceneIndex + 1], currentScenes[sceneIndex]];
@@ -1169,7 +1169,7 @@ function moveSceneDown(sceneIndex) {
     }
 }
 
-// 탭 전환
+// 탭 switch
 function switchTab(tab) {
     document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.editor-content').forEach(c => c.classList.remove('active'));
@@ -1186,7 +1186,7 @@ function switchTab(tab) {
     } else if (tab === 'archive') {
         document.querySelectorAll('.editor-tab')[2].classList.add('active');
         document.getElementById('archiveContent').classList.add('active');
-        // Archive 탭 열릴 때 자동으로 로드
+ // Archive 탭 열릴 때 자동으 load
         if (currentMemoryId) {
             loadArchiveLayers(currentMemoryId);
         }
@@ -1199,7 +1199,7 @@ function renderPreview() {
     container.innerHTML = '';
 
     if (currentScenes.length === 0) {
-        container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;">장면이 없습니다</div>';
+        container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;">장면이 not found</div>';
         renderWavePreview(); // 파동도 업데이트
         return;
     }
@@ -1213,20 +1213,20 @@ function renderPreview() {
     const sceneDiv = document.createElement('div');
     sceneDiv.className = 'preview-scene';
     sceneDiv.innerHTML = `
-        <div class="preview-scene-text">${scene.text || '본문이 없습니다'}</div>
+        <div class="preview-scene-text">${scene.text || '본문이 not found'}</div>
         <div class="preview-choices">
             ${scene.choices && scene.choices.length > 0 ? scene.choices.map((choice, index) => `
                 <button class="preview-choice-btn" onclick="previewMakeChoice(${index})">${choice.text || '선택지 텍스트 없음'}</button>
-            `).join('') : '<div style="color:var(--text-muted);padding:1rem;">선택지가 없습니다</div>'}
+            `).join('') : '<div style="color:var(--text-muted);padding:1rem;">선택지가 not found</div>'}
         </div>
     `;
     container.appendChild(sceneDiv);
     
-    // 파동 렌더링 업데이트
+ // wave 렌더링 업데 트
     renderWavePreview();
 }
 
-// 미리보기에서 선택지 선택
+// 미리보기 서 choices 선택
 function previewMakeChoice(choiceIndex) {
     const scene = currentScenes[previewCurrentScene];
     if (!scene || !scene.choices || !scene.choices[choiceIndex]) return;
@@ -1250,7 +1250,7 @@ function previewMakeChoice(choiceIndex) {
     renderPreview(); // renderPreview() 내부에서 renderWavePreview() 호출됨
 }
 
-// 현재 장면의 감정 벡터 계산
+// 현재 scene emotion vector calculate
 function getCurrentSceneEmotionVector() {
     const scene = currentScenes[previewCurrentScene];
     if (!scene) {
@@ -1273,7 +1273,7 @@ function getCurrentSceneEmotionVector() {
             }
         });
 
-        // 정규화
+ // normalize
         const total = Object.values(emotionVector).reduce((sum, val) => sum + val, 0);
         if (total > 0) {
             Object.keys(emotionVector).forEach(key => {
@@ -1285,15 +1285,15 @@ function getCurrentSceneEmotionVector() {
     return emotionVector;
 }
 
-// 파동 엔진을 사용한 Preview 렌더링
+// wave 엔진 Preview 렌더링
 function renderWavePreview() {
-    // previewWaveCanvas를 waveCanvas로 사용
+ // previewWaveCanvas waveCanvas 
     const canvas = document.getElementById('previewWaveCanvas');
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     
-    // 캔버스 크기 설정
+ // canvas 크기 config
     canvas.width = canvas.offsetWidth * 2;
     canvas.height = canvas.offsetHeight * 2;
     ctx.scale(2, 2);
@@ -1306,23 +1306,23 @@ function renderWavePreview() {
     const scene = currentScenes[previewCurrentScene];
     if (!scene) return;
 
-    // 현재 장면의 감정 벡터 계산
+ // 현재 scene emotion vector calculate
     const currentEmotionVector = getCurrentSceneEmotionVector();
     const currentSceneText = scene.text || '';
     const voidLevel = scene.voidInfo?.voidLevel || 'low';
 
-    // 파동 데이터 생성
+ // wave data create
     const waveData = computeWaveData(
         currentEmotionVector,
         currentSceneText.length || 1, // 0이면 1로 설정
         voidLevel
     );
 
-    // 배경
+ // background
     ctx.fillStyle = 'rgba(18, 18, 26, 0.1)';
     ctx.fillRect(0, 0, width, height);
 
-    // 파동 그리기
+ // wave 그리기
     if (waveData.wavePoints && waveData.wavePoints.length > 0) {
         ctx.beginPath();
         ctx.strokeStyle = waveData.color;
@@ -1345,26 +1345,26 @@ function renderWavePreview() {
         ctx.stroke();
     }
 
-    // VOID Level 표시 (요소가 있으면 업데이트)
+ // VOID Level display (element 있으면 업데 트)
     const voidLevelEl = document.getElementById('voidLevel');
     if (voidLevelEl) {
         voidLevelEl.textContent = voidLevel;
     }
 
-    // Layer ID 표시 (현재는 0으로 설정)
+ // Layer ID display (현재 0으 config)
     const layerIdEl = document.getElementById('layerId');
     if (layerIdEl) {
         layerIdEl.textContent = '0';
     }
 }
 
-// 미리보기 파동 애니메이션 시작 (기존 애니메이션 - 호환성 유지)
+// 미리보기 wave 애니메 션 start (existing 애니메 션 - 호환성 maintain)
 function startPreviewWaveAnimation() {
-    // 새로운 파동 엔진 사용
+ // 새 운 wave 엔진 
     renderWavePreview();
     
-    // 기존 애니메이션은 주석 처리하거나 제거 가능
-    // 하지만 호환성을 위해 유지
+ // existing 애니메 션 주석 process하거나 remove possible
+ // 하지 호환성 위해 maintain
     /*
     const canvas = document.getElementById('previewWaveCanvas');
     if (!canvas) return;
@@ -1409,7 +1409,7 @@ function startPreviewWaveAnimation() {
     */
 }
 
-// 미리보기 파동 애니메이션 중지
+// 미리보기 wave 애니메 션 중지
 function stopPreviewWaveAnimation() {
     if (previewWaveAnimationId) {
         cancelAnimationFrame(previewWaveAnimationId);
@@ -1417,10 +1417,10 @@ function stopPreviewWaveAnimation() {
     }
 }
 
-// Archive Layer 로드 함수
+// Archive Layer load function
 async function loadArchiveLayers(memoryId) {
     if (!memoryId) {
-        console.warn('[loadArchiveLayers] memoryId가 없습니다.');
+        console.warn('[loadArchiveLayers] memoryId가 not found.');
         const canvas = document.getElementById('archiveCanvas');
         if (canvas) {
             const ctx = canvas.getContext('2d');
@@ -1435,7 +1435,7 @@ async function loadArchiveLayers(memoryId) {
 
     const supabaseClient = await getSupabaseClient();
     if (!supabaseClient) {
-        console.error('[loadArchiveLayers] Supabase 클라이언트가 초기화되지 않았습니다.');
+        console.error('[loadArchiveLayers] Supabase client not initialized.');
         return;
     }
 
@@ -1445,7 +1445,7 @@ async function loadArchiveLayers(memoryId) {
         const data = await listArchiveLayers(supabaseClient, memoryId);
 
         if (!data || data.length === 0) {
-            console.log('[loadArchiveLayers] Archive 레이어가 없습니다.');
+            console.log('[loadArchiveLayers] Archive 레이어가 not found.');
             const canvas = document.getElementById('archiveCanvas');
             if (canvas) {
                 const ctx = canvas.getContext('2d');
@@ -1453,7 +1453,7 @@ async function loadArchiveLayers(memoryId) {
                 ctx.fillStyle = 'var(--text-muted)';
                 ctx.font = '16px "Noto Serif KR"';
                 ctx.textAlign = 'center';
-                ctx.fillText('Archive 레이어가 없습니다. "다음 층 쌓기" 버튼으로 레이어를 추가하세요.', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Archive 레이어가 not found. "다음 층 쌓기" 버튼으로 레이어를 추가하세요.', canvas.width / 2, canvas.height / 2);
             }
             return;
         }
@@ -1474,17 +1474,17 @@ async function loadArchiveLayers(memoryId) {
     }
 }
 
-// Archive 파동 렌더링 함수
+// Archive wave 렌더링 function
 function renderArchive(layers) {
     const canvas = document.getElementById('archiveCanvas');
     if (!canvas) {
-        console.warn('[renderArchive] archiveCanvas를 찾을 수 없습니다.');
+        console.warn('[renderArchive] archiveCanvas를 not found.');
         return;
     }
 
     const ctx = canvas.getContext('2d');
     
-    // 캔버스 크기 조정 (반응형)
+ // canvas 크기 조정 (반응형)
     const container = canvas.parentElement;
     if (container) {
         const maxWidth = Math.min(1000, container.offsetWidth - 32);
@@ -1494,7 +1494,7 @@ function renderArchive(layers) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 배경
+ // background
     ctx.fillStyle = 'rgba(18, 18, 26, 0.5)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -1502,26 +1502,26 @@ function renderArchive(layers) {
         ctx.fillStyle = 'var(--text-muted)';
         ctx.font = '16px "Noto Serif KR"';
         ctx.textAlign = 'center';
-        ctx.fillText('Archive 레이어가 없습니다.', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Archive 레이어가 not found.', canvas.width / 2, canvas.height / 2);
         return;
     }
 
-    // 각 레이어 렌더링
+ // 각 layer 렌더링
     layers.forEach((layer, index) => {
         if (!layer.wave_data || !layer.wave_data.wavePoints) {
-            console.warn(`[renderArchive] 레이어 ${index}에 wave_data가 없습니다.`);
+            console.warn(`[renderArchive] 레이어 ${index}에 wave_data가 not found.`);
             return;
         }
 
         const { wave_data } = layer;
         const { wavePoints, color } = wave_data;
 
-        // 각 레이어를 조금씩 아래로 오프셋
+ // 각 layer 조금씩 아래 오프셋
         const layerSpacing = canvas.height / (layers.length + 1);
         const yOffset = (index + 1) * layerSpacing;
         const centerY = canvas.height / 2;
 
-        // VOID Level이 high이면 blur 필터 적용
+ // VOID Level high 면 blur filter 적용
         if (layer.void_info && layer.void_info.voidLevel === 'high') {
             ctx.filter = 'blur(1.5px)';
         } else {
@@ -1532,7 +1532,7 @@ function renderArchive(layers) {
         ctx.strokeStyle = color || 'rgba(196, 168, 130, 0.6)';
         ctx.lineWidth = 1.5;
 
-        // wavePoints를 캔버스 크기에 맞게 스케일링
+ // wavePoints canvas 크기 맞게 스케일링
         const maxX = Math.max(...wavePoints.map(p => p.x), 1);
         const scaleX = canvas.width / maxX;
         const scaleY = (canvas.height / 4) / 100; // y 좌표 정규화
@@ -1551,13 +1551,13 @@ function renderArchive(layers) {
         ctx.stroke();
     });
 
-    // 필터 리셋
+ // filter 리셋
     ctx.filter = 'none';
 
     console.log('[renderArchive] Archive 렌더링 완료', { layersCount: layers.length });
 }
 
-// 기억 저장
+// memory save
 async function saveMemory() {
     const title = document.getElementById('memoryTitle').value.trim();
     const code = document.getElementById('memoryCode').value.trim();
@@ -1565,7 +1565,7 @@ async function saveMemory() {
     const memoryWords = document.getElementById('memoryWords').value.trim();
     const completedSentence = document.getElementById('completedSentence').value.trim();
     const authorNote = document.getElementById('authorNote').value.trim();
-    // 사운드 매핑 수집
+ // sound mapping 수집
     var soundMap = {};
     var smOpening = document.getElementById('soundMapOpening')?.value?.trim();
     var smHigh = document.getElementById('soundMapHigh')?.value?.trim();
@@ -1593,16 +1593,16 @@ async function saveMemory() {
         
         console.log('[saveMemory] 시작', { currentMemoryId, scenesCount: currentScenes.length });
         
-        // Supabase 클라이언트 가져오기
+ // Supabase client 져오기
         const supabaseClient = await getSupabaseClient();
         if (!supabaseClient) {
-            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+            throw new Error('Supabase client not initialized.');
         }
 
-        // Wave 데이터 미리 계산 (각 scene에 포함)
+ // Wave data 미리 calculate (각 scene )
         console.log('[saveMemory] Wave 데이터 계산 시작', { scenesCount: currentScenes.length });
         const scenesWithWaveData = currentScenes.map((scene, i) => {
-            // emotionDist 계산
+ // emotionDist calculate
             const emotionDist = {
                 fear: 0, sadness: 0, guilt: 0, anger: 0,
                 longing: 0, isolation: 0, numbness: 0, moralPain: 0
@@ -1624,7 +1624,7 @@ async function saveMemory() {
                 });
             }
 
-            // Wave 데이터 생성
+ // Wave data create
             const voidLevel = scene.voidInfo?.voidLevel || 'low';
             const waveData = computeWaveData(emotionDist, (scene.text || '').length, voidLevel);
             
@@ -1634,7 +1634,7 @@ async function saveMemory() {
             };
         });
 
-        // 전체 메모리의 평균 감정 벡터 계산 (plays 테이블용)
+ // global memory 평균 emotion vector calculate (plays 테 블용)
         const totalEmotionVector = {
             fear: 0, sadness: 0, guilt: 0, anger: 0,
             longing: 0, isolation: 0, numbness: 0, moralPain: 0
@@ -1663,7 +1663,7 @@ async function saveMemory() {
         const overallVoidLevel = hasHighVoid ? 'high' : 'low';
         const memoryWaveData = computeWaveData(totalEmotionVector, totalTextLength, overallVoidLevel);
 
-        // repo.js의 saveMemoryGraph 호출
+ // repo.js saveMemoryGraph call
         console.log('[saveMemory] saveMemoryGraph 호출 시작', { 
             memoryId: currentMemoryId, 
             scenesCount: scenesWithWaveData.length 
@@ -1694,7 +1694,7 @@ async function saveMemory() {
         console.log('[saveMemory] saveMemoryGraph 완료', { finalMemoryId });
         memoryId = finalMemoryId;
 
-        // 로컬 메모리 업데이트
+ // local memory 업데 트
         const memoryData = {
             id: memoryId,
             title,
@@ -1716,19 +1716,19 @@ async function saveMemory() {
         saveMemoriesToStorage(); // 백업용
         renderMemoriesTable();
         
-        // JSON 다운로드
+ // JSON 다운load
         exportMemoriesJSON();
         
         console.log('[saveMemory] 전체 저장 완료');
         
-        // Archive 탭이 활성화되어 있으면 Archive 로드
+ // Archive 탭 active화되어 있으면 Archive load
         if (document.getElementById('archiveContent').classList.contains('active') && memoryId) {
             loadArchiveLayers(memoryId);
         }
         
         cancelEdit();
     } catch (error) {
-        console.error('[saveMemory] 전체 에러 발생', error);
+        console.error('[saveMemory] 전체 Error occurred', error);
         console.error('[saveMemory] 에러 상세:', {
             message: error.message,
             details: error.details,
@@ -1740,10 +1740,10 @@ async function saveMemory() {
     }
 }
 
-// memoriesData 형식으로 변환
+// memoriesData 형식으 convert
 function convertToMemoriesDataFormat(adminMemories) {
     return adminMemories.map((memory, index) => {
-        // 선택지에서 감정과 강도 정보 추출
+ // choices 서 emotion 강 정보 추출
         const processedScenes = memory.scenes.map(scene => {
             const processedChoices = scene.choices.map(choice => ({
                 text: choice.text,
@@ -1753,7 +1753,7 @@ function convertToMemoriesDataFormat(adminMemories) {
                 nextScene: choice.nextScene || 'end'
             }));
 
-            // emotionDist 계산 (선택지의 감정 분포 기반)
+ // emotionDist calculate (choices emotion 분포 기반)
             const emotionDist = {
                 fear: 0,
                 sadness: 0,
@@ -1822,17 +1822,17 @@ function convertToMemoriesDataFormat(adminMemories) {
     });
 }
 
-// JSON 다운로드
+// JSON 다운load
 async function exportMemoriesJSON() {
     if (memories.length === 0) {
-        alert('저장된 기억이 없습니다. 먼저 기억을 추가해주세요.');
+        alert('저장된 기억이 not found. 먼저 기억을 추가해주세요.');
         return;
     }
 
     const memoriesDataFormat = convertToMemoriesDataFormat(memories);
     const jsonString = JSON.stringify(memoriesDataFormat, null, 2);
     
-    // 파일 다운로드
+ // 파일 다운load
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1843,12 +1843,12 @@ async function exportMemoriesJSON() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    // 클립보드에 복사
+ // 클립보드 copy
     try {
         await navigator.clipboard.writeText(jsonString);
         alert('클립보드에 복사됨. data/memories.js의 memoriesData 배열에 붙여넣으세요');
     } catch (err) {
-        // 클립보드 복사 실패 시 fallback
+ // 클립보드 copy failure 시 fallback
         console.error('클립보드 복사 실패:', err);
         alert('memories-export.json 파일이 다운로드되었습니다. (클립보드 복사 실패)');
     }
@@ -1869,7 +1869,7 @@ function importMemoriesJSON(event) {
                 return;
             }
 
-            // memoriesData 형식에서 admin 형식으로 변환
+ // memoriesData 형식 서 admin 형식으 convert
             const adminFormat = jsonData.map(memory => ({
                 title: memory.title || '',
                 code: memory.code || '',
@@ -1903,11 +1903,11 @@ function importMemoriesJSON(event) {
     };
     reader.readAsText(file);
     
-    // 파일 입력 초기화
+ // 파일 input init
     event.target.value = '';
 }
 
-// 로컬 스토리지에 저장
+// local 스토리지 save
 function saveMemoriesToStorage() {
     saveAdminMemories(memories);
 }
@@ -1922,7 +1922,7 @@ function cancelEdit() {
     stopPreviewWaveAnimation();
 }
 
-// simulateLayer 버튼 이벤트 리스너
+// simulateLayer button 벤트 listener
 document.addEventListener('DOMContentLoaded', function() {
     const simulateLayerBtn = document.getElementById('simulateLayer');
     if (simulateLayerBtn) {
@@ -1934,23 +1934,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const supabaseClient = getSupabaseClient();
             if (!supabaseClient) {
-                alert('Supabase 클라이언트가 초기화되지 않았습니다.');
+                alert('Supabase client not initialized.');
                 return;
             }
 
             const scene = currentScenes[previewCurrentScene];
             if (!scene) {
-                alert('장면이 없습니다.');
+                alert('장면이 not found.');
                 return;
             }
 
             try {
-                // 현재 장면의 감정 벡터 계산
+ // 현재 scene emotion vector calculate
                 const currentEmotionVector = getCurrentSceneEmotionVector();
                 const currentSceneText = scene.text || '';
                 const voidLevel = scene.voidInfo?.voidLevel || 'low';
 
-                // 파동 데이터 생성
+ // wave data create
                 const waveData = computeWaveData(
                     currentEmotionVector,
                     currentSceneText.length || 1,
@@ -1964,7 +1964,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     color: waveData.color
                 });
 
-                // plays 테이블에 저장
+ // plays 테 블 save
                 const { error: playsError } = await supabaseClient
                     .from('plays')
                     .insert({
@@ -1975,12 +1975,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
 
                 if (playsError) {
-                    console.error('[simulateLayer] 레이어 저장 실패', playsError);
+                    console.error('[simulateLayer] 레이어 Save failed', playsError);
                     alert('레이어 저장 중 오류가 발생했습니다: ' + playsError.message);
                     return;
                 }
 
-                // 레이어 추가
+ // layer add
                 currentLayers.push({
                     layerId: currentLayers.length,
                     waveData: waveData,
@@ -1992,7 +1992,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('새 지층 레이어 저장 완료');
                 renderWavePreview();
                 
-                // Archive 탭이 활성화되어 있으면 Archive 로드
+ // Archive 탭 active화되어 있으면 Archive load
                 if (document.getElementById('archiveContent').classList.contains('active')) {
                     loadArchiveLayers(currentMemoryId);
                 }
@@ -2004,7 +2004,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 통합 세션 관리 함수들
+// 통합 session manage function들
 let allSessions = [];
 let currentFilter = 'all';
 const fateLabels={'preserve':'보존','dilute':'자연 소멸','anonymous':'완전 익명'};
@@ -2013,7 +2013,7 @@ const fateColors={'preserve':'#7a9a7a','dilute':'#c4a882','anonymous':'#7b8fa8'}
 async function loadAllSessions() {
     allSessions = [];
     
-    // 아카이브 세션 로드 (기존 memories)
+ // archive session load (existing memories)
     const supabaseClient = getSupabaseClient();
     const { data: archiveData } = await supabaseClient
         .from('memories')
@@ -2030,7 +2030,7 @@ async function loadAllSessions() {
         });
     }
     
-    // 라이브 세션 로드
+ // live session load
     const { data: liveData } = await supabaseClient
         .from('live_sessions')
         .select('*')
@@ -2046,7 +2046,7 @@ async function loadAllSessions() {
         });
     }
     
-    // 날짜순 정렬
+ // 날짜순 정렬
     allSessions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     
     renderSessions();
@@ -2068,7 +2068,7 @@ function renderSessions() {
     if (!container) return;
     
     if (!filtered || filtered.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted);">세션이 없습니다.</p>';
+        container.innerHTML = '<p style="color: var(--text-muted);">세션이 not found.</p>';
         return;
     }
     
@@ -2123,14 +2123,14 @@ async function deleteSessionById(id, type) {
     try {
         const supabaseClient = await getSupabaseClient();
         if (!supabaseClient) {
-            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+            throw new Error('Supabase client not initialized.');
         }
         
         if (type === 'archive') {
             await deleteMemoryGraph(supabaseClient, id);
         } else {
-            // 라이브 세션 삭제: 관련된 모든 데이터를 먼저 삭제
-            // 1. live_scenes 삭제
+ // live session delete: 모든 data 먼저 delete
+ // 1. live_scenes delete
             const { error: scenesError } = await supabaseClient
                 .from('live_scenes')
                 .delete()
@@ -2140,7 +2140,7 @@ async function deleteSessionById(id, type) {
                 console.warn('live_scenes 삭제 중 오류 (무시하고 계속 진행):', scenesError);
             }
             
-            // 2. scenes 테이블에서 live_session_id 참조 제거 (중요!)
+ // 2. scenes 테 블 서 live_session_id 참조 remove (중요!)
             const { error: scenesUpdateError } = await supabaseClient
                 .from('scenes')
                 .update({ live_session_id: null })
@@ -2150,7 +2150,7 @@ async function deleteSessionById(id, type) {
                 console.warn('scenes live_session_id 업데이트 중 오류 (무시하고 계속 진행):', scenesUpdateError);
             }
             
-            // 3. choices 테이블에서 live_session_id 참조 제거 (중요!)
+ // 3. choices 테 블 서 live_session_id 참조 remove (중요!)
             const { error: choicesUpdateError } = await supabaseClient
                 .from('choices')
                 .update({ live_session_id: null })
@@ -2160,14 +2160,14 @@ async function deleteSessionById(id, type) {
                 console.warn('choices live_session_id 업데이트 중 오류 (무시하고 계속 진행):', choicesUpdateError);
             }
             
-            // 4. live_sessions 삭제
+ // 4. live_sessions delete
             const { error: sessionsError } = await supabaseClient
                 .from('live_sessions')
                 .delete()
                 .eq('id', id);
             
             if (sessionsError) {
-                throw new Error(`live_sessions 삭제 실패: ${sessionsError.message}`);
+                throw new Error(`live_sessions Delete failed: ${sessionsError.message}`);
             }
         }
         
@@ -2206,12 +2206,12 @@ async function deleteSelectedSessions() {
     try {
         const supabaseClient = await getSupabaseClient();
         if (!supabaseClient) {
-            throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+            throw new Error('Supabase client not initialized.');
         }
         
-        // 라이브 세션 삭제
+ // live session delete
         for (const id of liveSessions) {
-            // 1. live_scenes 삭제
+ // 1. live_scenes delete
             const { error: scenesError } = await supabaseClient
                 .from('live_scenes')
                 .delete()
@@ -2221,7 +2221,7 @@ async function deleteSelectedSessions() {
                 console.warn(`live_scenes 삭제 중 오류 (session_id: ${id}):`, scenesError);
             }
             
-            // 2. scenes 테이블에서 live_session_id 참조 제거 (중요!)
+ // 2. scenes 테 블 서 live_session_id 참조 remove (중요!)
             const { error: scenesUpdateError } = await supabaseClient
                 .from('scenes')
                 .update({ live_session_id: null })
@@ -2231,7 +2231,7 @@ async function deleteSelectedSessions() {
                 console.warn(`scenes live_session_id 업데이트 중 오류 (session_id: ${id}):`, scenesUpdateError);
             }
             
-            // 3. choices 테이블에서 live_session_id 참조 제거 (중요!)
+ // 3. choices 테 블 서 live_session_id 참조 remove (중요!)
             const { error: choicesUpdateError } = await supabaseClient
                 .from('choices')
                 .update({ live_session_id: null })
@@ -2241,18 +2241,18 @@ async function deleteSelectedSessions() {
                 console.warn(`choices live_session_id 업데이트 중 오류 (session_id: ${id}):`, choicesUpdateError);
             }
             
-            // 4. live_sessions 삭제
+ // 4. live_sessions delete
             const { error: sessionsError } = await supabaseClient
                 .from('live_sessions')
                 .delete()
                 .eq('id', id);
             
             if (sessionsError) {
-                throw new Error(`live_sessions 삭제 실패 (id: ${id}): ${sessionsError.message}`);
+                throw new Error(`live_sessions Delete failed (id: ${id}): ${sessionsError.message}`);
             }
         }
         
-        // 아카이브 메모리 삭제
+ // archive memory delete
         for (const id of archiveSessions) {
             await deleteMemoryGraph(supabaseClient, id);
         }
@@ -2277,13 +2277,13 @@ async function deleteSelectedSessions() {
 
 async function openSessionDetail(id, type) {
     if (type === 'archive') {
-        // 기존 아카이브 상세 로직 - 에디터로 열기
+ // existing archive 상세 직 - 디터 열기
         const memoryIndex = memories.findIndex(m => m.id == id);
         if (memoryIndex !== -1) {
             editMemory(memoryIndex);
         }
     } else {
-        // 라이브 세션 상세
+ // live session 상세
         openLiveSessionDetail(id);
     }
 }
@@ -2345,7 +2345,7 @@ async function openLiveSessionDetail(sessionId) {
                         ${renderVoidPanel(scene)}
                     </div>
                 </div>
-            `).join('') : '<p style="color: var(--text-muted);">저장된 장면이 없습니다.</p>'}
+            `).join('') : '<p style="color: var(--text-muted);">저장된 장면이 not found.</p>'}
         </div>
     `;
     
@@ -2483,11 +2483,11 @@ async function saveVector(sceneId) {
     
     if (error) {
         console.error('Save error:', error);
-        alert('저장 실패');
+        alert('Save failed');
         return;
     }
     
-    // UI 업데이트
+ // UI 업데 트
     emotions.forEach(key => {
         document.getElementById('val-' + sceneId + '-' + key).textContent = vector[key].toFixed(2);
     });
@@ -2515,13 +2515,13 @@ function closeSessionDetail() {
     document.getElementById('sessionsListSection').style.display = 'block';
 }
 
-// 전역 스코프에 함수 노출 (onclick 속성에서 사용하기 위해)
+// global 스코프 function 노출 (onclick 속성 서 위해)
 window.checkPassword = checkPassword;
 window.adminLogout = adminLogout;
 window.logout = logout;
 window.addNewMemory = addNewMemory;
 
-// 사운드 미리듣기 함수
+// sound 미리듣기 function
 function previewSound(inputId) {
     stopPreviewSound();
     var input = document.getElementById(inputId);
@@ -2577,7 +2577,7 @@ window.updateSelectedCount = updateSelectedCount;
 window.addOriginalEmotion = addOriginalEmotion;
 window.removeOriginalEmotion = removeOriginalEmotion;
 
-// 오염 버전 토글 함수
+// contamination 버전 토글 function
 function toggleContamination(sceneIndex) {
     const fields = document.getElementById(`contamination-${sceneIndex}`);
     const btn = fields.previousElementSibling;
@@ -2592,15 +2592,15 @@ function toggleContamination(sceneIndex) {
 
 window.toggleContamination = toggleContamination;
 
-// Strata 3D 지층 미리보기 로드
+// Strata 3D strata 미리보기 load
 async function loadStrataPreview(memoryId) {
-    // memoryId가 없으면 currentMemoryId 사용
+ // memoryId 없으면 currentMemoryId 
     if (!memoryId) {
         memoryId = currentMemoryId;
     }
     
     if (!memoryId) {
-        console.warn('[loadStrataPreview] memoryId가 없습니다.');
+        console.warn('[loadStrataPreview] memoryId가 not found.');
         alert('메모리를 먼저 선택해주세요.');
         return;
     }
@@ -2611,9 +2611,9 @@ async function loadStrataPreview(memoryId) {
         const loadingEl = document.getElementById('strataLoading');
         if (loadingEl) loadingEl.textContent = 'Strata 데이터를 로드하는 중...';
 
-        // window.showStrataView 사용
+ // window.showStrataView 
         if (window.showStrataView) {
-            // alignmentResult는 계산하지 않고 null 전달
+ // alignmentResult calculate하지 않고 null 전달
             await window.showStrataView(memoryId, null, () => {
                 console.log('[Admin] Strata 미리보기 닫힘');
                 const strataView = document.getElementById('strataView');
@@ -2626,7 +2626,7 @@ async function loadStrataPreview(memoryId) {
                 }
             });
             
-            // admin 컨테이너에 표시
+ // admin container display
             const strataView = document.getElementById('strataView');
             const loadingEl = document.getElementById('strataLoading');
             if (strataView) {
@@ -2638,7 +2638,7 @@ async function loadStrataPreview(memoryId) {
             }
             if (loadingEl) loadingEl.style.display = 'none';
 
-            // canvas 크기 조정 (admin 컨테이너에 맞춤)
+ // canvas 크기 조정 (admin container 맞춤)
             const canvas = document.getElementById('strataCanvas');
             const container = document.getElementById('adminStrataContainer');
             if (canvas && container) {
@@ -2656,7 +2656,7 @@ async function loadStrataPreview(memoryId) {
             }
 
         } else {
-            throw new Error('Strata 뷰를 사용할 수 없습니다. strataView.js가 로드되었는지 확인하세요.');
+            throw new Error('Strata 뷰를 사용할 수 not found. strataView.js가 로드되었는지 확인하세요.');
         }
 
     } catch (error) {

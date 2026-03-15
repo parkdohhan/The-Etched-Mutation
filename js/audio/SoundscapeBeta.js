@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════
-//  SoundscapeBeta.js — 배경음악 크로스페이드 시스템
+// SoundscapeBeta.js — background음악 크 스페 드 시스템
 // ═══════════════════════════════════════════════════
 
 (function() {
@@ -22,7 +22,7 @@
   };
 
   /**
-   * 초기화
+ * init
    * @param {Object} config - { soundMap, volume }
    */
   function init(config) {
@@ -34,7 +34,7 @@
   }
 
   /**
-   * 사운드 시작
+ * sound start
    */
   function start() {
     if (_isMuted) return;
@@ -43,7 +43,7 @@
   }
 
   /**
-   * 사운드 중지
+ * sound 중지
    */
   function stop() {
     if (_currentAudio) {
@@ -62,7 +62,7 @@
   }
 
   /**
-   * 버킷 변경
+ * bucket 변경
    * @param {string} bucket - HIGH, MID, LOW, FIXATED, IDLE
    */
   function setBucket(bucket) {
@@ -81,7 +81,7 @@
     console.log('[Soundscape] 버킷 변경:', bucket, '→', soundKey);
     _currentBucket = bucket;
 
-    // 크로스페이드
+ // 크 스페 드
     if (_currentAudio) {
       _nextAudio = new Audio(soundKey);
       _nextAudio.volume = 0;
@@ -115,7 +115,7 @@
   }
 
   /**
-   * 장면 전환 (볼륨 딥)
+ * scene switch (volume 딥)
    */
   function onSceneTransition() {
     if (!_currentAudio) return;
@@ -131,16 +131,16 @@
   }
 
   /**
-   * Void crack 사운드
+ * Void crack sound
    */
   function onVoidCrack() {
-    // void crack 효과음 재생 (선택사항)
+ // void crack 효 음 play (선택사항)
     console.log('[Soundscape] Void crack');
   }
 
   /**
-   * 음소거 토글
-   * @returns {boolean} 현재 음소거 상태
+ * 음소거 토글
+ * @returns {boolean} 현재 음소거 state
    */
   function toggleMute() {
     _isMuted = !_isMuted;
@@ -156,7 +156,7 @@
     return _isMuted;
   }
 
-  // 전역 노출
+ // global 노출
   window.soundscape = {
     init: init,
     start: start,

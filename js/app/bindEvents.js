@@ -1,66 +1,66 @@
 // js/app/bindEvents.js
-// 모든 이벤트 바인딩 코드를 중앙에서 관리
+// 모든 벤트 바인딩 코드 중앙 서 manage
 
 /**
- * 모든 이벤트 리스너를 등록하는 함수
- * @param {Object} deps - 의존성 객체
+ * 모든 벤트 listener 등록하 function
+ * @param {Object} deps - 존성 object
  * @param {Object} deps.store - appStore
  * @param {Object} deps.engine - ByeoriEngine
  * @param {Object} deps.ui - UIManager
  * @param {Object} deps.visualizer - Visualizer
  * @param {Object} deps.network - NetworkService
  * @param {Object} deps.realtime - RealtimeService
- * @param {Object} deps.flow - FlowController (TODO: 구현 필요)
+ * @param {Object} deps.flow - FlowController (TODO: 구현 needed)
  * @param {Object} deps.memory - MemoryService
  * @param {Object} deps.ai - AIService
  */
 export function bindEvents(deps) {
     const { store, engine, ui, visualizer, network, realtime, flow, memory, ai } = deps;
 
-    // ========== 전역 함수 접근 (window를 통해) ==========
-    // 이벤트 핸들러에서 사용되는 전역 함수들은 window를 통해 접근
+ // ========== global function 접근 (window ) ==========
+ // 벤트 handler 서 되 global function들 window 접근
 
-    // ========== 1. 초기화 이벤트 ==========
-    // DOMContentLoaded는 이미 index.js에서 처리되므로 여기서는 제외
-    // (initApp 내부에서 bindEvents를 호출하도록 변경)
+ // ========== 1. init 벤트 ==========
+ // DOMContentLoaded 미 index.js 서 process되므 여기서 제외
+ // (initApp 내부 서 bindEvents call하 록 변경)
 
-    // ========== 2. 오프닝 화면 이벤트 ==========
+ // ========== 2. 오프닝 screen 벤트 ==========
     bindOpeningEvents();
 
-    // ========== 3. 로그인/회원가입 이벤트 ==========
+ // ========== 3. 그인/회원 입 벤트 ==========
     bindAuthEvents();
 
-    // ========== 4. 아카이브 모드 이벤트 ==========
+ // ========== 4. archive mode 벤트 ==========
     bindArchiveEvents();
 
-    // ========== 5. Live 모드 이벤트 ==========
+ // ========== 5. Live mode 벤트 ==========
     bindLiveEvents();
 
-    // ========== 6. 감정 입력 이벤트 ==========
+ // ========== 6. emotion input 벤트 ==========
     bindEmotionInputEvents();
 
-    // ========== 7. 세션 코드 입력 이벤트 ==========
+ // ========== 7. session 코드 input 벤트 ==========
     bindSessionCodeEvents();
 
-    // ========== 8. 3D Carousel 이벤트 ==========
+ // ========== 8. 3D Carousel 벤트 ==========
     bindCarouselEvents();
 
-    // ========== 9. 메모리 등록 이벤트 ==========
+ // ========== 9. memory 등록 벤트 ==========
     bindMemoryRegistrationEvents();
 
-    // ========== 10. The Confession 이벤트 ==========
+ // ========== 10. The Confession 벤트 ==========
     bindConfessionEvents();
 
-    // ========== 11. 비교 화면 이벤트 ==========
+ // ========== 11. comparison screen 벤트 ==========
     bindComparisonEvents();
 
-    // ========== 12. 스와이퍼 이벤트 ==========
+ // ========== 12. 스 퍼 벤트 ==========
     bindSwiperEvents();
 }
 
-// ========== 오프닝 화면 이벤트 ==========
+// ========== 오프닝 screen 벤트 ==========
 function bindOpeningEvents() {
-    // 오프닝 사운드 및 UI 초기화
+ // 오프닝 sound 및 UI init
     const openingSound = document.getElementById('openingSound');
     if (openingSound) {
         openingSound.addEventListener('error', function (e) {
@@ -85,7 +85,7 @@ function bindOpeningEvents() {
     if (waveContainer) {
         waveContainer.classList.add('visible');
         const canvas = document.getElementById('openingWaveCanvas');
-        // startOpeningWaveAnimation는 index.js에서 window에 노출됨
+ // startOpeningWaveAnimation index.js 서 window 노출됨
         if (canvas && window.startOpeningWaveAnimation) {
             window.startOpeningWaveAnimation(canvas);
         }
@@ -102,7 +102,7 @@ function bindOpeningEvents() {
         registerMemoryBtn.addEventListener('click', window.startMemoryRegistration);
     }
 
-    // 오프닝 화면 클릭 이벤트
+ // 오프닝 screen 클릭 벤트
     const openingScreenEl = document.getElementById('openingScreen');
     if (openingScreenEl) {
         openingScreenEl.addEventListener('click', function (e) {
@@ -132,16 +132,16 @@ function bindOpeningEvents() {
         });
     }
 
-    // 오프닝 키보드 이벤트
+ // 오프닝 키보드 벤트
     if (window.handleOpeningKeydown) {
         document.addEventListener('keydown', window.handleOpeningKeydown);
     }
 
-    // 오프닝 웨이브 캔버스 이벤트
-    // startOpeningWaveAnimation 내부에서 바인딩되므로 여기서는 제외
+ // 오프닝 wave canvas 벤트
+ // startOpeningWaveAnimation 내부 서 바인딩되므 여기서 제외
 }
 
-// ========== 로그인/회원가입 이벤트 ==========
+// ========== 그인/회원 입 벤트 ==========
 function bindAuthEvents() {
     const loginPasswordEl = document.getElementById('loginPassword');
     if (loginPasswordEl) {
@@ -202,17 +202,17 @@ function bindAuthEvents() {
     }
 }
 
-// ========== 아카이브 모드 이벤트 ==========
+// ========== archive mode 벤트 ==========
 function bindArchiveEvents() {
-    // freeInput Enter 핸들러는 renderArchiveFreeInput에서 동적으로 바인딩
+ // freeInput Enter handler renderArchiveFreeInput 서 동적으 바인딩
 
-    // 원본 기억 열람 버튼 (동적으로 생성되므로 renderChoices나 다른 곳에서 바인딩)
-    // initProgressDots와 renderChoices는 함수 내부에서 바인딩하므로 여기서는 제외
+ // original memory 열람 button (동적으 create되므 renderChoices나 다른 곳 서 바인딩)
+ // initProgressDots renderChoices function 내부 서 바인딩하므 여기서 제외
 }
 
-// ========== Live 모드 이벤트 ==========
+// ========== Live mode 벤트 ==========
 function bindLiveEvents() {
-    // Experiencer 감정 입력
+ // Experiencer emotion input
     const experiencerFeelingInputEl = document.getElementById('experiencerFeelingInput');
     if (experiencerFeelingInputEl) {
         experiencerFeelingInputEl.addEventListener('keypress', function (e) {
@@ -223,16 +223,16 @@ function bindLiveEvents() {
         });
     }
 
-    // Narrator 웨이브 섹션 클릭 (동적으로 바인딩되므로 startLiveVoiceInput 내부에서 처리)
-    // switchExpToTextInput, switchExpToVoiceInput, switchToTextInput, switchToVoiceInput 내부에서 바인딩
+ // Narrator wave 섹션 클릭 (동적으 바인딩되므 startLiveVoiceInput 내부 서 process)
+ // switchExpToTextInput, switchExpToVoiceInput, switchToTextInput, switchToVoiceInput 내부 서 바인딩
 }
 
-// ========== 감정 입력 이벤트 ==========
+// ========== emotion input 벤트 ==========
 function bindEmotionInputEvents() {
-    // 이미 bindArchiveEvents에서 처리됨
+ // 미 bindArchiveEvents 서 process됨
 }
 
-// ========== 세션 코드 입력 이벤트 ==========
+// ========== session 코드 input 벤트 ==========
 function bindSessionCodeEvents() {
     const sessionCodeInputEl = document.getElementById('sessionCodeInput');
     if (sessionCodeInputEl) {
@@ -242,15 +242,15 @@ function bindSessionCodeEvents() {
     }
 }
 
-// ========== 3D Carousel 이벤트 ==========
+// ========== 3D Carousel 벤트 ==========
 function bindCarouselEvents() {
-    // init3DCarousel 내부에서 바인딩되므로 여기서는 제외
-    // 하지만 DOMContentLoaded 이후에 호출되므로 별도로 바인딩 필요할 수 있음
-    // 일단 init3DCarousel 내부의 이벤트 바인딩은 그대로 유지하고,
-    // init3DCarousel 호출 시점에 바인딩되도록 함
+ // init3DCarousel 내부 서 바인딩되므 여기서 제외
+ // 하지 DOMContentLoaded 후 call되므 별 바인딩 needed 수 있음
+ // 일단 init3DCarousel 내부 벤트 바인딩 그대 maintain하고,
+ // init3DCarousel call 시점 바인딩되 록 함
 }
 
-// ========== 메모리 등록 이벤트 ==========
+// ========== memory 등록 벤트 ==========
 function bindMemoryRegistrationEvents() {
     document.addEventListener('DOMContentLoaded', function () {
         const registrationScreen = document.getElementById('memory-registration-screen');
@@ -346,7 +346,7 @@ function bindMemoryRegistrationEvents() {
                 } catch (e) {
                     console.error('음성 인식 시작 실패:', e);
                     if (window.showNotification) {
-                        window.showNotification('음성 인식을 시작할 수 없습니다');
+                        window.showNotification('음성 인식을 시작할 수 not found');
                     }
                 }
             });
@@ -396,9 +396,9 @@ function bindMemoryRegistrationEvents() {
     });
 }
 
-// ========== The Confession 이벤트 ==========
+// ========== The Confession 벤트 ==========
 function bindConfessionEvents() {
-    // 기억 등록 버튼 → The Confession 시작
+ // memory 등록 button → The Confession start
     const registerBtn = document.getElementById('registerMemoryBtn') || document.querySelector('.register-memory-btn');
     if (registerBtn) {
         registerBtn.onclick = null; // 기존 onclick 제거
@@ -409,7 +409,7 @@ function bindConfessionEvents() {
         });
     }
 
-    // 종료 버튼
+ // end button
     const exitBtn = document.querySelector('.confession-exit-btn');
     if (exitBtn) {
         exitBtn.addEventListener('click', () => {
@@ -419,17 +419,17 @@ function bindConfessionEvents() {
         });
     }
 
-    // V2 Flow: 이벤트는 동적으로 바인딩되므로 정적 바인딩 불필요
-    // (renderPrompt() 내부에서 각 input/chip에 이벤트 바인딩)
+ // V2 Flow: 벤트 동적으 바인딩되므 정적 바인딩 불needed
+ // (renderPrompt() 내부 서 각 input/chip 벤트 바인딩)
 }
 
-// ========== 비교 화면 이벤트 ==========
+// ========== comparison screen 벤트 ==========
 function bindComparisonEvents() {
-    // endComparisonSession 내부에서 동적으로 바인딩되므로 여기서는 제외
-    // dot.onclick은 renderComparisonView 내부에서 바인딩
+ // endComparisonSession 내부 서 동적으 바인딩되므 여기서 제외
+ // dot.onclick renderComparisonView 내부 서 바인딩
 }
 
-// ========== 스와이퍼 이벤트 ==========
+// ========== 스 퍼 벤트 ==========
 function bindSwiperEvents() {
-    // initSwiper 내부에서 바인딩되므로 여기서는 제외
+ // initSwiper 내부 서 바인딩되므 여기서 제외
 }

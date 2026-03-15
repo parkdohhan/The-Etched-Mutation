@@ -1,21 +1,21 @@
 // js/ui/UIManager.js
-// DOM 조작 및 화면 전환 관리 (계산 금지)
+// DOM 조작 및 screen switch manage (calculate 금지)
 
 /**
- * UI Manager - DOM 조작 및 화면 전환 전담
- * 계산 로직은 포함하지 않음
+ * UI Manager - DOM 조작 및 screen switch 전담
+ * calculate 직 하지 않음
  */
 
 export class UIManager {
     constructor() {
-        // UI Manager는 상태를 가지지 않음
+ // UI Manager state 지지 않음
     }
 
-    // ========== 화면 전환 ==========
+ // ========== screen switch ==========
     
     /**
-     * 마이페이지 표시
-     * @param {Object} userData - 사용자 데이터
+ * 마 페 지 display
+ * @param {Object} userData - user data
      */
     showMypage(userData) {
         const introScreen = document.getElementById('introScreen');
@@ -52,8 +52,8 @@ export class UIManager {
                 const loginMethodEl = document.getElementById('displayLoginMethod');
                 if (loginMethodEl) {
                     loginMethodEl.style.display = 'block';
-                    const methodText = userData.loginMethod === 'google' ? '구글' : 
-                                     userData.loginMethod === 'facebook' ? '페이스북' : '일반';
+                    const methodText = userData.loginMethod === 'google' ? 'Google' : 
+                                     userData.loginMethod === 'facebook' ? 'Facebook' : '일반';
                     const methodTextEl = document.getElementById('loginMethodText');
                     if (methodTextEl) methodTextEl.textContent = methodText;
                 }
@@ -65,7 +65,7 @@ export class UIManager {
     }
 
     /**
-     * 마이페이지 닫기
+ * 마 페 지 닫기
      */
     closeMypage() {
         const mypageScreen = document.getElementById('mypageScreen');
@@ -83,8 +83,8 @@ export class UIManager {
     }
 
     /**
-     * 정렬도 표시 업데이트
-     * @param {number} alignment - 정렬도 값 (0-1)
+ * alignment display 업데 트
+ * @param {number} alignment - alignment 값 (0-1)
      */
     updateAlignmentDisplay(alignment) {
         const alignmentValueEl = document.getElementById('alignmentValue');
@@ -99,8 +99,8 @@ export class UIManager {
     }
 
     /**
-     * 체험자 정렬도 표시 업데이트
-     * @param {number} alignment - 정렬도 값 (0-1)
+ * experiencer alignment display 업데 트
+ * @param {number} alignment - alignment 값 (0-1)
      */
     updateExperiencerAlignmentDisplay(alignment) {
         const expAlignmentPercentage = document.getElementById('expAlignmentPercentage');
@@ -109,15 +109,15 @@ export class UIManager {
         }
     }
 
-    // ========== 메모리 카드 렌더링 ==========
+ // ========== memory card 렌더링 ==========
 
     /**
-     * 메모리 카드 렌더링
-     * @param {Array} allMemoriesData - 전체 메모리 데이터
-     * @param {string} currentCategory - 현재 카테고리 ('story'|'archive')
-     * @param {string} currentSort - 현재 정렬 방식 ('all'|'popular'|'recent')
-     * @param {Function} onSelectMemory - 메모리 선택 콜백 (index) => void
-     * @param {Function} onFilterMemories - 필터링 콜백 () => void
+ * memory card 렌더링
+ * @param {Array} allMemoriesData - global memory data
+ * @param {string} currentCategory - 현재 카테고리 ('story'|'archive')
+ * @param {string} currentSort - 현재 정렬 방식 ('all'|'popular'|'recent')
+ * @param {Function} onSelectMemory - memory 선택 callback (index) => void
+ * @param {Function} onFilterMemories - filter링 callback () => void
      */
     renderMemoryCards(allMemoriesData, currentCategory, currentSort, onSelectMemory, onFilterMemories) {
         console.log('[UIManager.renderMemoryCards] 호출됨');
@@ -126,13 +126,13 @@ export class UIManager {
         console.log('[UIManager.renderMemoryCards] currentSort:', currentSort);
         const list = document.getElementById('memoryList');
         if (!list) {
-            console.error('[UIManager.renderMemoryCards] memoryList 요소를 찾을 수 없습니다');
+            console.error('[UIManager.renderMemoryCards] memoryList 요소를 not found');
             return;
         }
         
         if (!allMemoriesData || allMemoriesData.length === 0) {
-            console.log('[UIManager.renderMemoryCards] 메모리 데이터가 없습니다');
-            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">기억이 없습니다.</div>';
+            console.log('[UIManager.renderMemoryCards] 메모리 데이터가 not found');
+            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">기억이 not found.</div>';
             return;
         }
         
@@ -159,7 +159,7 @@ export class UIManager {
         
         list.innerHTML = '';
         if (sortedMemories.length === 0) {
-            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">해당 카테고리의 기억이 없습니다.</div>';
+            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">해당 카테고리의 기억이 not found.</div>';
             return;
         }
         
@@ -186,26 +186,26 @@ export class UIManager {
         }
     }
 
-    // ========== 체험자 화면 ==========
+ // ========== experiencer screen ==========
 
     /**
-     * 체험자 화면에 장면 표시
-     * @param {Object} scene - 장면 객체 { id, text }
-     * @param {Object} callbacks - 콜백 함수들
-     * @param {Function} callbacks.onSwitchTab - 탭 전환 콜백 (tab) => void
-     * @param {Function} callbacks.onAddChatMessage - 채팅 메시지 추가 콜백 (role, message) => void
-     * @param {Function} callbacks.onShowNotification - 알림 표시 콜백 (message) => void
-     * @param {string} emotionCueMsg - 감정 큐 메시지
-     * @param {string} sceneArrivedMsg - 장면 도착 메시지
+ * experiencer screen scene display
+ * @param {Object} scene - scene object { id, text }
+ * @param {Object} callbacks - callback function들
+ * @param {Function} callbacks.onSwitchTab - 탭 switch callback (tab) => void
+ * @param {Function} callbacks.onAddChatMessage - 채팅 message add callback (role, message) => void
+ * @param {Function} callbacks.onShowNotification - notification display callback (message) => void
+ * @param {string} emotionCueMsg - emotion 큐 message
+ * @param {string} sceneArrivedMsg - scene 착 message
      */
     displaySceneForExperiencer(scene, callbacks = {}, emotionCueMsg = '', sceneArrivedMsg = '') {
         console.log('displaySceneForExperiencer 호출:', scene);
         if (!scene) {
-            console.error('장면 객체가 없습니다');
+            console.error('장면 객체가 not found');
             return;
         }
         if (!scene.text) {
-            console.error('장면 텍스트가 없습니다. scene:', JSON.stringify(scene));
+            console.error('장면 텍스트가 not found. scene:', JSON.stringify(scene));
             return;
         }
         
@@ -247,16 +247,16 @@ export class UIManager {
                 callbacks.onShowNotification('새 장면이 도착했습니다');
             }
         } else {
-            console.error('expSceneText 요소를 찾을 수 없습니다');
+            console.error('expSceneText 요소를 not found');
         }
     }
 
-    // ========== Live 선택지 렌더링 ==========
+ // ========== Live choices 렌더링 ==========
 
     /**
-     * Live 선택지 렌더링
-     * @param {Array} choices - 선택지 배열 [{ text }]
-     * @param {Function} onMakeChoice - 선택 콜백 (index) => void
+ * Live choices 렌더링
+ * @param {Array} choices - choices array [{ text }]
+ * @param {Function} onMakeChoice - 선택 callback (index) => void
      */
     renderLiveChoices(choices, onMakeChoice) {
         const container = document.getElementById('liveChoices');
@@ -277,11 +277,11 @@ export class UIManager {
         });
     }
 
-    // ========== 감정 입력 수집 ==========
+ // ========== emotion input 수집 ==========
 
     /**
-     * 감정 입력 필드에서 값 수집
-     * @returns {string} 입력된 이유 텍스트 (기본값: "말하고 싶지 않아")
+ * emotion input 필드 서 값 수집
+ * @returns {string} input 유 text (default값: "말하고 싶지 않아")
      */
     collectEmotionInput() {
         const inputEl = document.getElementById('emotionInputField');
@@ -289,7 +289,7 @@ export class UIManager {
     }
 
     /**
-     * 감정 모달 닫기 및 입력 필드 초기화
+ * emotion modal 닫기 및 input 필드 init
      */
     closeEmotionModal() {
         const modalEl = document.getElementById('emotionModal');

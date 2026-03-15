@@ -1,5 +1,5 @@
 // /js/shared/audio.js
-// 오디오 재생 유틸리티
+// audio play 유틸리티
 
 let audioContext = null;
 let currentAudio = null;
@@ -14,7 +14,7 @@ export function initAudio() {
 export function playSound(src, options = {}) {
   const { loop = false, volume = 1.0 } = options;
   
-  // 이전 오디오 정지
+ // 전 audio stop
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
@@ -43,7 +43,7 @@ export function setVolume(volume) {
   }
 }
 
-// 사운드 파일 경로
+// sound 파일 경 
 export const SOUNDS = {
   drone: 'sounds/Base_Void.mp3',
   ambience: 'sounds/Base_white.mp3',

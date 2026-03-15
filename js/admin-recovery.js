@@ -7,12 +7,12 @@ function checkLocalStorage() {
     const memories = loadAdminMemories();
     
     if (!memories || memories.length === 0) {
-        resultDiv.innerHTML = '<p class="error">localStorage에 백업 데이터가 없습니다.</p>';
+        resultDiv.innerHTML = '<p class="error">localStorage에 백업 데이터가 not found.</p>';
         return;
     }
 
     try {
-        const testMemory = memories.find(m => m.title && m.title.includes('테스트'));
+        const testMemory = memories.find(m => m.title && m.title.includes('Test'));
         
         resultDiv.innerHTML = `
             <p class="success">✅ localStorage 백업 발견!</p>
@@ -22,7 +22,7 @@ function checkLocalStorage() {
             <details>
                 <summary>상세 데이터 보기</summary>
                 <pre>${JSON.stringify(testMemory, null, 2)}</pre>
-            </details>` : '<p class="error">"테스트" 관련 메모리를 찾을 수 없습니다.</p>'}
+            </details>` : '<p class="error">"테스트" 관련 메모리를 not found.</p>'}
             <details>
                 <summary>전체 메모리 목록</summary>
                 <pre>${JSON.stringify(memories.map(m => ({ title: m.title, code: m.code, scenesCount: m.scenes?.length || 0 })), null, 2)}</pre>
@@ -38,12 +38,12 @@ async function checkSupabase() {
     const supabaseClient = await getSupabaseClient();
     
     if (!supabaseClient) {
-        resultDiv.innerHTML = '<p class="error">Supabase 클라이언트가 초기화되지 않았습니다.</p>';
+        resultDiv.innerHTML = '<p class="error">Supabase client not initialized.</p>';
         return;
     }
 
     try {
-        // 메모리 확인
+ // memory check
         const { data: memories, error: memError } = await supabaseClient
             .from('memories')
             .select('*')
@@ -51,10 +51,10 @@ async function checkSupabase() {
 
         if (memError) throw memError;
 
-        const testMemory = memories.find(m => m.title && m.title.includes('테스트'));
+        const testMemory = memories.find(m => m.title && m.title.includes('Test'));
         
         if (testMemory) {
-            // 해당 메모리의 scenes 확인
+ // 해당 memory scenes check
             const { data: scenes, error: scenesError } = await supabaseClient
                 .from('scenes')
                 .select('*')
@@ -84,7 +84,7 @@ async function checkSupabase() {
             `;
         } else {
             resultDiv.innerHTML = `
-                <p class="error">Supabase에서 "테스트" 관련 메모리를 찾을 수 없습니다.</p>
+                <p class="error">Supabase에서 "테스트" 관련 메모리를 not found.</p>
                 <p>전체 메모리 개수: ${memories.length}개</p>
                 <details>
                     <summary>전체 메모리 목록</summary>
@@ -93,7 +93,7 @@ async function checkSupabase() {
             `;
         }
     } catch (e) {
-        resultDiv.innerHTML = `<p class="error">오류 발생: ${e.message}</p>`;
+        resultDiv.innerHTML = `<p class="error">Error occurred: ${e.message}</p>`;
     }
 }
 
@@ -102,32 +102,32 @@ async function recoverFromLocalStorage() {
     const memories = loadAdminMemories();
     
     if (!memories || memories.length === 0) {
-        resultDiv.innerHTML = '<p class="error">localStorage에 백업 데이터가 없습니다.</p>';
+        resultDiv.innerHTML = '<p class="error">localStorage에 백업 데이터가 not found.</p>';
         return;
     }
 
     const supabaseClient = await getSupabaseClient();
     if (!supabaseClient) {
-        resultDiv.innerHTML = '<p class="error">Supabase 클라이언트가 초기화되지 않았습니다.</p>';
+        resultDiv.innerHTML = '<p class="error">Supabase client not initialized.</p>';
         return;
     }
 
     try {
-        const testMemory = memories.find(m => m.title && m.title.includes('테스트'));
+        const testMemory = memories.find(m => m.title && m.title.includes('Test'));
         
         if (!testMemory) {
-            resultDiv.innerHTML = '<p class="error">"테스트" 관련 메모리를 찾을 수 없습니다.</p>';
+            resultDiv.innerHTML = '<p class="error">"테스트" 관련 메모리를 not found.</p>';
             return;
         }
 
         if (!testMemory.scenes || testMemory.scenes.length === 0) {
-            resultDiv.innerHTML = '<p class="error">복구할 장면이 없습니다.</p>';
+            resultDiv.innerHTML = '<p class="error">복구할 장면이 not found.</p>';
             return;
         }
 
         resultDiv.innerHTML = '<p class="info">복구 중... (장면 개수: ' + testMemory.scenes.length + '개)</p>';
 
-        // repo.js의 recoverScenesFromBackup 호출
+ // repo.js recoverScenesFromBackup call
         await recoverScenesFromBackup(supabaseClient, testMemory.code, testMemory.scenes);
 
         resultDiv.innerHTML = `
@@ -136,11 +136,11 @@ async function recoverFromLocalStorage() {
             <p>이제 admin.html을 새로고침하여 확인하세요.</p>
         `;
     } catch (e) {
-        resultDiv.innerHTML = `<p class="error">복구 중 오류 발생: ${e.message}</p>`;
+        resultDiv.innerHTML = `<p class="error">복구 중 Error occurred: ${e.message}</p>`;
     }
 }
 
-// 전역 스코프에 함수 노출 (onclick 속성에서 사용하기 위해)
+// global 스코프 function 노출 (onclick 속성 서 위해)
 window.checkLocalStorage = checkLocalStorage;
 window.checkSupabase = checkSupabase;
 window.recoverFromLocalStorage = recoverFromLocalStorage;

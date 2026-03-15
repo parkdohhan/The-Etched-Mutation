@@ -3,7 +3,7 @@
    기존 sceneViewer 레이아웃 변경 없음
    ═══════════════════════════════════════════ */
 
-/* 인터뷰 영역 — choicesContainer 뒤에 삽입됨 */
+/* 인터view 영역 — choicesContainer 뒤 삽입됨 */
 .exp-interview-zone {
   padding: 16px 0 8px;
   display: flex;
@@ -19,7 +19,7 @@
   opacity: 0.3;
 }
 
-/* 질문 텍스트 */
+/* 질문 text */
 .exp-iv-question {
   color: #666;
   font-family: 'Cormorant Garamond', serif;
@@ -30,7 +30,7 @@
   white-space: pre-line;
 }
 
-/* 칩 컨테이너 */
+/* 칩 container */
 .exp-iv-chips {
   display: flex;
   flex-wrap: wrap;
@@ -67,7 +67,7 @@
   background: rgba(212, 175, 55, 0.06);
 }
 
-/* 복합 선택 확인 버튼 */
+/* 복합 선택 check button */
 .exp-iv-confirm {
   background: none;
   border: 1px solid #2a2a2a;
@@ -90,13 +90,13 @@
   color: #d4af37;
 }
 
-/* 답변 표시 */
+/* 답변 display */
 .exp-iv-answer {
   color: #d4c8a8;
   font-size: 0.85rem;
 }
 
-/* 버킷 메시지 */
+/* bucket message */
 .exp-iv-bucket-msg {
   color: #6a4a6a;
   font-style: italic;

@@ -1,65 +1,65 @@
-// V3 Confession Flow - 5단계 자기심문 구조
-// 감각 앵커 → 상황 서술 → 신체 반응 → 감정/이유/대상 → 자기문답+봉인
+// V3 Confession Flow - 5-stage self-interrogation structure
+// Sensory anchor → Situation narration → Body response → Emotion/Reason/Target → Self-questioning + Seal
 
-// ===== 데이터 정의 =====
+// ===== Data Definitions =====
 
 const BODY_CHIPS_V3 = {
   fight: [
-    { label: '주먹을 꽉 쥐었다', key: 'fist_clench', dominance: 0.2 },
-    { label: '턱이 꽉 닫혔다', key: 'jaw_tight', dominance: 0.15 },
-    { label: '열이 올랐다', key: 'heat_rising', dominance: 0.1 },
+    { label: 'Clenched my fists', key: 'fist_clench', dominance: 0.2 },
+    { label: 'Jaw locked tight', key: 'jaw_tight', dominance: 0.15 },
+    { label: 'Heat rising', key: 'heat_rising', dominance: 0.1 },
   ],
   flight: [
-    { label: '다리가 불안했다', key: 'restless_legs', dominance: -0.05 },
-    { label: '가슴이 조였다', key: 'chest_tight', dominance: -0.1 },
-    { label: '도망치고 싶었다', key: 'want_to_run', dominance: -0.15 },
+    { label: 'Legs felt restless', key: 'restless_legs', dominance: -0.05 },
+    { label: 'Chest tightened', key: 'chest_tight', dominance: -0.1 },
+    { label: 'Wanted to run', key: 'want_to_run', dominance: -0.15 },
   ],
   freeze: [
-    { label: '몸이 마비됐다', key: 'body_frozen', dominance: -0.2 },
-    { label: '움직일 수 없었다', key: 'cant_move', dominance: -0.25 },
-    { label: '멍해졌다', key: 'went_blank', dominance: -0.2 },
+    { label: 'Body went numb', key: 'body_frozen', dominance: -0.2 },
+    { label: 'Couldn\'t move', key: 'cant_move', dominance: -0.25 },
+    { label: 'Went blank', key: 'went_blank', dominance: -0.2 },
   ],
   fawn: [
-    { label: '웃었다', key: 'smiled', dominance: -0.1 },
-    { label: '동의했다', key: 'agreed', dominance: -0.15 },
-    { label: '몸을 작게 만들었다', key: 'made_small', dominance: -0.2 },
+    { label: 'Smiled', key: 'smiled', dominance: -0.1 },
+    { label: 'Agreed', key: 'agreed', dominance: -0.15 },
+    { label: 'Made myself small', key: 'made_small', dominance: -0.2 },
   ],
 };
 
 const EMOTION_CHIPS_V3 = [
-  { label: '죄책감', key: 'guilt' },
-  { label: '두려움', key: 'fear' },
-  { label: '분노', key: 'anger' },
-  { label: '슬픔', key: 'sadness' },
-  { label: '수치심', key: 'shame' },
-  { label: '그리움', key: 'longing' },
-  { label: '안도', key: 'relief' },
-  { label: '혼란', key: 'confusion' },
-  { label: '허탈', key: 'emptiness' },
-  { label: '경외', key: 'awe' },
-  { label: '이상한 기쁨', key: 'strange_joy' },
-  { label: '무감각', key: 'numbness', void: true },
+  { label: 'Guilt', key: 'guilt' },
+  { label: 'Fear', key: 'fear' },
+  { label: 'Anger', key: 'anger' },
+  { label: 'Sadness', key: 'sadness' },
+  { label: 'Shame', key: 'shame' },
+  { label: 'Longing', key: 'longing' },
+  { label: 'Relief', key: 'relief' },
+  { label: 'Confusion', key: 'confusion' },
+  { label: 'Emptiness', key: 'emptiness' },
+  { label: 'Awe', key: 'awe' },
+  { label: 'Strange joy', key: 'strange_joy' },
+  { label: 'Numbness', key: 'numbness', void: true },
 ];
 
 const REASON_CHIPS_V3 = [
-  { label: '내 잘못인 것 같아서', key: 'self_blame' },
-  { label: '어쩔 수 없었으니까', key: 'helpless' },
-  { label: '누군가가 배신했으니까', key: 'betrayal' },
-  { label: '말하고 싶지 않아', key: 'void', void: true },
+  { label: 'Because it felt like my fault', key: 'self_blame' },
+  { label: 'Because there was no other way', key: 'helpless' },
+  { label: 'Because someone betrayed me', key: 'betrayal' },
+  { label: 'I don\'t want to say', key: 'void', void: true },
 ];
 
 const TARGET_CHIPS_V3 = [
-  { label: '나 자신', key: 'self' },
-  { label: '그 사람', key: 'other' },
-  { label: '그 상황', key: 'situation' },
-  { label: '모르겠어', key: 'unknown' },
+  { label: 'Myself', key: 'self' },
+  { label: 'That person', key: 'other' },
+  { label: 'The situation', key: 'situation' },
+  { label: 'I don\'t know', key: 'unknown' },
 ];
 
 const SEAL_CHIPS_V3 = [
-  { label: '아직 아픈 것', key: 'still_hurts' },
-  { label: '이제 괜찮은 것', key: 'okay_now' },
-  { label: '아직 모르는 것', key: 'dont_know' },
-  { label: '다시 보고 싶지 않은 것', key: 'never_again', void: true },
+  { label: 'Something that still hurts', key: 'still_hurts' },
+  { label: 'Something I\'m okay with now', key: 'okay_now' },
+  { label: 'Something I still don\'t understand', key: 'dont_know' },
+  { label: 'Something I never want to see again', key: 'never_again', void: true },
 ];
 
 // ===== V3 State =====
@@ -83,100 +83,100 @@ function resetV3State() {
   v3State.isProcessing = false;
 }
 
-// ===== V3 Stages 정의 =====
+// ===== V3 Stages Definition =====
 
 const V3_STAGES = [
-  // Stage 1: 감각 앵커
+  // Stage 1: Sensory anchor
   {
     id: 'sensory', stage: 1,
-    prompt: '눈을 감아봐.\n그 순간으로 돌아가봐.\n\n뭐가 보여? 뭐가 들려?\n무슨 냄새가 나?',
-    type: 'textarea', placeholder: '떠오르는 대로, 천천히...',
+    prompt: 'Close your eyes.\nGo back to that moment.\n\nWhat do you see? What do you hear?\nWhat do you smell?',
+    type: 'textarea', placeholder: 'Whatever comes to mind, slowly...',
     handler: handleSensory,
   },
-  // Stage 2: 상황 (음성 입력 우선)
+  // Stage 2: Situation (voice input preferred)
   {
     id: 'situation', stage: 2,
     getPrompt: () => {
       const a = v3State.data.sensory_anchor;
-      if (!a) return '그때, 무슨 일이 벌어지고 있었어?';
-      const hints = { visual: '그 장면이 보일 때', olfactory: '그 냄새가 날 때', auditory: '그 소리가 들릴 때', somatic: '그 감각이 느껴질 때', narrative: '그 이야기 속에서' };
-      return `${hints[a.modality] || '그 순간'},\n무슨 일이 벌어지고 있었어?`;
+      if (!a) return 'What was happening then?';
+      const hints = { visual: 'When that scene appears', olfactory: 'When that smell returns', auditory: 'When that sound reaches you', somatic: 'When that sensation comes back', narrative: 'Inside that story' };
+      return `${hints[a.modality] || 'In that moment'},\nwhat was happening?`;
     },
-    type: 'textarea_voice', placeholder: '말해도 되고, 써도 돼...',
+    type: 'textarea_voice', placeholder: 'You can speak, or you can write...',
     handler: handleSituation,
   },
-  // Stage 3: 신체 반응
+  // Stage 3: Body response
   {
     id: 'body', stage: 3,
-    prompt: '그 순간, 너의 몸은 어땠어?',
+    prompt: 'In that moment, what did your body do?',
     type: 'cluster_chips', maxSelect: 3,
     handler: handleBody,
   },
-  // Stage 4a: 감정
+  // Stage 4a: Emotion
   {
     id: 'emotion', stage: 4,
     getPrompt: () => {
-      const names = { fight: '몸이 싸우려 했구나', flight: '몸이 도망치려 했구나', freeze: '몸이 멈췄구나', fawn: '몸이 맞추려 했구나' };
+      const names = { fight: 'Your body tried to fight', flight: 'Your body tried to run', freeze: 'Your body froze', fawn: 'Your body tried to appease' };
       const prefix = names[v3State.data.body_cluster] || '';
-      return prefix ? `${prefix}.\n그건 어떤 감정이었을까?\n(두 개까지 고를 수 있어)` : '그건 어떤 감정이었을까?\n(두 개까지 고를 수 있어)';
+      return prefix ? `${prefix}.\nWhat emotion was that?\n(You can choose up to two)` : 'What emotion was that?\n(You can choose up to two)';
     },
     type: 'multi_chips', chips: EMOTION_CHIPS_V3, maxSelect: 2,
     handler: handleEmotion,
   },
-  // Stage 4b: 이유
+  // Stage 4b: Reason
   {
     id: 'reason', stage: 4,
     getPrompt: () => {
       const emos = v3State.data.emotions || [];
-      if (emos.includes('numbness') && emos.length === 1) return '왜 아무것도 느끼지 못했을까?';
+      if (emos.includes('numbness') && emos.length === 1) return 'Why couldn\'t you feel anything?';
       const labels = emos.map(e => EMOTION_CHIPS_V3.find(c => c.key === e)?.label || e);
-      return `왜 ${labels.join('과 ')}을 느꼈을까?`;
+      return `Why did you feel ${labels.join(' and ')}?`;
     },
     type: 'chips', chips: REASON_CHIPS_V3,
     handler: handleReason,
   },
-  // Stage 4c: 대상
+  // Stage 4c: Target
   {
     id: 'target', stage: 4,
     getPrompt: () => {
       const emos = v3State.data.emotions || [];
       const labels = emos.map(e => EMOTION_CHIPS_V3.find(c => c.key === e)?.label || e);
-      return `그 ${labels.join('과 ')}은...\n누구를 향한 거야?`;
+      return `That ${labels.join(' and ')}...\nWho was it directed at?`;
     },
     type: 'chips', chips: TARGET_CHIPS_V3,
     handler: handleTarget,
   },
-  // Stage 5a: 자기문답
+  // Stage 5a: Self-questioning
   {
     id: 'self_questions', stage: 5,
-    prompt: '잠깐.\n\n이 기억에 대해, 너 자신에게\n묻고 싶은 게 있지 않아?',
+    prompt: 'Wait.\n\nAbout this memory,\nis there something you want to ask yourself?',
     type: 'question_select',
     handler: handleQuestionSelect,
   },
-  // Stage 5b: 봉인 관계
+  // Stage 5b: Seal relation
   {
     id: 'seal_relation', stage: 5,
-    prompt: '이 기억에서 나와.\n문을 닫아.\n\n돌아보면, 이 기억은 지금 너한테 뭐야?',
+    prompt: 'Step out of this memory.\nClose the door.\n\nLooking back, what is this memory to you now?',
     type: 'chips', chips: SEAL_CHIPS_V3,
     handler: handleSealRelation,
   },
-  // Stage 5c: 봉인어
+  // Stage 5c: Seal word
   {
     id: 'seal_word', stage: 5,
-    prompt: '마지막으로.\n이 기억을 한 단어로.',
+    prompt: 'One last thing.\nThis memory, in a single word.',
     type: 'seal_text',
     handler: handleSealWord,
   },
 ];
 
-// ===== Handler 함수들 =====
+// ===== Handler Functions =====
 
 async function handleSensory(text) {
   v3State.data.sensory_raw = text;
-  showV3Processing('감각을 읽고 있어...');
+  showV3Processing('Reading your senses...');
   
   if (!window.networkService) {
-    console.error('networkService가 아직 초기화되지 않았습니다');
+    console.error('networkService is not yet initialized');
     v3State.data.sensory_anchor = {
       modality: 'narrative',
       content: text.substring(0, 100),
@@ -206,7 +206,7 @@ async function handleSensory(text) {
       throw new Error('No data in response');
     }
     
-    // result.data가 문자열일 수 있으므로 파싱 시도
+    // result.data may be a string, so attempt parsing
     let response = result.data;
     if (typeof response === 'string') {
       try {
@@ -248,10 +248,10 @@ async function handleSensory(text) {
 
 async function handleSituation(text) {
   v3State.data.situation_raw = text;
-  showV3Processing('상황을 읽고 있어...');
+  showV3Processing('Reading the situation...');
   
   if (!window.networkService) {
-    console.error('networkService가 아직 초기화되지 않았습니다');
+    console.error('networkService is not yet initialized');
     v3State.data.situation_context = {
       temporal: 'unknown',
       spatial: 'unknown',
@@ -283,7 +283,7 @@ async function handleSituation(text) {
       throw new Error('No data in response');
     }
     
-    // result.data가 문자열일 수 있으므로 파싱 시도
+    // result.data may be a string, so attempt parsing
     let response = result.data;
     if (typeof response === 'string') {
       try {
@@ -296,10 +296,10 @@ async function handleSituation(text) {
     
     console.log('[V3] handleSituation parsed response:', response);
     
-    // Edge Function이 타입을 인식하지 못하고 기본 장면 생성 응답을 반환한 경우
+    // Edge Function didn't recognize the type and returned a default scene generation response
     if (response && response.scene) {
-      console.warn('[V3] handleSituation: Edge Function이 기본 장면 생성 응답을 반환했습니다. 폴백 사용.');
-      // 폴백으로 처리
+      console.warn('[V3] handleSituation: Edge Function returned default scene generation response. Using fallback.');
+      // Use fallback
       response = null;
     }
     
@@ -312,7 +312,7 @@ async function handleSituation(text) {
       };
     } else {
       console.warn('[V3] handleSituation: response missing temporal, using fallback. Response:', response);
-      // 폴백 처리 (에러를 던지지 않고 폴백 사용)
+      // Fallback instead of throwing error
       v3State.data.situation_context = {
         temporal: 'unknown',
         spatial: 'unknown',
@@ -322,7 +322,7 @@ async function handleSituation(text) {
     }
   } catch (error) {
     console.error('Situation analysis failed:', error);
-    // 에러가 발생해도 폴백으로 계속 진행
+    // Continue with fallback even on error
     if (!v3State.data.situation_context) {
       v3State.data.situation_context = {
         temporal: 'unknown',
@@ -339,7 +339,7 @@ async function handleSituation(text) {
 function handleBody(selectedKeys) {
   v3State.data.body_responses = selectedKeys;
   
-  // 클러스터 카운트
+  // Cluster count
   const clusterCounts = { fight: 0, flight: 0, freeze: 0, fawn: 0 };
   let totalDominance = 0;
   let count = 0;
@@ -356,7 +356,7 @@ function handleBody(selectedKeys) {
     }
   }
   
-  // 가장 많은 클러스터
+  // Dominant cluster
   const maxCluster = Object.entries(clusterCounts).reduce((a, b) => 
     clusterCounts[a[0]] > clusterCounts[b[0]] ? a : b
   )[0];
@@ -364,7 +364,7 @@ function handleBody(selectedKeys) {
   v3State.data.body_cluster = maxCluster;
   v3State.data.dominance_modifier = count > 0 ? totalDominance / count : 0;
   
-  // somatic 감각이면 dominance 감소
+  // Reduce dominance if sensory anchor is somatic
   if (v3State.data.sensory_anchor?.modality === 'somatic') {
     v3State.data.dominance_modifier -= 0.1;
   }
@@ -388,10 +388,10 @@ function handleTarget(selected) {
 }
 
 async function generateQuestions() {
-  showV3Processing('질문을 만들고 있어...');
+  showV3Processing('Forming questions...');
   
   if (!window.networkService) {
-    console.error('networkService가 아직 초기화되지 않았습니다');
+    console.error('networkService is not yet initialized');
     v3State.data.generated_questions = fallbackQuestions();
     advanceV3();
     return;
@@ -426,7 +426,7 @@ async function generateQuestions() {
       throw new Error('No data in response');
     }
     
-    // result.data가 문자열일 수 있으므로 파싱 시도
+    // result.data may be a string, so attempt parsing
     let response = result.data;
     if (typeof response === 'string') {
       try {
@@ -457,27 +457,27 @@ function fallbackQuestions() {
   const { emotions, reason, target } = v3State.data;
   const questions = [];
   
-  // shame 또는 target=other → spotlight
+  // shame or target=other → spotlight
   if ((emotions.includes('shame') || target === 'other')) {
-    questions.push({ text: '그 사람이 알아챘을까?', category: 'spotlight' });
+    questions.push({ text: 'Did they notice?', category: 'spotlight' });
   }
   
   // self_blame → counterfactual
   if (reason === 'self_blame') {
-    questions.push({ text: '그때 다르게 했으면 어떻게 됐을까?', category: 'counterfactual' });
+    questions.push({ text: 'What if I had done it differently?', category: 'counterfactual' });
   }
   
   // self_blame + guilt/shame → attribution_error
   if (reason === 'self_blame' && (emotions.includes('guilt') || emotions.includes('shame'))) {
-    questions.push({ text: '정말 내 잘못이었을까?', category: 'attribution_error' });
+    questions.push({ text: 'Was it really my fault?', category: 'attribution_error' });
   }
   
-  // 항상 포함: reality_check
-  questions.push({ text: '그게 정말 그렇게 된 거 맞아?', category: 'reality_check' });
+  // Always included: reality_check
+  questions.push({ text: 'Is that really how it happened?', category: 'reality_check' });
   
   // target=other/self → perspective_shift
   if (target === 'other' || target === 'self') {
-    questions.push({ text: target === 'other' ? '그 사람은 나를 어떻게 봤을까?' : '그때의 나는 지금의 나를 어떻게 봤을까?', category: 'perspective_shift' });
+    questions.push({ text: target === 'other' ? 'How did they see me?' : 'How would the me back then see the me now?', category: 'perspective_shift' });
   }
   
   return questions.slice(0, 4);
@@ -501,10 +501,10 @@ function handleSealWord(word) {
 // ===== completeV3 =====
 
 function completeV3() {
-  showV3Processing('기억을 현상하고 있어...');
+  showV3Processing('Developing the memory...');
   const d = v3State.data;
 
-  // 감각 양식 → V2 sensory 매핑
+  // Sensory modality → V2 sensory mapping
   const modMap = {
     visual:    { smell: 'nothing', sound: 'nothing', touch: 'nothing' },
     olfactory: { smell: 'rain_heavy', sound: 'silence', touch: 'nothing' },
@@ -530,10 +530,10 @@ function completeV3() {
     seal: { relation: d.seal_relation || 'dont_know', word: d.seal_word || '' },
   };
 
-  // 기존 flowState에 주입
+  // Inject into existing flowState
   window._v3FlowData = flowData;
 
-  // V3 전용 메타데이터 (saveConfessionToDB에서 사용)
+  // V3-specific metadata (used by saveConfessionToDB)
   window.confessionV3Data = {
     sensory_anchor: d.sensory_anchor,
     body_response: d.body_responses,
@@ -542,13 +542,13 @@ function completeV3() {
     dominance_modifier: d.dominance_modifier,
   };
 
-  // 기존 generateSceneFromRitual 호출
+  // Call existing generateSceneFromRitual
   if (typeof window._v3GenerateScene === 'function') {
     window._v3GenerateScene(flowData);
   }
 }
 
-// ===== UI 렌더링 =====
+// ===== UI Rendering =====
 
 function startV3Flow() {
   const flowEl = document.getElementById('confessionFlow');
@@ -595,7 +595,7 @@ function renderV3Stage(index) {
   inputZone.className = 'v3-input-zone';
   zone.appendChild(inputZone);
   
-  // Prompt 타이핑
+  // Prompt typewriter
   const promptText = typeof stage.prompt === 'function' ? stage.prompt() : (typeof stage.getPrompt === 'function' ? stage.getPrompt() : stage.prompt);
   v3TypeWrite(promptEl, promptText, 35, () => {
     renderV3Input(inputZone, stage);
@@ -668,12 +668,12 @@ function renderTextarea(zone, stage) {
 function renderTextareaWithVoice(zone, stage) {
   const textarea = document.createElement('textarea');
   textarea.className = 'v3-textarea';
-  textarea.placeholder = stage.placeholder || '말해도 되고, 써도 돼...';
+  textarea.placeholder = stage.placeholder || 'You can speak, or you can write...';
   textarea.rows = 6;
   
   const voiceHint = document.createElement('div');
   voiceHint.className = 'v3-voice-hint';
-  voiceHint.textContent = '마이크 버튼을 눌러 말로 입력할 수 있습니다';
+  voiceHint.textContent = 'Press the microphone button to speak your input';
   
   const voiceRow = document.createElement('div');
   voiceRow.className = 'v3-voice-row';
@@ -681,7 +681,7 @@ function renderTextareaWithVoice(zone, stage) {
   const micBtn = document.createElement('button');
   micBtn.className = 'v3-mic-btn';
   micBtn.type = 'button';
-  micBtn.innerHTML = '🎙 <span>눌러서 말하기</span>';
+  micBtn.innerHTML = '🎙 <span>Press to speak</span>';
   
   const submitBtn = document.createElement('button');
   submitBtn.className = 'v3-submit-btn';
@@ -699,12 +699,12 @@ function renderTextareaWithVoice(zone, stage) {
   let isRecording = false;
   let recognition = null;
   let accumulatedText = textarea.value || '';
-  let lastProcessedIndex = -1; // 이미 처리한 resultIndex 추적
+  let lastProcessedIndex = -1; // Track already-processed resultIndex
   
   micBtn.addEventListener('click', () => {
     if (!hasSpeechRecognition) {
       if (window.showNotification) {
-        window.showNotification('이 브라우저는 음성 인식을 지원하지 않습니다');
+        window.showNotification('This browser does not support speech recognition');
       }
       return;
     }
@@ -715,13 +715,13 @@ function renderTextareaWithVoice(zone, stage) {
         recognition = null;
       }
       isRecording = false;
-      lastProcessedIndex = -1; // 리셋
+      lastProcessedIndex = -1; // Reset
       micBtn.classList.remove('v3-mic-active');
-      micBtn.innerHTML = '🎙 <span>눌러서 말하기</span>';
+      micBtn.innerHTML = '🎙 <span>Press to speak</span>';
     } else {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognition = new SpeechRecognition();
-      recognition.lang = 'ko-KR';
+      recognition.lang = 'en-US';
       recognition.continuous = true;
       recognition.interimResults = true;
       
@@ -729,8 +729,8 @@ function renderTextareaWithVoice(zone, stage) {
         let interimText = '';
         let newFinalText = '';
         
-        // event.resultIndex부터 시작하여 이미 처리하지 않은 결과만 처리
-        // continuous: true일 때 같은 결과가 여러 번 올 수 있으므로 주의
+        // Start from event.resultIndex, only process unprocessed results
+        // With continuous: true, the same result may arrive multiple times
         const startIndex = Math.max(event.resultIndex, lastProcessedIndex + 1);
         
         for (let i = startIndex; i < event.results.length; i++) {
@@ -738,23 +738,23 @@ function renderTextareaWithVoice(zone, stage) {
           const transcript = result[0].transcript;
           
           if (result.isFinal) {
-            // final 결과는 한 번만 추가
+            // Final result: add only once
             newFinalText += transcript;
-            lastProcessedIndex = i; // 처리 완료 인덱스 업데이트
+            lastProcessedIndex = i; // Update processed index
           } else {
-            // interim 결과는 실시간 표시용
+            // Interim result: for real-time display
             interimText += transcript;
           }
         }
         
-        // final transcript는 누적 (중복 방지)
+        // Accumulate final transcript (prevent duplicates)
         if (newFinalText) {
           accumulatedText += newFinalText;
           textarea.value = accumulatedText;
           console.log('[V3] STT final text added:', newFinalText, 'total:', accumulatedText);
         }
         
-        // interim은 실시간 표시 (기존 텍스트 + 누적 final + 현재 interim)
+        // Show interim in real-time (existing text + accumulated final + current interim)
         if (interimText) {
           textarea.value = accumulatedText + interimText;
         }
@@ -764,37 +764,37 @@ function renderTextareaWithVoice(zone, stage) {
       
       recognition.onend = () => {
         isRecording = false;
-        lastProcessedIndex = -1; // 리셋
+        lastProcessedIndex = -1; // Reset
         micBtn.classList.remove('v3-mic-active');
-        micBtn.innerHTML = '🎙 <span>눌러서 말하기</span>';
+        micBtn.innerHTML = '🎙 <span>Press to speak</span>';
         if (recognition) {
           recognition = null;
         }
       };
       
       recognition.onerror = (event) => {
-        console.error('음성 인식 오류:', event.error);
+        console.error('Speech recognition error:', event.error);
         isRecording = false;
-        lastProcessedIndex = -1; // 리셋
+        lastProcessedIndex = -1; // Reset
         micBtn.classList.remove('v3-mic-active');
-        micBtn.innerHTML = '🎙 <span>눌러서 말하기</span>';
+        micBtn.innerHTML = '🎙 <span>Press to speak</span>';
         
         if (event.error === 'not-allowed' && window.showNotification) {
-          window.showNotification('마이크 권한이 필요합니다');
+          window.showNotification('Microphone permission is required');
         }
       };
       
       try {
-        lastProcessedIndex = -1; // 새 녹음 시작 시 리셋
+        lastProcessedIndex = -1; // Reset on new recording start
         recognition.start();
         isRecording = true;
         micBtn.classList.add('v3-mic-active');
-        micBtn.innerHTML = '⏹ <span>말하기 중...</span>';
+        micBtn.innerHTML = '⏹ <span>Speaking...</span>';
       } catch (e) {
-        console.error('음성 인식 시작 실패:', e);
-        lastProcessedIndex = -1; // 리셋
+        console.error('Failed to start speech recognition:', e);
+        lastProcessedIndex = -1; // Reset
         if (window.showNotification) {
-          window.showNotification('음성 인식을 시작할 수 없습니다');
+          window.showNotification('Unable to start speech recognition');
         }
       }
     }
@@ -879,7 +879,7 @@ function renderChips(zone, stage, multiSelect) {
 }
 
 function renderClusterChips(zone, stage) {
-  // 모든 클러스터를 flat하게 펼치고 셔플
+  // Flatten all clusters and shuffle
   const allChips = [];
   for (const [cluster, chips] of Object.entries(BODY_CHIPS_V3)) {
     chips.forEach(chip => {
@@ -887,7 +887,7 @@ function renderClusterChips(zone, stage) {
     });
   }
   
-  // 셔플 (Fisher-Yates)
+  // Shuffle (Fisher-Yates)
   for (let i = allChips.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [allChips[i], allChips[j]] = [allChips[j], allChips[i]];
@@ -931,7 +931,7 @@ function renderClusterChips(zone, stage) {
 function renderQuestionSelect(zone, stage) {
   const questions = v3State.data.generated_questions || [];
   if (questions.length === 0) {
-    zone.innerHTML = '<div class="v3-error">질문을 생성할 수 없습니다.</div>';
+    zone.innerHTML = '<div class="v3-error">Unable to generate questions.</div>';
     return;
   }
   
@@ -974,7 +974,7 @@ function renderSealText(zone, stage) {
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'v3-seal-input';
-  input.placeholder = '단 하나의 단어';
+  input.placeholder = 'Just one word';
   input.maxLength = 20;
   
   const submitBtn = document.createElement('button');

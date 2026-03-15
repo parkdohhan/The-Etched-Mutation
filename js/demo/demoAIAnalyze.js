@@ -1,5 +1,5 @@
 // js/demo/demoAIAnalyze.js
-// 데모용 AI 분석 — Supabase Edge Function (claude-scene) 호출, 실패 시 null 반환
+// 데모용 AI analysis — Supabase Edge Function (claude-scene) call, failure 시 null return
 
 import { SUPABASE_ANON_KEY } from '../lib/config.js';
 

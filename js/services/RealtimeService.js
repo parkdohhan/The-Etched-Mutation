@@ -1,5 +1,5 @@
 // js/services/RealtimeService.js
-// Supabase Realtime 구독 서비스
+// Supabase Realtime subscribe service
 
 import { getSupabaseClient } from '../lib/supabaseClient.js';
 
@@ -10,19 +10,19 @@ class RealtimeService {
     }
 
     /**
-     * Supabase 클라이언트 가져오기
-     * @returns {Object|null} Supabase 클라이언트 또는 null
+ * Supabase client 져오기
+ * @returns {Object|null} Supabase client 또 null
      */
     _getClient() {
         return getSupabaseClient();
     }
 
     /**
-     * 세션 참여 구독 (live_sessions 테이블 UPDATE)
-     * @param {number} sessionId - 세션 ID
-     * @param {Object} handlers - 이벤트 핸들러
-     * @param {Function} handlers.onExperiencerJoin - 체험자 참여 시 호출
-     * @param {Function} handlers.onSubscribed - 구독 성공 시 호출 (폴링 시작용)
+ * session 참여 subscribe (live_sessions 테 블 UPDATE)
+ * @param {number} sessionId - session ID
+ * @param {Object} handlers - 벤트 handler
+ * @param {Function} handlers.onExperiencerJoin - experiencer 참여 시 call
+ * @param {Function} handlers.onSubscribed - subscribe success 시 call (poll start용)
      */
     subscribeToSessionJoin(sessionId, handlers = {}) {
         const { onExperiencerJoin, onSubscribed } = handlers;
@@ -69,10 +69,10 @@ class RealtimeService {
     }
 
     /**
-     * Live 장면 구독 (live_scenes 테이블 INSERT)
-     * @param {number} sessionId - 세션 ID
-     * @param {Object} handlers - 이벤트 핸들러
-     * @param {Function} handlers.onSceneInsert - 새 장면 수신 시 호출
+ * Live scene subscribe (live_scenes 테 블 INSERT)
+ * @param {number} sessionId - session ID
+ * @param {Object} handlers - 벤트 handler
+ * @param {Function} handlers.onSceneInsert - 새 scene 수신 시 call
      */
     subscribeToLiveScenes(sessionId, handlers = {}) {
         const { onSceneInsert } = handlers;
@@ -109,18 +109,18 @@ class RealtimeService {
     }
 
     /**
-     * Live 해석 구독 (비활성화됨)
+ * Live interpretation subscribe (비active화됨)
      */
     subscribeToLiveInterpretations() {
-        // live_interpretations 테이블이 없으므로 완전히 비활성화
+ // live_interpretations 테 블 없으므 완전히 비active화
         return;
     }
 
     /**
-     * 체험자 선택 구독 (choices 테이블 INSERT)
-     * @param {number} sessionId - 세션 ID
-     * @param {Object} handlers - 이벤트 핸들러
-     * @param {Function} handlers.onChoiceInsert - 새 선택 수신 시 호출
+ * experiencer 선택 subscribe (choices 테 블 INSERT)
+ * @param {number} sessionId - session ID
+ * @param {Object} handlers - 벤트 handler
+ * @param {Function} handlers.onChoiceInsert - 새 선택 수신 시 call
      */
     subscribeToExperiencerChoices(sessionId, handlers = {}) {
         const { onChoiceInsert } = handlers;
@@ -153,7 +153,7 @@ class RealtimeService {
                         onChoiceInsert(payload.new);
                     }
                 } else {
-                    console.error('payload.new 또는 emotion_vector가 없습니다');
+                    console.error('payload.new 또는 emotion_vector가 not found');
                 }
             })
             .subscribe((status) => {
@@ -169,10 +169,10 @@ class RealtimeService {
     }
 
     /**
-     * 장면 구독 (scenes 테이블 INSERT)
-     * @param {number} sessionId - 세션 ID
-     * @param {Object} handlers - 이벤트 핸들러
-     * @param {Function} handlers.onSceneInsert - 새 장면 수신 시 호출
+ * scene subscribe (scenes 테 블 INSERT)
+ * @param {number} sessionId - session ID
+ * @param {Object} handlers - 벤트 handler
+ * @param {Function} handlers.onSceneInsert - 새 scene 수신 시 call
      */
     subscribeToScenes(sessionId, handlers = {}) {
         const { onSceneInsert } = handlers;
@@ -205,7 +205,7 @@ class RealtimeService {
                         onSceneInsert(payload.new);
                     }
                 } else {
-                    console.error('payload.new가 없습니다');
+                    console.error('payload.new가 not found');
                 }
             })
             .subscribe((status) => {
@@ -221,10 +221,10 @@ class RealtimeService {
     }
 
     /**
-     * 화자 감정 구독 (scenes 테이블 INSERT, emotion_vector 필터링)
-     * @param {number} sessionId - 세션 ID
-     * @param {Object} handlers - 이벤트 핸들러
-     * @param {Function} handlers.onNarratorEmotionInsert - 화자 감정 수신 시 호출
+ * narrator emotion subscribe (scenes 테 블 INSERT, emotion_vector filter링)
+ * @param {number} sessionId - session ID
+ * @param {Object} handlers - 벤트 handler
+ * @param {Function} handlers.onNarratorEmotionInsert - narrator emotion 수신 시 call
      */
     subscribeToNarratorEmotion(sessionId, handlers = {}) {
         const { onNarratorEmotionInsert } = handlers;
@@ -266,8 +266,8 @@ class RealtimeService {
     }
 
     /**
-     * 특정 채널 구독 해제
-     * @param {string} channelName - 채널 이름 ('sessionJoin', 'liveScenes', 'experiencerChoices', 'scenes', 'narratorEmotion')
+ * 특정 채널 subscribe 해제
+ * @param {string} channelName - 채널 름 ('sessionJoin', 'liveScenes', 'experiencerChoices', 'scenes', 'narratorEmotion')
      */
     unsubscribe(channelName) {
         if (this.channels[channelName]) {
@@ -278,10 +278,10 @@ class RealtimeService {
     }
 
     /**
-     * 모든 구독 해제 및 정리
+ * 모든 subscribe 해제 및 정리
      */
     cleanup() {
-        // 모든 채널 구독 해제
+ // 모든 채널 subscribe 해제
         Object.keys(this.channels).forEach(channelName => {
             if (this.channels[channelName]) {
                 this.channels[channelName].unsubscribe();
@@ -290,7 +290,7 @@ class RealtimeService {
         });
         this.channels = {};
 
-        // 모든 인터벌 정리
+ // 모든 인터벌 정리
         Object.keys(this.intervals).forEach(intervalName => {
             if (this.intervals[intervalName]) {
                 globalThis.clearInterval(this.intervals[intervalName]);
@@ -301,17 +301,17 @@ class RealtimeService {
     }
 
     /**
-     * 인터벌 등록 (정리용)
-     * @param {string} name - 인터벌 이름
-     * @param {number} intervalId - setInterval 반환값
+ * 인터벌 등록 (정리용)
+ * @param {string} name - 인터벌 름
+ * @param {number} intervalId - setInterval return값
      */
     registerInterval(name, intervalId) {
         this.intervals[name] = intervalId;
     }
 
     /**
-     * 인터벌 해제
-     * @param {string} name - 인터벌 이름
+ * 인터벌 해제
+ * @param {string} name - 인터벌 름
      */
     clearInterval(name) {
         if (this.intervals[name]) {

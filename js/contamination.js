@@ -1,12 +1,12 @@
 /**
- * TEM 오염 시스템 — Stage 3 코드 생성 + Admin 재생성 (Stage 1/2)
- * - Stage 3: Glitch, Redact, Dissolve (코드로 생성)
- * - Admin 재생성: contaminate-text Edge Function (Gemini Flash) 호출
+ * TEM contamination 시스템 — Stage 3 코드 create + Admin 재create (Stage 1/2)
+ * - Stage 3: Glitch, Redact, Dissolve (코드 create)
+ * - Admin 재create: contaminate-text Edge Function (Gemini Flash) call
  */
 (function () {
   'use strict';
 
-  // admin.js(module) 로드 전에 실행될 수 있으므로 fallback 사용 (상대 경로면 127.0.0.1으로 요청 가는 것 방지)
+ // admin.js(module) load 전 execute될 수 있으므 fallback (상대 경 면 127.0.0.1으 request 것 방지)
   var SUPABASE_URL_FALLBACK = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
   var SUPABASE_ANON_KEY_FALLBACK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
 
@@ -22,7 +22,7 @@
   var STAGE3_REDACT = '\u2588\u2588\u2588\u2588'; // ████
 
   /**
-   * Stage 3 스타일: Glitch — 유니코드 블록 문자로 일부 대체
+ * Stage 3 스타일: Glitch — 유니코드 블록 문자 일부 대체
    */
   function applyStage3Glitch(text) {
     if (!text || typeof text !== 'string') return '';
@@ -42,7 +42,7 @@
   }
 
   /**
-   * Stage 3 스타일: Redact — 단어/구를 ████ 로 소거
+ * Stage 3 스타일: Redact — 단어/구 ████ 소거
    */
   function applyStage3Redact(text) {
     if (!text || typeof text !== 'string') return '';
@@ -63,7 +63,7 @@
   }
 
   /**
-   * Stage 3 스타일: Dissolve — 글자가 공백으로 소멸
+ * Stage 3 스타일: Dissolve — 글자 공백으 소멸
    */
   function applyStage3Dissolve(text) {
     if (!text || typeof text !== 'string') return '';
@@ -85,7 +85,7 @@
   };
 
   /**
-   * Stage 3 텍스트 생성 (스타일 키: 'Glitch' | 'Redact' | 'Dissolve')
+ * Stage 3 text create (스타일 키: 'Glitch' | 'Redact' | 'Dissolve')
    */
   function applyStage3(text, styleKey) {
     var fn = STAGE3_STYLES[styleKey] || STAGE3_STYLES.Glitch;
@@ -93,7 +93,7 @@
   }
 
   /**
-   * Admin: Stage 1 재생성 — contaminate-text Edge Function 호출
+ * Admin: Stage 1 재create — contaminate-text Edge Function call
    */
   async function regenerateStage1(sceneIndex) {
     var baseEl = document.querySelector('.scene-text-input[data-scene-index="' + sceneIndex + '"]');
@@ -148,7 +148,7 @@
   }
 
   /**
-   * Admin: Stage 2 재생성
+ * Admin: Stage 2 재create
    */
   async function regenerateStage2(sceneIndex) {
     var baseEl = document.querySelector('.scene-text-input[data-scene-index="' + sceneIndex + '"]');
@@ -203,7 +203,7 @@
   }
 
   /**
-   * Admin: Stage 3 생성 (코드 스타일 적용)
+ * Admin: Stage 3 create (코드 스타일 적용)
    */
   function generateStage3(sceneIndex) {
     var baseEl = document.querySelector('.scene-text-input[data-scene-index="' + sceneIndex + '"]');

@@ -1,13 +1,13 @@
-// DB CRUD 함수들 - Supabase 쿼리 로직을 중앙화
+// DB CRUD function들 - Supabase 쿼리 직 중앙화
 
 /**
- * 메모리 목록을 scenes와 choices와 함께 로드
- * @param {Object} client - Supabase 클라이언트
- * @returns {Promise<Array>} 메모리 배열 (각 메모리에 scenes와 choices 포함)
+ * memory list scenes choices 함께 load
+ * @param {Object} client - Supabase client
+ * @returns {Promise<Array>} memory array (각 memory scenes choices )
  */
 export async function listMemoriesWithScenesChoices(client) {
     if (!client) {
-        throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+        throw new Error('Supabase client not initialized.');
     }
 
     const { data: memoriesData, error } = await client
@@ -21,7 +21,7 @@ export async function listMemoriesWithScenesChoices(client) {
         return [];
     }
 
-    // 각 메모리의 scenes와 choices를 불러오기
+ // 각 memory scenes choices 불러오기
     const memories = await Promise.all(memoriesData.map(async (memory) => {
         const { data: scenesData, error: scenesError } = await client
             .from('scenes')
@@ -88,27 +88,27 @@ export async function listMemoriesWithScenesChoices(client) {
 }
 
 /**
- * 메모리 그래프 저장 (memories, scenes, choices)
- * @param {Object} client - Supabase 클라이언트
- * @param {Object} memoryPayload - 메모리 페이로드
- *   - memoryId: number (업데이트 시) 또는 null (생성 시)
+ * memory 그래프 save (memories, scenes, choices)
+ * @param {Object} client - Supabase client
+ * @param {Object} memoryPayload - memory 페 load
+ * - memoryId: number (업데 트 시) 또 null (create 시)
  *   - code: string
  *   - title: string
- *   - scenes: Array - 각 scene은 { text, sceneType, echoWords, emotionDist, voidInfo, choices, ... } 형태
- *   - memoryWaveData: Object (선택적) - plays 테이블에 저장할 wave_data
+ * - scenes: Array - 각 scene { text, sceneType, echoWords, emotionDist, voidInfo, choices, ... } 형태
+ * - memoryWaveData: Object (선택적) - plays 테 블 save wave_data
  */
 export async function saveMemoryGraph(client, memoryPayload) {
     if (!client) {
-        throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+        throw new Error('Supabase client not initialized.');
     }
 
     const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
-    // 메모리 저장 또는 업데이트
+ // memory save 또 업데 트
     if (finalMemoryId) {
-        // 업데이트
+ // 업데 트
         const { data: updateData, error } = await client
             .from('memories')
             .update({
@@ -120,7 +120,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 author_note: author_note || null,
                 status: status || 'Fetus',
                 source: source || 'beginner',
-                // sound_map: sound_map || null, // 임시 주석: 컬럼이 없으면 오류 발생
+ // sound_map: sound_map || null, // temp 주석: 컬럼 없으면 Error occurred
                 layers: 0,
                 dilution: 100,
                 is_public: true,
@@ -133,7 +133,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
 
         if (error) throw error;
 
-        // 기존 scenes와 choices 삭제
+ // existing scenes choices delete
         const { data: existingScenes, error: scenesSelectError } = await client
             .from('scenes')
             .select('id')
@@ -158,7 +158,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
             if (scenesDeleteError) throw scenesDeleteError;
         }
     } else {
-        // 새로 생성
+ // 새 create
         const insertPayload = {
             code: code,
             title: title,
@@ -168,16 +168,16 @@ export async function saveMemoryGraph(client, memoryPayload) {
             author_note: author_note || null,
             status: status || 'Fetus',
             source: source || 'beginner',
-            // sound_map: sound_map || null, // 임시 주석: 컬럼이 없으면 오류 발생
+ // sound_map: sound_map || null, // temp 주석: 컬럼 없으면 Error occurred
             layers: 0,
             dilution: 100,
             is_public: true
         };
-        // curator_id가 있으면 포함 (로그인 사용자)
+ // curator_id 있으면 ( 그인 user)
         if (curator_id) {
             insertPayload.curator_id = curator_id;
         }
-        // V3 메타데이터 추가
+ // V3 메타data add
         if (sensory_anchor) insertPayload.sensory_anchor = sensory_anchor;
         if (body_response) insertPayload.body_response = body_response;
         if (self_questions) insertPayload.self_questions = self_questions;
@@ -196,11 +196,11 @@ export async function saveMemoryGraph(client, memoryPayload) {
         finalMemoryId = data.id;
     }
 
-    // Scenes 저장
+ // Scenes save
     for (let i = 0; i < scenes.length; i++) {
         const scene = scenes[i];
 
-        // emotionDist 계산 (admin.js와 동일한 로직)
+ // emotionDist calculate (admin.js 동일 직)
         const emotionDist = {
             fear: 0, sadness: 0, guilt: 0, anger: 0,
             longing: 0, isolation: 0, numbness: 0, moralPain: 0
@@ -255,7 +255,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
             throw new Error(`Scene ${i + 1} 저장 후 응답 데이터를 받지 못했습니다.`);
         }
 
-        // Wave 데이터 업데이트 (scene.waveData가 있으면 사용, 없으면 emotion_vector만 업데이트)
+ // Wave data 업데 트 (scene.waveData 있으면 , 없으면 emotion_vector 업데 트)
         if (scene.waveData) {
             const { error: waveUpdateError } = await client
                 .from('scenes')
@@ -265,12 +265,12 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 })
                 .eq('id', sceneData.id);
 
-            // wave_data 업데이트 실패는 무시 (선택적)
+ // wave_data Update failed ignore (선택적)
             if (waveUpdateError) {
-                console.warn(`Scene ${i + 1} Wave 데이터 업데이트 실패 (무시됨):`, waveUpdateError);
+                console.warn(`Scene ${i + 1} Wave 데이터 Update failed (무시됨):`, waveUpdateError);
             }
         } else {
-            // waveData가 없으면 emotion_vector만 업데이트
+ // waveData 없으면 emotion_vector 업데 트
             const { error: waveUpdateError } = await client
                 .from('scenes')
                 .update({
@@ -279,11 +279,11 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 .eq('id', sceneData.id);
 
             if (waveUpdateError) {
-                console.warn(`Scene ${i + 1} emotion_vector 업데이트 실패 (무시됨):`, waveUpdateError);
+                console.warn(`Scene ${i + 1} emotion_vector Update failed (무시됨):`, waveUpdateError);
             }
         }
 
-        // Choices 저장
+ // Choices save
         if (scene.choices && scene.choices.length > 0) {
             for (let j = 0; j < scene.choices.length; j++) {
                 const choice = scene.choices[j];
@@ -302,7 +302,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         }
     }
 
-    // Plays 테이블에 wave_data 저장 (선택적)
+ // Plays 테 블 wave_data save (선택적)
     if (memoryWaveData) {
         try {
             const { error: playsError } = await client
@@ -313,9 +313,9 @@ export async function saveMemoryGraph(client, memoryPayload) {
                     layer_id: 0
                 });
 
-            // plays 저장 실패는 무시 (선택적)
+ // plays Save failed ignore (선택적)
             if (playsError) {
-                console.warn('Plays 테이블 저장 실패 (무시됨):', playsError);
+                console.warn('Plays 테이블 Save failed (무시됨):', playsError);
             }
         } catch (playsError) {
             console.warn('Plays 테이블 저장 중 예외 발생 (무시됨):', playsError);
@@ -326,16 +326,16 @@ export async function saveMemoryGraph(client, memoryPayload) {
 }
 
 /**
- * 메모리 그래프 삭제 (choices -> scenes -> memories 순서)
- * @param {Object} client - Supabase 클라이언트
- * @param {number} memoryId - 삭제할 메모리 ID
+ * memory 그래프 delete (choices -> scenes -> memories 순서)
+ * @param {Object} client - Supabase client
+ * @param {number} memoryId - delete memory ID
  */
 export async function deleteMemoryGraph(client, memoryId) {
     if (!client) {
-        throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+        throw new Error('Supabase client not initialized.');
     }
 
-    // 1. scenes를 먼저 가져와서 scene_id 목록 얻기
+ // 1. scenes 먼저 져 서 scene_id list 얻기
     const { data: scenesData } = await client
         .from('scenes')
         .select('id')
@@ -343,10 +343,10 @@ export async function deleteMemoryGraph(client, memoryId) {
 
     const sceneIds = scenesData && scenesData.length > 0 ? scenesData.map(s => s.id) : [];
 
-    // 2. plays 테이블에서 삭제 (memory_id와 scene_id 모두로 시도)
-    // plays가 scene_id를 외래키로 가지고 있을 수 있으므로 scenes 삭제 전에 먼저 삭제해야 함
+ // 2. plays 테 블 서 delete (memory_id scene_id 모두 시 )
+ // plays scene_id 외래키 지고 있 수 있으므 scenes delete 전 먼저 delete해야 함
     try {
-        // memory_id로 삭제 시도
+ // memory_id delete 시 
         const { error: memoryIdError } = await client
             .from('plays')
             .delete()
@@ -359,7 +359,7 @@ export async function deleteMemoryGraph(client, memoryId) {
         console.warn('plays 테이블 memory_id 삭제 중 예외 발생 (무시하고 계속 진행):', error);
     }
 
-    // scene_id로도 삭제 시도 (외래키 제약조건 때문에 필요할 수 있음)
+ // scene_id delete 시 (외래키 제약조건 needed 수 있음)
     if (sceneIds.length > 0) {
         try {
             const { error: sceneIdError } = await client
@@ -375,17 +375,17 @@ export async function deleteMemoryGraph(client, memoryId) {
         }
     }
 
-    // 3. choices 삭제
+ // 3. choices delete
     if (sceneIds.length > 0) {
         await client.from('choices').delete().in('scene_id', sceneIds);
     }
 
-    // 4. scenes 삭제
+ // 4. scenes delete
     if (sceneIds.length > 0) {
         await client.from('scenes').delete().eq('memory_id', memoryId);
     }
 
-    // 5. 메모리 삭제
+ // 5. memory delete
     const { error } = await client
         .from('memories')
         .delete()
@@ -395,17 +395,17 @@ export async function deleteMemoryGraph(client, memoryId) {
 }
 
 /**
- * 백업에서 장면 복구
- * @param {Object} client - Supabase 클라이언트
- * @param {string} memoryCode - 메모리 코드
- * @param {Array} scenesArray - 복구할 장면 배열
+ * 백업 서 scene 복구
+ * @param {Object} client - Supabase client
+ * @param {string} memoryCode - memory 코드
+ * @param {Array} scenesArray - 복구 scene array
  */
 export async function recoverScenesFromBackup(client, memoryCode, scenesArray) {
     if (!client) {
-        throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+        throw new Error('Supabase client not initialized.');
     }
 
-    // Supabase에서 해당 메모리 찾기
+ // Supabase 서 해당 memory 찾기
     const { data: existingMemories, error: memError } = await client
         .from('memories')
         .select('id')
@@ -415,12 +415,12 @@ export async function recoverScenesFromBackup(client, memoryCode, scenesArray) {
     if (memError) throw memError;
 
     if (!existingMemories || existingMemories.length === 0) {
-        throw new Error('Supabase에서 해당 메모리를 찾을 수 없습니다. 먼저 admin.html에서 메모리를 저장하세요.');
+        throw new Error('Supabase에서 해당 메모리를 not found. 먼저 admin.html에서 메모리를 저장하세요.');
     }
 
     const memoryId = existingMemories[0].id;
 
-    // 기존 scenes 삭제
+ // existing scenes delete
     const { error: deleteError } = await client
         .from('scenes')
         .delete()
@@ -428,11 +428,11 @@ export async function recoverScenesFromBackup(client, memoryCode, scenesArray) {
 
     if (deleteError) throw deleteError;
 
-    // 장면 복구
+ // scene 복구
     for (let i = 0; i < scenesArray.length; i++) {
         const scene = scenesArray[i];
 
-        // emotionDist 계산
+ // emotionDist calculate
         const emotionDist = {
             fear: 0, sadness: 0, guilt: 0, anger: 0,
             longing: 0, isolation: 0, numbness: 0, moralPain: 0
@@ -470,7 +470,7 @@ export async function recoverScenesFromBackup(client, memoryCode, scenesArray) {
 
         if (sceneError) throw sceneError;
 
-        // Choices 복구
+ // Choices 복구
         if (scene.choices && scene.choices.length > 0) {
             for (let j = 0; j < scene.choices.length; j++) {
                 const choice = scene.choices[j];
@@ -489,14 +489,14 @@ export async function recoverScenesFromBackup(client, memoryCode, scenesArray) {
 }
 
 /**
- * 아카이브 레이어 목록 로드
- * @param {Object} client - Supabase 클라이언트
- * @param {number} memoryId - 메모리 ID
- * @returns {Promise<Array>} plays 테이블 데이터 배열
+ * archive layer list load
+ * @param {Object} client - Supabase client
+ * @param {number} memoryId - memory ID
+ * @returns {Promise<Array>} plays 테 블 data array
  */
 export async function listArchiveLayers(client, memoryId) {
     if (!client) {
-        throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
+        throw new Error('Supabase client not initialized.');
     }
 
     const { data, error } = await client

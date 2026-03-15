@@ -1,7 +1,7 @@
 // js/demo/demoState.js
-// 데모 전역 상태 및 phase/terrainEffect/recordScene 유틸
+// 데모 global state 및 phase/terrainEffect/recordScene 유틸
 
-// PHASES 정의
+// PHASES 정 
 export const PHASES = {
   OPENING: 'opening',
   MONOLOGUE: 'monologue',
@@ -13,11 +13,11 @@ export const PHASES = {
   TERRAIN: 'terrain',
 };
 
-// terrainEffectType 매핑 (distortion_tag + mismatch 기반)
+// terrainEffectType mapping (distortion_tag + mismatch 기반)
 // avoidance → 'fade' (탈색/공백)
-// projection → 'spread' (옆으로 번짐)
-// idealization → 'smooth' (매끈한 덮임)
-// rationalization → 'layer' (얇은 층 추가)
+// projection → 'spread' (옆으 번짐)
+// idealization → 'smooth' (매끈 덮임)
+// rationalization → 'layer' (얇 층 add)
 // guilt mismatch (attribution_mismatch + guilt dominant) → 'erosion' (침식)
 // longing mismatch (longing dominant, LOW bucket) → 'deposit' (퇴적)
 // default → 'mark' (단순 흔적)
@@ -25,24 +25,24 @@ export const PHASES = {
 export const demoState = {
   phase: PHASES.OPENING,
 
-  // 혼잣말 선택
+ // 혼잣말 선택
   selectedMonologueText: null,
   selectedMonologueEntryLine: null, // 진입 첫 문장
 
-  // 기억
+ // memory
   memoryId: null,
   scenes: [], // Supabase에서 로드한 scenes 배열
 
-  // 장면 진행
+ // scene 진행
   sceneIndex: 0,
 
-  // 벡터 분리
+ // vector 분리
   liveVector: null,     // localAnalyze() 결과, 파동 즉시 반영용
   resolvedVector: null, // aiAnalyze() 또는 fallback 확정값, 엔진 계산용
 
-  // 장면 기록
+ // scene 기록
   sceneHistory: [],
-  // 각 항목 구조:
+ // 각 항목 구조:
   // {
   //   sceneIndex: number,
   //   sceneText: string,
@@ -61,12 +61,12 @@ export const demoState = {
   //   isCoreMoment: boolean,
   // }
 
-  // ghost 파형 (Strata)
+ // ghost 파형 (Strata)
   ghostVectors: [],
 
   supabaseReady: false,
 
-  // 플래그
+ // 플래그
   flags: {
     hasDiverged: false,
     hasShownWhisper: false,
@@ -74,7 +74,7 @@ export const demoState = {
     aiAnalysisFailed: false,
   },
 
-  // hover 로그
+ // hover 그
   hoverLog: [],
 };
 
@@ -110,7 +110,7 @@ export function setPhase(newPhase) {
 }
 
 /**
- * 장면 한 번 재생 결과 기록
+ * scene 번 play result 기록
  * @param {Object} params
  * @param {number} params.sceneIndex
  * @param {string} params.sceneText
@@ -119,7 +119,7 @@ export function setPhase(newPhase) {
  * @param {Object|null} params.liveVector
  * @param {Object|null} params.resolvedVector
  * @param {Object|null} params.originalVector
- * @param {Object} params.engineResult - ByeoriEngine calculateStep 결과
+ * @param {Object} params.engineResult - ByeoriEngine calculateStep result
  */
 export function recordScene(params) {
   const {
