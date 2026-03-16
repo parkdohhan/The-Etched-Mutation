@@ -267,12 +267,10 @@
             var sig = radius * 0.4;
             var inf = Math.exp(-(dist * dist) / (2 * sig * sig)) * ew * evInt * comp;
 
-            // 높이는 감정 weight(ew)에만 비례하도록 단순화
-            // arousal은 감정의 강도가 아니라 각성 수준이므로 높이에 직접 영향을 주지 않음
-            // ew가 클수록 (감정이 강할수록) 봉우리가 높아짐
-            var dh = ew * 15 * inf;
-            dh += ev.deviation * fm(gx * 0.15 + ei * 3 + li, gz * 0.15 + ei * 2, 4) * 2.5 * inf;
-            dh += ev.erosion * (hs(gx * 0.3 + ei + li, gz * 0.3) - 0.5) * 1.5 * inf;
+            // 높이는 감정 weight(ew)와 해석 수에 비례 — 데이터가 쌓일수록 지형이 드러나도록
+            var dh = ew * 38 * inf;
+            dh += ev.deviation * fm(gx * 0.15 + ei * 3 + li, gz * 0.15 + ei * 2, 4) * 4 * inf;
+            dh += ev.erosion * (hs(gx * 0.3 + ei + li, gz * 0.3) - 0.5) * 2.5 * inf;
 
             var vrEff = ev.void_rupture + localPoll * 0.15;
             if (vrEff > 0.15) {
@@ -318,6 +316,21 @@
         colors[idx * 3] = Math.min(1, pr);
         colors[idx * 3 + 1] = Math.min(1, pg);
         colors[idx * 3 + 2] = Math.min(1, pb);
+      }
+    }
+
+    // 데이터가 쌓였을 때 굴곡이 확실히 보이도록 높이 범위 증폭 (평평함 방지)
+    var minH = Infinity, maxH = -Infinity;
+    for (var i = 0; i < total; i++) {
+      if (heights[i] < minH) minH = heights[i];
+      if (heights[i] > maxH) maxH = heights[i];
+    }
+    var rangeH = maxH - minH || 1;
+    var targetRange = Math.max(6, Math.min(18, events.length * 0.08));
+    if (rangeH > 0 && rangeH < targetRange) {
+      var scale = targetRange / rangeH;
+      for (var i = 0; i < total; i++) {
+        heights[i] = (heights[i] - minH) * scale + minH;
       }
     }
 
@@ -720,6 +733,16 @@
     };
   }
 
+  function getLocalFallbackData(memoryId) {
+    var scenes = (window._simulatedScenesMap && window._simulatedScenesMap[memoryId]) || [];
+    var plays = (window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) || [];
+    if (scenes.length > 0) {
+      console.log('[Strata] 로컬 시뮬레이션 데이터 사용 — scenes:', scenes.length, 'plays:', plays.length);
+      return { scenes: scenes, plays: plays };
+    }
+    return null;
+  }
+
   async function fetchStrataInput(memoryId) {
     console.log('[Strata] fetchStrataInput 시작:', memoryId);
     try {
@@ -732,8 +755,13 @@
         console.log('[Strata] networkService.getClient 사용');
       }
       if (!client) {
-        console.error('[Strata] Supabase client not available');
-        return null;
+        console.warn('[Strata] Supabase client not available, trying local fallback');
+        var local = getLocalFallbackData(memoryId);
+        if (!local) return null;
+        var scenes = local.scenes;
+        var plays = local.plays;
+        // jump to processing below
+        return _processStrataInput(scenes, plays);
       }
 
       console.log('[Strata] scenes 조회 중...');
@@ -745,10 +773,17 @@
       
       if (scenesRes.error) {
         console.error('[Strata] scenes 조회 오류:', scenesRes.error);
+        var local = getLocalFallbackData(memoryId);
+        if (local) return _processStrataInput(local.scenes, local.plays);
         return null;
       }
       var scenes = scenesRes.data || [];
       console.log('[Strata] scenes 조회 완료:', scenes.length, '개');
+
+      if (scenes.length === 0) {
+        var local = getLocalFallbackData(memoryId);
+        if (local) return _processStrataInput(local.scenes, local.plays);
+      }
 
       console.log('[Strata] plays 조회 중...');
       var playsRes = await client
@@ -759,11 +794,27 @@
       
       if (playsRes.error) {
         console.error('[Strata] plays 조회 오류:', playsRes.error);
-        return null;
+        var localPlays = (window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) || [];
+        var plays = localPlays;
+      } else {
+        var plays = playsRes.data || [];
       }
-      var plays = playsRes.data || [];
-      console.log('[Strata] plays 조회 완료:', plays.length, '개');
+      if (plays.length === 0) {
+        var localPlays = (window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) || [];
+        if (localPlays.length > 0) { plays = localPlays; console.log('[Strata] plays Supabase 비어있어 로컬 사용:', localPlays.length); }
+      }
+      console.log('[Strata] plays 최종:', plays.length, '개');
 
+      return _processStrataInput(scenes, plays);
+    } catch (error) {
+      console.error('[Strata] fetchStrataInput 오류:', error);
+      var local = getLocalFallbackData(memoryId);
+      if (local) return _processStrataInput(local.scenes, local.plays);
+      return null;
+    }
+  }
+
+  function _processStrataInput(scenes, plays) {
     var anchors = buildAnchors();
 
     var bedrockEvents = scenes.map(function(scene) {
@@ -796,27 +847,21 @@
       };
     });
 
-    var title = 'Memory: ' + memoryId.toString().slice(0, 8);
-
     var result = {
       anchors: anchors,
-      title: title,
+      title: scenes.length + ' scenes',
       sealed: plays.length + ' interpretations',
       bedrockEvents: bedrockEvents,
       globalEvents: globalEvents,
     };
     
-    console.log('[Strata] fetchStrataInput 완료:', {
+    console.log('[Strata] _processStrataInput 완료:', {
       anchorsCount: Object.keys(anchors).length,
       bedrockEventsCount: bedrockEvents.length,
       globalEventsCount: globalEvents.length
     });
     
     return result;
-    } catch (error) {
-      console.error('[Strata] fetchStrataInput 오류:', error);
-      return null;
-    }
   }
 
   function closeStrataView() {
@@ -958,6 +1003,37 @@
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
   });
+
+  // ─── 콘솔 디버깅: 지형 뷰 바로가기 ───
+  window.debugStrata = function (memoryId) {
+    var id = memoryId;
+    if (!id && window.memoriesData && window.memoriesData.length > 0) {
+      id = window.memoriesData[0].id;
+      console.log('[Strata] memoryId 생략 → 첫 번째 기억 사용:', id, window.memoriesData[0].title);
+    }
+    if (!id) {
+      id = '8fe034ef-6db0-4ba1-b291-66954fea2e08';
+      console.warn('[Strata] memoryId 없음, E-001 기본값 사용:', id);
+    }
+    console.log('[Strata] 지형 뷰 열기:', id);
+    return window.showStrataView(id, null, function () {
+      var viewEl = document.getElementById('strataView');
+      if (viewEl) viewEl.style.display = 'none';
+      console.log('[Strata] 지형 뷰 닫힘');
+    });
+  };
+  window.debugStrataHelp = function () {
+    var list = (window.memoriesData || []).map(function (m, i) {
+      return (i + 1) + '. ' + (m.code || '') + ' ' + (m.id || '').slice(0, 8) + '…';
+    }).join('\n');
+    console.log(
+      '[Strata] 지형 바로가기\n' +
+      '  debugStrata()           — 첫 번째 기억으로 지형 열기\n' +
+      '  debugStrata(memoryId)   — 지정 ID로 지형 열기\n' +
+      (list ? '  기억 목록:\n  ' + list : '')
+    );
+  };
+  console.log('[Strata] 지형 바로가기: debugStrata() / debugStrata(memoryId) | 도움말: debugStrataHelp()');
 
 })();
 

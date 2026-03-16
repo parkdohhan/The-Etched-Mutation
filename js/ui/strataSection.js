@@ -74,7 +74,8 @@ function buildProfileFromScenes(scenes, sampleCount) {
       if (anc) { cr += (anc[0] / 255) * val * 0.6; cg += (anc[1] / 255) * val * 0.6; cb += (anc[2] / 255) * val * 0.6; }
       totalW += val;
     }
-    const h = totalW > 0 ? wH / totalW : 2;
+    // sqrt(totalW)로 나누어 평균 압축 완화 + 감정 개수에 따른 높이 폭발 방지
+    const h = totalW > 0 ? wH / Math.sqrt(totalW) : 2;
     raw.push({ h: Math.max(0.5, Math.min(12, h)), r: Math.min(1, cr), g: Math.min(1, cg), b: Math.min(1, cb) });
   }
 
@@ -132,13 +133,20 @@ function renderTerrainProfile(canvas, scenes, traces, currentSceneIndex) {
   const profileBottom = h * 0.40;
   const profileRange = profileBottom - profileTop;
 
-  let maxH = 0;
-  profile.forEach(p => { if (p.h > maxH) maxH = p.h; });
-  if (maxH < 1) maxH = 1;
+  // min-max 정규화로 profileRange 전체를 사용해 지형 고저가 확실히 보이도록
+  let minH = Infinity;
+  let maxH = -Infinity;
+  profile.forEach(p => {
+    if (p.h < minH) minH = p.h;
+    if (p.h > maxH) maxH = p.h;
+  });
+  const rangeH = maxH - minH || 1;
 
   const profileY = [];
   for (let i = 0; i < sampleCount; i++) {
-    profileY.push(profileBottom - (profile[i].h / maxH) * profileRange);
+    // 약한 gamma(0.85)로 봉우리 과도한 뾰족함 완화, 중간 지형 강조
+    const norm = Math.pow((profile[i].h - minH) / rangeH, 0.85);
+    profileY.push(profileBottom - norm * profileRange * 0.9);
   }
 
   /* ── underlayers (4 bands, darker toward bottom) ── */

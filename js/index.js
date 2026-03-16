@@ -321,7 +321,43 @@ function filterByCategory(category, btnElement) {
         filterMemories
     );
 }
-async function loadMemoriesFromSupabase() { try { console.log('[loadMemoriesFromSupabase] Starting to load memories from Supabase'); const result = await networkService.fetchMemories(); console.log('[loadMemoriesFromSupabase] fetchMemories result:', result); if (!result.ok) { console.error('[loadMemoriesFromSupabase] Query failed', result.error); appStore.setState({ allMemoriesData: [] }); return } if (!result.data || result.data.length === 0) { console.log('[loadMemoriesFromSupabase] No public memories in Supabase'); appStore.setState({ allMemoriesData: [] }); return } console.log(`[loadMemoriesFromSupabase] ${result.data.length}개의 메모리 발견`); console.log('[loadMemoriesFromSupabase] Memory data sample:', result.data[0]); appStore.setState({ allMemoriesData: result.data }); const state = appStore.getState(); console.log(`[loadMemoriesFromSupabase] Supabase에서 ${state.allMemoriesData.length}개의 기억을 로드했습니다`); console.log('[loadMemoriesFromSupabase] State update 후:', state.allMemoriesData); } catch (error) { console.error('[loadMemoriesFromSupabase] Error occurred', error); appStore.setState({ allMemoriesData: [] }) } }
+async function loadMemoriesFromSupabase() {
+  const localFallback = (window.memoriesData || (typeof memoriesData !== 'undefined' ? memoriesData : []) || []).map(m => ({ ...m, live_session_id: null, is_live: false }));
+  const LOCAL_CODES = ['E-001', 'E-002', 'E-003'];
+  try {
+    console.log('[loadMemoriesFromSupabase] Starting to load memories from Supabase');
+    const result = await networkService.fetchMemories();
+    console.log('[loadMemoriesFromSupabase] fetchMemories result:', result);
+    if (!result.ok) {
+      console.error('[loadMemoriesFromSupabase] Query failed', result.error);
+      appStore.setState({ allMemoriesData: localFallback.length ? localFallback : [] });
+      if (localFallback.length) sortMemories(appStore.getState().currentSort);
+      return;
+    }
+    if (!result.data || result.data.length === 0) {
+      console.log('[loadMemoriesFromSupabase] No public memories in Supabase, using local data');
+      appStore.setState({ allMemoriesData: localFallback });
+      if (localFallback.length) sortMemories(appStore.getState().currentSort);
+      return;
+    }
+    const fromSupabase = result.data;
+    const localByCode = {};
+    localFallback.forEach(m => { if (m.code) localByCode[m.code] = { ...m, live_session_id: null, is_live: false }; });
+    const fromSupabaseOther = fromSupabase.filter(m => !LOCAL_CODES.includes(m.code));
+    const merged = [
+      ...LOCAL_CODES.map(code => localByCode[code]).filter(Boolean),
+      ...fromSupabaseOther.map(m => ({ ...m, live_session_id: m.live_session_id || null, is_live: !!m.is_live }))
+    ];
+    console.log('[loadMemoriesFromSupabase] merged', merged.length, 'memories (local E-001/E-002/E-003 + Supabase others)');
+    appStore.setState({ allMemoriesData: merged });
+    const state = appStore.getState();
+    sortMemories(state.currentSort);
+  } catch (error) {
+    console.error('[loadMemoriesFromSupabase] Error occurred', error);
+    appStore.setState({ allMemoriesData: localFallback.length ? localFallback : [] });
+    if (localFallback.length) sortMemories(appStore.getState().currentSort);
+  }
+}
 function filterMemories() { const searchValue = document.getElementById('archiveSearch').value.toUpperCase().trim(); const cards = document.querySelectorAll('.memory-card'); const state = appStore.getState(); cards.forEach(card => { const code = card.getAttribute('data-code') || ''; const category = card.getAttribute('data-category') || 'archive'; let shouldShow = true; if (state.currentCategory === 'story' && category !== 'archive') shouldShow = false; else if (state.currentCategory === 'archive' && category !== 'archive') shouldShow = false; if (shouldShow && (searchValue === '' || code.includes(searchValue))) { card.classList.remove('hidden'); card.style.display = 'block'; if (searchValue !== '' && code === searchValue) { setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transform = 'scale(1.05)'; setTimeout(() => card.style.transform = '', 500) }, 100) } } else { card.classList.add('hidden'); card.style.display = 'none' } }) }
 function sortMemories(sortType, btnElement) {
     appStore.setState({ currentSort: sortType });

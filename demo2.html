@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Etched Mutation — Demo 2</title>
+<title>The Etched Mutation — Memory Contamination</title>
 <link rel="icon" href="data:,">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
 <style>
@@ -38,22 +38,35 @@ html, body {
 }
 .phase.active { opacity: 1; pointer-events: all; }
 
-/* ===== Phase 1: Opening ===== */
-#opening { background: var(--bg); }
-#opening canvas {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-}
-#openingText {
-  position: relative; z-index: 2;
-  font-size: 1.15rem; font-weight: 300;
-  letter-spacing: 0.12em;
-  color: var(--dim);
-  text-align: center; line-height: 2.2;
+/* ===== Phase 1: Index-style Opening ===== */
+.opening-screen {
+  position: fixed; inset: 0; background: var(--bg); z-index: 3000;
+  display: flex; justify-content: center; align-items: center; flex-direction: column;
   cursor: pointer;
-  white-space: pre-line;
-  transition: color 0.6s;
 }
+.opening-screen.hidden { display: none !important; visibility: hidden; pointer-events: none; z-index: -1; }
+.opening-wave-container {
+  width: 100%; height: 200px; position: relative; margin-bottom: 1rem; margin-top: -200px;
+  transform: scale(1, 0.3); transform-origin: center; opacity: 0.4;
+  transition: transform 0.8s ease-out, opacity 0.8s;
+}
+.opening-wave-container.visible { opacity: 1; }
+.opening-wave-canvas { width: 100%; height: 100%; background: var(--bg); }
+.opening-dialogue {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  color: rgba(255,255,200,0.7); font-size: 1.3rem; line-height: 2; text-align: center;
+  max-width: 600px; padding: 0 2rem; white-space: pre-wrap;
+}
+.opening-dialogue.typing::after { content: '|'; animation: blink 1s infinite; color: rgba(255,255,200,0.8); }
+@keyframes blink { 50% { opacity: 0; } }
+.opening-start-hint {
+  color: rgba(255,255,255,0.4); font-size: 0.85rem; letter-spacing: 0.2em;
+  opacity: 0; transition: opacity 1s; position: absolute; top: 58%; left: 50%; transform: translateX(-50%);
+}
+.opening-start-hint.visible { opacity: 1; }
+#opening { background: var(--bg); }
+#opening canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#openingText { position: relative; z-index: 2; font-size: 1.15rem; color: var(--dim); text-align: center; cursor: pointer; }
 #openingText.ready { color: var(--text); }
 
 /* ===== Phase 2: Monologue ===== */
@@ -268,17 +281,37 @@ html, body {
   color: var(--bg);
 }
 
+/* ===== Phase 7: Demo ending ===== */
+#demoEnd {
+  padding: 2rem; text-align: center; justify-content: center; gap: 2rem;
+}
+.demo-end-inner { max-width: 420px; }
+.demo-end-text {
+  font-size: 1.05rem; line-height: 2.2; color: var(--text);
+  letter-spacing: 0.06em; margin-bottom: 1rem;
+}
+.demo-end-btn {
+  display: inline-block; margin-top: 1.5rem; padding: 0.75rem 2.2rem;
+  background: transparent; color: var(--accent); border: 1px solid var(--accent);
+  text-decoration: none; font-family: inherit; font-size: 0.9rem;
+  letter-spacing: 0.12em; transition: all 0.25s;
+}
+.demo-end-btn:hover { background: var(--accent); color: var(--bg); }
+
 .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- Phase 1: Opening -->
-  <section id="opening" class="phase active">
-    <canvas id="openingCanvas"></canvas>
-    <div id="openingText"></div>
-  </section>
+  <!-- Phase 1: Index-style Opening -->
+  <div class="opening-screen" id="openingScreen">
+    <div class="opening-wave-container" id="openingWaveContainer">
+      <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
+    </div>
+    <div class="opening-dialogue" id="openingDialogue"></div>
+    <div class="opening-start-hint" id="openingStartHint">[ Press any key or click to begin ]</div>
+  </div>
 
   <!-- Phase 2: Monologue -->
   <section id="monologue" class="phase">
@@ -307,7 +340,7 @@ html, body {
         <button id="submitBtn">→</button>
       </div>
       <div id="resolveOverlay" class="hidden">
-        <span>The memory is responding...</span>
+        <span>The memory is absorbing your interpretation...</span>
       </div>
     </div>
     <div class="terrain-panel">
@@ -319,18 +352,37 @@ html, body {
   <section id="reveal" class="phase">
     <div id="revealHeader"></div>
     <div id="revealCards"></div>
-    <button id="revealToTerrain">To the terrain</button>
+    <button id="revealToTerrain">See the contaminated terrain</button>
   </section>
 
-  <!-- Phase 6: Terrain -->
-  <section id="terrain" class="phase">
-    <canvas id="terrainFinal"></canvas>
-    <div id="terrainCaption"></div>
-    <a href="index.html" id="terrainCTA">Seal my own memory first</a>
+  <!-- Phase 6: Terrain (replaced by 3D strata in script) -->
+  <section id="terrain" class="phase"></section>
+
+  <!-- Phase 7: Demo ending → index -->
+  <section id="demoEnd" class="phase">
+    <div class="demo-end-inner">
+      <p class="demo-end-text">한 기억을 기억해내셨네요.</p>
+      <p class="demo-end-text">더 기억을 파고들것인가요? 아니면, 기억을 남길것인가요?</p>
+      <a href="/index.html" id="demoEndBtn" class="demo-end-btn">메인으로 가기</a>
+    </div>
   </section>
 
 </div>
 
+<!-- Strata 3D (same as index) -->
+<div id="strataView" style="display:none;position:fixed;inset:0;z-index:2600;background:#0a0a0f;">
+  <canvas id="strataCanvas" style="width:100%;height:100%;"></canvas>
+  <div class="strata-hud" style="position:fixed;top:24px;left:24px;color:var(--dim);font-size:11px;letter-spacing:2px;">The Geology of Emotion</div>
+  <div id="strataHudTR" style="position:fixed;top:24px;right:24px;text-align:right;color:var(--dim);font-size:11px;"></div>
+  <div id="strataLc"></div>
+  <div id="strataDv" style="position:fixed;bottom:60px;left:24px;color:var(--dim);font-size:10px;"></div>
+  <div id="strataCtFl" style="display:none;"></div><span id="strataCtVal" style="display:none;"></span>
+  <button id="strataCloseBtn" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:120;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:12px 32px;font-family:inherit;font-size:13px;letter-spacing:3px;cursor:pointer;">Leave the strata behind</button>
+</div>
+
+<script src="data/memories.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/ui/strataView.js"></script>
 <script>
 // =====================================================================
 // The Etched Mutation — Demo 2 (Self-contained)
@@ -338,42 +390,43 @@ html, body {
 
 // ── Keyword-based local emotion analyzer ──
 const KEYWORD_MAP = {
-  guilt: ['미안','잘못','내가','내 탓','왜 그랬','그러지 말았','후회','못한','했어야','나 때문'],
-  longing: ['보고싶','그립','다시','돌아','그때','기억','남아','아직도','생각나'],
-  sadness: ['슬프','울','눈물','힘들','아프','무너','지쳤','외로','서러'],
-  fear: ['무서','두렵','떨렸','겁','불안','피하','도망','싫었','두려'],
-  anger: ['화가','짜증','열받','억울','왜','당했','싫어','배신','화났'],
-  shame: ['창피','부끄','민망','들킬','숨기','말 못','쪽팔'],
-  numbness: ['모르겠','아무','없었','그냥','별로','신경','멍','몰라'],
-  isolation: ['혼자','아무도','없었','버려','떠났','남겨','나만'],
-  moral_pain: ['해선 안','그러면 안','잘못된','틀렸','나쁜 짓'],
+  guilt: ['my fault','sorry','shouldn\'t','regret','blame','failed','wrong','mistake','should have'],
+  longing: ['miss','wish','remember','back then','gone','still','used to','want back','hold on'],
+  sadness: ['sad','cry','tears','hurt','pain','broken','tired','lonely','loss','grief','heavy'],
+  fear: ['scared','afraid','tremble','panic','anxiety','run','escape','dread','terrified'],
+  anger: ['angry','furious','hate','unfair','rage','scream','betray','mad','frustrat'],
+  shame: ['ashamed','embarrass','hide','secret','exposed','humiliat','disgrace'],
+  numbness: ['nothing','empty','blank','numb','don\'t know','whatever','fine','okay','didn\'t care'],
+  isolation: ['alone','nobody','left','abandon','gone','no one','by myself','invisible'],
+  moral_pain: ['shouldn\'t have','wrong thing','bad person','terrible','unforgivable'],
 };
 const ATTRIBUTION_MAP = {
-  self: ['내가 먼저','내 잘못','내가 했','내가 안','내가 못','나 때문에','내가 그랬'],
-  other: ['걔가','그가','그녀가','상대가','저 사람','네가','그 사람이'],
-  situation: ['어쩔 수 없','할 수 없','그럴 수밖에','원래','다 그래','별 수','상황이'],
+  self: ['i did','my fault','i should','i could','i failed','because of me','i let','i chose'],
+  other: ['he ','she ','they ','that person','someone','you ','his ','her '],
+  situation: ['couldn\'t help','no choice','inevitable','had to','nothing i could','circumstance','fate'],
 };
 const DISTORTION_MAP = {
-  idealization: ['좋았','행복','괜찮았','원래는','사실은 좋','나쁘지 않'],
-  rationalization: ['어쩔 수 없','당연히','원래 다','그럴만','이해','맞는','어쩌겠'],
-  projection: ['걔가','그 사람이','상대가','걔 때문','그 탓','너 때문'],
-  avoidance: ['모르겠','그냥','별로','뭐','아무','상관없','신경'],
+  idealization: ['was good','happy','fine','not bad','okay actually','wasn\'t so'],
+  rationalization: ['had to','makes sense','of course','natural','understand','reasonable'],
+  projection: ['he did','she did','they did','their fault','because of them','blamed'],
+  avoidance: ['don\'t know','whatever','fine','doesn\'t matter','who cares','nothing','blank'],
 };
 
 function localAnalyze(text) {
   if (!text || text.trim().length < 2) return null;
+  const lower = text.toLowerCase();
   const base = { fear:0,sadness:0,anger:0,guilt:0,shame:0,longing:0,numbness:0,isolation:0,moral_pain:0 };
   let attribution = null, distortionTag = null;
   for (const [emo, kws] of Object.entries(KEYWORD_MAP))
-    for (const kw of kws) if (text.includes(kw)) base[emo] = Math.min(1, (base[emo]||0)+0.4);
+    for (const kw of kws) if (lower.includes(kw)) base[emo] = Math.min(1, (base[emo]||0)+0.4);
   for (const [t, kws] of Object.entries(ATTRIBUTION_MAP)) {
-    for (const kw of kws) if (text.includes(kw)) { attribution = t; break; }
+    for (const kw of kws) if (lower.includes(kw)) { attribution = t; break; }
     if (attribution) break;
   }
   if (attribution === 'self') base.guilt = Math.min(1, base.guilt+0.2);
   if (attribution === 'other') base.anger = Math.min(1, base.anger+0.2);
   for (const [tag, kws] of Object.entries(DISTORTION_MAP)) {
-    for (const kw of kws) if (text.includes(kw)) { distortionTag = tag; break; }
+    for (const kw of kws) if (lower.includes(kw)) { distortionTag = tag; break; }
     if (distortionTag) break;
   }
   const total = Object.values(base).reduce((a,b)=>a+b,0);
@@ -465,29 +518,40 @@ function dominantEmo(base) {
   return e && e[1]>0 ? e[0] : '—';
 }
 
-// ── Demo data ──
-const MONOLOGUES = [
-  { text:'그러지 말았어야했어', entry:'그때는 그게 맞는다고 생각했어.', vad:{v:-0.5,a:0.2,d:-0.6}, x:0.28, y:0.32 },
-  { text:'그냥 도망치고싶었어', entry:'그것밖에 할 수 있는 게 없었잖아.', vad:{v:-0.6,a:0.7,d:-0.4}, x:0.68, y:0.42 },
-  { text:'왜 그랬는지 모르겠어', entry:'사실은 알고 있었는지도 몰라.', vad:{v:-0.4,a:0.3,d:-0.3}, x:0.42, y:0.58 },
-  { text:'그냥 없던 일이 됐으면', entry:'근데 아직 남아 있잖아.', vad:{v:-0.3,a:-0.4,d:-0.2}, x:0.22, y:0.62 },
-];
-
-const SCENES = [
-  { text:'엄마가 문을 열고 들어왔을 때, 나는 그 자리에 서 있었다.\n아무 말도 할 수 없었다.', original:{ anger:0.84, guilt:0.4, shame:0.19 } },
-  { text:'그래서 도망쳤다. 어디로 가는지도 모르면서.\n뒤돌아보지 않았다.', original:{ fear:0.79, isolation:0.56 } },
-  { text:'결국 집에 돌아왔다.\n아무도 없었다. 아무것도 변하지 않았다.', original:{ isolation:0.83, sadness:0.69 } },
-];
+// ── Demo data: 3 memories from index (memories.js) ──
+var MEMORIES = (window.memoriesData || []).slice(0, 3);
+if (MEMORIES.length === 0) {
+  MEMORIES = [
+    { id: 'e001', code: 'E-001', title: 'The Jacket on the Chair', completed_sentence: 'The jacket on the chair was the last thing he left behind.', scenes: [] },
+    { id: 'e002', code: 'E-002', title: 'The Voicemail I Kept', completed_sentence: 'Her voice on the voicemail is all I have left.', scenes: [] },
+    { id: 'e003', code: 'E-003', title: 'What I Said at the Funeral', completed_sentence: 'I tried to make his funeral funny. His mother didn\'t laugh.', scenes: [] }
+  ];
+}
+var MONOLOGUES = MEMORIES.map(function(m, i) {
+  var x = 0.28 + (i % 3) * 0.22;
+  var y = 0.35 + (i % 2) * 0.22;
+  return {
+    id: m.id, code: m.code, title: m.title,
+    text: m.completed_sentence || m.title,
+    entry: m.completed_sentence || m.title,
+    vad: { v: -0.3, a: 0.1, d: -0.2 },
+    x: x, y: y
+  };
+});
+var SCENES = [];
 
 const PROMPTS = [
-  { mode:'free', prompt:'그 순간, 먼저 떠오른 말을 써.' },
-  { mode:'free', prompt:'그때 네 안에서 뭐가 일어났어?' },
-  { mode:'short', prompt:'지금 이 기억은 너한테 ___야.' },
+  { mode:'free', prompt:'What comes to mind first?' },
+  { mode:'free', prompt:'What did you feel reading this?' },
+  { mode:'free', prompt:'What was happening inside you?' },
+  { mode:'free', prompt:'What would you have done?' },
+  { mode:'short', prompt:'Right now, this memory is ___ to me.' },
 ];
 
 // ── State ──
 const S = {
   phase: 'opening',
+  memory: null,
   selectedMono: null,
   sceneIndex: 0,
   liveVector: null,
@@ -534,94 +598,163 @@ function typeText(el, text, speed, done) {
 }
 
 // =====================================================================
-// Phase 1: Opening
+// Phase 1: Index-style Opening (same as index)
 // =====================================================================
-let openingRAF = null;
+var demoOpeningSkipped = false;
+var demoOpeningWaveId = null;
+var demoOpeningMouseX = -100, demoOpeningMouseY = -100;
 
-function startOpening() {
-  setPhase('opening');
-  const canvas = document.getElementById('openingCanvas');
-  const textEl = document.getElementById('openingText');
-  if (!canvas) return;
+function typeTextEl(el, text, cb) {
+  var i = 0; el.textContent = ''; el.classList.add('typing');
+  function run() {
+    if (i < text.length) { el.textContent += text.charAt(i); i++; setTimeout(run, 50); }
+    else { el.classList.remove('typing'); if (cb) cb(); }
+  }
+  run();
+}
+function typeDotsEl(el, cb) {
+  el.textContent = '\n'; el.classList.add('typing');
+  var dotCount = 0;
+  function addDot() {
+    if (dotCount < 3) { el.textContent += '.'; dotCount++; setTimeout(addDot, 300); }
+    else { el.classList.remove('typing'); if (cb) cb(); }
+  }
+  addDot();
+}
 
-  requestAnimationFrame(() => {
-    const ctx = initCanvas(canvas);
-    if (!ctx) return;
-    runOpeningWave(canvas, ctx, textEl);
+function demoShowHint() {
+  var h = document.getElementById('openingStartHint');
+  if (h) { h.style.opacity = ''; h.classList.add('visible'); }
+}
+function demoShowPart4(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeTextEl(dialogue, '\nCome in.', function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(demoShowHint, 500);
+  });
+}
+function demoShowPart3(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeDotsEl(dialogue, function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(function() { demoShowPart4(dialogue); }, 1200);
+  });
+}
+function demoShowPart2(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeTextEl(dialogue, '\n...you came looking for a memory?', function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(function() { demoShowPart3(dialogue); }, 1200);
+  });
+}
+function demoShowPart1b(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeTextEl(dialogue, '\nYou\'re here. It\'s been a while.', function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(function() { demoShowPart2(dialogue); }, 1200);
+  });
+}
+function demoShowPart1a(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeTextEl(dialogue, '\nHello.', function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(function() { demoShowPart1b(dialogue); }, 1500);
   });
 }
 
-function runOpeningWave(canvas, ctx, textEl) {
-  const w = cW(canvas), h = cH(canvas);
-  const maxAmp = h * 0.3;
-  const waves = [
-    { c:'rgba(100,130,150,', o:0.10, sp:0.010, amp:Math.min(80,maxAmp),      ph:0,   fr:0.020, ns:0.8 },
-    { c:'rgba(120,150,170,', o:0.15, sp:0.014, amp:Math.min(70,maxAmp*0.9),  ph:0.6, fr:0.025, ns:0.7 },
-    { c:'rgba(130,155,175,', o:0.20, sp:0.018, amp:Math.min(60,maxAmp*0.8),  ph:1.2, fr:0.030, ns:0.6 },
-    { c:'rgba(140,165,185,', o:0.26, sp:0.022, amp:Math.min(55,maxAmp*0.7),  ph:1.9, fr:0.035, ns:0.5 },
-    { c:'rgba(155,175,195,', o:0.33, sp:0.026, amp:Math.min(45,maxAmp*0.6),  ph:2.6, fr:0.040, ns:0.4 },
-    { c:'rgba(170,190,205,', o:0.42, sp:0.030, amp:Math.min(35,maxAmp*0.5),  ph:3.3, fr:0.045, ns:0.3 },
-    { c:'rgba(190,205,215,', o:0.52, sp:0.034, amp:Math.min(28,maxAmp*0.4),  ph:4.0, fr:0.050, ns:0.25 },
-  ];
-  let t = 0;
-  let mx = -100, my = -100;
-  canvas.addEventListener('mousemove', e => {
-    const r = canvas.getBoundingClientRect();
-    mx = (e.clientX - r.left) * (cW(canvas) / r.width);
-    my = (e.clientY - r.top) * (cH(canvas) / r.height);
+function runDemoOpeningWave(canvas) {
+  var ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = canvas.offsetHeight * 2;
+  ctx.scale(2, 2);
+  canvas.addEventListener('mousemove', function(e) {
+    var r = canvas.getBoundingClientRect();
+    demoOpeningMouseX = (e.clientX - r.left) * (canvas.width/2 / r.width);
+    demoOpeningMouseY = (e.clientY - r.top) * (canvas.height/2 / r.height);
   });
-  canvas.addEventListener('mouseleave', () => { mx=-100; my=-100; });
-
+  canvas.addEventListener('mouseleave', function() { demoOpeningMouseX = -100; demoOpeningMouseY = -100; });
+  var w = canvas.width/2, h = canvas.height/2, maxAmp = h * 0.35;
+  var waves = [
+    { c:'rgba(100,130,150,', o:0.10, sp:0.010, amp:Math.min(80,maxAmp), ph:0, fr:0.020, ns:0.8 },
+    { c:'rgba(120,150,170,', o:0.15, sp:0.014, amp:Math.min(70,maxAmp*0.9), ph:0.6, fr:0.025, ns:0.7 },
+    { c:'rgba(130,155,175,', o:0.20, sp:0.018, amp:Math.min(60,maxAmp*0.8), ph:1.2, fr:0.030, ns:0.6 },
+    { c:'rgba(140,165,185,', o:0.26, sp:0.022, amp:Math.min(55,maxAmp*0.7), ph:1.9, fr:0.035, ns:0.5 },
+    { c:'rgba(155,175,195,', o:0.33, sp:0.026, amp:Math.min(45,maxAmp*0.6), ph:2.6, fr:0.040, ns:0.4 },
+    { c:'rgba(170,190,205,', o:0.42, sp:0.030, amp:Math.min(35,maxAmp*0.5), ph:3.3, fr:0.045, ns:0.3 },
+    { c:'rgba(190,205,215,', o:0.52, sp:0.034, amp:Math.min(28,maxAmp*0.4), ph:4.0, fr:0.050, ns:0.25 },
+  ];
+  var t = 0;
   function tick() {
     ctx.fillStyle = 'rgba(10,10,12,0.92)';
-    ctx.fillRect(0, 0, w, h);
-    const cy = h / 2;
-    waves.forEach(wave => {
+    ctx.fillRect(0,0,w,h);
+    var cy = h/2;
+    waves.forEach(function(wave) {
       ctx.beginPath(); ctx.lineWidth = 1.2;
-      for (let x = 0; x < w; x++) {
-        let y = cy
-          + Math.sin(x*wave.fr + t*wave.sp + wave.ph) * wave.amp
-          + Math.sin(x*wave.fr*0.5 + t*wave.sp*0.6 + wave.ph*1.4) * (wave.amp*0.4)
-          + Math.sin(x*wave.fr*2.3 + t*wave.sp*1.3) * (wave.amp*0.15)
-          + Math.sin(x*wave.fr*0.3 + t*wave.sp*0.4 + wave.ph*2.1) * (wave.amp*0.25);
-        const ns = Math.sin(x*0.003+t*0.02)*Math.cos(x*0.007+t*0.015)*wave.ns;
-        y += wave.amp * ns * 0.4;
-        if (mx >= 0 && my >= 0) {
-          const dx = Math.abs(x-mx), dy = Math.abs(y-my);
-          const dist = Math.sqrt(dx*dx+dy*dy);
-          const inf = Math.pow(Math.max(0,1-dist/200),3);
-          if (inf > 0) {
-            y += (my-y)*inf*1.8 + Math.sin(dx*0.05)*inf*15;
-          }
+      for (var x = 0; x < w; x++) {
+        var baseY = cy + Math.sin(x*wave.fr + t*wave.sp + wave.ph)*wave.amp
+          + Math.sin(x*wave.fr*0.5 + t*wave.sp*0.6 + wave.ph*1.4)*(wave.amp*0.4)
+          + Math.sin(x*wave.fr*2.3 + t*wave.sp*1.3)*(wave.amp*0.15)
+          + Math.sin(x*wave.fr*0.3 + t*wave.sp*0.4 + wave.ph*2.1)*(wave.amp*0.25);
+        var noise = Math.sin(x*0.003+t*0.02)*Math.cos(x*0.007+t*0.015)*wave.ns;
+        var y = baseY + wave.amp*noise*0.4;
+        if (demoOpeningMouseX >= 0 && demoOpeningMouseY >= 0) {
+          var dx = Math.abs(x - demoOpeningMouseX), dy = Math.abs(baseY - demoOpeningMouseY);
+          var dist = Math.sqrt(dx*dx + dy*dy);
+          var inf = Math.pow(Math.max(0, 1 - dist/200), 3);
+          if (inf > 0) y += (demoOpeningMouseY - baseY)*inf*1.8 + Math.sin(dx*0.05)*inf*15;
         }
         y = Math.max(2, Math.min(h-2, y));
-        x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+        (x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
       }
       ctx.strokeStyle = wave.c + wave.o + ')';
       ctx.stroke();
     });
     t += 0.5;
-    openingRAF = requestAnimationFrame(tick);
+    if (!demoOpeningSkipped) demoOpeningWaveId = requestAnimationFrame(tick);
   }
   tick();
+}
 
-  // Text sequence
-  setTimeout(() => {
-    typeText(textEl, '너의 기억을 들여다볼 준비가 됐어?', 55, () => {
-      setTimeout(() => {
-        typeText(textEl, '너의 기억을 들여다볼 준비가 됐어?\n좋아...', 45, () => {
-          textEl.classList.add('ready');
-        });
-      }, 1200);
-    });
-  }, 1000);
-
-  function goNext() {
-    if (openingRAF) { cancelAnimationFrame(openingRAF); openingRAF = null; }
-    startMonologue();
+function finishDemoOpening() {
+  if (demoOpeningSkipped) return;
+  demoOpeningSkipped = true;
+  if (demoOpeningWaveId) { cancelAnimationFrame(demoOpeningWaveId); demoOpeningWaveId = null; }
+  var openingScreen = document.getElementById('openingScreen');
+  if (openingScreen) {
+    openingScreen.removeEventListener('click', finishDemoOpening);
+    openingScreen.classList.add('hidden');
+    openingScreen.style.cssText = 'display:none !important; visibility:hidden; pointer-events:none; z-index:-1;';
   }
-  textEl.addEventListener('click', goNext, { once: true });
-  setTimeout(goNext, 5500);
+  document.removeEventListener('keydown', demoHandleOpeningKeydown);
+  startMonologue();
+}
+function demoHandleOpeningKeydown(e) {
+  if (demoOpeningSkipped) return;
+  var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea') return;
+  e.preventDefault();
+  finishDemoOpening();
+}
+
+function startOpening() {
+  var openingScreen = document.getElementById('openingScreen');
+  var waveContainer = document.getElementById('openingWaveContainer');
+  var canvas = document.getElementById('openingWaveCanvas');
+  var dialogue = document.getElementById('openingDialogue');
+  if (!openingScreen || !canvas) return;
+  openingScreen.classList.remove('hidden');
+  openingScreen.style.display = 'flex';
+  openingScreen.style.visibility = 'visible';
+  openingScreen.style.pointerEvents = 'auto';
+  openingScreen.style.zIndex = '3000';
+  if (waveContainer) { waveContainer.style.transform = 'scale(5, 1)'; waveContainer.style.opacity = '1'; waveContainer.classList.add('visible'); }
+  runDemoOpeningWave(canvas);
+  setTimeout(function() {
+    if (demoOpeningSkipped) return;
+    if (dialogue) demoShowPart1a(dialogue);
+  }, 2500);
+  openingScreen.addEventListener('click', finishDemoOpening);
+  document.addEventListener('keydown', demoHandleOpeningKeydown);
 }
 
 // =====================================================================
@@ -703,9 +836,11 @@ function startMonologue() {
     m.el.addEventListener('mouseleave', () => {
       if (preview) preview.classList.remove('visible');
     });
-    m.el.addEventListener('click', () => {
+    m.el.addEventListener('click', function() {
       if (monoRAF) { cancelAnimationFrame(monoRAF); monoRAF = null; }
       S.selectedMono = m;
+      S.memory = MEMORIES.find(function(mem) { return mem.id === m.id; }) || null;
+      if (!S.memory && MEMORIES.length > 0) S.memory = MEMORIES[0];
       startMemoryEntry(m);
     });
   });
@@ -794,31 +929,35 @@ function startPlay() {
   setPhase('play');
   S.sceneIndex = 0;
   S.liveVector = null;
+  S.sceneHistory = [];
+  // Use index memory scenes (same as index play)
+  SCENES = (S.memory && S.memory.scenes) ? S.memory.scenes.map(function(s) {
+    return { text: s.text, original: s.original_emotion || {} };
+  }) : [];
 
-  // Start wave loop
-  const waveCanvas = document.getElementById('playWave');
-  const wCtx = initCanvas(waveCanvas);
+  var waveCanvas = document.getElementById('playWave');
+  var wCtx = initCanvas(waveCanvas);
   if (wCtx) {
-    const w = cW(waveCanvas), h = cH(waveCanvas);
+    var w = cW(waveCanvas), h = cH(waveCanvas);
     playWaveTime = 0;
     function waveTick() {
       wCtx.fillStyle = 'rgba(10,10,14,0.88)';
       wCtx.fillRect(0,0,w,h);
-      const style = S.liveVector ? toWaveStyle(S.liveVector.base) : { color:{r:100,g:140,b:180}, speed:0.3, amplitude:20, frequency:0.006, chaos:0.05 };
+      var style = S.liveVector ? toWaveStyle(S.liveVector.base) : { color:{r:100,g:140,b:180}, speed:0.3, amplitude:20, frequency:0.006, chaos:0.05 };
       drawWaveLine(wCtx, w, h, h/2, style, playWaveTime, 0.7);
-      // ghost trace
-      drawWaveLine(wCtx, w, h, h/2, { ...style, chaos: style.chaos*0.3 }, playWaveTime + 30, 0.15);
+      drawWaveLine(wCtx, w, h, h/2, { color:style.color, speed:style.speed, amplitude:style.amplitude, frequency:style.frequency, chaos:(style.chaos||0.1)*0.3 }, playWaveTime + 30, 0.15);
       playWaveTime += 0.016;
       playWaveRAF = requestAnimationFrame(waveTick);
     }
     waveTick();
   }
 
-  // Initial terrain
   drawPlayTerrain();
-
-  // Render first scene
-  if (SCENES.length > 0) renderScene(SCENES[0]);
+  if (SCENES.length > 0) {
+    renderScene(SCENES[0]);
+  } else {
+    openStrata();
+  }
 }
 
 function drawWaveLine(ctx, w, h, cy, style, t, opacity) {
@@ -945,14 +1084,13 @@ function processScene(scene, userText) {
   // Apply transition effect on wave
   applyWaveTransition(engineResult.transition_pattern);
 
-  // Next scene
-  setTimeout(() => {
+  setTimeout(function() {
     S.sceneIndex += 1;
     if (S.sceneIndex < SCENES.length) {
       renderScene(SCENES[S.sceneIndex]);
     } else {
       if (playWaveRAF) { cancelAnimationFrame(playWaveRAF); playWaveRAF = null; }
-      startReveal();
+      openStrata();
     }
   }, 700);
 }
@@ -987,7 +1125,23 @@ function nextOrReveal() {
   if (S.sceneIndex < SCENES.length) renderScene(SCENES[S.sceneIndex]);
   else {
     if (playWaveRAF) { cancelAnimationFrame(playWaveRAF); playWaveRAF = null; }
-    startReveal();
+    openStrata();
+  }
+}
+
+function showDemoEnding() {
+  setPhase('demoEnd');
+}
+function openStrata() {
+  if (!S.memory || !S.memory.id) { showDemoEnding(); return; }
+  if (typeof window.showStrataView === 'function') {
+    window.showStrataView(S.memory.id, null, function() {
+      var v = document.getElementById('strataView');
+      if (v) v.style.display = 'none';
+      showDemoEnding();
+    });
+  } else {
+    showDemoEnding();
   }
 }
 
@@ -1110,7 +1264,7 @@ function startReveal() {
   const cards = document.getElementById('revealCards');
   const nextBtn = document.getElementById('revealToTerrain');
 
-  if (header) header.textContent = '기억이 오염된 방식';
+  if (header) header.textContent = 'How the memory was contaminated';
   cards.innerHTML = '';
 
   // Sort: core moments first
@@ -1132,20 +1286,20 @@ function startReveal() {
       <div class="rc-scene-text">${item.sceneText.replace(/\n/g,'<br>')}</div>
       <div class="rc-waves">
         <div>
-          <div class="rc-wave-label">원본</div>
+          <div class="rc-wave-label">ORIGINAL</div>
           <canvas class="rc-wave-canvas" data-rc="orig" data-ri="${idx}"></canvas>
         </div>
         <div>
-          <div class="rc-wave-label">당신</div>
+          <div class="rc-wave-label">YOU</div>
           <canvas class="rc-wave-canvas" data-rc="user" data-ri="${idx}"></canvas>
         </div>
       </div>
-      <div class="rc-alignment">정렬도 ${alignPct}% — ${bucketLabel}</div>
+      <div class="rc-alignment">Alignment ${alignPct}% — ${bucketLabel}</div>
       <div class="rc-detail">
-        감정: ${dom}<br>
-        해석 기울기: ${item.distortionTag || '—'}<br>
-        귀인: ${item.resolvedVector?.attribution || '—'}<br>
-        오염 유형: ${item.terrainEffectType}
+        Emotion: ${dom}<br>
+        Interpretation bias: ${item.distortionTag || '—'}<br>
+        Attribution: ${item.resolvedVector?.attribution || '—'}<br>
+        Contamination type: ${item.terrainEffectType}
       </div>
     `;
     cards.appendChild(div);
@@ -1208,7 +1362,7 @@ function startTerrain() {
   setPhase('terrain');
   const canvas = document.getElementById('terrainFinal');
   const caption = document.getElementById('terrainCaption');
-  if (caption) caption.textContent = '당신이 남긴 흔적이 이 지형에 쌓였습니다.';
+  if (caption) caption.textContent = 'The traces you left have accumulated in this terrain.\nEvery interpretation contaminates the original.';
 
   const ctx = initCanvas(canvas);
   if (!ctx) return;
