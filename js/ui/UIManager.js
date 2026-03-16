@@ -174,8 +174,7 @@ export class UIManager {
             card.setAttribute('data-category', isLive ? 'live' : 'archive');
             card.setAttribute('onclick', `selectMemory(${originalIndex >= 0 ? originalIndex : index})`);
             const categoryLabel = isLive ? '<span class="memory-category-badge live">Live</span>' : '';
-            const isFetus = !memory.status || memory.status === 'Fetus';
-            const statusBadge = isFetus ? '<div class="status-badge Fetus">Fetus</div>' : '';
+            const statusBadge = '';
             console.log('[Memory] Rendering card:', memory.title, 'status:', memory.status);
             card.innerHTML = `${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title || 'Untitled'}</h3><p class="memory-card-meta">Original: ${memory.code || '—'} · Interpretation layers: ${memory.layers || 0}</p><div class="memory-card-dilution"><span>Original</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution !== undefined ? memory.dilution : 100}%"></div></div><span>${memory.dilution !== undefined ? memory.dilution : 100}%</span></div>`;
             list.appendChild(card);

@@ -21,12 +21,12 @@
 
 /* 질문 text */
 .exp-iv-question {
-  color: #666;
+  color: #d4c8a8;
   font-family: 'Cormorant Garamond', serif;
-  font-size: 0.92rem;
+  font-size: 1.15rem;
   font-style: italic;
-  line-height: 1.6;
-  margin-bottom: 10px;
+  line-height: 1.7;
+  margin-bottom: 12px;
   white-space: pre-line;
 }
 
@@ -39,47 +39,50 @@
 
 /* 칩 */
 .exp-iv-chip {
-  background: transparent;
-  border: 1px solid #1a1a1a;
-  color: #666;
-  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ccc;
+  padding: 10px 20px;
   font-family: 'Cormorant Garamond', serif;
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   cursor: pointer;
   transition: all 0.3s;
+  border-radius: 4px;
 }
 .exp-iv-chip:hover {
   border-color: #d4af37;
   color: #d4af37;
+  background: rgba(212, 175, 55, 0.08);
 }
 .exp-iv-chip.void {
-  color: #383838;
+  color: rgba(200, 150, 140, 0.7);
   font-style: italic;
-  border-color: #141414;
+  border-color: rgba(200, 150, 140, 0.3);
 }
 .exp-iv-chip.void:hover {
-  border-color: #444;
-  color: #555;
+  border-color: rgba(200, 150, 140, 0.6);
+  color: rgba(220, 170, 160, 0.9);
 }
 .exp-iv-chip.selected {
   border-color: #d4af37;
   color: #d4af37;
-  background: rgba(212, 175, 55, 0.06);
+  background: rgba(212, 175, 55, 0.1);
 }
 
-/* 복합 선택 check button */
+/* 복합 선택 confirm button */
 .exp-iv-confirm {
   background: none;
-  border: 1px solid #2a2a2a;
-  color: #888;
-  padding: 6px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #bbb;
+  padding: 8px 22px;
   font-family: 'Cormorant Garamond', serif;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   cursor: pointer;
-  margin-top: 8px;
+  margin-top: 10px;
   transition: all 0.3s;
   opacity: 0;
   pointer-events: none;
+  border-radius: 4px;
 }
 .exp-iv-confirm.visible {
   opacity: 1;
@@ -88,6 +91,7 @@
 .exp-iv-confirm:hover {
   border-color: #d4af37;
   color: #d4af37;
+  background: rgba(212, 175, 55, 0.08);
 }
 
 /* 답변 display */
@@ -98,9 +102,9 @@
 
 /* bucket message */
 .exp-iv-bucket-msg {
-  color: #6a4a6a;
+  color: #b89ab8;
   font-style: italic;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   padding: 0;
 }
 

@@ -2310,6 +2310,8 @@ function renderArchiveFreeInput(scene) {
     inputWrapper.style.cssText = 'display:flex;align-items:flex-end;gap:0.5rem;';
     newInput.style.flex = '1';
 
+    inputWrapper.querySelectorAll('.archive-send-btn').forEach(b => b.remove());
+
     const sendBtn = document.createElement('button');
     sendBtn.className = 'archive-send-btn';
     sendBtn.textContent = '→';
@@ -3391,7 +3393,7 @@ function renderComparisonView() {
             <div class="comparison-scene-text">${item.scene.text || ''}</div>
             <div class="comparison-waves-container">
                 <div class="comparison-wave-item" style="width:100%">
-                    <div class="comparison-wave-label user">체험자 (B)의 감정</div>
+                    <div class="comparison-wave-label user">Your Emotion</div>
                     <div class="comparison-wave-canvas-container">
                         <canvas class="comparison-wave-canvas" data-type="merged" data-index="${index}"></canvas>
                     </div>

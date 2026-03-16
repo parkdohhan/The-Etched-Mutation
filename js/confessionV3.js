@@ -583,11 +583,13 @@ function renderV3Stage(index) {
   const indicator = document.createElement('div');
   indicator.className = 'v3-stage-indicator';
   indicator.textContent = `${stage.stage} / 5`;
+  indicator.style.cssText = 'color: rgba(200,190,175,0.8); font-size: 1rem;';
   zone.appendChild(indicator);
   
   // Prompt area
   const promptEl = document.createElement('div');
   promptEl.className = 'v3-prompt';
+  promptEl.style.cssText = 'color: #fff !important; font-size: 1.4rem !important; text-shadow: 0 0 8px rgba(255,255,255,0.15);';
   zone.appendChild(promptEl);
   
   // Input area
@@ -843,9 +845,12 @@ function renderChips(zone, stage, multiSelect) {
     chipEl.className = 'v3-chip';
     chipEl.textContent = chip.label;
     chipEl.type = 'button';
+    chipEl.style.cssText = 'color: #e0e0e0; font-size: 1.1rem; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.08); padding: 12px 26px; border-radius: 20px; cursor: pointer; font-family: "Noto Serif KR", serif; letter-spacing: 0.03em; transition: all 0.3s ease;';
     
     if (chip.void) {
       chipEl.classList.add('v3-chip-void');
+      chipEl.style.borderColor = 'rgba(220,120,110,0.5)';
+      chipEl.style.color = 'rgba(230,140,130,0.9)';
     }
     
     chipEl.addEventListener('click', () => {
@@ -854,15 +859,29 @@ function renderChips(zone, stage, multiSelect) {
         if (idx >= 0) {
           selected.splice(idx, 1);
           chipEl.classList.remove('v3-chip-selected');
+          chipEl.style.borderColor = chip.void ? 'rgba(220,120,110,0.5)' : 'rgba(255,255,255,0.4)';
+          chipEl.style.color = chip.void ? 'rgba(230,140,130,0.9)' : '#e0e0e0';
+          chipEl.style.background = 'rgba(255,255,255,0.08)';
         } else if (selected.length < maxSelect) {
           selected.push(chip.key);
           chipEl.classList.add('v3-chip-selected');
+          chipEl.style.borderColor = 'rgba(196,168,130,0.9)';
+          chipEl.style.color = '#fff';
+          chipEl.style.background = 'rgba(196,168,130,0.2)';
         }
       } else {
         selected.length = 0;
         selected.push(chip.key);
-        chipsContainer.querySelectorAll('.v3-chip').forEach(c => c.classList.remove('v3-chip-selected'));
+        chipsContainer.querySelectorAll('.v3-chip').forEach(c => {
+          c.classList.remove('v3-chip-selected');
+          c.style.borderColor = 'rgba(255,255,255,0.4)';
+          c.style.color = '#e0e0e0';
+          c.style.background = 'rgba(255,255,255,0.08)';
+        });
         chipEl.classList.add('v3-chip-selected');
+        chipEl.style.borderColor = 'rgba(196,168,130,0.9)';
+        chipEl.style.color = '#fff';
+        chipEl.style.background = 'rgba(196,168,130,0.2)';
       }
       
       if (selected.length > 0 && stage.handler) {
@@ -904,15 +923,22 @@ function renderClusterChips(zone, stage) {
     chipEl.className = 'v3-chip';
     chipEl.textContent = chip.label;
     chipEl.type = 'button';
+    chipEl.style.cssText = 'color: #e0e0e0; font-size: 1.1rem; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.08); padding: 12px 26px; border-radius: 20px; cursor: pointer; font-family: "Noto Serif KR", serif; letter-spacing: 0.03em; transition: all 0.3s ease;';
     
     chipEl.addEventListener('click', () => {
       const idx = selected.indexOf(chip.key);
       if (idx >= 0) {
         selected.splice(idx, 1);
         chipEl.classList.remove('v3-chip-selected');
+        chipEl.style.borderColor = 'rgba(255,255,255,0.4)';
+        chipEl.style.color = '#e0e0e0';
+        chipEl.style.background = 'rgba(255,255,255,0.08)';
       } else if (selected.length < maxSelect) {
         selected.push(chip.key);
         chipEl.classList.add('v3-chip-selected');
+        chipEl.style.borderColor = 'rgba(196,168,130,0.9)';
+        chipEl.style.color = '#fff';
+        chipEl.style.background = 'rgba(196,168,130,0.2)';
       }
       
       if (selected.length >= maxSelect && stage.handler) {
