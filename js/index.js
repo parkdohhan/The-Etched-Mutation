@@ -747,8 +747,8 @@ function renderDefaultGrayLine() {
     
     function animateGray() {
         ctx.clearRect(0, 0, width, height);
-        ctx.strokeStyle = 'rgba(120, 120, 130, 0.3)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(180, 180, 190, 0.5)';
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         for (let x = 0; x <= width; x += 2) {
             const y = centerY
