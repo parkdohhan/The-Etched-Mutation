@@ -43,18 +43,18 @@ function emotionVectorToWaveStyle(emotionVector) {
 }
 
 const MONOLOGUES = [
-  { text: 'I shouldn\'t have done that', entryLine: '그때는 그게 맞는다고 생각했어.', vad: { v: -0.5, a: 0.2, d: -0.6 }, x: 0.3, y: 0.35 },
-  { text: '그냥 도망치고싶었어', entryLine: '그것밖에 할 수 있는 게 없었잖아.', vad: { v: -0.6, a: 0.7, d: -0.4 }, x: 0.65, y: 0.45 },
-  { text: '왜 그랬는지 모르겠어', entryLine: '사실은 알고 있었는지도 몰라.', vad: { v: -0.4, a: 0.3, d: -0.3 }, x: 0.45, y: 0.6 },
-  { text: '그냥 없던 일이 됐으면', entryLine: '근데 아직 남아 있잖아.', vad: { v: -0.3, a: -0.4, d: -0.2 }, x: 0.2, y: 0.55 },
+  { text: 'I shouldn\'t have done that', entryLine: 'I thought that was the right thing at the time.', vad: { v: -0.5, a: 0.2, d: -0.6 }, x: 0.3, y: 0.35 },
+  { text: 'I just wanted to run away', entryLine: 'That was the only thing I could do.', vad: { v: -0.6, a: 0.7, d: -0.4 }, x: 0.65, y: 0.45 },
+  { text: 'I don\'t know why I did that', entryLine: 'Maybe I actually knew all along.', vad: { v: -0.4, a: 0.3, d: -0.3 }, x: 0.45, y: 0.6 },
+  { text: 'I wish it never happened', entryLine: 'But it\'s still there, isn\'t it.', vad: { v: -0.3, a: -0.4, d: -0.2 }, x: 0.2, y: 0.55 },
 ];
 
 const DEMO_MEMORY_ID = '8fe034ef-6db0-4ba1-b291-66954fea2e08';
 
 const SCENE_INPUT_CONFIG = [
   { mode: 'free', prompt: 'In that moment, write the first words that come to mind.' },
-  { mode: 'free', prompt: '그때 네 안에서 뭐가 일어났어?' },
-  { mode: 'short', prompt: '지금 이 기억은 너한테 ___야.' },
+  { mode: 'free', prompt: 'What was happening inside you at that moment?' },
+  { mode: 'short', prompt: 'Right now, this memory is ___ to me.' },
 ];
 
 const SEED_GHOST_VECTORS = [
@@ -197,10 +197,10 @@ function startOpeningWaveLoop(canvas, textEl) {
   let step = 0;
   textEl.textContent = '';
   setTimeout(() => {
-    typeTo(textEl, '너의 기억을 들여다볼 준비가 됐어?', 50, () => {
+    typeTo(textEl, 'Are you ready to look into your memories?', 50, () => {
       step = 1;
       setTimeout(() => {
-        typeTo(textEl, '너의 기억을 들여다볼 준비가 됐어?\n좋아...', 40, () => {
+        typeTo(textEl, 'Are you ready to look into your memories?\nOkay...', 40, () => {
           textEl.classList.add('ready');
         });
       }, 1000);
@@ -855,7 +855,7 @@ function startReveal() {
   const scenesEl = document.getElementById('revealScenes');
   const nextBtn = document.getElementById('revealNextBtn');
   if (!scenesEl) return;
-  if (headerEl) headerEl.textContent = '코어 장면 — 원본 파형 vs 사용자 파형';
+  if (headerEl) headerEl.textContent = 'Core Scenes — Original Waveform vs Your Waveform';
 
   scenesEl.innerHTML = '';
   const coreFirst = demoState.sceneHistory.filter((h) => h.isCoreMoment);
@@ -872,19 +872,19 @@ function startReveal() {
 
     div.innerHTML = `
       <div>
-        <div class="reveal-label">원본</div>
+        <div class="reveal-label">Original</div>
         <div class="reveal-wave-original"><canvas data-type="original" data-index="${idx}" width="200" height="60"></canvas></div>
-        <div class="reveal-alignment">정렬도 ${(item.alignmentScore * 100).toFixed(0)}% — ${item.alignmentBucket}</div>
+        <div class="reveal-alignment">Alignment ${(item.alignmentScore * 100).toFixed(0)}% — ${item.alignmentBucket}</div>
       </div>
       <div>
-        <div class="reveal-label">당신</div>
+        <div class="reveal-label">You</div>
         <div class="reveal-wave-user"><canvas data-type="user" data-index="${idx}" width="200" height="60"></canvas></div>
       </div>
       <div class="reveal-detail-panel" style="grid-column:1/-1">
-        감정: ${dominantEmotion(item.resolvedVector?.base)}<br>
-        해석 기울기: ${item.distortionTag || '—'}<br>
-        귀인: ${item.resolvedVector?.attribution || '—'}<br>
-        오염 유형: ${item.terrainEffectType}
+        Emotion: ${dominantEmotion(item.resolvedVector?.base)}<br>
+        Interpretation bias: ${item.distortionTag || '—'}<br>
+        Attribution: ${item.resolvedVector?.attribution || '—'}<br>
+        Contamination type: ${item.terrainEffectType}
       </div>
     `;
     scenesEl.appendChild(div);
@@ -926,7 +926,7 @@ function startTerrain() {
 
   const container = document.getElementById('strataViewContainer');
   const captionEl = document.getElementById('terrainCaption');
-  if (captionEl) captionEl.textContent = '당신이 남긴 흔적이 이 지형에 쌓였습니다.';
+  if (captionEl) captionEl.textContent = 'The traces you left have accumulated in this terrain.';
 
   if (container) {
     container.innerHTML = '';

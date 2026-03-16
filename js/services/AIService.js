@@ -16,17 +16,17 @@ function validateEmotionAnalysisResult(obj) {
     
  // generatedEmotion 필수
     if (!obj.generatedEmotion || typeof obj.generatedEmotion !== 'string' || obj.generatedEmotion.trim() === '') {
-        throw new Error('응답 형식 오류: generatedEmotion이 유효하지 않습니다');
+        throw new Error('Response format error: generatedEmotion is invalid');
     }
     
  // analysis 필수
     if (!obj.analysis || typeof obj.analysis !== 'object') {
-        throw new Error('응답 형식 오류: analysis가 not found');
+        throw new Error('Response format error: analysis is missing');
     }
     
  // analysis.base 필수 (핵심 좌표)
     if (!obj.analysis.base || typeof obj.analysis.base !== 'object') {
-        throw new Error('응답 형식 오류: analysis.base가 not found');
+        throw new Error('Response format error: analysis.base is missing');
     }
     
  // analysis.base emotion 필드 validate
@@ -35,21 +35,21 @@ function validateEmotionAnalysisResult(obj) {
         if (typeof obj.analysis.base[emotion] !== 'number' || 
             obj.analysis.base[emotion] < 0 || 
             obj.analysis.base[emotion] > 1) {
-            throw new Error(`응답 형식 오류: analysis.base.${emotion}가 유효하지 않습니다 (0-1 범위의 숫자여야 함)`);
+            throw new Error(`Response format error: analysis.base.${emotion} is invalid (must be a number between 0 and 1)`);
         }
     }
     
  // analysis.embedding validate (있으면 validate, 없으면 통 )
     if (obj.analysis.embedding !== undefined) {
         if (!Array.isArray(obj.analysis.embedding)) {
-            throw new Error('응답 형식 오류: analysis.embedding이 배열이 아닙니다');
+            throw new Error('Response format error: analysis.embedding is not an array');
         }
         
  // 모든 원소 number 고 NaN 지 check
         for (let i = 0; i < obj.analysis.embedding.length; i++) {
             const val = obj.analysis.embedding[i];
             if (typeof val !== 'number' || isNaN(val)) {
-                throw new Error(`응답 형식 오류: analysis.embedding[${i}]가 유효한 숫자가 아닙니다`);
+                throw new Error(`Response format error: analysis.embedding[${i}] is not a valid number`);
             }
         }
         
@@ -61,7 +61,7 @@ function validateEmotionAnalysisResult(obj) {
     
  // analysis.detailed array 어야 함 (선택)
     if (obj.analysis.detailed !== undefined && !Array.isArray(obj.analysis.detailed)) {
-        throw new Error('응답 형식 오류: analysis.detailed가 배열이 아닙니다');
+        throw new Error('Response format error: analysis.detailed is not an array');
     }
     
  // analysis.intensity 0-1 범위 숫자여야 함 (선택)
@@ -69,7 +69,7 @@ function validateEmotionAnalysisResult(obj) {
         if (typeof obj.analysis.intensity !== 'number' || 
             obj.analysis.intensity < 0 || 
             obj.analysis.intensity > 1) {
-            throw new Error('응답 형식 오류: analysis.intensity가 유효하지 않습니다 (0-1 범위의 숫자여야 함)');
+            throw new Error('Response format error: analysis.intensity is invalid (must be a number between 0 and 1)');
         }
     }
     
@@ -78,14 +78,14 @@ function validateEmotionAnalysisResult(obj) {
         if (typeof obj.analysis.confidence !== 'number' || 
             obj.analysis.confidence < 0 || 
             obj.analysis.confidence > 1) {
-            throw new Error('응답 형식 오류: analysis.confidence가 유효하지 않습니다 (0-1 범위의 숫자여야 함)');
+            throw new Error('Response format error: analysis.confidence is invalid (must be a number between 0 and 1)');
         }
     }
     
  // analysis.reason_analysis 선택 (있으면 validate, 없으면 통 )
     if (obj.analysis.reason_analysis !== undefined) {
         if (typeof obj.analysis.reason_analysis !== 'object' || obj.analysis.reason_analysis === null) {
-            throw new Error('응답 형식 오류: analysis.reason_analysis가 객체가 아닙니다');
+            throw new Error('Response format error: analysis.reason_analysis is not an object');
         }
  // reason_analysis 내부 필드 validate (needed시 add)
     }
@@ -93,7 +93,7 @@ function validateEmotionAnalysisResult(obj) {
  // 하위 호환성: 최상위 레벨 reason_analysis 허용 (있으면 validate)
     if (obj.reason_analysis !== undefined) {
         if (typeof obj.reason_analysis !== 'object' || obj.reason_analysis === null) {
-            throw new Error('응답 형식 오류: reason_analysis가 객체가 아닙니다');
+            throw new Error('Response format error: reason_analysis is not an object');
         }
     }
     
@@ -113,7 +113,7 @@ function validateSceneGenerationResult(obj) {
     
  // response 필수
     if (!obj.response || typeof obj.response !== 'string' || obj.response.trim() === '') {
-        throw new Error('응답 형식 오류: response가 유효하지 않습니다');
+        throw new Error('Response format error: response is invalid');
     }
     
     return true;
@@ -156,7 +156,7 @@ async function call(type, payload, meta = {}) {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('API 오류 응답:', errorText);
-                throw new Error('API 호출 실패: ' + response.status);
+                throw new Error('API call failed: ' + response.status);
             }
             
             const data = await response.json();
@@ -188,13 +188,13 @@ async function call(type, payload, meta = {}) {
                 body: JSON.stringify({
                     text: payload,
                     conversationHistory: messages,
-                    systemPrompt: systemPrompt || '너는 "또다른 나"야. 상대방의 기억을 함께 꺼내는 존재야.'
+                    systemPrompt: systemPrompt || 'You are "another me." You are a presence that helps bring out the other person\'s memories together.'
                 })
             });
             
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || error.details || 'API 호출 실패');
+                throw new Error(error.error || error.details || 'API call failed');
             }
             
             const data = await response.json();
@@ -206,7 +206,7 @@ async function call(type, payload, meta = {}) {
             } else if (data.response) {
                 result = { response: data.response };
             } else {
-                throw new Error('응답을 받을 수 not found');
+                throw new Error('Could not receive a response');
             }
             
  // validate 

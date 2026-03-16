@@ -105,11 +105,11 @@
     }
     var text = (baseEl.value || '').trim();
     if (!text) {
-      alert('본문을 먼저 입력해주세요.');
+      alert('Please enter the text first.');
       return;
     }
     stage1El.disabled = true;
-    stage1El.placeholder = '생성 중...';
+    stage1El.placeholder = 'Generating...';
     try {
       var url = getSupabaseUrl() + '/functions/v1/contaminate-text';
       var res = await fetch(url, {
@@ -127,7 +127,7 @@
         data = raw ? JSON.parse(raw) : {};
       } catch (parseErr) {
         console.error('[contamination] Stage1 응답 파싱 실패', raw);
-        alert('응답 오류 (HTTP ' + res.status + '): ' + (raw ? raw.substring(0, 200) : '빈 응답'));
+        alert('Response error (HTTP ' + res.status + '): ' + (raw ? raw.substring(0, 200) : 'empty response'));
         return;
       }
       if (res.ok && data.text_stage_1 != null) {
@@ -136,14 +136,14 @@
       } else {
         var errMsg = data.error || data.details || data.message || ('HTTP ' + res.status);
         console.error('[contamination] Stage1 실패', res.status, data);
-        alert('Stage 1 생성 실패: ' + errMsg);
+        alert('Stage 1 generation failed: ' + errMsg);
       }
     } catch (e) {
       console.error('[contamination] regenerateStage1', e);
-      alert('오류: ' + (e.message || '네트워크 오류'));
+      alert('Error: ' + (e.message || 'Network error'));
     } finally {
       stage1El.disabled = false;
-      stage1El.placeholder = '감정이 객체화되기 시작...';
+      stage1El.placeholder = 'Emotions begin to objectify...';
     }
   }
 
@@ -160,11 +160,11 @@
     }
     var text = (baseEl.value || '').trim();
     if (!text) {
-      alert('본문을 먼저 입력해주세요.');
+      alert('Please enter the text first.');
       return;
     }
     stage2El.disabled = true;
-    stage2El.placeholder = '생성 중...';
+    stage2El.placeholder = 'Generating...';
     try {
       var url = getSupabaseUrl() + '/functions/v1/contaminate-text';
       var res = await fetch(url, {
@@ -182,7 +182,7 @@
         data = raw ? JSON.parse(raw) : {};
       } catch (parseErr) {
         console.error('[contamination] Stage2 응답 파싱 실패', raw);
-        alert('응답 오류 (HTTP ' + res.status + '): ' + (raw ? raw.substring(0, 200) : '빈 응답'));
+        alert('Response error (HTTP ' + res.status + '): ' + (raw ? raw.substring(0, 200) : 'empty response'));
         return;
       }
       if (res.ok && data.text_stage_2 != null) {
@@ -191,14 +191,14 @@
       } else {
         var errMsg = data.error || data.details || data.message || ('HTTP ' + res.status);
         console.error('[contamination] Stage2 실패', res.status, data);
-        alert('Stage 2 생성 실패: ' + errMsg);
+        alert('Stage 2 generation failed: ' + errMsg);
       }
     } catch (e) {
       console.error('[contamination] regenerateStage2', e);
-      alert('오류: ' + (e.message || '네트워크 오류'));
+      alert('Error: ' + (e.message || 'Network error'));
     } finally {
       stage2El.disabled = false;
-      stage2El.placeholder = '디테일이 사라지고 추상화...';
+      stage2El.placeholder = 'Details fade and become abstract...';
     }
   }
 
@@ -213,7 +213,7 @@
     var text = (baseEl.value || '').trim();
     var styleKey = (styleSelect && styleSelect.value) ? styleSelect.value : 'Glitch';
     if (!text) {
-      alert('본문을 먼저 입력해주세요.');
+      alert('Please enter the text first.');
       return;
     }
     stage3El.value = applyStage3(text, styleKey);

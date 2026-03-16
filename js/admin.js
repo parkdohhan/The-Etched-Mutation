@@ -1,6 +1,7 @@
 import { getSupabaseClient } from './lib/supabaseClient.js';
 import { loadAdminMemories, saveAdminMemories, exportAdminMemoriesJSON, importAdminMemoriesJSON } from './lib/storage.js';
 import { listMemoriesWithScenesChoices, saveMemoryGraph, deleteMemoryGraph, listArchiveLayers } from './lib/repo.js';
+import { DEFAULT_EMOTION_ANCHORS } from './shared/math.js';
 
 let memories = [];
 let currentScenes = [];
@@ -345,8 +346,6 @@ function addScene() {
         text: '',
         sceneType: 'normal',
         echoWords: [],
-        choices: [],
-        originalChoice: 0,
         originalReason: '',
         originalEmotion: null,
         originalReasonVector: null,
@@ -432,12 +431,6 @@ function renderScenes() {
                 <input type="text" class="editor-input scene-echo-words-input" data-scene-index="${sceneIndex}" placeholder="무서웠어, 미안해, 후회했어 (콤마로 구분)" value="${(scene.echoWords || []).join(', ')}">
             </div>
             <div class="editor-input-group scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'};">
-                <label class="editor-label">원본 선택</label>
-                <select class="editor-input scene-original-choice-select" data-scene-index="${sceneIndex}">
-                    ${renderOriginalChoiceOptions(scene.choices || [], scene.originalChoice || 0)}
-                </select>
-            </div>
-            <div class="editor-input-group scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'};">
                 <label class="editor-label">원본 이유</label>
                 <input type="text" class="editor-input scene-original-reason-input" data-scene-index="${sceneIndex}" placeholder="원본 기록자의 이유 (예: 내가 살릴 수 있었는데...)" value="${scene.originalReason || ''}">
             </div>
@@ -449,8 +442,18 @@ function renderScenes() {
                 <button class="auto-detect-void-btn" data-scene-index="${sceneIndex}">자동 감지</button>
                 <p class="void-level-display" data-scene-index="${sceneIndex}">VOID Level: ${(scene.voidInfo && scene.voidInfo.voidLevel) ? scene.voidInfo.voidLevel.charAt(0).toUpperCase() + scene.voidInfo.voidLevel.slice(1) : 'Low'}</p>
             </div>
+            <div class="editor-section" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
+                <h3 class="editor-section-title" style="margin-bottom: 1rem;">Original Emotion 매핑</h3>
+                <div class="editor-input-group" style="margin-bottom: 1.5rem;">
+                    <label class="editor-label">감정 (emotion : intensity)</label>
+                    <div class="original-emotion-list" data-scene-index="${sceneIndex}">
+                        ${renderOriginalEmotions(scene.originalEmotion || {}, sceneIndex)}
+                    </div>
+                    <button class="add-emotion-btn" onclick="addOriginalEmotion(${sceneIndex})" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--accent-memory); color: var(--bg-deep); border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">+ 감정 추가</button>
+                </div>
+            </div>
             <div class="editor-section scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'}; margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
-                <h3 class="editor-section-title" style="margin-bottom: 1rem;">원본 감정/이유 (정렬도 비교용)</h3>
+                <h3 class="editor-section-title" style="margin-bottom: 1rem;">원본 이유 (정렬도 비교용)</h3>
                 <div class="editor-input-group" style="margin-bottom: 1.5rem;">
                     <label class="editor-label">감정 앵커 (쉼표로 구분, 자유 입력 가능)</label>
                     <input type="text" class="editor-input anchor-emotions-input" data-scene-index="${sceneIndex}" 
@@ -459,13 +462,6 @@ function renderScenes() {
                     <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
                         이 장면에서 측정할 감정들. 한글/영문 모두 가능. 비워두면 기본 앵커 사용.
                     </small>
-                </div>
-                <div class="editor-input-group" style="margin-bottom: 1.5rem;">
-                    <label class="editor-label">원본 감정</label>
-                    <div class="original-emotion-list" data-scene-index="${sceneIndex}">
-                        ${renderOriginalEmotions(scene.originalEmotion || {}, sceneIndex)}
-                    </div>
-                    <button class="add-emotion-btn" onclick="addOriginalEmotion(${sceneIndex})" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: var(--accent-memory); color: var(--bg-deep); border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">+ 감정 추가</button>
                 </div>
                 <div class="editor-input-group" style="margin-bottom: 1.5rem;">
                     <label class="editor-label">원본 이유 벡터 (Reason Vector)</label>
@@ -497,13 +493,6 @@ function renderScenes() {
                     </div>
                 </div>
             </div>
-            <div class="editor-input-group">
-                <label class="editor-label">선택지</label>
-                <div class="choices-list" data-scene-index="${sceneIndex}">
-                    ${renderChoices(scene.choices || [], sceneIndex)}
-                </div>
-                <button class="add-choice-btn" onclick="addChoice(${sceneIndex})">+ 선택지 추가</button>
-            </div>
         `;
         container.appendChild(sceneBlock);
     });
@@ -512,95 +501,31 @@ function renderScenes() {
     attachSceneListeners();
 }
 
-// choices 렌더링
-function renderChoices(choices, sceneIndex) {
-    if (!choices || choices.length === 0) {
-        return '<div style="color:var(--text-muted);padding:1rem;text-align:center;">선택지가 not found</div>';
-    }
+const EMOTION_LABELS = {
+    fear: '공포', sadness: '슬픔', anger: '분노', guilt: '죄책감',
+    shame: '수치심', isolation: '고립', numbness: '무감각',
+    moral_pain: '도덕적 고통', helplessness: '무력감', despair: '절망',
+    joy: '기쁨', hope: '희망', relief: '안도', gratitude: '감사',
+    love: '사랑', peace: '평화', comfort: '위로'
+};
 
-    return choices.map((choice, choiceIndex) => `
-        <div class="choice-item">
-            <div class="choice-controls">
-                <input type="text" class="choice-text-input" data-scene-index="${sceneIndex}" data-choice-index="${choiceIndex}" placeholder="선택지 텍스트" value="${choice.text || ''}">
-                <select class="choice-emotion-select" data-scene-index="${sceneIndex}" data-choice-index="${choiceIndex}">
-                    <option value="fear" ${choice.emotion === 'fear' ? 'selected' : ''}>공포</option>
-                    <option value="sadness" ${choice.emotion === 'sadness' ? 'selected' : ''}>슬픔</option>
-                    <option value="guilt" ${choice.emotion === 'guilt' ? 'selected' : ''}>죄책감</option>
-                    <option value="anger" ${choice.emotion === 'anger' ? 'selected' : ''}>분노</option>
-                    <option value="longing" ${choice.emotion === 'longing' ? 'selected' : ''}>그리움</option>
-                    <option value="isolation" ${choice.emotion === 'isolation' ? 'selected' : ''}>고립감</option>
-                    <option value="numbness" ${choice.emotion === 'numbness' ? 'selected' : ''}>무감각</option>
-                    <option value="moralPain" ${choice.emotion === 'moralPain' ? 'selected' : ''}>도덕적 고통</option>
-                </select>
-                <div class="choice-intensity-container">
-                    <input type="range" class="choice-intensity-slider" data-scene-index="${sceneIndex}" data-choice-index="${choiceIndex}" min="1" max="10" value="${choice.intensity || 5}">
-                    <span class="choice-intensity-value">${choice.intensity || 5}</span>
-                </div>
-                <select class="choice-next-scene-select" data-scene-index="${sceneIndex}" data-choice-index="${choiceIndex}">
-                    ${renderNextSceneOptions(sceneIndex, choice.nextScene)}
-                </select>
-                <button class="choice-delete-btn" onclick="deleteChoice(${sceneIndex}, ${choiceIndex})">삭제</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-// original 선택 옵션 렌더링
-function renderOriginalChoiceOptions(choices, selectedValue) {
-    if (!choices || choices.length === 0) {
-        return '<option value="0">선택지 없음</option>';
-    }
-    return choices.map((choice, index) => 
-        `<option value="${index}" ${selectedValue === index ? 'selected' : ''}>선택지 ${index + 1}: ${choice.text || '(텍스트 없음)'}</option>`
-    ).join('');
-}
-
-// original emotion 렌더링
 function renderOriginalEmotions(originalEmotion, sceneIndex) {
     if (!originalEmotion || Object.keys(originalEmotion).length === 0) {
-        return '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">감정이 not found</div>';
+        return '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">감정이 없습니다. 아래 버튼으로 추가하세요.</div>';
     }
-    
-    const emotionLabels = {
-        fear: '공포',
-        sadness: '슬픔',
-        guilt: '죄책감',
-        anger: '분노',
-        longing: '그리움',
-        isolation: '고립감',
-        numbness: '무감각',
-        shame: '수치심',
-        moral_pain: '도덕적 고통'
-    };
-    
+
     return Object.entries(originalEmotion).map(([emotion, intensity], index) => `
         <div class="original-emotion-item" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-deep); border-radius: 4px;">
             <select class="original-emotion-select" data-scene-index="${sceneIndex}" data-emotion-index="${index}" style="flex: 1; padding: 0.4rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .3); color: var(--text-primary); border-radius: 4px;">
-                <option value="fear" ${emotion === 'fear' ? 'selected' : ''}>${emotionLabels.fear}</option>
-                <option value="sadness" ${emotion === 'sadness' ? 'selected' : ''}>${emotionLabels.sadness}</option>
-                <option value="guilt" ${emotion === 'guilt' ? 'selected' : ''}>${emotionLabels.guilt}</option>
-                <option value="anger" ${emotion === 'anger' ? 'selected' : ''}>${emotionLabels.anger}</option>
-                <option value="longing" ${emotion === 'longing' ? 'selected' : ''}>${emotionLabels.longing}</option>
-                <option value="isolation" ${emotion === 'isolation' ? 'selected' : ''}>${emotionLabels.isolation}</option>
-                <option value="numbness" ${emotion === 'numbness' ? 'selected' : ''}>${emotionLabels.numbness}</option>
-                <option value="shame" ${emotion === 'shame' ? 'selected' : ''}>${emotionLabels.shame}</option>
-                <option value="moral_pain" ${emotion === 'moral_pain' ? 'selected' : ''}>${emotionLabels.moral_pain}</option>
+                ${DEFAULT_EMOTION_ANCHORS.map(e =>
+                    `<option value="${e}" ${emotion === e ? 'selected' : ''}>${EMOTION_LABELS[e] || e} (${e})</option>`
+                ).join('')}
             </select>
             <input type="range" class="original-emotion-intensity" data-scene-index="${sceneIndex}" data-emotion-index="${index}" min="0" max="1" step="0.01" value="${intensity}" style="flex: 2;">
-            <span class="original-emotion-value" style="min-width: 3rem; text-align: right; color: var(--accent-memory);">${(intensity * 100).toFixed(0)}%</span>
+            <input type="number" class="original-emotion-number" data-scene-index="${sceneIndex}" data-emotion-index="${index}" min="0" max="1" step="0.01" value="${(intensity * 1).toFixed(2)}" style="width: 4.5rem; padding: 0.3rem 0.4rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .3); color: var(--accent-memory); border-radius: 4px; text-align: center; font-size: 0.9rem;">
             <button class="remove-emotion-btn" onclick="removeOriginalEmotion(${sceneIndex}, ${index})" style="padding: 0.3rem 0.6rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .3); color: var(--text-primary); border-radius: 4px; cursor: pointer;">삭제</button>
         </div>
     `).join('');
-}
-
-// 다음 scene 옵션 렌더링
-function renderNextSceneOptions(currentSceneIndex, selectedValue) {
-    let options = '';
-    for (let i = 0; i < currentScenes.length; i++) {
-        options += `<option value="${i}" ${selectedValue === i ? 'selected' : ''}>장면 ${i + 1}</option>`;
-    }
-    options += `<option value="end" ${selectedValue === 'end' ? 'selected' : ''}>엔딩</option>`;
-    return options;
 }
 
 // emotion vector color으 보간하 function
@@ -755,14 +680,6 @@ function attachSceneListeners() {
         });
     });
 
- // original 선택
-    document.querySelectorAll('.scene-original-choice-select').forEach(select => {
-        select.addEventListener('change', function() {
-            const sceneIndex = parseInt(this.dataset.sceneIndex);
-            currentScenes[sceneIndex].originalChoice = parseInt(this.value);
-        });
-    });
-
  // original 유
     document.querySelectorAll('.scene-original-reason-input').forEach(input => {
         input.addEventListener('input', function() {
@@ -823,16 +740,28 @@ function attachSceneListeners() {
         });
     });
 
- // original emotion 강 변경
+ // original emotion 강도 — 슬라이더 → 숫자 입력 동기화
     document.querySelectorAll('.original-emotion-intensity').forEach(slider => {
         slider.addEventListener('input', function() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             const emotionIndex = parseInt(this.dataset.emotionIndex);
             const value = parseFloat(this.value);
-            const valueDisplay = this.parentElement.querySelector('.original-emotion-value');
-            if (valueDisplay) {
-                valueDisplay.textContent = (value * 100).toFixed(0) + '%';
-            }
+            const numberInput = this.parentElement.querySelector('.original-emotion-number');
+            if (numberInput) numberInput.value = value.toFixed(2);
+            updateOriginalEmotion(sceneIndex, emotionIndex);
+        });
+    });
+
+ // original emotion 강도 — 숫자 입력 → 슬라이더 동기화
+    document.querySelectorAll('.original-emotion-number').forEach(input => {
+        input.addEventListener('input', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            const emotionIndex = parseInt(this.dataset.emotionIndex);
+            let value = parseFloat(this.value);
+            if (isNaN(value)) return;
+            value = Math.max(0, Math.min(1, value));
+            const slider = this.parentElement.querySelector('.original-emotion-intensity');
+            if (slider) slider.value = value;
             updateOriginalEmotion(sceneIndex, emotionIndex);
         });
     });
@@ -940,66 +869,6 @@ function attachSceneListeners() {
         });
     });
 
- // choices text
-    document.querySelectorAll('.choice-text-input').forEach(input => {
-        input.addEventListener('input', function() {
-            const sceneIndex = parseInt(this.dataset.sceneIndex);
-            const choiceIndex = parseInt(this.dataset.choiceIndex);
-            if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
-            if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
-            currentScenes[sceneIndex].choices[choiceIndex].text = this.value;
-            
- // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
-            if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
-                renderWavePreview();
-            }
-        });
-    });
-
- // emotion 선택
-    document.querySelectorAll('.choice-emotion-select').forEach(select => {
-        select.addEventListener('change', function() {
-            const sceneIndex = parseInt(this.dataset.sceneIndex);
-            const choiceIndex = parseInt(this.dataset.choiceIndex);
-            if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
-            if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
-            currentScenes[sceneIndex].choices[choiceIndex].emotion = this.value;
-            
- // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
-            if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
-                renderWavePreview();
-            }
-        });
-    });
-
- // emotion 강 
-    document.querySelectorAll('.choice-intensity-slider').forEach(slider => {
-        slider.addEventListener('input', function() {
-            const sceneIndex = parseInt(this.dataset.sceneIndex);
-            const choiceIndex = parseInt(this.dataset.choiceIndex);
-            if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
-            if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
-            currentScenes[sceneIndex].choices[choiceIndex].intensity = parseInt(this.value);
-            this.parentElement.querySelector('.choice-intensity-value').textContent = this.value;
-            
- // Preview 탭 active화되어 있고 현재 scene 면 wave 업데 트
-            if (document.getElementById('previewContent').classList.contains('active') && previewCurrentScene === sceneIndex) {
-                renderWavePreview();
-            }
-        });
-    });
-
- // 다음 scene 선택
-    document.querySelectorAll('.choice-next-scene-select').forEach(select => {
-        select.addEventListener('change', function() {
-            const sceneIndex = parseInt(this.dataset.sceneIndex);
-            const choiceIndex = parseInt(this.dataset.choiceIndex);
-            if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
-            if (!currentScenes[sceneIndex].choices[choiceIndex]) currentScenes[sceneIndex].choices[choiceIndex] = {};
-            currentScenes[sceneIndex].choices[choiceIndex].nextScene = this.value;
-        });
-    });
-
  // text_stage_1 벤트
     document.querySelectorAll('.scene-text-stage-1').forEach(textarea => {
         textarea.addEventListener('input', function() {
@@ -1046,28 +915,19 @@ function updateVoidLevel(sceneIndex) {
     }
 }
 
-// original emotion add
 function addOriginalEmotion(sceneIndex) {
     if (!currentScenes[sceneIndex].originalEmotion) {
         currentScenes[sceneIndex].originalEmotion = {};
     }
-    
- // possible emotion list
-    const availableEmotions = ['fear', 'sadness', 'guilt', 'anger', 'longing', 'isolation', 'numbness', 'shame', 'moral_pain'];
-    
- // 미 add emotion list
+
     const existingEmotions = Object.keys(currentScenes[sceneIndex].originalEmotion);
-    
- // 아직 add되지 않 첫 번째 emotion 찾기
-    const newEmotion = availableEmotions.find(emotion => !existingEmotions.includes(emotion));
-    
+    const newEmotion = DEFAULT_EMOTION_ANCHORS.find(e => !existingEmotions.includes(e));
+
     if (newEmotion) {
- // 새 운 emotion add
         currentScenes[sceneIndex].originalEmotion[newEmotion] = 0.5;
         renderScenes();
     } else {
- // 모든 emotion 미 add 
-        alert('모든 감정이 이미 추가되었습니다.');
+        alert('17개 감정이 모두 추가되었습니다.');
     }
 }
 
@@ -1113,37 +973,6 @@ function updateOriginalEmotion(sceneIndex, emotionIndex) {
     }
 }
 
-// choices add
-function addChoice(sceneIndex) {
-    if (!currentScenes[sceneIndex].choices) currentScenes[sceneIndex].choices = [];
-    currentScenes[sceneIndex].choices.push({
-        text: '',
-        emotion: 'fear',
-        intensity: 5,
-        nextScene: sceneIndex + 1 < currentScenes.length ? sceneIndex + 1 : 'end'
-    });
- // original 선택 choices 개수 초 하면 조정
-    if (currentScenes[sceneIndex].originalChoice >= currentScenes[sceneIndex].choices.length) {
-        currentScenes[sceneIndex].originalChoice = currentScenes[sceneIndex].choices.length - 1;
-    }
-    renderScenes();
-}
-
-// choices delete
-function deleteChoice(sceneIndex, choiceIndex) {
-    if (confirm('이 선택지를 삭제하시겠습니까?')) {
-        currentScenes[sceneIndex].choices.splice(choiceIndex, 1);
- // original 선택 delete index보다 크거나 같으면 조정
-        if (currentScenes[sceneIndex].originalChoice >= choiceIndex) {
-            if (currentScenes[sceneIndex].originalChoice > 0) {
-                currentScenes[sceneIndex].originalChoice = currentScenes[sceneIndex].originalChoice - 1;
-            } else {
-                currentScenes[sceneIndex].originalChoice = 0;
-            }
-        }
-        renderScenes();
-    }
-}
 
 // scene delete
 function deleteScene(sceneIndex) {
@@ -1630,6 +1459,7 @@ async function saveMemory() {
             
             return {
                 ...scene,
+                choices: scene.choices || [],
                 waveData: waveData
             };
         });
@@ -1745,7 +1575,7 @@ function convertToMemoriesDataFormat(adminMemories) {
     return adminMemories.map((memory, index) => {
  // choices 서 emotion 강 정보 추출
         const processedScenes = memory.scenes.map(scene => {
-            const processedChoices = scene.choices.map(choice => ({
+            const processedChoices = (scene.choices || []).map(choice => ({
                 text: choice.text,
                 percentage: choice.percentage || 0,
                 emotion: choice.emotion || 'fear',
@@ -1804,7 +1634,6 @@ function convertToMemoriesDataFormat(adminMemories) {
                 echoWords: scene.echoWords || [],
                 choices: processedChoices,
                 emotionDist: emotionDist,
-                originalChoice: scene.originalChoice || 0,
                 originalReason: scene.originalReason || '',
                 originalEmotion: scene.originalEmotion || null
             };
@@ -1878,16 +1707,15 @@ function importMemoriesJSON(event) {
                     text: scene.text || '',
                     sceneType: scene.sceneType || 'normal',
                     echoWords: scene.echoWords || [],
-                    choices: scene.choices.map(choice => ({
+                    choices: (scene.choices || []).map(choice => ({
                         text: choice.text || '',
                         emotion: choice.emotion || 'fear',
                         intensity: choice.intensity || 5,
                         nextScene: choice.nextScene || 'end',
                         percentage: choice.percentage || 0
                     })),
-                    originalChoice: scene.originalChoice !== undefined ? scene.originalChoice : 0,
                     originalReason: scene.originalReason || '',
-                originalEmotion: scene.originalEmotion || null
+                    originalEmotion: scene.originalEmotion || null
                 })),
                 interpretationLayers: memory.layers || 0,
                 visible: true
@@ -2570,8 +2398,6 @@ window.updateVoid = updateVoid;
 window.moveSceneUp = moveSceneUp;
 window.moveSceneDown = moveSceneDown;
 window.deleteScene = deleteScene;
-window.addChoice = addChoice;
-window.deleteChoice = deleteChoice;
 window.loadArchiveLayers = loadArchiveLayers;
 window.updateSelectedCount = updateSelectedCount;
 window.addOriginalEmotion = addOriginalEmotion;

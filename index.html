@@ -24,51 +24,45 @@
         <source src="sounds/ambient-opening.mp3" type="audio/mpeg">
     </audio>
     <div class="intro-screen" id="introScreen">
-        <div class="intro-container">
-            <div class="intro-bg-image" aria-hidden="true"></div>
-            <div class="intro-left-gradient" aria-hidden="true"></div>
-            <div class="intro-grid-lines" aria-hidden="true">
-                <div class="intro-vertical-line"></div>
-                <div class="intro-horizontal-line"></div>
-            </div>
-            <div class="intro-content">
-                <div class="intro-sidebar">
-                    <div class="intro-header">
-                        <h1 class="intro-header-title">THE ETCHED<br><span>MUTATION</span></h1>
-                        <div class="intro-title-flare" aria-hidden="true">
-                            <div class="intro-bokeh-inner">
-                                <div class="intro-flare-streak-base"></div>
-                                <div class="intro-flare-glow-red"></div>
-                                <div class="intro-flare-block-a"></div>
-                                <div class="intro-flare-block-b"></div>
-                                <div class="intro-flare-block-c"></div>
-                                <div class="intro-flare-block-d"></div>
-                                <div class="intro-flare-line"></div>
-                            </div>
+        <div class="intro-center-wrapper">
+        <h1 class="intro-logo">THE ETCHED MUTATION</h1>
+        <p class="intro-subtitle">Immortality of Memory</p>
+            
+            <!-- 3D Carousel Navigation -->
+            <div class="carousel-3d-container">
+                <div class="carousel-3d-wrapper" id="carousel3DWrapper">
+                    <div class="carousel-item" data-index="0" data-action="enterArchive">
+                        <div class="carousel-item-content">
+                            <div class="carousel-item-label">ARCHIVE</div>
                         </div>
                     </div>
-                    <div class="intro-menu-list" id="introMenuList"></div>
-                    <div class="intro-description" id="introDescriptionArea"></div>
+                    <div class="carousel-item" data-index="1" data-action="showConfessionHub">
+                        <div class="carousel-item-content">
+                            <div class="carousel-item-label">RECORD</div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" data-index="2" data-action="openMypage">
+                        <div class="carousel-item-content">
+                            <div class="carousel-item-label">MYPAGE</div>
+                        </div>
+                    </div>
+                    <div class="carousel-item" data-index="3" data-action="openPortfolio">
+                        <div class="carousel-item-content">
+                            <div class="carousel-item-label">PORTFOLIO</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="intro-right-content">
-                    <div class="intro-vertical-accent" aria-hidden="true"></div>
-                </div>
-            </div>
-            <div class="intro-bokeh-flare" id="introBokehFlare" aria-hidden="true">
-                <div class="intro-bokeh-inner">
-                    <div class="intro-flare-streak-base"></div>
-                    <div class="intro-flare-glow-red"></div>
-                    <div class="intro-flare-block-a"></div>
-                    <div class="intro-flare-block-b"></div>
-                    <div class="intro-flare-block-c"></div>
-                    <div class="intro-flare-block-d"></div>
-                    <div class="intro-flare-line"></div>
-                </div>
-            </div>
+                
+                <!-- Navigation Arrows -->
+                <button class="carousel-nav carousel-nav-prev" id="carouselPrev" aria-label="Previous">
+                    <span class="carousel-nav-icon">‹</span>
+                </button>
+                <button class="carousel-nav carousel-nav-next" id="carouselNext" aria-label="Next">
+                    <span class="carousel-nav-icon">›</span>
+                </button>
         </div>
-        <div class="intro-center-wrapper">
-            <div class="npc-intro-dialogue" id="npcIntroDialogue"></div>
         </div>
+        <div class="npc-intro-dialogue" id="npcIntroDialogue"></div>
     </div>
     <div class="login-modal" id="loginModal">
         <div class="login-box">
@@ -327,16 +321,11 @@
             </div>
         </div>
         <div class="end-screen" id="endScreen">
-            <div class="end-strata-animation" id="endStrataAnimation">
-                <div class="end-strata-container" id="endStrataContainer"></div>
-                <div class="end-strata-message" id="endStrataMessage">Your interpretation has been added to the strata</div>
-            </div>
             <div class="end-content" id="endContent" style="opacity:0">
                 <div class="true-ending-badge" id="trueEndingBadge">TRUE ENDING</div>
                 <div class="normal-ending-badge" id="normalEndingBadge">ENDING</div>
                 <h2 class="end-title" id="endTitle">At the end of the memory</h2>
                 <h3 class="end-subtitle" id="endSubtitle"></h3>
-                <div class="comparison-grid"><div class="comparison-col"><div class="comparison-label">Your Choice</div><div class="comparison-choice" id="yourChoice">—</div><div class="comparison-reason" id="yourReason">"—"</div></div><div class="comparison-col"><div class="comparison-label">Their Choice</div><div class="comparison-choice" id="theirChoice">—</div><div class="comparison-reason" id="theirReason">"—"</div></div></div>
                 <div class="final-alignment" id="finalAlignment">Emotional Structure Alignment: 0.00</div>
                 <p class="final-message" id="finalMessage">You were inside someone's memory.</p>
                 <div class="end-buttons"><button class="end-btn" onclick="saveMemory()">Save Memory</button><button class="end-btn" onclick="goToIntro()">Return to Start</button></div>

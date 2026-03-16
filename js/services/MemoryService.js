@@ -39,35 +39,35 @@ function buildMemoryPayload(memory) {
  */
 function validateMemoryPayload(payload) {
     if (!payload.memory) {
-        return { valid: false, error: 'memory 필드가 not found' };
+        return { valid: false, error: 'memory field is missing' };
     }
     
     if (!payload.memory.title || typeof payload.memory.title !== 'string' || payload.memory.title.trim() === '') {
-        return { valid: false, error: 'memory.title이 유효하지 않습니다' };
+        return { valid: false, error: 'memory.title is invalid' };
     }
     
     if (!Array.isArray(payload.scenes) || payload.scenes.length === 0) {
-        return { valid: false, error: 'scenes 배열이 없거나 비어있습니다' };
+        return { valid: false, error: 'scenes array is missing or empty' };
     }
     
     for (let i = 0; i < payload.scenes.length; i++) {
         const sceneItem = payload.scenes[i];
         if (!sceneItem.scene) {
-            return { valid: false, error: `scenes[${i}].scene이 not found` };
+            return { valid: false, error: `scenes[${i}].scene is missing` };
         }
         
         if (!sceneItem.scene.text || typeof sceneItem.scene.text !== 'string' || sceneItem.scene.text.trim() === '') {
-            return { valid: false, error: `scenes[${i}].scene.text가 유효하지 않습니다` };
+            return { valid: false, error: `scenes[${i}].scene.text is invalid` };
         }
         
         if (!Array.isArray(sceneItem.choices)) {
-            return { valid: false, error: `scenes[${i}].choices가 배열이 아닙니다` };
+            return { valid: false, error: `scenes[${i}].choices is not an array` };
         }
         
         for (let j = 0; j < sceneItem.choices.length; j++) {
             const choice = sceneItem.choices[j];
             if (!choice.text || typeof choice.text !== 'string' || choice.text.trim() === '') {
-                return { valid: false, error: `scenes[${i}].choices[${j}].text가 유효하지 않습니다` };
+                return { valid: false, error: `scenes[${i}].choices[${j}].text is invalid` };
             }
         }
     }
@@ -185,7 +185,7 @@ export const MemoryService = {
  // 2. validate
         const validation = validateMemoryPayload(payload);
         if (!validation.valid) {
-            const error = new Error(`메모리 payload 검증 실패: ${validation.error}`);
+            const error = new Error(`Memory payload validation failed: ${validation.error}`);
             console.error('[MemoryService]', error.message);
             return { ok: false, data: null, error };
         }

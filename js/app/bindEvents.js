@@ -289,7 +289,7 @@ function bindMemoryRegistrationEvents() {
             voiceBtn.addEventListener('click', async () => {
                 if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                     if (window.showNotification) {
-                        window.showNotification('이 브라우저는 음성 인식을 지원하지 않습니다');
+                        window.showNotification('This browser does not support speech recognition');
                     }
                     return;
                 }
@@ -335,7 +335,7 @@ function bindMemoryRegistrationEvents() {
                     isRecording = false;
                     voiceBtn.textContent = '🎤';
                     if (event.error === 'not-allowed' && window.showNotification) {
-                        window.showNotification('마이크 권한이 필요합니다');
+                        window.showNotification('Microphone permission is required');
                     }
                 };
 
@@ -346,7 +346,7 @@ function bindMemoryRegistrationEvents() {
                 } catch (e) {
                     console.error('음성 인식 시작 실패:', e);
                     if (window.showNotification) {
-                        window.showNotification('음성 인식을 시작할 수 not found');
+                        window.showNotification('Could not start speech recognition');
                     }
                 }
             });
@@ -358,7 +358,7 @@ function bindMemoryRegistrationEvents() {
 
         if (closeBtn) {
             closeBtn.addEventListener('click', () => {
-                if (confirm('기억 등록을 취소하시겠습니까? 저장되지 않은 내용은 사라집니다.') && window.closeRegistrationScreen) {
+                if (confirm('Cancel memory registration? Unsaved content will be lost.') && window.closeRegistrationScreen) {
                     window.closeRegistrationScreen();
                 }
             });
@@ -386,7 +386,7 @@ function bindMemoryRegistrationEvents() {
                 if (choicesContainer) {
                     const choiceInput = document.createElement('input');
                     choiceInput.type = 'text';
-                    choiceInput.placeholder = '선택지 텍스트 입력';
+                    choiceInput.placeholder = 'Enter choice text';
                     choiceInput.className = 'choice-input';
                     choicesContainer.appendChild(choiceInput);
                     choiceInput.focus();
@@ -413,7 +413,7 @@ function bindConfessionEvents() {
     const exitBtn = document.querySelector('.confession-exit-btn');
     if (exitBtn) {
         exitBtn.addEventListener('click', () => {
-            if (confirm('기억 등록을 중단하시겠습니까?') && window.endConfession) {
+            if (confirm('Stop memory registration?') && window.endConfession) {
                 window.endConfession();
             }
         });

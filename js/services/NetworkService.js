@@ -218,7 +218,7 @@ class NetworkService {
 
       if (verifyError || !verifyData) {
         console.error('[NetworkService.createSession] 세션 검증 실패', verifyError);
-        return { ok: false, data: null, error: verifyError || new Error('세션 검증 실패') };
+        return { ok: false, data: null, error: verifyError || new Error('Session verification failed') };
       }
 
       return { ok: true, data: result.data, error: null };

@@ -53,7 +53,7 @@ export class UIManager {
                 if (loginMethodEl) {
                     loginMethodEl.style.display = 'block';
                     const methodText = userData.loginMethod === 'google' ? 'Google' : 
-                                     userData.loginMethod === 'facebook' ? 'Facebook' : '일반';
+                                     userData.loginMethod === 'facebook' ? 'Facebook' : 'Standard';
                     const methodTextEl = document.getElementById('loginMethodText');
                     if (methodTextEl) methodTextEl.textContent = methodText;
                 }
@@ -132,7 +132,7 @@ export class UIManager {
         
         if (!allMemoriesData || allMemoriesData.length === 0) {
             console.log('[UIManager.renderMemoryCards] 메모리 데이터가 not found');
-            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">기억이 not found.</div>';
+            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">No memories found.</div>';
             return;
         }
         
@@ -159,7 +159,7 @@ export class UIManager {
         
         list.innerHTML = '';
         if (sortedMemories.length === 0) {
-            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">해당 카테고리의 기억이 not found.</div>';
+            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">No memories found in this category.</div>';
             return;
         }
         
@@ -173,11 +173,11 @@ export class UIManager {
             const isLive = !!(memory.live_session_id || memory.is_live);
             card.setAttribute('data-category', isLive ? 'live' : 'archive');
             card.setAttribute('onclick', `selectMemory(${originalIndex >= 0 ? originalIndex : index})`);
-            const categoryLabel = isLive ? '<span class="memory-category-badge live">라이브</span>' : '';
+            const categoryLabel = isLive ? '<span class="memory-category-badge live">Live</span>' : '';
             const isFetus = !memory.status || memory.status === 'Fetus';
             const statusBadge = isFetus ? '<div class="status-badge Fetus">Fetus</div>' : '';
             console.log('[Memory] Rendering card:', memory.title, 'status:', memory.status);
-            card.innerHTML = `${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title || '제목 없음'}</h3><p class="memory-card-meta">원본: ${memory.code || '—'} · 해석 레이어: ${memory.layers || 0}개</p><div class="memory-card-dilution"><span>원본</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution !== undefined ? memory.dilution : 100}%"></div></div><span>${memory.dilution !== undefined ? memory.dilution : 100}%</span></div>`;
+            card.innerHTML = `${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title || 'Untitled'}</h3><p class="memory-card-meta">Original: ${memory.code || '—'} · Interpretation layers: ${memory.layers || 0}</p><div class="memory-card-dilution"><span>Original</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution !== undefined ? memory.dilution : 100}%"></div></div><span>${memory.dilution !== undefined ? memory.dilution : 100}%</span></div>`;
             list.appendChild(card);
         });
         
@@ -240,11 +240,11 @@ export class UIManager {
             if (expTextInput) {
                 expTextInput.value = '';
                 expTextInput.focus();
-                expTextInput.placeholder = '감정을 입력하세요...';
+                expTextInput.placeholder = 'Enter your feelings...';
             }
             
             if (callbacks.onShowNotification) {
-                callbacks.onShowNotification('새 장면이 도착했습니다');
+                callbacks.onShowNotification('A new scene has arrived');
             }
         } else {
             console.error('expSceneText 요소를 not found');
@@ -285,7 +285,7 @@ export class UIManager {
      */
     collectEmotionInput() {
         const inputEl = document.getElementById('emotionInputField');
-        return inputEl?.value || "말하고 싶지 않아";
+        return inputEl?.value || "I don't want to talk about it";
     }
 
     /**

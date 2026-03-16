@@ -190,7 +190,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         if (error) throw error;
 
         if (!data || !data.id) {
-            throw new Error('메모리 생성 후 응답 데이터를 받지 못했습니다.');
+            throw new Error('No response data received after creating memory.');
         }
 
         finalMemoryId = data.id;
@@ -252,7 +252,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         if (sceneError) throw sceneError;
 
         if (!sceneData || !sceneData.id) {
-            throw new Error(`Scene ${i + 1} 저장 후 응답 데이터를 받지 못했습니다.`);
+            throw new Error(`No response data received after saving Scene ${i + 1}.`);
         }
 
  // Wave data 업데 트 (scene.waveData 있으면 , 없으면 emotion_vector 업데 트)
@@ -415,7 +415,7 @@ export async function recoverScenesFromBackup(client, memoryCode, scenesArray) {
     if (memError) throw memError;
 
     if (!existingMemories || existingMemories.length === 0) {
-        throw new Error('Supabase에서 해당 메모리를 not found. 먼저 admin.html에서 메모리를 저장하세요.');
+        throw new Error('Memory not found in Supabase. Please save the memory in admin.html first.');
     }
 
     const memoryId = existingMemories[0].id;

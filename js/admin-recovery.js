@@ -7,7 +7,7 @@ function checkLocalStorage() {
     const memories = loadAdminMemories();
     
     if (!memories || memories.length === 0) {
-        resultDiv.innerHTML = '<p class="error">localStorage에 백업 데이터가 not found.</p>';
+        resultDiv.innerHTML = '<p class="error">No backup data found in localStorage.</p>';
         return;
     }
 
@@ -15,21 +15,21 @@ function checkLocalStorage() {
         const testMemory = memories.find(m => m.title && m.title.includes('Test'));
         
         resultDiv.innerHTML = `
-            <p class="success">✅ localStorage 백업 발견!</p>
-            <p>총 ${memories.length}개의 메모리</p>
-            ${testMemory ? `<p class="success">✅ "테스트" 관련 메모리 발견: "${testMemory.title}"</p>
-            <p>장면 개수: ${testMemory.scenes ? testMemory.scenes.length : 0}개</p>
+            <p class="success">✅ localStorage backup found!</p>
+            <p>Total ${memories.length} memories</p>
+            ${testMemory ? `<p class="success">✅ Test-related memory found: "${testMemory.title}"</p>
+            <p>Scene count: ${testMemory.scenes ? testMemory.scenes.length : 0}</p>
             <details>
-                <summary>상세 데이터 보기</summary>
+                <summary>View detailed data</summary>
                 <pre>${JSON.stringify(testMemory, null, 2)}</pre>
-            </details>` : '<p class="error">"테스트" 관련 메모리를 not found.</p>'}
+            </details>` : '<p class="error">No test-related memory found.</p>'}
             <details>
-                <summary>전체 메모리 목록</summary>
+                <summary>All memories</summary>
                 <pre>${JSON.stringify(memories.map(m => ({ title: m.title, code: m.code, scenesCount: m.scenes?.length || 0 })), null, 2)}</pre>
             </details>
         `;
     } catch (e) {
-        resultDiv.innerHTML = `<p class="error">데이터 파싱 오류: ${e.message}</p>`;
+        resultDiv.innerHTML = `<p class="error">Data parsing error: ${e.message}</p>`;
     }
 }
 
@@ -64,15 +64,15 @@ async function checkSupabase() {
             if (scenesError) throw scenesError;
 
             resultDiv.innerHTML = `
-                <p class="success">✅ Supabase에서 "테스트" 메모리 발견!</p>
-                <p>메모리 ID: ${testMemory.id}</p>
-                <p>제목: ${testMemory.title}</p>
-                <p>코드: ${testMemory.code}</p>
-                <p class="${scenes && scenes.length > 0 ? 'success' : 'error'}">장면 개수: ${scenes ? scenes.length : 0}개</p>
-                ${scenes && scenes.length === 0 ? '<p class="error">⚠️ 장면이 모두 삭제되었습니다!</p>' : ''}
+                <p class="success">✅ Test memory found in Supabase!</p>
+                <p>Memory ID: ${testMemory.id}</p>
+                <p>Title: ${testMemory.title}</p>
+                <p>Code: ${testMemory.code}</p>
+                <p class="${scenes && scenes.length > 0 ? 'success' : 'error'}">Scene count: ${scenes ? scenes.length : 0}</p>
+                ${scenes && scenes.length === 0 ? '<p class="error">⚠️ All scenes have been deleted!</p>' : ''}
                 ${scenes && scenes.length > 0 ? `
                     <details>
-                        <summary>장면 목록 보기</summary>
+                        <summary>View scene list</summary>
                         <pre>${JSON.stringify(scenes.map(s => ({ 
                             id: s.id, 
                             scene_order: s.scene_order, 
@@ -84,10 +84,10 @@ async function checkSupabase() {
             `;
         } else {
             resultDiv.innerHTML = `
-                <p class="error">Supabase에서 "테스트" 관련 메모리를 not found.</p>
-                <p>전체 메모리 개수: ${memories.length}개</p>
+                <p class="error">No test-related memory found in Supabase.</p>
+                <p>Total memories: ${memories.length}</p>
                 <details>
-                    <summary>전체 메모리 목록</summary>
+                    <summary>All memories</summary>
                     <pre>${JSON.stringify(memories.map(m => ({ id: m.id, title: m.title, code: m.code })), null, 2)}</pre>
                 </details>
             `;
@@ -102,7 +102,7 @@ async function recoverFromLocalStorage() {
     const memories = loadAdminMemories();
     
     if (!memories || memories.length === 0) {
-        resultDiv.innerHTML = '<p class="error">localStorage에 백업 데이터가 not found.</p>';
+        resultDiv.innerHTML = '<p class="error">No backup data found in localStorage.</p>';
         return;
     }
 
@@ -116,27 +116,27 @@ async function recoverFromLocalStorage() {
         const testMemory = memories.find(m => m.title && m.title.includes('Test'));
         
         if (!testMemory) {
-            resultDiv.innerHTML = '<p class="error">"테스트" 관련 메모리를 not found.</p>';
+            resultDiv.innerHTML = '<p class="error">No test-related memory found.</p>';
             return;
         }
 
         if (!testMemory.scenes || testMemory.scenes.length === 0) {
-            resultDiv.innerHTML = '<p class="error">복구할 장면이 not found.</p>';
+            resultDiv.innerHTML = '<p class="error">No scenes to recover.</p>';
             return;
         }
 
-        resultDiv.innerHTML = '<p class="info">복구 중... (장면 개수: ' + testMemory.scenes.length + '개)</p>';
+        resultDiv.innerHTML = '<p class="info">Recovering... (scene count: ' + testMemory.scenes.length + ')</p>';
 
  // repo.js recoverScenesFromBackup call
         await recoverScenesFromBackup(supabaseClient, testMemory.code, testMemory.scenes);
 
         resultDiv.innerHTML = `
-            <p class="success">✅ 복구 완료!</p>
-            <p>성공: ${testMemory.scenes.length}개</p>
-            <p>이제 admin.html을 새로고침하여 확인하세요.</p>
+            <p class="success">✅ Recovery complete!</p>
+            <p>Succeeded: ${testMemory.scenes.length} scenes</p>
+            <p>Please refresh admin.html to verify.</p>
         `;
     } catch (e) {
-        resultDiv.innerHTML = `<p class="error">복구 중 Error occurred: ${e.message}</p>`;
+        resultDiv.innerHTML = `<p class="error">Error during recovery: ${e.message}</p>`;
     }
 }
 

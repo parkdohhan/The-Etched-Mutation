@@ -95,11 +95,11 @@
   // ================================================================
 
   var DEFAULT_LAYER_DEFS = [
-    { id: 'surface', label: '표층', sub: '최근 7일',   windowDays: [0, 7],       thickness: 3.5, opacity: 1.0,  compaction: 1.0 },
-    { id: 'near',    label: '근층', sub: '7–30일',     windowDays: [7, 30],      thickness: 2.8, opacity: 0.90, compaction: 0.82 },
-    { id: 'mid',     label: '중층', sub: '30–90일',    windowDays: [30, 90],     thickness: 2.2, opacity: 0.75, compaction: 0.60 },
-    { id: 'deep',    label: '심층', sub: '90–180일',   windowDays: [90, 180],    thickness: 1.6, opacity: 0.55, compaction: 0.35 },
-    { id: 'bedrock', label: '기반암', sub: '원본 봉인', windowDays: [180, Infinity], thickness: 1.0, opacity: 0.30, compaction: 0.15 },
+    { id: 'surface', label: 'Surface',  sub: 'Last 7 days',     windowDays: [0, 7],       thickness: 3.5, opacity: 1.0,  compaction: 1.0 },
+    { id: 'near',    label: 'Near',     sub: '7–30 days',       windowDays: [7, 30],      thickness: 2.8, opacity: 0.90, compaction: 0.82 },
+    { id: 'mid',     label: 'Mid',      sub: '30–90 days',      windowDays: [30, 90],     thickness: 2.2, opacity: 0.75, compaction: 0.60 },
+    { id: 'deep',    label: 'Deep',     sub: '90–180 days',     windowDays: [90, 180],    thickness: 1.6, opacity: 0.55, compaction: 0.35 },
+    { id: 'bedrock', label: 'Bedrock',  sub: 'Original sealed', windowDays: [180, Infinity], thickness: 1.0, opacity: 0.30, compaction: 0.15 },
   ];
 
   var _config = {
@@ -496,10 +496,10 @@
     });
     _computedLayers.forEach(function (layer, i) {
       var el = document.createElement('div'); el.className = 'strata-fl';
-      var pollStr = layer.pollution > 0.01 ? ' · 오염 ' + (layer.pollution * 100).toFixed(0) + '%' : '';
+      var pollStr = layer.pollution > 0.01 ? ' · contamination ' + (layer.pollution * 100).toFixed(0) + '%' : '';
       var evCount = layer.events.length;
       el.innerHTML = '<div class="strata-fl-n" style="letter-spacing:1px">' + layer.label + '</div>' +
-        '<div class="strata-fl-e" style="font-size:9px;color:var(--ghost)">' + (layer.sub || '') + ' (' + evCount + '건' + pollStr + ')</div>';
+        '<div class="strata-fl-e" style="font-size:9px;color:var(--ghost)">' + (layer.sub || '') + ' (' + evCount + ' events' + pollStr + ')</div>';
       lc.appendChild(el);
       _layerLabels.push({ el: el, pos: new THREE.Vector3(-HALF - 3, computeYBase(i) - layer.thickness / 2, 0) });
     });
@@ -527,8 +527,8 @@
     var totalEvents = _globalEvents.length + _config.bedrockEvents.length;
     var trEl = document.getElementById('strataHudTR');
     if (trEl) {
-      trEl.innerHTML = (_config.title || '기억: —') + '<br>' +
-        totalEvents + '개의 해석 · ' + _computedLayers.length + '개 지층<br>' +
+      trEl.innerHTML = (_config.title || 'Memory: —') + '<br>' +
+        totalEvents + ' interpretations · ' + _computedLayers.length + ' strata<br>' +
         (_config.sealed || '—');
     }
     var totalPoll = 0, totalW = 0;
@@ -605,9 +605,9 @@
     camera.lookAt(lookAt);
     var topness = Math.cos(oa.p), dvEl = document.getElementById('strataDv');
     if (dvEl) {
-      if (topness > 0.7) dvEl.innerHTML = '위에서: 감정 지형<br><span style="color:var(--ghost);font-size:11px">옆으로 돌려서 단층을 보세요</span>';
-      else if (topness < 0.3) dvEl.innerHTML = '측면: 시간 단층<br><span style="color:var(--ghost);font-size:11px">원본이 아래에 묻혀 있습니다</span>';
-      else dvEl.innerHTML = '사이: 지형 + 단층';
+      if (topness > 0.7) dvEl.innerHTML = 'Top view: Emotional terrain<br><span style="color:var(--ghost);font-size:11px">Rotate sideways to see the strata</span>';
+      else if (topness < 0.3) dvEl.innerHTML = 'Side view: Temporal strata<br><span style="color:var(--ghost);font-size:11px">The original is buried beneath</span>';
+      else dvEl.innerHTML = 'Between: Terrain + Strata';
     }
   }
   function animate() {
@@ -796,12 +796,12 @@
       };
     });
 
-    var title = '기억: ' + memoryId.toString().slice(0, 8);
+    var title = 'Memory: ' + memoryId.toString().slice(0, 8);
 
     var result = {
       anchors: anchors,
       title: title,
-      sealed: plays.length + '개의 해석',
+      sealed: plays.length + ' interpretations',
       bedrockEvents: bedrockEvents,
       globalEvents: globalEvents,
     };
