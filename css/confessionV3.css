@@ -18,9 +18,9 @@
 
 .v3-prompt {
   font-family: 'Noto Serif KR', serif;
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   line-height: 1.9;
-  color: #e8e0d4;
+  color: #fff;
   text-align: center;
   white-space: pre-line;
   min-height: 4rem;
@@ -154,12 +154,12 @@
 }
 
 .v3-chip {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #ccc;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #e0e0e0;
   padding: 12px 26px;
   font-family: 'Noto Serif KR', serif;
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   cursor: pointer;
   transition: all 0.3s ease;
   border-radius: 20px;
@@ -167,32 +167,32 @@
 }
 
 .v3-chip:hover {
-  border-color: rgba(255, 255, 255, 0.45);
-  color: #eee;
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.65);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .v3-chip.v3-chip-selected {
-  border-color: rgba(196, 168, 130, 0.8);
-  color: #f0e8da;
-  background: rgba(196, 168, 130, 0.15);
+  border-color: rgba(196, 168, 130, 0.9);
+  color: #fff;
+  background: rgba(196, 168, 130, 0.2);
 }
 
 .v3-chip.v3-chip-void {
-  border-color: rgba(200, 100, 90, 0.4);
-  color: rgba(220, 120, 110, 0.8);
+  border-color: rgba(220, 120, 110, 0.5);
+  color: rgba(230, 140, 130, 0.9);
   font-style: italic;
 }
 
 .v3-chip.v3-chip-void:hover {
-  border-color: rgba(220, 120, 110, 0.6);
-  color: rgba(230, 130, 120, 0.95);
+  border-color: rgba(230, 130, 120, 0.7);
+  color: #eaa;
 }
 
 .v3-chip.v3-chip-void.v3-chip-selected {
-  border-color: rgba(220, 100, 90, 0.7);
-  color: #e08070;
-  background: rgba(200, 80, 70, 0.15);
+  border-color: rgba(230, 110, 100, 0.8);
+  color: #eaa;
+  background: rgba(200, 80, 70, 0.18);
 }
 
 /* Questions */
