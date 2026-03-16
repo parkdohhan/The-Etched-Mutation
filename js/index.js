@@ -5318,13 +5318,11 @@ function initDoor() {
   const title = document.getElementById('doorTitle');
   const subtitle = document.getElementById('doorSubtitle');
   const backBtn = document.getElementById('doorBackBtn');
-  const hint = document.getElementById('doorHint');
   const screen = document.getElementById('doorScreen');
 
   if (title) { title.classList.remove('visible', 'hiding'); }
   if (subtitle) { subtitle.classList.remove('visible', 'hiding'); }
   if (backBtn) { backBtn.classList.remove('visible', 'hiding'); }
-  if (hint) { hint.classList.remove('hiding'); }
   if (screen) { screen.classList.remove('done'); screen.style.cursor = 'pointer'; }
 
   setTimeout(() => { if (title) title.classList.add('visible'); }, 300);
@@ -5339,9 +5337,6 @@ function handleDoorClick() {
   if (doorPhase !== 0) return;
   doorPhase = 1;
   doorStart = performance.now();
-
-  const hint = document.getElementById('doorHint');
-  if (hint) hint.classList.add('hiding');
 
   setTimeout(() => {
     const title = document.getElementById('doorTitle');
