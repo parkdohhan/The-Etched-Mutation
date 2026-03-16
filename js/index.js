@@ -255,29 +255,28 @@ async function initApp() {
         if (typeof playNpcIntro === 'function') playNpcIntro();
     }
 }
-function openPortfolio() {
-    // Using Next.js dev server (port 3000)
-    const portfolioUrl = 'http://localhost:3000';
-    const portfolioWindow = window.open(portfolioUrl, '_blank');
+const PORTFOLIO_BASE_URL = 'http://localhost:3000';
 
-    // Fallback in case server is not running
+function openPortfolio() {
+    const portfolioWindow = window.open(PORTFOLIO_BASE_URL, '_blank');
     if (portfolioWindow) {
         setTimeout(() => {
             try {
-                // Check if new window is still open
-                if (portfolioWindow.closed) {
-                    return;
-                }
-                // Try fetch to check if server is running
-                fetch(portfolioUrl)
-                    .catch(() => {
-                        alert('Portfolio server is not running.\n\nPlease run this in the terminal:\n\ncd portfolio-site\nnpm run dev\n\nOr run start-portfolio-server.sh');
-                    });
-            } catch (e) {
-                // May fail due to CORS etc, ignore
-            }
+                if (portfolioWindow.closed) return;
+                fetch(PORTFOLIO_BASE_URL).catch(() => {
+                    alert('Portfolio server is not running.\n\nPlease run this in the terminal:\n\ncd portfolio-site\nnpm run dev\n\nOr run start-portfolio-server.sh');
+                });
+            } catch (e) {}
         }, 2000);
     }
+}
+
+function openAbout() {
+    window.open(PORTFOLIO_BASE_URL + '/about', '_blank');
+}
+
+function openConcept() {
+    window.open(PORTFOLIO_BASE_URL + '/concept', '_blank');
 }
 function openMypage() { const state = appStore.getState(); if (!state.isLoggedIn) { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('loginUsername').focus() } else { showMypage() } }
 async function showMypage() {
@@ -3101,6 +3100,8 @@ function activateCurrentCarouselItem() {
 
 // global 스코프 function 노출 (onclick property 서 위해)
 window.openPortfolio = openPortfolio;
+window.openAbout = openAbout;
+window.openConcept = openConcept;
 window.openMypage = openMypage;
 window.showModeSelection = showModeSelection;
 window.enterArchive = enterArchive;
@@ -5205,6 +5206,7 @@ function showConfessionHub() {
     cancelAnimationFrame(doorRaf);
     setTimeout(() => initDoor(), 100);
 }
+window.showConfessionHub = showConfessionHub; // 인트로 메뉴 클릭용 — 모듈 후반(5830) 도달 전 에러 시에도 사용 가능하도록 여기서 한 번 할당
 
 // ===== ASCII Door Engine =====
 const DOOR_W = 80, DOOR_H = 45;
