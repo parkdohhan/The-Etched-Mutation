@@ -122,7 +122,17 @@ const USE_LIVE_INTERPRETATIONS_TABLE = false;
 
 async function initApp() {
     var fromDemo = false;
-    try { if (sessionStorage.getItem('skipOpening')) { sessionStorage.removeItem('skipOpening'); fromDemo = true; } } catch (_) {}
+    var demoMemoryId = null;
+    try {
+        if (sessionStorage.getItem('skipOpening')) { sessionStorage.removeItem('skipOpening'); fromDemo = true; }
+        if (sessionStorage.getItem('demoMemoryId')) { demoMemoryId = sessionStorage.getItem('demoMemoryId'); sessionStorage.removeItem('demoMemoryId'); fromDemo = true; }
+    } catch (_) {}
+    var urlParams = new URLSearchParams(window.location.search || '');
+    if (urlParams.get('demo') === '1' && urlParams.get('memory')) {
+        demoMemoryId = urlParams.get('memory');
+        fromDemo = true;
+        if (window.history && window.history.replaceState) window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    }
 
     // memoriesData may not exist (e.g. test environment)
     const memoriesDataArray = window.memoriesData || (typeof memoriesData !== 'undefined' ? memoriesData : []) || [];
@@ -251,8 +261,19 @@ async function initApp() {
         var intro = document.getElementById('introScreen');
         if (op) { op.removeEventListener('click', skipOpening); op.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important'; op.classList.add('hidden'); }
         document.removeEventListener('keydown', handleOpeningKeydown);
-        if (intro) { intro.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important'; intro.classList.add('visible'); intro.classList.remove('hidden'); }
-        if (typeof playNpcIntro === 'function') playNpcIntro();
+        if (demoMemoryId) {
+            if (intro) { intro.classList.add('hidden'); intro.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important'; }
+            enterArchive().then(function() {
+                setTimeout(function() {
+                    var state = appStore.getState();
+                    var idx = state.allMemoriesData.findIndex(function(m) { return m && m.id === demoMemoryId; });
+                    if (idx >= 0) selectMemory(idx);
+                }, 400);
+            });
+        } else {
+            if (intro) { intro.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important'; intro.classList.add('visible'); intro.classList.remove('hidden'); }
+            if (typeof playNpcIntro === 'function') playNpcIntro();
+        }
     }
 }
 const PORTFOLIO_BASE_URL = 'http://localhost:3000';
