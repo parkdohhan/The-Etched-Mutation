@@ -1,0 +1,111 @@
+/* ═══════════════════════════════════════════
+   expInterview.css — scene-main 안에 끼우는 칩 인터뷰
+   기존 sceneViewer 레이아웃 변경 없음
+   ═══════════════════════════════════════════ */
+
+/* 인터view 영역 — choicesContainer 뒤 삽입됨 */
+.exp-interview-zone {
+  padding: 16px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* 각 질문 블록 */
+.exp-iv-prompt {
+  transition: opacity 0.6s ease;
+}
+.exp-iv-prompt.answered {
+  opacity: 0.3;
+}
+
+/* 질문 text */
+.exp-iv-question {
+  color: #d4c8a8;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  font-style: italic;
+  line-height: 1.7;
+  margin-bottom: 12px;
+  white-space: pre-line;
+}
+
+/* 칩 container */
+.exp-iv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* 칩 */
+.exp-iv-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ccc;
+  padding: 10px 20px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  border-radius: 4px;
+}
+.exp-iv-chip:hover {
+  border-color: #d4af37;
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.08);
+}
+.exp-iv-chip.void {
+  color: rgba(200, 150, 140, 0.7);
+  font-style: italic;
+  border-color: rgba(200, 150, 140, 0.3);
+}
+.exp-iv-chip.void:hover {
+  border-color: rgba(200, 150, 140, 0.6);
+  color: rgba(220, 170, 160, 0.9);
+}
+.exp-iv-chip.selected {
+  border-color: #d4af37;
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.1);
+}
+
+/* 복합 선택 confirm button */
+.exp-iv-confirm {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #bbb;
+  padding: 8px 22px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.3s;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: 4px;
+}
+.exp-iv-confirm.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.exp-iv-confirm:hover {
+  border-color: #d4af37;
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.08);
+}
+
+/* 답변 display */
+.exp-iv-answer {
+  color: #d4c8a8;
+  font-size: 0.85rem;
+}
+
+/* bucket message */
+.exp-iv-bucket-msg {
+  color: #b89ab8;
+  font-style: italic;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+

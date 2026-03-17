@@ -1,4 +1,4 @@
-// localStorage 관련 유틸리티 함수들
+// localStorage 유틸리티 function들
 export function getLocalStorage(key) {
     try {
         const item = localStorage.getItem(key);
@@ -29,7 +29,7 @@ export function removeLocalStorage(key) {
     }
 }
 
-// adminMemories 전용 함수들
+// adminMemories only function들
 const ADMIN_MEMORIES_KEY = 'adminMemories';
 
 export function loadAdminMemories() {
@@ -72,7 +72,7 @@ export function importAdminMemoriesJSON(jsonString) {
     try {
         const parsed = JSON.parse(jsonString);
         if (!Array.isArray(parsed)) {
-            console.error('importAdminMemoriesJSON: 파싱 결과가 배열이 아닙니다');
+            console.error('importAdminMemoriesJSON: Parse result is not an array');
             return [];
         }
         saveAdminMemories(parsed);

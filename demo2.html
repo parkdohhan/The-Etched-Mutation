@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Etched Mutation — Memory Contamination</title>
+<link rel="icon" href="data:,">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0e;
+  --text: #e8e4de;
+  --accent: #c4a882;
+  --dim: rgba(232,228,222,0.35);
+  --dim2: rgba(232,228,222,0.18);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#app {
+  width: 100vw; height: 100vh;
+  position: relative;
+}
+
+/* Phase container */
+.phase {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+.phase.active { opacity: 1; pointer-events: all; }
+
+/* ===== Phase 1: Index-style Opening ===== */
+.opening-screen {
+  position: fixed; inset: 0; background: var(--bg); z-index: 3000;
+  display: flex; justify-content: center; align-items: center; flex-direction: column;
+  cursor: pointer;
+}
+.opening-screen.hidden { display: none !important; visibility: hidden; pointer-events: none; z-index: -1; }
+.opening-wave-container {
+  width: 100%; height: 200px; position: relative; margin-bottom: 1rem; margin-top: -200px;
+  transform: scale(1, 0.3); transform-origin: center; opacity: 0.4;
+  transition: transform 0.8s ease-out, opacity 0.8s;
+}
+.opening-wave-container.visible { opacity: 1; }
+.opening-wave-canvas { width: 100%; height: 100%; background: var(--bg); }
+.opening-dialogue {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  color: rgba(255,255,200,0.7); font-size: 1.3rem; line-height: 2; text-align: center;
+  max-width: 600px; padding: 0 2rem; white-space: pre-wrap;
+}
+.opening-dialogue.typing::after { content: '|'; animation: blink 1s infinite; color: rgba(255,255,200,0.8); }
+@keyframes blink { 50% { opacity: 0; } }
+.opening-start-hint {
+  color: rgba(255,255,255,0.4); font-size: 0.85rem; letter-spacing: 0.2em;
+  opacity: 0; transition: opacity 1s; position: absolute; top: 58%; left: 50%; transform: translateX(-50%);
+}
+.opening-start-hint.visible { opacity: 1; }
+#opening { background: var(--bg); }
+#opening canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#openingText { position: relative; z-index: 2; font-size: 1.15rem; color: var(--dim); text-align: center; cursor: pointer; }
+#openingText.ready { color: var(--text); }
+
+/* ===== Phase 2: Monologue ===== */
+#monologue { background: var(--bg); overflow: hidden; }
+#monoNoise {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: 0.15;
+}
+.mono-word {
+  position: absolute;
+  font-size: 0.95rem; font-weight: 300;
+  color: var(--dim);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: color 0.3s, text-shadow 0.3s;
+  user-select: none;
+  white-space: nowrap;
+}
+.mono-word:hover {
+  color: var(--text);
+  text-shadow: 0 0 20px rgba(196,168,130,0.3);
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Phase 1: Index-style Opening -->
+  <div class="opening-screen" id="openingScreen">
+    <div class="opening-wave-container" id="openingWaveContainer">
+      <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
+    </div>
+    <div class="opening-dialogue" id="openingDialogue"></div>
+    <div class="opening-start-hint" id="openingStartHint">[ Press any key or click to begin ]</div>
+  </div>
+
+  <!-- Phase 2: Monologue (click → index play flow) -->
+  <section id="monologue" class="phase">
+    <canvas id="monoNoise"></canvas>
+    <div id="monoWords"></div>
+  </section>
+
+</div>
+
+<script src="data/memories.js"></script>
+<script>
+// =====================================================================
+// Demo 2: Opening + 3 monologues → index (index handles full play flow)
+// =====================================================================
+
+// ── 3 memories from index (memories.js) ──
+var MEMORIES = (window.memoriesData || []).slice(0, 3);
+if (MEMORIES.length === 0) {
+  MEMORIES = [
+    { id: 'e001', code: 'E-001', title: 'The Jacket on the Chair', completed_sentence: 'The jacket on the chair was the last thing he left behind.', scenes: [] },
+    { id: 'e002', code: 'E-002', title: 'The Voicemail I Kept', completed_sentence: 'Her voice on the voicemail is all I have left.', scenes: [] },
+    { id: 'e003', code: 'E-003', title: 'What I Said at the Funeral', completed_sentence: 'I tried to make his funeral funny. His mother didn\'t laugh.', scenes: [] }
+  ];
+}
+var MONOLOGUES = MEMORIES.map(function(m, i) {
+  var x = 0.28 + (i % 3) * 0.22;
+  var y = 0.35 + (i % 2) * 0.22;
+  return {
+    id: m.id, code: m.code, title: m.title,
+    text: m.completed_sentence || m.title,
+    entry: m.completed_sentence || m.title,
+    vad: { v: -0.3, a: 0.1, d: -0.2 },
+    x: x, y: y
+  };
+});
+// ── State ──
+var S = { phase: 'opening' };
+
+// ── Canvas utility ──
+function initCanvas(c) {
+  if (!c || c.offsetWidth===0) return null;
+  const dpr = Math.min(devicePixelRatio||1, 2);
+  c.width = c.offsetWidth * dpr;
+  c.height = c.offsetHeight * dpr;
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return ctx;
+}
+function cW(c) { return c.width / (Math.min(devicePixelRatio||1,2)); }
+function cH(c) { return c.height / (Math.min(devicePixelRatio||1,2)); }
+
+// ── Noise helper ──
+function noise(x,y,z) {
+  const n = Math.sin(x*12.9898+y*78.233+(z||0)*37.719)*43758.5453;
+  return n - Math.floor(n);
+}
+
+// ── Phase switching ──
+function setPhase(id) {
+  document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  S.phase = id;
+}
+
+// ── Typing ──
+function typeText(el, text, speed, done) {
+  let i = 0; el.textContent = '';
+  function run() {
+    if (i < text.length) { el.textContent += text[i++]; setTimeout(run, speed); }
+    else if (done) done();
+  }
+  run();
+}
+
+// =====================================================================
+// Phase 1: Index-style Opening (same as index)
+// =====================================================================
+var demoOpeningSkipped = false;
+var demoOpeningWaveId = null;
+var demoOpeningMouseX = -100, demoOpeningMouseY = -100;
+
+function typeTextEl(el, text, cb) {
+  var i = 0; el.textContent = ''; el.classList.add('typing');
+  function run() {
+    if (i < text.length) { el.textContent += text.charAt(i); i++; setTimeout(run, 50); }
+    else { el.classList.remove('typing'); if (cb) cb(); }
+  }
+  run();
+}
+function typeDotsEl(el, cb) {
+  el.textContent = '\n'; el.classList.add('typing');
+  var dotCount = 0;
+  function addDot() {
+    if (dotCount < 3) { el.textContent += '.'; dotCount++; setTimeout(addDot, 300); }
+    else { el.classList.remove('typing'); if (cb) cb(); }
+  }
+  addDot();
+}
+
+function demoShowHint() {
+  var h = document.getElementById('openingStartHint');
+  if (h) { h.style.opacity = ''; h.classList.add('visible'); }
+}
+function demoShowPart4(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeTextEl(dialogue, '\nCome in.', function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(demoShowHint, 500);
+  });
+}
+function demoShowPart3(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeDotsEl(dialogue, function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(function() { demoShowPart4(dialogue); }, 1200);
+  });
+}
+function demoShowPart2(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeTextEl(dialogue, '\n...you came looking for a memory?', function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(function() { demoShowPart3(dialogue); }, 1200);
+  });
+}
+function demoShowPart1b(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeTextEl(dialogue, '\nYou\'re here. It\'s been a while.', function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(function() { demoShowPart2(dialogue); }, 1200);
+  });
+}
+function demoShowPart1a(dialogue) {
+  if (demoOpeningSkipped) return;
+  typeTextEl(dialogue, '\nHello.', function() {
+    if (demoOpeningSkipped) return;
+    setTimeout(function() { demoShowPart1b(dialogue); }, 1500);
+  });
+}
+
+function runDemoOpeningWave(canvas) {
+  var ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = canvas.offsetHeight * 2;
+  ctx.scale(2, 2);
+  canvas.addEventListener('mousemove', function(e) {
+    var r = canvas.getBoundingClientRect();
+    demoOpeningMouseX = (e.clientX - r.left) * (canvas.width/2 / r.width);
+    demoOpeningMouseY = (e.clientY - r.top) * (canvas.height/2 / r.height);
+  });
+  canvas.addEventListener('mouseleave', function() { demoOpeningMouseX = -100; demoOpeningMouseY = -100; });
+  var w = canvas.width/2, h = canvas.height/2, maxAmp = h * 0.35;
+  var waves = [
+    { c:'rgba(100,130,150,', o:0.10, sp:0.010, amp:Math.min(80,maxAmp), ph:0, fr:0.020, ns:0.8 },
+    { c:'rgba(120,150,170,', o:0.15, sp:0.014, amp:Math.min(70,maxAmp*0.9), ph:0.6, fr:0.025, ns:0.7 },
+    { c:'rgba(130,155,175,', o:0.20, sp:0.018, amp:Math.min(60,maxAmp*0.8), ph:1.2, fr:0.030, ns:0.6 },
+    { c:'rgba(140,165,185,', o:0.26, sp:0.022, amp:Math.min(55,maxAmp*0.7), ph:1.9, fr:0.035, ns:0.5 },
+    { c:'rgba(155,175,195,', o:0.33, sp:0.026, amp:Math.min(45,maxAmp*0.6), ph:2.6, fr:0.040, ns:0.4 },
+    { c:'rgba(170,190,205,', o:0.42, sp:0.030, amp:Math.min(35,maxAmp*0.5), ph:3.3, fr:0.045, ns:0.3 },
+    { c:'rgba(190,205,215,', o:0.52, sp:0.034, amp:Math.min(28,maxAmp*0.4), ph:4.0, fr:0.050, ns:0.25 },
+  ];
+  var t = 0;
+  function tick() {
+    ctx.fillStyle = 'rgba(10,10,12,0.92)';
+    ctx.fillRect(0,0,w,h);
+    var cy = h/2;
+    waves.forEach(function(wave) {
+      ctx.beginPath(); ctx.lineWidth = 1.2;
+      for (var x = 0; x < w; x++) {
+        var baseY = cy + Math.sin(x*wave.fr + t*wave.sp + wave.ph)*wave.amp
+          + Math.sin(x*wave.fr*0.5 + t*wave.sp*0.6 + wave.ph*1.4)*(wave.amp*0.4)
+          + Math.sin(x*wave.fr*2.3 + t*wave.sp*1.3)*(wave.amp*0.15)
+          + Math.sin(x*wave.fr*0.3 + t*wave.sp*0.4 + wave.ph*2.1)*(wave.amp*0.25);
+        var noise = Math.sin(x*0.003+t*0.02)*Math.cos(x*0.007+t*0.015)*wave.ns;
+        var y = baseY + wave.amp*noise*0.4;
+        if (demoOpeningMouseX >= 0 && demoOpeningMouseY >= 0) {
+          var dx = Math.abs(x - demoOpeningMouseX), dy = Math.abs(baseY - demoOpeningMouseY);
+          var dist = Math.sqrt(dx*dx + dy*dy);
+          var inf = Math.pow(Math.max(0, 1 - dist/200), 3);
+          if (inf > 0) y += (demoOpeningMouseY - baseY)*inf*1.8 + Math.sin(dx*0.05)*inf*15;
+        }
+        y = Math.max(2, Math.min(h-2, y));
+        (x===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+      }
+      ctx.strokeStyle = wave.c + wave.o + ')';
+      ctx.stroke();
+    });
+    t += 0.5;
+    if (!demoOpeningSkipped) demoOpeningWaveId = requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+function finishDemoOpening() {
+  if (demoOpeningSkipped) return;
+  demoOpeningSkipped = true;
+  if (demoOpeningWaveId) { cancelAnimationFrame(demoOpeningWaveId); demoOpeningWaveId = null; }
+  var openingScreen = document.getElementById('openingScreen');
+  if (openingScreen) {
+    openingScreen.removeEventListener('click', finishDemoOpening);
+    openingScreen.classList.add('hidden');
+    openingScreen.style.cssText = 'display:none !important; visibility:hidden; pointer-events:none; z-index:-1;';
+  }
+  document.removeEventListener('keydown', demoHandleOpeningKeydown);
+  startMonologue();
+}
+function demoHandleOpeningKeydown(e) {
+  if (demoOpeningSkipped) return;
+  var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+  if (tag === 'input' || tag === 'textarea') return;
+  e.preventDefault();
+  finishDemoOpening();
+}
+
+function startOpening() {
+  var openingScreen = document.getElementById('openingScreen');
+  var waveContainer = document.getElementById('openingWaveContainer');
+  var canvas = document.getElementById('openingWaveCanvas');
+  var dialogue = document.getElementById('openingDialogue');
+  if (!openingScreen || !canvas) return;
+  openingScreen.classList.remove('hidden');
+  openingScreen.style.display = 'flex';
+  openingScreen.style.visibility = 'visible';
+  openingScreen.style.pointerEvents = 'auto';
+  openingScreen.style.zIndex = '3000';
+  if (waveContainer) { waveContainer.style.transform = 'scale(5, 1)'; waveContainer.style.opacity = '1'; waveContainer.classList.add('visible'); }
+  runDemoOpeningWave(canvas);
+  setTimeout(function() {
+    if (demoOpeningSkipped) return;
+    if (dialogue) demoShowPart1a(dialogue);
+  }, 2500);
+  openingScreen.addEventListener('click', finishDemoOpening);
+  document.addEventListener('keydown', demoHandleOpeningKeydown);
+}
+
+// =====================================================================
+// Phase 2: Monologue
+// =====================================================================
+let monoRAF = null;
+
+function startMonologue() {
+  setPhase('monologue');
+  var container = document.getElementById('monoWords');
+  var noiseCanvas = document.getElementById('monoNoise');
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Background noise
+  const nCtx = initCanvas(noiseCanvas);
+  if (nCtx) {
+    const nw = cW(noiseCanvas), nh = cH(noiseCanvas);
+    let nt = 0;
+    function noiseTick() {
+      nCtx.fillStyle = 'rgba(10,10,12,0.95)';
+      nCtx.fillRect(0,0,nw,nh);
+      for (let i = 0; i < 3; i++) {
+        nCtx.beginPath(); nCtx.lineWidth = 0.8;
+        nCtx.strokeStyle = `rgba(100,120,140,${0.04+i*0.02})`;
+        for (let x = 0; x < nw; x += 2) {
+          const y = nh/2 + Math.sin(x*0.008+nt*0.008+i*2)*30
+            + Math.sin(x*0.003+nt*0.005+i)*20
+            + (noise(x*0.01,nt*0.01,i)-0.5)*40;
+          x===0 ? nCtx.moveTo(x,y) : nCtx.lineTo(x,y);
+        }
+        nCtx.stroke();
+      }
+      nt += 0.3;
+      monoRAF = requestAnimationFrame(noiseTick);
+    }
+    noiseTick();
+  }
+
+  // Place monologue words
+  const words = MONOLOGUES.map(m => {
+    const div = document.createElement('div');
+    div.className = 'mono-word';
+    div.textContent = m.text;
+    div.style.left = `${m.x * 100}%`;
+    div.style.top = `${m.y * 100}%`;
+    div.style.transform = 'translate(-50%, -50%)';
+    container.appendChild(div);
+    return { ...m, el: div };
+  });
+
+  // Float animation
+  let ft = 0;
+  function floatTick() {
+    ft += 0.02;
+    words.forEach((m, i) => {
+      const freq = 0.3 + Math.abs(m.vad.a) * 0.8;
+      const dy = Math.sin(ft + i*1.7) * 8 * freq;
+      const dx = Math.cos(ft*0.7 + i*2.1) * 3;
+      m.el.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    });
+    if (S.phase === 'monologue') requestAnimationFrame(floatTick);
+  }
+  floatTick();
+
+  words.forEach(function(m) {
+    m.el.addEventListener('click', function() {
+      if (monoRAF) { cancelAnimationFrame(monoRAF); monoRAF = null; }
+      try { sessionStorage.setItem('demoMemoryId', m.id); } catch (_) {}
+      window.location.href = '/index.html?demo=1&memory=' + encodeURIComponent(m.id);
+    });
+  });
+}
+
+// ── Boot ──
+document.addEventListener('DOMContentLoaded', startOpening);
+</script>
+</body>
+</html>

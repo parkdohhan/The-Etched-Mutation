@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Etched Mutation — Demo</title>
+  <link rel="icon" href="data:,">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/demo.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<div id="demoApp">
+
+  <!-- STEP 1: Opening (same structure as index opening sequence, demo text) -->
+  <section id="phaseOpening" class="demo-phase active demo-opening-wrap">
+    <div class="opening-wave-container visible" id="demoOpeningWaveContainer">
+      <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
+    </div>
+    <div class="opening-text" id="openingText"></div>
+  </section>
+
+  <!-- STEP 2: Monologue drift -->
+  <section id="phaseMonologue" class="demo-phase">
+    <canvas id="monologueCanvas"></canvas>
+    <div id="monologueParticles"></div>
+    <canvas id="monologuePreviewCanvas"></canvas>
+  </section>
+
+  <!-- STEP 3: Memory entry -->
+  <section id="phaseEntry" class="demo-phase">
+    <div class="entry-terrain-hint" id="entryTerrainHint"></div>
+    <div class="entry-first-line" id="entryFirstLine"></div>
+  </section>
+
+  <!-- STEP 4-5: Main play -->
+  <section id="phasePlay" class="demo-phase">
+    <div class="play-wave-panel" id="playWavePanel">
+      <canvas id="playWaveCanvas"></canvas>
+      <div class="wave-status" id="waveStatus"></div>
+    </div>
+
+    <div class="play-content-panel" id="playContentPanel">
+      <div class="scene-text" id="demoSceneText"></div>
+      <div class="scene-input-area" id="sceneInputArea">
+        <div class="input-prompt" id="inputPrompt"></div>
+        <textarea id="sceneTextInput" rows="2" maxlength="120"></textarea>
+        <button id="sceneSubmitBtn">→</button>
+      </div>
+      <div class="resolve-overlay hidden" id="resolveOverlay">
+        <span class="resolve-text" id="resolveText">The memory is responding...</span>
+      </div>
+    </div>
+
+    <div class="play-terrain-panel" id="playTerrainPanel">
+      <canvas id="terrainCanvas2D"></canvas>
+    </div>
+    <div class="play-footer" id="playFooter">
+      <span>Crisis Hotline: 988 Suicide & Crisis Lifeline | Crisis Text Line: Text HOME to 741741</span>
+    </div>
+  </section>
+
+  <!-- STEP 6: Reveal -->
+  <section id="phaseReveal" class="demo-phase">
+    <div class="reveal-header" id="revealHeader"></div>
+    <div class="reveal-scenes" id="revealScenes"></div>
+    <button id="revealNextBtn">To the terrain</button>
+  </section>
+
+  <!-- STEP 7: Terrain -->
+  <section id="phaseTerrain" class="demo-phase">
+    <div id="strataViewContainer"></div>
+    <div class="terrain-caption" id="terrainCaption"></div>
+    <a href="index.html" class="demo-cta" id="demoCta">
+      Seal my own memory first
+    </a>
+  </section>
+
+</div>
+
+<script src="js/ui/strataView.js"></script>
+<script type="module" src="js/demo/demoFlow.js"></script>
+</body>
+</html>

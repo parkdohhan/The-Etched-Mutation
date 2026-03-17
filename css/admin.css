@@ -536,7 +536,7 @@ body::before {
         grid-template-columns: 1fr;
     }
 }
-/* 통합 세션 목록 스타일 */
+/* 통합 session list 스타일 */
 .filter-buttons {
     display: flex;
     gap: 0.5rem;
@@ -645,7 +645,7 @@ body::before {
     font-size: 0.8rem;
     color: rgba(255,255,255,0.5);
 }
-/* 세션 상세 스타일 */
+/* session 상세 스타일 */
 .detail-header {
     margin-bottom: 2rem;
 }
@@ -810,5 +810,167 @@ body::before {
 }
 .void-checkboxes input[type="checkbox"] {
     margin-right: 0.5rem;
+}
+
+/* contamination 버전 섹션 */
+.contamination-section {
+    margin-top: 15px;
+    border-top: 1px solid rgba(196, 168, 130, 0.2);
+    padding-top: 10px;
+}
+
+.toggle-contamination-btn {
+    background: transparent;
+    border: 1px solid rgba(196, 168, 130, 0.3);
+    color: var(--text-muted);
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'Cormorant Garamond', serif;
+    transition: all 0.3s;
+}
+
+.toggle-contamination-btn:hover {
+    border-color: var(--accent-memory);
+    color: var(--accent-memory);
+}
+
+.contamination-fields {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 2px solid var(--accent-memory);
+}
+
+.contamination-fields .editor-input-group {
+    margin-bottom: 10px;
+}
+
+.contamination-fields .editor-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.contamination-fields .editor-textarea {
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid rgba(196, 168, 130, 0.2);
+    color: var(--text-primary);
+    padding: 8px;
+    font-size: 13px;
+    resize: vertical;
+}
+
+/* author_note */
+#authorNote {
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid rgba(196, 168, 130, 0.2);
+    color: var(--text-primary);
+    padding: 8px;
+    resize: vertical;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* status 드롭다운 */
+#memoryStatus {
+    width: 100%;
+    background: var(--bg-deep);
+    border: 1px solid rgba(196, 168, 130, 0.2);
+    color: var(--text-primary);
+    padding: 8px;
+    font-size: 14px;
+    font-family: 'Noto Serif KR', serif;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+#memoryStatus:hover {
+    border-color: var(--accent-memory);
+}
+
+#memoryStatus:focus {
+    outline: none;
+    border-color: var(--accent-memory);
+}
+
+#memoryStatus option {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+}
+
+/* TEM contamination (contamination) 섹션 */
+.contamination-section {
+    margin-top: 1rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid rgba(196, 168, 130, .15);
+}
+.toggle-contamination-btn {
+    background: none;
+    border: none;
+    color: var(--accent-memory);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0.25rem 0;
+}
+.toggle-contamination-btn:hover {
+    text-decoration: underline;
+}
+.contamination-fields {
+    margin-top: 0.75rem;
+}
+.contamination-direction-row {
+    margin-bottom: 0.75rem;
+}
+.contamination-direction-row .editor-label {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+.contamination-direction {
+    width: 100%;
+    max-width: 240px;
+}
+.contamination-stage-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+.contamination-stage-row .editor-textarea {
+    flex: 1;
+    min-width: 200px;
+}
+.contamination-stage-row .stage3-style-select {
+    width: auto;
+    min-width: 100px;
+}
+.contamination-stage-3-controls {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.contamination-stage-3-controls .stage3-style-select {
+    width: auto;
+    min-width: 100px;
+}
+.contamination-regen-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    background: var(--bg-deep);
+    border: 1px solid rgba(196, 168, 130, .3);
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.contamination-regen-btn:hover {
+    border-color: var(--accent-memory);
+    color: var(--accent-memory);
+}
+.contamination-regen-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
     </style>

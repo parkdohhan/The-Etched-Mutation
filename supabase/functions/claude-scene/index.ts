@@ -1,14 +1,12 @@
 // --- CORS + Claude API + Emotion Analysis 버전 --- //
+// 인증: 익명 허용 (anon key로 호출 가능)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS"
-};
+import { getCorsHeaders } from "../_shared/auth.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // ---- CORS preflight 처리 ----
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -27,76 +25,276 @@ serve(async (req) => {
       });
     }
 
+    // ---- V3 타입 처리 ----
+    
+    // sensory_analysis 타입
+    if (body.type === 'sensory_analysis') {
+      const text = body.text || '';
+      const prompt = `사용자가 기억 속 감각을 묘사한 텍스트를 분석하세요.
+
+입력: "${text}"
+
+감각 양식 분류:
+- "visual": 표정, 색채, 공간, 빛/어둠
+- "olfactory": 냄새, 맛 연상
+- "auditory": 목소리, 환경음, 음악
+- "somatic": 신체 감각, 온도, 긴장, 통증
+- "narrative": 3인칭 재전, 간접 회상
+
+가장 생생하게 묘사된 감각이 지배적 양식. 냄새 언급 시 olfactory 우선.
+
+JSON만 출력:
+{ "modality": "visual|olfactory|auditory|somatic|narrative", "content": "핵심 감각 묘사 1~2문장", "weight": 1.0, "all_modalities": { "visual": 0.0, "olfactory": 0.0, "auditory": 0.0, "somatic": 0.0, "narrative": 0.0 } }`;
+
+      const systemPrompt = `너는 감각 분석 AI야. 텍스트에서 가장 생생한 감각 양식을 정확히 분류해야 해. JSON 형식을 엄격히 지켜줘.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 512,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let text = data.content[0].text;
+          text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return new Response(JSON.stringify(parsed), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Sensory analysis error:', e);
+      }
+      
+      // 폴백
+      return new Response(JSON.stringify({
+        modality: 'narrative',
+        content: text.substring(0, 100),
+        weight: 1.0,
+        all_modalities: { visual: 0, olfactory: 0, auditory: 0, somatic: 0, narrative: 1.0 }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    
+    // situation_analysis 타입
+    if (body.type === 'situation_analysis') {
+      const text = body.text || '';
+      const anchor = body.sensory_anchor || {};
+      const prompt = `기억 속 상황을 분석하세요.
+
+감각 앵커: ${anchor.modality || '?'} "${anchor.content || ''}"
+상황 서술: "${text}"
+
+추출 대상:
+1. temporal: 시간적 맥락 (과거/현재/반복)
+2. spatial: 공간적 맥락 (실내/실외/이동중/불명)
+3. actors: 등장인물 배열 (역할만, 이름 없이)
+4. role: 기록자의 역할 (actor/observer/victim)
+
+JSON만 출력:
+{ "temporal": "...", "spatial": "...", "actors": ["..."], "role": "actor|observer|victim" }`;
+
+      const systemPrompt = `너는 상황 분석 AI야. 텍스트에서 시간, 공간, 등장인물, 역할을 정확히 추출해야 해. JSON 형식을 엄격히 지켜줘.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 512,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let text = data.content[0].text;
+          text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return new Response(JSON.stringify(parsed), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Situation analysis error:', e);
+      }
+      
+      // 폴백
+      return new Response(JSON.stringify({
+        temporal: 'unknown',
+        spatial: 'unknown',
+        actors: [],
+        role: 'unknown'
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    
+    // generate_questions 타입
+    if (body.type === 'generate_questions') {
+      const d = body.confession_data || {};
+      const emos = (d.emotions || []).join(', ') || 'unknown';
+      const prompt = `기록자 Confession 데이터:
+- 감각: ${d.sensory_anchor?.modality || '?'} "${d.sensory_anchor?.content || ''}"
+- 상황: "${d.situation_raw || ''}"
+- 신체: ${d.body_cluster || '?'} (${(d.body_responses || []).join(', ')})
+- 감정: ${emos}
+- 귀인: ${d.reason || '?'}
+- 대상: ${d.target || '?'}
+
+5가지 카테고리 중 적합한 2~4개 질문 생성:
+A. spotlight — 수치심+타인 대상: "걔들이 알아챘을까?"
+B. counterfactual — self_blame+후회: "그때 다르게 했으면?"
+C. attribution_error — self_blame+죄책감: "정말 내 잘못이었을까?"
+D. reality_check — 모순/혼란: "정말 그렇게 된 거 맞아?"
+E. perspective_shift — 특정 대상: "걔는 나를 어떻게 봤을까?"
+
+한국어, 구어체, 짧게. 상투적 질문 금지.
+
+JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|attribution_error|reality_check|perspective_shift" }] }`;
+
+      const systemPrompt = `임상심리 기반 자기문답 생성 AI. JSON만 출력.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 512,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let text = data.content[0].text;
+          text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            return new Response(JSON.stringify(parsed), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Question generation error:', e);
+      }
+      
+      // 폴백 질문 배열
+      return new Response(JSON.stringify({
+        questions: [
+          { text: '그게 정말 그렇게 된 거 맞아?', category: 'reality_check' },
+          { text: '그때 다르게 했으면 어떻게 됐을까?', category: 'counterfactual' }
+        ]
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     // ---- 감정 분석 타입 처리 ----
     if (body.type === 'emotion_analysis') {
       const emotionText = body.emotion || '';
       const reasonText = body.reason || '';
+      const anchorEmotions = body.anchorEmotions || [];
       
-      console.log('감정 분석 요청:', { emotionText, reasonText });
+      console.log('감정 및 이유 분석 요청:', { emotionText, reasonText, anchorEmotions });
 
-      const prompt = `다음 감정 표현을 분석하고 변환해줘.
+      // 감정 앵커 목록 동적 생성
+      const defaultAnchors = 'fear, sadness, anger, joy, hope, relief, longing, guilt, isolation, numbness, shame, peace, love, gratitude';
+      const emotionList = anchorEmotions && anchorEmotions.length > 0
+        ? anchorEmotions.join(', ')
+        : defaultAnchors;
+
+      // 프롬프트 수정: 이유 분석 규칙 추가 + 동적 앵커
+      const prompt = `다음 감정 표현과 그 이유를 분석해줘.
 
 입력된 감정: "${emotionText}"
 입력된 이유: "${reasonText}"
 
-**중요: 한국어 감정 표현을 직관적으로 매핑해줘. 명시적 감정 단어가 있으면 그 단어에 우선순위를 둬.**
+**분석 목표 1: 감정 분석 (동적 앵커 기반)**
+다음 감정 앵커들에 대한 근접도를 0.0~1.0으로 측정하세요: ${emotionList}
 
-**분석 대상:**
-- 감정 필드("${emotionText}")와 이유 필드("${reasonText}") **모두를 분석**해줘.
-- 어느 필드에 감정 표현이 있든 상관없이, 명시적 감정 단어가 있으면 그 감정에 높은 수치(0.7 이상)를 부여해줘.
-- **특히 이유 필드에 감정 표현이 있으면 반드시 인식해줘.** 예: 이유가 "너무 무서웠어"이면 fear를 0.7 이상으로 설정.
-- "무서웠어", "무섭다", "두려웠어", "겁났어" 등의 단어가 **어느 필드에 있든** fear를 높게 설정해줘.
+- 입력된 텍스트에서 해당 감정이 느껴지면 0.5 이상
+- 강하게 느껴지면 0.7 이상
+- 매핑에 없는 자유 앵커도 맥락상 판단하여 수치화
+- 명시적 감정 단어가 있으면 해당 감정은 절대 0이 아님!
+- "무서웠어", "두려웠어", "공포", "무섭다" → fear를 0.7 이상으로
+- "슬펐어", "울었어", "슬프다" → sadness를 0.7 이상으로
+- "그리웠어", "보고싶었어" → longing을 0.7 이상으로
+- "화났어", "열받았어", "분노" → anger를 0.7 이상으로
+- "죄책감", "미안했어" → guilt를 0.7 이상으로
+- 명시적 감정 단어가 있으면 해당 감정은 절대 0이 아님!
 
-감정 매핑 규칙:
-- fear (공포/두려움): "무서웠어", "너무 무서웠어", "공포스러웠어", "두려웠어", "겁났어", "무섭다", "두렵다", "공포", "두려움", "겁", "무서움" 등 → fear 높게 (0.7 이상)
-  * 예시: 이유 필드에 "너무 무서웠어"가 있으면 → fear: 0.7 이상 (절대 0이 아님!)
-- sadness (슬픔): "슬펐어", "울었어", "비통했어", "서러웠어", "슬프다", "우울하다", "비통하다", "서럽다", "슬픔", "비애" 등 → sadness 높게 (0.7 이상)
-- longing (그리움): "그리웠어", "보고싶었어", "그립다", "보고싶다", "그리움", "향수", "사모함" 등 → longing 높게 (0.7 이상)
-- anger (분노): "화났어", "분노했어", "열받았어", "짜증났어", "화나다", "분노하다", "열받다", "짜증나다", "분노", "화" 등 → anger 높게 (0.7 이상)
-- guilt (죄책감): "죄책감 들었어", "미안했어", "후회했어", "죄송했어", "죄책감", "미안", "후회", "죄송", "자책" 등 → guilt 높게 (0.7 이상)
+**분석 목표 2: 이유 벡터(Reason Vector) 추출**
+입력된 '이유' 텍스트를 분석하여 다음 3가지 필드를 도출해줘.
 
-**분석 원칙 (절대 규칙):**
-1. **감정 필드("${emotionText}")와 이유 필드("${reasonText}") 모두를 분석해줘.** 어느 필드에 감정 표현이 있든 상관없이, 명시적 감정 단어가 있으면 그 감정에 높은 수치(0.7 이상)를 부여해.
-2. **"무서웠어", "좀 무서웠어", "너무 무서웠어" 등의 단어가 있으면 → fear를 0.7 이상으로 설정 (절대 0이 아님!)**
-3. 맥락보다 직접적 표현을 우선해. 예: "무서웠어", "좀 무서웠어", "너무 무서웠어"가 있으면 fear를 높게 설정.
-4. 여러 감정이 섞여 있으면 각각 적절히 반영하되, 가장 강한 감정이 0.7 이상이 되도록 해.
-5. 감정 단어가 없으면 맥락을 분석하되, 명시적 단어보다는 낮은 수치(0.3-0.5)로 설정.
-6. **특히 주의:** 이유 필드("${reasonText}")에 "무서웠어", "좀 무서웠어", "너무 무서웠어" 등의 단어가 있으면 → fear를 0.7 이상으로 설정 (절대 0이 아님!)
+1. attribution (귀인 방향 - 누구 탓인가?)
+   - "self_blame": 내 탓, 내가 부족해서, 내가 잘못해서
+   - "other_blame": 타인 탓, 그 사람 때문에, 엄마/아빠/친구가
+   - "fate_blame": 운명, 어쩔 수 없는 상황, 우연히, 그냥 그렇게 됨
+   - (판단 불가 시 가장 가까운 것 선택)
 
-두 가지를 해줘:
-1. 이 감정을 2-3문장의 서정적이고 감각적인 문장으로 변환해줘. 원문을 그대로 반복하지 말고, 체험자가 느낄 수 있는 감각적 표현으로 바꿔줘.
-2. 감정을 수치로 분석해줘. 위의 매핑 규칙을 엄격히 따르고, 명시적 감정 단어가 있으면 반드시 해당 감정을 0.7 이상으로 설정해.
+2. core_fear (핵심 두려움 - 무엇이 가장 두려운가?)
+   - "abandonment": 버림받음, 혼자 남음, 떠날까봐, 고립
+   - "death": 죽음, 소멸, 끝남, 다침
+   - "rejection": 거절, 미움받음, 비난, 인정받지 못함
+   - "failure": 실패, 못함, 실수, 능력 부족
+   - (해당없으면 "none" 또는 가장 문맥에 맞는 것)
 
-반드시 아래 JSON 형식으로만 응답해 (다른 텍스트 없이 순수 JSON만):
+3. is_void (공백 여부)
+   - true: "모르겠어", "말하고 싶지 않아", "기억 안 나", 또는 빈 입력("")
+   - false: 구체적인 이유가 있는 경우
+
+**응답 형식 (반드시 JSON만 출력):**
 {
-  "generatedEmotion": "변환된 감정 표현 (원문과 달라야 함)",
+  "generatedEmotion": "변환된 감정 표현 (2-3문장)",
   "analysis": {
-    "base": {
-      "fear": 0.0,
-      "sadness": 0.0,
-      "anger": 0.0,
-      "joy": 0.0,
-      "longing": 0.0,
-      "guilt": 0.0
-    },
-    "detailed": ["세부감정1", "세부감정2"],
+    "base": { 각 앵커에 대한 수치 (0.0~1.0) - 요청된 앵커 목록의 모든 감정 포함 },
+    "detailed": [],
     "intensity": 0.5,
     "confidence": 0.8
+  },
+  "reason_analysis": {
+    "attribution": "self_blame", 
+    "core_fear": "abandonment",
+    "is_void": false
   }
 }
 
-각 감정 수치는 0부터 1 사이의 소수점 숫자로. 명시적 감정 단어가 있으면 해당 감정은 최소 0.7 이상이어야 해.`;
+**중요**: base 객체에는 요청된 앵커 목록(${emotionList})의 모든 감정에 대해 수치를 포함해야 합니다.`;
 
-      const systemPrompt = `너는 한국어 감정 분석 전문가야. 사용자가 입력한 텍스트에서 명시적 감정 단어를 찾아서 해당 감정에 높은 수치를 부여하는 것이 가장 중요해.
-
-**절대 규칙:**
-- "무서웠어", "무섭다", "두려웠어", "겁났어" 등의 단어가 **어느 필드에 있든** (감정 필드든 이유 필드든) → fear를 0.7 이상으로 설정
-- "슬펐어", "울었어", "비통했어" 등의 단어가 있으면 → sadness를 0.7 이상으로 설정
-- "화났어", "분노했어", "열받았어" 등의 단어가 있으면 → anger를 0.7 이상으로 설정
-- "그리웠어", "보고싶었어" 등의 단어가 있으면 → longing을 0.7 이상으로 설정
-- "죄책감", "미안했어", "후회했어" 등의 단어가 있으면 → guilt를 0.7 이상으로 설정
-
-**중요:** 명시적 감정 단어가 있으면 반드시 해당 감정을 0.7 이상으로 설정해야 해. 0으로 설정하면 안 돼!`;
+      const systemPrompt = `너는 심리 분석 AI야. 텍스트에서 감정의 종류뿐만 아니라, 그 감정의 '원인'이 어디로 향하는지(귀인), 그리고 기저에 깔린 근원적 공포(Core Fear)가 무엇인지 정확하게 분류해야 해. JSON 형식을 엄격히 지켜줘.`;
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -116,13 +314,32 @@ serve(async (req) => {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Claude API 에러 (emotion):', errorData);
+        // 기본 감정 벡터 생성 (앵커 기반)
+        const defaultBase = {};
+        if (anchorEmotions && anchorEmotions.length > 0) {
+          anchorEmotions.forEach(anchor => {
+            defaultBase[anchor.toLowerCase()] = 0;
+          });
+        } else {
+          defaultBase.fear = 0;
+          defaultBase.sadness = 0.3;
+          defaultBase.anger = 0;
+          defaultBase.joy = 0;
+          defaultBase.longing = 0.2;
+          defaultBase.guilt = 0;
+        }
         return new Response(JSON.stringify({
           generatedEmotion: `그 순간, ${emotionText || '알 수 없는'} 감정이 밀려왔다.`,
           analysis: {
-            base: { fear: 0, sadness: 0.3, anger: 0, joy: 0, longing: 0.2, guilt: 0 },
+            base: defaultBase,
             detailed: [],
             intensity: 0.5,
             confidence: 0.3
+          },
+          reason_analysis: {
+            attribution: "fate_blame",
+            core_fear: "none",
+            is_void: true
           }
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -154,14 +371,32 @@ serve(async (req) => {
       } catch (e) {
         console.error('JSON parse error:', e, 'text:', text);
         
-        // 파싱 실패 시 기본값
+        // 파싱 실패 시 기본값 (앵커 기반)
+        const defaultBase = {};
+        if (anchorEmotions && anchorEmotions.length > 0) {
+          anchorEmotions.forEach(anchor => {
+            defaultBase[anchor.toLowerCase()] = 0;
+          });
+        } else {
+          defaultBase.fear = 0;
+          defaultBase.sadness = 0.3;
+          defaultBase.anger = 0;
+          defaultBase.joy = 0;
+          defaultBase.longing = 0.2;
+          defaultBase.guilt = 0;
+        }
         return new Response(JSON.stringify({
           generatedEmotion: `그 순간, ${emotionText || '알 수 없는'} 감정이 밀려왔다.`,
           analysis: {
-            base: { fear: 0, sadness: 0.3, anger: 0, joy: 0, longing: 0.2, guilt: 0 },
+            base: defaultBase,
             detailed: [],
             intensity: 0.5,
             confidence: 0.3
+          },
+          reason_analysis: {
+            attribution: "fate_blame",
+            core_fear: "none",
+            is_void: true
           }
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" }
