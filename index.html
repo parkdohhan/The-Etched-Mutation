@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/expInterview.css?v=3">
     <link rel="stylesheet" href="css/confessionV3.css?v=3">
+    <link rel="stylesheet" href="css/main-menu.css">
 </head>
 <body>
     <div class="opening-screen" id="openingScreen">
@@ -23,44 +24,66 @@
     <audio id="openingSound" preload="auto">
         <source src="sounds/ambient-opening.mp3" type="audio/mpeg">
     </audio>
-    <div class="intro-screen" id="introScreen">
-        <div class="intro-center-wrapper">
-        <h1 class="intro-logo">THE ETCHED MUTATION</h1>
-        <p class="intro-subtitle">Immortality of Memory</p>
-            
-            <!-- 3D Carousel Navigation -->
-            <div class="carousel-3d-container">
-                <div class="carousel-3d-wrapper" id="carousel3DWrapper">
-                    <div class="carousel-item" data-index="0" data-action="enterArchive">
-                        <div class="carousel-item-content">
-                            <div class="carousel-item-label">ARCHIVE</div>
+    <div class="intro-screen main-menu-intro" id="introScreen">
+        <div class="main-menu-wrap">
+            <div class="bg-image"></div>
+            <div class="left-gradient"></div>
+            <div class="grid-lines">
+                <div class="vertical-line"></div>
+                <div class="horizontal-line"></div>
+            </div>
+            <div class="main-content">
+                <div class="main-sidebar">
+                    <div class="main-header">
+                        <h1>THE ETCHED<br><span>MUTATION</span></h1>
+                        <div class="title-flare">
+                            <div class="bokeh-flare-inner">
+                                <div class="flare-streak-base"></div>
+                                <div class="flare-glow-red"></div>
+                                <div class="flare-block-a"></div>
+                                <div class="flare-block-b"></div>
+                                <div class="flare-block-c"></div>
+                                <div class="flare-block-d"></div>
+                                <div class="flare-line"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="carousel-item" data-index="1" data-action="showConfessionHub">
-                        <div class="carousel-item-content">
-                            <div class="carousel-item-label">RECORD</div>
+                    <div class="menu-list" id="mainMenuList">
+                        <div class="menu-item active" data-menu-id="archive" data-action="enterArchive">
+                            <span class="menu-label">ARCHIVE</span>
+                        </div>
+                        <div class="menu-item inactive" data-menu-id="record" data-action="showConfessionHub">
+                            <span class="menu-label">RECORD</span>
+                        </div>
+                        <div class="menu-item inactive" data-menu-id="profile" data-action="openMypage">
+                            <span class="menu-label">PROFILE</span>
+                        </div>
+                        <div class="menu-item inactive" data-menu-id="portfolio" data-action="openPortfolio">
+                            <span class="menu-label">PORTFOLIO</span>
                         </div>
                     </div>
-                    <div class="carousel-item" data-index="2" data-action="openMypage">
-                        <div class="carousel-item-content">
-                            <div class="carousel-item-label">MYPAGE</div>
-                        </div>
-                    </div>
-                    <div class="carousel-item" data-index="3" data-action="openPortfolio">
-                        <div class="carousel-item-content">
-                            <div class="carousel-item-label">PORTFOLIO</div>
-                        </div>
+                    <div class="main-description" id="mainMenuDescription">
+                        <div class="description-text active" data-for="archive">Browse the fragments of the past. Review the etched history.</div>
+                        <div class="description-text" data-for="record">Document new memories and leave traces of mutation.</div>
+                        <div class="description-text" data-for="profile">Manage personal profile and synchronization settings.</div>
+                        <div class="description-text" data-for="portfolio">Explore the origin and architect of The Etched Mutation.</div>
                     </div>
                 </div>
-                
-                <!-- Navigation Arrows -->
-                <button class="carousel-nav carousel-nav-prev" id="carouselPrev" aria-label="Previous">
-                    <span class="carousel-nav-icon">‹</span>
-                </button>
-                <button class="carousel-nav carousel-nav-next" id="carouselNext" aria-label="Next">
-                    <span class="carousel-nav-icon">›</span>
-                </button>
-        </div>
+                <div class="main-right-content">
+                    <div class="vertical-accent"></div>
+                </div>
+            </div>
+            <div class="bokeh-flare" id="mainBokehFlare">
+                <div class="bokeh-flare-inner">
+                    <div class="flare-streak-base"></div>
+                    <div class="flare-glow-red"></div>
+                    <div class="flare-block-a"></div>
+                    <div class="flare-block-b"></div>
+                    <div class="flare-block-c"></div>
+                    <div class="flare-block-d"></div>
+                    <div class="flare-line"></div>
+                </div>
+            </div>
         </div>
         <div class="npc-intro-dialogue" id="npcIntroDialogue"></div>
     </div>

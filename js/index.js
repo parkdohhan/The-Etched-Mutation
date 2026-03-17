@@ -276,7 +276,7 @@ async function initApp() {
         }
     }
 }
-const PORTFOLIO_BASE_URL = 'http://localhost:3000';
+const PORTFOLIO_BASE_URL = 'https://www.parkdohhan.com';
 
 function openPortfolio() {
     const portfolioWindow = window.open(PORTFOLIO_BASE_URL, '_blank');
@@ -3204,6 +3204,76 @@ window.selectMemory = selectMemory;
 window.handleConfirm = handleConfirm;
 window.handleExpConfirm = handleExpConfirm;
 window.filterMemories = filterMemories;
+
+function initMainMenu() {
+  const wrap = document.querySelector('.main-menu-wrap');
+  if (!wrap) return;
+  const menuItems = wrap.querySelectorAll('.menu-item');
+  const descriptionArea = document.getElementById('mainMenuDescription');
+  const bokehFlare = document.getElementById('mainBokehFlare');
+  let activeId = 'archive';
+  let hoveredId = null;
+
+  function setActive(id) {
+    activeId = id;
+    menuItems.forEach((el) => {
+      const mid = el.dataset.menuId;
+      const isActive = mid === activeId;
+      const isHovered = mid === hoveredId;
+      el.classList.toggle('active', isActive || isHovered);
+      el.classList.toggle('inactive', !isActive && !isHovered);
+      el.classList.toggle('hovered', isHovered);
+    });
+    if (descriptionArea) {
+      const showId = hoveredId || activeId;
+      descriptionArea.querySelectorAll('.description-text').forEach((el) => {
+        el.classList.toggle('active', el.dataset.for === showId);
+      });
+    }
+    updateBokeh();
+  }
+
+  function updateBokeh() {
+    if (!bokehFlare) return;
+    const targetId = hoveredId || activeId;
+    const target = wrap.querySelector(`.menu-item[data-menu-id="${targetId}"]`);
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      bokehFlare.style.top = (rect.top + rect.height / 2) + 'px';
+      bokehFlare.classList.add('active');
+    } else {
+      bokehFlare.classList.remove('active');
+    }
+  }
+
+  menuItems.forEach((el) => {
+    const id = el.dataset.menuId;
+    const actionName = el.dataset.action;
+    el.addEventListener('mouseenter', () => {
+      hoveredId = id;
+      setActive(activeId);
+    });
+    el.addEventListener('mouseleave', () => {
+      hoveredId = null;
+      setActive(activeId);
+    });
+    el.addEventListener('click', () => {
+      setActive(id);
+      const fn = typeof window[actionName] === 'function' ? window[actionName] : null;
+      if (fn) fn();
+    });
+  });
+
+  updateBokeh();
+  window.addEventListener('resize', updateBokeh);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMainMenu);
+} else {
+  initMainMenu();
+}
+
 let comparisonScenes = [];
 let comparisonCurrentIndex = 0;
 async function calculateAverageAlignment() {

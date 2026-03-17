@@ -1,0 +1,332 @@
+/* Main menu (intro) layout — scoped under .main-menu-wrap */
+.intro-screen.main-menu-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.intro-screen.main-menu-intro .main-menu-wrap {
+  flex: 1;
+  min-height: 0;
+  user-select: none;
+}
+
+.main-menu-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.main-menu-wrap .bg-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.7;
+  background-image: url('../img/bg-terrain.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.main-menu-wrap .left-gradient {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30vw;
+  height: 100%;
+  background: linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0.45), rgba(0,0,0,0));
+  z-index: 5;
+  pointer-events: none;
+}
+
+.main-menu-wrap .grid-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.main-menu-wrap .vertical-line {
+  position: absolute;
+  left: 96px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(229, 213, 188, 0.2);
+}
+
+.main-menu-wrap .horizontal-line {
+  position: absolute;
+  left: 0;
+  top: 128px;
+  width: 100vw;
+  height: 1px;
+  background: linear-gradient(to right, rgba(229, 213, 188, 0.3), transparent);
+}
+
+.main-menu-wrap .main-content {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  height: 100%;
+}
+
+.main-menu-wrap .main-sidebar {
+  width: 500px;
+  padding-left: 128px;
+  padding-top: 160px;
+  padding-bottom: 96px;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-menu-wrap .main-header {
+  position: relative;
+  margin-bottom: 64px;
+  padding-left: 24px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-left: 4px solid #E5D5BC;
+  overflow: visible;
+}
+
+.main-menu-wrap .main-header h1 {
+  position: relative;
+  z-index: 10;
+  font-size: 30px;
+  letter-spacing: 0.2em;
+  font-weight: 300;
+  color: #E5D5BC;
+}
+
+.main-menu-wrap .main-header h1 span {
+  font-weight: 700;
+}
+
+.main-menu-wrap .title-flare {
+  position: absolute;
+  top: 50%;
+  left: -40px;
+  width: 300px;
+  height: 60px;
+  transform: translateY(-50%) scale(0.75);
+  transform-origin: left;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.main-menu-wrap .menu-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.main-menu-wrap .menu-item {
+  position: relative;
+  padding-left: 24px;
+  cursor: pointer;
+  transition: all 0.5s ease;
+}
+
+.main-menu-wrap .menu-item.inactive {
+  color: rgba(229, 213, 188, 0.4);
+}
+
+.main-menu-wrap .menu-item.inactive:hover {
+  color: rgba(229, 213, 188, 0.7);
+}
+
+.main-menu-wrap .menu-item.active,
+.main-menu-wrap .menu-item.hovered {
+  color: #E5D5BC;
+  transform: translateX(24px);
+}
+
+.main-menu-wrap .menu-label {
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: font-weight 0.5s ease;
+}
+
+.main-menu-wrap .menu-item.active .menu-label,
+.main-menu-wrap .menu-item.hovered .menu-label {
+  font-weight: 700;
+}
+
+.main-menu-wrap .menu-item.inactive .menu-label {
+  font-weight: 300;
+}
+
+.main-menu-wrap .menu-sublabel {
+  font-size: 12px;
+  color: rgba(229, 213, 188, 0.6);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -0.02em;
+  margin-left: 16px;
+}
+
+.main-menu-wrap .main-description {
+  margin-top: 30px;
+  padding-left: 24px;
+  max-width: 280px;
+  position: relative;
+  overflow: hidden;
+  min-height: 60px;
+}
+
+.main-menu-wrap .description-text {
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: rgba(255, 255, 255, 0.55);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  position: absolute;
+}
+
+.main-menu-wrap .description-text.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.main-menu-wrap .main-right-content {
+  flex: 1;
+  position: relative;
+}
+
+.main-menu-wrap .vertical-accent {
+  position: absolute;
+  top: 50%;
+  left: 80px;
+  width: 1px;
+  height: 256px;
+  transform: translateY(-50%);
+  background: linear-gradient(to bottom, transparent, rgba(229, 213, 188, 0.2), transparent);
+}
+
+/* Bokeh Flare */
+.main-menu-wrap .bokeh-flare {
+  position: absolute;
+  top: 50%;
+  left: -300px;
+  width: 600px;
+  height: 80px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s ease, top 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.main-menu-wrap .bokeh-flare.active {
+  opacity: 0.9;
+}
+
+.main-menu-wrap .bokeh-flare-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  mask-image: linear-gradient(to right, transparent 0%, black 20%, black 60%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 20%, black 60%, transparent 100%);
+}
+
+.main-menu-wrap .flare-streak-base {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  top: 50%;
+  background: linear-gradient(to right, transparent, #E5D5BC, transparent);
+  opacity: 0.4;
+  filter: blur(2px);
+}
+
+.main-menu-wrap .flare-glow-red {
+  position: absolute;
+  left: 15%;
+  top: 50%;
+  width: 40%;
+  height: 40px;
+  transform: translateY(-50%);
+  background: rgba(127, 29, 29, 0.4);
+  filter: blur(30px);
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  opacity: 0.5;
+}
+
+.main-menu-wrap .flare-block-a {
+  position: absolute;
+  left: 30%;
+  top: 50%;
+  width: 120px;
+  height: 20px;
+  transform: translateY(-50%);
+  background: rgba(217, 119, 6, 0.3);
+  filter: blur(10px);
+  border-radius: 1px;
+  mix-blend-mode: screen;
+}
+
+.main-menu-wrap .flare-block-b {
+  position: absolute;
+  left: 40%;
+  top: 50%;
+  width: 60px;
+  height: 4px;
+  transform: translateY(-50%);
+  background: rgba(255, 248, 231, 0.7);
+  filter: blur(4px);
+  border-radius: 1px;
+  mix-blend-mode: screen;
+}
+
+.main-menu-wrap .flare-block-c {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100px;
+  height: 16px;
+  transform: translateY(-50%);
+  background: rgba(202, 138, 4, 0.2);
+  filter: blur(12px);
+  border-radius: 1px;
+  mix-blend-mode: screen;
+}
+
+.main-menu-wrap .flare-block-d {
+  position: absolute;
+  left: 42%;
+  top: 50%;
+  width: 40px;
+  height: 2px;
+  transform: translateY(-50%);
+  background: white;
+  filter: blur(1px);
+  mix-blend-mode: screen;
+  box-shadow: 0 0 10px rgba(255,255,255,0.8);
+}
+
+.main-menu-wrap .flare-line {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(229, 213, 188, 0.4), transparent);
+  opacity: 0.6;
+}
+
+/* Intro screen when using main menu: ensure full bleed and font */
+.intro-screen.main-menu-intro {
+  background: #000;
+  color: #E5D5BC;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.intro-screen.main-menu-intro ::selection {
+  background: #E5D5BC;
+  color: #000;
+}
