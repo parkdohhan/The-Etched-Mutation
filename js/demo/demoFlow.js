@@ -67,10 +67,31 @@ const SEED_GHOST_VECTORS = [
 
 // 시드 scene (Supabase failure 시)
 const SEED_SCENES = [
-  { scene_order: 0, text: 'Mom came in and started yelling...', original_emotion: { anger: 0.84, guilt: 0.4, shame: 0.19 } },
-  { scene_order: 1, text: 'So I ran and kept running...', original_emotion: { fear: 0.79, isolation: 0.56 } },
-  { scene_order: 2, text: 'Somehow I made it back home...', original_emotion: { isolation: 0.83, sadness: 0.69 } },
+  {
+    scene_order: 0,
+    text: 'Mom came in and started yelling...',
+    original_emotion: { anger: 0.84, guilt: 0.4, shame: 0.19 },
+    echo_words: ['Mom', 'started', 'yelling'],
+  },
+  {
+    scene_order: 1,
+    text: 'So I ran and kept running...',
+    original_emotion: { fear: 0.79, isolation: 0.56 },
+    echo_words: ['ran', 'kept', 'running'],
+  },
+  {
+    scene_order: 2,
+    text: 'Somehow I made it back home...',
+    original_emotion: { isolation: 0.83, sadness: 0.69 },
+    echo_words: ['Somehow', 'back', 'home'],
+  },
 ];
+
+const SCENE_TRANSITION_MAP = {
+  0: { echo_follow: 1, bridge: 1, contradiction: 2, displacement: 2, avoidance: 2, fixation: 0 },
+  1: { echo_follow: 2, bridge: 2, contradiction: 0, displacement: 2, avoidance: 2, fixation: 1 },
+  2: { _terminal: true }, // always goes to Reveal
+};
 
 let openingWaveId = null;
 let monologueFrameId = null;
@@ -383,6 +404,13 @@ function startPlay() {
   setPhase(PHASES.PLAYING);
   setPhaseActive('phasePlay');
   demoState.sceneIndex = 0;
+  demoState.visitedScenes = [];
+  demoState.fixationCounts = {};
+  demoState.totalScenesPlayed = 0;
+  demoState.visitedScenes.push(0);
+  demoState.fixationCounts[0] = 0;
+  demoState.totalScenesPlayed = 1;
+  demoState.lastTransitionPattern = null;
 
   const playCanvas = document.getElementById('playWaveCanvas');
   const terrainCanvas = document.getElementById('terrainCanvas2D');
@@ -426,6 +454,55 @@ function initCanvas2x(canvas) {
   if (ctx) ctx.scale(dpr, dpr);
 }
 
+function splitSentences(text) {
+  return text.split(/(?<=[.!?])\s+/).filter(Boolean).map((s) => s.trim());
+}
+
+function buildSceneContentHTML(scene, visitCount) {
+  const text = scene.text || '';
+  const sentences = splitSentences(text);
+  if (sentences.length === 0) return text;
+
+  const echoWords = (scene.echo_words || []).map((w) => w.toLowerCase());
+  const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  if (visitCount >= 2) {
+    const parts = [];
+    for (let si = 0; si < sentences.length; si++) {
+      const sent = sentences[si];
+      const tokens = sent.split(/(\s+)/);
+      let sentenceHTML = '';
+      for (const token of tokens) {
+        const clean = token.replace(/[.,!?…]+$/i, '').toLowerCase();
+        const isFocus = clean && echoWords.some((ew) => clean === ew || clean.startsWith(ew) || ew.startsWith(clean));
+        sentenceHTML += isFocus
+          ? `<span class="demo-scene-word focus">${escape(token)}</span>`
+          : `<span class="demo-scene-word fade">${escape(token)}</span>`;
+      }
+      parts.push(`<span class="demo-scene-sentence">${sentenceHTML}</span>`);
+    }
+    return parts.join(' ');
+  }
+
+  if (visitCount === 1) {
+    return sentences.map((s, i) => {
+      const isLast = i === sentences.length - 1;
+      const cls = isLast ? 'demo-scene-sentence focus' : 'demo-scene-sentence fade';
+      return `<span class="${cls}">${escape(s)}</span>`;
+    }).join(' ');
+  }
+
+  return escape(text);
+}
+
+function getTypingSpeedForArrival() {
+  const p = demoState.lastTransitionPattern;
+  if (p === 'contradiction') return 50;
+  if (p === 'avoidance') return 20;
+  if (p === 'fixation') return 0;
+  return 35;
+}
+
 function renderScene(scene) {
   const sceneTextEl = document.getElementById('demoSceneText');
   const inputPromptEl = document.getElementById('inputPrompt');
@@ -433,10 +510,24 @@ function renderScene(scene) {
   const submitBtn = document.getElementById('sceneSubmitBtn');
   if (!sceneTextEl || !inputEl) return;
 
-  sceneTextEl.textContent = '';
-  typeTo(sceneTextEl, scene.text, 35, () => {});
-
   const idx = demoState.sceneIndex;
+  const visitCount = demoState.fixationCounts[idx] ?? 0;
+  const arrival = demoState.lastTransitionPattern != null ? String(demoState.lastTransitionPattern) : '';
+  sceneTextEl.setAttribute('data-arrival', arrival || 'bridge');
+
+  const speed = getTypingSpeedForArrival();
+  const isInstant = speed === 0;
+
+  if (isInstant) {
+    sceneTextEl.innerHTML = buildSceneContentHTML(scene, visitCount);
+  } else {
+    sceneTextEl.textContent = '';
+    const fullText = scene.text || '';
+    typeTo(sceneTextEl, fullText, speed, () => {
+      sceneTextEl.innerHTML = buildSceneContentHTML(scene, visitCount);
+    });
+  }
+
   const config = SCENE_INPUT_CONFIG[idx] || SCENE_INPUT_CONFIG[0];
   if (inputPromptEl) inputPromptEl.textContent = config.prompt;
   inputEl.value = '';
@@ -520,7 +611,10 @@ function processScene() {
     emotionHistory: demoState.sceneHistory.map((h) => h.resolvedVector?.base).filter(Boolean),
   };
 
-  const engineResult = engine.calculateStep({ userVector, originalVector }, context);
+  let engineResult = engine.calculateStep({ userVector, originalVector }, context);
+  if ((demoState.fixationCounts[demoState.sceneIndex] || 0) >= 2) {
+    engineResult = { ...engineResult, alignment_bucket: 'FIXATED' };
+  }
 
   recordScene({
     sceneIndex: demoState.sceneIndex,
@@ -539,9 +633,37 @@ function processScene() {
 }
 
 function applyTransition(pattern) {
+  demoState.lastTransitionPattern = pattern;
   const duration = 600;
+  const currentSceneIndex = demoState.sceneIndex;
+  demoState.totalScenesPlayed += 1;
+
+  if (demoState.totalScenesPlayed >= 6) {
+    setTimeout(() => {
+      showCutoffMessage();
+    }, duration);
+    return;
+  }
+
+  const row = SCENE_TRANSITION_MAP[currentSceneIndex];
+  if (row && row._terminal) {
+    setTimeout(() => {
+      updateTerrain();
+      startReveal();
+    }, duration);
+    return;
+  }
+
+  const target = (row && row[pattern] !== undefined)
+    ? row[pattern]
+    : (row && row.bridge !== undefined)
+      ? row.bridge
+      : currentSceneIndex + 1;
+  demoState.visitedScenes.push(target);
+  demoState.fixationCounts[target] = (demoState.fixationCounts[target] || 0) + 1;
+  demoState.sceneIndex = target;
+
   setTimeout(() => {
-    demoState.sceneIndex += 1;
     updateTerrain();
     if (demoState.sceneIndex < demoState.scenes.length) {
       setPhase(PHASES.PLAYING);
@@ -550,6 +672,26 @@ function applyTransition(pattern) {
       startReveal();
     }
   }, duration);
+}
+
+function showCutoffMessage() {
+  const sceneTextEl = document.getElementById('demoSceneText');
+  if (!sceneTextEl) return;
+  sceneTextEl.removeAttribute('data-arrival');
+  sceneTextEl.textContent = '';
+  sceneTextEl.innerHTML = 'The record can no longer move forward.';
+  updateTerrain();
+  setTimeout(() => {
+    demoState.sceneIndex = 2;
+    demoState.lastTransitionPattern = 'bridge';
+    updateTerrain();
+    if (demoState.scenes.length > 2) {
+      setPhase(PHASES.PLAYING);
+      renderScene(demoState.scenes[2]);
+    } else {
+      startReveal();
+    }
+  }, 1500);
 }
 
 function updateTerrain() {

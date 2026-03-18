@@ -35,6 +35,11 @@ export const demoState = {
 
  // scene 진행
   sceneIndex: 0,
+  visitedScenes: [],      // track which scenes have been visited
+  fixationCounts: {},     // track how many times each scene was visited
+  totalScenesPlayed: 0,   // total scenes played including repeats
+  contaminationLevel: 0,  // running total
+  lastTransitionPattern: null, // pattern that led to current scene
 
  // vector 분리
   liveVector: null,     // localAnalyze() 결과, 파동 즉시 반영용
@@ -148,6 +153,8 @@ export function recordScene(params) {
     alignment_bucket === 'FIXATED' ||
     mismatch_type === 'attribution_mismatch' ||
     mismatch_type === 'target_displacement';
+
+  demoState.contaminationLevel += contaminationDelta;
 
   demoState.sceneHistory.push({
     sceneIndex,

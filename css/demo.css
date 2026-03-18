@@ -183,6 +183,23 @@ body {
   margin-bottom: 2rem;
   letter-spacing: 0.03em;
 }
+
+/* 도착 패턴: contradiction — 왼쪽에서 밀렸다 복귀 */
+#demoSceneText[data-arrival="contradiction"] {
+  animation: demo-arrival-contradiction 0.6s ease-out forwards;
+}
+@keyframes demo-arrival-contradiction {
+  0% { transform: translateX(-4px); opacity: 0.7; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* fixation 방문 횟수별 강조: 문장 단위 */
+#demoSceneText .demo-scene-sentence.fade { opacity: 0.6; }
+#demoSceneText .demo-scene-sentence.focus { opacity: 1; }
+
+/* fixation 3회차+: 핵심 단어만 강조 */
+#demoSceneText .demo-scene-word.fade { opacity: 0.3; }
+#demoSceneText .demo-scene-word.focus { opacity: 1; }
 .scene-input-area {
   width: 100%;
   display: flex;

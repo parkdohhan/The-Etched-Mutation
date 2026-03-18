@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin — The Etched Mutation</title>
+    <title>관리자 — The Etched Mutation</title>
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -12,19 +12,19 @@
 <body>
     <div class="password-screen" id="passwordScreen">
         <div class="password-box">
-            <h2 class="password-title">Admin Authentication</h2>
-            <div class="password-error" id="passwordError">Authentication failed</div>
+            <h2 class="password-title">관리자 인증</h2>
+            <div class="password-error" id="passwordError">인증에 실패했습니다</div>
             <div id="adminLoginForm">
-                <input type="email" class="password-input" id="adminEmail" placeholder="Email" autocomplete="email">
-                <input type="password" class="password-input" id="adminPassword" placeholder="Password" autocomplete="current-password" style="margin-top: 0.5rem;">
-                <button class="password-btn" onclick="checkPassword()" style="margin-top: 0.5rem;">Sign In</button>
+                <input type="email" class="password-input" id="adminEmail" placeholder="이메일" autocomplete="email">
+                <input type="password" class="password-input" id="adminPassword" placeholder="비밀번호" autocomplete="current-password" style="margin-top: 0.5rem;">
+                <button class="password-btn" onclick="checkPassword()" style="margin-top: 0.5rem;">로그인</button>
             </div>
             <div id="adminAuthLoading" style="display:none; text-align:center; color:var(--text-muted); padding:1rem;">
-                Verifying authentication...
+                인증 확인 중...
             </div>
             <div id="adminNoPermission" style="display:none;">
-                <p style="color:var(--text-muted); text-align:center; padding:1rem;">Admin permissions not found.</p>
-                <button class="password-btn" onclick="adminLogout()" style="margin-top: 0.5rem;">Go Back</button>
+                <p style="color:var(--text-muted); text-align:center; padding:1rem;">관리자 권한이 없습니다.</p>
+                <button class="password-btn" onclick="adminLogout()" style="margin-top: 0.5rem;">돌아가기</button>
             </div>
         </div>
     </div>
@@ -32,27 +32,27 @@
     <div class="admin-dashboard" id="adminDashboard">
         <div class="container">
             <div class="admin-header">
-                <h1 class="admin-title">Admin Dashboard</h1>
-                <button class="admin-logout-btn" onclick="logout()">Sign Out</button>
+                <h1 class="admin-title">관리자 대시보드</h1>
+                <button class="admin-logout-btn" onclick="logout()">로그아웃</button>
             </div>
 
             <div class="admin-actions">
-                <button class="add-memory-btn" onclick="addNewMemory()">+ Add New Memory</button>
+                <button class="add-memory-btn" onclick="addNewMemory()">+ 새 메모리 추가</button>
             </div>
 
             <div id="sessionsListSection">
                 <div class="filter-buttons">
-                    <button class="filter-btn active" onclick="filterSessions('all')">All</button>
-                    <button class="filter-btn" onclick="filterSessions('archive')">Archive</button>
-                    <button class="filter-btn" onclick="filterSessions('story')">Story</button>
+                    <button class="filter-btn active" onclick="filterSessions('all')">전체</button>
+                    <button class="filter-btn" onclick="filterSessions('archive')">아카이브</button>
+                    <button class="filter-btn" onclick="filterSessions('story')">스토리</button>
                 </div>
                 <div class="session-controls">
                     <label class="select-all-label">
                         <input type="checkbox" id="selectAllSessions" onchange="toggleSelectAll(this.checked)">
-                        Select All
+                        전체 선택
                     </label>
-                    <span id="selectedCount" style="margin-left: 1rem; color: var(--text-muted);">0 selected</span>
-                    <button class="delete-selected-btn" onclick="deleteSelectedSessions()" style="margin-left: auto;">Delete Selected</button>
+                    <span id="selectedCount" style="margin-left: 1rem; color: var(--text-muted);">0개 선택됨</span>
+                    <button class="delete-selected-btn" onclick="deleteSelectedSessions()" style="margin-left: auto;">선택 삭제</button>
                 </div>
                 <div id="sessionsListContainer" class="sessions-grid"></div>
             </div>
@@ -64,165 +64,153 @@
     <div class="editor-screen" id="editorScreen">
         <div class="container">
             <div class="editor-tabs">
-                <button class="editor-tab active" onclick="switchTab('edit')">Edit</button>
-                <button class="editor-tab" onclick="switchTab('preview')">Preview</button>
-                <button class="editor-tab" onclick="switchTab('archive')">Archive</button>
+                <button class="editor-tab active" onclick="switchTab('edit')">편집</button>
+                <button class="editor-tab" onclick="switchTab('preview')">미리보기</button>
             </div>
 
             <div class="editor-content active" id="editContent">
                 <div class="editor-section">
-                    <h3 class="editor-section-title">Basic Info</h3>
+                    <h3 class="editor-section-title">기본 정보</h3>
                     <div class="editor-input-group">
-                        <label class="editor-label">Title</label>
-                        <input type="text" class="editor-input" id="memoryTitle" placeholder="Enter memory title">
+                        <label class="editor-label">제목</label>
+                        <input type="text" class="editor-input" id="memoryTitle" placeholder="메모리 제목 입력">
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">Code</label>
+                        <label class="editor-label">코드</label>
                         <input type="text" class="editor-input" id="memoryCode" placeholder="A-001">
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">Description</label>
-                        <textarea class="editor-textarea" id="memoryDescription" placeholder="Enter memory description"></textarea>
+                        <label class="editor-label">설명</label>
+                        <textarea class="editor-textarea" id="memoryDescription" placeholder="메모리 설명 입력"></textarea>
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">Memory Words</label>
-                        <input type="text" class="editor-input" id="memoryWords" placeholder="Enter words representing this memory (comma-separated)">
-                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">e.g. solitude, loss, longing</small>
+                        <label class="editor-label">메모리 단어</label>
+                        <input type="text" class="editor-input" id="memoryWords" placeholder="이 메모리를 나타내는 단어 입력 (쉼표 구분)">
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">예: 고독, 상실, 그리움</small>
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">Completed Sentence</label>
-                        <textarea class="editor-textarea" id="completedSentence" placeholder="Enter a sentence that completes this memory" rows="2"></textarea>
-                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">A sentence capturing the essence of the memory</small>
+                        <label class="editor-label">완성 문장</label>
+                        <textarea class="editor-textarea" id="completedSentence" placeholder="이 메모리를 완성하는 문장 입력" rows="2"></textarea>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">메모리의 핵심을 담은 문장</small>
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">Author's Note (True Ending Reward)</label>
-                        <textarea class="editor-textarea" id="authorNote" placeholder="Message shown to player upon achieving the true ending..." rows="3"></textarea>
-                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">100 characters or fewer recommended</small>
+                        <label class="editor-label">작가의 말 (진엔딩 보상)</label>
+                        <textarea class="editor-textarea" id="authorNote" placeholder="진엔딩 달성 시 플레이어에게 보여줄 메시지..." rows="3"></textarea>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">100자 이하 권장</small>
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">Status</label>
+                        <label class="editor-label">상태</label>
                         <select id="memoryStatus" class="editor-input">
-                            <option value="Fetus">Fetus (Unborn)</option>
-                            <option value="alive">alive (Active)</option>
+                            <option value="Fetus">태아 (미출생)</option>
+                            <option value="alive">활성 (활성화됨)</option>
                         </select>
-                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">Fetus: No one has experienced it yet / alive: Currently active</small>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">태아: 아직 아무도 경험하지 않음 / 활성: 현재 활성</small>
                     </div>
                 </div>
 
                 <!-- 사운드 매핑 -->
                 <div class="editor-section">
-                    <h3 class="editor-section-title">Sound Mapping</h3>
+                    <h3 class="editor-section-title">사운드 매핑</h3>
                     <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
-                        Leave empty for default sounds. URL can be a sounds/ folder path or external URL.
+                        기본 사운드는 비워두세요. URL은 sounds/ 폴더 경로 또는 외부 URL 가능.
                     </p>
                     <div class="editor-field-group">
                         <div class="editor-field">
-                            <label class="editor-label">Opening (Intro)</label>
+                            <label class="editor-label">오프닝 (인트로)</label>
                             <div style="display:flex;gap:.5rem;align-items:center">
                                 <input type="text" class="editor-input" id="soundMapOpening" placeholder="sounds/ambient-opening.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapOpening')" title="Preview" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ Play</button>
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapOpening')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
                             </div>
                         </div>
                         <div class="editor-field">
-                            <label class="editor-label">HIGH (High Alignment)</label>
+                            <label class="editor-label">HIGH (높은 정렬)</label>
                             <div style="display:flex;gap:.5rem;align-items:center">
                                 <input type="text" class="editor-input" id="soundMapHigh" placeholder="sounds/Rain_indoor.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapHigh')" title="Preview" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ Play</button>
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapHigh')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
                             </div>
                         </div>
                         <div class="editor-field">
-                            <label class="editor-label">MID (Medium)</label>
+                            <label class="editor-label">MID (중간)</label>
                             <div style="display:flex;gap:.5rem;align-items:center">
                                 <input type="text" class="editor-input" id="soundMapMid" placeholder="sounds/Base_white.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapMid')" title="Preview" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ Play</button>
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapMid')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
                             </div>
                         </div>
                         <div class="editor-field">
-                            <label class="editor-label">LOW (Low Alignment)</label>
+                            <label class="editor-label">LOW (낮은 정렬)</label>
                             <div style="display:flex;gap:.5rem;align-items:center">
                                 <input type="text" class="editor-input" id="soundMapLow" placeholder="sounds/Base_Void.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapLow')" title="Preview" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ Play</button>
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapLow')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
                             </div>
                         </div>
                         <div class="editor-field">
-                            <label class="editor-label">FIXATED (Loop)</label>
+                            <label class="editor-label">FIXATED (루프)</label>
                             <div style="display:flex;gap:.5rem;align-items:center">
                                 <input type="text" class="editor-input" id="soundMapFixated" placeholder="sounds/Base_Void.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapFixated')" title="Preview" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ Play</button>
+                                <button class="preview-sound-btn" onclick="previewSound('soundMapFixated')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
                             </div>
                         </div>
-                        <button onclick="stopPreviewSound()" style="background:none;border:1px solid var(--text-muted);color:var(--text-muted);padding:.3rem .8rem;border-radius:3px;cursor:pointer;font-size:.75rem;margin-top:.5rem">■ Stop</button>
+                        <button onclick="stopPreviewSound()" style="background:none;border:1px solid var(--text-muted);color:var(--text-muted);padding:.3rem .8rem;border-radius:3px;cursor:pointer;font-size:.75rem;margin-top:.5rem">■ 정지</button>
                     </div>
                 </div>
 
                 <div class="editor-section">
-                    <h3 class="editor-section-title">Scene Editor</h3>
+                    <h3 class="editor-section-title">씬 편집기</h3>
                     <div id="scenesContainer">
                         <!-- 동적으로 생성됨 -->
                     </div>
-                    <button class="add-scene-btn" onclick="addScene()">+ Add Scene</button>
+                    <button class="add-scene-btn" onclick="addScene()">+ 씬 추가</button>
                 </div>
 
                 <div class="editor-buttons">
-                    <button class="editor-save-btn" onclick="saveMemory()">Save</button>
-                    <button class="editor-cancel-btn" onclick="cancelEdit()">Cancel</button>
+                    <button class="editor-save-btn" onclick="saveMemory()">저장</button>
+                    <button class="editor-cancel-btn" onclick="cancelEdit()">취소</button>
                 </div>
                 <div class="export-section" style="margin-top: 2rem; padding: 2rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2);">
-                    <h3 class="editor-section-title">Data Export / Import</h3>
+                    <h3 class="editor-section-title">데이터 내보내기 / 가져오기</h3>
                     <div style="margin-bottom: 1.5rem;">
-                        <button class="editor-save-btn" onclick="exportMemoriesJSON()" style="margin-right: 1rem;">Download JSON</button>
+                        <button class="editor-save-btn" onclick="exportMemoriesJSON()" style="margin-right: 1rem;">JSON 다운로드</button>
                         <label for="importFile" class="editor-save-btn" style="display: inline-block; cursor: pointer; margin: 0;">
-                            Import JSON
+                            JSON 가져오기
                             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importMemoriesJSON(event)">
                         </label>
                     </div>
                     <div style="padding: 1rem; background: var(--bg-deep); border: 1px solid rgba(196, 168, 130, .1); font-size: .85rem; color: var(--text-muted); line-height: 1.6;">
-                        <strong style="color: var(--accent-memory);">Note:</strong> Paste the contents of the downloaded JSON file into the <code style="color: var(--accent-memory);">memoriesData</code> array in <code style="color: var(--accent-memory);">data/memories.js</code> to apply changes to the main page.
+                        <strong style="color: var(--accent-memory);">참고:</strong> 다운로드한 JSON 내용을 <code style="color: var(--accent-memory);">data/memories.js</code>의 <code style="color: var(--accent-memory);">memoriesData</code> 배열에 붙여넣으면 메인 페이지에 반영됩니다.
                     </div>
                 </div>
             </div>
 
             <div class="editor-content" id="previewContent">
-                <div class="preview-content" id="previewSceneContainer">
-                    <!-- 동적으로 생성됨 -->
-                </div>
-                <div class="preview-wave-container">
-                    <canvas class="preview-wave-canvas" id="previewWaveCanvas"></canvas>
-                </div>
-                <div class="preview-controls" style="margin-top: 1rem; text-align: center;">
-                    <button id="simulateLayer" class="editor-btn" style="padding: 0.8rem 2rem; font-size: 1rem;">Stack Next Layer</button>
-                </div>
-            </div>
-
-            <div class="editor-content" id="archiveContent">
-                <div class="archive-section" style="padding: 2rem;">
-                    <h3 class="editor-section-title" style="margin-bottom: 1.5rem;">Archive Layer Visualization</h3>
+                <!-- 1. 플레이시 보이는 2차원 지형도 -->
+                <div class="preview-section archive-section" style="padding: 2rem;">
+                    <h3 class="editor-section-title" style="margin-bottom: 1rem;">1. 플레이시 보이는 2차원 지형도</h3>
                     <div class="archive-canvas-container" style="background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); padding: 1rem; border-radius: 4px;">
                         <canvas id="archiveCanvas" width="1000" height="600" style="width: 100%; height: auto; max-width: 1000px; display: block; margin: 0 auto;"></canvas>
                     </div>
                     <div style="margin-top: 1rem; text-align: center;">
-                        <button class="editor-btn" onclick="loadArchiveLayers(currentMemoryId)" style="padding: 0.8rem 2rem; font-size: 1rem;">Load Archive</button>
+                        <button class="editor-btn" onclick="loadArchive2DPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">2차원 지형도 불러오기</button>
                     </div>
                 </div>
-                
-                <div class="strata-section" style="padding: 2rem; margin-top: 2rem;">
-                    <h3 class="editor-section-title" style="margin-bottom: 1.5rem;">Strata 3D Layer Preview</h3>
+
+                <!-- 2. Strata 3D 지형 미리보기 -->
+                <div class="preview-section strata-section" style="padding: 2rem;">
+                    <h3 class="editor-section-title" style="margin-bottom: 1rem;">2. Strata 3D 지형 미리보기</h3>
                     <div id="adminStrataContainer" style="position:relative;width:100%;height:600px;background:#0a0a0f;border:1px solid rgba(196,168,130,.2);border-radius:4px;overflow:hidden;">
-                        <!-- Strata 뷰가 여기에 동적으로 삽입됨 -->
                         <div id="strataView" style="position:relative;width:100%;height:100%;display:none;">
                             <canvas id="strataCanvas" style="width:100%;height:100%;"></canvas>
                             <div class="strata-hud strata-h-tl" style="position:absolute;top:20px;left:28px;z-index:100;pointer-events:none;">
-                                <div class="strata-tsm" style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:rgba(196,168,130,0.4);font-weight:300;">Geology of Emotion</div>
+                                <div class="strata-tsm" style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:rgba(196,168,130,0.4);font-weight:300;">감정의 지질학</div>
                                 <div class="strata-tlg" style="font-size:22px;letter-spacing:8px;color:#c4a882;font-weight:300;margin-top:4px;">S T R A T A</div>
                             </div>
                             <div class="strata-hud strata-h-tr" id="strataHudTR" style="position:absolute;top:20px;right:28px;z-index:100;pointer-events:none;text-align:right;font-size:11px;color:rgba(196,168,130,0.4);line-height:1.8;font-style:italic;"></div>
                             <div class="strata-hud strata-h-bl" style="position:absolute;bottom:20px;left:28px;z-index:100;pointer-events:none;">
-                                <div class="strata-dlb" style="font-size:10px;letter-spacing:2px;color:rgba(196,168,130,0.4);text-transform:uppercase;">Stratum Structure</div>
-                                <div class="strata-dvl" id="strataDv" style="font-size:14px;color:#c4a882;font-weight:300;margin-top:2px;line-height:1.5;">Top: Emotional Terrain<br>Side: Temporal Fault</div>
+                                <div class="strata-dlb" style="font-size:10px;letter-spacing:2px;color:rgba(196,168,130,0.4);text-transform:uppercase;">층 구조</div>
+                                <div class="strata-dvl" id="strataDv" style="font-size:14px;color:#c4a882;font-weight:300;margin-top:2px;line-height:1.5;">위: 감정 지형<br>측면: 시간 단층</div>
                             </div>
                             <div class="strata-hud strata-h-br" style="position:absolute;bottom:20px;right:28px;z-index:100;pointer-events:none;">
                                 <div class="strata-ct" style="display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(196,168,130,0.4);">
-                                    Contamination
+                                    오염도
                                     <div class="strata-ct-tk" style="width:80px;height:2px;background:rgba(196,168,130,0.08);">
                                         <div class="strata-ct-fl" id="strataCtFl" style="height:100%;background:#c4a882;transition:width .6s;width:0%;"></div>
                                     </div>
@@ -232,11 +220,11 @@
                             <div id="strataLc" style="position:absolute;inset:0;z-index:110;pointer-events:none;"></div>
                         </div>
                         <div id="strataLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(196,168,130,0.4);font-size:14px;">
-                            Click the button to load Strata preview
+                            버튼을 클릭하여 Strata 미리보기 불러오기
                         </div>
                     </div>
                     <div style="margin-top: 1rem; text-align: center;">
-                        <button class="editor-btn" onclick="loadStrataPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">Load Strata Preview</button>
+                        <button class="editor-btn" onclick="loadStrataPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">Strata 미리보기 불러오기</button>
                     </div>
                 </div>
             </div>
