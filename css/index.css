@@ -380,6 +380,34 @@ body::before {
   color: var(--accent-memory)
 }
 
+/* === Archive demo arrival / fixation emphasis === */
+#sceneText[data-arrival="contradiction"] {
+  animation: archive-arrival-contradiction 0.6s ease-out forwards;
+}
+
+@keyframes archive-arrival-contradiction {
+  0% { transform: translateX(-4px); opacity: 0.7; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* 2회차: 마지막 문장 강조 */
+#sceneText .scene-text-sentence.fade {
+  opacity: 0.6;
+}
+
+#sceneText .scene-text-sentence.focus {
+  opacity: 1;
+}
+
+/* 3회차 이상: 핵심 단어만 강조 */
+#sceneText .scene-text-word.fade {
+  opacity: 0.3;
+}
+
+#sceneText .scene-text-word.focus {
+  opacity: 1;
+}
+
 .mypage-content {
   text-align: left;
   margin-top: 2rem

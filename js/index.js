@@ -54,6 +54,13 @@ const appStore = createStore({
     currentScene: 0,
     currentSceneOrder: 1,
 
+    // Archive demo flow tracking
+    visitedScenes: [],
+    fixationCounts: {},    // sceneIndex -> visits beyond first
+    totalScenesPlayed: 0,  // number of scene transitions executed
+    contaminationLevel: 0, // local running total based on alignment
+    lastTransitionPattern: null,
+
     // User input
     userChoices: [],
     userReasons: [],
@@ -114,6 +121,11 @@ function syncToAppState() {
     AppState.currentCategory = state.currentCategory;
     AppState.currentBucket = state.currentBucket;
     AppState.emotionHistory = state.emotionHistory;
+    AppState.visitedScenes = state.visitedScenes;
+    AppState.fixationCounts = state.fixationCounts;
+    AppState.totalScenesPlayed = state.totalScenesPlayed;
+    AppState.contaminationLevel = state.contaminationLevel;
+    AppState.lastTransitionPattern = state.lastTransitionPattern;
 }
 const USE_LIVE_INTERPRETATIONS_TABLE = false;
 
@@ -2174,6 +2186,16 @@ function startArchivePlay(memoryIndex) {
             }
             // ---- Existing code ----
             console.log('[startArchivePlay] initProgressDots called');
+            // Archive demo flow state 초기화
+            appStore.setState({
+                currentScene: 0,
+                currentSceneOrder: 1,
+                visitedScenes: [0],
+                fixationCounts: { 0: 0 },
+                totalScenesPlayed: 0,
+                contaminationLevel: 0,
+                lastTransitionPattern: null
+            });
             initProgressDots();
             window.scrollTo(0, 0);
             sceneViewerEl.scrollTop = 0;
@@ -2217,6 +2239,93 @@ function deriveEffectType(alignment) {
 window._strataCompletedScenes = [];
 function initProgressDots() { const currentData = window.currentStoryData || storyData; const dotsContainer = document.getElementById('progressDots'); if (!dotsContainer) return; dotsContainer.innerHTML = ''; if (!currentData || !currentData.scenes) return; for (let i = 0; i < currentData.scenes.length; i++) { const dot = document.createElement('div'); dot.className = 'progress-dot' + (i === 0 ? ' active' : ''); dot.onclick = function () { goToScene(i) }; dotsContainer.appendChild(dot) } }
 function goToScene(index) { const state = appStore.getState(); if (index <= state.currentScene) { appStore.setState({ currentScene: index }); renderScene() } }
+
+// Archive demo: 3-scene transition map (used only when scenes.length === 3)
+const SCENE_TRANSITION_MAP = {
+    0: { echo_follow: 1, bridge: 1, contradiction: 2, displacement: 2, avoidance: 2, fixation: 0 },
+    1: { echo_follow: 2, bridge: 2, contradiction: 0, displacement: 2, avoidance: 2, fixation: 1 },
+    2: { _terminal: true }
+};
+
+function splitSentencesForScene(text) {
+    return (text || '')
+        .split(/(?<=[.!?])\s+/)
+        .filter(Boolean)
+        .map(s => s.trim());
+}
+
+function buildArchiveSceneHTML(baseText, scene, visitCount) {
+    const sentences = splitSentencesForScene(baseText);
+    if (sentences.length === 0) return baseText || '';
+
+    const rawEcho = scene.echoWords || scene.echo_words || [];
+    const echoWords = Array.isArray(rawEcho)
+        ? rawEcho.map(w => String(w).toLowerCase())
+        : String(rawEcho).split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
+
+    const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // 3회차 이상(FIXATED): 핵심 단어 2–3개만 강조, 나머지 0.3
+    if (visitCount >= 2) {
+        const parts = [];
+        for (let si = 0; si < sentences.length; si++) {
+            const sent = sentences[si];
+            const tokens = sent.split(/(\s+)/);
+            let html = '';
+            for (const token of tokens) {
+                const clean = token.replace(/[.,!?…]+$/i, '').toLowerCase();
+                const isFocus =
+                    clean &&
+                    echoWords.some(ew => clean === ew || clean.startsWith(ew) || ew.startsWith(clean));
+                html += isFocus
+                    ? `<span class="scene-text-word focus">${escape(token)}</span>`
+                    : `<span class="scene-text-word fade">${escape(token)}</span>`;
+            }
+            parts.push(`<span class="scene-text-sentence">${html}</span>`);
+        }
+        return parts.join(' ');
+    }
+
+    // 2회차 방문: 마지막 문장만 선명, 나머지 0.6
+    if (visitCount === 1) {
+        return sentences.map((s, i) => {
+            const isLast = i === sentences.length - 1;
+            const cls = isLast ? 'scene-text-sentence focus' : 'scene-text-sentence fade';
+            return `<span class="${cls}">${escape(s)}</span>`;
+        }).join(' ');
+    }
+
+    // 첫 방문: 원문 그대로
+    return escape(baseText || '');
+}
+
+function getArrivalTypingSpeed(pattern) {
+    if (pattern === 'contradiction') return 50;
+    if (pattern === 'avoidance') return 20;
+    if (pattern === 'fixation') return 0;
+    return 35;
+}
+
+function typeSceneText(el, text, speed, done) {
+    if (!el) return;
+    if (speed <= 0) {
+        el.textContent = text || '';
+        if (done) done();
+        return;
+    }
+    let i = 0;
+    el.textContent = '';
+    function step() {
+        if (i < text.length) {
+            el.textContent += text[i++];
+            setTimeout(step, speed);
+        } else if (done) {
+            done();
+        }
+    }
+    step();
+}
+
 async function renderScene() { 
     console.log('[renderScene] start');
     try { 
@@ -2243,7 +2352,58 @@ async function renderScene() {
         } 
         // TODO: Use this after adding originalVector column to scenes table
         // Currently uses fallbackAlignment() from expInterview.js
-        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id); let displayScene = scene; if (state.currentMode === 'archive' && memoryId) { displayScene = await loadSceneWithContamination(scene, memoryId) } const sceneTextEl = document.getElementById('sceneText'); if (sceneTextEl) sceneTextEl.textContent = displayScene.displayText || displayScene.text; if (scene.echoWords) renderEchoLayer(scene.echoWords); const sceneMainEl = document.querySelector('.scene-main'); if (sceneMainEl && typeof startFloatingAnchor === 'function') { const anchorKeyword = (scene.echoWords && scene.echoWords.length > 0) ? scene.echoWords[0] : null; const alignment = state.currentAlignment || 0.5; startFloatingAnchor(sceneMainEl, anchorKeyword, alignment); } if (state.currentMode === 'archive') { renderArchiveFreeInput(scene); } else if (scene.choices) { renderChoices(scene.choices); } const sceneCounterEl = document.getElementById('sceneCounter'); if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length; const dots = document.querySelectorAll('#progressDots .progress-dot'); dots.forEach((dot, i) => { dot.className = 'progress-dot'; if (i < state.currentScene) dot.classList.add('visited'); if (i === state.currentScene) dot.classList.add('active') }); const alignmentValueEl = document.getElementById('alignmentValue'); if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2); if (typeof updateFloatingAnchorAlignment === 'function') updateFloatingAnchorAlignment(state.currentAlignment); const alignmentFillEl = document.getElementById('alignmentFill'); if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%';
+        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
+        let displayScene = scene;
+        if (state.currentMode === 'archive' && memoryId) {
+            displayScene = await loadSceneWithContamination(scene, memoryId);
+        }
+
+        const sceneTextEl = document.getElementById('sceneText');
+        const baseText = displayScene.displayText || displayScene.text || scene.text || '';
+        const visitCount = state.fixationCounts && typeof state.currentScene === 'number'
+            ? (state.fixationCounts[state.currentScene] || 0)
+            : 0;
+        const arrivalPattern = state.lastTransitionPattern || 'bridge';
+
+        if (sceneTextEl) {
+            sceneTextEl.setAttribute('data-arrival', arrivalPattern);
+            const typingSpeed = getArrivalTypingSpeed(arrivalPattern);
+            if (typingSpeed <= 0) {
+                sceneTextEl.innerHTML = buildArchiveSceneHTML(baseText, scene, visitCount);
+            } else {
+                typeSceneText(sceneTextEl, baseText, typingSpeed, () => {
+                    sceneTextEl.innerHTML = buildArchiveSceneHTML(baseText, scene, visitCount);
+                });
+            }
+        }
+
+        if (scene.echoWords) renderEchoLayer(scene.echoWords);
+        const sceneMainEl = document.querySelector('.scene-main');
+        if (sceneMainEl && typeof startFloatingAnchor === 'function') {
+            const anchorKeyword = (scene.echoWords && scene.echoWords.length > 0) ? scene.echoWords[0] : null;
+            const alignment = state.currentAlignment || 0.5;
+            startFloatingAnchor(sceneMainEl, anchorKeyword, alignment);
+        }
+
+        if (state.currentMode === 'archive') {
+            renderArchiveFreeInput(scene);
+        } else if (scene.choices) {
+            renderChoices(scene.choices);
+        }
+
+        const sceneCounterEl = document.getElementById('sceneCounter');
+        if (sceneCounterEl) sceneCounterEl.textContent = (state.currentScene + 1) + '/' + currentData.scenes.length;
+        const dots = document.querySelectorAll('#progressDots .progress-dot');
+        dots.forEach((dot, i) => {
+            dot.className = 'progress-dot';
+            if (i < state.currentScene) dot.classList.add('visited');
+            if (i === state.currentScene) dot.classList.add('active');
+        });
+        const alignmentValueEl = document.getElementById('alignmentValue');
+        if (alignmentValueEl) alignmentValueEl.textContent = state.currentAlignment.toFixed(2);
+        if (typeof updateFloatingAnchorAlignment === 'function') updateFloatingAnchorAlignment(state.currentAlignment);
+        const alignmentFillEl = document.getElementById('alignmentFill');
+        if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%';
         
         // Wave display: only process in archive mode
         if (state.currentMode === 'archive') {
@@ -2414,7 +2574,113 @@ function makeChoice(choiceIndex) {
         showNotification('An error occurred'); 
     } 
 }
-function proceedToNextScene() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('Unable to load scene data'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); if (window.soundscape) window.soundscape.onSceneTransition(); renderScene() } else { showEndScreen() } } catch (e) { console.error('proceedToNextScene error:', e); showNotification('An error occurred') } }
+function proceedToNextScene() {
+    try {
+        const currentData = window.currentStoryData || storyData;
+        const state = appStore.getState();
+        if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
+            showNotification('Unable to load scene data');
+            return;
+        }
+
+        // Non-archive 모드는 기존 직선 진행 유지
+        if (state.currentMode !== 'archive') {
+            if (state.currentScene < currentData.scenes.length - 1) {
+                appStore.setState({ currentScene: state.currentScene + 1 });
+                if (window.soundscape) window.soundscape.onSceneTransition();
+                renderScene();
+            } else {
+                showEndScreen();
+            }
+            return;
+        }
+
+        const scenesLen = currentData.scenes.length;
+        const currentSceneIndex = state.currentScene || 0;
+
+        // contaminationLevel 누적 (엔진 alignment 기반)
+        const alignment = state.currentAlignment ?? 0.5;
+        const contaminationDelta = parseFloat(((1 - alignment) * 0.15).toFixed(3));
+
+        // 마지막 엔진 결과에서 transition_pattern, mismatch_type 읽기
+        const engineResult = Array.isArray(window.archiveEngineResults)
+            ? window.archiveEngineResults[currentSceneIndex] || null
+            : null;
+        const pattern = engineResult && engineResult.transition_pattern
+            ? engineResult.transition_pattern
+            : 'bridge';
+
+        let nextSceneIndex = currentSceneIndex + 1;
+
+        // 3씬 구조인 경우에만 SCENE_TRANSITION_MAP 적용
+        if (scenesLen === 3 && SCENE_TRANSITION_MAP[currentSceneIndex]) {
+            const row = SCENE_TRANSITION_MAP[currentSceneIndex];
+            if (row._terminal) {
+                nextSceneIndex = scenesLen - 1;
+            } else if (pattern in row) {
+                nextSceneIndex = row[pattern];
+            } else if ('bridge' in row) {
+                nextSceneIndex = row.bridge;
+            }
+        }
+
+        const newTotalScenesPlayed = (state.totalScenesPlayed || 0) + 1;
+
+        // 6회 이상 진행 시 컷오프 메시지 → 마지막 씬으로 강제 이동
+        if (scenesLen === 3 && newTotalScenesPlayed >= 6) {
+            const sceneTextEl = document.getElementById('sceneText');
+            if (sceneTextEl) {
+                sceneTextEl.setAttribute('data-arrival', '');
+                sceneTextEl.textContent = 'The record can no longer move forward.';
+            }
+            appStore.setState({
+                totalScenesPlayed: newTotalScenesPlayed,
+                contaminationLevel: (state.contaminationLevel || 0) + contaminationDelta,
+                lastTransitionPattern: pattern
+            });
+            setTimeout(() => {
+                const target = scenesLen - 1;
+                const s = appStore.getState();
+                const updatedFixation = { ...(s.fixationCounts || {}) };
+                updatedFixation[target] = (updatedFixation[target] || 0) + 1;
+                const updatedVisited = [ ...(s.visitedScenes || []), target ];
+                appStore.setState({
+                    currentScene: target,
+                    visitedScenes: updatedVisited,
+                    fixationCounts: updatedFixation
+                });
+                if (window.soundscape) window.soundscape.onSceneTransition();
+                renderScene();
+            }, 1500);
+            return;
+        }
+
+        const updatedFixationCounts = { ...(state.fixationCounts || {}) };
+        const updatedVisitedScenes = [ ...(state.visitedScenes || []) ];
+        updatedVisitedScenes.push(nextSceneIndex);
+        updatedFixationCounts[nextSceneIndex] = (updatedFixationCounts[nextSceneIndex] || 0) + 1;
+
+        appStore.setState({
+            currentScene: nextSceneIndex,
+            visitedScenes: updatedVisitedScenes,
+            fixationCounts: updatedFixationCounts,
+            totalScenesPlayed: newTotalScenesPlayed,
+            contaminationLevel: (state.contaminationLevel || 0) + contaminationDelta,
+            lastTransitionPattern: pattern
+        });
+
+        if (window.soundscape) window.soundscape.onSceneTransition();
+
+        if (nextSceneIndex < scenesLen) {
+            renderScene();
+        } else {
+            showEndScreen();
+        }
+    } catch (e) {
+        console.error('proceedToNextScene error:', e);
+        showNotification('An error occurred');
+    }
+}
 // Expose to window for expInterview.js access
 window.proceedToNextScene = proceedToNextScene;
 function proceedToNextSceneLive() { try { const currentData = window.currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('Unable to load scene data'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); simulateNarratorInput() } else { showEndScreen() } } catch (e) { console.error('proceedToNextSceneLive error:', e); showNotification('An error occurred') } }

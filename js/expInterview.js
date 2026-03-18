@@ -457,6 +457,13 @@ function onExpInterviewDone(container, scene) {
   const userReason = expInterviewState.answers.reason || '';
   
   if (engineResult) {
+    // Store latest engine result for archive flow (transition_pattern, mismatch_type 등 사용)
+    if (typeof window !== 'undefined') {
+      window.archiveEngineResults = window.archiveEngineResults || [];
+      const sceneIndexForEngine = (typeof appStore !== 'undefined' && appStore.getState) ? (appStore.getState().currentScene || 0) : 0;
+      window.archiveEngineResults[sceneIndexForEngine] = engineResult;
+    }
+
     // Update bucket state
     expInterviewState.previousBucket = expInterviewState.currentBucket;
     if (expInterviewState.currentBucket === engineResult.alignment_bucket) {
@@ -475,6 +482,7 @@ function onExpInterviewDone(container, scene) {
       appStore.setState({
         currentAlignment: engineResult.alignment_score,
         currentBucket: engineResult.alignment_bucket,
+        // contaminationLevel는 proceedToNextScene에서 누적 계산
       });
     }
   }
