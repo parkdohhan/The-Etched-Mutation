@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEM Contour Test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Noto+Serif+KR:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0a0a0e;
+      --panel: #121219;
+      --line: rgba(196, 168, 130, 0.22);
+      --text: #d9d2c8;
+      --muted: rgba(217, 210, 200, 0.72);
+      --accent: #c4a882;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); }
+    body { font-family: "Noto Serif KR", "Cormorant Garamond", serif; }
+    .app { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
+    .top {
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #0d0d12;
+    }
+    .top label { font-size: 13px; color: var(--muted); }
+    select, input[type="range"] {
+      background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+      padding: 6px 8px; font-size: 13px;
+    }
+    .main { display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
+    .canvas-wrap { position: relative; min-height: 500px; border-right: 1px solid var(--line); }
+    canvas { width: 100%; height: 100%; display: block; background: #0a0a0e; }
+    .hover {
+      position: absolute; pointer-events: none; transform: translate(8px, 8px);
+      background: rgba(10,10,14,0.88); border: 1px solid var(--line); border-radius: 6px;
+      padding: 6px 8px; font-size: 12px; color: var(--text); display: none;
+      white-space: nowrap;
+    }
+    .side { padding: 14px; overflow: auto; background: #0d0d12; }
+    .group { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+    .group h3 { margin: 0 0 8px; font-size: 14px; font-weight: 500; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; font-size: 13px; color: var(--muted); }
+    .checklist label { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 13px; color: var(--text); }
+    .footer { padding: 8px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top">
+      <label for="memorySelect">기억</label>
+      <select id="memorySelect"></select>
+      <button id="reloadBtn" style="background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer;">새로고침</button>
+      <span id="status" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div class="main">
+      <div class="canvas-wrap">
+        <canvas id="mapCanvas"></canvas>
+        <div class="hover" id="hoverBox"></div>
+      </div>
+      <aside class="side">
+        <div class="group">
+          <h3>요약</h3>
+          <div class="row"><span>plays</span><strong id="playsCount">0</strong></div>
+          <div class="row"><span>scenes</span><strong id="scenesCount">0</strong></div>
+        </div>
+
+        <div class="group checklist">
+          <h3>레이어 토글</h3>
+          <label><input type="checkbox" data-layer="surface" checked> surface</label>
+          <label><input type="checkbox" data-layer="near" checked> near</label>
+          <label><input type="checkbox" data-layer="mid" checked> mid</label>
+          <label><input type="checkbox" data-layer="deep" checked> deep</label>
+          <label><input type="checkbox" data-layer="bedrock" checked> bedrock</label>
+        </div>
+
+        <div class="group">
+          <h3>렌더</h3>
+          <div class="row">
+            <span>bandwidth</span>
+            <input id="bandwidth" type="range" min="0.5" max="2" step="0.05" value="1">
+            <strong id="bandwidthVal">1.00x</strong>
+          </div>
+          <div class="row">
+            <span>contour levels</span>
+            <input id="levels" type="range" min="8" max="30" step="1" value="16">
+            <strong id="levelsVal">16</strong>
+          </div>
+          <div class="row"><label><input id="anchorToggle" type="checkbox" checked> 감정 앵커 표시</label></div>
+          <div class="row"><label><input id="scenePinToggle" type="checkbox" checked> 코어 장면 핀 표시</label></div>
+        </div>
+      </aside>
+    </div>
+    <div class="footer">TEM contour standalone test · strataView bakeLayer 포팅</div>
+  </div>
+
+  <script>
+    // Supabase
+    const SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Strata constants
+    const GRID = 80, SIZE = 50, HALF = SIZE / 2;
+    const DAY_MS = 86400000;
+    const LAYER_DEFS = [
+      { id: 'surface', windowDays: [0, 7], thickness: 3.5, opacity: 1.0, compaction: 1.0 },
+      { id: 'near', windowDays: [7, 30], thickness: 2.8, opacity: 0.90, compaction: 0.82 },
+      { id: 'mid', windowDays: [30, 90], thickness: 2.2, opacity: 0.75, compaction: 0.60 },
+      { id: 'deep', windowDays: [90, 180], thickness: 1.6, opacity: 0.55, compaction: 0.35 },
+      { id: 'bedrock', windowDays: [180, Infinity], thickness: 1.0, opacity: 0.30, compaction: 0.15 },
+    ];
+
+    // deterministic noise (strataView 그대로)
+    function hs(x, y) { var n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
+    function sn(x, y) {
+      var i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j;
+      var sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      return hs(i, j) + (hs(i + 1, j) - hs(i, j)) * sx + (hs(i, j + 1) - hs(i, j)) * sy + (hs(i, j) - hs(i + 1, j) - hs(i, j + 1) + hs(i + 1, j + 1)) * sx * sy;
+    }
+    function fm(x, y, o) {
+      o = o || 4; var v = 0, a = 0.5, f = 1;
+      for (var i = 0; i < o; i++) { v += a * sn(x * f, y * f); a *= 0.5; f *= 2.1; }
+      return v;
+    }
+
+    function buildAnchors() {
+      return {
+        anger:        { v: -0.70, a: +0.80, color: [140, 20, 20] },
+        fear:         { v: -0.90, a: +0.90, color: [60, 20, 80] },
+        shame:        { v: -0.90, a: -0.20, color: [100, 30, 60] },
+        moral_pain:   { v: -0.80, a: +0.30, color: [70, 30, 50] },
+        confusion:    { v: -0.40, a: +0.30, color: [80, 70, 90] },
+        sadness:      { v: -0.80, a: -0.40, color: [30, 50, 100] },
+        guilt:        { v: -0.80, a: +0.20, color: [80, 50, 30] },
+        isolation:    { v: -0.70, a: -0.50, color: [20, 20, 40] },
+        numbness:     { v: -0.60, a: -0.80, color: [60, 60, 65] },
+        despair:      { v: -1.00, a: -0.60, color: [20, 15, 30] },
+        helplessness: { v: -0.90, a: -0.40, color: [40, 25, 50] },
+        longing:      { v: -0.30, a: +0.20, color: [80, 60, 100] },
+        joy:          { v: +0.90, a: +0.60, color: [180, 140, 60] },
+        hope:         { v: +0.70, a: +0.40, color: [140, 160, 80] },
+        love:         { v: +1.00, a: +0.50, color: [140, 60, 80] },
+        relief:       { v: +0.60, a: -0.30, color: [100, 140, 120] },
+        peace:        { v: +0.80, a: -0.60, color: [60, 90, 100] },
+        acceptance:   { v: +0.40, a: -0.40, color: [90, 80, 70] },
+        gratitude:    { v: +0.80, a: -0.20, color: [120, 110, 60] },
+        comfort:      { v: +0.70, a: -0.40, color: [100, 100, 80] },
+        nostalgia:    { v: +0.10, a: -0.30, color: [70, 60, 80] },
+      };
+    }
+
+    const VAD_FULL = {
+      fear:{v:-0.9,a:0.9,d:-0.8}, sadness:{v:-0.8,a:-0.4,d:-0.7}, anger:{v:-0.7,a:0.8,d:0.3},
+      guilt:{v:-0.8,a:0.2,d:-0.6}, shame:{v:-0.9,a:-0.2,d:-0.9}, isolation:{v:-0.7,a:-0.5,d:-0.6},
+      numbness:{v:-0.6,a:-0.8,d:-0.4}, moral_pain:{v:-0.8,a:0.3,d:-0.7}, helplessness:{v:-0.9,a:-0.4,d:-1.0},
+      despair:{v:-1.0,a:-0.6,d:-0.9}, joy:{v:0.9,a:0.6,d:0.5}, hope:{v:0.7,a:0.4,d:0.6},
+      relief:{v:0.6,a:-0.3,d:0.4}, gratitude:{v:0.8,a:-0.2,d:0.7}, love:{v:1.0,a:0.5,d:0.6},
+      peace:{v:0.8,a:-0.6,d:0.7}, comfort:{v:0.7,a:-0.4,d:0.6}, longing:{v:-0.3,a:0.2,d:-0.2},
+      nostalgia:{v:0.1,a:-0.3,d:-0.1}, acceptance:{v:0.4,a:-0.4,d:0.5}, confusion:{v:-0.4,a:0.3,d:-0.5},
+    };
+    function projectEmotionToVAD(emotionVec) {
+      if (!emotionVec) return { v: 0, a: 0, d: 0 };
+      let V = 0, A = 0, D = 0, wSum = 0;
+      for (const k in emotionVec) {
+        const w = Number(emotionVec[k] || 0);
+        const m = VAD_FULL[k];
+        if (!w || !m) continue;
+        V += w * m.v; A += w * m.a; D += w * m.d; wSum += w;
+      }
+      if (wSum <= 0) return { v: 0, a: 0, d: 0 };
+      return { v: Math.max(-1, Math.min(1, V / wSum)), a: Math.max(-1, Math.min(1, A / wSum)), d: Math.max(-1, Math.min(1, D / wSum)) };
+    }
+    function computeWeightsFromVAD(vad, anchors) {
+      var weights = {}, totalW = 0;
+      for (var name in anchors) {
+        var anc = anchors[name];
+        var dv = vad.v - anc.v, da = vad.a - anc.a;
+        var dist = Math.sqrt(dv * dv + da * da);
+        var w = Math.exp(-(dist * dist) / (2 * 0.25));
+        if (w > 0.01) { weights[name] = w; totalW += w; }
+      }
+      if (totalW > 0) { for (var k in weights) weights[k] /= totalW; }
+      return weights;
+    }
+    function mapEventToRender(raw, anchors) {
+      var vad = raw.vad || { v: 0, a: 0, d: 0 };
+      var align = raw.alignment_score !== undefined ? raw.alignment_score : 0.5;
+      var voidM = raw.void_mismatch || false;
+      var weights = computeWeightsFromVAD(vad, anchors);
+      var deviation = Math.max(0, 1 - align);
+      var erosion = deviation * 0.6 + (1 - (raw.emb_score_raw || 0.5)) * 0.4;
+      return {
+        scene_id: raw.scene_id || 'unknown',
+        timestamp: raw.timestamp || Date.now(),
+        weights,
+        deviation,
+        void_rupture: voidM ? Math.max(0.3, deviation) : 0,
+        erosion: Math.min(1, erosion),
+        intensity: 0.5 + align * 0.5,
+        _alignment: align,
+      };
+    }
+    function safeObj(v) {
+      if (!v) return {};
+      if (typeof v === "object") return v;
+      try { return JSON.parse(v); } catch { return {}; }
+    }
+
+    let state = {
+      memories: [],
+      scenes: [],
+      plays: [],
+      anchors: buildAnchors(),
+      caches: {},
+      agg: null,
+    };
+
+    function recomputeLayers(events, bedrockEvents) {
+      const now = Date.now();
+      const layers = LAYER_DEFS.map(def => {
+        const l = { ...def, events: [] };
+        if (def.id === "bedrock") l.events = bedrockEvents.slice();
+        else {
+          const minAge = def.windowDays[0] * DAY_MS, maxAge = def.windowDays[1] * DAY_MS;
+          l.events = events.filter(ev => {
+            const age = now - ev.timestamp;
+            return age >= minAge && age < maxAge;
+          });
+        }
+        let totalPoll = 0;
+        l.events.forEach(ev => { totalPoll += (1 - (ev._alignment || 0.5)); });
+        l.pollution = l.events.length ? totalPoll / l.events.length : 0;
+        if (l.events.length > 0) {
+          let avgA = 0;
+          l.events.forEach(ev => { avgA += Math.abs((ev.vad && ev.vad.a) || 0); });
+          avgA /= l.events.length;
+          l.thickness *= (1.0 + avgA * 0.6);
+        }
+        return l;
+      });
+      const totalPlayEvents = events.length;
+      const bedrockLayer = layers[layers.length - 1];
+      bedrockLayer.compaction = 1.0 / (1.0 + totalPlayEvents * 0.1);
+      bedrockLayer.opacity = Math.max(0.30, 0.95 - totalPlayEvents * 0.02);
+      if (totalPlayEvents === 0) bedrockLayer.thickness = Math.max(bedrockLayer.thickness, 3.5);
+      return layers;
+    }
+
+    function bakeLayer(layer, li, anchors, bandwidthScale) {
+      const comp = layer.compaction, opa = layer.opacity, events = layer.events || [];
+      const total = GRID * GRID;
+      const heights = new Float32Array(total);
+      const colors = new Float32Array(total * 3);
+      const pollField = new Float32Array(total);
+      const domIdx = new Int16Array(total).fill(-1);
+      const domScore = new Float32Array(total);
+      const anchorKeys = Object.keys(anchors);
+
+      for (let ei = 0; ei < events.length; ei++) {
+        const ev = events[ei];
+        const evPoll = 1 - (ev._alignment || 0.5);
+        if (evPoll < 0.1) continue;
+        for (const eName in ev.weights) {
+          const ew = ev.weights[eName];
+          if (!ew || !anchors[eName]) continue;
+          const anc = anchors[eName];
+          const ancIx = Math.round(((anc.v * HALF) / SIZE + 0.5) * (GRID - 1));
+          const ancIz = Math.round(((anc.a * HALF) / SIZE + 0.5) * (GRID - 1));
+          const radius = Math.ceil(2 + ew * 6);
+          for (let dz = -radius; dz <= radius; dz++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+              const gix = ancIx + dx, giz = ancIz + dz;
+              if (gix < 0 || gix >= GRID || giz < 0 || giz >= GRID) continue;
+              const d = Math.sqrt(dx * dx + dz * dz);
+              if (d > radius) continue;
+              const sig = (radius * 0.4) * bandwidthScale;
+              const falloff = Math.exp(-(d * d) / (2 * sig * sig));
+              pollField[giz * GRID + gix] += evPoll * ew * falloff * 0.3;
+            }
+          }
+        }
+      }
+      for (let i = 0; i < total; i++) pollField[i] = Math.min(1, pollField[i]);
+
+      for (let iz = 0; iz < GRID; iz++) {
+        for (let ix = 0; ix < GRID; ix++) {
+          const idx = iz * GRID + ix;
+          const gx = (ix / (GRID - 1) - 0.5) * SIZE;
+          const gz = (iz / (GRID - 1) - 0.5) * SIZE;
+          const localPoll = pollField[idx];
+          let h = 0, cr = 0.10, cg = 0.10, cb = 0.13;
+
+          for (let ei = 0; ei < events.length; ei++) {
+            const ev = events[ei], evInt = ev.intensity ?? 1.0, weights = ev.weights || {};
+            for (const eName in weights) {
+              const ew = weights[eName];
+              if (!ew || !anchors[eName]) continue;
+              const anc = anchors[eName];
+              const ax = anc.v * HALF, az = anc.a * HALF;
+              const ddx = gx - ax, ddz = gz - az;
+              const dist = Math.sqrt(ddx * ddx + ddz * ddz);
+              const radius = 3 + ew * 9;
+              if (dist >= radius * 1.5) continue;
+              const sig = (radius * 0.4) * bandwidthScale;
+              const inf = Math.exp(-(dist * dist) / (2 * sig * sig)) * ew * evInt * comp;
+              let dh = ew * 38 * inf;
+              dh += ev.deviation * fm(gx * 0.15 + ei * 3 + li, gz * 0.15 + ei * 2, 4) * 4 * inf;
+              dh += ev.erosion * (hs(gx * 0.3 + ei + li, gz * 0.3) - 0.5) * 2.5 * inf;
+              const vrEff = ev.void_rupture + localPoll * 0.15;
+              if (vrEff > 0.15) {
+                const vn = fm(gx * 0.2 + ei * 5 + li, gz * 0.2, 3);
+                if (vn > (1 - vrEff * 0.6)) dh -= 4 * vrEff * inf;
+              }
+              h += dh;
+              cr += (anc.color[0] / 255) * (0.3 + ew * 0.7) * inf;
+              cg += (anc.color[1] / 255) * (0.3 + ew * 0.7) * inf;
+              cb += (anc.color[2] / 255) * (0.3 + ew * 0.7) * inf;
+              if (inf > domScore[idx]) {
+                domScore[idx] = inf;
+                domIdx[idx] = anchorKeys.indexOf(eName);
+              }
+            }
+          }
+
+          h += fm(gx * 0.05 + li * 0.5, gz * 0.05 + li * 0.3, 5) * 1.0 - 0.5;
+          h *= comp;
+          heights[idx] = h;
+
+          const cn = fm(gx * 0.08 + li, gz * 0.08 + li, 3), hBr = 1 + Math.abs(h) * 0.03;
+          let pr = (cr + cn * 0.05) * hBr * opa;
+          let pg = (cg + cn * 0.03) * hBr * opa;
+          let pb = (cb + cn * 0.06) * hBr * opa;
+          if (localPoll > 0.01) {
+            const grey = (pr + pg + pb) / 3, boneTint = 0.08, mix = localPoll * 0.6;
+            pr = pr * (1 - mix) + (grey * 0.7 + boneTint) * mix;
+            pg = pg * (1 - mix) + (grey * 0.6 + boneTint * 0.8) * mix;
+            pb = pb * (1 - mix) + (grey * 0.5 + boneTint * 0.6) * mix;
+          }
+          if (comp < 0.3) {
+            const fossil = (0.3 - comp) / 0.3, avg = (pr + pg + pb) / 3;
+            pr = pr * (1 - fossil * 0.5) + (avg + 0.04) * fossil * 0.5;
+            pg = pg * (1 - fossil * 0.5) + (avg + 0.03) * fossil * 0.5;
+            pb = pb * (1 - fossil * 0.5) + (avg + 0.02) * fossil * 0.5;
+          }
+          colors[idx * 3] = Math.min(1, pr);
+          colors[idx * 3 + 1] = Math.min(1, pg);
+          colors[idx * 3 + 2] = Math.min(1, pb);
+        }
+      }
+      return { heights, colors, domIdx };
+    }
+
+    function aggregateLayerCaches(caches, enabledLayerIds) {
+      const total = GRID * GRID;
+      const aggH = new Float32Array(total);
+      const aggC = new Float32Array(total * 3);
+      const aggW = new Float32Array(total);
+      const domIdx = new Int16Array(total).fill(-1);
+      const domScore = new Float32Array(total);
+
+      enabledLayerIds.forEach(id => {
+        const c = caches[id]; if (!c) return;
+        for (let i = 0; i < total; i++) {
+          const h = c.heights[i];
+          aggH[i] += h;
+          const w = Math.abs(h) + 0.2;
+          aggW[i] += w;
+          aggC[i * 3] += c.colors[i * 3] * w;
+          aggC[i * 3 + 1] += c.colors[i * 3 + 1] * w;
+          aggC[i * 3 + 2] += c.colors[i * 3 + 2] * w;
+          const s = Math.abs(h);
+          if (s > domScore[i]) { domScore[i] = s; domIdx[i] = c.domIdx[i]; }
+        }
+      });
+      for (let i = 0; i < total; i++) {
+        const w = aggW[i] || 1;
+        aggC[i * 3] /= w; aggC[i * 3 + 1] /= w; aggC[i * 3 + 2] /= w;
+      }
+      let min = Infinity, max = -Infinity;
+      for (let i = 0; i < total; i++) { if (aggH[i] < min) min = aggH[i]; if (aggH[i] > max) max = aggH[i]; }
+      return { heights: aggH, colors: aggC, domIdx, min, max };
+    }
+
+    function toPastelTone(r, g, b, scale) {
+      const rr = Math.max(0, Math.min(1, r * scale));
+      const gg = Math.max(0, Math.min(1, g * scale));
+      const bb = Math.max(0, Math.min(1, b * scale));
+      const lum = rr * 0.299 + gg * 0.587 + bb * 0.114;
+      const desat = 0.58;
+      let pr = rr * (1 - desat) + lum * desat;
+      let pg = gg * (1 - desat) + lum * desat;
+      let pb = bb * (1 - desat) + lum * desat;
+
+      const pastelBase = [0.22, 0.20, 0.26];
+      const pastelMix = 0.34;
+      pr = pr * (1 - pastelMix) + pastelBase[0] * pastelMix;
+      pg = pg * (1 - pastelMix) + pastelBase[1] * pastelMix;
+      pb = pb * (1 - pastelMix) + pastelBase[2] * pastelMix;
+
+      const channelCap = 0.48;
+      return [
+        Math.min(channelCap, Math.max(0, pr)),
+        Math.min(channelCap, Math.max(0, pg)),
+        Math.min(channelCap, Math.max(0, pb)),
+      ];
+    }
+
+    function drawRaster(ctx, agg, W, H) {
+      const maxChannel = (() => {
+        let m = 0;
+        for (let i = 0; i < agg.colors.length; i++) m = Math.max(m, agg.colors[i]);
+        return m || 1;
+      })();
+      // plays가 많아져도 과도하게 진해지지 않도록 전역 스케일 캡
+      const globalScale = Math.min(0.72, 0.42 / maxChannel);
+
+      const img = ctx.createImageData(W, H);
+      const p = img.data;
+      for (let y = 0; y < H; y++) {
+        const gy = (y / (H - 1)) * (GRID - 1);
+        const iz = Math.max(0, Math.min(GRID - 2, Math.floor(gy)));
+        const tz = gy - iz;
+        for (let x = 0; x < W; x++) {
+          const gx = (x / (W - 1)) * (GRID - 1);
+          const ix = Math.max(0, Math.min(GRID - 2, Math.floor(gx)));
+          const tx = gx - ix;
+          const c00 = (iz * GRID + ix) * 3, c10 = c00 + 3, c01 = ((iz + 1) * GRID + ix) * 3, c11 = c01 + 3;
+          const r = lerp2(agg.colors[c00], agg.colors[c10], agg.colors[c01], agg.colors[c11], tx, tz);
+          const g = lerp2(agg.colors[c00+1], agg.colors[c10+1], agg.colors[c01+1], agg.colors[c11+1], tx, tz);
+          const b = lerp2(agg.colors[c00+2], agg.colors[c10+2], agg.colors[c01+2], agg.colors[c11+2], tx, tz);
+          const [pr, pg, pb] = toPastelTone(r, g, b, globalScale);
+          const i = (y * W + x) * 4;
+          p[i] = Math.max(0, Math.min(255, Math.round(pr * 255)));
+          p[i+1] = Math.max(0, Math.min(255, Math.round(pg * 255)));
+          p[i+2] = Math.max(0, Math.min(255, Math.round(pb * 255)));
+          p[i+3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+    function lerp2(a, b, c, d, tx, ty) {
+      const u = a * (1 - tx) + b * tx;
+      const v = c * (1 - tx) + d * tx;
+      return u * (1 - ty) + v * ty;
+    }
+
+    function marchingSquaresSegments(heights, threshold) {
+      const segs = [];
+      const edgePoint = (a, b, va, vb) => {
+        const t = (threshold - va) / ((vb - va) || 1e-6);
+        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      };
+      for (let z = 0; z < GRID - 1; z++) {
+        for (let x = 0; x < GRID - 1; x++) {
+          const i0 = z * GRID + x, i1 = i0 + 1, i2 = i0 + GRID + 1, i3 = i0 + GRID;
+          const v0 = heights[i0], v1 = heights[i1], v2 = heights[i2], v3 = heights[i3];
+          let c = 0; if (v0 >= threshold) c |= 1; if (v1 >= threshold) c |= 2; if (v2 >= threshold) c |= 4; if (v3 >= threshold) c |= 8;
+          if (c === 0 || c === 15) continue;
+          const p0 = { x, y: z }, p1 = { x: x + 1, y: z }, p2 = { x: x + 1, y: z + 1 }, p3 = { x, y: z + 1 };
+          const e0 = edgePoint(p0, p1, v0, v1), e1 = edgePoint(p1, p2, v1, v2), e2 = edgePoint(p3, p2, v3, v2), e3 = edgePoint(p0, p3, v0, v3);
+          const lut = {
+            1:[[e3,e0]],2:[[e0,e1]],3:[[e3,e1]],4:[[e1,e2]],5:[[e3,e2],[e0,e1]],6:[[e0,e2]],7:[[e3,e2]],
+            8:[[e2,e3]],9:[[e0,e2]],10:[[e0,e3],[e1,e2]],11:[[e1,e2]],12:[[e1,e3]],13:[[e0,e1]],14:[[e0,e3]]
+          };
+          (lut[c] || []).forEach(pair => segs.push(pair));
+        }
+      }
+      return segs;
+    }
+
+    function toCanvas(p, W, H) {
+      return { x: (p.x / (GRID - 1)) * W, y: (p.y / (GRID - 1)) * H };
+    }
+
+    function render() {
+      const canvas = document.getElementById("mapCanvas");
+      const ctx = canvas.getContext("2d");
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(2, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(2, Math.floor(rect.height * dpr));
+      // putImageData는 transform 영향을 받지 않으므로, device pixel 좌표로 직접 렌더링한다.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const W = Math.floor(canvas.width), H = Math.floor(canvas.height);
+      ctx.clearRect(0, 0, W, H);
+
+      const enabled = Array.from(document.querySelectorAll('[data-layer]')).filter(el => el.checked).map(el => el.getAttribute("data-layer"));
+      state.agg = aggregateLayerCaches(state.caches, enabled);
+      drawRaster(ctx, state.agg, W, H);
+
+      const levels = Number(document.getElementById("levels").value);
+      const minH = state.agg.min, maxH = state.agg.max, range = (maxH - minH) || 1;
+      ctx.lineWidth = 0.65 * dpr;
+      ctx.strokeStyle = "rgba(216, 206, 190, 0.24)";
+      for (let i = 1; i <= levels; i++) {
+        const t = i / (levels + 1);
+        const th = minH + range * t;
+        const segs = marchingSquaresSegments(state.agg.heights, th);
+        ctx.beginPath();
+        segs.forEach(([a,b]) => {
+          const p1 = toCanvas(a, W, H), p2 = toCanvas(b, W, H);
+          ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+        });
+        ctx.stroke();
+      }
+
+      if (document.getElementById("anchorToggle").checked) drawAnchors(ctx, W, H);
+      if (document.getElementById("scenePinToggle").checked) drawScenePins(ctx, W, H);
+    }
+
+    function drawAnchors(ctx, W, H) {
+      ctx.save();
+      ctx.font = `${11 * (window.devicePixelRatio || 1)}px Cormorant Garamond, serif`;
+      Object.entries(state.anchors).forEach(([name, a]) => {
+        const gx = ((a.v * HALF) / SIZE + 0.5) * (GRID - 1);
+        const gz = ((a.a * HALF) / SIZE + 0.5) * (GRID - 1);
+        const x = (gx / (GRID - 1)) * W, y = (gz / (GRID - 1)) * H;
+        ctx.fillStyle = "rgba(196,168,130,0.85)";
+        ctx.beginPath(); ctx.arc(x, y, 2 * (window.devicePixelRatio || 1), 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(217,210,200,0.8)";
+        ctx.fillText(name, x + 4, y - 3);
+      });
+      ctx.restore();
+    }
+
+    function drawScenePins(ctx, W, H) {
+      ctx.save();
+      state.scenes.forEach((s, idx) => {
+        const em = safeObj(s.original_emotion);
+        const vad = projectEmotionToVAD(em);
+        const gx = ((vad.v * HALF) / SIZE + 0.5) * (GRID - 1);
+        const gz = ((vad.a * HALF) / SIZE + 0.5) * (GRID - 1);
+        const x = (gx / (GRID - 1)) * W, y = (gz / (GRID - 1)) * H;
+        ctx.fillStyle = "rgba(240,220,186,0.95)";
+        ctx.strokeStyle = "rgba(20,20,24,0.85)";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "rgba(240,220,186,0.8)";
+        ctx.font = `${11 * (window.devicePixelRatio || 1)}px Cormorant Garamond, serif`;
+        ctx.fillText(String(s.scene_order ?? (idx + 1)), x + 5, y - 4);
+      });
+      ctx.restore();
+    }
+
+    function attachHover() {
+      const canvas = document.getElementById("mapCanvas");
+      const box = document.getElementById("hoverBox");
+      canvas.addEventListener("mousemove", (e) => {
+        if (!state.agg) return;
+        const r = canvas.getBoundingClientRect();
+        const x = e.clientX - r.left, y = e.clientY - r.top;
+        const gx = Math.max(0, Math.min(GRID - 1, Math.round((x / r.width) * (GRID - 1))));
+        const gz = Math.max(0, Math.min(GRID - 1, Math.round((y / r.height) * (GRID - 1))));
+        const idx = gz * GRID + gx;
+        const h = state.agg.heights[idx];
+        const keys = Object.keys(state.anchors);
+        const dom = keys[state.agg.domIdx[idx]] || "-";
+        box.style.display = "block";
+        box.style.left = `${x}px`; box.style.top = `${y}px`;
+        box.textContent = `height ${h.toFixed(2)} · dominant ${dom}`;
+      });
+      canvas.addEventListener("mouseleave", () => { box.style.display = "none"; });
+    }
+
+    async function loadMemories() {
+      const { data, error } = await sb.from("memories").select("id, title").order("id");
+      if (error) throw error;
+      state.memories = data || [];
+      const sel = document.getElementById("memorySelect");
+      sel.innerHTML = "";
+      state.memories.forEach(m => {
+        const op = document.createElement("option");
+        op.value = m.id; op.textContent = `${m.title || "(untitled)"} · ${m.id.slice(0,8)}…`;
+        sel.appendChild(op);
+      });
+    }
+
+    async function loadMemoryData(memoryId) {
+      document.getElementById("status").textContent = "loading...";
+      const scenesRes = await sb.from("scenes").select("*").eq("memory_id", memoryId).order("scene_order");
+      const playsRes = await sb.from("plays")
+        .select("user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id")
+        .eq("memory_id", memoryId)
+        .order("created_at");
+      if (scenesRes.error) throw scenesRes.error;
+      if (playsRes.error) throw playsRes.error;
+      state.scenes = scenesRes.data || [];
+      state.plays = playsRes.data || [];
+      document.getElementById("playsCount").textContent = String(state.plays.length);
+      document.getElementById("scenesCount").textContent = String(state.scenes.length);
+
+      const bedrockEvents = state.scenes.map(scene => ({
+        scene_id: scene.id,
+        timestamp: 0,
+        vad: projectEmotionToVAD(safeObj(scene.original_emotion)),
+        alignment_score: 1.0,
+        void_mismatch: !!(scene.void_info && scene.void_info.sceneVoid),
+      })).map(ev => ({ ...mapEventToRender(ev, state.anchors), vad: ev.vad }));
+
+      const globalEvents = state.plays.map(play => ({
+        scene_id: play.scene_id,
+        timestamp: play.created_at ? new Date(play.created_at).getTime() : Date.now(),
+        vad: projectEmotionToVAD(safeObj(play.user_emotion)),
+        alignment_score: play.alignment ?? 0.5,
+        void_mismatch: play.mismatch_type === "void_mismatch",
+      })).map(ev => ({ ...mapEventToRender(ev, state.anchors), vad: ev.vad }));
+
+      const layers = recomputeLayers(globalEvents, bedrockEvents);
+      const bw = Number(document.getElementById("bandwidth").value);
+      state.caches = {};
+      for (let i = 0; i < layers.length; i++) {
+        state.caches[layers[i].id] = bakeLayer(layers[i], i, state.anchors, bw);
+      }
+      document.getElementById("status").textContent = `loaded: scenes ${state.scenes.length}, plays ${state.plays.length}`;
+      render();
+    }
+
+    function bindUI() {
+      const memorySelect = document.getElementById("memorySelect");
+      memorySelect.addEventListener("change", () => loadMemoryData(memorySelect.value).catch(showErr));
+      document.getElementById("reloadBtn").addEventListener("click", () => loadMemoryData(memorySelect.value).catch(showErr));
+      document.querySelectorAll("[data-layer]").forEach(el => el.addEventListener("change", render));
+      document.getElementById("levels").addEventListener("input", (e) => {
+        document.getElementById("levelsVal").textContent = e.target.value; render();
+      });
+      document.getElementById("bandwidth").addEventListener("input", (e) => {
+        const v = Number(e.target.value);
+        document.getElementById("bandwidthVal").textContent = `${v.toFixed(2)}x`;
+        const layers = Object.keys(state.caches);
+        if (!layers.length) return;
+        loadMemoryData(memorySelect.value).catch(showErr);
+      });
+      document.getElementById("anchorToggle").addEventListener("change", render);
+      document.getElementById("scenePinToggle").addEventListener("change", render);
+      window.addEventListener("resize", render);
+      attachHover();
+    }
+
+    function showErr(err) {
+      console.error(err);
+      document.getElementById("status").textContent = `error: ${err.message || err}`;
+    }
+
+    (async function init() {
+      try {
+        bindUI();
+        await loadMemories();
+        const first = state.memories[0];
+        if (first) await loadMemoryData(first.id);
+      } catch (e) { showErr(e); }
+    })();
+  </script>
+</body>
+</html>
