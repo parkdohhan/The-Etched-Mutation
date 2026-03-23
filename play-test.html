@@ -20,7 +20,7 @@
     html, body { margin: 0; min-height: 100%; background: #0a0a0e; color: var(--text-primary); font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; }
     #selectScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0e; }
     #mapMode {
-      position: fixed; inset: 0; background: #0a0a0e; display: none; flex-direction: column; z-index: 50;
+      position: fixed; set: 0; background: #0a0a0e; display: none; flex-direction: column; z-index: 50;
     }
     #mapMode.active { display: flex; }
     .map-canvas-area { flex: 1; position: relative; min-height: 0; }
@@ -31,7 +31,13 @@
       border-radius: 50%; transition: opacity 0.5s ease, transform 0.5s ease;
     }
     .map-pin.core { width: 12px; height: 12px; border: 1.5px solid var(--accent-memory); background: rgba(232, 228, 220, 0.95); }
+    .map-pin.core.active { box-shadow: 0 0 12px rgba(196,168,130,0.6); }
     .map-pin.echo { width: 6px; height: 6px; background: rgba(180, 160, 200, 0.85); border: 1px solid rgba(200, 180, 220, 0.5); }
+    .map-pin.bridge {
+      width: 9px; height: 9px; border: 1.3px solid #7a9a7a; background: rgba(122, 154, 122, 0.22);
+      box-shadow: 0 0 10px rgba(122,154,122,0.5);
+    }
+    .map-pin.bridge.active { box-shadow: 0 0 10px rgba(122,154,122,0.5); }
     .map-pin.voidPin { width: 8px; height: 8px; background: transparent; border: 1px dashed rgba(200, 150, 140, 0.6); }
     .map-pin.active { box-shadow: 0 0 14px rgba(196, 168, 130, 0.55); opacity: 1; }
     .map-pin.current { box-shadow: 0 0 20px rgba(255, 220, 180, 0.8); }
@@ -784,6 +790,15 @@
   const CONTOUR_LEVELS = 24;
   const BANDWIDTH = 1;
   const ENABLED_LAYERS = ['surface', 'near', 'mid', 'deep', 'bedrock'];
+  const EMOTION_INPUT_SKELETON = `
+    <div id="emotionChips" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:12px;"></div>
+    <div id="sliderArea" style="margin-bottom:12px;"></div>
+    <div id="reasonArea" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button type="button" id="submitBtn" class="action-btn" disabled>입력</button>
+      <button type="button" id="voidBtn" class="action-btn void">Leave it unsaid</button>
+    </div>
+  `;
 
   const game = {
     memoryId: null,
@@ -854,7 +869,7 @@
   }
 
   function updateAccess(pattern, emotionPosition, originSceneId) {
-    const cores = game.pins.filter(p => p.type === 'core');
+    const cores = game.pins.filter(p => p.type === 'core' || p.type === 'bridge');
     const originPin = cores.find(p => p.sceneId === originSceneId) || null;
     const rule = TRANSITION_RULES[pattern] || TRANSITION_RULES.bridge;
     let center = emotionPosition && (emotionPosition.x != null)
@@ -933,7 +948,7 @@
 
   function syncPinStateFlags() {
     game.pins.forEach(p => {
-      if (p.type === 'core') {
+      if (p.type === 'core' || p.type === 'bridge') {
         const can = !!game.visitedCore[p.sceneId] || !!(game.accessiblePinIds && game.accessiblePinIds.has(p.id));
         p.state = can ? 'active' : 'locked';
       } else if (p.type === 'voidPin') {
@@ -946,7 +961,7 @@
   }
 
   function applyInitialAccess() {
-    const cores = game.pins.filter(p => p.type === 'core');
+    const cores = game.pins.filter(p => p.type === 'core' || p.type === 'bridge');
     const unvisited = cores.filter(p => !game.visitedCore[p.sceneId]);
     const picked = unvisited.length ? unvisited : cores.slice();
     game.accessiblePinIds = new Set(picked.map(p => p.id));
@@ -1262,11 +1277,13 @@
       const emotion = safeParseEmotion(scene.original_emotion);
       const base = emotionToMapCoords(emotion);
       const spread = mapCoordsSpread(base.x, base.y, idx, scene.id);
-      const pinId = 'core-' + (scene.id != null ? scene.id : idx);
+      const isBridge = scene.scene_role === 'residual';
+      const pinType = isBridge ? 'bridge' : 'core';
+      const pinId = pinType + '-' + (scene.id != null ? scene.id : idx);
       const pinText = scene.text || scene.text_stage_1 || scene.text_stage_2 || '…';
       game.pins.push({
         id: pinId,
-        type: 'core',
+        type: pinType,
         sceneId: scene.id,
         sceneIndex: idx,
         memoryId: game.memoryId,
@@ -1276,7 +1293,7 @@
         x: spread.x * 100,
         y: spread.y * 100,
         text: pinText,
-        label: 'Scene ' + (scene.scene_order != null ? scene.scene_order : idx + 1),
+        label: isBridge ? '·' : ('#' + (scene.scene_order != null ? scene.scene_order : idx + 1)),
         originalEmotion: emotion,
         sceneOrder: scene.scene_order != null ? scene.scene_order : idx,
         state: 'locked',
@@ -1332,7 +1349,7 @@
         pin.locked = true;
         return;
       }
-      if (pin.type === 'core') {
+      if (pin.type === 'core' || pin.type === 'bridge') {
         pin.visited = !!game.visitedCore[pin.sceneId];
         const canOpen = pin.visited || !!(game.accessiblePinIds && game.accessiblePinIds.has(pin.id));
         pin.locked = !canOpen;
@@ -1382,6 +1399,8 @@
       return;
     }
     if (pin.type === 'core') {
+      enterSceneMode(pin);
+    } else if (pin.type === 'bridge') {
       enterSceneMode(pin);
     } else if (pin.type === 'voidPin') {
       enterSceneMode(pin);
@@ -1451,7 +1470,7 @@
 
   function enterSceneMode(pinOrId) {
     const pin = typeof pinOrId === 'string' ? game.pins.find(p => p.id === pinOrId) : pinOrId;
-    if (!pin || (pin.type !== 'core' && pin.type !== 'voidPin')) return;
+    if (!pin || (pin.type !== 'core' && pin.type !== 'bridge' && pin.type !== 'voidPin')) return;
     const scene = game.scenes.find(s => s.id === pin.sceneId);
     if (!scene) return;
     clearTimers();
@@ -1461,7 +1480,6 @@
     const sm = document.getElementById('sceneMode');
     sm.classList.add('active');
     document.getElementById('emotionInputArea').style.opacity = '0';
-    document.getElementById('submitBtn').disabled = true;
     const tint = emotionVectorToRGB(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
     startWaveLoop(tint);
 
@@ -1474,10 +1492,7 @@
       textEl.textContent = fullText.slice(0, i);
       if (i >= fullText.length) {
         clearInterval(typeInterval);
-        setupEmotionUI(scene);
-        document.getElementById('emotionInputArea').style.opacity = '1';
-        document.getElementById('submitBtn').disabled = false;
-        armTimers(scene);
+        setupEmotionInputByPinType(pin, scene);
       }
     }, 28);
 
@@ -1494,6 +1509,143 @@
       LOG('void timeout → unsaid');
       leaveSceneUnsaid();
     }, voidMs);
+  }
+
+  function resetEmotionInputSkeleton() {
+    const area = document.getElementById('emotionInputArea');
+    area.innerHTML = EMOTION_INPUT_SKELETON;
+  }
+
+  function setupEmotionInputByPinType(pin, scene) {
+    if (pin.type === 'core') {
+      setupCoreInput(pin, scene);
+      return;
+    }
+    if (pin.type === 'bridge') {
+      setupBridgeInput(pin, scene);
+      return;
+    }
+    resetEmotionInputSkeleton();
+    setupEmotionUI(scene);
+    document.getElementById('emotionInputArea').style.opacity = '1';
+    document.getElementById('submitBtn').disabled = false;
+    armTimers(scene);
+  }
+
+  function setupCoreInput(pin, scene) {
+    const inputArea = document.getElementById('emotionInputArea');
+    inputArea.innerHTML = `
+      <p style="font-size:13px;opacity:0.5;margin-bottom:12px;">이 장면을 읽고 무엇이 떠올랐나요?</p>
+      <textarea id="coreTextInput" placeholder="자유롭게 쓰세요..."
+        style="width:100%;background:rgba(196,168,130,0.05);border:1px solid rgba(196,168,130,0.15);
+        color:#c4a882;font-family:inherit;font-size:15px;padding:12px;resize:none;border-radius:4px;min-height:80px;"></textarea>
+      <button id="coreSubmitBtn" style="margin-top:12px;float:right;background:none;
+        border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:8px 24px;cursor:pointer;
+        font-family:inherit;font-size:13px;">제출</button>
+    `;
+    inputArea.style.opacity = '1';
+    const submitBtn = document.getElementById('coreSubmitBtn');
+    submitBtn.addEventListener('click', async () => {
+      const text = (document.getElementById('coreTextInput').value || '').trim();
+      if (!text) return;
+      submitBtn.disabled = true;
+      submitBtn.textContent = '분석 중...';
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/claude-scene', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+          body: JSON.stringify({
+            type: 'emotion_extract',
+            scene_text: scene.text || '',
+            user_text: text,
+          }),
+        });
+        const raw = await res.json();
+        const userVector = raw?.base ? raw : (raw?.data?.base ? raw.data : { base: {} });
+        if (!userVector.reason_analysis) userVector.reason_analysis = { attribution: 'unknown', core_fear: 'none', target: 'unknown', is_void: false };
+        processEmotionResult(pin, scene, userVector);
+      } catch (e) {
+        console.error('emotion_extract error:', e);
+        submitBtn.textContent = '오류';
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  function setupBridgeInput(pin, scene) {
+    const BRIDGE_CHIPS = [
+      { label: 'guilt', key: 'guilt' },
+      { label: 'fear', key: 'fear' },
+      { label: 'anger', key: 'anger' },
+      { label: 'sadness', key: 'sadness' },
+      { label: 'longing', key: 'longing' },
+      { label: 'relief', key: 'relief' },
+      { label: 'confusion', key: 'confusion' },
+      { label: 'emptiness', key: 'emptiness' },
+    ];
+    const CHIP_VECTORS = {
+      guilt: { fear: 0.1, sadness: 0.3, anger: 0, joy: 0, longing: 0.1, guilt: 0.8 },
+      fear: { fear: 0.8, sadness: 0.2, anger: 0, joy: 0, longing: 0, guilt: 0.1 },
+      anger: { fear: 0.1, sadness: 0.1, anger: 0.8, joy: 0, longing: 0, guilt: 0 },
+      sadness: { fear: 0, sadness: 0.8, anger: 0, joy: 0, longing: 0.3, guilt: 0.1 },
+      longing: { fear: 0, sadness: 0.4, anger: 0, joy: 0.1, longing: 0.8, guilt: 0 },
+      relief: { fear: 0, sadness: 0.1, anger: 0, joy: 0.5, longing: 0, guilt: 0.3 },
+      confusion: { fear: 0.3, sadness: 0.2, anger: 0.1, joy: 0, longing: 0.1, guilt: 0.2 },
+      emptiness: { fear: 0, sadness: 0.4, anger: 0, joy: 0, longing: 0.2, guilt: 0.1 },
+    };
+    const inputArea = document.getElementById('emotionInputArea');
+    const selected = [];
+    let html = '<p style="font-size:13px;opacity:0.5;margin-bottom:12px;">이 조각에서 어떤 감정이 느껴지나요? (1~2개)</p>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+    BRIDGE_CHIPS.forEach(chip => {
+      html += `<button class="bridge-chip" data-key="${chip.key}"
+        style="background:rgba(122,154,122,0.08);border:1px solid rgba(122,154,122,0.2);
+        color:#a0b8a0;padding:6px 14px;font-family:inherit;font-size:13px;cursor:pointer;
+        border-radius:20px;">${chip.label}</button>`;
+    });
+    html += '</div>';
+    html += `<button id="bridgeConfirmBtn" style="margin-top:12px;float:right;background:none;
+      border:1px solid rgba(122,154,122,0.3);color:#7a9a7a;padding:8px 24px;cursor:pointer;
+      font-family:inherit;font-size:13px;opacity:0;">확인</button>`;
+    inputArea.innerHTML = html;
+    inputArea.style.opacity = '1';
+    inputArea.querySelectorAll('.bridge-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
+        const idx = selected.indexOf(key);
+        if (idx >= 0) {
+          selected.splice(idx, 1);
+          btn.style.background = 'rgba(122,154,122,0.08)';
+          btn.style.borderColor = 'rgba(122,154,122,0.2)';
+          btn.style.color = '#a0b8a0';
+        } else if (selected.length < 2) {
+          selected.push(key);
+          btn.style.background = 'rgba(122,154,122,0.25)';
+          btn.style.borderColor = '#7a9a7a';
+          btn.style.color = '#d0e0d0';
+        }
+        document.getElementById('bridgeConfirmBtn').style.opacity = selected.length > 0 ? '1' : '0';
+      });
+    });
+    document.getElementById('bridgeConfirmBtn').addEventListener('click', () => {
+      if (!selected.length) return;
+      const keys = ['fear', 'sadness', 'anger', 'joy', 'longing', 'guilt'];
+      const blended = {};
+      keys.forEach(k => { blended[k] = 0; });
+      selected.forEach(chipKey => {
+        const vec = CHIP_VECTORS[chipKey] || {};
+        keys.forEach(k => { blended[k] += (vec[k] || 0) / selected.length; });
+      });
+      const userVector = {
+        base: blended,
+        reason_analysis: {
+          attribution: 'unknown', core_fear: 'none', target: 'unknown',
+          is_void: false, is_compound: selected.length > 1, emotions: selected,
+        },
+        attitude: { is_void: false, is_displaced: false },
+      };
+      processEmotionResult(pin, scene, userVector);
+    });
   }
 
   function setupEmotionUI(scene) {
@@ -1647,6 +1799,82 @@
     game.previousBucket = result.alignment_bucket;
     game.emotionHistory.push(Object.assign({}, vec));
     finishScene(scene, result, vec, reasonKey || '', false);
+  }
+
+  function processEmotionResult(pin, scene, userVector) {
+    clearTimers();
+    const origVector = {
+      base: pin.originalEmotion || safeParseEmotion(scene.original_emotion),
+      reason_analysis: scene.original_reason_vector || null,
+    };
+    const engineResult = byeoriCalculateStep({
+      userVector,
+      originalVector: origVector,
+      anchorEmotions: parseAnchorEmotions(scene),
+    }, {
+      previousBucket: game.previousBucket || null,
+      emotionHistory: game.emotionHistory,
+      skipCount: game.skipCount,
+    });
+
+    pin.visited = true;
+    pin.emotion_data = userVector;
+    pin.engine_result = engineResult;
+    game.visitedCore[pin.sceneId] = true;
+    if (pin.type === 'core') game.coreVisitCount++;
+    game.previousBucket = engineResult.alignment_bucket;
+    if (userVector.base) game.emotionHistory.push(Object.assign({}, userVector.base));
+
+    const baseEmotion = userVector.base || {};
+    game.traces.push({
+      pinType: pin.type,
+      sceneId: pin.sceneId || scene.id,
+      sceneText: scene.text || '',
+      userVector,
+      userEmotion: baseEmotion,
+      alignment: engineResult.alignment_score,
+      bucket: engineResult.alignment_bucket,
+      pattern: engineResult.transition_pattern,
+      mismatch: engineResult.mismatch_type,
+      sceneIndex: pin.sceneIndex,
+    });
+
+    const pos = engineResult.affective_position;
+    if (!game.emotionCursor) game.emotionCursor = { v: 0, a: 0, d: 0 };
+    if (pos) {
+      game.emotionCursor.v = game.emotionCursor.v * 0.3 + pos.v * 0.7;
+      game.emotionCursor.a = game.emotionCursor.a * 0.3 + pos.a * 0.7;
+      game.emotionCursor.d = (game.emotionCursor.d || 0) * 0.3 + (pos.d || 0) * 0.7;
+      if (!game.emotionTrajectory) game.emotionTrajectory = [];
+      game.emotionTrajectory.push({ ...game.emotionCursor });
+    }
+
+    const reasonLabel = userVector.reason_analysis?.attribution || '';
+    insertPlay(scene, baseEmotion, reasonLabel, engineResult, !!userVector.reason_analysis?.is_void).then(() => {
+      reloadPlaysOnly().then(() => {
+        buildTerrainFromData();
+        renderContourCanvas();
+        updateMapStatus();
+        updateSealButton();
+        LOG('engine', engineResult);
+        setTimeout(() => {
+          stopWave();
+          document.getElementById('sceneMode').classList.remove('active');
+          document.getElementById('mapMode').classList.add('active');
+          buildPins();
+          handleEmotionResult({
+            userEmotion: baseEmotion,
+            result: engineResult,
+            originSceneId: scene.id,
+          });
+          finalizePinAccess();
+          renderPins();
+          startCursorLerp();
+          game.currentSceneIndex = null;
+          game.currentPinId = null;
+        }, 1500);
+      });
+    });
   }
 
   function finishScene(scene, result, vec, reasonLabel, isVoid) {
@@ -1845,19 +2073,44 @@
       alert('로드 실패: ' + (e.message || e));
     }
   });
-
-  document.getElementById('sealBtn').addEventListener('click', () => {
+  document.getElementById('sealBtn').addEventListener('click', async () => {
     if (game.sealed || game.coreVisitCount < 3) return;
     game.sealed = true;
     document.getElementById('mapMode').classList.remove('active');
     const rev = document.getElementById('revealScreen');
     rev.classList.add('active');
-    document.getElementById('revealTitle').textContent = 'Memory sealed';
+    document.getElementById('revealTitle').textContent = '기억을 재구성하고 있습니다...';
+    document.getElementById('revealBody').textContent = '';
     const avgAlign = game.traces.length
       ? game.traces.reduce((s, t) => s + t.alignment, 0) / game.traces.length
       : 0;
-    document.getElementById('revealBody').textContent =
-      '이 기억은 더 이상 열리지 않을 수 있습니다. 남겨진 파동은 흙 아래로 가라앉습니다.';
+    const visits = game.traces.map((t, i) => ({
+      pin_type: t.pinType || 'core',
+      scene_id: t.sceneId,
+      scene_text: t.sceneText || '',
+      order: i + 1,
+      emotion_data: t.userVector || { base: t.userEmotion || {} },
+      engine_result: { alignment_score: t.alignment, alignment_bucket: t.bucket || 'MID', transition_pattern: t.pattern || 'bridge', mismatch_type: t.mismatch || null }
+    }));
+    try {
+      const res = await fetch(SUPABASE_URL + '/functions/v1/generate-reveal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+        body: JSON.stringify({ visits, memory_title: game.memoryTitle || '', emotion_trajectory: game.emotionTrajectory || [] })
+      });
+      const data = await res.json();
+      if (data.narrative) {
+        document.getElementById('revealTitle').textContent = 'Memory sealed';
+        document.getElementById('revealBody').textContent = data.narrative;
+      } else {
+        document.getElementById('revealTitle').textContent = 'Memory sealed';
+        document.getElementById('revealBody').textContent = '이 기억은 더 이상 열리지 않을 수 있습니다. 남겨진 파동은 흙 아래로 가라앉습니다.';
+      }
+    } catch (e) {
+      console.error('Reveal error:', e);
+      document.getElementById('revealTitle').textContent = 'Memory sealed';
+      document.getElementById('revealBody').textContent = '이 기억은 더 이상 열리지 않을 수 있습니다. 남겨진 파동은 흙 아래로 가라앉습니다.';
+    }
     document.getElementById('revealStats').textContent =
       '평균 정렬도: ' + (avgAlign * 100).toFixed(1) + '% · 코어 방문 ' + game.coreVisitCount + '회';
   });
