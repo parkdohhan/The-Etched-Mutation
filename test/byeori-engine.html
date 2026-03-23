@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ByeoriEngine 테스트</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 5px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            background: #333;
+            border-left: 3px solid #4a9eff;
+        }
+        .pass { border-left-color: #4caf50; }
+        .fail { border-left-color: #f44336; }
+        button {
+            padding: 10px 20px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #5aaeff; }
+        pre {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>ByeoriEngine 테스트</h1>
+    <button onclick="runTests()">테스트 실행</button>
+    <div id="results"></div>
+
+    <script type="module">
+        // 기존 함수들 (index.js에서 복사)
+        import { cosineSimilarity } from './js/shared/math.js';
+
+        // 기존 calculateComplexAlignment (index.js에서 복사)
+        window.calculateComplexAlignment = function(userVector, originalVector, anchorEmotions = null) {
+            if (!userVector || !originalVector) return 0;
+            const emotionScore = cosineSimilarity(
+                userVector.base || userVector,
+                originalVector.base || originalVector,
+                anchorEmotions
+            );
+            let reasonScore = 0;
+            const userReason = userVector.reason_analysis || {};
+            const origReason = originalVector.reason_analysis || {};
+            const attributionMatch = userReason.attribution && 
+                                     origReason.attribution && 
+                                     userReason.attribution === origReason.attribution;
+            const coreFearMatch = userReason.core_fear && 
+                                  origReason.core_fear && 
+                                  userReason.core_fear === origReason.core_fear;
+            if (attributionMatch) reasonScore += 0.5;
+            if (coreFearMatch) reasonScore += 0.5;
+            let voidScore = 0;
+            if (!!userReason.is_void === !!origReason.is_void) {
+                voidScore = 1.0;
+            }
+            const totalAlignment = (emotionScore * 0.4) + (reasonScore * 0.4) + (voidScore * 0.2);
+            return totalAlignment;
+        };
+
+        // 기존 getMismatchType (index.js에서 복사)
+        window.getMismatchType = function(userVector, originalVector) {
+            if (!userVector || !originalVector) return null;
+            const emotionSimilarity = cosineSimilarity(
+                userVector.base,
+                originalVector.base || originalVector
+            );
+            const userReason = userVector.reason_analysis || {};
+            const origReason = originalVector.reason_analysis || {};
+            if (!!userReason.is_void !== !!origReason.is_void) {
+                return 'void_mismatch';
+            }
+            if (emotionSimilarity < 0.5) {
+                return 'emotion_mismatch';
+            }
+            if (userReason.attribution && 
+                origReason.attribution && 
+                userReason.attribution !== origReason.attribution) {
+                return 'attribution_mismatch';
+            }
+            if (userReason.core_fear && 
+                origReason.core_fear && 
+                userReason.core_fear !== origReason.core_fear) {
+                return 'target_displacement';
+            }
+            return null;
+        };
+
+        // ByeoriEngine import
+        import { calculateStep } from './js/core/ByeoriEngine.js';
+        window.byeoriCalculateStep = calculateStep;
+
+        // 테스트 케이스
+        window.testCases = [
+            {
+                name: '기본 감정 유사도 테스트',
+                userVector: {
+                    base: { fear: 0.8, sadness: 0.2 }
+                },
+                originalVector: {
+                    base: { fear: 0.7, sadness: 0.3 }
+                },
+                anchorEmotions: null,
+                context: {}
+            },
+            {
+                name: '복합 정렬도 테스트 (이유 포함)',
+                userVector: {
+                    base: { fear: 0.8, sadness: 0.2 },
+                    reason_analysis: {
+                        attribution: 'self_blame',
+                        core_fear: 'abandonment',
+                        is_void: false
+                    }
+                },
+                originalVector: {
+                    base: { fear: 0.7, sadness: 0.3 },
+                    reason_analysis: {
+                        attribution: 'self_blame',
+                        core_fear: 'abandonment',
+                        is_void: false
+                    }
+                },
+                anchorEmotions: null,
+                context: {}
+            },
+            {
+                name: 'VOID 미스매치 테스트',
+                userVector: {
+                    base: { fear: 0.5, sadness: 0.5 },
+                    reason_analysis: {
+                        is_void: true
+                    }
+                },
+                originalVector: {
+                    base: { fear: 0.5, sadness: 0.5 },
+                    reason_analysis: {
+                        is_void: false
+                    }
+                },
+                anchorEmotions: null,
+                context: {}
+            },
+            {
+                name: '버킷 판정 테스트 (HIGH)',
+                userVector: {
+                    base: { fear: 0.9, sadness: 0.1 }
+                },
+                originalVector: {
+                    base: { fear: 0.85, sadness: 0.15 }
+                },
+                anchorEmotions: null,
+                context: {
+                    previousBucket: null,
+                    emotionHistory: null
+                }
+            },
+            {
+                name: '버킷 히스테리시스 테스트',
+                userVector: {
+                    base: { fear: 0.5, sadness: 0.5 }
+                },
+                originalVector: {
+                    base: { fear: 0.5, sadness: 0.5 }
+                },
+                anchorEmotions: null,
+                context: {
+                    previousBucket: 'HIGH',
+                    emotionHistory: null
+                }
+            }
+        ];
+
+        window.runTests = function() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>테스트 결과</h2>';
+
+            let passCount = 0;
+            let failCount = 0;
+
+            window.testCases.forEach((testCase, index) => {
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-section';
+                testDiv.innerHTML = `<h3>테스트 ${index + 1}: ${testCase.name}</h3>`;
+
+                try {
+                    // 기존 함수로 계산
+                    const oldAlignment = window.calculateComplexAlignment(
+                        testCase.userVector,
+                        testCase.originalVector,
+                        testCase.anchorEmotions
+                    );
+                    const oldMismatch = window.getMismatchType(
+                        testCase.userVector,
+                        testCase.originalVector
+                    );
+
+                    // ByeoriEngine으로 계산
+                    const engineResult = window.byeoriCalculateStep(
+                        {
+                            userVector: testCase.userVector,
+                            originalVector: testCase.originalVector,
+                            anchorEmotions: testCase.anchorEmotions
+                        },
+                        testCase.context
+                    );
+
+                    // 비교
+                    const alignmentDiff = Math.abs(oldAlignment - engineResult.alignment_score);
+                    const mismatchMatch = oldMismatch === engineResult.mismatch_type;
+
+                    const isPass = alignmentDiff < 0.0001 && mismatchMatch;
+
+                    if (isPass) passCount++;
+                    else failCount++;
+
+                    testDiv.innerHTML += `
+                        <div class="test-result ${isPass ? 'pass' : 'fail'}">
+                            <strong>${isPass ? '✓ 통과' : '✗ 실패'}</strong><br>
+                            <strong>정렬도 비교:</strong><br>
+                            기존: ${oldAlignment.toFixed(4)}<br>
+                            엔진: ${engineResult.alignment_score.toFixed(4)}<br>
+                            차이: ${alignmentDiff.toFixed(6)} ${alignmentDiff < 0.0001 ? '✓' : '✗'}<br><br>
+                            <strong>미스매치 비교:</strong><br>
+                            기존: ${oldMismatch}<br>
+                            엔진: ${engineResult.mismatch_type}<br>
+                            일치: ${mismatchMatch ? '✓' : '✗'}<br><br>
+                            <strong>버킷:</strong> ${engineResult.alignment_bucket}<br>
+                            <strong>VAD:</strong> v=${engineResult.affective_position.v.toFixed(3)}, a=${engineResult.affective_position.a.toFixed(3)}, d=${engineResult.affective_position.d.toFixed(3)}<br>
+                            <details>
+                                <summary>상세 결과</summary>
+                                <pre>${JSON.stringify(engineResult, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                } catch (error) {
+                    failCount++;
+                    testDiv.innerHTML += `
+                        <div class="test-result fail">
+                            <strong>✗ 에러 발생</strong><br>
+                            <pre>${error.stack}</pre>
+                        </div>
+                    `;
+                }
+
+                resultsDiv.appendChild(testDiv);
+            });
+
+            // 요약
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'test-section';
+            summaryDiv.style.background = failCount > 0 ? '#3a1a1a' : '#1a3a1a';
+            summaryDiv.innerHTML = `
+                <h2>요약</h2>
+                <p>통과: ${passCount} / 실패: ${failCount} / 전체: ${passCount + failCount}</p>
+                <p>${failCount === 0 ? '✓ 모든 테스트 통과!' : '✗ 일부 테스트 실패'}</p>
+            `;
+            resultsDiv.appendChild(summaryDiv);
+        };
+    </script>
+</body>
+</html>
