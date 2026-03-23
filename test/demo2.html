@@ -406,7 +406,7 @@ function startMonologue() {
     m.el.addEventListener('click', function() {
       if (monoRAF) { cancelAnimationFrame(monoRAF); monoRAF = null; }
       try { sessionStorage.setItem('demoMemoryId', m.id); } catch (_) {}
-      window.location.href = '/play-test.html?memory=' + encodeURIComponent(m.id);
+      window.location.href = '/play?memory=' + encodeURIComponent(m.id);
     });
   });
 }
