@@ -3557,7 +3557,7 @@ async function calculateAverageAlignment() {
         supabaseClient = getSupabaseClient();
         for (let i = 0; i < currentData.scenes.length; i++) {
             const scene = currentData.scenes[i];
-            if (scene.sceneType === 'branch' || scene.sceneType === 'ending') {
+            if (!scene.sceneType || scene.sceneType === 'branch' || scene.sceneType === 'ending') {
                 let alignment = null;
                 if (window.archiveSceneAlignments && window.archiveSceneAlignments[i] !== undefined) {
                     alignment = window.archiveSceneAlignments[i];
@@ -3567,29 +3567,32 @@ async function calculateAverageAlignment() {
                         const playData = playResult.data;
                         if (playData.alignment !== null && playData.alignment !== undefined) {
                             alignment = playData.alignment;
-                        } else if (playData.user_emotion && scene.originalEmotion) {
+                        } else if (playData.user_emotion && (scene.originalEmotion || scene.original_emotion)) {
+                            const origEmo = scene.originalEmotion || scene.original_emotion;
                             const anchorEmotions = scene.anchor_emotions || null;
                             const engineResult = byeoriEngine.calculateStep({
                                 userVector: { base: playData.user_emotion },
-                                originalVector: { base: scene.originalEmotion },
+                                originalVector: { base: origEmo },
                                 anchorEmotions: anchorEmotions
                             }, {});
                             alignment = engineResult.alignment_score;
                         }
-                    } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && scene.originalEmotion) {
+                    } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && (scene.originalEmotion || scene.original_emotion)) {
+                        const origEmo = scene.originalEmotion || scene.original_emotion;
                         const anchorEmotions = scene.anchor_emotions || null;
                         const engineResult = byeoriEngine.calculateStep({
                             userVector: { base: window.archiveUserEmotions[i].emotion },
-                            originalVector: { base: scene.originalEmotion },
+                            originalVector: { base: origEmo },
                             anchorEmotions: anchorEmotions
                         }, {});
                         alignment = engineResult.alignment_score;
                     }
-                } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && scene.originalEmotion) {
+                } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && (scene.originalEmotion || scene.original_emotion)) {
+                    const origEmo = scene.originalEmotion || scene.original_emotion;
                     const anchorEmotions = scene.anchor_emotions || null;
                     const engineResult = byeoriEngine.calculateStep({
                         userVector: { base: window.archiveUserEmotions[i].emotion },
-                        originalVector: { base: scene.originalEmotion },
+                        originalVector: { base: origEmo },
                         anchorEmotions: anchorEmotions
                     }, {});
                     alignment = engineResult.alignment_score;

@@ -9,21 +9,32 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Noto+Serif+KR:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    /* TEM contour — dusty pastel purple terrain (reference look) */
     :root {
-      --bg: #0a0a0e;
-      --panel: #121219;
-      --line: rgba(196, 168, 130, 0.22);
-      --text: #d9d2c8;
-      --muted: rgba(217, 210, 200, 0.72);
-      --accent: #c4a882;
+      --bg-deep: #0e0c14;
+      --bg-mid: #151222;
+      --bg-accent: #1c1830;
+      --panel: rgba(22, 18, 34, 0.92);
+      --line: rgba(180, 165, 210, 0.18);
+      --text: #e4dff0;
+      --muted: rgba(200, 190, 220, 0.72);
+      --accent: #b8a8d8;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; background: var(--bg); color: var(--text); }
-    body { font-family: "Noto Serif KR", "Cormorant Garamond", serif; }
+    html, body { margin: 0; background: var(--bg-deep); color: var(--text); }
+    body {
+      font-family: "Noto Serif KR", "Cormorant Garamond", serif;
+      background:
+        radial-gradient(ellipse 85% 65% at 28% 72%, rgba(88, 62, 118, 0.42) 0%, transparent 52%),
+        radial-gradient(ellipse 70% 55% at 78% 22%, rgba(62, 48, 92, 0.38) 0%, transparent 48%),
+        linear-gradient(168deg, #120f1a 0%, #161228 38%, #14101c 100%);
+      min-height: 100vh;
+    }
     .app { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
     .top {
       display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-      padding: 12px 14px; border-bottom: 1px solid var(--line); background: #0d0d12;
+      padding: 12px 14px; border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(18, 14, 28, 0.98), rgba(14, 12, 22, 0.95));
     }
     .top label { font-size: 13px; color: var(--muted); }
     select, input[type="range"] {
@@ -31,15 +42,21 @@
       padding: 6px 8px; font-size: 13px;
     }
     .main { display: grid; grid-template-columns: 1fr 300px; min-height: 0; }
-    .canvas-wrap { position: relative; min-height: 500px; border-right: 1px solid var(--line); }
-    canvas { width: 100%; height: 100%; display: block; background: #0a0a0e; }
+    .canvas-wrap {
+      position: relative; min-height: 500px; border-right: 1px solid var(--line);
+      background:
+        radial-gradient(ellipse 90% 70% at 35% 68%, rgba(76, 58, 102, 0.45) 0%, transparent 55%),
+        radial-gradient(ellipse 65% 50% at 82% 28%, rgba(52, 40, 78, 0.4) 0%, transparent 50%),
+        linear-gradient(175deg, #14101c 0%, #18142a 45%, #12101a 100%);
+    }
+    canvas { width: 100%; height: 100%; display: block; background: transparent; }
     .hover {
       position: absolute; pointer-events: none; transform: translate(8px, 8px);
-      background: rgba(10,10,14,0.88); border: 1px solid var(--line); border-radius: 6px;
+      background: rgba(18, 14, 28, 0.9); border: 1px solid var(--line); border-radius: 6px;
       padding: 6px 8px; font-size: 12px; color: var(--text); display: none;
       white-space: nowrap;
     }
-    .side { padding: 14px; overflow: auto; background: #0d0d12; }
+    .side { padding: 14px; overflow: auto; background: rgba(14, 12, 22, 0.85); }
     .group { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
     .group h3 { margin: 0 0 8px; font-size: 14px; font-weight: 500; }
     .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; font-size: 13px; color: var(--muted); }
@@ -85,8 +102,8 @@
           </div>
           <div class="row">
             <span>contour levels</span>
-            <input id="levels" type="range" min="8" max="30" step="1" value="16">
-            <strong id="levelsVal">16</strong>
+            <input id="levels" type="range" min="8" max="36" step="1" value="24">
+            <strong id="levelsVal">24</strong>
           </div>
           <div class="row"><label><input id="anchorToggle" type="checkbox" checked> 감정 앵커 표시</label></div>
           <div class="row"><label><input id="scenePinToggle" type="checkbox" checked> 코어 장면 핀 표시</label></div>
@@ -384,28 +401,56 @@
       return { heights: aggH, colors: aggC, domIdx, min, max };
     }
 
+    /** 먼지 낀 라벤더·모브 톤 (스크린샷 느낌의 파스텔 퍼플 베이스) */
     function toPastelTone(r, g, b, scale) {
       const rr = Math.max(0, Math.min(1, r * scale));
       const gg = Math.max(0, Math.min(1, g * scale));
       const bb = Math.max(0, Math.min(1, b * scale));
       const lum = rr * 0.299 + gg * 0.587 + bb * 0.114;
-      const desat = 0.58;
+      const desat = 0.62;
       let pr = rr * (1 - desat) + lum * desat;
       let pg = gg * (1 - desat) + lum * desat;
       let pb = bb * (1 - desat) + lum * desat;
 
-      const pastelBase = [0.22, 0.20, 0.26];
-      const pastelMix = 0.34;
+      const pastelBase = [0.26, 0.20, 0.34];
+      const pastelMix = 0.38;
       pr = pr * (1 - pastelMix) + pastelBase[0] * pastelMix;
       pg = pg * (1 - pastelMix) + pastelBase[1] * pastelMix;
       pb = pb * (1 - pastelMix) + pastelBase[2] * pastelMix;
 
-      const channelCap = 0.48;
-      return [
-        Math.min(channelCap, Math.max(0, pr)),
-        Math.min(channelCap, Math.max(0, pg)),
-        Math.min(channelCap, Math.max(0, pb)),
-      ];
+      const channelCap = 0.46;
+      pr = Math.min(channelCap, Math.max(0, pr));
+      pg = Math.min(channelCap, Math.max(0, pg));
+      pb = Math.min(channelCap, Math.max(0, pb));
+
+      pr = pr * 0.9 + 0.1 * 0.2;
+      pg = pg * 0.88 + 0.1 * 0.14;
+      pb = pb * 0.92 + 0.1 * 0.32;
+      return [pr, pg, pb];
+    }
+
+    /** 픽셀별 높이 보간 → 0~1 (고저 가시화용) */
+    function sampleHeightBilinear(heights, ix, iz, tx, ty) {
+      const i00 = iz * GRID + ix;
+      const h00 = heights[i00];
+      const h10 = heights[i00 + 1];
+      const h01 = heights[i00 + GRID];
+      const h11 = heights[i00 + GRID + 1];
+      return lerp2(h00, h10, h01, h11, tx, ty);
+    }
+
+    /** 고저에 따른 미세 색·명도 차 (낮을수록 차갑고 어둡, 높을수록 살짝 밝고 따뜻) */
+    function applyElevationTint(pr, pg, pb, hNorm) {
+      const t = Math.max(0, Math.min(1, hNorm));
+      const lumBoost = 0.88 + 0.2 * t;
+      let r = pr * lumBoost;
+      let g = pg * lumBoost;
+      let b = pb * lumBoost;
+      const shift = (t - 0.5) * 0.1;
+      r += shift * 0.55;
+      g += shift * 0.12;
+      b -= shift * 0.45;
+      return [r, g, b];
     }
 
     function drawRaster(ctx, agg, W, H) {
@@ -414,8 +459,9 @@
         for (let i = 0; i < agg.colors.length; i++) m = Math.max(m, agg.colors[i]);
         return m || 1;
       })();
-      // plays가 많아져도 과도하게 진해지지 않도록 전역 스케일 캡
       const globalScale = Math.min(0.72, 0.42 / maxChannel);
+      const hMin = agg.min;
+      const hRange = (agg.max - hMin) || 1;
 
       const img = ctx.createImageData(W, H);
       const p = img.data;
@@ -431,7 +477,13 @@
           const r = lerp2(agg.colors[c00], agg.colors[c10], agg.colors[c01], agg.colors[c11], tx, tz);
           const g = lerp2(agg.colors[c00+1], agg.colors[c10+1], agg.colors[c01+1], agg.colors[c11+1], tx, tz);
           const b = lerp2(agg.colors[c00+2], agg.colors[c10+2], agg.colors[c01+2], agg.colors[c11+2], tx, tz);
-          const [pr, pg, pb] = toPastelTone(r, g, b, globalScale);
+          let [pr, pg, pb] = toPastelTone(r, g, b, globalScale);
+          const hSample = sampleHeightBilinear(agg.heights, ix, iz, tx, tz);
+          const hNorm = (hSample - hMin) / hRange;
+          [pr, pg, pb] = applyElevationTint(pr, pg, pb, hNorm);
+          pr = Math.max(0, Math.min(1, pr));
+          pg = Math.max(0, Math.min(1, pg));
+          pb = Math.max(0, Math.min(1, pb));
           const i = (y * W + x) * 4;
           p[i] = Math.max(0, Math.min(255, Math.round(pr * 255)));
           p[i+1] = Math.max(0, Math.min(255, Math.round(pg * 255)));
@@ -493,19 +545,26 @@
 
       const levels = Number(document.getElementById("levels").value);
       const minH = state.agg.min, maxH = state.agg.max, range = (maxH - minH) || 1;
-      ctx.lineWidth = 0.65 * dpr;
-      ctx.strokeStyle = "rgba(216, 206, 190, 0.24)";
-      for (let i = 1; i <= levels; i++) {
-        const t = i / (levels + 1);
-        const th = minH + range * t;
-        const segs = marchingSquaresSegments(state.agg.heights, th);
-        ctx.beginPath();
-        segs.forEach(([a,b]) => {
-          const p1 = toCanvas(a, W, H), p2 = toCanvas(b, W, H);
-          ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-        });
-        ctx.stroke();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      function strokeContourPass(strokeStyle, lineW) {
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth = lineW;
+        for (let i = 1; i <= levels; i++) {
+          const t = i / (levels + 1);
+          const th = minH + range * t;
+          const segs = marchingSquaresSegments(state.agg.heights, th);
+          ctx.beginPath();
+          segs.forEach(([a,b]) => {
+            const p1 = toCanvas(a, W, H), p2 = toCanvas(b, W, H);
+            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+          });
+          ctx.stroke();
+        }
       }
+      strokeContourPass("rgba(12, 8, 22, 0.42)", 1.05 * dpr);
+      strokeContourPass("rgba(232, 224, 252, 0.48)", 0.62 * dpr);
 
       if (document.getElementById("anchorToggle").checked) drawAnchors(ctx, W, H);
       if (document.getElementById("scenePinToggle").checked) drawScenePins(ctx, W, H);
@@ -518,9 +577,9 @@
         const gx = ((a.v * HALF) / SIZE + 0.5) * (GRID - 1);
         const gz = ((a.a * HALF) / SIZE + 0.5) * (GRID - 1);
         const x = (gx / (GRID - 1)) * W, y = (gz / (GRID - 1)) * H;
-        ctx.fillStyle = "rgba(196,168,130,0.85)";
+        ctx.fillStyle = "rgba(200, 175, 230, 0.88)";
         ctx.beginPath(); ctx.arc(x, y, 2 * (window.devicePixelRatio || 1), 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = "rgba(217,210,200,0.8)";
+        ctx.fillStyle = "rgba(190, 175, 215, 0.78)";
         ctx.fillText(name, x + 4, y - 3);
       });
       ctx.restore();
@@ -534,11 +593,11 @@
         const gx = ((vad.v * HALF) / SIZE + 0.5) * (GRID - 1);
         const gz = ((vad.a * HALF) / SIZE + 0.5) * (GRID - 1);
         const x = (gx / (GRID - 1)) * W, y = (gz / (GRID - 1)) * H;
-        ctx.fillStyle = "rgba(240,220,186,0.95)";
-        ctx.strokeStyle = "rgba(20,20,24,0.85)";
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = "rgba(240,220,186,0.8)";
+        ctx.fillStyle = "rgba(248, 236, 255, 0.95)";
+        ctx.strokeStyle = "rgba(24, 18, 36, 0.88)";
+        ctx.lineWidth = 1 * (window.devicePixelRatio || 1);
+        ctx.beginPath(); ctx.arc(x, y, 4 * (window.devicePixelRatio || 1), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "rgba(230, 218, 248, 0.92)";
         ctx.font = `${11 * (window.devicePixelRatio || 1)}px Cormorant Garamond, serif`;
         ctx.fillText(String(s.scene_order ?? (idx + 1)), x + 5, y - 4);
       });

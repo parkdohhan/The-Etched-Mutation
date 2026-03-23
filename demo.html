@@ -1,86 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The Etched Mutation — Demo</title>
+  <title>The Etched Mutation — Demo Hub</title>
   <link rel="icon" href="data:,">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/index.css">
-  <link rel="stylesheet" href="css/demo.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="stylesheet" href="css/demo-hub.css">
 </head>
 <body>
-<div id="demoApp">
-
-  <!-- STEP 1: Opening (same structure as index opening sequence, demo text) -->
-  <section id="phaseOpening" class="demo-phase active demo-opening-wrap">
-    <div class="opening-wave-container visible" id="demoOpeningWaveContainer">
-      <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
-    </div>
-    <div class="opening-text" id="openingText"></div>
-  </section>
-
-  <!-- STEP 2: Monologue drift -->
-  <section id="phaseMonologue" class="demo-phase">
-    <canvas id="monologueCanvas"></canvas>
-    <div id="monologueParticles"></div>
-    <canvas id="monologuePreviewCanvas"></canvas>
-  </section>
-
-  <!-- STEP 3: Memory entry -->
-  <section id="phaseEntry" class="demo-phase">
-    <div class="entry-terrain-hint" id="entryTerrainHint"></div>
-    <div class="entry-first-line" id="entryFirstLine"></div>
-  </section>
-
-  <!-- STEP 4-5: Main play -->
-  <section id="phasePlay" class="demo-phase">
-    <div class="play-wave-panel" id="playWavePanel">
-      <canvas id="playWaveCanvas"></canvas>
-      <div class="wave-status" id="waveStatus"></div>
-    </div>
-
-    <div class="play-content-panel" id="playContentPanel">
-      <div class="scene-text" id="demoSceneText"></div>
-      <div class="scene-input-area" id="sceneInputArea">
-        <div class="input-prompt" id="inputPrompt"></div>
-        <textarea id="sceneTextInput" rows="2" maxlength="120"></textarea>
-        <button id="sceneSubmitBtn">→</button>
+  <div class="demo-hub" id="demoHub">
+    <header class="demo-hub__header">
+      <div class="demo-hub__brand">
+        <h1 class="demo-hub__title">Demo Hub</h1>
+        <p class="demo-hub__subtitle">The Etched Mutation — 테스트용 묶음 (<strong>demo.html</strong>)</p>
       </div>
-      <div class="resolve-overlay hidden" id="resolveOverlay">
-        <span class="resolve-text" id="resolveText">The memory is responding...</span>
-      </div>
+      <p class="demo-hub__note">
+        <strong>index.html</strong> 본편에는 고저 미니맵·등고 지도 통합이 <em>켜져 있지 않습니다</em>.
+        아래 탭에서 본편 플레이, 등고 지형 맵(<code>contour-test</code>), 기존 단계 데모(플레이 중 2D 고저 미니맵)를 전환할 수 있습니다.
+      </p>
+      <nav class="demo-hub__tabs" role="tablist" aria-label="데모 종류">
+        <button type="button" class="demo-hub__tab active" role="tab" aria-selected="true" data-src="index.html" id="tab-index">
+          Index 플레이
+        </button>
+        <button type="button" class="demo-hub__tab" role="tab" aria-selected="false" data-src="contour-test.html" id="tab-contour">
+          고저 지형 맵
+        </button>
+        <button type="button" class="demo-hub__tab" role="tab" aria-selected="false" data-src="demo-sequence.html" id="tab-sequence">
+          단계 데모 (미니맵)
+        </button>
+      </nav>
+    </header>
+    <div class="demo-hub__frame-wrap">
+      <iframe
+        id="demoHubFrame"
+        class="demo-hub__frame"
+        src="index.html"
+        title="Demo Hub content"
+        loading="lazy"
+      ></iframe>
     </div>
-
-    <div class="play-terrain-panel" id="playTerrainPanel">
-      <canvas id="terrainCanvas2D"></canvas>
-    </div>
-    <div class="play-footer" id="playFooter">
-      <span>Crisis Hotline: 988 Suicide & Crisis Lifeline | Crisis Text Line: Text HOME to 741741</span>
-    </div>
-  </section>
-
-  <!-- STEP 6: Reveal -->
-  <section id="phaseReveal" class="demo-phase">
-    <div class="reveal-header" id="revealHeader"></div>
-    <div class="reveal-scenes" id="revealScenes"></div>
-    <button id="revealNextBtn">To the terrain</button>
-  </section>
-
-  <!-- STEP 7: Terrain -->
-  <section id="phaseTerrain" class="demo-phase">
-    <div id="strataViewContainer"></div>
-    <div class="terrain-caption" id="terrainCaption"></div>
-    <a href="index.html" class="demo-cta" id="demoCta">
-      Seal my own memory first
-    </a>
-  </section>
-
-</div>
-
-<script src="js/ui/strataView.js"></script>
-<script type="module" src="js/demo/demoFlow.js"></script>
+  </div>
+  <script>
+    (function () {
+      var tabs = document.querySelectorAll('.demo-hub__tab');
+      var frame = document.getElementById('demoHubFrame');
+      tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          tabs.forEach(function (t) {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+          });
+          btn.classList.add('active');
+          btn.setAttribute('aria-selected', 'true');
+          var src = btn.getAttribute('data-src');
+          if (src && frame) frame.src = src;
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

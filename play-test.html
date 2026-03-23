@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEM — Play Test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-deep: #0a0a0c;
+      --text-primary: #e8e4df;
+      --text-muted: #6b6b7b;
+      --accent-memory: #c4a882;
+      --bg-surface: rgba(15, 15, 20, 0.95);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #0a0a0e; color: var(--text-primary); font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; }
+    #selectScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0e; }
+    #mapMode {
+      position: fixed; inset: 0; background: #0a0a0e; display: none; flex-direction: column; z-index: 50;
+    }
+    #mapMode.active { display: flex; }
+    .map-canvas-area { flex: 1; position: relative; min-height: 0; }
+    #contourCanvas { width: 100%; height: 100%; display: block; }
+    .map-pins-layer { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+    .map-pin {
+      position: absolute; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer;
+      border-radius: 50%; transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .map-pin.core { width: 12px; height: 12px; border: 1.5px solid var(--accent-memory); background: rgba(232, 228, 220, 0.95); }
+    .map-pin.echo { width: 6px; height: 6px; background: rgba(180, 160, 200, 0.85); border: 1px solid rgba(200, 180, 220, 0.5); }
+    .map-pin.voidPin { width: 8px; height: 8px; background: transparent; border: 1px dashed rgba(200, 150, 140, 0.6); }
+    .map-pin.active { box-shadow: 0 0 14px rgba(196, 168, 130, 0.55); opacity: 1; }
+    .map-pin.current { box-shadow: 0 0 20px rgba(255, 220, 180, 0.8); }
+    .map-pin.visited { opacity: 0.72; }
+    .map-pin.visited::after {
+      content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; background: #888;
+      border-radius: 50%; transform: translate(-50%, -50%);
+    }
+    .map-pin.locked { opacity: 0.38; pointer-events: none; filter: grayscale(0.35); }
+    .map-pin.entrance { animation: entrancePulse 1.5s ease-in-out infinite; }
+    @keyframes entrancePulse {
+      0% { box-shadow: 0 0 8px rgba(196, 168, 130, 0.3); transform: translate(-50%, -50%) scale(1); }
+      50% { box-shadow: 0 0 22px rgba(196, 168, 130, 0.65); transform: translate(-50%, -50%) scale(1.15); }
+      100% { box-shadow: 0 0 8px rgba(196, 168, 130, 0.3); transform: translate(-50%, -50%) scale(1); }
+    }
+    .map-pin.unlocking { animation: pinUnlock 0.5s ease forwards; }
+    .map-pin.locking { animation: pinLock 0.5s ease forwards; }
+    @keyframes pinUnlock {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+      60% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.2); }
+      100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    @keyframes pinLock { from { opacity: 1; } to { opacity: 0.06; } }
+    .map-pin-label { position: absolute; left: 14px; top: -6px; font-size: 10px; color: rgba(200, 190, 220, 0.7); white-space: nowrap; font-style: italic; pointer-events: none; }
+    .emotion-cursor {
+      position: absolute; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(196, 168, 130, 0.15);
+      transform: translate(-50%, -50%); pointer-events: none; animation: cursorPulse 2s infinite; z-index: 1;
+    }
+    @keyframes cursorPulse {
+      0% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+      50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.1; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+    }
+    .map-bar {
+      flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem;
+      border-top: 1px solid rgba(196, 168, 130, 0.12); background: rgba(8, 8, 12, 0.92);
+    }
+    .map-status { font-size: 0.75rem; color: rgba(200, 195, 210, 0.65); letter-spacing: 0.04em; }
+    .seal-btn {
+      font-family: inherit; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 0.45rem 1rem; border-radius: 6px; border: 1px solid rgba(200, 180, 230, 0.35);
+      background: rgba(60, 45, 85, 0.45); color: rgba(232, 224, 252, 0.35); cursor: not-allowed;
+    }
+    .seal-btn:not(:disabled) { color: rgba(248, 240, 255, 0.95); background: rgba(100, 70, 130, 0.55); cursor: pointer; border-color: rgba(210, 190, 255, 0.55); }
+
+    #sceneMode { display: none; position: fixed; inset: 0; background: var(--bg-deep); z-index: 50; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; }
+    #sceneMode.active { display: flex; opacity: 1; }
+    .wave-top { width: 100%; height: 18vh; max-height: 200px; position: relative; overflow: hidden; flex-shrink: 0; }
+    #waveCanvas { width: 100%; height: 100%; display: block; }
+    .scene-content-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1rem; overflow-y: auto; }
+    .scene-main { width: 100%; max-width: 560px; text-align: center; }
+    #sceneNpc { font-family: 'Cormorant Garamond', serif; font-style: italic; color: rgba(196, 168, 130, 0.5); font-size: 0.9rem; min-height: 1.2em; margin-bottom: 0.8rem; }
+    #sceneText { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; line-height: 2; letter-spacing: 0.03em; color: var(--text-primary); margin-bottom: 1.5rem; }
+    #emotionInputArea { opacity: 0; transition: opacity 0.6s; }
+    #emotionInputArea.warn-border { box-shadow: 0 0 0 1px rgba(196, 168, 130, 0.15); border-radius: 8px; padding: 8px; }
+    .emotion-chip {
+      background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.35); color: #ccc;
+      padding: 10px 20px; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; cursor: pointer; transition: all 0.3s;
+      border-radius: 4px; user-select: none; margin: 3px;
+    }
+    .emotion-chip:hover { border-color: #d4af37; color: #d4af37; background: rgba(212, 175, 55, 0.08); }
+    .emotion-chip.selected { border-color: #d4af37; color: #d4af37; background: rgba(212, 175, 55, 0.1); }
+    .action-btn {
+      background: rgba(196, 168, 130, 0.1); border: 1px solid rgba(196, 168, 130, 0.25); color: #e8e4df;
+      padding: 8px 24px; font-family: 'Cormorant Garamond', serif; font-size: 0.95rem; cursor: pointer; border-radius: 4px;
+    }
+    .action-btn:disabled { opacity: 0.3; cursor: default; }
+    .action-btn.void { background: transparent; border-color: rgba(200, 150, 140, 0.3); color: rgba(200, 150, 140, 0.7); font-style: italic; }
+    .typing::after { content: '|'; animation: blink 500ms step-end infinite; color: rgba(196, 168, 130, 0.6); }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #terrainBar { width: 100%; height: 120px; position: relative; flex-shrink: 0; border-top: 1px solid rgba(196, 168, 130, 0.08); background: #09090d; }
+    #terrainBar.clickable { cursor: pointer; animation: terrainPulse 1.5s ease-in-out infinite; }
+    @keyframes terrainPulse {
+      0% { border-top-color: rgba(196, 168, 130, 0.08); }
+      50% { border-top-color: rgba(196, 168, 130, 0.25); }
+      100% { border-top-color: rgba(196, 168, 130, 0.08); }
+    }
+    #terrainCanvas { width: 100%; height: 100%; display: block; }
+    #terrainClickHint { display: none; position: absolute; inset: 0; cursor: pointer; }
+    #terrainClickHint .hint-txt { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; color: rgba(196, 168, 130, 0.4); letter-spacing: 0.05em; }
+
+    #revealScreen {
+      display: none; position: fixed; inset: 0; z-index: 60; background: #08080c; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center;
+    }
+    #revealScreen.active { display: flex; }
+    #revealScreen h2 { font-family: 'Cormorant Garamond', serif; font-weight: 400; letter-spacing: 0.06em; color: var(--text-primary); }
+    #revealScreen p { max-width: 520px; line-height: 1.8; color: rgba(220, 215, 230, 0.85); font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div id="selectScreen">
+    <h1 style="font-family:'Cormorant Garamond',serif;color:#e8e4df;font-size:2rem;font-weight:400;letter-spacing:0.05em;margin-bottom:2rem;">The Etched Mutation</h1>
+    <select id="memorySelect" style="background:#111;color:#e8e4df;border:1px solid rgba(196,168,130,0.3);padding:0.6rem 1.2rem;font-family:'Cormorant Garamond',serif;font-size:1rem;border-radius:4px;margin-bottom:1rem;min-width:250px;"></select>
+    <button id="startBtn" type="button" style="background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:0.6rem 2rem;font-family:'Cormorant Garamond',serif;font-size:1rem;cursor:pointer;border-radius:4px;letter-spacing:0.05em;">Enter the memory</button>
+  </div>
+
+  <div id="mapMode">
+    <div class="map-canvas-area" id="mapCanvasArea">
+      <canvas id="contourCanvas"></canvas>
+      <div class="map-pins-layer" id="mapPinsLayer"></div>
+      <div class="emotion-cursor" id="emotionCursor" style="display:none;"></div>
+    </div>
+    <div class="map-bar">
+      <span class="map-status" id="mapStatus">탐색: 0개 | 오염도: 0%</span>
+      <button type="button" class="seal-btn" id="sealBtn" disabled>Seal this memory</button>
+    </div>
+  </div>
+
+  <div id="sceneMode">
+    <div class="wave-top" id="waveTop"><canvas id="waveCanvas"></canvas></div>
+    <div class="scene-content-area">
+      <div class="scene-main">
+        <div id="sceneNpc"></div>
+        <div id="sceneText"></div>
+        <div id="emotionInputArea">
+          <div id="emotionChips" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:12px;"></div>
+          <div id="sliderArea" style="margin-bottom:12px;"></div>
+          <div id="reasonArea" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;"></div>
+          <div style="display:flex;gap:8px;justify-content:center;">
+            <button type="button" id="submitBtn" class="action-btn" disabled>입력</button>
+            <button type="button" id="voidBtn" class="action-btn void">Leave it unsaid</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="terrainBar">
+      <canvas id="terrainCanvas"></canvas>
+      <div id="terrainClickHint"><div class="hint-txt">지형을 탐색하세요</div></div>
+    </div>
+  </div>
+
+  <div id="revealScreen">
+    <h2 id="revealTitle">Memory sealed</h2>
+    <p id="revealBody"></p>
+    <p id="revealStats" style="font-size:0.85rem;color:var(--text-muted);"></p>
+    <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;">다시 시작</button>
+  </div>
+
+  <script>
+  /* ========== PLAY-TEST BUNDLE (inline, no project imports) ========== */
+  const SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const LOG = (...a) => console.log('[play-test]', ...a);
+
+  function safeParseEmotion(val) {
+    if (!val) return {};
+    if (typeof val === 'object' && !Array.isArray(val)) return val;
+    if (typeof val === 'string') { try { return JSON.parse(val); } catch (_) { return {}; } }
+    return {};
+  }
+
+  const EMOTIONS_UI = [
+    { key: 'fear', label: '공포' }, { key: 'sadness', label: '슬픔' }, { key: 'anger', label: '분노' }, { key: 'longing', label: '그리움' },
+    { key: 'guilt', label: '죄책감' }, { key: 'shame', label: '수치심' }, { key: 'numbness', label: '무감각' }, { key: 'isolation', label: '고립' },
+  ];
+  const REASONS = [
+    { key: 'self_blame', label: '내 잘못인 것 같아서' },
+    { key: 'helpless', label: '어쩔 수 없었어' },
+    { key: 'fear_driven', label: '무서웠어' },
+    { key: 'unknown', label: '모르겠어' },
+  ];
+  const EMOTION_COLORS = {
+    fear: [100, 80, 180], sadness: [80, 100, 160], anger: [200, 80, 80], joy: [200, 180, 100], longing: [80, 180, 180],
+    guilt: [150, 130, 100], shame: [160, 100, 130], numbness: [90, 90, 110], isolation: [70, 90, 130],
+  };
+  const DEFAULT_ANCHOR_KEYS = ['fear','sadness','anger','guilt','shame','isolation','numbness','moral_pain','helplessness','despair','joy','hope','relief','gratitude','love','peace','comfort','longing','nostalgia','acceptance','confusion'];
+
+  function cosineSimilarity(vec1, vec2, keys) {
+    const ks = keys || DEFAULT_ANCHOR_KEYS;
+    let dot = 0, m1 = 0, m2 = 0;
+    ks.forEach(k => {
+      const a = vec1[k] || 0, b = vec2[k] || 0;
+      dot += a * b; m1 += a * a; m2 += b * b;
+    });
+    if (!m1 || !m2) return 0;
+    return dot / Math.sqrt(m1 * m2);
+  }
+
+  function emotionVectorToRGB(ev) {
+    if (!ev || typeof ev !== 'object') return [120, 120, 140];
+    const base = ev.base || ev;
+    const entries = Object.entries(base).filter(([, v]) => v != null && v > 0);
+    if (!entries.length) return [120, 120, 140];
+    const dom = entries.sort((a, b) => b[1] - a[1])[0];
+    return EMOTION_COLORS[dom[0]] || [120, 120, 140];
+  }
+
+  /* —— strataSection: noise + profile —— */
+  function _hs(x, y) { const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return n - Math.floor(n); }
+  function _sn(x, y) {
+    const i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    return _hs(i, j) + (_hs(i + 1, j) - _hs(i, j)) * sx + (_hs(i, j + 1) - _hs(i, j)) * sy + (_hs(i, j) - _hs(i + 1, j) - _hs(i, j + 1) + _hs(i + 1, j + 1)) * sx * sy;
+  }
+  function _fm(x, y, o) {
+    o = o || 4; let v = 0, a = 0.5, f = 1;
+    for (let i = 0; i < o; i++) { v += a * _sn(x * f, y * f); a *= 0.5; f *= 2.1; }
+    return v;
+  }
+  const ANCHOR_COLORS = {
+    anger: [140, 20, 20], fear: [60, 20, 80], shame: [100, 30, 60], moral_pain: [70, 30, 50], sadness: [30, 50, 100],
+    guilt: [80, 50, 30], isolation: [20, 20, 40], numbness: [60, 60, 65], longing: [80, 60, 100], joy: [180, 140, 60],
+    hope: [140, 160, 80], love: [140, 60, 80],
+  };
+
+  function buildProfileFromScenes(scenes, sampleCount) {
+    const n = scenes.length;
+    if (!n) {
+      const pts = [];
+      for (let i = 0; i < sampleCount; i++) pts.push({ h: 0.3, r: 0.1, g: 0.1, b: 0.13 });
+      return pts;
+    }
+    const raw = [];
+    for (let si = 0; si < n; si++) {
+      const em = safeParseEmotion(scenes[si].original_emotion);
+      let totalW = 0, wH = 0, cr = 0.1, cg = 0.1, cb = 0.13;
+      for (const [name, val] of Object.entries(em)) {
+        if (!val || val <= 0) continue;
+        const anc = ANCHOR_COLORS[name];
+        wH += val * 15 * val;
+        if (anc) { cr += (anc[0] / 255) * val * 0.6; cg += (anc[1] / 255) * val * 0.6; cb += (anc[2] / 255) * val * 0.6; }
+        totalW += val;
+      }
+      const h = totalW > 0 ? wH / Math.sqrt(totalW) : 2;
+      raw.push({ h: Math.max(0.5, Math.min(12, h)), r: Math.min(1, cr), g: Math.min(1, cg), b: Math.min(1, cb) });
+    }
+    const pts = [];
+    for (let i = 0; i < sampleCount; i++) {
+      const t = (i / (sampleCount - 1)) * (n - 1);
+      const lo = Math.floor(t), hi = Math.min(lo + 1, n - 1);
+      const frac = t - lo;
+      const a = raw[lo], b = raw[hi];
+      const noise = (_fm(i * 0.12, 0.5, 5) - 0.35) * 2.8;
+      pts.push({
+        h: a.h * (1 - frac) + b.h * frac + noise,
+        r: a.r * (1 - frac) + b.r * frac, g: a.g * (1 - frac) + b.g * frac, b: a.b * (1 - frac) + b.b * frac,
+      });
+    }
+    return pts;
+  }
+
+  function setupTerrainCanvas(canvas) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.offsetWidth, h = canvas.offsetHeight;
+    if (w <= 0 || h <= 0) return null;
+    const nw = Math.round(w * dpr), nh = Math.round(h * dpr);
+    if (canvas.width !== nw || canvas.height !== nh) { canvas.width = nw; canvas.height = nh; }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+
+  function renderTerrainProfile(canvas, scenes, traces, currentSceneIndex, tintRGB) {
+    if (!canvas) return;
+    const setup = setupTerrainCanvas(canvas);
+    if (!setup) return;
+    const { ctx, w, h } = setup;
+    ctx.fillStyle = '#09090d';
+    ctx.fillRect(0, 0, w, h);
+    const n = Math.max(1, scenes.length);
+    const sampleCount = Math.max(n * 8, 60);
+    const profile = buildProfileFromScenes(scenes, sampleCount);
+    const profileTop = h * 0.12, profileBottom = h * 0.4, profileRange = profileBottom - profileTop;
+    let minH = Infinity, maxH = -Infinity;
+    profile.forEach(p => { minH = Math.min(minH, p.h); maxH = Math.max(maxH, p.h); });
+    const rangeH = maxH - minH || 1;
+    const profileY = [];
+    for (let i = 0; i < sampleCount; i++) {
+      const norm = Math.pow((profile[i].h - minH) / rangeH, 0.85);
+      profileY.push(profileBottom - norm * profileRange * 0.9);
+    }
+    const UNDER_LAYERS = 4;
+    const underStart = profileBottom, underEnd = h * 0.92;
+    const layerGap = (underEnd - underStart) / UNDER_LAYERS;
+    for (let li = UNDER_LAYERS - 1; li >= 0; li--) {
+      const layerTopBase = underStart + li * layerGap, layerBotBase = underStart + (li + 1) * layerGap;
+      const dampening = 1 - (li / UNDER_LAYERS) * 0.8, darkness = 0.08 + (li / UNDER_LAYERS) * 0.06;
+      ctx.beginPath();
+      for (let i = 0; i < sampleCount; i++) {
+        const x = (i / (sampleCount - 1)) * w;
+        const y = layerTopBase + (profileY[i] - profileBottom) * dampening * 0.25 + (_fm(i * 0.08 + li * 2.7, li * 1.3, 5) - 0.35) * layerGap * 0.32 * dampening;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      for (let i = sampleCount - 1; i >= 0; i--) {
+        const x = (i / (sampleCount - 1)) * w;
+        const y = layerBotBase + (profileY[i] - profileBottom) * dampening * 0.15 + (_fm(i * 0.07 + li * 3.1 + 5, li * 1.7 + 2, 5) - 0.35) * layerGap * 0.18 * dampening;
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      const av = profile[Math.floor(sampleCount / 2)];
+      const avgR = Math.round(av.r * 255 * darkness), avgG = Math.round(av.g * 255 * darkness), avgB = Math.round(av.b * 255 * darkness);
+      ctx.fillStyle = 'rgba(' + avgR + ',' + avgG + ',' + avgB + ',' + (0.35 - li * 0.06) + ')';
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.moveTo(0, profileY[0]);
+    for (let i = 1; i < sampleCount; i++) {
+      const x = (i / (sampleCount - 1)) * w, px = ((i - 1) / (sampleCount - 1)) * w;
+      ctx.quadraticCurveTo(px, profileY[i - 1], (px + x) / 2, (profileY[i - 1] + profileY[i]) / 2);
+    }
+    ctx.lineTo(w, profileBottom + 4); ctx.lineTo(0, profileBottom + 4); ctx.closePath();
+    const midP = profile[Math.floor(sampleCount / 2)];
+    let pR = Math.round(midP.r * 255 * 0.4 + 10), pG = Math.round(midP.g * 255 * 0.4 + 10), pB = Math.round(midP.b * 255 * 0.4 + 10);
+    if (tintRGB) {
+      pR = Math.round(tintRGB[0] * 0.55 + pR * 0.45);
+      pG = Math.round(tintRGB[1] * 0.55 + pG * 0.45);
+      pB = Math.round(tintRGB[2] * 0.55 + pB * 0.45);
+    }
+    const fillGrad = ctx.createLinearGradient(0, profileTop, 0, profileBottom + 4);
+    fillGrad.addColorStop(0, 'rgba(' + pR + ',' + pG + ',' + pB + ',0.35)');
+    fillGrad.addColorStop(1, 'rgba(' + pR + ',' + pG + ',' + pB + ',0.08)');
+    ctx.fillStyle = fillGrad; ctx.fill();
+
+    const segW = w / n;
+    (traces || []).forEach(tr => {
+      const si = tr.sceneIndex;
+      if (si < 0 || si >= n) return;
+      const x0 = si * segW, x1 = (si + 1) * segW, midX = (x0 + x1) / 2;
+      const sampleMid = Math.round(((si + 0.5) / n) * (sampleCount - 1));
+      const midY = profileY[Math.min(sampleMid, sampleCount - 1)];
+      ctx.save();
+      ctx.fillStyle = 'rgba(196,168,130,0.35)';
+      ctx.beginPath(); ctx.arc(midX, midY, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+
+    ctx.beginPath();
+    ctx.moveTo(0, profileY[0]);
+    for (let i = 1; i < sampleCount; i++) {
+      const x = (i / (sampleCount - 1)) * w, px = ((i - 1) / (sampleCount - 1)) * w;
+      ctx.quadraticCurveTo(px, profileY[i - 1], (px + x) / 2, (profileY[i - 1] + profileY[i]) / 2);
+    }
+    if (tintRGB) {
+      ctx.strokeStyle = 'rgba(' + tintRGB[0] + ',' + tintRGB[1] + ',' + tintRGB[2] + ',0.88)';
+      ctx.lineWidth = 2.2;
+    } else {
+      ctx.strokeStyle = 'rgba(196,168,130,0.65)';
+      ctx.lineWidth = 1.8;
+    }
+    ctx.stroke();
+
+    if (currentSceneIndex != null && currentSceneIndex >= 0 && currentSceneIndex < n) {
+      const msi = Math.round(((currentSceneIndex + 0.5) / n) * (sampleCount - 1));
+      const markerX = (currentSceneIndex + 0.5) / n * w, markerY = profileY[Math.min(msi, sampleCount - 1)] - 2;
+      const mr = tintRGB ? tintRGB[0] : 196, mg = tintRGB ? tintRGB[1] : 168, mb = tintRGB ? tintRGB[2] : 130;
+      ctx.shadowColor = 'rgba(' + mr + ',' + mg + ',' + mb + ',0.9)'; ctx.shadowBlur = 12;
+      ctx.fillStyle = 'rgba(' + mr + ',' + mg + ',' + mb + ',0.95)';
+      ctx.beginPath(); ctx.arc(markerX, markerY, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  const DAY_MS = 86400000;
+  const GRID = 80, SIZE = 50, HALF = SIZE / 2;
+  const LAYER_DEFS = [
+    { id: 'surface', windowDays: [0, 7], thickness: 3.5, opacity: 1.0, compaction: 1.0 },
+    { id: 'near', windowDays: [7, 30], thickness: 2.8, opacity: 0.90, compaction: 0.82 },
+    { id: 'mid', windowDays: [30, 90], thickness: 2.2, opacity: 0.75, compaction: 0.60 },
+    { id: 'deep', windowDays: [90, 180], thickness: 1.6, opacity: 0.55, compaction: 0.35 },
+    { id: 'bedrock', windowDays: [180, Infinity], thickness: 1.0, opacity: 0.30, compaction: 0.15 },
+  ];
+
+  function hs(x, y) { return _hs(x, y); }
+  function fm(x, y, o) { return _fm(x, y, o); }
+
+  function buildAnchors() {
+    return {
+      anger: { v: -0.70, a: +0.80, color: [140, 20, 20] },
+      fear: { v: -0.90, a: +0.90, color: [60, 20, 80] },
+      shame: { v: -0.90, a: -0.20, color: [100, 30, 60] },
+      moral_pain: { v: -0.80, a: +0.30, color: [70, 30, 50] },
+      confusion: { v: -0.40, a: +0.30, color: [80, 70, 90] },
+      sadness: { v: -0.80, a: -0.40, color: [30, 50, 100] },
+      guilt: { v: -0.80, a: +0.20, color: [80, 50, 30] },
+      isolation: { v: -0.70, a: -0.50, color: [20, 20, 40] },
+      numbness: { v: -0.60, a: -0.80, color: [60, 60, 65] },
+      despair: { v: -1.00, a: -0.60, color: [20, 15, 30] },
+      helplessness: { v: -0.90, a: -0.40, color: [40, 25, 50] },
+      longing: { v: -0.30, a: +0.20, color: [80, 60, 100] },
+      joy: { v: +0.90, a: +0.60, color: [180, 140, 60] },
+      hope: { v: +0.70, a: +0.40, color: [140, 160, 80] },
+      love: { v: +1.00, a: +0.50, color: [140, 60, 80] },
+      relief: { v: +0.60, a: -0.30, color: [100, 140, 120] },
+      peace: { v: +0.80, a: -0.60, color: [60, 90, 100] },
+      acceptance: { v: +0.40, a: -0.40, color: [90, 80, 70] },
+      gratitude: { v: +0.80, a: -0.20, color: [120, 110, 60] },
+      comfort: { v: +0.70, a: -0.40, color: [100, 100, 80] },
+      nostalgia: { v: +0.10, a: -0.30, color: [70, 60, 80] },
+    };
+  }
+
+  const VAD_FULL = {
+    fear: { v: -0.9, a: 0.9, d: -0.8 }, sadness: { v: -0.8, a: -0.4, d: -0.7 }, anger: { v: -0.7, a: 0.8, d: 0.3 },
+    guilt: { v: -0.8, a: 0.2, d: -0.6 }, shame: { v: -0.9, a: -0.2, d: -0.9 }, isolation: { v: -0.7, a: -0.5, d: -0.6 },
+    numbness: { v: -0.6, a: -0.8, d: -0.4 }, moral_pain: { v: -0.8, a: 0.3, d: -0.7 }, helplessness: { v: -0.9, a: -0.4, d: -1.0 },
+    despair: { v: -1.0, a: -0.6, d: -0.9 }, joy: { v: 0.9, a: 0.6, d: 0.5 }, hope: { v: 0.7, a: 0.4, d: 0.6 },
+    relief: { v: 0.6, a: -0.3, d: 0.4 }, gratitude: { v: 0.8, a: -0.2, d: 0.7 }, love: { v: 1.0, a: 0.5, d: 0.6 },
+    peace: { v: 0.8, a: -0.6, d: 0.7 }, comfort: { v: 0.7, a: -0.4, d: 0.6 }, longing: { v: -0.3, a: 0.2, d: -0.2 },
+    nostalgia: { v: 0.1, a: -0.3, d: -0.1 }, acceptance: { v: 0.4, a: -0.4, d: 0.5 }, confusion: { v: -0.4, a: 0.3, d: -0.5 },
+  };
+
+  function projectEmotionToVADContour(emotionVec) {
+    if (!emotionVec) return { v: 0, a: 0, d: 0 };
+    let V = 0, A = 0, D = 0, wSum = 0;
+    for (const k in emotionVec) {
+      const w = Number(emotionVec[k] || 0);
+      const m = VAD_FULL[k];
+      if (!w || !m) continue;
+      V += w * m.v; A += w * m.a; D += w * m.d; wSum += w;
+    }
+    if (wSum <= 0) return { v: 0, a: 0, d: 0 };
+    return {
+      v: Math.max(-1, Math.min(1, V / wSum)),
+      a: Math.max(-1, Math.min(1, A / wSum)),
+      d: Math.max(-1, Math.min(1, D / wSum)),
+    };
+  }
+
+  function computeWeightsFromVAD(vad, anchors) {
+    const weights = {}; let totalW = 0;
+    for (const name in anchors) {
+      const anc = anchors[name];
+      const dv = vad.v - anc.v, da = vad.a - anc.a;
+      const dist = Math.sqrt(dv * dv + da * da);
+      const w = Math.exp(-(dist * dist) / (2 * 0.25));
+      if (w > 0.01) { weights[name] = w; totalW += w; }
+    }
+    if (totalW > 0) { for (const k in weights) weights[k] /= totalW; }
+    return weights;
+  }
+
+  function safeObj(v) {
+    if (!v) return {};
+    if (typeof v === 'object') return v;
+    try { return JSON.parse(v); } catch (_) { return {}; }
+  }
+
+  function mapEventToRender(raw, anchors) {
+    const vad = raw.vad || { v: 0, a: 0, d: 0 };
+    const align = raw.alignment_score !== undefined ? raw.alignment_score : 0.5;
+    const voidM = raw.void_mismatch || false;
+    const weights = computeWeightsFromVAD(vad, anchors);
+    const deviation = Math.max(0, 1 - align);
+    const erosion = deviation * 0.6 + (1 - (raw.emb_score_raw || 0.5)) * 0.4;
+    return {
+      scene_id: raw.scene_id || 'unknown',
+      timestamp: raw.timestamp || Date.now(),
+      weights,
+      deviation,
+      void_rupture: voidM ? Math.max(0.3, deviation) : 0,
+      erosion: Math.min(1, erosion),
+      intensity: 0.5 + align * 0.5,
+      _alignment: align,
+    };
+  }
+
+  function recomputeLayers(events, bedrockEvents) {
+    const now = Date.now();
+    const layers = LAYER_DEFS.map(def => {
+      const l = Object.assign({}, def, { events: [] });
+      if (def.id === 'bedrock') l.events = bedrockEvents.slice();
+      else {
+        const minAge = def.windowDays[0] * DAY_MS, maxAge = def.windowDays[1] * DAY_MS;
+        l.events = events.filter(ev => {
+          const age = now - ev.timestamp;
+          return age >= minAge && age < maxAge;
+        });
+      }
+      let totalPoll = 0;
+      l.events.forEach(ev => { totalPoll += (1 - (ev._alignment || 0.5)); });
+      l.pollution = l.events.length ? totalPoll / l.events.length : 0;
+      if (l.events.length > 0) {
+        let avgA = 0;
+        l.events.forEach(ev => { avgA += Math.abs((ev.vad && ev.vad.a) || 0); });
+        avgA /= l.events.length;
+        l.thickness *= (1.0 + avgA * 0.6);
+      }
+      return l;
+    });
+    const totalPlayEvents = events.length;
+    const bedrockLayer = layers[layers.length - 1];
+    bedrockLayer.compaction = 1.0 / (1.0 + totalPlayEvents * 0.1);
+    bedrockLayer.opacity = Math.max(0.30, 0.95 - totalPlayEvents * 0.02);
+    if (totalPlayEvents === 0) bedrockLayer.thickness = Math.max(bedrockLayer.thickness, 3.5);
+    return layers;
+  }
+
+  function bakeLayer(layer, li, anchors, bandwidthScale) {
+    const comp = layer.compaction, opa = layer.opacity, events = layer.events || [];
+    const total = GRID * GRID;
+    const heights = new Float32Array(total);
+    const colors = new Float32Array(total * 3);
+    const pollField = new Float32Array(total);
+    const domIdx = new Int16Array(total).fill(-1);
+    const domScore = new Float32Array(total);
+    const anchorKeys = Object.keys(anchors);
+
+    for (let ei = 0; ei < events.length; ei++) {
+      const ev = events[ei];
+      const evPoll = 1 - (ev._alignment || 0.5);
+      if (evPoll < 0.1) continue;
+      for (const eName in ev.weights) {
+        const ew = ev.weights[eName];
+        if (!ew || !anchors[eName]) continue;
+        const anc = anchors[eName];
+        const ancIx = Math.round(((anc.v * HALF) / SIZE + 0.5) * (GRID - 1));
+        const ancIz = Math.round(((anc.a * HALF) / SIZE + 0.5) * (GRID - 1));
+        const radius = Math.ceil(2 + ew * 6);
+        for (let dz = -radius; dz <= radius; dz++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const gix = ancIx + dx, giz = ancIz + dz;
+            if (gix < 0 || gix >= GRID || giz < 0 || giz >= GRID) continue;
+            const d = Math.sqrt(dx * dx + dz * dz);
+            if (d > radius) continue;
+            const sig = (radius * 0.4) * bandwidthScale;
+            const falloff = Math.exp(-(d * d) / (2 * sig * sig));
+            pollField[giz * GRID + gix] += evPoll * ew * falloff * 0.3;
+          }
+        }
+      }
+    }
+    for (let i = 0; i < total; i++) pollField[i] = Math.min(1, pollField[i]);
+
+    for (let iz = 0; iz < GRID; iz++) {
+      for (let ix = 0; ix < GRID; ix++) {
+        const idx = iz * GRID + ix;
+        const gx = (ix / (GRID - 1) - 0.5) * SIZE;
+        const gz = (iz / (GRID - 1) - 0.5) * SIZE;
+        const localPoll = pollField[idx];
+        let h = 0, cr = 0.10, cg = 0.10, cb = 0.13;
+
+        for (let ei = 0; ei < events.length; ei++) {
+          const ev = events[ei], evInt = ev.intensity ?? 1.0, weights = ev.weights || {};
+          for (const eName in weights) {
+            const ew = weights[eName];
+            if (!ew || !anchors[eName]) continue;
+            const anc = anchors[eName];
+            const ax = anc.v * HALF, az = anc.a * HALF;
+            const ddx = gx - ax, ddz = gz - az;
+            const dist = Math.sqrt(ddx * ddx + ddz * ddz);
+            const radius = 3 + ew * 9;
+            if (dist >= radius * 1.5) continue;
+            const sig = (radius * 0.4) * bandwidthScale;
+            const inf = Math.exp(-(dist * dist) / (2 * sig * sig)) * ew * evInt * comp;
+            let dh = ew * 38 * inf;
+            dh += ev.deviation * fm(gx * 0.15 + ei * 3 + li, gz * 0.15 + ei * 2, 4) * 4 * inf;
+            dh += ev.erosion * (hs(gx * 0.3 + ei + li, gz * 0.3) - 0.5) * 2.5 * inf;
+            const vrEff = ev.void_rupture + localPoll * 0.15;
+            if (vrEff > 0.15) {
+              const vn = fm(gx * 0.2 + ei * 5 + li, gz * 0.2, 3);
+              if (vn > (1 - vrEff * 0.6)) dh -= 4 * vrEff * inf;
+            }
+            h += dh;
+            cr += (anc.color[0] / 255) * (0.3 + ew * 0.7) * inf;
+            cg += (anc.color[1] / 255) * (0.3 + ew * 0.7) * inf;
+            cb += (anc.color[2] / 255) * (0.3 + ew * 0.7) * inf;
+            if (inf > domScore[idx]) {
+              domScore[idx] = inf;
+              domIdx[idx] = anchorKeys.indexOf(eName);
+            }
+          }
+        }
+
+        h += fm(gx * 0.05 + li * 0.5, gz * 0.05 + li * 0.3, 5) * 1.0 - 0.5;
+        h *= comp;
+        heights[idx] = h;
+
+        const cn = fm(gx * 0.08 + li, gz * 0.08 + li, 3), hBr = 1 + Math.abs(h) * 0.03;
+        let pr = (cr + cn * 0.05) * hBr * opa;
+        let pg = (cg + cn * 0.03) * hBr * opa;
+        let pb = (cb + cn * 0.06) * hBr * opa;
+        if (localPoll > 0.01) {
+          const grey = (pr + pg + pb) / 3, boneTint = 0.08, mix = localPoll * 0.6;
+          pr = pr * (1 - mix) + (grey * 0.7 + boneTint) * mix;
+          pg = pg * (1 - mix) + (grey * 0.6 + boneTint * 0.8) * mix;
+          pb = pb * (1 - mix) + (grey * 0.5 + boneTint * 0.6) * mix;
+        }
+        if (comp < 0.3) {
+          const fossil = (0.3 - comp) / 0.3, avg = (pr + pg + pb) / 3;
+          pr = pr * (1 - fossil * 0.5) + (avg + 0.04) * fossil * 0.5;
+          pg = pg * (1 - fossil * 0.5) + (avg + 0.03) * fossil * 0.5;
+          pb = pb * (1 - fossil * 0.5) + (avg + 0.02) * fossil * 0.5;
+        }
+        colors[idx * 3] = Math.min(1, pr);
+        colors[idx * 3 + 1] = Math.min(1, pg);
+        colors[idx * 3 + 2] = Math.min(1, pb);
+      }
+    }
+    return { heights, colors, domIdx };
+  }
+
+  function aggregateLayerCaches(caches, enabledLayerIds) {
+    const total = GRID * GRID;
+    const aggH = new Float32Array(total);
+    const aggC = new Float32Array(total * 3);
+    const aggW = new Float32Array(total);
+    const domIdx = new Int16Array(total).fill(-1);
+    const domScore = new Float32Array(total);
+
+    enabledLayerIds.forEach(id => {
+      const c = caches[id]; if (!c) return;
+      for (let i = 0; i < total; i++) {
+        const h = c.heights[i];
+        aggH[i] += h;
+        const w = Math.abs(h) + 0.2;
+        aggW[i] += w;
+        aggC[i * 3] += c.colors[i * 3] * w;
+        aggC[i * 3 + 1] += c.colors[i * 3 + 1] * w;
+        aggC[i * 3 + 2] += c.colors[i * 3 + 2] * w;
+        const s = Math.abs(h);
+        if (s > domScore[i]) { domScore[i] = s; domIdx[i] = c.domIdx[i]; }
+      }
+    });
+    for (let i = 0; i < total; i++) {
+      const w = aggW[i] || 1;
+      aggC[i * 3] /= w; aggC[i * 3 + 1] /= w; aggC[i * 3 + 2] /= w;
+    }
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < total; i++) {
+      if (aggH[i] < min) min = aggH[i];
+      if (aggH[i] > max) max = aggH[i];
+    }
+    return { heights: aggH, colors: aggC, domIdx, min, max };
+  }
+
+  function toPastelTone(r, g, b, scale) {
+    const rr = Math.max(0, Math.min(1, r * scale));
+    const gg = Math.max(0, Math.min(1, g * scale));
+    const bb = Math.max(0, Math.min(1, b * scale));
+    const lum = rr * 0.299 + gg * 0.587 + bb * 0.114;
+    const desat = 0.62;
+    let pr = rr * (1 - desat) + lum * desat;
+    let pg = gg * (1 - desat) + lum * desat;
+    let pb = bb * (1 - desat) + lum * desat;
+    const pastelBase = [0.26, 0.20, 0.34];
+    const pastelMix = 0.38;
+    pr = pr * (1 - pastelMix) + pastelBase[0] * pastelMix;
+    pg = pg * (1 - pastelMix) + pastelBase[1] * pastelMix;
+    pb = pb * (1 - pastelMix) + pastelBase[2] * pastelMix;
+    const channelCap = 0.46;
+    pr = Math.min(channelCap, Math.max(0, pr));
+    pg = Math.min(channelCap, Math.max(0, pg));
+    pb = Math.min(channelCap, Math.max(0, pb));
+    pr = pr * 0.9 + 0.1 * 0.2;
+    pg = pg * 0.88 + 0.1 * 0.14;
+    pb = pb * 0.92 + 0.1 * 0.32;
+    return [pr, pg, pb];
+  }
+
+  function lerp2(a, b, c, d, tx, ty) {
+    const u = a * (1 - tx) + b * tx;
+    const v = c * (1 - tx) + d * tx;
+    return u * (1 - ty) + v * ty;
+  }
+
+  function sampleHeightBilinear(heights, ix, iz, tx, ty) {
+    const i00 = iz * GRID + ix;
+    const h00 = heights[i00];
+    const h10 = heights[i00 + 1];
+    const h01 = heights[i00 + GRID];
+    const h11 = heights[i00 + GRID + 1];
+    return lerp2(h00, h10, h01, h11, tx, ty);
+  }
+
+  function applyElevationTint(pr, pg, pb, hNorm) {
+    const t = Math.max(0, Math.min(1, hNorm));
+    const lumBoost = 0.88 + 0.2 * t;
+    let r = pr * lumBoost;
+    let g = pg * lumBoost;
+    let b = pb * lumBoost;
+    const shift = (t - 0.5) * 0.1;
+    r += shift * 0.55;
+    g += shift * 0.12;
+    b -= shift * 0.45;
+    return [r, g, b];
+  }
+
+  function drawRaster(ctx, agg, W, H) {
+    const maxChannel = (() => {
+      let m = 0;
+      for (let i = 0; i < agg.colors.length; i++) m = Math.max(m, agg.colors[i]);
+      return m || 1;
+    })();
+    const globalScale = Math.min(0.72, 0.42 / maxChannel);
+    const hMin = agg.min;
+    const hRange = (agg.max - hMin) || 1;
+    const img = ctx.createImageData(W, H);
+    const p = img.data;
+    for (let y = 0; y < H; y++) {
+      const gy = (y / (H - 1)) * (GRID - 1);
+      const iz = Math.max(0, Math.min(GRID - 2, Math.floor(gy)));
+      const tz = gy - iz;
+      for (let x = 0; x < W; x++) {
+        const gx = (x / (W - 1)) * (GRID - 1);
+        const ix = Math.max(0, Math.min(GRID - 2, Math.floor(gx)));
+        const tx = gx - ix;
+        const c00 = (iz * GRID + ix) * 3, c10 = c00 + 3, c01 = ((iz + 1) * GRID + ix) * 3, c11 = c01 + 3;
+        const r = lerp2(agg.colors[c00], agg.colors[c10], agg.colors[c01], agg.colors[c11], tx, tz);
+        const g = lerp2(agg.colors[c00 + 1], agg.colors[c10 + 1], agg.colors[c01 + 1], agg.colors[c11 + 1], tx, tz);
+        const b = lerp2(agg.colors[c00 + 2], agg.colors[c10 + 2], agg.colors[c01 + 2], agg.colors[c11 + 2], tx, tz);
+        let [pr, pg, pb] = toPastelTone(r, g, b, globalScale);
+        const hSample = sampleHeightBilinear(agg.heights, ix, iz, tx, tz);
+        const hNorm = (hSample - hMin) / hRange;
+        [pr, pg, pb] = applyElevationTint(pr, pg, pb, hNorm);
+        pr = Math.max(0, Math.min(1, pr));
+        pg = Math.max(0, Math.min(1, pg));
+        pb = Math.max(0, Math.min(1, pb));
+        const i = (y * W + x) * 4;
+        p[i] = Math.max(0, Math.min(255, Math.round(pr * 255)));
+        p[i + 1] = Math.max(0, Math.min(255, Math.round(pg * 255)));
+        p[i + 2] = Math.max(0, Math.min(255, Math.round(pb * 255)));
+        p[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function marchingSquaresSegments(heights, threshold) {
+    const segs = [];
+    const edgePoint = (a, b, va, vb) => {
+      const t = (threshold - va) / ((vb - va) || 1e-6);
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    };
+    for (let z = 0; z < GRID - 1; z++) {
+      for (let x = 0; x < GRID - 1; x++) {
+        const i0 = z * GRID + x, i1 = i0 + 1, i2 = i0 + GRID + 1, i3 = i0 + GRID;
+        const v0 = heights[i0], v1 = heights[i1], v2 = heights[i2], v3 = heights[i3];
+        let c = 0;
+        if (v0 >= threshold) c |= 1; if (v1 >= threshold) c |= 2; if (v2 >= threshold) c |= 4; if (v3 >= threshold) c |= 8;
+        if (c === 0 || c === 15) continue;
+        const p0 = { x, y: z }, p1 = { x: x + 1, y: z }, p2 = { x: x + 1, y: z + 1 }, p3 = { x, y: z + 1 };
+        const e0 = edgePoint(p0, p1, v0, v1), e1 = edgePoint(p1, p2, v1, v2), e2 = edgePoint(p3, p2, v3, v2), e3 = edgePoint(p0, p3, v0, v3);
+        const lut = {
+          1: [[e3, e0]], 2: [[e0, e1]], 3: [[e3, e1]], 4: [[e1, e2]], 5: [[e3, e2], [e0, e1]], 6: [[e0, e2]], 7: [[e3, e2]],
+          8: [[e2, e3]], 9: [[e0, e2]], 10: [[e0, e3], [e1, e2]], 11: [[e1, e2]], 12: [[e1, e3]], 13: [[e0, e1]], 14: [[e0, e3]],
+        };
+        (lut[c] || []).forEach(pair => segs.push(pair));
+      }
+    }
+    return segs;
+  }
+
+  function toCanvas(p, W, H) {
+    return { x: (p.x / (GRID - 1)) * W, y: (p.y / (GRID - 1)) * H };
+  }
+
+  const CONTOUR_LEVELS = 24;
+  const BANDWIDTH = 1;
+  const ENABLED_LAYERS = ['surface', 'near', 'mid', 'deep', 'bedrock'];
+
+  const game = {
+    memoryId: null,
+    memories: [],
+    scenes: [],
+    plays: [],
+    anchors: buildAnchors(),
+    caches: {},
+    agg: null,
+    pins: [],
+    coreVisitCount: 0,
+    visitedCore: {},
+    previousBucket: null,
+    emotionHistory: [],
+    skipCount: 0,
+    sealed: false,
+    currentSceneIndex: null,
+    lastResult: null,
+    lastTintRGB: null,
+    traces: [],
+    waveT: 0,
+    waveRaf: null,
+    voidTimeout: null,
+    inputDeadline: null,
+    cursorPos: { x: 50, y: 50 },
+    cursorTarget: { x: 50, y: 50 },
+    cursorRaf: null,
+    lastUserEmotion: null,
+    accessiblePinIds: null,
+    currentPinId: null,
+  };
+
+  const TRANSITION_RULES = {
+    echo_follow: { radius: 0.42 },
+    bridge: { radius: 0.62 },
+    contradiction: { radius: 0.36 },
+    displacement: { radius: 0.48 },
+    avoidance: { radius: 0.24 },
+    fixation: { radius: 0.09 },
+  };
+
+  function emotionToMapCoords(emotion) {
+    const vad = projectEmotionToVADContour(emotion || {});
+    const nx = (vad.v * HALF) / SIZE + 0.5;
+    const ny = (vad.a * HALF) / SIZE + 0.5;
+    return {
+      x: Math.max(0, Math.min(1, nx)),
+      y: Math.max(0, Math.min(1, ny)),
+    };
+  }
+
+  function mapCoordsSpread(baseX, baseY, idx, sceneId) {
+    const s = String(sceneId != null ? sceneId : idx);
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    const ang = (Math.abs(h) % 628) / 100;
+    const mag = 0.012 + (Math.abs(h) % 23) / 2300;
+    let nx = baseX + Math.cos(ang) * mag;
+    let ny = baseY + Math.sin(ang * 1.07) * mag;
+    nx = Math.max(0.03, Math.min(0.97, nx));
+    ny = Math.max(0.03, Math.min(0.97, ny));
+    return { x: nx, y: ny };
+  }
+
+  function distMap(a, b) {
+    const dx = a.x - b.x, dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function updateAccess(pattern, emotionPosition, originSceneId) {
+    const cores = game.pins.filter(p => p.type === 'core');
+    const originPin = cores.find(p => p.sceneId === originSceneId) || null;
+    const rule = TRANSITION_RULES[pattern] || TRANSITION_RULES.bridge;
+    let center = emotionPosition && (emotionPosition.x != null)
+      ? { x: emotionPosition.x, y: emotionPosition.y }
+      : { x: 0.5, y: 0.5 };
+    if (originPin && originPin.mapX != null) {
+      center = {
+        x: (center.x + originPin.mapX) / 2,
+        y: (center.y + originPin.mapY) / 2,
+      };
+    }
+    let withDist = cores.map(p => ({
+      pin: p,
+      d: distMap(center, { x: p.mapX, y: p.mapY }),
+    }));
+    console.log('[DEBUG] updateAccess center', center, 'pattern', pattern, 'withDist count', withDist.length);
+
+    let selected = [];
+    if (pattern === 'fixation' && originPin) {
+      selected = [originPin];
+    } else {
+      selected = withDist.filter(o => o.d <= rule.radius).map(o => o.pin);
+      if (!selected.length) {
+        const r2 = rule.radius * 1.85;
+        selected = withDist.filter(o => o.d <= r2).map(o => o.pin);
+      }
+      if (!selected.length) {
+        selected = cores.filter(p => !game.visitedCore[p.sceneId]);
+      }
+      if (!selected.length) {
+        selected = cores.slice();
+      }
+    }
+
+    const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
+    if (voidScene && (pattern === 'avoidance' || pattern === 'contradiction')) {
+      const vp = game.pins.find(p => p.type === 'voidPin');
+      if (vp) selected.push(vp);
+    }
+
+    game.accessiblePinIds = new Set(selected.map(p => p.id));
+    console.log('[DEBUG] updateAccess selected ids', Array.from(game.accessiblePinIds));
+  }
+
+  function handleEmotionResult(ctx) {
+    const userEmotion = ctx.userEmotion || {};
+    const result = ctx.result || {};
+    const originSceneId = ctx.originSceneId;
+    const emotionPosition = emotionToMapCoords(userEmotion);
+    const bucket = result.alignment_bucket;
+    const mismatch = result.mismatch_type;
+    const alignment = result.alignment_score;
+    const pattern = result.transition_pattern != null
+      ? result.transition_pattern
+      : getTransitionPattern(bucket, mismatch);
+
+    console.log('[DEBUG] userEmotion:', userEmotion);
+    console.log('[DEBUG] emotionPosition:', emotionPosition);
+    console.log('[DEBUG] alignment:', alignment, 'bucket:', bucket, 'mismatch:', mismatch);
+    console.log('[DEBUG] pattern:', pattern);
+    console.log('[DEBUG] 핀 좌표들:', game.pins.map(p => ({
+      id: p.id,
+      x: (p.mapX != null ? p.mapX : p.x / 100).toFixed(3),
+      y: (p.mapY != null ? p.mapY : p.y / 100).toFixed(3),
+      type: p.type,
+    })));
+
+    if (!game.pins.length) {
+      game.accessiblePinIds = new Set();
+      return;
+    }
+    updateAccess(pattern, emotionPosition, originSceneId);
+    syncPinStateFlags();
+    console.log('[DEBUG] updateAccess 후 active:', game.pins.filter(p => p.state === 'active').map(p => p.id));
+  }
+
+  function syncPinStateFlags() {
+    game.pins.forEach(p => {
+      if (p.type === 'core') {
+        const can = !!game.visitedCore[p.sceneId] || !!(game.accessiblePinIds && game.accessiblePinIds.has(p.id));
+        p.state = can ? 'active' : 'locked';
+      } else if (p.type === 'voidPin') {
+        const can = !!(game.accessiblePinIds && game.accessiblePinIds.has(p.id)) || !!game.visitedCore[p.sceneId];
+        p.state = can ? 'active' : 'locked';
+      } else {
+        p.state = 'locked';
+      }
+    });
+  }
+
+  function applyInitialAccess() {
+    const cores = game.pins.filter(p => p.type === 'core');
+    const unvisited = cores.filter(p => !game.visitedCore[p.sceneId]);
+    const picked = unvisited.length ? unvisited : cores.slice();
+    game.accessiblePinIds = new Set(picked.map(p => p.id));
+    const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
+    if (voidScene) {
+      const vp = game.pins.find(p => p.type === 'voidPin');
+      if (vp) game.accessiblePinIds.add(vp.id);
+    }
+  }
+
+  function getAttributionDirection(attribution) {
+    if (!attribution) return null;
+    const internal = ['self_blame', 'self_doubt', 'self_punishment', 'guilt_driven', 'unknown'];
+    const external = ['other_blame', 'betrayal', 'external_threat', 'abandonment_by_other'];
+    const situational = ['fate', 'circumstance', 'helpless_situation', 'inevitable', 'helpless'];
+    if (internal.includes(attribution)) return 'internal';
+    if (external.includes(attribution)) return 'external';
+    if (situational.includes(attribution)) return 'situational';
+    return null;
+  }
+
+  function getFearCategory(coreFear) {
+    if (!coreFear) return null;
+    const loss = ['abandonment', 'loss', 'separation', 'death_of_loved'];
+    const worthlessness = ['inadequacy', 'failure', 'shame', 'not_enough'];
+    const powerlessness = ['helplessness', 'loss_of_control', 'entrapment', 'vulnerability'];
+    const punishment = ['punishment', 'rejection', 'judgment', 'exposure'];
+    if (loss.includes(coreFear)) return 'loss';
+    if (worthlessness.includes(coreFear)) return 'worthlessness';
+    if (powerlessness.includes(coreFear)) return 'powerlessness';
+    if (punishment.includes(coreFear)) return 'punishment';
+    return null;
+  }
+
+  function calculateEmbeddingSimilarity(vecA, vecB) {
+    if (!vecA || !vecB || !Array.isArray(vecA) || !Array.isArray(vecB) || vecA.length === 0 || vecA.length !== vecB.length) return 0;
+    let dot = 0, ma = 0, mb = 0;
+    for (let i = 0; i < vecA.length; i++) {
+      const a = Number(vecA[i]) || 0, b = Number(vecB[i]) || 0;
+      dot += a * b; ma += a * a; mb += b * b;
+    }
+    if (!ma || !mb) return 0;
+    return Math.max(0, dot / Math.sqrt(ma * mb));
+  }
+
+  function calculateEmotionScore(userVector, originalVector, anchorEmotions) {
+    if (!userVector || !originalVector) return 0;
+    const userEmb = userVector.embedding;
+    const origEmb = originalVector.embedding;
+    if (userEmb && origEmb && Array.isArray(userEmb) && Array.isArray(origEmb) && userEmb.length && origEmb.length) {
+      return calculateEmbeddingSimilarity(userEmb, origEmb);
+    }
+    const userBase = userVector.base || userVector;
+    const origBase = originalVector.base || originalVector;
+    return Math.max(0, cosineSimilarity(userBase, origBase, anchorEmotions));
+  }
+
+  function calculateReasonScore(userVector, originalVector, emotionScoreFallback) {
+    const fb = emotionScoreFallback || 0;
+    const userReason = userVector && userVector.reason_analysis;
+    const origReason = originalVector && originalVector.reason_analysis;
+    if (!userReason && !origReason) return fb * 0.3;
+    if (!userReason || !origReason) return 0.15;
+    let score = 0;
+    if (userReason.attribution && origReason.attribution) {
+      if (userReason.attribution === origReason.attribution) score += 0.45;
+      else {
+        const ud = getAttributionDirection(userReason.attribution);
+        const od = getAttributionDirection(origReason.attribution);
+        if (ud && ud === od) score += 0.20;
+      }
+    } else if (!userReason.attribution && !origReason.attribution) score += 0.15;
+    if (userReason.core_fear && origReason.core_fear) {
+      if (userReason.core_fear === origReason.core_fear) score += 0.35;
+      else {
+        const uc = getFearCategory(userReason.core_fear);
+        const oc = getFearCategory(origReason.core_fear);
+        if (uc && uc === oc) score += 0.15;
+      }
+    } else if (!userReason.core_fear && !origReason.core_fear) score += 0.10;
+    if (userReason.target && origReason.target) {
+      if (userReason.target === origReason.target) score += 0.20;
+    } else if (!userReason.target && !origReason.target) score += 0.05;
+    return Math.min(1, score);
+  }
+
+  function calculateAttitudeScore(userVector, originalVector, attitudeContext) {
+    attitudeContext = attitudeContext || {};
+    let score = 0.5;
+    const userReason = (userVector && userVector.reason_analysis) || {};
+    const origReason = (originalVector && originalVector.reason_analysis) || {};
+    const userVoid = !!userReason.is_void;
+    const origVoid = !!origReason.is_void;
+    if (userVoid && origVoid) score = 0.8;
+    else if (userVoid && !origVoid) score = 0.2;
+    else if (!userVoid && origVoid) score = 0.6;
+    else score = 0.7;
+    const rawHistory = attitudeContext.emotionHistory;
+    const emotionHistory = rawHistory || [];
+    if (emotionHistory.length >= 2) {
+      const fixationLevel = calculateFixationLevel(emotionHistory);
+      score -= fixationLevel * 0.3;
+    }
+    const skipCount = attitudeContext.skipCount || 0;
+    if (skipCount > 0) score -= Math.min(0.2, skipCount * 0.05);
+    return Math.max(0, Math.min(1, score));
+  }
+
+  function calculateAlignment(emotionScore, reasonScore, attitudeScore) {
+    return Math.max(0, Math.min(1, emotionScore * 0.4 + reasonScore * 0.4 + attitudeScore * 0.2));
+  }
+
+  function calculateFixationLevel(emotionHistory) {
+    if (!emotionHistory || emotionHistory.length < 2) return 0;
+    const recent = emotionHistory.slice(-3);
+    if (recent.length < 2) return 0;
+    let totalSim = 0, pairs = 0;
+    for (let i = 0; i < recent.length - 1; i++) {
+      for (let j = i + 1; j < recent.length; j++) {
+        const a = recent[i], b = recent[j];
+        if (!a || !b) continue;
+        if (typeof a === 'object' && typeof b === 'object') {
+          totalSim += Math.max(0, cosineSimilarity(a, b));
+        } else if (typeof a === 'string' && typeof b === 'string') {
+          totalSim += (a === b) ? 1.0 : 0.0;
+        }
+        pairs++;
+      }
+    }
+    if (!pairs) return 0;
+    return totalSim / pairs;
+  }
+
+  function getBucket(alignment, previousBucket, emotionHistory) {
+    if (emotionHistory && emotionHistory.length >= 3) {
+      const fixLevel = calculateFixationLevel(emotionHistory);
+      if (fixLevel >= 0.85) return 'FIXATED';
+    }
+    if (previousBucket === 'HIGH' && alignment >= 0.45) return 'HIGH';
+    if (previousBucket === 'LOW' && alignment <= 0.42) return 'LOW';
+    if (alignment >= 0.55) return 'HIGH';
+    if (alignment < 0.35) return 'LOW';
+    return 'MID';
+  }
+
+  function getMismatchType(userVector, originalVector) {
+    if (!userVector || !originalVector) return null;
+    const userReason = userVector.reason_analysis || {};
+    const origReason = originalVector.reason_analysis || {};
+    if (!!userReason.is_void !== !!origReason.is_void) return 'void_mismatch';
+    if (userReason.attribution && origReason.attribution && userReason.attribution !== origReason.attribution) {
+      return 'attribution_mismatch';
+    }
+    if (userReason.target && origReason.target && userReason.target !== origReason.target) {
+      const emotionSim = cosineSimilarity(userVector.base || userVector, originalVector.base || originalVector);
+      if (emotionSim >= 0.5) return 'target_displacement';
+    }
+    const emotionSimilarity = cosineSimilarity(userVector.base || userVector, originalVector.base || originalVector);
+    if (emotionSimilarity < 0.5) return 'emotion_mismatch';
+    return null;
+  }
+
+  function getTransitionPattern(bucket, mismatchType) {
+    if (bucket === 'FIXATED') return 'fixation';
+    if (bucket === 'HIGH') return 'echo_follow';
+    if (bucket === 'MID') return 'bridge';
+    if (bucket === 'LOW') {
+      switch (mismatchType) {
+        case 'void_mismatch': return 'avoidance';
+        case 'target_displacement': return 'displacement';
+        case 'emotion_mismatch': return 'contradiction';
+        case 'attribution_mismatch': return 'contradiction';
+        default: return 'bridge';
+      }
+    }
+    return null;
+  }
+
+  function byeoriCalculateStep(input, context) {
+    context = context || {};
+    const { userVector, originalVector, anchorEmotions = null } = input;
+    const { previousBucket = null, emotionHistory = null, skipCount = 0 } = context;
+    if (!userVector || !originalVector) {
+      return { affective_position: { v: 0, a: 0, d: 0 }, alignment_score: 0, alignment_bucket: 'LOW', transition_pattern: null, mismatch_type: null, debug: {} };
+    }
+    const emotionScore = calculateEmotionScore(userVector, originalVector, anchorEmotions);
+    const reasonScore = calculateReasonScore(userVector, originalVector, emotionScore);
+    const attitudeScore = calculateAttitudeScore(userVector, originalVector, { emotionHistory, skipCount });
+    const alignmentScore = calculateAlignment(emotionScore, reasonScore, attitudeScore);
+    const alignmentBucket = getBucket(alignmentScore, previousBucket, emotionHistory);
+    const mismatchType = getMismatchType(userVector, originalVector);
+    const baseVec = userVector.base || userVector;
+    const affectivePosition = projectEmotionToVADContour(baseVec);
+    const transitionPattern = getTransitionPattern(alignmentBucket, mismatchType);
+    const debug = {
+      emotion_score: emotionScore,
+      reason_score: reasonScore,
+      attitude_score: attitudeScore,
+      formula: 'E×.4+R×.4+A×.2',
+      fixation_level: emotionHistory ? calculateFixationLevel(emotionHistory) : 0,
+      has_reason_data: !!(userVector.reason_analysis && originalVector.reason_analysis),
+      has_embedding: !!(userVector.embedding && originalVector.embedding),
+    };
+    return {
+      affective_position: affectivePosition,
+      alignment_score: alignmentScore,
+      alignment_bucket: alignmentBucket,
+      transition_pattern: transitionPattern,
+      mismatch_type: mismatchType,
+      debug,
+    };
+  }
+
+  function buildOriginalVectorFromScene(scene) {
+    const base = safeParseEmotion(scene.original_emotion);
+    const voidInfo = scene.void_info || {};
+    const isVoidScene = !!(voidInfo && voidInfo.sceneVoid);
+    return {
+      base,
+      reason_analysis: {
+        attribution: scene.original_reason || null,
+        target: voidInfo.target || null,
+        core_fear: voidInfo.coreFear || voidInfo.core_fear || null,
+        is_void: isVoidScene,
+      },
+    };
+  }
+
+  function reasonKeyToAttribution(key) {
+    const m = { self_blame: 'self_blame', helpless: 'helpless_situation', fear_driven: 'external_threat', unknown: 'unknown' };
+    return m[key] || key;
+  }
+
+  function buildTerrainFromData() {
+    const bedrockEvents = game.scenes.map(scene => ({
+      scene_id: scene.id,
+      timestamp: 0,
+      vad: projectEmotionToVADContour(safeParseEmotion(scene.original_emotion)),
+      alignment_score: 1.0,
+      void_mismatch: !!(scene.void_info && scene.void_info.sceneVoid),
+    })).map(ev => Object.assign(mapEventToRender(ev, game.anchors), { vad: ev.vad }));
+
+    const globalEvents = game.plays.map(play => ({
+      scene_id: play.scene_id,
+      timestamp: play.created_at ? new Date(play.created_at).getTime() : Date.now(),
+      vad: projectEmotionToVADContour(safeParseEmotion(play.user_emotion)),
+      alignment_score: play.alignment != null ? play.alignment : 0.5,
+      void_mismatch: play.mismatch_type === 'void_mismatch',
+    })).map(ev => Object.assign(mapEventToRender(ev, game.anchors), { vad: ev.vad }));
+
+    const layers = recomputeLayers(globalEvents, bedrockEvents);
+    game.caches = {};
+    for (let i = 0; i < layers.length; i++) {
+      game.caches[layers[i].id] = bakeLayer(layers[i], i, game.anchors, BANDWIDTH);
+    }
+    game.agg = aggregateLayerCaches(game.caches, ENABLED_LAYERS);
+
+    let pollution = 0;
+    if (game.plays.length) {
+      let s = 0;
+      game.plays.forEach(p => { s += (1 - (p.alignment != null ? p.alignment : 0.5)); });
+      pollution = Math.round((s / game.plays.length) * 100);
+    }
+    return pollution;
+  }
+
+  function renderContourCanvas() {
+    const canvas = document.getElementById('contourCanvas');
+    if (!canvas || !game.agg) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(2, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(2, Math.floor(rect.height * dpr));
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const W = Math.floor(canvas.width), H = Math.floor(canvas.height);
+    ctx.clearRect(0, 0, W, H);
+    drawRaster(ctx, game.agg, W, H);
+    const minH = game.agg.min, maxH = game.agg.max, range = (maxH - minH) || 1;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    function strokeContourPass(strokeStyle, lineW) {
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineW;
+      for (let i = 1; i <= CONTOUR_LEVELS; i++) {
+        const t = i / (CONTOUR_LEVELS + 1);
+        const th = minH + range * t;
+        const segs = marchingSquaresSegments(game.agg.heights, th);
+        ctx.beginPath();
+        segs.forEach(pair => {
+          const p1 = toCanvas(pair[0], W, H), p2 = toCanvas(pair[1], W, H);
+          ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+        });
+        ctx.stroke();
+      }
+    }
+    strokeContourPass('rgba(12, 8, 22, 0.42)', 1.05 * dpr);
+    strokeContourPass('rgba(232, 224, 252, 0.48)', 0.62 * dpr);
+  }
+
+  function vadToPercent(vad) {
+    const gx = ((vad.v * HALF) / SIZE + 0.5) * (GRID - 1);
+    const gz = ((vad.a * HALF) / SIZE + 0.5) * (GRID - 1);
+    return {
+      x: (gx / (GRID - 1)) * 100,
+      y: (gz / (GRID - 1)) * 100,
+    };
+  }
+
+  function buildPins() {
+    game.pins = [];
+    game.scenes.forEach((scene, idx) => {
+      const emotion = safeParseEmotion(scene.original_emotion);
+      const base = emotionToMapCoords(emotion);
+      const spread = mapCoordsSpread(base.x, base.y, idx, scene.id);
+      const pinId = 'core-' + (scene.id != null ? scene.id : idx);
+      const pinText = scene.text || scene.text_stage_1 || scene.text_stage_2 || '…';
+      game.pins.push({
+        id: pinId,
+        type: 'core',
+        sceneId: scene.id,
+        sceneIndex: idx,
+        memoryId: game.memoryId,
+        role: scene.scene_role || 'anchor',
+        mapX: spread.x,
+        mapY: spread.y,
+        x: spread.x * 100,
+        y: spread.y * 100,
+        text: pinText,
+        label: 'Scene ' + (scene.scene_order != null ? scene.scene_order : idx + 1),
+        originalEmotion: emotion,
+        sceneOrder: scene.scene_order != null ? scene.scene_order : idx,
+        state: 'locked',
+        visited: false,
+      });
+    });
+    const recent = game.plays.slice(-40);
+    recent.forEach((pl, i) => {
+      const vad = projectEmotionToVADContour(safeParseEmotion(pl.user_emotion));
+      const p = vadToPercent(vad);
+      const j = (i % 7) * 0.4;
+      game.pins.push({
+        id: 'echo-' + i + '-' + (pl.scene_id || i),
+        type: 'echo',
+        x: Math.max(2, Math.min(98, p.x + Math.sin(i * 1.7) * j)),
+        y: Math.max(2, Math.min(98, p.y + Math.cos(i * 1.3) * j)),
+        label: '',
+        state: 'locked',
+      });
+    });
+    const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
+    if (voidScene) {
+      const vidx = game.scenes.findIndex(s => s.id === voidScene.id);
+      game.pins.push({
+        id: 'void-' + voidScene.id,
+        type: 'voidPin',
+        sceneId: voidScene.id,
+        sceneIndex: vidx >= 0 ? vidx : 0,
+        text: voidScene.text || voidScene.text_stage_1 || '…',
+        originalEmotion: safeParseEmotion(voidScene.original_emotion),
+        x: 88,
+        y: 78,
+        label: '∅',
+        mapX: 0.88,
+        mapY: 0.78,
+        state: 'locked',
+      });
+    }
+  }
+
+  function finalizePinAccess() {
+    syncPinStateFlags();
+    applyPinVisualFlags();
+  }
+
+  function applyPinVisualFlags() {
+    game.pins.forEach(pin => {
+      pin.visited = false;
+      pin.entrance = false;
+      pin.active = false;
+      pin.locked = false;
+      if (pin.type === 'echo') {
+        pin.locked = true;
+        return;
+      }
+      if (pin.type === 'core') {
+        pin.visited = !!game.visitedCore[pin.sceneId];
+        const canOpen = pin.visited || !!(game.accessiblePinIds && game.accessiblePinIds.has(pin.id));
+        pin.locked = !canOpen;
+        pin.active = canOpen && !pin.visited;
+        pin.entrance = canOpen && !pin.visited;
+        return;
+      }
+      if (pin.type === 'voidPin') {
+        pin.visited = !!(game.visitedCore[pin.sceneId]);
+        const canOpen = pin.visited || !!(game.accessiblePinIds && game.accessiblePinIds.has(pin.id));
+        pin.locked = !canOpen;
+        pin.active = canOpen && !pin.visited;
+        pin.entrance = canOpen && !pin.visited;
+      }
+    });
+  }
+
+  function renderPins() {
+    const layer = document.getElementById('mapPinsLayer');
+    if (!layer) return;
+    layer.innerHTML = '';
+    game.pins.forEach(pin => {
+      const el = document.createElement('div');
+      let cls = 'map-pin ' + pin.type;
+      if (pin.active) cls += ' active';
+      if (pin.entrance) cls += ' entrance';
+      if (pin.visited) cls += ' visited';
+      if (pin.locked) cls += ' locked';
+      el.className = cls;
+      el.style.left = pin.x + '%';
+      el.style.top = pin.y + '%';
+      if (pin.label) {
+        const lb = document.createElement('div');
+        lb.className = 'map-pin-label';
+        lb.textContent = pin.label;
+        el.appendChild(lb);
+      }
+      el.addEventListener('click', () => onPinClick(pin));
+      layer.appendChild(el);
+    });
+  }
+
+  function onPinClick(pin) {
+    if (game.sealed) return;
+    if (pin.locked) {
+      LOG('pin locked');
+      return;
+    }
+    if (pin.type === 'core') {
+      enterSceneMode(pin);
+    } else if (pin.type === 'voidPin') {
+      enterSceneMode(pin);
+    }
+  }
+
+  const NPC_LINES = [
+    '…그 감각의 잔향이, 지형에 남았습니다.',
+    '기록은 스스로의 속도로 굳어집니다.',
+    '말하지 않은 것도, 여기엔 무게가 있습니다.',
+  ];
+
+  function stopWave() {
+    if (game.waveRaf) {
+      cancelAnimationFrame(game.waveRaf);
+      game.waveRaf = null;
+    }
+  }
+
+  function startWaveLoop(rgb) {
+    const canvas = document.getElementById('waveCanvas');
+    if (!canvas) return;
+    stopWave();
+    const r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255;
+    function frame() {
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      const w = canvas.width, h = canvas.height;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = '#0a0a0e';
+      ctx.fillRect(0, 0, w, h);
+      game.waveT += 0.02;
+      ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.35)';
+      ctx.lineWidth = 1.2 * dpr;
+      ctx.beginPath();
+      const cy = h * 0.55;
+      for (let x = 0; x <= w; x += 2) {
+        const y = cy + Math.sin(x * 0.006 + game.waveT) * h * 0.08 + Math.sin(x * 0.014 + game.waveT * 0.7) * h * 0.04;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(' + Math.round(r * 200 + 40) + ',' + Math.round(g * 200 + 40) + ',' + Math.round(b * 200 + 60) + ',0.2)';
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 2) {
+        const y = cy + Math.sin(x * 0.009 + game.waveT * 1.1) * h * 0.06;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      game.waveRaf = requestAnimationFrame(frame);
+    }
+    game.waveRaf = requestAnimationFrame(frame);
+  }
+
+  function clearTimers() {
+    if (game.voidTimeout) {
+      clearTimeout(game.voidTimeout);
+      game.voidTimeout = null;
+    }
+    if (game.inputDeadline) {
+      clearInterval(game.inputDeadline);
+      game.inputDeadline = null;
+    }
+  }
+
+  function enterSceneMode(pinOrId) {
+    const pin = typeof pinOrId === 'string' ? game.pins.find(p => p.id === pinOrId) : pinOrId;
+    if (!pin || (pin.type !== 'core' && pin.type !== 'voidPin')) return;
+    const scene = game.scenes.find(s => s.id === pin.sceneId);
+    if (!scene) return;
+    clearTimers();
+    game.currentPinId = pin.id;
+    game.currentSceneIndex = pin.sceneIndex;
+    document.getElementById('mapMode').classList.remove('active');
+    const sm = document.getElementById('sceneMode');
+    sm.classList.add('active');
+    document.getElementById('emotionInputArea').style.opacity = '0';
+    document.getElementById('submitBtn').disabled = true;
+    const tint = emotionVectorToRGB(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
+    startWaveLoop(tint);
+
+    const textEl = document.getElementById('sceneText');
+    textEl.textContent = '';
+    const fullText = pin.text || scene.text || scene.text_stage_1 || '…';
+    let i = 0;
+    const typeInterval = setInterval(() => {
+      i++;
+      textEl.textContent = fullText.slice(0, i);
+      if (i >= fullText.length) {
+        clearInterval(typeInterval);
+        setupEmotionUI(scene);
+        document.getElementById('emotionInputArea').style.opacity = '1';
+        document.getElementById('submitBtn').disabled = false;
+        armTimers(scene);
+      }
+    }, 28);
+
+    document.getElementById('sceneNpc').textContent = '';
+    document.getElementById('terrainClickHint').style.display = 'none';
+    document.getElementById('terrainBar').classList.remove('clickable');
+    renderTerrainBar(pin.sceneIndex, null);
+  }
+
+  function armTimers(scene) {
+    clearTimers();
+    const voidMs = (scene.void_info && scene.void_info.voidLevel === 'high') ? 12000 : 20000;
+    game.voidTimeout = setTimeout(() => {
+      LOG('void timeout → unsaid');
+      leaveSceneUnsaid();
+    }, voidMs);
+  }
+
+  function setupEmotionUI(scene) {
+    const chips = document.getElementById('emotionChips');
+    const sliders = document.getElementById('sliderArea');
+    const reasons = document.getElementById('reasonArea');
+    chips.innerHTML = '';
+    sliders.innerHTML = '';
+    reasons.innerHTML = '';
+    const orig = safeParseEmotion(scene.original_emotion);
+    EMOTIONS_UI.forEach(def => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'emotion-chip';
+      b.textContent = def.label;
+      b.dataset.key = def.key;
+      if (orig[def.key] > 0.2) b.classList.add('selected');
+      b.addEventListener('click', () => {
+        b.classList.toggle('selected');
+        validateSubmit();
+      });
+      chips.appendChild(b);
+    });
+    EMOTIONS_UI.forEach(def => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin:4px 0;';
+      const lab = document.createElement('span');
+      lab.style.cssText = 'font-size:0.75rem;color:#888;width:72px;';
+      lab.textContent = def.label;
+      const input = document.createElement('input');
+      input.type = 'range';
+      input.min = '0';
+      input.max = '1';
+      input.step = '0.05';
+      input.dataset.key = def.key;
+      input.value = String(orig[def.key] != null ? orig[def.key] : 0);
+      input.style.width = '160px';
+      input.addEventListener('input', validateSubmit);
+      wrap.appendChild(lab);
+      wrap.appendChild(input);
+      sliders.appendChild(wrap);
+    });
+    REASONS.forEach(def => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'emotion-chip';
+      b.textContent = def.label;
+      b.dataset.reason = def.key;
+      b.addEventListener('click', () => {
+        reasons.querySelectorAll('.emotion-chip').forEach(x => x.classList.remove('selected'));
+        b.classList.add('selected');
+        validateSubmit();
+      });
+      reasons.appendChild(b);
+    });
+    document.getElementById('submitBtn').onclick = () => submitScene(scene);
+    const vb = document.getElementById('voidBtn');
+    vb.disabled = false;
+    vb.onclick = () => leaveSceneVoid(scene);
+    validateSubmit();
+  }
+
+  function collectUserEmotionVector() {
+    const vec = {};
+    document.querySelectorAll('#sliderArea input[type="range"]').forEach(el => {
+      const k = el.dataset.key;
+      vec[k] = parseFloat(el.value) || 0;
+    });
+    return vec;
+  }
+
+  function collectReason() {
+    const sel = document.querySelector('#reasonArea .emotion-chip.selected');
+    return sel ? sel.dataset.reason : null;
+  }
+
+  function validateSubmit() {
+    const vec = collectUserEmotionVector();
+    const sum = Object.values(vec).reduce((a, b) => a + b, 0);
+    document.getElementById('submitBtn').disabled = sum <= 0;
+  }
+
+  function leaveSceneUnsaid() {
+    const scene = game.scenes[game.currentSceneIndex];
+    if (!scene) return;
+    game.skipCount++;
+    const vec = {};
+    EMOTIONS_UI.forEach(d => { vec[d.key] = 0; });
+    const userVector = {
+      base: vec,
+      reason_analysis: { is_void: true, attribution: null, target: null, core_fear: null },
+    };
+    const orig = buildOriginalVectorFromScene(scene);
+    const anchors = parseAnchorEmotions(scene);
+    const result = byeoriCalculateStep({ userVector, originalVector: orig, anchorEmotions: anchors }, {
+      previousBucket: game.previousBucket,
+      emotionHistory: game.emotionHistory,
+      skipCount: game.skipCount,
+    });
+    game.previousBucket = result.alignment_bucket;
+    finishScene(scene, result, vec, 'timeout_void', true);
+  }
+
+  function leaveSceneVoid(scene) {
+    game.skipCount++;
+    const vec = collectUserEmotionVector();
+    const userVector = {
+      base: vec,
+      reason_analysis: { is_void: true, attribution: null, target: null, core_fear: null },
+    };
+    const orig = buildOriginalVectorFromScene(scene);
+    const anchors = parseAnchorEmotions(scene);
+    const result = byeoriCalculateStep({ userVector, originalVector: orig, anchorEmotions: anchors }, {
+      previousBucket: game.previousBucket,
+      emotionHistory: game.emotionHistory,
+      skipCount: game.skipCount,
+    });
+    game.previousBucket = result.alignment_bucket;
+    finishScene(scene, result, vec, 'void', true);
+  }
+
+  function parseAnchorEmotions(scene) {
+    let a = scene.anchor_emotions;
+    if (typeof a === 'string') {
+      try { a = JSON.parse(a); } catch (_) { a = null; }
+    }
+    if (Array.isArray(a) && a.length) return a.map(String);
+    return null;
+  }
+
+  function submitScene(scene) {
+    clearTimers();
+    const vec = collectUserEmotionVector();
+    const reasonKey = collectReason();
+    const userVector = {
+      base: vec,
+      reason_analysis: {
+        is_void: false,
+        attribution: reasonKey ? reasonKeyToAttribution(reasonKey) : null,
+        target: 'scene',
+        core_fear: null,
+      },
+    };
+    const orig = buildOriginalVectorFromScene(scene);
+    const anchors = parseAnchorEmotions(scene);
+    const result = byeoriCalculateStep({ userVector, originalVector: orig, anchorEmotions: anchors }, {
+      previousBucket: game.previousBucket,
+      emotionHistory: game.emotionHistory,
+      skipCount: game.skipCount,
+    });
+    game.previousBucket = result.alignment_bucket;
+    game.emotionHistory.push(Object.assign({}, vec));
+    finishScene(scene, result, vec, reasonKey || '', false);
+  }
+
+  function finishScene(scene, result, vec, reasonLabel, isVoid) {
+    LOG('engine', result);
+    game.lastResult = result;
+    game.lastUserEmotion = Object.assign({}, vec);
+    const rgb = emotionVectorToRGB(vec);
+    game.lastTintRGB = rgb;
+    const vad = projectEmotionToVADContour(vec);
+    game.cursorTarget = vadToPercent(vad);
+
+    insertPlay(scene, vec, reasonLabel, result, isVoid).then(() => {
+      reloadPlaysOnly().then(() => {
+        buildTerrainFromData();
+        renderContourCanvas();
+        showPostSubmitNPC(result, rgb);
+      });
+    });
+  }
+
+  async function insertPlay(scene, vec, reasonLabel, result, isVoid) {
+    const row = {
+      memory_id: game.memoryId,
+      scene_id: scene.id,
+      user_emotion: vec,
+      user_reason: isVoid ? 'void' : (reasonLabel || ''),
+      alignment: result.alignment_score,
+      mismatch_type: isVoid ? 'void_mismatch' : (result.mismatch_type || null),
+      wave_data: null,
+      layer_id: 0,
+    };
+    const { error } = await sb.from('plays').insert(row);
+    if (error) LOG('plays insert error', error);
+    else LOG('plays saved', row);
+  }
+
+  async function reloadPlaysOnly() {
+    const { data, error } = await sb.from('plays')
+      .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id')
+      .eq('memory_id', game.memoryId)
+      .order('created_at');
+    if (!error) game.plays = data || [];
+  }
+
+  function showPostSubmitNPC(result, rgb) {
+    const npc = document.getElementById('sceneNpc');
+    npc.textContent = NPC_LINES[Math.floor(Math.random() * NPC_LINES.length)];
+    renderTerrainBar(game.currentSceneIndex, rgb);
+    document.getElementById('terrainBar').classList.add('clickable');
+    document.getElementById('terrainClickHint').style.display = 'block';
+    document.getElementById('emotionInputArea').style.opacity = '0.3';
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('voidBtn').disabled = true;
+
+    const hint = document.querySelector('#terrainClickHint .hint-txt');
+    hint.textContent = 'alignment ' + (result.alignment_score * 100).toFixed(0) + ' · ' + (result.alignment_bucket || '') + ' — 지형을 눌러 지도로';
+
+    const goMap = () => {
+      document.getElementById('terrainBar').removeEventListener('click', goMap);
+      document.getElementById('terrainClickHint').removeEventListener('click', goMap);
+      afterTerrainReturn(result);
+    };
+    document.getElementById('terrainBar').addEventListener('click', goMap);
+    document.getElementById('terrainClickHint').addEventListener('click', goMap);
+  }
+
+  function afterTerrainReturn(result) {
+    const scene = game.scenes[game.currentSceneIndex];
+    const originSceneId = scene ? scene.id : null;
+    stopWave();
+    game.traces.push({ sceneIndex: game.currentSceneIndex, alignment: result.alignment_score });
+    if (scene && !game.visitedCore[scene.id]) {
+      game.visitedCore[scene.id] = true;
+      game.coreVisitCount++;
+    }
+    document.getElementById('sceneMode').classList.remove('active');
+    document.getElementById('mapMode').classList.add('active');
+    document.getElementById('terrainBar').classList.remove('clickable');
+    document.getElementById('terrainClickHint').style.display = 'none';
+    buildTerrainFromData();
+    buildPins();
+    handleEmotionResult({
+      userEmotion: game.lastUserEmotion || {},
+      result: result || game.lastResult || {},
+      originSceneId,
+    });
+    finalizePinAccess();
+    renderContourCanvas();
+    renderPins();
+    updateMapStatus();
+    updateSealButton();
+    startCursorLerp();
+    game.currentSceneIndex = null;
+    game.currentPinId = null;
+  }
+
+  function renderTerrainBar(sceneIndex, tintRGB) {
+    const canvas = document.getElementById('terrainCanvas');
+    renderTerrainProfile(canvas, game.scenes, game.traces, sceneIndex, tintRGB);
+  }
+
+  function updateMapStatus() {
+    const el = document.getElementById('mapStatus');
+    let pollution = 0;
+    if (game.plays.length) {
+      let s = 0;
+      game.plays.forEach(p => { s += (1 - (p.alignment != null ? p.alignment : 0.5)); });
+      pollution = Math.round((s / game.plays.length) * 100);
+    }
+    el.textContent = '탐색: ' + game.coreVisitCount + '개 | 오염도: ' + pollution + '%';
+  }
+
+  function updateSealButton() {
+    const btn = document.getElementById('sealBtn');
+    if (!btn) return;
+    btn.disabled = game.sealed || game.coreVisitCount < 3;
+  }
+
+  function startCursorLerp() {
+    const cursor = document.getElementById('emotionCursor');
+    if (!cursor) return;
+    cursor.style.display = 'block';
+    if (game.cursorRaf) cancelAnimationFrame(game.cursorRaf);
+    function tick() {
+      game.cursorPos.x += (game.cursorTarget.x - game.cursorPos.x) * 0.08;
+      game.cursorPos.y += (game.cursorTarget.y - game.cursorPos.y) * 0.08;
+      cursor.style.left = game.cursorPos.x + '%';
+      cursor.style.top = game.cursorPos.y + '%';
+      if (game.lastTintRGB) {
+        cursor.style.boxShadow = '0 0 12px rgba(' + game.lastTintRGB[0] + ',' + game.lastTintRGB[1] + ',' + game.lastTintRGB[2] + ',0.45)';
+      }
+      game.cursorRaf = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  async function loadMemories() {
+    const { data, error } = await sb.from('memories').select('id, title').order('id');
+    if (error) throw error;
+    game.memories = data || [];
+    const sel = document.getElementById('memorySelect');
+    sel.innerHTML = '';
+    game.memories.forEach(m => {
+      const op = document.createElement('option');
+      op.value = m.id;
+      op.textContent = (m.title || '(untitled)') + ' · ' + String(m.id).slice(0, 8) + '…';
+      sel.appendChild(op);
+    });
+  }
+
+  async function loadMemoryData(memoryId) {
+    game.memoryId = memoryId;
+    const scenesRes = await sb.from('scenes').select('*').eq('memory_id', memoryId).order('scene_order');
+    const playsRes = await sb.from('plays')
+      .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id')
+      .eq('memory_id', memoryId)
+      .order('created_at');
+    if (scenesRes.error) throw scenesRes.error;
+    if (playsRes.error) throw playsRes.error;
+    game.scenes = scenesRes.data || [];
+    game.plays = playsRes.data || [];
+    game.visitedCore = {};
+    game.coreVisitCount = 0;
+    game.traces = [];
+    game.previousBucket = null;
+    game.emotionHistory = [];
+    game.accessiblePinIds = null;
+    game.lastUserEmotion = null;
+    const pollution = buildTerrainFromData();
+    buildPins();
+    applyInitialAccess();
+    finalizePinAccess();
+    renderContourCanvas();
+    renderPins();
+    updateMapStatus();
+    updateSealButton();
+    LOG('loaded scenes', game.scenes.length, 'plays', game.plays.length, 'pollution', pollution);
+  }
+
+  function bindMapResize() {
+    window.addEventListener('resize', () => {
+      if (document.getElementById('mapMode').classList.contains('active')) renderContourCanvas();
+    });
+  }
+
+  document.getElementById('startBtn').addEventListener('click', async () => {
+    const id = document.getElementById('memorySelect').value;
+    if (!id) return;
+    document.getElementById('selectScreen').style.display = 'none';
+    document.getElementById('mapMode').classList.add('active');
+    try {
+      await loadMemoryData(id);
+      startCursorLerp();
+    } catch (e) {
+      console.error(e);
+      alert('로드 실패: ' + (e.message || e));
+    }
+  });
+
+  document.getElementById('sealBtn').addEventListener('click', () => {
+    if (game.sealed || game.coreVisitCount < 3) return;
+    game.sealed = true;
+    document.getElementById('mapMode').classList.remove('active');
+    const rev = document.getElementById('revealScreen');
+    rev.classList.add('active');
+    document.getElementById('revealTitle').textContent = 'Memory sealed';
+    const avgAlign = game.traces.length
+      ? game.traces.reduce((s, t) => s + t.alignment, 0) / game.traces.length
+      : 0;
+    document.getElementById('revealBody').textContent =
+      '이 기억은 더 이상 열리지 않을 수 있습니다. 남겨진 파동은 흙 아래로 가라앉습니다.';
+    document.getElementById('revealStats').textContent =
+      '평균 정렬도: ' + (avgAlign * 100).toFixed(1) + '% · 코어 방문 ' + game.coreVisitCount + '회';
+  });
+
+  document.getElementById('revealRestart').addEventListener('click', () => {
+    location.reload();
+  });
+
+  (async function init() {
+    bindMapResize();
+    try {
+      await loadMemories();
+    } catch (e) {
+      console.error(e);
+    }
+  })();
+
+  </script>
+</body>
+</html>
