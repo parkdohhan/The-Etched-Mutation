@@ -113,7 +113,7 @@ html, body {
 
 </div>
 
-<script src="data/memories.js"></script>
+<script src="/data/memories.js"></script>
 <script>
 // =====================================================================
 // Demo 2: Opening + 3 monologues → index (index handles full play flow)
@@ -406,7 +406,7 @@ function startMonologue() {
     m.el.addEventListener('click', function() {
       if (monoRAF) { cancelAnimationFrame(monoRAF); monoRAF = null; }
       try { sessionStorage.setItem('demoMemoryId', m.id); } catch (_) {}
-      window.location.href = '/index.html?demo=1&memory=' + encodeURIComponent(m.id);
+      window.location.href = '/play-test.html?memory=' + encodeURIComponent(m.id);
     });
   });
 }

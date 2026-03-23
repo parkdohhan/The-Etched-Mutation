@@ -3,7 +3,8 @@
   "outputDirectory": ".",
   "framework": null,
   "rewrites": [
-    { "source": "/demo", "destination": "/demo2.html" }
+    { "source": "/demo", "destination": "/test/demo2.html" },
+    { "source": "/play", "destination": "/play-test.html" }
   ],
   "redirects": [
     { "source": "/", "destination": "/demo", "permanent": false }

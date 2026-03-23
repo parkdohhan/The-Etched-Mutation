@@ -140,6 +140,49 @@ async function initApp() {
         if (sessionStorage.getItem('demoMemoryId')) { demoMemoryId = sessionStorage.getItem('demoMemoryId'); sessionStorage.removeItem('demoMemoryId'); fromDemo = true; }
     } catch (_) {}
     var urlParams = new URLSearchParams(window.location.search || '');
+    if (urlParams.get('strata') === '1' && urlParams.get('memory')) {
+        const strataMemoryId = urlParams.get('memory');
+        let playTraces = [];
+        try {
+            const raw = localStorage.getItem('tem_play_traces');
+            if (raw) playTraces = JSON.parse(raw);
+        } catch (_e) {}
+        const avgAlignment = playTraces.length > 0
+            ? playTraces.reduce((s, t) => s + (t.alignment || 0), 0) / playTraces.length
+            : 0.5;
+        const alignmentResult = {
+            alignment_score: avgAlignment,
+            alignment_bucket: avgAlignment >= 0.55 ? 'HIGH' : avgAlignment < 0.35 ? 'LOW' : 'MID',
+        };
+        function _hideAllUI() {
+            ['openingScreen', 'introScreen', 'archiveContainer', 'modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) { el.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important'; }
+            });
+        }
+        function _waitForStrata() {
+            if (typeof window.showStrataView === 'function') {
+                _hideAllUI();
+                window.showStrataView(strataMemoryId, alignmentResult, function() {
+                    try {
+                        localStorage.removeItem('tem_play_traces');
+                        localStorage.removeItem('tem_play_memory_id');
+                        localStorage.removeItem('tem_play_memory_title');
+                    } catch (_e) {}
+                    window.history.replaceState({}, '', '/');
+                    location.reload();
+                });
+            } else {
+                setTimeout(_waitForStrata, 200);
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', _waitForStrata);
+        } else {
+            _waitForStrata();
+        }
+        return;
+    }
     if (urlParams.get('demo') === '1' && urlParams.get('memory')) {
         demoMemoryId = urlParams.get('memory');
         fromDemo = true;

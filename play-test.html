@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/data/memories.js"></script>
   <style>
     :root {
       --bg-deep: #0a0a0c;
@@ -2032,6 +2033,10 @@
 
   async function loadMemoryData(memoryId) {
     game.memoryId = memoryId;
+    if (window.memoriesData) {
+      const found = window.memoriesData.find(function(m) { return m.id === memoryId; });
+      if (found) game.memoryTitle = found.title || '';
+    }
     const scenesRes = await sb.from('scenes').select('*').eq('memory_id', memoryId).order('scene_order');
     const playsRes = await sb.from('plays')
       .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id')
@@ -2041,6 +2046,17 @@
     if (playsRes.error) throw playsRes.error;
     game.scenes = scenesRes.data || [];
     game.plays = playsRes.data || [];
+
+    if (!game.scenes.length && window._simulatedScenesMap && window._simulatedScenesMap[memoryId]) {
+      LOG('Supabase scenes empty, using local fallback for', memoryId);
+      game.scenes = window._simulatedScenesMap[memoryId].map(function(s) {
+        return Object.assign({}, s, { memory_id: memoryId });
+      });
+    }
+    if (!game.plays.length && window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) {
+      LOG('Supabase plays empty, using local fallback for', memoryId);
+      game.plays = window._simulatedPlaysMap[memoryId];
+    }
     game.visitedCore = {};
     game.coreVisitCount = 0;
     game.traces = [];
@@ -2118,6 +2134,28 @@
     }
     document.getElementById('revealStats').textContent =
       '평균 정렬도: ' + (avgAlign * 100).toFixed(1) + '% · 코어 방문 ' + game.coreVisitCount + '회';
+
+    const _urlParams = new URLSearchParams(window.location.search);
+    const _fromDemo = _urlParams.get('memory');
+    if (_fromDemo) {
+      document.getElementById('revealRestart').style.display = 'none';
+      const continueBtn = document.createElement('button');
+      continueBtn.textContent = 'Continue';
+      continueBtn.className = 'action-btn';
+      continueBtn.style.marginTop = '1.5rem';
+      continueBtn.addEventListener('click', () => {
+        try {
+          localStorage.setItem('tem_play_traces', JSON.stringify(game.traces));
+          localStorage.setItem('tem_play_memory_id', game.memoryId || _fromDemo);
+          localStorage.setItem('tem_play_memory_title', game.memoryTitle || '');
+        } catch (e) {
+          console.warn('localStorage save failed:', e);
+        }
+        window.location.href = '/index.html?strata=1&memory=' + encodeURIComponent(_fromDemo);
+      });
+      const restartBtn = document.getElementById('revealRestart');
+      restartBtn.parentNode.insertBefore(continueBtn, restartBtn.nextSibling);
+    }
   });
 
   document.getElementById('revealRestart').addEventListener('click', () => {
@@ -2126,10 +2164,25 @@
 
   (async function init() {
     bindMapResize();
-    try {
-      await loadMemories();
-    } catch (e) {
-      console.error(e);
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlMemoryId = urlParams.get('memory');
+
+    if (urlMemoryId) {
+      document.getElementById('selectScreen').style.display = 'none';
+      document.getElementById('mapMode').classList.add('active');
+      try {
+        await loadMemoryData(urlMemoryId);
+        startCursorLerp();
+      } catch (e) {
+        console.error(e);
+        alert('로드 실패: ' + (e.message || e));
+      }
+    } else {
+      try {
+        await loadMemories();
+      } catch (e) {
+        console.error(e);
+      }
     }
   })();
 
