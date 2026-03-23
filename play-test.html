@@ -1859,7 +1859,6 @@
     insertPlay(scene, baseEmotion, reasonLabel, engineResult, !!userVector.reason_analysis?.is_void).then(() => {
       reloadPlaysOnly().then(() => {
         buildTerrainFromData();
-        renderContourCanvas();
         updateMapStatus();
         updateSealButton();
         LOG('engine', engineResult);
@@ -1867,6 +1866,7 @@
           stopWave();
           document.getElementById('sceneMode').classList.remove('active');
           document.getElementById('mapMode').classList.add('active');
+          renderContourCanvas();
           buildPins();
           handleEmotionResult({
             userEmotion: baseEmotion,
@@ -1895,7 +1895,6 @@
     insertPlay(scene, vec, reasonLabel, result, isVoid).then(() => {
       reloadPlaysOnly().then(() => {
         buildTerrainFromData();
-        renderContourCanvas();
         showPostSubmitNPC(result, rgb);
       });
     });
