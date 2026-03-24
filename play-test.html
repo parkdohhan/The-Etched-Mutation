@@ -48,6 +48,12 @@
       border-radius: 50%; transform: translate(-50%, -50%);
     }
     .map-pin.locked { opacity: 0.38; pointer-events: none; filter: grayscale(0.35); }
+    .map-pin:not(.locked):not(.echo):hover {
+      transform: translate(-50%, -50%) scale(1.35);
+      box-shadow: 0 0 18px rgba(196, 168, 130, 0.7);
+      filter: brightness(1.3);
+      z-index: 10;
+    }
     .map-pin.entrance { animation: entrancePulse 1.5s ease-in-out infinite; }
     @keyframes entrancePulse {
       0% { box-shadow: 0 0 8px rgba(196, 168, 130, 0.3); transform: translate(-50%, -50%) scale(1); }
@@ -422,6 +428,20 @@
       const a = SFX[key];
       if (a && a.pause) { a.pause(); a.volume = 0; }
     });
+  }
+
+  function typeRevealText(el, text) {
+    el.textContent = '';
+    let i = 0;
+    const speed = 22;
+    function tick() {
+      if (i < text.length) {
+        el.textContent += text.charAt(i);
+        i++;
+        requestAnimationFrame(() => setTimeout(tick, speed));
+      }
+    }
+    tick();
   }
 
   function safeParseEmotion(val) {
@@ -1235,7 +1255,10 @@
   function applyInitialAccess() {
     const cores = game.pins.filter(p => p.type === 'core' || p.type === 'bridge');
     const unvisited = cores.filter(p => !game.visitedCore[p.sceneId]);
-    const picked = unvisited.length ? unvisited : cores.slice();
+    const pool = unvisited.length ? unvisited : cores.slice();
+    const sorted = pool.slice().sort((a, b) => (a.sceneOrder || 0) - (b.sceneOrder || 0));
+    const initialCount = Math.min(3, sorted.length);
+    const picked = sorted.slice(0, initialCount);
     game.accessiblePinIds = new Set(picked.map(p => p.id));
     const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
     if (voidScene) {
@@ -1964,6 +1987,9 @@
         console.error('emotion_extract error:', e);
         submitBtn.textContent = T.coreError;
         submitBtn.disabled = false;
+        setTimeout(() => {
+          if (!submitBtn.disabled) submitBtn.textContent = T.coreSubmit;
+        }, 1500);
       }
     });
   }
@@ -2327,7 +2353,8 @@
     }
     if (scene && !game.visitedCore[scene.id]) {
       game.visitedCore[scene.id] = true;
-      game.coreVisitCount++;
+      const pin = game.currentPinId ? game.pins.find(p => p.id === game.currentPinId) : null;
+      if (!pin || pin.type === 'core') game.coreVisitCount++;
     }
     document.getElementById('sceneMode').classList.remove('active');
     document.getElementById('mapMode').classList.add('active');
@@ -2646,7 +2673,7 @@
       const data = await res.json();
       if (data.narrative) {
         document.getElementById('revealTitle').textContent = T.revealTitle;
-        document.getElementById('revealBody').textContent = data.narrative;
+        typeRevealText(document.getElementById('revealBody'), data.narrative);
       } else {
         document.getElementById('revealTitle').textContent = T.revealTitle;
         document.getElementById('revealBody').textContent = T.revealFallback;

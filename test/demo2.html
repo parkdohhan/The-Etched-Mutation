@@ -433,28 +433,28 @@ function demoShowHint() {
 }
 function demoShowOpeningLine4(dialogue) {
   if (demoOpeningSkipped) return;
-  typeTextEl(dialogue, '\nGo ahead.', function() {
+  typeTextEl(dialogue, 'Go ahead.', function() {
     if (demoOpeningSkipped) return;
     setTimeout(demoShowHint, 500);
   });
 }
 function demoShowOpeningLine3(dialogue) {
   if (demoOpeningSkipped) return;
-  typeTextEl(dialogue, '\nIf you touch them, they change. That\'s not a warning — just a fact.', function() {
+  typeTextEl(dialogue, 'If you touch them, they change. That\'s not a warning — just a fact.', function() {
     if (demoOpeningSkipped) return;
     setTimeout(function() { demoShowOpeningLine4(dialogue); }, 1200);
   });
 }
 function demoShowOpeningLine2(dialogue) {
   if (demoOpeningSkipped) return;
-  typeTextEl(dialogue, '\nNo one\'s come for them.', function() {
+  typeTextEl(dialogue, 'No one\'s come for them.', function() {
     if (demoOpeningSkipped) return;
     setTimeout(function() { demoShowOpeningLine3(dialogue); }, 1200);
   });
 }
 function demoShowOpeningLine1(dialogue) {
   if (demoOpeningSkipped) return;
-  typeTextEl(dialogue, '\nThere are memories buried here.', function() {
+  typeTextEl(dialogue, 'There are memories buried here.', function() {
     if (demoOpeningSkipped) return;
     setTimeout(function() { demoShowOpeningLine2(dialogue); }, 1200);
   });
@@ -518,7 +518,7 @@ function beginDemoOpeningDialogue() {
   setTimeout(function() {
     if (demoOpeningSkipped) return;
     if (dialogue) demoShowOpeningLine1(dialogue);
-  }, 2500);
+  }, 1200);
 }
 
 function demoHandleOpeningClick() {
