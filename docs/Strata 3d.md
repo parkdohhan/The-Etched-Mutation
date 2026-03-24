@@ -1,0 +1,119 @@
+# TEM / The Etched Mutation — 지형(Terrain) 시스템 설계
+
+---
+
+## 1. 구성 요소 맵
+
+| 구역 | 파일 | 역할 |
+|------|------|------|
+| **본편 아카이브 하단 2D 프로필** | `js/ui/strataSection.js` | 장면 `original_emotion` 기반 높이·색 → 캔버스에 단면 지형 + 트레이스 + 마커 |
+| **3D 축적 지형 (Strata 뷰)** | `js/ui/strataView.js` | Three.js + 그리드 `bakeLayer`로 높이/색 필드, 이벤트 레이어 롤오버 |
+| **데모 플레이 하단 2D** | `js/demo/demoFlow.js` | `draw2DTerrain` — strataSection과 거의 동일한 알고리즘을 `demoState`용으로 인라인 복제 |
+| **등고선 스탠드얼론 테스트** | `contour-test.html` | strataView의 bakeLayer/레이어 정의/노이즈를 포팅해 Supabase plays로 래스터+등고선 렌더 |
+| **지질도 상수 (VAD 앵커)** | `js/shared/tem_geo_map.js` | 렌더링 아님 — 감정 앵커 VAD 정의 (시각화 전용) |
+
+---
+
+## 2. 의존 관계
+
+### 2.1 노이즈 함수 계열 (공통 패턴)
+`strataSection.js`, `strataView.js`, `contour-test.html`, `demoFlow.js` 모두 동일 계통의 deterministic noise 함수(`hs`/`sn`/`fm`)를 사용한다. 별도 npm 패키지가 아니라 프로젝트 안에서 복붙·미세 수정으로 공유되는 구조.
+
+### 2.2 2D 단면 지형 (strataSection vs demoFlow)
+- `strataSection.js`: `buildProfileFromScenes` + `renderTerrainProfile` — 본편 소스.
+- `demoFlow.js`: 같은 구조(언더레이어 4단, 프로필 곡선, contamination 트레이스, 마커)이나 높이 정규화 방식 등에 미세한 차이 존재.
+
+### 2.3 등고선/래스터 (contour-test.html)
+strataView의 `bakeLayer`/`aggregateLayerCaches`/`recomputeLayers` 개념을 단일 HTML 파일로 옮긴 형태. 데이터는 Supabase `plays` 테이블에서 가져옴.
+
+### 2.4 3D Strata (strataView.js)
+Three.js 기반 IIFE로 `window`에 API 노출. `index.js` 엔딩 등에서 `window.showStrataView` 호출.
+
+---
+
+## 3. 2D 프로필 렌더링 설계
+
+### 데이터 흐름
+`scenes[]` → `buildProfileFromScenes(scenes, sampleCount)` → `renderTerrainProfile(canvas, ...)`
+
+### 높이 계산
+각 장면의 `original_emotion` 벡터에서 감정 값의 가중 합산으로 원시 높이를 계산한 뒤, 장면 간 보간 + deterministic noise를 더해 자연스러운 지형 곡선을 생성한다. min-max 정규화 + 약한 gamma(0.85)로 봉우리 과도한 뾰족함을 완화.
+
+### 색상 매핑
+감정 벡터 → 지배적 감정 → 앵커 색상 테이블 참조. 주요 매핑:
+
+| 감정 | RGB |
+|------|-----|
+| anger | 140, 20, 20 (어두운 적색) |
+| fear | 60, 20, 80 (보라) |
+| sadness | 30, 50, 100 (남색) |
+| guilt | 80, 50, 30 (갈색) |
+| longing | 80, 60, 100 (연보라) |
+| joy | 180, 140, 60 (황색) |
+| numbness | 60, 60, 65 (회색) |
+| isolation | 20, 20, 40 (어둠) |
+
+### 레이어 구조
+1. **Underlayers** (4단): 프로필 곡선 아래에 깔리는 지층. 아래로 갈수록 어두워짐.
+2. **프로필 곡선**: 주된 지형 라인. `quadraticCurveTo`로 부드럽게 연결.
+3. **트레이스**: 완료된 장면에 걸리는 효과(erosion, deposit, spread, fade, smooth, layer, mark).
+4. **플레이어 마커**: 현재 장면 위치를 나타내는 발광 점 + 수직선.
+
+---
+
+## 4. 3D Strata 뷰 설계
+
+### 그리드 파라미터
+- `GRID = 80`, `SIZE = 50`
+
+### 레이어 정의 (DEFAULT_LAYER_DEFS)
+| 레이어 | 역할 |
+|--------|------|
+| surface | 최신 이벤트/반응 |
+| near | 최근 축적 |
+| mid | 중기 축적 |
+| deep | 장기 침전 |
+| bedrock | 기반암 (가장 오래된 데이터) |
+
+### 핵심 함수
+- `recomputeLayers`: 시간 윈도우별 이벤트 분배, pollution 계산, bedrock compaction
+- `bakeLayer`: 그리드별 heights, colors, pollution 필드 생성
+- `aggregateLayerCaches`: 전체 레이어 캐시 통합
+
+### VAD → 렌더 매핑
+`computeWeightsFromVAD`: 이벤트의 VAD 좌표를 높이/색상 가중치로 변환.
+`mapEventToRender`: 이벤트 데이터를 렌더링 가능한 형태로 매핑.
+
+---
+
+## 5. 트레이스 효과 타입
+
+| effectType | 시각적 표현 | 의미 |
+|------------|-----------|------|
+| erosion | 적색 가로줄 | 침식 — 반복 방문으로 지형이 깎임 |
+| deposit | 청색 반원 | 퇴적 — 새로운 해석이 쌓임 |
+| spread | 보라 방사형 그라데이션 | 확산 — 감정이 주변으로 번짐 |
+| fade | 반투명 검은 오버레이 | 희미해짐 — 기억이 흐려짐 |
+| smooth | 베이지 가로선 | 평탄화 — 감정 진폭이 줄어듦 |
+| layer | 점선 가로줄 | 층위 — 해석이 겹침 |
+| mark | 작은 원점 | 기본 마킹 |
+
+---
+
+## 6. 지질도 상수 (tem_geo_map.js)
+
+렌더링 코드가 아닌, TEM 세계관의 감정 앵커 VAD 좌표를 정의하는 상수 파일.
+`TEM_ANCHOR_VAD` (기본 앵커)와 `TEM_ANCHOR_VAD_EXTENDED` (확장 앵커)로 구성.
+`TEM_VAD_IS_VISUAL_ONLY = true` 플래그로 시각화 전용임을 명시.
+
+---
+
+## 7. 연동 지점
+
+- `js/index.js`: `loadStrataLayers(memoryId)` → `strataSection.init/setScenes/setTraces/render()`
+- `js/index.js`: `renderScene()` 아카이브 분기 → `strataSection` 갱신
+- `js/index.js`: 엔딩 → `startEndStrataAnimation`, `showStrataView` (3D)
+- `index.html`: `#strataPanel` + `#strataSectionCanvas` (2D), `#strataView` (3D)
+- `css/index.css`: `.strata-panel`, `#strataView` HUD, 엔딩 strata 애니메이션
+- `js/services/NetworkService.js`: `plays`/scenes 조회 (데이터 공급)
+- `data/memories.js`: 로컬 시드 메모리 (scene/감정 필드가 strataSection의 입력)
