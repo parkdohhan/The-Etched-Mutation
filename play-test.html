@@ -110,16 +110,51 @@
     .typing::after { content: '|'; animation: blink 500ms step-end infinite; color: rgba(196, 168, 130, 0.6); }
     @keyframes blink { 50% { opacity: 0; } }
 
-    #terrainBar { width: 100%; height: 120px; position: relative; flex-shrink: 0; border-top: 1px solid rgba(196, 168, 130, 0.08); background: #09090d; }
-    #terrainBar.clickable { cursor: pointer; animation: terrainPulse 1.5s ease-in-out infinite; }
-    @keyframes terrainPulse {
-      0% { border-top-color: rgba(196, 168, 130, 0.08); }
-      50% { border-top-color: rgba(196, 168, 130, 0.25); }
-      100% { border-top-color: rgba(196, 168, 130, 0.08); }
+    #terrainBar {
+      width: 100%; height: 120px; position: relative; flex-shrink: 0;
+      border-top: none;
+      background: #09090d;
+      box-shadow: inset 0 1px 0 rgba(196, 168, 130, 0.06);
     }
-    #terrainCanvas { width: 100%; height: 100%; display: block; }
-    #terrainClickHint { display: none; position: absolute; inset: 0; cursor: pointer; }
-    #terrainClickHint .hint-txt { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); font-family: 'Cormorant Garamond', serif; font-size: 0.75rem; color: rgba(196, 168, 130, 0.4); letter-spacing: 0.05em; }
+    #terrainBar.awaiting-terrain { animation: terrainBarGlow 1.5s ease-in-out infinite; }
+    @keyframes terrainBarGlow {
+      0%, 100% { box-shadow: inset 0 1px 0 rgba(196, 168, 130, 0.06); }
+      50% { box-shadow: inset 0 1px 0 rgba(196, 168, 130, 0.1), 0 -6px 24px rgba(100, 140, 200, 0.12); }
+    }
+    #terrainCanvas {
+      width: 100%; height: 100%; display: block;
+      pointer-events: none;
+      vertical-align: top;
+    }
+    #terrainCanvas.clickable {
+      pointer-events: auto !important;
+      cursor: pointer;
+      opacity: 0.97;
+      transition: opacity 0.3s, filter 0.3s;
+      /* glow는 곡선 지형(stroke) 쪽으로 — 직선 테두리 유도 방지 */
+      filter: drop-shadow(0 -2px 10px rgba(130, 160, 220, 0.45)) drop-shadow(0 0 6px rgba(196, 168, 130, 0.25));
+    }
+    #terrainCanvas.clickable:hover {
+      opacity: 1;
+      filter: drop-shadow(0 -3px 14px rgba(130, 170, 230, 0.55)) drop-shadow(0 0 10px rgba(196, 168, 130, 0.35));
+    }
+    #terrainClickHint { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+    /* 힌트를 하단(밀폐 fill의 직선과 겹침)이 아니라 상단·곡선 근처로 — 지형 stroke와 시각적으로 연결 */
+    #terrainClickHint .hint-txt {
+      position: absolute;
+      top: 6px;
+      bottom: auto;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.72rem;
+      color: rgba(200, 210, 235, 0.55);
+      letter-spacing: 0.04em;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85);
+      max-width: 96%;
+      text-align: center;
+      pointer-events: none;
+    }
 
     #revealScreen {
       display: none; position: fixed; inset: 0; z-index: 60; background: #08080c; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center;
@@ -143,8 +178,8 @@
       <div class="emotion-cursor" id="emotionCursor" style="display:none;"></div>
     </div>
     <div class="map-bar">
-      <span class="map-status" id="mapStatus">탐색: 0개 | 오염도: 0%</span>
-      <button type="button" class="seal-btn" id="sealBtn" disabled>Seal this memory</button>
+      <span class="map-status" id="mapStatus"></span>
+      <button type="button" class="seal-btn" id="sealBtn" disabled></button>
     </div>
   </div>
 
@@ -159,23 +194,23 @@
           <div id="sliderArea" style="margin-bottom:12px;"></div>
           <div id="reasonArea" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;"></div>
           <div style="display:flex;gap:8px;justify-content:center;">
-            <button type="button" id="submitBtn" class="action-btn" disabled>입력</button>
-            <button type="button" id="voidBtn" class="action-btn void">Leave it unsaid</button>
+            <button type="button" id="submitBtn" class="action-btn" disabled></button>
+            <button type="button" id="voidBtn" class="action-btn void"></button>
           </div>
         </div>
       </div>
     </div>
     <div id="terrainBar">
       <canvas id="terrainCanvas"></canvas>
-      <div id="terrainClickHint"><div class="hint-txt">지형을 탐색하세요</div></div>
+      <div id="terrainClickHint"><div class="hint-txt"></div></div>
     </div>
   </div>
 
   <div id="revealScreen">
-    <h2 id="revealTitle">Memory sealed</h2>
+    <h2 id="revealTitle"></h2>
     <p id="revealBody"></p>
     <p id="revealStats" style="font-size:0.85rem;color:var(--text-muted);"></p>
-    <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;">다시 시작</button>
+    <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;"></button>
   </div>
 
   <script>
@@ -184,7 +219,210 @@
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  const I18N = {
+    en: {
+      corePrompt: 'What came to mind reading this?',
+      corePlaceholder: 'Write freely…',
+      coreSubmit: 'Submit',
+      coreLoading: 'Analyzing...',
+      coreError: 'Error',
+      bridgePrompt: 'What do you feel from this fragment? (1–2)',
+      bridgeConfirm: 'Confirm',
+      submitBtn: 'Submit',
+      voidBtn: 'Leave it unsaid',
+      sealBtn: 'Seal',
+      sealBlocked: 'Visit at least 3 core memories first.',
+      revealTitle: 'Memory sealed',
+      revealLoading: 'Reconstructing the memory...',
+      revealContinue: 'Continue',
+      revealRestart: 'Start over',
+      revealFallback: 'This memory may not open again. The waves that remain settle under the soil.',
+      backToMap: '← Map',
+      stats: (align, count) => `Avg alignment: ${(align * 100).toFixed(1)}% · Core visits: ${count}`,
+      mapStatus: (cores, pollution) => `Explored: ${cores} cores | Pollution: ${pollution}%`,
+      exploreTerrain: 'Explore the terrain',
+      terrainHintAlign: (alignPct, bucket) => `alignment ${alignPct} · ${bucket} — tap terrain to return to the map`,
+      chipLabels: {
+        guilt: 'guilt', fear: 'fear', anger: 'anger', sadness: 'sadness',
+        longing: 'longing', relief: 'relief', confusion: 'confusion', emptiness: 'emptiness',
+      },
+      emotionSlider: {
+        fear: 'Fear', sadness: 'Sadness', anger: 'Anger', longing: 'Longing',
+        guilt: 'Guilt', shame: 'Shame', numbness: 'Numbness', isolation: 'Isolation',
+      },
+      reasons: {
+        self_blame: 'It felt like my fault',
+        helpless: 'There was nothing I could do',
+        fear_driven: 'I was afraid',
+        unknown: "I'm not sure",
+      },
+      npcLines: [
+        '…The afterglow of that sensation lingers in the terrain.',
+        'Records set at their own pace.',
+        'What went unsaid still has weight here.',
+      ],
+    },
+    ko: {
+      corePrompt: '이 장면을 읽고 무엇이 떠올랐나요?',
+      corePlaceholder: '자유롭게 적어 주세요…',
+      coreSubmit: '제출',
+      coreLoading: '분석 중...',
+      coreError: '오류',
+      bridgePrompt: '이 조각에서 어떤 감정이 느껴지나요? (1~2개)',
+      bridgeConfirm: '확인',
+      submitBtn: '제출',
+      voidBtn: '말하지 않고 넘어가기',
+      sealBtn: '봉인',
+      sealBlocked: '코어 기억을 3개 이상 방문하세요.',
+      revealTitle: '기억이 봉인되었습니다',
+      revealLoading: '기억을 재구성하고 있습니다...',
+      revealContinue: '계속',
+      revealRestart: '다시 시작',
+      revealFallback: '이 기억은 다시 열리지 않을지도 모릅니다. 남은 파도는 흙 아래 가라앉습니다.',
+      backToMap: '← 지도로',
+      stats: (align, count) => `평균 정렬도: ${(align * 100).toFixed(1)}% · 코어 방문 ${count}회`,
+      mapStatus: (cores, pollution) => `탐색 코어: ${cores} · 오염도: ${pollution}%`,
+      exploreTerrain: '지형 살펴보기',
+      terrainHintAlign: (alignPct, bucket) => `정렬도 ${alignPct} · ${bucket} — 지도로 돌아가려면 지형을 누르세요`,
+      chipLabels: {
+        guilt: '죄책감', fear: '두려움', anger: '분노', sadness: '슬픔',
+        longing: '그리움', relief: '안도', confusion: '혼란', emptiness: '공허',
+      },
+      emotionSlider: {
+        fear: '두려움', sadness: '슬픔', anger: '분노', longing: '그리움',
+        guilt: '죄책감', shame: '수치', numbness: '무감각', isolation: '고립',
+      },
+      reasons: {
+        self_blame: '내 잘못 같았다',
+        helpless: '어쩔 수 없었다',
+        fear_driven: '두려웠다',
+        unknown: '잘 모르겠다',
+      },
+      npcLines: [
+        '…그 감각의 여운이 지형 위에 남는다.',
+        '기록은 제 속도로 남는다.',
+        '말하지 않은 것에도 무게가 있다.',
+      ],
+    },
+  };
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const LANG = urlParams.get('lang') === 'ko' ? 'ko' : 'en';
+  const T = I18N[LANG];
+
+  function getEmotionsUi() {
+    return [
+      { key: 'fear', label: T.emotionSlider.fear },
+      { key: 'sadness', label: T.emotionSlider.sadness },
+      { key: 'anger', label: T.emotionSlider.anger },
+      { key: 'longing', label: T.emotionSlider.longing },
+      { key: 'guilt', label: T.emotionSlider.guilt },
+      { key: 'shame', label: T.emotionSlider.shame },
+      { key: 'numbness', label: T.emotionSlider.numbness },
+      { key: 'isolation', label: T.emotionSlider.isolation },
+    ];
+  }
+  function getReasonsUi() {
+    return [
+      { key: 'self_blame', label: T.reasons.self_blame },
+      { key: 'helpless', label: T.reasons.helpless },
+      { key: 'fear_driven', label: T.reasons.fear_driven },
+      { key: 'unknown', label: T.reasons.unknown },
+    ];
+  }
+  function getEmotionInputSkeleton() {
+    return `
+    <div id="emotionChips" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:12px;"></div>
+    <div id="sliderArea" style="margin-bottom:12px;"></div>
+    <div id="reasonArea" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button type="button" id="submitBtn" class="action-btn" disabled>${T.submitBtn}</button>
+      <button type="button" id="voidBtn" class="action-btn void">${T.voidBtn}</button>
+    </div>
+  `;
+  }
+
   const LOG = (...a) => console.log('[play-test]', ...a);
+
+  const SFX = {
+    ambient: null,
+    white: null,
+    void: null,
+    rain: null,
+    footstep: null,
+    _loaded: false,
+  };
+
+  function initAudio() {
+    if (SFX._loaded) return;
+    SFX._loaded = true;
+
+    function makeAudio(src, loop, vol) {
+      const a = new Audio(src);
+      a.loop = !!loop;
+      a.volume = vol || 0;
+      a.preload = 'auto';
+      a.addEventListener('error', () => { a._broken = true; });
+      return a;
+    }
+
+    SFX.ambient = makeAudio('sounds/ambient-opening.mp3', true, 0);
+    SFX.white = makeAudio('sounds/Base_white.mp3', true, 0);
+    SFX.void = makeAudio('sounds/Base_Void.mp3', false, 0);
+    SFX.rain = makeAudio('sounds/Rain_indoor.mp3', true, 0);
+    SFX.footstep = makeAudio('sounds/footstep.mp3', false, 0.4);
+  }
+
+  function playOnce(audio) {
+    if (!audio || audio._broken) return;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  }
+
+  function fadeIn(audio, targetVol, durationMs) {
+    if (!audio || audio._broken) return;
+    audio.volume = 0;
+    audio.play().catch(() => {});
+    const steps = 20;
+    const stepMs = durationMs / steps;
+    const stepVol = targetVol / steps;
+    let current = 0;
+    const interval = setInterval(() => {
+      current += stepVol;
+      if (current >= targetVol) {
+        audio.volume = targetVol;
+        clearInterval(interval);
+      } else {
+        audio.volume = current;
+      }
+    }, stepMs);
+  }
+
+  function fadeOut(audio, durationMs, pauseAfter) {
+    if (!audio || audio._broken || audio.paused) return;
+    const startVol = audio.volume;
+    const steps = 20;
+    const stepMs = durationMs / steps;
+    const stepVol = startVol / steps;
+    let current = startVol;
+    const interval = setInterval(() => {
+      current -= stepVol;
+      if (current <= 0) {
+        audio.volume = 0;
+        if (pauseAfter) audio.pause();
+        clearInterval(interval);
+      } else {
+        audio.volume = current;
+      }
+    }, stepMs);
+  }
+
+  function stopAll() {
+    ['ambient', 'white', 'void', 'rain', 'footstep'].forEach((key) => {
+      const a = SFX[key];
+      if (a && a.pause) { a.pause(); a.volume = 0; }
+    });
+  }
 
   function safeParseEmotion(val) {
     if (!val) return {};
@@ -193,20 +431,38 @@
     return {};
   }
 
-  const EMOTIONS_UI = [
-    { key: 'fear', label: '공포' }, { key: 'sadness', label: '슬픔' }, { key: 'anger', label: '분노' }, { key: 'longing', label: '그리움' },
-    { key: 'guilt', label: '죄책감' }, { key: 'shame', label: '수치심' }, { key: 'numbness', label: '무감각' }, { key: 'isolation', label: '고립' },
-  ];
-  const REASONS = [
-    { key: 'self_blame', label: '내 잘못인 것 같아서' },
-    { key: 'helpless', label: '어쩔 수 없었어' },
-    { key: 'fear_driven', label: '무서웠어' },
-    { key: 'unknown', label: '모르겠어' },
-  ];
   const EMOTION_COLORS = {
     fear: [100, 80, 180], sadness: [80, 100, 160], anger: [200, 80, 80], joy: [200, 180, 100], longing: [80, 180, 180],
     guilt: [150, 130, 100], shame: [160, 100, 130], numbness: [90, 90, 110], isolation: [70, 90, 130],
+    emptiness: [90, 90, 110], confusion: [120, 100, 140], relief: [140, 180, 120],
   };
+
+  function getDominantColor(emotionBase) {
+    if (!emotionBase || typeof emotionBase !== 'object') return [120, 120, 140];
+    let maxKey = 'sadness';
+    let maxVal = 0;
+    Object.entries(emotionBase).forEach(([k, v]) => {
+      const n = Number(v) || 0;
+      if (n > maxVal) {
+        maxVal = n;
+        maxKey = k;
+      }
+    });
+    return EMOTION_COLORS[maxKey] || [120, 120, 140];
+  }
+
+  function lerpRgb(a, b, t) {
+    t = Math.max(0, Math.min(1, t));
+    return [
+      Math.round(a[0] + (b[0] - a[0]) * t),
+      Math.round(a[1] + (b[1] - a[1]) * t),
+      Math.round(a[2] + (b[2] - a[2]) * t),
+    ];
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
   const DEFAULT_ANCHOR_KEYS = ['fear','sadness','anger','guilt','shame','isolation','numbness','moral_pain','helplessness','despair','joy','hope','relief','gratitude','love','peace','comfort','longing','nostalgia','acceptance','confusion'];
 
   function cosineSimilarity(vec1, vec2, keys) {
@@ -223,10 +479,7 @@
   function emotionVectorToRGB(ev) {
     if (!ev || typeof ev !== 'object') return [120, 120, 140];
     const base = ev.base || ev;
-    const entries = Object.entries(base).filter(([, v]) => v != null && v > 0);
-    if (!entries.length) return [120, 120, 140];
-    const dom = entries.sort((a, b) => b[1] - a[1])[0];
-    return EMOTION_COLORS[dom[0]] || [120, 120, 140];
+    return getDominantColor(base);
   }
 
   /* —— strataSection: noise + profile —— */
@@ -294,7 +547,10 @@
     return { ctx, w, h };
   }
 
-  function renderTerrainProfile(canvas, scenes, traces, currentSceneIndex, tintRGB) {
+  function renderTerrainProfile(canvas, scenes, traces, currentSceneIndex, tintRGB, options) {
+    const opts = options || {};
+    const rippleAmp = opts.rippleAmp != null ? opts.rippleAmp : 0;
+    const rippleTime = opts.rippleTime != null ? opts.rippleTime : 0;
     if (!canvas) return;
     const setup = setupTerrainCanvas(canvas);
     if (!setup) return;
@@ -313,6 +569,11 @@
       const norm = Math.pow((profile[i].h - minH) / rangeH, 0.85);
       profileY.push(profileBottom - norm * profileRange * 0.9);
     }
+    const ripplePx = rippleAmp;
+    const surfY = profileY.map((y, i) => {
+      if (!ripplePx) return y;
+      return y + Math.sin(i * 0.22 + rippleTime * 3) * ripplePx * 0.45 + Math.sin((i / sampleCount) * Math.PI * 10 + rippleTime * 2.2) * ripplePx * 0.35;
+    });
     const UNDER_LAYERS = 4;
     const underStart = profileBottom, underEnd = h * 0.92;
     const layerGap = (underEnd - underStart) / UNDER_LAYERS;
@@ -336,13 +597,20 @@
       ctx.fillStyle = 'rgba(' + avgR + ',' + avgG + ',' + avgB + ',' + (0.35 - li * 0.06) + ')';
       ctx.fill();
     }
+    const bottomBase = profileBottom + 4;
+    const bottomRipple = (i) => Math.sin((i / Math.max(1, sampleCount - 1)) * Math.PI * 3.2 + 0.4) * 1.1;
     ctx.beginPath();
-    ctx.moveTo(0, profileY[0]);
+    ctx.moveTo(0, surfY[0]);
     for (let i = 1; i < sampleCount; i++) {
       const x = (i / (sampleCount - 1)) * w, px = ((i - 1) / (sampleCount - 1)) * w;
-      ctx.quadraticCurveTo(px, profileY[i - 1], (px + x) / 2, (profileY[i - 1] + profileY[i]) / 2);
+      ctx.quadraticCurveTo(px, surfY[i - 1], (px + x) / 2, (surfY[i - 1] + surfY[i]) / 2);
     }
-    ctx.lineTo(w, profileBottom + 4); ctx.lineTo(0, profileBottom + 4); ctx.closePath();
+    ctx.lineTo(w, bottomBase + bottomRipple(sampleCount - 1));
+    for (let i = sampleCount - 2; i >= 0; i--) {
+      const x = (i / (sampleCount - 1)) * w;
+      ctx.lineTo(x, bottomBase + bottomRipple(i));
+    }
+    ctx.closePath();
     const midP = profile[Math.floor(sampleCount / 2)];
     let pR = Math.round(midP.r * 255 * 0.4 + 10), pG = Math.round(midP.g * 255 * 0.4 + 10), pB = Math.round(midP.b * 255 * 0.4 + 10);
     if (tintRGB) {
@@ -361,7 +629,7 @@
       if (si < 0 || si >= n) return;
       const x0 = si * segW, x1 = (si + 1) * segW, midX = (x0 + x1) / 2;
       const sampleMid = Math.round(((si + 0.5) / n) * (sampleCount - 1));
-      const midY = profileY[Math.min(sampleMid, sampleCount - 1)];
+      const midY = surfY[Math.min(sampleMid, sampleCount - 1)];
       ctx.save();
       ctx.fillStyle = 'rgba(196,168,130,0.35)';
       ctx.beginPath(); ctx.arc(midX, midY, 2.5, 0, Math.PI * 2); ctx.fill();
@@ -369,10 +637,10 @@
     });
 
     ctx.beginPath();
-    ctx.moveTo(0, profileY[0]);
+    ctx.moveTo(0, surfY[0]);
     for (let i = 1; i < sampleCount; i++) {
       const x = (i / (sampleCount - 1)) * w, px = ((i - 1) / (sampleCount - 1)) * w;
-      ctx.quadraticCurveTo(px, profileY[i - 1], (px + x) / 2, (profileY[i - 1] + profileY[i]) / 2);
+      ctx.quadraticCurveTo(px, surfY[i - 1], (px + x) / 2, (surfY[i - 1] + surfY[i]) / 2);
     }
     if (tintRGB) {
       ctx.strokeStyle = 'rgba(' + tintRGB[0] + ',' + tintRGB[1] + ',' + tintRGB[2] + ',0.88)';
@@ -385,7 +653,7 @@
 
     if (currentSceneIndex != null && currentSceneIndex >= 0 && currentSceneIndex < n) {
       const msi = Math.round(((currentSceneIndex + 0.5) / n) * (sampleCount - 1));
-      const markerX = (currentSceneIndex + 0.5) / n * w, markerY = profileY[Math.min(msi, sampleCount - 1)] - 2;
+      const markerX = (currentSceneIndex + 0.5) / n * w, markerY = surfY[Math.min(msi, sampleCount - 1)] - 2;
       const mr = tintRGB ? tintRGB[0] : 196, mg = tintRGB ? tintRGB[1] : 168, mb = tintRGB ? tintRGB[2] : 130;
       ctx.shadowColor = 'rgba(' + mr + ',' + mg + ',' + mb + ',0.9)'; ctx.shadowBlur = 12;
       ctx.fillStyle = 'rgba(' + mr + ',' + mg + ',' + mb + ',0.95)';
@@ -791,16 +1059,6 @@
   const CONTOUR_LEVELS = 24;
   const BANDWIDTH = 1;
   const ENABLED_LAYERS = ['surface', 'near', 'mid', 'deep', 'bedrock'];
-  const EMOTION_INPUT_SKELETON = `
-    <div id="emotionChips" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:12px;"></div>
-    <div id="sliderArea" style="margin-bottom:12px;"></div>
-    <div id="reasonArea" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;"></div>
-    <div style="display:flex;gap:8px;justify-content:center;">
-      <button type="button" id="submitBtn" class="action-btn" disabled>입력</button>
-      <button type="button" id="voidBtn" class="action-btn void">Leave it unsaid</button>
-    </div>
-  `;
-
   const game = {
     memoryId: null,
     memories: [],
@@ -830,6 +1088,19 @@
     lastUserEmotion: null,
     accessiblePinIds: null,
     currentPinId: null,
+    waveRgb: [120, 120, 140],
+    waveTargetRgb: [120, 120, 140],
+    waveBucket: 'MID',
+    waveGlitch: 0,
+    terrainTintLerp: 0,
+    terrainTintFrom: null,
+    terrainTintTo: null,
+    terrainRipple: 0,
+    terrainRippleDecay: 0.018,
+    terrainRipplePhase: 0,
+    terrainAnimRaf: null,
+    lastTerrainTint: null,
+    postSubmitTerrainCleanup: null,
   };
 
   const TRANSITION_RULES = {
@@ -931,7 +1202,7 @@
     console.log('[DEBUG] emotionPosition:', emotionPosition);
     console.log('[DEBUG] alignment:', alignment, 'bucket:', bucket, 'mismatch:', mismatch);
     console.log('[DEBUG] pattern:', pattern);
-    console.log('[DEBUG] 핀 좌표들:', game.pins.map(p => ({
+    console.log('[DEBUG] pin positions:', game.pins.map(p => ({
       id: p.id,
       x: (p.mapX != null ? p.mapX : p.x / 100).toFixed(3),
       y: (p.mapY != null ? p.mapY : p.y / 100).toFixed(3),
@@ -944,7 +1215,7 @@
     }
     updateAccess(pattern, emotionPosition, originSceneId);
     syncPinStateFlags();
-    console.log('[DEBUG] updateAccess 후 active:', game.pins.filter(p => p.state === 'active').map(p => p.id));
+    console.log('[DEBUG] active after updateAccess:', game.pins.filter(p => p.state === 'active').map(p => p.id));
   }
 
   function syncPinStateFlags() {
@@ -1399,6 +1670,9 @@
       LOG('pin locked');
       return;
     }
+    initAudio();
+    playOnce(SFX.footstep);
+    setTimeout(() => { if (SFX.ambient && !SFX.ambient._broken) SFX.ambient.volume = 0.05; }, 800);
     if (pin.type === 'core') {
       enterSceneMode(pin);
     } else if (pin.type === 'bridge') {
@@ -1408,11 +1682,9 @@
     }
   }
 
-  const NPC_LINES = [
-    '…그 감각의 잔향이, 지형에 남았습니다.',
-    '기록은 스스로의 속도로 굳어집니다.',
-    '말하지 않은 것도, 여기엔 무게가 있습니다.',
-  ];
+  function getNpcLines() {
+    return T.npcLines;
+  }
 
   function stopWave() {
     if (game.waveRaf) {
@@ -1421,35 +1693,143 @@
     }
   }
 
+  function bucketWaveColors(rgb, bucket) {
+    const r = rgb[0], g = rgb[1], b = rgb[2];
+    if (bucket === 'HIGH') {
+      return {
+        a: [Math.round(r * 0.5 + 196 * 0.5), Math.round(g * 0.5 + 168 * 0.5), Math.round(b * 0.5 + 130 * 0.5)],
+        b: [Math.round(r * 0.35 + 90 * 0.65), Math.round(g * 0.35 + 160 * 0.65), Math.round(b * 0.35 + 120 * 0.65)],
+        phaseB: 0.06,
+        spd: 0.022,
+      };
+    }
+    if (bucket === 'LOW') {
+      return {
+        a: [Math.min(255, r + 45), Math.round(g * 0.65), Math.round(b * 0.65)],
+        b: [Math.min(255, r + 25), Math.round(g * 0.55), Math.round(b * 0.55)],
+        phaseB: 0.55,
+        spd: 0.038,
+      };
+    }
+    if (bucket === 'FIXATED') {
+      return {
+        a: [Math.round(r * 0.45 + 120 * 0.55), Math.round(g * 0.4 + 80 * 0.6), Math.min(255, Math.round(b * 0.5 + 160 * 0.5))],
+        b: [Math.round(r * 0.4 + 90 * 0.6), Math.round(g * 0.35 + 60 * 0.65), Math.round(b * 0.45 + 140 * 0.55)],
+        phaseB: 0.42,
+        spd: 0.008,
+      };
+    }
+    return {
+      a: [r, g, b],
+      b: [Math.round(r * 0.55 + 140 * 0.45), Math.round(g * 0.55 + 150 * 0.45), Math.round(b * 0.55 + 160 * 0.45)],
+      phaseB: 0.35,
+      spd: 0.024,
+    };
+  }
+
+  function transitionWavePostSubmit(rgb, bucket) {
+    game.waveTargetRgb = rgb.slice();
+    game.waveBucket = bucket || 'MID';
+    game.waveGlitch = bucket === 'LOW' ? 1 : 0;
+  }
+
+  /** Core 제출 직후 API 응답 전, 한·영 키워드로 감정파동 색을 바로 반영 */
+  function previewWaveFromCoreUserText(text) {
+    if (!text || typeof text !== 'string') return;
+    const t = text;
+    if (/슬프|슬퍼|슬펐|우울|눈물|울었|비통|슬픔|서글|애처/.test(t)) {
+      transitionWavePostSubmit(EMOTION_COLORS.sadness, 'MID');
+      return;
+    }
+    if (/무섭|무서|두려|공포|불안|조마|오싹|겁/.test(t)) {
+      transitionWavePostSubmit(EMOTION_COLORS.fear, 'MID');
+      return;
+    }
+    if (/화나|분노|열받|짜증|격분|빡|욕나와/.test(t)) {
+      transitionWavePostSubmit(EMOTION_COLORS.anger, 'MID');
+      return;
+    }
+    if (/그립|그리워|보고\s*싶/.test(t)) {
+      transitionWavePostSubmit(EMOTION_COLORS.longing, 'MID');
+      return;
+    }
+    if (/미안|죄책|내\s*탓/.test(t)) {
+      transitionWavePostSubmit(EMOTION_COLORS.guilt, 'MID');
+      return;
+    }
+    if (/\bsad\b|sorrow|grief|depressed|unhappy/i.test(t)) {
+      transitionWavePostSubmit(EMOTION_COLORS.sadness, 'MID');
+    }
+  }
+
   function startWaveLoop(rgb) {
     const canvas = document.getElementById('waveCanvas');
     if (!canvas) return;
     stopWave();
-    const r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255;
+    game.waveRgb = rgb.slice();
+    game.waveTargetRgb = rgb.slice();
+    game.waveBucket = 'MID';
+    game.waveGlitch = 0;
+    runWaveFrame();
+  }
+
+  function runWaveFrame() {
+    const canvas = document.getElementById('waveCanvas');
+    if (!canvas) return;
     function frame() {
       const ctx = canvas.getContext('2d');
       const rect = canvas.parentElement.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(rect.width * dpr);
       canvas.height = Math.floor(rect.height * dpr);
-      const w = canvas.width, h = canvas.height;
+      const w = canvas.width;
+      const h = canvas.height;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.fillStyle = '#0a0a0e';
       ctx.fillRect(0, 0, w, h);
-      game.waveT += 0.02;
-      ctx.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.35)';
-      ctx.lineWidth = 1.2 * dpr;
-      ctx.beginPath();
+      if (game.waveBucket === 'FIXATED') {
+        const vg = ctx.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.55);
+        vg.addColorStop(0, 'rgba(40, 20, 60, 0)');
+        vg.addColorStop(1, 'rgba(20, 10, 40, 0.45)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, w, h);
+      }
+      const bc2 = bucketWaveColors(game.waveRgb, game.waveBucket);
+      game.waveT += bc2.spd != null ? bc2.spd : 0.024;
+      game.waveRgb = lerpRgb(game.waveRgb, game.waveTargetRgb, 0.08);
+      const cA = bc2.a;
+      const cB = bc2.b;
+      const r2 = cA[0] / 255;
+      const g2 = cA[1] / 255;
+      const b2 = cA[2] / 255;
       const cy = h * 0.55;
+      let gTime = game.waveT;
+      if (game.waveGlitch > 0) {
+        gTime += (Math.random() - 0.5) * 0.4;
+        game.waveGlitch = Math.max(0, game.waveGlitch - 0.02);
+      }
+      ctx.strokeStyle = 'rgba(' + cA[0] + ',' + cA[1] + ',' + cA[2] + ',0.38)';
+      ctx.lineWidth = 1.25 * dpr;
+      ctx.beginPath();
       for (let x = 0; x <= w; x += 2) {
-        const y = cy + Math.sin(x * 0.006 + game.waveT) * h * 0.08 + Math.sin(x * 0.014 + game.waveT * 0.7) * h * 0.04;
+        const gx = game.waveBucket === 'LOW' ? (Math.random() - 0.5) * 2.5 : 0;
+        const y = cy + Math.sin(x * 0.006 + gTime) * h * 0.08 + Math.sin(x * 0.014 + gTime * 0.7) * h * 0.04 + gx;
         x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(' + Math.round(r * 200 + 40) + ',' + Math.round(g * 200 + 40) + ',' + Math.round(b * 200 + 60) + ',0.2)';
+      const ph2 = game.waveBucket === 'HIGH' ? gTime + 0.04 : gTime * 0.88 + bc2.phaseB;
+      ctx.strokeStyle = 'rgba(' + cB[0] + ',' + cB[1] + ',' + cB[2] + ',0.28)';
       ctx.beginPath();
       for (let x = 0; x <= w; x += 2) {
-        const y = cy + Math.sin(x * 0.009 + game.waveT * 1.1) * h * 0.06;
+        const gx = game.waveBucket === 'LOW' ? (Math.random() - 0.5) * 2.2 : 0;
+        const y = cy + Math.sin(x * 0.009 + ph2) * h * 0.065 + Math.sin(x * 0.017 + gTime * 0.65) * h * 0.035 + gx;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(' + Math.round(r2 * 200 + 40) + ',' + Math.round(g2 * 200 + 40) + ',' + Math.round(b2 * 200 + 60) + ',0.18)';
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 2) {
+        const y = cy + Math.sin(x * 0.011 + gTime * 1.05) * h * 0.045;
         x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
       }
       ctx.stroke();
@@ -1475,6 +1855,12 @@
     const scene = game.scenes.find(s => s.id === pin.sceneId);
     if (!scene) return;
     clearTimers();
+    if (game.postSubmitTerrainCleanup) game.postSubmitTerrainCleanup();
+    game.postSubmitTerrainCleanup = null;
+    stopTerrainAnimLoop();
+    const _tc = document.getElementById('terrainCanvas');
+    if (_tc) _tc.classList.remove('clickable');
+    document.getElementById('terrainBar').classList.remove('awaiting-terrain');
     game.currentPinId = pin.id;
     game.currentSceneIndex = pin.sceneIndex;
     document.getElementById('mapMode').classList.remove('active');
@@ -1505,6 +1891,7 @@
     document.getElementById('sceneNpc').textContent = '';
     document.getElementById('terrainClickHint').style.display = 'none';
     document.getElementById('terrainBar').classList.remove('clickable');
+    game.lastTerrainTint = null;
     renderTerrainBar(pin.sceneIndex, null);
   }
 
@@ -1519,7 +1906,7 @@
 
   function resetEmotionInputSkeleton() {
     const area = document.getElementById('emotionInputArea');
-    area.innerHTML = EMOTION_INPUT_SKELETON;
+    area.innerHTML = getEmotionInputSkeleton();
   }
 
   function setupEmotionInputByPinType(pin, scene) {
@@ -1535,27 +1922,30 @@
     setupEmotionUI(scene);
     document.getElementById('emotionInputArea').style.opacity = '1';
     document.getElementById('submitBtn').disabled = false;
+    fadeIn(SFX.white, 0.08, 2000);
     armTimers(scene);
   }
 
   function setupCoreInput(pin, scene) {
     const inputArea = document.getElementById('emotionInputArea');
     inputArea.innerHTML = `
-      <p style="font-size:13px;opacity:0.5;margin-bottom:12px;">이 장면을 읽고 무엇이 떠올랐나요?</p>
-      <textarea id="coreTextInput" placeholder="자유롭게 쓰세요..."
+      <p style="font-size:13px;opacity:0.5;margin-bottom:12px;">${T.corePrompt}</p>
+      <textarea id="coreTextInput" placeholder="${T.corePlaceholder.replace(/"/g, '&quot;')}"
         style="width:100%;background:rgba(196,168,130,0.05);border:1px solid rgba(196,168,130,0.15);
         color:#c4a882;font-family:inherit;font-size:15px;padding:12px;resize:none;border-radius:4px;min-height:80px;"></textarea>
       <button id="coreSubmitBtn" style="margin-top:12px;float:right;background:none;
         border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:8px 24px;cursor:pointer;
-        font-family:inherit;font-size:13px;">제출</button>
+        font-family:inherit;font-size:13px;">${T.coreSubmit}</button>
     `;
     inputArea.style.opacity = '1';
+    fadeIn(SFX.white, 0.08, 2000);
     const submitBtn = document.getElementById('coreSubmitBtn');
     submitBtn.addEventListener('click', async () => {
       const text = (document.getElementById('coreTextInput').value || '').trim();
       if (!text) return;
       submitBtn.disabled = true;
-      submitBtn.textContent = '분석 중...';
+      submitBtn.textContent = T.coreLoading;
+      previewWaveFromCoreUserText(text);
       try {
         const res = await fetch(SUPABASE_URL + '/functions/v1/claude-scene', {
           method: 'POST',
@@ -1572,7 +1962,7 @@
         processEmotionResult(pin, scene, userVector);
       } catch (e) {
         console.error('emotion_extract error:', e);
-        submitBtn.textContent = '오류';
+        submitBtn.textContent = T.coreError;
         submitBtn.disabled = false;
       }
     });
@@ -1580,14 +1970,14 @@
 
   function setupBridgeInput(pin, scene) {
     const BRIDGE_CHIPS = [
-      { label: 'guilt', key: 'guilt' },
-      { label: 'fear', key: 'fear' },
-      { label: 'anger', key: 'anger' },
-      { label: 'sadness', key: 'sadness' },
-      { label: 'longing', key: 'longing' },
-      { label: 'relief', key: 'relief' },
-      { label: 'confusion', key: 'confusion' },
-      { label: 'emptiness', key: 'emptiness' },
+      { key: 'guilt' },
+      { key: 'fear' },
+      { key: 'anger' },
+      { key: 'sadness' },
+      { key: 'longing' },
+      { key: 'relief' },
+      { key: 'confusion' },
+      { key: 'emptiness' },
     ];
     const CHIP_VECTORS = {
       guilt: { fear: 0.1, sadness: 0.3, anger: 0, joy: 0, longing: 0.1, guilt: 0.8 },
@@ -1601,20 +1991,22 @@
     };
     const inputArea = document.getElementById('emotionInputArea');
     const selected = [];
-    let html = '<p style="font-size:13px;opacity:0.5;margin-bottom:12px;">이 조각에서 어떤 감정이 느껴지나요? (1~2개)</p>';
+    let html = '<p style="font-size:13px;opacity:0.5;margin-bottom:12px;">' + T.bridgePrompt + '</p>';
     html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
     BRIDGE_CHIPS.forEach(chip => {
+      const lab = T.chipLabels[chip.key] || chip.key;
       html += `<button class="bridge-chip" data-key="${chip.key}"
         style="background:rgba(122,154,122,0.08);border:1px solid rgba(122,154,122,0.2);
         color:#a0b8a0;padding:6px 14px;font-family:inherit;font-size:13px;cursor:pointer;
-        border-radius:20px;">${chip.label}</button>`;
+        border-radius:20px;">${lab}</button>`;
     });
     html += '</div>';
     html += `<button id="bridgeConfirmBtn" style="margin-top:12px;float:right;background:none;
       border:1px solid rgba(122,154,122,0.3);color:#7a9a7a;padding:8px 24px;cursor:pointer;
-      font-family:inherit;font-size:13px;opacity:0;">확인</button>`;
+      font-family:inherit;font-size:13px;opacity:0;">${T.bridgeConfirm}</button>`;
     inputArea.innerHTML = html;
     inputArea.style.opacity = '1';
+    fadeIn(SFX.white, 0.08, 2000);
     inputArea.querySelectorAll('.bridge-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         const key = btn.dataset.key;
@@ -1662,7 +2054,7 @@
     sliders.innerHTML = '';
     reasons.innerHTML = '';
     const orig = safeParseEmotion(scene.original_emotion);
-    EMOTIONS_UI.forEach(def => {
+    getEmotionsUi().forEach(def => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'emotion-chip';
@@ -1675,7 +2067,7 @@
       });
       chips.appendChild(b);
     });
-    EMOTIONS_UI.forEach(def => {
+    getEmotionsUi().forEach(def => {
       const wrap = document.createElement('div');
       wrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin:4px 0;';
       const lab = document.createElement('span');
@@ -1694,7 +2086,7 @@
       wrap.appendChild(input);
       sliders.appendChild(wrap);
     });
-    REASONS.forEach(def => {
+    getReasonsUi().forEach(def => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'emotion-chip';
@@ -1739,7 +2131,7 @@
     if (!scene) return;
     game.skipCount++;
     const vec = {};
-    EMOTIONS_UI.forEach(d => { vec[d.key] = 0; });
+    getEmotionsUi().forEach(d => { vec[d.key] = 0; });
     const userVector = {
       base: vec,
       reason_analysis: { is_void: true, attribution: null, target: null, core_fear: null },
@@ -1808,6 +2200,7 @@
   }
 
   function processEmotionResult(pin, scene, userVector) {
+    fadeOut(SFX.white, 500, true);
     clearTimers();
     const origVector = {
       base: pin.originalEmotion || safeParseEmotion(scene.original_emotion),
@@ -1862,28 +2255,13 @@
         updateMapStatus();
         updateSealButton();
         LOG('engine', engineResult);
-        setTimeout(() => {
-          stopWave();
-          document.getElementById('sceneMode').classList.remove('active');
-          document.getElementById('mapMode').classList.add('active');
-          renderContourCanvas();
-          buildPins();
-          handleEmotionResult({
-            userEmotion: baseEmotion,
-            result: engineResult,
-            originSceneId: scene.id,
-          });
-          finalizePinAccess();
-          renderPins();
-          startCursorLerp();
-          game.currentSceneIndex = null;
-          game.currentPinId = null;
-        }, 1500);
+        beginPostSubmitSequence(engineResult, baseEmotion);
       });
     });
   }
 
   function finishScene(scene, result, vec, reasonLabel, isVoid) {
+    fadeOut(SFX.white, 500, true);
     LOG('engine', result);
     game.lastResult = result;
     game.lastUserEmotion = Object.assign({}, vec);
@@ -1895,7 +2273,7 @@
     insertPlay(scene, vec, reasonLabel, result, isVoid).then(() => {
       reloadPlaysOnly().then(() => {
         buildTerrainFromData();
-        showPostSubmitNPC(result, rgb);
+        showPostSubmitNPC(result);
       });
     });
   }
@@ -1924,33 +2302,29 @@
     if (!error) game.plays = data || [];
   }
 
-  function showPostSubmitNPC(result, rgb) {
-    const npc = document.getElementById('sceneNpc');
-    npc.textContent = NPC_LINES[Math.floor(Math.random() * NPC_LINES.length)];
-    renderTerrainBar(game.currentSceneIndex, rgb);
-    document.getElementById('terrainBar').classList.add('clickable');
-    document.getElementById('terrainClickHint').style.display = 'block';
-    document.getElementById('emotionInputArea').style.opacity = '0.3';
-    document.getElementById('submitBtn').disabled = true;
-    document.getElementById('voidBtn').disabled = true;
-
-    const hint = document.querySelector('#terrainClickHint .hint-txt');
-    hint.textContent = 'alignment ' + (result.alignment_score * 100).toFixed(0) + ' · ' + (result.alignment_bucket || '') + ' — 지형을 눌러 지도로';
-
-    const goMap = () => {
-      document.getElementById('terrainBar').removeEventListener('click', goMap);
-      document.getElementById('terrainClickHint').removeEventListener('click', goMap);
-      afterTerrainReturn(result);
-    };
-    document.getElementById('terrainBar').addEventListener('click', goMap);
-    document.getElementById('terrainClickHint').addEventListener('click', goMap);
+  function showPostSubmitNPC(result) {
+    beginPostSubmitSequence(result, game.lastUserEmotion || {});
   }
 
   function afterTerrainReturn(result) {
+    if (game.postSubmitTerrainCleanup) game.postSubmitTerrainCleanup();
+    game.postSubmitTerrainCleanup = null;
+    stopTerrainAnimLoop();
+    game.terrainRipple = 0;
+    const tc = document.getElementById('terrainCanvas');
+    if (tc) {
+      tc.classList.remove('clickable');
+      tc.style.opacity = '';
+      tc.style.filter = '';
+    }
+    document.getElementById('terrainBar').classList.remove('awaiting-terrain');
     const scene = game.scenes[game.currentSceneIndex];
     const originSceneId = scene ? scene.id : null;
     stopWave();
-    game.traces.push({ sceneIndex: game.currentSceneIndex, alignment: result.alignment_score });
+    const lastTr = game.traces[game.traces.length - 1];
+    if (!lastTr || lastTr.userEmotion == null) {
+      game.traces.push({ sceneIndex: game.currentSceneIndex, alignment: result.alignment_score });
+    }
     if (scene && !game.visitedCore[scene.id]) {
       game.visitedCore[scene.id] = true;
       game.coreVisitCount++;
@@ -1976,9 +2350,136 @@
     game.currentPinId = null;
   }
 
-  function renderTerrainBar(sceneIndex, tintRGB) {
+  function renderTerrainBar(sceneIndex, tintRGB, opts) {
     const canvas = document.getElementById('terrainCanvas');
-    renderTerrainProfile(canvas, game.scenes, game.traces, sceneIndex, tintRGB);
+    renderTerrainProfile(canvas, game.scenes, game.traces, sceneIndex, tintRGB, opts);
+    if (tintRGB && tintRGB.length === 3) game.lastTerrainTint = tintRGB.slice();
+  }
+
+  function stopTerrainAnimLoop() {
+    if (game.terrainAnimRaf) {
+      cancelAnimationFrame(game.terrainAnimRaf);
+      game.terrainAnimRaf = null;
+    }
+  }
+
+  function ensureTerrainAnimLoop() {
+    if (game.terrainAnimRaf) return;
+    function tick() {
+      let tint = null;
+      if (game.terrainTintFrom && game.terrainTintTo && game.terrainTintLerp < 1) {
+        game.terrainTintLerp = Math.min(1, game.terrainTintLerp + 0.032);
+        tint = lerpRgb(game.terrainTintFrom, game.terrainTintTo, easeOutCubic(game.terrainTintLerp));
+      } else if (game.terrainTintTo && game.terrainTintLerp >= 1) {
+        tint = game.terrainTintTo.slice();
+      } else if (game.lastTerrainTint && game.terrainTintLerp >= 1 && !game.terrainTintTo) {
+        tint = game.lastTerrainTint.slice();
+      }
+      if (game.terrainRipple > 0.002) {
+        game.terrainRipple = Math.max(0, game.terrainRipple - game.terrainRippleDecay);
+        game.terrainRipplePhase += 0.07;
+      }
+      const ripplePx = game.terrainRipple * 16;
+      renderTerrainBar(game.currentSceneIndex, tint, { rippleAmp: ripplePx, rippleTime: game.terrainRipplePhase });
+      const tintAnimating = game.terrainTintFrom && game.terrainTintTo && game.terrainTintLerp < 1;
+      if (tintAnimating || game.terrainRipple > 0.004) {
+        game.terrainAnimRaf = requestAnimationFrame(tick);
+      } else {
+        game.terrainAnimRaf = null;
+      }
+    }
+    game.terrainAnimRaf = requestAnimationFrame(tick);
+  }
+
+  function enableTerrainCanvasClick(result) {
+    const canvas = document.getElementById('terrainCanvas');
+    const bar = document.getElementById('terrainBar');
+    if (!canvas) return;
+    if (game.postSubmitTerrainCleanup) game.postSubmitTerrainCleanup();
+    bar.classList.add('awaiting-terrain');
+    canvas.classList.add('clickable');
+    try {
+      if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+    } catch (_) {}
+    function onTerrainClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      playOnce(SFX.footstep);
+      fadeOut(SFX.void, 400, true);
+      fadeIn(SFX.ambient, 0.12, 1000);
+      canvas.removeEventListener('click', onTerrainClick);
+      game.postSubmitTerrainCleanup = null;
+      stopTerrainAnimLoop();
+      game.terrainRipple = 0;
+      game.terrainTintLerp = 1;
+      game.terrainTintFrom = null;
+      game.terrainTintTo = null;
+      canvas.classList.remove('clickable');
+      bar.classList.remove('awaiting-terrain');
+      const fadeFrom = game.lastTerrainTint || [196, 168, 130];
+      let k = 0;
+      function fadeStep() {
+        k += 0.12;
+        const c = lerpRgb(fadeFrom, [196, 168, 130], Math.min(1, k));
+        renderTerrainBar(game.currentSceneIndex, c, { rippleAmp: 0, rippleTime: 0 });
+        if (k < 1) requestAnimationFrame(fadeStep);
+        else {
+          renderTerrainBar(game.currentSceneIndex, null, {});
+          afterTerrainReturn(result);
+        }
+      }
+      requestAnimationFrame(fadeStep);
+    }
+    canvas.addEventListener('click', onTerrainClick);
+    game.postSubmitTerrainCleanup = () => {
+      canvas.removeEventListener('click', onTerrainClick);
+      canvas.classList.remove('clickable');
+      bar.classList.remove('awaiting-terrain');
+    };
+  }
+
+  function beginPostSubmitSequence(result, baseEmotion) {
+    const dom = getDominantColor(baseEmotion || {});
+    const bucket = result.alignment_bucket || 'MID';
+    transitionWavePostSubmit(dom, bucket);
+
+    const npc = document.getElementById('sceneNpc');
+    const lines = getNpcLines();
+    npc.textContent = lines[Math.floor(Math.random() * lines.length)];
+
+    renderTerrainBar(game.currentSceneIndex, game.lastTerrainTint || null, {});
+    document.getElementById('terrainClickHint').style.display = 'block';
+    document.getElementById('emotionInputArea').style.opacity = '0.3';
+    const sub = document.getElementById('submitBtn');
+    const voi = document.getElementById('voidBtn');
+    if (sub) sub.disabled = true;
+    if (voi) voi.disabled = true;
+    document.querySelector('#terrainClickHint .hint-txt').textContent = T.terrainHintAlign(
+      (result.alignment_score * 100).toFixed(0),
+      result.alignment_bucket || ''
+    );
+
+    game.terrainTintFrom = null;
+    game.terrainTintTo = null;
+    game.terrainTintLerp = 1;
+    game.terrainRipple = 0;
+    stopTerrainAnimLoop();
+
+    setTimeout(() => {
+      game.terrainTintFrom = (game.lastTerrainTint || [196, 168, 130]).slice();
+      game.terrainTintTo = dom.slice();
+      game.terrainTintLerp = 0;
+      ensureTerrainAnimLoop();
+    }, 300);
+
+    setTimeout(() => {
+      game.terrainRipple = 1;
+      game.terrainRipplePhase = performance.now() * 0.001;
+      ensureTerrainAnimLoop();
+      fadeIn(SFX.void, 0.25, 800);
+    }, 500);
+
+    setTimeout(() => enableTerrainCanvasClick(result), 1000);
   }
 
   function updateMapStatus() {
@@ -1989,13 +2490,15 @@
       game.plays.forEach(p => { s += (1 - (p.alignment != null ? p.alignment : 0.5)); });
       pollution = Math.round((s / game.plays.length) * 100);
     }
-    el.textContent = '탐색: ' + game.coreVisitCount + '개 | 오염도: ' + pollution + '%';
+    el.textContent = T.mapStatus(game.coreVisitCount, pollution);
   }
 
   function updateSealButton() {
     const btn = document.getElementById('sealBtn');
     if (!btn) return;
     btn.disabled = game.sealed || game.coreVisitCount < 3;
+    btn.textContent = T.sealBtn;
+    btn.title = btn.disabled && !game.sealed ? T.sealBlocked : '';
   }
 
   function startCursorLerp() {
@@ -2083,23 +2586,40 @@
   document.getElementById('startBtn').addEventListener('click', async () => {
     const id = document.getElementById('memorySelect').value;
     if (!id) return;
+    initAudio();
     document.getElementById('selectScreen').style.display = 'none';
     document.getElementById('mapMode').classList.add('active');
     try {
       await loadMemoryData(id);
+      fadeIn(SFX.ambient, 0.12, 3000);
       startCursorLerp();
     } catch (e) {
       console.error(e);
-      alert('로드 실패: ' + (e.message || e));
+      alert('Failed to load: ' + (e.message || e));
     }
   });
   document.getElementById('sealBtn').addEventListener('click', async () => {
     if (game.sealed || game.coreVisitCount < 3) return;
     game.sealed = true;
+    initAudio();
+    fadeOut(SFX.ambient, 1500, true);
+    fadeOut(SFX.void, 500, true);
+    fadeOut(SFX.white, 500, true);
+    setTimeout(() => {
+      if (SFX.void && !SFX.void._broken) {
+        SFX.void.currentTime = 0;
+        SFX.void.volume = 0.5;
+        SFX.void.play().catch(() => {});
+        setTimeout(() => fadeOut(SFX.void, 1000, true), 1500);
+      }
+    }, 2000);
+    setTimeout(() => {
+      fadeIn(SFX.rain, 0.15, 4000);
+    }, 4500);
     document.getElementById('mapMode').classList.remove('active');
     const rev = document.getElementById('revealScreen');
     rev.classList.add('active');
-    document.getElementById('revealTitle').textContent = '기억을 재구성하고 있습니다...';
+    document.getElementById('revealTitle').textContent = T.revealLoading;
     document.getElementById('revealBody').textContent = '';
     const avgAlign = game.traces.length
       ? game.traces.reduce((s, t) => s + t.alignment, 0) / game.traces.length
@@ -2116,41 +2636,49 @@
       const res = await fetch(SUPABASE_URL + '/functions/v1/generate-reveal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
-        body: JSON.stringify({ visits, memory_title: game.memoryTitle || '', emotion_trajectory: game.emotionTrajectory || [] })
+        body: JSON.stringify({
+          visits,
+          memory_title: game.memoryTitle || '',
+          emotion_trajectory: game.emotionTrajectory || [],
+          lang: LANG,
+        })
       });
       const data = await res.json();
       if (data.narrative) {
-        document.getElementById('revealTitle').textContent = 'Memory sealed';
+        document.getElementById('revealTitle').textContent = T.revealTitle;
         document.getElementById('revealBody').textContent = data.narrative;
       } else {
-        document.getElementById('revealTitle').textContent = 'Memory sealed';
-        document.getElementById('revealBody').textContent = '이 기억은 더 이상 열리지 않을 수 있습니다. 남겨진 파동은 흙 아래로 가라앉습니다.';
+        document.getElementById('revealTitle').textContent = T.revealTitle;
+        document.getElementById('revealBody').textContent = T.revealFallback;
       }
     } catch (e) {
       console.error('Reveal error:', e);
-      document.getElementById('revealTitle').textContent = 'Memory sealed';
-      document.getElementById('revealBody').textContent = '이 기억은 더 이상 열리지 않을 수 있습니다. 남겨진 파동은 흙 아래로 가라앉습니다.';
+      document.getElementById('revealTitle').textContent = T.revealTitle;
+      document.getElementById('revealBody').textContent = T.revealFallback;
     }
-    document.getElementById('revealStats').textContent =
-      '평균 정렬도: ' + (avgAlign * 100).toFixed(1) + '% · 코어 방문 ' + game.coreVisitCount + '회';
+    document.getElementById('revealStats').textContent = T.stats(avgAlign, game.coreVisitCount);
 
     const _urlParams = new URLSearchParams(window.location.search);
     const _fromDemo = _urlParams.get('memory');
     if (_fromDemo) {
       document.getElementById('revealRestart').style.display = 'none';
       const continueBtn = document.createElement('button');
-      continueBtn.textContent = 'Continue';
+      continueBtn.textContent = T.revealContinue;
       continueBtn.className = 'action-btn';
       continueBtn.style.marginTop = '1.5rem';
       continueBtn.addEventListener('click', () => {
-        try {
-          localStorage.setItem('tem_play_traces', JSON.stringify(game.traces));
-          localStorage.setItem('tem_play_memory_id', game.memoryId || _fromDemo);
-          localStorage.setItem('tem_play_memory_title', game.memoryTitle || '');
-        } catch (e) {
-          console.warn('localStorage save failed:', e);
-        }
-        window.location.href = '/index.html?strata=1&memory=' + encodeURIComponent(_fromDemo);
+        initAudio();
+        fadeOut(SFX.rain, 2000, true);
+        setTimeout(() => {
+          try {
+            localStorage.setItem('tem_play_traces', JSON.stringify(game.traces));
+            localStorage.setItem('tem_play_memory_id', game.memoryId || _fromDemo);
+            localStorage.setItem('tem_play_memory_title', game.memoryTitle || '');
+          } catch (e) {
+            console.warn('localStorage save failed:', e);
+          }
+          window.location.href = '/index.html?strata=1&memory=' + encodeURIComponent(_fromDemo);
+        }, 2000);
       });
       const restartBtn = document.getElementById('revealRestart');
       restartBtn.parentNode.insertBefore(continueBtn, restartBtn.nextSibling);
@@ -2158,12 +2686,36 @@
   });
 
   document.getElementById('revealRestart').addEventListener('click', () => {
-    location.reload();
+    initAudio();
+    fadeOut(SFX.rain, 2000, true);
+    setTimeout(() => location.reload(), 2000);
   });
 
+  window.addEventListener('beforeunload', () => { stopAll(); });
+
+  function applyPlayTestI18nLabels() {
+    const th = document.querySelector('#terrainClickHint .hint-txt');
+    if (th) th.textContent = T.exploreTerrain;
+    const ms = document.getElementById('mapStatus');
+    if (ms) ms.textContent = T.mapStatus(0, 0);
+    const seal = document.getElementById('sealBtn');
+    if (seal) {
+      seal.textContent = T.sealBtn;
+      seal.title = T.sealBlocked;
+    }
+    const rt = document.getElementById('revealTitle');
+    if (rt) rt.textContent = T.revealTitle;
+    const rr = document.getElementById('revealRestart');
+    if (rr) rr.textContent = T.revealRestart;
+    const sub = document.getElementById('submitBtn');
+    const voi = document.getElementById('voidBtn');
+    if (sub) sub.textContent = T.submitBtn;
+    if (voi) voi.textContent = T.voidBtn;
+  }
+
   (async function init() {
+    applyPlayTestI18nLabels();
     bindMapResize();
-    const urlParams = new URLSearchParams(window.location.search);
     const urlMemoryId = urlParams.get('memory');
 
     if (urlMemoryId) {
@@ -2171,10 +2723,12 @@
       document.getElementById('mapMode').classList.add('active');
       try {
         await loadMemoryData(urlMemoryId);
+        initAudio();
+        fadeIn(SFX.ambient, 0.12, 3000);
         startCursorLerp();
       } catch (e) {
         console.error(e);
-        alert('로드 실패: ' + (e.message || e));
+        alert('Failed to load: ' + (e.message || e));
       }
     } else {
       try {

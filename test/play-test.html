@@ -136,7 +136,7 @@
       <div class="emotion-cursor" id="emotionCursor" style="display:none;"></div>
     </div>
     <div class="map-bar">
-      <span class="map-status" id="mapStatus">탐색: 0개 | 오염도: 0%</span>
+      <span class="map-status" id="mapStatus">Explored: 0 cores | Pollution: 0%</span>
       <button type="button" class="seal-btn" id="sealBtn" disabled>Seal this memory</button>
     </div>
   </div>
@@ -152,7 +152,7 @@
           <div id="sliderArea" style="margin-bottom:12px;"></div>
           <div id="reasonArea" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;"></div>
           <div style="display:flex;gap:8px;justify-content:center;">
-            <button type="button" id="submitBtn" class="action-btn" disabled>입력</button>
+            <button type="button" id="submitBtn" class="action-btn" disabled>Submit</button>
             <button type="button" id="voidBtn" class="action-btn void">Leave it unsaid</button>
           </div>
         </div>
@@ -160,7 +160,7 @@
     </div>
     <div id="terrainBar">
       <canvas id="terrainCanvas"></canvas>
-      <div id="terrainClickHint"><div class="hint-txt">지형을 탐색하세요</div></div>
+      <div id="terrainClickHint"><div class="hint-txt">Explore the terrain</div></div>
     </div>
   </div>
 
@@ -168,7 +168,7 @@
     <h2 id="revealTitle">Memory sealed</h2>
     <p id="revealBody"></p>
     <p id="revealStats" style="font-size:0.85rem;color:var(--text-muted);"></p>
-    <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;">다시 시작</button>
+    <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;">Start over</button>
   </div>
 
   <script>
@@ -187,14 +187,14 @@
   }
 
   const EMOTIONS_UI = [
-    { key: 'fear', label: '공포' }, { key: 'sadness', label: '슬픔' }, { key: 'anger', label: '분노' }, { key: 'longing', label: '그리움' },
-    { key: 'guilt', label: '죄책감' }, { key: 'shame', label: '수치심' }, { key: 'numbness', label: '무감각' }, { key: 'isolation', label: '고립' },
+    { key: 'fear', label: 'Fear' }, { key: 'sadness', label: 'Sadness' }, { key: 'anger', label: 'Anger' }, { key: 'longing', label: 'Longing' },
+    { key: 'guilt', label: 'Guilt' }, { key: 'shame', label: 'Shame' }, { key: 'numbness', label: 'Numbness' }, { key: 'isolation', label: 'Isolation' },
   ];
   const REASONS = [
-    { key: 'self_blame', label: '내 잘못인 것 같아서' },
-    { key: 'helpless', label: '어쩔 수 없었어' },
-    { key: 'fear_driven', label: '무서웠어' },
-    { key: 'unknown', label: '모르겠어' },
+    { key: 'self_blame', label: 'It felt like my fault' },
+    { key: 'helpless', label: 'There was nothing I could do' },
+    { key: 'fear_driven', label: 'I was afraid' },
+    { key: 'unknown', label: "I'm not sure" },
   ];
   const EMOTION_COLORS = {
     fear: [100, 80, 180], sadness: [80, 100, 160], anger: [200, 80, 80], joy: [200, 180, 100], longing: [80, 180, 180],
@@ -329,13 +329,20 @@
       ctx.fillStyle = 'rgba(' + avgR + ',' + avgG + ',' + avgB + ',' + (0.35 - li * 0.06) + ')';
       ctx.fill();
     }
+    const bottomBase = profileBottom + 4;
+    const bottomRipple = (i) => Math.sin((i / Math.max(1, sampleCount - 1)) * Math.PI * 3.2 + 0.4) * 1.1;
     ctx.beginPath();
     ctx.moveTo(0, profileY[0]);
     for (let i = 1; i < sampleCount; i++) {
       const x = (i / (sampleCount - 1)) * w, px = ((i - 1) / (sampleCount - 1)) * w;
       ctx.quadraticCurveTo(px, profileY[i - 1], (px + x) / 2, (profileY[i - 1] + profileY[i]) / 2);
     }
-    ctx.lineTo(w, profileBottom + 4); ctx.lineTo(0, profileBottom + 4); ctx.closePath();
+    ctx.lineTo(w, bottomBase + bottomRipple(sampleCount - 1));
+    for (let i = sampleCount - 2; i >= 0; i--) {
+      const x = (i / (sampleCount - 1)) * w;
+      ctx.lineTo(x, bottomBase + bottomRipple(i));
+    }
+    ctx.closePath();
     const midP = profile[Math.floor(sampleCount / 2)];
     let pR = Math.round(midP.r * 255 * 0.4 + 10), pG = Math.round(midP.g * 255 * 0.4 + 10), pB = Math.round(midP.b * 255 * 0.4 + 10);
     if (tintRGB) {
@@ -915,7 +922,7 @@
     console.log('[DEBUG] emotionPosition:', emotionPosition);
     console.log('[DEBUG] alignment:', alignment, 'bucket:', bucket, 'mismatch:', mismatch);
     console.log('[DEBUG] pattern:', pattern);
-    console.log('[DEBUG] 핀 좌표들:', game.pins.map(p => ({
+    console.log('[DEBUG] pin positions:', game.pins.map(p => ({
       id: p.id,
       x: (p.mapX != null ? p.mapX : p.x / 100).toFixed(3),
       y: (p.mapY != null ? p.mapY : p.y / 100).toFixed(3),
@@ -928,7 +935,7 @@
     }
     updateAccess(pattern, emotionPosition, originSceneId);
     syncPinStateFlags();
-    console.log('[DEBUG] updateAccess 후 active:', game.pins.filter(p => p.state === 'active').map(p => p.id));
+    console.log('[DEBUG] active after updateAccess:', game.pins.filter(p => p.state === 'active').map(p => p.id));
   }
 
   function syncPinStateFlags() {
@@ -1389,9 +1396,9 @@
   }
 
   const NPC_LINES = [
-    '…그 감각의 잔향이, 지형에 남았습니다.',
-    '기록은 스스로의 속도로 굳어집니다.',
-    '말하지 않은 것도, 여기엔 무게가 있습니다.',
+    '…The afterglow of that sensation lingers in the terrain.',
+    'Records set at their own pace.',
+    'What went unsaid still has weight here.',
   ];
 
   function stopWave() {
@@ -1702,7 +1709,7 @@
     document.getElementById('voidBtn').disabled = true;
 
     const hint = document.querySelector('#terrainClickHint .hint-txt');
-    hint.textContent = 'alignment ' + (result.alignment_score * 100).toFixed(0) + ' · ' + (result.alignment_bucket || '') + ' — 지형을 눌러 지도로';
+    hint.textContent = 'alignment ' + (result.alignment_score * 100).toFixed(0) + ' · ' + (result.alignment_bucket || '') + ' — tap terrain to return to the map';
 
     const goMap = () => {
       document.getElementById('terrainBar').removeEventListener('click', goMap);
@@ -1756,7 +1763,7 @@
       game.plays.forEach(p => { s += (1 - (p.alignment != null ? p.alignment : 0.5)); });
       pollution = Math.round((s / game.plays.length) * 100);
     }
-    el.textContent = '탐색: ' + game.coreVisitCount + '개 | 오염도: ' + pollution + '%';
+    el.textContent = 'Explored: ' + game.coreVisitCount + ' cores | Pollution: ' + pollution + '%';
   }
 
   function updateSealButton() {
@@ -1842,7 +1849,7 @@
       startCursorLerp();
     } catch (e) {
       console.error(e);
-      alert('로드 실패: ' + (e.message || e));
+      alert('Failed to load: ' + (e.message || e));
     }
   });
 
@@ -1857,9 +1864,9 @@
       ? game.traces.reduce((s, t) => s + t.alignment, 0) / game.traces.length
       : 0;
     document.getElementById('revealBody').textContent =
-      '이 기억은 더 이상 열리지 않을 수 있습니다. 남겨진 파동은 흙 아래로 가라앉습니다.';
+      'This memory may not open again. The waves that remain settle under the soil.';
     document.getElementById('revealStats').textContent =
-      '평균 정렬도: ' + (avgAlign * 100).toFixed(1) + '% · 코어 방문 ' + game.coreVisitCount + '회';
+      'Average alignment: ' + (avgAlign * 100).toFixed(1) + '% · Core visits: ' + game.coreVisitCount;
   });
 
   document.getElementById('revealRestart').addEventListener('click', () => {

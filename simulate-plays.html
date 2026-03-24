@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEM — Play Simulation → Strata</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#0a0a0f;color:#c4a882;font-family:'Cormorant Garamond',serif;padding:2rem}
+        h1{font-size:1.5rem;font-weight:300;letter-spacing:4px;margin-bottom:.5rem}
+        .sub{font-size:.85rem;color:rgba(196,168,130,.4);margin-bottom:1.5rem}
+        .panel{background:#12121a;border:1px solid rgba(196,168,130,.2);border-radius:6px;padding:1.5rem;margin-bottom:1.5rem}
+        .label{font-size:.85rem;color:rgba(196,168,130,.5);margin-bottom:.5rem}
+        select,input,button{background:#1a1a24;border:1px solid rgba(196,168,130,.3);color:#c4a882;padding:.5rem 1rem;border-radius:4px;font-family:inherit}
+        select{width:100%;margin-bottom:1rem}
+        button{cursor:pointer;transition:background .2s}
+        button:hover{background:#2a2a34}
+        button:disabled{opacity:.4;cursor:not-allowed}
+        .btn-run{background:rgba(196,168,130,.15);border-color:#c4a882;font-size:1.1rem;padding:.8rem 2rem}
+        .btn-del{border-color:#d94a4a;color:#d94a4a}
+        #log{background:#08080c;border:1px solid rgba(196,168,130,.1);border-radius:4px;padding:1rem;max-height:500px;overflow-y:auto;font-family:monospace;font-size:.8rem;line-height:1.6;color:rgba(196,168,130,.6);white-space:pre-wrap}
+        .stat{display:inline-block;margin-right:2rem;margin-bottom:.5rem}
+        .stat-val{font-size:1.3rem;color:#c4a882}
+        .stat-label{font-size:.75rem;color:rgba(196,168,130,.4)}
+        .progress-bar{width:100%;height:4px;background:rgba(196,168,130,.1);border-radius:2px;margin:1rem 0}
+        .progress-fill{height:100%;background:#c4a882;border-radius:2px;transition:width .3s}
+        .controls{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+        .count-input{width:80px;text-align:center}
+    </style>
+</head>
+<body>
+    <h1>T E M — Play Simulator</h1>
+    <div class="sub">시뮬레이션 데이터는 plays 테이블에 저장됩니다. 인게임 Strata 3D 지형에 바로 반영됩니다.</div>
+
+    <div class="panel">
+        <div class="label">대상 기억 선택</div>
+        <select id="memorySelect"><option value="">로딩 중...</option></select>
+        <div id="memoryInfo" style="font-size:.85rem;color:rgba(196,168,130,.5)"></div>
+    </div>
+
+    <div class="panel">
+        <div class="controls">
+            <div>
+                <div class="label">시뮬레이션 횟수</div>
+                <input type="number" id="simCount" class="count-input" value="100" min="1" max="500">
+            </div>
+            <button class="btn-run" id="startBtn" onclick="runSimulation()">시뮬레이션 시작</button>
+            <button class="btn-del" id="clearBtn" onclick="clearSimData()" style="display:none">시뮬 데이터 삭제 (user_id=null만)</button>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+        <div id="stats"></div>
+    </div>
+
+    <div class="panel">
+        <div class="label">로그</div>
+        <div id="log"></div>
+    </div>
+
+<script>
+const SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const EMOTIONS = [
+    'fear','sadness','anger','guilt','shame',
+    'isolation','numbness','moral_pain','helplessness','despair',
+    'joy','hope','relief','gratitude','love','peace','comfort'
+];
+const ATTRIBUTIONS = ['self_blame','other_blame','fate_blame','self_doubt','betrayal','circumstance'];
+const CORE_FEARS  = ['abandonment','loss','rejection','failure','death','helplessness','punishment','none'];
+const TARGETS     = ['self','parent','partner','friend','stranger','society','god','none'];
+const REASONS = [
+    "I felt this because I couldn't protect what mattered.",
+    "Something in me already knew it would end this way.",
+    "I kept telling myself it wasn't my fault, but...",
+    "There was nothing I could do. That's what hurts most.",
+    "I remember the silence more than anything.",
+    "It wasn't supposed to happen to someone like them.",
+    "The weight of it came later, not in the moment.",
+    "I chose wrong, and I've carried that ever since.",
+    "I was there, but I wasn't really there.",
+    "I wonder if they knew how much it mattered.",
+    "Part of me wanted to look away.",
+    "I don't know if I forgave them or just forgot.",
+    "The anger wasn't at anyone specific. It was everywhere.",
+    "I felt relieved, and then I felt guilty for being relieved.",
+    "It changed how I see everything, permanently.",
+    "I keep going back to that moment, rewriting it.",
+    "I was numb. Not sad, not angry. Just... nothing.",
+    "I think I stayed because leaving would mean admitting it.",
+    "The worst part is that I understand why they did it.",
+    "I don't have words for it. I just... feel it."
+];
+
+let allMemories = [];
+let selectedMemory = null;
+let selectedScenes = [];
+
+// ── Helpers ──
+function rand(lo, hi) { return lo + Math.random() * (hi - lo); }
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+function log(msg) {
+    const el = document.getElementById('log');
+    el.textContent += msg + '\n';
+    el.scrollTop = el.scrollHeight;
+    console.log(msg);
+}
+
+// ── ByeoriEngine math (replicated) ──
+function cosSim(v1, v2) {
+    let dot = 0, m1 = 0, m2 = 0;
+    for (const k of EMOTIONS) {
+        const a = v1[k] || 0, b = v2[k] || 0;
+        dot += a * b; m1 += a * a; m2 += b * b;
+    }
+    m1 = Math.sqrt(m1); m2 = Math.sqrt(m2);
+    return (m1 === 0 || m2 === 0) ? 0 : dot / (m1 * m2);
+}
+
+function attrDir(a) {
+    if (!a) return null;
+    if (['self_blame','self_doubt'].includes(a)) return 'internal';
+    if (['other_blame','betrayal'].includes(a)) return 'external';
+    return 'situational';
+}
+
+function calcAlignment(userEmo, origEmo, userR, origR) {
+    const eSim = Math.max(0, cosSim(userEmo, origEmo));
+
+    let rSim = eSim * 0.3;
+    if (userR && origR && !userR.is_void && !origR.is_void) {
+        rSim = 0;
+        if (userR.attribution && origR.attribution) {
+            if (userR.attribution === origR.attribution) rSim += 0.45;
+            else if (attrDir(userR.attribution) === attrDir(origR.attribution)) rSim += 0.20;
+        }
+        if (userR.core_fear && origR.core_fear && userR.core_fear === origR.core_fear) rSim += 0.35;
+        if (userR.target && origR.target && userR.target === origR.target) rSim += 0.20;
+        rSim = Math.min(1, rSim);
+    }
+
+    const uVoid = !!userR?.is_void, oVoid = !!origR?.is_void;
+    let aSim = 0.7;
+    if (uVoid && oVoid) aSim = 0.8;
+    else if (uVoid) aSim = 0.2;
+    else if (oVoid) aSim = 0.6;
+
+    return clamp01(eSim * 0.4 + rSim * 0.4 + aSim * 0.2);
+}
+
+function getMismatch(uEmo, oEmo, uR, oR) {
+    if (!!uR?.is_void !== !!oR?.is_void) return 'void_mismatch';
+    if (uR?.attribution && oR?.attribution && uR.attribution !== oR.attribution) return 'attribution_mismatch';
+    if (uR?.target && oR?.target && uR.target !== oR.target && cosSim(uEmo, oEmo) >= 0.5) return 'target_displacement';
+    if (cosSim(uEmo, oEmo) < 0.5) return 'emotion_mismatch';
+    return null;
+}
+
+function getBucket(al) {
+    if (al >= 0.55) return 'HIGH';
+    if (al < 0.35) return 'LOW';
+    return 'MID';
+}
+
+// ── Persona ──
+const PERSONAS = [
+    { name:'deep_empathizer',  w:.20, noise:.12, reasonMatch:.85, voidP:.02 },
+    { name:'partial_resonator',w:.25, noise:.30, reasonMatch:.50, voidP:.05 },
+    { name:'displaced_feeler', w:.20, noise:.22, reasonMatch:.15, voidP:.04 },
+    { name:'avoidant',         w:.15, noise:.50, reasonMatch:.10, voidP:.35 },
+    { name:'contrarian',       w:.10, noise:.65, reasonMatch:.05, voidP:.08 },
+    { name:'analytical',       w:.10, noise:.35, reasonMatch:.40, voidP:.10 },
+];
+
+function pickPersona() {
+    let r = Math.random(), acc = 0;
+    for (const p of PERSONAS) { acc += p.w; if (r < acc) return p; }
+    return PERSONAS[0];
+}
+
+function genEmotion(origEmo, persona) {
+    const vec = {};
+    const origKeys = origEmo ? Object.keys(origEmo).filter(k => origEmo[k] > 0) : [];
+    const n = persona.noise;
+
+    for (const e of EMOTIONS) {
+        const orig = origEmo?.[e] || 0;
+        if (orig > 0) {
+            vec[e] = clamp01(orig + rand(-n, n * 0.6));
+        } else if (Math.random() < n * 0.25) {
+            vec[e] = clamp01(rand(0.05, n * 0.4));
+        } else {
+            vec[e] = 0;
+        }
+    }
+
+    if (persona.name === 'contrarian' && origKeys.length > 0) {
+        for (const k of origKeys) vec[k] *= 0.15;
+        const others = EMOTIONS.filter(e => !origKeys.includes(e));
+        if (others.length) { const b = pick(others); vec[b] = clamp01(rand(0.4, 0.85)); }
+    }
+
+    const sum = Object.values(vec).reduce((a, b) => a + b, 0);
+    if (sum < 0.01) vec[pick(EMOTIONS)] = rand(0.2, 0.6);
+    return vec;
+}
+
+function genReason(origR, persona) {
+    if (Math.random() < persona.voidP) {
+        return { attribution: null, core_fear: null, target: null, is_void: true };
+    }
+    if (origR && Math.random() < persona.reasonMatch) {
+        return {
+            attribution: origR.attribution || pick(ATTRIBUTIONS),
+            core_fear:   origR.core_fear   || pick(CORE_FEARS),
+            target:      origR.target      || pick(TARGETS),
+            is_void: false
+        };
+    }
+    return { attribution: pick(ATTRIBUTIONS), core_fear: pick(CORE_FEARS), target: pick(TARGETS), is_void: false };
+}
+
+function makeWaveData(emoVec, textLen, voidLevel) {
+    const total = Object.values(emoVec).reduce((s, v) => s + (v || 0), 0);
+    const intensity = clamp01(total / 6);
+    const pts = [];
+    const w = Math.max(60, Math.min(300, textLen * 5));
+    for (let i = 0; i < w; i++) {
+        const x = i / w;
+        const amp = voidLevel === 'high' ? 0.15 : 0.25;
+        pts.push({ x, y: 0.5 + Math.sin(x * Math.PI * 20 * (0.02 + intensity * 0.01)) * amp });
+    }
+    const dom = Object.entries(emoVec).sort((a, b) => b[1] - a[1])[0]?.[0] || 'fear';
+    const C = {
+        fear:'rgba(74,144,217,0.8)',sadness:'rgba(90,122,154,0.8)',anger:'rgba(217,74,74,0.8)',
+        guilt:'rgba(139,115,85,0.8)',shame:'rgba(155,89,182,0.8)',isolation:'rgba(74,74,90,0.8)',
+        numbness:'rgba(106,106,106,0.8)',moral_pain:'rgba(155,89,182,0.8)',helplessness:'rgba(100,100,140,0.8)',
+        despair:'rgba(60,60,80,0.8)',joy:'rgba(255,215,0,0.8)',hope:'rgba(144,238,144,0.8)',
+        relief:'rgba(173,216,230,0.8)',gratitude:'rgba(255,182,193,0.8)',love:'rgba(255,105,180,0.8)',
+        peace:'rgba(176,224,230,0.8)',comfort:'rgba(210,180,140,0.8)'
+    };
+    return { wavePoints: pts, color: C[dom] || 'rgba(196,168,130,0.8)', intensity, voidLevel };
+}
+
+// ── Supabase ──
+async function loadMemories() {
+    log('Supabase 연결 중...');
+    try {
+        const { data, error } = await sb.from('memories').select('id, title, code, status').order('id');
+        if (error) throw error;
+        allMemories = data || [];
+        const sel = document.getElementById('memorySelect');
+        sel.innerHTML = '<option value="">— 기억을 선택하세요 —</option>';
+        for (const m of allMemories) {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = `[${m.code}] ${m.title} (${m.status})`;
+            sel.appendChild(opt);
+        }
+        sel.onchange = onMemoryChange;
+        log(`✓ ${allMemories.length}개 기억 로드 완료`);
+    } catch (e) {
+        log('✗ 기억 로드 실패: ' + e.message);
+    }
+}
+
+async function onMemoryChange() {
+    const id = parseInt(this.value);
+    if (!id) { selectedMemory = null; selectedScenes = []; return; }
+    selectedMemory = allMemories.find(m => m.id === id);
+
+    try {
+        const { data, error } = await sb.from('scenes').select('*').eq('memory_id', id).order('scene_order');
+        if (error) throw error;
+        selectedScenes = (data || []).map(s => {
+            if (s.original_emotion && typeof s.original_emotion === 'string') {
+                try { s.original_emotion = JSON.parse(s.original_emotion); } catch(e) { s.original_emotion = null; }
+            }
+            if (s.original_reason_vector && typeof s.original_reason_vector === 'string') {
+                try { s.original_reason_vector = JSON.parse(s.original_reason_vector); } catch(e) { s.original_reason_vector = null; }
+            }
+            if (s.void_info && typeof s.void_info === 'string') {
+                try { s.void_info = JSON.parse(s.void_info); } catch(e) { s.void_info = null; }
+            }
+            return s;
+        });
+
+        const withEmo = selectedScenes.filter(s => s.original_emotion && typeof s.original_emotion === 'object' && Object.keys(s.original_emotion).length > 0);
+
+        log(`\n"${selectedMemory.title}" 로드 — 장면 ${selectedScenes.length}개 (감정 설정됨: ${withEmo.length}개)`);
+        for (let i = 0; i < selectedScenes.length; i++) {
+            const s = selectedScenes[i];
+            const oe = s.original_emotion;
+            const txt = (s.text || '').substring(0, 40);
+            if (oe && typeof oe === 'object' && Object.keys(oe).length > 0) {
+                log(`  ✓ 장면 ${i+1}: "${txt}..." | ${Object.entries(oe).map(([k,v])=>`${k}:${v}`).join(', ')}`);
+            } else {
+                log(`  ○ 장면 ${i+1}: "${txt}..." | original_emotion 없음`);
+            }
+        }
+
+        document.getElementById('memoryInfo').textContent =
+            `장면 ${selectedScenes.length}개 · original_emotion ${withEmo.length}개 설정됨`;
+        document.getElementById('clearBtn').style.display = 'inline-block';
+
+        // 기존 plays 수 확인
+        const { count } = await sb.from('plays').select('*', { count: 'exact', head: true }).eq('memory_id', id);
+        log(`  현재 plays 테이블에 ${count || 0}개 데이터 존재`);
+
+    } catch (e) {
+        log('✗ 장면 로드 실패: ' + e.message);
+    }
+}
+
+// ── Main simulation ──
+async function runSimulation() {
+    if (!selectedMemory) { alert('기억을 선택하세요'); return; }
+    if (selectedScenes.length === 0) { alert('장면이 없습니다'); return; }
+
+    const count = parseInt(document.getElementById('simCount').value) || 100;
+    const btn = document.getElementById('startBtn');
+    btn.disabled = true; btn.textContent = '진행 중...';
+
+    // 감정 데이터가 있는 장면 우선, 없으면 전체
+    let targetScenes = selectedScenes.filter(s =>
+        s.original_emotion && typeof s.original_emotion === 'object' && Object.keys(s.original_emotion).length > 0
+    );
+    if (targetScenes.length === 0) {
+        log('⚠ original_emotion 설정된 장면 없음 — 전체 장면에 랜덤 감정 생성');
+        targetScenes = selectedScenes;
+    }
+
+    const R = { HIGH:0, MID:0, LOW:0, total:0, errors:0 };
+    const mismatchMap = {};
+    const personaMap = {};
+    const rows = []; // batch insert용
+
+    log(`\n═══ 시뮬레이션: ${count}명 × ${targetScenes.length}장면 ═══\n`);
+
+    try {
+        for (let i = 0; i < count; i++) {
+            const persona = pickPersona();
+            personaMap[persona.name] = (personaMap[persona.name] || 0) + 1;
+
+            // 시간을 과거 180일 내 랜덤 분산 (Strata 지층에 퍼지도록)
+            const daysAgo = Math.random() * 180;
+            const baseTime = Date.now() - daysAgo * 86400000;
+
+            for (let si = 0; si < targetScenes.length; si++) {
+                const scene = targetScenes[si];
+                const origEmo = (scene.original_emotion && typeof scene.original_emotion === 'object') ? scene.original_emotion : {};
+                const origR = scene.original_reason_vector || null;
+
+                const userEmo = genEmotion(origEmo, persona);
+                const userR = genReason(origR, persona);
+                const alignment = calcAlignment(userEmo, origEmo, userR, origR);
+                const mismatch = getMismatch(userEmo, origEmo, userR, origR);
+                const bucket = getBucket(alignment);
+                const voidLevel = scene.void_info?.voidLevel || 'low';
+                const waveData = makeWaveData(userEmo, (scene.text || '').length, voidLevel);
+
+                R[bucket]++;
+                R.total++;
+                if (mismatch) mismatchMap[mismatch] = (mismatchMap[mismatch] || 0) + 1;
+
+                rows.push({
+                    memory_id: selectedMemory.id,
+                    scene_id: scene.id,
+                    user_emotion: userEmo,
+                    user_reason: pick(REASONS),
+                    wave_data: waveData,
+                    layer_id: 0,
+                    alignment: parseFloat(alignment.toFixed(4)),
+                    reason_vector: userR,
+                    mismatch_type: mismatch,
+                    user_id: null,
+                    created_at: new Date(baseTime + si * 60000).toISOString()
+                });
+            }
+
+            // 50행마다 batch insert
+            if (rows.length >= 50 || i === count - 1) {
+                const { error } = await sb.from('plays').insert(rows);
+                if (error) {
+                    R.errors += rows.length;
+                    log(`✗ batch insert 에러 [${i+1}/${count}]: ${error.message}`);
+                    if (error.message.includes('policy') || error.message.includes('RLS')) {
+                        log('⚠ RLS 정책 문제 — plays 테이블의 INSERT 정책 확인 필요');
+                        break;
+                    }
+                }
+                rows.length = 0;
+                const pct = ((i + 1) / count * 100).toFixed(0);
+                document.getElementById('progress').style.width = pct + '%';
+                updateStats(R, mismatchMap, personaMap);
+                if ((i + 1) % 20 === 0 || i === count - 1) {
+                    log(`  [${i+1}/${count}] 저장됨 | H:${R.HIGH} M:${R.MID} L:${R.LOW} err:${R.errors}`);
+                }
+                await new Promise(r => setTimeout(r, 5));
+            }
+        }
+    } catch (e) {
+        log(`✗ 시뮬레이션 에러: ${e.message}\n${e.stack}`);
+    }
+
+    // dilution 업데이트
+    try {
+        const { count: playCount } = await sb.from('plays').select('*', { count:'exact', head:true }).eq('memory_id', selectedMemory.id);
+        const dilution = Math.round(100 / (1 + (playCount || 0) * 0.1));
+        await sb.from('memories').update({ layers: playCount || 0, dilution }).eq('id', selectedMemory.id);
+        log(`[Dilution] layers=${playCount}, dilution=${dilution}%`);
+    } catch(e) { log(`[Dilution] 업데이트 실패: ${e.message}`); }
+
+    log(`\n═══ 완료 ═══`);
+    log(`총: ${R.total} | HIGH: ${R.HIGH} | MID: ${R.MID} | LOW: ${R.LOW} | 에러: ${R.errors}`);
+    log(`미스매치: ${JSON.stringify(mismatchMap)}`);
+    log(`페르소나: ${JSON.stringify(personaMap)}`);
+    log(`\n→ 인게임에서 이 기억의 Strata 3D를 열면 시뮬 데이터가 반영된 지형을 볼 수 있습니다.`);
+
+    btn.disabled = false; btn.textContent = '시뮬레이션 시작';
+}
+
+async function clearSimData() {
+    if (!selectedMemory) return;
+    if (!confirm(`"${selectedMemory.title}"의 시뮬 데이터(user_id=null)를 삭제하시겠습니까?`)) return;
+    try {
+        const { error, count } = await sb.from('plays').delete({ count:'exact' }).eq('memory_id', selectedMemory.id).is('user_id', null);
+        if (error) throw error;
+        log(`✓ 삭제 완료: ${count}개`);
+        const { count: remain } = await sb.from('plays').select('*',{count:'exact',head:true}).eq('memory_id', selectedMemory.id);
+        const dilution = Math.round(100 / (1 + (remain || 0) * 0.1));
+        await sb.from('memories').update({ layers: remain||0, dilution }).eq('id', selectedMemory.id);
+        log(`[Dilution 복원] layers=${remain}, dilution=${dilution}%`);
+    } catch(e) { log('✗ 삭제 에러: ' + e.message); }
+}
+
+function updateStats(R, mm, pm) {
+    const t = R.total || 1;
+    document.getElementById('stats').innerHTML = `
+        <div class="stat"><div class="stat-val">${R.total}</div><div class="stat-label">총 플레이</div></div>
+        <div class="stat"><div class="stat-val" style="color:#4ad94a">${R.HIGH} (${(R.HIGH/t*100).toFixed(0)}%)</div><div class="stat-label">HIGH</div></div>
+        <div class="stat"><div class="stat-val" style="color:#c4a882">${R.MID} (${(R.MID/t*100).toFixed(0)}%)</div><div class="stat-label">MID</div></div>
+        <div class="stat"><div class="stat-val" style="color:#d94a4a">${R.LOW} (${(R.LOW/t*100).toFixed(0)}%)</div><div class="stat-label">LOW</div></div>
+        <div class="stat"><div class="stat-val" style="color:#666">${R.errors}</div><div class="stat-label">에러</div></div>
+    `;
+}
+
+loadMemories();
+</script>
+</body>
+</html>

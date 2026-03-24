@@ -404,13 +404,154 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
       }
     }
 
+    // ---- Core 핀: 사용자 반응 → 감정 벡터 (play-test emotion_extract) ----
+    if (body.type === "emotion_extract") {
+      const userText = String(body.user_text || "").trim();
+      const sceneText = String(body.scene_text || "").trim();
+
+      if (!userText) {
+        return new Response(JSON.stringify({ error: "user_text가 필요합니다." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const anchorKeys = [
+        "fear", "sadness", "anger", "joy", "longing", "guilt", "shame", "numbness", "isolation",
+        "relief", "confusion", "emptiness",
+      ];
+
+      const prompt = `너는 기억 장면에 대한 사용자의 **자유 반응**을 분석한다.
+
+**중요**: 사용자 텍스트는 한국어, 영어, 혼용 어떤 언어로 와도 된다. 입력 언어를 그대로 이해하고 판단해라. 영어로 번역해서만 분석하지 말고, 의미를 직접 읽어라.
+
+[장면 맥락 — 참고용]
+${sceneText ? `"""${sceneText}"""` : "(장면 텍스트 없음)"}
+
+[사용자 반응]
+"""${userText}"""
+
+**과제**: 위 반응에 담긴 정서를 아래 **영어 키** 축으로만 0.0~1.0 점수를 부여한다. 키 이름은 반드시 영어 소문자로만 출력한다.
+
+축: ${anchorKeys.join(", ")}
+
+**한국어 매핑 예시 (반드시 참고)**:
+- 슬프다, 슬펐다, 슬퍼, 우울, 눈물, 울었, 비통 → **sadness** 높게 (0.65~1.0)
+- 무섭다, 무서워, 두려움, 공포, 불안, 조마조마 → **fear** 높게
+- 화나, 분노, 열받, 짜증, 격분 → **anger** 높게
+- 그립다, 그리워, 보고 싶, 그리움 → **longing** 높게
+- 미안, 죄책감, 내 탓 → **guilt** 높게
+- 창피, 수치, 부끄 → **shame** 높게
+- 멍하, 아무것도, 감각 없 → **numbness**
+- 혼자, 고립, 외로 → **isolation**
+- 후련, 안도, 다행 → **relief**
+- 헷갈, 모르겠, 혼란 → **confusion**
+- 공허, 텅 빈 → **emptiness**
+
+**영어 매핑 예시**: sad, sorrow, grief → sadness / afraid, scared → fear / angry, furious → anger
+
+반응이 짧아도(예: "슬프다.") 명시된 감정 단어가 있으면 해당 축은 0.65 이상으로 올려라.
+
+**JSON만 출력** (다른 설명 금지):
+{
+  "base": {
+    ${anchorKeys.map((k) => `"${k}": 0.0`).join(",\n    ")}
+  },
+  "reason_analysis": {
+    "attribution": "self_blame|other_blame|fate_blame|unknown",
+    "core_fear": "abandonment|death|rejection|failure|none",
+    "target": "unknown",
+    "is_void": false
+  }
+}
+
+base 객체에는 위 모든 키를 포함하고 숫자만 넣어라.`;
+
+      const systemPrompt = `감정 추출기. 사용자 입력 언어(한·영·혼용)를 직접 이해한다. 출력의 감정 키는 항상 영어 소문자(base 내)이다. JSON만 출력.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error("emotion_extract API error:", errText);
+          throw new Error("Claude API failed");
+        }
+
+        const data = await response.json();
+        let text = data.content[0].text as string;
+        text = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]) as {
+            base?: Record<string, number>;
+            reason_analysis?: Record<string, unknown>;
+          };
+          const base = parsed.base || {};
+          anchorKeys.forEach((k) => {
+            if (typeof base[k] !== "number") base[k] = 0;
+          });
+          const reason = parsed.reason_analysis || {};
+          return new Response(
+            JSON.stringify({
+              base,
+              reason_analysis: {
+                attribution: reason.attribution ?? "unknown",
+                core_fear: reason.core_fear ?? "none",
+                target: reason.target ?? "unknown",
+                is_void: Boolean(reason.is_void),
+              },
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      } catch (e) {
+        console.error("emotion_extract error:", e);
+      }
+
+      // 폴백: 한글 슬픔 키워드 휴리스틱
+      const low = userText.toLowerCase();
+      const koSad = /슬프|슬퍼|슬펐|우울|눈물|울었|비통|슬픔/;
+      const fb: Record<string, number> = {};
+      anchorKeys.forEach((k) => {
+        fb[k] = 0;
+      });
+      if (koSad.test(userText) || /\bsad\b|sorrow|grief/i.test(low)) fb.sadness = 0.82;
+      else fb.sadness = 0.15;
+      return new Response(
+        JSON.stringify({
+          base: fb,
+          reason_analysis: {
+            attribution: "unknown",
+            core_fear: "none",
+            target: "unknown",
+            is_void: false,
+          },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // ---- 기존 장면 생성 로직 ----
     const { text } = body;
-    
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      return new Response(JSON.stringify({ error: '텍스트 입력이 필요합니다.' }), {
+
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return new Response(JSON.stringify({ error: "텍스트 입력이 필요합니다." }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -419,7 +560,7 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
       headers: {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
@@ -436,29 +577,32 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
         messages: [
           {
             role: "user",
-            content: `화자가 떠올린 기억: "${text.trim()}"\n이 장면을 체험자가 몰입할 수 있는 즉각적인 경험으로 변환해라.`
-          }
-        ]
-      })
+            content: `화자가 떠올린 기억: "${text.trim()}"\n이 장면을 체험자가 몰입할 수 있는 즉각적인 경험으로 변환해라.`,
+          },
+        ],
+      }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Claude API 에러 (scene):', errorData);
-      return new Response(JSON.stringify({ 
-        error: 'Claude API 호출 실패',
-        details: errorData.error?.message || '알 수 없는 오류'
-      }), {
-        status: response.status,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      console.error("Claude API 에러 (scene):", errorData);
+      return new Response(
+        JSON.stringify({
+          error: "Claude API 호출 실패",
+          details: errorData.error?.message || "알 수 없는 오류",
+        }),
+        {
+          status: response.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const data = await response.json();
     const scene = data.content[0].text;
 
     return new Response(JSON.stringify({ scene }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (err) {

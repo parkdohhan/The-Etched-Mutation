@@ -121,6 +121,14 @@
 
   var canvas, renderer, threeScene, camera, group, pointLight;
   var animId = null, drag = false, pm = { x: 0, y: 0 };
+
+  function getCanvasViewportSize() {
+    if (!canvas) return { w: innerWidth, h: innerHeight };
+    var r = canvas.getBoundingClientRect();
+    var w = r.width > 2 ? r.width : innerWidth;
+    var h = r.height > 2 ? r.height : innerHeight;
+    return { w: w, h: h };
+  }
   var oa = { t: 0.5, p: 0.75 }, oR = 60;
   var lookAt = new THREE.Vector3(0, 0, 0);
   var at = 0, lc;
@@ -518,17 +526,19 @@
     });
   }
   function updLabels() {
+    var vp = getCanvasViewportSize();
+    var vw = vp.w, vh = vp.h;
     _anchorLabels.forEach(function (l) {
       var sp = l.pos.clone().project(camera);
-      l.el.style.left = (sp.x * 0.5 + 0.5) * innerWidth + 'px';
-      l.el.style.top = (-sp.y * 0.5 + 0.5) * innerHeight + 'px';
+      l.el.style.left = (sp.x * 0.5 + 0.5) * vw + 'px';
+      l.el.style.top = (-sp.y * 0.5 + 0.5) * vh + 'px';
       l.el.style.transform = 'translate(-50%,-50%)';
       l.el.classList.toggle('strata-vis', camera.position.distanceTo(l.pos) < 70 && sp.z < 1 && sp.z > 0);
     });
     _layerLabels.forEach(function (l) {
       var sp = l.pos.clone().project(camera);
-      l.el.style.left = (sp.x * 0.5 + 0.5) * innerWidth + 'px';
-      l.el.style.top = (-sp.y * 0.5 + 0.5) * innerHeight + 'px';
+      l.el.style.left = (sp.x * 0.5 + 0.5) * vw + 'px';
+      l.el.style.top = (-sp.y * 0.5 + 0.5) * vh + 'px';
       l.el.style.transform = 'translate(-50%,-50%)';
       var d = camera.position.distanceTo(l.pos);
       var camDir = camera.position.clone().normalize();
@@ -564,13 +574,14 @@
       return; 
     }
     console.log('[Strata] Canvas 찾음, renderer 생성');
+    var vp0 = getCanvasViewportSize();
     renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-    renderer.setSize(innerWidth, innerHeight);
+    renderer.setSize(vp0.w, vp0.h);
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setClearColor(0x12121a, 1);
     threeScene = new THREE.Scene();
     threeScene.fog = new THREE.FogExp2(0x12121a, 0.004);
-    camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 500);
+    camera = new THREE.PerspectiveCamera(50, vp0.w / vp0.h, 0.1, 500);
     threeScene.add(new THREE.AmbientLight(0x2a2535, 1.2));
     var dl = new THREE.DirectionalLight(0xc4a882, 0.8); dl.position.set(30, 50, 20); threeScene.add(dl);
     var dl2 = new THREE.DirectionalLight(0x6080a0, 0.35); dl2.position.set(-20, 30, -15); threeScene.add(dl2);
@@ -992,6 +1003,13 @@
     stop: function () {
       if (animId) { cancelAnimationFrame(animId); animId = null; }
     },
+    resizeToCanvas: function () {
+      if (!camera || !renderer) return;
+      var vp = getCanvasViewportSize();
+      camera.aspect = vp.w / vp.h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(vp.w, vp.h);
+    },
     getData: function () {
       return { config: _config, globalEvents: _globalEvents, computedLayers: _computedLayers };
     },
@@ -999,9 +1017,10 @@
 
   addEventListener('resize', function () {
     if (!camera || !renderer) return;
-    camera.aspect = innerWidth / innerHeight;
+    var vp = getCanvasViewportSize();
+    camera.aspect = vp.w / vp.h;
     camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
+    renderer.setSize(vp.w, vp.h);
   });
 
   // ─── 콘솔 디버깅: 지형 뷰 바로가기 ───

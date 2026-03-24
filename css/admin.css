@@ -194,6 +194,43 @@ body::before {
 .editor-screen.active {
     display: block;
 }
+.editor-screen-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 0;
+    border-bottom: 1px solid rgba(196, 168, 130, .2);
+}
+.editor-screen-bar .editor-tabs {
+    margin-bottom: 0;
+    border-bottom: none;
+    flex: 1;
+    min-width: 0;
+}
+.editor-back-home {
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 0.35rem;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.88rem;
+    letter-spacing: 0.04em;
+    color: rgba(196, 168, 130, 0.85);
+    text-decoration: none;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid rgba(196, 168, 130, 0.35);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.editor-back-home:hover {
+    color: var(--text-primary);
+    border-color: var(--accent-memory);
+    background: rgba(196, 168, 130, 0.08);
+}
 .editor-tabs {
     display: flex;
     gap: 1rem;
@@ -973,4 +1010,57 @@ body::before {
     opacity: 0.6;
     cursor: not-allowed;
 }
-    </style>
+
+/* Admin — Strata 3D 미리보기 전체화면 */
+.admin-strata-wrap.admin-strata-fullscreen {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10040 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+}
+body.admin-strata-fs-active {
+    overflow: hidden;
+}
+.admin-strata-fs-enter {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 130;
+    padding: 0.45rem 0.9rem;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    background: rgba(10, 10, 15, 0.85);
+    border: 1px solid rgba(196, 168, 130, 0.35);
+    color: var(--accent-memory);
+    border-radius: 4px;
+    transition: border-color 0.2s, background 0.2s;
+}
+.admin-strata-fs-enter:hover {
+    border-color: var(--accent-memory);
+    background: rgba(196, 168, 130, 0.12);
+}
+.admin-strata-fs-back {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 10060;
+    padding: 0.55rem 1.1rem;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    background: rgba(10, 10, 15, 0.92);
+    border: 1px solid rgba(196, 168, 130, 0.45);
+    color: var(--text-primary);
+    border-radius: 4px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+}
+.admin-strata-fs-back:hover {
+    border-color: var(--accent-memory);
+    color: var(--accent-memory);
+}

@@ -84,7 +84,12 @@ html, body {
   letter-spacing: 0.06em;
   transition: color 0.3s, text-shadow 0.3s;
   user-select: none;
-  white-space: nowrap;
+  white-space: normal;
+  max-width: min(420px, 36vw);
+  text-align: center;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .mono-word:hover {
   color: var(--text);
@@ -113,32 +118,204 @@ html, body {
 
 </div>
 
+<audio id="openingSound" preload="auto">
+  <source src="/sounds/ambient-opening.mp3" type="audio/mpeg">
+</audio>
+
 <script src="/data/memories.js"></script>
 <script>
 // =====================================================================
-// Demo 2: Opening + 3 monologues → index (index handles full play flow)
+// Demo 2: Opening → Supabase memories (float) → /play?memory=
 // =====================================================================
 
-// ── 3 memories from index (memories.js) ──
-var MEMORIES = (window.memoriesData || []).slice(0, 3);
-if (MEMORIES.length === 0) {
-  MEMORIES = [
-    { id: 'e001', code: 'E-001', title: 'The Jacket on the Chair', completed_sentence: 'The jacket on the chair was the last thing he left behind.', scenes: [] },
-    { id: 'e002', code: 'E-002', title: 'The Voicemail I Kept', completed_sentence: 'Her voice on the voicemail is all I have left.', scenes: [] },
-    { id: 'e003', code: 'E-003', title: 'What I Said at the Funeral', completed_sentence: 'I tried to make his funeral funny. His mother didn\'t laugh.', scenes: [] }
+var SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+
+var MONOLOGUES = [];
+var demo2MemoriesPromise = null;
+
+function getHardcodedFallbackMemories() {
+  return [
+    { id: 'e001', code: 'E-001', title: 'The Jacket on the Chair', completed_sentence: 'The jacket on the chair was the last thing he left behind.' },
+    { id: 'e002', code: 'E-002', title: 'The Voicemail I Kept', completed_sentence: 'Her voice on the voicemail is all I have left.' },
+    { id: 'e003', code: 'E-003', title: 'What I Said at the Funeral', completed_sentence: 'I tried to make his funeral funny. His mother didn\'t laugh.' }
   ];
 }
-var MONOLOGUES = MEMORIES.map(function(m, i) {
-  var x = 0.28 + (i % 3) * 0.22;
-  var y = 0.35 + (i % 2) * 0.22;
-  return {
-    id: m.id, code: m.code, title: m.title,
-    text: m.completed_sentence || m.title,
-    entry: m.completed_sentence || m.title,
-    vad: { v: -0.3, a: 0.1, d: -0.2 },
-    x: x, y: y
-  };
-});
+
+function memoriesFromMemoriesJs() {
+  var raw = window.memoriesData;
+  if (!raw || !raw.length) return null;
+  return raw.map(function(m) {
+    return {
+      id: m.id,
+      code: m.code || '',
+      title: m.title || '',
+      completed_sentence: (m.completed_sentence && String(m.completed_sentence).trim()) || m.title || ''
+    };
+  });
+}
+
+function fetchMemoriesFromSupabaseREST() {
+  var url = SUPABASE_URL + '/rest/v1/memories?select=id,completed_sentence,title,code&order=id.asc';
+  return fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+      Accept: 'application/json'
+    }
+  }).then(function(res) {
+    if (!res.ok) throw new Error('memories REST ' + res.status);
+    return res.json();
+  });
+}
+
+function normalizeDemo2Rows(rows) {
+  return rows.filter(function(r) { return r && r.id; }).map(function(r) {
+    var sentence = (r.completed_sentence && String(r.completed_sentence).trim()) || (r.title && String(r.title).trim()) || '—';
+    return {
+      id: r.id,
+      code: r.code || '',
+      title: r.title || '',
+      text: sentence,
+      completed_sentence: sentence
+    };
+  });
+}
+
+/** Supabase → 실패 시 data/memories.js → 최소 하드코딩 */
+function getDemo2Memories() {
+  if (!demo2MemoriesPromise) {
+    demo2MemoriesPromise = fetchMemoriesFromSupabaseREST()
+      .then(function(data) {
+        var arr = Array.isArray(data) ? normalizeDemo2Rows(data) : [];
+        if (arr.length) {
+          console.log('[Demo2] memories from Supabase:', arr.length);
+          return arr;
+        }
+        throw new Error('empty memories from Supabase');
+      })
+      .catch(function(err) {
+        console.warn('[Demo2] Supabase fetch failed; using memories.js / hardcoded fallback', err);
+        var fb = memoriesFromMemoriesJs();
+        if (fb && fb.length) return normalizeDemo2Rows(fb);
+        return normalizeDemo2Rows(getHardcodedFallbackMemories());
+      });
+  }
+  return demo2MemoriesPromise;
+}
+
+/** 뷰포트 비율을 반영한 그리드 + 노이즈 지터 (개수 n에 맞춤) */
+function demo2LayoutPositions(n) {
+  if (n <= 0) return [];
+  var margin = 0.07;
+  var lo = margin;
+  var hi = 1 - margin;
+  var w = window.innerWidth || 1;
+  var h = window.innerHeight || 1;
+  var aspect = w / Math.max(h, 1);
+  var cols = Math.max(1, Math.round(Math.sqrt(n * aspect)));
+  if (cols > n) cols = n;
+  var rows = Math.ceil(n / cols);
+  var cellW = (hi - lo) / cols;
+  var cellH = (hi - lo) / rows;
+  var out = [];
+  for (var i = 0; i < n; i++) {
+    var col = i % cols;
+    var row = Math.floor(i / cols);
+    var x = lo + (col + 0.5) * cellW;
+    var y = lo + (row + 0.5) * cellH;
+    var jx = (noise(i * 0.73, 1.1, 0) - 0.5) * cellW * 0.4;
+    var jy = (noise(i * 0.41, 2.2, 0) - 0.5) * cellH * 0.4;
+    out.push({
+      x: Math.max(lo + 0.02, Math.min(hi - 0.02, x + jx)),
+      y: Math.max(lo + 0.02, Math.min(hi - 0.02, y + jy))
+    });
+  }
+  return out;
+}
+
+function buildMonoLoguesFromMemories(memories) {
+  var pos = demo2LayoutPositions(memories.length);
+  return memories.map(function(m, i) {
+    var p = pos[i] || { x: 0.5, y: 0.5 };
+    return {
+      id: m.id,
+      code: m.code,
+      title: m.title,
+      text: m.text,
+      vad: { v: -0.3, a: 0.1, d: -0.2 },
+      x: p.x,
+      y: p.y
+    };
+  });
+}
+
+// ── Local vs deploy: /play rewrite exists only on Vercel ──
+function demo2IsLocalDev() {
+  try {
+    if (location.protocol === 'file:') return true;
+    var h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || (typeof h === 'string' && h.endsWith('.local'));
+  } catch (_) { return false; }
+}
+function demo2DetectLang(m) {
+  var s = (m.title || '') + (m.completed_sentence || '') + (m.text || '');
+  return /[가-힣]/.test(s) ? 'ko' : 'en';
+}
+function demo2PlayHref(memoryId, lang) {
+  var l = lang === 'ko' ? 'ko' : 'en';
+  var q = '?memory=' + encodeURIComponent(memoryId) + '&lang=' + l;
+  if (!demo2IsLocalDev()) return '/play' + q;
+  try {
+    var base = new URL(location.href);
+    var path = base.pathname || '';
+    if (/\/test\//i.test(path) || /demo2\.html$/i.test(path) || path === '/demo' || /\/demo$/i.test(path)) {
+      return new URL('../play-test.html' + q, base).href;
+    }
+    return new URL('play-test.html' + q, base.origin + '/').href;
+  } catch (e) {
+    console.warn('[Demo2] demo2PlayHref fallback → /play', e);
+    return '/play' + q;
+  }
+}
+
+/** Console helpers: monologue → play (local /play rewrite mismatch) */
+window.__demo2Debug = {
+  isLocalDev: demo2IsLocalDev,
+  playHref: demo2PlayHref,
+  memories: function() {
+    return getDemo2Memories().then(function(list) {
+      var rows = list.map(function(x) {
+        return { id: x.id, code: x.code, title: x.title, href: demo2PlayHref(x.id, demo2DetectLang(x)) };
+      });
+      console.table(rows);
+      return rows;
+    });
+  },
+  go: function(idOrCode) {
+    getDemo2Memories().then(function(list) {
+      var m = list.find(function(x) { return x.id === idOrCode || x.code === idOrCode; });
+      if (!m) {
+        console.error('[Demo2] Unknown id/code:', idOrCode, '— await __demo2Debug.memories()');
+        return;
+      }
+      var href = demo2PlayHref(m.id, demo2DetectLang(m));
+      console.log('[Demo2] Navigate', { id: m.id, code: m.code, href: href, localDev: demo2IsLocalDev() });
+      try { sessionStorage.setItem('demoMemoryId', m.id); } catch (_) {}
+      window.location.href = href;
+    });
+  },
+  help: function() {
+    console.log(
+      '%c[Demo2]%c Production uses the /play rewrite; local dev opens play-test.html directly.\n' +
+      '  • Jump to a memory: __demo2Debug.go("e001") or .go("E-001")\n' +
+      '  • List URLs: __demo2Debug.memories()\n' +
+      '  • Main (index) demo: set sessionStorage demoMemoryId, then /index.html?demo=1&memory=ID',
+      'color:#c4a882;font-weight:bold', 'color:inherit'
+    );
+  }
+};
+
 // ── State ──
 var S = { phase: 'opening' };
 
@@ -185,6 +362,62 @@ function typeText(el, text, speed, done) {
 var demoOpeningSkipped = false;
 var demoOpeningWaveId = null;
 var demoOpeningMouseX = -100, demoOpeningMouseY = -100;
+var demoHasZoomedIn = false;
+var demoOpeningSequenceStarted = false;
+var demoOpeningSoundFadeInTimer = null;
+var demoOpeningSoundFadeOutRaf = null;
+
+function demo2FadeInOpeningSound(audio, targetVolume, durationMs) {
+  if (!audio) return;
+  if (demoOpeningSoundFadeInTimer) {
+    clearInterval(demoOpeningSoundFadeInTimer);
+    demoOpeningSoundFadeInTimer = null;
+  }
+  audio.volume = 0;
+  audio.loop = true;
+  var playPromise = audio.play();
+  if (playPromise && playPromise.catch) playPromise.catch(function() {});
+  var steps = 60;
+  var stepVol = targetVolume / steps;
+  var interval = Math.max(16, durationMs / steps);
+  var cur = 0;
+  demoOpeningSoundFadeInTimer = setInterval(function() {
+    cur++;
+    if (cur < steps) audio.volume = Math.min(1, stepVol * cur);
+    else {
+      audio.volume = Math.min(1, targetVolume);
+      clearInterval(demoOpeningSoundFadeInTimer);
+      demoOpeningSoundFadeInTimer = null;
+    }
+  }, interval);
+}
+
+function demo2FadeOutOpeningSound(audio, durationMs) {
+  if (!audio) return;
+  if (demoOpeningSoundFadeInTimer) {
+    clearInterval(demoOpeningSoundFadeInTimer);
+    demoOpeningSoundFadeInTimer = null;
+  }
+  if (demoOpeningSoundFadeOutRaf) {
+    cancelAnimationFrame(demoOpeningSoundFadeOutRaf);
+    demoOpeningSoundFadeOutRaf = null;
+  }
+  var startVol = Math.max(audio.volume || 0, 0.001);
+  if (startVol <= 0.002) {
+    try { audio.pause(); audio.currentTime = 0; } catch (_) {}
+    return;
+  }
+  var t0 = performance.now();
+  function tick(now) {
+    var p = Math.min(1, (now - t0) / durationMs);
+    audio.volume = Math.max(0, startVol * (1 - p));
+    if (p >= 1) {
+      try { audio.pause(); audio.currentTime = 0; audio.volume = 0; } catch (_) {}
+      demoOpeningSoundFadeOutRaf = null;
+    } else demoOpeningSoundFadeOutRaf = requestAnimationFrame(tick);
+  }
+  demoOpeningSoundFadeOutRaf = requestAnimationFrame(tick);
+}
 
 function typeTextEl(el, text, cb) {
   var i = 0; el.textContent = ''; el.classList.add('typing');
@@ -194,53 +427,36 @@ function typeTextEl(el, text, cb) {
   }
   run();
 }
-function typeDotsEl(el, cb) {
-  el.textContent = '\n'; el.classList.add('typing');
-  var dotCount = 0;
-  function addDot() {
-    if (dotCount < 3) { el.textContent += '.'; dotCount++; setTimeout(addDot, 300); }
-    else { el.classList.remove('typing'); if (cb) cb(); }
-  }
-  addDot();
-}
-
 function demoShowHint() {
   var h = document.getElementById('openingStartHint');
   if (h) { h.style.opacity = ''; h.classList.add('visible'); }
 }
-function demoShowPart4(dialogue) {
+function demoShowOpeningLine4(dialogue) {
   if (demoOpeningSkipped) return;
-  typeTextEl(dialogue, '\nCome in.', function() {
+  typeTextEl(dialogue, '\nGo ahead.', function() {
     if (demoOpeningSkipped) return;
     setTimeout(demoShowHint, 500);
   });
 }
-function demoShowPart3(dialogue) {
+function demoShowOpeningLine3(dialogue) {
   if (demoOpeningSkipped) return;
-  typeDotsEl(dialogue, function() {
+  typeTextEl(dialogue, '\nIf you touch them, they change. That\'s not a warning — just a fact.', function() {
     if (demoOpeningSkipped) return;
-    setTimeout(function() { demoShowPart4(dialogue); }, 1200);
+    setTimeout(function() { demoShowOpeningLine4(dialogue); }, 1200);
   });
 }
-function demoShowPart2(dialogue) {
+function demoShowOpeningLine2(dialogue) {
   if (demoOpeningSkipped) return;
-  typeTextEl(dialogue, '\n...you came looking for a memory?', function() {
+  typeTextEl(dialogue, '\nNo one\'s come for them.', function() {
     if (demoOpeningSkipped) return;
-    setTimeout(function() { demoShowPart3(dialogue); }, 1200);
+    setTimeout(function() { demoShowOpeningLine3(dialogue); }, 1200);
   });
 }
-function demoShowPart1b(dialogue) {
+function demoShowOpeningLine1(dialogue) {
   if (demoOpeningSkipped) return;
-  typeTextEl(dialogue, '\nYou\'re here. It\'s been a while.', function() {
+  typeTextEl(dialogue, '\nThere are memories buried here.', function() {
     if (demoOpeningSkipped) return;
-    setTimeout(function() { demoShowPart2(dialogue); }, 1200);
-  });
-}
-function demoShowPart1a(dialogue) {
-  if (demoOpeningSkipped) return;
-  typeTextEl(dialogue, '\nHello.', function() {
-    if (demoOpeningSkipped) return;
-    setTimeout(function() { demoShowPart1b(dialogue); }, 1500);
+    setTimeout(function() { demoShowOpeningLine2(dialogue); }, 1200);
   });
 }
 
@@ -297,13 +513,50 @@ function runDemoOpeningWave(canvas) {
   tick();
 }
 
+function beginDemoOpeningDialogue() {
+  var dialogue = document.getElementById('openingDialogue');
+  setTimeout(function() {
+    if (demoOpeningSkipped) return;
+    if (dialogue) demoShowOpeningLine1(dialogue);
+  }, 2500);
+}
+
+function demoHandleOpeningClick() {
+  if (demoOpeningSkipped) return;
+  if (!demoHasZoomedIn) {
+    demoHasZoomedIn = true;
+    var waveContainer = document.getElementById('openingWaveContainer');
+    if (waveContainer) {
+      waveContainer.style.transform = 'scale(5, 1)';
+      waveContainer.style.opacity = '1';
+    }
+    var hint = document.getElementById('openingStartHint');
+    if (hint) hint.style.opacity = '0';
+    var openingSound = document.getElementById('openingSound');
+    if (openingSound) {
+      try { openingSound.load(); } catch (_) {}
+      demo2FadeInOpeningSound(openingSound, 0.6, 4000);
+    }
+    setTimeout(function() {
+      if (demoOpeningSkipped) return;
+      if (!demoOpeningSequenceStarted) {
+        demoOpeningSequenceStarted = true;
+        beginDemoOpeningDialogue();
+      }
+    }, 800);
+    return;
+  }
+  finishDemoOpening();
+}
+
 function finishDemoOpening() {
   if (demoOpeningSkipped) return;
   demoOpeningSkipped = true;
+  demo2FadeOutOpeningSound(document.getElementById('openingSound'), 500);
   if (demoOpeningWaveId) { cancelAnimationFrame(demoOpeningWaveId); demoOpeningWaveId = null; }
   var openingScreen = document.getElementById('openingScreen');
   if (openingScreen) {
-    openingScreen.removeEventListener('click', finishDemoOpening);
+    openingScreen.removeEventListener('click', demoHandleOpeningClick);
     openingScreen.classList.add('hidden');
     openingScreen.style.cssText = 'display:none !important; visibility:hidden; pointer-events:none; z-index:-1;';
   }
@@ -322,20 +575,24 @@ function startOpening() {
   var openingScreen = document.getElementById('openingScreen');
   var waveContainer = document.getElementById('openingWaveContainer');
   var canvas = document.getElementById('openingWaveCanvas');
-  var dialogue = document.getElementById('openingDialogue');
+  var hint = document.getElementById('openingStartHint');
   if (!openingScreen || !canvas) return;
   openingScreen.classList.remove('hidden');
   openingScreen.style.display = 'flex';
   openingScreen.style.visibility = 'visible';
   openingScreen.style.pointerEvents = 'auto';
   openingScreen.style.zIndex = '3000';
-  if (waveContainer) { waveContainer.style.transform = 'scale(5, 1)'; waveContainer.style.opacity = '1'; waveContainer.classList.add('visible'); }
+  if (waveContainer) {
+    waveContainer.style.transform = 'scale(1, 0.3)';
+    waveContainer.style.opacity = '';
+    waveContainer.classList.add('visible');
+  }
+  if (hint) {
+    hint.style.opacity = '';
+    hint.classList.add('visible');
+  }
   runDemoOpeningWave(canvas);
-  setTimeout(function() {
-    if (demoOpeningSkipped) return;
-    if (dialogue) demoShowPart1a(dialogue);
-  }, 2500);
-  openingScreen.addEventListener('click', finishDemoOpening);
+  openingScreen.addEventListener('click', demoHandleOpeningClick);
   document.addEventListener('keydown', demoHandleOpeningKeydown);
 }
 
@@ -344,12 +601,16 @@ function startOpening() {
 // =====================================================================
 let monoRAF = null;
 
-function startMonologue() {
+async function startMonologue() {
   setPhase('monologue');
   var container = document.getElementById('monoWords');
   var noiseCanvas = document.getElementById('monoNoise');
   if (!container) return;
   container.innerHTML = '';
+
+  var rawList = await getDemo2Memories();
+  if (!rawList.length) rawList = normalizeDemo2Rows(getHardcodedFallbackMemories());
+  MONOLOGUES = buildMonoLoguesFromMemories(rawList);
 
   // Background noise
   const nCtx = initCanvas(noiseCanvas);
@@ -405,14 +666,32 @@ function startMonologue() {
   words.forEach(function(m) {
     m.el.addEventListener('click', function() {
       if (monoRAF) { cancelAnimationFrame(monoRAF); monoRAF = null; }
+      var lang = demo2DetectLang(m);
+      var href = demo2PlayHref(m.id, lang);
+      console.log('[Demo2] monologue → memory', {
+        memoryId: m.id,
+        code: m.code,
+        title: m.title,
+        lang: lang,
+        href: href,
+        localDev: demo2IsLocalDev()
+      });
       try { sessionStorage.setItem('demoMemoryId', m.id); } catch (_) {}
-      window.location.href = '/play?memory=' + encodeURIComponent(m.id);
+      window.location.href = href;
     });
   });
+  if (demo2IsLocalDev()) {
+    console.log('[Demo2] Local dev: clicks use play-test.html. Manual debug: __demo2Debug.help()');
+  } else {
+    console.log('[Demo2] Manual navigation / debug: __demo2Debug.help()');
+  }
 }
 
-// ── Boot ──
-document.addEventListener('DOMContentLoaded', startOpening);
+// ── Boot: Supabase 선 fetch + 오프닝 ──
+document.addEventListener('DOMContentLoaded', function() {
+  getDemo2Memories();
+  startOpening();
+});
 </script>
 </body>
 </html>

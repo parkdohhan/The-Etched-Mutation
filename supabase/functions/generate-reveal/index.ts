@@ -19,6 +19,11 @@ serve(async (req) => {
     const visits = body.visits || [];
     const memoryTitle = body.memory_title || "무제";
     const emotionTrajectory = body.emotion_trajectory || [];
+    const lang = body.lang === "en" ? "en" : "ko";
+    const langInstruction =
+      lang === "en"
+        ? 'Write the narrative in English. Use second person ("you").'
+        : '서사 텍스트를 한국어로 작성하라. 2인칭 시점 ("당신은").';
 
     if (visits.length === 0) {
       return new Response(JSON.stringify({ error: "방문 데이터 없음" }), {
@@ -63,7 +68,7 @@ ${visitDescriptions}
 이 사람의 여정을 하나의 짧은 서사로 재구성하라.
 
 규칙:
-1. 2인칭 시점 ("당신은")
+1. ${langInstruction}
 2. 3~6문장
 3. 방문 순서를 따르되 감정의 흐름과 변화에 초점
 4. 정렬도 높으면 공명, 낮으면 균열로 표현

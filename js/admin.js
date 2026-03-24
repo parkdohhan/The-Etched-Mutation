@@ -1,4 +1,4 @@
-import { getSupabaseClient } from './lib/supabaseClient.js';
+import { getSupabaseClient, waitForSupabaseClient } from './lib/supabaseClient.js';
 import { loadAdminMemories, saveAdminMemories, exportAdminMemoriesJSON, importAdminMemoriesJSON } from './lib/storage.js';
 import { listMemoriesWithScenesChoices, saveMemoryGraph, deleteMemoryGraph, listArchiveLayers } from './lib/repo.js';
 import { DEFAULT_EMOTION_ANCHORS } from './shared/math.js';
@@ -2373,6 +2373,8 @@ function closeSessionDetail() {
 }
 
 // global 스코프 function 노출 (onclick 속성 서 위해)
+// strataView.js fetchStrataInput이 window.getSupabaseClient를 사용함 (index.js와 동일)
+window.getSupabaseClient = getSupabaseClient;
 window.checkPassword = checkPassword;
 window.adminLogout = adminLogout;
 window.logout = logout;
@@ -2447,6 +2449,78 @@ function toggleContamination(sceneIndex) {
 
 window.toggleContamination = toggleContamination;
 
+let adminStrataFullscreenBound = false;
+
+function exitAdminStrataFullscreen() {
+    const container = document.getElementById('adminStrataContainer');
+    const btnEnter = document.getElementById('strataFullscreenBtn');
+    const btnBack = document.getElementById('strataFullscreenBackBtn');
+    const strataView = document.getElementById('strataView');
+    if (!container) return;
+    container.classList.remove('admin-strata-fullscreen');
+    document.body.classList.remove('admin-strata-fs-active');
+    const strataLoaded = strataView && strataView.style.display !== 'none';
+    if (btnEnter) btnEnter.hidden = !strataLoaded;
+    if (btnBack) btnBack.hidden = true;
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            if (window.Strata && window.Strata.resizeToCanvas) window.Strata.resizeToCanvas();
+        });
+    });
+}
+
+function enterAdminStrataFullscreen() {
+    const container = document.getElementById('adminStrataContainer');
+    const btnEnter = document.getElementById('strataFullscreenBtn');
+    const btnBack = document.getElementById('strataFullscreenBackBtn');
+    const strataView = document.getElementById('strataView');
+    if (!container || !strataView || strataView.style.display === 'none') return;
+    if (container.classList.contains('admin-strata-fullscreen')) return;
+    container.classList.add('admin-strata-fullscreen');
+    document.body.classList.add('admin-strata-fs-active');
+    if (btnEnter) btnEnter.hidden = true;
+    if (btnBack) btnBack.hidden = false;
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            if (window.Strata && window.Strata.resizeToCanvas) window.Strata.resizeToCanvas();
+        });
+    });
+}
+
+function ensureAdminStrataFullscreenBindings() {
+    if (adminStrataFullscreenBound) return;
+    adminStrataFullscreenBound = true;
+    const container = document.getElementById('adminStrataContainer');
+    const btnEnter = document.getElementById('strataFullscreenBtn');
+    const btnBack = document.getElementById('strataFullscreenBackBtn');
+    const strataView = document.getElementById('strataView');
+    if (!container || !btnEnter || !btnBack) return;
+
+    btnEnter.addEventListener('click', (e) => {
+        e.stopPropagation();
+        enterAdminStrataFullscreen();
+    });
+    btnBack.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exitAdminStrataFullscreen();
+    });
+
+    container.addEventListener('dblclick', (e) => {
+        if (!strataView || strataView.style.display === 'none') return;
+        if (e.target.closest && (e.target.closest('.admin-strata-fs-enter') || e.target.closest('.admin-strata-fs-back'))) return;
+        enterAdminStrataFullscreen();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        const c = document.getElementById('adminStrataContainer');
+        if (c && c.classList.contains('admin-strata-fullscreen')) {
+            exitAdminStrataFullscreen();
+            e.preventDefault();
+        }
+    });
+}
+
 // Strata 3D strata 미리보기 load
 async function loadStrataPreview(memoryId) {
  // memoryId 없으면 currentMemoryId 
@@ -2462,8 +2536,17 @@ async function loadStrataPreview(memoryId) {
 
     console.log('[Admin] Strata 미리보기 로드 시작:', memoryId);
 
+    exitAdminStrataFullscreen();
+    const btnFs = document.getElementById('strataFullscreenBtn');
+    if (btnFs) btnFs.hidden = true;
+
     try {
         const loadingEl = document.getElementById('strataLoading');
+        if (loadingEl) loadingEl.textContent = 'Supabase 연결 중...';
+        const sb = await waitForSupabaseClient(15000);
+        if (!sb) {
+            throw new Error('Supabase 클라이언트를 준비할 수 없습니다. 페이지를 새로고침하세요.');
+        }
         if (loadingEl) loadingEl.textContent = 'Strata 데이터를 로드하는 중...';
 
  // window.showStrataView 
@@ -2471,10 +2554,15 @@ async function loadStrataPreview(memoryId) {
  // alignmentResult calculate하지 않고 null 전달
             await window.showStrataView(memoryId, null, () => {
                 console.log('[Admin] Strata 미리보기 닫힘');
+                exitAdminStrataFullscreen();
                 const strataView = document.getElementById('strataView');
                 if (strataView) {
                     strataView.style.display = 'none';
                 }
+                const b1 = document.getElementById('strataFullscreenBtn');
+                const b2 = document.getElementById('strataFullscreenBackBtn');
+                if (b1) b1.hidden = true;
+                if (b2) b2.hidden = true;
                 if (loadingEl) {
                     loadingEl.style.display = 'flex';
                     loadingEl.textContent = '버튼을 클릭하여 Strata 미리보기 불러오기';
@@ -2491,22 +2579,13 @@ async function loadStrataPreview(memoryId) {
             }
             if (loadingEl) loadingEl.style.display = 'none';
 
- // canvas 크기 조정 (admin container 맞춤)
-            const canvas = document.getElementById('strataCanvas');
-            const container = document.getElementById('adminStrataContainer');
-            if (canvas && container) {
-                const resizeCanvas = () => {
-                    const width = container.offsetWidth;
-                    const height = container.offsetHeight;
-                    if (window.Strata && window.Strata.renderer && window.Strata.camera) {
-                        window.Strata.renderer.setSize(width, height);
-                        window.Strata.camera.aspect = width / height;
-                        window.Strata.camera.updateProjectionMatrix();
-                    }
-                };
-                resizeCanvas();
-                window.addEventListener('resize', resizeCanvas);
-            }
+            ensureAdminStrataFullscreenBindings();
+            if (btnFs) btnFs.hidden = false;
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    if (window.Strata && window.Strata.resizeToCanvas) window.Strata.resizeToCanvas();
+                });
+            });
 
         } else {
             throw new Error('Strata 뷰를 사용할 수 not found. strataView.js가 로드되었는지 확인하세요.');
@@ -2515,6 +2594,8 @@ async function loadStrataPreview(memoryId) {
     } catch (error) {
         console.error('[Admin] Strata 미리보기 로드 오류:', error);
         const loadingEl = document.getElementById('strataLoading');
+        const btnFsErr = document.getElementById('strataFullscreenBtn');
+        if (btnFsErr) btnFsErr.hidden = true;
         if (loadingEl) {
             loadingEl.style.display = 'flex';
             loadingEl.textContent = '로드 실패: ' + error.message;
