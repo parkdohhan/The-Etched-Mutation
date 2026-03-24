@@ -168,9 +168,9 @@ async function initApp() {
                         localStorage.removeItem('tem_play_traces');
                         localStorage.removeItem('tem_play_memory_id');
                         localStorage.removeItem('tem_play_memory_title');
+                        sessionStorage.setItem('skipOpening', '1');
                     } catch (_e) {}
-                    window.history.replaceState({}, '', '/');
-                    location.reload();
+                    window.location.href = '/index.html';
                 });
             } else {
                 setTimeout(_waitForStrata, 200);
