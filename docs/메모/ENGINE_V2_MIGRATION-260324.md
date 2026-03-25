@@ -77,16 +77,16 @@ V2에서는 Appraisal/Reason이 **점수 계산에 반영되지 않습니다**.
 
 `mismatch_type` 판정 시 다음 우선순위를 따릅니다:
 
-1. **void_mismatch** (최우선)
-2. **attribution_mismatch** (attribution 존재할 때만)
-3. **core_fear_mismatch** (core_fear 존재할 때만)
-4. **emotion_mismatch** (fallback)
+### 1. **void_mismatch** (최우선)
+### 2. **attribution_mismatch** (attribution 존재할 때만)
+### 3. **core_fear_mismatch** (core_fear 존재할 때만)
+### 4. **emotion_mismatch** (fallback)
 
 ## 5. 파일별 변경 요약
 
 ### js/shared/math.js
 
-#### 신규 함수 추가
+### 신규 함수 추가
 
 - `calculateVADSimilarity(userVAD, originVAD, k=3.0)`
   - 3D 유클리드 거리 기반 VAD 유사도 계산
@@ -96,7 +96,7 @@ V2에서는 Appraisal/Reason이 **점수 계산에 반영되지 않습니다**.
   - 코사인 유사도 계산 (임베딩 전용)
   - 음수는 0으로 클램프
 
-#### 기존 함수 변경
+### 기존 함수 변경
 
 - `getBucket()`: 임계값 조정
   - HIGH: 0.55 → 0.76
@@ -107,16 +107,16 @@ V2에서는 Appraisal/Reason이 **점수 계산에 반영되지 않습니다**.
 
 ### js/core/ByeoriEngine.js
 
-#### Import 추가
+### Import 추가
 
 ```javascript
-import { 
+import {
   calculateVADSimilarity,
   calculateEmbeddingSimilarity
 } from '../shared/math.js';
 ```
 
-#### 튜닝 상수 정의
+### 튜닝 상수 정의
 
 ```javascript
 const EMB_WEIGHT = 0.65;
@@ -126,7 +126,7 @@ const VAD_K = 3.0;
 const VOID_PENALTY = 0.7;
 ```
 
-#### 함수 변경
+### 함수 변경
 
 - `_calculateComplexAlignment()` → `_calculateSimplerAlignment()` 교체
   - Appraisal/Reason 제외
@@ -137,7 +137,7 @@ const VOID_PENALTY = 0.7;
   - `target_displacement` → `core_fear_mismatch`로 변경
   - 점수에는 관여하지 않고 narrative tag 분류용으로만 사용
 
-#### Debug 정보 확장
+### Debug 정보 확장
 
 ```javascript
 debug: {
@@ -153,7 +153,7 @@ debug: {
 
 ### js/services/AIService.js
 
-#### validateEmotionAnalysisResult() 변경
+### validateEmotionAnalysisResult() 변경
 
 - `analysis.embedding` 검증 추가
   - 배열 타입 확인
@@ -174,9 +174,9 @@ debug: {
 
 튜닝 전에 반드시 다음을 확인하세요:
 
-1. **점수 분포 히스토그램**: HIGH/MID/LOW 비율 확인
-2. **False Negative 사례**: 억울하게 LOW로 분류된 케이스
-3. **False Positive 사례**: 과도하게 HIGH로 분류된 케이스
+### 1. **점수 분포 히스토그램**: HIGH/MID/LOW 비율 확인
+### 2. **False Negative 사례**: 억울하게 LOW로 분류된 케이스
+### 3. **False Positive 사례**: 과도하게 HIGH로 분류된 케이스
 
 ### EMB_EXPONENT 조절 (1.35 ~ 1.45)
 

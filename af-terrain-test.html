@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEM AF Terrain — DB Test</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#08080c;color:#889;font-family:'Courier New',monospace;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+#cfg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(8,8,12,.95);z-index:100;display:flex;align-items:center;justify-content:center}
+#cfg.off{display:none}
+.cb{background:rgba(20,20,30,.9);border:1px solid rgba(80,80,100,.3);padding:28px;max-width:460px;width:90%}
+.cb h2{font-size:11px;letter-spacing:3px;color:#aab;margin-bottom:16px}
+.cb label{font-size:9px;letter-spacing:1px;color:#667;display:block;margin:12px 0 3px}
+.cb input{width:100%;background:rgba(15,15,25,.8);border:1px solid rgba(60,60,80,.4);color:#aab;padding:7px 9px;font-family:monospace;font-size:11px;outline:none}
+.cb button{margin-top:16px;width:100%;padding:9px;background:rgba(60,50,40,.4);border:1px solid rgba(120,100,80,.4);color:#aab;font-family:monospace;font-size:10px;letter-spacing:2px;cursor:pointer;text-transform:uppercase}
+.cb button:hover{background:rgba(80,70,55,.5)}
+.cb .err{color:#c44;font-size:10px;margin-top:6px;min-height:14px}
+.cb .inf{color:#668;font-size:8px;margin-top:6px;line-height:1.5}
+#hud{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;font-family:monospace;color:#889;z-index:10;display:none}
+#title{position:absolute;top:12px;left:16px}
+#title .s{font-size:8px;letter-spacing:3px;opacity:.4}
+#title .m{font-size:12px;letter-spacing:1.5px;color:#aab;margin-top:2px}
+#title .d{font-size:8px;opacity:.35;margin-top:3px;max-width:260px;line-height:1.4}
+#mlist{position:absolute;top:12px;right:14px;max-height:45vh;overflow-y:auto}
+#mlist .h{font-size:7px;letter-spacing:2px;color:#445;margin-bottom:3px}
+.mi{display:flex;align-items:center;gap:5px;margin-bottom:2px;cursor:pointer;pointer-events:auto}
+.mi:hover span{color:#aab}
+.mi.act span{color:#c4a882}
+.md{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.mt{font-size:8px;color:#556;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc{font-size:7px;color:#445}
+#btns{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:4px;pointer-events:auto;flex-wrap:wrap;justify-content:center;max-width:96%}
+#btns button{background:rgba(18,18,28,.75);border:1px solid rgba(70,70,90,.3);color:#778;padding:4px 8px;font-size:7px;letter-spacing:1.5px;cursor:pointer;font-family:monospace;text-transform:uppercase}
+#btns button:hover{border-color:rgba(140,120,100,.5);color:#aab}
+#mlbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .6s}
+#tip{position:absolute;bottom:55px;left:50%;transform:translateX(-50%);background:rgba(8,8,14,.92);border:1px solid rgba(80,80,100,.25);padding:8px 14px;text-align:center;opacity:0;transition:opacity .3s;pointer-events:none;max-width:300px}
+#vig{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(ellipse at center,transparent 30%,rgba(5,5,10,.7)100%)}
+#stat{position:absolute;bottom:38px;left:16px;font-size:8px;color:#445}
+#coord{position:absolute;bottom:12px;right:14px;text-align:right;font-size:8px;color:#556;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div id="cfg">
+<div class="cb">
+  <h2>TEM AF TERRAIN — LIVE DB</h2>
+  <label>SUPABASE URL</label>
+  <input id="sbUrl" placeholder="https://xxxxx.supabase.co"/>
+  <label>SUPABASE ANON KEY</label>
+  <input id="sbKey" placeholder="eyJhbGciOi..."/>
+  <div class="inf">memories + plays에서 읽어 AF로 투영합니다. 목록에서 기억을 누르면 <strong>그 기억만</strong> 지형에 다시 그립니다. <strong>전체 지형</strong>으로 합산 뷰로 돌아갑니다.<br>plays는 <code>alignment</code> (없으면 0.5).</div>
+  <button id="goBtn" type="button">CONNECT & RENDER</button>
+  <div class="err" id="errMsg"></div>
+</div>
+</div>
+
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div id="title"><div class="s">TEM — AF TERRAIN (LIVE DB)</div><div class="m">ATTRIBUTION × CORE_FEAR</div><div class="d" id="desc"></div></div>
+  <div id="mlist"></div>
+  <div id="btns"></div>
+  <div id="mlbl"></div>
+  <div id="tip"></div>
+  <div id="vig"></div>
+  <div id="stat"></div>
+  <div id="coord"><span style="color:#964">X</span> 귀인 (self←→fate)<br><span style="color:#468">Z</span> 핵심 두려움<br><span style="color:#898">Y</span> 해석 누적</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/af-terrain-test-page.js"></script>
+</body>
+</html>

@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/data/memories.js"></script>
+  <script src="js/shared/tem_af_strata_terrain.js"></script>
   <style>
     :root {
       --bg-deep: #0a0a0c;
@@ -731,6 +732,105 @@
     nostalgia: { v: 0.1, a: -0.3, d: -0.1 }, acceptance: { v: 0.4, a: -0.4, d: 0.5 }, confusion: { v: -0.4, a: 0.3, d: -0.5 },
   };
 
+  // AF projection (Attribution × Core Fear) for contour map / pins
+  const AF_AXIS_X = { self_blame: -1, other_blame: 0, fate_blame: 1 };
+  const AF_AXIS_Z = { abandonment: -1, rejection: -0.33, powerlessness: 0.33, loss: 1 };
+  const E2A_AF = {
+    fear: { s: 0.2, o: 0.1, f: 0.7 }, sadness: { s: 0.3, o: 0.1, f: 0.6 }, anger: { s: 0.1, o: 0.7, f: 0.2 },
+    guilt: { s: 0.8, o: 0.05, f: 0.15 }, shame: { s: 0.75, o: 0.15, f: 0.1 }, joy: { s: 0.3, o: 0.3, f: 0.4 },
+    numbness: { s: 0.15, o: 0.05, f: 0.8 }, isolation: { s: 0.3, o: 0.3, f: 0.4 }, longing: { s: 0.2, o: 0.2, f: 0.6 },
+    resentment: { s: 0.1, o: 0.8, f: 0.1 }, resignation: { s: 0.1, o: 0.05, f: 0.85 }, hope: { s: 0.2, o: 0.2, f: 0.6 },
+    relief: { s: 0.2, o: 0.1, f: 0.7 }, love: { s: 0.15, o: 0.3, f: 0.55 }, gratitude: { s: 0.15, o: 0.35, f: 0.5 },
+    peace: { s: 0.15, o: 0.15, f: 0.7 }, confusion: { s: 0.3, o: 0.2, f: 0.5 },
+  };
+  const E2F_AF = {
+    fear: { a: 0.15, r: 0.1, p: 0.55, l: 0.2 }, sadness: { a: 0.3, r: 0.1, p: 0.1, l: 0.5 },
+    anger: { a: 0.1, r: 0.3, p: 0.5, l: 0.1 }, guilt: { a: 0.2, r: 0.25, p: 0.15, l: 0.4 },
+    shame: { a: 0.15, r: 0.6, p: 0.1, l: 0.15 }, joy: { a: 0.15, r: 0.15, p: 0.15, l: 0.55 },
+    numbness: { a: 0.3, r: 0.1, p: 0.4, l: 0.2 }, isolation: { a: 0.6, r: 0.25, p: 0.1, l: 0.05 },
+    longing: { a: 0.55, r: 0.15, p: 0.05, l: 0.25 }, resentment: { a: 0.15, r: 0.35, p: 0.4, l: 0.1 },
+    resignation: { a: 0.2, r: 0.05, p: 0.6, l: 0.15 }, hope: { a: 0.2, r: 0.15, p: 0.15, l: 0.5 },
+    relief: { a: 0.1, r: 0.1, p: 0.3, l: 0.5 }, love: { a: 0.4, r: 0.2, p: 0.1, l: 0.3 },
+    gratitude: { a: 0.2, r: 0.15, p: 0.1, l: 0.55 }, peace: { a: 0.15, r: 0.1, p: 0.15, l: 0.6 },
+    confusion: { a: 0.2, r: 0.2, p: 0.4, l: 0.2 },
+  };
+  const AF_COLOR = {
+    fear: [0.4, 0.28, 0.7], sadness: [0.25, 0.38, 0.65], anger: [0.8, 0.25, 0.22], guilt: [0.6, 0.48, 0.35],
+    longing: [0.28, 0.62, 0.65], numbness: [0.32, 0.32, 0.38], shame: [0.58, 0.35, 0.48], isolation: [0.14, 0.14, 0.24],
+    joy: [0.82, 0.72, 0.38], resentment: [0.6, 0.2, 0.15], resignation: [0.4, 0.38, 0.35], hope: [0.55, 0.65, 0.45],
+    relief: [0.48, 0.68, 0.48], love: [0.7, 0.4, 0.5], gratitude: [0.65, 0.58, 0.4], peace: [0.45, 0.58, 0.52],
+    confusion: [0.48, 0.38, 0.55],
+  };
+
+  function afProjectX(attr) {
+    let x = 0, w = 0;
+    for (const k in attr) {
+      const v = Number(attr[k] || 0);
+      if (!v || AF_AXIS_X[k] === undefined) continue;
+      x += v * AF_AXIS_X[k];
+      w += v;
+    }
+    return w > 0 ? Math.max(-1, Math.min(1, x / w)) : 0;
+  }
+
+  function afProjectZ(fear) {
+    let z = 0, w = 0;
+    for (const k in fear) {
+      const v = Number(fear[k] || 0);
+      if (!v || AF_AXIS_Z[k] === undefined) continue;
+      z += v * AF_AXIS_Z[k];
+      w += v;
+    }
+    return w > 0 ? Math.max(-1, Math.min(1, z / w)) : 0;
+  }
+
+  function emotionToAttrAF(emotionVec) {
+    const out = { self_blame: 0, other_blame: 0, fate_blame: 0 };
+    let total = 0;
+    for (const e in emotionVec) {
+      const w = Number(emotionVec[e] || 0);
+      const m = E2A_AF[e];
+      if (!w || !m) continue;
+      out.self_blame += w * m.s;
+      out.other_blame += w * m.o;
+      out.fate_blame += w * m.f;
+      total += w;
+    }
+    if (total <= 0) return { self_blame: 0.33, other_blame: 0.33, fate_blame: 0.34 };
+    out.self_blame /= total;
+    out.other_blame /= total;
+    out.fate_blame /= total;
+    return out;
+  }
+
+  function emotionToFearAF(emotionVec) {
+    const out = { abandonment: 0, rejection: 0, powerlessness: 0, loss: 0 };
+    let total = 0;
+    for (const e in emotionVec) {
+      const w = Number(emotionVec[e] || 0);
+      const m = E2F_AF[e];
+      if (!w || !m) continue;
+      out.abandonment += w * m.a;
+      out.rejection += w * m.r;
+      out.powerlessness += w * m.p;
+      out.loss += w * m.l;
+      total += w;
+    }
+    if (total <= 0) return { abandonment: 0.25, rejection: 0.25, powerlessness: 0.25, loss: 0.25 };
+    out.abandonment /= total;
+    out.rejection /= total;
+    out.powerlessness /= total;
+    out.loss /= total;
+    return out;
+  }
+
+  function projectEmotionToAFContour(emotionVec) {
+    const e = safeParseEmotion(emotionVec || {});
+    const attr = emotionToAttrAF(e);
+    const fear = emotionToFearAF(e);
+    return { x: afProjectX(attr), z: afProjectZ(fear), attr, fear };
+  }
+
   function projectEmotionToVADContour(emotionVec) {
     if (!emotionVec) return { v: 0, a: 0, d: 0 };
     let V = 0, A = 0, D = 0, wSum = 0;
@@ -985,12 +1085,13 @@
     return u * (1 - ty) + v * ty;
   }
 
-  function sampleHeightBilinear(heights, ix, iz, tx, ty) {
-    const i00 = iz * GRID + ix;
+  function sampleHeightBilinear(heights, ix, iz, tx, ty, Gn) {
+    const Gc = Gn != null ? Gn : GRID;
+    const i00 = iz * Gc + ix;
     const h00 = heights[i00];
     const h10 = heights[i00 + 1];
-    const h01 = heights[i00 + GRID];
-    const h11 = heights[i00 + GRID + 1];
+    const h01 = heights[i00 + Gc];
+    const h11 = heights[i00 + Gc + 1];
     return lerp2(h00, h10, h01, h11, tx, ty);
   }
 
@@ -1008,6 +1109,7 @@
   }
 
   function drawRaster(ctx, agg, W, H) {
+    const Gc = agg.gridG != null ? agg.gridG : GRID;
     const maxChannel = (() => {
       let m = 0;
       for (let i = 0; i < agg.colors.length; i++) m = Math.max(m, agg.colors[i]);
@@ -1019,19 +1121,19 @@
     const img = ctx.createImageData(W, H);
     const p = img.data;
     for (let y = 0; y < H; y++) {
-      const gy = (y / (H - 1)) * (GRID - 1);
-      const iz = Math.max(0, Math.min(GRID - 2, Math.floor(gy)));
+      const gy = (y / (H - 1)) * (Gc - 1);
+      const iz = Math.max(0, Math.min(Gc - 2, Math.floor(gy)));
       const tz = gy - iz;
       for (let x = 0; x < W; x++) {
-        const gx = (x / (W - 1)) * (GRID - 1);
-        const ix = Math.max(0, Math.min(GRID - 2, Math.floor(gx)));
+        const gx = (x / (W - 1)) * (Gc - 1);
+        const ix = Math.max(0, Math.min(Gc - 2, Math.floor(gx)));
         const tx = gx - ix;
-        const c00 = (iz * GRID + ix) * 3, c10 = c00 + 3, c01 = ((iz + 1) * GRID + ix) * 3, c11 = c01 + 3;
+        const c00 = (iz * Gc + ix) * 3, c10 = c00 + 3, c01 = ((iz + 1) * Gc + ix) * 3, c11 = c01 + 3;
         const r = lerp2(agg.colors[c00], agg.colors[c10], agg.colors[c01], agg.colors[c11], tx, tz);
         const g = lerp2(agg.colors[c00 + 1], agg.colors[c10 + 1], agg.colors[c01 + 1], agg.colors[c11 + 1], tx, tz);
         const b = lerp2(agg.colors[c00 + 2], agg.colors[c10 + 2], agg.colors[c01 + 2], agg.colors[c11 + 2], tx, tz);
         let [pr, pg, pb] = toPastelTone(r, g, b, globalScale);
-        const hSample = sampleHeightBilinear(agg.heights, ix, iz, tx, tz);
+        const hSample = sampleHeightBilinear(agg.heights, ix, iz, tx, tz, Gc);
         const hNorm = (hSample - hMin) / hRange;
         [pr, pg, pb] = applyElevationTint(pr, pg, pb, hNorm);
         pr = Math.max(0, Math.min(1, pr));
@@ -1047,15 +1149,16 @@
     ctx.putImageData(img, 0, 0);
   }
 
-  function marchingSquaresSegments(heights, threshold) {
+  function marchingSquaresSegments(heights, threshold, Gn) {
+    const Gc = Gn != null ? Gn : GRID;
     const segs = [];
     const edgePoint = (a, b, va, vb) => {
       const t = (threshold - va) / ((vb - va) || 1e-6);
       return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
     };
-    for (let z = 0; z < GRID - 1; z++) {
-      for (let x = 0; x < GRID - 1; x++) {
-        const i0 = z * GRID + x, i1 = i0 + 1, i2 = i0 + GRID + 1, i3 = i0 + GRID;
+    for (let z = 0; z < Gc - 1; z++) {
+      for (let x = 0; x < Gc - 1; x++) {
+        const i0 = z * Gc + x, i1 = i0 + 1, i2 = i0 + Gc + 1, i3 = i0 + Gc;
         const v0 = heights[i0], v1 = heights[i1], v2 = heights[i2], v3 = heights[i3];
         let c = 0;
         if (v0 >= threshold) c |= 1; if (v1 >= threshold) c |= 2; if (v2 >= threshold) c |= 4; if (v3 >= threshold) c |= 8;
@@ -1072,8 +1175,9 @@
     return segs;
   }
 
-  function toCanvas(p, W, H) {
-    return { x: (p.x / (GRID - 1)) * W, y: (p.y / (GRID - 1)) * H };
+  function toCanvas(p, W, H, Gn) {
+    const Gc = Gn != null ? Gn : GRID;
+    return { x: (p.x / (Gc - 1)) * W, y: (p.y / (Gc - 1)) * H };
   }
 
   const CONTOUR_LEVELS = 24;
@@ -1133,9 +1237,9 @@
   };
 
   function emotionToMapCoords(emotion) {
-    const vad = projectEmotionToVADContour(emotion || {});
-    const nx = (vad.v * HALF) / SIZE + 0.5;
-    const ny = (vad.a * HALF) / SIZE + 0.5;
+    const af = projectEmotionToAFContour(emotion || {});
+    const nx = (af.x * HALF) / SIZE + 0.5;
+    const ny = (af.z * HALF) / SIZE + 0.5;
     return {
       x: Math.max(0, Math.min(1, nx)),
       y: Math.max(0, Math.min(1, ny)),
@@ -1491,28 +1595,37 @@
   }
 
   function buildTerrainFromData() {
-    const bedrockEvents = game.scenes.map(scene => ({
-      scene_id: scene.id,
-      timestamp: 0,
-      vad: projectEmotionToVADContour(safeParseEmotion(scene.original_emotion)),
-      alignment_score: 1.0,
-      void_mismatch: !!(scene.void_info && scene.void_info.sceneVoid),
-    })).map(ev => Object.assign(mapEventToRender(ev, game.anchors), { vad: ev.vad }));
-
-    const globalEvents = game.plays.map(play => ({
-      scene_id: play.scene_id,
-      timestamp: play.created_at ? new Date(play.created_at).getTime() : Date.now(),
-      vad: projectEmotionToVADContour(safeParseEmotion(play.user_emotion)),
-      alignment_score: play.alignment != null ? play.alignment : 0.5,
-      void_mismatch: play.mismatch_type === 'void_mismatch',
-    })).map(ev => Object.assign(mapEventToRender(ev, game.anchors), { vad: ev.vad }));
-
-    const layers = recomputeLayers(globalEvents, bedrockEvents);
-    game.caches = {};
-    for (let i = 0; i < layers.length; i++) {
-      game.caches[layers[i].id] = bakeLayer(layers[i], i, game.anchors, BANDWIDTH);
+    const T = window.TemAfStrataTerrain;
+    if (!T || !game.memoryId) {
+      console.warn('[play-test] TemAfStrataTerrain 또는 memoryId 없음 — 등고선 스킵');
+      game.agg = null;
+      let pollution = 0;
+      if (game.plays.length) {
+        let s = 0;
+        game.plays.forEach(p => { s += (1 - (p.alignment != null ? p.alignment : 0.5)); });
+        pollution = Math.round((s / game.plays.length) * 100);
+      }
+      return pollution;
     }
-    game.agg = aggregateLayerCaches(game.caches, ENABLED_LAYERS);
+    const memRow = {
+      id: game.memoryId,
+      title: game.memoryTitle || '',
+      memory_words: '',
+      completed_sentence: '',
+    };
+    const playsByMem = {};
+    playsByMem[game.memoryId] = game.plays || [];
+    const P = T.buildMemoryItems([memRow], playsByMem);
+    const field = T.computeAfTerrainFields(P, null);
+    const total = field.G * field.G;
+    game.agg = {
+      heights: field.hts,
+      colors: field.cls,
+      min: field.minH,
+      max: field.maxH,
+      domIdx: new Int16Array(total).fill(-1),
+      gridG: field.G,
+    };
 
     let pollution = 0;
     if (game.plays.length) {
@@ -1536,6 +1649,7 @@
     ctx.clearRect(0, 0, W, H);
     drawRaster(ctx, game.agg, W, H);
     const minH = game.agg.min, maxH = game.agg.max, range = (maxH - minH) || 1;
+    const Gc = game.agg.gridG != null ? game.agg.gridG : GRID;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     function strokeContourPass(strokeStyle, lineW) {
@@ -1544,10 +1658,10 @@
       for (let i = 1; i <= CONTOUR_LEVELS; i++) {
         const t = i / (CONTOUR_LEVELS + 1);
         const th = minH + range * t;
-        const segs = marchingSquaresSegments(game.agg.heights, th);
+        const segs = marchingSquaresSegments(game.agg.heights, th, Gc);
         ctx.beginPath();
         segs.forEach(pair => {
-          const p1 = toCanvas(pair[0], W, H), p2 = toCanvas(pair[1], W, H);
+          const p1 = toCanvas(pair[0], W, H, Gc), p2 = toCanvas(pair[1], W, H, Gc);
           ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
         });
         ctx.stroke();
@@ -1558,11 +1672,12 @@
   }
 
   function vadToPercent(vad) {
-    const gx = ((vad.v * HALF) / SIZE + 0.5) * (GRID - 1);
-    const gz = ((vad.a * HALF) / SIZE + 0.5) * (GRID - 1);
+    const Gm = (game.agg && game.agg.gridG) ? game.agg.gridG : GRID;
+    const gx = ((vad.x * HALF) / SIZE + 0.5) * (Gm - 1);
+    const gz = ((vad.z * HALF) / SIZE + 0.5) * (Gm - 1);
     return {
-      x: (gx / (GRID - 1)) * 100,
-      y: (gz / (GRID - 1)) * 100,
+      x: (gx / (Gm - 1)) * 100,
+      y: (gz / (Gm - 1)) * 100,
     };
   }
 
@@ -1597,8 +1712,8 @@
     });
     const recent = game.plays.slice(-40);
     recent.forEach((pl, i) => {
-      const vad = projectEmotionToVADContour(safeParseEmotion(pl.user_emotion));
-      const p = vadToPercent(vad);
+      const af = projectEmotionToAFContour(safeParseEmotion(pl.user_emotion));
+      const p = vadToPercent(af);
       const j = (i % 7) * 0.4;
       game.pins.push({
         id: 'echo-' + i + '-' + (pl.scene_id || i),
@@ -2687,28 +2802,32 @@
 
     const _urlParams = new URLSearchParams(window.location.search);
     const _fromDemo = _urlParams.get('memory');
-    if (_fromDemo) {
+    const _targetMemoryId = _fromDemo || game.memoryId;
+    if (_targetMemoryId) {
       document.getElementById('revealRestart').style.display = 'none';
-      const continueBtn = document.createElement('button');
-      continueBtn.textContent = T.revealContinue;
-      continueBtn.className = 'action-btn';
-      continueBtn.style.marginTop = '1.5rem';
-      continueBtn.addEventListener('click', () => {
-        initAudio();
-        fadeOut(SFX.rain, 2000, true);
-        setTimeout(() => {
-          try {
-            localStorage.setItem('tem_play_traces', JSON.stringify(game.traces));
-            localStorage.setItem('tem_play_memory_id', game.memoryId || _fromDemo);
-            localStorage.setItem('tem_play_memory_title', game.memoryTitle || '');
-          } catch (e) {
-            console.warn('localStorage save failed:', e);
-          }
-          window.location.href = '/index.html?strata=1&memory=' + encodeURIComponent(_fromDemo);
-        }, 2000);
-      });
-      const restartBtn = document.getElementById('revealRestart');
-      restartBtn.parentNode.insertBefore(continueBtn, restartBtn.nextSibling);
+      if (!document.getElementById('revealContinueBtn')) {
+        const continueBtn = document.createElement('button');
+        continueBtn.id = 'revealContinueBtn';
+        continueBtn.textContent = T.revealContinue;
+        continueBtn.className = 'action-btn';
+        continueBtn.style.marginTop = '1.5rem';
+        continueBtn.addEventListener('click', () => {
+          initAudio();
+          fadeOut(SFX.rain, 2000, true);
+          setTimeout(() => {
+            try {
+              localStorage.setItem('tem_play_traces', JSON.stringify(game.traces));
+              localStorage.setItem('tem_play_memory_id', game.memoryId || _targetMemoryId);
+              localStorage.setItem('tem_play_memory_title', game.memoryTitle || '');
+            } catch (e) {
+              console.warn('localStorage save failed:', e);
+            }
+            window.location.href = '/index.html?strata=1&memory=' + encodeURIComponent(_targetMemoryId);
+          }, 2000);
+        });
+        const restartBtn = document.getElementById('revealRestart');
+        restartBtn.parentNode.insertBefore(continueBtn, restartBtn.nextSibling);
+      }
     }
   });
 
@@ -2734,11 +2853,30 @@
     if (rt) rt.textContent = T.revealTitle;
     const rr = document.getElementById('revealRestart');
     if (rr) rr.textContent = T.revealRestart;
+    const rc = document.getElementById('revealContinueBtn');
+    if (rc) rc.textContent = T.revealContinue;
     const sub = document.getElementById('submitBtn');
     const voi = document.getElementById('voidBtn');
     if (sub) sub.textContent = T.submitBtn;
     if (voi) voi.textContent = T.voidBtn;
   }
+
+  // Console shortcut: temGoStrata() / temGoStrata('memory-uuid')
+  window.temGoStrata = function (memoryId) {
+    const id = memoryId || game.memoryId || new URLSearchParams(window.location.search).get('memory');
+    if (!id) {
+      console.warn('[TEM] memoryId가 없습니다. temGoStrata(\"memory-id\")로 호출하세요.');
+      return;
+    }
+    try {
+      localStorage.setItem('tem_play_traces', JSON.stringify(game.traces || []));
+      localStorage.setItem('tem_play_memory_id', id);
+      localStorage.setItem('tem_play_memory_title', game.memoryTitle || '');
+    } catch (e) {
+      console.warn('[TEM] localStorage 저장 실패:', e);
+    }
+    window.location.href = '/index.html?strata=1&memory=' + encodeURIComponent(id);
+  };
 
   (async function init() {
     applyPlayTestI18nLabels();

@@ -610,3 +610,20 @@ export function projectEmotionToVAD(emotionVec, anchors = null) {
   };
 }
 
+// ==================== AF 좌표 (Attribution × Core Fear, 시각화 전용) ====================
+// 정렬도/ByeoriEngine과 분리. projectEmotionToVAD는 하위 호환용으로 유지.
+
+export {
+  ATTRIBUTION_ANCHORS,
+  CORE_FEAR_ANCHORS,
+  projectAttributionToX,
+  projectCoreFearToZ,
+  projectToAF,
+  afToTerrainXZ,
+  estimateAttributionFromEmotion,
+  estimateCoreFearFromEmotion,
+  estimateAFFromEmotion,
+  projectToAFCoordinate,
+  EMOTION_COLORS as AF_EMOTION_COLORS,
+} from './tem_af_map.js';
+
