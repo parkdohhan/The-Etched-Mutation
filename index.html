@@ -295,52 +295,8 @@
         </div>
         <div class="archive-container" id="archiveContainer">
             <button class="archive-back-btn" onclick="backToIntro()">← Return to Start</button>
-            <header class="archive-header"><h1 class="archive-title">ARCHIVE</h1><p class="archive-subtitle">A space where you face the intaglio left by others' interpretations</p></header>
-            <div class="archive-controls" id="archiveControls">
-                <div class="archive-search-row">
-                    <input type="text" class="archive-search" id="archiveSearch" placeholder="Search memory code (e.g. A-001)" oninput="filterMemories()">
-                </div>
-                <div class="archive-category-filters">
-                    <button class="category-btn active" data-category="all" onclick="filterByCategory('all',this)">All</button>
-                    <button class="category-btn" data-category="story" onclick="filterByCategory('story',this)">Story</button>
-                    <button class="category-btn" data-category="archive" onclick="filterByCategory('archive',this)">Archive</button>
-                </div>
-                <div class="archive-filters">
-                    <button class="filter-btn active" data-sort="all" onclick="sortMemories('all',this)">All</button>
-                    <button class="filter-btn" data-sort="popular" onclick="sortMemories('popular',this)">Popular</button>
-                    <button class="filter-btn" data-sort="recent" onclick="sortMemories('recent',this)">Recent</button>
-                </div>
-            </div>
-            <div class="memory-list" id="memoryList">
-            </div>
-            <div class="consent-sequence" id="consentSequence" style="display:none">
-                <div class="consent-black-screen"></div>
-                <div class="consent-thread-container">
-                    <svg class="consent-thread" id="consentThread" viewBox="0 0 100 2" preserveAspectRatio="none">
-                        <line x1="0" y1="1" x2="100" y2="1" stroke="rgba(255, 255, 255, 0.7)" stroke-width="1" vector-effect="non-scaling-stroke"/>
-                    </svg>
-                </div>
-            </div>
-            <div class="word-sentence-sequence" id="wordSentenceSequence" style="display:none">
-                <div class="word-sentence-black-screen"></div>
-                <div class="word-sentence-container">
-                    <div class="word-sentence-content">
-                        <span class="sentence-prefix" id="sentencePrefix"></span>
-                        <span class="word-highlight" id="wordHighlight"></span>
-                        <span class="sentence-suffix" id="sentenceSuffix"></span>
-                        <span class="typewriter-cursor" id="typewriterCursor">|</span>
-                    </div>
-                </div>
-            </div>
-            <div class="scene-viewer" id="sceneViewer">
-                <div class="archive-wave-top" id="archiveWaveTop"><canvas id="archiveWaveCanvas"></canvas></div>
-                <div class="scene-header"><div class="progress-indicator"><span>Scene</span><div class="progress-dots" id="progressDots"></div><span id="sceneCounter">1/5</span></div></div>
-                <div class="scene-content">
-                    <div class="scene-main"><div class="echo-layer" id="echoLayer"></div><div class="scene-text" id="sceneText"></div><div class="choices-container" id="choicesContainer"></div><div class="free-input-container"><textarea class="free-input" id="freeInput" rows="2" placeholder="Enter a different action..."></textarea></div></div>
-                    <div class="sidebar"><div class="sidebar-section"><h4 class="sidebar-title">Emotional Wave</h4><div class="wave-container"><canvas class="wave-canvas" id="waveCanvas"></canvas></div></div></div>
-                </div>
-                <div class="strata-panel" id="strataPanel"><canvas id="strataSectionCanvas"></canvas></div>
-            </div>
+            <!-- Archive Entry (Hub): floating sentences → play-test -->
+            <div id="archiveEntryContainer" class="archive-entry-screen" style="display:none;"></div>
         </div>
         <div class="end-screen" id="endScreen">
             <div class="end-content" id="endContent" style="opacity:0">
@@ -351,38 +307,6 @@
                 <div class="final-alignment" id="finalAlignment">Emotional Structure Alignment: 0.00</div>
                 <p class="final-message" id="finalMessage">You were inside someone's memory.</p>
                 <div class="end-buttons"><button class="end-btn" onclick="saveMemory()">Save Memory</button><button class="end-btn" onclick="goToIntro()">Return to Start</button></div>
-            </div>
-        </div>
-        <div class="comparison-view" id="comparisonView" style="display:none">
-            <div class="comparison-header">
-                <h2 class="comparison-title">Emotion Comparison</h2>
-                <div style="display:flex;align-items:center;gap:2rem">
-                    <div class="comparison-scene-indicator">
-                        <span id="comparisonSceneCounter">1 / 1</span>
-                    </div>
-                    <button class="live-exit-btn" onclick="endComparisonSession()">End Session</button>
-                </div>
-            </div>
-            <div class="comparison-swiper" id="comparisonSwiper">
-                <div class="comparison-scenes-container" id="comparisonScenesContainer"></div>
-            </div>
-            <div class="comparison-controls">
-                <button class="comparison-nav-btn prev" id="comparisonPrevBtn" onclick="navigateComparison(-1)">←</button>
-                <div class="comparison-dots" id="comparisonDots"></div>
-                <button class="comparison-nav-btn next" id="comparisonNextBtn" onclick="navigateComparison(1)">→</button>
-            </div>
-            <div class="comparison-alignment-section">
-                <div class="comparison-alignment-label">Current Scene Alignment</div>
-                <div class="comparison-alignment-value" id="comparisonAlignmentValue">0.00</div>
-                <div class="comparison-alignment-bar">
-                    <div class="comparison-alignment-fill" id="comparisonAlignmentFill" style="width:0%"></div>
-                </div>
-                <div class="comparison-alignment-label" style="margin-top:2rem">Average Alignment</div>
-                <div class="comparison-alignment-value" id="comparisonAverageAlignmentValue">0.00</div>
-                <div class="comparison-alignment-bar">
-                    <div class="comparison-alignment-fill" id="comparisonAverageAlignmentFill" style="width:0%"></div>
-                </div>
-                <div id="comparisonTrueEndingBadge" class="true-ending-badge" style="margin-top:1.5rem;display:none">TRUE ENDING</div>
             </div>
         </div>
     </div>
@@ -396,6 +320,7 @@
         </div>
         <div class="strata-hud strata-h-br">
             <div class="strata-ct">Contamination<div class="strata-ct-tk"><div class="strata-ct-fl" id="strataCtFl" style="width:0%"></div></div><span id="strataCtVal">0.00</span></div>
+            <div class="strata-ct" style="margin-top:8px;">Brightness<input id="strataBrightness" type="range" min="0.8" max="2.4" step="0.05" value="1.35" style="width:120px;margin:0 8px;" /><span id="strataBrightnessVal">1.35x</span></div>
         </div>
         <div class="strata-hint">drag to rotate — view from side to see cross-section</div>
         <div class="strata-grain"></div>

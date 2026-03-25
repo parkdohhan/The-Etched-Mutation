@@ -795,6 +795,50 @@ body::before {
   display: block
 }
 
+/* ================================================================
+   Archive Entry (Hub): floating sentences (demo2 extraction)
+   ================================================================ */
+.archive-entry-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-deep);
+  z-index: 1950;
+  overflow: hidden;
+}
+.archive-entry-hint {
+  position: fixed;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  color: rgba(232, 228, 222, 0.35);
+  pointer-events: none;
+  text-transform: uppercase;
+  z-index: 1960;
+}
+.archive-entry-word {
+  position: absolute;
+  font-size: 0.95rem;
+  font-weight: 300;
+  color: rgba(232, 228, 222, 0.35);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: color 0.3s, text-shadow 0.3s;
+  user-select: none;
+  white-space: normal;
+  max-width: min(520px, 42vw);
+  text-align: center;
+  line-height: 1.45;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.archive-entry-word:hover {
+  color: var(--text-primary);
+  text-shadow: 0 0 20px rgba(196, 168, 130, 0.3);
+}
+
 .live-header {
   display: flex;
   justify-content: space-between;
@@ -5178,6 +5222,12 @@ body.confession-active::before {
 .strata-h-br {
   bottom: 20px;
   right: 28px;
+  pointer-events: auto;
+}
+.strata-h-br input,
+.strata-h-br button,
+.strata-h-br select {
+  pointer-events: auto;
 }
 .strata-tsm {
   font-size: 11px;

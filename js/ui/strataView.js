@@ -13,6 +13,7 @@
   var animId = null;
   var canvas = null;
   var _lastConfig = null;
+  var _brightness = 1.35;
 
   function getCanvasViewportSize() {
     if (!canvas) return { w: innerWidth, h: innerHeight };
@@ -39,6 +40,33 @@
       fogDensity: 0.004,
     });
     terrainRuntime.init();
+    applyRendererBrightness();
+    bindBrightnessControl();
+  }
+
+  function applyRendererBrightness() {
+    if (!terrainRuntime || !terrainRuntime.getRenderer) return;
+    var renderer = terrainRuntime.getRenderer();
+    if (!renderer) return;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = _brightness;
+  }
+
+  function bindBrightnessControl() {
+    var input = document.getElementById('strataBrightness');
+    var valEl = document.getElementById('strataBrightnessVal');
+    if (!input) return;
+    input.value = String(_brightness);
+    if (valEl) valEl.textContent = _brightness.toFixed(2) + 'x';
+    if (input.dataset.bound === '1') return;
+    input.dataset.bound = '1';
+    input.addEventListener('input', function () {
+      var v = parseFloat(input.value);
+      if (!isFinite(v)) return;
+      _brightness = Math.max(0.8, Math.min(2.4, v));
+      applyRendererBrightness();
+      if (valEl) valEl.textContent = _brightness.toFixed(2) + 'x';
+    });
   }
 
   function updateHUD(cfg) {
@@ -226,6 +254,8 @@
 
       var closeBtn = document.getElementById('strataCloseBtn');
       if (closeBtn) closeBtn.onclick = closeStrataView;
+      bindBrightnessControl();
+      applyRendererBrightness();
     } catch (error) {
       console.error('[Strata] showStrataView:', error);
       if (onClose) onClose();

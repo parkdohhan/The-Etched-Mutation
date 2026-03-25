@@ -319,9 +319,6 @@ async function initApp() {
         if (demoMemoryId) {
             if (intro) { intro.classList.add('hidden'); intro.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important'; }
             enterArchive({ fromDemo: true }).then(function() {
-                var state = appStore.getState();
-                var idx = state.allMemoriesData.findIndex(function(m) { return m && m.id === demoMemoryId; });
-                if (idx >= 0) selectMemory(idx);
                 var archiveContainer = document.getElementById('archiveContainer');
                 if (archiveContainer) { archiveContainer.style.visibility = ''; archiveContainer.style.opacity = ''; }
             });
@@ -380,7 +377,32 @@ function selectMatching(type) { if (type === 'session') { const matchingSelectio
 function backToMatchingSelection() { const matchingSelection = document.getElementById('matchingSelection'); const modeSelection = document.getElementById('modeSelection'); if (modeSelection) { modeSelection.classList.remove('active'); modeSelection.style.display = 'none' } if (matchingSelection) { matchingSelection.classList.add('active'); matchingSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
 function backToIntro() { if (window.soundscape) window.soundscape.stop(); const introScreen = document.getElementById('introScreen'); if (introScreen) { introScreen.classList.remove('hidden'); introScreen.classList.add('visible'); introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important' } ['matchingSelection', 'modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible'); stopAllAnimations() }
 function backToModeSelection() { const sessionSetupEl = document.getElementById('sessionSetup'); if (sessionSetupEl) { sessionSetupEl.classList.remove('active'); sessionSetupEl.style.display = 'none' } const modeSelectionEl = document.getElementById('modeSelection'); if (modeSelectionEl) { modeSelectionEl.classList.add('active'); modeSelectionEl.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
-async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = fromDemo ? 'none' : 'grid'; const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = fromDemo ? 'none' : 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = fromDemo ? 'none' : 'block'; appStore.setState({ currentMode: 'archive' }); stopAllAnimations(); await loadMemoriesFromSupabase(); if (!fromDemo) setTimeout(() => showNpcDialogue("This is the archive. On top of once-staged memories, others' interpretations are stacked like strata.", 5000), 1000); const archiveSearchEl = document.getElementById('archiveSearch'); if (archiveSearchEl) archiveSearchEl.value = ''; const state = appStore.getState(); console.log('[enterArchive] Loaded memory count:', state.allMemoriesData.length); console.log('[enterArchive] Memory data:', state.allMemoriesData); sortMemories('all'); const footer = document.querySelector('.footer'); if (footer) footer.classList.add('visible') }
+async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
+
+  // Hub refactor: Archive 진입은 floating sentences → play-test로만.
+  const entryEl = document.getElementById('archiveEntryContainer');
+  const memoryListEl = document.getElementById('memoryList');
+  const archiveControlsEl = document.getElementById('archiveControls');
+  const archiveHeaderEl = document.querySelector('.archive-header');
+  if (memoryListEl) memoryListEl.style.display = 'none';
+  if (archiveControlsEl) archiveControlsEl.style.display = 'none';
+  if (archiveHeaderEl) archiveHeaderEl.style.display = 'none';
+  if (entryEl) entryEl.style.display = 'block';
+
+  appStore.setState({ currentMode: 'archive' });
+  stopAllAnimations();
+
+  try {
+    const mod = await import('./app/archiveEntry.js');
+    if (mod && mod.initArchiveEntry) {
+      await mod.initArchiveEntry(entryEl);
+    }
+  } catch (e) {
+    console.error('[enterArchive] archiveEntry init failed:', e);
+  }
+
+  const footer = document.querySelector('.footer');
+  if (footer) footer.classList.add('visible') }
 function filterByCategory(category, btnElement) {
     if (!category) return;
     const state = appStore.getState();
@@ -1847,429 +1869,12 @@ function startVoiceWaveLiveAnimation() {
 function stopVoiceWaveLiveAnimation() { if (voiceWaveLiveAnimationId) { cancelAnimationFrame(voiceWaveLiveAnimationId); voiceWaveLiveAnimationId = null } }
 // alignmentWaveAnimationId, comparisonWaveAnimationId, comparisonWaveTime Visualizer internal 서 management됨
 let voiceWaveLiveAnimationId = null;
-function selectMemory(index) { 
-    console.log('[selectMemory] start, index:', index);
-    try { 
- // expInterviewState initialization
-        if (typeof expInterviewState !== 'undefined') {
-            expInterviewState.answers = {};
-            expInterviewState.currentBucket = null;
-            expInterviewState.previousBucket = null;
-            expInterviewState.repeatCount = 0;
-            expInterviewState.alignmentHistory = [];
-            if (typeof updateWaveBucket === 'function') updateWaveBucket('IDLE');
-        }
-        appStore.setState({ currentMemory: index, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [] }); 
-        const state = appStore.getState(); 
-        console.log('[selectMemory] state.allMemoriesData.length:', state.allMemoriesData.length);
-        updateUserStats('memory', index); 
-        const stateAfter = appStore.getState(); 
-        const selectedMemory = stateAfter.allMemoriesData[index] || stateAfter.allMemoriesData[0]; 
-        console.log('[selectMemory] selectedMemory:', selectedMemory ? { id: selectedMemory.id, title: selectedMemory.title, scenesCount: selectedMemory.scenes?.length } : null);
-        if (!selectedMemory) { 
-            console.error('[selectMemory] Memory not found');
-            showNotification('Unable to load memory'); 
-            return; 
-        } 
-        const memoryId = selectedMemory.id; 
-        if (memoryId) { 
-            activateMemoryIfFetus(memoryId); 
-        } 
-        window.currentStoryData = selectedMemory; 
-        const archiveContainerEl = document.getElementById('archiveContainer'); 
-        if (archiveContainerEl && !archiveContainerEl.classList.contains('active')) { 
-            archiveContainerEl.classList.add('active'); 
-        } 
-        const memoryListEl = document.getElementById('memoryList'); 
-        if (memoryListEl) memoryListEl.style.display = 'none'; 
-        const archiveControlsEl = document.getElementById('archiveControls'); 
-        if (archiveControlsEl) archiveControlsEl.style.display = 'none'; 
-        const archiveHeaderEl = document.querySelector('.archive-header'); 
-        if (archiveHeaderEl) archiveHeaderEl.style.display = 'none'; 
-        console.log('[selectMemory] Direct archive play entry (skipping sequence)');
-        startArchivePlay(index); 
-    } catch (e) { 
-        console.error('[selectMemory] error:', e); 
-        console.error('[selectMemory] stack:', e.stack);
-        const errorState = appStore.getState(); 
-        console.error('[selectMemory] Error details:', { index, memoriesDataLength: errorState.allMemoriesData.length, selectedMemory: errorState.allMemoriesData[index] }); 
-        showNotification('Error loading memory'); 
-    } 
-}
-function showConsentSequence(memoryIndex) {
-    console.log('[showConsentSequence] start, memoryIndex:', memoryIndex);
-    const consentSequenceEl = document.getElementById('consentSequence');
-    if (!consentSequenceEl) {
-        console.error('[showConsentSequence] Consent sequence element not found');
-        startArchivePlay(memoryIndex);
-        return;
-    }
-    consentSequenceEl.style.display = 'flex';
-    const threadEl = document.getElementById('consentThread');
-    if (!threadEl) {
-        console.error('Thread element not found');
-        startArchivePlay(memoryIndex);
-        return;
-    }
-    let isClicked = false;
-    const handleThreadClick = (e) => {
-        if (isClicked) return;
-        isClicked = true;
-        const clickX = e.clientX;
-        const container = threadEl.closest('.consent-thread-container');
-        const containerRect = container.getBoundingClientRect();
-        const relativeX = clickX - containerRect.left;
-        const totalWidth = containerRect.width;
-        const clickPercent = Math.max(0, Math.min(100, (relativeX / totalWidth) * 100));
-        threadEl.classList.add('clicked');
-        const line = threadEl.querySelector('line');
-        if (line) {
-            let defs = threadEl.querySelector('defs');
-            if (!defs) {
-                defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-                threadEl.insertBefore(defs, threadEl.firstChild);
-            }
-            let gradient = defs.querySelector('#threadGradient');
-            if (gradient) {
-                defs.removeChild(gradient);
-            }
-            gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-            gradient.setAttribute('id', 'threadGradient');
-            gradient.setAttribute('x1', '0%');
-            gradient.setAttribute('y1', '0%');
-            gradient.setAttribute('x2', '100%');
-            gradient.setAttribute('y2', '0%');
-            const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-            stop1.setAttribute('offset', '0%');
-            stop1.setAttribute('stop-color', 'rgba(255,255,255,0.7)');
-            const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-            stop2.setAttribute('offset', clickPercent + '%');
-            stop2.setAttribute('stop-color', 'rgba(255,255,255,0.7)');
-            const stop3 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-            stop3.setAttribute('offset', clickPercent + '%');
-            stop3.setAttribute('stop-color', '#d94a4a');
-            const stop4 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-            stop4.setAttribute('offset', '100%');
-            stop4.setAttribute('stop-color', '#d94a4a');
-            gradient.appendChild(stop1);
-            gradient.appendChild(stop2);
-            gradient.appendChild(stop3);
-            gradient.appendChild(stop4);
-            defs.appendChild(gradient);
-            line.setAttribute('stroke', 'url(#threadGradient)');
-            line.setAttribute('stroke-width', '1');
-        }
-        setTimeout(() => {
-            consentSequenceEl.classList.add('fading');
-            setTimeout(() => {
-                consentSequenceEl.style.display = 'none';
-                consentSequenceEl.classList.remove('fading');
-                threadEl.classList.remove('clicked');
-                const defs = threadEl.querySelector('defs');
-                if (defs) {
-                    defs.remove();
-                }
-                showWordSentenceSequence(memoryIndex);
-            }, 1500);
-        }, 500);
-    };
-    threadEl.addEventListener('click', handleThreadClick);
-    const container = threadEl.closest('.consent-thread-container');
-    if (container) {
-        container.addEventListener('click', handleThreadClick);
-    }
-}
-function showWordSentenceSequence(memoryIndex) {
-    console.log('[showWordSentenceSequence] start, memoryIndex:', memoryIndex);
-    const sequenceEl = document.getElementById('wordSentenceSequence');
-    if (!sequenceEl) {
-        console.error('[showWordSentenceSequence] Word/sentence sequence element not found');
-        startArchivePlay(memoryIndex);
-        return;
-    }
-    const state = appStore.getState();
-    const selectedMemory = state.allMemoriesData[memoryIndex];
-    console.log('[showWordSentenceSequence] selectedMemory:', selectedMemory ? { id: selectedMemory.id, title: selectedMemory.title } : null);
-    if (!selectedMemory) {
-        console.error('[showWordSentenceSequence] Memory data not found');
-        startArchivePlay(memoryIndex);
-        return;
-    }
-    const memoryWords = (selectedMemory.memory_words || '').trim();
-    const completedSentence = (selectedMemory.completed_sentence || '').trim();
-    const hasWords = memoryWords.length > 0;
-    const hasSentence = completedSentence.length > 0;
-    sequenceEl.style.display = 'flex';
-    const prefixEl = document.getElementById('sentencePrefix');
-    const wordEl = document.getElementById('wordHighlight');
-    const suffixEl = document.getElementById('sentenceSuffix');
-    const cursorEl = document.getElementById('typewriterCursor');
-    if (!prefixEl || !wordEl || !suffixEl || !cursorEl) {
-        console.error('시퀀스 요소를 not found');
-        startArchivePlay(memoryIndex);
-        return;
-    }
-    prefixEl.textContent = '';
-    wordEl.textContent = '';
-    suffixEl.textContent = '';
-    prefixEl.classList.remove('visible');
-    wordEl.classList.remove('visible');
-    suffixEl.classList.remove('visible');
-    cursorEl.classList.remove('hidden');
-    const finishSequence = () => {
-        cursorEl.classList.add('hidden');
-        setTimeout(() => {
-            sequenceEl.classList.add('fading');
-            setTimeout(() => {
-                sequenceEl.style.display = 'none';
-                sequenceEl.classList.remove('fading');
-                startArchivePlay(memoryIndex);
-            }, 1500);
-        }, 1500);
-    };
-    if (!hasWords && !hasSentence) {
-        const typeText = (text, element, callback) => {
-            let index = 0;
-            const type = () => {
-                if (index < text.length) {
-                    element.textContent = text.substring(0, index + 1);
-                    index++;
-                    setTimeout(type, 60);
-                } else {
-                    element.classList.add('visible');
-                    if (callback) callback();
-                }
-            };
-            type();
-        };
-        wordEl.textContent = 'I can\'t quite remember.';
-        wordEl.style.color = 'rgba(255,255,255,0.9)';
-        typeText('I can\'t quite remember.', wordEl, () => {
-            finishSequence();
-        });
-    } else if (hasWords && !hasSentence) {
-        const words = memoryWords.split(',').map(w => w.trim()).filter(w => w.length > 0);
-        if (words.length === 0) {
-            startArchivePlay(memoryIndex);
-            return;
-        }
-        const firstWord = words[0];
-        const typeText = (text, element, callback) => {
-            let index = 0;
-            const type = () => {
-                if (index < text.length) {
-                    element.textContent = text.substring(0, index + 1);
-                    index++;
-                    setTimeout(type, 60);
-                } else {
-                    element.classList.add('visible');
-                    if (callback) callback();
-                }
-            };
-            type();
-        };
-        wordEl.textContent = '';
-        wordEl.style.color = 'rgba(255,255,255,0.9)';
-        typeText(firstWord + '...', wordEl, () => {
-            setTimeout(() => {
-                prefixEl.textContent = '';
-                suffixEl.textContent = '';
-                wordEl.textContent = '';
-                wordEl.style.color = 'rgba(255,255,255,0.9)';
-                typeText('I can\'t remember well.', wordEl, () => {
-                    finishSequence();
-                });
-            }, 800);
-        });
-    } else if (!hasWords && hasSentence) {
-        const typeText = (text, element, callback) => {
-            let index = 0;
-            const type = () => {
-                if (index < text.length) {
-                    element.textContent = text.substring(0, index + 1);
-                    index++;
-                    setTimeout(type, 60);
-                } else {
-                    element.classList.add('visible');
-                    if (callback) callback();
-                }
-            };
-            type();
-        };
-        wordEl.textContent = '';
-        wordEl.style.color = 'rgba(255,255,255,0.9)';
-        typeText(completedSentence, wordEl, () => {
-            finishSequence();
-        });
-    } else {
-        const words = memoryWords.split(',').map(w => w.trim()).filter(w => w.length > 0);
-        if (words.length === 0) {
-            wordEl.textContent = '';
-            wordEl.style.color = 'rgba(255,255,255,0.9)';
-            let index = 0;
-            const type = () => {
-                if (index < completedSentence.length) {
-                    wordEl.textContent = completedSentence.substring(0, index + 1);
-                    index++;
-                    setTimeout(type, 60);
-                } else {
-                    wordEl.classList.add('visible');
-                    finishSequence();
-                }
-            };
-            type();
-            return;
-        }
-        const firstWord = words[0];
-        const wordIndex = completedSentence.indexOf(firstWord);
-        if (wordIndex === -1) {
-            wordEl.textContent = '';
-            wordEl.style.color = 'rgba(255,255,255,0.9)';
-            let index = 0;
-            const type = () => {
-                if (index < completedSentence.length) {
-                    wordEl.textContent = completedSentence.substring(0, index + 1);
-                    index++;
-                    setTimeout(type, 60);
-                } else {
-                    wordEl.classList.add('visible');
-                    finishSequence();
-                }
-            };
-            type();
-            return;
-        }
-        const prefix = completedSentence.substring(0, wordIndex);
-        const suffix = completedSentence.substring(wordIndex + firstWord.length);
-        let currentIndex = 0;
-        const typeWord = () => {
-            if (currentIndex < firstWord.length) {
-                wordEl.textContent = firstWord.substring(0, currentIndex + 1);
-                currentIndex++;
-                setTimeout(typeWord, 80);
-            } else {
-                wordEl.classList.add('visible');
-                setTimeout(() => {
-                    let prefixIndex = 0;
-                    const typePrefix = () => {
-                        if (prefixIndex < prefix.length) {
-                            prefixEl.textContent = prefix.substring(0, prefixIndex + 1);
-                            prefixIndex++;
-                            setTimeout(typePrefix, 60);
-                        } else {
-                            prefixEl.classList.add('visible');
-                            setTimeout(() => {
-                                let suffixIndex = 0;
-                                const typeSuffix = () => {
-                                    if (suffixIndex < suffix.length) {
-                                        suffixEl.textContent = suffix.substring(0, suffixIndex + 1);
-                                        suffixIndex++;
-                                        setTimeout(typeSuffix, 60);
-                                    } else {
-                                        suffixEl.classList.add('visible');
-                                        finishSequence();
-                                    }
-                                };
-                                typeSuffix();
-                            }, 300);
-                        }
-                    };
-                    if (prefix.length > 0) {
-                        typePrefix();
-                    } else {
-                        prefixEl.classList.add('visible');
-                        setTimeout(() => {
-                            let suffixIndex = 0;
-                            const typeSuffix = () => {
-                                if (suffixIndex < suffix.length) {
-                                    suffixEl.textContent = suffix.substring(0, suffixIndex + 1);
-                                    suffixIndex++;
-                                    setTimeout(typeSuffix, 60);
-                                } else {
-                                    suffixEl.classList.add('visible');
-                                    finishSequence();
-                                }
-                            };
-                            typeSuffix();
-                        }, 300);
-                    }
-                }, 500);
-            }
-        };
-        setTimeout(() => typeWord(), 500);
-    }
-}
-function startArchivePlay(memoryIndex) {
-    console.log('[startArchivePlay] start, memoryIndex:', memoryIndex);
- // expInterviewState initialization
-    if (typeof expInterviewState !== 'undefined') {
-        expInterviewState.answers = {};
-        expInterviewState.currentBucket = null;
-        expInterviewState.previousBucket = null;
-        expInterviewState.repeatCount = 0;
-        expInterviewState.alignmentHistory = [];
-        if (typeof updateWaveBucket === 'function') updateWaveBucket('IDLE');
-    }
-    const sceneViewerEl = document.getElementById('sceneViewer');
-    console.log('[startArchivePlay] sceneViewerEl:', sceneViewerEl ? 'found' : 'None');
-    if (sceneViewerEl) {
-        sceneViewerEl.classList.add('active', 'archive-play');
-        sceneViewerEl.style.cssText = 'display:block !important;opacity:1 !important';
-        setTimeout(() => {
-            console.log('[startArchivePlay] setTimeout callback executing');
-            const memoryData = window.currentStoryData;
-            console.log('[startArchivePlay] currentStoryData:', memoryData ? { id: memoryData.id, title: memoryData.title, scenesCount: memoryData.scenes?.length } : null);
-            // ---- Start soundscape ----
-            if (window.soundscape) {
-                window.soundscape.init({
-                    soundMap: (memoryData && memoryData.sound_map) ? memoryData.sound_map : null,
-                    volume: 0.35
-                });
-                window.soundscape.start();
-            }
-            // ---- Existing code ----
-            console.log('[startArchivePlay] initProgressDots called');
-            // Archive demo flow state 초기화
-            appStore.setState({
-                currentScene: 0,
-                currentSceneOrder: 1,
-                visitedScenes: [0],
-                fixationCounts: { 0: 0 },
-                totalScenesPlayed: 0,
-                contaminationLevel: 0,
-                lastTransitionPattern: null
-            });
-            initProgressDots();
-            window.scrollTo(0, 0);
-            sceneViewerEl.scrollTop = 0;
-            console.log('[startArchivePlay] renderScene called');
-            renderScene();
-            window._strataCompletedScenes = [];
-            const memoryId = memoryData && memoryData.id ? memoryData.id : null;
-            if (memoryId && typeof loadStrataLayers === 'function') loadStrataLayers(memoryId);
-            setTimeout(() => showNpcDialogue("The memory author is in the lower layer. Others' interpretations are stacked above. Follow the strata slowly.", 4000), 100);
-        }, 100);
-    } else {
-        console.error('[startArchivePlay] Scene viewer not found');
-        showNotification('Scene viewer not found');
-    }
-}
-function backToList() { if (typeof destroyFloatingAnchor === 'function') destroyFloatingAnchor(); if (window.soundscape) window.soundscape.stop(); window._strataCompletedScenes = []; if (window.strataSection) window.strataSection.init(); document.getElementById('memoryList').style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active', 'archive-play'); sceneViewerEl.style.display = 'none' } const archiveControlsEl = document.getElementById('archiveControls'); if (archiveControlsEl) archiveControlsEl.style.display = 'flex'; const archiveHeaderEl = document.querySelector('.archive-header'); if (archiveHeaderEl) archiveHeaderEl.style.display = 'block'; stopWaveAnimation() }
-async function loadStrataLayers(memoryId) {
-    if (!memoryId || !window.strataSection) return;
-    window.strataSection.init();
-
-    const currentData = window.currentStoryData || storyData;
-    const scenesArr = (currentData && currentData.scenes) ? currentData.scenes : [];
-
-    window.strataSection.setScenes(scenesArr);
-    window.strataSection.setTraces(window._strataCompletedScenes || []);
-
-    const state = appStore.getState();
-    window.strataSection.setCurrentScene(state.currentScene || 0);
-    window.strataSection.render();
-    requestAnimationFrame(() => window.strataSection && window.strataSection.render());
-}
+function selectMemory(index) {}
+function showConsentSequence(memoryIndex) {}
+function showWordSentenceSequence(memoryIndex) {}
+function startArchivePlay(memoryIndex) {}
+function backToList() { if (typeof destroyFloatingAnchor === 'function') destroyFloatingAnchor(); if (window.soundscape) window.soundscape.stop(); window._strataCompletedScenes = []; if (window.strataSection) window.strataSection.init(); stopWaveAnimation() }
+async function loadStrataLayers(memoryId) {}
 
 function deriveEffectType(alignment) {
     if (alignment >= 0.8) return 'smooth';
@@ -2395,11 +2000,7 @@ async function renderScene() {
         } 
         // TODO: Use this after adding originalVector column to scenes table
         // Currently uses fallbackAlignment() from expInterview.js
-        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
         let displayScene = scene;
-        if (state.currentMode === 'archive' && memoryId) {
-            displayScene = await loadSceneWithContamination(scene, memoryId);
-        }
 
         const sceneTextEl = document.getElementById('sceneText');
         const baseText = displayScene.displayText || displayScene.text || scene.text || '';
@@ -2625,96 +2226,9 @@ function proceedToNextScene() {
             showNotification('Unable to load scene data');
             return;
         }
-
-        // Non-archive 모드는 기존 직선 진행 유지
-        if (state.currentMode !== 'archive') {
-            if (state.currentScene < currentData.scenes.length - 1) {
-                appStore.setState({ currentScene: state.currentScene + 1 });
-                if (window.soundscape) window.soundscape.onSceneTransition();
-                renderScene();
-            } else {
-                showEndScreen();
-            }
-            return;
-        }
-
-        const scenesLen = currentData.scenes.length;
-        const currentSceneIndex = state.currentScene || 0;
-
-        // contaminationLevel 누적 (엔진 alignment 기반)
-        const alignment = state.currentAlignment ?? 0.5;
-        const contaminationDelta = parseFloat(((1 - alignment) * 0.15).toFixed(3));
-
-        // 마지막 엔진 결과에서 transition_pattern, mismatch_type 읽기
-        const engineResult = Array.isArray(window.archiveEngineResults)
-            ? window.archiveEngineResults[currentSceneIndex] || null
-            : null;
-        const pattern = engineResult && engineResult.transition_pattern
-            ? engineResult.transition_pattern
-            : 'bridge';
-
-        let nextSceneIndex = currentSceneIndex + 1;
-
-        // 3씬 구조인 경우에만 SCENE_TRANSITION_MAP 적용
-        if (scenesLen === 3 && SCENE_TRANSITION_MAP[currentSceneIndex]) {
-            const row = SCENE_TRANSITION_MAP[currentSceneIndex];
-            if (row._terminal) {
-                nextSceneIndex = scenesLen - 1;
-            } else if (pattern in row) {
-                nextSceneIndex = row[pattern];
-            } else if ('bridge' in row) {
-                nextSceneIndex = row.bridge;
-            }
-        }
-
-        const newTotalScenesPlayed = (state.totalScenesPlayed || 0) + 1;
-
-        // 6회 이상 진행 시 컷오프 메시지 → 마지막 씬으로 강제 이동
-        if (scenesLen === 3 && newTotalScenesPlayed >= 6) {
-            const sceneTextEl = document.getElementById('sceneText');
-            if (sceneTextEl) {
-                sceneTextEl.setAttribute('data-arrival', '');
-                sceneTextEl.textContent = 'The record can no longer move forward.';
-            }
-            appStore.setState({
-                totalScenesPlayed: newTotalScenesPlayed,
-                contaminationLevel: (state.contaminationLevel || 0) + contaminationDelta,
-                lastTransitionPattern: pattern
-            });
-            setTimeout(() => {
-                const target = scenesLen - 1;
-                const s = appStore.getState();
-                const updatedFixation = { ...(s.fixationCounts || {}) };
-                updatedFixation[target] = (updatedFixation[target] || 0) + 1;
-                const updatedVisited = [ ...(s.visitedScenes || []), target ];
-                appStore.setState({
-                    currentScene: target,
-                    visitedScenes: updatedVisited,
-                    fixationCounts: updatedFixation
-                });
-                if (window.soundscape) window.soundscape.onSceneTransition();
-                renderScene();
-            }, 1500);
-            return;
-        }
-
-        const updatedFixationCounts = { ...(state.fixationCounts || {}) };
-        const updatedVisitedScenes = [ ...(state.visitedScenes || []) ];
-        updatedVisitedScenes.push(nextSceneIndex);
-        updatedFixationCounts[nextSceneIndex] = (updatedFixationCounts[nextSceneIndex] || 0) + 1;
-
-        appStore.setState({
-            currentScene: nextSceneIndex,
-            visitedScenes: updatedVisitedScenes,
-            fixationCounts: updatedFixationCounts,
-            totalScenesPlayed: newTotalScenesPlayed,
-            contaminationLevel: (state.contaminationLevel || 0) + contaminationDelta,
-            lastTransitionPattern: pattern
-        });
-
-        if (window.soundscape) window.soundscape.onSceneTransition();
-
-        if (nextSceneIndex < scenesLen) {
+        if (state.currentScene < currentData.scenes.length - 1) {
+            appStore.setState({ currentScene: state.currentScene + 1 });
+            if (window.soundscape) window.soundscape.onSceneTransition();
             renderScene();
         } else {
             showEndScreen();
@@ -2946,27 +2460,12 @@ async function showEndScreen(alignmentResult, forceEndScreen = false) {
         const sceneViewerEl = document.getElementById('sceneViewer');
         if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none' }
 
- // archive mode 고 forceEndScreen false면 comparison screen으 move
-        const state = appStore.getState(); if (state.currentMode === 'archive' && !forceEndScreen) {
-            console.log('[Ending] Archive mode - moving to comparison screen');
-            if (!alignmentResult) {
-                alignmentResult = await calculateAverageAlignment();
-            }
-            window.archiveAlignmentResult = alignmentResult;
-            showComparisonView();
-            return;
-        }
-
         console.log('[Ending] Ending screen display start');
         let finalAlignment = state.currentAlignment;
         let isTrueEnding = false;
         if (alignmentResult) {
             finalAlignment = alignmentResult.averageAlignment;
             isTrueEnding = alignmentResult.isTrueEnding;
-        } else if (state.currentMode === 'archive') {
-            const calculated = await calculateAverageAlignment();
-            finalAlignment = calculated.averageAlignment;
-            isTrueEnding = calculated.isTrueEnding;
         }
         console.log('[Ending] Alignment 계산 complete:', { finalAlignment, isTrueEnding });
 
@@ -3064,7 +2563,7 @@ async function showEndScreen(alignmentResult, forceEndScreen = false) {
         console.error('[Ending] showEndScreen error:', e);
     }
 }
-function startEndStrataAnimation() { const container = document.getElementById('endStrataContainer'); const messageEl = document.getElementById('endStrataMessage'); const contentEl = document.getElementById('endContent'); const animationEl = document.getElementById('endStrataAnimation'); if (!container || !messageEl || !contentEl || !animationEl) return; container.innerHTML = ''; const totalHeight = 400; const layerHeight = totalHeight / 6; const previousLayers = [{ emotion: 'fear', height: layerHeight }, { emotion: 'anger', height: layerHeight }, { emotion: 'shame', height: layerHeight }, { emotion: 'joy', height: layerHeight }]; let currentBottom = totalHeight; const originalLayer = document.createElement('div'); originalLayer.className = 'end-strata-layer end-strata-layer-original'; originalLayer.style.height = layerHeight * 2 + 'px'; originalLayer.style.bottom = (currentBottom - layerHeight * 2) + 'px'; container.appendChild(originalLayer); currentBottom -= layerHeight * 2; previousLayers.forEach((layer, idx) => { const layerEl = document.createElement('div'); layerEl.className = 'end-strata-layer end-strata-layer-interpretation ' + layer.emotion; layerEl.style.height = layer.height + 'px'; layerEl.style.bottom = (currentBottom - layer.height) + 'px'; layerEl.style.opacity = '0'; container.appendChild(layerEl); setTimeout(() => { layerEl.style.opacity = '1' }, 100 * idx); currentBottom -= layer.height }); const userEmotion = getUserDominantEmotion(); const newLayer = document.createElement('div'); newLayer.className = 'end-strata-layer end-strata-layer-new ' + userEmotion; newLayer.style.height = layerHeight + 'px'; newLayer.style.bottom = totalHeight + 'px'; container.appendChild(newLayer); setTimeout(() => { newLayer.style.transform = 'translateY(0)'; newLayer.style.opacity = '1'; messageEl.classList.add('visible') }, 500); setTimeout(() => { animationEl.style.transform = 'translate(-50%,-50%) scale(0.3)'; animationEl.style.top = '10%'; animationEl.style.transition = 'all 1s ease-out'; contentEl.style.opacity = '1' }, 1500) }
+function startEndStrataAnimation() {}
 function getUserDominantEmotion() { const emotions = ['fear', 'sadness', 'guilt', 'anger', 'longing', 'isolation', 'numbness', 'moralPain']; const lastScene = window.currentStoryData?.scenes?.[window.currentStoryData.scenes.length - 1]; if (lastScene && lastScene.emotionDist) { const dist = lastScene.emotionDist; let max = 0, dominant = 'fear'; if ((dist.fear || 0) > max) { max = dist.fear; dominant = 'fear' } if ((dist.sadness || 0) > max) { max = dist.sadness; dominant = 'sadness' } if ((dist.guilt || 0) > max) { max = dist.guilt; dominant = 'guilt' } if ((dist.anger || 0) > max) { max = dist.anger; dominant = 'anger' } if ((dist.longing || 0) > max) { max = dist.longing; dominant = 'longing' } if ((dist.isolation || 0) > max) { max = dist.isolation; dominant = 'isolation' } if ((dist.numbness || 0) > max) { max = dist.numbness; dominant = 'numbness' } if ((dist.moralPain || 0) > max) { max = dist.moralPain; dominant = 'moralPain' } return dominant } return emotions[Math.floor(Math.random() * emotions.length)] }
 function restart() { if (window.soundscape) window.soundscape.stop(); appStore.setState({ currentMode: null, currentRole: null, sessionCode: null, currentMemory: null, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, currentBucket: null, emotionHistory: [], liveSceneNum: 1, liveFragments: 0, liveMatches: 0 }); const endScreenEl = document.getElementById('endScreen'); if (endScreenEl) { endScreenEl.classList.remove('active'); endScreenEl.style.display = 'none' } const liveContainerEl = document.getElementById('liveContainer'); if (liveContainerEl) { liveContainerEl.classList.remove('active'); liveContainerEl.style.display = 'none' } const archiveContainerEl = document.getElementById('archiveContainer'); if (archiveContainerEl) { archiveContainerEl.classList.remove('active'); archiveContainerEl.style.display = 'none' } const memoryListEl = document.getElementById('memoryList'); if (memoryListEl) memoryListEl.style.display = 'grid'; const sceneViewerEl = document.getElementById('sceneViewer'); if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none' } const introScreen = document.getElementById('introScreen'); if (introScreen) { introScreen.classList.remove('hidden'); introScreen.classList.add('visible'); introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important' } const narratorPanelEl = document.getElementById('narratorPanel'); if (narratorPanelEl) narratorPanelEl.classList.remove('active'); const experiencerPanelEl = document.getElementById('experiencerPanel'); if (experiencerPanelEl) experiencerPanelEl.classList.remove('active'); const interpretationTraceEl = document.getElementById('interpretationTrace'); if (interpretationTraceEl) interpretationTraceEl.style.display = 'none'; const liveSceneContentEl = document.getElementById('liveSceneContent'); if (liveSceneContentEl) liveSceneContentEl.textContent = '화자가 기억을 불러오고 있습니다...'; const feelingInput = document.getElementById('experiencerFeelingInput'); if (feelingInput) feelingInput.value = ''; const memoryTraceContent = document.getElementById('memoryTraceContent'); if (memoryTraceContent) memoryTraceContent.textContent = '—'; const liveAlignmentValueEl = document.getElementById('liveAlignmentValue'); if (liveAlignmentValueEl) { liveAlignmentValueEl.textContent = '0.00'; liveAlignmentValueEl.classList.remove('high') } const liveAlignmentFillEl = document.getElementById('liveAlignmentFill'); if (liveAlignmentFillEl) liveAlignmentFillEl.style.width = '0%'; const liveSceneNumEl = document.getElementById('liveSceneNum'); if (liveSceneNumEl) liveSceneNumEl.textContent = '1'; const liveFragmentsEl = document.getElementById('liveFragments'); if (liveFragmentsEl) liveFragmentsEl.textContent = '0'; const liveMatchesEl = document.getElementById('liveMatches'); if (liveMatchesEl) liveMatchesEl.textContent = '0'; const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible') }
 let pendingSaveAction = null;
@@ -3166,7 +2665,13 @@ async function sendNoteToAuthor(authorId, memoryId, message) { try { const clien
 async function loadReceivedNotes() { try { const client = networkService.getClient(); if (!client) return []; const { data: { user } } = await client.auth.getUser(); if (!user) return []; const result = await networkService.loadReceivedNotes(user.id); if (!result.ok) { console.error('쪽지 로드 error:', result.error); return [] } return result.data || [] } catch (e) { console.error('loadReceivedNotes error:', e); return [] } }
 // 받 note rendering
 async function renderReceivedNotes() { const notes = await loadReceivedNotes(); const container = document.getElementById('mypageNotesList'); if (!container) return; if (notes.length === 0) { container.innerHTML = '<p class="no-notes" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:1rem">No notes received.</p>'; return } container.innerHTML = notes.map(note => { const memoryTitle = note.memories?.title || 'Unknown'; const date = new Date(note.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); const unreadClass = note.is_read ? 'read' : 'unread'; const unreadBadge = note.is_read ? '' : '<span class="unread-badge" style="display:inline-block;padding:.2rem .5rem;background:rgba(212,175,55,.2);border:1px solid rgba(212,175,55,.4);color:#d4af37;font-size:.7rem;letter-spacing:.1em;margin-left:.5rem">NEW</span>'; return `<div class="note-card ${unreadClass}" data-note-id="${note.id}" style="padding:.8rem;margin-bottom:.5rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.1);border-radius:4px;cursor:pointer;transition:all .3s"><p class="note-memory" style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>Memory: ${memoryTitle}</strong>${unreadBadge}</p><p class="note-message" style="font-size:.9rem;color:var(--text-primary);line-height:1.6;margin-bottom:.5rem">${note.message}</p><p class="note-date" style="font-size:.75rem;color:var(--text-muted)">${date}</p></div>` }).join(''); container.querySelectorAll('.note-card.unread').forEach(card => { card.addEventListener('click', async () => { const noteId = card.dataset.noteId; try { const result = await networkService.markNoteAsRead(noteId); if (result.ok) { card.classList.remove('unread'); card.classList.add('read'); const badge = card.querySelector('.unread-badge'); if (badge) badge.remove() } } catch (e) { console.error('쪽지 읽음 처리 error:', e) } }) }) }
-function viewMemoryFromArchive(memoryId) { enterArchive(); setTimeout(() => { const state = appStore.getState(); const memoryIndex = state.allMemoriesData.findIndex(m => m.id === memoryId); if (memoryIndex >= 0) { selectMemory(memoryIndex) } }, 500) }
+function viewMemoryFromArchive(memoryId) {
+    if (!memoryId) return;
+    const lang = /[가-힣]/.test(String(memoryId)) ? 'ko' : 'en';
+    const isLocal = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+    const base = isLocal ? 'play-test.html' : '/play';
+    window.location.href = `${base}?memory=${encodeURIComponent(memoryId)}&lang=${lang}`;
+}
 async function showSessionDetail(sessionId) { const modal = document.getElementById('sessionDetailModal'); const body = document.getElementById('sessionDetailBody'); if (!modal || !body) { return } modal.classList.add('active'); body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">Loading...</div>'; try { const sessionResult = await networkService.getSessionById(sessionId); if (!sessionResult.ok) throw sessionResult.error; const sessionData = sessionResult.data; const scenesResult = await networkService.getLiveScenesBySessionId(sessionId); if (!scenesResult.ok) throw scenesResult.error; const scenesData = scenesResult.data; const date = sessionData.created_at ? new Date(sessionData.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; const endDate = sessionData.ended_at ? new Date(sessionData.ended_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; const role = sessionData.narrator_id === currentUser?.id ? '화자' : sessionData.experiencer_id === currentUser?.id ? '체험자' : '—'; const status = sessionData.ended_at ? 'Complete' : '진행중'; const alignment = sessionData.alignment ? Math.round(sessionData.alignment * 100) + '%' : '0%'; const fate = sessionData.memory_fate === 'preserve' ? 'Preserve' : sessionData.memory_fate === 'dilute' ? 'Natural Dissolution' : sessionData.memory_fate === 'anonymous' ? 'Full Anonymity' : '미정'; document.getElementById('sessionDetailTitle').textContent = sessionData.session_code || 'Session Info'; let scenesHtml = ''; if (scenesData && scenesData.length > 0) { scenesHtml = '<div class="session-detail-scenes"><h3 style="font-family:\'Cormorant Garamond\',serif;font-size:1.3rem;color:var(--accent-memory);margin-bottom:1rem;letter-spacing:.1em">Scene 목록</h3>'; scenesData.forEach((scene, index) => { const sceneText = scene.text || '[텍스트 없음]'; const sceneType = scene.scene_type || 'normal'; const voidInfo = scene.void_info; scenesHtml += `<div class="session-detail-scene-item"><div class="session-detail-scene-header">Scene ${index + 1}${sceneType === 'void' ? ' (void in memory)' : ''}</div><div class="session-detail-scene-text">${sceneText}</div>${voidInfo && voidInfo.reason ? `<div style="font-size:.85rem;color:var(--text-muted);font-style:italic;margin-top:.5rem">공백 이유: ${voidInfo.reason}</div>` : ''}</div>` }); scenesHtml += '</div>' } else { scenesHtml = '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-style:italic">No saved scenes.</div>' } body.innerHTML = `<div class="session-detail-info-item"><div class="session-detail-info-label">Session Code</div><div class="session-detail-info-value">${sessionData.session_code || '—'}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">Started</div><div class="session-detail-info-value">${date}</div></div>${sessionData.ended_at ? `<div class="session-detail-info-item"><div class="session-detail-info-label">Ended</div><div class="session-detail-info-value">${endDate}</div></div>` : ''}<div class="session-detail-info-item"><div class="session-detail-info-label">Role</div><div class="session-detail-info-value">${role}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">Status</div><div class="session-detail-info-value">${status}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">Alignment</div><div class="session-detail-info-value">${alignment}</div></div><div class="session-detail-info-item"><div class="session-detail-info-label">Fate</div><div class="session-detail-info-value">${fate}</div></div>${scenesHtml}` } catch (e) { console.error('showSessionDetail error:', e); body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)">Error loading session info.</div>'; showNotification('세션 정보를 불러오는 중 An error occurred') } }
 function closeSessionDetail() { const modal = document.getElementById('sessionDetailModal'); if (modal) { modal.classList.remove('active') } }
 function renderSessionHistory_DEPRECATED() { const listEl = document.getElementById('sessionHistoryList'); if (!listEl || !currentUser || !currentUser.sessionHistory || currentUser.sessionHistory.length === 0) { if (listEl) listEl.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic">No saved sessions.</div>'; return } listEl.innerHTML = ''; currentUser.sessionHistory.forEach(session => { const sessionItem = document.createElement('div'); sessionItem.style.padding = '.8rem'; sessionItem.style.marginBottom = '.5rem'; sessionItem.style.background = 'var(--bg-surface)'; sessionItem.style.border = '1px solid rgba(196,168,130,.1)'; sessionItem.innerHTML = `<div style="font-size:.85rem;color:var(--text-primary);margin-bottom:.3rem"><strong>${session.date}</strong></div><div style="font-size:.75rem;color:var(--text-muted);line-height:1.6">Role: ${session.role} | Fate: ${session.memoryFate === 'preserve' ? 'Preserve' : session.memoryFate === 'dilute' ? 'Natural Dissolution' : session.memoryFate === 'anonymous' ? 'Full Anonymity' : '—'}<br>Alignment: ${session.alignment} | 장면: ${session.scenes} | 조각: ${session.fragments} | 일치: ${session.matches}</div>`; listEl.appendChild(sessionItem) }) }
@@ -3585,78 +3090,7 @@ if (document.readyState === 'loading') {
 
 let comparisonScenes = [];
 let comparisonCurrentIndex = 0;
-async function calculateAverageAlignment() {
-    try {
-        const currentData = window.currentStoryData || storyData;
-        if (!currentData || !currentData.scenes) {
-            return { averageAlignment: 0, isTrueEnding: false };
-        }
-        const state = appStore.getState();
-        const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
-        if (!memoryId) {
-            return { averageAlignment: 0, isTrueEnding: false };
-        }
-        const sceneAlignments = [];
-        supabaseClient = getSupabaseClient();
-        for (let i = 0; i < currentData.scenes.length; i++) {
-            const scene = currentData.scenes[i];
-            if (!scene.sceneType || scene.sceneType === 'branch' || scene.sceneType === 'ending') {
-                let alignment = null;
-                if (window.archiveSceneAlignments && window.archiveSceneAlignments[i] !== undefined) {
-                    alignment = window.archiveSceneAlignments[i];
-                } else if (scene.id) {
-                    const playResult = await networkService.getPlayBySceneAndMemory(scene.id, memoryId);
-                    if (playResult.ok && playResult.data) {
-                        const playData = playResult.data;
-                        if (playData.alignment !== null && playData.alignment !== undefined) {
-                            alignment = playData.alignment;
-                        } else if (playData.user_emotion && (scene.originalEmotion || scene.original_emotion)) {
-                            const origEmo = scene.originalEmotion || scene.original_emotion;
-                            const anchorEmotions = scene.anchor_emotions || null;
-                            const engineResult = byeoriEngine.calculateStep({
-                                userVector: { base: playData.user_emotion },
-                                originalVector: { base: origEmo },
-                                anchorEmotions: anchorEmotions
-                            }, {});
-                            alignment = engineResult.alignment_score;
-                        }
-                    } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && (scene.originalEmotion || scene.original_emotion)) {
-                        const origEmo = scene.originalEmotion || scene.original_emotion;
-                        const anchorEmotions = scene.anchor_emotions || null;
-                        const engineResult = byeoriEngine.calculateStep({
-                            userVector: { base: window.archiveUserEmotions[i].emotion },
-                            originalVector: { base: origEmo },
-                            anchorEmotions: anchorEmotions
-                        }, {});
-                        alignment = engineResult.alignment_score;
-                    }
-                } else if (window.archiveUserEmotions && window.archiveUserEmotions[i] && (scene.originalEmotion || scene.original_emotion)) {
-                    const origEmo = scene.originalEmotion || scene.original_emotion;
-                    const anchorEmotions = scene.anchor_emotions || null;
-                    const engineResult = byeoriEngine.calculateStep({
-                        userVector: { base: window.archiveUserEmotions[i].emotion },
-                        originalVector: { base: origEmo },
-                        anchorEmotions: anchorEmotions
-                    }, {});
-                    alignment = engineResult.alignment_score;
-                }
-                if (alignment !== null && alignment !== undefined) {
-                    sceneAlignments.push(alignment);
-                }
-            }
-        }
-        if (sceneAlignments.length === 0) {
-            return { averageAlignment: 0, isTrueEnding: false };
-        }
-        const averageAlignment = sceneAlignments.reduce((sum, val) => sum + val, 0) / sceneAlignments.length;
-        const isTrueEnding = averageAlignment >= 0.65;
-        console.log('평균 Alignment 계산:', { sceneAlignments, averageAlignment, isTrueEnding });
-        return { averageAlignment, isTrueEnding };
-    } catch (e) {
-        console.error('calculateAverageAlignment error:', e);
-        return { averageAlignment: 0, isTrueEnding: false };
-    }
-}
+async function calculateAverageAlignment() { return { averageAlignment: appStore.getState().currentAlignment || 0, isTrueEnding: (appStore.getState().currentAlignment || 0) >= 0.65 }; }
 async function showComparisonView() {
     try {
         const currentData = window.currentStoryData || storyData;
@@ -6116,64 +5550,6 @@ window.debug = {
         await enterArchive();
         console.log('✅ Go to archive했습니다');
     },
-    
- // memory 선택 (index 또 ID)
-    selectMemory: async (indexOrId) => {
-        const state = appStore.getState();
-        let index;
-        if (typeof indexOrId === 'number') {
-            index = indexOrId;
-        } else {
-            index = state.allMemoriesData.findIndex(m => m.id === indexOrId);
-            if (index === -1) {
-                console.error('❌ 메모리를 not found:', indexOrId);
-                return;
-            }
-        }
-        if (index >= state.allMemoriesData.length) {
-            console.error('❌ 인덱스가 범위를 벗어났습니다:', index);
-            return;
-        }
-        selectMemory(index);
-        console.log(`✅ 메모리 ${index} 선택했습니다:`, state.allMemoriesData[index]?.title);
-    },
-    
- // 시퀀스 건너뛰고 바 플레 start
-    skipToPlay: (memoryIndex = 0) => {
-        const state = appStore.getState();
-        if (memoryIndex >= state.allMemoriesData.length) {
-            console.error('❌ 인덱스가 범위를 벗어났습니다:', memoryIndex);
-            return;
-        }
-        const memory = state.allMemoriesData[memoryIndex];
-        if (!memory) {
-            console.error('❌ 메모리를 not found:', memoryIndex);
-            return;
-        }
-        appStore.setState({ currentMemory: memoryIndex, currentScene: 0 });
-        window.currentStoryData = memory;
-        startArchivePlay(memoryIndex);
-        console.log(`✅ 플레이 start:`, memory.title);
-    },
-    
- // 특정 scene으 move
-    goToScene: (sceneIndex = 0) => {
-        const state = appStore.getState();
-        appStore.setState({ currentScene: sceneIndex });
-        renderScene();
-        console.log(`✅ Scene ${sceneIndex}로 이동했습니다`);
-    },
-    
- // ending screen으 바 move
-    skipToEnd: async (alignment = 0.85) => {
-        const alignmentResult = {
-            averageAlignment: alignment,
-            isTrueEnding: alignment >= 0.8
-        };
-        await showEndScreen(alignmentResult, true);
-        console.log(`✅ Go to ending screen했습니다 (Alignment: ${alignment})`);
-    },
-    
  // current state check
     showState: () => {
         const state = appStore.getState();
@@ -6198,21 +5574,11 @@ window.debug = {
         return state.allMemoriesData;
     },
     
- // comparison screen으 move
-    showComparison: async () => {
-        const alignmentResult = await calculateAverageAlignment();
-        showComparisonView();
-        console.log('✅ 비교 화면으로 이동했습니다');
-    }
 };
 
 console.log('🔧 디버깅 헬퍼 함수가 로드 complete. window.debug를 사용하세요.');
 console.log('📖 사용법:');
 console.log('  - debug.goToArchive() - Go to archive');
-console.log('  - debug.selectMemory(0) - Select first memory');
-console.log('  - debug.skipToPlay(0) - Skip sequence, go to play');
-console.log('  - debug.goToScene(0) - Go to first scene');
-console.log('  - debug.skipToEnd(0.85) - Go to ending screen');
 console.log('  - debug.showState() - 현재 Status 확인');
 console.log('  - debug.listMemories() - Check memory list');
 
