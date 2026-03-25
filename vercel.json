@@ -7,6 +7,6 @@
     { "source": "/play", "destination": "/play-test.html" }
   ],
   "redirects": [
-    { "source": "/", "destination": "/demo", "permanent": false }
+    { "source": "/", "destination": "/index.html", "permanent": false }
   ]
 }

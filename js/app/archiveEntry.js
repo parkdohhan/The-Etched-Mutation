@@ -129,7 +129,7 @@ function isLocalDev() {
 
 function navigateToPlay(memoryId, lang) {
   const l = lang === 'ko' ? 'ko' : 'en';
-  const isLocal = isLocalDev() || !String(window.location.hostname || '').includes('vercel');
+  const isLocal = isLocalDev();
   const base = isLocal ? 'play-test.html' : '/play';
   try {
     // URL 전달 실패(리라이트/프록시/링크 가공) 대비 이중 백업
