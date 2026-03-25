@@ -2141,21 +2141,22 @@ function renderEchoLayer(words) { const layer = document.getElementById('echoLay
 function renderChoices(choices) { const container = document.getElementById('choicesContainer'); if (!container) return; container.innerHTML = ''; if (!choices || !Array.isArray(choices)) return; choices.forEach((choice, i) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.textContent = choice.text; btn.onclick = function () { makeChoice(i) }; container.appendChild(btn) }) }
 
 const _LIVE_KW = {
-  guilt: ['sorry','fault','my fault','self-blame','regret','should have','shouldn\'t have','blame','wrong','because of me'],
-  longing: ['miss','long for','again','return','back then','remember','still','remains','think of'],
-  sadness: ['sad','cry','tears','hard','hurt','broken','tired','lonely','sorrow'],
-  fear: ['scared','afraid','trembled','fear','anxious','avoid','run','hated','dread'],
-  anger: ['angry','annoyed','furious','unfair','why','betrayed','hate','rage','mad'],
-  shame: ['embarrassed','ashamed','humiliated','exposed','hiding','can\'t say'],
-  numbness: ['don\'t know','nothing','empty','just','whatever','numb','blank','no idea'],
-  isolation: ['alone','nobody','abandoned','left','forsaken','only me'],
+  guilt: ['sorry','fault','my fault','self-blame','regret','should have','shouldn\'t have','blame','wrong','because of me','미안','죄책','내 탓','잘못했','후회'],
+  longing: ['miss','long for','again','return','back then','remember','still','remains','think of','그립','그리워','보고 싶','다시','돌아가','기억나','여전'],
+  sadness: ['sad','cry','tears','hard','hurt','broken','tired','lonely','sorrow','슬프','슬펐','눈물','울었','아프','무너','외롭','서럽'],
+  fear: ['scared','afraid','trembled','fear','anxious','avoid','run','hated','dread','무섭','두려','불안','떨렸','겁','도망','피하'],
+  anger: ['angry','annoyed','furious','unfair','why','betrayed','hate','rage','mad','화나','분노','짜증','열받','빡쳐','억울','배신'],
+  shame: ['embarrassed','ashamed','humiliated','exposed','hiding','can\'t say','창피','수치','부끄','들키','말 못'],
+  numbness: ['don\'t know','nothing','empty','just','whatever','numb','blank','no idea','모르겠','아무것도','공허','무감각','멍했'],
+  isolation: ['alone','nobody','abandoned','left','forsaken','only me','혼자','아무도','버려','고립','나만'],
 };
 function quickAnalyze(text) {
   if (!text || text.trim().length < 2) return null;
+  const normalized = String(text).toLowerCase();
   const base = {};
   for (const [em, kws] of Object.entries(_LIVE_KW)) {
     base[em] = 0;
-    for (const kw of kws) { if (text.includes(kw)) base[em] = Math.min(1, base[em] + 0.4); }
+    for (const kw of kws) { if (normalized.includes(String(kw).toLowerCase())) base[em] = Math.min(1, base[em] + 0.4); }
   }
   const total = Object.values(base).reduce((a, b) => a + b, 0);
   return total > 0 ? { base } : null;
@@ -2186,6 +2187,14 @@ function renderArchiveFreeInput(scene) {
       if (result && result.base) {
         const ev = result.base;
         startArchiveWaveAnimation(ev);
+        if (typeof updateWaveBucket === 'function') {
+          const entries = Object.entries(ev).sort((a, b) => (b[1] || 0) - (a[1] || 0));
+          const topKey = entries.length ? entries[0][0] : '';
+          if (topKey === 'anger' || topKey === 'fear') updateWaveBucket('LOW');
+          else if (topKey === 'numbness' || topKey === 'isolation') updateWaveBucket('FIXATED');
+          else if (topKey === 'sadness' || topKey === 'longing' || topKey === 'guilt') updateWaveBucket('MID');
+          else updateWaveBucket('HIGH');
+        }
         window._archiveLiveVector = result;
       }
     };

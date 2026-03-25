@@ -672,110 +672,51 @@ function startBucketWaveAnimation() {
 
     const bucket = _waveBucket;
 
-    if (bucket === 'IDLE') {
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(196, 168, 130, 0.08)'; // weaker (0.15 -> 0.08)
-      ctx.lineWidth = 0.8; // thinner (1 -> 0.8)
-      for (let x = 0; x < w; x++) {
-        const y = cy + Math.sin(x * 0.015 + _waveTime * 0.02) * 4; // smaller amplitude (6 -> 4)
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
+    let stroke = 'rgba(196, 168, 130, 0.2)';
+    let amp1 = 6;
+    let amp2 = 2.4;
+    let f1 = 0.015;
+    let f2 = 0.008;
+    let spd = 0.02;
+    let jitter = 0;
+    let lw = 1.2;
 
-    } else if (bucket === 'HIGH') {
-      const p = _waveTime * 0.04;
-      // Wave 1 — gold
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(196, 168, 130, 0.7)';
-      ctx.lineWidth = 1.5;
-      for (let x = 0; x < w; x++) {
-        const y = cy + Math.sin(x * 0.018 + p) * 12 + Math.sin(x * 0.009 + p * 0.6) * 7;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      // Wave 2 — green, nearly overlapping
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(122, 154, 122, 0.6)';
-      ctx.lineWidth = 1.5;
-      for (let x = 0; x < w; x++) {
-        const y = cy + Math.sin(x * 0.018 + p + 0.15) * 12 + Math.sin(x * 0.009 + p * 0.6 + 0.1) * 7;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
+    if (bucket === 'HIGH') {
+      stroke = 'rgba(196, 168, 130, 0.74)';
+      amp1 = 13; amp2 = 7; f1 = 0.018; f2 = 0.009; spd = 0.045; lw = 1.7;
     } else if (bucket === 'MID') {
-      const p = _waveTime * 0.04;
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(196, 168, 130, 0.55)';
-      ctx.lineWidth = 1.5;
-      for (let x = 0; x < w; x++) {
-        const n = Math.sin(_waveTime * 0.1 + x * 0.1) * 2;
-        const y = cy + Math.sin(x * 0.018 + p + n * 0.05) * 12 + Math.sin(x * 0.009 + p * 0.5) * 7;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(123, 143, 168, 0.45)';
-      ctx.lineWidth = 1.5;
-      const off = 8;
-      for (let x = 0; x < w; x++) {
-        const n = Math.sin(_waveTime * 0.12 + x * 0.08) * 2;
-        const y = cy + Math.sin(x * 0.018 + p + off * 0.1 + n * 0.05) * 12 + Math.sin(x * 0.009 + p * 0.5 + off * 0.05) * 7;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
+      stroke = 'rgba(196, 168, 130, 0.58)';
+      amp1 = 11; amp2 = 6; f1 = 0.017; f2 = 0.009; spd = 0.04; lw = 1.6;
     } else if (bucket === 'LOW') {
-      const glitch = Math.random() > 0.93;
-      if (glitch) {
+      stroke = 'rgba(217, 74, 74, 0.62)';
+      amp1 = 12; amp2 = 5; f1 = 0.02; f2 = 0.011; spd = 0.05; jitter = 3.2; lw = 1.6;
+      if (Math.random() > 0.94) {
         ctx.fillStyle = 'rgba(217, 74, 74, 0.08)';
         ctx.fillRect(0, 0, w, h);
       }
-      const na = 6 + Math.random() * 6;
-      const p = _waveTime * 0.04;
-      ctx.beginPath();
-      ctx.strokeStyle = glitch ? 'rgba(217, 74, 74, 0.6)' : 'rgba(196, 168, 130, 0.35)';
-      ctx.lineWidth = 1.5;
-      for (let x = 0; x < w; x++) {
-        const noise = (Math.random() - 0.5) * na;
-        const y = cy + Math.sin(x * 0.02 + p + noise * 0.1) * 12 + noise;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.strokeStyle = glitch ? 'rgba(217, 74, 74, 0.4)' : 'rgba(123, 143, 168, 0.25)';
-      ctx.lineWidth = 1.5;
-      for (let x = 0; x < w; x++) {
-        const noise = (Math.random() - 0.5) * na;
-        const y = cy + Math.sin(x * 0.02 + p + 2 + noise * 0.1) * 12 + noise;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
     } else if (bucket === 'FIXATED') {
-      const s = _waveTime * 0.015;
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(138, 90, 138, 0.6)';
-      ctx.lineWidth = 2;
-      for (let x = 0; x < w; x++) {
-        const y = cy + Math.sin(x * 0.012 + s) * 10 + Math.sin(x * 0.006 + s * 0.4) * 6;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(138, 90, 138, 0.4)';
-      ctx.lineWidth = 2;
-      for (let x = 0; x < w; x++) {
-        const y = cy + Math.sin(x * 0.012 + s + 0.08) * 10 + Math.sin(x * 0.006 + s * 0.4 + 0.05) * 6;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
+      stroke = 'rgba(138, 90, 138, 0.68)';
+      amp1 = 10; amp2 = 5; f1 = 0.012; f2 = 0.006; spd = 0.016; lw = 1.9;
       const vg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.6);
       vg.addColorStop(0, 'rgba(0,0,0,0)');
-      vg.addColorStop(1, 'rgba(0,0,0,0.4)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.35)');
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, w, h);
+    } else if (bucket === 'IDLE') {
+      stroke = 'rgba(196, 168, 130, 0.1)';
+      amp1 = 4; amp2 = 1.4; f1 = 0.014; f2 = 0.007; spd = 0.018; lw = 1.0;
     }
+
+    const phase = _waveTime * spd;
+    ctx.beginPath();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lw;
+    for (let x = 0; x < w; x++) {
+      const n = jitter ? (Math.random() - 0.5) * jitter : 0;
+      const y = cy + Math.sin(x * f1 + phase) * amp1 + Math.sin(x * f2 + phase * 0.62) * amp2 + n;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
 
     _waveTime++;
     _waveAnimId = requestAnimationFrame(animate);

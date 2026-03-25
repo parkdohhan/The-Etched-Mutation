@@ -13,7 +13,30 @@
   var animId = null;
   var canvas = null;
   var _lastConfig = null;
-  var _brightness = 1.35;
+  var STRATA_BRIGHTNESS_KEY = 'tem_strata_default_brightness';
+  var STRATA_BRIGHTNESS_MIN = 0.8;
+  var STRATA_BRIGHTNESS_MAX = 2.4;
+  var STRATA_BRIGHTNESS_FALLBACK = 1.35;
+
+  function readStoredBrightness() {
+    try {
+      var raw = localStorage.getItem(STRATA_BRIGHTNESS_KEY);
+      if (raw == null || raw === '') return STRATA_BRIGHTNESS_FALLBACK;
+      var v = parseFloat(raw);
+      if (!isFinite(v)) return STRATA_BRIGHTNESS_FALLBACK;
+      return Math.max(STRATA_BRIGHTNESS_MIN, Math.min(STRATA_BRIGHTNESS_MAX, v));
+    } catch (e) {
+      return STRATA_BRIGHTNESS_FALLBACK;
+    }
+  }
+
+  function writeStoredBrightness(v) {
+    try {
+      localStorage.setItem(STRATA_BRIGHTNESS_KEY, String(v));
+    } catch (e) {}
+  }
+
+  var _brightness = readStoredBrightness();
 
   function getCanvasViewportSize() {
     if (!canvas) return { w: innerWidth, h: innerHeight };
@@ -56,16 +79,21 @@
     var input = document.getElementById('strataBrightness');
     var valEl = document.getElementById('strataBrightnessVal');
     if (!input) return;
+    _brightness = readStoredBrightness();
+    input.min = String(STRATA_BRIGHTNESS_MIN);
+    input.max = String(STRATA_BRIGHTNESS_MAX);
     input.value = String(_brightness);
     if (valEl) valEl.textContent = _brightness.toFixed(2) + 'x';
+    applyRendererBrightness();
     if (input.dataset.bound === '1') return;
     input.dataset.bound = '1';
     input.addEventListener('input', function () {
       var v = parseFloat(input.value);
       if (!isFinite(v)) return;
-      _brightness = Math.max(0.8, Math.min(2.4, v));
+      _brightness = Math.max(STRATA_BRIGHTNESS_MIN, Math.min(STRATA_BRIGHTNESS_MAX, v));
       applyRendererBrightness();
       if (valEl) valEl.textContent = _brightness.toFixed(2) + 'x';
+      writeStoredBrightness(_brightness);
     });
   }
 
