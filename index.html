@@ -49,7 +49,10 @@
                         </div>
                     </div>
                     <div class="menu-list" id="mainMenuList">
-                        <div class="menu-item active" data-menu-id="archive" data-action="enterArchive">
+                        <div class="menu-item active" data-menu-id="play" data-action="enterPlayIntro">
+                            <span class="menu-label">PLAY</span>
+                        </div>
+                        <div class="menu-item inactive" data-menu-id="archive" data-action="enterArchive">
                             <span class="menu-label">ARCHIVE</span>
                         </div>
                         <div class="menu-item inactive" data-menu-id="record" data-action="showConfessionHub">
@@ -63,7 +66,8 @@
                         </div>
                     </div>
                     <div class="main-description" id="mainMenuDescription">
-                        <div class="description-text active" data-for="archive">Browse the fragments of the past. Review the etched history.</div>
+                        <div class="description-text active" data-for="play">Start a play session and traverse memory terrain.</div>
+                        <div class="description-text" data-for="archive">Archive list view. Browse every memory and jump into play.</div>
                         <div class="description-text" data-for="record">Document new memories and leave traces of mutation.</div>
                         <div class="description-text" data-for="profile">Manage personal profile and synchronization settings.</div>
                         <div class="description-text" data-for="portfolio">Explore the origin and architect of The Etched Mutation.</div>
@@ -295,7 +299,25 @@
         </div>
         <div class="archive-container" id="archiveContainer">
             <button class="archive-back-btn" onclick="backToIntro()">← Return to Start</button>
-            <!-- Archive Entry (Hub): floating sentences → play-test -->
+            <header class="archive-header">
+                <h1 class="archive-title">ARCHIVE</h1>
+                <p class="archive-subtitle">All memories are visible here. Click one to start Play.</p>
+            </header>
+            <div class="archive-controls" id="archiveControls">
+                <div class="archive-search-row">
+                    <input type="text" class="archive-search" id="archiveSearch" placeholder="Search memory code (e.g. A-001)" oninput="filterMemories()">
+                </div>
+                <div class="archive-category-filters">
+                    <button class="category-btn active" data-category="all" onclick="filterByCategory('all',this)">All</button>
+                    <button class="category-btn" data-category="archive" onclick="filterByCategory('archive',this)">Archive</button>
+                </div>
+                <div class="archive-filters">
+                    <button class="filter-btn active" data-sort="all" onclick="sortMemories('all',this)">All</button>
+                    <button class="filter-btn" data-sort="popular" onclick="sortMemories('popular',this)">Popular</button>
+                    <button class="filter-btn" data-sort="recent" onclick="sortMemories('recent',this)">Recent</button>
+                </div>
+            </div>
+            <div class="memory-list" id="memoryList"></div>
             <div id="archiveEntryContainer" class="archive-entry-screen" style="display:none;"></div>
         </div>
         <div class="end-screen" id="endScreen">

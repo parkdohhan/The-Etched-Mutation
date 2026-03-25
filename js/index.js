@@ -377,30 +377,42 @@ function selectMatching(type) { if (type === 'session') { const matchingSelectio
 function backToMatchingSelection() { const matchingSelection = document.getElementById('matchingSelection'); const modeSelection = document.getElementById('modeSelection'); if (modeSelection) { modeSelection.classList.remove('active'); modeSelection.style.display = 'none' } if (matchingSelection) { matchingSelection.classList.add('active'); matchingSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
 function backToIntro() { if (window.soundscape) window.soundscape.stop(); const introScreen = document.getElementById('introScreen'); if (introScreen) { introScreen.classList.remove('hidden'); introScreen.classList.add('visible'); introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important' } ['matchingSelection', 'modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible'); stopAllAnimations() }
 function backToModeSelection() { const sessionSetupEl = document.getElementById('sessionSetup'); if (sessionSetupEl) { sessionSetupEl.classList.remove('active'); sessionSetupEl.style.display = 'none' } const modeSelectionEl = document.getElementById('modeSelection'); if (modeSelectionEl) { modeSelectionEl.classList.add('active'); modeSelectionEl.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
-async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
-
-  // Hub refactor: Archive 진입은 floating sentences → play-test로만.
+async function enterPlayIntro(opts) { var fromDemo = opts && opts.fromDemo; const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
   const entryEl = document.getElementById('archiveEntryContainer');
   const memoryListEl = document.getElementById('memoryList');
   const archiveControlsEl = document.getElementById('archiveControls');
   const archiveHeaderEl = document.querySelector('.archive-header');
+  if (entryEl) entryEl.style.display = 'block';
   if (memoryListEl) memoryListEl.style.display = 'none';
   if (archiveControlsEl) archiveControlsEl.style.display = 'none';
   if (archiveHeaderEl) archiveHeaderEl.style.display = 'none';
-  if (entryEl) entryEl.style.display = 'block';
-
-  appStore.setState({ currentMode: 'archive' });
+  appStore.setState({ currentMode: 'play' });
   stopAllAnimations();
-
   try {
     const mod = await import('./app/archiveEntry.js');
-    if (mod && mod.initArchiveEntry) {
-      await mod.initArchiveEntry(entryEl);
-    }
+    if (mod && mod.initArchiveEntry) await mod.initArchiveEntry(entryEl);
   } catch (e) {
-    console.error('[enterArchive] archiveEntry init failed:', e);
+    console.error('[enterPlayIntro] archiveEntry init failed:', e);
   }
-
+  const footer = document.querySelector('.footer');
+  if (footer) footer.classList.add('visible') }
+async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
+  const entryEl = document.getElementById('archiveEntryContainer');
+  const memoryListEl = document.getElementById('memoryList');
+  const archiveControlsEl = document.getElementById('archiveControls');
+  const archiveHeaderEl = document.querySelector('.archive-header');
+  if (entryEl) entryEl.style.display = 'none';
+  if (memoryListEl) memoryListEl.style.display = 'grid';
+  if (archiveControlsEl) archiveControlsEl.style.display = 'block';
+  if (archiveHeaderEl) archiveHeaderEl.style.display = 'block';
+  try {
+    await loadMemoriesFromSupabase();
+    sortMemories('all');
+  } catch (e) {
+    console.warn('[enterArchive] loadMemoriesFromSupabase failed:', e);
+  }
+  appStore.setState({ currentMode: 'archive' });
+  stopAllAnimations();
   const footer = document.querySelector('.footer');
   if (footer) footer.classList.add('visible') }
 function filterByCategory(category, btnElement) {
@@ -1869,7 +1881,25 @@ function startVoiceWaveLiveAnimation() {
 function stopVoiceWaveLiveAnimation() { if (voiceWaveLiveAnimationId) { cancelAnimationFrame(voiceWaveLiveAnimationId); voiceWaveLiveAnimationId = null } }
 // alignmentWaveAnimationId, comparisonWaveAnimationId, comparisonWaveTime Visualizer internal 서 management됨
 let voiceWaveLiveAnimationId = null;
-function selectMemory(index) {}
+function selectMemory(index) {
+  const state = appStore.getState();
+  const all = state.allMemoriesData || [];
+  const memory = all[index];
+  if (!memory || !memory.id) {
+    console.warn('[Archive] memory not found for index:', index);
+    return;
+  }
+  const titleSrc = String(memory.title || memory.completed_sentence || '');
+  const lang = /[가-힣]/.test(titleSrc) ? 'ko' : 'en';
+  try {
+    sessionStorage.setItem('demoMemoryId', String(memory.id));
+    sessionStorage.setItem('tem_archive_memory_id', String(memory.id));
+    sessionStorage.setItem('tem_archive_lang', lang);
+  } catch (_) {}
+  const isLocal = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  const base = isLocal ? 'play-test.html' : '/play';
+  window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
+}
 function showConsentSequence(memoryIndex) {}
 function showWordSentenceSequence(memoryIndex) {}
 function startArchivePlay(memoryIndex) {}
@@ -2839,6 +2869,7 @@ async function checkSession() {
 // ───── 3D Carousel Navigation ─────
 let carouselCurrentIndex = 0;
 const carouselItems = [
+    { action: 'enterPlayIntro', label: 'PLAY' },
     { action: 'enterArchive', label: 'ARCHIVE' },
     { action: 'showConfessionHub', label: 'RECORD' },
     { action: 'openMypage', label: 'MYPAGE' },
@@ -2953,6 +2984,11 @@ function activateCurrentCarouselItem() {
                 enterArchive();
             }
             break;
+        case 'enterPlayIntro':
+            if (typeof enterPlayIntro === 'function') {
+                enterPlayIntro();
+            }
+            break;
         case 'showConfessionHub':
             if (typeof showConfessionHub === 'function') {
                 showConfessionHub();
@@ -2976,6 +3012,7 @@ window.openPortfolio = openPortfolio;
 window.openAbout = openAbout;
 window.openConcept = openConcept;
 window.openMypage = openMypage;
+window.enterPlayIntro = enterPlayIntro;
 window.showModeSelection = showModeSelection;
 window.enterArchive = enterArchive;
 window.handleSocialLogin = handleSocialLogin;
@@ -3025,7 +3062,7 @@ function initMainMenu() {
   const menuItems = wrap.querySelectorAll('.menu-item');
   const descriptionArea = document.getElementById('mainMenuDescription');
   const bokehFlare = document.getElementById('mainBokehFlare');
-  let activeId = 'archive';
+  let activeId = 'play';
   let hoveredId = null;
 
   function setActive(id) {

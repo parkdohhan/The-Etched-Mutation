@@ -795,6 +795,14 @@ body::before {
   display: block
 }
 
+.archive-container {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  padding: 1.5rem 4vw 6rem;
+  background: var(--bg-deep);
+}
+
 /* ================================================================
    Archive Entry (Hub): floating sentences (demo2 extraction)
    ================================================================ */
@@ -1796,7 +1804,8 @@ body::before {
   text-align: center;
   padding: 4rem 0;
   border-bottom: 1px solid rgba(196, 168, 130, .1);
-  margin-bottom: 3rem
+  margin: 0 auto 3rem;
+  max-width: 1200px
 }
 
 .archive-title {
@@ -1950,7 +1959,8 @@ body::before {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
-  margin-bottom: 4rem
+  margin: 0 auto 4rem;
+  max-width: 1200px
 }
 
 @media(max-width:768px) {
