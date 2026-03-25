@@ -4,7 +4,8 @@ Ensure staged Markdown filenames use -YYMMDD suffix.
 
 Behavior:
 - Targets only staged .md files (added/copied/modified/renamed).
-- Renames files to <base>-YYMMDD.md using local current date.
+- Renames files to <base>-YYMMDD.md using the file's last git commit date (YYMMDD).
+  - If a file has no git history yet (new file), falls back to local current date.
 - Updates references in common text files across repo.
 - Re-stages all changes so commit includes renames/reference updates.
 """
@@ -46,6 +47,44 @@ def target_name(p: Path, yymmdd: str) -> Path:
     return p.with_name(f"{stem}-{yymmdd}.md")
 
 
+def git_last_commit_yymmdd(path_rel_posix: str) -> str | None:
+    """
+    Returns YYMMDD for the last commit touching path, or None if no history.
+    """
+    try:
+        out = run(
+            [
+                "git",
+                "log",
+                "-1",
+                "--format=%ad",
+                "--date=format:%y%m%d",
+                "--",
+                path_rel_posix,
+            ]
+        )
+    except Exception:
+        return None
+    return out or None
+
+
+def date_for_markdown(old_path: Path) -> str:
+    """
+    Use git last-commit date for the file's base name without suffix.
+    If no history exists, fall back to today's local date.
+    """
+    base_stem = SUFFIX_RE.sub("", old_path.stem)
+    base_path = old_path.with_name(base_stem + ".md")
+
+    rel_base = base_path.relative_to(ROOT).as_posix()
+    rel_old = old_path.relative_to(ROOT).as_posix()
+
+    ymd = git_last_commit_yymmdd(rel_base) or git_last_commit_yymmdd(rel_old)
+    if ymd:
+        return ymd
+    return dt.datetime.now().strftime("%y%m%d")
+
+
 def replace_refs(rename_map: dict[Path, Path]) -> int:
     changed = 0
     all_files = [p for p in ROOT.rglob("*") if p.is_file() and p.suffix.lower() in TEXT_EXTS]
@@ -67,13 +106,13 @@ def replace_refs(rename_map: dict[Path, Path]) -> int:
 
 
 def main() -> int:
-    yymmdd = dt.datetime.now().strftime("%y%m%d")
     md_paths = staged_markdown_paths()
     if not md_paths:
         return 0
 
     rename_map: dict[Path, Path] = {}
     for old in md_paths:
+        yymmdd = date_for_markdown(old)
         new = target_name(old, yymmdd)
         if new == old:
             continue
