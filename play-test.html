@@ -2483,15 +2483,22 @@
   }
 
   async function insertPlay(scene, vec, reasonLabel, result, isVoid) {
+    let userId = null;
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      userId = user?.id || null;
+    } catch (_) {}
     const row = {
       memory_id: game.memoryId,
       scene_id: scene.id,
       user_emotion: vec,
       user_reason: isVoid ? 'void' : (reasonLabel || ''),
       alignment: result.alignment_score,
+      alignment_score: result.alignment_score,
       mismatch_type: isVoid ? 'void_mismatch' : (result.mismatch_type || null),
       wave_data: null,
       layer_id: 0,
+      user_id: userId,
     };
     const { error } = await sb.from('plays').insert(row);
     if (error) LOG('plays insert error', error);

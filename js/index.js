@@ -1881,14 +1881,14 @@ function startVoiceWaveLiveAnimation() {
 function stopVoiceWaveLiveAnimation() { if (voiceWaveLiveAnimationId) { cancelAnimationFrame(voiceWaveLiveAnimationId); voiceWaveLiveAnimationId = null } }
 // alignmentWaveAnimationId, comparisonWaveAnimationId, comparisonWaveTime Visualizer internal 서 management됨
 let voiceWaveLiveAnimationId = null;
-function selectMemory(index) {
-  const state = appStore.getState();
+function selectMemory(index) { 
+        const state = appStore.getState(); 
   const all = state.allMemoriesData || [];
   const memory = all[index];
   if (!memory || !memory.id) {
     console.warn('[Archive] memory not found for index:', index);
-    return;
-  }
+            return; 
+        } 
   const titleSrc = String(memory.title || memory.completed_sentence || '');
   const lang = /[가-힣]/.test(titleSrc) ? 'ko' : 'en';
   try {
@@ -2256,9 +2256,9 @@ function proceedToNextScene() {
             showNotification('Unable to load scene data');
             return;
         }
-        if (state.currentScene < currentData.scenes.length - 1) {
-            appStore.setState({ currentScene: state.currentScene + 1 });
-            if (window.soundscape) window.soundscape.onSceneTransition();
+            if (state.currentScene < currentData.scenes.length - 1) {
+                appStore.setState({ currentScene: state.currentScene + 1 });
+                if (window.soundscape) window.soundscape.onSceneTransition();
             renderScene();
         } else {
             showEndScreen();
@@ -2650,14 +2650,41 @@ async function loadSessionHistoryFromDB() { const state = appStore.getState(); i
 async function loadMyMemoriesFromDB() {
     const state = appStore.getState();
     if (!state.currentUser?.id) return [];
+    const userId = state.currentUser.id;
     try {
-        const sessionIdsResult = await networkService.getUserSessionIds(state.currentUser.id);
-        if (sessionIdsResult.ok && sessionIdsResult.data && sessionIdsResult.data.length > 0) {
-            const ids = sessionIdsResult.data.map(s => s.id);
-            const memoriesResult = await networkService.getMemoriesBySessionIds(ids, 50);
-            if (memoriesResult.ok) return memoriesResult.data || [];
+        const client = networkService._getClient ? networkService._getClient() : null;
+        const results = await Promise.allSettled([
+            // 1) live_sessions 경로 (라이브 기록)
+            (async () => {
+                const sessionIdsResult = await networkService.getUserSessionIds(userId);
+                if (sessionIdsResult.ok && sessionIdsResult.data && sessionIdsResult.data.length > 0) {
+                    const ids = sessionIdsResult.data.map(s => s.id);
+                    const memoriesResult = await networkService.getMemoriesBySessionIds(ids, 50);
+                    return (memoriesResult.ok && memoriesResult.data) ? memoriesResult.data : [];
+                }
+                return [];
+            })(),
+            // 2) curator_id 경로 (Record/고백으로 생성한 기억)
+            (async () => {
+                if (!client) return [];
+                const { data, error } = await client
+                    .from('memories')
+                    .select('*')
+                    .eq('curator_id', userId)
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+                return (!error && data) ? data : [];
+            })(),
+        ]);
+        const liveMemories = results[0].status === 'fulfilled' ? results[0].value : [];
+        const curatedMemories = results[1].status === 'fulfilled' ? results[1].value : [];
+        // 중복 제거 (id 기준)
+        const seen = new Set();
+        const merged = [];
+        for (const m of [...liveMemories, ...curatedMemories]) {
+            if (m?.id && !seen.has(m.id)) { seen.add(m.id); merged.push(m); }
         }
-        return [];
+        return merged;
     } catch (e) {
         console.error('loadMyMemoriesFromDB error:', e);
         return [];
@@ -2666,17 +2693,44 @@ async function loadMyMemoriesFromDB() {
 async function loadUserStatsFromDB() {
     const state = appStore.getState();
     if (!state.currentUser?.id) return { sessions: 0, memories: 0, interpretations: 0 };
+    const userId = state.currentUser.id;
+    const client = networkService._getClient ? networkService._getClient() : null;
     try {
-        const sessionsResult = await networkService.getUserSessionIds(state.currentUser.id);
-        const sessionIds = (sessionsResult.ok && sessionsResult.data) ? sessionsResult.data.map(s => s.id) : [];
-        let memoriesCount = 0;
+        const [sessionsResult, playsCountResult, curatedMemoriesResult] = await Promise.allSettled([
+            networkService.getUserSessionIds(userId),
+            // plays 테이블에서 user_id 기준 플레이 횟수
+            (async () => {
+                if (!client) return 0;
+                const { count, error } = await client
+                    .from('plays')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', userId);
+                return (!error && count != null) ? count : 0;
+            })(),
+            // curator_id 기준 내가 만든 기억 수
+            (async () => {
+                if (!client) return 0;
+                const { count, error } = await client
+                    .from('memories')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('curator_id', userId);
+                return (!error && count != null) ? count : 0;
+            })(),
+        ]);
+        const sessionIds = (sessionsResult.status === 'fulfilled' && sessionsResult.value.ok && sessionsResult.value.data)
+            ? sessionsResult.value.data.map(s => s.id) : [];
+        const playsCount = playsCountResult.status === 'fulfilled' ? playsCountResult.value : 0;
+        const curatedCount = curatedMemoriesResult.status === 'fulfilled' ? curatedMemoriesResult.value : 0;
+        let liveMemoriesCount = 0;
         if (sessionIds.length > 0) {
             const memoriesResult = await networkService.getMemoryIdsBySessionIds(sessionIds);
-            memoriesCount = (memoriesResult.ok && memoriesResult.data) ? memoriesResult.data.length : 0;
+            liveMemoriesCount = (memoriesResult.ok && memoriesResult.data) ? memoriesResult.data.length : 0;
         }
- // live_interpretations 테 블 없으므 interpretationsCount 항상 0
-        const interpretationsCount = 0;
-        return { sessions: sessionIds.length, memories: memoriesCount, interpretations: interpretationsCount };
+        return {
+            sessions: sessionIds.length,
+            memories: Math.max(liveMemoriesCount, curatedCount),
+            interpretations: playsCount,
+        };
     } catch (e) {
         console.error('loadUserStatsFromDB error:', e);
         return { sessions: 0, memories: 0, interpretations: 0 };
