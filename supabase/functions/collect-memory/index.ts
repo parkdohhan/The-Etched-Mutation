@@ -20,15 +20,9 @@ serve(async (req) => {
   }
 
   try {
-    // 인증 검증
+    // 인증 검증 (optional — 비로그인도 대화 허용, 저장 시점에만 필수)
     const user = await verifyAuth(req);
-    if (!user) {
-      return unauthorizedResponse(
-        { ...getCorsHeaders(req), "Content-Type": "application/json" },
-        "기억 수집에는 로그인이 필요합니다."
-      );
-    }
-    console.log(`[collect-memory] 인증된 사용자: ${user.id}`);
+    console.log(`[collect-memory] user: ${user ? user.id : 'anonymous'}`);
 
     const body = await req.json();
     const { conversation, systemPrompt } = body;
@@ -36,11 +30,16 @@ serve(async (req) => {
     if (!conversation || !Array.isArray(conversation)) {
       return new Response(JSON.stringify({ error: "대화 기록이 필요합니다." }), {
         status: 400,
-        headers: { 
+        headers: {
           "Access-Control-Allow-Origin": "*",
-          "Content-Type": "application/json" 
+          "Content-Type": "application/json"
         }
       });
+    }
+
+    // 빈 conversation → 첫 대화 시작을 위한 시작 메시지 추가
+    if (conversation.length === 0) {
+      conversation.push({ role: 'user', content: '(대화를 시작합니다)' });
     }
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY");
@@ -60,25 +59,78 @@ serve(async (req) => {
       content: msg.content
     }));
 
-    const analysisPrompt = `대화를 분석하여 장면 정보를 추출해주세요.
+    // 언어 감지
+    const lang = body.lang || 'ko';
 
-다음 정보가 모두 수집되었는지 확인:
-1. 장면 텍스트 (무슨 일이 있었는지)
-2. 선택지 (최소 2개)
-3. 감정 (주요 감정)
-4. 이유 (왜 그렇게 느꼈는지)
+    const defaultSystemPrompt = lang === 'en'
+      ? `You are "another me" inside TEM.
+The user is about to confide a memory to you.
 
-모든 정보가 충분하면 [SCENE_COMPLETE] 태그를 응답 끝에 추가하고, JSON 형식으로 정보를 정리해주세요.
+Goal: Through natural conversation (3–7 turns), collect the following:
+1. Sensory anchor — the most vivid sense tied to this memory (visual/olfactory/auditory/somatic)
+2. Situation — what happened
+3. Emotion — what they felt (primary + secondary if applicable, intensity 0.0–1.0)
+4. Attribution — why they felt that way (self_blame / other_blame / fate_blame)
+5. Core fear — the underlying fear (abandonment / rejection / powerlessness / loss)
+6. Target — who or what the emotion is directed at (self / other / situation)
 
-JSON 형식:
+Rules:
+- Ask only one question at a time.
+- Do NOT repeat the user's words back. Acknowledge briefly, then move on.
+- Do NOT diagnose. Do NOT interpret. Just listen.
+- Tone: dry but laced with compassion. Like a mirror-self whispering.
+- Complete collection within 3–7 turns.
+- Inputs like "I don't know" or "I don't want to talk about it" → treat as VOID.
+  VOID is not a gap — it is meaningful data. Do not ignore it.
+
+When collection is sufficient, output [SCENE_COMPLETE] followed by this JSON:
 {
-  "text": "장면 설명",
-  "choices": ["선택지1", "선택지2"],
-  "emotion": "주요 감정 (예: 무서움, 슬픔, 분노 등)",
-  "reason": "이유 설명"
+  "sensory_anchor": { "modality": "visual|olfactory|auditory|somatic", "content": "..." },
+  "situation": "...",
+  "emotion": { "primary": "...", "secondary": "...", "intensity": 0.0-1.0 },
+  "reason": {
+    "attribution": "self_blame|other_blame|fate_blame",
+    "core_fear": "abandonment|rejection|powerlessness|loss",
+    "target": "self|other|situation",
+    "is_void": false
+  }
 }
 
-정보가 부족하면 추가 질문을 하세요.`;
+Start your first message by asking about the most vivid sensation tied to this memory.`
+      : `당신은 TEM 안의 "또다른 나"입니다.
+사용자가 기억을 털어놓으려 합니다.
+
+목표: 자연스러운 대화(3~7턴)를 통해 아래 정보를 수집하세요.
+1. 감각 앵커 — 이 기억에서 가장 생생한 감각 (visual/olfactory/auditory/somatic)
+2. 상황 — 무슨 일이 있었는지
+3. 감정 — 어떤 감정이었는지 (primary + secondary, intensity 0.0~1.0)
+4. 귀인 — 왜 그렇게 느꼈는지 (self_blame / other_blame / fate_blame)
+5. 핵심 공포 — 근저의 두려움 (abandonment / rejection / powerlessness / loss)
+6. 대상 — 감정의 대상 (self / other / situation)
+
+규칙:
+- 질문은 한 번에 하나만.
+- 사용자의 말을 반복하지 마라. 짧게 받아주고 다음으로.
+- 진단하지 마라. 해석하지 마라. 듣기만 하라.
+- 톤: 건조하지만 연민이 깔린. 거울 속의 내가 나에게 속삭이듯.
+- 3~7턴 안에 수집을 완료하라.
+- "모르겠어", "말하고 싶지 않아" 같은 입력은 VOID로 처리.
+  VOID는 결손이 아니라 의미 있는 데이터. 무시하지 마라.
+
+수집이 충분하면 [SCENE_COMPLETE] 태그와 함께 아래 JSON을 출력:
+{
+  "sensory_anchor": { "modality": "visual|olfactory|auditory|somatic", "content": "..." },
+  "situation": "...",
+  "emotion": { "primary": "...", "secondary": "...", "intensity": 0.0-1.0 },
+  "reason": {
+    "attribution": "self_blame|other_blame|fate_blame",
+    "core_fear": "abandonment|rejection|powerlessness|loss",
+    "target": "self|other|situation",
+    "is_void": false
+  }
+}
+
+첫 메시지는 이 기억에서 가장 생생한 감각을 물어보는 것으로 시작하세요.`;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -91,11 +143,8 @@ JSON 형식:
         model: "claude-sonnet-4-20250514",
         max_tokens: 1024,
         stream: true,
-        system: systemPrompt || "당신은 사용자의 기억을 수집하는 AI입니다.",
-        messages: [
-          ...messages,
-          { role: "user", content: analysisPrompt }
-        ]
+        system: systemPrompt || defaultSystemPrompt,
+        messages
       })
     });
 
@@ -161,25 +210,17 @@ JSON 형식:
 
                     if (sceneComplete) {
                       try {
-                        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+                        // Extract the last JSON object after [SCENE_COMPLETE]
+                        const afterTag = fullText.split('[SCENE_COMPLETE]').pop() || '';
+                        const jsonMatch = afterTag.match(/\{[\s\S]*\}/);
                         if (jsonMatch) {
                           extractedScene = JSON.parse(jsonMatch[0]);
                         } else {
-                          extractedScene = {
-                            text: "",
-                            choices: [],
-                            emotion: "",
-                            reason: ""
-                          };
+                          extractedScene = null;
                         }
                       } catch (e) {
                         console.error('JSON 파싱 오류:', e);
-                        extractedScene = {
-                          text: "",
-                          choices: [],
-                          emotion: "",
-                          reason: ""
-                        };
+                        extractedScene = null;
                       }
                     }
 

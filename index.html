@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/expInterview.css?v=3">
-    <link rel="stylesheet" href="css/confessionV3.css?v=3">
+    <!-- confessionV3.css removed — styles now in css/index.css -->
     <link rel="stylesheet" href="css/main-menu.css">
 </head>
 <body>
@@ -488,15 +488,11 @@
         </div>
     </div>
     
-    <!-- The Confession overlay -->
-    <div id="confession-overlay" class="hidden">
-        <div class="vignette-layer"></div>
-        <div class="confession-progress">
-            <span class="step-indicator" id="confessionStepIndicator">1 / 5</span>
-            <button class="confession-exit-btn" id="confessionExitBtn">✕</button>
-        </div>
-        <div class="confession-flow" id="confessionFlow"></div>
-    </div>
+    <!-- Record Chat (Phase A: conversation) -->
+    <div id="recordChatContainer" class="screen hidden" style="display:none;"></div>
+
+    <!-- Scene Review + Burial (Phase B-D) -->
+    <div id="burialContainer" class="screen hidden" style="display:none;"></div>
     
     <script src="data/memories.js"></script>
     <script src="js/ui/strataSection.js"></script>
@@ -506,7 +502,7 @@
     <script src="js/ui/floatingAnchor.js"></script>
     <script src="js/audio/SoundscapeBeta.js"></script>
     <script src="js/expInterview.js"></script>
-    <script src="js/confessionV3.js"></script>
+    <!-- confessionV3.js removed — replaced by js/app/recordChat.js (ES module, loaded from index.js) -->
     <script type="module" src="js/index.js?v=3"></script>
 </body>
 </html>

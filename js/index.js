@@ -1,4 +1,4 @@
-import { getSupabaseClient, onAuthStateChange, getSession } from './lib/supabaseClient.js';
+import { getSupabaseClient, onAuthStateChange, getSession, getAccessToken } from './lib/supabaseClient.js';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './lib/config.js';
 import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from './safety.js';
 import { NPC_DIALOGUES } from './npc-dialogues.js';
@@ -228,10 +228,9 @@ async function initApp() {
             // Auto-skip opening sequence (referenced in startOpeningSequence)
             window.__oauthRedirectSkipOpening = true;
 
-            // Clean URL hash/query (remove exposed tokens)
-            if (window.history && window.history.replaceState) {
-                window.history.replaceState(null, '', window.location.pathname);
-            }
+            // DO NOT clear URL here — Supabase needs the tokens in the hash/query
+            // to establish the session. URL will be cleaned after session is confirmed.
+            window.__oauthNeedUrlCleanup = true;
 
             console.log('[Auth] OAuth redirect detected — skipping opening');
         }
@@ -258,6 +257,15 @@ async function initApp() {
                 });
                 syncToAppState();
                 console.log('[Auth] User state restored:', user.email);
+
+                // Now that Supabase has processed the tokens, clean the URL
+                if (window.__oauthNeedUrlCleanup) {
+                    window.__oauthNeedUrlCleanup = false;
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState(null, '', window.location.pathname);
+                    }
+                    console.log('[Auth] OAuth URL cleaned after session confirmed');
+                }
             }
         } else if (event === 'SIGNED_OUT') {
             appStore.setState({ isLoggedIn: false, currentUser: null });
@@ -4713,47 +4721,13 @@ function startFlow() {
     renderPrompt();
 }
 
+// Legacy stubs — replaced by Record Chat flow
 function startConfession() {
-    const overlay = document.getElementById('confession-overlay');
-    if (overlay) {
-        overlay.classList.remove('hidden');
-        document.body.classList.add('confession-active');
- // V3 플 우 (window.startV3Flow confessionV3.js 서 register)
-        if (typeof window.startV3Flow === 'function') {
-            window.startV3Flow();
-        } else {
-            startFlow(); // V3 미로드 시 기존 플로우 폴백
-        }
-    }
+    startBeginner();
 }
 
-// V3 completeV3() 서 call scene create 브릿지
-window._v3GenerateScene = function(flowData) {
- // flowState.data V3 든 data 교체
-    flowState.data = flowData;
- // existing scene create 플 우 execute
-    generateSceneFromRitual();
-};
-
 function endConfession() {
-    const overlay = document.getElementById('confession-overlay');
-    if (overlay) {
-        overlay.classList.add('hidden');
-        document.body.classList.remove('confession-active');
-    }
-
-    flowState.currentIndex = 0;
-    flowState.lastStep = 0;
-    flowState.data = {
-        sensory: { smell: '', sound: '', touch: '' },
-        anchor: { object: '', context: '' },
-        action: { what: '', attribution: '' },
-        crash: { event: '', bodyFeel: '', emotion: '', target: '' },
-        seal: { relation: '', word: '' },
-    };
-    const flowEl = document.getElementById('confessionFlow');
-    if (flowEl) flowEl.innerHTML = '';
-
+    endRecordChat();
     showConfessionHub();
 }
 
@@ -5273,9 +5247,12 @@ function renderDoorFrame() {
       if (pr >= 1) { doorPhase = 3; }
     }
   } else if (ph === 3) {
+    doorPhase = 4; // prevent re-entry
     pre.textContent = Array(DOOR_H).fill(' '.repeat(DOOR_W)).join('\n');
     setTimeout(() => startBeginner(), 400);
     return;
+  } else if (ph >= 4) {
+    return; // already transitioned
   }
 
   const g = buildDoor(ph, pr);
@@ -5331,12 +5308,173 @@ function handleDoorClick() {
 window.handleDoorClick = handleDoorClick;
 window.initDoor = initDoor;
 
-// Beginner mode start (existing Create Memory 플 우)
-function startBeginner() {
-    console.log('=== Confession Hub ===');
-    console.log('Mode: beginner');
+// Record Chat start (대화형 기억 수집)
+async function startBeginner() {
+    console.log('=== Record Chat Start ===');
     hideAllScreens();
-    startConfessionFlow('beginner');
+
+    // introScreen도 명시적으로 숨김 (hideAllScreens가 처리하지 않는 경우)
+    const introScreen = document.getElementById('introScreen');
+    if (introScreen) {
+        introScreen.classList.add('hidden');
+        introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important';
+    }
+
+    // 로그인 없이 대화 허용 — 저장 시점에만 로그인 요구
+    appStore.setState({ currentMode: 'record' });
+
+    const container = document.getElementById('recordChatContainer');
+    if (!container) return;
+    container.classList.remove('hidden');
+    container.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
+
+    const lang = /[가-힣]/.test(document.documentElement.lang || '') ? 'ko' : 'ko';
+
+    const { initRecordChat } = await import('./app/recordChat.js');
+    initRecordChat(container, {
+        lang,
+        onComplete: async (extractedScene) => {
+            await handleRecordComplete(extractedScene, lang);
+        },
+        onCancel: () => {
+            endRecordChat();
+            showConfessionHub();
+        }
+    });
+}
+
+async function handleRecordComplete(extractedScene, lang) {
+    const { showLoadingScreen, showSceneReview, showBurialAnimation } = await import('./app/burialAnimation.js');
+    const burialContainer = document.getElementById('burialContainer');
+    if (!burialContainer) return;
+
+    // Phase B: 로딩 화면
+    const recordContainer = document.getElementById('recordChatContainer');
+    if (recordContainer) { recordContainer.classList.add('hidden'); recordContainer.style.display = 'none'; }
+    burialContainer.classList.remove('hidden');
+    burialContainer.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
+    showLoadingScreen(burialContainer, lang);
+
+    // generate-scene-from-conversation 호출
+    try {
+        const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-scene-from-conversation`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ conversationData: extractedScene, lang }),
+        });
+
+        if (!response.ok) throw new Error('Scene generation failed');
+        const sceneData = await response.json();
+
+        // Phase C: 장면 확인
+        showSceneReview(burialContainer, {
+            scenes: sceneData.scenes,
+            originalVector: sceneData.originalVector,
+            lang,
+            onConfirm: async () => {
+                // Supabase에 저장
+                const memoryId = await saveRecordMemory(extractedScene, sceneData, lang);
+
+                // Phase D: 매장 연출
+                showBurialAnimation(burialContainer, {
+                    originalVector: sceneData.originalVector,
+                    lang,
+                    onArchive: () => {
+                        burialContainer.classList.add('hidden');
+                        burialContainer.style.display = 'none';
+                        enterArchive();
+                    }
+                });
+            },
+            onRetry: () => {
+                burialContainer.classList.add('hidden');
+                burialContainer.style.display = 'none';
+                startBeginner(); // 다시 대화 시작
+            }
+        });
+    } catch (e) {
+        console.error('[Record] Scene generation error:', e);
+        showNotification(lang === 'en' ? 'Failed to create scenes. Please try again.' : '장면 생성에 실패했습니다. 다시 시도해주세요.');
+        burialContainer.classList.add('hidden');
+        burialContainer.style.display = 'none';
+        startBeginner();
+    }
+}
+
+async function saveRecordMemory(conversationData, sceneData, lang) {
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error('Supabase not initialized');
+
+        const state = appStore.getState();
+        const userId = state.currentUser?.id;
+
+        // memories 테이블에 저장
+        const title = conversationData.situation
+            ? (conversationData.situation.substring(0, 50) + (conversationData.situation.length > 50 ? '...' : ''))
+            : (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억');
+
+        const { data: memory, error: memError } = await supabase
+            .from('memories')
+            .insert({
+                title: title,
+                completed_sentence: conversationData.situation || '',
+                sensory_anchor: conversationData.sensory_anchor || null,
+                status: 'Fetus',
+                curator_id: userId || null,
+                original_vector: sceneData.originalVector?.base || null,
+                original_reason_vector: sceneData.originalVector?.reason_analysis || null,
+                lang: lang,
+            })
+            .select('id')
+            .single();
+
+        if (memError) throw memError;
+
+        // scenes 테이블에 5장면 저장
+        const scenesToInsert = sceneData.scenes.map((s, i) => ({
+            memory_id: memory.id,
+            order_index: s.order || i + 1,
+            scene_type: s.sceneType || 'normal',
+            text: s.text,
+            emotion_cue: s.emotionCue || '',
+            original_vector: s.originalVector?.base || null,
+            original_reason_vector: s.originalVector?.reason_analysis || null,
+            vector_weight: s.vectorWeight || 0,
+        }));
+
+        const { error: sceneError } = await supabase
+            .from('scenes')
+            .insert(scenesToInsert);
+
+        if (sceneError) throw sceneError;
+
+        console.log('[Record] Memory saved:', memory.id);
+        return memory.id;
+    } catch (e) {
+        console.error('[Record] Save error:', e);
+        showNotification(lang === 'en' ? 'Failed to save memory.' : '기억 저장에 실패했습니다.');
+        return null;
+    }
+}
+
+function endRecordChat() {
+    const container = document.getElementById('recordChatContainer');
+    if (container) {
+        container.classList.add('hidden');
+        container.style.display = 'none';
+        container.innerHTML = '';
+    }
+    const burial = document.getElementById('burialContainer');
+    if (burial) {
+        burial.classList.add('hidden');
+        burial.style.display = 'none';
+        burial.innerHTML = '';
+    }
 }
 
 // Ritual mode start (existing Live narrator 플 우, 소켓 remove)
@@ -5371,7 +5509,7 @@ function showMainMenu() {
 
 // 모든 screen hide 헬퍼 function
 function hideAllScreens() {
-    ['modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal', 'confessionHub'].forEach(id => {
+    ['modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal', 'confessionHub', 'recordChatContainer', 'burialContainer'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.classList.remove('active');
@@ -5381,10 +5519,10 @@ function hideAllScreens() {
     });
 }
 
-// Confession 플 우 start (Beginner mode용)
+// Confession 플 우 start — redirects to Record Chat
 function startConfessionFlow(mode) {
-    appStore.setState({ currentMode: mode });
-    startConfession(); // 기존 startConfession 함수 called
+    appStore.setState({ currentMode: mode || 'record' });
+    startBeginner();
 }
 
 // Ritual 플 우 start (소켓 remove 버전)

@@ -5566,3 +5566,443 @@ body.confession-active::before {
   background: rgba(212, 175, 55, 0.05);
   border-color: #d4af37;
 }
+
+/* ===== Record Ghost UI (Phase A) ===== */
+#recordChatContainer {
+  flex-direction: column;
+  background: #0a0a0e;
+  color: #e0ddd5;
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+}
+
+.rec-ghost {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Back button — top left, minimal */
+.rec-back {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 5;
+  background: none;
+  border: none;
+  color: rgba(196, 168, 130, 0.35);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.3s;
+}
+
+.rec-back:hover {
+  color: rgba(196, 168, 130, 0.7);
+}
+
+/* Wave area — center of screen, the ghost */
+.rec-wave-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.rec-wave-area canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* AI text — floats above/below the wave center */
+.rec-ai-text {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  max-width: 520px;
+  text-align: center;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1.05rem;
+  line-height: 2;
+  color: rgba(220, 215, 205, 0.85);
+  letter-spacing: 0.3px;
+  white-space: pre-line;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Input row — bottom */
+.rec-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 14px));
+  background: rgba(10, 10, 14, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  flex-shrink: 0;
+  z-index: 3;
+}
+
+#recordInput {
+  flex: 1;
+  background: rgba(196, 168, 130, 0.04);
+  border: 1px solid rgba(196, 168, 130, 0.18);
+  border-radius: 8px;
+  padding: 11px 16px;
+  color: #e0ddd5;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+#recordInput:focus {
+  border-color: rgba(196, 168, 130, 0.45);
+}
+
+#recordInput:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.rec-void-btn {
+  background: none;
+  border: 1px solid rgba(196, 168, 130, 0.15);
+  border-radius: 8px;
+  color: rgba(196, 168, 130, 0.4);
+  padding: 9px 12px;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.rec-void-btn:hover {
+  border-color: rgba(196, 168, 130, 0.45);
+  color: rgba(196, 168, 130, 0.75);
+}
+
+.rec-void-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.rec-send-btn {
+  background: none;
+  border: 1px solid rgba(196, 168, 130, 0.25);
+  border-radius: 8px;
+  color: rgba(196, 168, 130, 0.6);
+  padding: 9px 14px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.rec-send-btn:hover {
+  border-color: rgba(196, 168, 130, 0.55);
+  color: rgba(196, 168, 130, 1);
+}
+
+.rec-send-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* Crisis overlay */
+.rec-crisis-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.rec-crisis-overlay:not(.hidden) {
+  pointer-events: auto;
+}
+
+.crisis-noise {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(180, 40, 40, 0.2), transparent 70%);
+  animation: crisisNoisePulse 2s ease-in-out infinite;
+}
+
+@keyframes crisisNoisePulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+/* Safety resources (overlaid at bottom) */
+.rec-safety {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  width: 85%;
+  max-width: 400px;
+  animation: recSafetyFadeIn 1s ease;
+}
+
+@keyframes recSafetyFadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.safety-resources {
+  padding: 16px;
+  border: 1px solid rgba(196, 168, 130, 0.2);
+  border-radius: 12px;
+  background: rgba(15, 14, 20, 0.9);
+  backdrop-filter: blur(6px);
+}
+
+.safety-lead {
+  font-style: italic;
+  color: rgba(196, 168, 130, 0.7);
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.safety-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  color: rgba(220, 215, 205, 0.8);
+  font-size: 0.85rem;
+}
+
+.safety-card a {
+  color: rgba(196, 168, 130, 0.9);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.safety-card small {
+  color: rgba(196, 168, 130, 0.5);
+}
+
+/* ===== Scene Review (Phase B-C) ===== */
+.scene-review {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #0a0a0e;
+  color: #e0ddd5;
+  padding: 20px;
+}
+
+.scene-review-header {
+  text-align: center;
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+
+.scene-review-counter {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  letter-spacing: 3px;
+  color: rgba(196, 168, 130, 0.5);
+}
+
+.scene-review-wave {
+  height: 80px;
+  flex-shrink: 0;
+  margin: 16px 0;
+}
+
+.scene-review-text {
+  flex: 1;
+  padding: 20px 0;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1.05rem;
+  line-height: 2;
+  color: rgba(220, 215, 205, 0.9);
+  white-space: pre-line;
+  overflow-y: auto;
+}
+
+.scene-review-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid rgba(196, 168, 130, 0.1);
+  flex-shrink: 0;
+}
+
+.scene-nav-btn {
+  background: none;
+  border: 1px solid rgba(196, 168, 130, 0.3);
+  border-radius: 8px;
+  color: rgba(196, 168, 130, 0.7);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.scene-nav-btn:hover {
+  border-color: rgba(196, 168, 130, 0.6);
+  color: rgba(196, 168, 130, 1);
+}
+
+.scene-review-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.scene-confirm-btn {
+  background: rgba(196, 168, 130, 0.1);
+  border: 1px solid rgba(196, 168, 130, 0.4);
+  border-radius: 8px;
+  color: rgba(196, 168, 130, 0.9);
+  padding: 10px 20px;
+  cursor: pointer;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.scene-confirm-btn:hover {
+  background: rgba(196, 168, 130, 0.2);
+}
+
+.scene-retry-btn {
+  background: none;
+  border: 1px solid rgba(196, 168, 130, 0.15);
+  border-radius: 8px;
+  color: rgba(196, 168, 130, 0.5);
+  padding: 10px 16px;
+  cursor: pointer;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.85rem;
+  transition: all 0.3s;
+}
+
+.scene-retry-btn:hover {
+  border-color: rgba(196, 168, 130, 0.3);
+  color: rgba(196, 168, 130, 0.7);
+}
+
+/* ===== Burial Animation (Phase D) ===== */
+.burial-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #0a0a0e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.burial-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.burial-text-overlay {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 20px;
+}
+
+.burial-text-main {
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  font-size: 1.3rem;
+  color: rgba(220, 215, 205, 0.9);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.burial-text-sub {
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  color: rgba(196, 168, 130, 0.6);
+  letter-spacing: 1px;
+}
+
+.burial-archive-btn {
+  position: absolute;
+  bottom: 60px;
+  z-index: 3;
+  background: none;
+  border: 1px solid rgba(196, 168, 130, 0.3);
+  border-radius: 8px;
+  color: rgba(196, 168, 130, 0.7);
+  padding: 12px 24px;
+  cursor: pointer;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  transition: all 0.3s;
+}
+
+.burial-archive-btn:hover {
+  border-color: rgba(196, 168, 130, 0.6);
+  color: rgba(196, 168, 130, 1);
+  background: rgba(196, 168, 130, 0.05);
+}
+
+/* Burial loading */
+.burial-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #0a0a0e;
+  gap: 20px;
+}
+
+.burial-loading-text {
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1rem;
+  color: rgba(196, 168, 130, 0.6);
+  letter-spacing: 2px;
+}
+
+.burial-loading-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.burial-loading-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(196, 168, 130, 0.4);
+  animation: recordTypingDot 1.4s infinite ease-in-out both;
+}
+
+.burial-loading-dots .dot:nth-child(2) { animation-delay: 0.16s; }
+.burial-loading-dots .dot:nth-child(3) { animation-delay: 0.32s; }
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .rec-ai-text { top: 15%; width: 88%; font-size: 0.95rem; line-height: 1.9; }
+  .rec-input-row { padding: 10px 12px; }
+  #recordInput { padding: 9px 12px; font-size: 0.9rem; }
+  .rec-safety { width: 92%; bottom: 70px; }
+  .scene-review { padding: 12px; }
+  .scene-review-text { font-size: 0.95rem; }
+  .burial-text-main { font-size: 1.1rem; }
+  .burial-text-sub { font-size: 0.9rem; }
+  .burial-archive-btn { bottom: 40px; }
+}
