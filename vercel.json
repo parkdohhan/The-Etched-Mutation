@@ -3,9 +3,10 @@
   "outputDirectory": ".",
   "framework": null,
   "rewrites": [
-    { "source": "/demo", "destination": "/demo.html" }
+    { "source": "/demo", "destination": "/demo.html" },
+    { "source": "/play", "destination": "/index.html" }
   ],
   "redirects": [
-    { "source": "/", "destination": "/demo", "permanent": false }
+    { "source": "/", "destination": "/play?demo=1&memory=8fe034ef-6db0-4ba1-b291-66954fea2e08", "permanent": false }
   ]
 }
