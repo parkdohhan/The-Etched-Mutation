@@ -7,6 +7,49 @@ import { localAnalyze } from './demoEmotionLocal.js';
 import { aiAnalyze } from './demoAIAnalyze.js';
 import { waitForSupabaseClient } from '../lib/supabaseClient.js';
 import { networkService } from '../services/NetworkService.js';
+import { playSound, stopSound, setVolume, SOUNDS } from '../shared/audio.js';
+
+// ── Sound layer management ──
+let ambientAudio = null;
+let voidAudio = null;
+let rainAudio = null;
+
+function fadeInAudio(src, { loop = true, targetVolume = 0.25, duration = 2000 } = {}) {
+  const audio = new Audio(src);
+  audio.loop = loop;
+  audio.volume = 0;
+  audio.play().catch(() => {});
+  let elapsed = 0;
+  const step = 50;
+  const iv = setInterval(() => {
+    elapsed += step;
+    audio.volume = Math.min(targetVolume, (elapsed / duration) * targetVolume);
+    if (elapsed >= duration) clearInterval(iv);
+  }, step);
+  return audio;
+}
+
+function fadeOutAudio(audio, duration = 1500) {
+  if (!audio) return;
+  const startVol = audio.volume;
+  let elapsed = 0;
+  const step = 50;
+  const iv = setInterval(() => {
+    elapsed += step;
+    audio.volume = Math.max(0, startVol * (1 - elapsed / duration));
+    if (elapsed >= duration) {
+      clearInterval(iv);
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, step);
+}
+
+function playFootstep() {
+  const a = new Audio(SOUNDS.uiInput);
+  a.volume = 0.15;
+  a.play().catch(() => {});
+}
 
 const engine = new ByeoriEngine();
 const visualizer = new Visualizer();
@@ -194,26 +237,53 @@ function startOpeningWaveLoop(canvas, textEl) {
   }
   tick();
 
-  let step = 0;
+  let openingSkipped = false;
   textEl.textContent = '';
-  setTimeout(() => {
-    typeTo(textEl, 'Are you ready to look into your memories?', 50, () => {
-      step = 1;
-      setTimeout(() => {
-        typeTo(textEl, 'Are you ready to look into your memories?\nOkay...', 40, () => {
-          textEl.classList.add('ready');
-        });
-      }, 1000);
-    });
-  }, 1000);
+  textEl.classList.add('typing');
 
   function goNext() {
+    if (openingSkipped) return;
+    openingSkipped = true;
     if (openingWaveId) cancelAnimationFrame(openingWaveId);
     openingWaveId = null;
+    textEl.classList.remove('typing');
     startMonologue();
   }
+
+  // Typed dialogue sequence (Hello → You're here → Come in)
+  setTimeout(() => {
+    if (openingSkipped) return;
+    typeTo(textEl, 'Hello.', 50, () => {
+      if (openingSkipped) return;
+      setTimeout(() => {
+        if (openingSkipped) return;
+        typeTo(textEl, 'Hello.\nYou\'re here. It\'s been a while.', 45, () => {
+          if (openingSkipped) return;
+          setTimeout(() => {
+            if (openingSkipped) return;
+            typeTo(textEl, 'Hello.\nYou\'re here. It\'s been a while.\n...you came looking for a memory?', 40, () => {
+              if (openingSkipped) return;
+              setTimeout(() => {
+                if (openingSkipped) return;
+                typeTo(textEl, 'Hello.\nYou\'re here. It\'s been a while.\n...you came looking for a memory?\n\nCome in.', 40, () => {
+                  textEl.classList.remove('typing');
+                  textEl.classList.add('ready');
+                });
+              }, 1200);
+            });
+          }, 1200);
+        });
+      }, 1500);
+    });
+  }, 2500);
+
   textEl.addEventListener('click', goNext, { once: true });
-  setTimeout(goNext, 4000);
+  document.addEventListener('keydown', function onKey(e) {
+    const tag = (e.target?.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    document.removeEventListener('keydown', onKey);
+    goNext();
+  });
 }
 
 function typeTo(el, fullText, speed, done) {
@@ -384,6 +454,9 @@ function startPlay() {
   setPhaseActive('phasePlay');
   demoState.sceneIndex = 0;
 
+  // Sound: ambient fade-in on play start
+  ambientAudio = fadeInAudio(SOUNDS.tension, { loop: true, targetVolume: 0.18, duration: 3000 });
+
   const playCanvas = document.getElementById('playWaveCanvas');
   const terrainCanvas = document.getElementById('terrainCanvas2D');
   if (playCanvas) {
@@ -433,8 +506,11 @@ function renderScene(scene) {
   const submitBtn = document.getElementById('sceneSubmitBtn');
   if (!sceneTextEl || !inputEl) return;
 
+  // Sound: footstep on scene entry
+  if (demoState.sceneIndex > 0) playFootstep();
+
   sceneTextEl.textContent = '';
-  typeTo(sceneTextEl, scene.text, 35, () => {});
+  typeTo(sceneTextEl, scene.text || '', 35, () => {});
 
   const idx = demoState.sceneIndex;
   const config = SCENE_INPUT_CONFIG[idx] || SCENE_INPUT_CONFIG[0];
@@ -465,15 +541,33 @@ function updateLiveWave(liveVector) {
 
 function submitScene() {
   const inputEl = document.getElementById('sceneTextInput');
+  const submitBtn = document.getElementById('sceneSubmitBtn');
   const resolveOverlay = document.getElementById('resolveOverlay');
   if (!inputEl) return;
 
   const userText = inputEl.value.trim();
+  // Empty input guard
+  if (!userText) {
+    inputEl.style.outline = '1px solid rgba(200,80,80,0.6)';
+    setTimeout(() => { inputEl.style.outline = ''; }, 1500);
+    return;
+  }
+
   const scene = demoState.scenes[demoState.sceneIndex];
   if (!scene) return;
 
+  // Double-click protection
+  inputEl.disabled = true;
+  if (submitBtn) submitBtn.disabled = true;
+
   setPhase(PHASES.INPUT_RESOLVE);
   if (resolveOverlay) resolveOverlay.classList.remove('hidden');
+  const resolveText = document.getElementById('resolveText');
+  if (resolveText) resolveText.textContent = 'Analyzing your response...';
+
+  // Sound: fade out ambient, start void drone
+  fadeOutAudio(ambientAudio, 1000);
+  voidAudio = fadeInAudio(SOUNDS.drone, { loop: true, targetVolume: 0.12, duration: 1500 });
 
   const liveVector = demoState.liveVector || localAnalyze(userText);
 
@@ -482,13 +576,19 @@ function submitScene() {
     if (resolved) return;
     resolved = true;
     if (resolveOverlay) resolveOverlay.classList.add('hidden');
+    // Sound: stop void, restore ambient
+    fadeOutAudio(voidAudio, 800);
+    voidAudio = null;
+    ambientAudio = fadeInAudio(SOUNDS.tension, { loop: true, targetVolume: 0.18, duration: 1500 });
+
     demoState.resolvedVector = aiResult || (liveVector ? { ...liveVector, isRough: !aiResult } : null);
     if (!demoState.resolvedVector && liveVector) demoState.resolvedVector = { ...liveVector, isRough: true };
     demoState.flags.aiAnalysisFailed = !aiResult;
+    console.log('[demoFlow] Engine input:', { aiResult: !!aiResult, bucket: demoState.resolvedVector?.base });
     processScene();
   }
 
-  const timeout = setTimeout(() => finishResolve(null), 1000);
+  const timeout = setTimeout(() => finishResolve(null), 8000);
   aiAnalyze(userText, scene.text).then((aiResult) => {
     clearTimeout(timeout);
     finishResolve(aiResult);
@@ -521,6 +621,12 @@ function processScene() {
   };
 
   const engineResult = engine.calculateStep({ userVector, originalVector }, context);
+  console.log('[demoFlow] Engine result:', {
+    alignment_score: engineResult.alignment_score,
+    alignment_bucket: engineResult.alignment_bucket,
+    transition_pattern: engineResult.transition_pattern,
+    mismatch_type: engineResult.mismatch_type,
+  });
 
   recordScene({
     sceneIndex: demoState.sceneIndex,
@@ -851,11 +957,39 @@ function startReveal() {
   setPhase(PHASES.REVEAL);
   setPhaseActive('phaseReveal');
 
+  // Sound: fade out all, then rain
+  fadeOutAudio(ambientAudio, 1500);
+  fadeOutAudio(voidAudio, 1500);
+  ambientAudio = null;
+  voidAudio = null;
+  setTimeout(() => {
+    rainAudio = fadeInAudio(SOUNDS.rain, { loop: true, targetVolume: 0.2, duration: 3000 });
+  }, 2000);
+
   const headerEl = document.getElementById('revealHeader');
   const scenesEl = document.getElementById('revealScenes');
   const nextBtn = document.getElementById('revealNextBtn');
   if (!scenesEl) return;
-  if (headerEl) headerEl.textContent = 'Core Scenes — Original Waveform vs Your Waveform';
+
+  // Calculate statistics
+  const totalScenes = demoState.sceneHistory.length;
+  const coreScenes = demoState.sceneHistory.filter((h) => h.isCoreMoment).length;
+  const avgAlignment = totalScenes > 0
+    ? demoState.sceneHistory.reduce((sum, h) => sum + h.alignmentScore, 0) / totalScenes
+    : 0;
+
+  if (headerEl) {
+    headerEl.innerHTML = `
+      <div style="margin-bottom:1.2rem;font-size:1.1rem;color:var(--demo-accent,#c4a882)">
+        The memory has been read.
+      </div>
+      <div style="font-size:0.85rem;color:var(--demo-dim,rgba(232,228,222,0.35));letter-spacing:0.05em">
+        Scenes visited: ${totalScenes} &nbsp;·&nbsp;
+        Core moments: ${coreScenes} &nbsp;·&nbsp;
+        Average alignment: ${(avgAlignment * 100).toFixed(0)}%
+      </div>
+    `;
+  }
 
   scenesEl.innerHTML = '';
   const coreFirst = demoState.sceneHistory.filter((h) => h.isCoreMoment);
@@ -923,6 +1057,10 @@ function dominantEmotion(base) {
 function startTerrain() {
   setPhase(PHASES.TERRAIN);
   setPhaseActive('phaseTerrain');
+
+  // Sound: fade out rain
+  fadeOutAudio(rainAudio, 2000);
+  rainAudio = null;
 
   const container = document.getElementById('strataViewContainer');
   const captionEl = document.getElementById('terrainCaption');

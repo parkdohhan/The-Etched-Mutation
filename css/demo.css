@@ -222,8 +222,12 @@ body {
   font-size: 0.85rem;
   transition: all 0.2s;
 }
-#sceneSubmitBtn:hover {
+#sceneSubmitBtn:hover:not(:disabled) {
   background: rgba(196,168,130,0.1);
+}
+#sceneSubmitBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .resolve-overlay {
@@ -267,6 +271,9 @@ body {
   font-size: 0.8rem;
   color: var(--demo-dim);
   letter-spacing: 0.15em;
+  width: 100%;
+  text-align: center;
+  margin-bottom: 0.5rem;
 }
 .reveal-scene-item {
   width: 100%;
