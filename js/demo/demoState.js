@@ -44,6 +44,9 @@ export const demoState = {
  // vector 분리
   liveVector: null,     // localAnalyze() 결과, 파동 즉시 반영용
   resolvedVector: null, // aiAnalyze() 또는 fallback 확정값, 엔진 계산용
+  userEmotionTrajectory: [],
+  originalEmotionTrajectory: [],
+  sceneScores: [],
 
  // scene 기록
   sceneHistory: [],

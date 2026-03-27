@@ -1,6 +1,9 @@
 /**
- * 별이 엔진 V3 스코어링 회귀 테스트
- * 
+ * 별이 엔진 V3 스코어링 회귀 테스트 (아카이브)
+ *
+ * 엔진이 V4(궤적 기반 정렬도)로 바뀌어 이 스위트는 기본 비활성화(skip)합니다.
+ * V4 회귀는 tests/byeori_v4_scoring.test.js 를 사용하세요.
+ *
  * V3의 3축 정렬도 시스템 (감정 0.4 + 이유 0.4 + 태도 0.2) 검증
  * 
  * 실행 방법:
@@ -22,11 +25,13 @@
  *   - ES 모듈 지원
  */
 
-import { test } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { ByeoriEngine } from '../js/core/ByeoriEngine.js';
 
 const engine = new ByeoriEngine();
+
+describe('V3 3축 스코어링 (엔진 V4와 불일치 — 스킵)', { skip: true }, () => {
 
 // 테스트 1: 같은 감정 + 같은 이유 → HIGH
 test('같은 감정 + 같은 이유 → HIGH', () => {
@@ -423,6 +428,4 @@ test('히스테리시스 - LOW 유지 ≤ 0.42', () => {
   console.log(`✅ LOW 유지: ${result1.alignment_score.toFixed(3)} → ${result1.alignment_bucket}`);
 });
 
-console.log('\n✅ 모든 테스트가 통과했습니다!');
-
-
+});

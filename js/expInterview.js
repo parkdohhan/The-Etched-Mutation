@@ -435,17 +435,35 @@ function onExpInterviewDone(container, scene) {
   // Extract vector (NO LLM)
   const userVector = extractExpVector(expInterviewState.answers);
 
-  // V3 Engine
+  // V4 Engine (궤적 + 장면별 scene_score)
   let engineResult = null;
   const originalVector = scene.originalVector || scene.original_emotion;
 
   if (originalVector && typeof window.byeoriEngine !== 'undefined' && window.byeoriEngine) {
+    const st = (typeof appStore !== 'undefined' && appStore.getState) ? appStore.getState() : {};
+    const origBase = originalVector.base || originalVector;
+    const origWrapped = {
+      base: origBase,
+      reason_analysis: originalVector.reason_analysis || scene.original_reason_vector || null,
+    };
+    let anchorEmotions = scene.anchor_emotions;
+    if (typeof anchorEmotions === 'string') {
+      try { anchorEmotions = JSON.parse(anchorEmotions); } catch (_) { anchorEmotions = null; }
+    }
+    if (!Array.isArray(anchorEmotions) || !anchorEmotions.length) anchorEmotions = null;
+
     engineResult = window.byeoriEngine.calculateStep(
-      { userVector, originalVector: { base: originalVector.base || originalVector } },
+      {
+        userVector,
+        originalVector: origWrapped,
+        anchorEmotions,
+        userTrajectory: st.userEmotionTrajectory || [],
+        originalTrajectory: st.originalEmotionTrajectory || [],
+        sceneScores: st.sceneScores || [],
+      },
       {
         previousBucket: expInterviewState.previousBucket,
-        emotionHistory: (typeof appStore !== 'undefined' && appStore.getState) ? appStore.getState().emotionHistory || [] : [],
-        skipCount: 0
+        emotionHistory: st.emotionHistory || [],
       }
     );
   } else if (originalVector) {
@@ -477,12 +495,12 @@ function onExpInterviewDone(container, scene) {
     // Update sidebar wave
     updateWaveBucket(engineResult.alignment_bucket);
 
-    // Update store
-    if (typeof appStore !== 'undefined' && appStore.setState) {
+    if (typeof window.applyEngineResult === 'function') {
+      window.applyEngineResult(engineResult, userVector.base);
+    } else if (typeof appStore !== 'undefined' && appStore.setState) {
       appStore.setState({
         currentAlignment: engineResult.alignment_score,
         currentBucket: engineResult.alignment_bucket,
-        // contaminationLevel는 proceedToNextScene에서 누적 계산
       });
     }
   }

@@ -114,12 +114,10 @@ export class Visualizer {
         
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length - 2; i++) {
-            const xc = (points[i].x + points[i + 1].x) / 2;
-            const yc = (points[i].y + points[i + 1].y) / 2;
-            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x, points[i].y);
         }
-        
+
         const color = waveStyle.color;
         ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},${opacity})`;
         ctx.lineWidth = 2;
@@ -292,12 +290,10 @@ export class Visualizer {
         
         ctx.beginPath();
         ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length - 2; i++) {
-            const xc = (points[i].x + points[i + 1].x) / 2;
-            const yc = (points[i].y + points[i + 1].y) / 2;
-            ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+        for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x, points[i].y);
         }
-        
+
         const color = waveStyle.color;
         ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},0.8)`;
         ctx.lineWidth = 2;

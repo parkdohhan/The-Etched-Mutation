@@ -236,14 +236,85 @@ export function addVectors(vecA, vecB) {
   return result;
 }
 
-// ==================== alignment 3축 시스템 ====================
-// 
-// TEM 존재 유: "같 슬픔 라 유 다르면 다른 경험"
-// 
-// 공식: alignment = emotion(0.4) + 유(0.4) + 태 (0.2)
-//
-// ⚠️ VAD 금지 — 17dimension anchor vector 
-// ⚠️ 3축 비율 TEM 정체성. 변경 시 기획서 버전 올릴 것.
+/**
+ * 감정 벡터 뺄셈 (delta 계산용)
+ */
+export function subtractVectors(vecA, vecB) {
+  const result = {};
+  const keys = new Set([...Object.keys(vecA || {}), ...Object.keys(vecB || {})]);
+  for (const k of keys) {
+    result[k] = (vecA?.[k] || 0) - (vecB?.[k] || 0);
+  }
+  return result;
+}
+
+/**
+ * delta 궤적 배열을 1D 배열로 펼치기
+ */
+export function flattenDeltas(deltas, emotionKeys = null) {
+  const keys = emotionKeys || [
+    'fear','sadness','anger','guilt','shame','longing','numbness','isolation','moral_pain',
+    'joy','hope','relief','gratitude','love','peace','comfort','despair','helplessness',
+    'grief','tenderness','confusion','emptiness'
+  ];
+  const arr = [];
+  for (const d of deltas) {
+    for (const k of keys) arr.push(d[k] || 0);
+  }
+  return arr;
+}
+
+/**
+ * 1D float 배열 간 코사인 유사도
+ */
+export function cosineFlat(a, b) {
+  if (!a || !b || a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
+  let dot = 0, mA = 0, mB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    mA += a[i] * a[i];
+    mB += b[i] * b[i];
+  }
+  mA = Math.sqrt(mA);
+  mB = Math.sqrt(mB);
+  if (mA === 0 || mB === 0) return 0;
+  return dot / (mA * mB);
+}
+
+/**
+ * V4 궤적 형태 유사도 (Shape Similarity)
+ */
+export function calculateShapeSimilarity(userTrajectory, originalTrajectory) {
+  if (!userTrajectory || !originalTrajectory || userTrajectory.length < 3) {
+    return { raw: 1.0, clamped: 1.0, active: false };
+  }
+  const deltaUser = [];
+  const deltaOrig = [];
+  for (let i = 1; i < userTrajectory.length; i++) {
+    deltaUser.push(subtractVectors(userTrajectory[i], userTrajectory[i - 1]));
+    deltaOrig.push(subtractVectors(originalTrajectory[i], originalTrajectory[i - 1]));
+  }
+  const raw = cosineFlat(flattenDeltas(deltaUser), flattenDeltas(deltaOrig));
+  return { raw, clamped: Math.max(0, raw), active: true };
+}
+
+/**
+ * V4 수준 유사도: 장면별 scene_score 평균
+ */
+export function calculateLevelSimilarity(sceneScores) {
+  if (!sceneScores || sceneScores.length === 0) return 0;
+  return sceneScores.reduce((a, b) => a + b, 0) / sceneScores.length;
+}
+
+/**
+ * V4 궤적 정렬도: level × shape × void_modifier
+ */
+export function calculateTrajectoryAlignment(level, shape, voidMod = 1.0) {
+  return Math.max(0, Math.min(1, level * shape * voidMod));
+}
+
+// ==================== 장면 단위 감정 유사도 (V4의 level 입력) ====================
+// ⚠️ VAD 금지 — 17dimension anchor vector
 
 /**
  * emotion similarity (Emotion Similarity)
@@ -275,200 +346,10 @@ export function calculateEmotionScore(userVector, originalVector, anchorEmotions
   return Math.max(0, cosineSimilarity(userBase, origBase, anchorEmotions));
 }
 
-/**
- * 유 similarity (Reason Similarity)
- * 
- * "왜 그렇게 느꼈 " 구조적 comparison.
- * 임베딩 기반 text similarity 아니라, 귀인 방향/핵심 공포/대상 일치 본다.
- * 
- * 구성:
- * - attribution 일치: 0.45 (self_blame vs external 등 — 장 중요)
- * - core_fear 일치: 0.35 (abandonment, punishment 등)
- * - target 일치: 0.20 (emotion 대상 같 )
- * 
- * 유 data 없으면 emotion 점수 감쇠 fallback (0.3배)
- * → " 유 안 물어봤으면 emotion 으 추정하되, 확신 낮춘다"
- * 
- * @param {Object} userVector - { reason_analysis: { attribution, core_fear, target, is_void } }
- * @param {Object} originalVector - 동일 구조
- * @param {number} emotionScoreFallback - 유 없 때 emotion 점수 fallback
- * @returns {number} 0~1
- */
-export function calculateReasonScore(userVector, originalVector, emotionScoreFallback = 0) {
-  const userReason = userVector?.reason_analysis;
-  const origReason = originalVector?.reason_analysis;
-
- // 둘 다 유 data 없으면 → emotion 점수 30% 대체
-  if (!userReason && !origReason) {
-    return emotionScoreFallback * 0.3;
-  }
-
- // 쪽 없으면 → comparison 불 , 낮 점수
-  if (!userReason || !origReason) {
-    return 0.15;
-  }
-
-  let score = 0;
-
- // 1. 귀인 방향 (Attribution) — 0.45
-  if (userReason.attribution && origReason.attribution) {
-    if (userReason.attribution === origReason.attribution) {
-      score += 0.45;
-    } else {
- // 부분 일치 체크 (예: self_blame self_doubt 방향 같음)
-      const userDir = getAttributionDirection(userReason.attribution);
-      const origDir = getAttributionDirection(origReason.attribution);
-      if (userDir === origDir) {
-        score += 0.20;  // 방향은 같지만 세부가 다름
-      }
- // 정반대면 0
-    }
-  } else if (!userReason.attribution && !origReason.attribution) {
-    score += 0.15;  // 둘 다 미정의 — 중립
-  }
-
- // 2. 핵심 공포 (Core Fear) — 0.35
-  if (userReason.core_fear && origReason.core_fear) {
-    if (userReason.core_fear === origReason.core_fear) {
-      score += 0.35;
-    } else {
- // 같 카테고리면 부분 점수
-      const userCat = getFearCategory(userReason.core_fear);
-      const origCat = getFearCategory(origReason.core_fear);
-      if (userCat && userCat === origCat) {
-        score += 0.15;
-      }
-    }
-  } else if (!userReason.core_fear && !origReason.core_fear) {
-    score += 0.10;
-  }
-
- // 3. 대상 (Target) — 0.20
-  if (userReason.target && origReason.target) {
-    if (userReason.target === origReason.target) {
-      score += 0.20;
-    }
- // 다르면 0 (displacement 핵심 — 대상 다르면 확실히 다른 유)
-  } else if (!userReason.target && !origReason.target) {
-    score += 0.05;
-  }
-
-  return Math.min(1, score);
-}
-
-/**
- * 태 계수 (Attitude Coefficient)
- * 
- * experiencer memory "어떻게 접근하 " 수치화.
- * - 직면(confrontation): 높 점수
- * - 회피(avoidance): 낮 점수
- * - VOID 공명: original VOID면 높음, 아니면 낮음
- * - 반복(fixation): 감쇠
- * 
- * @param {Object} userVector - { reason_analysis: { is_void } }
- * @param {Object} originalVector - 동일 구조
- * @param {Object} attitudeContext - { emotionHistory, inputTimings, skipCount }
- * @returns {number} 0~1
- */
-export function calculateAttitudeScore(userVector, originalVector, attitudeContext = {}) {
-  let score = 0.5;  // 기본: 중립
-
-  const userReason = userVector?.reason_analysis || {};
-  const origReason = originalVector?.reason_analysis || {};
-
- // 1. VOID 매칭 ( 장 큰 영향)
-  const userVoid = !!userReason.is_void;
-  const origVoid = !!origReason.is_void;
-
-  if (userVoid && origVoid) {
- // VOID 공명 — 둘 다 말 수 없 state → 높 태 점수
-    score = 0.8;
-  } else if (userVoid && !origVoid) {
- // 유저 회피 — 기록자 드러냈 데 experiencer 회피
-    score = 0.2;
-  } else if (!userVoid && origVoid) {
- // 유저 드러냈 데 original VOID — experiencer 기록자보다 용감
-    score = 0.6;
-  } else {
- // 둘 다 비VOID — 정상 직면
-    score = 0.7;
-  }
-
- // 2. 반복 감쇠 (fixation 경향 있으면 태 점수 깎임)
-  const { emotionHistory: rawHistory, skipCount = 0 } = attitudeContext;
-  const emotionHistory = rawHistory || [];
-  if (emotionHistory.length >= 2) {
-    const fixationLevel = calculateFixationLevel(emotionHistory);
- // fixation 높 수록 태 점수 감쇠 (최대 0.3 감소)
-    score -= fixationLevel * 0.3;
-  }
-
- // 3. 스킵 감쇠 (emotion input 건너뛴 횟수)
-  if (skipCount > 0) {
-    score -= Math.min(0.2, skipCount * 0.05);
-  }
-
-  return Math.max(0, Math.min(1, score));
-}
-
-/**
- * alignment 통합 calculate
- * 
- * alignment = emotion(0.4) + 유(0.4) + 태 (0.2)
- * 
- * ⚠️ 비율 TEM 정체성.
- * ⚠️ "emotion 같아 유 다르면 alignment 낮다" 보장하 구조.
- * 
- * @param {number} emotionScore - emotion similarity (0~1)
- * @param {number} reasonScore - 유 similarity (0~1)
- * @param {number} attitudeScore - 태 계수 (0~1)
- * @returns {number} 0~1
- */
-export function calculateAlignment(emotionScore, reasonScore, attitudeScore) {
-  return Math.max(0, Math.min(1,
-    (emotionScore * 0.4) + (reasonScore * 0.4) + (attitudeScore * 0.2)
-  ));
-}
-
-// ==================== 귀인/공포 분류 헬퍼 ====================
-
-/**
- * 귀인 방향 분류 (내부 vs external vs 상황)
- */
-function getAttributionDirection(attribution) {
-  if (!attribution) return null;
-  const internal = ['self_blame', 'self_doubt', 'self_punishment', 'guilt_driven'];
-  const external = ['other_blame', 'betrayal', 'external_threat', 'abandonment_by_other'];
-  const situational = ['fate', 'circumstance', 'helpless_situation', 'inevitable'];
-  
-  if (internal.includes(attribution)) return 'internal';
-  if (external.includes(attribution)) return 'external';
-  if (situational.includes(attribution)) return 'situational';
-  return null;
-}
-
-/**
- * 핵심 공포 카테고리 분류
- */
-function getFearCategory(coreFear) {
-  if (!coreFear) return null;
-  const loss = ['abandonment', 'loss', 'separation', 'death_of_loved'];
-  const worthlessness = ['inadequacy', 'failure', 'shame', 'not_enough'];
-  const powerlessness = ['helplessness', 'loss_of_control', 'entrapment', 'vulnerability'];
-  const punishment = ['punishment', 'rejection', 'judgment', 'exposure'];
-  
-  if (loss.includes(coreFear)) return 'loss';
-  if (worthlessness.includes(coreFear)) return 'worthlessness';
-  if (powerlessness.includes(coreFear)) return 'powerlessness';
-  if (punishment.includes(coreFear)) return 'punishment';
-  return null;
-}
-
 // ==================== bucket 판정 ====================
 //
-// 기획서 original 기준으 restore.
-// HIGH ≥ 0.55, LOW < 0.35
-// 히스테리시스: HIGH maintain ≥ 0.45, LOW maintain ≤ 0.42
+// V4 곱셈 분포 기준 (파일럿 후 재조정)
+// 히스테리시스: HIGH maintain ≥ 0.40, LOW maintain ≤ 0.15
 //
 // ⚠️ VAD 금지 — alignment 값 
 
@@ -490,12 +371,12 @@ export function getBucket(alignment, previousBucket = null, emotionHistory = nul
   }
   
  // 히스테리시스 적용
-  if (previousBucket === 'HIGH' && alignment >= 0.45) return 'HIGH';
-  if (previousBucket === 'LOW' && alignment <= 0.42) return 'LOW';
+  if (previousBucket === 'HIGH' && alignment >= 0.40) return 'HIGH';
+  if (previousBucket === 'LOW' && alignment <= 0.15) return 'LOW';
   
  // 표준 판정
-  if (alignment >= 0.55) return 'HIGH';
-  if (alignment < 0.35) return 'LOW';
+  if (alignment >= 0.50) return 'HIGH';
+  if (alignment < 0.10) return 'LOW';
   return 'MID';
 }
 

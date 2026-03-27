@@ -97,8 +97,23 @@
 
     #sceneMode { display: none; position: fixed; inset: 0; background: var(--bg-deep); z-index: 50; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; }
     #sceneMode.active { display: flex; opacity: 1; }
-    .wave-top { width: 100%; height: 18vh; max-height: 200px; position: relative; overflow: hidden; flex-shrink: 0; }
-    #waveCanvas { width: 100%; height: 100%; display: block; }
+    .wave-top { width: 100%; min-height: 140px; max-height: 220px; position: relative; overflow: hidden; flex-shrink: 0; background: var(--bg-deep); }
+    .play-alignment-header {
+      display: flex; align-items: baseline; justify-content: space-between; padding: 0.55rem 1rem 0.15rem;
+      border-bottom: 1px solid rgba(196, 168, 130, 0.12);
+    }
+    .play-alignment-label { font-size: 0.72rem; color: rgba(200, 195, 210, 0.55); letter-spacing: 0.12em; text-transform: uppercase; }
+    .play-alignment-pct {
+      font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; color: var(--accent-memory);
+    }
+    .play-alignment-sub {
+      font-size: 0.62rem; color: rgba(180, 175, 195, 0.45); letter-spacing: 0.08em;
+      padding: 0 1rem 0.35rem;
+    }
+    .alignment-wave-container {
+      width: 100%; height: 120px; background: var(--bg-deep); position: relative; overflow: hidden;
+    }
+    .alignment-wave-container canvas.alignment-wave-canvas { width: 100%; height: 100%; display: block; transform: scale(1.15); transform-origin: center center; }
     .scene-content-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1rem; overflow-y: auto; }
     .scene-main { width: 100%; max-width: 560px; text-align: center; }
     #sceneNpc { font-family: 'Cormorant Garamond', serif; font-style: italic; color: rgba(196, 168, 130, 0.5); font-size: 0.9rem; min-height: 1.2em; margin-bottom: 0.8rem; }
@@ -231,7 +246,16 @@
   </div>
 
   <div id="sceneMode">
-    <div class="wave-top" id="waveTop"><canvas id="waveCanvas"></canvas></div>
+    <div class="wave-top" id="waveTop">
+      <div class="play-alignment-header">
+        <span class="play-alignment-label">Alignment</span>
+        <span class="play-alignment-pct" id="playAlignmentPct">00%</span>
+      </div>
+      <div class="play-alignment-sub">각인(상) · 나의 응답(하)</div>
+      <div class="alignment-wave-container">
+        <canvas class="alignment-wave-canvas" id="alignmentWaveCanvas"></canvas>
+      </div>
+    </div>
     <div class="scene-content-area">
       <div class="scene-main">
         <div id="sceneNpc"></div>
@@ -597,6 +621,10 @@
       joy: [200, 180, 100],
       longing: [80, 180, 180],
       guilt: [150, 130, 100],
+      shame: [160, 100, 130],
+      numbness: [90, 90, 110],
+      isolation: [70, 90, 130],
+      confusion: [120, 100, 140],
     };
     return {
       color: colors[dominant] || colors.sadness,
@@ -1357,6 +1385,9 @@
     visitedCore: {},
     previousBucket: null,
     emotionHistory: [],
+    userEmotionTrajectory: [],
+    originalEmotionTrajectory: [],
+    sceneScores: [],
     skipCount: 0,
     sealed: false,
     currentSceneIndex: null,
@@ -1379,6 +1410,7 @@
     waveGlitch: 0,
     waveProfile: makeWaveProfile(),
     waveTargetProfile: makeWaveProfile(),
+    playTestWaveUserIdle: true,
     terrainTintLerp: 0,
     terrainTintFrom: null,
     terrainTintTo: null,
@@ -1581,59 +1613,63 @@
     return Math.max(0, cosineSimilarity(userBase, origBase, anchorEmotions));
   }
 
-  function calculateReasonScore(userVector, originalVector, emotionScoreFallback) {
-    const fb = emotionScoreFallback || 0;
-    const userReason = userVector && userVector.reason_analysis;
-    const origReason = originalVector && originalVector.reason_analysis;
-    if (!userReason && !origReason) return fb * 0.3;
-    if (!userReason || !origReason) return 0.15;
-    let score = 0;
-    if (userReason.attribution && origReason.attribution) {
-      if (userReason.attribution === origReason.attribution) score += 0.45;
-      else {
-        const ud = getAttributionDirection(userReason.attribution);
-        const od = getAttributionDirection(origReason.attribution);
-        if (ud && ud === od) score += 0.20;
-      }
-    } else if (!userReason.attribution && !origReason.attribution) score += 0.15;
-    if (userReason.core_fear && origReason.core_fear) {
-      if (userReason.core_fear === origReason.core_fear) score += 0.35;
-      else {
-        const uc = getFearCategory(userReason.core_fear);
-        const oc = getFearCategory(origReason.core_fear);
-        if (uc && uc === oc) score += 0.15;
-      }
-    } else if (!userReason.core_fear && !origReason.core_fear) score += 0.10;
-    if (userReason.target && origReason.target) {
-      if (userReason.target === origReason.target) score += 0.20;
-    } else if (!userReason.target && !origReason.target) score += 0.05;
-    return Math.min(1, score);
-  }
-
-  function calculateAttitudeScore(userVector, originalVector, attitudeContext) {
-    attitudeContext = attitudeContext || {};
-    let score = 0.5;
-    const userReason = (userVector && userVector.reason_analysis) || {};
-    const origReason = (originalVector && originalVector.reason_analysis) || {};
-    const userVoid = !!userReason.is_void;
-    const origVoid = !!origReason.is_void;
-    if (userVoid && origVoid) score = 0.8;
-    else if (userVoid && !origVoid) score = 0.2;
-    else if (!userVoid && origVoid) score = 0.6;
-    else score = 0.7;
-    const rawHistory = attitudeContext.emotionHistory;
-    const emotionHistory = rawHistory || [];
-    if (emotionHistory.length >= 2) {
-      const fixationLevel = calculateFixationLevel(emotionHistory);
-      score -= fixationLevel * 0.3;
+  function subtractVectors(vecA, vecB) {
+    const result = {};
+    const keys = new Set([...Object.keys(vecA || {}), ...Object.keys(vecB || {})]);
+    for (const k of keys) {
+      result[k] = (vecA?.[k] || 0) - (vecB?.[k] || 0);
     }
-    const skipCount = attitudeContext.skipCount || 0;
-    if (skipCount > 0) score -= Math.min(0.2, skipCount * 0.05);
-    return Math.max(0, Math.min(1, score));
+    return result;
   }
 
-  function calculateAlignment(emotionScore, reasonScore, attitudeScore) {
-    return Math.max(0, Math.min(1, emotionScore * 0.4 + reasonScore * 0.4 + attitudeScore * 0.2));
+  function flattenDeltas(deltas, emotionKeys = null) {
+    const keys = emotionKeys || [
+      'fear','sadness','anger','guilt','shame','longing','numbness','isolation','moral_pain',
+      'joy','hope','relief','gratitude','love','peace','comfort','despair','helplessness',
+      'grief','tenderness','confusion','emptiness'
+    ];
+    const arr = [];
+    for (const d of deltas) {
+      for (const k of keys) arr.push(d[k] || 0);
+    }
+    return arr;
+  }
+
+  function cosineFlat(a, b) {
+    if (!a || !b || a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
+    let dot = 0, mA = 0, mB = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      mA += a[i] * a[i];
+      mB += b[i] * b[i];
+    }
+    mA = Math.sqrt(mA);
+    mB = Math.sqrt(mB);
+    if (mA === 0 || mB === 0) return 0;
+    return dot / (mA * mB);
+  }
+
+  function calculateShapeSimilarity(userTrajectory, originalTrajectory) {
+    if (!userTrajectory || !originalTrajectory || userTrajectory.length < 3) {
+      return { raw: 1.0, clamped: 1.0, active: false };
+    }
+    const deltaUser = [];
+    const deltaOrig = [];
+    for (let i = 1; i < userTrajectory.length; i++) {
+      deltaUser.push(subtractVectors(userTrajectory[i], userTrajectory[i - 1]));
+      deltaOrig.push(subtractVectors(originalTrajectory[i], originalTrajectory[i - 1]));
+    }
+    const raw = cosineFlat(flattenDeltas(deltaUser), flattenDeltas(deltaOrig));
+    return { raw, clamped: Math.max(0, raw), active: true };
+  }
+
+  function calculateLevelSimilarity(sceneScores) {
+    if (!sceneScores || sceneScores.length === 0) return 0;
+    return sceneScores.reduce((a, b) => a + b, 0) / sceneScores.length;
+  }
+
+  function calculateTrajectoryAlignment(level, shape, voidMod = 1.0) {
+    return Math.max(0, Math.min(1, level * shape * voidMod));
   }
 
   function calculateFixationLevel(emotionHistory) {
@@ -1662,10 +1698,10 @@
       const fixLevel = calculateFixationLevel(emotionHistory);
       if (fixLevel >= 0.85) return 'FIXATED';
     }
-    if (previousBucket === 'HIGH' && alignment >= 0.45) return 'HIGH';
-    if (previousBucket === 'LOW' && alignment <= 0.42) return 'LOW';
-    if (alignment >= 0.55) return 'HIGH';
-    if (alignment < 0.35) return 'LOW';
+    if (previousBucket === 'HIGH' && alignment >= 0.40) return 'HIGH';
+    if (previousBucket === 'LOW' && alignment <= 0.15) return 'LOW';
+    if (alignment >= 0.50) return 'HIGH';
+    if (alignment < 0.10) return 'LOW';
     return 'MID';
   }
 
@@ -1686,8 +1722,9 @@
     return null;
   }
 
-  function getTransitionPattern(bucket, mismatchType) {
+  function getTransitionPattern(bucket, mismatchType, level, shape, userTraj) {
     if (bucket === 'FIXATED') return 'fixation';
+    if (level >= 0.5 && shape < 0.3 && userTraj && userTraj.length >= 3) return 'displacement';
     if (bucket === 'HIGH') return 'echo_follow';
     if (bucket === 'MID') return 'bridge';
     if (bucket === 'LOW') {
@@ -1704,28 +1741,41 @@
 
   function byeoriCalculateStep(input, context) {
     context = context || {};
-    const { userVector, originalVector, anchorEmotions = null } = input;
-    const { previousBucket = null, emotionHistory = null, skipCount = 0 } = context;
+    const {
+      userVector, originalVector, anchorEmotions = null,
+      userTrajectory = null, originalTrajectory = null,
+      sceneScores = null
+    } = input;
+    const { previousBucket = null, emotionHistory = null } = context;
     if (!userVector || !originalVector) {
-      return { affective_position: { v: 0, a: 0, d: 0 }, alignment_score: 0, alignment_bucket: 'LOW', transition_pattern: null, mismatch_type: null, debug: {} };
+      return { affective_position: { v: 0, a: 0, d: 0 }, alignment_score: 0, alignment_bucket: 'LOW', transition_pattern: null, mismatch_type: null, current_scene_score: 0, debug: {} };
     }
-    const emotionScore = calculateEmotionScore(userVector, originalVector, anchorEmotions);
-    const reasonScore = calculateReasonScore(userVector, originalVector, emotionScore);
-    const attitudeScore = calculateAttitudeScore(userVector, originalVector, { emotionHistory, skipCount });
-    const alignmentScore = calculateAlignment(emotionScore, reasonScore, attitudeScore);
+    const currentSceneScore = calculateEmotionScore(userVector, originalVector, anchorEmotions);
+    const allSceneScores = sceneScores ? [...sceneScores, currentSceneScore] : [currentSceneScore];
+    const level = calculateLevelSimilarity(allSceneScores);
+    const userTraj = userTrajectory ? [...userTrajectory, userVector.base || userVector] : [userVector.base || userVector];
+    const origTraj = originalTrajectory ? [...originalTrajectory, originalVector.base || originalVector] : [originalVector.base || originalVector];
+    const shapeResult = calculateShapeSimilarity(userTraj, origTraj);
+    const userReason = userVector.reason_analysis || {};
+    const origReason = originalVector.reason_analysis || {};
+    const voidMod = (!!userReason.is_void && !origReason.is_void) ? 0.7 : 1.0;
+    const alignmentScore = calculateTrajectoryAlignment(level, shapeResult.clamped, voidMod);
     const alignmentBucket = getBucket(alignmentScore, previousBucket, emotionHistory);
     const mismatchType = getMismatchType(userVector, originalVector);
     const baseVec = userVector.base || userVector;
     const affectivePosition = projectEmotionToVADContour(baseVec);
-    const transitionPattern = getTransitionPattern(alignmentBucket, mismatchType);
+    const transitionPattern = getTransitionPattern(alignmentBucket, mismatchType, level, shapeResult.clamped, userTraj);
     const debug = {
-      emotion_score: emotionScore,
-      reason_score: reasonScore,
-      attitude_score: attitudeScore,
-      formula: 'E×.4+R×.4+A×.2',
+      current_scene_score: currentSceneScore,
+      level,
+      shape_raw: shapeResult.raw,
+      shape: shapeResult.clamped,
+      shape_active: shapeResult.active,
+      void_mod: voidMod,
+      scenes_played: allSceneScores.length,
+      formula: `L${level.toFixed(2)} × S${shapeResult.clamped.toFixed(2)} × V${voidMod.toFixed(2)} = ${alignmentScore.toFixed(3)}`,
       fixation_level: emotionHistory ? calculateFixationLevel(emotionHistory) : 0,
-      has_reason_data: !!(userVector.reason_analysis && originalVector.reason_analysis),
-      has_embedding: !!(userVector.embedding && originalVector.embedding),
+      scene_scores: allSceneScores
     };
     return {
       affective_position: affectivePosition,
@@ -1733,6 +1783,7 @@
       alignment_bucket: alignmentBucket,
       transition_pattern: transitionPattern,
       mismatch_type: mismatchType,
+      current_scene_score: currentSceneScore,
       debug,
     };
   }
@@ -1987,164 +2038,133 @@
     return T.npcLines;
   }
 
+  let _playTestAlignVisualizer = null;
+  function getPlayTestAlignVisualizerSync() {
+    return _playTestAlignVisualizer;
+  }
+  async function ensurePlayTestAlignVisualizer() {
+    if (_playTestAlignVisualizer) return _playTestAlignVisualizer;
+    const mod = await import('./js/ui/Visualizer.js');
+    _playTestAlignVisualizer = new mod.Visualizer();
+    return _playTestAlignVisualizer;
+  }
+
+  function vecToVizWaveStyle(emotionVector) {
+    const s = emotionVectorToWaveStylePT(emotionVector || {});
+    const c = s.color;
+    return {
+      color: { r: c[0], g: c[1], b: c[2] },
+      speed: s.speed,
+      amplitude: s.amplitude,
+      frequency: s.frequency,
+      chaos: s.chaos,
+    };
+  }
+
+  /** 체험자 파동: 입력 전 작은 진폭·나풀 회색 */
+  function idleExperiencerWaveStyle() {
+    return {
+      color: { r: 108, g: 108, b: 114 },
+      speed: 0.5,
+      amplitude: 7,
+      frequency: 0.026,
+      chaos: 0.55,
+    };
+  }
+
+  /** Admin·플레이 UI와 동일 축(fear…isolation)으로 원본 감정만 정규화 */
+  function normalizeOriginalEmotionForWave(raw) {
+    const src = (raw && typeof raw === 'object') ? raw : {};
+    const out = {};
+    getEmotionsUi().forEach(function (d) {
+      const v = src[d.key];
+      out[d.key] = v != null ? Math.max(0, Math.min(1, Number(v))) : 0;
+    });
+    return out;
+  }
+
+  /** 라이브(index)와 동일: 이중 정렬 파동(원본·응답). userIdle이면 하단은 회색 소진폭. */
+  async function startPlayTestAlignmentWaves(originalVec, userVec, alignmentScore, waveOpts) {
+    waveOpts = waveOpts || {};
+    const userIdle = waveOpts.userIdle === true;
+    const viz = await ensurePlayTestAlignVisualizer();
+    viz.stopAlignmentWaveAnimation();
+    const oldCanvas = document.getElementById('alignmentWaveCanvas');
+    if (!oldCanvas) return;
+    const parent = oldCanvas.parentElement;
+    const canvas = oldCanvas.cloneNode(false);
+    canvas.className = oldCanvas.className;
+    canvas.id = 'alignmentWaveCanvas';
+    parent.replaceChild(canvas, oldCanvas);
+    const orig = normalizeOriginalEmotionForWave(originalVec || {});
+    const user = (userVec && typeof userVec === 'object') ? userVec : {};
+    const align = alignmentScore != null ? Number(alignmentScore) : 0;
+    const narratorWaveStyle = vecToVizWaveStyle(orig);
+    const experiencerWaveStyle = userIdle ? idleExperiencerWaveStyle() : vecToVizWaveStyle(user);
+    viz.startAlignmentWaveAnimation(canvas, null, {
+      alignment: align,
+      narratorEmotionVector: orig,
+      experiencerEmotionVector: userIdle ? {} : user,
+      narratorWaveStyle,
+      experiencerWaveStyle,
+      onUpdateAlignmentDisplay: function (a) {
+        const el = document.getElementById('playAlignmentPct');
+        if (el) el.textContent = String(Math.round((a || 0) * 100)).padStart(2, '0') + '%';
+      },
+    });
+  }
+
   function stopWave() {
     if (game.waveRaf) {
       cancelAnimationFrame(game.waveRaf);
       game.waveRaf = null;
     }
+    const v = getPlayTestAlignVisualizerSync();
+    if (v) v.stopAlignmentWaveAnimation();
   }
 
-  function bucketWaveColors(rgb, bucket) {
-    const r = rgb[0], g = rgb[1], b = rgb[2];
-    if (bucket === 'HIGH') {
-      return {
-        a: [Math.round(r * 0.5 + 196 * 0.5), Math.round(g * 0.5 + 168 * 0.5), Math.round(b * 0.5 + 130 * 0.5)],
-        b: [Math.round(r * 0.35 + 90 * 0.65), Math.round(g * 0.35 + 160 * 0.65), Math.round(b * 0.35 + 120 * 0.65)],
-        phaseB: 0.06,
-        spd: 0.022,
-      };
-    }
-    if (bucket === 'LOW') {
-      return {
-        a: [Math.min(255, r + 45), Math.round(g * 0.65), Math.round(b * 0.65)],
-        b: [Math.min(255, r + 25), Math.round(g * 0.55), Math.round(b * 0.55)],
-        phaseB: 0.55,
-        spd: 0.038,
-      };
-    }
-    if (bucket === 'FIXATED') {
-      return {
-        a: [Math.round(r * 0.45 + 120 * 0.55), Math.round(g * 0.4 + 80 * 0.6), Math.min(255, Math.round(b * 0.5 + 160 * 0.5))],
-        b: [Math.round(r * 0.4 + 90 * 0.6), Math.round(g * 0.35 + 60 * 0.65), Math.round(b * 0.45 + 140 * 0.55)],
-        phaseB: 0.42,
-        spd: 0.008,
-      };
-    }
-    return {
-      a: [r, g, b],
-      b: [Math.round(r * 0.55 + 140 * 0.45), Math.round(g * 0.55 + 150 * 0.45), Math.round(b * 0.55 + 160 * 0.45)],
-      phaseB: 0.35,
-      spd: 0.024,
-    };
-  }
-
-  function transitionWavePostSubmit(rgb, bucket, emotionBase) {
+  function transitionWavePostSubmit(rgb, bucket, emotionBase, alignmentScore) {
+    game.playTestWaveUserIdle = false;
     game.waveTargetRgb = rgb.slice();
     game.waveBucket = bucket || 'MID';
     game.waveGlitch = bucket === 'LOW' ? 1 : 0;
     game.waveTargetProfile = buildWaveProfileFromEmotion(emotionBase || {}, game.waveBucket);
+    const scene = game.scenes[game.currentSceneIndex];
+    const pin = game.currentPinId ? game.pins.find(function (p) { return p.id === game.currentPinId; }) : null;
+    const orig = (pin && pin.originalEmotion) ? pin.originalEmotion : (scene ? safeParseEmotion(scene.original_emotion) : {});
+    const align = alignmentScore != null ? alignmentScore : (game.lastResult && typeof game.lastResult.alignment_score === 'number' ? game.lastResult.alignment_score : 0);
+    void startPlayTestAlignmentWaves(orig, emotionBase || {}, align, { userIdle: false });
   }
 
-  /** Core 제출 직후 API 응답 전, 한·영 키워드로 감정파동 색을 바로 반영 */
+  /** Core 제출 직후 API 응답 전, 한·영 키워드로 감정파동 색을 바로 반영. 매칭 시 true. */
   function previewWaveFromCoreUserText(text) {
-    if (!text || typeof text !== 'string') return;
+    if (!text || typeof text !== 'string') return false;
     const t = text;
     if (/슬프|슬퍼|슬펐|우울|눈물|울었|비통|슬픔|서글|애처/.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.sadness, 'MID', { sadness: 0.92, longing: 0.34 });
-      return;
+      return true;
     }
     if (/무섭|무서|두려|공포|불안|조마|오싹|겁/.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.fear, 'MID', { fear: 0.9, confusion: 0.28 });
-      return;
+      return true;
     }
     if (/화나|분노|열받|짜증|격분|빡|욕나와/.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.anger, 'MID', { anger: 0.94, fear: 0.16 });
-      return;
+      return true;
     }
     if (/그립|그리워|보고\s*싶/.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.longing, 'MID', { longing: 0.88, sadness: 0.42 });
-      return;
+      return true;
     }
     if (/미안|죄책|내\s*탓/.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.guilt, 'MID', { guilt: 0.9, sadness: 0.26 });
-      return;
+      return true;
     }
     if (/\bsad\b|sorrow|grief|depressed|unhappy/i.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.sadness, 'MID', { sadness: 0.9, longing: 0.22 });
+      return true;
     }
-  }
-
-  function startWaveLoop(rgb) {
-    const canvas = document.getElementById('waveCanvas');
-    if (!canvas) return;
-    stopWave();
-    game.waveRgb = rgb.slice();
-    game.waveTargetRgb = rgb.slice();
-    game.waveBucket = 'MID';
-    game.waveGlitch = 0;
-    game.waveProfile = makeWaveProfile();
-    game.waveTargetProfile = makeWaveProfile();
-    runWaveFrame();
-  }
-
-  function runWaveFrame() {
-    const canvas = document.getElementById('waveCanvas');
-    if (!canvas) return;
-    function frame() {
-      const ctx = canvas.getContext('2d');
-      const rect = canvas.parentElement.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = '#0a0a0e';
-      ctx.fillRect(0, 0, w, h);
-      if (game.waveBucket === 'FIXATED') {
-        const vg = ctx.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.55);
-        vg.addColorStop(0, 'rgba(40, 20, 60, 0)');
-        vg.addColorStop(1, 'rgba(20, 10, 40, 0.45)');
-        ctx.fillStyle = vg;
-        ctx.fillRect(0, 0, w, h);
-      }
-      const bc2 = bucketWaveColors(game.waveRgb, game.waveBucket);
-      game.waveProfile = lerpWaveProfile(game.waveProfile, game.waveTargetProfile, 0.1);
-      const spdBase = bc2.spd != null ? bc2.spd : 0.024;
-      game.waveT += spdBase * game.waveProfile.speedMul;
-      game.waveRgb = lerpRgb(game.waveRgb, game.waveTargetRgb, 0.08);
-      const wp = game.waveProfile;
-      const cA = bc2.a;
-      const cB = bc2.b;
-      const r2 = cA[0] / 255;
-      const g2 = cA[1] / 255;
-      const b2 = cA[2] / 255;
-      const cy = h * 0.55;
-      let gTime = game.waveT;
-      if (game.waveGlitch > 0) {
-        gTime += (Math.random() - 0.5) * 0.4;
-        game.waveGlitch = Math.max(0, game.waveGlitch - 0.02);
-      }
-      ctx.strokeStyle = 'rgba(' + cA[0] + ',' + cA[1] + ',' + cA[2] + ',' + (0.38 * wp.alphaMul).toFixed(3) + ')';
-      ctx.lineWidth = 1.25 * dpr;
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 2) {
-        const lowNoise = game.waveBucket === 'LOW' ? (Math.random() - 0.5) * 2.5 : 0;
-        const gx = lowNoise + (Math.random() - 0.5) * wp.jitter;
-        const y = cy + Math.sin(x * wp.freq1 + gTime) * h * wp.amp1 + Math.sin(x * wp.freq2 + gTime * 0.7) * h * wp.amp2 + gx;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      const ph2 = game.waveBucket === 'HIGH' ? gTime + 0.04 : gTime * 0.88 + bc2.phaseB;
-      ctx.strokeStyle = 'rgba(' + cB[0] + ',' + cB[1] + ',' + cB[2] + ',' + (0.28 * wp.alphaMul).toFixed(3) + ')';
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 2) {
-        const lowNoise = game.waveBucket === 'LOW' ? (Math.random() - 0.5) * 2.2 : 0;
-        const gx = lowNoise + (Math.random() - 0.5) * wp.jitter * 0.85;
-        const y = cy + Math.sin(x * (wp.freq1 * 1.45) + ph2) * h * (wp.amp1 * 0.8) + Math.sin(x * (wp.freq2 * 1.2) + gTime * 0.65) * h * (wp.amp2 * 0.88) + gx;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(' + Math.round(r2 * 200 + 40) + ',' + Math.round(g2 * 200 + 40) + ',' + Math.round(b2 * 200 + 60) + ',' + (0.18 * wp.alphaMul).toFixed(3) + ')';
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 2) {
-        const y = cy + Math.sin(x * wp.freq3 + gTime * 1.05) * h * wp.amp3;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      game.waveRaf = requestAnimationFrame(frame);
-    }
-    game.waveRaf = requestAnimationFrame(frame);
+    return false;
   }
 
   function clearTimers() {
@@ -2178,8 +2198,12 @@
     const _ia = document.getElementById('emotionInputArea');
     _ia.style.opacity = '0';
     _ia.innerHTML = '';
-    const tint = emotionVectorToRGB(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
-    startWaveLoop(tint);
+    game.playTestWaveUserIdle = true;
+    const origBase = normalizeOriginalEmotionForWave(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
+    const alignInit = (game.lastResult && typeof game.lastResult.alignment_score === 'number')
+      ? game.lastResult.alignment_score
+      : 0;
+    void startPlayTestAlignmentWaves(origBase, {}, alignInit, { userIdle: true });
 
     const textEl = document.getElementById('sceneText');
     textEl.textContent = '';
@@ -2280,6 +2304,23 @@
       }
     };
     submitBtn.addEventListener('click', submitCoreInput);
+    coreTextInput.addEventListener('input', function () {
+      var v = (coreTextInput.value || '').trim();
+      if (!v) return;
+      if (game.playTestWaveUserIdle) {
+        game.playTestWaveUserIdle = false;
+        var matched = previewWaveFromCoreUserText(v);
+        if (!matched) {
+          var sc = game.scenes[game.currentSceneIndex];
+          var pin2 = game.currentPinId ? game.pins.find(function (p) { return p.id === game.currentPinId; }) : null;
+          var orig2 = normalizeOriginalEmotionForWave((pin2 && pin2.originalEmotion) ? pin2.originalEmotion : safeParseEmotion(sc.original_emotion));
+          var align2 = (game.lastResult && typeof game.lastResult.alignment_score === 'number') ? game.lastResult.alignment_score : 0;
+          void startPlayTestAlignmentWaves(orig2, { confusion: 0.22, sadness: 0.18 }, align2, { userIdle: false });
+        }
+      } else {
+        previewWaveFromCoreUserText(v);
+      }
+    });
     coreTextInput.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
       e.preventDefault();
@@ -2343,6 +2384,19 @@
           btn.style.color = '#d0e0d0';
         }
         document.getElementById('bridgeConfirmBtn').style.opacity = selected.length > 0 ? '1' : '0';
+        if (selected.length > 0) {
+          game.playTestWaveUserIdle = false;
+          const blendKeys = ['fear', 'sadness', 'anger', 'joy', 'longing', 'guilt'];
+          const blended = {};
+          blendKeys.forEach(k => { blended[k] = 0; });
+          selected.forEach(chipKey => {
+            const vec = CHIP_VECTORS[chipKey] || {};
+            blendKeys.forEach(k => { blended[k] += (vec[k] || 0) / selected.length; });
+          });
+          const origB = normalizeOriginalEmotionForWave(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
+          const alignB = (game.lastResult && typeof game.lastResult.alignment_score === 'number') ? game.lastResult.alignment_score : 0;
+          void startPlayTestAlignmentWaves(origB, blended, alignB, { userIdle: false });
+        }
       });
     });
     document.getElementById('bridgeConfirmBtn').addEventListener('click', () => {
@@ -2424,6 +2478,29 @@
     vb.disabled = false;
     vb.onclick = () => leaveSceneVoid(scene);
     validateSubmit();
+    wirePlayTestWaveEngagement(scene);
+  }
+
+  function wirePlayTestWaveEngagement(scene) {
+    const chips = document.getElementById('emotionChips');
+    const sliders = document.getElementById('sliderArea');
+    const reasons = document.getElementById('reasonArea');
+    if (!chips || !sliders) return;
+    const bump = function () {
+      if (!game.playTestWaveUserIdle) return;
+      game.playTestWaveUserIdle = false;
+      const pin = game.currentPinId ? game.pins.find(function (p) { return p.id === game.currentPinId; }) : null;
+      const sc = game.scenes[game.currentSceneIndex];
+      if (!sc) return;
+      const orig = normalizeOriginalEmotionForWave((pin && pin.originalEmotion) ? pin.originalEmotion : safeParseEmotion(sc.original_emotion));
+      let user = {};
+      try { user = collectUserEmotionVector(); } catch (_) {}
+      const align = (game.lastResult && typeof game.lastResult.alignment_score === 'number') ? game.lastResult.alignment_score : 0;
+      void startPlayTestAlignmentWaves(orig, user, align, { userIdle: false });
+    };
+    chips.addEventListener('click', bump);
+    sliders.addEventListener('input', bump);
+    if (reasons) reasons.addEventListener('click', bump);
   }
 
   function collectUserEmotionVector() {
@@ -2458,12 +2535,19 @@
     };
     const orig = buildOriginalVectorFromScene(scene);
     const anchors = parseAnchorEmotions(scene);
-    const result = byeoriCalculateStep({ userVector, originalVector: orig, anchorEmotions: anchors }, {
+    const result = byeoriCalculateStep({
+      userVector, originalVector: orig, anchorEmotions: anchors,
+      userTrajectory: game.userEmotionTrajectory || [],
+      originalTrajectory: game.originalEmotionTrajectory || [],
+      sceneScores: game.sceneScores || [],
+    }, {
       previousBucket: game.previousBucket,
       emotionHistory: game.emotionHistory,
-      skipCount: game.skipCount,
     });
     game.previousBucket = result.alignment_bucket;
+    game.userEmotionTrajectory.push(Object.assign({}, vec));
+    game.originalEmotionTrajectory.push(Object.assign({}, orig.base || {}));
+    game.sceneScores.push(result.current_scene_score || 0);
     finishScene(scene, result, vec, 'timeout_void', true);
   }
 
@@ -2476,12 +2560,19 @@
     };
     const orig = buildOriginalVectorFromScene(scene);
     const anchors = parseAnchorEmotions(scene);
-    const result = byeoriCalculateStep({ userVector, originalVector: orig, anchorEmotions: anchors }, {
+    const result = byeoriCalculateStep({
+      userVector, originalVector: orig, anchorEmotions: anchors,
+      userTrajectory: game.userEmotionTrajectory || [],
+      originalTrajectory: game.originalEmotionTrajectory || [],
+      sceneScores: game.sceneScores || [],
+    }, {
       previousBucket: game.previousBucket,
       emotionHistory: game.emotionHistory,
-      skipCount: game.skipCount,
     });
     game.previousBucket = result.alignment_bucket;
+    game.userEmotionTrajectory.push(Object.assign({}, vec));
+    game.originalEmotionTrajectory.push(Object.assign({}, orig.base || {}));
+    game.sceneScores.push(result.current_scene_score || 0);
     finishScene(scene, result, vec, 'void', true);
   }
 
@@ -2509,13 +2600,20 @@
     };
     const orig = buildOriginalVectorFromScene(scene);
     const anchors = parseAnchorEmotions(scene);
-    const result = byeoriCalculateStep({ userVector, originalVector: orig, anchorEmotions: anchors }, {
+    const result = byeoriCalculateStep({
+      userVector, originalVector: orig, anchorEmotions: anchors,
+      userTrajectory: game.userEmotionTrajectory || [],
+      originalTrajectory: game.originalEmotionTrajectory || [],
+      sceneScores: game.sceneScores || [],
+    }, {
       previousBucket: game.previousBucket,
       emotionHistory: game.emotionHistory,
-      skipCount: game.skipCount,
     });
     game.previousBucket = result.alignment_bucket;
     game.emotionHistory.push(Object.assign({}, vec));
+    game.userEmotionTrajectory.push(Object.assign({}, vec));
+    game.originalEmotionTrajectory.push(Object.assign({}, orig.base || {}));
+    game.sceneScores.push(result.current_scene_score || 0);
     finishScene(scene, result, vec, reasonKey || '', false);
   }
 
@@ -2530,10 +2628,12 @@
       userVector,
       originalVector: origVector,
       anchorEmotions: parseAnchorEmotions(scene),
+      userTrajectory: game.userEmotionTrajectory || [],
+      originalTrajectory: game.originalEmotionTrajectory || [],
+      sceneScores: game.sceneScores || [],
     }, {
       previousBucket: game.previousBucket || null,
       emotionHistory: game.emotionHistory,
-      skipCount: game.skipCount,
     });
 
     pin.visited = true;
@@ -2543,6 +2643,9 @@
     if (pin.type === 'core') game.coreVisitCount++;
     game.previousBucket = engineResult.alignment_bucket;
     if (userVector.base) game.emotionHistory.push(Object.assign({}, userVector.base));
+    if (userVector.base) game.userEmotionTrajectory.push(Object.assign({}, userVector.base));
+    game.originalEmotionTrajectory.push(Object.assign({}, origVector.base || {}));
+    game.sceneScores.push(engineResult.current_scene_score || 0);
 
     const baseEmotion = userVector.base || {};
     game.traces.push({
@@ -2770,7 +2873,7 @@
     const emBase = baseEmotion || {};
     const dom = getDominantColor(emBase);
     const bucket = result.alignment_bucket || 'MID';
-    transitionWavePostSubmit(dom, bucket, emBase);
+    transitionWavePostSubmit(dom, bucket, emBase, result.alignment_score);
 
     const npc = document.getElementById('sceneNpc');
     const lines = getNpcLines();
@@ -2893,8 +2996,12 @@
     game.traces = [];
     game.previousBucket = null;
     game.emotionHistory = [];
+    game.userEmotionTrajectory = [];
+    game.originalEmotionTrajectory = [];
+    game.sceneScores = [];
     game.accessiblePinIds = null;
     game.lastUserEmotion = null;
+    game.playTestWaveUserIdle = true;
     const pollution = buildTerrainFromData();
     buildPins();
     applyInitialAccess();

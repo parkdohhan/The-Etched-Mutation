@@ -411,6 +411,9 @@ function startPlay() {
   demoState.fixationCounts[0] = 0;
   demoState.totalScenesPlayed = 1;
   demoState.lastTransitionPattern = null;
+  demoState.userEmotionTrajectory = [];
+  demoState.originalEmotionTrajectory = [];
+  demoState.sceneScores = [];
 
   const playCanvas = document.getElementById('playWaveCanvas');
   const terrainCanvas = document.getElementById('terrainCanvas2D');
@@ -611,10 +614,20 @@ function processScene() {
     emotionHistory: demoState.sceneHistory.map((h) => h.resolvedVector?.base).filter(Boolean),
   };
 
-  let engineResult = engine.calculateStep({ userVector, originalVector }, context);
+  let engineResult = engine.calculateStep({
+    userVector,
+    originalVector,
+    userTrajectory: demoState.userEmotionTrajectory || [],
+    originalTrajectory: demoState.originalEmotionTrajectory || [],
+    sceneScores: demoState.sceneScores || [],
+  }, context);
   if ((demoState.fixationCounts[demoState.sceneIndex] || 0) >= 2) {
     engineResult = { ...engineResult, alignment_bucket: 'FIXATED' };
   }
+
+  demoState.userEmotionTrajectory = [...(demoState.userEmotionTrajectory || []), userVector.base || {}];
+  demoState.originalEmotionTrajectory = [...(demoState.originalEmotionTrajectory || []), originalVector.base || {}];
+  demoState.sceneScores = [...(demoState.sceneScores || []), engineResult.current_scene_score || 0];
 
   recordScene({
     sceneIndex: demoState.sceneIndex,
