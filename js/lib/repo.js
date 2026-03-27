@@ -71,6 +71,7 @@ export async function listMemoriesWithScenesChoices(client) {
             title: memory.title || '',
             code: memory.code || '',
             description: memory.description || '',
+            sound_map: memory.sound_map || null,
             memory_words: memory.memory_words || null,
             completed_sentence: memory.completed_sentence || null,
             author_note: memory.author_note || null,
@@ -120,7 +121,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 author_note: author_note || null,
                 status: status || 'Fetus',
                 source: source || 'beginner',
- // sound_map: sound_map || null, // temp 주석: 컬럼 없으면 Error occurred
+                sound_map: sound_map || null,
                 layers: 0,
                 dilution: 100,
                 is_public: true,
@@ -168,7 +169,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
             author_note: author_note || null,
             status: status || 'Fetus',
             source: source || 'beginner',
- // sound_map: sound_map || null, // temp 주석: 컬럼 없으면 Error occurred
+            sound_map: sound_map || null,
             layers: 0,
             dilution: 100,
             is_public: true

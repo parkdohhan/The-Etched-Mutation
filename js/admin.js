@@ -1548,6 +1548,7 @@ async function saveMemory() {
             code: code,
             title: title,
             description: description || null,
+            sound_map: Object.keys(soundMap).length > 0 ? soundMap : null,
             memory_words: memoryWords || null,
             completed_sentence: completedSentence || null,
             author_note: authorNote || null,

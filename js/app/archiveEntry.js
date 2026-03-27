@@ -65,7 +65,11 @@ function normalizeRows(rows) {
 }
 
 /** Supabase → 실패 시 data/memories.js → 최소 하드코딩 */
-export function getArchiveMemories() {
+export function getArchiveMemories(options = {}) {
+  const forceRefresh = !!options.forceRefresh;
+  if (forceRefresh) {
+    window.__temArchiveMemoriesPromise = null;
+  }
   if (window.__temArchiveMemoriesPromise) return window.__temArchiveMemoriesPromise;
   window.__temArchiveMemoriesPromise = fetchMemoriesFromSupabaseREST()
     .then((data) => {
@@ -195,7 +199,7 @@ export async function initArchiveEntry(containerEl) {
   hint.textContent = '[ Click a sentence to enter the memory ]';
   containerEl.appendChild(hint);
 
-  _items = await getArchiveMemories();
+  _items = await getArchiveMemories({ forceRefresh: true });
   const monologues = buildMonologuesFromMemories(_items);
 
   const frag = document.createDocumentFragment();
