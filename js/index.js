@@ -233,6 +233,8 @@ async function initApp() {
 
             // Auto-skip opening sequence (referenced in startOpeningSequence)
             window.__oauthRedirectSkipOpening = true;
+            // 세션 확정 후 마이페이지로 이동 (이메일 로그인과 동일한 UX)
+            window.__oauthPendingMypage = true;
 
             // DO NOT clear URL here — Supabase needs the tokens in the hash/query
             // to establish the session. URL will be cleaned after session is confirmed.
@@ -272,6 +274,7 @@ async function initApp() {
                     }
                     console.log('[Auth] OAuth URL cleaned after session confirmed');
                 }
+                tryOAuthPostLoginNavigation();
             }
         } else if (event === 'SIGNED_OUT') {
             appStore.setState({ isLoggedIn: false, currentUser: null });
@@ -301,6 +304,7 @@ async function initApp() {
             });
             syncToAppState();
             console.log('[Auth] Existing session restored:', user.email);
+            tryOAuthPostLoginNavigation();
         }
     } catch (e) {
         console.warn('[Auth] Session restore failed (ignorable):', e.message);
@@ -377,13 +381,38 @@ async function showMypage() {
 function closeMypage() {
     uiManager.closeMypage();
 }
+
+/** Google OAuth 리다이렉트 복귀 후 한 번만: 모달 닫고 마이페이지로 (이메일 로그인과 동일) */
+function tryOAuthPostLoginNavigation() {
+    if (!window.__oauthPendingMypage) return;
+    const state = appStore.getState();
+    if (!state.isLoggedIn || !state.currentUser) return;
+    window.__oauthPendingMypage = false;
+    const loginModal = document.getElementById('loginModal');
+    if (loginModal) {
+        loginModal.classList.remove('active');
+        loginModal.style.display = 'none';
+    }
+    const signupModal = document.getElementById('signupModal');
+    if (signupModal) {
+        signupModal.classList.remove('active');
+        signupModal.style.display = 'none';
+    }
+    showNotification('Signed in successfully');
+    if (pendingSaveAction === 'save') {
+        pendingSaveAction = null;
+        setTimeout(() => { saveMemory(); }, 300);
+    } else {
+        showMypage();
+    }
+}
 async function handleLogin() { const email = document.getElementById('loginUsername').value.trim(); const password = document.getElementById('loginPassword').value.trim(); if (!email || !password) { showNotification('Please enter email and password'); return } supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } const { data, error } = await supabaseClient.auth.signInWithPassword({ email: email, password: password }); if (error) { showNotification('Sign in failed: ' + error.message); return } appStore.setState({ isLoggedIn: true, currentUser: { id: data.user.id, username: data.user.user_metadata?.username || email.split('@')[0], email: email, joinDate: new Date(data.user.created_at).toLocaleDateString('en-US'), liveSessions: 0, memories: 0, interpretations: 0, visitedMemories: [], sessionHistory: [] } }); const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' } document.getElementById('loginUsername').value = ''; document.getElementById('loginPassword').value = ''; showNotification('Signed in successfully'); if (pendingSaveAction === 'save') { pendingSaveAction = null; setTimeout(() => { saveMemory() }, 300) } else { showMypage() } }
 function closeLogin() { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' } document.getElementById('loginUsername').value = ''; document.getElementById('loginPassword').value = ''; pendingSaveAction = null }
 function switchToSignup() { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' } const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.add('active'); signupModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('signupUsername').focus() }
 function switchToLogin() { const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('loginUsername').focus() }
 async function handleSignup() { const username = document.getElementById('signupUsername').value.trim(); const email = document.getElementById('signupEmail').value.trim(); const password = document.getElementById('signupPassword').value.trim(); const passwordConfirm = document.getElementById('signupPasswordConfirm').value.trim(); if (!username || !email || !password || !passwordConfirm) { showNotification('Please fill in all fields'); return } if (password !== passwordConfirm) { showNotification('Passwords do not match'); return } if (password.length < 6) { showNotification('Password must be at least 6 characters'); return } supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } const { data, error } = await supabaseClient.auth.signUp({ email: email, password: password, options: { data: { username: username } } }); if (error) { showNotification('Sign up failed: ' + error.message); return } appStore.setState({ isLoggedIn: true, currentUser: { id: data.user.id, username: username, email: email, joinDate: new Date().toLocaleDateString('en-US'), liveSessions: 0, memories: 0, interpretations: 0, visitedMemories: [], sessionHistory: [] } }); const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } document.getElementById('signupUsername').value = ''; document.getElementById('signupEmail').value = ''; document.getElementById('signupPassword').value = ''; document.getElementById('signupPasswordConfirm').value = ''; showNotification('Sign up complete'); if (pendingSaveAction === 'save') { pendingSaveAction = null; setTimeout(() => { saveMemory() }, 300) } else { showMypage() } }
 function closeSignup() { const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } document.getElementById('signupUsername').value = ''; document.getElementById('signupEmail').value = ''; document.getElementById('signupPassword').value = ''; document.getElementById('signupPasswordConfirm').value = '' }
-async function handleSocialLogin(provider) { if (provider === 'google') { supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } const { data, error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } }); if (error) { showNotification('Google sign in failed: ' + error.message) } } else { showNotification('Coming soon') } }
+async function handleSocialLogin(provider) { if (provider === 'google') { supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } const redirectTo = `${window.location.origin}${window.location.pathname || '/'}`; const { data, error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } }); if (error) { showNotification('Google sign in failed: ' + error.message) } } else { showNotification('Coming soon') } }
 async function handleLogout() { if (confirm('Are you sure you want to sign out?')) { supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } await supabaseClient.auth.signOut(); appStore.setState({ isLoggedIn: false, currentUser: null }); closeMypage(); showNotification('Signed out successfully') } }
 function updateUserStats(type, value = 1) { const state = appStore.getState(); if (!state.isLoggedIn || !state.currentUser) return; const currentUser = state.currentUser; if (type === 'liveSession') { currentUser.liveSessions = (currentUser.liveSessions || 0) + value } else if (type === 'memory') { if (!currentUser.visitedMemories) currentUser.visitedMemories = []; if (!currentUser.visitedMemories.includes(value)) { currentUser.visitedMemories.push(value); currentUser.memories = (currentUser.memories || 0) + 1 } } else if (type === 'interpretation') { currentUser.interpretations = (currentUser.interpretations || 0) + value } appStore.setState({ currentUser: currentUser }); if (document.getElementById('mypageScreen') && document.getElementById('mypageScreen').classList.contains('active')) { showMypage() } }
 function showModeSelection() { const introScreen = document.getElementById('introScreen'); const matchingSelection = document.getElementById('matchingSelection'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } if (matchingSelection) { matchingSelection.classList.add('active'); matchingSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
@@ -2943,7 +2972,7 @@ function startOpeningWaveAnimation(canvas) {
                         const xInfluence = Math.pow(1 - xNormalized, 2);
                         
  // 더 강 푸시 effect
-                        hoverPush = pushDirection * influence * xInfluence * 1.8;
+                        hoverPush = pushDirection * influence * xInfluence * 1.35;
                         
  // 커서 주변 서 큰 진폭 증 (손 대 느낌 강조)
                         const amplitudeBoost = influence * 0.8;

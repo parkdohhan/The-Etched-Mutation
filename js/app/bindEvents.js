@@ -60,6 +60,10 @@ export function bindEvents(deps) {
 
 // ========== 오프닝 screen 벤트 ==========
 function bindOpeningEvents() {
+    // OAuth 리다이렉트 직후 index.js의 checkOAuthRedirect가 오프닝을 숨긴 뒤,
+    // 여기서 다시 display:flex를 주면 오프닝이 덮어씌워지는 버그가 난다.
+    const oauthSkipOpening = !!window.__oauthRedirectSkipOpening;
+
  // 오프닝 sound 및 UI init
     const openingSound = document.getElementById('openingSound');
     if (openingSound) {
@@ -78,11 +82,16 @@ function bindOpeningEvents() {
 
     const openingScreen = document.getElementById('openingScreen');
     if (openingScreen) {
-        openingScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:3000 !important';
+        if (oauthSkipOpening) {
+            openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important';
+            openingScreen.classList.add('hidden');
+        } else {
+            openingScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:3000 !important';
+        }
     }
 
     const waveContainer = document.getElementById('openingWaveContainer');
-    if (waveContainer) {
+    if (waveContainer && !oauthSkipOpening) {
         waveContainer.classList.add('visible');
         const canvas = document.getElementById('openingWaveCanvas');
  // startOpeningWaveAnimation index.js 서 window 노출됨
@@ -90,9 +99,12 @@ function bindOpeningEvents() {
             window.startOpeningWaveAnimation(canvas);
         }
     }
+    if (waveContainer && oauthSkipOpening) {
+        waveContainer.classList.remove('visible');
+    }
 
     const hint = document.getElementById('openingStartHint');
-    if (hint) {
+    if (hint && !oauthSkipOpening) {
         hint.style.opacity = '1';
         hint.classList.add('visible');
     }
