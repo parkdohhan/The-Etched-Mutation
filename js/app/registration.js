@@ -1,8 +1,9 @@
+import { appStore } from './appStore.js';
 /**
  * Memory Registration Module — conversation-driven memory collection flow.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   window.appStore, window.showNotification, window.showConfessionHub,
+ *   appStore, window.showNotification, window.showConfessionHub,
  *   window.loadMemoriesFromSupabase, window.sortMemories
  */
 
@@ -464,7 +465,7 @@ async function finishRegistration() {
         window.showNotification('Memory registered!');
         closeRegistrationScreen();
 
-        const state = window.appStore.getState();
+        const state = appStore.getState();
         if (state.currentMode === 'archive') {
             await window.loadMemoriesFromSupabase();
             window.sortMemories('all');
@@ -476,7 +477,7 @@ async function finishRegistration() {
 }
 
 async function saveMemoryToDB(memory) {
-    const state = window.appStore.getState();
+    const state = appStore.getState();
     const curator_id = state.currentUser?.id || null;
 
     const result = await MemoryService.saveMemory({ memory, curator_id });

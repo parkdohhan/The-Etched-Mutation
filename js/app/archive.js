@@ -1,9 +1,10 @@
+import { appStore } from './appStore.js';
 /**
  * Archive Module — memory list, filtering/sorting, scene rendering,
  * emotion input, engine integration, play tracking, wave animation.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   window.appStore, window.showNotification, window.showEndScreen,
+ *   appStore, window.showNotification, window.showEndScreen,
  *   window.currentStoryData, window.showNpcDialogue,
  *   window.stopAllAnimations, window.showComparisonView
  */
@@ -35,7 +36,7 @@ async function enterPlayIntro(opts) { var fromDemo = opts && opts.fromDemo; cons
   if (memoryListEl) memoryListEl.style.display = 'none';
   if (archiveControlsEl) archiveControlsEl.style.display = 'none';
   if (archiveHeaderEl) archiveHeaderEl.style.display = 'none';
-  window.appStore.setState({ currentMode: 'play' });
+  appStore.setState({ currentMode: 'play' });
   window.stopAllAnimations();
   try {
     const mod = await import('./archiveEntry.js');
@@ -60,18 +61,18 @@ async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const 
   } catch (e) {
     console.warn('[enterArchive] loadMemoriesFromSupabase failed:', e);
   }
-  window.appStore.setState({ currentMode: 'archive' });
+  appStore.setState({ currentMode: 'archive' });
   window.stopAllAnimations();
   const footer = document.querySelector('.footer');
   if (footer) footer.classList.add('visible') }
 function filterByCategory(category, btnElement) {
     if (!category) return;
-    const state = window.appStore.getState();
-    window.appStore.setState({ currentCategory: category });
+    const state = appStore.getState();
+    appStore.setState({ currentCategory: category });
     const categoryBtns = document.querySelectorAll('.category-btn');
     categoryBtns.forEach(btn => btn.classList.remove('active'));
     if (btnElement) btnElement.classList.add('active');
-    const updatedState = window.appStore.getState();
+    const updatedState = appStore.getState();
     uiManager.renderMemoryCards(
         updatedState.allMemoriesData,
         updatedState.currentCategory,
@@ -89,14 +90,14 @@ async function loadMemoriesFromSupabase() {
     console.log('[loadMemoriesFromSupabase] fetchMemories result:', result);
     if (!result.ok) {
       console.error('[loadMemoriesFromSupabase] Query failed', result.error);
-      window.appStore.setState({ allMemoriesData: localFallback.length ? localFallback : [] });
-      if (localFallback.length) sortMemories(window.appStore.getState().currentSort);
+      appStore.setState({ allMemoriesData: localFallback.length ? localFallback : [] });
+      if (localFallback.length) sortMemories(appStore.getState().currentSort);
       return;
     }
     if (!result.data || result.data.length === 0) {
       console.log('[loadMemoriesFromSupabase] No public memories in Supabase, using local data');
-      window.appStore.setState({ allMemoriesData: localFallback });
-      if (localFallback.length) sortMemories(window.appStore.getState().currentSort);
+      appStore.setState({ allMemoriesData: localFallback });
+      if (localFallback.length) sortMemories(appStore.getState().currentSort);
       return;
     }
     const fromSupabase = result.data;
@@ -108,22 +109,22 @@ async function loadMemoriesFromSupabase() {
       ...fromSupabaseOther.map(m => ({ ...m, live_session_id: m.live_session_id || null, is_live: !!m.is_live }))
     ];
     console.log('[loadMemoriesFromSupabase] merged', merged.length, 'memories (local E-001/E-002/E-003 + Supabase others)');
-    window.appStore.setState({ allMemoriesData: merged });
-    const state = window.appStore.getState();
+    appStore.setState({ allMemoriesData: merged });
+    const state = appStore.getState();
     sortMemories(state.currentSort);
   } catch (error) {
     console.error('[loadMemoriesFromSupabase] Error occurred', error);
-    window.appStore.setState({ allMemoriesData: localFallback.length ? localFallback : [] });
-    if (localFallback.length) sortMemories(window.appStore.getState().currentSort);
+    appStore.setState({ allMemoriesData: localFallback.length ? localFallback : [] });
+    if (localFallback.length) sortMemories(appStore.getState().currentSort);
   }
 }
-function filterMemories() { const searchValue = document.getElementById('archiveSearch').value.toUpperCase().trim(); const cards = document.querySelectorAll('.memory-card'); const state = window.appStore.getState(); cards.forEach(card => { const code = card.getAttribute('data-code') || ''; const category = card.getAttribute('data-category') || 'archive'; let shouldShow = true; if (state.currentCategory === 'story' && category !== 'archive') shouldShow = false; else if (state.currentCategory === 'archive' && category !== 'archive') shouldShow = false; if (shouldShow && (searchValue === '' || code.includes(searchValue))) { card.classList.remove('hidden'); card.style.display = 'block'; if (searchValue !== '' && code === searchValue) { setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transform = 'scale(1.05)'; setTimeout(() => card.style.transform = '', 500) }, 100) } } else { card.classList.add('hidden'); card.style.display = 'none' } }) }
+function filterMemories() { const searchValue = document.getElementById('archiveSearch').value.toUpperCase().trim(); const cards = document.querySelectorAll('.memory-card'); const state = appStore.getState(); cards.forEach(card => { const code = card.getAttribute('data-code') || ''; const category = card.getAttribute('data-category') || 'archive'; let shouldShow = true; if (state.currentCategory === 'story' && category !== 'archive') shouldShow = false; else if (state.currentCategory === 'archive' && category !== 'archive') shouldShow = false; if (shouldShow && (searchValue === '' || code.includes(searchValue))) { card.classList.remove('hidden'); card.style.display = 'block'; if (searchValue !== '' && code === searchValue) { setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transform = 'scale(1.05)'; setTimeout(() => card.style.transform = '', 500) }, 100) } } else { card.classList.add('hidden'); card.style.display = 'none' } }) }
 function sortMemories(sortType, btnElement) {
-    window.appStore.setState({ currentSort: sortType });
+    appStore.setState({ currentSort: sortType });
     const filterBtns = document.querySelectorAll('.filter-btn');
     filterBtns.forEach(btn => btn.classList.remove('active'));
     if (btnElement) btnElement.classList.add('active');
-    const state = window.appStore.getState();
+    const state = appStore.getState();
     uiManager.renderMemoryCards(
         state.allMemoriesData,
         state.currentCategory,
@@ -136,7 +137,7 @@ function sortMemories(sortType, btnElement) {
 
 // cosineSimilarity is imported from /js/shared/math.js
 function updateAlignmentDisplay() {
-    const state = window.appStore.getState();
+    const state = appStore.getState();
     uiManager.updateAlignmentDisplay(state.currentAlignment);
 }
 function renderArchiveEmotionWave(emotionVector) {
@@ -272,10 +273,10 @@ function renderDefaultGrayLine() {
     
     stopArchiveWaveAnimation();
     
-    const state = window.appStore.getState();
+    const state = appStore.getState();
     if (state.waveAnimationId) {
         cancelAnimationFrame(state.waveAnimationId);
-        window.appStore.setState({ waveAnimationId: null });
+        appStore.setState({ waveAnimationId: null });
     }
     if (typeof window._waveAnimationId !== 'undefined' && window._waveAnimationId) {
         cancelAnimationFrame(window._waveAnimationId);
@@ -315,7 +316,7 @@ function renderDefaultGrayLine() {
 
 async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, currentData, sceneAlignment, reasonVector = null, mismatchType = null) {
     try {
-        const state = window.appStore.getState();
+        const state = appStore.getState();
         const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
         if (!memoryId) {
             console.warn('memory_id를 찾을 수 없어 plays 테이블에 저장하지 않습니다');
@@ -388,7 +389,7 @@ async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, c
     }
 }
 function selectMemory(index) { 
-        const state = window.appStore.getState(); 
+        const state = appStore.getState(); 
   const all = state.allMemoriesData || [];
   const memory = all[index];
   if (!memory || !memory.id) {
@@ -422,7 +423,7 @@ function deriveEffectType(alignment) {
 
 window._strataCompletedScenes = [];
 function initProgressDots() { const currentData = window.currentStoryData || null; const dotsContainer = document.getElementById('progressDots'); if (!dotsContainer) return; dotsContainer.innerHTML = ''; if (!currentData || !currentData.scenes) return; for (let i = 0; i < currentData.scenes.length; i++) { const dot = document.createElement('div'); dot.className = 'progress-dot' + (i === 0 ? ' active' : ''); dot.onclick = function () { goToScene(i) }; dotsContainer.appendChild(dot) } }
-function goToScene(index) { const state = window.appStore.getState(); if (index <= state.currentScene) { window.appStore.setState({ currentScene: index }); renderScene() } }
+function goToScene(index) { const state = appStore.getState(); if (index <= state.currentScene) { appStore.setState({ currentScene: index }); renderScene() } }
 
 function getMemorySoundMap(memory) {
     const raw = memory?.sound_map || memory?.soundMap || null;
@@ -538,7 +539,7 @@ async function renderScene() {
     console.log('[renderScene] start');
     try { 
         const currentData = window.currentStoryData || null; 
-        const state = window.appStore.getState(); 
+        const state = appStore.getState(); 
         if (state.currentMode === 'archive') {
             ensureSoundscapeReady(currentData);
         }
@@ -772,10 +773,10 @@ function renderArchiveFreeInput(scene) {
 
 function makeChoice(choiceIndex) { 
     try { 
-        const state = window.appStore.getState(); 
-        window.appStore.setState({ userChoices: [...state.userChoices, choiceIndex] }); 
+        const state = appStore.getState(); 
+        appStore.setState({ userChoices: [...state.userChoices, choiceIndex] }); 
         const currentData = window.currentStoryData || null; 
-        const updatedState = window.appStore.getState(); 
+        const updatedState = appStore.getState(); 
         if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { 
             window.showNotification('Unable to load scene data'); 
             return; 
@@ -800,13 +801,13 @@ function makeChoice(choiceIndex) {
 function proceedToNextScene() {
     try {
         const currentData = window.currentStoryData || null;
-        const state = window.appStore.getState();
+        const state = appStore.getState();
         if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
             window.showNotification('Unable to load scene data');
             return;
         }
             if (state.currentScene < currentData.scenes.length - 1) {
-                window.appStore.setState({ currentScene: state.currentScene + 1 });
+                appStore.setState({ currentScene: state.currentScene + 1 });
                 if (window.soundscape) window.soundscape.onSceneTransition();
             renderScene();
         } else {
@@ -828,10 +829,10 @@ window.proceedToNextScene = proceedToNextScene;
 function collectEmotionInput() {
  // UIManager 통 input collect
     const reason = uiManager.collectEmotionInput();
-    const state = window.appStore.getState();
+    const state = appStore.getState();
 
  // userReasons update
-    window.appStore.setState({ userReasons: [...state.userReasons, reason] });
+    appStore.setState({ userReasons: [...state.userReasons, reason] });
     updateUserStats('interpretation', 1);
 
  // modal Close 및 input 필드 initialization (UIManager )
@@ -885,7 +886,7 @@ function collectEmotionInput() {
  * @returns {Object} 엔진 calculation result
  */
 function runEngineStep(input, context) {
-    const state = window.appStore.getState();
+    const state = appStore.getState();
     const nextInput = {
         ...input,
         userTrajectory: state.userEmotionTrajectory || [],
@@ -907,7 +908,7 @@ function applyEngineResult(engineResult, userEmotionVector) {
 
  // emotion 히스토리 update
     const dominantEmotion = getDominantEmotion(userEmotionVector);
-    const currentState = window.appStore.getState();
+    const currentState = appStore.getState();
     const updatedHistory = [...currentState.emotionHistory, dominantEmotion];
     if (updatedHistory.length > 10) {
         updatedHistory.shift();
@@ -921,7 +922,7 @@ function applyEngineResult(engineResult, userEmotionVector) {
     const updatedOriginalTrajectory = [...(currentState.originalEmotionTrajectory || []), originalEmotion || {}];
     const updatedSceneScores = [...(currentState.sceneScores || []), engineResult.current_scene_score || 0];
 
-    window.appStore.setState({
+    appStore.setState({
         emotionHistory: updatedHistory,
         userEmotionTrajectory: updatedUserTrajectory,
         originalEmotionTrajectory: updatedOriginalTrajectory,
@@ -929,7 +930,7 @@ function applyEngineResult(engineResult, userEmotionVector) {
     });
 
  // alignment 및 bucket update
-    window.appStore.setState({
+    appStore.setState({
         currentAlignment: sceneAlignment,
         currentBucket: newBucket
     });
@@ -938,7 +939,7 @@ function applyEngineResult(engineResult, userEmotionVector) {
     if (!window.archiveSceneAlignments) {
         window.archiveSceneAlignments = [];
     }
-    const stateAfterUpdate = window.appStore.getState();
+    const stateAfterUpdate = appStore.getState();
     window.archiveSceneAlignments[stateAfterUpdate.currentScene] = sceneAlignment;
 
     return { sceneAlignment, newBucket, stateAfterUpdate };
@@ -1006,17 +1007,17 @@ async function persistAfterSubmit(params) {
  * @param {Object} scene - current scene object
  */
 async function proceedToNextSceneOrEnd(currentData, scene) {
-    const finalState = window.appStore.getState();
+    const finalState = appStore.getState();
 
  // NPC 대화 display
     window.showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade), 3000);
 
  // 1.5초 후 next scene으 move 또 ending
     setTimeout(async () => {
-        const nextState = window.appStore.getState();
+        const nextState = appStore.getState();
         if (nextState.currentScene < currentData.scenes.length - 1) {
  // next scene으 move
-            window.appStore.setState({ currentScene: nextState.currentScene + 1 });
+            appStore.setState({ currentScene: nextState.currentScene + 1 });
             if (nextState.currentMode === 'archive') {
                 renderScene();
             } else {

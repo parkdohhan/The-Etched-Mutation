@@ -1,8 +1,9 @@
+import { appStore } from './appStore.js';
 /**
  * Comparison Module — comparison view, merged wave, session end.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   window.window.appStore, window.showEndScreen, window.currentStoryData,
+ *   window.appStore, window.showEndScreen, window.currentStoryData,
  *   window.archiveAlignmentResult, window.archiveUserEmotions,
  *   window.archiveWaveData, window.showStrataView
  */
@@ -14,7 +15,7 @@ import { getSupabaseClient } from '../lib/supabaseClient.js';
 
 let comparisonScenes = [];
 let comparisonCurrentIndex = 0;
-async function calculateAverageAlignment() { return { averageAlignment: window.appStore.getState().currentAlignment || 0, isTrueEnding: (window.appStore.getState().currentAlignment || 0) >= 0.65 }; }
+async function calculateAverageAlignment() { return { averageAlignment: appStore.getState().currentAlignment || 0, isTrueEnding: (appStore.getState().currentAlignment || 0) >= 0.65 }; }
 async function showComparisonView() {
     try {
         const currentData = window.currentStoryData || null;
@@ -22,7 +23,7 @@ async function showComparisonView() {
             console.error('비교 화면: Scene 데이터가 not found');
             return;
         }
-        const state = window.appStore.getState();
+        const state = appStore.getState();
         const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
         if (!memoryId) {
             console.error('비교 화면: memory_id를 not found');
@@ -506,7 +507,7 @@ async function endComparisonSession() {
         
  // Strata 3D strata view display
         const currentData = window.currentStoryData || null;
-        const state = window.appStore.getState();
+        const state = appStore.getState();
         const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
 
         console.log('[Ending] Strata view check:', {

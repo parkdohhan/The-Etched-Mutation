@@ -7,11 +7,10 @@ import { NPC_DIALOGUES } from './npc-dialogues.js';
 import { fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus } from './shared/api.js';
 import { playSound, stopSound, setVolume, SOUNDS } from './shared/audio.js';
 import { cosineSimilarity, normalizeVector, addVectors, getBucket, checkFixated, getDominantEmotion, normalizeAnchor, projectEmotionToVAD, emotionVectorToWaveStyle } from './shared/math.js';
-import { AppState, resetState, updateState, updateStates } from './shared/state.js';
 import { ByeoriEngine, byeoriEngine } from './core/ByeoriEngine.js';
 // Expose to window for expInterview.js access
 window.byeoriEngine = byeoriEngine;
-import { createStore } from './core/store.js';
+import { appStore } from './app/appStore.js';
 import { networkService } from './services/NetworkService.js';
 import { realtimeService } from './services/RealtimeService.js';
 import { AIService } from './services/AIService.js';
@@ -108,9 +107,10 @@ console.log('=== Shared Modules Loaded ===');
 console.log('API:', typeof fetchMemories);
 console.log('Audio:', typeof playSound);
 console.log('Math:', typeof cosineSimilarity);
-console.log('State:', AppState);
+// Expose to window for non-module scripts (expInterview.js, contamination.js)
+window.appStore = appStore;
 
-// Expose global functions for opening and event binding (must be guaranteed before initApp)
+// Expose opening functions for bindEvents.js (must be set before initApp)
 window.startOpeningWaveAnimation = startOpeningWaveAnimation;
 window.startOpeningSequence = startOpeningSequence;
 window.handleOpeningKeydown = handleOpeningKeydown;
@@ -119,104 +119,10 @@ window.setupLoopWithCrossfade = setupLoopWithCrossfade;
 window.fadeInSound = fadeInSound;
 window.startMemoryRegistration = startMemoryRegistration;
 
-// Emotion anchor system moved to /js/shared/math.js
+// Keep supabaseClient and storyData as module-level vars (managed outside store)
+let supabaseClient;
+let storyData;
 
-// Store initialization (global variables moved to store)
-let supabaseClient; // Supabase client kept outside store (managed by lib)
-let storyData; // storyData kept outside store (temporary)
-
-const appStore = createStore({
-    // Mode/Session
-    currentMode: null,
-    currentRole: null,
-    sessionCode: null,
-    currentSessionId: null,
-
-    // Memory/Scene
-    allMemoriesData: [],
-    currentMemory: null,
-    currentScene: 0,
-    currentSceneOrder: 1,
-
-    // Archive demo flow tracking
-    visitedScenes: [],
-    fixationCounts: {},    // sceneIndex -> visits beyond first
-    totalScenesPlayed: 0,  // number of scene transitions executed
-    contaminationLevel: 0, // local running total based on alignment
-    lastTransitionPattern: null,
-
-    // User input
-    userChoices: [],
-    userReasons: [],
-
-    // Alignment/Bucket
-    currentAlignment: 0,
-    currentBucket: null,
-    emotionHistory: [],
-    userEmotionTrajectory: [],
-    originalEmotionTrajectory: [],
-    sceneScores: [],
-
-    // Live mode
-    liveSceneNum: 1,
-    liveFragments: 0,
-    liveMatches: 0,
-
-    // Animation ID
-    waveAnimationId: null,
-    liveWaveAnimationId: null,
-
-    // Authentication
-    isLoggedIn: false,
-    currentUser: null,
-
-    // Filter/Sort
-    currentSort: 'all',
-    currentCategory: 'all',
-
-    // Intermediate state
-    pendingSceneText: '',
-    expPendingEmotion: ''
-});
-// Expose to window for expInterview.js access
-window.appStore = appStore;
-
-// AppState and store sync helper (backward compatibility)
-function syncToAppState() {
-    const state = appStore.getState();
-    AppState.supabaseClient = supabaseClient;
-    AppState.storyData = storyData;
-    AppState.allMemoriesData = state.allMemoriesData;
-    AppState.currentMode = state.currentMode;
-    AppState.currentRole = state.currentRole;
-    AppState.sessionCode = state.sessionCode;
-    AppState.currentMemory = state.currentMemory;
-    AppState.currentScene = state.currentScene;
-    AppState.currentSceneOrder = state.currentSceneOrder;
-    AppState.userChoices = state.userChoices;
-    AppState.userReasons = state.userReasons;
-    AppState.currentAlignment = state.currentAlignment;
-    AppState.waveAnimationId = state.waveAnimationId;
-    AppState.liveWaveAnimationId = state.liveWaveAnimationId;
-    AppState.liveSceneNum = state.liveSceneNum;
-    AppState.liveFragments = state.liveFragments;
-    AppState.liveMatches = state.liveMatches;
-    AppState.isLoggedIn = state.isLoggedIn;
-    AppState.currentUser = state.currentUser;
-    AppState.currentSessionId = state.currentSessionId;
-    AppState.currentSort = state.currentSort;
-    AppState.currentCategory = state.currentCategory;
-    AppState.currentBucket = state.currentBucket;
-    AppState.emotionHistory = state.emotionHistory;
-    AppState.userEmotionTrajectory = state.userEmotionTrajectory;
-    AppState.originalEmotionTrajectory = state.originalEmotionTrajectory;
-    AppState.sceneScores = state.sceneScores;
-    AppState.visitedScenes = state.visitedScenes;
-    AppState.fixationCounts = state.fixationCounts;
-    AppState.totalScenesPlayed = state.totalScenesPlayed;
-    AppState.contaminationLevel = state.contaminationLevel;
-    AppState.lastTransitionPattern = state.lastTransitionPattern;
-}
 const USE_LIVE_INTERPRETATIONS_TABLE = false;
 
 // Initialize on DOMContentLoaded
@@ -347,7 +253,6 @@ async function initApp() {
                         sessionHistory: []
                     }
                 });
-                syncToAppState();
                 console.log('[Auth] User state restored:', user.email);
 
                 // Now that Supabase has processed the tokens, clean the URL
@@ -362,7 +267,6 @@ async function initApp() {
             }
         } else if (event === 'SIGNED_OUT') {
             appStore.setState({ isLoggedIn: false, currentUser: null });
-            syncToAppState();
             console.log('[Auth] Signed out');
         }
     });
@@ -386,7 +290,6 @@ async function initApp() {
                     sessionHistory: []
                 }
             });
-            syncToAppState();
             console.log('[Auth] Existing session restored:', user.email);
             tryOAuthPostLoginNavigation();
         }

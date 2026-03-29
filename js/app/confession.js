@@ -1,9 +1,10 @@
+import { appStore } from './appStore.js';
 /**
  * Confession Module — V2 flow, vector extraction, scene generation, Hub/Door,
  * record chat wrapper, ritual flow, safety system.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   window.appStore, window.showNotification, window.showNpcDialogue,
+ *   appStore, window.showNotification, window.showNpcDialogue,
  *   window.showEndScreen, window.loadMemoriesFromSupabase, window.sortMemories,
  *   window.enterArchive
  */
@@ -887,7 +888,7 @@ async function saveConfessionToDB() {
         }
 
         const { saveMemoryGraph } = await import('../lib/repo.js');
-        const state = window.appStore.getState();
+        const state = appStore.getState();
 
  // V2: originalVector 함께 save
  // V3: confessionV3Data 
@@ -1134,7 +1135,7 @@ async function startBeginner() {
     }
 
     // 로그인 없이 대화 허용 — 저장 시점에만 로그인 요구
-    window.appStore.setState({ currentMode: 'record' });
+    appStore.setState({ currentMode: 'record' });
 
     const container = document.getElementById('recordChatContainer');
     if (!container) return;
@@ -1223,7 +1224,7 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
         const supabase = getSupabaseClient();
         if (!supabase) throw new Error('Supabase not initialized');
 
-        const state = window.appStore.getState();
+        const state = appStore.getState();
         const userId = state.currentUser?.id;
 
         // memories 테이블에 저장
@@ -1334,7 +1335,7 @@ function hideAllScreens() {
 
 // Confession 플 우 start — redirects to Record Chat
 function startConfessionFlow(mode) {
-    window.appStore.setState({ currentMode: mode || 'record' });
+    appStore.setState({ currentMode: mode || 'record' });
     startBeginner();
 }
 
@@ -1344,8 +1345,8 @@ let ritualScenes = [];
 
 async function startRitualFlow() {
     console.log('=== Starting Ritual Flow ===');
-    window.appStore.setState({ currentMode: 'ritual', currentRole: 'A' });
-    const state = window.appStore.getState();
+    appStore.setState({ currentMode: 'ritual', currentRole: 'A' });
+    const state = appStore.getState();
     currentSceneIndex = 0;
     ritualScenes = [];
 
@@ -1355,7 +1356,7 @@ async function startRitualFlow() {
  // Live narrator screen display (소켓 없 )
     try {
         // storyData now accessed via window.currentStoryData
-        window.appStore.setState({ 
+        appStore.setState({ 
             currentSceneOrder: 1,
             currentScene: 0,
             userChoices: [],
@@ -1429,7 +1430,7 @@ async function startRitualFlow() {
 
         const narratorCanvas = document.getElementById('alignmentWaveCanvas');
         const experiencerCanvas = document.getElementById('expAlignmentWaveCanvas');
-        const state = window.appStore.getState();
+        const state = appStore.getState();
 
  // calculation index.js 서 수행 (Visualizer 숫자 받음)
         const narratorWaveStyle = window.narratorEmotionVector ? emotionVectorToWaveStyle(window.narratorEmotionVector) : null;
@@ -1479,7 +1480,7 @@ async function saveRitualScene(sceneData) {
 
  // next scene 위 initialization
     resetLiveState();
-    window.appStore.setState({ pendingSceneText: '' });
+    appStore.setState({ pendingSceneText: '' });
 
     const sceneContent = document.querySelector('#generatedSceneContent .generated-text');
     if (sceneContent) sceneContent.textContent = '';
@@ -1522,7 +1523,7 @@ async function saveRitualToMemories() {
         }
 
         console.log('[Memory] New memory created with status: Fetus');
-        const confessionState_ = window.appStore.getState();
+        const confessionState_ = appStore.getState();
         const memoryId = await saveMemoryGraph(supabaseClient, {
             memoryId: null,
             code: generateMemoryCode(),
