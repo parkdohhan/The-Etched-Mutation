@@ -225,7 +225,8 @@ export function replayFromPlays(plays) {
 
     // Convert user_emotion vector → VAD for drift direction
     let uV = 0, uA = 0, uD = 0;
-    if (p.user_emotion && typeof p.user_emotion === 'object') {
+    if (p.user_emotion && typeof p.user_emotion === 'object'
+        && Object.values(p.user_emotion).some(v => v > 0)) {
       const vad = projectEmotionToVAD(p.user_emotion);
       uV = vad.v || 0;
       uA = vad.a || 0;
