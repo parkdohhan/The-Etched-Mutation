@@ -12,6 +12,8 @@
 //
 // 별이엔진 V4는 변경하지 않는다. 이 모듈은 V4 출력의 소비자이다.
 
+import { projectEmotionToVAD } from '../shared/math.js';
+
 // ─── Constants (MVP v3 spec §5) ─────────────────────────────────
 
 export const CONTAMINATION = {
@@ -80,6 +82,15 @@ export function createEmptyState() {
     lifetime_drift_sum: 0,   // cumulative drift signal total
     lifetime_fix_sum: 0,     // cumulative fixation signal total
 
+    // Drift direction — which emotion direction the memory is pulled toward
+    // EMA-tracked with same α as drift/fixation
+    drift_dir_v: 0,    // valence  (-1 negative … +1 positive)
+    drift_dir_a: 0,    // arousal  (-1 low … +1 high)
+    drift_dir_d: 0,    // dominance (-1 powerless … +1 dominant)
+    lifetime_dir_v_sum: 0,
+    lifetime_dir_a_sum: 0,
+    lifetime_dir_d_sum: 0,
+
     // Last engine output snapshot (debug/admin)
     cont_last_alignment: 0,
     cont_last_level: 0,
@@ -104,6 +115,9 @@ export function createEmptyState() {
  * @param {string} engineOutput.transition_pattern
  * @param {string} engineOutput.mismatch_type
  * @param {number} engineOutput.fixation_level
+ * @param {number} [engineOutput.user_valence]   - session user emotion VAD
+ * @param {number} [engineOutput.user_arousal]
+ * @param {number} [engineOutput.user_dominance]
  * @returns {Object} next state (new object, does not mutate input)
  */
 export function updateContamination(state, engineOutput) {
@@ -118,6 +132,9 @@ export function updateContamination(state, engineOutput) {
     transition_pattern = 'bridge',
     mismatch_type = 'none',
     fixation_level = 0,
+    user_valence = 0,
+    user_arousal = 0,
+    user_dominance = 0,
   } = engineOutput;
 
   // 1. Depth (lifetime, always increments)
@@ -146,6 +163,17 @@ export function updateContamination(state, engineOutput) {
   // 4. Lifetime accumulators (for strata/history, never reset)
   next.lifetime_drift_sum += driftSignal;
   next.lifetime_fix_sum += fixSignal;
+
+  // 4b. Drift direction vector (weighted by driftSignal)
+  const dirV = user_valence * driftSignal;
+  const dirA = user_arousal * driftSignal;
+  const dirD = user_dominance * driftSignal;
+  next.drift_dir_v = α * dirV + (1 - α) * next.drift_dir_v;
+  next.drift_dir_a = α * dirA + (1 - α) * next.drift_dir_a;
+  next.drift_dir_d = α * dirD + (1 - α) * next.drift_dir_d;
+  next.lifetime_dir_v_sum += dirV;
+  next.lifetime_dir_a_sum += dirA;
+  next.lifetime_dir_d_sum += dirD;
 
   // 5. Dominant stage (MVP v3 spec §6)
   const { HYPERCOMPLETION_FIXATION, BIASED_INCLINATION_DRIFT } =
@@ -185,7 +213,7 @@ export function updateContamination(state, engineOutput) {
  *   shape_active = true after 2+ plays
  *   fixation_level = 0 (not available in play records)
  *
- * @param {Array} plays - array of { alignment, mismatch_type, transition_pattern? }
+ * @param {Array} plays - array of { alignment, mismatch_type, transition_pattern?, user_emotion? }
  * @returns {Object} final contamination state
  */
 export function replayFromPlays(plays) {
@@ -195,6 +223,15 @@ export function replayFromPlays(plays) {
     const p = plays[i];
     const alignment = p.alignment != null ? p.alignment : 0.5;
 
+    // Convert user_emotion vector → VAD for drift direction
+    let uV = 0, uA = 0, uD = 0;
+    if (p.user_emotion && typeof p.user_emotion === 'object') {
+      const vad = projectEmotionToVAD(p.user_emotion);
+      uV = vad.v || 0;
+      uA = vad.a || 0;
+      uD = vad.d || 0;
+    }
+
     state = updateContamination(state, {
       alignment,
       level: Math.sqrt(Math.max(0, alignment)),
@@ -203,6 +240,9 @@ export function replayFromPlays(plays) {
       transition_pattern: p.transition_pattern || 'bridge',
       mismatch_type: p.mismatch_type || 'none',
       fixation_level: 0,
+      user_valence: uV,
+      user_arousal: uA,
+      user_dominance: uD,
     });
   }
 
@@ -219,7 +259,7 @@ export function replayFromPlays(plays) {
  *   strong: 0.67 ~ 1.00
  *
  * @param {Object} state - contamination state
- * @returns {{ stage: string, intensity: number, band: string }}
+ * @returns {{ stage: string, intensity: number, band: string, drift_direction: Object, dominant_emotion_label: string }}
  */
 export function getPresentationState(state) {
   const stage = state.cont_stage || 'stable';
@@ -235,7 +275,32 @@ export function getPresentationState(state) {
     : intensity >= 0.34 ? 'medium'
     : 'weak';
 
-  return { stage, intensity, band };
+  return {
+    stage, intensity, band,
+    drift_direction: {
+      valence: state.drift_dir_v || 0,
+      arousal: state.drift_dir_a || 0,
+      dominance: state.drift_dir_d || 0,
+    },
+    dominant_emotion_label: getDominantEmotionLabel(state),
+  };
+}
+
+/**
+ * Map drift direction VAD to a human-readable emotion label.
+ * Simple quadrant classification (MVP level).
+ *
+ * @param {Object} state - contamination state with drift_dir_v, drift_dir_a
+ * @returns {string} 'anger' | 'sadness' | 'excitement' | 'calm' | 'neutral'
+ */
+export function getDominantEmotionLabel(state) {
+  const v = state.drift_dir_v || 0;
+  const a = state.drift_dir_a || 0;
+  if (v < -0.1 && a > 0.1)  return 'anger';
+  if (v < -0.1 && a <= 0.1) return 'sadness';
+  if (v >= 0.1 && a > 0.1)  return 'excitement';
+  if (v >= 0.1 && a <= 0.1) return 'calm';
+  return 'neutral';
 }
 
 /**

@@ -74,14 +74,22 @@
   memory_id: 'uuid',
 
   // Session-level (EMA) — stage 판정 + 렌더링
-  cont_drift: 0.0,                   // 0~1
-  cont_fixation: 0.0,                // 0~1
+  cont_drift: 0.0,                   // 0~1: 얼마나 틀어졌나 (스칼라)
+  cont_fixation: 0.0,                // 0~1: 얼마나 고착됐나 (스칼라)
   cont_stage: 'stable',              // stable | biased_inclination | hypercompletion
+
+  // Drift direction — 어느 감정 방향으로 끌려가는가 (벡터)
+  drift_dir_v: 0.0,                  // valence  (-1 부정 … +1 긍정)
+  drift_dir_a: 0.0,                  // arousal  (-1 저각성 … +1 고각성)
+  drift_dir_d: 0.0,                  // dominance (-1 무력 … +1 지배)
 
   // Lifetime — strata/archive/history
   cont_depth: 0,                     // int: 총 해석 수
   lifetime_drift_sum: 0.0,           // 누적 drift 신호 합
   lifetime_fix_sum: 0.0,             // 누적 fixation 신호 합
+  lifetime_dir_v_sum: 0.0,           // 누적 방향 벡터 합
+  lifetime_dir_a_sum: 0.0,
+  lifetime_dir_d_sum: 0.0,
 
   // 마지막 엔진 출력 (debug/admin)
   cont_last_alignment: 0.0,
@@ -105,6 +113,12 @@ ADD COLUMN IF NOT EXISTS cont_fixation real DEFAULT 0,
 ADD COLUMN IF NOT EXISTS cont_stage text DEFAULT 'stable',
 ADD COLUMN IF NOT EXISTS lifetime_drift_sum real DEFAULT 0,
 ADD COLUMN IF NOT EXISTS lifetime_fix_sum real DEFAULT 0,
+ADD COLUMN IF NOT EXISTS drift_dir_v real DEFAULT 0,
+ADD COLUMN IF NOT EXISTS drift_dir_a real DEFAULT 0,
+ADD COLUMN IF NOT EXISTS drift_dir_d real DEFAULT 0,
+ADD COLUMN IF NOT EXISTS lifetime_dir_v_sum real DEFAULT 0,
+ADD COLUMN IF NOT EXISTS lifetime_dir_a_sum real DEFAULT 0,
+ADD COLUMN IF NOT EXISTS lifetime_dir_d_sum real DEFAULT 0,
 ADD COLUMN IF NOT EXISTS cont_last_alignment real DEFAULT 0,
 ADD COLUMN IF NOT EXISTS cont_last_level real DEFAULT 0,
 ADD COLUMN IF NOT EXISTS cont_last_shape real DEFAULT 1,
@@ -222,6 +236,57 @@ lifetime_fix_sum   += fixSignal;
 - 기억의 최근 경험이 현재 상태를 지배 — 이것이 체감적으로도 맞음
 - lifetime 합계는 별도 보존 → strata depth 표현에 사용
 
+### drift direction vector (v3.1 추가)
+
+`cont_drift`는 "얼마나 틀어졌는가"(스칼라)만 알려주고, "어느 감정 방향으로 틀어졌는가"는 모른다. `cont_drift = 0.6`이라 해도 그게 분노 쪽인지 슬픔 쪽인지 알 수 없다.
+
+**데이터는 이미 존재한다** — 매 플레이마다 사용자가 감정을 입력하고, 그것이 VAD(Valence-Arousal-Dominance) 좌표로 변환된다. 그 좌표들의 누적 방향이 곧 drift의 방향이다. 5명이 한 기억을 플레이했는데 셋이 high-arousal negative 감정을 입력했으면, 그 기억은 분노/공포 방향으로 끌려가고 있는 것.
+
+**방향 신호 = 사용자 감정 VAD × driftSignal:**
+
+drift가 약한 세션의 방향은 영향력도 약해야 한다. 감정이 강해도 drift 자체가 없으면 방향에 영향을 주지 않는다.
+
+```javascript
+const dirV = user_valence  * driftSignal;
+const dirA = user_arousal  * driftSignal;
+const dirD = user_dominance * driftSignal;
+
+// 동일한 EMA α 사용
+drift_dir_v = α * dirV + (1 - α) * drift_dir_v;
+drift_dir_a = α * dirA + (1 - α) * drift_dir_a;
+drift_dir_d = α * dirD + (1 - α) * drift_dir_d;
+
+// Lifetime 누적
+lifetime_dir_v_sum += dirV;
+lifetime_dir_a_sum += dirA;
+lifetime_dir_d_sum += dirD;
+```
+
+**clamp 하지 않는다.** VAD(-1~+1) × driftSignal(0~1) = -1~+1 범위 내. EMA 특성상 자연스럽게 수렴.
+
+**방향 라벨 분류 (MVP 수준, VAD 사분면):**
+
+```javascript
+function getDominantEmotionLabel(state) {
+  const v = state.drift_dir_v;
+  const a = state.drift_dir_a;
+  if (v < -0.1 && a > 0.1)  return 'anger';      // 부정 + 고각성
+  if (v < -0.1 && a <= 0.1) return 'sadness';     // 부정 + 저각성
+  if (v >= 0.1 && a > 0.1)  return 'excitement';  // 긍정 + 고각성
+  if (v >= 0.1 && a <= 0.1) return 'calm';         // 긍정 + 저각성
+  return 'neutral';
+}
+```
+
+**이 벡터가 있으면 semantic mutation의 트리거 조건이 성립한다:**
+
+1. 원문의 감정 톤 (baseline VAD) — 씬 메타데이터
+2. drift direction (누적 해석이 미는 방향) — 위의 벡터
+3. drift intensity (얼마나 강하게) — 기존 `cont_drift`
+
+이 셋의 조합: "이 단어를 이 방향으로 이 정도 강도로 치환하라."
+예: "조금 화가났어" → drift_dir가 anger 방향 + cont_drift 0.6 → "분노에 미쳤어."
+
 ### dominant stage 판정
 
 ```javascript
@@ -248,9 +313,10 @@ if (cont_fixation >= 0.65 && cont_fixation > cont_drift) {
 
 ```javascript
 createEmptyState()                    // 초기 상태 생성
-updateContamination(state, output)    // 세션 종료 시 EMA 갱신
-replayFromPlays(plays)                // 역사적 플레이 배치 리플레이
-getPresentationState(state)           // { stage, intensity, band }
+updateContamination(state, output)    // 세션 종료 시 EMA 갱신 (drift/fixation + 방향 벡터)
+replayFromPlays(plays)                // 역사적 플레이 배치 리플레이 (user_emotion → VAD 변환 포함)
+getPresentationState(state)           // { stage, intensity, band, drift_direction, dominant_emotion_label }
+getDominantEmotionLabel(state)        // VAD 사분면 → 감정 라벨
 getDominantMismatch(plays)            // 지배적 mismatch 방향
 ```
 
@@ -358,6 +424,8 @@ game.contState = updateContamination(game.contState, sessionEngineOutput);
 - `cont_stage`
 - `cont_drift`
 - `cont_fixation`
+- `drift_direction` (`{ valence, arousal, dominance }`)
+- `dominant_emotion_label`
 
 선택(디버그/보조):
 - `cont_depth`
@@ -365,6 +433,7 @@ game.contState = updateContamination(game.contState, sessionEngineOutput);
 - `cont_last_mismatch`
 - `lifetime_drift_sum`
 - `lifetime_fix_sum`
+- `lifetime_dir_v/a/d_sum`
 
 ---
 
@@ -394,12 +463,19 @@ Seeded PRNG 사용 — 동일 텍스트 + 동일 stage/band → 동일 결과 (Q
 - `cont_stage`
 - `lifetime_drift_sum`
 - `lifetime_fix_sum`
+- `drift_dir_v`
+- `drift_dir_a`
+- `drift_dir_d`
+- `dominant_emotion_label`
 - `cont_last_alignment`
 - `cont_last_level`
 - `cont_last_shape`
 - `cont_last_pattern`
 - `cont_last_mismatch`
 - `cont_last_updated`
+- `lifetime_dir_v_sum`
+- `lifetime_dir_a_sum`
+- `lifetime_dir_d_sum`
 
 ---
 
@@ -429,6 +505,22 @@ Seeded PRNG 사용 — 동일 텍스트 + 동일 stage/band → 동일 결과 (Q
    - 조건: `shape_active=false`, `mismatch_type='emotion_mismatch'`
    - 기대: mismatch 항만으로 drift가 증가하는 현재 동작 확인
 
+7. **방향 수렴 테스트**
+   - 조건: 10회 연속 high-arousal negative 감정 입력 (valence=-0.6, arousal=0.8)
+   - 기대: `drift_dir_v < -0.1`, `drift_dir_a > 0.1`, `dominant_emotion_label === 'anger'`
+
+8. **방향 전환 테스트**
+   - 조건: 5회 anger 방향 → 5회 sadness 방향
+   - 기대: EMA 특성상 최종 방향이 sadness 쪽으로 이동 (최근 세션 지배)
+
+9. **VAD 미입력 시 안전성**
+   - 조건: `user_valence/arousal/dominance`가 undefined 또는 null
+   - 기대: `?? 0` fallback으로 방향 벡터 변화 없음, 에러 없음
+
+10. **driftSignal 가중 테스트**
+    - 조건: 강한 감정 입력이지만 driftSignal이 0에 가까운 세션
+    - 기대: 방향 벡터 변화 미미 (감정이 강해도 drift 자체가 없으면 방향 영향 약함)
+
 ---
 
 ## 14) 구현 우선순위
@@ -437,12 +529,13 @@ Seeded PRNG 사용 — 동일 텍스트 + 동일 stage/band → 동일 결과 (Q
 2. ~~Contamination Controller 구현~~ → `ContaminationTracker.js` 완료
 3. ~~세션 종료 update 연결~~ → 봉인 핸들러에 연결 완료
 4. ~~텍스트 오염 효과~~ → client-side fallback 완료
-5. **DB 마이그레이션 실행** → Supabase에 컬럼 추가
-6. **봉인 시 DB 저장** → contState를 memories 테이블에 persist
-7. **지형 탐험 + 독백 레이어** → strata에 오염 청진기 + 독백 트리거
-8. debug overlay 연결
-9. threshold 튜닝 및 플레이테스트
-10. 앵커 기반 시맨틱 변이
+5. ~~Drift direction vector~~ → VAD 방향 추적 + EMA + 감정 라벨 완료
+6. **DB 마이그레이션 실행** → Supabase에 컬럼 추가 (방향 벡터 6개 컬럼 포함)
+7. **봉인 시 DB 저장** → contState를 memories 테이블에 persist
+8. **지형 탐험 + 독백 레이어** → strata에 오염 청진기 + 독백 트리거 (독백 풀은 drift direction으로 선택)
+9. debug overlay 연결
+10. threshold 튜닝 및 플레이테스트
+11. 앵커 기반 시맨틱 변이 (drift direction + intensity + baseline VAD → 단어 치환)
 
 ---
 
@@ -456,4 +549,4 @@ Seeded PRNG 사용 — 동일 텍스트 + 동일 stage/band → 동일 결과 (Q
 ---
 
 *별이엔진 V4 기반. 기억유전학 v0.3 연동. 연출 제어 모델.*
-*v3 원본: 2026-03-27. v3.1 수정: 2026-03-29 (EMA 전환, dual state, 지형 탐험 체감 설계 추가).*
+*v3 원본: 2026-03-27. v3.1: 2026-03-29 (EMA, dual state, 지형 탐험). v3.2: 2026-03-29 (drift direction vector 추가).*

@@ -19,13 +19,25 @@
 ### 필수 입력
 
 - `cont_stage` (`stable` | `biased_inclination` | `hypercompletion`)
-- `cont_drift` (0~1)
-- `cont_fixation` (0~1)
+- `cont_drift` (0~1) — 얼마나 틀어졌는가 (스칼라)
+- `cont_fixation` (0~1) — 얼마나 고착됐는가 (스칼라)
+- `drift_direction` (`{ valence, arousal, dominance }`) — 어느 감정 방향으로 끌려가는가 (벡터)
+- `dominant_emotion_label` (`anger` | `sadness` | `excitement` | `calm` | `neutral`)
 
 ### 선택 입력
 
 - `cont_last_pattern`
 - `cont_last_mismatch`
+
+### 입력값 구조 해석
+
+`cont_drift`와 `drift_direction`은 분리된 역할이다:
+
+- **`cont_drift`** = 얼마나 (강도 스칼라). Stage 판정과 강도 밴드에 사용.
+- **`drift_direction`** = 어디로 (방향 벡터). 독백 선택, 시맨틱 변이 방향, 사운드 텍스처에 사용.
+- **`dominant_emotion_label`** = 방향 벡터의 사분면 요약. 독백 풀 인덱싱에 직접 사용.
+
+예: `cont_drift = 0.6` + `dominant_emotion_label = 'anger'` → "이 기억은 분노 방향으로 중간 강도로 틀어지고 있다."
 
 ---
 
@@ -50,7 +62,8 @@
 ## 2.2 biased_inclination
 
 - **텍스트**
-  - 핵심 단어만 편향 방향으로 치환/보정
+  - 핵심 단어만 `drift_direction` 방향으로 치환/보정
+  - 치환 방향은 `dominant_emotion_label`로 결정 (anger→분노 강화, sadness→슬픔 강화 등)
   - 문장 전체 재생성 금지
   - 애매한 표현을 약한 확정 표현으로 이동
 - **시각**
@@ -129,7 +142,37 @@
 - 독백은 "Another Me"의 톤 — 시스템 메시지가 아니라 기억의 내면
 - 비교를 보여주지 않아도, 기억 자신의 의심이 오염의 존재를 알려줌
 
-상세 설계는 MVP Spec v3.1 §9 참조.
+### 독백 선택에 drift direction 사용
+
+독백 풀은 `dominant_emotion_label` × 강도 밴드로 인덱싱한다:
+
+| `dominant_emotion_label` | 독백 예시 |
+|--------------------------|----------|
+| `anger` | "내가 그렇게 원래 화가 나있었나? 아니었던 거 같아..." |
+| `sadness` | "이렇게까지 슬펐었나. 아니, 이건 내 슬픔이 아닌 것 같기도..." |
+| `excitement` | "이렇게 뜨거웠었나. 기억이 과장하고 있는 건 아닌지..." |
+| `calm` | "이건 너무 고요해. 원래 이렇게 무덤덤했던 건 아닌데..." |
+| `neutral` | "뭔가 달라진 것 같은데... 뭐가 달라졌는지 모르겠다." |
+
+hypercompletion 구역은 방향과 무관하게 고정 독백:
+> "이건 너무 선명해. 기억이 이렇게 깔끔할 리가 없어."
+
+void 구역(`cont_last_mismatch === 'void_mismatch'`)도 방향 무관:
+> "여기엔 뭔가 있었는데... 지금은 비어 있다."
+
+### 시맨틱 변이에서의 drift direction 역할 (향후)
+
+drift direction이 있으면 "이 단어를 어느 방향으로 치환할 것인가"가 성립한다:
+
+1. **baseline** = 원문 씬의 감정 톤 (씬 메타데이터)
+2. **direction** = `drift_direction` (누적 해석이 미는 방향)
+3. **intensity** = `cont_drift` (얼마나 강하게)
+
+이 셋의 조합으로: "조금 화가났어" → drift_dir가 anger 방향 + cont_drift 0.6 → "분노에 미쳤어."
+
+이것은 앵커 기반 슬롯 교체이다. LLM 전체 재작성이 아니라, 감정 동사/귀인 대상/확신도 마커를 방향 벡터에 따라 치환한다.
+
+상세 설계는 MVP Spec v3.2 §6 (drift direction vector) 참조.
 
 ---
 

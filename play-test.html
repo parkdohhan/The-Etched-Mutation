@@ -3094,6 +3094,7 @@
       '| drift:', game.contState.cont_drift.toFixed(3),
       '| fix:', game.contState.cont_fixation.toFixed(3),
       '| depth:', game.contState.cont_depth,
+      '| dir:', game.contPresentation.dominant_emotion_label,
       '| mismatch:', game.contMismatch);
 
     game.visitedCore = {};
@@ -3147,6 +3148,7 @@
     // Construct session engine output from last V4 result + traces
     if (game.lastResult && game.contState) {
       const dbg = game.lastResult.debug || {};
+      const _vad = game.emotionCursor || { v: 0, a: 0, d: 0 };
       const sessionEngineOutput = {
         alignment: game.lastResult.alignment_score || 0,
         level: dbg.level || 0,
@@ -3155,12 +3157,17 @@
         transition_pattern: game.lastResult.transition_pattern || 'bridge',
         mismatch_type: game.lastResult.mismatch_type || 'none',
         fixation_level: dbg.fixation_level || 0,
+        user_valence: _vad.v || 0,
+        user_arousal: _vad.a || 0,
+        user_dominance: _vad.d || 0,
       };
       game.contState = updateContamination(game.contState, sessionEngineOutput);
       game.contPresentation = getPresentationState(game.contState);
       LOG('seal contamination:', game.contPresentation.stage, '|', game.contPresentation.band,
         '| drift:', game.contState.cont_drift.toFixed(3),
-        '| fix:', game.contState.cont_fixation.toFixed(3));
+        '| fix:', game.contState.cont_fixation.toFixed(3),
+        '| dir:', game.contPresentation.dominant_emotion_label,
+        '| vad:', game.contState.drift_dir_v.toFixed(2), game.contState.drift_dir_a.toFixed(2), game.contState.drift_dir_d.toFixed(2));
     }
 
     initAudio();
