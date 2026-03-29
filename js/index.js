@@ -19,6 +19,16 @@ import { MemoryService } from './services/MemoryService.js';
 import { uiManager } from './ui/UIManager.js';
 import { visualizer } from './ui/Visualizer.js';
 import { bindEvents } from './app/bindEvents.js';
+import {
+    selectRole, generateSessionCode, copySessionCode, joinSession,
+    createLiveSession, subscribeToSessionJoin, checkExperiencerJoin,
+    subscribeToLiveScenes, subscribeToLiveInterpretations,
+    subscribeToExperiencerChoices, subscribeToScenes, subscribeToNarratorEmotion,
+    displayExperiencerEmotionForNarrator, onExperiencerChoiceReceived,
+    checkAlignment, updateAlignmentWave, updateExperiencerAlignment,
+    saveLiveScene, saveSceneToLiveSession,
+    endLiveSession, stopAllLiveSubscriptions, exitLive
+} from './app/live.js';
 
 console.log('=== Shared Modules Loaded ===');
 console.log('API:', typeof fetchMemories);
@@ -526,253 +536,8 @@ function sortMemories(sortType, btnElement) {
         filterMemories
     );
 }
-function selectRole(role) { try { appStore.setState({ currentRole: role, currentMode: 'live' }); const modeSelectionEl = document.getElementById('modeSelection'); if (modeSelectionEl) { modeSelectionEl.classList.remove('active'); modeSelectionEl.style.display = 'none' } const sessionSetupEl = document.getElementById('sessionSetup'); if (sessionSetupEl) { sessionSetupEl.classList.add('active'); sessionSetupEl.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } if (role === 'A') { const narratorSetupEl = document.getElementById('narratorSetup'); const experiencerSetupEl = document.getElementById('experiencerSetup'); if (narratorSetupEl) narratorSetupEl.style.display = 'block'; if (experiencerSetupEl) experiencerSetupEl.style.display = 'none'; generateSessionCode() } else { const narratorSetupEl = document.getElementById('narratorSetup'); const experiencerSetupEl = document.getElementById('experiencerSetup'); if (narratorSetupEl) narratorSetupEl.style.display = 'none'; if (experiencerSetupEl) experiencerSetupEl.style.display = 'block' } } catch (e) { console.error('selectRole error:', e); showNotification('Role을 선택하는 중 An error occurred') } }
-function generateSessionCode() { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code = ''; for (let i = 0; i < 5; i++)code += chars.charAt(Math.floor(Math.random() * chars.length)); sessionCode = code; document.getElementById('sessionCode').textContent = code; document.getElementById('waitingForB').classList.add('active'); createLiveSession() }
-function copySessionCode() { navigator.clipboard.writeText(sessionCode); showNotification('Code copied') }
-function joinSession() { joinLiveSession() }
-async function createLiveSession() {
-    console.log('=== createLiveSession start ===');
-    console.log('sessionCode:', sessionCode);
-    const state = appStore.getState();
-    console.log('currentRole:', state.currentRole);
+// selectRole, generateSessionCode, copySessionCode, joinSession → app/live.js
 
-    // Wait for Supabase client initialization
-    let retryCount = 0;
-    const maxRetries = 20; // Max 10 second wait (20 * 500ms)
-
-    while (retryCount < maxRetries) {
-        supabaseClient = getSupabaseClient();
-        if (supabaseClient) {
-            console.log('Supabase client initialized');
-            break;
-        }
-        console.log(`Supabase Waiting for client... (${retryCount + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        retryCount++;
-    }
-
-    if (!supabaseClient) {
-        console.error('supabaseClient not initialized (max wait time exceeded)');
-        console.error('window.supabase exists:', typeof window.supabase !== 'undefined');
-        showNotification('Failed to connect to Supabase. Please check your network connection.');
-        return null;
-    }
-
-    const roleCheckState = appStore.getState(); if (roleCheckState.currentRole !== 'A') {
-        console.warn('Not the narrator');
-        return null;
-    }
-
-    let userId;
-    if (state.currentUser) { userId = state.currentUser.id } else {
-        if (!window.anonymousUserId) {
-            window.anonymousUserId = crypto.randomUUID();
-        }
-        userId = window.anonymousUserId;
-    }
-
-    console.log('userId:', userId);
-
-    try {
-        // Check network connection
-        console.log('Checking network connection...');
-        try {
-            const testResponse = await fetch(`${SUPABASE_URL}/rest/v1/`, {
-                method: 'HEAD',
-                mode: 'no-cors' // Check connection only, ignore CORS errors
-            });
-            console.log('Network connection verified');
-        } catch (networkError) {
-            console.warn('Network check failed (continuing):', networkError);
-        }
-
-        const sessionData = {
-            session_code: sessionCode,
-            narrator_id: userId,
-            experiencer_id: null,
-            alignment: 0
-        };
-
-        console.log('Attempting to insert session data:', sessionData);
-        console.log('Supabase URL:', supabaseClient.supabaseUrl);
-
-        const result = await networkService.createSession(sessionData);
-
-        if (!result.ok) {
-            console.error('Session creation failed:', result.error);
-            if (result.error && result.error.message) {
-                const errorMsg = result.error.message.includes('Failed to fetch') ||
-                    result.error.message.includes('ERR_NAME_NOT_RESOLVED') ||
-                    result.error.message.includes('ERR_INTERNET_DISCONNECTED')
-                    ? 'Unable to verify internet connection.\n\n' +
-                    'Please check:\n' +
-                    '1. Internet connection\n' +
-                    '2. Firewall/proxy settings\n' +
-                    '3. DNS server settings\n' +
-                    '4. Supabase service status'
-                    : 'Session creation failed: ' + result.error.message;
-                showNotification(errorMsg);
-            } else {
-                showNotification('Failed to create session');
-            }
-            return null;
-        }
-
-        const data = result.data;
-        if (!data) {
-            console.error('Session not created (data is null)');
-            showNotification('Session creation failed: no data returned');
-            return null;
-        }
-
-        console.log('Session created successfully:', data);
-        console.log('Session ID:', data.id);
-        console.log('Session Code:', data.session_code);
-
-        appStore.setState({ currentSessionId: data.id });
-        subscribeToSessionJoin();
-        subscribeToExperiencerChoices();
-
-        showNotification('Session created. Code: ' + sessionCode);
-
-        return data.id;
-    } catch (e) {
-        console.error('createLiveSession error:', e);
-        console.error('Error details:', JSON.stringify(e, null, 2));
-        showNotification('Session creation failed: ' + (e.message || 'Unknown error'));
-        return null;
-    }
-}
-function subscribeToSessionJoin() {
-    const state = appStore.getState();
-    const sessionId = state.currentSessionId;
-    if (!sessionId) {
-        console.log('Subscription failed: no currentSessionId');
-        return;
-    }
-    realtimeService.subscribeToSessionJoin(sessionId, {
-        onExperiencerJoin: (sessionData) => {
-            console.log('Experiencer joined!', sessionData.experiencer_id);
-            showNotification('An experiencer has joined!');
-            const sessionSetupEl = document.getElementById('sessionSetup');
-            if (sessionSetupEl) {
-                sessionSetupEl.classList.remove('active');
-                sessionSetupEl.style.display = 'none';
-            }
-            setTimeout(() => startLiveSession(), 500);
-        },
-        onSubscribed: () => {
-            checkExperiencerJoin();
-        }
-    });
-}
-async function checkExperiencerJoin() {
-    const state = appStore.getState();
-    if (!state.currentSessionId || state.currentRole !== 'A') return;
-
-    // Clean up existing interval
-    realtimeService.clearInterval('experiencerCheck');
-
-    const intervalId = setInterval(async () => {
-        try {
-            const currentState = appStore.getState();
-            const result = await networkService.getSessionExperiencerId(currentState.currentSessionId);
-            if (!result.ok) {
-                console.error('Session query error:', result.error);
-                return;
-            }
-            if (result.data && result.data.experiencer_id) {
-                console.log('Experiencer joined (detected via polling)!', result.data.experiencer_id);
-                realtimeService.clearInterval('experiencerCheck');
-                showNotification('An experiencer has joined!');
-                const sessionSetupEl = document.getElementById('sessionSetup');
-                if (sessionSetupEl) {
-                    sessionSetupEl.classList.remove('active');
-                    sessionSetupEl.style.display = 'none';
-                }
-                setTimeout(() => startLiveSession(), 500);
-            }
-        } catch (e) {
-            console.error('checkExperiencerJoin error:', e);
-        }
-    }, 2000);
-
-    realtimeService.registerInterval('experiencerCheck', intervalId);
-
-    setTimeout(() => {
-        realtimeService.clearInterval('experiencerCheck');
-        console.log('Polling ended (30s elapsed)');
-    }, 30000);
-}
-function subscribeToLiveScenes() {
-    const state = appStore.getState();
-    const sessionId = state.currentSessionId;
-    if (!sessionId) return;
-
-    realtimeService.subscribeToLiveScenes(sessionId, {
-        onSceneInsert: (sceneData) => {
-            const roleState = appStore.getState();
-            if (roleState.currentRole === 'B') {
-                const sceneText = sceneData.scene_text;
-                if (sceneText) {
-                    const expSceneText = document.getElementById('expSceneText');
-                    if (expSceneText) {
-                        expSceneText.textContent = sceneText;
-                        switchExpGeneratedTab('scene');
-                        expCurrentPhase = 'interpret';
-                        const emotionCueMsg = window.lastSceneData?.emotionCue || NPC_DIALOGUES.live.emotionCue;
-                        addExpChatMessage('ai', 'The narrator\'s memory has arrived. ' + emotionCueMsg);
-                        const expTextInput = document.getElementById('expTextInput');
-                        if (expTextInput) {
-                            expTextInput.value = '';
-                            expTextInput.focus();
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-function subscribeToLiveInterpretations() {
-    // Fully disabled since live_interpretations table does not exist
-    realtimeService.subscribeToLiveInterpretations();
-}
-function displayExperiencerEmotionForNarrator(interpretation) { console.log('displayExperiencerEmotionForNarrator called:', interpretation); if (!interpretation || !interpretation.emotion_vector) { console.error('No interpretation data or emotion vector'); return } const emotionVector = interpretation.emotion_vector; console.log('Displaying experiencer emotion on narrator screen:', emotionVector); window.experiencerEmotionVector = emotionVector; const experiencerWave = emotionVectorToWaveStyle(emotionVector); window.currentExperiencerWave = experiencerWave; updateAlignmentWave(); showNotification('The experiencer has entered an emotion'); console.log('Experiencer emotion wave update complete') }
-function subscribeToExperiencerChoices() {
-    const state = appStore.getState();
-    const sessionId = state.currentSessionId;
-    if (!sessionId) {
-        console.error('subscribeToExperiencerChoices: no currentSessionId');
-        return;
-    }
-
-    realtimeService.subscribeToExperiencerChoices(sessionId, {
-        onChoiceInsert: (choiceData) => {
-            onExperiencerChoiceReceived(choiceData);
-        }
-    });
-}
-function onExperiencerChoiceReceived(choice) { console.log('Experiencer emotion arrived (choices table):', choice); console.log('emotion_vector:', choice.emotion_vector); if (!choice || !choice.emotion_vector) { console.error('No choice or emotion_vector'); return } const emotionVector = choice.emotion_vector; console.log('Reflecting experiencer emotion on narrator screen:', emotionVector); window.experiencerEmotionVector = emotionVector; const experiencerWave = emotionVectorToWaveStyle(emotionVector); window.currentExperiencerWave = experiencerWave; updateAlignmentWave(); if (window.narratorEmotionVector) { const stateForEngine = appStore.getState(); const engineResult = byeoriEngine.calculateStep({ userVector: { base: emotionVector }, originalVector: { base: window.narratorEmotionVector }, userTrajectory: stateForEngine.userEmotionTrajectory || [], originalTrajectory: stateForEngine.originalEmotionTrajectory || [], sceneScores: stateForEngine.sceneScores || [] }, {}); const alignment = engineResult.alignment_score; appStore.setState({ currentAlignment: alignment }); updateLiveAlignment(0); console.log('Alignment calculation complete (choices):', alignment) } showNotification('The experiencer has entered their emotion다 (choices)'); console.log('체험자 감정 파동 update 완료 (choices)') }
-function subscribeToScenes() {
-    const state = appStore.getState();
-    const sessionId = state.currentSessionId;
-    if (!sessionId) {
-        console.error('subscribeToScenes: no currentSessionId');
-        return;
-    }
-
-    realtimeService.subscribeToScenes(sessionId, {
-        onSceneInsert: (sceneData) => {
-            expCurrentPhase = 'interpret';
-            const emotionCueMsg = window.lastSceneData?.emotionCue || NPC_DIALOGUES.live.emotionCue;
-            uiManager.displaySceneForExperiencer(sceneData, {
-                onSwitchTab: switchExpGeneratedTab,
-                onAddChatMessage: addExpChatMessage,
-                onShowNotification: showNotification
-            }, emotionCueMsg, NPC_DIALOGUES.live.sceneArrived);
-        }
-    });
-}
 // cosineSimilarity is imported from /js/shared/math.js
 function updateAlignmentDisplay() {
     const state = appStore.getState();
@@ -1027,181 +792,7 @@ async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, c
     }
 }
 function computeArchiveWaveData(emotionVector, sceneTextLength, voidLevel) { const totalEmotion = Object.values(emotionVector).reduce((sum, val) => sum + (val || 0), 0); const intensity = Math.min(1, Math.max(0.3, totalEmotion / 8)); const waveStyle = emotionVectorToWaveStyle(emotionVector); const wavePoints = []; const width = Math.max(100, Math.min(500, sceneTextLength * 10)); for (let i = 0; i < width; i++) { const x = i / width; const baseY = 0.5; const amplitude = voidLevel === 'high' ? 0.15 : 0.25; const frequency = 0.02 + intensity * 0.01; const y = baseY + Math.sin(x * Math.PI * 2 * frequency * 10) * amplitude; wavePoints.push({ x, y }) } const c = waveStyle.color; return { wavePoints, color: `rgba(${c.r},${c.g},${c.b},0.8)`, intensity, voidLevel } }
-async function checkAlignment() {
-    const state = appStore.getState();
-    if (!state.currentSessionId) return;
-    if (window.narratorEmotionVector && window.experiencerEmotionVector) {
-        const stateForEngine = appStore.getState();
-        const engineResult = byeoriEngine.calculateStep({
-            userVector: { base: window.experiencerEmotionVector },
-            originalVector: { base: window.narratorEmotionVector },
-            userTrajectory: stateForEngine.userEmotionTrajectory || [],
-            originalTrajectory: stateForEngine.originalEmotionTrajectory || [],
-            sceneScores: stateForEngine.sceneScores || []
-        }, {});
-        const alignment = engineResult.alignment_score;
-        appStore.setState({ currentAlignment: alignment });
-        updateLiveAlignment(0);
-        updateAlignmentWave();
-        console.log('Alignment 계산 complete:', alignment);
-        return;
-    }
-    // Fully disabled since live_interpretations table does not exist
-    return;
-}
-function updateAlignmentWave() { const canvas = document.getElementById('alignmentWaveCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); if (!window.narratorEmotionVector || !window.experiencerEmotionVector) return; const narratorWave = emotionVectorToWaveStyle(window.narratorEmotionVector); const experiencerWave = emotionVectorToWaveStyle(window.experiencerEmotionVector); currentNarratorWave = narratorWave; window.currentExperiencerWave = experiencerWave; console.log('파동 update:', { narrator: narratorWave, experiencer: experiencerWave }) }
-async function joinLiveSession() {
-    console.log('=== joinLiveSession start ===');
 
-    // Wait for Supabase client initialization
-    let retryCount = 0;
-    const maxRetries = 20; // Max 10 second wait (20 * 500ms)
-
-    while (retryCount < maxRetries) {
-        supabaseClient = getSupabaseClient();
-        if (supabaseClient) {
-            console.log('Supabase client initialized');
-            break;
-        }
-        console.log(`Supabase Waiting for client... (${retryCount + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        retryCount++;
-    }
-
-    if (!supabaseClient) {
-        console.error('Supabase 클라이언트가 initialization되지 않음 (최대 대기 시간 초과)');
-        console.error('window.supabase exists:', typeof window.supabase !== 'undefined');
-        showNotification('Failed to connect to Supabase. Please check your network connection.');
-        return;
-    }
-
-    const code = document.getElementById('sessionCodeInput').value.trim().toUpperCase();
-    console.log('Entered code:', code);
-
-    if (!code || code.length !== 5) {
-        console.warn('코드 형식 error:', code);
-        showNotification('Please enter a valid code (5 digits)');
-        return;
-    }
-
-    let userId;
-    const state = appStore.getState(); if (state.currentUser) { userId = state.currentUser.id } else {
-        if (!window.anonymousUserId) {
-            window.anonymousUserId = crypto.randomUUID();
-        }
-        userId = window.anonymousUserId;
-    }
-
-    console.log('userId:', userId);
-
-    try {
-        console.log('Session search start, code:', code);
-        console.log('Supabase URL:', supabaseClient.supabaseUrl);
-
-        const findResult = await networkService.findSessionsByCode(code);
-
-        if (!findResult.ok) {
-            console.error('joinLiveSession query error:', findResult.error);
-            showNotification('Session not found. Please check the code.');
-            return;
-        }
-
-        const sessions = findResult.data || [];
-        console.log('Found sessions:', sessions);
-        console.log('Found session count:', sessions.length);
-
-        if (sessions.length === 0) {
-            console.warn('세션을 찾을 수 없음 - 코드:', code);
-            showNotification('Session not found. Please check the code.');
-            return;
-        }
-
- // client 측 서 filter링
-        const session = sessions.find(s =>
-            s.session_code === code &&
-            !s.experiencer_id &&
-            !s.ended_at
-        );
-
-        console.log('Filtered sessions:', session);
-
-        if (!session) {
-            console.warn('No available sessions');
-            console.log('세션 Status:', sessions.map(s => ({
-                code: s.session_code,
-                has_experiencer: !!s.experiencer_id,
-                ended: !!s.ended_at
-            })));
-            showNotification('No available sessions. The session may already have a participant or has ended.');
-            return;
-        }
-
-        console.log('세션 참여 시도, Session ID:', session.id);
-
-        const joinResult = await networkService.joinSession(session.id, userId);
-
-        if (!joinResult.ok) {
-            console.error('참여 Failed:', joinResult.error);
-            showNotification('Session join failed: ' + (joinResult.error?.message || 'Unknown error'));
-            return;
-        }
-
-        console.log('세션 참여 성공:', joinResult.data);
-
-        sessionCode = code;
-        appStore.setState({ currentSessionId: session.id });
-
-        showNotification('Connected to session!');
-        subscribeToNarratorEmotion();
-        setTimeout(() => startLiveSession(), 500);
-    } catch (e) {
-        console.error('joinLiveSession error:', e);
-        console.error('Error stack:', e.stack);
-        showNotification('Error during session join: ' + (e.message || 'Unknown error'));
-    }
-}
-function subscribeToNarratorEmotion() {
-    const state = appStore.getState();
-    const sessionId = state.currentSessionId;
-    if (!sessionId) {
-        console.error('subscribeToNarratorEmotion: currentSessionId 없음');
-        return;
-    }
-
-    realtimeService.subscribeToNarratorEmotion(sessionId, {
-        onNarratorEmotionInsert: (sceneData) => {
-            window.narratorEmotionVector = sceneData.emotion_vector;
-            console.log('화자 감정 벡터 저장:', window.narratorEmotionVector);
-            updateExperiencerAlignment();
-        }
-    });
-}
-function updateExperiencerAlignment() {
-    if (!window.narratorEmotionVector || !window.experiencerEmotionVector) {
-        console.log('Alignment 계산 불가: 감정 벡터 없음', { narrator: !!window.narratorEmotionVector, experiencer: !!window.experiencerEmotionVector });
-        return;
-    }
-
- // calculation 엔진 서 수행
-    const stateForEngine = appStore.getState();
-    const engineResult = byeoriEngine.calculateStep({
-        userVector: { base: window.experiencerEmotionVector },
-        originalVector: { base: window.narratorEmotionVector },
-        userTrajectory: stateForEngine.userEmotionTrajectory || [],
-        originalTrajectory: stateForEngine.originalEmotionTrajectory || [],
-        sceneScores: stateForEngine.sceneScores || []
-    }, {});
-    const alignment = engineResult.alignment_score;
-    appStore.setState({ currentAlignment: alignment });
-
- // UI update UIManager 위임
-    uiManager.updateExperiencerAlignmentDisplay(alignment);
-    updateAlignmentWave();
-    console.log('체험자 화면 Alignment update:', alignment);
-}
-async function saveLiveScene(sceneData) { console.log('=== saveLiveScene called ==='); console.log('sceneData:', JSON.stringify(sceneData)); const state = appStore.getState(); console.log('currentSessionId:', state.currentSessionId); console.log('liveSceneNum:', state.liveSceneNum); console.log('currentGeneratedScene:', currentGeneratedScene); if (!state.currentSessionId) { console.error('currentSessionId가 not found!'); showNotification('Session not found'); return } const sceneText = sceneData.text || currentGeneratedScene || state.pendingSceneText || ''; if (!sceneText || sceneText === '(no scenes)') { console.error('Scene 텍스트가 not found!'); showNotification('No scene to save'); return } const insertData = { session_id: state.currentSessionId, scene_index: state.liveSceneNum, scene_text: sceneText, emotion_raw: sceneData.emotionRaw || '', reason_raw: sceneData.reasonRaw || '', generated_emotion: sceneData.generatedEmotion || '', emotion_vector: sceneData.emotionAnalysis?.base || { fear: 0, sadness: 0, anger: 0, joy: 0, longing: 0, guilt: 0 }, intensity: sceneData.emotionAnalysis?.intensity || 0.5, confidence: sceneData.emotionAnalysis?.confidence || 0.5, void_scene: sceneData.voidInfo?.sceneVoid || false, void_emotion: sceneData.voidInfo?.emotionVoid || false, void_reason: sceneData.voidInfo?.reasonVoid || false }; console.log('insertData:', JSON.stringify(insertData)); try { const result = await networkService.saveLiveScene(insertData); if (!result.ok) { console.error('live_scenes INSERT error:', result.error); throw result.error } console.log('live_scenes Save success:', result.data); await saveSceneToLiveSession({ text: sceneText, emotion_vector: sceneData.emotionAnalysis?.base || { fear: 0, sadness: 0, anger: 0, joy: 0, longing: 0, guilt: 0 } }); showNotification('Scene sent to experiencer') } catch (e) { console.error('saveLiveScene error:', e); showNotification('Scene Save failed: ' + e.message) } }
-async function saveSceneToLiveSession(sceneData) { console.log('=== saveSceneToLiveSession called ==='); console.log('sceneData:', JSON.stringify(sceneData)); const state = appStore.getState(); console.log('currentSessionId:', state.currentSessionId); console.log('currentSceneOrder:', state.currentSceneOrder); if (!state.currentSessionId) { console.error('currentSessionId가 not found!'); showNotification('Session not found'); return } const sceneText = sceneData.text || ''; if (!sceneText) { console.error('Scene 텍스트가 not found!'); showNotification('No scene to save'); return } try { const insertData = { live_session_id: state.currentSessionId, scene_order: state.currentSceneOrder, text: sceneText, emotion_vector: sceneData.emotion_vector || { fear: 0, sadness: 0, anger: 0, joy: 0, longing: 0, guilt: 0 }, created_at: new Date().toISOString() }; console.log('scenes INSERT 데이터:', JSON.stringify(insertData)); const result = await networkService.saveScene(insertData); if (!result.ok) { console.error('scenes INSERT error:', result.error); throw result.error } console.log('scenes 저장 complete:', result.data); appStore.setState({ currentSceneOrder: state.currentSceneOrder + 1 }); showNotification('장면이 scenes 테이블에 저장 complete') } catch (e) { console.error('saveSceneToLiveSession error:', e); showNotification('scenes 테이블 Save failed: ' + e.message) } }
-async function endLiveSession() { const state = appStore.getState(); if (!state.currentSessionId) return; try { const result = await networkService.endSession(state.currentSessionId, state.currentAlignment); if (!result.ok) { console.error('endLiveSession error:', result.error); return } console.log('Session ended') } catch (e) { console.error('endLiveSession error:', e) } }
 async function startLiveSession() { try { const state = appStore.getState(); if (!state.currentSessionId && state.currentRole === 'B') { console.warn('Experiencer session ID not found'); return } let sessionId = state.currentSessionId; if (!sessionId && state.currentRole === 'A') { sessionId = await createLiveSession(); if (!sessionId) { console.warn('Session creation failed, continuing') } else { appStore.setState({ currentSessionId: sessionId }) } } subscribeToLiveScenes(); subscribeToScenes(); appStore.setState({ currentSceneOrder: 1, currentScene: 0, userChoices: [], userReasons: [], currentAlignment: 0, userEmotionTrajectory: [], originalEmotionTrajectory: [], sceneScores: [], pendingSceneText: '', expPendingEmotion: '' }); window.currentStoryData = storyData; conversationHistory = []; currentGeneratedSceneObj = null; currentGeneratedEmotion = null; currentPhase = 'scene'; pendingEmotionText = ''; currentGeneratedScene = ''; finalSceneObject = null; isEditMode = false; const sceneContent = document.querySelector('#generatedSceneContent .generated-text'); if (sceneContent) sceneContent.textContent = ''; const emotionContent = document.querySelector('#generatedEmotionContent .generated-text'); if (emotionContent) emotionContent.textContent = ''; const chatMessages = document.getElementById('chatMessages'); if (chatMessages) { chatMessages.innerHTML = '<div class="chat-message ai"><div class="chat-message-label">Another Me</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>' } const editBtn = document.querySelector('.edit-toggle-btn'); if (editBtn) { editBtn.textContent = 'Edit'; editBtn.classList.remove('active') } const sceneTextarea = document.getElementById('editSceneTextarea'); if (sceneTextarea) { sceneTextarea.style.display = 'none'; sceneTextarea.value = '' } const emotionTextarea = document.getElementById('editEmotionTextarea'); if (emotionTextarea) { emotionTextarea.style.display = 'none'; emotionTextarea.value = '' } const sceneTextEl = document.querySelector('#generatedSceneContent .generated-text'); if (sceneTextEl) sceneTextEl.style.display = 'block'; switchGeneratedTab('scene'); updateUserStats('liveSession', 1); const sessionSetupEl = document.getElementById('sessionSetup'); if (sessionSetupEl) { sessionSetupEl.classList.remove('active'); sessionSetupEl.style.display = 'none' } const liveContainerEl = document.getElementById('liveContainer'); if (liveContainerEl) { liveContainerEl.classList.add('active'); liveContainerEl.style.cssText = 'display:block !important' } const liveContentEl = document.querySelector('.live-content'); const roleState = appStore.getState(); if (liveContentEl) { if (roleState.currentRole === 'A') { liveContentEl.classList.add('narrator-mode') } else { liveContentEl.classList.remove('narrator-mode') } }; const narratorLastChoiceSection = document.getElementById('narratorLastChoiceSection'); if (narratorLastChoiceSection) narratorLastChoiceSection.style.display = 'none'; const liveProgressSection = document.getElementById('liveProgressSection'); if (liveProgressSection) liveProgressSection.style.display = roleState.currentRole === 'A' ? 'block' : 'none'; const traceLabel = document.getElementById('traceLabel'); if (traceLabel) traceLabel.textContent = roleState.currentRole === 'A' ? '해석의 흔적' : '기억의 흔적'; if (roleState.currentRole === 'A') { const narratorPanelEl = document.getElementById('narratorPanel'); if (narratorPanelEl) narratorPanelEl.classList.add('active'); const interpretationTrace = document.getElementById('interpretationTrace'); const traceContent = document.getElementById('traceContent'); if (interpretationTrace && traceContent) { interpretationTrace.style.display = 'block'; traceContent.textContent = '체험자가 장면을 기다리고있습니다...' } showNpcDialogue("당신의 기억을 불러오세요. 지금 입력하는 장면이 이 기억의 원본 음각이 됩니다.", 4000) } else { const experiencerPanelEl = document.getElementById('experiencerPanel'); if (experiencerPanelEl) { experiencerPanelEl.classList.add('active'); expCurrentPhase = 'waiting'; appStore.setState({ expPendingEmotion: '' }); expGeneratedEmotion = ''; expFinalObject = null; const expSceneText = document.getElementById('expSceneText'); if (expSceneText) expSceneText.innerHTML = '화자가 기억을 불러오고 있습니다<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>'; const expEmotionText = document.getElementById('expEmotionText'); if (expEmotionText) expEmotionText.textContent = ''; const sceneDisplay = document.getElementById('expGeneratedSceneContent'); if (sceneDisplay) sceneDisplay.style.display = 'block'; const emotionDisplay = document.getElementById('expGeneratedEmotionContent'); if (emotionDisplay) emotionDisplay.style.display = 'none'; showNpcDialogue("곧 누군가의 Original Memory이 열릴 거야. 그 안에서 네 감정을 솔직하게 남겨줘.", 4000) } else { showNotification('체험자 패널을 not found') } } startAlignmentWaveAnimation(); setTimeout(() => { startVoiceWaveLiveAnimation() }, 300); const footer = document.querySelector('.footer'); if (footer) footer.classList.add('visible') } catch (e) { console.error('startLiveSession error:', e); showNotification('세션을 시작하는 중 Error occurred: ' + e.message) } }
 async function sendNarratorInput() { console.log('sendNarratorInput called'); const input = document.getElementById('narratorInput'); if (!input || !input.value.trim()) { showNotification('Please enter a memory'); return } const inputText = input.value.trim(); const sendBtn = document.querySelector('.narrator-send-btn'); if (sendBtn) sendBtn.disabled = true; if (sendBtn) sendBtn.textContent = 'AI is converting scene...'; showNotification('AI is converting scene...'); try { const convertedScene = await generateSceneAI(inputText); const liveSceneContent = document.getElementById('liveSceneContent'); if (liveSceneContent) { liveSceneContent.textContent = convertedScene } const experiencerPanel = document.getElementById('experiencerPanel'); if (experiencerPanel) { experiencerPanel.classList.add('active') } const traceContent = document.getElementById('traceContent'); if (traceContent) { traceContent.textContent = 'Scene sent to experiencer' } showNotification('Scene sent to experiencer'); input.value = ''; const reasonInput = document.getElementById('narratorReason'); if (reasonInput) reasonInput.value = ''; updateLiveAlignment(0.15); liveSceneNum++; const liveSceneNumEl = document.getElementById('liveSceneNum'); if (liveSceneNumEl) liveSceneNumEl.textContent = liveSceneNum } catch (error) { console.error('sendNarratorInput error:', error); showNotification('Scene 변환 중 Error occurred: ' + error.message); const liveSceneContent = document.getElementById('liveSceneContent'); if (liveSceneContent) { liveSceneContent.textContent = inputText } } finally { if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send' } } }
 let inputPhase = 'scene'; let currentSceneText = ''; let isVoiceMode = false;
@@ -1276,10 +867,6 @@ function lerp(a, b, t) { return a + (b - a) * t }
 function lerpColor(a, b, t) { return { r: lerp(a.r, b.r, t), g: lerp(a.g, b.g, t), b: lerp(a.b, b.b, t) } }
 function noise(x, y, z) { const n = Math.sin(x * 12.9898 + y * 78.233 + (z || 0) * 37.719) * 43758.5453; return n - Math.floor(n) }
 function updateNarratorWave(emotionAnalysis) { currentNarratorWave = emotionVectorToWaveStyle(emotionAnalysis?.base); console.log('화자 파동 update:', currentNarratorWave) }
-function stopAllLiveSubscriptions() {
-    realtimeService.cleanup();
-}
-async function exitLive() { if (confirm('End session?')) { const state = appStore.getState(); const wasRoleA = state.currentRole === 'A'; const wasFirstScene = state.liveSceneNum === 1; stopAllLiveSubscriptions(); stopAllAnimations(); await endLiveSession(); const liveContainerEl = document.getElementById('liveContainer'); if (liveContainerEl) { liveContainerEl.classList.remove('active'); liveContainerEl.style.display = 'none' } appStore.setState({ currentSessionId: null, currentRole: null, sessionCode: null }); if (wasRoleA && wasFirstScene) { restart() } else { showEndScreen() } } }
 function switchGeneratedTab(tab) { document.querySelectorAll('.generated-tab').forEach(t => t.classList.remove('active')); document.querySelectorAll('.generated-tab-content').forEach(c => c.style.display = 'none'); if (tab === 'scene') { document.querySelectorAll('.generated-tab')[0].classList.add('active'); document.getElementById('generatedSceneContent').style.display = 'block' } else if (tab === 'emotion') { document.querySelectorAll('.generated-tab')[1].classList.add('active'); document.getElementById('generatedEmotionContent').style.display = 'block' } }
 let expCurrentPhase = 'waiting'; let expGeneratedEmotion = ''; let expFinalObject = null; let expConversationHistory = [];
 function switchExpGeneratedTab(tab) { const sceneDisplay = document.getElementById('expGeneratedSceneContent'); const emotionDisplay = document.getElementById('expGeneratedEmotionContent'); if (tab === 'scene') { if (sceneDisplay) sceneDisplay.style.display = 'block'; if (emotionDisplay) emotionDisplay.style.display = 'none' } else if (tab === 'emotion') { if (sceneDisplay) sceneDisplay.style.display = 'none'; if (emotionDisplay) emotionDisplay.style.display = 'block' } }
@@ -3203,6 +2790,16 @@ window.sortMemories = sortMemories;
 window.backToMatchingSelection = backToMatchingSelection;
 window.backToModeSelection = backToModeSelection;
 window.exitLive = exitLive;
+// Expose shared functions for app/live.js (temporary, phase 3 cleanup)
+window.showNotification = showNotification;
+window.showEndScreen = showEndScreen;
+window.restart = restart;
+window.stopAllAnimations = stopAllAnimations;
+window.showNpcDialogue = showNpcDialogue;
+window.updateUserStats = updateUserStats;
+window.startLiveSession = startLiveSession;
+window.updateLiveAlignment = updateLiveAlignment;
+window.updateAlignmentWave = updateAlignmentWave;
 window.switchGeneratedTab = switchGeneratedTab;
 window.toggleEditMode = toggleEditMode;
 window.handleUnifiedSubmit = handleUnifiedSubmit;
