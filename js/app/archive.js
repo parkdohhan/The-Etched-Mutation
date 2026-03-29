@@ -1,11 +1,12 @@
 import { appStore } from './appStore.js';
+import { showNotification, showNpcDialogue } from '../ui/notify.js';
 /**
  * Archive Module — memory list, filtering/sorting, scene rendering,
  * emotion input, engine integration, play tracking, wave animation.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   appStore, window.showNotification, window.showEndScreen,
- *   window.currentStoryData, window.showNpcDialogue,
+ *   appStore, showNotification, window.showEndScreen,
+ *   window.currentStoryData, showNpcDialogue,
  *   window.stopAllAnimations, window.showComparisonView
  */
 
@@ -552,14 +553,14 @@ async function renderScene() {
                 scenesLength: currentData?.scenes?.length, 
                 currentScene: state.currentScene 
             });
-            window.showNotification('Unable to load scene'); 
+            showNotification('Unable to load scene'); 
             return; 
         } 
         const scene = currentData.scenes[state.currentScene]; 
         console.log('[renderScene] scene:', scene ? { id: scene.id, text: scene.text?.substring(0, 50) + '...', originalVector: scene.originalVector, original_emotion: scene.original_emotion } : null);
         if (!scene || !scene.text) { 
             console.error('[renderScene] Unable to load scene text:', { hasScene: !!scene, hasText: !!(scene && scene.text) });
-            window.showNotification('Unable to load scene text'); 
+            showNotification('Unable to load scene text'); 
             return; 
         } 
         // Apply contamination: load stage-appropriate text based on play history
@@ -677,7 +678,7 @@ async function renderScene() {
             window.strataSection.setCurrentScene(state.currentScene);
             window.strataSection.render();
         }
-    } catch (e) { console.error('renderScene error:', e); window.showNotification('Error rendering scene') } }
+    } catch (e) { console.error('renderScene error:', e); showNotification('Error rendering scene') } }
 function renderEchoLayer(words) { const layer = document.getElementById('echoLayer'); if (!layer) return; layer.innerHTML = ''; if (!words || !Array.isArray(words)) return; words.forEach(word => { const span = document.createElement('span'); span.className = 'echo-word'; span.textContent = word; span.style.top = (10 + Math.random() * 80) + '%'; span.style.left = (-15 + Math.random() * 130) + '%'; layer.appendChild(span) }) }
 function renderChoices(choices) { const container = document.getElementById('choicesContainer'); if (!container) return; container.innerHTML = ''; if (!choices || !Array.isArray(choices)) return; choices.forEach((choice, i) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.textContent = choice.text; btn.onclick = function () { makeChoice(i) }; container.appendChild(btn) }) }
 
@@ -778,7 +779,7 @@ function makeChoice(choiceIndex) {
         const currentData = window.currentStoryData || null; 
         const updatedState = appStore.getState(); 
         if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { 
-            window.showNotification('Unable to load scene data'); 
+            showNotification('Unable to load scene data'); 
             return; 
         } 
         const scene = currentData.scenes[updatedState.currentScene]; 
@@ -795,7 +796,7 @@ function makeChoice(choiceIndex) {
         }
     } catch (e) { 
         console.error('makeChoice error:', e); 
-        window.showNotification('An error occurred'); 
+        showNotification('An error occurred'); 
     } 
 }
 function proceedToNextScene() {
@@ -803,7 +804,7 @@ function proceedToNextScene() {
         const currentData = window.currentStoryData || null;
         const state = appStore.getState();
         if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
-            window.showNotification('Unable to load scene data');
+            showNotification('Unable to load scene data');
             return;
         }
             if (state.currentScene < currentData.scenes.length - 1) {
@@ -815,7 +816,7 @@ function proceedToNextScene() {
         }
     } catch (e) {
         console.error('proceedToNextScene error:', e);
-        window.showNotification('An error occurred');
+        showNotification('An error occurred');
     }
 }
 // Expose to window for expInterview.js access
@@ -841,7 +842,7 @@ function collectEmotionInput() {
  // scene data validation (store 서 읽기)
     const currentData = window.currentStoryData || null;
     if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
-        window.showNotification('Unable to load scene data');
+        showNotification('Unable to load scene data');
         return null;
     }
 
@@ -961,7 +962,7 @@ function updateUIAfterSubmit(state, result) {
     renderArchiveEmotionWave(userEmotionVector);
 
  // notification display
-    window.showNotification(`Scene Alignment: ${(sceneAlignment * 100).toFixed(0)}%`);
+    showNotification(`Scene Alignment: ${(sceneAlignment * 100).toFixed(0)}%`);
 
  // bucket 피드백
     console.log('=== Bucket determination ===');
@@ -1010,7 +1011,7 @@ async function proceedToNextSceneOrEnd(currentData, scene) {
     const finalState = appStore.getState();
 
  // NPC 대화 display
-    window.showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade), 3000);
+    showNpcDialogue(getRandomDialogue(NPC_DIALOGUES.archive.choiceMade), 3000);
 
  // 1.5초 후 next scene으 move 또 ending
     setTimeout(async () => {

@@ -1,9 +1,10 @@
 import { appStore } from './appStore.js';
+import { showNotification, showNpcDialogue } from '../ui/notify.js';
 /**
  * Memory Registration Module — conversation-driven memory collection flow.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   appStore, window.showNotification, window.showConfessionHub,
+ *   appStore, showNotification, window.showConfessionHub,
  *   window.loadMemoriesFromSupabase, window.sortMemories
  */
 
@@ -133,7 +134,7 @@ async function handleRegistrationInput(userInput) {
     try {
         supabaseClient = getSupabaseClient();
         if (!supabaseClient) {
-            window.showNotification('No Supabase client');
+            showNotification('No Supabase client');
             return;
         }
 
@@ -177,9 +178,9 @@ async function handleRegistrationInput(userInput) {
             console.error('collect-memory function error:', errorData);
 
             if (response.status === 0 || errorData.error?.includes('CORS')) {
-                window.showNotification('Edge Function not deployed or CORS misconfigured. Please deploy the collect-memory function.');
+                showNotification('Edge Function not deployed or CORS misconfigured. Please deploy the collect-memory function.');
             } else {
-                window.showNotification('Error processing conversation: ' + (errorData.error || 'Unknown error'));
+                showNotification('Error processing conversation: ' + (errorData.error || 'Unknown error'));
             }
             return;
         }
@@ -188,7 +189,7 @@ async function handleRegistrationInput(userInput) {
         const decoder = new TextDecoder();
 
         if (!reader) {
-            window.showNotification('Unable to read streaming response');
+            showNotification('Unable to read streaming response');
             return;
         }
 
@@ -236,7 +237,7 @@ async function handleRegistrationInput(userInput) {
 
                         if (data.type === 'error') {
                             console.error('Streaming error:', data.error);
-                            window.showNotification('Streaming error: ' + (data.error || 'Unknown error'));
+                            showNotification('Streaming error: ' + (data.error || 'Unknown error'));
                             return;
                         }
                     } catch (e) {
@@ -270,7 +271,7 @@ async function handleRegistrationInput(userInput) {
         }
     } catch (e) {
         console.error('handleRegistrationInput error:', e);
-        window.showNotification('Error processing input: ' + (e.message || 'Unknown error'));
+        showNotification('Error processing input: ' + (e.message || 'Unknown error'));
     }
 }
 
@@ -396,7 +397,7 @@ function confirmScene() {
     const scene = collectReviewFormData();
 
     if (!scene.text || scene.text.length === 0) {
-        window.showNotification('Scene 텍스트를 입력 please');
+        showNotification('Scene 텍스트를 입력 please');
         return;
     }
 
@@ -449,7 +450,7 @@ async function finishRegistration() {
     const memory = memoryRegistrationState.currentMemory;
 
     if (memory.scenes.length < 1) {
-        window.showNotification('At least one scene is required.');
+        showNotification('At least one scene is required.');
         return;
     }
 
@@ -462,7 +463,7 @@ async function finishRegistration() {
 
     try {
         await saveMemoryToDB(memory);
-        window.showNotification('Memory registered!');
+        showNotification('Memory registered!');
         closeRegistrationScreen();
 
         const state = appStore.getState();
@@ -472,7 +473,7 @@ async function finishRegistration() {
         }
     } catch (e) {
         console.error('finishRegistration error:', e);
-        window.showNotification('Error during memory registration');
+        showNotification('Error during memory registration');
     }
 }
 

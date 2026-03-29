@@ -1,10 +1,11 @@
 import { appStore } from './appStore.js';
+import { showNotification, showNpcDialogue } from '../ui/notify.js';
 /**
  * Confession Module — V2 flow, vector extraction, scene generation, Hub/Door,
  * record chat wrapper, ritual flow, safety system.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   appStore, window.showNotification, window.showNpcDialogue,
+ *   appStore, showNotification, showNpcDialogue,
  *   window.showEndScreen, window.loadMemoriesFromSupabase, window.sortMemories,
  *   window.enterArchive
  */
@@ -1212,7 +1213,7 @@ async function handleRecordComplete(extractedScene, lang) {
         });
     } catch (e) {
         console.error('[Record] Scene generation error:', e);
-        window.showNotification(lang === 'en' ? 'Failed to create scenes. Please try again.' : '장면 생성에 실패했습니다. 다시 시도해주세요.');
+        showNotification(lang === 'en' ? 'Failed to create scenes. Please try again.' : '장면 생성에 실패했습니다. 다시 시도해주세요.');
         burialContainer.classList.add('hidden');
         burialContainer.style.display = 'none';
         startBeginner();
@@ -1271,7 +1272,7 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
         return memory.id;
     } catch (e) {
         console.error('[Record] Save error:', e);
-        window.showNotification(lang === 'en' ? 'Failed to save memory.' : '기억 저장에 실패했습니다.');
+        showNotification(lang === 'en' ? 'Failed to save memory.' : '기억 저장에 실패했습니다.');
         return null;
     }
 }
@@ -1426,7 +1427,7 @@ async function startRitualFlow() {
             traceContent.textContent = 'Create 5 scenes. Enter and save each scene to proceed to the next.';
         }
 
-        window.showNpcDialogue("당신의 기억을 불러오세요. 5개의 장면을 직접 구성합니다.", 4000);
+        showNpcDialogue("당신의 기억을 불러오세요. 5개의 장면을 직접 구성합니다.", 4000);
 
         const narratorCanvas = document.getElementById('alignmentWaveCanvas');
         const experiencerCanvas = document.getElementById('expAlignmentWaveCanvas');
@@ -1460,7 +1461,7 @@ async function startRitualFlow() {
         console.log('Ritual mode Live narrator screen display complete');
     } catch (e) {
         console.error('startRitualFlow error:', e);
-        window.showNotification('Error starting Ritual mode: ' + e.message);
+        showNotification('Error starting Ritual mode: ' + e.message);
     }
 }
 
@@ -1494,11 +1495,11 @@ async function saveRitualScene(sceneData) {
     }
 
     if (ritualScenes.length >= 5) {
-        window.showNotification('All 5 scenes saved. Saving memory...');
+        showNotification('All 5 scenes saved. Saving memory...');
         await saveRitualToMemories();
     } else {
         currentSceneIndex = ritualScenes.length;
-        window.showNotification(`Scene ${ritualScenes.length}/5 저장됨. 다음 장면을 입력하세요.`);
+        showNotification(`Scene ${ritualScenes.length}/5 저장됨. 다음 장면을 입력하세요.`);
     }
 }
 
