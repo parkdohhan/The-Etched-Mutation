@@ -22,6 +22,8 @@ import {
     emotionVectorToWaveStyle
 } from '../shared/math.js';
 import { ByeoriEngine, byeoriEngine } from '../core/ByeoriEngine.js';
+import { sceneNavigator } from '../core/SceneNavigator.js';
+import { updateContamination, createEmptyState } from '../core/ContaminationTracker.js';
 import { networkService } from '../services/NetworkService.js';
 import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
@@ -800,19 +802,43 @@ function makeChoice(choiceIndex) {
 }
 function proceedToNextScene() {
     try {
-        const currentData = appStore.getState().currentStoryData;
         const state = appStore.getState();
+        const currentData = state.currentStoryData;
         if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
             showNotification('Unable to load scene data');
             return;
         }
-            if (state.currentScene < currentData.scenes.length - 1) {
-                appStore.setState({ currentScene: state.currentScene + 1 });
-                if (window.soundscape) window.soundscape.onSceneTransition();
-            renderScene();
-        } else {
+
+        // Mark current scene as visited
+        const visited = [...(state.visitedScenes || []), state.currentScene];
+        appStore.setState({ visitedScenes: visited });
+
+        const userEmotion = state.userEmotionTrajectory?.slice(-1)[0] || {};
+        const originalEmotion = currentData.scenes[state.currentScene]?.original_emotion
+            || currentData.scenes[state.currentScene]?.originalEmotion || {};
+
+        const navResult = sceneNavigator.navigate({
+            scenes: currentData.scenes,
+            currentSceneIndex: state.currentScene,
+            visitedScenes: visited,
+            transitionPattern: state.lastTransitionPattern || 'bridge',
+            userEmotion,
+            originalEmotion,
+        });
+
+        if (navResult === null) {
+            // All scenes visited
             window.showEndScreen();
+            return;
         }
+
+        if (navResult.isFallback) {
+            showNpcDialogue(navResult.fallbackNarrative, 3000);
+        }
+
+        appStore.setState({ currentScene: navResult.index });
+        if (window.soundscape) window.soundscape.onSceneTransition();
+        renderScene();
     } catch (e) {
         console.error('proceedToNextScene error:', e);
         showNotification('An error occurred');
@@ -932,7 +958,9 @@ function applyEngineResult(engineResult, userEmotionVector) {
  // alignment 및 bucket update
     appStore.setState({
         currentAlignment: sceneAlignment,
-        currentBucket: newBucket
+        currentBucket: newBucket,
+        lastTransitionPattern: engineResult.transition_pattern || null,
+        lastEngineResult: engineResult,
     });
 
  // window.archiveSceneAlignments save (하위 호환성 maintain)
@@ -1015,27 +1043,112 @@ async function proceedToNextSceneOrEnd(currentData, scene) {
  // 1.5초 후 next scene으 move 또 ending
     setTimeout(async () => {
         const nextState = appStore.getState();
-        if (nextState.currentScene < currentData.scenes.length - 1) {
- // next scene으 move
-            appStore.setState({ currentScene: nextState.currentScene + 1 });
-            if (nextState.currentMode === 'archive') {
-                renderScene();
-            } else {
-                simulateNarratorInput();
-            }
-        } else {
- // ending screen display
+
+        // Mark current scene as visited
+        const visited = [...(nextState.visitedScenes || []), nextState.currentScene];
+        appStore.setState({ visitedScenes: visited });
+
+        const userEmotion = nextState.userEmotionTrajectory?.slice(-1)[0] || {};
+        const originalEmotion = currentData.scenes[nextState.currentScene]?.original_emotion
+            || currentData.scenes[nextState.currentScene]?.originalEmotion || {};
+
+        const navResult = sceneNavigator.navigate({
+            scenes: currentData.scenes,
+            currentSceneIndex: nextState.currentScene,
+            visitedScenes: visited,
+            transitionPattern: nextState.lastTransitionPattern || 'bridge',
+            userEmotion,
+            originalEmotion,
+        });
+
+        if (navResult === null) {
+            // All scenes visited — show end screen
             if (nextState.currentMode === 'archive') {
                 const alignmentResult = await calculateAverageAlignment();
+                _applyContaminationAtEnd(nextState);
                 window.showEndScreen(alignmentResult);
             } else {
                 window.showEndScreen();
             }
+            return;
+        }
+
+        if (navResult.isFallback) {
+            showNpcDialogue(navResult.fallbackNarrative, 3000);
+        }
+
+        appStore.setState({ currentScene: navResult.index });
+        if (nextState.currentMode === 'archive') {
+            renderScene();
+        } else {
+            simulateNarratorInput();
         }
     }, 1500);
 }
 
 // submitEmotion function expInterview 모듈 대체됨
+
+// ─── ContaminationTracker session-end hook ────────────────────────────────────
+/**
+ * Called once when an archive session ends.
+ * Reads the last engine result from store, runs ContaminationTracker update,
+ * and logs the result. Supabase persistence is a TODO (separate commit).
+ */
+function _applyContaminationAtEnd(state) {
+    const engineResult = state.lastEngineResult;
+    const memory = state.currentMemory;
+    if (!engineResult || !memory) return;
+
+    // ContaminationTracker expects flat fields (MVP v3 format):
+    //   alignment, level, shape, shape_active, transition_pattern,
+    //   mismatch_type, fixation_level, user_valence, user_arousal, user_dominance
+    const userEmotion = state.userEmotionTrajectory?.slice(-1)[0] || {};
+    let uV = 0, uA = 0, uD = 0;
+    if (userEmotion && Object.values(userEmotion).some(v => v > 0)) {
+        try {
+            const vad = projectEmotionToVAD(userEmotion);
+            uV = vad?.v || 0; uA = vad?.a || 0; uD = vad?.d || 0;
+        } catch (_) {}
+    }
+
+    const contInput = {
+        alignment:          engineResult.alignment_score ?? 0,
+        level:              engineResult.debug?.level    ?? 0,
+        shape:              engineResult.debug?.shape    ?? 0,
+        shape_active:       engineResult.debug?.shape_active ?? false,
+        transition_pattern: engineResult.transition_pattern ?? 'bridge',
+        mismatch_type:      engineResult.mismatch_type  ?? 'none',
+        fixation_level:     engineResult.debug?.fixation_level ?? 0,
+        user_valence:       uV,
+        user_arousal:       uA,
+        user_dominance:     uD,
+    };
+
+    const existingContState = {
+        cont_drift: memory.cont_drift || 0,
+        cont_fixation: memory.cont_fixation || 0,
+        cont_stage: memory.cont_stage || 'stable',
+        cont_depth: memory.cont_depth || 0,
+        lifetime_drift_sum: memory.lifetime_drift_sum || 0,
+        lifetime_fix_sum: memory.lifetime_fix_sum || 0,
+        drift_dir_v: memory.drift_dir_v || 0,
+        drift_dir_a: memory.drift_dir_a || 0,
+        drift_dir_d: memory.drift_dir_d || 0,
+        lifetime_dir_v_sum: memory.lifetime_dir_v_sum || 0,
+        lifetime_dir_a_sum: memory.lifetime_dir_a_sum || 0,
+        lifetime_dir_d_sum: memory.lifetime_dir_d_sum || 0,
+        cont_last_alignment: 0,
+        cont_last_level: 0,
+        cont_last_shape: 1,
+        cont_last_pattern: 'bridge',
+        cont_last_mismatch: 'none',
+        cont_last_updated: null,
+    };
+
+    const nextContState = updateContamination(existingContState, contInput);
+    console.log('[ContaminationTracker] session end:', nextContState);
+    // TODO: persist nextContState to Supabase memories table (cont_* columns)
+}
 
 // ─────────────────────────────────────
 // === Exports ===

@@ -54,5 +54,8 @@ export const appStore = createStore({
     expPendingEmotion: '',
 
     // Current story data (set when memory is loaded)
-    currentStoryData: null
+    currentStoryData: null,
+
+    // Last ByeoriEngine output (set in applyEngineResult, used by SceneNavigator + ContaminationTracker)
+    lastEngineResult: null
 });
