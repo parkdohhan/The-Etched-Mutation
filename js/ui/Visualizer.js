@@ -51,11 +51,13 @@ export class Visualizer {
         ctx.fillRect(0, 0, width, height);
         
         ctx.beginPath();
-        ctx.strokeStyle = waveData.color || 'rgba(196,168,130,0.6)';
+        const c = waveData.color;
+        ctx.strokeStyle = typeof c === 'string' ? c : `rgba(${c.r},${c.g},${c.b},0.6)`;
         ctx.lineWidth = 1.5;
-        
+
+        const effectiveAmplitude = Math.min(waveData.amplitude, centerY * 0.8);
         for (let x = 0; x < width; x++) {
-            const y = centerY + Math.sin(x * waveData.frequency + time) * waveData.amplitude * 20;
+            const y = centerY + Math.sin(x * waveData.frequency + time) * effectiveAmplitude;
             if (x === 0) {
                 ctx.moveTo(x, y);
             } else {

@@ -1,7 +1,7 @@
 import { getSupabaseClient, waitForSupabaseClient } from './lib/supabaseClient.js';
 import { loadAdminMemories, saveAdminMemories, exportAdminMemoriesJSON, importAdminMemoriesJSON } from './lib/storage.js';
 import { listMemoriesWithScenesChoices, saveMemoryGraph, deleteMemoryGraph, listArchiveLayers } from './lib/repo.js';
-import { DEFAULT_EMOTION_ANCHORS } from './shared/math.js';
+import { DEFAULT_EMOTION_ANCHORS, emotionVectorToWaveStyle } from './shared/math.js';
 
 let memories = [];
 let currentScenes = [];
@@ -12,6 +12,7 @@ let previewWaveAnimationId = null;
 let currentLayers = []; // Archive 레이어 추적
 let adminUser = null; // 현재 인증된 관리자
 let previewAudio = null; // 사운드 미리듣기용
+const sceneWaveAnimationMap = new Map(); // sceneIndex -> requestAnimationFrame id
 
 // Supabase Auth 기반 manage자 auth
 async function checkPassword() {
@@ -453,6 +454,15 @@ function renderScenes() {
                 </div>
                 <div class="scene-wave-preview" data-scene-index="${sceneIndex}" style="margin-top: 1rem;">
                     <label class="editor-label" style="display:block; margin-bottom: 0.5rem;">원본 파동</label>
+                    <button
+                        type="button"
+                        class="editor-btn preview-wave-btn"
+                        data-scene-index="${sceneIndex}"
+                        onclick="startOriginalWavePreview(${sceneIndex})"
+                        style="margin-bottom:0.6rem;padding:0.45rem 0.85rem;font-size:0.82rem;"
+                    >
+                        ${(scene.wavePreviewEnabled ? '원본 파동 중지' : '원본 파동 보기')}
+                    </button>
                     <canvas class="scene-wave-canvas" id="sceneWaveCanvas-${sceneIndex}" width="400" height="80" style="width:100%; max-width:400px; height:80px; background: var(--bg-deep); border-radius:4px; border:1px solid rgba(196,168,130,.2);"></canvas>
                 </div>
             </div>
@@ -503,7 +513,13 @@ function renderScenes() {
 
     attachSceneListeners();
 
-    currentScenes.forEach((_, sceneIndex) => renderSceneWave(sceneIndex));
+    currentScenes.forEach((scene, sceneIndex) => {
+        if (scene && scene.wavePreviewEnabled) {
+            startOriginalWavePreview(sceneIndex, true);
+        } else {
+            clearSceneWaveCanvas(sceneIndex);
+        }
+    });
 }
 
 // 편집용: 장면 하나의 감정 벡터 (originalEmotion 기반, 0–100 정규화)
@@ -515,23 +531,75 @@ function getSceneEmotionVectorForEditor(sceneIndex) {
     const keyMap = { moral_pain: 'moralPain' };
     Object.entries(o).forEach(([emotion, intensity]) => {
         const key = keyMap[emotion] || emotion;
-        if (base.hasOwnProperty(key)) base[key] = (intensity || 0) * 100;
+        if (base.hasOwnProperty(key)) base[key] = Math.max(0, Math.min(1, Number(intensity) || 0));
     });
-    const total = Object.values(base).reduce((s, v) => s + v, 0);
-    if (total > 0) {
-        Object.keys(base).forEach(k => { base[k] = Math.round((base[k] / total) * 100); });
-    }
     return base;
 }
 
+function getEditorWaveStyle(emotionVector) {
+    const ev = (emotionVector && typeof emotionVector === 'object') ? emotionVector : {};
+    const alias = Object.assign({}, ev);
+    if (alias.moralPain != null && alias.shame == null) alias.shame = alias.moralPain;
+
+    const total = Object.values(alias).reduce((a, b) => a + (Number(b) || 0), 0);
+    const intensity = Math.max(0, Math.min(1, total / 6));
+    let dominant = 'sadness';
+    let maxVal = -1;
+    Object.entries(alias).forEach(([k, v]) => {
+        const n = Number(v) || 0;
+        if (n > maxVal) {
+            maxVal = n;
+            dominant = k;
+        }
+    });
+
+    const colors = {
+        fear: [100, 80, 180],
+        sadness: [80, 100, 160],
+        anger: [200, 80, 80],
+        joy: [200, 180, 100],
+        longing: [80, 180, 180],
+        guilt: [150, 130, 100],
+        shame: [160, 100, 130],
+        numbness: [90, 90, 110],
+        isolation: [70, 90, 130],
+        confusion: [120, 100, 140],
+    };
+    const c = colors[dominant] || colors.sadness;
+    return {
+        color: { r: c[0], g: c[1], b: c[2] },
+        speed: 0.3 + intensity * 0.9,
+        amplitude: 30 + intensity * 50,
+        frequency: 0.008 + intensity * 0.012,
+        chaos: 0.1 + intensity * 0.7,
+    };
+}
+
 // 편집란: 장면 하나의 원본 파동 그리기 (감정 매핑 변경 시 실시간 반영)
-function renderSceneWave(sceneIndex) {
+function clearSceneWaveCanvas(sceneIndex) {
+    stopOriginalWavePreview(sceneIndex);
+    const canvas = document.getElementById(`sceneWaveCanvas-${sceneIndex}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(18, 18, 26, 0.3)';
+    ctx.fillRect(0, 0, w, h);
+}
+
+// 편집란: 장면 하나의 원본 파동 그리기 (두줄 파동 로직 기반, 한 줄만 렌더)
+function renderSceneWave(sceneIndex, timeSec = 0) {
     const canvas = document.getElementById(`sceneWaveCanvas-${sceneIndex}`);
     if (!canvas) return;
     const scene = currentScenes[sceneIndex];
-    if (!scene) return;
-
+    if (!scene || !scene.wavePreviewEnabled) {
+        clearSceneWaveCanvas(sceneIndex);
+        return;
+    }
     const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
@@ -539,26 +607,27 @@ function renderSceneWave(sceneIndex) {
     ctx.fillRect(0, 0, w, h);
 
     const emotionVector = getSceneEmotionVectorForEditor(sceneIndex);
-    const textLen = (scene.text || '').length || 1;
-    const voidLevel = (scene.voidInfo && scene.voidInfo.voidLevel) ? scene.voidInfo.voidLevel : 'low';
-    const waveData = computeWaveData(emotionVector, textLen, voidLevel);
-
-    if (!waveData.wavePoints || waveData.wavePoints.length === 0) return;
-
-    const centerY = h / 2;
-    const maxX = Math.max(...waveData.wavePoints.map(p => p.x), 1);
-    const scaleX = w / maxX;
-    const scaleY = (h / 4) / 100;
+    const style = getEditorWaveStyle(emotionVector);
+    const centerY = h * 0.5;
+    const phase = timeSec;
+    const ampScale = Math.min(1, (h * 0.34) / Math.max(1, style.amplitude));
 
     ctx.beginPath();
-    ctx.strokeStyle = waveData.color || 'rgba(196, 168, 130, 0.7)';
-    ctx.lineWidth = 1.5;
-    waveData.wavePoints.forEach((p, i) => {
-        const x = p.x * scaleX;
-        const y = centerY + (p.y * scaleY);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-    });
+    ctx.strokeStyle = `rgba(${style.color.r}, ${style.color.g}, ${style.color.b}, 0.78)`;
+    ctx.lineWidth = 1.6;
+    for (let x = 0; x <= w; x += 2) {
+        const edgeFade = Math.sin((x / Math.max(1, w)) * Math.PI);
+        let y = Math.sin(x * style.frequency + phase * style.speed) * style.amplitude;
+        y += Math.sin(x * style.frequency * 2.3 + phase * style.speed * 0.7) * (style.amplitude * 0.4);
+        y += Math.sin(x * style.frequency * 0.4 + phase * style.speed * 0.3) * (style.amplitude * 0.6);
+        const noiseN = Math.sin(x * 0.129898 + phase * 0.78233) * 43758.5453;
+        const noise = noiseN - Math.floor(noiseN);
+        y += (noise - 0.5) * (style.chaos * 15);
+        y = y * edgeFade * ampScale;
+        const yy = centerY + y;
+        if (x === 0) ctx.moveTo(x, yy);
+        else ctx.lineTo(x, yy);
+    }
     ctx.stroke();
 }
 
@@ -589,69 +658,70 @@ function renderOriginalEmotions(originalEmotion, sceneIndex) {
     `).join('');
 }
 
-// emotion vector color으 보간하 function
-function interpolateColors(emotionVector) {
- // emotion별 color mapping (RGB)
-    const emotionColors = {
-        fear: { r: 74, g: 144, b: 217 },      // #4A90D9
-        sadness: { r: 90, g: 122, b: 154 },   // #5A7A9A
-        guilt: { r: 139, g: 115, b: 85 },     // #8B7355
-        anger: { r: 217, g: 74, b: 74 },      // #D94A4A
-        longing: { r: 196, g: 168, b: 130 },  // #C4A882
-        isolation: { r: 74, g: 74, b: 90 },    // #4A4A5A
-        numbness: { r: 106, g: 106, b: 106 }, // #6A6A6A
-        moralPain: { r: 155, g: 89, b: 182 }  // #9B59B6
-    };
-    
-    let totalWeight = 0;
-    let r = 0, g = 0, b = 0;
-    
-    Object.entries(emotionVector).forEach(([emotion, value]) => {
-        if (emotionColors[emotion] && value > 0) {
-            const weight = value / 100; // 0-1 범위로 정규화
-            r += emotionColors[emotion].r * weight;
-            g += emotionColors[emotion].g * weight;
-            b += emotionColors[emotion].b * weight;
-            totalWeight += weight;
-        }
-    });
-    
-    if (totalWeight > 0) {
-        r = Math.round(r / totalWeight);
-        g = Math.round(g / totalWeight);
-        b = Math.round(b / totalWeight);
-    } else {
- // default값 (회색)
-        r = 128;
-        g = 128;
-        b = 128;
-    }
-    
-    return `rgb(${r}, ${g}, ${b})`;
-}
-
-// wave data create function
-function computeWaveData(emotionVector, sceneTextLength, voidLevel) {
+// wave data create function (emotionVectorToWaveStyle 기반)
+function computeWaveData(emotionVector, sceneTextLength, voidLevel, timeSec = 0) {
     const wavePoints = [];
-    const freq = 0.02;
-    
-    for (let x = 0; x < sceneTextLength * 10; x++) {
+    const width = Math.max(180, Math.min(900, Math.round((sceneTextLength || 1) * 10)));
+    const waveStyle = emotionVectorToWaveStyle(emotionVector);
+
+    for (let x = 0; x < width; x++) {
+        const nx = x / Math.max(1, width - 1);
         let y = 0;
-        
-        Object.entries(emotionVector).forEach(([emotion, value]) => {
-            y += Math.sin(x * freq) * value * 50;
-        });
-        
+        // primary wave
+        y += Math.sin(nx * Math.PI * 2 * (waveStyle.frequency * 125) + timeSec * waveStyle.speed) * (waveStyle.amplitude / 30);
+        // secondary harmonic
+        y += Math.sin(nx * Math.PI * 2 * (waveStyle.frequency * 287) + timeSec * waveStyle.speed * 0.7) * (waveStyle.amplitude / 75);
+        // chaos component
+        y += (Math.sin(nx * 47.3 + timeSec * 1.7) * 0.5 - 0.25) * waveStyle.chaos;
+        // base component
+        y += Math.sin(nx * Math.PI * 2 * 0.35 + 0.4 + timeSec * 0.45) * 0.08;
         wavePoints.push({ x, y });
     }
-    
+
     if (voidLevel === 'high') {
-        wavePoints.forEach(p => p.y *= 0.3);
+        wavePoints.forEach(p => { p.y *= 0.55; });
     }
-    
-    const avgColor = interpolateColors(emotionVector);
-    
-    return { wavePoints, color: avgColor };
+
+    const c = waveStyle.color;
+    return { wavePoints, color: `rgb(${c.r}, ${c.g}, ${c.b})` };
+}
+
+function stopOriginalWavePreview(sceneIndex) {
+    const rafId = sceneWaveAnimationMap.get(sceneIndex);
+    if (rafId) {
+        cancelAnimationFrame(rafId);
+        sceneWaveAnimationMap.delete(sceneIndex);
+    }
+}
+
+function startOriginalWavePreview(sceneIndex, fromRender = false) {
+    const scene = currentScenes[sceneIndex];
+    if (!scene) return;
+
+    if (!fromRender) {
+        scene.wavePreviewEnabled = !scene.wavePreviewEnabled;
+    } else {
+        scene.wavePreviewEnabled = true;
+    }
+
+    const btn = document.querySelector(`.preview-wave-btn[data-scene-index="${sceneIndex}"]`);
+    if (btn) btn.textContent = scene.wavePreviewEnabled ? '원본 파동 중지' : '원본 파동 보기';
+
+    stopOriginalWavePreview(sceneIndex);
+
+    if (!scene.wavePreviewEnabled) {
+        clearSceneWaveCanvas(sceneIndex);
+        return;
+    }
+
+    const tick = () => {
+        const t = performance.now() * 0.001;
+        renderSceneWave(sceneIndex, t);
+        const id = requestAnimationFrame(tick);
+        sceneWaveAnimationMap.set(sceneIndex, id);
+    };
+    const id = requestAnimationFrame(tick);
+    sceneWaveAnimationMap.set(sceneIndex, id);
 }
 
 // VOID 자동 감지 function
@@ -794,7 +864,7 @@ function attachSceneListeners() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             const emotionIndex = parseInt(this.dataset.emotionIndex);
             updateOriginalEmotion(sceneIndex, emotionIndex);
-            renderSceneWave(sceneIndex);
+            if (currentScenes[sceneIndex]?.wavePreviewEnabled) renderSceneWave(sceneIndex, performance.now() * 0.001);
         });
     });
 
@@ -806,7 +876,7 @@ function attachSceneListeners() {
             const numberInput = this.parentElement.querySelector('.original-emotion-number');
             if (numberInput) numberInput.value = value.toFixed(2);
             updateOriginalEmotion(sceneIndex, emotionIndex);
-            renderSceneWave(sceneIndex);
+            if (currentScenes[sceneIndex]?.wavePreviewEnabled) renderSceneWave(sceneIndex, performance.now() * 0.001);
         });
     });
 
@@ -820,7 +890,7 @@ function attachSceneListeners() {
             const slider = this.parentElement.querySelector('.original-emotion-intensity');
             if (slider) slider.value = value;
             updateOriginalEmotion(sceneIndex, emotionIndex);
-            renderSceneWave(sceneIndex);
+            if (currentScenes[sceneIndex]?.wavePreviewEnabled) renderSceneWave(sceneIndex, performance.now() * 0.001);
         });
     });
 
@@ -833,7 +903,7 @@ function attachSceneListeners() {
             }
             currentScenes[sceneIndex].voidInfo.sceneVoid = this.checked;
             updateVoidLevel(sceneIndex);
-            renderSceneWave(sceneIndex);
+            if (currentScenes[sceneIndex]?.wavePreviewEnabled) renderSceneWave(sceneIndex, performance.now() * 0.001);
         });
     });
 
@@ -1564,6 +1634,9 @@ async function saveMemory() {
         memoryId = finalMemoryId;
 
  // local memory 업데 트
+        const prevVisibility = currentMemoryIndex !== null
+            ? (memories[currentMemoryIndex]?.is_public ?? memories[currentMemoryIndex]?.visible ?? true)
+            : true;
         const memoryData = {
             id: memoryId,
             title,
@@ -1573,7 +1646,8 @@ async function saveMemory() {
             completed_sentence: completedSentence || null,
             scenes: currentScenes,
             interpretationLayers: 0,
-            visible: true
+            is_public: prevVisibility,
+            visible: prevVisibility
         };
 
         if (currentMemoryIndex !== null) {
@@ -1930,7 +2004,13 @@ function renderSessions() {
         return;
     }
     
-    container.innerHTML = filtered.map(session => `
+    container.innerHTML = filtered.map(session => {
+        const isArchive = session.type === 'archive';
+        const isPublic = isArchive ? (session.is_public ?? session.visible ?? true) : null;
+        const visibilityLabel = isPublic ? '공개' : '비공개';
+        const visibilityColor = isPublic ? '#7a9a7a' : '#a66a6a';
+        const visibilityBtnLabel = isPublic ? '비공개로' : '공개로';
+        return `
         <div class="session-card ${session.type}" data-session-id="${session.id}">
             <input type="checkbox" class="session-checkbox" onclick="event.stopPropagation(); updateSelectedCount()" data-id="${session.id}" data-type="${session.type}">
             <div class="session-content" onclick="openSessionDetail('${session.id}', '${session.type}')" style="flex: 1; cursor: pointer;">
@@ -1942,12 +2022,53 @@ function renderSessions() {
                     <span>${new Date(session.created_at).toLocaleString('ko-KR')}</span>
                     ${session.type === 'live' ? `<span>정렬도: ${((session.alignment || 0) * 100).toFixed(0)}%</span>` : `<span>레이어: ${session.layers || 0}</span>`}
                 </div>
+                ${isArchive ? `<div class="session-fate" style="color: ${visibilityColor}; margin-top: 0.5rem; font-size: 0.9rem;">공개 상태: ${visibilityLabel}</div>` : ''}
                 ${session.type === 'live' && session.memory_fate ? `<div class="session-fate" style="color: ${fateColors[session.memory_fate] || '#666'}; margin-top: 0.5rem; font-size: 0.9rem;">운명: ${fateLabels[session.memory_fate] || '미정'}</div>` : ''}
             </div>
-            <button class="session-delete-btn" onclick="event.stopPropagation(); deleteSessionById('${session.id}', '${session.type}')" style="padding: 0.5rem 1rem; background: var(--accent-live); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-left: 1rem;">삭제</button>
+            ${isArchive ? `<button class="session-delete-btn" onclick="event.stopPropagation(); toggleArchiveVisibilityById('${session.id}')" style="padding: 0.5rem 0.85rem; background: transparent; color: var(--accent-memory); border: 1px solid var(--accent-memory); border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-left: 0.5rem;">${visibilityBtnLabel}</button>` : ''}
+            <button class="session-delete-btn" onclick="event.stopPropagation(); deleteSessionById('${session.id}', '${session.type}')" style="padding: 0.5rem 1rem; background: var(--accent-live); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-left: 0.5rem;">삭제</button>
         </div>
-    `).join('');
+    `;
+    }).join('');
     updateSelectedCount();
+}
+
+async function toggleArchiveVisibilityById(memoryId) {
+    const target = allSessions.find(s => s.type === 'archive' && String(s.id) === String(memoryId));
+    if (!target) {
+        alert('대상 기억을 찾지 못했습니다.');
+        return;
+    }
+
+    const current = target.is_public ?? target.visible ?? true;
+    const next = !current;
+
+    try {
+        const supabaseClient = await getSupabaseClient();
+        if (!supabaseClient) {
+            throw new Error('Supabase client not initialized.');
+        }
+
+        const { error } = await supabaseClient
+            .from('memories')
+            .update({ is_public: next })
+            .eq('id', target.id);
+
+        if (error) throw error;
+
+        target.is_public = next;
+        target.visible = next;
+        const memoryIdx = memories.findIndex(m => String(m.id) === String(target.id));
+        if (memoryIdx >= 0) {
+            memories[memoryIdx].is_public = next;
+            memories[memoryIdx].visible = next;
+        }
+        saveMemoriesToStorage();
+        renderSessions();
+    } catch (error) {
+        console.error('toggleArchiveVisibilityById error:', error);
+        alert('공개 상태 변경 중 오류가 발생했습니다: ' + error.message);
+    }
 }
 
 let selectedSessionIds = [];
@@ -2409,11 +2530,13 @@ window.editMemory = editMemory;
 window.deleteMemory = deleteMemory;
 window.deleteSessionById = deleteSessionById;
 window.toggleMemoryVisibility = toggleMemoryVisibility;
+window.toggleArchiveVisibilityById = toggleArchiveVisibilityById;
 window.filterSessions = filterSessions;
 window.toggleSelectAll = toggleSelectAll;
 window.deleteSelectedSessions = deleteSelectedSessions;
 window.openSessionDetail = openSessionDetail;
 window.closeSessionDetail = closeSessionDetail;
+window.startOriginalWavePreview = startOriginalWavePreview;
 window.switchTab = switchTab;
 window.addScene = addScene;
 window.saveMemory = saveMemory;

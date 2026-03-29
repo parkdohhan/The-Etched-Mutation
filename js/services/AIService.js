@@ -1,7 +1,4 @@
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../lib/config.js';
-
-// SUPABASE_FUNCTION_URL index.js 서 되므 여기서 정 
-const SUPABASE_FUNCTION_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co/functions/v1/claude-scene';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_FUNCTION_URL } from '../lib/config.js';
 
 /**
  * emotion analysis result validate

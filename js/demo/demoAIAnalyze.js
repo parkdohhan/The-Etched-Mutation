@@ -1,9 +1,9 @@
 // js/demo/demoAIAnalyze.js
 // 데모용 AI analysis — Supabase Edge Function (claude-scene) call, failure 시 null return
 
-import { SUPABASE_ANON_KEY } from '../lib/config.js';
+import { SUPABASE_ANON_KEY, SUPABASE_FUNCTION_URL } from '../lib/config.js';
 
-const DEMO_ANALYZE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co/functions/v1/claude-scene';
+const DEMO_ANALYZE_URL = SUPABASE_FUNCTION_URL;
 
 const SYSTEM_PROMPT = `너는 기억 해석 분석 엔진이다.
 사용자가 타인의 기억 장면을 읽고 쓴 짧은 반응 텍스트를 분석한다.

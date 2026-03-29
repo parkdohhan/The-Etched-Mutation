@@ -491,6 +491,39 @@ export function projectEmotionToVAD(emotionVec, anchors = null) {
   };
 }
 
+// ==================== 파동 스타일 (Wave Style) ====================
+
+export function emotionVectorToWaveStyle(emotionVector) {
+  if (!emotionVector) return { color: { r: 100, g: 140, b: 180 }, speed: 0.3, amplitude: 30, frequency: 0.008, chaos: 0.1, lineCount: 8, trailOpacity: 0.15 };
+  const values = Object.values(emotionVector);
+  const intensity = values.reduce((a, b) => a + b, 0) / Math.max(6, values.length);
+  const entries = Object.entries(emotionVector);
+  const dominant = entries.length ? entries.sort((a, b) => b[1] - a[1])[0] : ['sadness', 0];
+  const colors = {
+    fear: { r: 100, g: 80, b: 180 },
+    sadness: { r: 80, g: 100, b: 160 },
+    anger: { r: 200, g: 80, b: 80 },
+    joy: { r: 200, g: 180, b: 100 },
+    longing: { r: 80, g: 180, b: 180 },
+    guilt: { r: 150, g: 130, b: 100 },
+    shame: { r: 140, g: 100, b: 120 },
+    numbness: { r: 100, g: 100, b: 110 },
+    isolation: { r: 80, g: 90, b: 130 },
+    moral_pain: { r: 130, g: 100, b: 90 },
+    moralPain: { r: 130, g: 100, b: 90 },
+  };
+  const baseColor = colors[dominant[0]] || colors.sadness;
+  return {
+    color: baseColor,
+    speed: 0.3 + intensity * 0.9,
+    amplitude: 30 + intensity * 50,
+    frequency: 0.008 + intensity * 0.012,
+    chaos: 0.1 + intensity * 0.7,
+    lineCount: Math.max(4, Math.min(20, 6 + Math.floor(intensity * 14))),
+    trailOpacity: 0.15 - intensity * 0.07,
+  };
+}
+
 // ==================== AF 좌표 (Attribution × Core Fear, 시각화 전용) ====================
 // 정렬도/ByeoriEngine과 분리. projectEmotionToVAD는 하위 호환용으로 유지.
 

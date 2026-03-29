@@ -113,10 +113,8 @@
     <div class="footer">TEM contour standalone test · strataView bakeLayer 포팅</div>
   </div>
 
-  <script>
-    // Supabase
-    const SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+  <script type="module">
+    import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/lib/config.js';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Strata constants

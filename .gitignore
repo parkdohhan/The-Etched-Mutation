@@ -4,6 +4,14 @@ node_modules/
 public/portfolio-site/
 portfolio-site/
 
+# Environment variables
+.env
+.env.local
+js/lib/env.js
+
+# Vite
+dist/
+
 # Supabase CLI 임시 파일
 supabase/.temp/
 supabase/functions/*/supabase/

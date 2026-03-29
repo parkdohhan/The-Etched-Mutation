@@ -6,9 +6,9 @@
 (function () {
   'use strict';
 
- // admin.js(module) load 전 execute될 수 있으므 fallback (상대 경 면 127.0.0.1으 request 것 방지)
-  var SUPABASE_URL_FALLBACK = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
-  var SUPABASE_ANON_KEY_FALLBACK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+ // window globals are set by the main app (config.js → supabaseClient.js)
+  var SUPABASE_URL_FALLBACK = '';
+  var SUPABASE_ANON_KEY_FALLBACK = '';
 
   function getSupabaseUrl() {
     var u = window.SUPABASE_URL || SUPABASE_URL_FALLBACK;

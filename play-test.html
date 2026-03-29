@@ -11,6 +11,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="/data/memories.js"></script>
+  <script src="js/contamination.js"></script>
   <script src="js/shared/tem_af_strata_terrain.js"></script>
   <script src="js/ui/strataSection.js"></script>
   <style>
@@ -304,10 +305,10 @@
     <button id="backToMenu" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:120;background:transparent;border:1px solid rgba(196,168,130,0.18);color:rgba(196,168,130,0.85);padding:12px 32px;font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:3px;cursor:pointer;transition:all 0.3s;display:none;">Return to Menu</button>
   </div>
 
-  <script>
-  /* ========== PLAY-TEST BUNDLE (inline, no project imports) ========== */
-  const SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+  <script type="module">
+  /* ========== PLAY-TEST BUNDLE ========== */
+  import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/lib/config.js';
+  import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch } from './js/core/ContaminationTracker.js';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   // strataView.js가 Supabase client를 찾을 수 있도록 HUB 쪽 API를 흉내낸다.
   window.getSupabaseClient = function () { return sb; };
@@ -1808,6 +1809,88 @@
     return m[key] || key;
   }
 
+  // ── Text contamination per Presentation Spec v1 ──────────────
+  // Consumes stage + intensity. Does NOT re-compute stage.
+  //
+  // stable:              원문 유지, 단어 단위 미세 흔들림만
+  // biased_inclination:  핵심 단어 편향 치환 (방향성)
+  // hypercompletion:     확정 표현/연결어 삽입
+  //
+  // Intensity bands: weak(0~0.33), medium(0.34~0.66), strong(0.67~1.0)
+
+  const GLITCH_CHARS = '░▒▓█▪▫';
+
+  // Seeded PRNG (mulberry32) — same text always produces same effect
+  function _seedFromText(text) {
+    let h = 0;
+    for (let i = 0; i < text.length; i++) {
+      h = ((h << 5) - h + text.charCodeAt(i)) | 0;
+    }
+    return function () {
+      h |= 0; h = h + 0x6D2B79F5 | 0;
+      let t = Math.imul(h ^ h >>> 15, 1 | h);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function applyStageText(originalText, scene, pres) {
+    const { stage, intensity, band } = pres;
+    if (stage === 'stable' || intensity < 0.01) return originalText;
+
+    // Use pre-generated AI text if available
+    if (stage === 'biased_inclination' && scene.text_biased) return scene.text_biased;
+    if (stage === 'hypercompletion' && scene.text_hyper) return scene.text_hyper;
+
+    // Client-side fallback effects (until anchor-based semantic mutation is built)
+    // Seeded RNG ensures determinism per QA spec §6
+    const rng = _seedFromText(originalText + stage + band);
+    const isKo = /[가-힣]/.test(originalText);
+    const words = originalText.split(/(\s+)/);
+
+    // Effect probability scales with intensity band
+    const prob = band === 'strong' ? 0.18
+      : band === 'medium' ? 0.10
+      : 0.04;
+
+    let out = '';
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i];
+      if (/^\s+$/.test(w)) { out += w; continue; }
+      if (rng() >= prob) { out += w; continue; }
+
+      if (stage === 'biased_inclination') {
+        // Directional erosion: trailing chars dissolve (Korean particles/endings fade)
+        // Spec: "핵심 단어만 편향 방향으로 치환", "기억이 한 방향으로 틀어지고 있다"
+        const fadeStart = isKo
+          ? Math.max(1, Math.floor(w.length * 0.5))  // Korean: keep first half, fade tail
+          : Math.max(1, Math.floor(w.length * 0.6));  // English: keep more, fade ending
+        let result = w.slice(0, fadeStart);
+        for (let c = fadeStart; c < w.length; c++) {
+          result += rng() < 0.5 ? '·' : w[c];  // middle-dot for subtle erosion
+        }
+        out += result;
+      } else if (stage === 'hypercompletion') {
+        // Over-solidification: text becomes too certain, too fixed
+        // Spec: "기억이 스스로 답을 확정하고 있다", "반복성 누적"
+        if (rng() < 0.3 && w.length > 1) {
+          // Word echo: repeat the word (memory over-confirming itself)
+          out += w + w;
+        } else {
+          // Glitch solidification: block chars replace parts
+          let result = '';
+          for (let c = 0; c < w.length; c++) {
+            result += rng() < 0.4
+              ? GLITCH_CHARS[Math.floor(rng() * GLITCH_CHARS.length)]
+              : w[c];
+          }
+          out += result;
+        }
+      }
+    }
+    return out;
+  }
+
   function buildTerrainFromData() {
     const T = window.TemAfStrataTerrain;
     if (!T || !game.memoryId) {
@@ -2207,7 +2290,9 @@
 
     const textEl = document.getElementById('sceneText');
     textEl.textContent = '';
-    const fullText = pin.text || scene.text || scene.text_stage_1 || '…';
+    // Apply contamination per Presentation spec (dominant stage + intensity band)
+    const _pres = game.contPresentation || { stage: 'stable', intensity: 0, band: 'weak' };
+    let fullText = applyStageText(pin.text || scene.text || '…', scene, _pres);
     const _typeStart = performance.now();
     const _charMs = 28;
     (function _typeFrame(now) {
@@ -2969,7 +3054,10 @@
     game.memoryId = memoryId;
     if (window.memoriesData) {
       const found = window.memoriesData.find(function(m) { return m.id === memoryId; });
-      if (found) game.memoryTitle = found.title || '';
+      if (found) {
+        game.memoryTitle = found.title || '';
+        game.memoryLayers = found.layers || 0;
+      }
     }
     const scenesRes = await sb.from('scenes').select('*').eq('memory_id', memoryId).order('scene_order');
     const playsRes = await sb.from('plays')
@@ -2991,6 +3079,23 @@
       LOG('Supabase plays empty, using local fallback for', memoryId);
       game.plays = window._simulatedPlaysMap[memoryId];
     }
+    // === Contamination (MVP v3 + EMA) ===
+    // Combine real DB plays + simulated plays
+    let _allPlays = game.plays.slice();
+    if (window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) {
+      const sim = window._simulatedPlaysMap[memoryId];
+      if (_allPlays.length < sim.length) _allPlays = _allPlays.concat(sim);
+    }
+    _allPlays.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    game.contState = replayFromPlays(_allPlays);
+    game.contPresentation = getPresentationState(game.contState);
+    game.contMismatch = getDominantMismatch(_allPlays);
+    LOG('contamination:', game.contPresentation.stage, '|', game.contPresentation.band,
+      '| drift:', game.contState.cont_drift.toFixed(3),
+      '| fix:', game.contState.cont_fixation.toFixed(3),
+      '| depth:', game.contState.cont_depth,
+      '| mismatch:', game.contMismatch);
+
     game.visitedCore = {};
     game.coreVisitCount = 0;
     game.traces = [];
@@ -3037,6 +3142,27 @@
   document.getElementById('sealBtn').addEventListener('click', async () => {
     if (game.sealed || game.coreVisitCount < 3) return;
     game.sealed = true;
+
+    // === Session-end contamination update (MVP v3) ===
+    // Construct session engine output from last V4 result + traces
+    if (game.lastResult && game.contState) {
+      const dbg = game.lastResult.debug || {};
+      const sessionEngineOutput = {
+        alignment: game.lastResult.alignment_score || 0,
+        level: dbg.level || 0,
+        shape: dbg.shape || 1,
+        shape_active: dbg.shape_active || false,
+        transition_pattern: game.lastResult.transition_pattern || 'bridge',
+        mismatch_type: game.lastResult.mismatch_type || 'none',
+        fixation_level: dbg.fixation_level || 0,
+      };
+      game.contState = updateContamination(game.contState, sessionEngineOutput);
+      game.contPresentation = getPresentationState(game.contState);
+      LOG('seal contamination:', game.contPresentation.stage, '|', game.contPresentation.band,
+        '| drift:', game.contState.cont_drift.toFixed(3),
+        '| fix:', game.contState.cont_fixation.toFixed(3));
+    }
+
     initAudio();
     fadeOut(SFX.ambient, 1500, true);
     fadeOut(SFX.void, 500, true);

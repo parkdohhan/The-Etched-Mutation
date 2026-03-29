@@ -1,6 +1,12 @@
 // TEM Play Simulation — direct REST API, no dependencies
-const SB_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+import { readFileSync } from 'fs';
+const _env = Object.fromEntries(
+  readFileSync('.env', 'utf8').split('\n')
+    .filter(l => l && !l.startsWith('#'))
+    .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })
+);
+const SB_URL = _env.VITE_SUPABASE_URL;
+const SB_KEY = _env.VITE_SUPABASE_ANON_KEY;
 const MEM_ID = '758aaae3-3a37-4a45-ba01-ef783f3f957b';
 
 async function sbPost(table, rows) {

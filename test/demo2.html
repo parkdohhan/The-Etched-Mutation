@@ -125,13 +125,12 @@ html, body {
 </audio>
 
 <script src="/data/memories.js"></script>
-<script>
+<script type="module">
 // =====================================================================
 // Demo 2: Opening → Supabase memories (float) → /play?memory=
 // =====================================================================
 
-var SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
-var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../js/lib/config.js';
 
 var MONOLOGUES = [];
 var demo2MemoriesPromise = null;
