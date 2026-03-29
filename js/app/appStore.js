@@ -51,5 +51,8 @@ export const appStore = createStore({
 
     // Intermediate state
     pendingSceneText: '',
-    expPendingEmotion: ''
+    expPendingEmotion: '',
+
+    // Current story data (set when memory is loaded)
+    currentStoryData: null
 });

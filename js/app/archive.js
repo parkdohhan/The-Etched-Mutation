@@ -5,8 +5,7 @@ import { showNotification, showNpcDialogue } from '../ui/notify.js';
  * emotion input, engine integration, play tracking, wave animation.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   appStore, showNotification, window.showEndScreen,
- *   window.currentStoryData, showNpcDialogue,
+ *   window.showEndScreen,
  *   window.stopAllAnimations, window.showComparisonView
  */
 
@@ -423,7 +422,7 @@ function deriveEffectType(alignment) {
 }
 
 window._strataCompletedScenes = [];
-function initProgressDots() { const currentData = window.currentStoryData || null; const dotsContainer = document.getElementById('progressDots'); if (!dotsContainer) return; dotsContainer.innerHTML = ''; if (!currentData || !currentData.scenes) return; for (let i = 0; i < currentData.scenes.length; i++) { const dot = document.createElement('div'); dot.className = 'progress-dot' + (i === 0 ? ' active' : ''); dot.onclick = function () { goToScene(i) }; dotsContainer.appendChild(dot) } }
+function initProgressDots() { const currentData = appStore.getState().currentStoryData; const dotsContainer = document.getElementById('progressDots'); if (!dotsContainer) return; dotsContainer.innerHTML = ''; if (!currentData || !currentData.scenes) return; for (let i = 0; i < currentData.scenes.length; i++) { const dot = document.createElement('div'); dot.className = 'progress-dot' + (i === 0 ? ' active' : ''); dot.onclick = function () { goToScene(i) }; dotsContainer.appendChild(dot) } }
 function goToScene(index) { const state = appStore.getState(); if (index <= state.currentScene) { appStore.setState({ currentScene: index }); renderScene() } }
 
 function getMemorySoundMap(memory) {
@@ -539,7 +538,7 @@ function typeSceneText(el, text, speed, done) {
 async function renderScene() { 
     console.log('[renderScene] start');
     try { 
-        const currentData = window.currentStoryData || null; 
+        const currentData = appStore.getState().currentStoryData; 
         const state = appStore.getState(); 
         if (state.currentMode === 'archive') {
             ensureSoundscapeReady(currentData);
@@ -565,7 +564,7 @@ async function renderScene() {
         } 
         // Apply contamination: load stage-appropriate text based on play history
         let displayScene = scene;
-        const currentData_ref = window.currentStoryData || null;
+        const currentData_ref = appStore.getState().currentStoryData;
         if (state.currentMode === 'archive' && currentData_ref && currentData_ref.id) {
             try {
                 displayScene = await loadSceneWithContamination(scene, currentData_ref.id);
@@ -776,7 +775,7 @@ function makeChoice(choiceIndex) {
     try { 
         const state = appStore.getState(); 
         appStore.setState({ userChoices: [...state.userChoices, choiceIndex] }); 
-        const currentData = window.currentStoryData || null; 
+        const currentData = appStore.getState().currentStoryData; 
         const updatedState = appStore.getState(); 
         if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { 
             showNotification('Unable to load scene data'); 
@@ -801,7 +800,7 @@ function makeChoice(choiceIndex) {
 }
 function proceedToNextScene() {
     try {
-        const currentData = window.currentStoryData || null;
+        const currentData = appStore.getState().currentStoryData;
         const state = appStore.getState();
         if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
             showNotification('Unable to load scene data');
@@ -840,7 +839,7 @@ function collectEmotionInput() {
     uiManager.closeEmotionModal();
 
  // scene data validation (store 서 읽기)
-    const currentData = window.currentStoryData || null;
+    const currentData = appStore.getState().currentStoryData;
     if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
         showNotification('Unable to load scene data');
         return null;
@@ -914,7 +913,7 @@ function applyEngineResult(engineResult, userEmotionVector) {
     if (updatedHistory.length > 10) {
         updatedHistory.shift();
     }
-    const currentData = storyData || window.currentStoryData;
+    const currentData = storyData || appStore.getState().currentStoryData;
     const currentSceneIndex = currentState.currentScene || 0;
     const currentScene = currentData?.scenes?.[currentSceneIndex] || null;
     const originalEmotion = currentScene?.originalEmotion || currentScene?.original_emotion || {};
