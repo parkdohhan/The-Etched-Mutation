@@ -2733,6 +2733,7 @@
     game.sceneScores.push(engineResult.current_scene_score || 0);
 
     const baseEmotion = userVector.base || {};
+    game.lastUserEmotion = Object.assign({}, baseEmotion);
     game.traces.push({
       pinType: pin.type,
       sceneId: pin.sceneId || scene.id,
