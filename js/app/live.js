@@ -1,13 +1,12 @@
 import { appStore } from './appStore.js'
 import { showNotification, showNpcDialogue } from '../ui/notify.js'
+import { showEndScreen } from './endScreen.js'
 /**
  * Live Session Module — session creation, subscriptions, alignment, lifecycle,
  * chat, voice, confirm, and all live mode UI logic.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   appStore, showNotification, window.showEndScreen,
- *   window.restart, window.stopAllAnimations, showNpcDialogue,
- *   window.updateUserStats, window.startAlignmentWaveAnimation,
+ *   window.restart, window.updateUserStats, window.startAlignmentWaveAnimation,
  *   window.proceedToNextSceneLive, window.saveRitualScene,
  *   window.startExpInterview
  */
@@ -187,10 +186,10 @@ async function createLiveSession() {
   if (state.currentUser) {
     userId = state.currentUser.id
   } else {
-    if (!window.anonymousUserId) {
-      window.anonymousUserId = crypto.randomUUID()
+    const _st = appStore.getState(); if (!_st.anonymousUserId) {
+      appStore.setState({ anonymousUserId: crypto.randomUUID() })
     }
-    userId = window.anonymousUserId
+    userId = appStore.getState().anonymousUserId
   }
 
   console.log('userId:', userId)
@@ -525,10 +524,10 @@ async function joinLiveSession() {
   if (state.currentUser) {
     userId = state.currentUser.id
   } else {
-    if (!window.anonymousUserId) {
-      window.anonymousUserId = crypto.randomUUID()
+    const _st = appStore.getState(); if (!_st.anonymousUserId) {
+      appStore.setState({ anonymousUserId: crypto.randomUUID() })
     }
-    userId = window.anonymousUserId
+    userId = appStore.getState().anonymousUserId
   }
 
   try {
@@ -735,7 +734,8 @@ async function exitLive() {
     const wasRoleA = state.currentRole === 'A'
     const wasFirstScene = state.liveSceneNum === 1
     stopAllLiveSubscriptions()
-    window.stopAllAnimations()
+    stopVoiceWaveLiveAnimation()
+    stopLiveVoiceInput()
     await endLiveSession()
     const liveContainerEl = document.getElementById('liveContainer')
     if (liveContainerEl) {
@@ -746,7 +746,7 @@ async function exitLive() {
     if (wasRoleA && wasFirstScene) {
       window.restart()
     } else {
-      window.showEndScreen()
+      showEndScreen()
     }
   }
 }
@@ -785,7 +785,7 @@ async function startLiveSession() {
       pendingSceneText: '',
       expPendingEmotion: '',
     })
-    const storyData = window.currentStoryData
+    const storyData = appStore.getState().currentStoryData
     conversationHistory = []
     currentGeneratedSceneObj = null
     currentGeneratedEmotion = null
@@ -1300,7 +1300,7 @@ function persistExpEmotionResult(emotionResult, userMessage) {
     const baseVec = emotionResult.analysis.base
 
     const currentScene = appStore.getState().currentScene
-    const currentSceneData = window.currentStoryData?.scenes?.[currentScene] || null
+    const currentSceneData = appStore.getState().currentStoryData?.scenes?.[currentScene] || null
     const anchors = currentSceneData?.anchor_emotions || null
 
     try {
@@ -1731,10 +1731,10 @@ async function saveExperiencerChoice(emotionVector) {
   if (state.currentUser) {
     userId = state.currentUser.id
   } else {
-    if (!window.anonymousUserId) {
-      window.anonymousUserId = crypto.randomUUID()
+    const _st = appStore.getState(); if (!_st.anonymousUserId) {
+      appStore.setState({ anonymousUserId: crypto.randomUUID() })
     }
-    userId = window.anonymousUserId
+    userId = appStore.getState().anonymousUserId
   }
   const insertData = {
     live_session_id: state.currentSessionId,
@@ -1782,7 +1782,7 @@ function simulateNarratorInput(sceneText) {
       if (state.currentMode === 'live') {
         return
       }
-      const currentData = window.currentStoryData
+      const currentData = appStore.getState().currentStoryData
       const currentScene = state.currentScene
       if (
         !currentData ||
@@ -1838,7 +1838,7 @@ function makeLiveChoice(choiceIndex) {
   try {
     const state = appStore.getState()
     appStore.setState({ userChoices: [...state.userChoices, choiceIndex] })
-    const currentData = window.currentStoryData
+    const currentData = appStore.getState().currentStoryData
     const updatedState = appStore.getState()
     if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) {
       showNotification('Unable to load scene data')

@@ -1,12 +1,13 @@
 import { appStore } from './appStore.js';
 import { showNotification, showNpcDialogue } from '../ui/notify.js';
+import { showEndScreen } from './endScreen.js';
+import { getSoundscape } from '../audio/getSoundscape.js';
 /**
  * Archive Module — memory list, filtering/sorting, scene rendering,
  * emotion input, engine integration, play tracking, wave animation.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   window.showEndScreen,
- *   window.stopAllAnimations, window.showComparisonView
+ *   window.showComparisonView
  */
 
 import { getSupabaseClient } from '../lib/supabaseClient.js';
@@ -39,7 +40,7 @@ async function enterPlayIntro(opts) { var fromDemo = opts && opts.fromDemo; cons
   if (archiveControlsEl) archiveControlsEl.style.display = 'none';
   if (archiveHeaderEl) archiveHeaderEl.style.display = 'none';
   appStore.setState({ currentMode: 'play' });
-  window.stopAllAnimations();
+  stopArchiveWaveAnimation();
   try {
     const mod = await import('./archiveEntry.js');
     if (mod && mod.initArchiveEntry) await mod.initArchiveEntry(entryEl);
@@ -64,7 +65,7 @@ async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const 
     console.warn('[enterArchive] loadMemoriesFromSupabase failed:', e);
   }
   appStore.setState({ currentMode: 'archive' });
-  window.stopAllAnimations();
+  stopArchiveWaveAnimation();
   const footer = document.querySelector('.footer');
   if (footer) footer.classList.add('visible') }
 function filterByCategory(category, btnElement) {
@@ -361,8 +362,9 @@ async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, c
         };
         console.log('Archive plays Save attempt:', insertData);
  // void crack 사운드
-        if (mismatchType === 'void_mismatch' && window.soundscape) {
-            window.soundscape.onVoidCrack();
+        const soundscape = getSoundscape();
+        if (mismatchType === 'void_mismatch' && soundscape) {
+            soundscape.onVoidCrack();
         }
         const result = await networkService.savePlay(insertData);
         if (!result.ok) {
@@ -412,7 +414,7 @@ function selectMemory(index) {
 function showConsentSequence(memoryIndex) {}
 function showWordSentenceSequence(memoryIndex) {}
 function startArchivePlay(memoryIndex) {}
-function backToList() { if (typeof destroyFloatingAnchor === 'function') destroyFloatingAnchor(); if (window.soundscape) window.soundscape.stop(); window._strataCompletedScenes = []; if (window.strataSection) window.strataSection.init(); stopWaveAnimation() }
+function backToList() { if (typeof destroyFloatingAnchor === 'function') destroyFloatingAnchor(); const _sc = getSoundscape(); if (_sc) _sc.stop(); window._strataCompletedScenes = []; if (window.strataSection) window.strataSection.init(); stopWaveAnimation() }
 async function loadStrataLayers(memoryId) {}
 
 function deriveEffectType(alignment) {
@@ -439,15 +441,16 @@ function getMemorySoundMap(memory) {
 }
 
 function ensureSoundscapeReady(memory) {
-    if (!window.soundscape || !memory) return;
+    const soundscape = getSoundscape();
+    if (!soundscape || !memory) return;
     const memoryId = String(memory.id || '');
     if (!memoryId) return;
     if (window.__soundscapeMemoryId === memoryId) return;
 
     const map = getMemorySoundMap(memory);
-    window.soundscape.stop();
-    window.soundscape.init({ soundMap: map, volume: 0.35 });
-    window.soundscape.start();
+    soundscape.stop();
+    soundscape.init({ soundMap: map, volume: 0.35 });
+    soundscape.start();
     window.__soundscapeMemoryId = memoryId;
 }
 
@@ -829,7 +832,7 @@ function proceedToNextScene() {
         if (navResult === null) {
             // All scenes visited — fire contamination persist then show end screen
             _applyContaminationAtEnd(state).catch(e => console.warn('[ContaminationTracker] persist error:', e));
-            window.showEndScreen();
+            showEndScreen();
             return;
         }
 
@@ -838,7 +841,7 @@ function proceedToNextScene() {
         }
 
         appStore.setState({ currentScene: navResult.index });
-        if (window.soundscape) window.soundscape.onSceneTransition();
+        getSoundscape()?.onSceneTransition();
         renderScene();
     } catch (e) {
         console.error('proceedToNextScene error:', e);
@@ -1002,9 +1005,7 @@ function updateUIAfterSubmit(state, result) {
     if (newBucket !== state.currentBucket) {
         window.showBucketFeedback(newBucket, sceneAlignment);
  // 사운드스케 프 bucket transition
-        if (window.soundscape) {
-            window.soundscape.setBucket(newBucket);
-        }
+        getSoundscape()?.setBucket(newBucket);
     }
 }
 
@@ -1067,9 +1068,9 @@ async function proceedToNextSceneOrEnd(currentData, scene) {
             if (nextState.currentMode === 'archive') {
                 const alignmentResult = await calculateAverageAlignment();
                 await _applyContaminationAtEnd(nextState);
-                window.showEndScreen(alignmentResult);
+                showEndScreen(alignmentResult);
             } else {
-                window.showEndScreen();
+                showEndScreen();
             }
             return;
         }

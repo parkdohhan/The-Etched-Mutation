@@ -90,6 +90,7 @@ import {
     closeComparisonView, endComparisonSession,
     stopBucketComparisonWaveAnimation,
 } from './app/comparison.js';
+import { showEndScreen } from './app/endScreen.js';
 import {
     enterPlayIntro, enterArchive,
     loadMemoriesFromSupabase, filterByCategory, filterMemories, sortMemories,

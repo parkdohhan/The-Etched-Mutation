@@ -44,6 +44,7 @@ export const appStore = createStore({
     // Authentication
     isLoggedIn: false,
     currentUser: null,
+    anonymousUserId: null,
 
     // Filter/Sort
     currentSort: 'all',

@@ -1,9 +1,9 @@
 import { appStore } from './appStore.js';
+import { showEndScreen } from './endScreen.js';
 /**
  * Comparison Module — comparison view, merged wave, session end.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
- *   window.appStore, window.showEndScreen, window.currentStoryData,
  *   window.archiveAlignmentResult, window.archiveUserEmotions,
  *   window.archiveWaveData, window.showStrataView
  */
@@ -18,7 +18,7 @@ let comparisonCurrentIndex = 0;
 async function calculateAverageAlignment() { return { averageAlignment: appStore.getState().currentAlignment || 0, isTrueEnding: (appStore.getState().currentAlignment || 0) >= 0.65 }; }
 async function showComparisonView() {
     try {
-        const currentData = window.currentStoryData || null;
+        const currentData = appStore.getState().currentStoryData || null;
         if (!currentData || !currentData.scenes) {
             console.error('비교 화면: Scene 데이터가 not found');
             return;
@@ -36,7 +36,7 @@ async function showComparisonView() {
         if (scenesWithEmotions.length === 0) {
             console.log('비교 화면: 비교할 장면이 not found');
             const alignmentResult = await calculateAverageAlignment();
-            window.showEndScreen(alignmentResult);
+            showEndScreen(alignmentResult);
             return;
         }
         comparisonScenes = [];
@@ -130,7 +130,7 @@ async function showComparisonView() {
         if (comparisonScenes.length === 0) {
             console.log('비교 화면: 비교할 장면이 not found');
             const alignmentResult = await calculateAverageAlignment();
-            window.showEndScreen(alignmentResult);
+            showEndScreen(alignmentResult);
             return;
         }
         comparisonCurrentIndex = 0;
@@ -159,7 +159,7 @@ async function showComparisonView() {
         }
     } catch (e) {
         console.error('showComparisonView error:', e);
-        window.showEndScreen();
+        showEndScreen();
     }
 }
 function renderComparisonView() {
@@ -483,7 +483,7 @@ function closeComparisonView() {
         comparisonViewEl.style.display = 'none';
     }
     const alignmentResult = window.archiveAlignmentResult || { averageAlignment: 0, isTrueEnding: false };
-    window.showEndScreen(alignmentResult);
+    showEndScreen(alignmentResult);
 }
 async function endComparisonSession() {
     console.log('[Ending] endComparisonSession called');
@@ -506,7 +506,7 @@ async function endComparisonSession() {
         }
         
  // Strata 3D strata view display
-        const currentData = window.currentStoryData || null;
+        const currentData = appStore.getState().currentStoryData || null;
         const state = appStore.getState();
         const memoryId = currentData.id || (state.allMemoriesData[state.currentMemory] && state.allMemoriesData[state.currentMemory].id);
 
@@ -523,12 +523,12 @@ async function endComparisonSession() {
             try {
                 await window.showStrataView(memoryId, alignmentResult, () => {
                     console.log('[Ending] Strata view closed, moving to ending screen');
-                    window.showEndScreen(alignmentResult, true);
+                    showEndScreen(alignmentResult, true);
                 });
                 console.log('[Ending] Strata view display complete');
             } catch (strataError) {
                 console.error('[Ending] Strata view display error:', strataError);
-                await window.showEndScreen(alignmentResult, true);
+                await showEndScreen(alignmentResult, true);
             }
         } else {
             if (!memoryId) {
@@ -538,11 +538,11 @@ async function endComparisonSession() {
                 console.warn('[Ending] window.showStrataView is not defined. Make sure strataView.js is loaded.');
             }
             console.log('[Ending] Strata view unavailable, going directly to ending screen');
-            await window.showEndScreen(alignmentResult, true);
+            await showEndScreen(alignmentResult, true);
         }
     } catch (e) {
         console.error('[Ending] endComparisonSession error:', e);
-        window.showEndScreen(null, true);
+        showEndScreen(null, true);
     }
 }
 window.navigateComparison = navigateComparison;

@@ -1,6 +1,8 @@
 // js/app/bindEvents.js
 // 모든 벤트 바인딩 코드 중앙 서 manage
 
+import { showNotification } from '../ui/notify.js';
+
 /**
  * 모든 벤트 listener 등록하 function
  * @param {Object} deps - 존성 object
@@ -300,9 +302,7 @@ function bindMemoryRegistrationEvents() {
 
             voiceBtn.addEventListener('click', async () => {
                 if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                    if (window.showNotification) {
-                        window.showNotification('This browser does not support speech recognition');
-                    }
+                    showNotification('This browser does not support speech recognition');
                     return;
                 }
 
@@ -337,17 +337,15 @@ function bindMemoryRegistrationEvents() {
                 recognition.onend = () => {
                     isRecording = false;
                     voiceBtn.textContent = '🎤';
-                    if (recognition) {
-                        recognition = null;
-                    }
+                    if (recognition) recognition = null;
                 };
 
                 recognition.onerror = (event) => {
                     console.error('음성 인식 오류:', event.error);
                     isRecording = false;
                     voiceBtn.textContent = '🎤';
-                    if (event.error === 'not-allowed' && window.showNotification) {
-                        window.showNotification('Microphone permission is required');
+                    if (event.error === 'not-allowed') {
+                        showNotification('Microphone permission is required');
                     }
                 };
 
@@ -357,9 +355,7 @@ function bindMemoryRegistrationEvents() {
                     voiceBtn.textContent = '⏹';
                 } catch (e) {
                     console.error('음성 인식 시작 실패:', e);
-                    if (window.showNotification) {
-                        window.showNotification('Could not start speech recognition');
-                    }
+                    showNotification('Could not start speech recognition');
                 }
             });
         }
