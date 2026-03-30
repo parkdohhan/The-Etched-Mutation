@@ -827,7 +827,8 @@ function proceedToNextScene() {
         });
 
         if (navResult === null) {
-            // All scenes visited
+            // All scenes visited — fire contamination persist then show end screen
+            _applyContaminationAtEnd(state).catch(e => console.warn('[ContaminationTracker] persist error:', e));
             window.showEndScreen();
             return;
         }
@@ -1065,7 +1066,7 @@ async function proceedToNextSceneOrEnd(currentData, scene) {
             // All scenes visited — show end screen
             if (nextState.currentMode === 'archive') {
                 const alignmentResult = await calculateAverageAlignment();
-                _applyContaminationAtEnd(nextState);
+                await _applyContaminationAtEnd(nextState);
                 window.showEndScreen(alignmentResult);
             } else {
                 window.showEndScreen();
@@ -1092,16 +1093,17 @@ async function proceedToNextSceneOrEnd(currentData, scene) {
 /**
  * Called once when an archive session ends.
  * Reads the last engine result from store, runs ContaminationTracker update,
- * and logs the result. Supabase persistence is a TODO (separate commit).
+ * and persists cont_* columns to the memories table.
  */
-function _applyContaminationAtEnd(state) {
+async function _applyContaminationAtEnd(state) {
     const engineResult = state.lastEngineResult;
-    const memory = state.currentMemory;
-    if (!engineResult || !memory) return;
+    // currentMemory is an index; get the actual memory object
+    const memoryObj = state.allMemoriesData?.[state.currentMemory]
+        || state.currentStoryData;
+    const memoryId = memoryObj?.id || state.currentStoryData?.id;
+    if (!engineResult || !memoryId) return;
 
-    // ContaminationTracker expects flat fields (MVP v3 format):
-    //   alignment, level, shape, shape_active, transition_pattern,
-    //   mismatch_type, fixation_level, user_valence, user_arousal, user_dominance
+    // ContaminationTracker expects flat fields (MVP v3 format)
     const userEmotion = state.userEmotionTrajectory?.slice(-1)[0] || {};
     let uV = 0, uA = 0, uD = 0;
     if (userEmotion && Object.values(userEmotion).some(v => v > 0)) {
@@ -1124,30 +1126,37 @@ function _applyContaminationAtEnd(state) {
         user_dominance:     uD,
     };
 
+    // Seed existing state from DB record (falls back to zeros if columns don't exist yet)
     const existingContState = {
-        cont_drift: memory.cont_drift || 0,
-        cont_fixation: memory.cont_fixation || 0,
-        cont_stage: memory.cont_stage || 'stable',
-        cont_depth: memory.cont_depth || 0,
-        lifetime_drift_sum: memory.lifetime_drift_sum || 0,
-        lifetime_fix_sum: memory.lifetime_fix_sum || 0,
-        drift_dir_v: memory.drift_dir_v || 0,
-        drift_dir_a: memory.drift_dir_a || 0,
-        drift_dir_d: memory.drift_dir_d || 0,
-        lifetime_dir_v_sum: memory.lifetime_dir_v_sum || 0,
-        lifetime_dir_a_sum: memory.lifetime_dir_a_sum || 0,
-        lifetime_dir_d_sum: memory.lifetime_dir_d_sum || 0,
-        cont_last_alignment: 0,
-        cont_last_level: 0,
-        cont_last_shape: 1,
-        cont_last_pattern: 'bridge',
-        cont_last_mismatch: 'none',
-        cont_last_updated: null,
+        cont_drift:          memoryObj?.cont_drift          || 0,
+        cont_fixation:       memoryObj?.cont_fixation       || 0,
+        cont_stage:          memoryObj?.cont_stage          || 'stable',
+        cont_depth:          memoryObj?.cont_depth          || 0,
+        lifetime_drift_sum:  memoryObj?.lifetime_drift_sum  || 0,
+        lifetime_fix_sum:    memoryObj?.lifetime_fix_sum    || 0,
+        drift_dir_v:         memoryObj?.drift_dir_v         || 0,
+        drift_dir_a:         memoryObj?.drift_dir_a         || 0,
+        drift_dir_d:         memoryObj?.drift_dir_d         || 0,
+        lifetime_dir_v_sum:  memoryObj?.lifetime_dir_v_sum  || 0,
+        lifetime_dir_a_sum:  memoryObj?.lifetime_dir_a_sum  || 0,
+        lifetime_dir_d_sum:  memoryObj?.lifetime_dir_d_sum  || 0,
+        cont_last_alignment: memoryObj?.cont_last_alignment || 0,
+        cont_last_level:     memoryObj?.cont_last_level     || 0,
+        cont_last_shape:     memoryObj?.cont_last_shape     || 1,
+        cont_last_pattern:   memoryObj?.cont_last_pattern   || 'bridge',
+        cont_last_mismatch:  memoryObj?.cont_last_mismatch  || 'none',
+        cont_last_updated:   memoryObj?.cont_last_updated   || null,
     };
 
     const nextContState = updateContamination(existingContState, contInput);
-    console.log('[ContaminationTracker] session end:', nextContState);
-    // TODO: persist nextContState to Supabase memories table (cont_* columns)
+    console.log('[ContaminationTracker] session end →', nextContState);
+
+    const result = await networkService.updateMemoryContamination(memoryId, nextContState);
+    if (!result.ok) {
+        console.warn('[ContaminationTracker] persist 실패:', result.error);
+    } else {
+        console.log('[ContaminationTracker] persisted to memory', memoryId);
+    }
 }
 
 // ─────────────────────────────────────

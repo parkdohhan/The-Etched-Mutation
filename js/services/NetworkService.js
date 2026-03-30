@@ -1011,6 +1011,56 @@ class NetworkService {
   }
 
   /**
+   * memory contamination 상태 update (ContaminationTracker MVP v3 출력)
+   * @param {number} memoryId - memory ID
+   * @param {Object} contState - updateContamination() 반환 state 전체
+   * @returns {Promise<{ok: boolean, data: Object|null, error: Error|null}>}
+   */
+  async updateMemoryContamination(memoryId, contState) {
+    try {
+      const client = this._getClient();
+      if (!client) return { ok: false, data: null, error: new Error('No Supabase client') };
+
+      const patch = {
+        cont_drift:            contState.cont_drift,
+        cont_fixation:         contState.cont_fixation,
+        cont_stage:            contState.cont_stage,
+        cont_depth:            contState.cont_depth,
+        lifetime_drift_sum:    contState.lifetime_drift_sum,
+        lifetime_fix_sum:      contState.lifetime_fix_sum,
+        drift_dir_v:           contState.drift_dir_v,
+        drift_dir_a:           contState.drift_dir_a,
+        drift_dir_d:           contState.drift_dir_d,
+        lifetime_dir_v_sum:    contState.lifetime_dir_v_sum,
+        lifetime_dir_a_sum:    contState.lifetime_dir_a_sum,
+        lifetime_dir_d_sum:    contState.lifetime_dir_d_sum,
+        cont_last_alignment:   contState.cont_last_alignment,
+        cont_last_level:       contState.cont_last_level,
+        cont_last_shape:       contState.cont_last_shape,
+        cont_last_pattern:     contState.cont_last_pattern,
+        cont_last_mismatch:    contState.cont_last_mismatch,
+        cont_last_updated:     contState.cont_last_updated,
+      };
+
+      const { data, error } = await client
+        .from('memories')
+        .update(patch)
+        .eq('id', memoryId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[NetworkService.updateMemoryContamination] 실패:', error);
+        return { ok: false, data: null, error };
+      }
+      return { ok: true, data, error: null };
+    } catch (error) {
+      console.error('[NetworkService.updateMemoryContamination] 에러:', error);
+      return { ok: false, data: null, error };
+    }
+  }
+
+  /**
  * Supabase Edge Function call
  * @param {string} functionName - function 름
  * @param {Object} body - request body
