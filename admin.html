@@ -238,6 +238,16 @@
                         <button class="editor-btn" onclick="loadStrataPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">Strata 미리보기 불러오기</button>
                     </div>
                 </div>
+
+                <!-- 3. SceneNavigator 감정공간 진단 -->
+                <div class="preview-section" style="padding: 2rem;">
+                    <h3 class="editor-section-title" style="margin-bottom: 0.5rem;">3. 감정공간 진단</h3>
+                    <p style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted);">패턴별 씬 접근 가능 여부를 시뮬레이션합니다. 중립 감정 기준. 색상 점 = 해당 패턴으로 도달 가능. ✗ = 반경(0.35) 밖 → fallback.</p>
+                    <div style="margin-bottom: 1rem; text-align: center;">
+                        <button class="editor-btn" onclick="runSceneNavDiagnostics()" style="padding: 0.8rem 2rem; font-size: 1rem;">진단 실행</button>
+                    </div>
+                    <div id="sceneNavDiagResult"></div>
+                </div>
             </div>
         </div>
     </div>
