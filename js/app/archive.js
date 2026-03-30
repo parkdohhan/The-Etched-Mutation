@@ -13,6 +13,7 @@ import { getSoundscape } from '../audio/getSoundscape.js';
 import { getSupabaseClient } from '../lib/supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import { NPC_DIALOGUES, getRandomDialogue } from '../npc-dialogues.js';
+import { t } from '../lib/i18n.js';
 import {
     fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus
 } from '../shared/api.js';
@@ -559,14 +560,14 @@ async function renderScene() {
                 scenesLength: currentData?.scenes?.length, 
                 currentScene: state.currentScene 
             });
-            showNotification('Unable to load scene'); 
+            showNotification(t('notify.scene.error')); 
             return; 
         } 
         const scene = currentData.scenes[state.currentScene]; 
         console.log('[renderScene] scene:', scene ? { id: scene.id, text: scene.text?.substring(0, 50) + '...', originalVector: scene.originalVector, original_emotion: scene.original_emotion } : null);
         if (!scene || !scene.text) { 
             console.error('[renderScene] Unable to load scene text:', { hasScene: !!scene, hasText: !!(scene && scene.text) });
-            showNotification('Unable to load scene text'); 
+            showNotification(t('notify.scene.text.error')); 
             return; 
         } 
         // Apply contamination: ContaminationTracker-driven text transformation (synchronous)
@@ -694,7 +695,7 @@ async function renderScene() {
             window.strataSection.setCurrentScene(state.currentScene);
             window.strataSection.render();
         }
-    } catch (e) { console.error('renderScene error:', e); showNotification('Error rendering scene') } }
+    } catch (e) { console.error('renderScene error:', e); showNotification(t('notify.render.error')) } }
 function renderEchoLayer(words) { const layer = document.getElementById('echoLayer'); if (!layer) return; layer.innerHTML = ''; if (!words || !Array.isArray(words)) return; words.forEach(word => { const span = document.createElement('span'); span.className = 'echo-word'; span.textContent = word; span.style.top = (10 + Math.random() * 80) + '%'; span.style.left = (-15 + Math.random() * 130) + '%'; layer.appendChild(span) }) }
 function renderChoices(choices) { const container = document.getElementById('choicesContainer'); if (!container) return; container.innerHTML = ''; if (!choices || !Array.isArray(choices)) return; choices.forEach((choice, i) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.textContent = choice.text; btn.onclick = function () { makeChoice(i) }; container.appendChild(btn) }) }
 
@@ -795,7 +796,7 @@ function makeChoice(choiceIndex) {
         const currentData = appStore.getState().currentStoryData; 
         const updatedState = appStore.getState(); 
         if (!currentData || !currentData.scenes || !currentData.scenes[updatedState.currentScene]) { 
-            showNotification('Unable to load scene data'); 
+            showNotification(t('notify.scene.data.error')); 
             return; 
         } 
         const scene = currentData.scenes[updatedState.currentScene]; 
@@ -812,7 +813,7 @@ function makeChoice(choiceIndex) {
         }
     } catch (e) { 
         console.error('makeChoice error:', e); 
-        showNotification('An error occurred'); 
+        showNotification(t('notify.error')); 
     } 
 }
 function proceedToNextScene() {
@@ -820,7 +821,7 @@ function proceedToNextScene() {
         const state = appStore.getState();
         const currentData = state.currentStoryData;
         if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
-            showNotification('Unable to load scene data');
+            showNotification(t('notify.scene.data.error'));
             return;
         }
 
@@ -857,7 +858,7 @@ function proceedToNextScene() {
         renderScene();
     } catch (e) {
         console.error('proceedToNextScene error:', e);
-        showNotification('An error occurred');
+        showNotification(t('notify.error'));
     }
 }
 // Expose to window for expInterview.js access
@@ -883,7 +884,7 @@ function collectEmotionInput() {
  // scene data validation (store 서 읽기)
     const currentData = appStore.getState().currentStoryData;
     if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) {
-        showNotification('Unable to load scene data');
+        showNotification(t('notify.scene.data.error'));
         return null;
     }
 
