@@ -45,7 +45,10 @@ const STRINGS = {
         'end.save':        'Keep this',
         'end.return':      'Return',
 
-        // ── Record ────────────────────────────────────────────────
+        // ── Record / Door screen ──────────────────────────────────
+        'record.door.subtitle':  'Will you open the door to a day you carry?',
+        'record.door.desc':      'This is where you record your memory',
+        'record.door.hint':      '— click to enter —',
         'record.start':       'Begin',
         'record.placeholder': 'Tell me.',
         'record.send':        'Send',
@@ -151,7 +154,10 @@ const STRINGS = {
         'end.save':    '남기다',
         'end.return':  '돌아가기',
 
-        // ── Record ────────────────────────────────────────────────
+        // ── Record / Door screen ──────────────────────────────────
+        'record.door.subtitle': '기억하고 싶은 하루의 문을 열겠습니까?',
+        'record.door.desc':     '당신의 기억을 기록하는 공간입니다',
+        'record.door.hint':     '— 클릭하여 입장 —',
         'record.start':       '시작',
         'record.placeholder': '말해줘.',
         'record.send':        '전송',

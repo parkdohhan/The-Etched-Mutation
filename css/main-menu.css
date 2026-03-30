@@ -93,7 +93,7 @@
 .main-menu-wrap .main-header h1 {
   position: relative;
   z-index: 10;
-  font-size: 48px;
+  font-size: 40px;
   letter-spacing: 0.2em;
   font-weight: 300;
   color: #E5D5BC;
@@ -144,7 +144,7 @@
 }
 
 .main-menu-wrap .menu-label {
-  font-size: 20px;
+  font-size: 26px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   transition: font-weight 0.5s ease;
@@ -160,7 +160,7 @@
 }
 
 .main-menu-wrap .menu-sublabel {
-  font-size: 12px;
+  font-size: 13px;
   color: rgba(229, 213, 188, 0.6);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   letter-spacing: -0.02em;

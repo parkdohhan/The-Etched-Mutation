@@ -185,9 +185,9 @@
     <div class="confession-hub hidden" id="confessionHub">
         <div class="door-screen" id="doorScreen" onclick="handleDoorClick()">
             <div class="door-title" id="doorTitle">RECORD</div>
-            <div class="door-subtitle" id="doorSubtitle">기억하고 싶은 하루의 문을 열겠습니까? / Will you open the door to a day you carry?</div>
-            <div style="font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;color:rgba(196,168,130,0.45);margin-top:1.2rem;text-align:center;">당신의 기억을 기록하는 공간입니다 · This is where you record your memory</div>
-            <div style="font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:3px;color:rgba(196,168,130,0.3);margin-top:2rem;text-align:center;animation:pulse 2s infinite;">— click to enter —</div>
+            <div class="door-subtitle" id="doorSubtitle" data-i18n="record.door.subtitle">Will you open the door to a day you carry?</div>
+            <div data-i18n="record.door.desc" style="font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;color:rgba(196,168,130,0.45);margin-top:1.2rem;text-align:center;">This is where you record your memory</div>
+            <div data-i18n="record.door.hint" style="font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:3px;color:rgba(196,168,130,0.3);margin-top:2rem;text-align:center;animation:pulse 2s infinite;">— click to enter —</div>
             <pre id="doorPre"></pre>
         </div>
         <button class="door-back-btn" id="doorBackBtn" onclick="event.stopPropagation(); showMainMenu()">← Back</button>
