@@ -10,7 +10,7 @@ import { getSoundscape } from '../audio/getSoundscape.js';
  *   window.showComparisonView
  */
 
-import { getSupabaseClient } from '../lib/supabaseClient.js';
+import { getSupabaseClient, waitForSupabaseClient } from '../lib/supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import { NPC_DIALOGUES, getRandomDialogue } from '../npc-dialogues.js';
 import { t } from '../lib/i18n.js';
@@ -92,6 +92,7 @@ async function loadMemoriesFromSupabase() {
   const LOCAL_CODES = ['E-001', 'E-002', 'E-003'];
   try {
     console.log('[loadMemoriesFromSupabase] Starting to load memories from Supabase');
+    await waitForSupabaseClient(8000);
     const result = await networkService.fetchMemories();
     console.log('[loadMemoriesFromSupabase] fetchMemories result:', result);
     if (!result.ok) {

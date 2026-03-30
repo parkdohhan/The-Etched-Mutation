@@ -308,7 +308,8 @@
   <script type="module">
   /* ========== PLAY-TEST BUNDLE ========== */
   import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/lib/config.js';
-  import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch } from './js/core/ContaminationTracker.js';
+  import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch, createEmptyState } from './js/core/ContaminationTracker.js';
+  import { getMonologue } from './js/ui/contaminationMonologue.js';
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   // strataView.js가 Supabase client를 찾을 수 있도록 HUB 쪽 API를 흉내낸다.
   window.getSupabaseClient = function () { return sb; };
@@ -2311,6 +2312,17 @@
     document.getElementById('terrainBar').classList.remove('clickable');
     game.lastTerrainTint = null;
     renderTerrainBar(pin.sceneIndex, null);
+
+    // Contamination monologue — fires ~1.5s after scene entry (Presentation Spec §5)
+    if (_pres.stage !== 'stable') {
+      const _monoText = getMonologue(_pres, game.contMismatch, pin.sceneIndex, game.contState?.cont_depth || 0);
+      if (_monoText) {
+        setTimeout(() => {
+          const npcEl = document.getElementById('sceneNpc');
+          if (npcEl) npcEl.textContent = _monoText;
+        }, 1500);
+      }
+    }
   }
 
   function armTimers(scene) {
@@ -3059,15 +3071,28 @@
         game.memoryLayers = found.layers || 0;
       }
     }
-    const scenesRes = await sb.from('scenes').select('*').eq('memory_id', memoryId).order('scene_order');
-    const playsRes = await sb.from('plays')
-      .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id')
-      .eq('memory_id', memoryId)
-      .order('created_at');
+    // Fetch scenes, plays, and memory row in parallel
+    const [scenesRes, playsRes, memRes] = await Promise.all([
+      sb.from('scenes').select('*').eq('memory_id', memoryId).order('scene_order'),
+      sb.from('plays')
+        .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id')
+        .eq('memory_id', memoryId)
+        .order('created_at'),
+      sb.from('memories')
+        .select('id, title, layers, cont_stage, cont_drift, cont_fixation, cont_depth, cont_last_mismatch')
+        .eq('id', memoryId),
+    ]);
     if (scenesRes.error) throw scenesRes.error;
     if (playsRes.error) throw playsRes.error;
     game.scenes = scenesRes.data || [];
     game.plays = playsRes.data || [];
+
+    // Extract memory row for cont_* fields
+    let memRow = (!memRes.error && memRes.data && memRes.data.length > 0) ? memRes.data[0] : null;
+    if (memRow) {
+      game.memoryTitle = memRow.title || game.memoryTitle || '';
+      game.memoryLayers = memRow.layers || game.memoryLayers || 0;
+    }
 
     if (!game.scenes.length && window._simulatedScenesMap && window._simulatedScenesMap[memoryId]) {
       LOG('Supabase scenes empty, using local fallback for', memoryId);
@@ -3080,16 +3105,31 @@
       game.plays = window._simulatedPlaysMap[memoryId];
     }
     // === Contamination (MVP v3 + EMA) ===
-    // Combine real DB plays + simulated plays
-    let _allPlays = game.plays.slice();
-    if (window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) {
-      const sim = window._simulatedPlaysMap[memoryId];
-      if (_allPlays.length < sim.length) _allPlays = _allPlays.concat(sim);
+    // Priority: URL override > DB cont_* > replayFromPlays
+    const _urlP = new URLSearchParams(location.search);
+    const urlStage = _urlP.get('cont_stage');
+    const dbStage = urlStage || memRow?.cont_stage;
+    if (dbStage && dbStage !== 'stable') {
+      const base = createEmptyState();
+      game.contState = Object.assign(base, {
+        cont_drift: parseFloat(_urlP.get('cont_drift')) || memRow?.cont_drift || 0,
+        cont_fixation: parseFloat(_urlP.get('cont_fixation')) || memRow?.cont_fixation || 0,
+        cont_stage: dbStage,
+        cont_depth: parseInt(_urlP.get('cont_depth'), 10) || memRow?.cont_depth || 0,
+        cont_last_mismatch: _urlP.get('cont_last_mismatch') || memRow?.cont_last_mismatch || 'none',
+      });
+      LOG('contamination: using override (cont_stage=' + dbStage + ')');
+    } else {
+      let _allPlays = game.plays.slice();
+      if (window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) {
+        const sim = window._simulatedPlaysMap[memoryId];
+        if (_allPlays.length < sim.length) _allPlays = _allPlays.concat(sim);
+      }
+      _allPlays.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      game.contState = replayFromPlays(_allPlays);
     }
-    _allPlays.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    game.contState = replayFromPlays(_allPlays);
     game.contPresentation = getPresentationState(game.contState);
-    game.contMismatch = getDominantMismatch(_allPlays);
+    game.contMismatch = _urlP.get('cont_last_mismatch') || memRow?.cont_last_mismatch || getDominantMismatch(game.plays);
     LOG('contamination:', game.contPresentation.stage, '|', game.contPresentation.band,
       '| drift:', game.contState.cont_drift.toFixed(3),
       '| fix:', game.contState.cont_fixation.toFixed(3),
