@@ -199,7 +199,7 @@
 
       var playsRes = await client
         .from('plays')
-        .select('id, memory_id, scene_id, user_emotion, alignment, mismatch_type, created_at, alignment_score')
+        .select('id, memory_id, scene_id, user_emotion, alignment, mismatch_type, created_at')
         .eq('memory_id', memoryId)
         .order('created_at', { ascending: false });
 
