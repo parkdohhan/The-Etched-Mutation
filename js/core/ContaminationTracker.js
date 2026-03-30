@@ -3,7 +3,7 @@
 //
 // 기반 문서:
 //   docs/contamination/contamination_mvp_spec_v3.md  (계산)
-//   docs/contamination/contamination_presentation_spec_v1.md  (연출 소비)
+//   docs/contamination/contamination_presentation_spec_v1-260330.md  (연출 소비)
 //   docs/contamination/contamination_vnext_notes.md  (제외 항목)
 //
 // 누적 방식: EMA (지수이동평균)

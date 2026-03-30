@@ -414,16 +414,16 @@ function renderScenes() {
                         </div>
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">Stage 3 (소거: 0.9~1.0)</label>
+                        <label class="editor-label">Stage 3 (hypercompletion: 과선명/확정화)</label>
                         <div class="contamination-stage-3-controls">
-                            <select class="stage3-style-select editor-input" data-scene-index="${sceneIndex}">
-                                <option value="Glitch">Glitch</option>
-                                <option value="Redact">Redact</option>
-                                <option value="Dissolve">Dissolve</option>
+                            <select class="stage3-fixation-select editor-input" data-scene-index="${sceneIndex}">
+                                <option value="0.2">weak (0.2)</option>
+                                <option value="0.5" selected>medium (0.5)</option>
+                                <option value="0.8">strong (0.8)</option>
                             </select>
                             <button type="button" class="contamination-regen-btn" onclick="generateStage3(${sceneIndex})">생성</button>
                         </div>
-                        <textarea class="editor-textarea scene-text-stage-3" data-scene-index="${sceneIndex}" rows="3" placeholder="거의 소거된 상태...">${scene.text_stage_3 || ''}</textarea>
+                        <textarea class="editor-textarea scene-text-stage-3" data-scene-index="${sceneIndex}" rows="3" placeholder="기억이 스스로 사실을 확정한다...">${scene.text_stage_3 || ''}</textarea>
                     </div>
                 </div>
             </div>
