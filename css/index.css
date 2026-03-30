@@ -390,6 +390,60 @@ body::before {
   100% { transform: translateX(0); opacity: 1; }
 }
 
+/* ─── Contamination stage visual layers ──────────────────────────── */
+
+/* biased_inclination: memory drifting in a direction */
+#sceneText[data-cont-stage="biased_inclination"][data-cont-band="weak"] {
+  color: rgba(220, 210, 185, 0.88);
+  transition: color 1.2s ease;
+}
+
+#sceneText[data-cont-stage="biased_inclination"][data-cont-band="medium"] {
+  color: rgba(220, 200, 155, 0.82);
+  text-shadow: 0.5px 0 2px rgba(196, 160, 72, 0.18);
+  transition: color 1.2s ease, text-shadow 1.2s ease;
+}
+
+#sceneText[data-cont-stage="biased_inclination"][data-cont-band="strong"] {
+  color: rgba(210, 185, 120, 0.78);
+  text-shadow: 1px 0 4px rgba(196, 160, 72, 0.30), -0.5px 0 2px rgba(196, 160, 72, 0.15);
+  animation: cont-drift-strong 6s ease-in-out infinite;
+  transition: color 1.2s ease;
+}
+
+@keyframes cont-drift-strong {
+  0%, 100% { letter-spacing: normal; opacity: 0.92; }
+  45%       { letter-spacing: 0.012em; opacity: 0.85; }
+  55%       { letter-spacing: -0.005em; opacity: 0.88; }
+}
+
+/* hypercompletion: memory crystallizing, over-certain */
+#sceneText[data-cont-stage="hypercompletion"][data-cont-band="weak"] {
+  color: rgba(215, 205, 205, 0.95);
+  letter-spacing: 0.005em;
+  transition: color 0.8s ease, letter-spacing 0.8s ease;
+}
+
+#sceneText[data-cont-stage="hypercompletion"][data-cont-band="medium"] {
+  color: rgba(210, 195, 195, 0.98);
+  letter-spacing: 0.012em;
+  text-shadow: 0 0 3px rgba(196, 106, 106, 0.20);
+  transition: color 0.8s ease;
+}
+
+#sceneText[data-cont-stage="hypercompletion"][data-cont-band="strong"] {
+  color: rgba(220, 195, 195, 1);
+  letter-spacing: 0.018em;
+  text-shadow: 0 0 5px rgba(196, 106, 106, 0.28), 0 0 1px rgba(255,255,255,0.08);
+  animation: cont-hyper-strong 3.5s step-end infinite;
+}
+
+@keyframes cont-hyper-strong {
+  0%, 85%, 100% { opacity: 1; transform: none; }
+  88%           { opacity: 0.92; transform: translateX(0.4px); }
+  92%           { opacity: 1; transform: none; }
+}
+
 /* 2회차: 마지막 문장 강조 */
 #sceneText .scene-text-sentence.fade {
   opacity: 0.6;
