@@ -26,6 +26,7 @@ import { ByeoriEngine, byeoriEngine } from '../core/ByeoriEngine.js';
 import { sceneNavigator } from '../core/SceneNavigator.js';
 import { updateContamination, createEmptyState } from '../core/ContaminationTracker.js';
 import { getContaminatedSceneText } from './contaminationPresenter.js';
+import { getMonologue } from '../ui/contaminationMonologue.js';
 import { networkService } from '../services/NetworkService.js';
 import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
@@ -622,18 +623,13 @@ async function renderScene() {
         const alignmentFillEl = document.getElementById('alignmentFill');
         if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%';
 
-        // Contamination monologue layer: show NPC whisper on first scene visit when contaminated
-        if (contPres.stage !== 'stable' && visitCount === 0) {
-            const stagePool = NPC_DIALOGUES.contamination?.[contPres.stage]?.[contPres.band];
-            if (stagePool) {
-                const stageLine = getRandomDialogue(stagePool);
-                const emotionLabel = contPres.dominant_emotion_label;
-                const emotionLine = (emotionLabel && emotionLabel !== 'neutral')
-                    ? NPC_DIALOGUES.contamination?.emotion?.[emotionLabel]
-                    : null;
-                const monologue = emotionLine ? `${stageLine} ${emotionLine}` : stageLine;
-                setTimeout(() => showNpcDialogue(monologue, 4000), 1500);
-            }
+        // Contamination monologue layer (Presentation Spec §5 — 기억의 독백)
+        // Seeded PRNG: same scene + same cont_depth = same trigger decision
+        const lastMismatch = memoryObj?.cont_last_mismatch || 'none';
+        const contDepth = memoryObj?.cont_depth || 0;
+        const monologueText = getMonologue(contPres, lastMismatch, state.currentScene, contDepth);
+        if (monologueText) {
+            setTimeout(() => showNpcDialogue(monologueText, 5000), 1500);
         }
 
         // Contamination sound reaction
