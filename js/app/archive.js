@@ -12,7 +12,7 @@ import { getSoundscape } from '../audio/getSoundscape.js';
 
 import { getSupabaseClient } from '../lib/supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
-import { NPC_DIALOGUES } from '../npc-dialogues.js';
+import { NPC_DIALOGUES, getRandomDialogue } from '../npc-dialogues.js';
 import {
     fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus
 } from '../shared/api.js';
@@ -25,6 +25,7 @@ import {
 import { ByeoriEngine, byeoriEngine } from '../core/ByeoriEngine.js';
 import { sceneNavigator } from '../core/SceneNavigator.js';
 import { updateContamination, createEmptyState } from '../core/ContaminationTracker.js';
+import { getContaminatedSceneText } from './contaminationPresenter.js';
 import { networkService } from '../services/NetworkService.js';
 import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
@@ -567,25 +568,21 @@ async function renderScene() {
             showNotification('Unable to load scene text'); 
             return; 
         } 
-        // Apply contamination: load stage-appropriate text based on play history
-        let displayScene = scene;
-        const currentData_ref = appStore.getState().currentStoryData;
-        if (state.currentMode === 'archive' && currentData_ref && currentData_ref.id) {
-            try {
-                displayScene = await loadSceneWithContamination(scene, currentData_ref.id);
-            } catch (e) {
-                console.warn('[renderScene] Contamination load failed, using original:', e);
-            }
-        }
+        // Apply contamination: ContaminationTracker-driven text transformation (synchronous)
+        const memoryObj = state.allMemoriesData?.[state.currentMemory] || state.currentStoryData;
+        const { displayText: contaminatedText, pres: contPres } = getContaminatedSceneText(scene, memoryObj);
 
         const sceneTextEl = document.getElementById('sceneText');
-        const baseText = displayScene.displayText || displayScene.text || scene.text || '';
+        const baseText = contaminatedText || scene.text || '';
         const visitCount = state.fixationCounts && typeof state.currentScene === 'number'
             ? (state.fixationCounts[state.currentScene] || 0)
             : 0;
         const arrivalPattern = state.lastTransitionPattern || 'bridge';
 
         if (sceneTextEl) {
+            // Contamination CSS class for visual styling
+            sceneTextEl.dataset.contStage = contPres.stage;
+            sceneTextEl.dataset.contBand  = contPres.band || 'none';
             sceneTextEl.setAttribute('data-arrival', arrivalPattern);
             const typingSpeed = getArrivalTypingSpeed(arrivalPattern);
             if (typingSpeed <= 0) {
@@ -624,7 +621,26 @@ async function renderScene() {
         if (typeof updateFloatingAnchorAlignment === 'function') updateFloatingAnchorAlignment(state.currentAlignment);
         const alignmentFillEl = document.getElementById('alignmentFill');
         if (alignmentFillEl) alignmentFillEl.style.width = (state.currentAlignment * 100) + '%';
-        
+
+        // Contamination monologue layer: show NPC whisper on first scene visit when contaminated
+        if (contPres.stage !== 'stable' && visitCount === 0) {
+            const stagePool = NPC_DIALOGUES.contamination?.[contPres.stage]?.[contPres.band];
+            if (stagePool) {
+                const stageLine = getRandomDialogue(stagePool);
+                const emotionLabel = contPres.dominant_emotion_label;
+                const emotionLine = (emotionLabel && emotionLabel !== 'neutral')
+                    ? NPC_DIALOGUES.contamination?.emotion?.[emotionLabel]
+                    : null;
+                const monologue = emotionLine ? `${stageLine} ${emotionLine}` : stageLine;
+                setTimeout(() => showNpcDialogue(monologue, 4000), 1500);
+            }
+        }
+
+        // Contamination sound reaction
+        if (contPres.stage !== 'stable') {
+            getSoundscape()?.setContaminationStage(contPres.stage, contPres.band);
+        }
+
         // Wave display: only process in archive mode
         if (state.currentMode === 'archive') {
             if (state.currentScene === 0) {
