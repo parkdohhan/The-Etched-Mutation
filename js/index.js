@@ -1,3 +1,4 @@
+import { initI18n, t, setLanguage, setBrightness, getBrightness, getCurrentLanguage } from './lib/i18n.js';
 import { getSupabaseClient, onAuthStateChange, getSession, getAccessToken } from './lib/supabaseClient.js';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_FUNCTION_URL } from './lib/config.js';
 import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from './safety.js';
@@ -131,6 +132,9 @@ const USE_LIVE_INTERPRETATIONS_TABLE = false;
 // (Moved to bottom)
 
 async function initApp() {
+    // i18n: apply stored language + brightness before anything else renders
+    initI18n();
+
     var fromDemo = false;
     var demoMemoryId = null;
     try {
@@ -572,7 +576,47 @@ function activateCurrentCarouselItem() {
     }
 }
 
+// ─── Settings ────────────────────────────────────────────────────
+
+function openSettings() {
+    const modal = document.getElementById('settingsModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    // Sync brightness slider to stored value
+    const slider = document.getElementById('settingsBrightness');
+    if (slider) slider.value = getBrightness();
+    // Mark active language button
+    const lang = getCurrentLanguage();
+    modal.querySelectorAll('.settings-lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+}
+
+function closeSettings() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function setAppLanguage(lang) {
+    setLanguage(lang);
+    // Update active state on buttons without closing modal
+    const modal = document.getElementById('settingsModal');
+    if (modal) {
+        modal.querySelectorAll('.settings-lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.lang === lang);
+        });
+    }
+}
+
+function setAppBrightness(value) {
+    setBrightness(value);
+}
+
 // global 스코프 function 노출 (onclick property 서 위해)
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.setAppLanguage = setAppLanguage;
+window.setAppBrightness = setAppBrightness;
 window.openPortfolio = openPortfolio;
 window.openAbout = openAbout;
 window.openConcept = openConcept;

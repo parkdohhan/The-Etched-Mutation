@@ -50,27 +50,31 @@
                     </div>
                     <div class="menu-list" id="mainMenuList">
                         <div class="menu-item active" data-menu-id="play" data-action="enterPlayIntro">
-                            <span class="menu-label">PLAY</span>
+                            <span class="menu-label" data-i18n="menu.play">PLAY</span>
                         </div>
                         <div class="menu-item inactive" data-menu-id="archive" data-action="enterArchive">
-                            <span class="menu-label">ARCHIVE</span>
+                            <span class="menu-label" data-i18n="menu.archive">ARCHIVE</span>
                         </div>
                         <div class="menu-item inactive" data-menu-id="record" data-action="showConfessionHub">
-                            <span class="menu-label">RECORD</span>
+                            <span class="menu-label" data-i18n="menu.record">RECORD</span>
                         </div>
                         <div class="menu-item inactive" data-menu-id="profile" data-action="openMypage">
-                            <span class="menu-label">PROFILE</span>
+                            <span class="menu-label" data-i18n="menu.profile">PROFILE</span>
                         </div>
                         <div class="menu-item inactive" data-menu-id="portfolio" data-action="openPortfolio">
-                            <span class="menu-label">PORTFOLIO</span>
+                            <span class="menu-label" data-i18n="menu.portfolio">PORTFOLIO</span>
+                        </div>
+                        <div class="menu-item inactive" data-menu-id="settings" data-action="openSettings">
+                            <span class="menu-label" data-i18n="menu.settings">SETTINGS</span>
                         </div>
                     </div>
                     <div class="main-description" id="mainMenuDescription">
-                        <div class="description-text active" data-for="play">Start a play session and traverse memory terrain.</div>
-                        <div class="description-text" data-for="archive">Archive list view. Browse every memory and jump into play.</div>
-                        <div class="description-text" data-for="record">Document new memories and leave traces of mutation.</div>
-                        <div class="description-text" data-for="profile">Manage personal profile and synchronization settings.</div>
-                        <div class="description-text" data-for="portfolio">Explore the origin and architect of The Etched Mutation.</div>
+                        <div class="description-text active" data-for="play" data-i18n="menu.desc.play">Start a play session and traverse memory terrain.</div>
+                        <div class="description-text" data-for="archive" data-i18n="menu.desc.archive">Archive list view. Browse every memory and jump into play.</div>
+                        <div class="description-text" data-for="record" data-i18n="menu.desc.record">Document new memories and leave traces of mutation.</div>
+                        <div class="description-text" data-for="profile" data-i18n="menu.desc.profile">Manage personal profile and synchronization settings.</div>
+                        <div class="description-text" data-for="portfolio" data-i18n="menu.desc.portfolio">Explore the origin and architect of The Etched Mutation.</div>
+                        <div class="description-text" data-for="settings" data-i18n="menu.desc.settings">Language, brightness, and other preferences.</div>
                     </div>
                 </div>
                 <div class="main-right-content">
@@ -328,7 +332,7 @@
                 <h3 class="end-subtitle" id="endSubtitle"></h3>
                 <div class="final-alignment" id="finalAlignment">Emotional Structure Alignment: 0.00</div>
                 <p class="final-message" id="finalMessage">You were inside someone's memory.</p>
-                <div class="end-buttons"><button class="end-btn" onclick="saveMemory()">Save Memory</button><button class="end-btn" onclick="goToIntro()">Return to Start</button></div>
+                <div class="end-buttons"><button class="end-btn" data-i18n="end.save" onclick="saveMemory()">Keep this</button><button class="end-btn" data-i18n="end.return" onclick="goToIntro()">Return</button></div>
             </div>
         </div>
     </div>
@@ -351,6 +355,26 @@
     </div>
     <div class="emotion-modal" id="memoryFateModal"><div class="emotion-modal-content"><p class="emotion-question">Choose the fate of this memory</p><div class="fate-buttons"><button class="fate-btn" onclick="selectMemoryFate('preserve')">Preserve</button><button class="fate-btn" onclick="selectMemoryFate('dilute')">Natural Dissolution</button><button class="fate-btn" onclick="selectMemoryFate('anonymous')">Full Anonymity</button></div><div class="fate-descriptions"><div class="fate-desc" id="fateDescPreserve">Maintains the original structure to the end</div><div class="fate-desc" id="fateDescDilute">Gradually diluted through accumulated layers</div><div class="fate-desc" id="fateDescAnonymous">Begins as a shared memory from the start</div></div></div></div>
     <div class="session-detail-modal" id="sessionDetailModal"><div class="session-detail-modal-content"><div class="session-detail-header"><h2 class="session-detail-title" id="sessionDetailTitle">Session Details</h2><button class="session-detail-close-btn" onclick="closeSessionDetail()">✕</button></div><div class="session-detail-body" id="sessionDetailBody"><div style="text-align:center;padding:2rem;color:var(--text-muted)">Loading...</div></div></div></div>
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-box">
+            <h2 class="settings-title" data-i18n="settings.title">Settings</h2>
+            <div class="settings-section">
+                <label class="settings-label" data-i18n="settings.language">Language</label>
+                <div class="settings-lang-btns">
+                    <button class="settings-lang-btn" data-lang="en" onclick="window.setAppLanguage('en')" data-i18n="settings.language.en">English</button>
+                    <button class="settings-lang-btn" data-lang="ko" onclick="window.setAppLanguage('ko')" data-i18n="settings.language.ko">한국어</button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <label class="settings-label" data-i18n="settings.brightness">Brightness</label>
+                <input type="range" class="settings-brightness-slider" id="settingsBrightness"
+                    min="0.5" max="1.5" step="0.05" value="1.0"
+                    oninput="window.setAppBrightness(this.value)">
+            </div>
+            <button class="settings-close-btn" onclick="window.closeSettings()" data-i18n="settings.close">Close</button>
+        </div>
+    </div>
     <div class="npc-dialogue" id="npcDialogue"><div class="npc-name">Another Me</div><div id="npcText"></div></div>
     <div class="system-message" id="systemMessage"></div>
     <div class="notification" id="notification"></div>
