@@ -203,21 +203,57 @@
   }
 
   /**
- * Admin: Stage 3 create (코드 스타일 적용)
+ * Admin: Stage 3 생성 — contaminate-text Edge Function (hypercompletion 방향)
    */
-  function generateStage3(sceneIndex) {
+  async function generateStage3(sceneIndex) {
     var baseEl = document.querySelector('.scene-text-input[data-scene-index="' + sceneIndex + '"]');
     var stage3El = document.querySelector('.scene-text-stage-3[data-scene-index="' + sceneIndex + '"]');
-    var styleSelect = document.querySelector('.stage3-style-select[data-scene-index="' + sceneIndex + '"]');
+    var direction = (document.querySelector('.contamination-direction[data-scene-index="' + sceneIndex + '"]') || {}).value || 'default';
+    var fixationSelect = document.querySelector('.stage3-fixation-select[data-scene-index="' + sceneIndex + '"]');
+    var fixation = fixationSelect ? parseFloat(fixationSelect.value) : 0.5;
     if (!baseEl || !stage3El) return;
     var text = (baseEl.value || '').trim();
-    var styleKey = (styleSelect && styleSelect.value) ? styleSelect.value : 'Glitch';
     if (!text) {
       alert('Please enter the text first.');
       return;
     }
-    stage3El.value = applyStage3(text, styleKey);
-    stage3El.dispatchEvent(new Event('input', { bubbles: true }));
+    stage3El.disabled = true;
+    stage3El.placeholder = 'Generating...';
+    try {
+      var url = getSupabaseUrl() + '/functions/v1/contaminate-text';
+      var res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + getSupabaseAnonKey(),
+          'apikey': getSupabaseAnonKey(),
+        },
+        body: JSON.stringify({ text: text, stage: 3, direction: direction, fixation: fixation }),
+      });
+      var raw = await res.text();
+      var data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch (parseErr) {
+        console.error('[contamination] Stage3 응답 파싱 실패', raw);
+        alert('Response error (HTTP ' + res.status + '): ' + (raw ? raw.substring(0, 200) : 'empty response'));
+        return;
+      }
+      if (res.ok && data.text_stage_3 != null) {
+        stage3El.value = data.text_stage_3;
+        stage3El.dispatchEvent(new Event('input', { bubbles: true }));
+      } else {
+        var errMsg = data.error || data.details || data.message || ('HTTP ' + res.status);
+        console.error('[contamination] Stage3 실패', res.status, data);
+        alert('Stage 3 generation failed: ' + errMsg);
+      }
+    } catch (e) {
+      console.error('[contamination] generateStage3', e);
+      alert('Error: ' + (e.message || 'Network error'));
+    } finally {
+      stage3El.disabled = false;
+      stage3El.placeholder = '기억이 스스로 사실을 확정한다...';
+    }
   }
 
   window.TEM_Contamination = {

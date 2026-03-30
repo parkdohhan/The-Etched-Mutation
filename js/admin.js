@@ -1,7 +1,7 @@
 import { getSupabaseClient, waitForSupabaseClient } from './lib/supabaseClient.js';
 import { loadAdminMemories, saveAdminMemories, exportAdminMemoriesJSON, importAdminMemoriesJSON } from './lib/storage.js';
 import { listMemoriesWithScenesChoices, saveMemoryGraph, deleteMemoryGraph, listArchiveLayers } from './lib/repo.js';
-import { DEFAULT_EMOTION_ANCHORS, emotionVectorToWaveStyle } from './shared/math.js';
+import { DEFAULT_EMOTION_ANCHORS, emotionVectorToWaveStyle, cosineSimilarity } from './shared/math.js';
 
 let memories = [];
 let currentScenes = [];
@@ -414,16 +414,16 @@ function renderScenes() {
                         </div>
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">Stage 3 (소거: 0.9~1.0)</label>
+                        <label class="editor-label">Stage 3 (hypercompletion: 과선명/확정화)</label>
                         <div class="contamination-stage-3-controls">
-                            <select class="stage3-style-select editor-input" data-scene-index="${sceneIndex}">
-                                <option value="Glitch">Glitch</option>
-                                <option value="Redact">Redact</option>
-                                <option value="Dissolve">Dissolve</option>
+                            <select class="stage3-fixation-select editor-input" data-scene-index="${sceneIndex}">
+                                <option value="0.2">weak (0.2)</option>
+                                <option value="0.5" selected>medium (0.5)</option>
+                                <option value="0.8">strong (0.8)</option>
                             </select>
                             <button type="button" class="contamination-regen-btn" onclick="generateStage3(${sceneIndex})">생성</button>
                         </div>
-                        <textarea class="editor-textarea scene-text-stage-3" data-scene-index="${sceneIndex}" rows="3" placeholder="거의 소거된 상태...">${scene.text_stage_3 || ''}</textarea>
+                        <textarea class="editor-textarea scene-text-stage-3" data-scene-index="${sceneIndex}" rows="3" placeholder="기억이 스스로 사실을 확정한다...">${scene.text_stage_3 || ''}</textarea>
                     </div>
                 </div>
             </div>
@@ -1991,6 +1991,164 @@ function filterSessions(filter) {
     renderSessions();
 }
 
+// ─── Contamination badge for session cards ───────────────────────
+function renderContaminationBadge(session) {
+    const depth = session.cont_depth || 0;
+    if (depth === 0) return '';
+
+    const stage = session.cont_stage || 'stable';
+    const drift = ((session.cont_drift || 0) * 100).toFixed(0);
+    const fix   = ((session.cont_fixation || 0) * 100).toFixed(0);
+
+    const stageColor = {
+        stable:              'rgba(196,168,130,0.4)',
+        biased_inclination:  '#c4a048',
+        hypercompletion:     '#c46a6a',
+    }[stage] || 'rgba(196,168,130,0.4)';
+
+    const stageLabel = {
+        stable:              '안정',
+        biased_inclination:  '편향 경향',
+        hypercompletion:     '과완성',
+    }[stage] || stage;
+
+    return `<div style="margin-top:0.4rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+        <span style="font-size:0.75rem;color:${stageColor};border:1px solid ${stageColor};padding:1px 6px;border-radius:3px;">${stageLabel}</span>
+        <span style="font-size:0.72rem;color:var(--text-muted);">drift ${drift}%</span>
+        <span style="font-size:0.72rem;color:var(--text-muted);">fix ${fix}%</span>
+        <span style="font-size:0.72rem;color:var(--text-muted);">depth ${depth}</span>
+    </div>`;
+}
+
+// ─── SceneNavigator emotion-space diagnostics ─────────────────────
+//  패턴별 중립 감정 기준으로 씬 간 접근성 계산 + 고립 씬 경고
+const DIAG_PATTERN_CENTER = {
+    echo_follow:   { wOrig: 0.7, wUser: 0.3 },
+    bridge:        { wOrig: 0.5, wUser: 0.5 },
+    displacement:  { wOrig: 0.3, wUser: 0.7 },
+    contradiction: { mode: 'negate' },
+    avoidance:     { mode: 'void' },
+    fixation:      { mode: 'current' },
+};
+const DIAG_BASE_RADIUS = 0.35;
+
+function diagComputeCenter(cfg, origEmo, curEmo) {
+    if (cfg.mode === 'void')    return {};
+    if (cfg.mode === 'current') return curEmo;
+    if (cfg.mode === 'negate') {
+        const r = {};
+        DEFAULT_EMOTION_ANCHORS.forEach(k => { r[k] = 1 - (origEmo[k] || 0); });
+        return r;
+    }
+    const keys = new Set([...Object.keys(origEmo), ...DEFAULT_EMOTION_ANCHORS]);
+    const r = {};
+    keys.forEach(k => { r[k] = (origEmo[k] || 0) * cfg.wOrig; });
+    return r;
+}
+
+function safeParseEmotion(v) {
+    if (!v) return {};
+    if (typeof v === 'object' && !Array.isArray(v)) return v;
+    if (typeof v === 'string') { try { return JSON.parse(v); } catch (_) { return {}; } }
+    return {};
+}
+
+window.runSceneNavDiagnostics = function() {
+    const el = document.getElementById('sceneNavDiagResult');
+    if (!el) return;
+    const scenes = currentScenes;
+    if (!scenes || scenes.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-muted);">씬이 없습니다. 메모리를 먼저 편집 화면에서 열어주세요.</p>';
+        return;
+    }
+
+    const patterns = Object.keys(DIAG_PATTERN_CENTER);
+
+    // accessMatrix[fromIdx][toIdx] = Set of patterns that can reach toIdx from fromIdx
+    const accessMatrix = scenes.map((fromScene, fi) => {
+        const fromEmo = safeParseEmotion(fromScene.originalEmotion || fromScene.original_emotion);
+        return scenes.map((toScene, ti) => {
+            if (ti === fi) return new Set();
+            const toEmo = safeParseEmotion(toScene.originalEmotion || toScene.original_emotion);
+            const reachableBy = new Set();
+            patterns.forEach(pat => {
+                const cfg = DIAG_PATTERN_CENTER[pat];
+                const center = diagComputeCenter(cfg, fromEmo, fromEmo);
+                if (Object.keys(center).length === 0) return; // void → fallback only
+                const sim = cosineSimilarity(center, toEmo);
+                if (sim >= DIAG_BASE_RADIUS) reachableBy.add(pat);
+            });
+            return reachableBy;
+        });
+    });
+
+    // Isolated: scenes never reachable from any other scene via any pattern (in-radius)
+    const isolatedIndices = scenes.map((_, ti) => {
+        const reachableFromAny = scenes.some((_, fi) => {
+            if (fi === ti) return false;
+            return accessMatrix[fi][ti].size > 0;
+        });
+        return !reachableFromAny;
+    });
+
+    const isolatedScenes = scenes.filter((_, i) => isolatedIndices[i]);
+
+    // Build HTML
+    let html = '';
+
+    // ── Isolated scene warnings ──
+    if (isolatedScenes.length > 0) {
+        html += `<div style="background:rgba(196,80,80,0.08);border:1px solid rgba(196,80,80,0.4);border-radius:4px;padding:1rem;margin-bottom:1.5rem;">
+            <div style="color:#c46a6a;font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;">⚠ 고립 씬 ${isolatedScenes.length}개 — 어떤 패턴으로도 도달 불가</div>
+            ${isolatedScenes.map((s, i) => {
+                const idx = scenes.indexOf(s);
+                const label = s.text ? s.text.slice(0, 40) + (s.text.length > 40 ? '…' : '') : `씬 ${idx + 1}`;
+                return `<div style="font-size:0.8rem;color:var(--text-muted);padding:2px 0;">씬 ${idx + 1}: "${label}"</div>`;
+            }).join('')}
+        </div>`;
+    } else {
+        html += `<div style="color:#7a9a7a;font-size:0.85rem;margin-bottom:1.5rem;">✓ 고립 씬 없음 — 모든 씬이 최소 1개 패턴으로 접근 가능</div>`;
+    }
+
+    // ── Accessibility table ──
+    const patternColors = {
+        echo_follow: '#8888cc', bridge: '#7a9a7a', displacement: '#c4a048',
+        contradiction: '#c46a6a', avoidance: '#888', fixation: '#aa88cc',
+    };
+
+    html += `<div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
+        <thead>
+            <tr>
+                <th style="padding:6px 8px;text-align:left;color:var(--text-muted);border-bottom:1px solid rgba(196,168,130,0.15);">from ↓ / to →</th>
+                ${scenes.map((s, i) => `<th style="padding:6px 4px;color:var(--text-muted);border-bottom:1px solid rgba(196,168,130,0.15);${isolatedIndices[i] ? 'color:#c46a6a;' : ''}">S${i + 1}</th>`).join('')}
+            </tr>
+        </thead>
+        <tbody>
+            ${scenes.map((fromScene, fi) => `
+            <tr>
+                <td style="padding:4px 8px;color:var(--text-muted);white-space:nowrap;border-bottom:1px solid rgba(196,168,130,0.07);">S${fi + 1} ${fromScene.text ? '"' + fromScene.text.slice(0, 20) + '…"' : ''}</td>
+                ${scenes.map((_, ti) => {
+                    if (ti === fi) return `<td style="padding:4px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(196,168,130,0.07);">—</td>`;
+                    const pats = accessMatrix[fi][ti];
+                    if (pats.size === 0) {
+                        return `<td style="padding:4px;text-align:center;border-bottom:1px solid rgba(196,168,130,0.07);"><span style="color:rgba(196,168,130,0.2);">✗</span></td>`;
+                    }
+                    const dots = [...pats].map(p => `<span title="${p}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${patternColors[p] || '#888'};margin:1px;"></span>`).join('');
+                    return `<td style="padding:4px;text-align:center;border-bottom:1px solid rgba(196,168,130,0.07);">${dots}</td>`;
+                }).join('')}
+            </tr>`).join('')}
+        </tbody>
+    </table>
+    </div>
+    <div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.75rem;">
+        ${Object.entries(patternColors).map(([p, c]) => `<span style="font-size:0.72rem;color:var(--text-muted);"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:4px;vertical-align:middle;"></span>${p}</span>`).join('')}
+        <span style="font-size:0.72rem;color:var(--text-muted);">avoidance/fixation은 항상 fallback (void 제외)</span>
+    </div>`;
+
+    el.innerHTML = html;
+};
+
 function renderSessions() {
     const filtered = currentFilter === 'all' 
         ? allSessions 
@@ -2023,6 +2181,7 @@ function renderSessions() {
                     ${session.type === 'live' ? `<span>정렬도: ${((session.alignment || 0) * 100).toFixed(0)}%</span>` : `<span>레이어: ${session.layers || 0}</span>`}
                 </div>
                 ${isArchive ? `<div class="session-fate" style="color: ${visibilityColor}; margin-top: 0.5rem; font-size: 0.9rem;">공개 상태: ${visibilityLabel}</div>` : ''}
+                ${isArchive ? renderContaminationBadge(session) : ''}
                 ${session.type === 'live' && session.memory_fate ? `<div class="session-fate" style="color: ${fateColors[session.memory_fate] || '#666'}; margin-top: 0.5rem; font-size: 0.9rem;">운명: ${fateLabels[session.memory_fate] || '미정'}</div>` : ''}
             </div>
             ${isArchive ? `<button class="session-delete-btn" onclick="event.stopPropagation(); toggleArchiveVisibilityById('${session.id}')" style="padding: 0.5rem 0.85rem; background: transparent; color: var(--accent-memory); border: 1px solid var(--accent-memory); border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-left: 0.5rem;">${visibilityBtnLabel}</button>` : ''}

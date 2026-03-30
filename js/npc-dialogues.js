@@ -133,6 +133,52 @@ const NPC_DIALOGUES = {
     memoryComplete: "The memory has been buried in the strata."
   },
 
+  // Contamination monologue layer (shown on scene transition when memory is contaminated)
+  contamination: {
+    biased_inclination: {
+      weak: [
+        "Something about this memory feels slightly... tilted.",
+        "A faint pull. The scene leans one way.",
+        "Not wrong. Just... not entirely as it was."
+      ],
+      medium: [
+        "The memory is bending toward something.",
+        "This scene has been colored by the hands that held it.",
+        "You're reading through a filter you didn't choose."
+      ],
+      strong: [
+        "The original is almost unreachable now.",
+        "Every replay has pulled it further from where it started.",
+        "This memory has a direction. It no longer remembers how to go back."
+      ]
+    },
+    hypercompletion: {
+      weak: [
+        "The edges of this memory are becoming certain.",
+        "Something is solidifying. A detail that was once soft.",
+        "Memory doesn't stay fluid forever."
+      ],
+      medium: [
+        "This scene has decided what it means.",
+        "The memory is crystallizing. Details locking into place.",
+        "It remembers itself too well now."
+      ],
+      strong: [
+        "The memory has calcified. It no longer asks questions.",
+        "What was once experience is now monument.",
+        "This is no longer recollection. It is declaration."
+      ]
+    },
+    // Emotion-flavored overlays (combined with stage if dominant)
+    emotion: {
+      anger:     "The heat of it is still here.",
+      sadness:   "Something was lost and hasn't returned.",
+      excitement: "It still hums with that energy.",
+      calm:      "A stillness settled into this memory.",
+      neutral:   "The emotion has been smoothed away."
+    }
+  },
+
   // Bucket feedback
   bucket: {
     HIGH: "I think I can understand that feeling.",

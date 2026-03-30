@@ -3,7 +3,7 @@
 //
 // 기반 문서:
 //   docs/contamination/contamination_mvp_spec_v3.md  (계산)
-//   docs/contamination/contamination_presentation_spec_v1.md  (연출 소비)
+//   docs/contamination/contamination_presentation_spec_v1-260330.md  (연출 소비)
 //   docs/contamination/contamination_vnext_notes.md  (제외 항목)
 //
 // 누적 방식: EMA (지수이동평균)
@@ -225,7 +225,8 @@ export function replayFromPlays(plays) {
 
     // Convert user_emotion vector → VAD for drift direction
     let uV = 0, uA = 0, uD = 0;
-    if (p.user_emotion && typeof p.user_emotion === 'object') {
+    if (p.user_emotion && typeof p.user_emotion === 'object'
+        && Object.values(p.user_emotion).some(v => v > 0)) {
       const vad = projectEmotionToVAD(p.user_emotion);
       uV = vad.v || 0;
       uA = vad.a || 0;

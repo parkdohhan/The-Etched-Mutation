@@ -131,6 +131,46 @@
   }
 
   /**
+   * Contamination stage audio reaction.
+   * Adjusts playback volume to reflect memory contamination state.
+   * @param {string} stage  - 'stable' | 'biased_inclination' | 'hypercompletion'
+   * @param {string} band   - 'weak' | 'medium' | 'strong'
+   */
+  function setContaminationStage(stage, band) {
+    if (!_currentAudio || _isMuted) return;
+
+    const bandMult = band === 'strong' ? 1.0 : band === 'medium' ? 0.6 : 0.3;
+
+    if (stage === 'biased_inclination') {
+      // Memory drifting: fade volume down slightly, hold, restore
+      const reduction = 0.15 * bandMult;
+      const target = Math.max(0.05, _volume * (1 - reduction));
+      _currentAudio.volume = target;
+      clearInterval(_fadeInterval);
+      _fadeInterval = null;
+      setTimeout(() => {
+        if (_currentAudio) _currentAudio.volume = _isMuted ? 0 : _volume;
+      }, 1200);
+
+    } else if (stage === 'hypercompletion') {
+      // Memory over-solidifying: abrupt dip then snap back louder
+      const reduction = 0.35 * bandMult;
+      const target = Math.max(0.02, _volume * (1 - reduction));
+      _currentAudio.volume = target;
+      clearInterval(_fadeInterval);
+      _fadeInterval = null;
+      setTimeout(() => {
+        if (_currentAudio) _currentAudio.volume = _isMuted ? 0 : Math.min(1, _volume * 1.1);
+        setTimeout(() => {
+          if (_currentAudio) _currentAudio.volume = _isMuted ? 0 : _volume;
+        }, 600);
+      }, 400);
+
+    }
+    // stable: no change
+  }
+
+  /**
  * Void crack sound
    */
   function onVoidCrack() {
@@ -164,6 +204,7 @@
     setBucket: setBucket,
     onSceneTransition: onSceneTransition,
     onVoidCrack: onVoidCrack,
+    setContaminationStage: setContaminationStage,
     toggleMute: toggleMute
   };
 
