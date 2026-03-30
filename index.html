@@ -185,7 +185,9 @@
     <div class="confession-hub hidden" id="confessionHub">
         <div class="door-screen" id="doorScreen" onclick="handleDoorClick()">
             <div class="door-title" id="doorTitle">RECORD</div>
-            <div class="door-subtitle" id="doorSubtitle">Will you open the door to that day?</div>
+            <div class="door-subtitle" id="doorSubtitle">기억하고 싶은 하루의 문을 열겠습니까? / Will you open the door to a day you carry?</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;color:rgba(196,168,130,0.45);margin-top:1.2rem;text-align:center;">당신의 기억을 기록하는 공간입니다 · This is where you record your memory</div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:3px;color:rgba(196,168,130,0.3);margin-top:2rem;text-align:center;animation:pulse 2s infinite;">— click to enter —</div>
             <pre id="doorPre"></pre>
         </div>
         <button class="door-back-btn" id="doorBackBtn" onclick="event.stopPropagation(); showMainMenu()">← Back</button>
@@ -351,7 +353,7 @@
         <div class="strata-hint">drag to rotate — view from side to see cross-section</div>
         <div class="strata-grain"></div>
         <div id="strataLc"></div>
-        <button id="strataCloseBtn" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:120;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:12px 32px;font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:3px;cursor:pointer;transition:all 0.3s;">Leave the strata behind</button>
+        <button id="strataCloseBtn" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:2700;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:12px 32px;font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:3px;cursor:pointer;transition:all 0.3s;">Leave the strata behind</button>
     </div>
     <div class="emotion-modal" id="memoryFateModal"><div class="emotion-modal-content"><p class="emotion-question">Choose the fate of this memory</p><div class="fate-buttons"><button class="fate-btn" onclick="selectMemoryFate('preserve')">Preserve</button><button class="fate-btn" onclick="selectMemoryFate('dilute')">Natural Dissolution</button><button class="fate-btn" onclick="selectMemoryFate('anonymous')">Full Anonymity</button></div><div class="fate-descriptions"><div class="fate-desc" id="fateDescPreserve">Maintains the original structure to the end</div><div class="fate-desc" id="fateDescDilute">Gradually diluted through accumulated layers</div><div class="fate-desc" id="fateDescAnonymous">Begins as a shared memory from the start</div></div></div></div>
     <div class="session-detail-modal" id="sessionDetailModal"><div class="session-detail-modal-content"><div class="session-detail-header"><h2 class="session-detail-title" id="sessionDetailTitle">Session Details</h2><button class="session-detail-close-btn" onclick="closeSessionDetail()">✕</button></div><div class="session-detail-body" id="sessionDetailBody"><div style="text-align:center;padding:2rem;color:var(--text-muted)">Loading...</div></div></div></div>
@@ -375,7 +377,7 @@
             <button class="settings-close-btn" onclick="window.closeSettings()" data-i18n="settings.close">Close</button>
         </div>
     </div>
-    <div class="npc-dialogue" id="npcDialogue"><div class="npc-name">Another Me</div><div id="npcText"></div></div>
+    <div class="npc-dialogue" id="npcDialogue"><div class="npc-name" style="font-size:9px;letter-spacing:3px;opacity:0.5;">기억이 속삭인다 · the memory whispers</div><div id="npcText"></div></div>
     <div class="system-message" id="systemMessage"></div>
     <div class="notification" id="notification"></div>
     <footer class="footer">

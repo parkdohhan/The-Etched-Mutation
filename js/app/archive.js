@@ -125,7 +125,28 @@ async function loadMemoriesFromSupabase() {
     if (localFallback.length) sortMemories(appStore.getState().currentSort);
   }
 }
-function filterMemories() { const searchValue = document.getElementById('archiveSearch').value.toUpperCase().trim(); const cards = document.querySelectorAll('.memory-card'); const state = appStore.getState(); cards.forEach(card => { const code = card.getAttribute('data-code') || ''; const category = card.getAttribute('data-category') || 'archive'; let shouldShow = true; if (state.currentCategory === 'story' && category !== 'archive') shouldShow = false; else if (state.currentCategory === 'archive' && category !== 'archive') shouldShow = false; if (shouldShow && (searchValue === '' || code.includes(searchValue))) { card.classList.remove('hidden'); card.style.display = 'block'; if (searchValue !== '' && code === searchValue) { setTimeout(() => { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.style.transform = 'scale(1.05)'; setTimeout(() => card.style.transform = '', 500) }, 100) } } else { card.classList.add('hidden'); card.style.display = 'none' } }) }
+function filterMemories() {
+    const searchValue = document.getElementById('archiveSearch').value.trim();
+    const searchLower = searchValue.toLowerCase();
+    const cards = document.querySelectorAll('.memory-card');
+    const state = appStore.getState();
+    cards.forEach(card => {
+        const code = (card.getAttribute('data-code') || '').toLowerCase();
+        const title = card.getAttribute('data-title') || '';
+        const category = card.getAttribute('data-category') || 'archive';
+        let shouldShow = true;
+        if (state.currentCategory === 'story' && category !== 'archive') shouldShow = false;
+        else if (state.currentCategory === 'archive' && category !== 'archive') shouldShow = false;
+        const matches = searchLower === '' || title.includes(searchLower) || code.includes(searchLower);
+        if (shouldShow && matches) {
+            card.classList.remove('hidden');
+            card.style.display = 'block';
+        } else {
+            card.classList.add('hidden');
+            card.style.display = 'none';
+        }
+    });
+}
 function sortMemories(sortType, btnElement) {
     appStore.setState({ currentSort: sortType });
     const filterBtns = document.querySelectorAll('.filter-btn');
@@ -881,6 +902,7 @@ function collectEmotionInput() {
 
  // modal Close 및 input 필드 initialization (UIManager )
     uiManager.closeEmotionModal();
+    showNotification(t('notify.emotion.analyzing'));
 
  // scene data validation (store 서 읽기)
     const currentData = appStore.getState().currentStoryData;

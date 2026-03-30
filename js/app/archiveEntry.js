@@ -194,6 +194,16 @@ export async function initArchiveEntry(containerEl) {
   containerEl.innerHTML = '';
   containerEl.setAttribute('data-tem-mounted', '1');
 
+  const backBtn = document.createElement('button');
+  backBtn.className = 'archive-entry-back-btn';
+  backBtn.textContent = '← Back';
+  backBtn.style.cssText = 'position:absolute;top:20px;left:24px;background:transparent;border:none;color:rgba(196,168,130,0.5);font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:2px;cursor:pointer;z-index:10;';
+  backBtn.addEventListener('click', () => {
+    if (typeof enterArchive === 'function') enterArchive();
+    else if (typeof backToIntro === 'function') backToIntro();
+  });
+  containerEl.appendChild(backBtn);
+
   const hint = document.createElement('div');
   hint.className = 'archive-entry-hint';
   hint.textContent = '[ Click a sentence to enter the memory ]';

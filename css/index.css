@@ -5297,7 +5297,7 @@ body.confession-active::before {
   font-size: 11px;
   letter-spacing: 4px;
   text-transform: uppercase;
-  color: rgba(196, 168, 130, 0.4);
+  color: rgba(196, 168, 130, 0.7);
   font-weight: 300;
 }
 .strata-tlg {
@@ -5310,7 +5310,7 @@ body.confession-active::before {
 .strata-dlb {
   font-size: 10px;
   letter-spacing: 2px;
-  color: rgba(196, 168, 130, 0.4);
+  color: rgba(196, 168, 130, 0.7);
   text-transform: uppercase;
 }
 .strata-dvl {
@@ -5368,7 +5368,7 @@ body.confession-active::before {
   z-index: 100;
   font-size: 9px;
   letter-spacing: 3px;
-  color: rgba(196, 168, 130, 0.12);
+  color: rgba(196, 168, 130, 0.45);
   text-transform: uppercase;
   animation: strata-pulse 4s ease-in-out infinite;
   pointer-events: none;
