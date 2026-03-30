@@ -380,7 +380,7 @@ async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, c
         try {
             const memId = insertData.memory_id;
             if (memId) {
-                const countResult = await networkService.getContaminationLevel(memId);
+                const countResult = await networkService.getPlayCount(memId);
                 const playCount = countResult.ok ? (countResult.data || 0) : 0;
  // dilution = original 비중 (100% → experiencer 늘수록 감소)
  // 0명: 100, 10명: ~50, 30명: ~25, 100명: ~9

@@ -660,7 +660,7 @@ class NetworkService {
  * @param {number} memoryId - memory ID
    * @returns {Promise<{ok: boolean, data: number|null, error: Error|null}>}
    */
-  async getContaminationLevel(memoryId) {
+  async getPlayCount(memoryId) {
     try {
       const client = this._getClient();
       if (!client) {
@@ -673,13 +673,13 @@ class NetworkService {
         .eq('memory_id', memoryId);
 
       if (error) {
-        console.error('[NetworkService.getContaminationLevel] Query failed', error);
+        console.error('[NetworkService.getPlayCount] Query failed', error);
         return { ok: false, data: null, error };
       }
 
       return { ok: true, data: count || 0, error: null };
     } catch (error) {
-      console.error('[NetworkService.getContaminationLevel] Error occurred', error);
+      console.error('[NetworkService.getPlayCount] Error occurred', error);
       return { ok: false, data: null, error };
     }
   }
