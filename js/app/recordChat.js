@@ -491,6 +491,18 @@ function handleCrisis(blockedText) {
       safetyEl.classList.remove('hidden');
       safetyEl.innerHTML = SAFETY_RESOURCES_HTML[currentLang] || SAFETY_RESOURCES_HTML.ko;
     }
+    // 5초 후 복귀 버튼 추가
+    setTimeout(() => {
+      if (!safetyEl) return;
+      const returnBtn = document.createElement('button');
+      returnBtn.textContent = currentLang === 'ko' ? '돌아가기' : 'Return';
+      returnBtn.style.cssText = 'opacity:0;margin-top:1.5rem;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:"Cormorant Garamond",serif;font-size:0.9rem;padding:0.6rem 1.5rem;cursor:pointer;transition:opacity 1s ease;display:block;margin-left:auto;margin-right:auto;';
+      safetyEl.appendChild(returnBtn);
+      requestAnimationFrame(() => { returnBtn.style.opacity = '1'; });
+      returnBtn.addEventListener('click', () => {
+        if (typeof window.showMainMenu === 'function') window.showMainMenu();
+      });
+    }, 5000);
   });
 }
 

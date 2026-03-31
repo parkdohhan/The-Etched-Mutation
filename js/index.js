@@ -771,6 +771,29 @@ if (document.readyState === 'loading') {
 window.startOpeningWaveAnimation = startOpeningWaveAnimation;
 window.handleOpeningKeydown = handleOpeningKeydown;
 
+// ?action=login 파라미터 처리 (play-test strata 퇴장 → 로그인 유도)
+(function checkActionParam() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'login') {
+      // 파라미터 제거 (뒤로가기 시 재트리거 방지)
+      params.delete('action');
+      var clean = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (clean ? '?' + clean : ''));
+      // 로그인 모달 열기
+      setTimeout(function () {
+        var loginModal = document.getElementById('loginModal');
+        if (loginModal) {
+          loginModal.classList.add('active');
+          loginModal.style.cssText = 'display:flex !important;z-index:3000 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
+          var usernameInput = document.getElementById('loginUsername');
+          if (usernameInput) usernameInput.focus();
+        }
+      }, 500);
+    }
+  } catch (_) {}
+})();
+
 
 // global 스코프 노출
 window.showConfessionHub = showConfessionHub;

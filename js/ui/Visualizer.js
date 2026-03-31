@@ -20,7 +20,16 @@ export class Visualizer {
         this.alignmentIsMouseDown = false;
         this.alignmentMouseX = 0;
         this.alignmentMouseY = 0;
+
+        // 파동 override (흡수 연출용)
+        this._waveOverride = null; // { speedMultiplier: 0-1, colorOverride: {r,g,b} }
+        this._frozenTime = null;   // 파동 정지 시 고정된 시간값
     }
+
+    /** 파동 override 설정 (흡수 연출: 진폭 감쇠 + 탈채도) */
+    setWaveOverride(override) { this._waveOverride = override; }
+    /** 파동 override 해제 */
+    clearWaveOverride() { this._waveOverride = null; this._frozenTime = null; }
 
     /**
      * 노이즈 함수 (파동 효과용)
@@ -85,10 +94,16 @@ export class Visualizer {
         
         const width = canvas.width / 2;
         const height = canvas.height / 2;
-        const t = this.alignmentWaveTime + timeOffset;
+        const liveTime = this.alignmentWaveTime + timeOffset;
+        // 파동 정지: speedMultiplier가 0에 가까울수록 frozenTime에 고정
+        const _spdMul = this._waveOverride ? this._waveOverride.speedMultiplier : 1;
+        if (_spdMul < 1 && this._frozenTime == null) this._frozenTime = liveTime;
+        const t = this._frozenTime != null
+            ? this._frozenTime + (liveTime - this._frozenTime) * _spdMul
+            : liveTime;
         const points = [];
         const segments = 100;
-        
+
         for (let i = 0; i <= segments; i++) {
             const x = (i / segments) * width;
             const normalizedX = x / width;
@@ -96,8 +111,7 @@ export class Visualizer {
             y += Math.sin(x * waveStyle.frequency * 2.3 + t * waveStyle.speed * 0.7) * (waveStyle.amplitude * 0.4);
             y += Math.sin(x * waveStyle.frequency * 0.4 + t * waveStyle.speed * 0.3) * (waveStyle.amplitude * 0.6);
             const chaosAmount = waveStyle.chaos * 15;
-            y += (this._noise(x * 0.01, t * 0.1, 0) - 0.5) * chaosAmount;
-            
+
             if (mouseState && mouseState.isDown) {
                 const rect = canvas.getBoundingClientRect();
                 const canvasMouseX = mouseState.x - rect.left;
@@ -120,7 +134,8 @@ export class Visualizer {
             ctx.lineTo(points[i].x, points[i].y);
         }
 
-        const color = waveStyle.color;
+        const color = this._waveOverride && this._waveOverride.colorOverride
+            ? this._waveOverride.colorOverride : waveStyle.color;
         ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},${opacity})`;
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';

@@ -113,6 +113,10 @@ const STRINGS = {
         'monologue.void.weak':   '…here.',
         'monologue.void.medium': 'There was something here.',
         'monologue.void.strong': 'Something was definitely here. I just can\'t reach it.',
+        // Another Me — post-submit
+        'anotherme.post.weak':   '…something shifted, but only slightly.',
+        'anotherme.post.medium': 'The shape of it changed when you touched it.',
+        'anotherme.post.strong': 'This isn\'t the same memory anymore. That\'s not wrong.',
     },
 
     ko: {
@@ -216,6 +220,10 @@ const STRINGS = {
         'monologue.void.weak':    '…여기.',
         'monologue.void.medium':  '여기에 뭔가 있었는데.',
         'monologue.void.strong':  '분명히 있었는데. 그게 뭐였는지만 안 떠올라.',
+        // 또다른 나 — post-submit
+        'anotherme.post.weak':   '…뭔가 조금 달라졌어.',
+        'anotherme.post.medium': '네가 만지니까 모양이 바뀌었어.',
+        'anotherme.post.strong': '이건 이제 같은 기억이 아니야. 그게 틀린 건 아니야.',
     },
 };
 
