@@ -1475,11 +1475,12 @@ function _showLoginPromptAfterRecord(lang) {
 
     container.querySelector('#recordLoginBtn').addEventListener('click', async () => {
         container.classList.add('hidden');
-        container.style.display = 'none';
+        container.style.cssText = 'display:none !important;';
         // 로그인 모달 표시
         const loginModal = document.getElementById('loginModal');
         if (loginModal) {
             loginModal.classList.add('active');
+            loginModal.style.cssText = 'display:flex !important;z-index:2100 !important;';
             // 로그인 성공 후 pending save 실행
             const handler = async () => {
                 document.removeEventListener('tem:login-success', handler);
