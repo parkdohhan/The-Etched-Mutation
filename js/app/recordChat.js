@@ -93,7 +93,9 @@ let containerEl = null;
 let inputEl = null;
 let sendBtn = null;
 let voidBtn = null;
+let cutSceneBtn = null;
 let aiTextEl = null;
+let echoLayerEl = null;
 let waveCanvas = null;
 let waveCtx = null;
 let waveAnimId = null;
@@ -101,6 +103,11 @@ let onCompleteCallback = null;
 let onCancelCallback = null;
 let isCrisisBlocked = false;
 let typingTimer = null;
+
+// Scene-cut state
+let currentSceneFragments = [];  // user messages for current scene
+let completedScenes = [];        // finalized scene texts
+let sceneConversationHistory = []; // full conversation for AI context
 
 // Wave state — drives the ghost waveform
 let waveState = {
@@ -125,6 +132,8 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
   container.innerHTML = `
     <div class="rec-ghost">
       <button class="rec-back" id="recordBackBtn">&larr;</button>
+      <div class="rec-scene-indicator" id="recSceneIndicator" style="position:absolute;top:16px;right:20px;font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:3px;color:rgba(196,168,130,0.4);text-transform:uppercase;">Scene 1</div>
+      <div class="rec-echo-layer" id="recEchoLayer" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1;"></div>
       <div class="rec-wave-area">
         <canvas id="recWaveCanvas"></canvas>
       </div>
@@ -133,6 +142,9 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
         <button class="rec-void-btn" id="recordVoidBtn" title="${lang === 'en' ? "I don't want to say" : '말하고 싶지 않아'}">[...]</button>
         <input type="text" id="recordInput" placeholder="${lang === 'en' ? 'Tell me here...' : '여기에 이야기해...'}" autocomplete="off" />
         <button class="rec-send-btn" id="recordSendBtn">&uarr;</button>
+      </div>
+      <div class="rec-cut-row" id="recCutRow" style="text-align:center;margin-top:8px;opacity:0;transition:opacity 0.6s;">
+        <button class="rec-cut-btn" id="recordCutBtn" style="background:none;border:1px solid rgba(196,168,130,0.2);color:rgba(196,168,130,0.5);font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;padding:6px 20px;cursor:pointer;transition:all 0.3s;">${lang === 'en' ? '— cut this scene —' : '— 이 장면은 여기까지 —'}</button>
       </div>
       <div class="rec-crisis-overlay hidden" id="recordCrisisOverlay"></div>
       <div class="rec-safety hidden" id="recSafety"></div>
@@ -143,8 +155,15 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
   inputEl = container.querySelector('#recordInput');
   sendBtn = container.querySelector('#recordSendBtn');
   voidBtn = container.querySelector('#recordVoidBtn');
+  cutSceneBtn = container.querySelector('#recordCutBtn');
+  echoLayerEl = container.querySelector('#recEchoLayer');
   waveCanvas = container.querySelector('#recWaveCanvas');
   waveCtx = waveCanvas.getContext('2d');
+
+  // Reset scene state
+  currentSceneFragments = [];
+  completedScenes = [];
+  sceneConversationHistory = [];
 
   // Events
   sendBtn.addEventListener('click', handleSend);
@@ -152,6 +171,7 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   });
   voidBtn.addEventListener('click', handleVoid);
+  cutSceneBtn.addEventListener('click', handleCutScene);
   container.querySelector('#recordBackBtn').addEventListener('click', () => {
     if (onCancelCallback) onCancelCallback();
   });
@@ -452,6 +472,17 @@ function handleSend() {
 
   inputEl.value = '';
   conversationHistory.push({ role: 'user', content: text });
+  currentSceneFragments.push(text);
+
+  // Float echo words from user input
+  floatEchoWords(text);
+
+  // Show cut button after first input
+  const cutRow = containerEl.querySelector('#recCutRow');
+  if (cutRow && currentSceneFragments.length >= 1) {
+    cutRow.style.opacity = '1';
+  }
+
   requestAIMessage();
 }
 
@@ -506,6 +537,215 @@ function handleCrisis(blockedText) {
   });
 }
 
+// ===== Echo Float — 잔향 단어 떠다니기 =====
+function floatEchoWords(text) {
+  if (!echoLayerEl) return;
+  // Extract meaningful words (2+ chars, skip common particles)
+  const stopWords = new Set(['이', '그', '저', '는', '은', '을', '를', '에', '의', '도', '가', 'the', 'a', 'an', 'is', 'was', 'to', 'in', 'it', 'my', 'i', 'and', 'but']);
+  const words = text.split(/[\s,.\-!?;:'"]+/).filter(w => w.length >= 2 && !stopWords.has(w.toLowerCase()));
+  // Pick up to 3 words
+  const picks = words.length <= 3 ? words : words.sort(() => Math.random() - 0.5).slice(0, 3);
+
+  picks.forEach((word, idx) => {
+    const el = document.createElement('div');
+    el.textContent = word;
+    el.style.cssText = `
+      position:absolute;
+      font-family:'Cormorant Garamond',serif;
+      font-size:${11 + Math.random() * 6}px;
+      color:rgba(196,168,130,${0.15 + Math.random() * 0.2});
+      letter-spacing:2px;
+      left:${10 + Math.random() * 80}%;
+      top:${20 + Math.random() * 50}%;
+      transform:translate(-50%,-50%);
+      opacity:0;
+      transition:opacity 1.5s ease, transform 8s ease;
+      pointer-events:none;
+    `;
+    echoLayerEl.appendChild(el);
+
+    // Animate in
+    setTimeout(() => {
+      el.style.opacity = '1';
+      el.style.transform = `translate(-50%,-50%) translateY(${-15 - Math.random() * 25}px)`;
+    }, 100 + idx * 300);
+
+    // Fade out and remove
+    setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 2000);
+    }, 6000 + Math.random() * 3000);
+  });
+}
+
+// ===== Scene Cut — 장면 끊기 =====
+async function handleCutScene() {
+  if (isWaitingForAI || currentSceneFragments.length === 0) return;
+
+  setInputEnabled(false);
+  if (cutSceneBtn) cutSceneBtn.disabled = true;
+
+  const sceneNum = completedScenes.length + 1;
+  showAIText(currentLang === 'en' ? 'Shaping this scene...' : '이 장면을 형태로 만드는 중...', null);
+
+  try {
+    const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
+    const fragmentsText = currentSceneFragments.join('\n');
+
+    const systemPrompt = currentLang === 'en'
+      ? `The user described fragments of a single memory scene. Combine them into one coherent scene text.
+Rules: First person ("I"). Do NOT interpret or add emotions. Only restructure. Keep original words. 1-4 sentences. Dry, restrained. Output ONLY the scene text.`
+      : `사용자가 하나의 기억 장면에 대한 파편들을 말했습니다. 하나의 장면 텍스트로 합쳐주세요.
+규칙: 1인칭("나는"). 해석/감정 추가 금지. 재구성만. 원래 말 유지. 1~4문장. 건조하고 담담하게. 장면 텍스트만 출력.`;
+
+    // Use collect-memory Edge Function with custom systemPrompt for scene shaping
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/collect-memory`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        conversation: [{ role: 'user', content: fragmentsText }],
+        systemPrompt: systemPrompt,
+        lang: currentLang,
+      }),
+    });
+
+    let sceneText;
+    if (!response.ok) {
+      sceneText = currentSceneFragments.join('. ');
+    } else {
+      // Parse SSE stream for the final reply
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullReply = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'chunk') fullReply += data.text;
+            if (data.type === 'done') fullReply = data.reply || fullReply;
+          } catch (_) {}
+        }
+      }
+      sceneText = fullReply.replace(/\[SCENE_COMPLETE\][\s\S]*/, '').trim() || currentSceneFragments.join('. ');
+    }
+
+    completedScenes.push({
+      text: sceneText,
+      fragments: [...currentSceneFragments],
+      sceneType: completedScenes.length === 0 ? 'normal' : 'branch',
+    });
+
+    showSceneCutUI(sceneText, sceneNum);
+
+  } catch (e) {
+    console.error('[RecordChat] scene cut error:', e);
+    const sceneText = currentSceneFragments.join('. ');
+    completedScenes.push({
+      text: sceneText,
+      fragments: [...currentSceneFragments],
+      sceneType: completedScenes.length === 0 ? 'normal' : 'branch',
+    });
+    showSceneCutUI(sceneText, completedScenes.length);
+  }
+}
+
+function showSceneCutUI(sceneText, sceneNum) {
+  // Hide input row and cut button
+  const inputRow = containerEl.querySelector('#recInputRow');
+  const cutRow = containerEl.querySelector('#recCutRow');
+  if (inputRow) inputRow.style.display = 'none';
+  if (cutRow) cutRow.style.display = 'none';
+
+  // Show scene text + choice buttons
+  showAIText(sceneText, () => {
+    // Create choice buttons below AI text
+    const choiceDiv = document.createElement('div');
+    choiceDiv.id = 'recSceneChoice';
+    choiceDiv.style.cssText = 'text-align:center;margin-top:1.5rem;opacity:0;transition:opacity 0.8s;';
+    choiceDiv.innerHTML = `
+      <div style="font-size:9px;letter-spacing:3px;color:rgba(196,168,130,0.3);margin-bottom:1rem;text-transform:uppercase;">Scene ${sceneNum}</div>
+      <button id="recNextSceneBtn" style="margin:0 8px;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:2px;padding:8px 24px;cursor:pointer;transition:all 0.3s;">
+        ${currentLang === 'en' ? 'Next scene' : '다음 장면으로'}
+      </button>
+      <button id="recSealBtn" style="margin:0 8px;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:2px;padding:8px 24px;cursor:pointer;transition:all 0.3s;">
+        ${currentLang === 'en' ? 'Seal this memory' : '이 기억을 봉인'}
+      </button>
+    `;
+    aiTextEl.parentElement.appendChild(choiceDiv);
+    requestAnimationFrame(() => { choiceDiv.style.opacity = '1'; });
+
+    choiceDiv.querySelector('#recNextSceneBtn').addEventListener('click', startNextScene);
+    choiceDiv.querySelector('#recSealBtn').addEventListener('click', sealMemory);
+  });
+}
+
+function startNextScene() {
+  // Remove choice UI
+  const choiceDiv = containerEl.querySelector('#recSceneChoice');
+  if (choiceDiv) choiceDiv.remove();
+
+  // Reset for new scene
+  currentSceneFragments = [];
+  const inputRow = containerEl.querySelector('#recInputRow');
+  const cutRow = containerEl.querySelector('#recCutRow');
+  if (inputRow) inputRow.style.display = '';
+  if (cutRow) { cutRow.style.display = ''; cutRow.style.opacity = '0'; }
+
+  // Update scene indicator
+  const indicator = containerEl.querySelector('#recSceneIndicator');
+  if (indicator) indicator.textContent = `Scene ${completedScenes.length + 1}`;
+
+  // Clear echo layer
+  if (echoLayerEl) echoLayerEl.innerHTML = '';
+
+  setInputEnabled(true);
+  if (cutSceneBtn) cutSceneBtn.disabled = false;
+
+  // AI asks about next scene
+  const nextQ = currentLang === 'en'
+    ? "What comes next? What do you see after that?"
+    : "그 다음엔? 그 뒤에 뭐가 보여?";
+  showAIText(nextQ, () => {
+    conversationHistory.push({ role: 'assistant', content: nextQ });
+    if (inputEl) inputEl.focus();
+  });
+}
+
+function sealMemory() {
+  // Mark last scene as ending
+  if (completedScenes.length > 0) {
+    completedScenes[completedScenes.length - 1].sceneType = 'ending';
+  }
+
+  // Remove choice UI
+  const choiceDiv = containerEl.querySelector('#recSceneChoice');
+  if (choiceDiv) choiceDiv.remove();
+
+  // Build extractedScene data in the format that confession.js expects
+  // We need situation, sensory_anchor, emotion, reason from conversation
+  // For now, trigger the existing onComplete with the scene data
+  const extractedSceneData = {
+    scenes: completedScenes,
+    _isPhaseB: true, // flag so confession.js knows this is pre-cut scenes
+  };
+
+  if (onCompleteCallback) {
+    onCompleteCallback(extractedSceneData);
+  }
+}
+
 // ===== Exports =====
 export function getConversationHistory() { return conversationHistory; }
 export function getVoidCount() { return voidCount; }
+export function getCompletedScenes() { return completedScenes; }

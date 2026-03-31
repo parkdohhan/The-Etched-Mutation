@@ -1198,14 +1198,61 @@ async function handleRecordComplete(extractedScene, lang) {
     const burialContainer = document.getElementById('burialContainer');
     if (!burialContainer) return;
 
-    // Phase B: 로딩 화면
     const recordContainer = document.getElementById('recordChatContainer');
     if (recordContainer) { recordContainer.classList.add('hidden'); recordContainer.style.display = 'none'; }
     burialContainer.classList.remove('hidden');
     burialContainer.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
+
+    // ─── Phase B path: user already cut scenes manually ───
+    if (extractedScene._isPhaseB && extractedScene.scenes) {
+        const userScenes = extractedScene.scenes;
+        // Build sceneData in the format saveRecordMemory expects
+        const sceneData = {
+            scenes: userScenes.map((s, i) => ({
+                order: i + 1,
+                sceneType: s.sceneType || 'branch',
+                text: s.text,
+                emotionCue: '',
+                vectorWeight: i === 0 ? 0 : i === userScenes.length - 1 ? 0.4 : (0.3 + 0.7 * i / Math.max(userScenes.length - 2, 1)),
+            })),
+            originalVector: null, // will be null — no AI emotion extraction in this path
+        };
+
+        // Build a minimal conversationData for title
+        const allFragments = userScenes.flatMap(s => s.fragments || []);
+        const conversationData = {
+            situation: allFragments.slice(0, 3).join('. '),
+            sensory_anchor: null,
+        };
+
+        showSceneReview(burialContainer, {
+            scenes: sceneData.scenes,
+            originalVector: sceneData.originalVector,
+            lang,
+            onConfirm: async () => {
+                const memoryId = await saveRecordMemory(conversationData, sceneData, lang);
+                showBurialAnimation(burialContainer, {
+                    originalVector: sceneData.originalVector,
+                    lang,
+                    onArchive: () => {
+                        burialContainer.classList.add('hidden');
+                        burialContainer.style.display = 'none';
+                        window.enterArchive();
+                    }
+                });
+            },
+            onRetry: () => {
+                burialContainer.classList.add('hidden');
+                burialContainer.style.display = 'none';
+                startBeginner();
+            }
+        });
+        return;
+    }
+
+    // ─── Original path: AI generates scenes from conversation data ───
     showLoadingScreen(burialContainer, lang);
 
-    // generate-scene-from-conversation 호출
     try {
         const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
         const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-scene-from-conversation`, {
@@ -1220,16 +1267,12 @@ async function handleRecordComplete(extractedScene, lang) {
         if (!response.ok) throw new Error('Scene generation failed');
         const sceneData = await response.json();
 
-        // Phase C: 장면 확인
         showSceneReview(burialContainer, {
             scenes: sceneData.scenes,
             originalVector: sceneData.originalVector,
             lang,
             onConfirm: async () => {
-                // Supabase에 저장
                 const memoryId = await saveRecordMemory(extractedScene, sceneData, lang);
-
-                // Phase D: 매장 연출
                 showBurialAnimation(burialContainer, {
                     originalVector: sceneData.originalVector,
                     lang,
@@ -1243,7 +1286,7 @@ async function handleRecordComplete(extractedScene, lang) {
             onRetry: () => {
                 burialContainer.classList.add('hidden');
                 burialContainer.style.display = 'none';
-                startBeginner(); // 다시 대화 시작
+                startBeginner();
             }
         });
     } catch (e) {
