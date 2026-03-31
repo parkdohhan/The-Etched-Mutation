@@ -1324,10 +1324,23 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
 
         // appStore에 userId가 없으면 Supabase auth에서 직접 가져오기
         if (!userId) {
-            const { data: { user } } = await supabase.auth.getUser();
-            userId = user?.id || null;
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                userId = session?.user?.id || null;
+            } catch (_) {}
         }
-        if (!userId) throw new Error('Login required to save memory');
+        if (!userId) {
+            // 마지막 시도: getUser
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                userId = user?.id || null;
+            } catch (_) {}
+        }
+        if (!userId) {
+            console.error('[Record] No userId found. appStore:', state.currentUser, 'supabase client:', !!supabase);
+            throw new Error('Login required to save memory');
+        }
+        console.log('[Record] Saving with userId:', userId);
 
         // memories 테이블에 저장
         const title = conversationData.situation
