@@ -1237,7 +1237,7 @@ async function handleRecordComplete(extractedScene, lang) {
                     onArchive: () => {
                         burialContainer.classList.add('hidden');
                         burialContainer.style.display = 'none';
-                        window.enterArchive();
+                        _showRecordStrata(memoryId, lang);
                     }
                 });
             },
@@ -1279,7 +1279,7 @@ async function handleRecordComplete(extractedScene, lang) {
                     onArchive: () => {
                         burialContainer.classList.add('hidden');
                         burialContainer.style.display = 'none';
-                        window.enterArchive();
+                        _showRecordStrata(memoryId, lang);
                     }
                 });
             },
@@ -1353,6 +1353,55 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
         showNotification(lang === 'en' ? 'Failed to save memory.' : '기억 저장에 실패했습니다.');
         return null;
     }
+}
+
+/**
+ * Record 완료 후 strata 표시 — "첫 번째 기억이 여기 묻혔다"
+ * strata 데이터가 없거나 실패 시 archive로 fallback
+ */
+function _showRecordStrata(memoryId, lang) {
+    if (!memoryId || typeof window.showStrataView !== 'function') {
+        window.enterArchive();
+        return;
+    }
+
+    // strata close 시 archive로 이동하도록 onClose 설정
+    window.showStrataView(memoryId, null, () => {
+        window.enterArchive();
+    });
+
+    // strata HUD에 봉인 메시지 오버레이
+    setTimeout(() => {
+        const viewEl = document.getElementById('strataView');
+        if (!viewEl || viewEl.style.display === 'none') {
+            // strata 로드 실패 — fallback
+            window.enterArchive();
+            return;
+        }
+
+        // 봉인 내러티브 오버레이
+        const narrative = document.createElement('div');
+        narrative.id = 'recordStrataOverlay';
+        narrative.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2800;text-align:center;pointer-events:none;opacity:0;transition:opacity 2s ease;';
+        narrative.innerHTML = `
+            <div style="font-family:'Cormorant Garamond',serif;font-size:16px;color:rgba(196,168,130,0.8);letter-spacing:3px;margin-bottom:12px;">
+                ${lang === 'en' ? 'The memory is buried here.' : '기억이 여기 묻혔다.'}
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:11px;color:rgba(196,168,130,0.4);letter-spacing:2px;">
+                ${lang === 'en' ? 'Your first stratum.' : '당신이 남긴 첫 번째 지층.'}
+            </div>
+        `;
+        viewEl.appendChild(narrative);
+
+        // Fade in
+        requestAnimationFrame(() => { narrative.style.opacity = '1'; });
+
+        // Fade out after 4 seconds
+        setTimeout(() => {
+            narrative.style.opacity = '0';
+            setTimeout(() => narrative.remove(), 2000);
+        }, 4000);
+    }, 1500);
 }
 
 function endRecordChat() {
