@@ -1203,50 +1203,66 @@ async function handleRecordComplete(extractedScene, lang) {
     burialContainer.classList.remove('hidden');
     burialContainer.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
 
-    // ─── Phase B path: user already cut scenes manually ───
-    if (extractedScene._isPhaseB && extractedScene.scenes) {
-        const userScenes = extractedScene.scenes;
-        // Build sceneData in the format saveRecordMemory expects
-        const sceneData = {
-            scenes: userScenes.map((s, i) => ({
-                order: i + 1,
-                sceneType: s.sceneType || 'branch',
-                text: s.text,
-                emotionCue: '',
-                vectorWeight: i === 0 ? 0 : i === userScenes.length - 1 ? 0.4 : (0.3 + 0.7 * i / Math.max(userScenes.length - 2, 1)),
-            })),
-            originalVector: null, // will be null — no AI emotion extraction in this path
-        };
+    // ─── Phase B path: user cut scenes manually → AI reconstructs all ───
+    if (extractedScene._isPhaseB && extractedScene.rawScenes) {
+        showLoadingScreen(burialContainer, lang);
 
-        // Build a minimal conversationData for title
-        const allFragments = userScenes.flatMap(s => s.fragments || []);
-        const conversationData = {
-            situation: allFragments.slice(0, 3).join('. '),
-            sensory_anchor: null,
-        };
+        try {
+            const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
+            const rawScenes = extractedScene.rawScenes;
 
-        showSceneReview(burialContainer, {
-            scenes: sceneData.scenes,
-            originalVector: sceneData.originalVector,
-            lang,
-            onConfirm: async () => {
-                const memoryId = await saveRecordMemory(conversationData, sceneData, lang);
-                showBurialAnimation(burialContainer, {
-                    originalVector: sceneData.originalVector,
+            // Build situation from all fragments for the AI prompt
+            const allFragments = rawScenes.flatMap(s => s.fragments || []);
+            const situation = allFragments.join('. ');
+
+            // Build conversationData in the format generate-scene-from-conversation expects
+            // Extract a rough emotion from conversation context
+            const conversationData = {
+                sensory_anchor: { modality: 'visual', content: allFragments[0] || '' },
+                situation: situation,
+                emotion: { primary: 'sadness', intensity: 0.5 },
+                reason: { attribution: 'fate_blame', core_fear: 'loss', target: 'situation', is_void: false },
+            };
+
+            // Tell the Edge Function how many scenes the user wants
+            // by providing the scene structure in the request
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-scene-from-conversation`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    conversationData: conversationData,
                     lang,
-                    onArchive: () => {
-                        burialContainer.classList.add('hidden');
-                        burialContainer.style.display = 'none';
-                        _showRecordStrata(memoryId, lang);
-                    }
-                });
-            },
-            onRetry: () => {
-                burialContainer.classList.add('hidden');
-                burialContainer.style.display = 'none';
-                startBeginner();
-            }
-        });
+                    sceneCount: rawScenes.length,
+                }),
+            });
+
+            if (!response.ok) throw new Error('Scene reconstruction failed');
+            const sceneData = await response.json();
+
+            // Show scene review with edit button
+            _showPhaseBReview(burialContainer, sceneData, conversationData, lang);
+
+        } catch (e) {
+            console.error('[Record] Phase B scene reconstruction error:', e);
+            // Fallback: use raw fragments as scene text
+            const rawScenes = extractedScene.rawScenes;
+            const allFragments = rawScenes.flatMap(s => s.fragments || []);
+            const sceneData = {
+                scenes: rawScenes.map((s, i) => ({
+                    order: i + 1,
+                    sceneType: s.sceneType || 'branch',
+                    text: (s.fragments || []).join('. '),
+                    emotionCue: '',
+                    vectorWeight: 0,
+                })),
+                originalVector: null,
+            };
+            const conversationData = { situation: allFragments.slice(0, 3).join('. '), sensory_anchor: null };
+            _showPhaseBReview(burialContainer, sceneData, conversationData, lang);
+        }
         return;
     }
 
@@ -1353,6 +1369,42 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
         showNotification(lang === 'en' ? 'Failed to save memory.' : '기억 저장에 실패했습니다.');
         return null;
     }
+}
+
+/**
+ * Phase B scene review — with edit button (placeholder)
+ */
+async function _showPhaseBReview(container, sceneData, conversationData, lang) {
+    const { showSceneReview, showBurialAnimation } = await import('./burialAnimation.js');
+
+    showSceneReview(container, {
+        scenes: sceneData.scenes,
+        originalVector: sceneData.originalVector,
+        lang,
+        showEditButton: true,
+        onConfirm: async () => {
+            const memoryId = await saveRecordMemory(conversationData, sceneData, lang);
+            showBurialAnimation(container, {
+                originalVector: sceneData.originalVector,
+                lang,
+                onArchive: () => {
+                    container.classList.add('hidden');
+                    container.style.display = 'none';
+                    _showRecordStrata(memoryId, lang);
+                }
+            });
+        },
+        onEdit: (sceneIndex) => {
+            // Placeholder — edit functionality TBD
+            console.log('[Record] Edit scene requested:', sceneIndex);
+            showNotification(lang === 'en' ? 'Scene editing coming soon.' : '장면 고치기 기능 준비 중.');
+        },
+        onRetry: () => {
+            container.classList.add('hidden');
+            container.style.display = 'none';
+            startBeginner();
+        }
+    });
 }
 
 /**

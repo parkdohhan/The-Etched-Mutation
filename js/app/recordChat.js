@@ -183,8 +183,14 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
   // Start ghost wave
   startWaveLoop();
 
-  // Request first AI message
-  requestAIMessage();
+  // Show first question immediately (no API call needed — saves 2-3 seconds)
+  const firstQ = currentLang === 'en'
+    ? 'What comes to mind first?'
+    : '제일 먼저 떠오르는 게 뭐야?';
+  showAIText(firstQ, () => {
+    conversationHistory.push({ role: 'assistant', content: firstQ });
+    if (inputEl) inputEl.focus();
+  });
 }
 
 export function destroyRecordChat() {
@@ -578,98 +584,34 @@ function floatEchoWords(text) {
   });
 }
 
-// ===== Scene Cut — 장면 끊기 =====
-async function handleCutScene() {
+// ===== Scene Cut — 장면 끊기 (파편만 저장, AI 호출 없음) =====
+function handleCutScene() {
   if (isWaitingForAI || currentSceneFragments.length === 0) return;
 
-  setInputEnabled(false);
-  if (cutSceneBtn) cutSceneBtn.disabled = true;
-
   const sceneNum = completedScenes.length + 1;
-  showAIText(currentLang === 'en' ? 'Shaping this scene...' : '이 장면을 형태로 만드는 중...', null);
 
-  try {
-    const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
-    const fragmentsText = currentSceneFragments.join('\n');
+  // Save fragments for this scene (no AI call — just store the raw input)
+  completedScenes.push({
+    fragments: [...currentSceneFragments],
+    sceneType: completedScenes.length === 0 ? 'normal' : 'branch',
+  });
 
-    const systemPrompt = currentLang === 'en'
-      ? `The user described fragments of a single memory scene. Combine them into one coherent scene text.
-Rules: First person ("I"). Do NOT interpret or add emotions. Only restructure. Keep original words. 1-4 sentences. Dry, restrained. Output ONLY the scene text.`
-      : `사용자가 하나의 기억 장면에 대한 파편들을 말했습니다. 하나의 장면 텍스트로 합쳐주세요.
-규칙: 1인칭("나는"). 해석/감정 추가 금지. 재구성만. 원래 말 유지. 1~4문장. 건조하고 담담하게. 장면 텍스트만 출력.`;
-
-    // Use collect-memory Edge Function with custom systemPrompt for scene shaping
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/collect-memory`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        conversation: [{ role: 'user', content: fragmentsText }],
-        systemPrompt: systemPrompt,
-        lang: currentLang,
-      }),
-    });
-
-    let sceneText;
-    if (!response.ok) {
-      sceneText = currentSceneFragments.join('. ');
-    } else {
-      // Parse SSE stream for the final reply
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullReply = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'chunk') fullReply += data.text;
-            if (data.type === 'done') fullReply = data.reply || fullReply;
-          } catch (_) {}
-        }
-      }
-      sceneText = fullReply.replace(/\[SCENE_COMPLETE\][\s\S]*/, '').trim() || currentSceneFragments.join('. ');
-    }
-
-    completedScenes.push({
-      text: sceneText,
-      fragments: [...currentSceneFragments],
-      sceneType: completedScenes.length === 0 ? 'normal' : 'branch',
-    });
-
-    showSceneCutUI(sceneText, sceneNum);
-
-  } catch (e) {
-    console.error('[RecordChat] scene cut error:', e);
-    const sceneText = currentSceneFragments.join('. ');
-    completedScenes.push({
-      text: sceneText,
-      fragments: [...currentSceneFragments],
-      sceneType: completedScenes.length === 0 ? 'normal' : 'branch',
-    });
-    showSceneCutUI(sceneText, completedScenes.length);
-  }
+  // Show brief confirmation + choice
+  showSceneCutUI(sceneNum);
 }
 
-function showSceneCutUI(sceneText, sceneNum) {
-  // Hide input row and cut button
+function showSceneCutUI(sceneNum) {
   const inputRow = containerEl.querySelector('#recInputRow');
   const cutRow = containerEl.querySelector('#recCutRow');
   if (inputRow) inputRow.style.display = 'none';
   if (cutRow) cutRow.style.display = 'none';
 
-  // Show scene text + choice buttons
-  showAIText(sceneText, () => {
-    // Create choice buttons below AI text
+  const summary = currentSceneFragments.join(' — ');
+  const preview = summary.length > 60 ? summary.substring(0, 60) + '…' : summary;
+
+  showAIText(currentLang === 'en'
+    ? `Scene ${sceneNum} held: "${preview}"`
+    : `장면 ${sceneNum} 담김: "${preview}"`, () => {
     const choiceDiv = document.createElement('div');
     choiceDiv.id = 'recSceneChoice';
     choiceDiv.style.cssText = 'text-align:center;margin-top:1.5rem;opacity:0;transition:opacity 0.8s;';
@@ -691,28 +633,23 @@ function showSceneCutUI(sceneText, sceneNum) {
 }
 
 function startNextScene() {
-  // Remove choice UI
   const choiceDiv = containerEl.querySelector('#recSceneChoice');
   if (choiceDiv) choiceDiv.remove();
 
-  // Reset for new scene
   currentSceneFragments = [];
   const inputRow = containerEl.querySelector('#recInputRow');
   const cutRow = containerEl.querySelector('#recCutRow');
   if (inputRow) inputRow.style.display = '';
   if (cutRow) { cutRow.style.display = ''; cutRow.style.opacity = '0'; }
 
-  // Update scene indicator
   const indicator = containerEl.querySelector('#recSceneIndicator');
   if (indicator) indicator.textContent = `Scene ${completedScenes.length + 1}`;
 
-  // Clear echo layer
   if (echoLayerEl) echoLayerEl.innerHTML = '';
 
   setInputEnabled(true);
   if (cutSceneBtn) cutSceneBtn.disabled = false;
 
-  // AI asks about next scene
   const nextQ = currentLang === 'en'
     ? "What comes next? What do you see after that?"
     : "그 다음엔? 그 뒤에 뭐가 보여?";
@@ -723,21 +660,19 @@ function startNextScene() {
 }
 
 function sealMemory() {
-  // Mark last scene as ending
   if (completedScenes.length > 0) {
     completedScenes[completedScenes.length - 1].sceneType = 'ending';
   }
 
-  // Remove choice UI
   const choiceDiv = containerEl.querySelector('#recSceneChoice');
   if (choiceDiv) choiceDiv.remove();
 
-  // Build extractedScene data in the format that confession.js expects
-  // We need situation, sensory_anchor, emotion, reason from conversation
-  // For now, trigger the existing onComplete with the scene data
+  // Pass raw scene fragments + full conversation to confession.js
+  // confession.js will call generate-scene-from-conversation to reconstruct all scenes
   const extractedSceneData = {
-    scenes: completedScenes,
-    _isPhaseB: true, // flag so confession.js knows this is pre-cut scenes
+    _isPhaseB: true,
+    rawScenes: completedScenes,
+    conversation: conversationHistory,
   };
 
   if (onCompleteCallback) {
