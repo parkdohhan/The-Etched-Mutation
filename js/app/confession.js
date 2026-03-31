@@ -1320,7 +1320,14 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
         if (!supabase) throw new Error('Supabase not initialized');
 
         const state = appStore.getState();
-        const userId = state.currentUser?.id;
+        let userId = state.currentUser?.id;
+
+        // appStore에 userId가 없으면 Supabase auth에서 직접 가져오기
+        if (!userId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            userId = user?.id || null;
+        }
+        if (!userId) throw new Error('Login required to save memory');
 
         // memories 테이블에 저장
         const title = conversationData.situation
