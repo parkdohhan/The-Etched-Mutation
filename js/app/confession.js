@@ -1314,35 +1314,38 @@ async function handleRecordComplete(extractedScene, lang) {
     }
 }
 
+// Pending save data for anonymous users (saved after login)
+let _pendingSave = null;
+
+async function _resolveUserId() {
+    const state = appStore.getState();
+    if (state.currentUser?.id) return state.currentUser.id;
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) return session.user.id;
+    } catch (_) {}
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) return user.id;
+    } catch (_) {}
+    return null;
+}
+
 async function saveRecordMemory(conversationData, sceneData, lang) {
+    const userId = await _resolveUserId();
+
+    if (!userId) {
+        // 비로그인 — 데이터 임시 보관, 나중에 로그인 후 저장
+        console.log('[Record] No login — deferring save');
+        _pendingSave = { conversationData, sceneData, lang };
+        return null; // memoryId 없이 진행 (strata 스킵, 매장 연출은 진행)
+    }
+
     try {
         const supabase = getSupabaseClient();
-        if (!supabase) throw new Error('Supabase not initialized');
 
-        const state = appStore.getState();
-        let userId = state.currentUser?.id;
-
-        // appStore에 userId가 없으면 Supabase auth에서 직접 가져오기
-        if (!userId) {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                userId = session?.user?.id || null;
-            } catch (_) {}
-        }
-        if (!userId) {
-            // 마지막 시도: getUser
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                userId = user?.id || null;
-            } catch (_) {}
-        }
-        if (!userId) {
-            console.error('[Record] No userId found. appStore:', state.currentUser, 'supabase client:', !!supabase);
-            throw new Error('Login required to save memory');
-        }
-        console.log('[Record] Saving with userId:', userId);
-
-        // memories 테이블에 저장
         const title = conversationData.situation
             ? (conversationData.situation.substring(0, 50) + (conversationData.situation.length > 50 ? '...' : ''))
             : (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억');
@@ -1354,7 +1357,7 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
                 completed_sentence: conversationData.situation || '',
                 sensory_anchor: conversationData.sensory_anchor || null,
                 status: 'Fetus',
-                curator_id: userId || null,
+                curator_id: userId,
                 original_vector: sceneData.originalVector?.base || null,
                 original_reason_vector: sceneData.originalVector?.reason_analysis || null,
                 lang: lang,
@@ -1364,7 +1367,6 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
 
         if (memError) throw memError;
 
-        // scenes 테이블에 5장면 저장
         const scenesToInsert = sceneData.scenes.map((s, i) => ({
             memory_id: memory.id,
             order_index: s.order || i + 1,
@@ -1383,12 +1385,24 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
         if (sceneError) throw sceneError;
 
         console.log('[Record] Memory saved:', memory.id);
+        _pendingSave = null;
         return memory.id;
     } catch (e) {
         console.error('[Record] Save error:', e);
-        showNotification(lang === 'en' ? 'Failed to save memory.' : '기억 저장에 실패했습니다.');
+        // 저장 실패 시에도 임시 보관
+        _pendingSave = { conversationData, sceneData, lang };
         return null;
     }
+}
+
+/**
+ * 로그인 후 보류 중인 기억 저장 시도
+ */
+export async function savePendingRecordMemory() {
+    if (!_pendingSave) return null;
+    const { conversationData, sceneData, lang } = _pendingSave;
+    const memoryId = await saveRecordMemory(conversationData, sceneData, lang);
+    return memoryId;
 }
 
 /**
@@ -1431,8 +1445,73 @@ async function _showPhaseBReview(container, sceneData, conversationData, lang) {
  * Record 완료 후 strata 표시 — "첫 번째 기억이 여기 묻혔다"
  * strata 데이터가 없거나 실패 시 archive로 fallback
  */
+/**
+ * 비로그인 Record 완료 후 — 로그인 유도 화면
+ */
+function _showLoginPromptAfterRecord(lang) {
+    const container = document.getElementById('burialContainer');
+    if (!container) { window.enterArchive(); return; }
+
+    container.classList.remove('hidden');
+    container.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;inset:0 !important;align-items:center;justify-content:center;background:#0a0a0e;';
+    container.innerHTML = `
+        <div style="text-align:center;max-width:320px;padding:2rem;">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:16px;color:rgba(196,168,130,0.8);letter-spacing:3px;margin-bottom:16px;">
+                ${lang === 'en' ? 'Your memory is shaped.' : '기억이 형태를 갖췄다.'}
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:12px;color:rgba(196,168,130,0.4);letter-spacing:2px;line-height:1.8;margin-bottom:32px;">
+                ${lang === 'en'
+                    ? 'To bury it in the strata, you need to leave a trace of yourself.'
+                    : '지층에 묻으려면, 당신의 흔적을 남겨야 한다.'}
+            </div>
+            <button id="recordLoginBtn" style="margin:0 8px;background:none;border:1px solid rgba(196,168,130,0.4);color:rgba(196,168,130,0.8);font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:2px;padding:10px 28px;cursor:pointer;transition:all 0.3s;">
+                ${lang === 'en' ? 'Sign in' : '로그인'}
+            </button>
+            <button id="recordSkipBtn" style="margin:0 8px;background:none;border:none;color:rgba(196,168,130,0.3);font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;padding:10px 16px;cursor:pointer;">
+                ${lang === 'en' ? 'Leave without saving' : '저장하지 않고 나가기'}
+            </button>
+        </div>
+    `;
+
+    container.querySelector('#recordLoginBtn').addEventListener('click', async () => {
+        container.classList.add('hidden');
+        container.style.display = 'none';
+        // 로그인 모달 표시
+        const loginModal = document.getElementById('loginModal');
+        if (loginModal) {
+            loginModal.classList.add('active');
+            // 로그인 성공 후 pending save 실행
+            const handler = async () => {
+                document.removeEventListener('tem:login-success', handler);
+                const memoryId = await savePendingRecordMemory();
+                if (memoryId) {
+                    _showRecordStrata(memoryId, lang);
+                } else {
+                    window.enterArchive();
+                }
+            };
+            document.addEventListener('tem:login-success', handler);
+        } else {
+            window.enterArchive();
+        }
+    });
+
+    container.querySelector('#recordSkipBtn').addEventListener('click', () => {
+        _pendingSave = null;
+        container.classList.add('hidden');
+        container.style.display = 'none';
+        window.enterArchive();
+    });
+}
+
 function _showRecordStrata(memoryId, lang) {
-    if (!memoryId || typeof window.showStrataView !== 'function') {
+    // 비로그인 (memoryId null) — 로그인 유도 화면
+    if (!memoryId) {
+        _showLoginPromptAfterRecord(lang);
+        return;
+    }
+
+    if (typeof window.showStrataView !== 'function') {
         window.enterArchive();
         return;
     }
@@ -1446,12 +1525,10 @@ function _showRecordStrata(memoryId, lang) {
     setTimeout(() => {
         const viewEl = document.getElementById('strataView');
         if (!viewEl || viewEl.style.display === 'none') {
-            // strata 로드 실패 — fallback
             window.enterArchive();
             return;
         }
 
-        // 봉인 내러티브 오버레이
         const narrative = document.createElement('div');
         narrative.id = 'recordStrataOverlay';
         narrative.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2800;text-align:center;pointer-events:none;opacity:0;transition:opacity 2s ease;';
