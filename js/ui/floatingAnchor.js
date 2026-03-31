@@ -149,38 +149,36 @@ class FloatingAnchor {
   }
 }
 
-let currentFloatingAnchor = null;
+let currentFloatingAnchors = [];
 
 /**
- * @param {HTMLElement} container - scene-main 엘리먼트
+ * 앵커 하나 추가 (기존 앵커 유지, 누적 생성)
+ * @param {HTMLElement} container - 바운딩 영역
  * @param {string} keyword - anchor keyword
- * @param {number} alignment - alignment
+ * @param {number} alignment - alignment 0.0~1.0
  */
 function startFloatingAnchor(container, keyword, alignment) {
-  if (currentFloatingAnchor) {
-    currentFloatingAnchor.destroy();
-    currentFloatingAnchor = null;
-  }
-
   if (!keyword || !container) return;
 
-  currentFloatingAnchor = new FloatingAnchor(container, {
+  currentFloatingAnchors.push(new FloatingAnchor(container, {
     keyword,
     alignment,
-  });
+  }));
 }
 
+/**
+ * 모든 앵커의 alignment 업데이트
+ */
 function updateFloatingAnchorAlignment(alignment) {
-  if (currentFloatingAnchor) {
-    currentFloatingAnchor.updateAlignment(alignment);
-  }
+  currentFloatingAnchors.forEach(a => a.updateAlignment(alignment));
 }
 
+/**
+ * 모든 앵커 제거
+ */
 function destroyFloatingAnchor() {
-  if (currentFloatingAnchor) {
-    currentFloatingAnchor.destroy();
-    currentFloatingAnchor = null;
-  }
+  currentFloatingAnchors.forEach(a => a.destroy());
+  currentFloatingAnchors = [];
 }
 
 window.startFloatingAnchor = startFloatingAnchor;

@@ -606,6 +606,7 @@ function showSafetyResources() {
                 `).join('')}
             </div>
             <button class="safety-close-btn">Close</button>
+            <button class="safety-return-btn" style="opacity:0;margin-top:1.5rem;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:0.9rem;padding:0.6rem 1.5rem;cursor:pointer;transition:opacity 1s ease;display:block;margin-left:auto;margin-right:auto;">돌아가기</button>
         </div>
     `;
 
@@ -614,6 +615,18 @@ function showSafetyResources() {
     popup.querySelector('.safety-close-btn').addEventListener('click', () => {
         popup.remove();
     });
+
+    // 5초 후 복귀 버튼 fade-in
+    setTimeout(() => {
+        const returnBtn = popup.querySelector('.safety-return-btn');
+        if (returnBtn) {
+            returnBtn.style.opacity = '1';
+            returnBtn.addEventListener('click', () => {
+                popup.remove();
+                if (typeof window.showMainMenu === 'function') window.showMainMenu();
+            });
+        }
+    }, 5000);
 }
 
 // NPC 대화 display (Confession용)
@@ -1087,14 +1100,36 @@ function initDoor() {
   const backBtn = document.getElementById('doorBackBtn');
   const screen = document.getElementById('doorScreen');
 
-  if (title) { title.classList.remove('visible', 'hiding'); }
-  if (subtitle) { subtitle.classList.remove('visible', 'hiding'); }
+  if (title) { title.classList.remove('visible', 'hiding'); title.textContent = 'RECORD'; }
+  if (subtitle) { subtitle.classList.remove('visible', 'hiding'); subtitle.textContent = ''; }
   if (backBtn) { backBtn.classList.remove('visible', 'hiding'); }
   if (screen) { screen.classList.remove('done'); screen.style.cursor = 'pointer'; }
 
-  setTimeout(() => { if (title) title.classList.add('visible'); }, 300);
-  setTimeout(() => { if (subtitle) subtitle.classList.add('visible'); }, 700);
-  setTimeout(() => { if (backBtn) backBtn.classList.add('visible'); }, 1200);
+  // 1단계: 문 먼저 (ASCII art는 이미 렌더됨)
+  // 2단계: +800ms 제목 등장
+  setTimeout(() => { if (title) title.classList.add('visible'); }, 800);
+
+  // 3단계: +1800ms 타이핑 모션으로 안내 텍스트
+  const _isKo = /[가-힣]/.test(document.documentElement.lang || document.title || '');
+  const _doorMsg = _isKo
+    ? '너의 기억을 묻어두려면, 이 문 안으로 들어가봐.'
+    : 'To bury your memory, step through this door.';
+  setTimeout(() => {
+    if (!subtitle) return;
+    subtitle.classList.add('visible');
+    let _ci = 0;
+    const _typeTimer = setInterval(() => {
+      if (_ci < _doorMsg.length) {
+        subtitle.textContent += _doorMsg[_ci];
+        _ci++;
+      } else {
+        clearInterval(_typeTimer);
+      }
+    }, 40);
+  }, 1800);
+
+  // 4단계: +4000ms back 버튼 (타이핑 완료 후)
+  setTimeout(() => { if (backBtn) backBtn.classList.add('visible'); }, 4000);
 
   doorPhase = 0;
   doorRaf = requestAnimationFrame(renderDoorFrame);

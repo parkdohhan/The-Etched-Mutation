@@ -14,6 +14,7 @@
   <script src="js/contamination.js"></script>
   <script src="js/shared/tem_af_strata_terrain.js"></script>
   <script src="js/ui/strataSection.js"></script>
+  <script src="js/ui/floatingAnchor.js"></script>
   <style>
     :root {
       --bg-deep: #0a0a0c;
@@ -37,20 +38,23 @@
       position: absolute; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer;
       border-radius: 50%; transition: opacity 0.5s ease, transform 0.5s ease;
     }
-    .map-pin.core { width: 12px; height: 12px; border: 1.5px solid var(--accent-memory); background: rgba(232, 228, 220, 0.95); }
-    .map-pin.core.active { box-shadow: 0 0 12px rgba(196,168,130,0.6); }
-    .map-pin.echo { width: 6px; height: 6px; background: rgba(180, 160, 200, 0.85); border: 1px solid rgba(200, 180, 220, 0.5); }
+    .map-pin.core { width: 16px; height: 16px; border: 2px solid var(--accent-memory); background: rgba(232, 228, 220, 0.95); }
+    .map-pin.core.active { box-shadow: 0 0 14px rgba(196,168,130,0.6); }
+    .map-pin.echo { width: 7px; height: 7px; background: rgba(180, 160, 200, 0.85); border: 1px solid rgba(200, 180, 220, 0.5); }
     .map-pin.bridge {
-      width: 9px; height: 9px; border: 1.3px solid #7a9a7a; background: rgba(122, 154, 122, 0.22);
-      box-shadow: 0 0 10px rgba(122,154,122,0.5);
+      width: 12px; height: 12px; border: 1.5px solid #7a9a7a; background: rgba(122, 154, 122, 0.22);
+      box-shadow: 0 0 12px rgba(122,154,122,0.5);
     }
-    .map-pin.bridge.active { box-shadow: 0 0 10px rgba(122,154,122,0.5); }
-    .map-pin.voidPin { width: 8px; height: 8px; background: transparent; border: 1px dashed rgba(200, 150, 140, 0.6); }
-    .map-pin.active { box-shadow: 0 0 14px rgba(196, 168, 130, 0.55); opacity: 1; }
-    .map-pin.current { box-shadow: 0 0 20px rgba(255, 220, 180, 0.8); }
-    .map-pin.visited { opacity: 0.72; }
+    .map-pin.bridge.active { box-shadow: 0 0 12px rgba(122,154,122,0.5); }
+    .map-pin.voidPin { width: 11px; height: 11px; background: transparent; border: 1.5px dashed rgba(200, 150, 140, 0.6); }
+    .map-pin.active { box-shadow: 0 0 16px rgba(196, 168, 130, 0.55); opacity: 1; }
+    .map-pin.current { box-shadow: 0 0 22px rgba(255, 220, 180, 0.8); }
+    /* 방문한 핀: 뚜렷한 시각 구분 — 속이 비고 테두리만 남음 */
+    .map-pin.visited { opacity: 0.6; background: transparent !important; }
+    .map-pin.visited.core { border-color: rgba(160, 150, 140, 0.5); border-style: solid; }
+    .map-pin.visited.bridge { border-color: rgba(122, 154, 122, 0.35); background: transparent; box-shadow: none; }
     .map-pin.visited::after {
-      content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; background: #888;
+      content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; background: rgba(160, 150, 140, 0.6);
       border-radius: 50%; transform: translate(-50%, -50%);
     }
     .map-pin.locked { opacity: 0.38; pointer-events: none; filter: grayscale(0.35); }
@@ -74,6 +78,60 @@
       100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     }
     @keyframes pinLock { from { opacity: 1; } to { opacity: 0.06; } }
+    /* ── 패턴별 unlock 애니메이션 ── */
+    .map-pin.unlock-bridge { animation: unlockBridge 1s ease-out forwards; }
+    @keyframes unlockBridge {
+      0% { opacity: 0; transform: translate(-50%,-50%) scale(0); box-shadow: 0 0 0 0 rgba(196,168,130,0); }
+      50% { opacity: 1; transform: translate(-50%,-50%) scale(1.3); box-shadow: 0 0 20px 4px rgba(196,168,130,0.5); }
+      100% { opacity: 1; transform: translate(-50%,-50%) scale(1); box-shadow: 0 0 12px rgba(196,168,130,0.3); }
+    }
+    .map-pin.unlock-contradiction { animation: unlockContradiction 0.8s ease-out forwards; }
+    @keyframes unlockContradiction {
+      0% { opacity: 0; transform: translate(-50%,-50%) scale(2); box-shadow: 0 0 30px 8px rgba(200,80,80,0.6); filter: brightness(2); }
+      50% { opacity: 1; transform: translate(-50%,-50%) scale(0.8); filter: brightness(1.2); }
+      100% { opacity: 1; transform: translate(-50%,-50%) scale(1); box-shadow: 0 0 12px rgba(200,80,80,0.3); filter: none; }
+    }
+    .map-pin.unlock-displacement { animation: unlockDisplacement 1s ease-out forwards; }
+    @keyframes unlockDisplacement {
+      0% { opacity: 0; transform: translate(-50%,-50%) scale(0.5); }
+      15% { opacity: 0.7; transform: translate(-44%,-56%) scale(1.1); box-shadow: 0 0 16px rgba(160,120,200,0.5); }
+      30% { transform: translate(-56%,-44%) scale(0.9); }
+      50% { transform: translate(-47%,-53%) scale(1.05); }
+      70% { transform: translate(-53%,-47%) scale(0.97); }
+      100% { opacity: 1; transform: translate(-50%,-50%) scale(1); box-shadow: 0 0 10px rgba(160,120,200,0.2); }
+    }
+    .map-pin.unlock-avoidance { animation: unlockAvoidance 2s ease-out forwards; }
+    @keyframes unlockAvoidance {
+      0% { opacity: 0; transform: translate(-50%,-50%) scale(0.8); }
+      60% { opacity: 0.2; }
+      80% { opacity: 0.5; }
+      100% { opacity: 1; transform: translate(-50%,-50%) scale(1); box-shadow: 0 0 6px rgba(196,168,130,0.15); }
+    }
+    .map-pin.unlock-echo_follow { animation: unlockEchoFollow 1s ease-out forwards; }
+    @keyframes unlockEchoFollow {
+      0% { opacity: 0; transform: translate(-50%,-50%) scale(0); box-shadow: 0 0 0 0 rgba(196,168,130,0); }
+      40% { opacity: 1; transform: translate(-50%,-50%) scale(1.4); box-shadow: 0 0 24px 6px rgba(196,168,130,0.6); }
+      100% { opacity: 1; transform: translate(-50%,-50%) scale(1); box-shadow: 0 0 12px rgba(196,168,130,0.3); }
+    }
+    /* ── 핀 호버 카드 (또다른 나의 속삭임) ── */
+    .pin-hover-card {
+      position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+      width: max-content; max-width: 160px; padding: 6px 10px;
+      font-family: 'Cormorant Garamond', serif; font-size: 0.72rem; font-style: italic;
+      line-height: 1.4; letter-spacing: 0.03em; color: rgba(200, 195, 210, 0.85);
+      background: rgba(18, 18, 26, 0.92); border: 1px solid rgba(120, 120, 140, 0.25);
+      border-radius: 4px; pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
+      white-space: normal; z-index: 20;
+    }
+    .pin-hover-card.visited-card {
+      color: rgba(160, 150, 140, 0.75); border-color: rgba(140, 130, 120, 0.3);
+    }
+    .map-pin:not(.locked):not(.echo):hover .pin-hover-card { opacity: 1; }
+    .pin-hover-card.flip-left { left: auto; right: calc(100% + 8px); }
+    .pin-hover-card .whisper-label {
+      font-size: 0.6rem; color: rgba(196, 168, 130, 0.5); letter-spacing: 0.08em; margin-bottom: 2px;
+      font-style: normal;
+    }
     .map-pin-label { position: absolute; left: 14px; top: -6px; font-size: 10px; color: rgba(200, 190, 220, 0.7); white-space: nowrap; font-style: italic; pointer-events: none; }
     .emotion-cursor {
       position: absolute; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(196, 168, 130, 0.15);
@@ -98,7 +156,8 @@
 
     #sceneMode { display: none; position: fixed; inset: 0; background: var(--bg-deep); z-index: 50; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; }
     #sceneMode.active { display: flex; opacity: 1; }
-    .wave-top { width: 100%; min-height: 140px; max-height: 220px; position: relative; overflow: hidden; flex-shrink: 0; background: var(--bg-deep); }
+    .wave-top { width: 100%; min-height: 140px; max-height: 220px; position: relative; overflow: hidden; flex-shrink: 0; background: var(--bg-deep); transition: box-shadow 0.4s ease-in; }
+    .wave-top.wave-draining { /* box-shadow set dynamically via JS */ }
     .play-alignment-header {
       display: flex; align-items: baseline; justify-content: space-between; padding: 0.55rem 1rem 0.15rem;
       border-bottom: 1px solid rgba(196, 168, 130, 0.12);
@@ -142,7 +201,9 @@
       border-top: none;
       background: #09090d;
       box-shadow: none;
+      transition: box-shadow 0.5s ease-out;
     }
+    #terrainBar.terrain-absorbing { /* box-shadow set dynamically via JS */ }
     #terrainBar.awaiting-terrain { animation: none; }
     @keyframes terrainBarGlow {
       0%, 100% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
@@ -225,6 +286,36 @@
       background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") repeat;
       background-size: 256px;
     }
+    /* ── "또다른 나" whisper ── */
+    .another-me-label {
+      display: block; font-size: 0.65rem; letter-spacing: 0.15em;
+      text-transform: uppercase; color: rgba(196,168,130,0.35);
+      margin-bottom: 0.25rem; font-family: 'Cormorant Garamond', serif; font-style: normal;
+    }
+    .another-me-whisper { animation: whisper-in 0.8s ease-out; }
+    @keyframes whisper-in {
+      0% { opacity: 0; transform: translateY(4px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── 모바일/태블릿 핀 크기 확대 ── */
+    @media (max-width: 768px) {
+      .map-pin.core { width: 22px; height: 22px; border-width: 2.5px; }
+      .map-pin.bridge { width: 16px; height: 16px; border-width: 2px; }
+      .map-pin.voidPin { width: 15px; height: 15px; border-width: 2px; }
+      .map-pin.echo { width: 9px; height: 9px; }
+      .map-pin.visited::after { width: 5px; height: 5px; }
+      .map-pin-label { font-size: 11px; left: 18px; }
+      .pin-hover-card { max-width: 140px; font-size: 0.68rem; padding: 5px 8px; }
+    }
+    @media (max-width: 480px) {
+      .map-pin.core { width: 26px; height: 26px; border-width: 3px; }
+      .map-pin.bridge { width: 20px; height: 20px; border-width: 2.5px; }
+      .map-pin.voidPin { width: 18px; height: 18px; border-width: 2.5px; }
+      .map-pin.echo { width: 10px; height: 10px; }
+      .map-pin.visited::after { width: 6px; height: 6px; }
+      .map-pin-label { font-size: 12px; left: 22px; }
+    }
   </style>
 </head>
 <body>
@@ -237,6 +328,7 @@
   <div id="mapMode">
     <div class="map-canvas-area" id="mapCanvasArea">
       <canvas id="contourCanvas"></canvas>
+      <svg id="mapTraceLayer" style="position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible;"></svg>
       <div class="map-pins-layer" id="mapPinsLayer"></div>
       <div class="emotion-cursor" id="emotionCursor" style="display:none;"></div>
     </div>
@@ -305,6 +397,17 @@
     <button id="backToMenu" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:120;background:transparent;border:1px solid rgba(196,168,130,0.18);color:rgba(196,168,130,0.85);padding:12px 32px;font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:3px;cursor:pointer;transition:all 0.3s;display:none;">Return to Menu</button>
   </div>
 
+  <!-- 로그인 안내 모달 (strata 퇴장 시) -->
+  <div id="strataExitModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(10,10,14,0.85);backdrop-filter:blur(6px);justify-content:center;align-items:center;">
+    <div style="text-align:center;max-width:340px;padding:2rem;">
+      <p id="strataExitMsg" style="font-family:'Cormorant Garamond',serif;font-size:1.05rem;line-height:1.8;color:rgba(196,168,130,0.9);margin-bottom:1.5rem;letter-spacing:0.03em;"></p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button id="strataExitLogin" style="background:rgba(100,70,130,0.45);border:1px solid rgba(210,190,255,0.4);color:rgba(248,240,255,0.95);padding:10px 28px;font-family:'Cormorant Garamond',serif;font-size:0.9rem;letter-spacing:2px;cursor:pointer;border-radius:4px;transition:all 0.3s;"></button>
+        <button id="strataExitSkip" style="background:transparent;border:1px solid rgba(196,168,130,0.25);color:rgba(196,168,130,0.7);padding:10px 28px;font-family:'Cormorant Garamond',serif;font-size:0.9rem;letter-spacing:2px;cursor:pointer;border-radius:4px;transition:all 0.3s;"></button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
   /* ========== PLAY-TEST BUNDLE ========== */
   import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/lib/config.js';
@@ -317,10 +420,15 @@
   const I18N = {
     en: {
       corePrompt: 'What came to mind reading this?',
+      corePromptPhase0: 'Reading this, what do you feel?',
+      corePromptPhase1: 'What does this moment remind you of?',
+      corePromptPhase2: 'What were you feeling then?',
       corePlaceholder: 'Write freely…',
+      corePlaceholderPhase0: 'Write what comes to mind…',
       coreSubmit: 'Submit',
       coreLoading: 'Analyzing...',
       coreError: 'Error',
+      anotherMeIntro: 'This is someone else\'s memory. Just feel what comes.',
       bridgePrompt: 'What do you feel from this fragment? (1–2)',
       bridgeConfirm: 'Confirm',
       submitBtn: 'Submit',
@@ -337,6 +445,12 @@
       mapStatus: (cores, pollution) => `Explored: ${cores} cores | Pollution: ${pollution}%`,
       exploreTerrain: 'Explore the terrain',
       terrainHintAlign: () => 'tap terrain to return to the map',
+      analysisDone: 'Analysis complete. Tap the terrain above to return to the map.',
+      anotherMePost: {
+        weak:   '…something shifted, but only slightly.',
+        medium: 'The shape of it changed when you touched it.',
+        strong: 'This isn\'t the same memory anymore. That\'s not wrong.',
+      },
       chipLabels: {
         guilt: 'guilt', fear: 'fear', anger: 'anger', sadness: 'sadness',
         longing: 'longing', relief: 'relief', confusion: 'confusion', emptiness: 'emptiness',
@@ -359,10 +473,15 @@
     },
     ko: {
       corePrompt: '이때를 떠올려 봐. 어떤 기분이었어? 무슨 생각을 했어?',
+      corePromptPhase0: '이 장면을 읽으면서, 어떤 감정이 떠올라?',
+      corePromptPhase1: '이 순간이 뭘 떠올리게 해?',
+      corePromptPhase2: '그때, 어떤 기분이었어?',
       corePlaceholder: '자유롭게 적어 주세요…',
+      corePlaceholderPhase0: '떠오르는 대로 적어봐…',
       coreSubmit: '제출',
       coreLoading: '분석 중...',
       coreError: '오류',
+      anotherMeIntro: '이건 다른 누군가의 기억이야. 느껴지는 대로 따라가봐.',
       bridgePrompt: '이 조각에서 어떤 감정이 느껴지나요? (1~2개)',
       bridgeConfirm: '확인',
       submitBtn: '제출',
@@ -379,6 +498,12 @@
       mapStatus: (cores, pollution) => `탐색 코어: ${cores} · 오염도: ${pollution}%`,
       exploreTerrain: '지형 살펴보기',
       terrainHintAlign: () => '지도로 돌아가려면 지형을 누르세요',
+      analysisDone: '분석이 끝났어. 이제 위의 지형을 눌러 다시 지도로 돌아가봐.',
+      anotherMePost: {
+        weak:   '…뭔가 조금 달라졌어.',
+        medium: '네가 만지니까 모양이 바뀌었어.',
+        strong: '이건 이제 같은 기억이 아니야. 그게 틀린 건 아니야.',
+      },
       chipLabels: {
         guilt: '죄책감', fear: '두려움', anger: '분노', sadness: '슬픔',
         longing: '그리움', relief: '안도', confusion: '혼란', emptiness: '공허',
@@ -558,6 +683,47 @@
       }
     });
     return PT_EMOTION_COLORS[maxKey] || [120, 120, 140];
+  }
+
+  // ── 핀 호버 속삭임 (또다른 나) ──
+  var PIN_WHISPERS = {
+    visited: {
+      ko: ['이미 지나온 기억이야', '네 발자국이 남아있다', '한번 걸었던 길이야'],
+      en: ['a memory you\'ve already passed through', 'your footprints remain', 'a path once walked']
+    },
+    unvisited_warm: {
+      ko: ['...여기에 누군가의 체온이 남아있다', '...자주 불리는 이름이야', '...손때가 묻어있다'],
+      en: ['...someone\'s warmth lingers here', '...a name often called', '...worn from handling']
+    },
+    unvisited_cold: {
+      ko: ['...조용하다', '...아무도 오지 않았다', '...먼지가 쌓여있다'],
+      en: ['...silence', '...no one has come', '...dust has settled']
+    },
+    unvisited_deep: {
+      ko: ['...깊다', '...무거운 것이 가라앉아 있다', '...바닥이 보이지 않는다'],
+      en: ['...deep', '...something heavy has sunk here', '...the bottom is not visible']
+    }
+  };
+
+  function getWhisperText(pin) {
+    var pool = LANG === 'ko' ? 'ko' : 'en';
+    if (pin.visited) {
+      var arr = PIN_WHISPERS.visited[pool];
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+    var scenePlayCount = game.plays.filter(function (p) { return p.scene_id === pin.sceneId; }).length;
+    var scene = game.scenes.find(function (s) { return s.id === pin.sceneId; });
+    var baseEmo = scene ? safeParseEmotion(scene.original_emotion) : {};
+    var maxIntensity = 0;
+    Object.values(baseEmo).forEach(function (v) { var n = Number(v) || 0; if (n > maxIntensity) maxIntensity = n; });
+
+    var category;
+    if (maxIntensity > 0.7) category = 'unvisited_deep';
+    else if (scenePlayCount >= 3) category = 'unvisited_warm';
+    else category = 'unvisited_cold';
+
+    var arr = PIN_WHISPERS[category][pool];
+    return arr[Math.floor(Math.random() * arr.length)];
   }
 
   function lerpRgb(a, b, t) {
@@ -1251,22 +1417,22 @@
     const gg = Math.max(0, Math.min(1, g * scale));
     const bb = Math.max(0, Math.min(1, b * scale));
     const lum = rr * 0.299 + gg * 0.587 + bb * 0.114;
-    const desat = 0.62;
+    const desat = 0.35;
     let pr = rr * (1 - desat) + lum * desat;
     let pg = gg * (1 - desat) + lum * desat;
     let pb = bb * (1 - desat) + lum * desat;
-    const pastelBase = [0.26, 0.20, 0.34];
-    const pastelMix = 0.38;
+    const pastelBase = [0.22, 0.16, 0.30];
+    const pastelMix = 0.20;
     pr = pr * (1 - pastelMix) + pastelBase[0] * pastelMix;
     pg = pg * (1 - pastelMix) + pastelBase[1] * pastelMix;
     pb = pb * (1 - pastelMix) + pastelBase[2] * pastelMix;
-    const channelCap = 0.46;
+    const channelCap = 0.62;
     pr = Math.min(channelCap, Math.max(0, pr));
     pg = Math.min(channelCap, Math.max(0, pg));
     pb = Math.min(channelCap, Math.max(0, pb));
-    pr = pr * 0.9 + 0.1 * 0.2;
-    pg = pg * 0.88 + 0.1 * 0.14;
-    pb = pb * 0.92 + 0.1 * 0.32;
+    pr = pr * 0.92 + 0.08 * 0.18;
+    pg = pg * 0.90 + 0.08 * 0.12;
+    pb = pb * 0.94 + 0.08 * 0.28;
     return [pr, pg, pb];
   }
 
@@ -1288,14 +1454,18 @@
 
   function applyElevationTint(pr, pg, pb, hNorm) {
     const t = Math.max(0, Math.min(1, hNorm));
-    const lumBoost = 0.88 + 0.2 * t;
+    // 저지대: 어둡게 가라앉음, 고지대: 부드럽게 떠오름
+    // easeIn 커브로 저지대 어둠을 더 강조 (선형보다 깊은 계곡)
+    const tCurve = t * t * 0.4 + t * 0.6; // 0→0, 0.5→0.5, 1→1 근사하지만 저지대가 더 눌림
+    const lumBoost = 0.45 + 0.75 * tCurve;  // 0.45 (깊은 저지대) ~ 1.20 (고지대)
     let r = pr * lumBoost;
     let g = pg * lumBoost;
     let b = pb * lumBoost;
-    const shift = (t - 0.5) * 0.1;
-    r += shift * 0.55;
-    g += shift * 0.12;
-    b -= shift * 0.45;
+    // 고지대: 따뜻한 톤 쪽으로 미세 shift, 저지대: 차가운 깊이감
+    const shift = (t - 0.4) * 0.18;
+    r += shift * 0.5;
+    g += shift * 0.1;
+    b -= shift * 0.35;
     return [r, g, b];
   }
 
@@ -1306,7 +1476,7 @@
       for (let i = 0; i < agg.colors.length; i++) m = Math.max(m, agg.colors[i]);
       return m || 1;
     })();
-    const globalScale = Math.min(0.72, 0.42 / maxChannel);
+    const globalScale = Math.min(1.0, 0.65 / maxChannel);
     const hMin = agg.min;
     const hRange = (agg.max - hMin) || 1;
     const img = ctx.createImageData(W, H);
@@ -1422,6 +1592,19 @@
     terrainAnimRaf: null,
     lastTerrainTint: null,
     postSubmitTerrainCleanup: null,
+    traceLines: [],
+    visitOrder: [],
+    _prevAccessiblePinIds: null,
+    _unlockAnimInfo: null,
+  };
+
+  const TRACE_STYLES = {
+    bridge:        { color: 'rgba(196,168,130,0.6)', dash: '', opacity: 0.35 },
+    echo_follow:   { color: 'rgba(196,168,130,0.5)', dash: '', opacity: 0.30 },
+    contradiction: { color: 'rgba(200,80,80,0.5)', dash: '4,4', opacity: 0.30 },
+    displacement:  { color: 'rgba(160,120,200,0.5)', dash: '8,3', opacity: 0.30 },
+    avoidance:     { color: 'rgba(196,168,130,0.3)', dash: '', opacity: 0.18 },
+    fixation:      { color: 'transparent', dash: '', opacity: 0 },
   };
 
   const TRANSITION_RULES = {
@@ -1965,8 +2148,8 @@
         ctx.stroke();
       }
     }
-    strokeContourPass('rgba(12, 8, 22, 0.42)', 1.05 * dpr);
-    strokeContourPass('rgba(232, 224, 252, 0.48)', 0.62 * dpr);
+    strokeContourPass('rgba(8, 4, 18, 0.55)', 1.3 * dpr);
+    strokeContourPass('rgba(232, 224, 252, 0.65)', 0.85 * dpr);
   }
 
   function vadToPercent(vad) {
@@ -2001,7 +2184,7 @@
         x: spread.x * 100,
         y: spread.y * 100,
         text: pinText,
-        label: isBridge ? '·' : ('#' + (scene.scene_order != null ? scene.scene_order : idx + 1)),
+        label: isBridge ? '·' : '',
         originalEmotion: emotion,
         sceneOrder: scene.scene_order != null ? scene.scene_order : idx,
         state: 'locked',
@@ -2075,29 +2258,161 @@
     });
   }
 
+  /** 핀 DOM에 호버 카드(또다른 나 속삭임) 부착 */
+  function attachHoverCard(pinEl, pin) {
+    if (pin.type === 'echo') return;
+    var card = document.createElement('div');
+    card.className = 'pin-hover-card' + (pin.visited ? ' visited-card' : '');
+
+    // 미방문 핀: 감정색 테두리
+    if (!pin.visited && pin.originalEmotion) {
+      var scene = game.scenes.find(function (s) { return s.id === pin.sceneId; });
+      var baseEmo = scene ? safeParseEmotion(scene.original_emotion) : {};
+      var rgb = getDominantColor(baseEmo);
+      card.style.borderColor = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.45)';
+    }
+
+    var label = document.createElement('div');
+    label.className = 'whisper-label';
+    label.textContent = LANG === 'ko' ? '또다른 나' : 'Another Me';
+    card.appendChild(label);
+
+    var txt = document.createElement('div');
+    txt.textContent = getWhisperText(pin);
+    card.appendChild(txt);
+
+    if (pin.x > 75) card.classList.add('flip-left');
+    pinEl.appendChild(card);
+  }
+
   function renderPins() {
     const layer = document.getElementById('mapPinsLayer');
     if (!layer) return;
     layer.innerHTML = '';
+    const unlockInfo = game._unlockAnimInfo;
     game.pins.forEach(pin => {
       const el = document.createElement('div');
       let cls = 'map-pin ' + pin.type;
-      if (pin.active) cls += ' active';
-      if (pin.entrance) cls += ' entrance';
+      const isNewlyUnlocked = unlockInfo && unlockInfo.newPinIds.has(pin.id);
+      if (isNewlyUnlocked) {
+        // 새 핀은 처음에 숨김 — trace line 도착 시 unlock 애니메이션 시작
+        cls += ' locked';
+        el.style.opacity = '0';
+        el.dataset.pendingUnlock = unlockInfo.pattern;
+      } else {
+        if (pin.active) cls += ' active';
+        if (pin.entrance) cls += ' entrance';
+        if (pin.locked) cls += ' locked';
+        // 잠기지 않은 핀에만 호버 카드 부착
+        if (!pin.locked) attachHoverCard(el, pin);
+      }
       if (pin.visited) cls += ' visited';
-      if (pin.locked) cls += ' locked';
       el.className = cls;
       el.style.left = pin.x + '%';
       el.style.top = pin.y + '%';
-      if (pin.label) {
+      el.dataset.pinId = pin.id;
+      const _hasLabel = pin.label || (pin.visited && pin.sceneId);
+      if (_hasLabel) {
         const lb = document.createElement('div');
         lb.className = 'map-pin-label';
-        lb.textContent = pin.label;
-        el.appendChild(lb);
+        if (pin.label) {
+          lb.textContent = pin.label; // bridge: '·'
+        } else if (pin.visited && pin.sceneId) {
+          const _vi = game.visitOrder.indexOf(pin.sceneId);
+          if (_vi >= 0) lb.textContent = String(_vi + 1);
+        }
+        if (lb.textContent) el.appendChild(lb);
       }
       el.addEventListener('click', () => onPinClick(pin));
       layer.appendChild(el);
     });
+    // unlock 정보는 renderTraceLines에서 사용 후 초기화
+  }
+
+  function renderTraceLines() {
+    const svg = document.getElementById('mapTraceLayer');
+    if (!svg) return;
+    svg.innerHTML = '';
+    const lines = game.traceLines || [];
+    if (!lines.length) { game._unlockAnimInfo = null; return; }
+    const rect = svg.parentElement ? svg.parentElement.getBoundingClientRect() : { width: 1, height: 1 };
+    const w = rect.width || 1;
+    const h = rect.height || 1;
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    const total = lines.length;
+    const unlockInfo = game._unlockAnimInfo;
+    // 새 선 = 이번에 추가된 것 (unlockInfo가 있으면 새 선)
+    const newLineStartIdx = unlockInfo ? total - unlockInfo.newPinIds.size : total;
+
+    lines.forEach((tr, idx) => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      const x1 = (tr.fromX / 100) * w;
+      const y1 = (tr.fromY / 100) * h;
+      const x2 = (tr.toX / 100) * w;
+      const y2 = (tr.toY / 100) * h;
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', y2);
+      const style = TRACE_STYLES[tr.pattern] || TRACE_STYLES.bridge;
+      const age = total - idx;
+      const fadeFactor = age <= 3 ? 1 : 0.5;
+      const baseOpacity = Math.min(1, style.opacity * fadeFactor * 3);
+      line.setAttribute('stroke', style.color);
+      line.setAttribute('stroke-width', '1.5');
+      line.setAttribute('opacity', String(baseOpacity));
+      line.setAttribute('stroke-linecap', 'round');
+
+      const isNewLine = idx >= newLineStartIdx;
+      if (isNewLine) {
+        // 선이 그려지는 애니메이션: stroke-dashoffset
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const drawDuration = 0.6; // 초
+        const staggerDelay = (idx - newLineStartIdx) * 0.3; // 선마다 0.3초 간격
+        line.setAttribute('stroke-dasharray', String(len));
+        line.setAttribute('stroke-dashoffset', String(len));
+        line.style.transition = 'stroke-dashoffset ' + drawDuration + 's ease-out ' + staggerDelay + 's';
+        // 패턴별 dash는 선 도착 후 적용
+        line.dataset.targetDash = style.dash || '';
+        line.dataset.drawDuration = String(drawDuration);
+        line.dataset.staggerDelay = String(staggerDelay);
+        // 선 도착 시 → 핀 unlock 트리거
+        line.addEventListener('transitionend', () => {
+          // dash 스타일 복원
+          if (line.dataset.targetDash) {
+            line.setAttribute('stroke-dasharray', line.dataset.targetDash);
+            line.removeAttribute('stroke-dashoffset');
+          } else {
+            line.removeAttribute('stroke-dasharray');
+            line.removeAttribute('stroke-dashoffset');
+          }
+          // 이 선의 target 핀을 unlock
+          const pinEl = document.querySelector('[data-pin-id="' + tr._targetPinId + '"]');
+          if (pinEl && pinEl.dataset.pendingUnlock) {
+            const pat = pinEl.dataset.pendingUnlock;
+            pinEl.style.opacity = '';
+            pinEl.classList.remove('locked');
+            pinEl.classList.add('unlock-' + pat);
+            pinEl.addEventListener('animationend', () => {
+              pinEl.classList.remove('unlock-' + pat);
+              pinEl.classList.add('active', 'entrance');
+              delete pinEl.dataset.pendingUnlock;
+              // unlock 완료 후 호버 카드 부착
+              var _pin = game.pins.find(function (p) { return p.id === tr._targetPinId; });
+              if (_pin) attachHoverCard(pinEl, _pin);
+            }, { once: true });
+          }
+        }, { once: true });
+        // 렌더 후 다음 프레임에서 dashoffset을 0으로 → 애니메이션 시작
+        requestAnimationFrame(() => { requestAnimationFrame(() => { line.setAttribute('stroke-dashoffset', '0'); }); });
+      } else {
+        // 기존 선: dash 패턴 그대로
+        if (style.dash) line.setAttribute('stroke-dasharray', style.dash);
+      }
+      svg.appendChild(line);
+    });
+    game._unlockAnimInfo = null;
   }
 
   function onPinClick(pin) {
@@ -2251,6 +2566,43 @@
     return false;
   }
 
+  /**
+   * 파동 흡수 연출: 움직이던 파형 그대로 굳음 (속도→0) + 탈채도 (emotion RGB → gray)
+   * @param {number} durationMs - 굳는 시간 (ms)
+   * @param {number[]} emotionRgb - 감정색 [r, g, b]
+   * @returns {Promise<void>}
+   */
+  function collapseWaveAnimation(durationMs, emotionRgb) {
+    const v = getPlayTestAlignVisualizerSync();
+    if (!v) return Promise.resolve();
+
+    const startTime = performance.now();
+    const gray = { r: 90, g: 90, b: 100 };
+    return new Promise(function (resolve) {
+      function tick() {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(1, elapsed / durationMs);
+        const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+
+        var spdMul = 1 - eased; // 1 → 0: 파동이 서서히 멈춤
+        var r = Math.round(emotionRgb[0] + (gray.r - emotionRgb[0]) * eased);
+        var g = Math.round(emotionRgb[1] + (gray.g - emotionRgb[1]) * eased);
+        var b = Math.round(emotionRgb[2] + (gray.b - emotionRgb[2]) * eased);
+
+        v.setWaveOverride({ speedMultiplier: spdMul, colorOverride: { r: r, g: g, b: b } });
+
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          // 파동 완전 정지 상태 유지 (굳은 형태로 남김)
+          v.setWaveOverride({ speedMultiplier: 0, colorOverride: gray });
+          resolve();
+        }
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
   function clearTimers() {
     if (game.voidTimeout) {
       clearTimeout(game.voidTimeout);
@@ -2268,6 +2620,7 @@
     const scene = game.scenes.find(s => s.id === pin.sceneId);
     if (!scene) return;
     clearTimers();
+    if (typeof window.destroyFloatingAnchor === 'function') window.destroyFloatingAnchor();
     if (game.postSubmitTerrainCleanup) game.postSubmitTerrainCleanup();
     game.postSubmitTerrainCleanup = null;
     stopTerrainAnimLoop();
@@ -2283,6 +2636,9 @@
     _ia.style.opacity = '0';
     _ia.innerHTML = '';
     game.playTestWaveUserIdle = true;
+    // 이전 장면의 파동 굳음(override) 해제 — 새 장면에서 파동 다시 살아남
+    var _v = getPlayTestAlignVisualizerSync();
+    if (_v) _v.clearWaveOverride();
     const origBase = normalizeOriginalEmotionForWave(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
     const alignInit = (game.lastResult && typeof game.lastResult.alignment_score === 'number')
       ? game.lastResult.alignment_score
@@ -2307,20 +2663,67 @@
       requestAnimationFrame(_typeFrame);
     })(performance.now());
 
-    document.getElementById('sceneNpc').textContent = '';
+    // Phase 0: 첫 core 씬 진입 시 "또다른 나" 안내
+    const _npcClear = document.getElementById('sceneNpc');
+    if (game.coreVisitCount === 0 && pin.type === 'core' && T.anotherMeIntro) {
+      const _introLabel = LANG === 'ko' ? '또다른 나' : 'Another Me';
+      _npcClear.innerHTML =
+        '<span class="another-me-label">' + _introLabel + '</span>' +
+        '<span class="another-me-whisper">' + T.anotherMeIntro + '</span>';
+    } else {
+      _npcClear.textContent = '';
+    }
     document.getElementById('terrainClickHint').style.display = 'none';
     document.getElementById('terrainBar').classList.remove('clickable');
     game.lastTerrainTint = null;
     renderTerrainBar(pin.sceneIndex, null);
 
-    // Contamination monologue — fires ~1.5s after scene entry (Presentation Spec §5)
+    // Contamination monologue — "또다른 나" whisper (Presentation Spec §5)
     if (_pres.stage !== 'stable') {
       const _monoText = getMonologue(_pres, game.contMismatch, pin.sceneIndex, game.contState?.cont_depth || 0);
       if (_monoText) {
+        const _anotherMeLabel = LANG === 'ko' ? '또다른 나' : 'Another Me';
         setTimeout(() => {
           const npcEl = document.getElementById('sceneNpc');
-          if (npcEl) npcEl.textContent = _monoText;
+          if (npcEl) {
+            npcEl.innerHTML =
+              '<span class="another-me-label">' + _anotherMeLabel + '</span>' +
+              '<span class="another-me-whisper">' + _monoText + '</span>';
+          }
         }, 1500);
+      }
+    }
+
+    // Echo words — 잔향단어 floating anchor (독백 뒤 staggered 등장)
+    const _echoWords = scene.echo_words || [];
+    if (_echoWords.length > 0) {
+      const _echoContainer = document.querySelector('.scene-content-area') || document.querySelector('.scene-main');
+      if (_echoContainer) {
+        const _contDepth = game.contState?.cont_depth || 0;
+        const _echoCount = (_pres.band === 'strong') ? Math.min(2, _echoWords.length) : Math.min(1, _echoWords.length);
+        // seeded PRNG (독백 seed와 분리: offset +7)
+        const _echoSeedVal = (pin.sceneIndex * 2654435761 ^ (_contDepth + 7) * 40503) | 0;
+        let _echoHash = _echoSeedVal;
+        function _echoRng() {
+          _echoHash |= 0; _echoHash = _echoHash + 0x6D2B79F5 | 0;
+          let et = Math.imul(_echoHash ^ _echoHash >>> 15, 1 | _echoHash);
+          et = et + Math.imul(et ^ et >>> 7, 61 | et) ^ et;
+          return ((et ^ et >>> 14) >>> 0) / 4294967296;
+        }
+        const _echoPool = [..._echoWords];
+        const _echoPicked = [];
+        for (let ei = 0; ei < _echoCount && _echoPool.length > 0; ei++) {
+          const eidx = Math.floor(_echoRng() * _echoPool.length);
+          _echoPicked.push(_echoPool.splice(eidx, 1)[0]);
+        }
+        const _echoAlignment = game.lastResult?.alignment_score ?? 0.5;
+        _echoPicked.forEach((word, i) => {
+          setTimeout(() => {
+            if (typeof window.startFloatingAnchor === 'function') {
+              window.startFloatingAnchor(_echoContainer, word, _echoAlignment);
+            }
+          }, 2200 + i * 800);
+        });
       }
     }
   }
@@ -2357,10 +2760,22 @@
   }
 
   function setupCoreInput(pin, scene) {
+    // 관찰자→체험자 단계별 프롬프트 전환
+    let _corePrompt, _corePlaceholder;
+    if (game.coreVisitCount === 0) {
+      _corePrompt = T.corePromptPhase0 || T.corePrompt;
+      _corePlaceholder = T.corePlaceholderPhase0 || T.corePlaceholder;
+    } else if (game.coreVisitCount === 1) {
+      _corePrompt = T.corePromptPhase1 || T.corePrompt;
+      _corePlaceholder = T.corePlaceholder;
+    } else {
+      _corePrompt = T.corePromptPhase2 || T.corePrompt;
+      _corePlaceholder = T.corePlaceholder;
+    }
     const inputArea = document.getElementById('emotionInputArea');
     inputArea.innerHTML = `
-      <p style="font-size:13px;opacity:0.5;margin-bottom:12px;">${T.corePrompt}</p>
-      <textarea id="coreTextInput" placeholder="${T.corePlaceholder.replace(/"/g, '&quot;')}"
+      <p style="font-size:13px;opacity:0.5;margin-bottom:12px;">${_corePrompt}</p>
+      <textarea id="coreTextInput" placeholder="${_corePlaceholder.replace(/"/g, '&quot;')}"
         style="width:100%;background:rgba(196,168,130,0.05);border:1px solid rgba(196,168,130,0.15);
         color:#c4a882;font-family:inherit;font-size:15px;padding:12px;resize:none;border-radius:4px;min-height:80px;"></textarea>
       <button id="coreSubmitBtn" style="margin-top:12px;float:right;background:none;
@@ -2621,6 +3036,7 @@
   }
 
   function leaveSceneUnsaid() {
+    if (typeof window.destroyFloatingAnchor === 'function') window.destroyFloatingAnchor();
     const scene = game.scenes[game.currentSceneIndex];
     if (!scene) return;
     game.skipCount++;
@@ -2649,6 +3065,7 @@
   }
 
   function leaveSceneVoid(scene) {
+    if (typeof window.destroyFloatingAnchor === 'function') window.destroyFloatingAnchor();
     game.skipCount++;
     const vec = collectUserEmotionVector();
     const userVector = {
@@ -2737,6 +3154,7 @@
     pin.emotion_data = userVector;
     pin.engine_result = engineResult;
     game.visitedCore[pin.sceneId] = true;
+    if (!game.visitOrder.includes(pin.sceneId)) game.visitOrder.push(pin.sceneId);
     if (pin.type === 'core') game.coreVisitCount++;
     game.previousBucket = engineResult.alignment_bucket;
     if (userVector.base) game.emotionHistory.push(Object.assign({}, userVector.base));
@@ -2782,6 +3200,7 @@
   }
 
   function finishScene(scene, result, vec, reasonLabel, isVoid) {
+    if (typeof window.destroyFloatingAnchor === 'function') window.destroyFloatingAnchor();
     fadeOut(SFX.white, 500, true);
     LOG('engine', result);
     game.lastResult = result;
@@ -2854,6 +3273,7 @@
     }
     if (scene && !game.visitedCore[scene.id]) {
       game.visitedCore[scene.id] = true;
+      if (!game.visitOrder.includes(scene.id)) game.visitOrder.push(scene.id);
       const pin = game.currentPinId ? game.pins.find(p => p.id === game.currentPinId) : null;
       if (!pin || pin.type === 'core') game.coreVisitCount++;
     }
@@ -2863,14 +3283,42 @@
     document.getElementById('terrainClickHint').style.display = 'none';
     buildTerrainFromData();
     buildPins();
+    // 이전 accessible 상태 저장 (unlock 차집합 계산용)
+    game._prevAccessiblePinIds = new Set(game.accessiblePinIds || []);
     handleEmotionResult({
       userEmotion: game.lastUserEmotion || {},
       result: result || game.lastResult || {},
       originSceneId,
     });
+    // 차집합: 새로 열린 핀 계산
+    const _pattern = (result && result.transition_pattern) || 'bridge';
+    const _newPinIds = new Set();
+    if (game.accessiblePinIds) {
+      game.accessiblePinIds.forEach(id => {
+        if (!game._prevAccessiblePinIds.has(id)) {
+          const p = game.pins.find(pp => pp.id === id);
+          if (p && !game.visitedCore[p.sceneId]) _newPinIds.add(id);
+        }
+      });
+    }
+    game._unlockAnimInfo = _newPinIds.size > 0 ? { newPinIds: _newPinIds, pattern: _pattern } : null;
+    console.log('[UNLOCK] pattern:', _pattern, 'prev:', Array.from(game._prevAccessiblePinIds), 'new:', Array.from(game.accessiblePinIds || []), 'diff:', Array.from(_newPinIds), 'animInfo:', game._unlockAnimInfo);
+    // trace lines 추가 (origin → 새 핀)
+    const _originPin = game.currentPinId ? game.pins.find(p => p.id === game.currentPinId) : null;
+    if (_originPin && _newPinIds.size > 0 && _pattern !== 'fixation') {
+      _newPinIds.forEach(nid => {
+        const np = game.pins.find(p => p.id === nid);
+        if (np) {
+          game.traceLines.push({ fromX: _originPin.x, fromY: _originPin.y, toX: np.x, toY: np.y, pattern: _pattern, _targetPinId: nid });
+        }
+      });
+      // 오래된 선 제거 (최대 6개 유지)
+      while (game.traceLines.length > 6) game.traceLines.shift();
+    }
     finalizePinAccess();
     renderContourCanvas();
     renderPins();
+    renderTraceLines();
     updateMapStatus();
     updateSealButton();
     startCursorLerp();
@@ -2973,12 +3421,21 @@
     transitionWavePostSubmit(dom, bucket, emBase, result.alignment_score);
 
     const npc = document.getElementById('sceneNpc');
-    const lines = getNpcLines();
-    npc.textContent = lines[Math.floor(Math.random() * lines.length)];
+    const _postPres = game.contPresentation || { stage: 'stable', band: 'weak' };
+    const _anotherMeLabel = LANG === 'ko' ? '또다른 나' : 'Another Me';
+    let _postLine;
+    if (_postPres.stage !== 'stable' && T.anotherMePost && T.anotherMePost[_postPres.band]) {
+      _postLine = T.anotherMePost[_postPres.band];
+    } else {
+      const lines = getNpcLines();
+      _postLine = lines[Math.floor(Math.random() * lines.length)];
+    }
+    npc.innerHTML =
+      '<span class="another-me-label">' + _anotherMeLabel + '</span>' +
+      '<span class="another-me-whisper">' + _postLine + '</span>';
 
     renderTerrainBar(game.currentSceneIndex, game.lastTerrainTint || null, {});
     document.getElementById('terrainClickHint').style.display = 'block';
-    document.getElementById('emotionInputArea').style.opacity = '0.3';
     const sub = document.getElementById('submitBtn');
     const voi = document.getElementById('voidBtn');
     if (sub) sub.disabled = true;
@@ -2988,27 +3445,77 @@
       result.alignment_bucket || ''
     );
 
+    // 입력 영역을 분석 완료 타이핑 메시지로 교체
+    const inputArea = document.getElementById('emotionInputArea');
+    inputArea.style.opacity = '1';
+    inputArea.innerHTML = '<p id="analysisDoneMsg" style="font-size:14px;color:#c4a882;opacity:0.85;min-height:40px;line-height:1.8;letter-spacing:0.02em;"></p>';
+    const msgEl = document.getElementById('analysisDoneMsg');
+    const fullText = T.analysisDone;
+    let charIdx = 0;
+    const typeInterval = setInterval(() => {
+      if (charIdx < fullText.length) {
+        msgEl.textContent += fullText[charIdx];
+        charIdx++;
+      } else {
+        clearInterval(typeInterval);
+      }
+    }, 45);
+
     game.terrainTintFrom = null;
     game.terrainTintTo = null;
     game.terrainTintLerp = 1;
     game.terrainRipple = 0;
     stopTerrainAnimLoop();
 
-    setTimeout(() => {
+    // ── 파동 흡수 시퀀스 (Wave Absorption) ──
+    var waveTopEl = document.getElementById('waveTop');
+    var terrainBarEl = document.getElementById('terrainBar');
+    var _rgb = dom; // emotion RGB [r, g, b]
+
+    // 200ms: Phase 1 — 파동 소멸 시작 + #waveTop 하단 잔광
+    setTimeout(function () {
+      collapseWaveAnimation(800, _rgb);
+      waveTopEl.classList.add('wave-draining');
+      waveTopEl.style.boxShadow = 'inset 0 -20px 40px -10px rgba(' + _rgb[0] + ',' + _rgb[1] + ',' + _rgb[2] + ',0.3)';
+    }, 200);
+
+    // 600ms: Phase 2 — 잔광 전이 (waveTop → terrainBar)
+    setTimeout(function () {
+      waveTopEl.classList.remove('wave-draining');
+      waveTopEl.style.boxShadow = '';
+      terrainBarEl.classList.add('terrain-absorbing');
+      terrainBarEl.style.boxShadow = 'inset 0 20px 40px -10px rgba(' + _rgb[0] + ',' + _rgb[1] + ',' + _rgb[2] + ',0.25)';
+    }, 600);
+
+    // 700ms: 지형 tint 시작 (감정색으로 물들기, 브라이트 부스트)
+    setTimeout(function () {
+      var bright = [Math.min(255, Math.round(_rgb[0] * 1.3)), Math.min(255, Math.round(_rgb[1] * 1.3)), Math.min(255, Math.round(_rgb[2] * 1.3))];
       game.terrainTintFrom = (game.lastTerrainTint || [196, 168, 130]).slice();
-      game.terrainTintTo = dom.slice();
+      game.terrainTintTo = bright;
       game.terrainTintLerp = 0;
       ensureTerrainAnimLoop();
-    }, 300);
+    }, 700);
 
-    setTimeout(() => {
-      game.terrainRipple = 1;
+    // 800ms: 지형 ripple 강화 + terrainBar 잔광 소멸
+    setTimeout(function () {
+      game.terrainRipple = 1.8;
       game.terrainRipplePhase = performance.now() * 0.001;
       ensureTerrainAnimLoop();
       fadeIn(SFX.void, 0.25, 800);
-    }, 500);
+      // 브라이트 tint를 원래 감정색으로 서서히 되돌림
+      game.terrainTintFrom = game.terrainTintTo ? game.terrainTintTo.slice() : _rgb.slice();
+      game.terrainTintTo = _rgb.slice();
+      game.terrainTintLerp = 0;
+    }, 800);
 
-    setTimeout(() => enableTerrainCanvasClick(result), 1000);
+    // 1000ms: terrainBar 잔광 제거
+    setTimeout(function () {
+      terrainBarEl.classList.remove('terrain-absorbing');
+      terrainBarEl.style.boxShadow = '';
+    }, 1000);
+
+    // 1400ms: 지형 클릭 활성화
+    setTimeout(function () { enableTerrainCanvasClick(result); }, 1400);
   }
 
   function updateMapStatus() {
@@ -3140,6 +3647,10 @@
     game.visitedCore = {};
     game.coreVisitCount = 0;
     game.traces = [];
+    game.traceLines = [];
+    game.visitOrder = [];
+    game._unlockAnimInfo = null;
+    game._prevAccessiblePinIds = null;
     game.previousBucket = null;
     game.emotionHistory = [];
     game.userEmotionTrajectory = [];
@@ -3364,11 +3875,65 @@
   }
 
   (function bindBackToMenu() {
-    const btn = document.getElementById('backToMenu');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
+    var btn = document.getElementById('backToMenu');
+    if (btn) btn.addEventListener('click', function () { window.location.href = temMenuHref(); });
+  })();
+
+  // ── Strata 퇴장 플로우: 로그인 안내 ──
+  (function bindStrataExit() {
+    var closeBtn = document.getElementById('strataCloseBtn');
+    var modal = document.getElementById('strataExitModal');
+    var msgEl = document.getElementById('strataExitMsg');
+    var loginBtn = document.getElementById('strataExitLogin');
+    var skipBtn = document.getElementById('strataExitSkip');
+    if (!closeBtn || !modal) return;
+
+    // i18n 텍스트
+    var txt = LANG === 'ko'
+      ? { msg: '로그인하면 이 기억에 남긴 흔적을 저장할 수 있습니다.', login: '로그인', skip: '메인 메뉴로' }
+      : { msg: 'Sign in to save the traces you left on this memory.', login: 'Sign in', skip: 'Main menu' };
+
+    if (msgEl) msgEl.textContent = txt.msg;
+    if (loginBtn) loginBtn.textContent = txt.login;
+    if (skipBtn) skipBtn.textContent = txt.skip;
+
+    function goMenu() {
+      modal.style.display = 'none';
       window.location.href = temMenuHref();
+    }
+
+    closeBtn._strataExitBound = true; // strataView.js 폴백 바인딩 방지
+    closeBtn.onclick = null;         // 기존 onclick 제거
+    // "Leave strata behind" 클릭 시 — closeStrataView 호출 후 분기
+    closeBtn.addEventListener('click', async function (e) {
+      e.stopPropagation();
+      // 이미 로그인 상태면 바로 메인메뉴
+      try {
+        var res = await sb.auth.getUser();
+        if (res.data && res.data.user) {
+          // closeStrataView는 strataView.js에서 바인딩됨 — onclick 그대로 호출
+          if (typeof window.closeStrataView === 'function') window.closeStrataView();
+          else { var v = document.getElementById('strataView'); if (v) v.style.display = 'none'; }
+          goMenu();
+          return;
+        }
+      } catch (_) {}
+
+      // 비로그인 → 모달 표시
+      if (typeof window.closeStrataView === 'function') window.closeStrataView();
+      else { var v = document.getElementById('strataView'); if (v) v.style.display = 'none'; }
+      modal.style.display = 'flex';
     });
+
+    // 로그인 버튼 → index.html의 로그인 모달로 이동 (쿼리 파라미터로 안내)
+    if (loginBtn) loginBtn.addEventListener('click', function () {
+      var href = temMenuHref();
+      var sep = href.indexOf('?') >= 0 ? '&' : '?';
+      window.location.href = href + sep + 'action=login';
+    });
+
+    // 스킵 → 메인메뉴
+    if (skipBtn) skipBtn.addEventListener('click', goMenu);
   })();
 
   (async function init() {

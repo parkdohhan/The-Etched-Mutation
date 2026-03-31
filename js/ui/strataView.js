@@ -255,6 +255,7 @@
     if (viewEl) viewEl.style.display = 'none';
     if (_onCloseCallback) _onCloseCallback();
   }
+  g.closeStrataView = closeStrataView;
 
   g.showStrataView = async function (memoryId, alignmentResult, onClose) {
     console.log('[Strata] showStrataView:', { memoryId: memoryId, alignmentResult: alignmentResult });
@@ -281,7 +282,9 @@
       if (viewEl) viewEl.style.display = 'block';
 
       var closeBtn = document.getElementById('strataCloseBtn');
-      if (closeBtn) closeBtn.onclick = closeStrataView;
+      // onclick 바인딩은 play-test.html에서 관리 (로그인 안내 플로우)
+      // 다른 호스트에서 사용 시 폴백
+      if (closeBtn && !closeBtn._strataExitBound) closeBtn.onclick = closeStrataView;
       bindBrightnessControl();
       applyRendererBrightness();
     } catch (error) {

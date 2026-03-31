@@ -1411,87 +1411,231 @@ async function loadArchiveLayers(memoryId) {
     }
 }
 
-// Archive wave 렌더링 function
-function renderArchive(layers) {
-    const canvas = document.getElementById('archiveCanvas');
-    if (!canvas) {
-        console.warn('[renderArchive] archiveCanvas를 not found.');
-        return;
-    }
+// ── 등고선 핀맵 미리보기 (play-test.html과 동일한 렌더링) ──
 
+const ADMIN_MAP_GRID = 80;
+const ADMIN_MAP_SIZE = 50;
+const ADMIN_MAP_HALF = ADMIN_MAP_SIZE / 2;
+const ADMIN_CONTOUR_LEVELS = 24;
+
+// AF projection (play-test.html 동일 로직)
+const ADM_AF_AXIS_X = { self_blame: -1, other_blame: 0, fate_blame: 1 };
+const ADM_AF_AXIS_Z = { abandonment: -1, rejection: -0.33, powerlessness: 0.33, loss: 1 };
+const ADM_E2A_AF = {
+    fear: { s: 0.2, o: 0.1, f: 0.7 }, sadness: { s: 0.3, o: 0.1, f: 0.6 }, anger: { s: 0.1, o: 0.7, f: 0.2 },
+    guilt: { s: 0.8, o: 0.05, f: 0.15 }, shame: { s: 0.75, o: 0.15, f: 0.1 }, joy: { s: 0.3, o: 0.3, f: 0.4 },
+    numbness: { s: 0.15, o: 0.05, f: 0.8 }, isolation: { s: 0.3, o: 0.3, f: 0.4 }, longing: { s: 0.2, o: 0.2, f: 0.6 },
+    resentment: { s: 0.1, o: 0.8, f: 0.1 }, resignation: { s: 0.1, o: 0.05, f: 0.85 }, hope: { s: 0.2, o: 0.2, f: 0.6 },
+    relief: { s: 0.2, o: 0.1, f: 0.7 }, love: { s: 0.15, o: 0.3, f: 0.55 }, gratitude: { s: 0.15, o: 0.35, f: 0.5 },
+    peace: { s: 0.15, o: 0.15, f: 0.7 }, confusion: { s: 0.3, o: 0.2, f: 0.5 },
+};
+const ADM_E2F_AF = {
+    fear: { a: 0.15, r: 0.1, p: 0.55, l: 0.2 }, sadness: { a: 0.3, r: 0.1, p: 0.1, l: 0.5 },
+    anger: { a: 0.1, r: 0.3, p: 0.5, l: 0.1 }, guilt: { a: 0.2, r: 0.25, p: 0.15, l: 0.4 },
+    shame: { a: 0.15, r: 0.6, p: 0.1, l: 0.15 }, joy: { a: 0.15, r: 0.15, p: 0.15, l: 0.55 },
+    numbness: { a: 0.3, r: 0.1, p: 0.4, l: 0.2 }, isolation: { a: 0.6, r: 0.25, p: 0.1, l: 0.05 },
+    longing: { a: 0.55, r: 0.15, p: 0.05, l: 0.25 }, resentment: { a: 0.15, r: 0.35, p: 0.4, l: 0.1 },
+    resignation: { a: 0.2, r: 0.05, p: 0.6, l: 0.15 }, hope: { a: 0.2, r: 0.15, p: 0.15, l: 0.5 },
+    relief: { a: 0.1, r: 0.1, p: 0.3, l: 0.5 }, love: { a: 0.4, r: 0.2, p: 0.1, l: 0.3 },
+    gratitude: { a: 0.2, r: 0.15, p: 0.1, l: 0.55 }, peace: { a: 0.15, r: 0.1, p: 0.15, l: 0.6 },
+    confusion: { a: 0.2, r: 0.2, p: 0.4, l: 0.2 },
+};
+
+function admSafeParseEmotion(val) {
+    if (!val) return {};
+    if (typeof val === 'object' && !Array.isArray(val)) return val;
+    if (typeof val === 'string') { try { return JSON.parse(val); } catch (_) { return {}; } }
+    return {};
+}
+
+function admEmotionToAttrAF(ev) {
+    const out = { self_blame: 0, other_blame: 0, fate_blame: 0 }; let total = 0;
+    for (const e in ev) { const w = Number(ev[e] || 0); const m = ADM_E2A_AF[e]; if (!w || !m) continue; out.self_blame += w * m.s; out.other_blame += w * m.o; out.fate_blame += w * m.f; total += w; }
+    if (total <= 0) return { self_blame: 0.33, other_blame: 0.33, fate_blame: 0.34 };
+    out.self_blame /= total; out.other_blame /= total; out.fate_blame /= total; return out;
+}
+function admEmotionToFearAF(ev) {
+    const out = { abandonment: 0, rejection: 0, powerlessness: 0, loss: 0 }; let total = 0;
+    for (const e in ev) { const w = Number(ev[e] || 0); const m = ADM_E2F_AF[e]; if (!w || !m) continue; out.abandonment += w * m.a; out.rejection += w * m.r; out.powerlessness += w * m.p; out.loss += w * m.l; total += w; }
+    if (total <= 0) return { abandonment: 0.25, rejection: 0.25, powerlessness: 0.25, loss: 0.25 };
+    out.abandonment /= total; out.rejection /= total; out.powerlessness /= total; out.loss /= total; return out;
+}
+function admAfProjectX(attr) { let x = 0, w = 0; for (const k in attr) { const v = Number(attr[k] || 0); if (!v || ADM_AF_AXIS_X[k] === undefined) continue; x += v * ADM_AF_AXIS_X[k]; w += v; } return w > 0 ? Math.max(-1, Math.min(1, x / w)) : 0; }
+function admAfProjectZ(fear) { let z = 0, w = 0; for (const k in fear) { const v = Number(fear[k] || 0); if (!v || ADM_AF_AXIS_Z[k] === undefined) continue; z += v * ADM_AF_AXIS_Z[k]; w += v; } return w > 0 ? Math.max(-1, Math.min(1, z / w)) : 0; }
+
+function admProjectEmotionToAFContour(emotionVec) {
+    const e = admSafeParseEmotion(emotionVec || {});
+    const attr = admEmotionToAttrAF(e);
+    const fear = admEmotionToFearAF(e);
+    return { x: admAfProjectX(attr), z: admAfProjectZ(fear) };
+}
+
+function admEmotionToMapCoords(emotion) {
+    const af = admProjectEmotionToAFContour(emotion || {});
+    return { x: Math.max(0, Math.min(1, (af.x * ADMIN_MAP_HALF) / ADMIN_MAP_SIZE + 0.5)), y: Math.max(0, Math.min(1, (af.z * ADMIN_MAP_HALF) / ADMIN_MAP_SIZE + 0.5)) };
+}
+
+function admMapCoordsSpread(baseX, baseY, idx, sceneId) {
+    const s = String(sceneId != null ? sceneId : idx);
+    let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    const ang = (Math.abs(h) % 628) / 100;
+    const mag = 0.012 + (Math.abs(h) % 23) / 2300;
+    return { x: Math.max(0.03, Math.min(0.97, baseX + Math.cos(ang) * mag)), y: Math.max(0.03, Math.min(0.97, baseY + Math.sin(ang * 1.07) * mag)) };
+}
+
+// raster helpers (play-test.html 동일)
+function admLerp2(a, b, c, d, tx, ty) { return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty; }
+function admSampleH(heights, ix, iz, tx, ty, Gc) { const i = iz * Gc + ix; return admLerp2(heights[i], heights[i + 1], heights[i + Gc], heights[i + Gc + 1], tx, ty); }
+function admToPastel(r, g, b, scale) {
+    let rr = Math.max(0, Math.min(1, r * scale)), gg = Math.max(0, Math.min(1, g * scale)), bb = Math.max(0, Math.min(1, b * scale));
+    const lum = rr * 0.299 + gg * 0.587 + bb * 0.114, ds = 0.62;
+    let pr = rr * (1 - ds) + lum * ds, pg = gg * (1 - ds) + lum * ds, pb = bb * (1 - ds) + lum * ds;
+    const pb2 = [0.26, 0.20, 0.34], pm = 0.38;
+    pr = pr * (1 - pm) + pb2[0] * pm; pg = pg * (1 - pm) + pb2[1] * pm; pb = pb * (1 - pm) + pb2[2] * pm;
+    pr = Math.min(0.46, Math.max(0, pr)); pg = Math.min(0.46, Math.max(0, pg)); pb = Math.min(0.46, Math.max(0, pb));
+    return [pr * 0.9 + 0.02, pg * 0.88 + 0.014, pb * 0.92 + 0.032];
+}
+function admElevTint(pr, pg, pb, hN) {
+    const t = Math.max(0, Math.min(1, hN)), lb = 0.88 + 0.2 * t, sh = (t - 0.5) * 0.1;
+    return [pr * lb + sh * 0.55, pg * lb + sh * 0.12, pb * lb - sh * 0.45];
+}
+
+function admDrawRaster(ctx, agg, W, H) {
+    const Gc = agg.gridG || ADMIN_MAP_GRID;
+    let maxCh = 0; for (let i = 0; i < agg.colors.length; i++) maxCh = Math.max(maxCh, agg.colors[i]);
+    const gScale = Math.min(0.72, 0.42 / (maxCh || 1));
+    const hMin = agg.min, hRange = (agg.max - hMin) || 1;
+    const img = ctx.createImageData(W, H); const p = img.data;
+    for (let y = 0; y < H; y++) {
+        const gy = (y / (H - 1)) * (Gc - 1), iz = Math.max(0, Math.min(Gc - 2, Math.floor(gy))), tz = gy - iz;
+        for (let x = 0; x < W; x++) {
+            const gx = (x / (W - 1)) * (Gc - 1), ix = Math.max(0, Math.min(Gc - 2, Math.floor(gx))), tx = gx - ix;
+            const c00 = (iz * Gc + ix) * 3, c10 = c00 + 3, c01 = ((iz + 1) * Gc + ix) * 3, c11 = c01 + 3;
+            const r = admLerp2(agg.colors[c00], agg.colors[c10], agg.colors[c01], agg.colors[c11], tx, tz);
+            const g = admLerp2(agg.colors[c00 + 1], agg.colors[c10 + 1], agg.colors[c01 + 1], agg.colors[c11 + 1], tx, tz);
+            const b = admLerp2(agg.colors[c00 + 2], agg.colors[c10 + 2], agg.colors[c01 + 2], agg.colors[c11 + 2], tx, tz);
+            let [pr, pg, pb] = admToPastel(r, g, b, gScale);
+            const hN = (admSampleH(agg.heights, ix, iz, tx, tz, Gc) - hMin) / hRange;
+            [pr, pg, pb] = admElevTint(pr, pg, pb, hN);
+            const i = (y * W + x) * 4;
+            p[i] = Math.max(0, Math.min(255, Math.round(Math.max(0, Math.min(1, pr)) * 255)));
+            p[i + 1] = Math.max(0, Math.min(255, Math.round(Math.max(0, Math.min(1, pg)) * 255)));
+            p[i + 2] = Math.max(0, Math.min(255, Math.round(Math.max(0, Math.min(1, pb)) * 255)));
+            p[i + 3] = 255;
+        }
+    }
+    ctx.putImageData(img, 0, 0);
+}
+
+function admMarchingSquares(heights, threshold, Gc) {
+    const segs = [];
+    const ep = (a, b, va, vb) => ({ x: a.x + (b.x - a.x) * ((threshold - va) / ((vb - va) || 1e-6)), y: a.y + (b.y - a.y) * ((threshold - va) / ((vb - va) || 1e-6)) });
+    for (let z = 0; z < Gc - 1; z++) {
+        for (let x = 0; x < Gc - 1; x++) {
+            const i0 = z * Gc + x, v0 = heights[i0], v1 = heights[i0 + 1], v2 = heights[i0 + Gc + 1], v3 = heights[i0 + Gc];
+            let c = 0;
+            if (v0 >= threshold) c |= 1; if (v1 >= threshold) c |= 2; if (v2 >= threshold) c |= 4; if (v3 >= threshold) c |= 8;
+            if (c === 0 || c === 15) continue;
+            const p0 = { x, y: z }, p1 = { x: x + 1, y: z }, p2 = { x: x + 1, y: z + 1 }, p3 = { x, y: z + 1 };
+            const e0 = ep(p0, p1, v0, v1), e1 = ep(p1, p2, v1, v2), e2 = ep(p3, p2, v3, v2), e3 = ep(p0, p3, v0, v3);
+            const lut = { 1: [[e3, e0]], 2: [[e0, e1]], 3: [[e3, e1]], 4: [[e1, e2]], 5: [[e3, e2], [e0, e1]], 6: [[e0, e2]], 7: [[e3, e2]], 8: [[e2, e3]], 9: [[e0, e2]], 10: [[e0, e3], [e1, e2]], 11: [[e1, e2]], 12: [[e1, e3]], 13: [[e0, e1]], 14: [[e0, e3]] };
+            (lut[c] || []).forEach(pair => segs.push(pair));
+        }
+    }
+    return segs;
+}
+
+function admToCanvas(p, W, H, Gc) { return { x: (p.x / (Gc - 1)) * W, y: (p.y / (Gc - 1)) * H }; }
+
+function renderContourMapPreview(agg, scenes, plays) {
+    const canvas = document.getElementById('adminContourCanvas');
+    const pinsLayer = document.getElementById('adminPinsLayer');
+    if (!canvas) return;
+
+    // ── canvas 크기 설정 ──
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const W = Math.max(2, Math.floor(rect.width * dpr));
+    const H = Math.max(2, Math.floor(rect.height * dpr));
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext('2d');
-    
- // canvas 크기 조정 (반응형)
-    const container = canvas.parentElement;
-    if (container) {
-        const maxWidth = Math.min(1000, container.offsetWidth - 32);
-        canvas.width = maxWidth;
-        canvas.height = Math.floor(maxWidth * 0.6); // 5:3 비율
-    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
- // background
-    ctx.fillStyle = 'rgba(18, 18, 26, 0.5)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    if (!layers || layers.length === 0) {
-        ctx.fillStyle = 'var(--text-muted)';
-        ctx.font = '16px "Noto Serif KR"';
+    if (!agg) {
+        ctx.fillStyle = '#0a0a0e';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#6b6b7b';
+        ctx.font = (16 * dpr) + 'px "Noto Serif KR"';
         ctx.textAlign = 'center';
-        ctx.fillText('Archive 레이어가 not found.', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('등고선 데이터를 생성할 수 없습니다.', W / 2, H / 2);
         return;
     }
 
- // 각 layer 렌더링
-    layers.forEach((layer, index) => {
-        if (!layer.wave_data || !layer.wave_data.wavePoints) {
-            console.warn(`[renderArchive] 레이어 ${index}에 wave_data가 not found.`);
-            return;
+    // ── raster 배경 ──
+    admDrawRaster(ctx, agg, W, H);
+
+    // ── contour lines ──
+    const Gc = agg.gridG || ADMIN_MAP_GRID;
+    const minH = agg.min, maxH = agg.max, range = (maxH - minH) || 1;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    function strokePass(style, lineW) {
+        ctx.strokeStyle = style; ctx.lineWidth = lineW;
+        for (let i = 1; i <= ADMIN_CONTOUR_LEVELS; i++) {
+            const th = minH + range * (i / (ADMIN_CONTOUR_LEVELS + 1));
+            const segs = admMarchingSquares(agg.heights, th, Gc);
+            ctx.beginPath();
+            segs.forEach(pair => { const p1 = admToCanvas(pair[0], W, H, Gc), p2 = admToCanvas(pair[1], W, H, Gc); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); });
+            ctx.stroke();
         }
+    }
+    strokePass('rgba(12, 8, 22, 0.42)', 1.05 * dpr);
+    strokePass('rgba(232, 224, 252, 0.48)', 0.62 * dpr);
 
-        const { wave_data } = layer;
-        const { wavePoints, color } = wave_data;
+    // ── pins (DOM) ──
+    if (!pinsLayer) return;
+    pinsLayer.innerHTML = '';
 
- // 각 layer 조금씩 아래 오프셋
-        const layerSpacing = canvas.height / (layers.length + 1);
-        const yOffset = (index + 1) * layerSpacing;
-        const centerY = canvas.height / 2;
+    if (!scenes || scenes.length === 0) return;
 
- // VOID Level high 면 blur filter 적용
-        if (layer.void_info && layer.void_info.voidLevel === 'high') {
-            ctx.filter = 'blur(1.5px)';
-        } else {
-            ctx.filter = 'none';
-        }
+    scenes.forEach((scene, idx) => {
+        const emotion = admSafeParseEmotion(scene.originalEmotion || scene.original_emotion);
+        const base = admEmotionToMapCoords(emotion);
+        const spread = admMapCoordsSpread(base.x, base.y, idx, scene.id || idx);
+        const isBridge = scene.sceneType === 'residual' || scene.scene_role === 'residual';
+        const pinType = isBridge ? 'bridge' : 'core';
+        const order = scene.scene_order != null ? scene.scene_order : idx + 1;
 
-        ctx.beginPath();
-        ctx.strokeStyle = color || 'rgba(196, 168, 130, 0.6)';
-        ctx.lineWidth = 1.5;
+        const el = document.createElement('div');
+        el.className = 'map-pin ' + pinType;
+        el.style.left = (spread.x * 100) + '%';
+        el.style.top = (spread.y * 100) + '%';
+        el.title = `S${order}: ${(scene.text || scene.text_stage_1 || '').substring(0, 40)}`;
 
- // wavePoints canvas 크기 맞게 스케일링
-        const maxX = Math.max(...wavePoints.map(p => p.x), 1);
-        const scaleX = canvas.width / maxX;
-        const scaleY = (canvas.height / 4) / 100; // y 좌표 정규화
+        const lb = document.createElement('div');
+        lb.className = 'map-pin-label';
+        lb.textContent = isBridge ? '·' : ('#' + order);
+        el.appendChild(lb);
 
-        wavePoints.forEach((p, i) => {
-            const x = p.x * scaleX;
-            const y = centerY + (p.y * scaleY) + (yOffset - centerY) / layers.length;
-            
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
-        });
-
-        ctx.stroke();
+        pinsLayer.appendChild(el);
     });
 
- // filter 리셋
-    ctx.filter = 'none';
+    // ── echo pins (기존 플레이 감정 잔상) ──
+    if (plays && plays.length) {
+        plays.slice(-40).forEach((pl, i) => {
+            const af = admProjectEmotionToAFContour(admSafeParseEmotion(pl.user_emotion));
+            const px = ((af.x * ADMIN_MAP_HALF) / ADMIN_MAP_SIZE + 0.5) * 100;
+            const py = ((af.z * ADMIN_MAP_HALF) / ADMIN_MAP_SIZE + 0.5) * 100;
+            const j = (i % 7) * 0.4;
+            const el = document.createElement('div');
+            el.className = 'map-pin echo';
+            el.style.left = Math.max(2, Math.min(98, px + Math.sin(i * 1.7) * j)) + '%';
+            el.style.top = Math.max(2, Math.min(98, py + Math.cos(i * 1.3) * j)) + '%';
+            pinsLayer.appendChild(el);
+        });
+    }
 
-    console.log('[renderArchive] Archive 렌더링 완료', { layersCount: layers.length });
+    console.log('[renderContourMapPreview] 등고선 핀맵 미리보기 렌더링 완료', { scenes: scenes.length, plays: (plays || []).length });
 }
 
 // memory save
@@ -2889,7 +3033,41 @@ async function loadStrataPreview(memoryId) {
 
 window.loadStrataPreview = loadStrataPreview;
 
-// 미리보기 탭에서 currentMemoryId를 쓰기 위한 래퍼 (모듈 스코프라 HTML에서 직접 참조 불가)
-window.loadArchive2DPreview = function () {
-    loadArchiveLayers(currentMemoryId);
+// 미리보기 탭에서 등고선 핀맵 불러오기 (play-test.html 동일 렌더링)
+window.loadArchive2DPreview = async function () {
+    const T = window.TemAfStrataTerrain;
+    if (!T) {
+        console.error('[loadArchive2DPreview] TemAfStrataTerrain not loaded');
+        return;
+    }
+    if (!currentMemoryId) {
+        console.warn('[loadArchive2DPreview] 메모리를 먼저 저장해주세요.');
+        return;
+    }
+
+    const supabaseClient = await getSupabaseClient();
+    if (!supabaseClient) return;
+
+    // plays 로드
+    let plays = [];
+    try {
+        const { data } = await supabaseClient.from('plays').select('*').eq('memory_id', currentMemoryId).order('created_at', { ascending: true });
+        plays = data || [];
+    } catch (e) { console.warn('[loadArchive2DPreview] plays 로드 실패:', e); }
+
+    // terrain 필드 생성 (TemAfStrataTerrain 사용)
+    const memRow = { id: currentMemoryId, title: document.getElementById('memoryTitle')?.value || '' };
+    const playsByMem = {}; playsByMem[currentMemoryId] = plays;
+    const P = T.buildMemoryItems([memRow], playsByMem);
+    const field = T.computeAfTerrainFields(P, null);
+    const total = field.G * field.G;
+    const agg = {
+        heights: field.hts,
+        colors: field.cls,
+        min: field.minH,
+        max: field.maxH,
+        gridG: field.G,
+    };
+
+    renderContourMapPreview(agg, currentScenes, plays);
 };
