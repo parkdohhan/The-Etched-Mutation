@@ -377,6 +377,41 @@ Strata (누적)
 
 매 Play마다 기억은 조금씩 변형된다. 충분한 Play가 축적되면(depth ≥ 5, heterogeneity ≥ 0.5) 재조합 트리거가 활성화되어, 서로 다른 해석이 교차한 제3의 서사가 생성될 가능성이 열린다.
 
+### 5.5 Strata 시각화: 기억의 적응도 지형
+
+TEM은 누적된 해석들을 AF 좌표계(Attribution × Core Fear)의 3D 지형으로 시각화한다.
+
+- **X축:** 귀인 방향 (self_blame → other_blame → fate_blame)
+- **Z축:** 핵심 두려움 (abandonment → rejection → powerlessness → loss)
+- **Y축:** play 누적에 의한 높이 — 해당 좌표에 얼마나 많은 해석이 축적되었는가
+
+이 시각화는 바이러스학의 적응도 지형(fitness landscape; Wright, 1932)과 구조적으로 대응하되, 대응의 강도에 따라 구분이 필요하다.
+
+**수학적으로 동일한 구조 (강한 대응):**
+
+| Strata | 적응도 지형 | 공유 구조 |
+|---|---|---|
+| play 누적 높이 | 적응도 값 (fitness value) | 스칼라 필드의 누적 — 동일한 가우시안 합산 |
+| 기억별 중심점의 봉우리 | 적응도 봉우리 (fitness peak) | 준종(quasispecies) 중심이 봉우리에 위치하는 것과 동일 구조 |
+| 봉우리 사이의 골짜기 | 적응도 계곡 (fitness valley) | 아무 해석도 점유하지 않은 영역 = 변이체가 통과하기 어려운 영역 |
+| play 추가 시 지형 변형 | 면역 압력 변화에 의한 지형 이동 | 새로운 데이터가 지형 자체를 재구성 |
+
+**참고적 비유에 그치는 대응 (약한 대응):**
+
+vertex color의 감정별 색 혼합은 항원 지도(antigenic cartography; Smith et al., 2004)의 혈청형 색 구분과 표면적으로 유사하나, 수학적 구조가 동일하다고 주장하기는 어렵다. 마찬가지로 fBm 노이즈는 유전적 부동(genetic drift)에 비유할 수 있으나, 노이즈는 어떤 시스템에나 존재하므로 이 대응은 특이적이지 않다.
+
+**이 대응에서 나오는 검증 가능한 예측:**
+
+Eigen의 준종 이론에는 **오류 임계(error threshold)**가 존재한다 — 변이율이 임계값을 넘으면 정보 자체가 소멸한다(error catastrophe). 이 대응이 유효하다면, 기억에도 **해석의 다양성이 임계점을 넘으면 기억의 핵심 서사가 소멸하는 현상**이 존재해야 한다. 구체적으로, heterogeneity가 특정 값을 초과하면 기억의 핵심 장면조차 원본과의 연결을 잃는 "기억의 오류 파국(mnemonic error catastrophe)"이 관찰되어야 한다. 이것은 TEM에서 경험적으로 테스트 가능한 예측이다.
+
+### 5.6 구조적 유추의 범위와 한계
+
+본 논문에서 제시한 레트로바이러스 대응은 전체가 균질한 강도를 가지지 않는다. 학술적 가치가 있는 것은 **수학적으로 동일한 연산을 독립적으로 선택한 경우** — 분산(heterogeneity = π), 단조 증가(depth = Muller's Ratchet), 포화 곡선(decay = 분자시계), 곱셈 구조(축 간 보상 차단) — 에 한정된다.
+
+이것이 끼워맞추기가 아닌 이유: 임의의 두 시스템에서 표면적 유사성(이름이 비슷함, 둘 다 2D 좌표계임)을 찾는 것은 항상 가능하다. 그러나 "같은 문제의 구조가 같은 수학적 해법을 요구한다"는 관계는 특이적이다. 기억 해석의 다양성을 측정하려 했을 때 분산이 선택되고, 바이러스 변이체의 다양성을 측정하려 했을 때도 분산이 선택된 것은 — 두 문제가 "집단 내 변이의 폭"이라는 동일한 수학적 구조를 공유하기 때문이다.
+
+Gentner(1983)의 구조 매핑 이론에 따르면, 생산적 유추(productive analogy)와 표면적 유추(surface analogy)를 구분하는 기준은 **대응에서 새로운 예측이 전이되는가**이다. 오류 임계 예측(5.5)은 바이러스학에서 기억으로의 예측 전이이며, 이것이 경험적으로 검증 또는 기각될 때 본 대응의 학술적 가치가 결정된다.
+
 ---
 
 ## 참고문헌 (References)
@@ -393,7 +428,11 @@ Butler, E. A. (2017). Emotions are temporal interpersonal systems. *Current Opin
 
 Eigen, M., & Schuster, P. (1977). The hypercycle: a principle of natural self-organization. *Naturwissenschaften*, 64(11), 541-565.
 
+Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*, 7(2), 155-170.
+
 Harris, R. S., & Dudley, J. P. (2015). APOBECs and virus restriction. *Virology*, 479-480, 131-145.
+
+Henikoff, S., & Henikoff, J. G. (1992). Amino acid substitution matrices from protein blocks. *Proceedings of the National Academy of Sciences*, 89(22), 10915-10919.
 
 Johnson, M. K., Hashtroudi, S., & Lindsay, D. S. (1993). Source monitoring. *Psychological Bulletin*, 114(1), 3–28.
 
@@ -423,6 +462,8 @@ Reagan, A. J., Mitchell, L., Kiley, D., Danforth, C. M., & Dodds, P. S. (2016). 
 
 Roediger, H. L., & McDermott, K. B. (1995). Creating false memories: Remembering words not presented in lists. *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 21(4), 803-814.
 
+Smith, D. J., Lapedes, A. S., de Jong, J. C., et al. (2004). Mapping the antigenic and genetic evolution of influenza virus. *Science*, 305(5682), 371-376.
+
 Tolstoy, L. (1897). *What Is Art?* (Что такое искусство?). Moscow.
 
 Troiano, E., Padó, S., & Klinger, R. (2023). Dimensional modeling of emotions in text with appraisal theories. *Computational Linguistics*, 49(1).
@@ -433,6 +474,74 @@ Warriner, A. B., Kuperman, V., & Brysbaert, M. (2013). Norms of valence, arousal
 
 Welford, B. P. (1962). Note on a method for calculating corrected sums of squares and products. *Technometrics*, 4(3), 419-420.
 
+Wright, S. (1932). The roles of mutation, inbreeding, crossbreeding, and selection in evolution. *Proceedings of the Sixth International Congress of Genetics*, 1, 356-366.
+
+Zanini, F., Brober, V., Thesing, R., et al. (2015). Population genomics of intrapatient HIV-1 evolution. *eLife*, 4, e11282.
+
 ---
 
-*[Section 6. Pilot Validation 및 Section 7. Discussion은 파일럿 테스트 실행 후 작성 예정]*
+*[Section 6. Pilot Validation은 파일럿 테스트 실행 후 작성 예정]*
+
+---
+
+## 7. 논의 (Discussion)
+
+### 7.1 요약
+
+본 논문은 기억 변형을 기술하는 형식적 프레임워크(기억유전학 6연산), 경험의 유사성을 측정하는 계산적 도구(별이엔진 V4), 오염의 축적을 추적하는 모델(오염 벡터), 그리고 이를 통합한 인터랙티브 시스템(TEM)을 제시했다. 레트로바이러스(HIV-1)의 생활사와의 구조적 대응을 통해 이론적 정당성을 확보하되, 대응의 강도를 수학적 동일성과 표면적 비유로 명시적으로 구분했다.
+
+### 7.2 한계
+
+**실증 검증의 부재.** 별이엔진 V4의 shape_similarity가 자기보고와 유의미한 상관을 보이는지는 파일럿 테스트를 통해 확인해야 한다. 이 검증이 실패하면 — 즉 shape가 level 단독 대비 예측력을 추가하지 못하면 — V4의 곱셈 구조는 alignment = level × void_mod로 축소되어야 한다.
+
+**오염 벡터 상수의 미튜닝.** DECAY_RATE(0.05), HETERO_SCALE(4.0), FIXATION_CONV_WEIGHT(0.4) 등 모든 상수는 시뮬레이션 전 잠정값이다. 실데이터 기반 파라미터 민감도 분석이 필요하다.
+
+**재조합 트리거의 미구현.** 기억유전학 Op 6(기억 재조합)의 트리거 조건(heterogeneity ≥ 0.5, depth ≥ 5)은 정의되었으나, 재조합의 산출물 — 서로 다른 해석이 교차한 제3의 서사 — 을 생성하는 메커니즘은 아직 구현되지 않았다.
+
+**구조적 유추의 범위.** 레트로바이러스 대응은 수학적으로 동일한 연산(분산, 단조 증가, 포화 곡선, 곱셈 구조)에 한정하여 주장하였으나, 두 시스템이 "같은 방정식을 푼다"는 것이 "같은 현상이다"를 의미하지는 않는다. 구조적 유추의 학술적 가치는 예측의 전이 가능성에 의해 결정되며(Gentner, 1983), 이는 경험적 검증을 기다린다.
+
+### 7.3 향후 방향
+
+#### 7.3.1 보편적 감정 지형의 추출
+
+본 논문에서 Strata는 개별 기억의 해석 누적을 시각화한다. 그러나 충분한 기억과 play가 축적되면, **개별 기억의 지형을 중첩하여 기억 내용에 비의존적인 보편적 감정 패턴을 추출**할 수 있다.
+
+HIV 계통역학에서 Zanini et al.(2015)은 여러 환자의 바이러스 진화를 중첩하여, 환자마다 바이러스 서열은 전혀 다르지만 **적응도 지형의 봉우리 위치가 반복됨**을 발견했다. 개별 바이러스가 아니라 면역 시스템의 보편적 구조가 드러난 것이다.
+
+TEM에서 동일한 방법론을 적용하면:
+
+- **보편적 감정 어트랙터 (universal emotional attractors):** 많은 기억에서 반복적으로 봉우리가 형성되는 AF 좌표. 인간이 기억을 해석할 때 자연스럽게 수렴하는 귀인×두려움 조합.
+- **금지된 감정 조합 (forbidden emotion combinations):** 항상 골짜기인 AF 좌표. 인간이 거의 경험하지 않는 귀인×두려움 조합. 이것이 존재한다면 인간 감정의 "허용된 공간"에 구조적 제약이 있다는 뜻이다.
+- **문화 간 지형 비교:** 한국어 기억과 영어 기억의 중첩 지형에서 봉우리 위치가 다르다면, 문화적 귀인 편향의 정량적 증거가 된다.
+
+이것은 TEM을 개별 기억의 체험 도구에서 **인간 감정 구조의 관측 도구(observatory)**로 확장하는 경로이다.
+
+#### 7.3.2 오류 파국 임계의 경험적 탐색
+
+섹션 5.5에서 제시한 예측 — heterogeneity가 임계값을 넘으면 기억의 핵심 서사가 소멸하는 "기억의 오류 파국(mnemonic error catastrophe)" — 을 경험적으로 탐색한다. 충분한 depth가 축적된 기억에서 heterogeneity와 Strata 봉우리 높이의 관계를 분석하여, 오류 임계가 실재하는지, 실재한다면 어디인지를 결정한다.
+
+#### 7.3.3 보편적 변형 역학: 기질-비의존적 속성의 비교
+
+본 논문에서 제시한 레트로바이러스 대응의 가장 큰 한계는, 변이의 **방향**이 분자 수준과 경험 수준에서 다를 수밖에 없다는 점이다. 분자 수준의 변이 방향은 물리화학적 제약(아미노산의 크기, 전하, 소수성)에 의해 결정되고, 경험 수준의 변이 방향은 사회적 맥락(감정, 관계, 문화)에 의해 결정된다. 기억은 사회적 맥락 안에서만 존재하는 개념이므로, 두 층위의 변이 방향이 대응하리라는 기대는 비현실적이다.
+
+그러나 방향이 아닌 **기질-비의존적(substrate-independent) 속성** — 내용이 무엇이든 상관없이 수학적으로 보존되는 형태적 특성 — 은 비교 가능하다. "무엇이 변하는가"는 다르지만, **"변하는 방식의 수학적 형태"가 같을 수 있다.**
+
+구체적으로 다음 네 가지가 측정 가능한 비교 대상이다:
+
+**(1) 금지 구조의 분포 (Distribution of Forbidden Zones).** 분자 수준에서 아미노산 치환 행렬(BLOSUM; Henikoff & Henikoff, 1992)은 모든 치환이 동등하지 않으며 거의 일어나지 않는 조합이 있음을 보여준다. 기억 수준에서도 감정 전이 행렬 — 한 장면의 감정에서 다음 장면의 감정으로의 전환 빈도 — 이 동등하지 않을 것이다. 비교 대상은 두 행렬의 **방향이 아니라 형태**: 금지 구역의 비율(희소성, sparsity), 금지 구역의 공간적 분포(클러스터링 계수), 허용된 전환의 연결 구조. 이것은 AlphaFold에 의한 CPEB3 변이체 안정성 행렬과 TEM의 감정 전이 행렬을 비교하여 테스트할 수 있다.
+
+**(2) 강건성/취약성 분포 (Robustness Distribution).** 단백질에서 어떤 위치는 변이에 강건(conserved)하고 어떤 위치는 취약(variable)하다. 기억에서 어떤 장면은 해석에 강건(모든 체험자가 비슷하게 반응)하고 어떤 장면은 취약(반응이 크게 분산)하다. 비교 대상은 position-wise conservation score(분자)와 scene-wise alignment score 분산(기억)의 **분포 형태** — 두 분포가 같은 통계적 패밀리(예: 멱법칙, 로그정규분포)를 따르는가. 만약 둘 다 멱법칙을 따른다면, "소수의 핵심 위치/장면이 전체 구조를 지탱하고 나머지는 자유롭다"는 설계 원리가 기질에 관계없이 공유되는 것이다.
+
+**(3) 축적 역학의 곡선 형태 (Accumulation Curve Shape).** 분자 수준에서 변이는 분자시계의 포화 곡선을 따라 축적된다. 기억 수준에서 오염은 decay 함수를 따라 축적된다. 비교 대상은 방향이 아니라 **곡선의 형태 파라미터**: 포화율, 반감기, 변곡점의 위치. 두 시스템의 포화 곡선이 같은 함수 패밀리에 속하는가. 이것은 TEM의 실데이터 축적 곡선과 HIV 분자시계 문헌(Rambaut et al., 2004)의 파라미터를 비교하여 탐색할 수 있다.
+
+**(4) 오류 임계의 스케일링 관계 (Error Threshold Scaling).** Eigen의 오류 임계가 서열 길이의 함수로 스케일링되듯, 기억의 오류 파국 임계가 장면 수의 함수로 스케일링될 수 있다. 두 스케일링 관계가 같은 함수 형태를 따르는지는 경험적 질문이며, TEM에서 다양한 장면 수의 기억에 대해 heterogeneity 임계를 측정하면 탐색 가능하다.
+
+이 네 가지 비교가 **보편적 변형 역학(universal transformation dynamics)**의 존재 여부를 묻는 프로그램을 구성하며, 기억유전학과 분자유전학의 구조적 유추가 표면적 비유를 넘어서는지를 결정하는 경험적 경로가 된다.
+
+#### 7.3.4 화자 상태 붕괴
+
+초기 설계 문서(기억 변질 엔진, 2026)에서 제안된 화자 상태의 3단계 붕괴 — narrator("나는 울고 있었다") → object("그녀는 울고 있었다") → absent("누군가 울고 있었던 것 같다") — 는 바이러스학의 세포병변 효과(cytopathic effect)에 대응한다. 오염이 충분히 축적되면 기억의 화자(= 숙주 세포) 자체가 변형·소멸하는 것이다. 이것은 Stage 3(과잉완성)의 극단적 결과로 오염 벡터 시스템에 통합될 수 있다.
+
+---
+
+*[Section 6. Pilot Validation은 파일럿 테스트 실행 후 작성 예정]*

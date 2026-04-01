@@ -2022,9 +2022,15 @@
     const { stage, intensity, band } = pres;
     if (stage === 'stable' || intensity < 0.01) return originalText;
 
-    // Use pre-generated AI text if available
-    if (stage === 'biased_inclination' && scene.text_biased) return scene.text_biased;
-    if (stage === 'hypercompletion' && scene.text_hyper) return scene.text_hyper;
+    // Pre-generated stage text: DB text_stage_1/2/3 mapped to contamination state
+    if (stage === 'biased_inclination') {
+      if (band === 'strong' && scene.text_stage_2) return scene.text_stage_2;
+      if (band !== 'weak'  && scene.text_stage_1) return scene.text_stage_1;
+    }
+    if (stage === 'hypercompletion') {
+      if (band === 'strong' && scene.text_stage_3) return scene.text_stage_3;
+      if (band !== 'weak'  && scene.text_stage_2) return scene.text_stage_2;
+    }
 
     // Client-side fallback effects (until anchor-based semantic mutation is built)
     // Seeded RNG ensures determinism per QA spec §6
