@@ -1288,7 +1288,8 @@ async function handleRecordComplete(extractedScene, lang) {
             originalVector: sceneData.originalVector,
             lang,
             onConfirm: async () => {
-                const memoryId = await saveRecordMemory(extractedScene, sceneData, lang);
+                const userTitle = await _showTitleInput(burialContainer, lang);
+                const memoryId = await saveRecordMemory(extractedScene, sceneData, lang, userTitle);
                 showBurialAnimation(burialContainer, {
                     originalVector: sceneData.originalVector,
                     lang,
@@ -1314,7 +1315,7 @@ async function handleRecordComplete(extractedScene, lang) {
     }
 }
 
-// Pending save data for anonymous users (saved after login)
+// Pending save data — fallback for save failures (retry on next attempt)
 let _pendingSave = null;
 
 async function _resolveUserId() {
@@ -1333,31 +1334,24 @@ async function _resolveUserId() {
     return null;
 }
 
-async function saveRecordMemory(conversationData, sceneData, lang) {
+async function saveRecordMemory(conversationData, sceneData, lang, userTitle) {
     const userId = await _resolveUserId();
-
-    if (!userId) {
-        // 비로그인 — 데이터 임시 보관, 나중에 로그인 후 저장
-        console.log('[Record] No login — deferring save');
-        _pendingSave = { conversationData, sceneData, lang };
-        return null; // memoryId 없이 진행 (strata 스킵, 매장 연출은 진행)
-    }
 
     try {
         const supabase = getSupabaseClient();
 
-        const title = conversationData.situation
-            ? (conversationData.situation.substring(0, 50) + (conversationData.situation.length > 50 ? '...' : ''))
-            : (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억');
+        const title = userTitle
+            || (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억');
 
         const { data: memory, error: memError } = await supabase
             .from('memories')
             .insert({
+                code: generateMemoryCode(),
                 title: title,
                 completed_sentence: conversationData.situation || '',
                 sensory_anchor: conversationData.sensory_anchor || null,
                 status: 'Fetus',
-                curator_id: userId,
+                curator_id: userId || null,
                 original_vector: sceneData.originalVector?.base || null,
                 original_reason_vector: sceneData.originalVector?.reason_analysis || null,
                 lang: lang,
@@ -1369,11 +1363,10 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
 
         const scenesToInsert = sceneData.scenes.map((s, i) => ({
             memory_id: memory.id,
-            order_index: s.order || i + 1,
+            scene_order: s.order || i + 1,
             scene_type: s.sceneType || 'normal',
             text: s.text,
-            emotion_cue: s.emotionCue || '',
-            original_vector: s.originalVector?.base || null,
+            original_emotion: s.originalVector?.base || null,
             original_reason_vector: s.originalVector?.reason_analysis || null,
             vector_weight: s.vectorWeight || 0,
         }));
@@ -1384,12 +1377,11 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
 
         if (sceneError) throw sceneError;
 
-        console.log('[Record] Memory saved:', memory.id);
+        console.log('[Record] Memory saved:', memory.id, userId ? '(logged in)' : '(anonymous)');
         _pendingSave = null;
         return memory.id;
     } catch (e) {
         console.error('[Record] Save error:', e);
-        // 저장 실패 시에도 임시 보관
         _pendingSave = { conversationData, sceneData, lang };
         return null;
     }
@@ -1406,6 +1398,41 @@ export async function savePendingRecordMemory() {
 }
 
 /**
+ * 제목 입력 프롬프트 — Record 매장 직전
+ */
+function _showTitleInput(container, lang) {
+    return new Promise((resolve) => {
+        container.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0a0a0e;">
+                <div style="text-align:center;max-width:340px;padding:2rem;">
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:14px;color:rgba(196,168,130,0.6);letter-spacing:2px;margin-bottom:24px;">
+                        ${lang === 'en' ? 'Name this memory.' : '이 기억의 제목을 정해주세요.'}
+                    </div>
+                    <input id="recordTitleInput" type="text" maxlength="40" placeholder="${lang === 'en' ? 'A short title...' : '짧은 제목...'}"
+                        style="width:100%;background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.9);font-family:'Cormorant Garamond',serif;font-size:18px;letter-spacing:1px;padding:8px 0;text-align:center;outline:none;" />
+                    <div style="margin-top:28px;">
+                        <button id="recordTitleConfirm" style="background:none;border:1px solid rgba(196,168,130,0.4);color:rgba(196,168,130,0.8);font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:2px;padding:10px 32px;cursor:pointer;transition:all 0.3s;">
+                            ${lang === 'en' ? 'Bury' : '묻기'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const input = container.querySelector('#recordTitleInput');
+        const btn = container.querySelector('#recordTitleConfirm');
+
+        const submit = () => {
+            const val = input.value.trim();
+            resolve(val || (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억'));
+        };
+        btn.addEventListener('click', submit);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+        setTimeout(() => input.focus(), 100);
+    });
+}
+
+/**
  * Phase B scene review — with edit button (placeholder)
  */
 async function _showPhaseBReview(container, sceneData, conversationData, lang) {
@@ -1417,7 +1444,8 @@ async function _showPhaseBReview(container, sceneData, conversationData, lang) {
         lang,
         showEditButton: true,
         onConfirm: async () => {
-            const memoryId = await saveRecordMemory(conversationData, sceneData, lang);
+            const userTitle = await _showTitleInput(container, lang);
+            const memoryId = await saveRecordMemory(conversationData, sceneData, lang, userTitle);
             showBurialAnimation(container, {
                 originalVector: sceneData.originalVector,
                 lang,
@@ -1446,9 +1474,10 @@ async function _showPhaseBReview(container, sceneData, conversationData, lang) {
  * strata 데이터가 없거나 실패 시 archive로 fallback
  */
 /**
- * 비로그인 Record 완료 후 — 로그인 유도 화면
+ * Record 완료 후 — 선택적 로그인 제안 (기억은 이미 저장됨)
+ * 로그인하면 기억이 프로필에 연결됨, 안 하면 익명 기억으로 archive에 남음
  */
-function _showLoginPromptAfterRecord(lang) {
+function _showOptionalLoginAfterRecord(memoryId, lang) {
     const container = document.getElementById('burialContainer');
     if (!container) { window.enterArchive(); return; }
 
@@ -1457,18 +1486,18 @@ function _showLoginPromptAfterRecord(lang) {
     container.innerHTML = `
         <div style="text-align:center;max-width:320px;padding:2rem;">
             <div style="font-family:'Cormorant Garamond',serif;font-size:16px;color:rgba(196,168,130,0.8);letter-spacing:3px;margin-bottom:16px;">
-                ${lang === 'en' ? 'Your memory is shaped.' : '기억이 형태를 갖췄다.'}
+                ${lang === 'en' ? 'The memory is buried.' : '기억이 묻혔다.'}
             </div>
             <div style="font-family:'Cormorant Garamond',serif;font-size:12px;color:rgba(196,168,130,0.4);letter-spacing:2px;line-height:1.8;margin-bottom:32px;">
                 ${lang === 'en'
-                    ? 'To bury it in the strata, you need to leave a trace of yourself.'
-                    : '지층에 묻으려면, 당신의 흔적을 남겨야 한다.'}
+                    ? 'Sign in to link this memory to your profile.'
+                    : '로그인하면 이 기억이 내 프로필에 연결됩니다.'}
             </div>
             <button id="recordLoginBtn" style="margin:0 8px;background:none;border:1px solid rgba(196,168,130,0.4);color:rgba(196,168,130,0.8);font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:2px;padding:10px 28px;cursor:pointer;transition:all 0.3s;">
                 ${lang === 'en' ? 'Sign in' : '로그인'}
             </button>
             <button id="recordSkipBtn" style="margin:0 8px;background:none;border:none;color:rgba(196,168,130,0.3);font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;padding:10px 16px;cursor:pointer;">
-                ${lang === 'en' ? 'Leave without saving' : '저장하지 않고 나가기'}
+                ${lang === 'en' ? 'Continue' : '넘기기'}
             </button>
         </div>
     `;
@@ -1476,20 +1505,24 @@ function _showLoginPromptAfterRecord(lang) {
     container.querySelector('#recordLoginBtn').addEventListener('click', async () => {
         container.classList.add('hidden');
         container.style.cssText = 'display:none !important;';
-        // 로그인 모달 표시
         const loginModal = document.getElementById('loginModal');
         if (loginModal) {
             loginModal.classList.add('active');
             loginModal.style.cssText = 'display:flex !important;z-index:2100 !important;';
-            // 로그인 성공 후 pending save 실행
             const handler = async () => {
                 document.removeEventListener('tem:login-success', handler);
-                const memoryId = await savePendingRecordMemory();
-                if (memoryId) {
-                    _showRecordStrata(memoryId, lang);
-                } else {
-                    window.enterArchive();
+                // Claim the anonymous memory — link to newly logged-in user
+                const userId = await _resolveUserId();
+                if (userId && memoryId) {
+                    try {
+                        const supabase = getSupabaseClient();
+                        await supabase.from('memories').update({ curator_id: userId }).eq('id', memoryId);
+                        console.log('[Record] Anonymous memory claimed by user:', userId);
+                    } catch (e) {
+                        console.warn('[Record] Failed to claim memory:', e);
+                    }
                 }
+                window.enterArchive();
             };
             document.addEventListener('tem:login-success', handler);
         } else {
@@ -1498,7 +1531,6 @@ function _showLoginPromptAfterRecord(lang) {
     });
 
     container.querySelector('#recordSkipBtn').addEventListener('click', () => {
-        _pendingSave = null;
         container.classList.add('hidden');
         container.style.display = 'none';
         window.enterArchive();
@@ -1506,9 +1538,8 @@ function _showLoginPromptAfterRecord(lang) {
 }
 
 function _showRecordStrata(memoryId, lang) {
-    // 비로그인 (memoryId null) — 로그인 유도 화면
     if (!memoryId) {
-        _showLoginPromptAfterRecord(lang);
+        window.enterArchive();
         return;
     }
 
@@ -1517,9 +1548,16 @@ function _showRecordStrata(memoryId, lang) {
         return;
     }
 
-    // strata close 시 archive로 이동하도록 onClose 설정
+    const state = appStore.getState();
+    const isLoggedIn = state.isLoggedIn;
+
+    // strata close 시: 비로그인이면 선택적 로그인 제안, 로그인이면 archive
     window.showStrataView(memoryId, null, () => {
-        window.enterArchive();
+        if (!isLoggedIn) {
+            _showOptionalLoginAfterRecord(memoryId, lang);
+        } else {
+            window.enterArchive();
+        }
     });
 
     // strata HUD에 봉인 메시지 오버레이
