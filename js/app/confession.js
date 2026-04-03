@@ -1688,15 +1688,14 @@ function showArchitectLocked() {
 function showMainMenu() {
     hideAllScreens();
 
-    // Show modeSelection (carousel) directly — skip matchingSelection (LIVE)
-    const modeSelection = document.getElementById('modeSelection');
+    // Force-hide matchingSelection (LIVE) and introScreen with !important
     const matchingSelection = document.getElementById('matchingSelection');
     const introScreen = document.getElementById('introScreen');
-
-    // Hide LIVE role selection if visible
-    if (matchingSelection) { matchingSelection.classList.remove('active'); matchingSelection.style.display = 'none'; }
+    if (matchingSelection) { matchingSelection.classList.remove('active'); matchingSelection.style.cssText = 'display:none !important;'; }
     if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;'; }
 
+    // Show modeSelection (carousel) directly
+    const modeSelection = document.getElementById('modeSelection');
     if (modeSelection) {
         modeSelection.classList.add('active');
         modeSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
