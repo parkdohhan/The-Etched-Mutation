@@ -1265,6 +1265,7 @@ async function _generateStageTextsInBackground(memoryId, contState) {
     } catch (e) {
         console.warn('[StageText] background generation error:', e.message);
     }
+}
 
 // ─────────────────────────────────────
 // === Exports ===
