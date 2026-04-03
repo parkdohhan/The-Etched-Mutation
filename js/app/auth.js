@@ -83,37 +83,14 @@ async function loadMyMemoriesFromDB() {
     const userId = state.currentUser.id;
     try {
         const client = networkService._getClient ? networkService._getClient() : null;
-        const results = await Promise.allSettled([
-            // 1) live_sessions path (live records)
-            (async () => {
-                const sessionIdsResult = await networkService.getUserSessionIds(userId);
-                if (sessionIdsResult.ok && sessionIdsResult.data && sessionIdsResult.data.length > 0) {
-                    const ids = sessionIdsResult.data.map(s => s.id);
-                    const memoriesResult = await networkService.getMemoriesBySessionIds(ids, 50);
-                    return (memoriesResult.ok && memoriesResult.data) ? memoriesResult.data : [];
-                }
-                return [];
-            })(),
-            // 2) curator_id path (Record/confession memories)
-            (async () => {
-                if (!client) return [];
-                const { data, error } = await client
-                    .from('memories')
-                    .select('*')
-                    .eq('curator_id', userId)
-                    .order('created_at', { ascending: false })
-                    .limit(50);
-                return (!error && data) ? data : [];
-            })(),
-        ]);
-        const liveMemories = results[0].status === 'fulfilled' ? results[0].value : [];
-        const curatedMemories = results[1].status === 'fulfilled' ? results[1].value : [];
-        const seen = new Set();
-        const merged = [];
-        for (const m of [...liveMemories, ...curatedMemories]) {
-            if (m?.id && !seen.has(m.id)) { seen.add(m.id); merged.push(m); }
-        }
-        return merged;
+        if (!client) return [];
+        const { data, error } = await client
+            .from('memories')
+            .select('*')
+            .eq('curator_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+        return (!error && data) ? data : [];
     } catch (e) {
         console.error('loadMyMemoriesFromDB error:', e);
         return [];
