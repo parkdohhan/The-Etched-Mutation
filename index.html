@@ -186,7 +186,7 @@
             <div data-i18n="record.door.hint" style="font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:3px;color:rgba(196,168,130,0.3);margin-top:2rem;text-align:center;animation:pulse 2s infinite;">— click to enter —</div>
             <pre id="doorPre"></pre>
         </div>
-        <button class="door-back-btn" id="doorBackBtn" onclick="event.stopPropagation(); showMainMenu()">← Back</button>
+        <button class="door-back-btn" id="doorBackBtn" onclick="event.stopPropagation(); document.getElementById('confessionHub').style.cssText='display:none !important;'; document.getElementById('matchingSelection').style.cssText='display:none !important;'; document.getElementById('introScreen').style.cssText='display:none !important;'; var ms=document.getElementById('modeSelection'); if(ms){ms.classList.add('active');ms.style.cssText='display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';}">← Back</button>
     </div>
     <div class="matching-selection" id="matchingSelection">
         <h2 class="mode-title">LIVE</h2>
