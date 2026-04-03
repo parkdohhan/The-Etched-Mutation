@@ -1688,20 +1688,18 @@ function showArchitectLocked() {
 function showMainMenu() {
     hideAllScreens();
 
-    // Show the carousel (modeSelection) directly, skip opening animation
-    if (typeof window.showModeSelection === 'function') {
-        window.showModeSelection();
-        if (typeof window.selectMatching === 'function') {
-            window.selectMatching('session');
-        }
-    } else {
-        // Fallback: show introScreen if carousel not available
-        const introScreen = document.getElementById('introScreen');
-        if (introScreen) {
-            introScreen.classList.remove('hidden');
-            introScreen.classList.add('visible');
-            introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important';
-        }
+    // Show modeSelection (carousel) directly — skip matchingSelection (LIVE)
+    const modeSelection = document.getElementById('modeSelection');
+    const matchingSelection = document.getElementById('matchingSelection');
+    const introScreen = document.getElementById('introScreen');
+
+    // Hide LIVE role selection if visible
+    if (matchingSelection) { matchingSelection.classList.remove('active'); matchingSelection.style.display = 'none'; }
+    if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;'; }
+
+    if (modeSelection) {
+        modeSelection.classList.add('active');
+        modeSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
     }
 }
 
