@@ -3071,3 +3071,117 @@ window.loadArchive2DPreview = async function () {
 
     renderContourMapPreview(agg, currentScenes, plays);
 };
+
+// ─── Anchor Images Manager ──────────────────────────────────────
+
+window.saveAnchorImage = async function () {
+    const keyword = document.getElementById('anchorKeyword')?.value.trim();
+    const emotion = document.getElementById('anchorEmotion')?.value || null;
+    const imageType = document.getElementById('anchorType')?.value || 'text';
+    const content = document.getElementById('anchorContent')?.value || '';
+    const vivMin = parseFloat(document.getElementById('anchorVivMin')?.value) || 0;
+    const vivMax = parseFloat(document.getElementById('anchorVivMax')?.value) || 1;
+    const fileInput = document.getElementById('anchorPhotoFile');
+
+    if (!keyword) { alert('Keyword is required'); return; }
+
+    const client = getSupabaseClient();
+    if (!client) { alert('No Supabase client'); return; }
+
+    let storagePath = null;
+
+    // Upload photo to Supabase Storage if photo type
+    if (imageType === 'photo' && fileInput?.files?.[0]) {
+        const file = fileInput.files[0];
+        const ext = file.name.split('.').pop();
+        const path = `anchors/${Date.now()}_${keyword.replace(/\s+/g, '_')}.${ext}`;
+
+        const { error: uploadErr } = await client.storage
+            .from('anchor-images')
+            .upload(path, file, { upsert: true });
+
+        if (uploadErr) {
+            alert('Upload failed: ' + uploadErr.message);
+            return;
+        }
+
+        const { data: urlData } = client.storage.from('anchor-images').getPublicUrl(path);
+        storagePath = urlData?.publicUrl || path;
+    }
+
+    const row = {
+        keyword,
+        emotion,
+        image_type: imageType,
+        content: imageType !== 'photo' ? content : null,
+        storage_path: storagePath,
+        vividness_min: vivMin,
+        vividness_max: vivMax,
+    };
+
+    const { error } = await client.from('anchor_images').insert(row);
+    if (error) {
+        alert('Save failed: ' + error.message);
+    } else {
+        // Clear form
+        document.getElementById('anchorKeyword').value = '';
+        document.getElementById('anchorContent').value = '';
+        if (fileInput) fileInput.value = '';
+        loadAnchorImages();
+    }
+};
+
+window.loadAnchorImages = async function () {
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    const listEl = document.getElementById('anchorImagesList');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<p style="color:var(--text-muted);font-style:italic;">Loading...</p>';
+
+    const { data, error } = await client
+        .from('anchor_images')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error || !data) {
+        listEl.innerHTML = '<p style="color:var(--text-muted);">Failed to load.</p>';
+        return;
+    }
+
+    if (data.length === 0) {
+        listEl.innerHTML = '<p style="color:var(--text-muted);font-style:italic;">No anchor images yet.</p>';
+        return;
+    }
+
+    listEl.innerHTML = data.map(a => {
+        const preview = a.image_type === 'photo' && a.storage_path
+            ? `<img src="${a.storage_path}" style="max-width:60px;max-height:40px;object-fit:cover;border-radius:2px;margin-right:8px;vertical-align:middle;">`
+            : a.image_type === 'ascii' && a.content
+                ? `<pre style="display:inline;font-size:7px;line-height:1;margin-right:8px;vertical-align:middle;">${a.content.substring(0, 80)}</pre>`
+                : '';
+        return `<div style="padding:0.6rem;margin-bottom:0.4rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.1);display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;">
+                ${preview}
+                <span style="font-size:0.9rem;color:var(--text-primary);">${a.keyword}</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);margin-left:8px;">${a.image_type}${a.emotion ? ' · ' + a.emotion : ''} · ${a.vividness_min}~${a.vividness_max}</span>
+            </div>
+            <button onclick="deleteAnchorImage('${a.id}')" style="background:none;border:1px solid rgba(200,80,80,.3);color:rgba(200,80,80,.7);font-size:0.75rem;padding:2px 8px;cursor:pointer;">×</button>
+        </div>`;
+    }).join('');
+};
+
+window.deleteAnchorImage = async function (id) {
+    if (!confirm('Delete this anchor image?')) return;
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    await client.from('anchor_images').delete().eq('id', id);
+    loadAnchorImages();
+};
+
+// Auto-load on dashboard init
+setTimeout(() => {
+    if (document.getElementById('anchorImagesList')) loadAnchorImages();
+}, 2000);

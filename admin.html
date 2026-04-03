@@ -250,6 +250,66 @@
                     <div id="sceneNavDiagResult"></div>
                 </div>
             </div>
+
+            <!-- Anchor Images Manager -->
+            <div class="editor-section" style="margin-top:2rem;padding:2rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);">
+                <h3 class="editor-section-title" style="margin-bottom:1rem;">🎨 Anchor Images</h3>
+
+                <!-- Upload form -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1.5rem;">
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);">Keyword</label>
+                        <input type="text" id="anchorKeyword" placeholder="의자, chair..." style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);">Emotion</label>
+                        <select id="anchorEmotion" style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
+                            <option value="">— none —</option>
+                            <option value="sadness">sadness</option>
+                            <option value="anger">anger</option>
+                            <option value="fear">fear</option>
+                            <option value="longing">longing</option>
+                            <option value="guilt">guilt</option>
+                            <option value="joy">joy</option>
+                            <option value="numbness">numbness</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);">Type</label>
+                        <select id="anchorType" onchange="document.getElementById('anchorPhotoUpload').style.display=this.value==='photo'?'block':'none';document.getElementById('anchorContentArea').style.display=this.value!=='photo'?'block':'none';" style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
+                            <option value="text">text</option>
+                            <option value="ascii">ascii</option>
+                            <option value="photo">photo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem;color:var(--text-muted);">Vividness range</label>
+                        <div style="display:flex;gap:0.5rem;">
+                            <input type="number" id="anchorVivMin" value="0" min="0" max="1" step="0.1" style="width:50%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
+                            <input type="number" id="anchorVivMax" value="1" min="0" max="1" step="0.1" style="width:50%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="anchorContentArea">
+                    <label style="font-size:0.8rem;color:var(--text-muted);">Content (text or ASCII art)</label>
+                    <textarea id="anchorContent" rows="6" placeholder="ASCII art or text content..." style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-family:monospace;font-size:0.85rem;resize:vertical;"></textarea>
+                </div>
+
+                <div id="anchorPhotoUpload" style="display:none;">
+                    <label style="font-size:0.8rem;color:var(--text-muted);">Photo file</label>
+                    <input type="file" id="anchorPhotoFile" accept="image/*" style="width:100%;padding:0.5rem;color:var(--text-muted);font-size:0.85rem;">
+                </div>
+
+                <div style="margin-top:1rem;display:flex;gap:0.8rem;">
+                    <button class="editor-btn" onclick="saveAnchorImage()" style="padding:0.6rem 1.5rem;">Save Anchor</button>
+                    <button class="editor-btn" onclick="loadAnchorImages()" style="padding:0.6rem 1.5rem;opacity:0.7;">Refresh List</button>
+                </div>
+
+                <!-- List -->
+                <div id="anchorImagesList" style="margin-top:1.5rem;max-height:400px;overflow-y:auto;"></div>
+            </div>
+
         </div>
     </div>
 
