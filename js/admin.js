@@ -3076,7 +3076,6 @@ window.loadArchive2DPreview = async function () {
 
 window.saveAnchorImage = async function () {
     const keyword = document.getElementById('anchorKeyword')?.value.trim();
-    const emotion = document.getElementById('anchorEmotion')?.value || null;
     const imageType = document.getElementById('anchorType')?.value || 'text';
     const content = document.getElementById('anchorContent')?.value || '';
     const vivMin = parseFloat(document.getElementById('anchorVivMin')?.value) || 0;
@@ -3111,7 +3110,6 @@ window.saveAnchorImage = async function () {
 
     const row = {
         keyword,
-        emotion,
         image_type: imageType,
         content: imageType !== 'photo' ? content : null,
         storage_path: storagePath,
@@ -3165,7 +3163,7 @@ window.loadAnchorImages = async function () {
             <div style="display:flex;align-items:center;">
                 ${preview}
                 <span style="font-size:0.9rem;color:var(--text-primary);">${a.keyword}</span>
-                <span style="font-size:0.75rem;color:var(--text-muted);margin-left:8px;">${a.image_type}${a.emotion ? ' · ' + a.emotion : ''} · ${a.vividness_min}~${a.vividness_max}</span>
+                <span style="font-size:0.75rem;color:var(--text-muted);margin-left:8px;">${a.image_type} · ${a.vividness_min}~${a.vividness_max}</span>
             </div>
             <button onclick="deleteAnchorImage('${a.id}')" style="background:none;border:1px solid rgba(200,80,80,.3);color:rgba(200,80,80,.7);font-size:0.75rem;padding:2px 8px;cursor:pointer;">×</button>
         </div>`;

@@ -69,19 +69,6 @@
                         <input type="text" id="anchorKeyword" placeholder="의자, chair..." style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
                     </div>
                     <div>
-                        <label style="font-size:0.8rem;color:var(--text-muted);">Emotion</label>
-                        <select id="anchorEmotion" style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
-                            <option value="">— none —</option>
-                            <option value="sadness">sadness</option>
-                            <option value="anger">anger</option>
-                            <option value="fear">fear</option>
-                            <option value="longing">longing</option>
-                            <option value="guilt">guilt</option>
-                            <option value="joy">joy</option>
-                            <option value="numbness">numbness</option>
-                        </select>
-                    </div>
-                    <div>
                         <label style="font-size:0.8rem;color:var(--text-muted);">Type</label>
                         <select id="anchorType" onchange="document.getElementById('anchorPhotoUpload').style.display=this.value==='photo'?'block':'none';document.getElementById('anchorContentArea').style.display=this.value!=='photo'?'block':'none';" style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
                             <option value="text">text</option>
