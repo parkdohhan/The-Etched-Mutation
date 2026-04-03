@@ -169,10 +169,15 @@ let onCancelCallback = null;
 let isCrisisBlocked = false;
 let typingTimer = null;
 
-// Scene-cut state
-let currentSceneFragments = [];  // user messages for current scene
-let completedScenes = [];        // finalized scene texts
-let sceneConversationHistory = []; // full conversation for AI context
+// Conversation turn counter (for seal button visibility)
+let _turnCount = 0;
+const SEAL_BUTTON_THRESHOLD = 3;
+
+// End-of-conversation detection phrases
+const SEAL_PHRASES = {
+  ko: ['여기까지', '이제 됐어', '더 없어', '끝이야', '그게 다야', '다 말했어', '이만', '봉인'],
+  en: ["that's all", 'enough', "i'm done", 'nothing more', "that's it", 'seal it', 'end here'],
+};
 
 // Wave state — drives the ghost waveform
 let waveState = {
@@ -199,7 +204,6 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
   container.innerHTML = `
     <div class="rec-ghost">
       <button class="rec-back" id="recordBackBtn">&larr;</button>
-      <div class="rec-scene-indicator" id="recSceneIndicator" style="position:absolute;top:16px;right:20px;font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:3px;color:rgba(196,168,130,0.4);text-transform:uppercase;">Scene 1</div>
       <div class="rec-echo-layer" id="recEchoLayer" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:1;"></div>
       <div class="rec-wave-area">
         <canvas id="recWaveCanvas"></canvas>
@@ -210,8 +214,8 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
         <input type="text" id="recordInput" placeholder="${lang === 'en' ? 'Tell me here...' : '여기에 이야기해...'}" autocomplete="off" />
         <button class="rec-send-btn" id="recordSendBtn">&uarr;</button>
       </div>
-      <div class="rec-cut-row" id="recCutRow" style="text-align:center;margin-top:8px;opacity:0;transition:opacity 0.6s;">
-        <button class="rec-cut-btn" id="recordCutBtn" style="background:none;border:1px solid rgba(196,168,130,0.2);color:rgba(196,168,130,0.5);font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;padding:6px 20px;cursor:pointer;transition:all 0.3s;">${lang === 'en' ? '— cut this scene —' : '— 이 장면은 여기까지 —'}</button>
+      <div class="rec-seal-row" id="recSealRow" style="text-align:center;margin-top:8px;opacity:0;pointer-events:none;transition:opacity 1.2s ease;">
+        <button class="rec-seal-btn" id="recordSealBtn" style="background:none;border:1px solid rgba(196,168,130,0.25);color:rgba(196,168,130,0.5);font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;padding:6px 20px;cursor:pointer;transition:all 0.3s;">${lang === 'en' ? '— seal this memory —' : '— 이 기억을 봉인 —'}</button>
       </div>
       <div class="rec-crisis-overlay hidden" id="recordCrisisOverlay"></div>
       <div class="rec-safety hidden" id="recSafety"></div>
@@ -222,15 +226,12 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
   inputEl = container.querySelector('#recordInput');
   sendBtn = container.querySelector('#recordSendBtn');
   voidBtn = container.querySelector('#recordVoidBtn');
-  cutSceneBtn = container.querySelector('#recordCutBtn');
   echoLayerEl = container.querySelector('#recEchoLayer');
   waveCanvas = container.querySelector('#recWaveCanvas');
   waveCtx = waveCanvas.getContext('2d');
 
-  // Reset scene state
-  currentSceneFragments = [];
-  completedScenes = [];
-  sceneConversationHistory = [];
+  // Reset state
+  _turnCount = 0;
 
   // Events
   sendBtn.addEventListener('click', handleSend);
@@ -238,7 +239,7 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   });
   voidBtn.addEventListener('click', handleVoid);
-  cutSceneBtn.addEventListener('click', handleCutScene);
+  container.querySelector('#recordSealBtn').addEventListener('click', handleSealRequest);
   container.querySelector('#recordBackBtn').addEventListener('click', () => {
     if (onCancelCallback) onCancelCallback();
   });
@@ -504,6 +505,9 @@ async function requestAIMessage() {
     const cleanReply = fullReply.replace(/\[SCENE_COMPLETE\][\s\S]*/, '').trim();
     conversationHistory.push({ role: 'assistant', content: cleanReply });
 
+    // Float echo words from AI response (cleaner than user input — no typos)
+    floatEchoWords(cleanReply, true);
+
     if (sceneComplete && extractedScene && onCompleteCallback) {
       setTimeout(() => onCompleteCallback(extractedScene), 1500);
     } else {
@@ -544,16 +548,32 @@ function handleSend() {
   }
 
   inputEl.value = '';
+
+  // Check for seal phrases — user wants to end the conversation
+  const lowerText = text.toLowerCase();
+  const isSealPhrase = SEAL_PHRASES.ko.some(p => lowerText.includes(p))
+    || SEAL_PHRASES.en.some(p => lowerText.includes(p));
+
+  if (isSealPhrase) {
+    // Inject seal request into conversation so AI knows to wrap up
+    conversationHistory.push({ role: 'user', content: text });
+    conversationHistory.push({ role: 'user', content: '[USER_SEAL_REQUEST]' });
+    floatEchoWords(text);
+    requestAIMessage();
+    return;
+  }
+
   conversationHistory.push({ role: 'user', content: text });
-  currentSceneFragments.push(text);
+  _turnCount++;
 
   // Float echo words from user input
   floatEchoWords(text);
 
-  // Show cut button after first input
-  const cutRow = containerEl.querySelector('#recCutRow');
-  if (cutRow && currentSceneFragments.length >= 1) {
-    cutRow.style.opacity = '1';
+  // Show seal button after enough turns
+  const sealRow = containerEl.querySelector('#recSealRow');
+  if (sealRow && _turnCount >= SEAL_BUTTON_THRESHOLD) {
+    sealRow.style.opacity = '1';
+    sealRow.style.pointerEvents = 'auto';
   }
 
   requestAIMessage();
@@ -618,13 +638,23 @@ function handleCrisis(blockedText) {
 }
 
 // ===== Echo Float — 잔향 단어 떠다니기 =====
-function floatEchoWords(text) {
+function floatEchoWords(text, isAIResponse = false) {
   if (!echoLayerEl) return;
-  // Extract meaningful words (2+ chars, skip common particles)
-  const stopWords = new Set(['이', '그', '저', '는', '은', '을', '를', '에', '의', '도', '가', 'the', 'a', 'an', 'is', 'was', 'to', 'in', 'it', 'my', 'i', 'and', 'but']);
-  const words = text.split(/[\s,.\-!?;:'"]+/).filter(w => w.length >= 2 && !stopWords.has(w.toLowerCase()));
-  // Pick up to 3 words
-  const picks = words.length <= 3 ? words : words.sort(() => Math.random() - 0.5).slice(0, 3);
+  // Extended stopwords — filter particles, connectors, common verbs
+  const stopWords = new Set([
+    '이', '그', '저', '는', '은', '을', '를', '에', '의', '도', '가', '와', '과', '로', '으로',
+    '하고', '해서', '그래서', '그런데', '근데', '있어', '없어', '했어', '거야', '건가',
+    '네가', '내가', '우리', '너는', '나는', '거기', '여기', '이건', '그건', '뭐', '좀',
+    'the', 'a', 'an', 'is', 'was', 'to', 'in', 'it', 'my', 'i', 'and', 'but', 'so',
+    'that', 'this', 'you', 'your', 'we', 'do', 'did', 'have', 'had', 'be', 'been',
+    'what', 'how', 'when', 'where', 'why', 'can', 'could', 'would', 'should',
+  ]);
+  const words = text.split(/[\s,.\-!?;:'"…·~()]+/).filter(w => w.length >= 2 && !stopWords.has(w.toLowerCase()));
+
+  // AI responses: pick more selectively (emotion/noun words only)
+  // User input: pick fewer to reduce typo exposure
+  const maxPicks = isAIResponse ? 2 : 1;
+  const picks = words.length <= maxPicks ? words : words.sort(() => Math.random() - 0.5).slice(0, maxPicks);
 
   picks.forEach((word, idx) => {
     const el = document.createElement('div');
@@ -658,100 +688,18 @@ function floatEchoWords(text) {
   });
 }
 
-// ===== Scene Cut — 장면 끊기 (파편만 저장, AI 호출 없음) =====
-function handleCutScene() {
-  if (isWaitingForAI || currentSceneFragments.length === 0) return;
+// ===== Seal Request — 사용자가 봉인 버튼을 눌렀을 때 =====
+function handleSealRequest() {
+  if (isWaitingForAI) return;
 
-  const sceneNum = completedScenes.length + 1;
+  // Inject seal signal into conversation → AI will wrap up with one final question
+  conversationHistory.push({ role: 'user', content: '[USER_SEAL_REQUEST]' });
 
-  // Save fragments for this scene (no AI call — just store the raw input)
-  completedScenes.push({
-    fragments: [...currentSceneFragments],
-    sceneType: completedScenes.length === 0 ? 'normal' : 'branch',
-  });
+  // Hide seal button
+  const sealRow = containerEl.querySelector('#recSealRow');
+  if (sealRow) { sealRow.style.opacity = '0'; sealRow.style.pointerEvents = 'none'; }
 
-  // Show brief confirmation + choice
-  showSceneCutUI(sceneNum);
-}
-
-function showSceneCutUI(sceneNum) {
-  const inputRow = containerEl.querySelector('#recInputRow');
-  const cutRow = containerEl.querySelector('#recCutRow');
-  if (inputRow) inputRow.style.display = 'none';
-  if (cutRow) cutRow.style.display = 'none';
-
-  const summary = currentSceneFragments.join(' — ');
-  const preview = summary.length > 60 ? summary.substring(0, 60) + '…' : summary;
-
-  showAIText(currentLang === 'en'
-    ? `Scene ${sceneNum} held: "${preview}"`
-    : `장면 ${sceneNum} 담김: "${preview}"`, () => {
-    const choiceDiv = document.createElement('div');
-    choiceDiv.id = 'recSceneChoice';
-    choiceDiv.style.cssText = 'text-align:center;margin-top:1.5rem;opacity:0;transition:opacity 0.8s;';
-    choiceDiv.innerHTML = `
-      <div style="font-size:9px;letter-spacing:3px;color:rgba(196,168,130,0.3);margin-bottom:1rem;text-transform:uppercase;">Scene ${sceneNum}</div>
-      <button id="recNextSceneBtn" style="margin:0 8px;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:2px;padding:8px 24px;cursor:pointer;transition:all 0.3s;">
-        ${currentLang === 'en' ? 'Next scene' : '다음 장면으로'}
-      </button>
-      <button id="recSealBtn" style="margin:0 8px;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:2px;padding:8px 24px;cursor:pointer;transition:all 0.3s;">
-        ${currentLang === 'en' ? 'Seal this memory' : '이 기억을 봉인'}
-      </button>
-    `;
-    aiTextEl.parentElement.appendChild(choiceDiv);
-    requestAnimationFrame(() => { choiceDiv.style.opacity = '1'; });
-
-    choiceDiv.querySelector('#recNextSceneBtn').addEventListener('click', startNextScene);
-    choiceDiv.querySelector('#recSealBtn').addEventListener('click', sealMemory);
-  });
-}
-
-function startNextScene() {
-  const choiceDiv = containerEl.querySelector('#recSceneChoice');
-  if (choiceDiv) choiceDiv.remove();
-
-  currentSceneFragments = [];
-  const inputRow = containerEl.querySelector('#recInputRow');
-  const cutRow = containerEl.querySelector('#recCutRow');
-  if (inputRow) inputRow.style.display = '';
-  if (cutRow) { cutRow.style.display = ''; cutRow.style.opacity = '0'; }
-
-  const indicator = containerEl.querySelector('#recSceneIndicator');
-  if (indicator) indicator.textContent = `Scene ${completedScenes.length + 1}`;
-
-  if (echoLayerEl) echoLayerEl.innerHTML = '';
-
-  setInputEnabled(true);
-  if (cutSceneBtn) cutSceneBtn.disabled = false;
-
-  const nextQ = currentLang === 'en'
-    ? "What comes next? What do you see after that?"
-    : "그 다음엔? 그 뒤에 뭐가 보여?";
-  showAIText(nextQ, () => {
-    conversationHistory.push({ role: 'assistant', content: nextQ });
-    if (inputEl) inputEl.focus();
-  });
-}
-
-function sealMemory() {
-  if (completedScenes.length > 0) {
-    completedScenes[completedScenes.length - 1].sceneType = 'ending';
-  }
-
-  const choiceDiv = containerEl.querySelector('#recSceneChoice');
-  if (choiceDiv) choiceDiv.remove();
-
-  // Pass raw scene fragments + full conversation to confession.js
-  // confession.js will call generate-scene-from-conversation to reconstruct all scenes
-  const extractedSceneData = {
-    _isPhaseB: true,
-    rawScenes: completedScenes,
-    conversation: conversationHistory,
-  };
-
-  if (onCompleteCallback) {
-    onCompleteCallback(extractedSceneData);
-  }
+  requestAIMessage();
 }
 
 // ===== Exports =====

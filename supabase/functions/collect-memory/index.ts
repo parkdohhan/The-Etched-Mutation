@@ -116,6 +116,10 @@ Rules:
   Build on the full accumulated context, not just the most recent message.
 - NEVER say "that memory" or "tell me about that memory." The user is inside their own memory right now.
   Say "the memory you want to record" or refer to specific details they already shared.
+- If the user says [USER_SEAL_REQUEST], "that's all", "enough", "I'm done", or similar:
+  Ask ONE final closing question (e.g. "Last thing — the most vivid sensation from that moment?"),
+  then output [SCENE_COMPLETE] with whatever data you have collected so far.
+  Do NOT ask more than one question after a seal request.
 
 When collection is sufficient, output [SCENE_COMPLETE] followed by this JSON:
 {
@@ -155,6 +159,9 @@ Start your first message by asking about the most vivid sensation tied to this m
   누적된 전체 맥락을 기반으로 아직 빠진 정보를 물어라.
 - 절대 "그 기억"이라고 말하지 마라. 사용자는 지금 자기 기억 안에 있다.
   "네가 기록하고 싶은 기억 속에서" 또는 사용자가 이미 말한 구체적 디테일을 가리켜라.
+- 사용자가 [USER_SEAL_REQUEST], "여기까지", "이제 됐어", "다 말했어" 등을 말하면:
+  마무리 질문 딱 1개만 해라 (예: "마지막으로, 그 순간 가장 선명한 감각 하나만 말해줘"),
+  그 다음 즉시 [SCENE_COMPLETE]를 출력해라. 봉인 요청 후 질문을 2개 이상 하지 마라.
 
 수집이 충분하면 [SCENE_COMPLETE] 태그와 함께 아래 JSON을 출력:
 {
