@@ -253,7 +253,13 @@
     g.Strata.stop();
     var viewEl = document.getElementById('strataView');
     if (viewEl) viewEl.style.display = 'none';
-    if (_onCloseCallback) _onCloseCallback();
+    if (_onCloseCallback) {
+      _onCloseCallback();
+    } else if (typeof g.enterArchive === 'function') {
+      g.enterArchive();
+    } else if (typeof g.showMainMenu === 'function') {
+      g.showMainMenu();
+    }
   }
   g.closeStrataView = closeStrataView;
 

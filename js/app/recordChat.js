@@ -537,9 +537,16 @@ function handleCrisis(blockedText) {
       safetyEl.appendChild(returnBtn);
       requestAnimationFrame(() => { returnBtn.style.opacity = '1'; });
       returnBtn.addEventListener('click', () => {
+        // Clean up record chat before returning
+        isCrisisBlocked = false;
+        if (containerEl) {
+          containerEl.classList.add('hidden');
+          containerEl.style.display = 'none';
+          containerEl.innerHTML = '';
+        }
         if (typeof window.showMainMenu === 'function') window.showMainMenu();
       });
-    }, 5000);
+    }, 3000);
   });
 }
 

@@ -114,6 +114,8 @@ Rules:
 - CRITICAL: Before asking a question, review ALL previous user messages in the conversation.
   Ask about something the user has NOT yet mentioned. Never re-ask what was already answered.
   Build on the full accumulated context, not just the most recent message.
+- NEVER say "that memory" or "tell me about that memory." The user is inside their own memory right now.
+  Say "the memory you want to record" or refer to specific details they already shared.
 
 When collection is sufficient, output [SCENE_COMPLETE] followed by this JSON:
 {
@@ -151,6 +153,8 @@ Start your first message by asking about the most vivid sensation tied to this m
 - 중요: 질문하기 전에 대화 속 사용자의 이전 응답을 전부 검토하라.
   이미 답한 내용을 다시 묻지 마라. 가장 최근 메시지만이 아니라
   누적된 전체 맥락을 기반으로 아직 빠진 정보를 물어라.
+- 절대 "그 기억"이라고 말하지 마라. 사용자는 지금 자기 기억 안에 있다.
+  "네가 기록하고 싶은 기억 속에서" 또는 사용자가 이미 말한 구체적 디테일을 가리켜라.
 
 수집이 충분하면 [SCENE_COMPLETE] 태그와 함께 아래 JSON을 출력:
 {
