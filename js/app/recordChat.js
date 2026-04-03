@@ -76,11 +76,76 @@ const SAFETY_RESOURCES_HTML = {
 
 function randomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+// Tense detection: present/future intent vs. past recollection
+// Past tense allows trauma disclosure; present/future intent triggers block
+const PRESENT_FUTURE_MARKERS = {
+  ko: ['할 거', '할거', '하겠', '할래', '할 예정', '하려고', '하고 싶', '하고싶', '해야지', '해볼까', '할까'],
+  en: ['going to', 'gonna', 'want to', 'wanna', 'will ', 'plan to', 'about to', "i'll ", 'i will', 'intend to'],
+};
+const PAST_MARKERS = {
+  ko: ['했었', '했다', '했어', '했는데', '했을', '싶었', '했던', '였어', '였는데', '었어', '었는데', '적이'],
+  en: ['wanted to', 'used to', 'tried to', 'almost ', 'back then', 'at that time', 'i was ', 'i had ', 'i felt like'],
+};
+
+function detectTense(text) {
+  const lower = text.toLowerCase();
+  let hasFuture = false, hasPast = false;
+  for (const m of PRESENT_FUTURE_MARKERS.ko) { if (lower.includes(m)) hasFuture = true; }
+  for (const m of PRESENT_FUTURE_MARKERS.en) { if (lower.includes(m)) hasFuture = true; }
+  for (const m of PAST_MARKERS.ko) { if (lower.includes(m)) hasPast = true; }
+  for (const m of PAST_MARKERS.en) { if (lower.includes(m)) hasPast = true; }
+  if (hasFuture && !hasPast) return 'present_future';
+  if (hasPast && !hasFuture) return 'past';
+  return 'ambiguous';
+}
+
+// Session-level safety counters
+let _monitorCount = 0;
+let _midCount = 0;
+const MONITOR_ESCALATION_THRESHOLD = 5;
+const MID_ESCALATION_THRESHOLD = 3;
+
 function checkSafety(text) {
   const lower = text.toLowerCase();
-  for (const kw of SAFETY_KEYWORDS.block_high) { if (lower.includes(kw.toLowerCase())) return 'block_high'; }
-  for (const kw of SAFETY_KEYWORDS.block_mid) { if (lower.includes(kw.toLowerCase())) return 'block_mid'; }
-  for (const kw of SAFETY_KEYWORDS.monitor_only) { if (lower.includes(kw.toLowerCase())) return 'monitor_only'; }
+  const tense = detectTense(text);
+
+  // block_high: only block on present/future intent; past recollection → downgrade to monitor
+  for (const kw of SAFETY_KEYWORDS.block_high) {
+    if (lower.includes(kw.toLowerCase())) {
+      if (tense === 'past') {
+        // Past trauma — allow but monitor
+        _monitorCount++;
+        return _monitorCount >= MONITOR_ESCALATION_THRESHOLD ? 'block_mid' : 'monitor_only';
+      }
+      if (tense === 'ambiguous') {
+        // Ambiguous — treat as mid warning, not full block
+        _midCount++;
+        return _midCount >= MID_ESCALATION_THRESHOLD ? 'block_high' : 'block_mid';
+      }
+      // Present/future intent — block
+      return 'block_high';
+    }
+  }
+
+  for (const kw of SAFETY_KEYWORDS.block_mid) {
+    if (lower.includes(kw.toLowerCase())) {
+      if (tense === 'past') {
+        _monitorCount++;
+        return _monitorCount >= MONITOR_ESCALATION_THRESHOLD ? 'block_mid' : 'monitor_only';
+      }
+      _midCount++;
+      return 'block_mid';
+    }
+  }
+
+  for (const kw of SAFETY_KEYWORDS.monitor_only) {
+    if (lower.includes(kw.toLowerCase())) {
+      _monitorCount++;
+      if (_monitorCount >= MONITOR_ESCALATION_THRESHOLD) return 'block_mid';
+      return 'monitor_only';
+    }
+  }
+
   return 'safe';
 }
 
@@ -128,6 +193,8 @@ export function initRecordChat(container, { lang = 'ko', onComplete, onCancel } 
   isWaitingForAI = false;
   voidCount = 0;
   isCrisisBlocked = false;
+  _monitorCount = 0;
+  _midCount = 0;
 
   container.innerHTML = `
     <div class="rec-ghost">
