@@ -324,6 +324,21 @@
                 </div>
             </div>
             <div class="memory-list" id="memoryList"></div>
+            <div id="memoryFinderContainer" style="display:none;position:relative;width:100%;height:100%;min-height:80vh;">
+                <div id="memoryFinderInner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:2rem;text-align:center;">
+                    <!-- Phase 1: Question -->
+                    <div id="finderQuestionPhase">
+                        <div style="font-family:'Cormorant Garamond',serif;font-size:15px;color:rgba(196,168,130,0.6);letter-spacing:3px;margin-bottom:24px;" id="finderQuestion"></div>
+                        <input type="text" id="finderInput" placeholder="" autocomplete="off"
+                            style="width:280px;background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.9);font-family:'Cormorant Garamond',serif;font-size:16px;letter-spacing:1px;padding:8px 0;text-align:center;outline:none;" />
+                        <div id="finderChips" style="margin-top:20px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;"></div>
+                    </div>
+                    <!-- Phase 2: Matched results (floating monologue style) -->
+                    <div id="finderResultPhase" style="display:none;width:100%;height:100%;position:relative;"></div>
+                </div>
+                <!-- Browse button (always visible) -->
+                <button id="finderBrowseBtn" style="position:absolute;top:20px;right:20px;background:none;border:1px solid rgba(196,168,130,0.25);color:rgba(196,168,130,0.5);font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;padding:8px 16px;cursor:pointer;transition:all 0.3s;z-index:10;"></button>
+            </div>
             <div id="archiveEntryContainer" class="archive-entry-screen" style="display:none;"></div>
         </div>
         <div class="end-screen" id="endScreen">

@@ -13,7 +13,7 @@ import { getSoundscape } from '../audio/getSoundscape.js';
 import { getSupabaseClient, waitForSupabaseClient, getAccessToken } from '../lib/supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import { NPC_DIALOGUES, getRandomDialogue } from '../npc-dialogues.js';
-import { t } from '../lib/i18n.js';
+import { t, getCurrentLanguage } from '../lib/i18n.js';
 import {
     fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus
 } from '../shared/api.js';
@@ -33,31 +33,237 @@ import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
 import { computeArchiveWaveData } from './live.js';
 
-async function enterPlayIntro(opts) { var fromDemo = opts && opts.fromDemo; const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
+async function enterPlayIntro(opts) {
+  var fromDemo = opts && opts.fromDemo;
+  const introScreen = document.getElementById('introScreen');
+  const archiveContainer = document.getElementById('archiveContainer');
+  if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important'; }
+  ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none'; } });
+  if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
+
+  // Hide all sub-views
   const entryEl = document.getElementById('archiveEntryContainer');
   const memoryListEl = document.getElementById('memoryList');
   const archiveControlsEl = document.getElementById('archiveControls');
   const archiveHeaderEl = document.querySelector('.archive-header');
-  if (entryEl) entryEl.style.display = 'block';
+  const finderEl = document.getElementById('memoryFinderContainer');
+  if (entryEl) entryEl.style.display = 'none';
   if (memoryListEl) memoryListEl.style.display = 'none';
   if (archiveControlsEl) archiveControlsEl.style.display = 'none';
   if (archiveHeaderEl) archiveHeaderEl.style.display = 'none';
+  if (finderEl) finderEl.style.display = 'block';
+
   appStore.setState({ currentMode: 'play' });
   stopArchiveWaveAnimation();
+
+  // Load memories for matching
   try {
-    const mod = await import('./archiveEntry.js');
-    if (mod && mod.initArchiveEntry) await mod.initArchiveEntry(entryEl);
-  } catch (e) {
-    console.error('[enterPlayIntro] archiveEntry init failed:', e);
-  }
+    await loadMemoriesFromSupabase();
+  } catch (_) {}
+
+  _initMemoryFinder();
+
   const footer = document.querySelector('.footer');
-  if (footer) footer.classList.add('visible') }
+  if (footer) footer.classList.add('visible');
+}
+
+// ─── Memory Finder: personalized memory matching sequence ─────────
+
+const FINDER_CHIPS = {
+  ko: [
+    { label: '슬픔', emotion: 'sadness' },
+    { label: '그리움', emotion: 'longing' },
+    { label: '분노', emotion: 'anger' },
+    { label: '두려움', emotion: 'fear' },
+    { label: '죄책감', emotion: 'guilt' },
+    { label: '기쁨', emotion: 'joy' },
+  ],
+  en: [
+    { label: 'sadness', emotion: 'sadness' },
+    { label: 'longing', emotion: 'longing' },
+    { label: 'anger', emotion: 'anger' },
+    { label: 'fear', emotion: 'fear' },
+    { label: 'guilt', emotion: 'guilt' },
+    { label: 'joy', emotion: 'joy' },
+  ],
+};
+
+function _initMemoryFinder() {
+  const lang = getCurrentLanguage();
+  const questionEl = document.getElementById('finderQuestion');
+  const inputEl = document.getElementById('finderInput');
+  const chipsEl = document.getElementById('finderChips');
+  const browseBtn = document.getElementById('finderBrowseBtn');
+  const questionPhase = document.getElementById('finderQuestionPhase');
+  const resultPhase = document.getElementById('finderResultPhase');
+
+  if (!questionEl || !inputEl || !chipsEl) return;
+
+  // Reset
+  if (questionPhase) questionPhase.style.display = 'block';
+  if (resultPhase) { resultPhase.style.display = 'none'; resultPhase.innerHTML = ''; }
+
+  // Question text (typing effect)
+  const qText = lang === 'en' ? 'What kind of memory are you looking for?' : '어떤 기억을 떠올리고 싶어?';
+  questionEl.textContent = '';
+  let qi = 0;
+  const typeQ = setInterval(() => {
+    if (qi < qText.length) { questionEl.textContent += qText[qi]; qi++; }
+    else clearInterval(typeQ);
+  }, 40);
+
+  // Input placeholder
+  inputEl.placeholder = lang === 'en' ? 'A word, a feeling...' : '단어 하나, 감정 하나...';
+  inputEl.value = '';
+  setTimeout(() => inputEl.focus(), qText.length * 40 + 200);
+
+  // Chips
+  chipsEl.innerHTML = '';
+  const chips = FINDER_CHIPS[lang] || FINDER_CHIPS.en;
+  chips.forEach(chip => {
+    const btn = document.createElement('button');
+    btn.textContent = chip.label;
+    btn.style.cssText = 'background:none;border:1px solid rgba(196,168,130,0.25);color:rgba(196,168,130,0.6);font-family:"Cormorant Garamond",serif;font-size:12px;letter-spacing:1px;padding:6px 14px;cursor:pointer;transition:all 0.3s;border-radius:2px;';
+    btn.addEventListener('click', () => _finderMatch(chip.emotion, lang));
+    btn.addEventListener('mouseenter', () => { btn.style.borderColor = 'rgba(196,168,130,0.6)'; btn.style.color = 'rgba(196,168,130,0.9)'; });
+    btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'rgba(196,168,130,0.25)'; btn.style.color = 'rgba(196,168,130,0.6)'; });
+    chipsEl.appendChild(btn);
+  });
+
+  // Input submit
+  inputEl.onkeydown = (e) => {
+    if (e.key === 'Enter' && inputEl.value.trim()) {
+      _finderMatchByText(inputEl.value.trim(), lang);
+    }
+  };
+
+  // Browse button
+  if (browseBtn) {
+    browseBtn.textContent = lang === 'en' ? 'Browse all' : '직접 찾아보기';
+    browseBtn.onclick = () => {
+      const finderEl = document.getElementById('memoryFinderContainer');
+      if (finderEl) finderEl.style.display = 'none';
+      enterArchive();
+    };
+  }
+}
+
+function _finderMatch(emotion, lang) {
+  const memories = appStore.getState().allMemoriesData || [];
+  // Score memories by emotion match
+  const scored = memories.map(m => {
+    // Use scenes' original_emotion if available, or fall back to memory-level vector
+    let score = 0;
+    const vec = m.original_vector;
+    if (vec && typeof vec === 'object') {
+      score = vec[emotion] || 0;
+    }
+    // Also check title/sentence for keyword proximity
+    const text = (m.title || '') + ' ' + (m.completed_sentence || '');
+    if (text.toLowerCase().includes(emotion)) score += 0.3;
+    return { memory: m, score };
+  }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+
+  const matched = scored.slice(0, 3).map(s => s.memory);
+  // Fallback: if no match, take most recent
+  if (matched.length === 0) {
+    matched.push(...memories.slice(0, Math.min(3, memories.length)));
+  }
+  _showFinderResults(matched, lang);
+}
+
+function _finderMatchByText(query, lang) {
+  const memories = appStore.getState().allMemoriesData || [];
+  const lower = query.toLowerCase();
+  const scored = memories.map(m => {
+    const text = ((m.title || '') + ' ' + (m.completed_sentence || '')).toLowerCase();
+    let score = 0;
+    // Simple keyword matching
+    lower.split(/\s+/).forEach(word => {
+      if (word.length >= 2 && text.includes(word)) score += 1;
+    });
+    // Emotion keyword matching
+    const emotionWords = { sadness: ['슬', '울', 'sad', 'cry'], anger: ['화', '분노', 'angry', 'rage'], fear: ['무서', '두려', 'fear', 'afraid'], longing: ['그리', '보고싶', 'miss', 'long'], guilt: ['미안', '죄책', 'sorry', 'guilt'], joy: ['기쁨', '행복', 'happy', 'joy'] };
+    for (const [emo, keywords] of Object.entries(emotionWords)) {
+      if (keywords.some(kw => lower.includes(kw))) {
+        const vec = m.original_vector;
+        if (vec && vec[emo]) score += vec[emo];
+      }
+    }
+    return { memory: m, score };
+  }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+
+  const matched = scored.slice(0, 3).map(s => s.memory);
+  if (matched.length === 0) {
+    matched.push(...memories.slice(0, Math.min(3, memories.length)));
+  }
+  _showFinderResults(matched, lang);
+}
+
+function _showFinderResults(matched, lang) {
+  const questionPhase = document.getElementById('finderQuestionPhase');
+  const resultPhase = document.getElementById('finderResultPhase');
+  if (!resultPhase) return;
+
+  // Fade out question
+  if (questionPhase) {
+    questionPhase.style.transition = 'opacity 0.8s ease';
+    questionPhase.style.opacity = '0';
+    setTimeout(() => { questionPhase.style.display = 'none'; }, 800);
+  }
+
+  // Build result monologue
+  setTimeout(() => {
+    resultPhase.style.display = 'block';
+    resultPhase.style.opacity = '0';
+    resultPhase.style.transition = 'opacity 1s ease';
+
+    const leadText = lang === 'en' ? 'The memories that surface...' : '떠오르는 기억들...';
+    resultPhase.innerHTML = `
+      <div style="font-family:'Cormorant Garamond',serif;font-size:13px;color:rgba(196,168,130,0.4);letter-spacing:3px;margin-bottom:32px;">${leadText}</div>
+      <div id="finderMatchedItems" style="display:flex;flex-direction:column;align-items:center;gap:24px;"></div>
+    `;
+
+    const itemsEl = resultPhase.querySelector('#finderMatchedItems');
+    matched.forEach((m, i) => {
+      const sentence = m.completed_sentence || m.title || '...';
+      const item = document.createElement('div');
+      item.style.cssText = 'opacity:0;cursor:pointer;font-family:"Cormorant Garamond",serif;font-size:15px;color:rgba(196,168,130,0.7);letter-spacing:1px;line-height:1.8;padding:12px 24px;border:1px solid rgba(196,168,130,0.1);transition:all 0.5s ease;max-width:400px;text-align:center;';
+      item.textContent = sentence;
+      item.addEventListener('mouseenter', () => { item.style.borderColor = 'rgba(196,168,130,0.4)'; item.style.color = 'rgba(196,168,130,0.95)'; });
+      item.addEventListener('mouseleave', () => { item.style.borderColor = 'rgba(196,168,130,0.1)'; item.style.color = 'rgba(196,168,130,0.7)'; });
+      item.addEventListener('click', () => {
+        _navigateToPlayFromFinder(m);
+      });
+      itemsEl.appendChild(item);
+
+      // Staggered fade in
+      setTimeout(() => { item.style.opacity = '1'; }, 300 + i * 600);
+    });
+
+    requestAnimationFrame(() => { resultPhase.style.opacity = '1'; });
+  }, 900);
+}
+
+function _navigateToPlayFromFinder(memory) {
+  const lang = getCurrentLanguage();
+  const isLocal = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) || location.hostname.endsWith('.local');
+  const base = isLocal ? 'play-test.html' : '/play';
+  try {
+    sessionStorage.setItem('demoMemoryId', String(memory.id || ''));
+    sessionStorage.setItem('tem_archive_memory_id', String(memory.id || ''));
+    sessionStorage.setItem('tem_archive_lang', lang);
+  } catch (_) {}
+  window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
+}
 async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
   const entryEl = document.getElementById('archiveEntryContainer');
+  const finderEl = document.getElementById('memoryFinderContainer');
   const memoryListEl = document.getElementById('memoryList');
   const archiveControlsEl = document.getElementById('archiveControls');
   const archiveHeaderEl = document.querySelector('.archive-header');
   if (entryEl) entryEl.style.display = 'none';
+  if (finderEl) finderEl.style.display = 'none';
   if (memoryListEl) memoryListEl.style.display = 'grid';
   if (archiveControlsEl) archiveControlsEl.style.display = 'block';
   if (archiveHeaderEl) archiveHeaderEl.style.display = 'block';

@@ -439,9 +439,8 @@ function escapeHtml(text) { if (!text) return '—'; const div = document.create
 let carouselCurrentIndex = 0;
 const carouselItems = [
     { action: 'enterPlayIntro', label: 'PLAY' },
-    { action: 'enterArchive', label: 'ARCHIVE' },
     { action: 'showConfessionHub', label: 'RECORD' },
-    { action: 'openMypage', label: 'MYPAGE' },
+    { action: 'openMypage', label: 'PROFILE' },
     { action: 'openPortfolio', label: 'PORTFOLIO' }
 ];
 
