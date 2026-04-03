@@ -7,6 +7,7 @@
  */
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import { getAccessToken, getSupabaseClient } from '../lib/supabaseClient.js';
+import { emotionVectorToWaveStyle } from '../shared/math.js';
 
 // ===== Safety Keywords (docs/안전_설계-260324.md) =====
 const SAFETY_KEYWORDS = {
@@ -180,12 +181,15 @@ const SEAL_PHRASES = {
 };
 
 // Wave state — drives the ghost waveform
+// Emotion detected from AI → emotionVectorToWaveStyle() drives color/speed/amplitude
 let waveState = {
   speaking: false,   // true while AI text is being typed
   intensity: 0.3,    // base intensity (ramps up when speaking)
   targetIntensity: 0.3,
   hue: 210,          // blueish ghost default
   time: 0,
+  // Emotion-driven wave style (from emotionVectorToWaveStyle)
+  emotionStyle: null, // { color, speed, amplitude, frequency, chaos, lineCount }
 };
 
 // ===== Init =====
@@ -305,40 +309,50 @@ function drawGhostWave() {
   const H = ctx._h;
   const dpr = window.devicePixelRatio || 1;
 
-  // Reset transform for clearing
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, W * dpr, H * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  waveState.time += 0.012;
+  const es = waveState.emotionStyle; // from emotionVectorToWaveStyle
+  const speedMul = es ? es.speed / 0.3 : 1.0; // normalize (default speed=0.3)
+  waveState.time += 0.012 * speedMul;
 
-  // Smooth intensity lerp
   waveState.intensity += (waveState.targetIntensity - waveState.intensity) * 0.04;
 
   const cy = H / 2;
-  const amp = 12 + waveState.intensity * 35;
+  const baseAmp = es ? Math.min(es.amplitude, 60) : 30;
+  const amp = baseAmp * (0.4 + waveState.intensity * 0.6);
   const t = waveState.time;
+  const chaos = es ? es.chaos : 0.1;
+  const layerCount = es ? Math.min(es.lineCount, 8) : 4;
 
-  // Draw 4 overlapping wave layers — ghost/ethereal feel
-  for (let layer = 0; layer < 4; layer++) {
-    const freq = 0.008 + layer * 0.004;
-    const phase = t * (0.6 + layer * 0.3);
-    const layerAmp = amp * (1 - layer * 0.18);
-    const yOffset = (layer - 1.5) * 4; // slight vertical spread
-    const alpha = (0.25 - layer * 0.04) * (0.6 + waveState.intensity * 0.4);
+  // Color from emotion or default hue
+  const cr = es ? es.color.r : 0;
+  const cg = es ? es.color.g : 0;
+  const cb = es ? es.color.b : 0;
+  const useRgb = !!es;
+
+  for (let layer = 0; layer < layerCount; layer++) {
+    const freq = (es ? es.frequency : 0.008) + layer * 0.003;
+    const phase = t * (0.6 + layer * 0.25);
+    const layerAmp = amp * (1 - layer * (0.12 / Math.max(layerCount - 1, 1)));
+    const yOffset = (layer - (layerCount - 1) / 2) * 3;
+    const alpha = (0.25 - layer * (0.03 / Math.max(layerCount - 1, 1))) * (0.6 + waveState.intensity * 0.4);
 
     ctx.beginPath();
-    ctx.strokeStyle = `hsla(${waveState.hue}, 30%, 75%, ${alpha})`;
-    ctx.lineWidth = 1.8 - layer * 0.3;
+    if (useRgb) {
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+    } else {
+      ctx.strokeStyle = `hsla(${waveState.hue}, 30%, 75%, ${alpha})`;
+    }
+    ctx.lineWidth = 1.8 - layer * (0.4 / Math.max(layerCount - 1, 1));
 
     for (let x = 0; x < W; x += 1.5) {
-      // Organic waveform: multiple sines + noise
       const base = Math.sin(x * freq + phase);
       const harmonic = Math.sin(x * freq * 2.7 + phase * 1.4) * 0.25;
-      const drift = Math.sin(x * 0.002 + t * 0.2 + layer) * 8;
-      // Ghost flicker: random micro-jitter when speaking
+      const drift = Math.sin(x * 0.002 + t * 0.2 + layer) * (5 + chaos * 8);
       const flicker = waveState.speaking
-        ? (Math.sin(x * 0.3 + t * 8 + layer * 3) * 1.5 * waveState.intensity)
+        ? (Math.sin(x * 0.3 + t * 8 + layer * 3) * (1 + chaos * 3) * waveState.intensity)
         : 0;
       const y = cy + yOffset + (base + harmonic) * layerAmp + drift + flicker;
 
@@ -348,11 +362,15 @@ function drawGhostWave() {
     ctx.stroke();
   }
 
-  // Subtle glow at center when speaking
+  // Glow at center
   if (waveState.intensity > 0.4) {
     const glowAlpha = (waveState.intensity - 0.4) * 0.3;
     const grad = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, W * 0.35);
-    grad.addColorStop(0, `hsla(${waveState.hue}, 25%, 70%, ${glowAlpha})`);
+    if (useRgb) {
+      grad.addColorStop(0, `rgba(${cr},${cg},${cb},${glowAlpha})`);
+    } else {
+      grad.addColorStop(0, `hsla(${waveState.hue}, 25%, 70%, ${glowAlpha})`);
+    }
     grad.addColorStop(1, 'hsla(0, 0%, 0%, 0)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
@@ -510,7 +528,10 @@ async function requestAIMessage() {
     // Float echo words from AI response (cleaner than user input — no typos)
     floatEchoWords(cleanReply, true);
 
-    // Try to match floating anchors from anchor_images table
+    // Detect emotion from conversation → update wave style
+    _updateWaveFromConversation();
+
+    // Try to match floating anchors (objects only, not emotions)
     _tryFloatingAnchor(cleanReply);
 
     if (sceneComplete && extractedScene && onCompleteCallback) {
@@ -693,7 +714,47 @@ function floatEchoWords(text, isAIResponse = false) {
   });
 }
 
-// ===== Floating Anchor — AI 응답에서 키워드 매칭 → anchor_images 테이블 조회 =====
+// ===== Emotion Detection → Wave Style Update =====
+// Scans recent conversation for emotion keywords, builds rough emotion vector,
+// then applies emotionVectorToWaveStyle to drive the wave animation.
+
+const EMOTION_KEYWORDS = {
+  fear:     ['무서', '두려', '공포', 'fear', 'afraid', 'scared', 'terrif'],
+  sadness:  ['슬', '울', '눈물', '아프', 'sad', 'cry', 'tear', 'hurt', 'pain'],
+  anger:    ['화', '분노', '짜증', '열받', 'angry', 'rage', 'furious', 'mad'],
+  longing:  ['그리', '보고싶', '그립', 'miss', 'long for', 'yearn'],
+  guilt:    ['미안', '죄책', '잘못', 'sorry', 'guilt', 'fault', 'blame'],
+  joy:      ['기쁘', '행복', '웃', '좋', 'happy', 'joy', 'glad', 'smile'],
+  numbness: ['무감각', '아무것도', '공허', 'numb', 'empty', 'nothing', 'void'],
+};
+
+function _updateWaveFromConversation() {
+  // Build rough emotion vector from recent user messages
+  const userMsgs = conversationHistory
+    .filter(m => m.role === 'user' && m.content !== '[VOID]' && m.content !== '[USER_SEAL_REQUEST]')
+    .slice(-5) // last 5 user messages
+    .map(m => m.content.toLowerCase())
+    .join(' ');
+
+  if (!userMsgs) return;
+
+  const vec = {};
+  for (const [emotion, keywords] of Object.entries(EMOTION_KEYWORDS)) {
+    let score = 0;
+    for (const kw of keywords) {
+      if (userMsgs.includes(kw)) score += 0.3;
+    }
+    vec[emotion] = Math.min(score, 1.0);
+  }
+
+  // Only update if any emotion detected
+  const total = Object.values(vec).reduce((a, b) => a + b, 0);
+  if (total > 0) {
+    waveState.emotionStyle = emotionVectorToWaveStyle(vec);
+  }
+}
+
+// ===== Floating Anchor — AI 응답에서 사물 키워드 매칭 (감정은 파동으로) =====
 let _anchorCache = null; // cache anchor_images table once per session
 
 async function _tryFloatingAnchor(aiText) {
@@ -709,13 +770,18 @@ async function _tryFloatingAnchor(aiText) {
     }
     if (_anchorCache.length === 0) return;
 
-    // Extract nouns/keywords from AI text
-    const words = aiText.split(/[\s,.\-!?;:'"…·~()]+/).filter(w => w.length >= 2);
+    // Extract nouns/keywords from AI text — skip emotion words (those drive the wave)
+    const allEmotionKw = Object.values(EMOTION_KEYWORDS).flat();
+    const words = aiText.split(/[\s,.\-!?;:'"…·~()]+/).filter(w =>
+      w.length >= 2 && !allEmotionKw.some(ek => w.toLowerCase().includes(ek))
+    );
 
-    // Find matching anchor
+    // Find matching anchor (objects only — emotions go to wave)
     for (const word of words) {
       const lower = word.toLowerCase();
       const match = _anchorCache.find(a =>
+        a.keyword && lower.includes(a.keyword.toLowerCase()) && a.emotion === null
+      ) || _anchorCache.find(a =>
         a.keyword && lower.includes(a.keyword.toLowerCase())
       );
       if (match) {
