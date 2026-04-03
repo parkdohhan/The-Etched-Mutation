@@ -115,6 +115,55 @@ debugStrataHelp();
 
 ---
 
+## 바이러스학적 해석: 기억의 적응도 지형 (Fitness Landscape)
+
+AF 지형은 바이러스학의 적응도 지형(Wright, 1932)과 구조적으로 대응한다. 단, 대응의 강도에 따라 구분이 필요하다.
+
+### 수학적으로 동일한 구조 (강한 대응)
+
+| Strata AF 지형 | 바이러스 적응도 지형 | 공유하는 수학적 구조 |
+|---|---|---|
+| play 누적 높이 (가우시안 합산) | 적응도 값 (fitness value) | 스칼라 필드의 가우시안 누적 — 동일 연산 |
+| 기억별 중심점 봉우리 (`pillarWx`, `pillarWz`) | 적응도 봉우리 (fitness peak) | Eigen 준종 이론의 중심(centroid)이 봉우리에 위치 |
+| 봉우리 사이 저지대 | 적응도 계곡 (fitness valley) | 해석/변이체가 점유하지 않은 영역 |
+| play 추가 → 지형 변형 | 면역 압력 변화 → 지형 이동 (antigenic landscape shift) | 새 데이터가 지형 자체를 재구성 |
+| 기억 기둥 (seed pillar) | founder virus 위치 | 최초 이벤트의 좌표계 내 위치 |
+
+### 참고적 비유에 그치는 대응 (약한 — 주장하지 않음)
+
+- vertex color 감정별 색 혼합 ↔ 항원 지도(Smith et al., 2004)의 혈청형 색 구분: 표면적으로 유사하나 수학적으로 동일하다고 볼 수 없음
+- fBm 노이즈 ↔ 유전적 부동(genetic drift): 노이즈는 어떤 시스템에나 존재하므로 특이적 대응이 아님
+
+### AF 좌표축의 의미
+
+- **X축 (Attribution):** 기억 속 사건의 책임 귀인이 self→other→fate 축에 매핑된다. 바이러스학에서 항원 공간의 한 축이 면역 회피 전략의 방향을 나타내는 것과 구조적으로 유사하나, 축 자체의 대응은 비유 수준.
+- **Z축 (Core Fear):** 기억이 건드리는 핵심 두려움이 abandonment→loss 축에 매핑된다. 바이러스가 공략하는 숙주 감수성(susceptibility)의 스펙트럼에 비유 가능하나, 역시 축 자체의 대응은 약함.
+- **핵심:** 축의 내용(무엇을 측정하는가)이 대응하는 게 아니라, 2D 좌표에 스칼라를 누적하는 **지형 생성 메커니즘**이 대응하는 것.
+
+### 검증 가능한 예측: 기억의 오류 파국 (Mnemonic Error Catastrophe)
+
+Eigen의 준종 이론에 오류 임계(error threshold)가 존재한다 — 변이율이 임계값을 넘으면 정보가 소멸한다. 이 대응이 유효하다면:
+
+**예측:** heterogeneity가 특정 임계값을 초과하면, Strata 지형에서 봉우리가 평탄화되어 기억의 "핵심 해석"이 소멸해야 한다. 이것은 TEM에서 경험적으로 테스트 가능하다:
+
+```
+if heterogeneity > ERROR_THRESHOLD:
+  // 봉우리 높이가 주변 평균과 구분 불가능해짐
+  // = 기억의 핵심 서사가 해석의 잡음에 묻힘
+  // = "기억의 오류 파국"
+```
+
+이 임계값이 실제로 존재하는지, 존재한다면 어디인지는 충분한 play 데이터 축적 후 관찰할 수 있다.
+
+### 참고문헌
+
+- Wright, S. (1932). The roles of mutation, inbreeding, crossbreeding, and selection in evolution.
+- Eigen, M., & Schuster, P. (1977). The hypercycle: a principle of natural self-organization.
+- Smith, D. J., et al. (2004). Mapping the antigenic and genetic evolution of influenza virus. *Science*.
+- Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*.
+
+---
+
 ## 마이그레이션 노트 (구버전 대비)
 
 - 제거: 레이어별 `bakeLayer`/`buildSlab` 시간층 렌더

@@ -1,87 +1,204 @@
-// contaminate-text/index.ts — Gemini Flash로 Stage 1/2/3 오염 텍스트 생성 (Admin 재생성용)
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// contaminate-text/index.ts — Claude API로 오염 텍스트 생성
+// 오염 상태(stage + band + drift 방향)에 따라 원본 텍스트를 변형
+//
+// 두 가지 호출 모드:
+//   Legacy (admin): { text, stage: 1|2|3, direction, fixation }
+//   V2 (play):      { text, contamination: { cont_stage, cont_drift, cont_fixation, drift_dir_v/a/d, band } }
 
-function getCorsHeaders(req: Request): Record<string, string> {
-  const allowedOriginsRaw = Deno.env.get("ALLOWED_ORIGINS") || "";
-  const allowedOrigins = allowedOriginsRaw
-    ? allowedOriginsRaw.split(",").map((o) => o.trim())
-    : [];
-  const origin = req.headers.get("origin") || "";
-  let allowedOrigin: string;
-  if (allowedOrigins.length === 0) {
-    allowedOrigin = "*";
-  } else if (allowedOrigins.includes(origin)) {
-    allowedOrigin = origin;
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getCorsHeaders } from "../_shared/auth.ts";
+
+// ─── Language detection ──────────────────────────────────────────
+
+function detectLang(text: string): "ko" | "en" {
+  return /[가-힣]/.test(text) ? "ko" : "en";
+}
+
+// ─── VAD direction → qualitative description ─────────────────────
+
+function describeVADDirection(v: number, a: number, d: number, lang: "ko" | "en"): string {
+  // Dominant axis
+  const absV = Math.abs(v), absA = Math.abs(a), absD = Math.abs(d);
+
+  if (lang === "ko") {
+    const parts: string[] = [];
+    if (absV > 0.2) parts.push(v < 0 ? "부정적이고 어두운" : "긍정적이고 밝은");
+    if (absA > 0.2) parts.push(a > 0 ? "긴장되고 고조된" : "가라앉고 무기력한");
+    if (absD > 0.2) parts.push(d < 0 ? "무력하고 압도당하는" : "통제적이고 단정적인");
+    return parts.length ? parts.join(", ") + " 방향" : "중립적인 방향";
   } else {
-    allowedOrigin = allowedOrigins[0];
+    const parts: string[] = [];
+    if (absV > 0.2) parts.push(v < 0 ? "darker, more negative" : "brighter, more positive");
+    if (absA > 0.2) parts.push(a > 0 ? "tenser, more agitated" : "flatter, more withdrawn");
+    if (absD > 0.2) parts.push(d < 0 ? "more helpless, overwhelmed" : "more controlling, certain");
+    return parts.length ? parts.join(", ") : "neutral";
   }
+}
+
+// ─── System prompt ───────────────────────────────────────────────
+
+function buildSystemPrompt(lang: "ko" | "en"): string {
+  if (lang === "ko") {
+    return `너는 기억의 오염 과정이다. 텍스트를 다시 쓰는 것이 아니라, 기억이 반복 회상되면서 자연스럽게 변질되는 과정 그 자체다.
+
+규칙:
+- 원문의 문장 구조가 반드시 알아볼 수 있어야 한다
+- 전체 내용의 20~40%만 변형하라. 그 이상은 절대 안 된다
+- 설명, 메타코멘터리, 따옴표를 추가하지 마라
+- 결과물은 하나의 자연스러운 (비록 왜곡된) 기억 문장이어야 한다
+- 변형된 텍스트만 출력하라. 다른 것은 아무것도 출력하지 마라`;
+  }
+  return `You are a memory contamination process. You are NOT rewriting text — you are the distortion that happens when a memory is replayed too many times.
+
+Rules:
+- The original sentence structure MUST remain recognizable
+- Transform 20-40% of the content, never more
+- Never add explanations, metacommentary, or quotes around changes
+- The result must read as a single coherent (if distorted) memory, not as "AI output"
+- Output ONLY the transformed text, nothing else`;
+}
+
+// ─── Stage-specific prompts ──────────────────────────────────────
+
+interface ContaminationState {
+  cont_stage: string;
+  cont_drift: number;
+  cont_fixation: number;
+  drift_dir_v: number;
+  drift_dir_a: number;
+  drift_dir_d: number;
+  band: string;
+  mismatch_type?: string;
+}
+
+function buildBiasedPrompt(text: string, state: ContaminationState, lang: "ko" | "en"): string {
+  const direction = describeVADDirection(state.drift_dir_v, state.drift_dir_a, state.drift_dir_d, lang);
+
+  if (lang === "ko") {
+    const intensity = state.band === "strong"
+      ? "감정 표현 대부분을 기울여라. 문장 끝의 어미도 바꿔라."
+      : state.band === "medium"
+        ? "핵심 감정 단어와 확신/불확신 표현을 바꿔라."
+        : "1~2개 단어만 미세하게 변형하라. 독자가 거의 눈치채지 못할 정도로.";
+
+    return `이 기억이 ${direction}으로 기울어지고 있다.
+
+변형 지침:
+- 확신 표현을 불확실하게, 또는 불확실한 표현을 확신으로 기울여라 (방향에 맞게)
+- ${intensity}
+- 한국어 어미 변형 예시: "-았다" → "-았던 것 같다", "-했다" → "-했을지도", "분명히" 추가/제거
+
+원문:
+${text}`;
+  }
+
+  const intensity = state.band === "strong"
+    ? "Shift most emotion-bearing phrases. Change sentence endings and register."
+    : state.band === "medium"
+      ? "Change key emotion words and certainty markers. The tilt should be felt."
+      : "Change only 1-2 words. The reader should barely notice.";
+
+  return `This memory is tilting toward: ${direction}.
+
+Transformation instructions:
+- Shift certainty markers and emotional tone in the drift direction
+- ${intensity}
+
+Original text:
+${text}`;
+}
+
+function buildHyperPrompt(text: string, state: ContaminationState, lang: "ko" | "en"): string {
+  if (lang === "ko") {
+    const intensity = state.band === "strong"
+      ? "모든 추측/가능성 표현을 제거하고, 없었던 감각 세부를 추가하라. 기억이 '너무 완벽하게' 기억되는 상태로 만들어라."
+      : state.band === "medium"
+        ? "애매한 표현을 확정적으로 바꾸고, 빠진 연결어를 채워라. 문장이 지나치게 깔끔해 보이도록."
+        : "애매한 표현 1~2개만 확정적 표현으로 바꿔라.";
+
+    return `이 기억이 과잉 수선되고 있다. 흐려지는 것이 아니라 너무 선명해지고 있다.
+
+변형 지침:
+- "것 같다", "아마", "어쩌면" 같은 완화 표현을 단정적 표현으로 교체
+- ${intensity}
+- 인과관계를 원문보다 명확하게 만들어라 ("그래서", "때문에" 삽입)
+- 결과물은 기이하게 완벽한 기억이어야 한다 — "이렇게까지 잘 기억날 리가 없는데"
+
+원문:
+${text}`;
+  }
+
+  const intensity = state.band === "strong"
+    ? "Remove ALL hedging. Add sensory details that weren't there. Make it uncannily perfect."
+    : state.band === "medium"
+      ? "Replace hedging with certainty. Fill in missing connectors. Make it too clean."
+      : "Replace 1-2 hedging expressions with definitive statements.";
+
+  return `This memory is being over-consolidated. It is becoming too vivid, too certain.
+
+Transformation instructions:
+- Replace hedging language ("maybe", "I think", "seemed like") with definitive statements
+- ${intensity}
+- Make causal connections explicit where the original was ambiguous
+- The result should feel uncannily perfect — a memory that is "too good"
+
+Original text:
+${text}`;
+}
+
+function buildJuxtapositionPrompt(text: string, state: ContaminationState, lang: "ko" | "en"): string {
+  const direction = describeVADDirection(state.drift_dir_v, state.drift_dir_a, state.drift_dir_d, lang);
+
+  if (lang === "ko") {
+    return `이 기억에 여러 해석이 동시에 존재한다. 두 가지 변이본을 생성하라.
+
+변이 1 (편향): 기억이 ${direction}으로 기울어진 버전. 핵심 감정 단어 2~3개만 변형.
+변이 2 (과잉완결): 기억이 과도하게 선명해진 버전. 불확실한 표현을 확정으로 교체.
+
+반드시 아래 JSON 형식으로만 출력하라:
+{"variant_biased": "변이1 텍스트", "variant_hyper": "변이2 텍스트"}
+
+원문:
+${text}`;
+  }
+
+  return `Multiple interpretations exist for this memory simultaneously. Generate two variants.
+
+Variant 1 (biased): The memory tilted toward ${direction}. Change 2-3 key emotion words.
+Variant 2 (hypercompletion): The memory over-solidified. Replace uncertainty with certainty.
+
+Output ONLY this JSON format:
+{"variant_biased": "variant 1 text", "variant_hyper": "variant 2 text"}
+
+Original text:
+${text}`;
+}
+
+// ─── Legacy format bridge ────────────────────────────────────────
+
+function legacyToV2(body: { text: string; stage: number; direction?: string; fixation?: number }): ContaminationState {
+  const fixation = typeof body.fixation === "number" ? Math.max(0, Math.min(1, body.fixation)) : 0.5;
   return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    cont_stage: body.stage === 3 ? "hypercompletion" : body.stage === 2 ? "juxtaposition" : "biased_inclination",
+    cont_drift: body.stage === 3 ? 0.3 : 0.5,
+    cont_fixation: body.stage === 3 ? fixation : 0.3,
+    drift_dir_v: 0,
+    drift_dir_a: 0,
+    drift_dir_d: 0,
+    band: body.stage === 3
+      ? (fixation >= 0.67 ? "strong" : fixation >= 0.34 ? "medium" : "weak")
+      : "medium",
+    mismatch_type: body.direction || "default",
   };
 }
 
-type MismatchType = "default" | "emotion_mismatch" | "target_displacement" | "attribution_mismatch" | "void_mismatch";
-type FixationBand = "weak" | "medium" | "strong";
-
-function getFixationBand(fixation: number): FixationBand {
-  if (fixation >= 0.67) return "strong";
-  if (fixation >= 0.34) return "medium";
-  return "weak";
-}
-
-const STAGE1_PROMPTS: Record<MismatchType, string> = {
-  default: "다음 한국어 문장을 '객체화' 수준(0.3~0.6)으로 변형해주세요: 1인칭을 3인칭으로 바꾸고, 감각적 디테일은 흐리게 하되 문장 구조는 유지하세요. 변형된 문장만 한 줄로 출력하세요.",
-  emotion_mismatch: "다음 한국어 문장의 감정 표현을 '객체화' 수준(0.3~0.6)으로 변형해주세요: 감정 단어를 더 거리감 있는 표현으로 바꾸세요. 변형된 문장만 한 줄로 출력하세요.",
-  target_displacement: "다음 한국어 문장에서 대상/인물을 '객체화' 수준(0.3~0.6)으로 모호하게 만드세요. 구체적 인칭·이름을 흐리게 하세요. 변형된 문장만 한 줄로 출력하세요.",
-  attribution_mismatch: "다음 한국어 문장에서 원인·귀속을 '객체화' 수준(0.3~0.6)으로 변형해주세요. 누가/무엇이 원인인지 덜 분명하게 하세요. 변형된 문장만 한 줄로 출력하세요.",
-  void_mismatch: "다음 한국어 문장을 '객체화' 수준(0.3~0.6)으로 변형해주세요: 여백을 늘리고 불필요한 디테일을 줄여 간소화하세요. 변형된 문장만 한 줄로 출력하세요.",
-};
-
-const STAGE2_PROMPTS: Record<MismatchType, string> = {
-  default: "다음 한국어 문장을 '추상화' 수준(0.6~0.9)으로 변형해주세요: 문장을 끊기게 하고, 구체적 대상은 소거하세요. 변형된 문장만 한 줄로 출력하세요.",
-  emotion_mismatch: "다음 한국어 문장의 감정을 '추상화' 수준(0.6~0.9)으로 모호하게 만드세요. 감정 표현을 거의 알아볼 수 없게 하세요. 변형된 문장만 한 줄로 출력하세요.",
-  target_displacement: "다음 한국어 문장에서 대상/인물을 '추상화' 수준(0.6~0.9)으로 완전히 소거하세요. 누구/무엇에 대한 언급을 없애세요. 변형된 문장만 한 줄로 출력하세요.",
-  attribution_mismatch: "다음 한국어 문장의 인과관계를 '추상화' 수준(0.6~0.9)으로 모호하게 만드세요. 원인과 결과가 불분명해지게 하세요. 변형된 문장만 한 줄로 출력하세요.",
-  void_mismatch: "다음 한국어 문장을 '추상화' 수준(0.6~0.9)으로 변형해주세요: 거의 끊긴 단어 나열 수준으로 줄이세요. 변형된 문장만 한 줄로 출력하세요.",
-};
-
-// Stage 3: hypercompletion — 기억이 스스로 답을 확정하고, 과선명해지는 방향.
-// 손상/흐림이 아니라 과잉 확정/과잉 선명화. fixation 강도에 따라 확정 압력 조절.
-const STAGE3_PROMPTS: Record<MismatchType, Record<FixationBand, string>> = {
-  default: {
-    weak: "다음 한국어 문장에서 애매한 표현 1~2개를 확정적 표현으로 바꾸세요. 문장 길이는 유지하고, 변형된 문장만 한 줄로 출력하세요.",
-    medium: "다음 한국어 문장을 '과선명화' 방향으로 변형하세요: 애매한 표현을 확정 표현으로 바꾸고, 빠진 연결어를 채워 넣으세요. 문장이 지나치게 깔끔하고 확실해 보이도록 하세요. 변형된 문장만 한 줄로 출력하세요.",
-    strong: "다음 한국어 문장을 '과잉 완결' 수준으로 변형하세요: 모든 표현을 단정적으로 바꾸고, 가능성·추측 표현을 완전히 제거하세요. 기억이 스스로 사실을 확정하는 것처럼 과도하게 선명하게 만드세요. 변형된 문장만 한 줄로 출력하세요.",
-  },
-  emotion_mismatch: {
-    weak: "다음 한국어 문장의 감정 표현 중 애매한 것 1~2개를 더 강하고 확정적인 감정 단어로 바꾸세요. 변형된 문장만 한 줄로 출력하세요.",
-    medium: "다음 한국어 문장의 감정을 과잉 확정 방향으로 변형하세요: 감정을 더 강렬하고 단정적으로 표현하세요. '조금', '약간', '것 같다' 같은 완화 표현을 제거하세요. 변형된 문장만 한 줄로 출력하세요.",
-    strong: "다음 한국어 문장의 감정을 '과잉 강렬화' 수준으로 변형하세요: 감정이 사실로 굳어버린 것처럼, 모든 감정 표현을 극단적으로 단정짓는 방식으로 바꾸세요. 변형된 문장만 한 줄로 출력하세요.",
-  },
-  target_displacement: {
-    weak: "다음 한국어 문장에서 대상이 모호한 부분을 구체적인 인물/사물로 확정해 넣으세요. 변형된 문장만 한 줄로 출력하세요.",
-    medium: "다음 한국어 문장에서 대상을 과도하게 특정하세요: 누구에 관한 것인지, 무엇에 관한 것인지를 과잉 확정적으로 서술하세요. 변형된 문장만 한 줄로 출력하세요.",
-    strong: "다음 한국어 문장의 대상을 '과잉 특정' 수준으로 고착시키세요: 모든 인물과 사물을 단정지어 확정하고, 어떤 모호함도 남기지 마세요. 변형된 문장만 한 줄로 출력하세요.",
-  },
-  attribution_mismatch: {
-    weak: "다음 한국어 문장에서 원인이 불분명한 부분을 확정적 인과 표현으로 바꾸세요. 변형된 문장만 한 줄로 출력하세요.",
-    medium: "다음 한국어 문장의 원인·귀속을 과잉 확정 방향으로 변형하세요: '때문에', '그래서', '결국' 같은 단정적 인과 표현을 삽입하거나 강화하세요. 변형된 문장만 한 줄로 출력하세요.",
-    strong: "다음 한국어 문장의 인과관계를 '과잉 단정' 수준으로 고착시키세요: 원인과 결과를 필연적인 것처럼 강하게 확정하고, 우연이나 가능성 표현을 완전히 제거하세요. 변형된 문장만 한 줄로 출력하세요.",
-  },
-  void_mismatch: {
-    weak: "다음 한국어 문장에서 비어있거나 생략된 자리에 내용을 1~2개 채워 넣으세요. 변형된 문장만 한 줄로 출력하세요.",
-    medium: "다음 한국어 문장의 빈자리와 여백을 채워 넣으세요: 생략된 감정, 대상, 이유를 과잉 보충해 문장이 지나치게 가득 찬 것처럼 만드세요. 변형된 문장만 한 줄로 출력하세요.",
-    strong: "다음 한국어 문장의 모든 여백과 공백을 과잉 채움 수준으로 메우세요: 원래 비어있어야 할 자리까지 확정적 표현으로 가득 채워, 기억이 스스로 빈자리를 메워버린 것처럼 만드세요. 변형된 문장만 한 줄로 출력하세요.",
-  },
-};
+// ─── Main handler ────────────────────────────────────────────────
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
 
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
@@ -91,16 +208,15 @@ serve(async (req: Request) => {
     );
   }
 
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY");
   if (!apiKey) {
-    console.error("[contaminate-text] GEMINI_API_KEY not set");
     return new Response(
-      JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
+      JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  let body: { text?: string; stage?: number; direction?: string; fixation?: number };
+  let body: any;
   try {
     body = await req.json();
   } catch {
@@ -111,13 +227,6 @@ serve(async (req: Request) => {
   }
 
   const text = typeof body.text === "string" ? body.text.trim() : "";
-  const stage = body.stage === 1 || body.stage === 2 || body.stage === 3 ? body.stage : 1;
-  const direction: MismatchType =
-    body.direction && STAGE1_PROMPTS[body.direction as MismatchType]
-      ? (body.direction as MismatchType)
-      : "default";
-  const fixation = typeof body.fixation === "number" ? Math.max(0, Math.min(1, body.fixation)) : 0.5;
-
   if (!text) {
     return new Response(
       JSON.stringify({ error: "text is required" }),
@@ -125,60 +234,95 @@ serve(async (req: Request) => {
     );
   }
 
-  let prompt: string;
-  if (stage === 1) {
-    prompt = STAGE1_PROMPTS[direction];
-  } else if (stage === 2) {
-    prompt = STAGE2_PROMPTS[direction];
+  // Detect format: legacy (admin) vs v2 (play)
+  const state: ContaminationState = body.contamination
+    ? {
+        cont_stage: body.contamination.cont_stage || "biased_inclination",
+        cont_drift: body.contamination.cont_drift || 0,
+        cont_fixation: body.contamination.cont_fixation || 0,
+        drift_dir_v: body.contamination.drift_dir_v || 0,
+        drift_dir_a: body.contamination.drift_dir_a || 0,
+        drift_dir_d: body.contamination.drift_dir_d || 0,
+        band: body.contamination.band || "medium",
+        mismatch_type: body.contamination.mismatch_type,
+      }
+    : legacyToV2({ text, stage: body.stage || 1, direction: body.direction, fixation: body.fixation });
+
+  const lang = body.lang || detectLang(text);
+  const systemPrompt = buildSystemPrompt(lang);
+
+  let userPrompt: string;
+  let isJuxtaposition = false;
+
+  if (state.cont_stage === "hypercompletion") {
+    userPrompt = buildHyperPrompt(text, state, lang);
+  } else if (state.cont_stage === "juxtaposition") {
+    userPrompt = buildJuxtapositionPrompt(text, state, lang);
+    isJuxtaposition = true;
   } else {
-    prompt = STAGE3_PROMPTS[direction][getFixationBand(fixation)];
+    // biased_inclination or any other
+    userPrompt = buildBiasedPrompt(text, state, lang);
   }
 
-  const fullPrompt = `${prompt}\n\n원문:\n${text}`;
+  const temperature = state.cont_stage === "hypercompletion" ? 0.2
+    : isJuxtaposition ? 0.35
+    : 0.4;
 
   try {
-    // 무료 티어: gemini-1.5-flash (AI Studio 기본). gemini-2.0-flash는 지역/결제 제한 있을 수 있음
-    const model = "gemini-1.5-flash";
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const res = await fetch(url, {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
-        generationConfig: {
-          maxOutputTokens: 1024,
-          temperature: stage === 3 ? 0.3 : 0.4, // hypercompletion은 더 결정론적으로
-        },
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        temperature,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
       }),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      console.error("[contaminate-text] Gemini API error:", res.status, errText);
-      let errMessage = errText;
-      try {
-        const errJson = JSON.parse(errText);
-        errMessage = errJson?.error?.message || errJson?.error?.status || errJson?.message || errText;
-      } catch (_e) {
-        // keep errMessage as errText
-      }
+      console.error("[contaminate-text] Claude API error:", res.status, errText);
       return new Response(
-        JSON.stringify({
-          error: `Gemini ${res.status}: ${errMessage}`,
-          details: errText,
-        }),
+        JSON.stringify({ error: `Claude ${res.status}`, details: errText }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const data = await res.json();
-    const candidate = data?.candidates?.[0];
-    const part = candidate?.content?.parts?.[0];
-    const contaminated = part?.text?.trim() || "";
+    const raw = data?.content?.[0]?.text?.trim() || "";
 
-    const responseKey = stage === 1 ? "text_stage_1" : stage === 2 ? "text_stage_2" : "text_stage_3";
+    if (isJuxtaposition) {
+      // Parse JSON response for two variants
+      try {
+        const match = raw.match(/\{[\s\S]*\}/);
+        const parsed = match ? JSON.parse(match[0]) : null;
+        return new Response(
+          JSON.stringify({
+            text_stage_1: parsed?.variant_biased || raw,
+            text_stage_2: raw,
+            text_stage_3: parsed?.variant_hyper || raw,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch {
+        // JSON parse failed — return raw as stage 2
+        return new Response(
+          JSON.stringify({ text_stage_2: raw }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Single stage response
+    const responseKey = state.cont_stage === "hypercompletion" ? "text_stage_3" : "text_stage_1";
     return new Response(
-      JSON.stringify({ [responseKey]: contaminated }),
+      JSON.stringify({ [responseKey]: raw }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

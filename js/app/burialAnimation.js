@@ -33,7 +33,7 @@ function noise2D(x, y) {
 }
 
 // ===== Phase B-C: Scene Review =====
-export function showSceneReview(container, { scenes, originalVector, lang = 'ko', onConfirm, onRetry }) {
+export function showSceneReview(container, { scenes, originalVector, lang = 'ko', onConfirm, onRetry, onEdit, showEditButton = false }) {
   let currentScene = 0;
 
   function render() {
@@ -42,10 +42,15 @@ export function showSceneReview(container, { scenes, originalVector, lang = 'ko'
       ? emotionVectorToRGB(scene.originalVector)
       : emotionVectorToRGB(originalVector);
 
+    const editBtn = showEditButton
+      ? `<button class="scene-edit-btn" id="sceneEditBtn" style="background:none;border:1px solid rgba(196,168,130,0.2);color:rgba(196,168,130,0.5);font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;padding:5px 16px;cursor:pointer;position:absolute;top:16px;right:16px;">${lang === 'en' ? 'Edit' : '고치기'}</button>`
+      : '';
+
     container.innerHTML = `
       <div class="scene-review">
         <div class="scene-review-header">
           <span class="scene-review-counter">${currentScene + 1} / ${scenes.length}</span>
+          ${editBtn}
         </div>
         <div class="scene-review-wave" id="sceneWaveCanvas"></div>
         <div class="scene-review-text" id="sceneReviewText"></div>
@@ -78,8 +83,10 @@ export function showSceneReview(container, { scenes, originalVector, lang = 'ko'
 
     const confirmBtn = container.querySelector('#sceneConfirmBtn');
     const retryBtn = container.querySelector('#sceneRetryBtn');
+    const editBtnEl = container.querySelector('#sceneEditBtn');
     if (confirmBtn) confirmBtn.addEventListener('click', () => onConfirm());
     if (retryBtn) retryBtn.addEventListener('click', () => onRetry());
+    if (editBtnEl && onEdit) editBtnEl.addEventListener('click', () => onEdit(currentScene));
   }
 
   render();

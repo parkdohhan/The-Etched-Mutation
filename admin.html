@@ -185,14 +185,15 @@
             </div>
 
             <div class="editor-content" id="previewContent">
-                <!-- 1. 플레이시 보이는 2차원 지형도 -->
+                <!-- 1. 플레이시 보이는 등고선 핀맵 미리보기 -->
                 <div class="preview-section archive-section" style="padding: 2rem;">
-                    <h3 class="editor-section-title" style="margin-bottom: 1rem;">1. 플레이시 보이는 2차원 지형도</h3>
-                    <div class="archive-canvas-container" style="background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); padding: 1rem; border-radius: 4px;">
-                        <canvas id="archiveCanvas" width="1000" height="600" style="width: 100%; height: auto; max-width: 1000px; display: block; margin: 0 auto;"></canvas>
+                    <h3 class="editor-section-title" style="margin-bottom: 1rem;">1. 플레이시 보이는 등고선 핀맵</h3>
+                    <div id="adminMapContainer" style="position: relative; width: 100%; max-width: 1000px; margin: 0 auto; aspect-ratio: 5/3; background: #0a0a0e; border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px; overflow: hidden;">
+                        <canvas id="adminContourCanvas" style="width: 100%; height: 100%; display: block;"></canvas>
+                        <div id="adminPinsLayer" style="position: absolute; inset: 0; pointer-events: none; z-index: 2;"></div>
                     </div>
                     <div style="margin-top: 1rem; text-align: center;">
-                        <button class="editor-btn" onclick="loadArchive2DPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">2차원 지형도 불러오기</button>
+                        <button class="editor-btn" onclick="loadArchive2DPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">등고선 핀맵 불러오기</button>
                     </div>
                 </div>
 

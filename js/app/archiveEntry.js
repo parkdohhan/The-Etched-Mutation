@@ -2,6 +2,7 @@
 // 목적: index.html의 Archive 진입을 "기억 선택 → play-test"로 단순화
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
+import { getCurrentLanguage } from '../lib/i18n.js';
 
 let _raf = null;
 let _mountedEl = null;
@@ -131,8 +132,8 @@ function isLocalDev() {
   }
 }
 
-function navigateToPlay(memoryId, lang) {
-  const l = lang === 'ko' ? 'ko' : 'en';
+function navigateToPlay(memoryId) {
+  const l = getCurrentLanguage();
   const isLocal = isLocalDev();
   const base = isLocal ? 'play-test.html' : '/play';
   try {
@@ -221,8 +222,7 @@ export async function initArchiveEntry(containerEl) {
     div.style.top = `${m.y * 100}%`;
     div.style.transform = 'translate(-50%, -50%)';
     div.addEventListener('click', () => {
-      const lang = detectArchiveLang(m);
-      navigateToPlay(m.id, lang);
+      navigateToPlay(m.id);
     });
     frag.appendChild(div);
     return { ...m, el: div };
@@ -241,7 +241,7 @@ export async function initArchiveEntry(containerEl) {
     go: (idOrCode) => getArchiveMemories().then((list) => {
       const m = list.find((x) => x.id === idOrCode || x.code === idOrCode);
       if (!m) return console.warn('[ArchiveEntry] unknown id/code', idOrCode);
-      navigateToPlay(m.id, detectArchiveLang(m));
+      navigateToPlay(m.id);
       return true;
     }),
   };

@@ -168,7 +168,7 @@ export class UIManager {
             const card = document.createElement('div');
             card.className = 'memory-card';
             card.setAttribute('data-code', memory.code || '');
-            card.setAttribute('data-title', (memory.title || memory.completed_sentence || '').toLowerCase());
+            card.setAttribute('data-title', memory.title || '');
             card.setAttribute('data-layers', memory.layers || 0);
             card.setAttribute('data-recent', memory.recentRank || 0);
             const isLive = !!(memory.live_session_id || memory.is_live);

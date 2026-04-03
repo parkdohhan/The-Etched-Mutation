@@ -1,6 +1,35 @@
 // 인증: 로그인 필수 (대화 기반 기억 수집은 인증된 사용자만)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getCorsHeaders, verifyAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const allowedOriginsRaw = Deno.env.get("ALLOWED_ORIGINS") || "";
+  const allowedOrigins = allowedOriginsRaw ? allowedOriginsRaw.split(",").map((o) => o.trim()) : [];
+  const origin = req.headers.get("origin") || "";
+  let allowedOrigin: string;
+  if (allowedOrigins.length === 0) { allowedOrigin = "*"; }
+  else if (allowedOrigins.includes(origin)) { allowedOrigin = origin; }
+  else { allowedOrigin = allowedOrigins[0]; }
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
+
+async function verifyAuth(req: Request): Promise<{ id: string; email?: string } | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return null;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return { id: user.id, email: user.email };
+}
 
 serve(async (req) => {
   const corsHeaders = {
@@ -82,6 +111,11 @@ Rules:
 - Complete collection within 3–7 turns.
 - Inputs like "I don't know" or "I don't want to talk about it" → treat as VOID.
   VOID is not a gap — it is meaningful data. Do not ignore it.
+- CRITICAL: Before asking a question, review ALL previous user messages in the conversation.
+  Ask about something the user has NOT yet mentioned. Never re-ask what was already answered.
+  Build on the full accumulated context, not just the most recent message.
+- NEVER say "that memory" or "tell me about that memory." The user is inside their own memory right now.
+  Say "the memory you want to record" or refer to specific details they already shared.
 
 When collection is sufficient, output [SCENE_COMPLETE] followed by this JSON:
 {
@@ -116,6 +150,11 @@ Start your first message by asking about the most vivid sensation tied to this m
 - 3~7턴 안에 수집을 완료하라.
 - "모르겠어", "말하고 싶지 않아" 같은 입력은 VOID로 처리.
   VOID는 결손이 아니라 의미 있는 데이터. 무시하지 마라.
+- 중요: 질문하기 전에 대화 속 사용자의 이전 응답을 전부 검토하라.
+  이미 답한 내용을 다시 묻지 마라. 가장 최근 메시지만이 아니라
+  누적된 전체 맥락을 기반으로 아직 빠진 정보를 물어라.
+- 절대 "그 기억"이라고 말하지 마라. 사용자는 지금 자기 기억 안에 있다.
+  "네가 기록하고 싶은 기억 속에서" 또는 사용자가 이미 말한 구체적 디테일을 가리켜라.
 
 수집이 충분하면 [SCENE_COMPLETE] 태그와 함께 아래 JSON을 출력:
 {

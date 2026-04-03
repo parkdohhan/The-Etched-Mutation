@@ -199,7 +199,7 @@
 
       var playsRes = await client
         .from('plays')
-        .select('id, memory_id, scene_id, user_emotion, alignment, mismatch_type, created_at')
+        .select('id, memory_id, scene_id, user_emotion, alignment, mismatch_type, created_at, user_id')
         .eq('memory_id', memoryId)
         .order('created_at', { ascending: false });
 
@@ -218,14 +218,29 @@
         }
       }
 
+      // Identify current user's plays
+      var currentUserId = null;
+      try {
+        var authRes = await client.auth.getUser();
+        currentUserId = authRes && authRes.data && authRes.data.user ? authRes.data.user.id : null;
+      } catch (_) {}
+
       var playsByMem = {};
       playsByMem[memoryId] = plays;
       var P = T.buildMemoryItems([memRow], playsByMem);
+
+      // Mark which plays belong to the current user
+      var userPlayCount = 0;
+      if (currentUserId) {
+        userPlayCount = plays.filter(function (p) { return p.user_id === currentUserId; }).length;
+      }
 
       return {
         P: P,
         title: memRow.title || memRow.completed_sentence || memRow.memory_words || 'Memory',
         playCount: plays.length,
+        userPlayCount: userPlayCount,
+        currentUserId: currentUserId,
         contamination: computeContamination(plays),
         subtitle: '',
       };
@@ -253,8 +268,15 @@
     g.Strata.stop();
     var viewEl = document.getElementById('strataView');
     if (viewEl) viewEl.style.display = 'none';
-    if (_onCloseCallback) _onCloseCallback();
+    if (_onCloseCallback) {
+      _onCloseCallback();
+    } else if (typeof g.enterArchive === 'function') {
+      g.enterArchive();
+    } else if (typeof g.showMainMenu === 'function') {
+      g.showMainMenu();
+    }
   }
+  g.closeStrataView = closeStrataView;
 
   g.showStrataView = async function (memoryId, alignmentResult, onClose) {
     console.log('[Strata] showStrataView:', { memoryId: memoryId, alignmentResult: alignmentResult });
@@ -277,11 +299,47 @@
       g.Strata.start();
       g.Strata.init(strataInput);
 
+      // Add user play markers if the current user has played this memory
+      if (strataInput.userPlayCount > 0 && terrainRuntime) {
+        try {
+          var scene3 = terrainRuntime.getScene();
+          var seedData = terrainRuntime.getSeedData ? terrainRuntime.getSeedData() : null;
+          if (scene3 && seedData && seedData.length > 0) {
+            seedData.forEach(function (seed) {
+              // Glowing ring at each seed position to mark "you were here"
+              var ringGeo = new THREE.RingGeometry(0.25, 0.35, 16);
+              ringGeo.rotateX(-Math.PI / 2);
+              var ringMat = new THREE.MeshBasicMaterial({
+                color: 0xc4a882,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide,
+              });
+              var ring = new THREE.Mesh(ringGeo, ringMat);
+              ring.position.set(seed.wx, seed.h + 0.15, seed.wz);
+              ring.userData._userMarker = true;
+              scene3.add(ring);
+
+              // Soft point light to highlight
+              var glow = new THREE.PointLight(0xc4a882, 0.4, 5, 2);
+              glow.position.set(seed.wx, seed.h + 1.0, seed.wz);
+              glow.userData._userMarker = true;
+              scene3.add(glow);
+            });
+            console.log('[Strata] Added user play markers:', seedData.length);
+          }
+        } catch (e) {
+          console.warn('[Strata] User marker error:', e.message);
+        }
+      }
+
       var viewEl = document.getElementById('strataView');
       if (viewEl) viewEl.style.display = 'block';
 
       var closeBtn = document.getElementById('strataCloseBtn');
-      if (closeBtn) closeBtn.onclick = closeStrataView;
+      // onclick 바인딩은 play-test.html에서 관리 (로그인 안내 플로우)
+      // 다른 호스트에서 사용 시 폴백
+      if (closeBtn && !closeBtn._strataExitBound) closeBtn.onclick = closeStrataView;
       bindBrightnessControl();
       applyRendererBrightness();
     } catch (error) {

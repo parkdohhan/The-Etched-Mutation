@@ -1064,3 +1064,14 @@ body.admin-strata-fs-active {
     border-color: var(--accent-memory);
     color: var(--accent-memory);
 }
+
+/* ── 등고선 핀맵 미리보기 (play-test.html 동일 스타일) ── */
+#adminPinsLayer .map-pin {
+    position: absolute; transform: translate(-50%, -50%); pointer-events: auto; cursor: default;
+    border-radius: 50%; transition: opacity 0.5s ease;
+}
+#adminPinsLayer .map-pin.core { width: 12px; height: 12px; border: 1.5px solid var(--accent-memory); background: rgba(232, 228, 220, 0.95); }
+#adminPinsLayer .map-pin.bridge { width: 9px; height: 9px; border: 1.3px solid #7a9a7a; background: rgba(122, 154, 122, 0.22); box-shadow: 0 0 10px rgba(122,154,122,0.5); }
+#adminPinsLayer .map-pin.echo { width: 6px; height: 6px; background: rgba(180, 160, 200, 0.85); border: 1px solid rgba(200, 180, 220, 0.5); }
+#adminPinsLayer .map-pin.voidPin { width: 8px; height: 8px; background: transparent; border: 1px dashed rgba(200, 150, 140, 0.6); }
+#adminPinsLayer .map-pin-label { position: absolute; left: 14px; top: -6px; font-size: 10px; color: rgba(200, 190, 220, 0.7); white-space: nowrap; font-style: italic; pointer-events: none; }

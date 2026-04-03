@@ -606,6 +606,7 @@ function showSafetyResources() {
                 `).join('')}
             </div>
             <button class="safety-close-btn">Close</button>
+            <button class="safety-return-btn" style="opacity:0;margin-top:1.5rem;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:0.9rem;padding:0.6rem 1.5rem;cursor:pointer;transition:opacity 1s ease;display:block;margin-left:auto;margin-right:auto;">돌아가기</button>
         </div>
     `;
 
@@ -614,6 +615,18 @@ function showSafetyResources() {
     popup.querySelector('.safety-close-btn').addEventListener('click', () => {
         popup.remove();
     });
+
+    // 5초 후 복귀 버튼 fade-in
+    setTimeout(() => {
+        const returnBtn = popup.querySelector('.safety-return-btn');
+        if (returnBtn) {
+            returnBtn.style.opacity = '1';
+            returnBtn.addEventListener('click', () => {
+                popup.remove();
+                if (typeof window.showMainMenu === 'function') window.showMainMenu();
+            });
+        }
+    }, 5000);
 }
 
 // NPC 대화 display (Confession용)
@@ -1087,14 +1100,36 @@ function initDoor() {
   const backBtn = document.getElementById('doorBackBtn');
   const screen = document.getElementById('doorScreen');
 
-  if (title) { title.classList.remove('visible', 'hiding'); }
-  if (subtitle) { subtitle.classList.remove('visible', 'hiding'); }
+  if (title) { title.classList.remove('visible', 'hiding'); title.textContent = 'RECORD'; }
+  if (subtitle) { subtitle.classList.remove('visible', 'hiding'); subtitle.textContent = ''; }
   if (backBtn) { backBtn.classList.remove('visible', 'hiding'); }
   if (screen) { screen.classList.remove('done'); screen.style.cursor = 'pointer'; }
 
-  setTimeout(() => { if (title) title.classList.add('visible'); }, 300);
-  setTimeout(() => { if (subtitle) subtitle.classList.add('visible'); }, 700);
-  setTimeout(() => { if (backBtn) backBtn.classList.add('visible'); }, 1200);
+  // 1단계: 문 먼저 (ASCII art는 이미 렌더됨)
+  // 2단계: +800ms 제목 등장
+  setTimeout(() => { if (title) title.classList.add('visible'); }, 800);
+
+  // 3단계: +1800ms 타이핑 모션으로 안내 텍스트
+  const _isKo = /[가-힣]/.test(document.documentElement.lang || document.title || '');
+  const _doorMsg = _isKo
+    ? '너의 기억을 묻어두려면, 이 문 안으로 들어가봐.'
+    : 'To bury your memory, step through this door.';
+  setTimeout(() => {
+    if (!subtitle) return;
+    subtitle.classList.add('visible');
+    let _ci = 0;
+    const _typeTimer = setInterval(() => {
+      if (_ci < _doorMsg.length) {
+        subtitle.textContent += _doorMsg[_ci];
+        _ci++;
+      } else {
+        clearInterval(_typeTimer);
+      }
+    }, 40);
+  }, 1800);
+
+  // 4단계: +4000ms back 버튼 (타이핑 완료 후)
+  setTimeout(() => { if (backBtn) backBtn.classList.add('visible'); }, 4000);
 
   doorPhase = 0;
   doorRaf = requestAnimationFrame(renderDoorFrame);
@@ -1163,14 +1198,77 @@ async function handleRecordComplete(extractedScene, lang) {
     const burialContainer = document.getElementById('burialContainer');
     if (!burialContainer) return;
 
-    // Phase B: 로딩 화면
     const recordContainer = document.getElementById('recordChatContainer');
     if (recordContainer) { recordContainer.classList.add('hidden'); recordContainer.style.display = 'none'; }
     burialContainer.classList.remove('hidden');
     burialContainer.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
+
+    // ─── Phase B path: user cut scenes manually → AI reconstructs all ───
+    if (extractedScene._isPhaseB && extractedScene.rawScenes) {
+        showLoadingScreen(burialContainer, lang);
+
+        try {
+            const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
+            const rawScenes = extractedScene.rawScenes;
+
+            // Build situation from all fragments for the AI prompt
+            const allFragments = rawScenes.flatMap(s => s.fragments || []);
+            const situation = allFragments.join('. ');
+
+            // Build conversationData in the format generate-scene-from-conversation expects
+            // Extract a rough emotion from conversation context
+            const conversationData = {
+                sensory_anchor: { modality: 'visual', content: allFragments[0] || '' },
+                situation: situation,
+                emotion: { primary: 'sadness', intensity: 0.5 },
+                reason: { attribution: 'fate_blame', core_fear: 'loss', target: 'situation', is_void: false },
+            };
+
+            // Tell the Edge Function how many scenes the user wants
+            // by providing the scene structure in the request
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-scene-from-conversation`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    conversationData: conversationData,
+                    lang,
+                    sceneCount: rawScenes.length,
+                }),
+            });
+
+            if (!response.ok) throw new Error('Scene reconstruction failed');
+            const sceneData = await response.json();
+
+            // Show scene review with edit button
+            _showPhaseBReview(burialContainer, sceneData, conversationData, lang);
+
+        } catch (e) {
+            console.error('[Record] Phase B scene reconstruction error:', e);
+            // Fallback: use raw fragments as scene text
+            const rawScenes = extractedScene.rawScenes;
+            const allFragments = rawScenes.flatMap(s => s.fragments || []);
+            const sceneData = {
+                scenes: rawScenes.map((s, i) => ({
+                    order: i + 1,
+                    sceneType: s.sceneType || 'branch',
+                    text: (s.fragments || []).join('. '),
+                    emotionCue: '',
+                    vectorWeight: 0,
+                })),
+                originalVector: null,
+            };
+            const conversationData = { situation: allFragments.slice(0, 3).join('. '), sensory_anchor: null };
+            _showPhaseBReview(burialContainer, sceneData, conversationData, lang);
+        }
+        return;
+    }
+
+    // ─── Original path: AI generates scenes from conversation data ───
     showLoadingScreen(burialContainer, lang);
 
-    // generate-scene-from-conversation 호출
     try {
         const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
         const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-scene-from-conversation`, {
@@ -1185,30 +1283,28 @@ async function handleRecordComplete(extractedScene, lang) {
         if (!response.ok) throw new Error('Scene generation failed');
         const sceneData = await response.json();
 
-        // Phase C: 장면 확인
         showSceneReview(burialContainer, {
             scenes: sceneData.scenes,
             originalVector: sceneData.originalVector,
             lang,
             onConfirm: async () => {
-                // Supabase에 저장
-                const memoryId = await saveRecordMemory(extractedScene, sceneData, lang);
-
-                // Phase D: 매장 연출
+                const userTitle = await _showTitleInput(burialContainer, lang);
+                const memoryId = await saveRecordMemory(extractedScene, sceneData, lang, userTitle);
+                if (memoryId) _autoCreateFirstPlay(memoryId, sceneData);
                 showBurialAnimation(burialContainer, {
                     originalVector: sceneData.originalVector,
                     lang,
                     onArchive: () => {
                         burialContainer.classList.add('hidden');
                         burialContainer.style.display = 'none';
-                        window.enterArchive();
+                        _showRecordStrata(memoryId, lang);
                     }
                 });
             },
             onRetry: () => {
                 burialContainer.classList.add('hidden');
                 burialContainer.style.display = 'none';
-                startBeginner(); // 다시 대화 시작
+                startBeginner();
             }
         });
     } catch (e) {
@@ -1220,22 +1316,38 @@ async function handleRecordComplete(extractedScene, lang) {
     }
 }
 
-async function saveRecordMemory(conversationData, sceneData, lang) {
+// Pending save data — fallback for save failures (retry on next attempt)
+let _pendingSave = null;
+
+async function _resolveUserId() {
+    const state = appStore.getState();
+    if (state.currentUser?.id) return state.currentUser.id;
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) return session.user.id;
+    } catch (_) {}
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) return user.id;
+    } catch (_) {}
+    return null;
+}
+
+async function saveRecordMemory(conversationData, sceneData, lang, userTitle) {
+    const userId = await _resolveUserId();
+
     try {
         const supabase = getSupabaseClient();
-        if (!supabase) throw new Error('Supabase not initialized');
 
-        const state = appStore.getState();
-        const userId = state.currentUser?.id;
-
-        // memories 테이블에 저장
-        const title = conversationData.situation
-            ? (conversationData.situation.substring(0, 50) + (conversationData.situation.length > 50 ? '...' : ''))
-            : (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억');
+        const title = userTitle
+            || (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억');
 
         const { data: memory, error: memError } = await supabase
             .from('memories')
             .insert({
+                code: generateMemoryCode(),
                 title: title,
                 completed_sentence: conversationData.situation || '',
                 sensory_anchor: conversationData.sensory_anchor || null,
@@ -1250,14 +1362,12 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
 
         if (memError) throw memError;
 
-        // scenes 테이블에 5장면 저장
         const scenesToInsert = sceneData.scenes.map((s, i) => ({
             memory_id: memory.id,
-            order_index: s.order || i + 1,
+            scene_order: s.order || i + 1,
             scene_type: s.sceneType || 'normal',
             text: s.text,
-            emotion_cue: s.emotionCue || '',
-            original_vector: s.originalVector?.base || null,
+            original_emotion: s.originalVector?.base || null,
             original_reason_vector: s.originalVector?.reason_analysis || null,
             vector_weight: s.vectorWeight || 0,
         }));
@@ -1268,13 +1378,282 @@ async function saveRecordMemory(conversationData, sceneData, lang) {
 
         if (sceneError) throw sceneError;
 
-        console.log('[Record] Memory saved:', memory.id);
+        console.log('[Record] Memory saved:', memory.id, userId ? '(logged in)' : '(anonymous)');
+        _pendingSave = null;
         return memory.id;
     } catch (e) {
         console.error('[Record] Save error:', e);
-        showNotification(lang === 'en' ? 'Failed to save memory.' : '기억 저장에 실패했습니다.');
+        _pendingSave = { conversationData, sceneData, lang };
         return null;
     }
+}
+
+/**
+ * Record = First Play — 기억을 기록하는 행위 자체가 첫 번째 체험이다.
+ * 기록자의 감정 = 원본 감정이므로 alignment = 1.0 (자기 자신과의 완전한 정렬).
+ * 이 play가 depth=1, 오염의 시작점을 만든다.
+ */
+async function _autoCreateFirstPlay(memoryId, sceneData) {
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase || !memoryId) return;
+
+        // Fetch saved scenes (IDs are only available after DB insert)
+        const { data: scenes, error: sceneErr } = await supabase
+            .from('scenes')
+            .select('id, original_emotion, scene_order')
+            .eq('memory_id', memoryId)
+            .order('scene_order');
+
+        if (sceneErr || !scenes?.length) return;
+
+        const userId = await _resolveUserId();
+
+        // Create a play record per scene — recorder IS the first player
+        for (const scene of scenes) {
+            const originalEmo = scene.original_emotion || sceneData.originalVector?.base || {};
+
+            await supabase.from('plays').insert({
+                memory_id: memoryId,
+                scene_id: scene.id,
+                user_emotion: originalEmo,  // recorder's emotion = original emotion
+                user_reason: 'First telling',
+                alignment: 1.0,             // perfect self-alignment
+                mismatch_type: null,
+                user_id: userId || null,
+            });
+        }
+
+        // Run contamination for the first play (depth = 1, baseline)
+        const { updateContamination, createEmptyState } = await import('../core/ContaminationTracker.js');
+        const contState = createEmptyState();
+        const nextCont = updateContamination(contState, {
+            alignment: 1.0,
+            level: 1.0,
+            shape: 1.0,
+            shape_active: false,  // only 1 play, no trajectory yet
+            transition_pattern: 'echo_follow',
+            mismatch_type: 'none',
+            fixation_level: 0,
+            user_valence: 0,
+            user_arousal: 0,
+            user_dominance: 0,
+        });
+
+        // Persist contamination (depth=1 established)
+        const { networkService } = await import('../services/NetworkService.js');
+        await networkService.updateMemoryContamination(memoryId, nextCont);
+
+        console.log('[Record] First Play created for memory', memoryId, '— depth:', nextCont.cont_depth);
+    } catch (e) {
+        console.warn('[Record] First Play creation failed (non-fatal):', e.message);
+    }
+}
+
+/**
+ * 로그인 후 보류 중인 기억 저장 시도
+ */
+export async function savePendingRecordMemory() {
+    if (!_pendingSave) return null;
+    const { conversationData, sceneData, lang } = _pendingSave;
+    const memoryId = await saveRecordMemory(conversationData, sceneData, lang);
+    return memoryId;
+}
+
+/**
+ * 제목 입력 프롬프트 — Record 매장 직전
+ */
+function _showTitleInput(container, lang) {
+    return new Promise((resolve) => {
+        container.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0a0a0e;">
+                <div style="text-align:center;max-width:340px;padding:2rem;">
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:14px;color:rgba(196,168,130,0.6);letter-spacing:2px;margin-bottom:24px;">
+                        ${lang === 'en' ? 'Name this memory.' : '이 기억의 제목을 정해주세요.'}
+                    </div>
+                    <input id="recordTitleInput" type="text" maxlength="40" placeholder="${lang === 'en' ? 'A short title...' : '짧은 제목...'}"
+                        style="width:100%;background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.9);font-family:'Cormorant Garamond',serif;font-size:18px;letter-spacing:1px;padding:8px 0;text-align:center;outline:none;" />
+                    <div style="margin-top:28px;">
+                        <button id="recordTitleConfirm" style="background:none;border:1px solid rgba(196,168,130,0.4);color:rgba(196,168,130,0.8);font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:2px;padding:10px 32px;cursor:pointer;transition:all 0.3s;">
+                            ${lang === 'en' ? 'Bury' : '묻기'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const input = container.querySelector('#recordTitleInput');
+        const btn = container.querySelector('#recordTitleConfirm');
+
+        const submit = () => {
+            const val = input.value.trim();
+            resolve(val || (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억'));
+        };
+        btn.addEventListener('click', submit);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+        setTimeout(() => input.focus(), 100);
+    });
+}
+
+/**
+ * Phase B scene review — with edit button (placeholder)
+ */
+async function _showPhaseBReview(container, sceneData, conversationData, lang) {
+    const { showSceneReview, showBurialAnimation } = await import('./burialAnimation.js');
+
+    showSceneReview(container, {
+        scenes: sceneData.scenes,
+        originalVector: sceneData.originalVector,
+        lang,
+        showEditButton: true,
+        onConfirm: async () => {
+            const userTitle = await _showTitleInput(container, lang);
+            const memoryId = await saveRecordMemory(conversationData, sceneData, lang, userTitle);
+            if (memoryId) _autoCreateFirstPlay(memoryId, sceneData);
+            showBurialAnimation(container, {
+                originalVector: sceneData.originalVector,
+                lang,
+                onArchive: () => {
+                    container.classList.add('hidden');
+                    container.style.display = 'none';
+                    _showRecordStrata(memoryId, lang);
+                }
+            });
+        },
+        onEdit: (sceneIndex) => {
+            // Placeholder — edit functionality TBD
+            console.log('[Record] Edit scene requested:', sceneIndex);
+            showNotification(lang === 'en' ? 'Scene editing coming soon.' : '장면 고치기 기능 준비 중.');
+        },
+        onRetry: () => {
+            container.classList.add('hidden');
+            container.style.display = 'none';
+            startBeginner();
+        }
+    });
+}
+
+/**
+ * Record 완료 후 strata 표시 — "첫 번째 기억이 여기 묻혔다"
+ * strata 데이터가 없거나 실패 시 archive로 fallback
+ */
+/**
+ * Record 완료 후 — 선택적 로그인 제안 (기억은 이미 저장됨)
+ * 로그인하면 기억이 프로필에 연결됨, 안 하면 익명 기억으로 archive에 남음
+ */
+function _showOptionalLoginAfterRecord(memoryId, lang) {
+    const container = document.getElementById('burialContainer');
+    if (!container) { window.enterArchive(); return; }
+
+    container.classList.remove('hidden');
+    container.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;inset:0 !important;align-items:center;justify-content:center;background:#0a0a0e;';
+    container.innerHTML = `
+        <div style="text-align:center;max-width:320px;padding:2rem;">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:16px;color:rgba(196,168,130,0.8);letter-spacing:3px;margin-bottom:16px;">
+                ${lang === 'en' ? 'The memory is buried.' : '기억이 묻혔다.'}
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:12px;color:rgba(196,168,130,0.4);letter-spacing:2px;line-height:1.8;margin-bottom:32px;">
+                ${lang === 'en'
+                    ? 'Sign in to link this memory to your profile.'
+                    : '로그인하면 이 기억이 내 프로필에 연결됩니다.'}
+            </div>
+            <button id="recordLoginBtn" style="margin:0 8px;background:none;border:1px solid rgba(196,168,130,0.4);color:rgba(196,168,130,0.8);font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:2px;padding:10px 28px;cursor:pointer;transition:all 0.3s;">
+                ${lang === 'en' ? 'Sign in' : '로그인'}
+            </button>
+            <button id="recordSkipBtn" style="margin:0 8px;background:none;border:none;color:rgba(196,168,130,0.3);font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:2px;padding:10px 16px;cursor:pointer;">
+                ${lang === 'en' ? 'Continue' : '넘기기'}
+            </button>
+        </div>
+    `;
+
+    container.querySelector('#recordLoginBtn').addEventListener('click', async () => {
+        container.classList.add('hidden');
+        container.style.cssText = 'display:none !important;';
+        const loginModal = document.getElementById('loginModal');
+        if (loginModal) {
+            loginModal.classList.add('active');
+            loginModal.style.cssText = 'display:flex !important;z-index:2100 !important;';
+            const handler = async () => {
+                document.removeEventListener('tem:login-success', handler);
+                // Claim the anonymous memory — link to newly logged-in user
+                const userId = await _resolveUserId();
+                if (userId && memoryId) {
+                    try {
+                        const supabase = getSupabaseClient();
+                        await supabase.from('memories').update({ curator_id: userId }).eq('id', memoryId);
+                        console.log('[Record] Anonymous memory claimed by user:', userId);
+                    } catch (e) {
+                        console.warn('[Record] Failed to claim memory:', e);
+                    }
+                }
+                window.enterArchive();
+            };
+            document.addEventListener('tem:login-success', handler);
+        } else {
+            window.enterArchive();
+        }
+    });
+
+    container.querySelector('#recordSkipBtn').addEventListener('click', () => {
+        container.classList.add('hidden');
+        container.style.display = 'none';
+        window.enterArchive();
+    });
+}
+
+function _showRecordStrata(memoryId, lang) {
+    if (!memoryId) {
+        window.enterArchive();
+        return;
+    }
+
+    if (typeof window.showStrataView !== 'function') {
+        window.enterArchive();
+        return;
+    }
+
+    const state = appStore.getState();
+    const isLoggedIn = state.isLoggedIn;
+
+    // strata close 시: 비로그인이면 선택적 로그인 제안, 로그인이면 archive
+    window.showStrataView(memoryId, null, () => {
+        if (!isLoggedIn) {
+            _showOptionalLoginAfterRecord(memoryId, lang);
+        } else {
+            window.enterArchive();
+        }
+    });
+
+    // strata HUD에 봉인 메시지 오버레이
+    setTimeout(() => {
+        const viewEl = document.getElementById('strataView');
+        if (!viewEl || viewEl.style.display === 'none') {
+            window.enterArchive();
+            return;
+        }
+
+        const narrative = document.createElement('div');
+        narrative.id = 'recordStrataOverlay';
+        narrative.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2800;text-align:center;pointer-events:none;opacity:0;transition:opacity 2s ease;';
+        narrative.innerHTML = `
+            <div style="font-family:'Cormorant Garamond',serif;font-size:16px;color:rgba(196,168,130,0.8);letter-spacing:3px;margin-bottom:12px;">
+                ${lang === 'en' ? 'The memory is buried here.' : '기억이 여기 묻혔다.'}
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:11px;color:rgba(196,168,130,0.4);letter-spacing:2px;">
+                ${lang === 'en' ? 'Your first stratum.' : '당신이 남긴 첫 번째 지층.'}
+            </div>
+        `;
+        viewEl.appendChild(narrative);
+
+        // Fade in
+        requestAnimationFrame(() => { narrative.style.opacity = '1'; });
+
+        // Fade out after 4 seconds
+        setTimeout(() => {
+            narrative.style.opacity = '0';
+            setTimeout(() => narrative.remove(), 2000);
+        }, 4000);
+    }, 1500);
 }
 
 function endRecordChat() {

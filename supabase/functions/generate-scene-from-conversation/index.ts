@@ -1,6 +1,35 @@
 // generate-scene-from-conversation/index.ts — 대화 기반 기억 데이터 → 5장면 생성
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getCorsHeaders, verifyAuth, unauthorizedResponse } from "../_shared/auth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const allowedOriginsRaw = Deno.env.get("ALLOWED_ORIGINS") || "";
+  const allowedOrigins = allowedOriginsRaw ? allowedOriginsRaw.split(",").map((o) => o.trim()) : [];
+  const origin = req.headers.get("origin") || "";
+  let allowedOrigin: string;
+  if (allowedOrigins.length === 0) { allowedOrigin = "*"; }
+  else if (allowedOrigins.includes(origin)) { allowedOrigin = origin; }
+  else { allowedOrigin = allowedOrigins[0]; }
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+}
+
+async function verifyAuth(req: Request): Promise<{ id: string; email?: string } | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return null;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return { id: user.id, email: user.email };
+}
 
 // ===== 감정 벡터 매핑 (generate-scene-from-ritual과 동일) =====
 const EMOTION_VECTORS: Record<string, Record<string, number>> = {
@@ -117,7 +146,7 @@ function buildPrompt(data: ConversationData, lang: string): string {
 
   if (lang === 'en') {
     return `You are a writer who transforms memories into scenes.
-Based on the interview data below, write exactly 5 scenes.
+Based on the interview data below, write 3 to 7 scenes. Use as many scenes as the memory naturally requires — a simple memory may need only 3, a complex one up to 7. The first scene must be sensory, and the last must be a sealing/exit scene.
 
 ## Interview Data
 
@@ -135,13 +164,11 @@ Based on the interview data below, write exactly 5 scenes.
 ${isVoid ? '\n⚠ This person showed emotional numbness. Do NOT describe emotions directly in scenes.' : ''}
 ${isCompound ? `\n⚠ This person felt compound emotions (${primary} + ${secondary}). Scene 4 must show both emotions simultaneously or sequentially.` : ''}
 
-## 5-Scene Structure
+## Scene Structure (3–7 scenes)
 
-**Scene 1 (Sensory):** Only sensory description. No character actions. Smell, sound, texture. 2–3 sentences.
-**Scene 2 (Anchor):** The anchor object appears. Eyes linger. Emphasize its presence. 2–3 sentences.
-**Scene 3 (Action):** The narrator's action within the situation. Reflect attribution nuance. 2–3 sentences.
-**Scene 4 (Crash):** The core event. Show body reactions physically, not with emotion words. 3–5 sentences. Longest scene.
-**Scene 5 (Seal):** Exiting the memory. Open ending. 2–3 sentences.
+**First scene (Sensory):** sceneType "normal". Only sensory description. No character actions. Smell, sound, texture. 2–3 sentences.
+**Middle scenes (Anchor/Action/Crash):** sceneType "branch". Each scene covers one moment — an object, an action, or a pivotal event. 2–5 sentences each. The most intense scene should show body reactions physically, not with emotion words.
+**Last scene (Seal):** sceneType "ending". Exiting the memory. Open ending. 2–3 sentences.
 
 ## Style Rules
 
@@ -160,17 +187,17 @@ Follow this JSON format exactly. Output only JSON.
   "scenes": [
     { "order": 1, "sceneType": "normal", "text": "Scene 1 text", "emotionCue": "1-2 word emotion hint" },
     { "order": 2, "sceneType": "branch", "text": "Scene 2 text", "emotionCue": "..." },
-    { "order": 3, "sceneType": "branch", "text": "Scene 3 text", "emotionCue": "..." },
-    { "order": 4, "sceneType": "branch", "text": "Scene 4 text", "emotionCue": "..." },
-    { "order": 5, "sceneType": "ending", "text": "Scene 5 text", "emotionCue": "..." }
+    { "order": N, "sceneType": "ending", "text": "Last scene text", "emotionCue": "..." }
   ]
 }
-\`\`\``;
+\`\`\`
+
+Return 3 to 7 scene objects. First is always "normal", last is always "ending", middle ones are "branch".`;
   }
 
   // Korean (default)
   return `당신은 기억을 장면으로 변환하는 작가입니다.
-아래 인터뷰 데이터를 바탕으로 정확히 5개의 장면을 작성하세요.
+아래 인터뷰 데이터를 바탕으로 3~7개의 장면을 작성하세요. 기억의 복잡도에 맞게 장면 수를 결정하세요 — 단순한 기억은 3개, 복잡한 기억은 7개까지. 첫 장면은 반드시 감각, 마지막 장면은 반드시 봉인이어야 합니다.
 
 ## 인터뷰 데이터
 
@@ -188,13 +215,11 @@ Follow this JSON format exactly. Output only JSON.
 ${isVoid ? '\n⚠ 이 화자는 감정적 무감각 상태를 보였습니다. 장면에 감정을 직접 서술하지 마세요.' : ''}
 ${isCompound ? `\n⚠ 이 화자는 복합 감정(${primary} + ${secondary})을 느꼈습니다. 장면 4에서 이 두 감정이 동시에 또는 순차적으로 나타나야 합니다.` : ''}
 
-## 5장면 구조
+## 장면 구조 (3~7장면)
 
-**장면 1 (감각):** 공간의 감각만 묘사. 인물의 행동 없이 냄새, 소리, 촉감으로 시작. 2~3문장.
-**장면 2 (앵커):** 앵커 사물 등장. 시선이 그곳에 머무는 순간. 존재감을 강조. 2~3문장.
-**장면 3 (행위):** 화자의 행동. 귀인(${attribution})의 뉘앙스 반영. 2~3문장.
-**장면 4 (충돌):** 핵심 사건. 신체 반응을 직접 묘사. 감정 단어를 쓰지 말고 신체/행동으로 표현. 3~5문장. 가장 긴 장면.
-**장면 5 (봉인):** 기억에서 빠져나오는 순간. 열린 결말. 2~3문장.
+**첫 장면 (감각):** sceneType "normal". 공간의 감각만 묘사. 인물의 행동 없이 냄새, 소리, 촉감으로 시작. 2~3문장.
+**중간 장면들 (앵커/행위/충돌):** sceneType "branch". 각 장면은 하나의 순간을 담는다 — 사물, 행동, 핵심 사건. 각 2~5문장. 가장 강렬한 장면은 감정 단어 없이 신체/행동으로 표현.
+**마지막 장면 (봉인):** sceneType "ending". 기억에서 빠져나오는 순간. 열린 결말. 2~3문장.
 
 ## 문체 규칙
 
@@ -213,12 +238,12 @@ ${isCompound ? `\n⚠ 이 화자는 복합 감정(${primary} + ${secondary})을 
   "scenes": [
     { "order": 1, "sceneType": "normal", "text": "장면 1 텍스트", "emotionCue": "감정 힌트 1~2단어" },
     { "order": 2, "sceneType": "branch", "text": "장면 2 텍스트", "emotionCue": "..." },
-    { "order": 3, "sceneType": "branch", "text": "장면 3 텍스트", "emotionCue": "..." },
-    { "order": 4, "sceneType": "branch", "text": "장면 4 텍스트", "emotionCue": "..." },
-    { "order": 5, "sceneType": "ending", "text": "장면 5 텍스트", "emotionCue": "..." }
+    { "order": N, "sceneType": "ending", "text": "마지막 장면 텍스트", "emotionCue": "..." }
   ]
 }
-\`\`\``;
+\`\`\`
+
+3~7개의 장면 객체를 반환하세요. 첫 장면은 항상 "normal", 마지막은 항상 "ending", 중간은 "branch".`;
 }
 
 // ===== Serve =====
@@ -296,21 +321,36 @@ serve(async (req) => {
       });
     }
 
-    // originalVector를 각 장면에 내장
-    const scenes = (scenesData.scenes || []).map((scene: any, i: number) => {
-      const meta = SCENE_TYPES[i] || SCENE_TYPES[0];
+    // originalVector를 각 장면에 내장 — 동적 장면 수 지원
+    const rawScenes = scenesData.scenes || [];
+    const totalScenes = rawScenes.length;
+    const scenes = rawScenes.map((scene: any, i: number) => {
+      // 첫 장면: weight 0, 마지막 장면: weight 0.4, 중간: 균등 분배 (0.3~1.0)
+      let vectorWeight = 0;
+      let sceneType = scene.sceneType || 'branch';
+      if (i === 0) {
+        vectorWeight = 0;
+        sceneType = 'normal';
+      } else if (i === totalScenes - 1) {
+        vectorWeight = 0.4;
+        sceneType = 'ending';
+      } else {
+        // 중간 장면: 후반부로 갈수록 가중치 증가
+        vectorWeight = 0.3 + (0.7 * i / Math.max(totalScenes - 2, 1));
+      }
+
       return {
         order: scene.order || i + 1,
-        sceneType: scene.sceneType || meta.type,
+        sceneType,
         text: scene.text,
         emotionCue: scene.emotionCue || '',
-        originalVector: meta.vectorWeight > 0 ? {
+        originalVector: vectorWeight > 0 ? {
           base: Object.fromEntries(
-            Object.entries(originalVector.base).map(([k, v]) => [k, (v as number) * meta.vectorWeight])
+            Object.entries(originalVector.base).map(([k, v]) => [k, (v as number) * vectorWeight])
           ),
-          reason_analysis: meta.vectorWeight >= 0.5 ? originalVector.reason_analysis : undefined,
+          reason_analysis: vectorWeight >= 0.5 ? originalVector.reason_analysis : undefined,
         } : undefined,
-        vectorWeight: meta.vectorWeight,
+        vectorWeight,
       };
     });
 

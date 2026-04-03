@@ -37,8 +37,19 @@ const GLITCH_CHARS = '░▒▓█▪▫';
 /**
  * Apply Presentation Spec text effect to originalText.
  *
+ * Stage → text_stage mapping:
+ *   stable                        → original text
+ *   biased_inclination (weak)     → original text
+ *   biased_inclination (medium)   → text_stage_1 (편향적 기울어짐)
+ *   biased_inclination (strong)   → text_stage_2 (해석 병기)
+ *   hypercompletion (weak)        → original text
+ *   hypercompletion (medium)      → text_stage_2 (해석 병기)
+ *   hypercompletion (strong)      → text_stage_3 (과잉 완결)
+ *
+ * If the target stage text is missing, falls through to client-side fallback.
+ *
  * @param {string} originalText
- * @param {Object} scene - scene object (may have text_biased / text_hyper pre-generated)
+ * @param {Object} scene - scene object (has text_stage_1 / text_stage_2 / text_stage_3)
  * @param {{ stage: string, intensity: number, band: string }} pres - getPresentationState() output
  * @returns {string} transformed text
  */
@@ -46,9 +57,15 @@ export function applyStageText(originalText, scene, pres) {
     const { stage, intensity, band } = pres;
     if (stage === 'stable' || intensity < 0.01) return originalText;
 
-    // Pre-generated AI text wins
-    if (stage === 'biased_inclination' && scene.text_biased) return scene.text_biased;
-    if (stage === 'hypercompletion'    && scene.text_hyper)  return scene.text_hyper;
+    // Pre-generated stage text: DB text_stage_1/2/3 mapped to contamination state
+    if (stage === 'biased_inclination') {
+        if (band === 'strong' && scene.text_stage_2) return scene.text_stage_2;
+        if (band !== 'weak'  && scene.text_stage_1) return scene.text_stage_1;
+    }
+    if (stage === 'hypercompletion') {
+        if (band === 'strong' && scene.text_stage_3) return scene.text_stage_3;
+        if (band !== 'weak'  && scene.text_stage_2) return scene.text_stage_2;
+    }
 
     // Client-side fallback: seeded so same text always produces same effect
     const rng = _seedFromText(originalText + stage + band);
