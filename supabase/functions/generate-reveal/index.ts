@@ -20,10 +20,6 @@ serve(async (req) => {
     const memoryTitle = body.memory_title || "무제";
     const emotionTrajectory = body.emotion_trajectory || [];
     const lang = body.lang === "en" ? "en" : "ko";
-    const langInstruction =
-      lang === "en"
-        ? 'Write the narrative in English. Use second person ("you").'
-        : '서사 텍스트를 한국어로 작성하라. 2인칭 시점 ("당신은").';
 
     if (visits.length === 0) {
       return new Response(JSON.stringify({ error: "방문 데이터 없음" }), {
@@ -32,7 +28,9 @@ serve(async (req) => {
     }
 
     const visitDescriptions = visits.map((v: any, i: number) => {
-      const pinLabel = v.pin_type === "core" ? "Core(원본 기억)" : "Bridge(가교 조각)";
+      const pinLabel = v.pin_type === "core"
+        ? (lang === "en" ? "Core" : "Core(원본 기억)")
+        : (lang === "en" ? "Bridge" : "Bridge(가교 조각)");
       const emotions = v.emotion_data?.base || {};
       const dominant = Object.entries(emotions)
         .filter(([, val]) => (val as number) > 0.3)
@@ -40,23 +38,49 @@ serve(async (req) => {
         .map(([key]) => key)
         .slice(0, 3);
       const reason = v.emotion_data?.reason_analysis || {};
-      return `[${i + 1}번째] ${pinLabel}
-장면: "${(v.scene_text || "").substring(0, 150)}"
-감정: ${dominant.join(", ") || "없음"}
-정렬도: ${v.engine_result?.alignment_bucket || "?"} (${v.engine_result?.alignment_score?.toFixed(2) || "?"})
-패턴: ${v.engine_result?.transition_pattern || "?"}
-미스매치: ${v.engine_result?.mismatch_type || "none"}
-귀인: ${reason.attribution || "?"} / 두려움: ${reason.core_fear || "?"}`;
+      return `[#${i + 1}] ${pinLabel}
+Scene: "${(v.scene_text || "").substring(0, 150)}"
+Emotions: ${dominant.join(", ") || "none"}
+Alignment: ${v.engine_result?.alignment_bucket || "?"} (${v.engine_result?.alignment_score?.toFixed(2) || "?"})
+Pattern: ${v.engine_result?.transition_pattern || "?"}
+Mismatch: ${v.engine_result?.mismatch_type || "none"}
+Attribution: ${reason.attribution || "?"} / Fear: ${reason.core_fear || "?"}`;
     }).join("\n\n");
 
     let trajectoryNote = "";
     if (emotionTrajectory.length >= 2) {
       const f = emotionTrajectory[0];
       const l = emotionTrajectory[emotionTrajectory.length - 1];
-      trajectoryNote = `감정이동: V ${f.v?.toFixed(2)}→${l.v?.toFixed(2)}, A ${f.a?.toFixed(2)}→${l.a?.toFixed(2)}`;
+      trajectoryNote = `Emotion shift: V ${f.v?.toFixed(2)}→${l.v?.toFixed(2)}, A ${f.a?.toFixed(2)}→${l.a?.toFixed(2)}`;
     }
 
-    const prompt = `기억 제목: "${memoryTitle}"
+    const systemPrompt = lang === "en"
+      ? "TEM Reveal narrative generator. Receive memory exploration data, output literary narrative text only."
+      : "TEM Reveal 서사 생성기. 기억 탐색 데이터를 받아 문학적 서사 텍스트만 출력.";
+
+    const prompt = lang === "en"
+      ? `Memory title: "${memoryTitle}"
+Visits: ${visits.length}
+${trajectoryNote}
+
+--- Visit Log ---
+${visitDescriptions}
+--- End ---
+
+The above is a record of one person exploring another person's memory terrain.
+Reconstruct this journey into a short narrative.
+
+Rules:
+1. Write in English. Use second person ("you").
+2. 3–6 sentences.
+3. Follow visit order, focusing on emotional flow and shifts.
+4. High alignment = resonance, low alignment = fracture.
+5. If mismatch exists, reflect tension in the narrative.
+6. Include at least one sensory detail.
+7. No psychological jargon — literary expression only.
+8. End with what was taken from or left in the memory.
+9. Output narrative text only. No JSON.`
+      : `기억 제목: "${memoryTitle}"
 방문 수: ${visits.length}
 ${trajectoryNote}
 
@@ -68,7 +92,7 @@ ${visitDescriptions}
 이 사람의 여정을 하나의 짧은 서사로 재구성하라.
 
 규칙:
-1. ${langInstruction}
+1. 서사 텍스트를 한국어로 작성하라. 2인칭 시점 ("당신은").
 2. 3~6문장
 3. 방문 순서를 따르되 감정의 흐름과 변화에 초점
 4. 정렬도 높으면 공명, 낮으면 균열로 표현
@@ -88,7 +112,7 @@ ${visitDescriptions}
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1024,
-        system: "TEM Reveal 서사 생성기. 기억 탐색 데이터를 받아 문학적 서사 텍스트만 출력.",
+        system: systemPrompt,
         messages: [{ role: "user", content: prompt }]
       })
     });
