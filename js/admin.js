@@ -3078,8 +3078,8 @@ window.saveAnchorImage = async function () {
     const keyword = document.getElementById('anchorKeyword')?.value.trim();
     const imageType = document.getElementById('anchorType')?.value || 'text';
     const content = document.getElementById('anchorContent')?.value || '';
-    const vivMin = parseFloat(document.getElementById('anchorVivMin')?.value) || 0;
-    const vivMax = parseFloat(document.getElementById('anchorVivMax')?.value) || 1;
+    const vivMin = imageType === 'photo' ? 0.7 : imageType === 'ascii' ? 0.3 : 0.0;
+    const vivMax = imageType === 'photo' ? 1.0 : imageType === 'ascii' ? 0.7 : 0.3;
     const fileInput = document.getElementById('anchorPhotoFile');
 
     if (!keyword) { alert('Keyword is required'); return; }
