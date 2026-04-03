@@ -56,15 +56,14 @@ async function enterPlayIntro(opts) {
   appStore.setState({ currentMode: 'play' });
   stopArchiveWaveAnimation();
 
-  // Load memories for matching
-  try {
-    await loadMemoriesFromSupabase();
-  } catch (_) {}
-
+  // Show UI immediately, load memories in background
   _initMemoryFinder();
 
   const footer = document.querySelector('.footer');
   if (footer) footer.classList.add('visible');
+
+  // Load memories after UI is visible (non-blocking)
+  loadMemoriesFromSupabase().catch(() => {});
 }
 
 // ─── Memory Finder: personalized memory matching sequence ─────────
