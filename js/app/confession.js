@@ -1686,18 +1686,22 @@ function showArchitectLocked() {
 
 // 메인 메뉴 돌아 기
 function showMainMenu() {
-    const introScreen = document.getElementById('introScreen');
-    const confessionHub = document.getElementById('confessionHub');
+    hideAllScreens();
 
-    if (confessionHub) {
-        confessionHub.classList.add('hidden');
-        confessionHub.style.display = 'none';
-    }
-
-    if (introScreen) {
-        introScreen.classList.remove('hidden');
-        introScreen.classList.add('visible');
-        introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important';
+    // Show the carousel (modeSelection) directly, skip opening animation
+    if (typeof window.showModeSelection === 'function') {
+        window.showModeSelection();
+        if (typeof window.selectMatching === 'function') {
+            window.selectMatching('session');
+        }
+    } else {
+        // Fallback: show introScreen if carousel not available
+        const introScreen = document.getElementById('introScreen');
+        if (introScreen) {
+            introScreen.classList.remove('hidden');
+            introScreen.classList.add('visible');
+            introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important';
+        }
     }
 }
 
