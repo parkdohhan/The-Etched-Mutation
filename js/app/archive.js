@@ -10,7 +10,7 @@ import { getSoundscape } from '../audio/getSoundscape.js';
  *   window.showComparisonView
  */
 
-import { getSupabaseClient, waitForSupabaseClient } from '../lib/supabaseClient.js';
+import { getSupabaseClient, waitForSupabaseClient, getAccessToken } from '../lib/supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import { NPC_DIALOGUES, getRandomDialogue } from '../npc-dialogues.js';
 import { t } from '../lib/i18n.js';
@@ -25,7 +25,7 @@ import {
 } from '../shared/math.js';
 import { ByeoriEngine, byeoriEngine } from '../core/ByeoriEngine.js';
 import { sceneNavigator } from '../core/SceneNavigator.js';
-import { updateContamination, createEmptyState } from '../core/ContaminationTracker.js';
+import { updateContamination, createEmptyState, getPresentationState } from '../core/ContaminationTracker.js';
 import { getContaminatedSceneText } from './contaminationPresenter.js';
 import { getMonologue } from '../ui/contaminationMonologue.js';
 import { networkService } from '../services/NetworkService.js';
@@ -1172,7 +1172,90 @@ async function _applyContaminationAtEnd(state) {
     } else {
         console.log('[ContaminationTracker] persisted to memory', memoryId);
     }
+
+    // Generate contaminated stage texts for next players (fire-and-forget)
+    _generateStageTextsInBackground(memoryId, nextContState);
 }
+
+/**
+ * After contamination update, regenerate stage texts for all scenes of this memory.
+ * Calls the contaminate-text Edge Function and stores results in DB.
+ * Runs in background — does not block the player's flow.
+ */
+async function _generateStageTextsInBackground(memoryId, contState) {
+    try {
+        const pres = getPresentationState(contState);
+
+        // Only generate if contamination is active
+        if (pres.stage === 'stable' || pres.intensity < 0.01) return;
+
+        const client = getSupabaseClient();
+        if (!client) return;
+
+        // Fetch scenes for this memory
+        const { data: scenes, error: sceneErr } = await client
+            .from('scenes')
+            .select('id, text, text_stage_1, text_stage_2, text_stage_3')
+            .eq('memory_id', memoryId)
+            .order('scene_order');
+
+        if (sceneErr || !scenes?.length) return;
+
+        const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
+
+        for (const scene of scenes) {
+            if (!scene.text) continue;
+
+            // Skip if this stage text already exists
+            if (pres.stage === 'biased_inclination' && pres.band !== 'strong' && scene.text_stage_1) continue;
+            if (pres.stage === 'biased_inclination' && pres.band === 'strong' && scene.text_stage_2) continue;
+            if (pres.stage === 'hypercompletion' && pres.band !== 'strong' && scene.text_stage_2) continue;
+            if (pres.stage === 'hypercompletion' && pres.band === 'strong' && scene.text_stage_3) continue;
+
+            try {
+                const res = await fetch(`${SUPABASE_URL}/functions/v1/contaminate-text`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        text: scene.text,
+                        contamination: {
+                            cont_stage: contState.cont_stage,
+                            cont_drift: contState.cont_drift,
+                            cont_fixation: contState.cont_fixation,
+                            drift_dir_v: contState.drift_dir_v,
+                            drift_dir_a: contState.drift_dir_a,
+                            drift_dir_d: contState.drift_dir_d,
+                            band: pres.band,
+                        },
+                    }),
+                });
+
+                if (!res.ok) {
+                    console.warn('[StageText] Edge Function error for scene', scene.id, res.status);
+                    continue;
+                }
+
+                const result = await res.json();
+                const updateFields = {};
+                if (result.text_stage_1 && !scene.text_stage_1) updateFields.text_stage_1 = result.text_stage_1;
+                if (result.text_stage_2 && !scene.text_stage_2) updateFields.text_stage_2 = result.text_stage_2;
+                if (result.text_stage_3 && !scene.text_stage_3) updateFields.text_stage_3 = result.text_stage_3;
+
+                if (Object.keys(updateFields).length > 0) {
+                    await client.from('scenes').update(updateFields).eq('id', scene.id);
+                    console.log('[StageText] generated for scene', scene.id, Object.keys(updateFields));
+                }
+            } catch (e) {
+                console.warn('[StageText] generation failed for scene', scene.id, e.message);
+            }
+        }
+        console.log('[StageText] background generation complete for memory', memoryId);
+    } catch (e) {
+        console.warn('[StageText] background generation error:', e.message);
+    }
 
 // ─────────────────────────────────────
 // === Exports ===
