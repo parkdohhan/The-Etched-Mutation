@@ -90,87 +90,81 @@ Boyd & Richerson(1985)의 문화 진화 이론(dual inheritance theory)은 밈�
 
 ## 3. 기억유전학 (Mnemonic Genetics)
 
-### 2.1 기본 전제: 기억은 의존적 복제자이다
+### 3.1 기본 전제: 기억은 의존적 복제자이다
 
-유전학의 자기복제자(self-replicator)는 자율적으로 복제를 수행한다. DNA는 세포 내 효소 시스템을 이용하지만, 복제의 정보적 주체는 DNA 자신이다. 반면 바이러스는 숙주 세포 없이 복제할 수 없는 **절대 의존적 복제자(obligate dependent replicator)**다.
+유전학의 자기복제자(self-replicator)는 자율적으로 복제를 수행한다. DNA는 세포 내 효소 시스템을 이용하지만, 복제의 정보적 주체는 DNA 자신이다. 기억은 근본적으로 다르다 — 기억은 타자의 **의식(consciousness)** 없이는 어떤 연산도 수행하지 못하는 **의존적 복제자(dependent replicator)**이다. 회상 자체가 현재 맥락(타자의 존재, 사회적 압력, 자기 자신의 변화된 상태)에 의해 매개되며, 전달은 반드시 수신자를 요구한다. 기억유전학의 6연산 모두 타자의 존재를 전제한다.
 
-기억은 바이러스보다 더 강한 의미에서 의존적이다. 바이러스가 숙주의 분자 기계를 필요로 하듯, 기억은 타자의 **의식(consciousness)**을 필요로 한다. 기억은 회상자 혼자서는 어떤 연산도 수행하지 못한다 — 회상 자체가 현재 맥락(= 타자의 존재, 사회적 압력, 자기 자신의 변화된 상태)에 의해 매개되며, 전달은 반드시 수신자를 요구한다. 기억유전학의 6연산 모두 타자의 존재를 전제한다.
-
-이 전제는 Arc 단백질의 발견(Pastuzyn et al., 2018)에 의해 분자적 근거를 얻는다. 기억의 분자적 매개체인 Arc가 레트로바이러스 유래 단백질이며 바이러스 유사 입자로 세포 간 전파를 수행한다는 사실은, 기억의 의존적 복제자 성격이 비유가 아니라 진화적 기원에 뿌리박은 것임을 시사한다.
-
-### 2.2 6연산 체계
+### 3.2 6연산 체계
 
 기억유전학은 분자유전학의 중심 교의 — 복제, 변이, 선택, 번역 — 에 수선과 재조합을 추가한 6개 연산으로 기억 동역학을 기술한다. 각 연산은 유전학에서의 대응물이 있으나, 유전학에서는 "불가능한" 방식으로 작동한다.
 
-#### 2.2.1 파괴적 복제 (Destructive Replication)
+#### 3.2.1 파괴적 복제 (Destructive Replication)
 
-유전학에서 DNA 복제는 반보존적(semi-conservative)이다 — 원본 가닥이 주형으로 보존되고, 새로운 상보적 가닥이 합성된다. 원본은 소멸하지 않는다. 기억에서 회상(retrieval)은 기억을 불안정화시키고 현재 맥락과 함께 재고화(reconsolidation)한다(Nader, 2000). 원본은 변형된 사본에 의해 덮여 **소멸**한다.
+**유전학적 대응:** DNA 복제는 반보존적(semi-conservative)이다 — 원본 가닥이 주형으로 보존된다.
 
-형식적으로: R(M) = M', 여기서 M ≠ M'이며 원본 M은 더 이상 존재하지 않는다. 복제와 변형이 분리되지 않고 하나의 연산으로 결합된다.
+**기억에서의 실제:** 회상(retrieval)은 기억을 불안정화시키고 현재 맥락과 함께 재고화(reconsolidation)한다. Nader et al.(2000)은 쥐의 공포 기억이 회상 직후 단백질 합성 억제제에 의해 소거될 수 있음을 보여주었으며, 이는 회상이 기억을 능동적으로 불안정화시킨다는 것을 의미한다. Bridge & Paller(2012)는 인간에서도 회상 시 기억이 재고화되며 이 과정에서 새로운 정보가 통합됨을 확인했다. 원본은 변형된 사본에 의해 덮여 **소멸**한다.
 
-**HIV-1 대응:** Provirus 통합. HIV RNA가 역전사되어 숙주 DNA에 삽입될 때, 원본 RNA 바이러스는 분해되고 숙주 게놈의 일부로 "재기록"된다. 원본 형태는 소멸한다.
+형식적으로: R(M) = M', 여기서 M ≠ M'이며 원본 M은 더 이상 존재하지 않는다.
 
-#### 2.2.2 편향적 변이 (Biased Mutation)
+#### 3.2.2 편향적 변이 (Biased Mutation)
 
-유전학에서 돌연변이는 무작위(random)이며 방향성이 없다. 기억에서 변이는 비무작위(non-random)이다. 변이 방향은 회상 시점의 감정 상태(e), 현재 맥락(c), 사회적 압력(s)에 의해 결정된다: ΔM = f(e, c, s). 구조적으로 라마르크주의(획득형질의 유전)와 동형이며, 유전학에서 기각된 라마르크주의가 기억에서는 작동한다.
+**유전학적 대응:** 돌연변이는 무작위(random)이며 방향성이 없다.
 
-**HIV-1 대응:** APOBEC3G에 의한 편향적 과변이. 숙주의 APOBEC3G 효소는 HIV cDNA의 시토신(C)을 우라실(U)로 탈아미노화하여 G→A 과변이(hypermutation)를 유도한다(Harris & Dudley, 2015). 변이는 무작위가 아니라 숙주(= 해석자)가 방향을 결정하며, 특정 서열 맥락(5'TC)에서 편향적으로 발생한다. 이것은 기억의 "감정·맥락·사회적 압력이 변이 방향을 결정한다"는 편향적 변이의 가장 정확한 분자적 아날로그다.
+**기억에서의 실제:** 기억의 변이는 비무작위(non-random)이다. Bower(1981)는 기분 일치 기억(mood-congruent memory)을 보여주었다 — 슬픈 기분일 때 회상하면 기억이 부정적 방향으로 왜곡된다. Levine(1997)은 O.J. Simpson 판결에 대한 감정적 반응이 시간이 지나면서 현재 태도 방향으로 체계적으로 재구성됨을 보여주었다. Tversky & Marsh(2000)는 같은 사건을 다른 청자에게 말할 때 청자의 성향에 맞춰 기억이 왜곡됨을 밝혔다 — 사회적 압력이 변이 방향을 결정한다. 변이 방향은 감정 상태(e), 현재 맥락(c), 사회적 압력(s)에 의해 결정된다: ΔM = f(e, c, s).
 
-#### 2.2.3 의도적 선택 (Intentional Selection)
+#### 3.2.3 의도적 선택 (Intentional Selection)
 
-자연선택의 주체는 의식 없는 환경이다. 기억에서 선택의 주체는 다른 의식(another consciousness)이다. 타인에게 전달될 때 "전할지/숨길지"가 의식적으로 선택되며, 그 메커니즘은 검열(censorship), 신화화(mythologization), 큐레이션(curation)이다.
+**유전학적 대응:** 자연선택의 주체는 의식 없는 환경이다.
 
-**HIV-1 대응:** 항원 변이(antigenic variation). HIV는 면역체계(= 환경의 "선택 압력")를 피하기 위해 표면 단백질(gp120)을 지속적으로 변경한다. 기억이 사회적 맥락에 따라 어떤 면을 드러내고 숨기는 것과 같은 구조다.
+**기억에서의 실제:** 기억에서 선택의 주체는 **다른 의식(another consciousness)**이다. Pasupathi(2001)는 기억의 사회적 공유가 공유된 측면을 강화하고 공유되지 않은 측면을 약화시킨다는 것을 보여주었다 — 전달 자체가 선택이다. Hirst & Echterhoff(2012)는 집단 기억(collective memory)에서 사회적으로 공유된 기억은 보존되고 비공유 기억은 소멸하는 "사회적으로 공유된 인출 유도 망각(SS-RIF)"을 밝혔다. 메커니즘은 검열(censorship), 신화화(mythologization), 큐레이션(curation)이다.
 
-#### 2.2.4 무규칙 번역 (Ruleless Translation)
+#### 3.2.4 무규칙 번역 (Ruleless Translation)
 
-유전학에서 번역은 코돈 테이블이라는 고정 규칙에 의해 결정론적이다. 기억에서 매체 전환(경험→언어, 언어→타인의 신경 패턴)에는 고정 규칙이 없다. 번역 함수 자체가 시간·맥락 의존적 확률 변수로 동작한다: T(M_a, t, c) = M_b + η(t, c).
+**유전학적 대응:** 번역은 코돈 테이블이라는 고정 규칙에 의해 결정론적이다.
 
-**HIV-1 대응:** Arc 캡시드에 의한 mRNA 전달(Pastuzyn et al., 2018; Ashley et al., 2018). Arc 캡시드가 어떤 mRNA를 패키징하고 어떤 세포에 전달하는지는 고정된 "주소 테이블"이 아니라, 뉴런 활동 패턴에 의존하는 확률적 과정이다.
+**기억에서의 실제:** 경험을 언어로 전환하는 데 고정 규칙이 없다. Schooler & Engstler-Schooler(1990)는 **언어적 가림(verbal overshadowing)** 현상을 발견했다 — 시각적 기억을 언어로 묘사하는 행위가 시각적 기억 자체를 왜곡한다. 언어화는 기억의 충실한 전사가 아니라, 불가피한 변환 손실을 동반하는 매체 전환이다. 번역 함수 자체가 시간·맥락 의존적 확률 변수로 동작한다: T(M_a, t, c) = M_b + η(t, c).
 
-#### 2.2.5 과잉 수선 (Aberrant Repair)
+#### 3.2.5 과잉 수선 (Aberrant Repair)
 
-DNA 수선 시스템(NER, BER, HR 등)은 높은 정확도로 손상을 복원하지만 완벽하지 않으며, 수선 과정 자체가 오류를 도입할 수 있다. 특히 텔로머레이스에 의한 텔로미어 과잉 재생은 세포 증식 제어를 무너뜨려 암을 유발한다 — 수선 자체가 병리를 만드는 역설이다.
+**유전학적 대응:** DNA 수선은 손상을 복원하지만, 과잉 수선(예: 텔로머레이스)은 암을 유발한다 — 수선 자체가 병리를 만드는 역설.
 
-기억에서 "수선"은 흐릿해지거나 왜곡된 기억을 원래대로 되돌리려는 시도다. 이 시도는 원본으로의 수렴을 지향하지만, 파괴적 복제(2.2.1)에 의해 회상 자체가 덮어쓰기이므로 수렴에 실패한다. 결과는 원본이 아니라 **원본보다 더 완결된 구성물** — 과잉기억(hypermnesia)이다. 실제로 없었던 감각, 대화, 맥락이 "복원"이라는 이름으로 생성되며, 회상자는 이를 원본의 일부로 확신한다.
+**기억에서의 실제:** 흐릿해진 기억을 "복원"하려는 시도가 오히려 원본에 없던 세부를 추가한다. Loftus(1997)는 "복원된 기억(recovered memory)" 논쟁에서 치료적 복원 시도가 거짓 기억을 생성할 수 있음을 보여주었다. Patihis & Loftus(2016)는 성인에서 없었던 어린 시절 사건의 기억이 "복원"될 수 있음을 실험적으로 확인했다. 결과는 원본이 아니라 **원본보다 더 완결된 구성물** — 과잉기억(hypermnesia)이다. 회상자는 과잉 세부를 원본의 일부로 확신한다.
 
-**HIV-1 대응:** 면역 압력 하의 수렴 진화. 서로 다른 환자의 HIV가 독립적으로 동일한 약제 내성 변이(예: M184V)를 획득하는 현상. 수렴은 "원래 서열로의 복원"이 아니라 "선택 압력에 의해 강제된 새로운 고정"이다.
+#### 3.2.6 기억 재조합 (Mnemonic Recombination)
 
-#### 2.2.6 기억 재조합 (Mnemonic Recombination)
+**유전학적 대응:** 유전적 재조합에서 상동 염색체가 교차(crossing over)하여 새로운 조합이 만들어진다.
 
-유전적 재조합에서 상동 염색체가 교차(crossing over)하여 부모 양쪽의 유전 정보가 섞인 새로운 조합이 만들어진다. 기억에서 서로 다른 기억 단위의 조각이 합쳐져 실제로 일어나지 않은 기억이 구성되는 현상 — 출처 모니터링 오류(Johnson et al., 1993), 거짓 기억의 합성 — 이 이에 해당한다.
+**기억에서의 실제:** 서로 다른 기억 단위의 조각이 합쳐져 실제로 일어나지 않은 기억이 구성된다. Johnson et al.(1993)의 출처 모니터링(source monitoring) 연구는 기억의 출처가 체계적으로 혼동됨을 보여주었다. Roediger & McDermott(1995)의 DRM 패러다임은 관련된 단어 목록을 학습한 후 제시되지 않은 핵심 단어를 "기억"하는 거짓 기억 현상을 밝혔다. Goff & Roediger(1998)는 **상상 팽창(imagination inflation)** — 사건을 상상하는 것만으로 그 사건이 실제로 일어났다는 확신이 증가하는 현상 — 을 보여주었다.
 
-형식적으로: Recombine(M_a, M_b, breakpoint) = M_c, 여기서 M_c ≠ M_a, M_c ≠ M_b이다. 재조합이 일어나려면 두 기억이 최소한의 상동성(homology) — 같은 장소, 같은 인물, 유사한 감정 — 을 공유해야 한다. 이 상동성의 기준이 유전학보다 훨씬 느슨하다는 점이 기억 재조합의 특징이다.
+형식적으로: Recombine(M_a, M_b, breakpoint) = M_c, 여기서 M_c ≠ M_a, M_c ≠ M_b이다.
 
-**HIV-1 대응:** HIV는 RNA가 2카피(diploid)이며, 서로 다른 변이체가 동일 세포에서 만나면 역전사 중 template switching에 의해 재조합이 일어난다. 상동성이 느슨해도 재조합이 발생하는 점은 기억의 "비상동 재조합"과 구조적으로 동일하다.
+### 3.3 6가지 불가능과 기존 연구의 통합
 
-### 2.3 6연산과 HIV-1 생활사: 구조적 대응 종합
+| 연산 | 유전학적 불가능 | 인지심리학적 근거 |
+|------|----------------|------------------|
+| 파괴적 복제 | 원본 파괴 복제 | 재고화 (Nader et al., 2000; Bridge & Paller, 2012) |
+| 편향적 변이 | 방향적 돌연변이 | 기분 일치 왜곡 (Bower, 1981), 감정 재구성 (Levine, 1997), 청자 맞춤 왜곡 (Tversky & Marsh, 2000) |
+| 의도적 선택 | 의식적 선택 주체 | 사회적 공유 선별 (Pasupathi, 2001), SS-RIF (Hirst & Echterhoff, 2012) |
+| 무규칙 번역 | 가변적 코돈 테이블 | 언어적 가림 (Schooler & Engstler-Schooler, 1990) |
+| 과잉 수선 | 수선이 병리를 생산 | 복원된 기억 논쟁 (Loftus, 1997), 기억 이식 (Patihis & Loftus, 2016) |
+| 기억 재조합 | 비상동 교차 | 출처 모니터링 (Johnson et al., 1993), DRM (Roediger & McDermott, 1995), 상상 팽창 (Goff & Roediger, 1998) |
 
-| 기억유전학 연산 | 유전학에서의 불가능 | HIV-1 대응 | 대응 논리 |
-|---|---|---|---|
-| 파괴적 복제 | 원본 파괴 복제 | Provirus 통합 | 원본 소멸, 숙주 게놈으로 재기록 |
-| 편향적 변이 | 방향적 돌연변이 | APOBEC3G 과변이 | 숙주가 변이 방향을 결정 |
-| 의도적 선택 | 의식적 선택 주체 | 항원 변이 | 환경 압력에 따른 표면 변경 |
-| 무규칙 번역 | 가변적 코돈 테이블 | Arc 캡시드 mRNA 전달 | 확률적 패키징, 고정 주소 없음 |
-| 과잉 수선 | 수선이 병리를 생산 | 수렴 진화 (M184V 등) | "복원"이 아닌 강제적 고정 |
-| 기억 재조합 | 비상동 교차 | Template switching 재조합 | 느슨한 상동성으로 교차 발생 |
+이 테이블이 보여주는 것: 각 연산은 독립적인 비유가 아니라 **인지심리학에서 이미 검증된 현상의 형식적 재정의**이다. 기억유전학의 기여는 새로운 현상의 발견이 아니라, 개별 현상들을 **하나의 연산 체계로 통합하는 프레임워크의 제공**이다.
 
-이 대응은 **구조적 유사성(structural analogy)**이며 인과적 주장이 아니다. "기억이 HIV처럼 작동한다"가 아니라, "기억의 전파·변형 역학과 레트로바이러스의 생활사가 동일한 수학적 구조를 공유한다"는 것이다. 이 구조적 공유가 우연이 아닌 근거는, 기억의 분자적 매개체(Arc)가 실제로 레트로바이러스 유래라는 진화적 사실에 있다.
+### 3.4 레트로바이러스 구조적 대응
 
-### 2.4 기존 기억 연구의 통합
+6연산의 인지심리학적 근거와 별개로, 각 연산은 HIV-1 레트로바이러스의 생활사와 구조적으로 대응한다. 이 대응은 6연산의 증거가 아니라, 기억 변형이 바이러스 진화와 **동일한 수학적 구조를 공유한다**는 보조적 관찰이다. Arc 단백질이 레트로바이러스 유래이며 바이러스 유사 캡시드로 뉴런 간 정보를 전달한다는 사실(Pastuzyn et al., 2018)이 이 구조적 공유의 진화적 배경을 제공한다.
 
-6연산 체계는 기존에 개별적으로 다루어지던 기억 현상들을 하나의 프레임워크 안에 위치시킨다.
+| 기억유전학 연산 | HIV-1 대응 | 공유 구조 |
+|---|---|---|
+| 파괴적 복제 | Provirus 통합 | 원본 소멸 + 숙주/맥락으로 재기록 |
+| 편향적 변이 | APOBEC3G 과변이 (Harris & Dudley, 2015) | 외부 행위자가 변이 방향을 결정 |
+| 의도적 선택 | 항원 변이 | 환경 압력에 따른 표면 변경 |
+| 무규칙 번역 | Arc 캡시드 mRNA 전달 | 확률적 전달, 고정 규칙 없음 |
+| 과잉 수선 | 수렴 진화 (M184V 등) | "복원"이 아닌 강제적 고정 |
+| 기억 재조합 | Template switching | 느슨한 상동성으로 교차 |
 
-| 기존 연구 | 기억유전학 연산 |
-|---|---|
-| 기억 재고화 (Nader, 2000) | Op 1: 파괴적 복제 |
-| 기분 일치 기억 왜곡 (Bower, 1981) | Op 2: 편향적 변이 |
-| 출처 모니터링 오류 (Johnson et al., 1993) | Op 3: 의도적 선택 + Op 6: 재조합 |
-| 오정보 효과 (Loftus, 2005) | Op 2 + Op 5: 편향적 변이 + 과잉 수선 |
-| 과잉기억/과잉 세부 (Patihis & Loftus, 2016) | Op 5: 과잉 수선 |
-| 거짓 기억 합성 (Roediger & McDermott, 1995) | Op 6: 기억 재조합 |
-
-이 통합의 의의는, 각 현상이 독립적 메커니즘이 아니라 동일한 연산 체계의 서로 다른 발현이라는 관점을 제공한다는 데 있다.
+이 대응은 **구조적 유사성(structural analogy)**이며 인과적 주장이 아니다(Gentner, 1983). 섹션 5에서 이 대응이 오염 벡터의 3축 설계를 정당화하는 데 어떻게 활용되는지를 다룬다.
 
 ---
 
@@ -468,6 +462,8 @@ Bartlett, F. C. (1932). *Remembering: A Study in Experimental and Social Psychol
 
 Bower, G. H. (1981). Mood and memory. *American Psychologist*, 36(2), 129-148.
 
+Bridge, D. J., & Paller, K. A. (2012). Neural correlates of reactivation and retrieval-induced distortion. *Journal of Neuroscience*, 32(35), 12144-12151.
+
 Boyd, R., & Richerson, P. J. (1985). *Culture and the Evolutionary Process*. University of Chicago Press.
 
 Dawkins, R. (1976). *The Selfish Gene*. Oxford University Press.
@@ -476,17 +472,25 @@ Butler, E. A. (2011). Temporal interpersonal emotion systems: The "TIES" that fo
 
 Butler, E. A. (2017). Emotions are temporal interpersonal systems. *Current Opinion in Psychology*, 17, 129–134.
 
+Goff, L. M., & Roediger, H. L. (1998). Imagination inflation for action events: Repeated imaginings lead to illusory recollections. *Memory & Cognition*, 26(1), 20-33.
+
 Eigen, M., & Schuster, P. (1977). The hypercycle: a principle of natural self-organization. *Naturwissenschaften*, 64(11), 541-565.
 
 Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*, 7(2), 155-170.
 
 Harris, R. S., & Dudley, J. P. (2015). APOBECs and virus restriction. *Virology*, 479-480, 131-145.
 
-Henikoff, S., & Henikoff, J. G. (1992). Amino acid substitution matrices from protein blocks. *Proceedings of the National Academy of Sciences*, 89(22), 10915-10919.
+Henikoff, S., & Henikoff, J. G. (1992).
+
+Hirst, W., & Echterhoff, G. (2012). Remembering in conversations: The social sharing and reshaping of memories. *Annual Review of Psychology*, 63, 55-79. Amino acid substitution matrices from protein blocks. *Proceedings of the National Academy of Sciences*, 89(22), 10915-10919.
 
 Johnson, M. K., Hashtroudi, S., & Lindsay, D. S. (1993). Source monitoring. *Psychological Bulletin*, 114(1), 3–28.
 
 Lazarus, R. S., & Folkman, S. (1984). *Stress, appraisal, and coping*. Springer.
+
+Levine, L. J. (1997). Reconstructing memory for emotions. *Journal of Experimental Psychology: General*, 126(2), 165-177.
+
+Loftus, E. F. (1997). Creating false memories. *Scientific American*, 277(3), 70-75.
 
 Loftus, E. F. (2005). Planting misinformation in the human mind: A 30-year investigation of the malleability of memory. *Learning & Memory*, 12(4), 361–366.
 
@@ -497,6 +501,8 @@ Muller, H. J. (1964). The relation of recombination to mutational advance. *Muta
 Nader, K. (2000). Memory traces unbound. *Trends in Neurosciences*, 26(2), 65-72.
 
 Nader, K., Schafe, G. E., & LeDoux, J. E. (2000). Fear memories require protein synthesis in the amygdala for reconsolidation after retrieval. *Nature*, 406(6797), 722-726.
+
+Pasupathi, M. (2001). The social construction of the personal past and its implications for adult development. *Psychological Bulletin*, 127(5), 651-672.
 
 Park, D. (2026). Mnemonic Genetics: Six operations of memory dynamics. Working Paper v0.3.
 
@@ -512,9 +518,13 @@ Rambaut, A., Posada, D., Crandall, K. A., & Holmes, E. C. (2004). The causes and
 
 Reagan, A. J., Mitchell, L., Kiley, D., Danforth, C. M., & Dodds, P. S. (2016). The emotional arcs of stories are dominated by six basic shapes. *EPJ Data Science*, 5(1), 31.
 
+Schooler, J. W., & Engstler-Schooler, T. Y. (1990). Verbal overshadowing of visual memories: Some things are better left unsaid. *Cognitive Psychology*, 22(1), 36-71.
+
 Roediger, H. L., & McDermott, K. B. (1995). Creating false memories: Remembering words not presented in lists. *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 21(4), 803-814.
 
 Smith, D. J., Lapedes, A. S., de Jong, J. C., et al. (2004). Mapping the antigenic and genetic evolution of influenza virus. *Science*, 305(5682), 371-376.
+
+Tversky, B., & Marsh, E. J. (2000). Biased retellings of events yield biased memories. *Cognitive Psychology*, 40(1), 1-38.
 
 Tolstoy, L. (1897). *What Is Art?* (Что такое искусство?). Moscow.
 
