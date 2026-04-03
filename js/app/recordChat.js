@@ -6,7 +6,7 @@
  * 채팅 버블 없음. 파형이 "또다른 나"의 존재.
  */
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
-import { getAccessToken } from '../lib/supabaseClient.js';
+import { getAccessToken, getSupabaseClient } from '../lib/supabaseClient.js';
 
 // ===== Safety Keywords (docs/안전_설계-260324.md) =====
 const SAFETY_KEYWORDS = {
@@ -265,10 +265,12 @@ export function destroyRecordChat() {
   if (waveAnimId) cancelAnimationFrame(waveAnimId);
   if (typingTimer) clearInterval(typingTimer);
   window.removeEventListener('resize', resizeWaveCanvas);
+  if (typeof window.destroyFloatingAnchor === 'function') window.destroyFloatingAnchor();
   if (containerEl) containerEl.innerHTML = '';
   conversationHistory = [];
   isWaitingForAI = false;
   isCrisisBlocked = false;
+  _anchorCache = null;
 }
 
 // ===== Wave Canvas =====
@@ -508,6 +510,9 @@ async function requestAIMessage() {
     // Float echo words from AI response (cleaner than user input — no typos)
     floatEchoWords(cleanReply, true);
 
+    // Try to match floating anchors from anchor_images table
+    _tryFloatingAnchor(cleanReply);
+
     if (sceneComplete && extractedScene && onCompleteCallback) {
       setTimeout(() => onCompleteCallback(extractedScene), 1500);
     } else {
@@ -686,6 +691,56 @@ function floatEchoWords(text, isAIResponse = false) {
       setTimeout(() => el.remove(), 2000);
     }, 6000 + Math.random() * 3000);
   });
+}
+
+// ===== Floating Anchor — AI 응답에서 키워드 매칭 → anchor_images 테이블 조회 =====
+let _anchorCache = null; // cache anchor_images table once per session
+
+async function _tryFloatingAnchor(aiText) {
+  if (!containerEl || typeof window.startFloatingAnchor !== 'function') return;
+
+  try {
+    // Load anchor_images once
+    if (!_anchorCache) {
+      const client = getSupabaseClient();
+      if (!client) return;
+      const { data, error } = await client.from('anchor_images').select('*');
+      _anchorCache = (!error && data) ? data : [];
+    }
+    if (_anchorCache.length === 0) return;
+
+    // Extract nouns/keywords from AI text
+    const words = aiText.split(/[\s,.\-!?;:'"…·~()]+/).filter(w => w.length >= 2);
+
+    // Find matching anchor
+    for (const word of words) {
+      const lower = word.toLowerCase();
+      const match = _anchorCache.find(a =>
+        a.keyword && lower.includes(a.keyword.toLowerCase())
+      );
+      if (match) {
+        // Determine vividness from conversation depth
+        const vividness = Math.min(_turnCount / 7, 1.0);
+
+        // Filter by vividness range
+        if (vividness >= (match.vividness_min || 0) && vividness <= (match.vividness_max || 1)) {
+          const ghostEl = containerEl.querySelector('.rec-ghost');
+          if (ghostEl) {
+            window.startFloatingAnchor(ghostEl, match.keyword, 0.5, {
+              image_type: match.image_type,
+              content: match.content,
+              storage_path: match.storage_path,
+              vividness,
+            });
+          }
+          break; // One anchor per AI response
+        }
+      }
+    }
+  } catch (e) {
+    // Non-fatal — anchor matching is enhancement only
+    console.warn('[RecordChat] anchor matching error:', e.message);
+  }
 }
 
 // ===== Seal Request — 사용자가 봉인 버튼을 눌렀을 때 =====
