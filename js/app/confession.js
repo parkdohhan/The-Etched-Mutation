@@ -1705,7 +1705,7 @@ function showMainMenu() {
 
 // 모든 screen hide 헬퍼 function
 function hideAllScreens() {
-    ['modeSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal', 'confessionHub', 'recordChatContainer', 'burialContainer'].forEach(id => {
+    ['modeSelection', 'matchingSelection', 'sessionSetup', 'liveContainer', 'archiveContainer', 'endScreen', 'mypageScreen', 'loginModal', 'signupModal', 'confessionHub', 'recordChatContainer', 'burialContainer'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.classList.remove('active');
