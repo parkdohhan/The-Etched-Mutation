@@ -441,7 +441,8 @@ const carouselItems = [
     { action: 'enterPlayIntro', label: 'PLAY' },
     { action: 'showConfessionHub', label: 'RECORD' },
     { action: 'openMypage', label: 'PROFILE' },
-    { action: 'openPortfolio', label: 'PORTFOLIO' }
+    { action: 'openSettings', label: 'SETTINGS' },
+    { action: 'openPortfolio', label: 'MORE PORTFOLIO' }
 ];
 
 function init3DCarousel() {

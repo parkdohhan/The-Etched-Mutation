@@ -15,7 +15,7 @@ const STRINGS = {
         'menu.archive':    'ARCHIVE',
         'menu.record':     'RECORD',
         'menu.profile':    'PROFILE',
-        'menu.portfolio':  'PORTFOLIO',
+        'menu.portfolio':  'MORE PORTFOLIO',
         'menu.settings':   'SETTINGS',
 
         'menu.desc.play':      'Start a play session and traverse memory terrain.',
@@ -128,7 +128,7 @@ const STRINGS = {
         'menu.archive':   '아카이브',
         'menu.record':    '기록',
         'menu.profile':   '프로필',
-        'menu.portfolio': '포트폴리오',
+        'menu.portfolio': 'MORE PORTFOLIO',
         'menu.settings':  '설정',
 
         'menu.desc.play':      '플레이 세션을 시작하고 기억의 지형을 탐색한다.',
