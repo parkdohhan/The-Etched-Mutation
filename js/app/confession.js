@@ -1290,6 +1290,7 @@ async function handleRecordComplete(extractedScene, lang) {
             onConfirm: async () => {
                 const userTitle = await _showTitleInput(burialContainer, lang);
                 const memoryId = await saveRecordMemory(extractedScene, sceneData, lang, userTitle);
+                if (memoryId) _autoCreateFirstPlay(memoryId, sceneData);
                 showBurialAnimation(burialContainer, {
                     originalVector: sceneData.originalVector,
                     lang,
@@ -1388,6 +1389,68 @@ async function saveRecordMemory(conversationData, sceneData, lang, userTitle) {
 }
 
 /**
+ * Record = First Play — 기억을 기록하는 행위 자체가 첫 번째 체험이다.
+ * 기록자의 감정 = 원본 감정이므로 alignment = 1.0 (자기 자신과의 완전한 정렬).
+ * 이 play가 depth=1, 오염의 시작점을 만든다.
+ */
+async function _autoCreateFirstPlay(memoryId, sceneData) {
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase || !memoryId) return;
+
+        // Fetch saved scenes (IDs are only available after DB insert)
+        const { data: scenes, error: sceneErr } = await supabase
+            .from('scenes')
+            .select('id, original_emotion, scene_order')
+            .eq('memory_id', memoryId)
+            .order('scene_order');
+
+        if (sceneErr || !scenes?.length) return;
+
+        const userId = await _resolveUserId();
+
+        // Create a play record per scene — recorder IS the first player
+        for (const scene of scenes) {
+            const originalEmo = scene.original_emotion || sceneData.originalVector?.base || {};
+
+            await supabase.from('plays').insert({
+                memory_id: memoryId,
+                scene_id: scene.id,
+                user_emotion: originalEmo,  // recorder's emotion = original emotion
+                user_reason: 'First telling',
+                alignment: 1.0,             // perfect self-alignment
+                mismatch_type: null,
+                user_id: userId || null,
+            });
+        }
+
+        // Run contamination for the first play (depth = 1, baseline)
+        const { updateContamination, createEmptyState } = await import('../core/ContaminationTracker.js');
+        const contState = createEmptyState();
+        const nextCont = updateContamination(contState, {
+            alignment: 1.0,
+            level: 1.0,
+            shape: 1.0,
+            shape_active: false,  // only 1 play, no trajectory yet
+            transition_pattern: 'echo_follow',
+            mismatch_type: 'none',
+            fixation_level: 0,
+            user_valence: 0,
+            user_arousal: 0,
+            user_dominance: 0,
+        });
+
+        // Persist contamination (depth=1 established)
+        const { networkService } = await import('../services/NetworkService.js');
+        await networkService.updateMemoryContamination(memoryId, nextCont);
+
+        console.log('[Record] First Play created for memory', memoryId, '— depth:', nextCont.cont_depth);
+    } catch (e) {
+        console.warn('[Record] First Play creation failed (non-fatal):', e.message);
+    }
+}
+
+/**
  * 로그인 후 보류 중인 기억 저장 시도
  */
 export async function savePendingRecordMemory() {
@@ -1446,6 +1509,7 @@ async function _showPhaseBReview(container, sceneData, conversationData, lang) {
         onConfirm: async () => {
             const userTitle = await _showTitleInput(container, lang);
             const memoryId = await saveRecordMemory(conversationData, sceneData, lang, userTitle);
+            if (memoryId) _autoCreateFirstPlay(memoryId, sceneData);
             showBurialAnimation(container, {
                 originalVector: sceneData.originalVector,
                 lang,

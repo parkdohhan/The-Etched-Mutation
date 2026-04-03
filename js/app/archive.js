@@ -1161,6 +1161,15 @@ async function _applyContaminationAtEnd(state) {
         cont_last_pattern:   memoryObj?.cont_last_pattern   || 'bridge',
         cont_last_mismatch:  memoryObj?.cont_last_mismatch  || 'none',
         cont_last_updated:   memoryObj?.cont_last_updated   || null,
+        // 3-axis vector
+        cont_divergence:     memoryObj?.cont_divergence     || 0,
+        cont_convergence:    memoryObj?.cont_convergence    || 0,
+        cont_heterogeneity:  memoryObj?.cont_heterogeneity  || 0,
+        _cont_align_mean:    memoryObj?._cont_align_mean    || 0,
+        _cont_align_m2:      memoryObj?._cont_align_m2      || 0,
+        cont_stage_1:        memoryObj?.cont_stage_1        || 0,
+        cont_stage_2:        memoryObj?.cont_stage_2        || 0,
+        cont_stage_3:        memoryObj?.cont_stage_3        || 0,
     };
 
     const nextContState = updateContamination(existingContState, contInput);

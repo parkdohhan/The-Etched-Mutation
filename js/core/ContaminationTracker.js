@@ -1,14 +1,14 @@
 // js/core/ContaminationTracker.js
-// Contamination MVP v3 — drift/fixation 2축, dominant stage
+// Contamination v4 — 2축 MVP (drift/fixation) + 3축 벡터 (divergence/convergence/heterogeneity)
 //
 // 기반 문서:
-//   docs/contamination/contamination_mvp_spec_v3.md  (계산)
+//   docs/오염벡터_계산_구현_명세_v2-260327.md  (3축 스펙)
+//   docs/contamination/contamination_mvp_spec_v3.md  (2축 MVP)
 //   docs/contamination/contamination_presentation_spec_v1-260330.md  (연출 소비)
-//   docs/contamination/contamination_vnext_notes.md  (제외 항목)
 //
-// 누적 방식: EMA (지수이동평균)
-//   — 포화 방지, 최근 세션의 결을 반영
-//   — lifetime 누적은 별도 카운터로 보존
+// 2축 MVP: EMA 기반 drift/fixation (기존 호환)
+// 3축 벡터: 오염벡터 v2 스펙 — divergence(분자시계 포화), convergence(수렴 진화),
+//           heterogeneity(Welford 분산 = 준종 구름 폭)
 //
 // 별이엔진 V4는 변경하지 않는다. 이 모듈은 V4 출력의 소비자이다.
 
@@ -55,6 +55,22 @@ export const CONTAMINATION = {
     HYPERCOMPLETION_FIXATION: 0.65,
     BIASED_INCLINATION_DRIFT: 0.35,
   },
+
+  // ─── 3-axis vector constants (오염벡터 v2 spec) ────────────────
+  // Decay: 1/(1 + depth * DECAY_RATE) — molecular clock saturation model
+  DECAY_RATE: 0.05,
+  // Convergence weights by condition
+  FIXATION_CONV_WEIGHT: 0.4,
+  HIGH_CONV_WEIGHT: 0.15,
+  MID_CONV_WEIGHT: 0.03,
+  // Minimum depth before convergence can accumulate
+  MIN_DEPTH_FOR_CONVERGENCE: 3,
+  // Fixation threshold for strong convergence signal
+  FIXATION_THRESHOLD: 0.85,
+  // Heterogeneity: Welford variance × this scale, clamped to [0,1]
+  HETERO_SCALE: 4.0,
+  // Depth at which Stage 2 reaches full weight
+  DEPTH_THRESHOLD_S2: 5,
 };
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -90,6 +106,18 @@ export function createEmptyState() {
     lifetime_dir_v_sum: 0,
     lifetime_dir_a_sum: 0,
     lifetime_dir_d_sum: 0,
+
+    // 3-axis vector (오염벡터 v2 — HIV phylodynamics metrics)
+    cont_divergence: 0,      // root-to-tip divergence analog
+    cont_convergence: 0,     // convergent evolution analog
+    cont_heterogeneity: 0,   // intra-patient diversity (π) analog
+    _cont_align_mean: 0,     // Welford online mean
+    _cont_align_m2: 0,       // Welford online M2
+
+    // Stage mixing weights (normalized)
+    cont_stage_1: 0,         // biased tilt
+    cont_stage_2: 0,         // interpretation juxtaposition
+    cont_stage_3: 0,         // hypercompletion
 
     // Last engine output snapshot (debug/admin)
     cont_last_alignment: 0,
@@ -190,7 +218,56 @@ export function updateContamination(state, engineOutput) {
     next.cont_stage = 'stable';
   }
 
-  // 6. Snapshot last engine output (debug)
+  // ─── 3-axis vector (오염벡터 v2 spec §6) ────────────────────────
+  const depth = next.cont_depth;
+  const decay3 = 1 / (1 + depth * CONTAMINATION.DECAY_RATE);
+
+  // 6a. Divergence — molecular clock saturation model
+  const delta_div = (1 - effectiveShape) * (1 - level);
+  next.cont_divergence = clamp01(next.cont_divergence + delta_div * decay3);
+
+  // 6b. Convergence — immune pressure convergent evolution
+  //     Gated: depth >= MIN_DEPTH_FOR_CONVERGENCE (shape must be observable)
+  let delta_conv = 0;
+  if (depth >= CONTAMINATION.MIN_DEPTH_FOR_CONVERGENCE) {
+    if (fixation_level >= CONTAMINATION.FIXATION_THRESHOLD) {
+      delta_conv = alignment * CONTAMINATION.FIXATION_CONV_WEIGHT;
+    } else if (effectiveShape >= 0.7 && level >= 0.7) {
+      delta_conv = alignment * CONTAMINATION.HIGH_CONV_WEIGHT;
+    } else if (alignment >= 0.5) {
+      delta_conv = alignment * CONTAMINATION.MID_CONV_WEIGHT;
+    }
+  }
+  next.cont_convergence = clamp01(next.cont_convergence + delta_conv * decay3);
+
+  // 6c. Heterogeneity — Welford online variance (quasispecies cloud width)
+  if (depth >= 1) {
+    const d1 = alignment - next._cont_align_mean;
+    next._cont_align_mean += d1 / depth;
+    const d2 = alignment - next._cont_align_mean;
+    next._cont_align_m2 += d1 * d2;
+
+    if (depth >= 2) {
+      const variance = next._cont_align_m2 / (depth - 1);
+      next.cont_heterogeneity = clamp01(variance * CONTAMINATION.HETERO_SCALE);
+    }
+  }
+
+  // 6d. Stage mixing — fitness landscape phases
+  const raw_1 = next.cont_divergence * (1 - next.cont_convergence);
+  const raw_2 = next.cont_heterogeneity * Math.min(depth / CONTAMINATION.DEPTH_THRESHOLD_S2, 1.0);
+  const raw_3 = next.cont_convergence * (1 - next.cont_heterogeneity);
+  const total = raw_1 + raw_2 + raw_3;
+
+  if (total > 0) {
+    next.cont_stage_1 = raw_1 / total;
+    next.cont_stage_2 = raw_2 / total;
+    next.cont_stage_3 = raw_3 / total;
+  } else {
+    next.cont_stage_1 = next.cont_stage_2 = next.cont_stage_3 = 0;
+  }
+
+  // 7. Snapshot last engine output (debug)
   next.cont_last_alignment = alignment;
   next.cont_last_level = level;
   next.cont_last_shape = effectiveShape;
@@ -284,6 +361,15 @@ export function getPresentationState(state) {
       dominance: state.drift_dir_d || 0,
     },
     dominant_emotion_label: getDominantEmotionLabel(state),
+    // 3-axis vector (for downstream consumers)
+    divergence: state.cont_divergence || 0,
+    convergence: state.cont_convergence || 0,
+    heterogeneity: state.cont_heterogeneity || 0,
+    stage_weights: {
+      s1: state.cont_stage_1 || 0,
+      s2: state.cont_stage_2 || 0,
+      s3: state.cont_stage_3 || 0,
+    },
   };
 }
 

@@ -1040,6 +1040,15 @@ class NetworkService {
         cont_last_pattern:     contState.cont_last_pattern,
         cont_last_mismatch:    contState.cont_last_mismatch,
         cont_last_updated:     contState.cont_last_updated,
+        // 3-axis vector
+        cont_divergence:       contState.cont_divergence ?? 0,
+        cont_convergence:      contState.cont_convergence ?? 0,
+        cont_heterogeneity:    contState.cont_heterogeneity ?? 0,
+        _cont_align_mean:      contState._cont_align_mean ?? 0,
+        _cont_align_m2:        contState._cont_align_m2 ?? 0,
+        cont_stage_1:          contState.cont_stage_1 ?? 0,
+        cont_stage_2:          contState.cont_stage_2 ?? 0,
+        cont_stage_3:          contState.cont_stage_3 ?? 0,
       };
 
       const { data, error } = await client
