@@ -1688,17 +1688,18 @@ function showArchitectLocked() {
 function showMainMenu() {
     hideAllScreens();
 
-    // Force-hide matchingSelection (LIVE) and introScreen with !important
+    // Force-hide LIVE screens
     const matchingSelection = document.getElementById('matchingSelection');
-    const introScreen = document.getElementById('introScreen');
-    if (matchingSelection) { matchingSelection.classList.remove('active'); matchingSelection.style.cssText = 'display:none !important;'; }
-    if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;'; }
-
-    // Show modeSelection (carousel) directly
     const modeSelection = document.getElementById('modeSelection');
-    if (modeSelection) {
-        modeSelection.classList.add('active');
-        modeSelection.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
+    if (matchingSelection) { matchingSelection.classList.remove('active'); matchingSelection.style.cssText = 'display:none !important;'; }
+    if (modeSelection) { modeSelection.classList.remove('active'); modeSelection.style.cssText = 'display:none !important;'; }
+
+    // Show introScreen (contains the main menu carousel)
+    const introScreen = document.getElementById('introScreen');
+    if (introScreen) {
+        introScreen.classList.remove('hidden');
+        introScreen.classList.add('visible');
+        introScreen.style.cssText = 'display:flex !important;opacity:1 !important;visibility:visible !important;pointer-events:auto !important;z-index:2000 !important';
     }
 }
 
