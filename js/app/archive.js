@@ -200,10 +200,17 @@ function _finderMatchByText(query, lang) {
   _showFinderResults(matched, lang);
 }
 
+let _finderFloatId = null;
+let _finderWords = [];
+
 function _showFinderResults(matched, lang) {
   const questionPhase = document.getElementById('finderQuestionPhase');
   const resultPhase = document.getElementById('finderResultPhase');
   if (!resultPhase) return;
+
+  // Stop any previous float animation
+  if (_finderFloatId) { cancelAnimationFrame(_finderFloatId); _finderFloatId = null; }
+  _finderWords = [];
 
   // Fade out question
   if (questionPhase) {
@@ -212,34 +219,81 @@ function _showFinderResults(matched, lang) {
     setTimeout(() => { questionPhase.style.display = 'none'; }, 800);
   }
 
-  // Build result monologue
+  // Build floating monologue results
   setTimeout(() => {
     resultPhase.style.display = 'block';
     resultPhase.style.opacity = '0';
     resultPhase.style.transition = 'opacity 1s ease';
+    resultPhase.style.position = 'relative';
+    resultPhase.style.width = '100%';
+    resultPhase.style.height = '100%';
+    resultPhase.style.minHeight = '60vh';
 
     const leadText = lang === 'en' ? 'The memories that surface...' : '떠오르는 기억들...';
     resultPhase.innerHTML = `
-      <div style="font-family:'Cormorant Garamond',serif;font-size:13px;color:rgba(196,168,130,0.4);letter-spacing:3px;margin-bottom:32px;">${leadText}</div>
-      <div id="finderMatchedItems" style="display:flex;flex-direction:column;align-items:center;gap:24px;"></div>
+      <div style="position:absolute;top:10%;left:50%;transform:translateX(-50%);font-family:'Cormorant Garamond',serif;font-size:13px;color:rgba(196,168,130,0.35);letter-spacing:3px;pointer-events:none;z-index:1;">${leadText}</div>
     `;
 
-    const itemsEl = resultPhase.querySelector('#finderMatchedItems');
+    // Spread positions across the container
+    const positions = [
+      { x: 0.3, y: 0.35 },
+      { x: 0.7, y: 0.5 },
+      { x: 0.45, y: 0.7 },
+    ];
+
     matched.forEach((m, i) => {
       const sentence = m.completed_sentence || m.title || '...';
-      const item = document.createElement('div');
-      item.style.cssText = 'opacity:0;cursor:pointer;font-family:"Cormorant Garamond",serif;font-size:15px;color:rgba(196,168,130,0.7);letter-spacing:1px;line-height:1.8;padding:12px 24px;border:1px solid rgba(196,168,130,0.1);transition:all 0.5s ease;max-width:400px;text-align:center;';
-      item.textContent = sentence;
-      item.addEventListener('mouseenter', () => { item.style.borderColor = 'rgba(196,168,130,0.4)'; item.style.color = 'rgba(196,168,130,0.95)'; });
-      item.addEventListener('mouseleave', () => { item.style.borderColor = 'rgba(196,168,130,0.1)'; item.style.color = 'rgba(196,168,130,0.7)'; });
-      item.addEventListener('click', () => {
-        _navigateToPlayFromFinder(m);
-      });
-      itemsEl.appendChild(item);
+      const pos = positions[i] || { x: 0.5, y: 0.5 };
 
-      // Staggered fade in
-      setTimeout(() => { item.style.opacity = '1'; }, 300 + i * 600);
+      const el = document.createElement('div');
+      el.style.cssText = `
+        position:absolute;
+        left:${pos.x * 100}%;
+        top:${pos.y * 100}%;
+        transform:translate(-50%, -50%);
+        opacity:0;
+        cursor:pointer;
+        font-family:'Cormorant Garamond',serif;
+        font-size:15px;
+        color:rgba(196,168,130,0.55);
+        letter-spacing:1px;
+        line-height:1.8;
+        text-align:center;
+        max-width:280px;
+        padding:8px;
+        transition:color 0.4s ease, text-shadow 0.4s ease;
+        user-select:none;
+      `;
+      el.textContent = sentence;
+      el.addEventListener('mouseenter', () => {
+        el.style.color = 'rgba(196,168,130,0.95)';
+        el.style.textShadow = '0 0 20px rgba(196,168,130,0.3)';
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.color = 'rgba(196,168,130,0.55)';
+        el.style.textShadow = 'none';
+      });
+      el.addEventListener('click', () => _navigateToPlayFromFinder(m));
+      resultPhase.appendChild(el);
+
+      _finderWords.push({ el, baseX: pos.x, baseY: pos.y, idx: i });
+
+      // Staggered ghost fade-in
+      setTimeout(() => { el.style.opacity = '1'; }, 400 + i * 700);
     });
+
+    // Start floating animation (ghost-like drift)
+    let ft = 0;
+    function floatTick() {
+      ft += 0.015;
+      for (const w of _finderWords) {
+        const dy = Math.sin(ft + w.idx * 2.1) * 10;
+        const dx = Math.cos(ft * 0.6 + w.idx * 1.7) * 5;
+        w.el.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      }
+      _finderFloatId = requestAnimationFrame(floatTick);
+    }
+    floatTick();
 
     requestAnimationFrame(() => { resultPhase.style.opacity = '1'; });
   }, 900);
