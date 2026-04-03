@@ -46,7 +46,49 @@ Working Draft v0.1 — 2026-03-31
 
 ---
 
-## 2. 기억유전학 (Mnemonic Genetics)
+## 2. 관련 연구 (Related Work)
+
+기억 변형을 체계적으로 기술하려는 시도는 크게 네 가지 흐름이 있다. 각각이 기억유전학과 어떤 관계에 있으며 왜 충분하지 않은지를 정리한다.
+
+### 2.1 기억의 구성적 성격: Bartlett (1932)
+
+Bartlett의 고전적 연구 "Remembering"은 기억이 저장소에서 꺼내지는 것이 아니라 **매번 재구성(reconstruction)**된다는 것을 보여주었다. "유령의 전쟁(The War of the Ghosts)" 실험에서 영국 참가자들은 아메리카 원주민 설화를 자신의 문화적 스키마에 맞게 체계적으로 변형했다 — 낯선 요소는 삭제되고, 친숙한 인과관계가 삽입되었다.
+
+Bartlett의 **스키마 이론(schema theory)**은 기억유전학의 선구적 관찰이지만, 변형의 메커니즘을 분류하지 않았다. "스키마에 맞게 변형된다"는 관찰은 있으나, 변형이 복제에 의한 것인지, 변이에 의한 것인지, 선택에 의한 것인지, 수선에 의한 것인지를 구분하지 않는다. 기억유전학의 6연산은 Bartlett가 관찰한 현상을 연산 유형별로 분해한다.
+
+### 2.2 기억 재고화와 오정보 효과
+
+Nader et al.(2000)의 재고화(reconsolidation) 연구는 회상이 기억을 불안정화시키고 재저장한다는 분자적 메커니즘을 밝혔다. Loftus & Palmer(1974)의 오정보 효과(misinformation effect)는 사후 정보가 기억을 체계적으로 왜곡한다는 것을 보여주었다. Roediger & McDermott(1995)의 DRM 패러다임은 실제로 경험하지 않은 사건의 거짓 기억이 생성되는 현상을 밝혔다.
+
+이 연구들은 각각 중요한 현상을 기술하지만, **개별 현상으로 다루어진다.** 재고화, 오정보 효과, 거짓 기억이 왜 동시에 존재하는지 — 이것들이 하나의 역학의 서로 다른 표현인지, 아니면 독립적 메커니즘인지 — 에 대한 통합적 프레임워크가 부재하다. 기억유전학은 재고화를 Op 1(파괴적 복제), 오정보 효과를 Op 2+5(편향적 변이 + 과잉 수선), 거짓 기억을 Op 6(재조합)으로 위치지어 통합한다.
+
+### 2.3 밈학과 문화 진화 이론
+
+Dawkins(1976)는 문화 복제자 "밈(meme)"을 제안하여, 문화적 정보가 유전자처럼 복제·변이·선택된다고 주장했다. 이 비유는 대중적으로 영향력이 있었으나, 학술적으로는 **형식화에 실패**했다. 밈의 단위가 무엇인지, 복제의 충실도가 어떻게 되는지, 변이율이 측정 가능한지에 대한 답이 없었고, 밈학(memetics)은 독립적 학문 분야로 성립하지 못했다(Aunger, 2002).
+
+Boyd & Richerson(1985)의 문화 진화 이론(dual inheritance theory)은 밈학과 달리 집단유전학의 수학적 도구(빈도 변화 방정식, 확산 모델)를 문화 전달에 적용하여 형식적 기반을 확보했다. 그러나 이들의 모델은 **집단 수준의 문화 전달 역학**을 다루며, 개별 기억 단위가 전달 과정에서 어떻게 변형되는지의 메커니즘은 다루지 않는다. "문화가 확산된다"는 집단 역학과 "기억이 변형된다"는 개인 역학은 서로 다른 분석 수준이다.
+
+기억유전학은 밈학이 시도했으나 실패한 것 — 문화적 정보의 유전학적 분석 — 을 **개별 기억 단위 수준에서, 측정 가능한 연산으로** 재시도한다. 밈학과의 차이: (1) 단위가 "밈"이라는 모호한 개념이 아니라 TEM에서 추적 가능한 "기억 + 해석 레이어"이며, (2) 변형의 유형이 "복제 오류"라는 단일 범주가 아니라 6개의 구분된 연산이며, (3) 각 연산이 인지심리학의 검증된 현상에 매핑된다. Boyd & Richerson과의 차이: 집단 빈도 역학이 아니라 개별 기억의 변형 역학을 다룬다.
+
+### 2.4 감정 측정과 경험 비교
+
+감정의 정량적 측정은 VAD 모델(Russell & Mehrabian, 1977), PANAS(Watson et al., 1988), 감정 단어 규범(Warriner et al., 2013) 등으로 확립되어 있다. 두 사람의 감정적 경험을 비교하는 연구로는 감정 수렴(Anderson et al., 2003)과 TIES 프레임워크(Butler, 2011, 2017)가 있다.
+
+그러나 이 연구들은 **실시간 인터랙티브 시스템에서 두 사람의 감정 궤적을 정량적으로 비교하는 도구**를 제공하지 않는다. 자기보고 척도(리커트)에 의존하며, 시간에 걸친 감정 변화의 형태(shape)를 측정하는 방법론은 서사 분석(Reagan et al., 2016)에서 제안되었으나 대인 비교에 적용되지 않았다. 별이엔진 V4는 Butler의 TIES를 인터랙티브 시스템에서 조작화한 최초의 도구이다.
+
+### 2.5 본 논문의 위치
+
+| 선행 연구 | 기여 | 기억유전학과의 관계 |
+|---|---|---|
+| Bartlett (1932) | 기억의 구성적 성격 발견 | 현상 관찰 → 기억유전학이 연산 유형으로 분해 |
+| Nader (2000), Loftus (1974) 등 | 개별 변형 메커니즘 규명 | 개별 현상 → 기억유전학이 6연산 체계로 통합 |
+| Dawkins (1976) 밈학 | 문화-유전학 비유 제안 | 형식화 실패 → 기억유전학이 측정 가능한 연산으로 재시도 |
+| Boyd & Richerson (1985) | 문화 전달의 수학적 모델 | 집단 역학 → 기억유전학이 개별 기억 역학으로 보완 |
+| Butler (2017) TIES | 감정 동적 패턴의 이론적 프레임워크 | 이론만 → 별이엔진이 조작화 |
+
+---
+
+## 3. 기억유전학 (Mnemonic Genetics)
 
 ### 2.1 기본 전제: 기억은 의존적 복제자이다
 
@@ -132,7 +174,7 @@ DNA 수선 시스템(NER, BER, HR 등)은 높은 정확도로 손상을 복원�
 
 ---
 
-## 3. 별이엔진 V4: 궤적 기반 정렬도
+## 4. 별이엔진 V4: 궤적 기반 정렬도
 
 ### 3.1 측정 대상
 
@@ -226,7 +268,7 @@ alignment 점수와 별개로, 궤적의 형태에서 6가지 서사적 전이 �
 
 ---
 
-## 4. 오염 벡터 (Contamination Vector)
+## 5. 오염 벡터 (Contamination Vector)
 
 ### 4.1 모듈의 성격: 연출 제어 모델
 
@@ -319,7 +361,7 @@ Stage 1과 Stage 3이 반상관(anti-correlated)인 것은 바이러스 집단�
 
 ---
 
-## 5. 시스템: The Etched Mutation (TEM)
+## 6. 시스템: The Etched Mutation (TEM)
 
 ### 5.1 아키텍처 개요
 
@@ -420,7 +462,15 @@ Anderson, C., Keltner, D., & John, O. P. (2003). Emotional convergence between p
 
 Ashley, J., Cordy, B., Lucia, D., et al. (2018). Retrovirus-like Gag protein Arc1 binds RNA and traffics across synaptic boutons. *Cell*, 172(1-2), 262-274.
 
+Aunger, R. (2002). *The Electric Meme: A New Theory of How We Think*. Free Press.
+
+Bartlett, F. C. (1932). *Remembering: A Study in Experimental and Social Psychology*. Cambridge University Press.
+
 Bower, G. H. (1981). Mood and memory. *American Psychologist*, 36(2), 129-148.
+
+Boyd, R., & Richerson, P. J. (1985). *Culture and the Evolutionary Process*. University of Chicago Press.
+
+Dawkins, R. (1976). *The Selfish Gene*. Oxford University Press.
 
 Butler, E. A. (2011). Temporal interpersonal emotion systems: The "TIES" that form relationships. *Personality and Social Psychology Review*, 15(4), 367–393.
 
@@ -456,6 +506,8 @@ Patihis, L., & Loftus, E. F. (2016). Crashing memories 2.0: False memories in ad
 
 Plath, N., Ohana, O., Dammermann, B., et al. (2006). Arc/Arg3.1 is essential for the consolidation of synaptic plasticity and memories. *Neuron*, 52(3), 437-444.
 
+Russell, J. A., & Mehrabian, A. (1977). Evidence for a three-factor theory of emotions. *Journal of Research in Personality*, 11(3), 273-294.
+
 Rambaut, A., Posada, D., Crandall, K. A., & Holmes, E. C. (2004). The causes and consequences of HIV evolution. *Nature Reviews Genetics*, 5(1), 52-61.
 
 Reagan, A. J., Mitchell, L., Kiley, D., Danforth, C. M., & Dodds, P. S. (2016). The emotional arcs of stories are dominated by six basic shapes. *EPJ Data Science*, 5(1), 31.
@@ -472,6 +524,8 @@ Vishnubhotla, K., Hammond, A., & Mohammad, S. M. (2024). Emotional arcs of narra
 
 Warriner, A. B., Kuperman, V., & Brysbaert, M. (2013). Norms of valence, arousal, and dominance for 13,915 English lemmas. *Behavior Research Methods*, 45(4), 1191–1207.
 
+Watson, D., Clark, L. A., & Tellegen, A. (1988). Development and validation of brief measures of positive and negative affect: The PANAS scales. *Journal of Personality and Social Psychology*, 54(6), 1063-1070.
+
 Welford, B. P. (1962). Note on a method for calculating corrected sums of squares and products. *Technometrics*, 4(3), 419-420.
 
 Wright, S. (1932). The roles of mutation, inbreeding, crossbreeding, and selection in evolution. *Proceedings of the Sixth International Congress of Genetics*, 1, 356-366.
@@ -480,11 +534,11 @@ Zanini, F., Brober, V., Thesing, R., et al. (2015). Population genomics of intra
 
 ---
 
-*[Section 6. Pilot Validation은 파일럿 테스트 실행 후 작성 예정]*
+*[Section 7. Pilot Validation은 파일럿 테스트 실행 후 작성 예정]*
 
 ---
 
-## 7. 논의 (Discussion)
+## 8. 논의 (Discussion)
 
 ### 7.1 요약
 
@@ -518,7 +572,7 @@ TEM에서 동일한 방법론을 적용하면:
 
 #### 7.3.2 오류 파국 임계의 경험적 탐색
 
-섹션 5.5에서 제시한 예측 — heterogeneity가 임계값을 넘으면 기억의 핵심 서사가 소멸하는 "기억의 오류 파국(mnemonic error catastrophe)" — 을 경험적으로 탐색한다. 충분한 depth가 축적된 기억에서 heterogeneity와 Strata 봉우리 높이의 관계를 분석하여, 오류 임계가 실재하는지, 실재한다면 어디인지를 결정한다.
+섹션 6.5에서 제시한 예측 — heterogeneity가 임계값을 넘으면 기억의 핵심 서사가 소멸하는 "기억의 오류 파국(mnemonic error catastrophe)" — 을 경험적으로 탐색한다. 충분한 depth가 축적된 기억에서 heterogeneity와 Strata 봉우리 높이의 관계를 분석하여, 오류 임계가 실재하는지, 실재한다면 어디인지를 결정한다.
 
 #### 7.3.3 보편적 변형 역학: 기질-비의존적 속성의 비교
 
@@ -544,4 +598,4 @@ TEM에서 동일한 방법론을 적용하면:
 
 ---
 
-*[Section 6. Pilot Validation은 파일럿 테스트 실행 후 작성 예정]*
+*[Section 7. Pilot Validation은 파일럿 테스트 실행 후 작성 예정]*
