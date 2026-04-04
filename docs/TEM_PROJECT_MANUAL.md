@@ -520,7 +520,7 @@ void_mod  = 0.7  (체험자가 감정을 회피했고 원본에는 감정이 있
 
 > **FIXATED 감지 방법:** `js/shared/math.js`의 `calculateFixationLevel(emotionHistory)`가 최근 10개 장면의 dominant emotion 레이블 반복률을 계산한다. 반복률 ≥ 0.85이면 FIXATED. `emotionHistory`는 `appStore`에 누적된다.
 >
-> ⚠️ **현재 구현은 단일 신호(레이블 반복)만 사용한다.** CLAUDE.md 원칙은 복합 신호(유사도 > 0.85 + 반복 귀인 + 낮은 탐색률)를 요구하지만, attribution 반복과 탐색률은 아직 FIXATED 판정에 반영되지 않는다. 미완성.
+> ⚠️ **현재 구현은 단일 신호(레이블 반복)만 사용한다.** CLAUDE-260329.md 원칙은 복합 신호(유사도 > 0.85 + 반복 귀인 + 낮은 탐색률)를 요구하지만, attribution 반복과 탐색률은 아직 FIXATED 판정에 반영되지 않는다. 미완성.
 
 ---
 

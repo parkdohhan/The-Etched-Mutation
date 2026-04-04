@@ -830,9 +830,10 @@ async function renderScene() {
             showNotification(t('notify.scene.text.error')); 
             return; 
         } 
-        // Apply contamination: ContaminationTracker-driven text transformation (synchronous)
+        // Apply contamination: ContaminationTracker-driven text transformation
+        // Auto-generates AI stage text via Edge Function if missing from DB
         const memoryObj = state.allMemoriesData?.[state.currentMemory] || state.currentStoryData;
-        const { displayText: contaminatedText, pres: contPres } = getContaminatedSceneText(scene, memoryObj);
+        const { displayText: contaminatedText, pres: contPres } = await getContaminatedSceneText(scene, memoryObj);
 
         const sceneTextEl = document.getElementById('sceneText');
         const baseText = contaminatedText || scene.text || '';
@@ -858,6 +859,12 @@ async function renderScene() {
 
         if (scene.echoWords) renderEchoLayer(scene.echoWords);
         const sceneMainEl = document.querySelector('.scene-main');
+
+        // Clarity: init from DB on first scene, otherwise use running value
+        if (sceneMainEl && typeof initClarity === 'function' && state.currentScene === 0) {
+            initClarity(memoryObj);
+        }
+
         if (sceneMainEl && typeof startFloatingAnchor === 'function') {
             const anchorKeyword = (scene.echoWords && scene.echoWords.length > 0) ? scene.echoWords[0] : null;
             const alignment = state.currentAlignment || 0.5;
@@ -1115,6 +1122,12 @@ function proceedToNextScene() {
 
         appStore.setState({ currentScene: navResult.index });
         getSoundscape()?.onSceneTransition();
+
+        // Clarity: update based on transition pattern before rendering next scene
+        if (typeof updateClarity === 'function') {
+            updateClarity(state.lastTransitionPattern || 'bridge');
+        }
+
         renderScene();
     } catch (e) {
         console.error('proceedToNextScene error:', e);

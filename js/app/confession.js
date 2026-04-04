@@ -12,6 +12,7 @@ import { showNotification, showNpcDialogue } from '../ui/notify.js';
 
 import { getSupabaseClient, getAccessToken } from '../lib/supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
+import { getCurrentLanguage } from '../lib/i18n.js';
 import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from '../safety.js';
 import { emotionVectorToWaveStyle } from '../shared/math.js';
 import { visualizer } from '../ui/Visualizer.js';
@@ -1110,7 +1111,7 @@ function initDoor() {
   setTimeout(() => { if (title) title.classList.add('visible'); }, 800);
 
   // 3단계: +1800ms 타이핑 모션으로 안내 텍스트
-  const _isKo = /[가-힣]/.test(document.documentElement.lang || document.title || '');
+  const _isKo = getCurrentLanguage() === 'ko';
   const _doorMsg = _isKo
     ? '너의 기억을 묻어두려면, 이 문 안으로 들어가봐.'
     : 'To bury your memory, step through this door.';
@@ -1178,7 +1179,7 @@ async function startBeginner() {
     container.classList.remove('hidden');
     container.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
 
-    const lang = /[가-힣]/.test(document.documentElement.lang || '') ? 'ko' : 'ko';
+    const lang = getCurrentLanguage();
 
     const { initRecordChat } = await import('./recordChat.js');
     initRecordChat(container, {

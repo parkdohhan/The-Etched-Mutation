@@ -14,6 +14,9 @@
 //   - Client-side fallback is seeded (mulberry32) — same text always produces same effect
 
 import { getPresentationState } from '../core/ContaminationTracker.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
+import { getAccessToken } from '../lib/supabaseClient.js';
+import { networkService } from '../services/NetworkService.js';
 
 // ─── Seeded PRNG ─────────────────────────────────────────────────
 
@@ -115,23 +118,112 @@ export function applyStageText(originalText, scene, pres) {
     return out;
 }
 
+// ─── Auto-generation: Edge Function call + DB persist ─────────────
+
+// In-flight requests — prevents duplicate calls for same scene+stage
+const _pending = new Map();
+
+/**
+ * Determine which text_stage_N key is needed for the given presentation state.
+ * Returns null if no AI text is needed (stable or weak band).
+ */
+function _neededStageKey(pres) {
+    const { stage, band } = pres;
+    if (stage === 'stable' || band === 'weak') return null;
+    if (stage === 'biased_inclination') {
+        return band === 'strong' ? 'text_stage_2' : 'text_stage_1';
+    }
+    if (stage === 'hypercompletion') {
+        return band === 'strong' ? 'text_stage_3' : 'text_stage_2';
+    }
+    return null;
+}
+
+/**
+ * Call contaminate-text Edge Function and persist result to DB.
+ * Returns the generated text, or null on failure.
+ */
+async function _generateAndPersist(scene, contState, pres) {
+    const stageKey = _neededStageKey(pres);
+    if (!stageKey) return null;
+
+    // De-duplicate: if already in-flight for this scene+key, wait for it
+    const cacheKey = `${scene.id}:${stageKey}`;
+    if (_pending.has(cacheKey)) return _pending.get(cacheKey);
+
+    const promise = (async () => {
+        try {
+            const token = await getAccessToken().catch(() => null) || SUPABASE_ANON_KEY;
+            const url = `${SUPABASE_URL}/functions/v1/contaminate-text`;
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    'apikey': SUPABASE_ANON_KEY,
+                },
+                body: JSON.stringify({
+                    text: scene.text,
+                    contamination: {
+                        cont_stage:  contState.cont_stage,
+                        cont_drift:  contState.cont_drift,
+                        cont_fixation: contState.cont_fixation,
+                        drift_dir_v: contState.drift_dir_v,
+                        drift_dir_a: contState.drift_dir_a,
+                        drift_dir_d: contState.drift_dir_d,
+                        band: pres.band,
+                    },
+                }),
+            });
+
+            if (!res.ok) {
+                console.warn('[contaminationPresenter] Edge Function error', res.status);
+                return null;
+            }
+
+            const data = await res.json();
+            // Edge Function returns { text_stage_1, text_stage_2, text_stage_3 } (whichever applies)
+            const generated = data[stageKey];
+            if (!generated) return null;
+
+            // Persist to DB so next time it's instant
+            if (scene.id) {
+                networkService.updateScene(scene.id, { [stageKey]: generated });
+            }
+
+            // Also patch the in-memory scene object so the rest of this session sees it
+            scene[stageKey] = generated;
+
+            return generated;
+        } catch (err) {
+            console.warn('[contaminationPresenter] auto-generate failed', err);
+            return null;
+        } finally {
+            _pending.delete(cacheKey);
+        }
+    })();
+
+    _pending.set(cacheKey, promise);
+    return promise;
+}
+
 // ─── Main path entry point ────────────────────────────────────────
 
 /**
  * Build the display text for a scene given the memory's contamination state.
  *
- * This replaces the old play-count-based loadSceneWithContamination() in index.js.
- * All computation is synchronous — no async Supabase calls needed.
+ * When AI-generated stage text is missing from DB, automatically calls the
+ * contaminate-text Edge Function to generate it, persists to DB, and returns.
+ * Falls back to client-side effect while waiting or on failure.
  *
  * @param {Object} scene     - scene object from currentStoryData.scenes
  * @param {Object} memoryObj - memory row (from allMemoriesData or currentStoryData)
  *                             must have cont_stage, cont_drift, cont_fixation etc.
  *                             Falls back to stable / zero if columns are absent.
- * @returns {{ displayText: string, pres: Object }}
- *   displayText — text to render
- *   pres        — presentation state (for downstream use: CSS class, soundscape, etc.)
+ * @returns {Promise<{ displayText: string, pres: Object }>}
  */
-export function getContaminatedSceneText(scene, memoryObj) {
+export async function getContaminatedSceneText(scene, memoryObj) {
     const contState = {
         cont_stage:    memoryObj?.cont_stage    || 'stable',
         cont_drift:    memoryObj?.cont_drift    || 0,
@@ -143,7 +235,14 @@ export function getContaminatedSceneText(scene, memoryObj) {
 
     const pres = getPresentationState(contState);
     const originalText = scene.text || '';
-    const displayText = applyStageText(originalText, scene, pres);
 
+    // Check if the needed stage text is already available
+    const stageKey = _neededStageKey(pres);
+    if (stageKey && !scene[stageKey]) {
+        // Auto-generate: call Edge Function, persist, patch scene
+        await _generateAndPersist(scene, contState, pres);
+    }
+
+    const displayText = applyStageText(originalText, scene, pres);
     return { displayText, pres };
 }

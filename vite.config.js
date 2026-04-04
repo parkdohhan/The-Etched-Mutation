@@ -23,4 +23,9 @@ export default defineConfig({
       input,
     },
   },
+
+  test: {
+    include: ['test/unit/math.test.js', 'test/unit/byeoriEngine.test.js', 'test/unit/contaminationTracker.test.js', 'test/unit/sceneNavigator.test.js'],
+    environment: 'node',
+  },
 });

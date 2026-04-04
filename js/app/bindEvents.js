@@ -12,7 +12,7 @@ import { showNotification } from '../ui/notify.js';
  * @param {Object} deps.visualizer - Visualizer
  * @param {Object} deps.network - NetworkService
  * @param {Object} deps.realtime - RealtimeService
- * @param {Object} deps.flow - FlowController (TODO: 구현 needed)
+ * @param {Object} deps.flow - Reserved for future FlowController (not needed yet)
  * @param {Object} deps.memory - MemoryService
  * @param {Object} deps.ai - AIService
  */

@@ -2,8 +2,15 @@ import { appStore } from './appStore.js'
 import { showNotification, showNpcDialogue } from '../ui/notify.js'
 import { showEndScreen } from './endScreen.js'
 /**
- * Live Session Module — session creation, subscriptions, alignment, lifecycle,
- * chat, voice, confirm, and all live mode UI logic.
+ * Live Session Module — DORMANT
+ *
+ * ⚠️ This module is NOT in the active menu and is NOT connected to the engine pipeline.
+ * Scene progression is intentionally linear (currentScene + 1).
+ * Do NOT wire SceneNavigator, FlowController, or ContaminationTracker here
+ * until a dedicated live-mode activation phase is started.
+ *
+ * What it does: 2-player real-time session (narrator + experiencer) via Supabase Realtime.
+ * Why dormant: Requires dedicated UX, separate Realtime infra, different interaction model.
  *
  * Dependencies accessed via window.* (temporary, phase 3 cleanup):
  *   window.restart, window.updateUserStats, window.startAlignmentWaveAnimation,
