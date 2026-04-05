@@ -258,6 +258,24 @@ function editMemory(index) {
     const memory = memories[index];
     currentMemoryId = memory.id || null;
     currentLayers = []; // 메모리 편집 시작 시 레이어 초기화
+
+    // Clear previous strata preview so it doesn't persist across memories
+    const strataView = document.getElementById('strataView');
+    if (strataView) strataView.style.display = 'none';
+    if (window.Strata && window.Strata.stop) window.Strata.stop();
+    const strataLoading = document.getElementById('strataLoading');
+    if (strataLoading) {
+        strataLoading.style.display = 'flex';
+        strataLoading.textContent = '버튼을 클릭��여 Strata 미리보기 불러오기';
+    }
+    const btnFs = document.getElementById('strataFullscreenBtn');
+    if (btnFs) btnFs.hidden = true;
+    const btnFp = document.getElementById('strataFirstPersonBtn');
+    if (btnFp) { btnFp.hidden = true; btnFp.textContent = '1인칭 걷기'; }
+    // Exit first-person if active
+    const rt = window.TemAfStrataTerrain?._lastRuntime;
+    if (rt && rt.isFirstPerson()) rt.exitFirstPerson();
+
     document.getElementById('memoryTitle').value = memory.title || '';
     document.getElementById('memoryCode').value = memory.code || '';
     document.getElementById('memoryDescription').value = memory.description || '';
@@ -3008,6 +3026,27 @@ async function loadStrataPreview(memoryId) {
 
             ensureAdminStrataFullscreenBindings();
             if (btnFs) btnFs.hidden = false;
+
+            // First-person walk button (admin only)
+            const btnFp = document.getElementById('strataFirstPersonBtn');
+            if (btnFp) {
+                btnFp.hidden = false;
+                btnFp.onclick = function () {
+                    const rt = window.TemAfStrataTerrain?._lastRuntime;
+                    if (!rt) return;
+                    if (rt.isFirstPerson()) {
+                        rt.exitFirstPerson();
+                        btnFp.textContent = '1인칭 걷기';
+                    } else {
+                        // Enter fullscreen then first-person
+                        enterAdminStrataFullscreen();
+                        // requestPointerLock requires user gesture — call synchronously
+                        rt.enterFirstPerson();
+                        btnFp.textContent = 'ESC로 나가기';
+                    }
+                };
+            }
+
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     if (window.Strata && window.Strata.resizeToCanvas) window.Strata.resizeToCanvas();

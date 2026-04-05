@@ -31,7 +31,7 @@ import { getMonologue } from '../ui/contaminationMonologue.js';
 import { networkService } from '../services/NetworkService.js';
 import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
-import { computeArchiveWaveData } from './live.js';
+import { computeArchiveWaveData } from '../shared/math.js';
 
 async function enterPlayIntro(opts) {
   var fromDemo = opts && opts.fromDemo;
@@ -437,8 +437,41 @@ let archiveWaveTime = 0;
 let currentArchiveWaveStyle = null;
 let currentArchiveEmotionVector = null;
 
+// ── 파동 전환 (transition) 상태 ──
+let _waveTx = null; // { from: waveStyle, to: waveStyle, progress: 0, duration: 1.8 }
+
+function _lerpColor(a, b, t) {
+    return {
+        r: Math.round(a.r + (b.r - a.r) * t),
+        g: Math.round(a.g + (b.g - a.g) * t),
+        b: Math.round(a.b + (b.b - a.b) * t),
+    };
+}
+function _lerpWaveStyle(from, to, t) {
+    const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // easeInOutQuad
+    return {
+        color: _lerpColor(from.color, to.color, ease),
+        speed: from.speed + (to.speed - from.speed) * ease,
+        amplitude: from.amplitude + (to.amplitude - from.amplitude) * ease,
+        frequency: from.frequency + (to.frequency - from.frequency) * ease,
+        chaos: from.chaos + (to.chaos - from.chaos) * ease,
+    };
+}
+
 /**
- * Archive wave animation start
+ * 유령 요동 (ghost tremor) — 전환 구간에서 파동이 위아래로 요동치는 효과
+ * progress 0→1 동안: 초반에 크게 흔들리고 점차 잦아듦
+ */
+function _ghostTremor(x, t, progress) {
+    const intensity = Math.pow(1 - progress, 2.5);        // 전환 끝으로 갈수록 감쇠
+    const tremAmp = intensity * 14;                        // 최대 ±14px 진폭
+    const fast = Math.sin(x * 0.06 + t * 8) * tremAmp;   // 빠른 고주파 요동
+    const slow = Math.sin(x * 0.02 - t * 3.5) * tremAmp * 0.6; // 느린 저주파 흔들림
+    return fast + slow;
+}
+
+/**
+ * Archive wave animation start — 전환 보간 + 유령 요동 지원
  * @param {Object} emotionVector - user emotion 벡터
  */
 function startArchiveWaveAnimation(emotionVector) {
@@ -447,60 +480,132 @@ function startArchiveWaveAnimation(emotionVector) {
         console.warn('[startArchiveWaveAnimation] No emotionVector');
         return;
     }
-    
- // existing animation 중지
-    stopArchiveWaveAnimation();
-    
+
     const canvas = document.getElementById('archiveWaveCanvas');
     if (!canvas) {
         console.warn('[startArchiveWaveAnimation] archiveWaveCanvas not found');
         return;
     }
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) return;
-    
-    canvas.width = canvas.offsetWidth * 2;
-    canvas.height = canvas.offsetHeight * 2;
-    ctx.scale(2, 2);
-    
-    const width = canvas.width / 2;
-    const height = canvas.height / 2;
-    const centerY = height / 2;
-    
-    const waveStyle = emotionVectorToWaveStyle(emotionVector);
-    const maxAmplitude = Math.min(height * 0.4, 20);
-    const amplitude = Math.min(waveStyle.amplitude || 18, maxAmplitude);
-    const freq = 0.015;
-    const speed = 0.02;
-    
-    currentArchiveWaveStyle = waveStyle;
+
+    const newWaveStyle = emotionVectorToWaveStyle(emotionVector);
+
+    // ── 전환 설정: 이전 스타일이 있으면 보간, 없으면 즉시 ──
+    const prevStyle = currentArchiveWaveStyle;
+    if (prevStyle && archiveWaveAnimationId) {
+        // 전환 중 재호출: 현재 보간 중간값을 from으로 사용 → 점프 방지
+        let fromStyle;
+        if (_waveTx && _waveTx.progress < 1) {
+            fromStyle = _lerpWaveStyle(_waveTx.from, _waveTx.to, _waveTx.progress);
+        } else {
+            fromStyle = { ...prevStyle };
+        }
+        // 타이핑(빠른 연속 호출) vs 씬 전환(느린 호출) 구분
+        const isFastInput = _waveTx && _waveTx.progress < 0.3;
+        const duration = isFastInput ? 0.6 : 1.8;
+        _waveTx = { from: fromStyle, to: newWaveStyle, progress: 0, duration };
+        currentArchiveWaveStyle = newWaveStyle;
+        currentArchiveEmotionVector = emotionVector;
+        return; // 기존 rAF 루프가 _waveTx를 읽어서 보간 처리
+    }
+
+    // ── 최초 시작 (이전 파동 없음) ──
+    stopArchiveWaveAnimation();
+
+    currentArchiveWaveStyle = newWaveStyle;
     currentArchiveEmotionVector = emotionVector;
     archiveWaveTime = 0;
-    
+    _waveTx = null;
+
+    _startUnifiedWaveLoop();
+}
+
+/**
+ * 통합 파동 rAF 루프 — 모든 파동 상태(회색/감정/전환)를 하나의 루프에서 처리
+ */
+function _startUnifiedWaveLoop() {
+    const canvas = document.getElementById('archiveWaveCanvas');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) return;
+
+    // 캔버스 초기화 (아직 안 된 경우)
+    if (canvas.width !== canvas.offsetWidth * 2) {
+        canvas.width = canvas.offsetWidth * 2;
+        canvas.height = canvas.offsetHeight * 2;
+        ctx.scale(2, 2);
+    }
+
     function animate() {
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
         const width = canvas.width / 2;
         const height = canvas.height / 2;
         const centerY = height / 2;
+        const maxAmplitude = Math.min(height * 0.4, 20);
         const t = archiveWaveTime;
-        
+
+        // ── 전환 보간 처리 ──
+        let ws = currentArchiveWaveStyle || _GRAY_WAVE_STYLE;
+        let txProgress = -1; // -1 = 전환 아님
+        let txFrom = null;   // 유령 잔상용
+        if (_waveTx) {
+            _waveTx.progress = Math.min(1, _waveTx.progress + 0.016 / _waveTx.duration);
+            txProgress = _waveTx.progress;
+            txFrom = _waveTx.from;
+            ws = _lerpWaveStyle(_waveTx.from, _waveTx.to, txProgress);
+            if (_waveTx.progress >= 1) _waveTx = null; // 전환 완료
+        }
+
+        const amplitude = Math.min(ws.amplitude || 18, maxAmplitude);
+        const speed = 0.02 + (ws.speed - 0.3) * 0.015;
+
         ctx.clearRect(0, 0, width, height);
-        const c = waveStyle.color || { r: 196, g: 168, b: 130 };
-        ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.6)`;
+
+        // ── 유령 잔상 (전환 중에만): 이전 파동이 흐릿하게 남아 사라짐 ──
+        if (txProgress >= 0 && txProgress < 1 && txFrom) {
+            const ghostOpacity = 0.35 * Math.pow(1 - txProgress, 2);
+            const gc = txFrom.color || { r: 180, g: 180, b: 190 };
+            const ghostAmp = Math.min(txFrom.amplitude || 12, maxAmplitude);
+            ctx.strokeStyle = `rgba(${gc.r},${gc.g},${gc.b},${ghostOpacity.toFixed(3)})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = 0; x <= width; x += 2) {
+                const phase = (x / width) * Math.PI * 2 + t * 0.02;
+                const y = centerY
+                    + Math.sin(phase) * ghostAmp
+                    + Math.sin(phase * 2.3 + t * 0.5) * (ghostAmp * 0.4)
+                    + _ghostTremor(x, t, txProgress) * 0.5;
+                x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        // ── 메인 파동 ──
+        const c = ws.color || { r: 196, g: 168, b: 130 };
+        const mainOpacity = txProgress >= 0 ? 0.3 + 0.3 * txProgress : 0.6;
+        ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},${mainOpacity.toFixed(3)})`;
         ctx.lineWidth = 1.5;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
         for (let x = 0; x <= width; x += 2) {
             const phase = (x / width) * Math.PI * 2 + t * speed;
-            const y = centerY + Math.sin(phase) * amplitude + Math.sin(phase * 2.3 + t * 0.5) * (amplitude * 0.4);
-            if (x === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+            let y = centerY
+                + Math.sin(phase) * amplitude
+                + Math.sin(phase * 2.3 + t * 0.5) * (amplitude * 0.4);
+            if (txProgress >= 0 && txProgress < 1) {
+                y += _ghostTremor(x, t, txProgress);
+            }
+            x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
         ctx.stroke();
-        
+
         archiveWaveTime += 0.016;
         archiveWaveAnimationId = requestAnimationFrame(animate);
     }
@@ -518,6 +623,7 @@ function stopArchiveWaveAnimation() {
     archiveWaveTime = 0;
     currentArchiveWaveStyle = null;
     currentArchiveEmotionVector = null;
+    _waveTx = null;
     console.log('[stopArchiveWaveAnimation] Wave animation stopped');
 }
 
@@ -530,15 +636,21 @@ function renderArchiveWaveData(emotionVector) {
     startArchiveWaveAnimation(emotionVector);
 }
 
+/** 회색 기본 감정 벡터 (파동 없는 정적 상태) */
+const _GRAY_EMOTION = { fear: 0, sadness: 0.05, anger: 0, joy: 0, longing: 0, guilt: 0 };
+const _GRAY_WAVE_STYLE = {
+    color: { r: 180, g: 180, b: 190 },
+    speed: 0.3,
+    amplitude: 3,
+    frequency: 0.008,
+    chaos: 0,
+};
+
 /**
  * 첫 번째 scene용 회색 wave animation
+ * 통합 animate 루프를 사용해서 → 감정 파동 전환 시 보간 자동 적용
  */
 function renderDefaultGrayLine() {
-    const canvas = document.getElementById('archiveWaveCanvas');
-    if (!canvas) return;
-    
-    stopArchiveWaveAnimation();
-    
     const state = appStore.getState();
     if (state.waveAnimationId) {
         cancelAnimationFrame(state.waveAnimationId);
@@ -548,36 +660,20 @@ function renderDefaultGrayLine() {
         cancelAnimationFrame(window._waveAnimationId);
         window._waveAnimationId = null;
     }
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    if (canvas.offsetWidth === 0 || canvas.offsetHeight === 0) return;
-    
-    canvas.width = canvas.offsetWidth * 2;
-    canvas.height = canvas.offsetHeight * 2;
-    ctx.scale(2, 2);
-    
-    const width = canvas.width / 2;
-    const height = canvas.height / 2;
-    const centerY = height / 2;
-    let t = 0;
-    
-    function animateGray() {
-        ctx.clearRect(0, 0, width, height);
-        ctx.strokeStyle = 'rgba(180, 180, 190, 0.5)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        for (let x = 0; x <= width; x += 2) {
-            const y = centerY
-                + Math.sin(x * 0.008 + t * 0.4) * 3
-                + Math.sin(x * 0.015 + t * 0.25) * 1.5;
-            x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        t += 0.016;
-        archiveWaveAnimationId = requestAnimationFrame(animateGray);
+
+    // 기존 감정 파동이 돌고 있으면 회색으로 전환 (보간 적용됨)
+    if (currentArchiveWaveStyle && archiveWaveAnimationId) {
+        _waveTx = { from: { ...currentArchiveWaveStyle }, to: _GRAY_WAVE_STYLE, progress: 0, duration: 1.2 };
+        currentArchiveWaveStyle = _GRAY_WAVE_STYLE;
+        currentArchiveEmotionVector = _GRAY_EMOTION;
+        return;
     }
-    animateGray();
+
+    // 최초 시작: 통합 루프로 회색 파동 시작
+    stopArchiveWaveAnimation();
+    currentArchiveWaveStyle = _GRAY_WAVE_STYLE;
+    currentArchiveEmotionVector = _GRAY_EMOTION;
+    _startUnifiedWaveLoop();
 }
 
 async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, currentData, sceneAlignment, reasonVector = null, mismatchType = null) {

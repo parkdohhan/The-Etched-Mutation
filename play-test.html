@@ -1544,7 +1544,7 @@
   const CONTOUR_LEVELS = 24;
   const BANDWIDTH = 1;
   const ENABLED_LAYERS = ['surface', 'near', 'mid', 'deep', 'bedrock'];
-  const game = {
+  const game = window._temGame = {
     memoryId: null,
     memories: [],
     scenes: [],
@@ -2620,6 +2620,7 @@
     }
   }
 
+  window._temEnterSceneMode = enterSceneMode;
   function enterSceneMode(pinOrId) {
     const pin = typeof pinOrId === 'string' ? game.pins.find(p => p.id === pinOrId) : pinOrId;
     if (!pin || (pin.type !== 'core' && pin.type !== 'bridge' && pin.type !== 'voidPin')) return;
@@ -3984,5 +3985,785 @@
 
   </script>
   <script src="js/ui/strataView.js"></script>
+  <script>
+  // ─── 1인칭 지형 탐색 어댑터 (등고선 지도 대체) ─────────────
+  (function () {
+    'use strict';
+    var _fpPlayActive = false;
+    var _fpScenePins = [];
+    var _fpNearPin = null;
+    var _fpProxEl = null;
+    var _fpHintEl = null;
+    var _fpInterval = null;
+    var _fpLongPress = null;
+    var PROXIMITY_ENTER = 5;
+    var LONG_PRESS_MS = 1200;
+    var _lastFpPos = null;  // save position before entering scene
+    var _lastFpYaw = 0;
+
+    // Patch: intercept mapMode activation → open strataView in first-person instead
+    var _origMapAdd = null;
+    var mapMode = document.getElementById('mapMode');
+
+    // Whisper text for proximity (mirrors PIN_WHISPERS from contour map)
+    var _FP_WHISPERS = {
+      visited: {
+        ko: ['이미 지나온 기억이야', '네 발자국이 남아있다', '한번 걸었던 길이야'],
+        en: ['a memory you\'ve already passed through', 'your footprints remain', 'a path once walked']
+      },
+      unvisited_warm: {
+        ko: ['...여기에 누군가의 체온이 남아있다', '...자주 불리는 이름이야', '...손때가 묻어있다'],
+        en: ['...someone\'s warmth lingers here', '...a name often called', '...worn from handling']
+      },
+      unvisited_cold: {
+        ko: ['...조용하다', '...아무도 오지 않았다', '...먼지가 쌓여있다'],
+        en: ['...silence', '...no one has come', '...dust has settled']
+      },
+      unvisited_deep: {
+        ko: ['...깊다', '...무거운 것이 가라앉아 있다', '...바닥이 보이지 않는다'],
+        en: ['...deep', '...something heavy has sunk here', '...the bottom is not visible']
+      }
+    };
+
+    function _getFpWhisper(sp) {
+      var lang = (document.documentElement.lang || 'en').substring(0, 2);
+      var pool = lang === 'ko' ? 'ko' : 'en';
+      if (sp.visited) {
+        var arr = _FP_WHISPERS.visited[pool];
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+      // Check intensity of original emotion
+      var emo = sp.pin.originalEmotion || {};
+      if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { emo = {}; } }
+      var maxI = 0;
+      Object.values(emo).forEach(function (v) { var n = Number(v) || 0; if (n > maxI) maxI = n; });
+      // Check how many plays this scene has
+      var g = window._temGame;
+      var scenePlayCount = g && g.plays ? g.plays.filter(function (p) { return p.scene_id === sp.scene.id; }).length : 0;
+
+      var cat;
+      if (maxI > 0.7) cat = 'unvisited_deep';
+      else if (scenePlayCount >= 3) cat = 'unvisited_warm';
+      else cat = 'unvisited_cold';
+
+      var arr = _FP_WHISPERS[cat][pool];
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function initFpPlay(memoryId) {
+      if (!memoryId || !window.showStrataView || !window.TemAfStrataTerrain) return false;
+      _fpPlayActive = true;
+
+      // Hide mapMode, show strataView
+      if (mapMode) mapMode.classList.remove('active');
+      var sv = document.getElementById('strataView');
+      if (sv) sv.style.display = 'block';
+
+      // Hide strata UI elements during first-person play
+      var closeBtn = document.getElementById('strataCloseBtn');
+      if (closeBtn) closeBtn.style.display = 'none';
+      // Hide all HUD overlays (title, structure label, contamination bar, hints)
+      document.querySelectorAll('.strata-hud, .strata-hint, .strata-grain').forEach(function (el) {
+        el.style.display = 'none';
+      });
+
+      // Load terrain + enter first person
+      window.showStrataView(memoryId, null, function () {
+        // On strata close → revealScreen or main menu
+        _fpPlayActive = false;
+      });
+
+      // Wait for terrain to load, then enter first person + build scene pins
+      setTimeout(function () {
+        var rt = window.TemAfStrataTerrain._lastRuntime;
+        if (rt) {
+          // Spawn far from center
+          var cam = rt.getCamera();
+          var ctrl = rt.getControls();
+          if (cam && ctrl) {
+            ctrl.target.set(18, 0, 18);
+            cam.position.set(22, 10, 22);
+            ctrl.update();
+          }
+
+          rt.enterFirstPerson();
+
+          // Wider FOV for play
+          if (cam) { cam.fov = 90; cam.updateProjectionMatrix(); }
+
+          _buildPlayScenePins();
+          _startProximityLoop();
+
+          // ─── Eye-opening effect ─────────────────────────────
+          var overlay = document.createElement('div');
+          overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;background:#000;transition:opacity 2.5s ease-out;';
+          document.body.appendChild(overlay);
+
+          // Eyelid bars (top and bottom)
+          var lidTop = document.createElement('div');
+          lidTop.style.cssText = 'position:fixed;top:0;left:0;right:0;height:50%;background:#000;z-index:10000;pointer-events:none;transition:height 2s ease-in-out;';
+          document.body.appendChild(lidTop);
+          var lidBot = document.createElement('div');
+          lidBot.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:50%;background:#000;z-index:10000;pointer-events:none;transition:height 2s ease-in-out;';
+          document.body.appendChild(lidBot);
+
+          // Blink sequence — one quick blink, then eyes open
+          lidTop.style.transition = 'height 0.2s ease-in-out';
+          lidBot.style.transition = 'height 0.2s ease-in-out';
+          overlay.style.transition = 'opacity 0.2s';
+
+          // Quick blink: open → close
+          setTimeout(function () {
+            lidTop.style.height = '28%'; lidBot.style.height = '28%';
+            overlay.style.opacity = '0.5';
+          }, 600);
+          setTimeout(function () {
+            lidTop.style.height = '50%'; lidBot.style.height = '50%';
+            overlay.style.opacity = '1';
+          }, 850);
+
+          // Eyes open slowly
+          setTimeout(function () {
+            lidTop.style.transition = 'height 1.8s ease-out';
+            lidBot.style.transition = 'height 1.8s ease-out';
+            overlay.style.transition = 'opacity 1.8s ease-out';
+            lidTop.style.height = '0%'; lidBot.style.height = '0%';
+            overlay.style.opacity = '0';
+          }, 1400);
+
+          // ─── Inner monologue after eyes open ────────────────
+          var lang = (document.documentElement.lang || 'en').substring(0, 2);
+          var mono1 = lang === 'ko' ? '......여기는 어디지?' : '......where is this?';
+          var mono2 = lang === 'ko' ? '저기 기억들이 있어.' : 'There are memories over there.';
+
+          var monoEl = document.createElement('div');
+          monoEl.style.cssText = 'position:fixed;bottom:35%;left:50%;transform:translateX(-50%);z-index:10001;pointer-events:none;color:#c4a882;font-size:15px;letter-spacing:3px;text-align:center;opacity:0;transition:opacity 1.2s;text-shadow:0 0 15px rgba(196,168,130,0.4);font-family:"Cormorant Garamond",serif;';
+          document.body.appendChild(monoEl);
+
+          setTimeout(function () {
+            monoEl.textContent = mono1;
+            monoEl.style.opacity = '1';
+          }, 3400);
+          setTimeout(function () {
+            monoEl.style.opacity = '0';
+          }, 5200);
+          setTimeout(function () {
+            monoEl.textContent = mono2;
+            monoEl.style.opacity = '1';
+          }, 5800);
+          setTimeout(function () {
+            monoEl.style.opacity = '0';
+          }, 7600);
+
+          setTimeout(function () {
+            // Cleanup all
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            if (lidTop.parentNode) lidTop.parentNode.removeChild(lidTop);
+            if (lidBot.parentNode) lidBot.parentNode.removeChild(lidBot);
+            if (monoEl.parentNode) monoEl.parentNode.removeChild(monoEl);
+          }, 8800);
+        }
+      }, 1500);
+
+      return true;
+    }
+
+    function _buildPlayScenePins() {
+      var rt = window.TemAfStrataTerrain._lastRuntime;
+      if (!rt) return;
+      var scene3 = rt.getScene();
+      if (!scene3) return;
+      var T = window.TemAfStrataTerrain;
+      _fpScenePins = [];
+
+      // Get scenes from game object
+      var scenes = window._temGame && window._temGame.scenes ? window._temGame.scenes : [];
+      var pins = window._temGame && window._temGame.pins ? window._temGame.pins : [];
+      var accessible = window._temGame && window._temGame.accessiblePinIds ? window._temGame.accessiblePinIds : new Set();
+      var visited = window._temGame && window._temGame.visitedCore ? window._temGame.visitedCore : {};
+
+      // Map pins to 3D positions
+      pins.forEach(function (pin) {
+        if (pin.type !== 'core') return;
+        var scene = scenes.find(function (s) { return s.id === pin.sceneId; });
+        if (!scene) return;
+
+        var emo = pin.originalEmotion || scene.original_emotion;
+        if (!emo) return;
+        if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
+
+        var sA = T._eA(emo);
+        var sF = T._eF(emo);
+        var H2 = 23;
+        var memId = window._temGame.memoryId || '';
+        var off = T._hashWorldOffset(memId);
+        var wx = T._pX(sA) * H2 + off.ox;
+        var wz = T._pZ(sF) * H2 + off.oz;
+        var wh = rt.gH(wx, wz);
+
+        var isAccessible = accessible.has ? accessible.has(pin.id) : true;
+        var isVisited = !!visited[scene.id];
+
+        // Create 3D pin mesh
+        var geo = new THREE.OctahedronGeometry(0.25, 0);
+        var col = isVisited ? 0x555555 : (isAccessible ? 0x6a9fd8 : 0x333340);
+        var mat = new THREE.MeshStandardMaterial({
+          color: col, emissive: col,
+          emissiveIntensity: isAccessible && !isVisited ? 0.5 : 0.1,
+          transparent: true, opacity: isAccessible ? 0.9 : 0.3,
+          roughness: 0.4
+        });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(wx, wh + 0.6, wz);
+        mesh.userData._fpPin = true;
+        mesh.userData._pinData = pin;
+        mesh.userData._accessible = isAccessible;
+        mesh.userData._visited = isVisited;
+        scene3.add(mesh);
+
+        // Vertical line
+        var lineGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(wx, wh, wz),
+          new THREE.Vector3(wx, wh + 0.6, wz)
+        ]);
+        var line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({
+          color: col, opacity: isAccessible ? 0.5 : 0.15, transparent: true
+        }));
+        line.userData._fpPin = true;
+        scene3.add(line);
+
+        _fpScenePins.push({
+          mesh: mesh,
+          pin: pin,
+          scene: scene,
+          wx: wx, wz: wz,
+          accessible: isAccessible,
+          visited: isVisited
+        });
+      });
+
+      console.log('[FP Play] Built scene pins:', _fpScenePins.length,
+        'accessible:', _fpScenePins.filter(function (p) { return p.accessible; }).length);
+    }
+
+    function _ensureProxUI() {
+      if (_fpProxEl) return;
+      var parent = document.getElementById('strataView') || document.body;
+      _fpProxEl = document.createElement('div');
+      _fpProxEl.style.cssText = 'position:absolute;bottom:120px;left:50%;transform:translateX(-50%);color:#c4a882;font-size:15px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 0 12px rgba(196,168,130,0.5);max-width:400px;';
+      parent.appendChild(_fpProxEl);
+      _fpHintEl = document.createElement('div');
+      _fpHintEl.style.cssText = 'position:absolute;bottom:90px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.4);font-size:11px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;';
+      parent.appendChild(_fpHintEl);
+    }
+
+    function _startProximityLoop() {
+      var rt = window.TemAfStrataTerrain._lastRuntime;
+      var canvas = document.getElementById('strataCanvas');
+      if (!rt || !canvas) return;
+
+      _fpInterval = setInterval(function () {
+        if (!_fpPlayActive || !rt.isFirstPerson()) return;
+        var cam = rt.getCamera();
+        if (!cam) return;
+
+        var closest = null, closestDist = Infinity;
+        _fpScenePins.forEach(function (sp) {
+          if (!sp.accessible || sp.visited) return;
+          var dx = cam.position.x - sp.wx;
+          var dz = cam.position.z - sp.wz;
+          var dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < closestDist) { closestDist = dist; closest = sp; }
+        });
+
+        if (closest && closestDist < PROXIMITY_ENTER) {
+          if (_fpNearPin !== closest) {
+            _fpNearPin = closest;
+            _ensureProxUI();
+            // Show whisper text (same style as contour map hover)
+            _fpProxEl.textContent = _getFpWhisper(closest);
+            _fpProxEl.style.opacity = '1';
+            _fpHintEl.textContent = '길게 눌러 이 장면에 들어가세요';
+            _fpHintEl.style.opacity = '1';
+          }
+          // Pulse pin
+          closest.mesh.material.emissiveIntensity = 0.6 + Math.sin(performance.now() * 0.005) * 0.3;
+
+          // Sound proximity: get closer → louder
+          if (window._temGame && window._temGame._soundscape) {
+            var vol = Math.max(0.1, Math.min(0.6, 1 - closestDist / PROXIMITY_ENTER) * 0.5 + 0.1);
+            try { window._temGame._soundscape.setVolume(vol); } catch (_) {}
+          }
+        } else {
+          if (_fpNearPin) {
+            _fpNearPin = null;
+            if (_fpProxEl) _fpProxEl.style.opacity = '0';
+            if (_fpHintEl) _fpHintEl.style.opacity = '0';
+            // Reset sound to base
+            if (window._temGame && window._temGame._soundscape) {
+              try { window._temGame._soundscape.setVolume(0.15); } catch (_) {}
+            }
+          }
+        }
+      }, 80);
+
+      // Long press to enter scene — with screen shake while holding
+      var _pressTimer = null;
+      var _shakeInterval = null;
+      var _canvasOrigTransform = '';
+
+      canvas.addEventListener('mousedown', function () {
+        if (!_fpNearPin || !_fpPlayActive) return;
+        var targetPin = _fpNearPin;
+
+        // Start screen shake while holding
+        _canvasOrigTransform = canvas.style.transform || '';
+        var shakeIntensity = 0;
+        _shakeInterval = setInterval(function () {
+          shakeIntensity = Math.min(4, shakeIntensity + 0.15);
+          var dx = (Math.random() - 0.5) * shakeIntensity;
+          var dy = (Math.random() - 0.5) * shakeIntensity;
+          canvas.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+        }, 30);
+
+        _pressTimer = setTimeout(function () {
+          // Stop shake
+          if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }
+          canvas.style.transform = _canvasOrigTransform;
+
+          if (!targetPin) return;
+          // Save current position before exiting
+          var rt2 = window.TemAfStrataTerrain._lastRuntime;
+          if (rt2 && rt2.getCamera()) {
+            var cam = rt2.getCamera();
+            _lastFpPos = { x: cam.position.x, z: cam.position.z };
+            _lastFpYaw = cam.rotation.y;
+          }
+          // Exit first person
+          if (rt2) rt2.exitFirstPerson();
+          // Hide strata, show scene
+          var sv = document.getElementById('strataView');
+          if (sv) sv.style.display = 'none';
+          if (_fpProxEl) _fpProxEl.style.opacity = '0';
+          if (_fpHintEl) _fpHintEl.style.opacity = '0';
+          // Call existing enterSceneMode
+          if (window._temEnterSceneMode) {
+            window._temEnterSceneMode(targetPin.pin);
+          }
+        }, LONG_PRESS_MS);
+      });
+      canvas.addEventListener('mouseup', function () {
+        if (_pressTimer) { clearTimeout(_pressTimer); _pressTimer = null; }
+        if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }
+        canvas.style.transform = _canvasOrigTransform;
+      });
+    }
+
+    // After scene emotion submit, return to 3D walk instead of mapMode
+    // Patch the mapMode.classList.add('active') calls
+    var _origObserver = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        if (!_fpPlayActive) return;
+        if (m.type === 'attributes' && m.attributeName === 'class') {
+          var el = m.target;
+          if (el.id === 'mapMode' && el.classList.contains('active')) {
+            // Intercept: hide mapMode, resume 3D walk
+            el.classList.remove('active');
+            var sv = document.getElementById('strataView');
+            if (sv) sv.style.display = 'block';
+            var rt = window.TemAfStrataTerrain._lastRuntime;
+            if (rt) {
+              // Set orbit target to saved position so enterFirstPerson spawns there
+              if (_lastFpPos && rt.getControls() && rt.getCamera()) {
+                var cam = rt.getCamera();
+                var ctrl = rt.getControls();
+                ctrl.target.set(_lastFpPos.x, 0, _lastFpPos.z);
+                cam.position.set(_lastFpPos.x + 5, 10, _lastFpPos.z + 5);
+                ctrl.update();
+              }
+              rt.enterFirstPerson();
+              // Restore yaw
+              if (_lastFpPos && rt.getCamera()) {
+                rt.getCamera().rotation.y = _lastFpYaw;
+              }
+              // Rebuild pins with updated accessibility
+              var scene3 = rt.getScene();
+              if (scene3) {
+                // Remove old pins
+                var toRemove = [];
+                scene3.traverse(function (o) { if (o.userData._fpPin) toRemove.push(o); });
+                toRemove.forEach(function (o) {
+                  scene3.remove(o);
+                  if (o.geometry) o.geometry.dispose();
+                  if (o.material) o.material.dispose();
+                });
+              }
+              var oldPinIds = _fpScenePins.map(function (sp) { return sp.pin.id; });
+              _fpScenePins = [];
+              _buildPlayScenePins();
+
+              // Find newly unlocked pins
+              var newPins = _fpScenePins.filter(function (sp) {
+                return sp.accessible && !sp.visited && oldPinIds.indexOf(sp.pin.id) === -1;
+              });
+
+              // Get transition pattern from last engine result
+              var g = window._temGame;
+              var pattern = (g && g.lastResult && g.lastResult.transition_pattern) || 'bridge';
+
+              // ─── 3D trace line to new pins ─────────────────────
+              if (newPins.length > 0 && scene3 && _lastFpPos) {
+                var lineColor = {
+                  echo_follow: 0xc4a882, bridge: 0xc4a882,
+                  contradiction: 0xc85050, displacement: 0xa078c8,
+                  avoidance: 0x555555, fixation: 0xc4a882
+                }[pattern] || 0xc4a882;
+
+                newPins.forEach(function (np, ni) {
+                  var fromH = rt.gH(_lastFpPos.x, _lastFpPos.z);
+                  var points = [
+                    new THREE.Vector3(_lastFpPos.x, fromH + 0.5, _lastFpPos.z),
+                    new THREE.Vector3(np.wx, rt.gH(np.wx, np.wz) + 0.5, np.wz)
+                  ];
+                  var lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+                  var lineMat = new THREE.LineBasicMaterial({
+                    color: lineColor, transparent: true, opacity: 0
+                  });
+                  var line = new THREE.Line(lineGeo, lineMat);
+                  line.userData._fpPin = true;
+                  scene3.add(line);
+
+                  // Animate: fade in then fade out
+                  var startTime = performance.now() + ni * 300;
+                  var anim = setInterval(function () {
+                    var t = (performance.now() - startTime) / 1000;
+                    if (t < 0) return;
+                    if (t < 1.5) {
+                      lineMat.opacity = Math.min(0.6, t * 0.6);
+                    } else if (t < 3.5) {
+                      lineMat.opacity = 0.6 * (1 - (t - 1.5) / 2);
+                    } else {
+                      clearInterval(anim);
+                      scene3.remove(line);
+                      lineGeo.dispose(); lineMat.dispose();
+                    }
+                  }, 30);
+
+                  // Pulse the new pin
+                  np.mesh.material.emissiveIntensity = 1.0;
+                  setTimeout(function () {
+                    np.mesh.material.emissiveIntensity = 0.5;
+                  }, 2000);
+                });
+              }
+
+              // ─── Pattern-based monologue ────────────────────────
+              var lang = (document.documentElement.lang || 'en').substring(0, 2);
+              var patternMonologues = {
+                echo_follow: {
+                  ko: ['같은 방향에서 또 다른 기억이 떠올랐어.', '...비슷한 곳에 뭔가 더 있다.'],
+                  en: ['another memory surfaced from the same direction.', '...there\'s something more nearby.']
+                },
+                bridge: {
+                  ko: ['기억이 갈래를 만든다.', '...여기서 길이 나뉘는 것 같아.'],
+                  en: ['the memory branches here.', '...the path seems to split.']
+                },
+                contradiction: {
+                  ko: ['반대편에서 기억이 떠오른 것 같아.', '...이상해. 전혀 다른 곳에서 울리고 있어.'],
+                  en: ['a memory surfaced from the opposite side.', '...strange. it\'s echoing from somewhere completely different.']
+                },
+                displacement: {
+                  ko: ['...기억이 옆으로 미끄러졌다.', '같은 곳인데 각도가 달라.'],
+                  en: ['...the memory slipped sideways.', 'same place, different angle.']
+                },
+                avoidance: {
+                  ko: ['...아무것도 열리지 않았다.', '기억이 비켜간다.'],
+                  en: ['...nothing opened.', 'the memory turns away.']
+                },
+                fixation: {
+                  ko: ['...여기서 벗어나지 못하고 있어.', '같은 자리를 맴돌고 있다.'],
+                  en: ['...can\'t seem to leave this place.', 'circling the same spot.']
+                }
+              };
+
+              var monos = patternMonologues[pattern] || patternMonologues.bridge;
+              var pool = lang === 'ko' ? monos.ko : monos.en;
+              var monoText = pool[Math.floor(Math.random() * pool.length)];
+
+              // Show monologue
+              _ensureProxUI();
+              if (_fpProxEl) {
+                _fpProxEl.textContent = monoText;
+                _fpProxEl.style.opacity = '1';
+                setTimeout(function () { if (_fpProxEl) _fpProxEl.style.opacity = '0'; }, 3000);
+              }
+            }
+
+            // Check if all accessible scenes visited → end
+            var allVisited = _fpScenePins.every(function (sp) {
+              return !sp.accessible || sp.visited;
+            });
+            if (allVisited && _fpScenePins.length > 0) {
+              // Trigger seal/end via existing seal button
+              _fpPlayActive = false;
+              if (rt) rt.exitFirstPerson();
+              var svEnd = document.getElementById('strataView');
+              if (svEnd) svEnd.style.display = 'none';
+              var sealBtn = document.getElementById('sealBtn');
+              if (sealBtn && !sealBtn.disabled) sealBtn.click();
+            }
+          }
+        }
+      });
+    });
+    if (mapMode) {
+      _origObserver.observe(mapMode, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // Hook into game start: wait for loadMemoryData to populate game.scenes,
+    // then intercept mapMode and switch to 3D first-person
+    // Mobile detection — fall back to contour map
+    var _isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (_isMobile) {
+      console.log('[FP Adapter] Mobile detected, skipping first-person mode');
+    }
+
+    var _pollCount = 0;
+    var _startPoll = _isMobile ? null : setInterval(function () {
+      _pollCount++;
+      var mapActive = mapMode && mapMode.classList.contains('active');
+      var memId = window._temGame && window._temGame.memoryId;
+      var hasScenes = window._temGame && window._temGame.scenes && window._temGame.scenes.length > 0;
+      var hasPins = window._temGame && window._temGame.pins && window._temGame.pins.length > 0;
+      var hasStrata = !!window.showStrataView;
+
+      if (_pollCount % 10 === 1) {
+        console.log('[FP Adapter] poll #' + _pollCount, {
+          mapActive: mapActive,
+          memId: memId,
+          hasScenes: hasScenes,
+          hasPins: hasPins,
+          hasStrata: hasStrata,
+          fpActive: _fpPlayActive
+        });
+      }
+
+      if (!mapActive) return;
+      if (memId && hasPins && hasStrata && !_fpPlayActive) {
+        console.log('[FP Adapter] Conditions met, initializing first-person play');
+        clearInterval(_startPoll);
+        initFpPlay(memId);
+      }
+    }, 300);
+
+    // Expose for debugging
+    // ─── Minimap (contour + pins + player triangle) ──────────────
+    var _miniCanvas = null;
+    var _miniCtx = null;
+    var _miniContourImg = null; // cached contour background
+    var MINI_SIZE = 200;
+    var SZ_TERRAIN = 46; // must match terrain SZ
+
+    function _initMinimap() {
+      if (_miniCanvas) return;
+      var parent = document.getElementById('strataView') || document.body;
+
+      // Container
+      var wrap = document.createElement('div');
+      wrap.id = 'fpMinimap';
+      wrap.style.cssText = 'position:absolute;bottom:20px;left:20px;width:' + MINI_SIZE + 'px;height:' + MINI_SIZE + 'px;z-index:250;border:1px solid rgba(196,168,130,0.25);border-radius:4px;overflow:hidden;background:rgba(10,10,15,0.8);pointer-events:none;';
+      parent.appendChild(wrap);
+
+      _miniCanvas = document.createElement('canvas');
+      _miniCanvas.width = MINI_SIZE * 2;
+      _miniCanvas.height = MINI_SIZE * 2;
+      _miniCanvas.style.cssText = 'width:100%;height:100%;';
+      wrap.appendChild(_miniCanvas);
+      _miniCtx = _miniCanvas.getContext('2d');
+
+      // Render contour once from the existing contour canvas
+      _cacheContourBackground();
+    }
+
+    function _cacheContourBackground() {
+      // Use 3D terrain data directly for color + contour lines
+      var T = window.TemAfStrataTerrain;
+      var rt = T && T._lastRuntime;
+      if (!rt || !rt.getP || !rt.getP().length) {
+        setTimeout(_cacheContourBackground, 500);
+        return;
+      }
+
+      var P = rt.getP();
+      var field = T.computeAfTerrainFields(P, null, { G: 48, SZ: SZ_TERRAIN });
+      var G = field.G;
+      var hts = field.hts;
+      var cls = field.cls;
+      var minH = field.minH, maxH = field.maxH, range = (maxH - minH) || 1;
+
+      var off = document.createElement('canvas');
+      var W = MINI_SIZE * 2, H = MINI_SIZE * 2;
+      off.width = W; off.height = H;
+      var ctx = off.getContext('2d');
+
+      // Draw terrain color raster from vertex colors
+      var cellW = W / G, cellH = H / G;
+      for (var iz = 0; iz < G; iz++) {
+        for (var ix = 0; ix < G; ix++) {
+          var ci = (iz * G + ix) * 3;
+          var r = Math.min(255, Math.floor(cls[ci] * 255 * 1.8));
+          var g = Math.min(255, Math.floor(cls[ci + 1] * 255 * 1.8));
+          var b = Math.min(255, Math.floor(cls[ci + 2] * 255 * 1.8));
+          ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+          ctx.fillRect(ix * cellW, iz * cellH, cellW + 1, cellH + 1);
+        }
+      }
+
+      // Draw contour lines with wider spacing (fewer levels)
+      var LEVELS = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Dark pass
+      ctx.strokeStyle = 'rgba(8, 4, 18, 0.4)';
+      ctx.lineWidth = 2.0;
+      _drawContourLines(ctx, hts, G, W, H, minH, range, LEVELS);
+
+      // Bright pass
+      ctx.strokeStyle = 'rgba(232, 224, 252, 0.7)';
+      ctx.lineWidth = 1.2;
+      _drawContourLines(ctx, hts, G, W, H, minH, range, LEVELS);
+
+      _miniContourImg = off;
+    }
+
+    function _drawContourLines(ctx, hts, G, W, H, minH, range, levels) {
+      for (var i = 1; i <= levels; i++) {
+        var th = minH + range * (i / (levels + 1));
+        ctx.beginPath();
+        for (var iz = 0; iz < G - 1; iz++) {
+          for (var ix = 0; ix < G - 1; ix++) {
+            var v0 = hts[iz * G + ix], v1 = hts[iz * G + ix + 1];
+            var v2 = hts[(iz + 1) * G + ix + 1], v3 = hts[(iz + 1) * G + ix];
+            var cW = W / G, cH = H / G;
+            // Simple marching squares — horizontal and vertical edges
+            if ((v0 < th) !== (v1 < th)) {
+              var t = (th - v0) / (v1 - v0);
+              var px = (ix + t) * cW, py = iz * cH;
+              if ((v3 < th) !== (v2 < th)) {
+                var t2 = (th - v3) / (v2 - v3);
+                ctx.moveTo(px, py);
+                ctx.lineTo((ix + t2) * cW, (iz + 1) * cH);
+              }
+            }
+            if ((v0 < th) !== (v3 < th)) {
+              var t = (th - v0) / (v3 - v0);
+              var px = ix * cW, py = (iz + t) * cH;
+              if ((v1 < th) !== (v2 < th)) {
+                var t2 = (th - v1) / (v2 - v1);
+                ctx.moveTo(px, py);
+                ctx.lineTo((ix + 1) * cW, (iz + t2) * cH);
+              }
+            }
+          }
+        }
+        ctx.stroke();
+      }
+    }
+
+    function _worldToMini(wx, wz) {
+      var nx = (wx / SZ_TERRAIN) + 0.5;
+      var nz = (wz / SZ_TERRAIN) + 0.5;
+      return {
+        x: Math.max(0, Math.min(1, nx)) * _miniCanvas.width,
+        y: Math.max(0, Math.min(1, nz)) * _miniCanvas.height
+      };
+    }
+
+    function _updateMinimap() {
+      if (!_miniCtx || !_fpPlayActive) return;
+      var W = _miniCanvas.width, H = _miniCanvas.height;
+      _miniCtx.clearRect(0, 0, W, H);
+
+      // Draw cached contour background
+      if (_miniContourImg) {
+        _miniCtx.globalAlpha = 0.5;
+        _miniCtx.drawImage(_miniContourImg, 0, 0, W, H);
+        _miniCtx.globalAlpha = 1;
+      }
+
+      // Draw pins
+      _fpScenePins.forEach(function (sp) {
+        var mp = _worldToMini(sp.wx, sp.wz);
+        _miniCtx.beginPath();
+        if (sp.visited) {
+          _miniCtx.fillStyle = 'rgba(100,100,100,0.5)';
+          _miniCtx.arc(mp.x, mp.y, 3, 0, Math.PI * 2);
+        } else if (sp.accessible) {
+          _miniCtx.fillStyle = 'rgba(106,159,216,0.8)';
+          _miniCtx.arc(mp.x, mp.y, 4, 0, Math.PI * 2);
+        } else {
+          _miniCtx.fillStyle = 'rgba(60,60,70,0.4)';
+          _miniCtx.arc(mp.x, mp.y, 2.5, 0, Math.PI * 2);
+        }
+        _miniCtx.fill();
+      });
+
+      // Draw player position as red triangle pointing in look direction
+      var rt = window.TemAfStrataTerrain._lastRuntime;
+      if (!rt || !rt.isFirstPerson()) return;
+      var cam = rt.getCamera();
+      if (!cam) return;
+
+      var pp = _worldToMini(cam.position.x, cam.position.z);
+      var yaw = cam.rotation.y;
+      var triSize = 7;
+
+      _miniCtx.save();
+      _miniCtx.translate(pp.x, pp.y);
+      _miniCtx.rotate(-yaw); // negate because canvas Y is down
+
+      _miniCtx.beginPath();
+      _miniCtx.moveTo(0, -triSize);         // tip (forward)
+      _miniCtx.lineTo(-triSize * 0.6, triSize * 0.5);
+      _miniCtx.lineTo(triSize * 0.6, triSize * 0.5);
+      _miniCtx.closePath();
+      _miniCtx.fillStyle = 'rgba(220, 60, 60, 0.9)';
+      _miniCtx.fill();
+
+      // FOV cone
+      _miniCtx.beginPath();
+      _miniCtx.moveTo(0, 0);
+      var fovHalf = (cam.fov / 2) * Math.PI / 180;
+      var coneLen = 25;
+      _miniCtx.lineTo(Math.sin(-fovHalf) * coneLen, -Math.cos(-fovHalf) * coneLen);
+      _miniCtx.lineTo(Math.sin(fovHalf) * coneLen, -Math.cos(fovHalf) * coneLen);
+      _miniCtx.closePath();
+      _miniCtx.fillStyle = 'rgba(220, 60, 60, 0.08)';
+      _miniCtx.fill();
+      _miniCtx.strokeStyle = 'rgba(220, 60, 60, 0.25)';
+      _miniCtx.lineWidth = 0.8;
+      _miniCtx.stroke();
+
+      _miniCtx.restore();
+    }
+
+    // Hook minimap update into existing proximity interval
+    var _origStartProx = _startProximityLoop;
+    _startProximityLoop = function () {
+      _origStartProx();
+      _initMinimap();
+      // Add minimap update to existing interval won't work since it's local.
+      // Create separate interval for minimap.
+      setInterval(_updateMinimap, 80);
+    };
+
+    window._fpPlay = {
+      init: initFpPlay,
+      isActive: function () { return _fpPlayActive; },
+      pins: function () { return _fpScenePins; }
+    };
+  })();
+  </script>
 </body>
 </html>

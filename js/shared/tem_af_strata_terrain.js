@@ -118,10 +118,11 @@
    * @param {Array<{id:string,title?:string,memory_words?:string,completed_sentence?:string}>} mems
    * @param {Record<string, Array>} playsByMem memory_id -> plays
    */
-  function buildMemoryItems(mems, playsByMem) {
+  function buildMemoryItems(mems, playsByMem, scenesByMem) {
     var H2 = 23;
     return mems.map(function (m) {
       var plays = playsByMem[m.id] || [];
+      var scenes = (scenesByMem && scenesByMem[m.id]) || [];
       var merged = {};
       plays.forEach(function (p) {
         if (!p.user_emotion) return;
@@ -142,6 +143,22 @@
       var fear = eF(Object.keys(merged).length ? merged : { numbness: 1 });
       var af = { x: pX(attr), z: pZ(fear) };
       var off = hashWorldOffset(m.id);
+
+      // C방식: 장면별 AF 좌표 (original_emotion 궤적)
+      var sceneAF = [];
+      scenes.forEach(function (sc, si) {
+        var emo = sc.original_emotion;
+        if (!emo) return;
+        if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
+        sceneAF.push({
+          id: sc.id,
+          order: sc.scene_order != null ? sc.scene_order : si,
+          wx: pX(eA(emo)) * H2 + off.ox,
+          wz: pZ(eF(emo)) * H2 + off.oz,
+          emo: emo
+        });
+      });
+
       return {
         id: m.id,
         t: m.title || m.completed_sentence || m.memory_words || '(untitled)',
@@ -153,6 +170,7 @@
         af: af,
         pillarWx: af.x * H2 + off.ox,
         pillarWz: af.z * H2 + off.oz,
+        sceneAF: sceneAF,
       };
     });
   }
@@ -176,27 +194,113 @@
       ? P.map(function (m, mi) { return { m: m, mi: mi }; })
       : (P[filterIdx] ? [{ m: P[filterIdx], mi: filterIdx }] : []);
 
+    var pollField = new Float32Array(G * G);
+
     layers.forEach(function (layer) {
       var m = layer.m; var mi = layer.mi;
       var cx = m.pillarWx; var cz = m.pillarWz;
+      var scenes = m.sceneAF || [];
+      var r = sR(mi * 777);
+
+      // ─── Base terrain: memory center (기존 유지, 전체 기반 지형) ───
       var eT = 0;
       for (var ek in m.emo) { if (Object.prototype.hasOwnProperty.call(m.emo, ek)) eT += m.emo[ek]; }
       if (!eT) eT = 1;
-      var r = sR(mi * 777);
 
       for (var iz = 0; iz < G; iz++) for (var ix = 0; ix < G; ix++) {
         var wx = (ix / (G - 1) - 0.5) * SZ; var wz = (iz / (G - 1) - 0.5) * SZ;
         var inf = Math.exp(-((wx - cx) * (wx - cx) + (wz - cz) * (wz - cz)) / 40.5);
-        hts[iz * G + ix] += inf * Math.min(eT, 3) * 0.25;
+        hts[iz * G + ix] += inf * Math.min(eT, 3) * 0.15;  // reduced base (was 0.25)
         var ci = (iz * G + ix) * 3;
         for (var e in m.emo) {
           if (!Object.prototype.hasOwnProperty.call(m.emo, e)) continue;
           var v = m.emo[e];
           var c = EC[e] || [0.3, 0.3, 0.3];
-          cls[ci] += c[0] * v * inf * 0.12; cls[ci + 1] += c[1] * v * inf * 0.12; cls[ci + 2] += c[2] * v * inf * 0.12;
+          cls[ci] += c[0] * v * inf * 0.08; cls[ci + 1] += c[1] * v * inf * 0.08; cls[ci + 2] += c[2] * v * inf * 0.08;
         }
       }
 
+      // ─── Scene bumps: 장면별 봉우리 (C방식) ────────────────────
+      if (scenes.length > 0) {
+        scenes.forEach(function (sc, si) {
+          var scx = sc.wx; var scz = sc.wz;
+          var scEmo = sc.emo;
+          var scET = 0;
+          for (var ek2 in scEmo) { if (Object.prototype.hasOwnProperty.call(scEmo, ek2)) scET += scEmo[ek2]; }
+          if (!scET) scET = 1;
+
+          for (var iz = 0; iz < G; iz++) for (var ix = 0; ix < G; ix++) {
+            var wx = (ix / (G - 1) - 0.5) * SZ; var wz = (iz / (G - 1) - 0.5) * SZ;
+            var inf = Math.exp(-((wx - scx) * (wx - scx) + (wz - scz) * (wz - scz)) / 18);
+            hts[iz * G + ix] += inf * Math.min(scET, 3) * 0.2;
+            var ci = (iz * G + ix) * 3;
+            for (var e in scEmo) {
+              if (!Object.prototype.hasOwnProperty.call(scEmo, e)) continue;
+              var v = scEmo[e];
+              var c = EC[e] || [0.3, 0.3, 0.3];
+              cls[ci] += c[0] * v * inf * 0.1; cls[ci + 1] += c[1] * v * inf * 0.1; cls[ci + 2] += c[2] * v * inf * 0.1;
+            }
+          }
+        });
+
+        // ─── Scene connections: 장면 간 능선 (D방식 — transition_pattern) ─
+        // Group plays by scene_id to get per-scene dominant pattern
+        var patternByScene = {};
+        m.plays.forEach(function (p) {
+          if (!p.scene_id) return;
+          var al = playAlignment(p);
+          // Infer pattern from alignment (simplified — full engine not available here)
+          var pat = al >= 0.5 ? 'echo_follow' : al >= 0.1 ? 'bridge' : 'contradiction';
+          if (al < 0.15) pat = 'avoidance';
+          if (!patternByScene[p.scene_id]) patternByScene[p.scene_id] = [];
+          patternByScene[p.scene_id].push(pat);
+        });
+
+        for (var si2 = 0; si2 < scenes.length - 1; si2++) {
+          var sA = scenes[si2]; var sB = scenes[si2 + 1];
+          // Determine dominant pattern for the connection
+          var pats = patternByScene[sA.id] || [];
+          var domPat = 'bridge'; // default
+          if (pats.length > 0) {
+            var patCount = {};
+            pats.forEach(function (p) { patCount[p] = (patCount[p] || 0) + 1; });
+            domPat = Object.keys(patCount).sort(function (a, b) { return patCount[b] - patCount[a]; })[0];
+          }
+
+          // Ridge/valley between consecutive scenes based on pattern
+          var ridgeH, ridgeW;
+          if (domPat === 'echo_follow')   { ridgeH = 0.15; ridgeW = 12; }  // gentle ridge
+          else if (domPat === 'bridge')    { ridgeH = 0.08; ridgeW = 16; }  // subtle connection
+          else if (domPat === 'contradiction') { ridgeH = -0.12; ridgeW = 8; }  // valley between
+          else if (domPat === 'avoidance') { ridgeH = -0.18; ridgeW = 6; }  // deep cut
+          else if (domPat === 'displacement') { ridgeH = 0.05; ridgeW = 10; }
+          else if (domPat === 'fixation')  { ridgeH = 0.20; ridgeW = 6; }   // sharp ridge
+          else { ridgeH = 0.05; ridgeW = 14; }
+
+          // Draw ridge/valley along line from sA to sB
+          var dx = sB.wx - sA.wx; var dz = sB.wz - sA.wz;
+          var segLen = Math.sqrt(dx * dx + dz * dz);
+          if (segLen < 0.5) continue;
+          var nx = -dz / segLen; var nz = dx / segLen; // normal to line
+
+          for (var iz = 0; iz < G; iz++) for (var ix = 0; ix < G; ix++) {
+            var wx = (ix / (G - 1) - 0.5) * SZ; var wz = (iz / (G - 1) - 0.5) * SZ;
+            // Project point onto line segment
+            var t = ((wx - sA.wx) * dx + (wz - sA.wz) * dz) / (segLen * segLen);
+            if (t < -0.05 || t > 1.05) continue;
+            t = Math.max(0, Math.min(1, t));
+            var projX = sA.wx + t * dx; var projZ = sA.wz + t * dz;
+            var perpDist = Math.abs((wx - projX) * nx + (wz - projZ) * nz);
+            if (perpDist > ridgeW) continue;
+            var falloff = Math.exp(-(perpDist * perpDist) / (ridgeW * 0.4 * ridgeW * 0.4));
+            // Taper at endpoints
+            var endTaper = 1 - Math.pow(2 * t - 1, 4);
+            hts[iz * G + ix] += ridgeH * falloff * endTaper;
+          }
+        }
+      }
+
+      // ─── Play effects: 각 play가 자기 AF 좌표에 흔적 + 오염 ────
       m.plays.forEach(function (play) {
         var ue = play.user_emotion;
         if (!ue) return;
@@ -237,6 +341,9 @@
             var cI = inf2 * (typeof vv === 'number' ? vv : 0) * 0.025 * (isV ? 0.3 : 1);
             cls[ci2] += c2[0] * cI; cls[ci2 + 1] += c2[1] * cI; cls[ci2 + 2] += c2[2] * cI;
           }
+          // Pollution: low alignment → bone tint at play's AF location
+          var evPoll = 1 - al;
+          if (evPoll > 0.1) pollField[idx] += evPoll * inf2 * 0.3;
         }
       });
     });
@@ -247,13 +354,34 @@
       }
     }
 
+    // Clamp pollution field
+    for (var pi = 0; pi < G * G; pi++) pollField[pi] = Math.min(1, pollField[pi]);
+
+    // Color normalization: prevent brightening from play accumulation
+    var totalPlaysAll = 0;
+    layers.forEach(function (layer) { totalPlaysAll += layer.m.plays.length; });
+    var colorNorm = totalPlaysAll > 1 ? 1.0 / (1.0 + totalPlaysAll * 0.08) : 1.0;
+
     for (var iz3 = 0; iz3 < G; iz3++) for (var ix3 = 0; ix3 < G; ix3++) {
       var idx3 = iz3 * G + ix3;
       hts[idx3] += (fb(ix3 * 0.07, iz3 * 0.07, 5) - 0.4) * 1.8;
-      var ci3 = idx3 * 3; var av = (cls[ci3] + cls[ci3 + 1] + cls[ci3 + 2]) / 3;
+      var ci3 = idx3 * 3;
+      cls[ci3] *= colorNorm; cls[ci3 + 1] *= colorNorm; cls[ci3 + 2] *= colorNorm;
+      var av = (cls[ci3] + cls[ci3 + 1] + cls[ci3 + 2]) / 3;
       cls[ci3] = cls[ci3] * 0.85 + av * 0.15 + 0.035;
       cls[ci3 + 1] = cls[ci3 + 1] * 0.85 + av * 0.15 + 0.035;
       cls[ci3 + 2] = cls[ci3 + 2] * 0.85 + av * 0.15 + 0.05;
+
+      // Contamination bone-tint overlay
+      var lp = pollField[idx3];
+      if (lp > 0.01) {
+        var grey = (cls[ci3] + cls[ci3 + 1] + cls[ci3 + 2]) / 3;
+        var boneTint = 0.12;
+        var mix = Math.min(0.85, lp * 0.8);
+        cls[ci3]     = cls[ci3]     * (1 - mix) + (grey * 0.55 + boneTint) * mix;
+        cls[ci3 + 1] = cls[ci3 + 1] * (1 - mix) + (grey * 0.45 + boneTint * 0.7) * mix;
+        cls[ci3 + 2] = cls[ci3 + 2] * (1 - mix) + (grey * 0.35 + boneTint * 0.4) * mix;
+      }
     }
 
     var minH = Infinity; var maxH = -Infinity;
@@ -336,7 +464,60 @@
         colA[cj + 2] = Math.min(1, Math.max(0, cls[cj + 2]));
       }
       geo.setAttribute('color', new THREE.BufferAttribute(colA, 3)); geo.computeVertexNormals();
-      terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.06, side: THREE.DoubleSide }));
+      var terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.06, side: THREE.DoubleSide });
+
+      // ─── Shader patch: procedural rock texture ─────────────────
+      terrainMat.onBeforeCompile = function (shader) {
+        // Inject noise + varying into fragment shader
+        shader.fragmentShader = shader.fragmentShader.replace(
+          'void main() {',
+          [
+            'varying vec3 vWPos;',
+            'float _h31(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}',
+            'float _n31(vec3 p){',
+            '  vec3 i=floor(p),f=fract(p);',
+            '  f=f*f*(3.0-2.0*f);',
+            '  return mix(mix(mix(_h31(i),_h31(i+vec3(1,0,0)),f.x),',
+            '    mix(_h31(i+vec3(0,1,0)),_h31(i+vec3(1,1,0)),f.x),f.y),',
+            '    mix(mix(_h31(i+vec3(0,0,1)),_h31(i+vec3(1,0,1)),f.x),',
+            '    mix(_h31(i+vec3(0,1,1)),_h31(i+vec3(1,1,1)),f.x),f.y),f.z);',
+            '}',
+            'float _fbm3(vec3 p){',
+            '  float v=0.0,a=0.5;',
+            '  for(int i=0;i<4;i++){v+=a*_n31(p);p*=2.1;a*=0.5;}',
+            '  return v;',
+            '}',
+            'void main() {',
+          ].join('\n')
+        );
+
+        // Apply rock texture just before output
+        shader.fragmentShader = shader.fragmentShader.replace(
+          'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+          [
+            'vec3 _wp = vWPos;',
+            'float _grain = _fbm3(_wp * 8.0) * 0.12 - 0.06;',
+            'float _slope = 1.0 - abs(dot(normal, vec3(0.0, 1.0, 0.0)));',
+            'float _crevice = _slope * _slope * 0.15;',
+            'outgoingLight += _grain;',
+            'outgoingLight -= _crevice;',
+            'outgoingLight = max(outgoingLight, vec3(0.02));',
+            'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+          ].join('\n')
+        );
+
+        // Vertex shader: pass world position
+        shader.vertexShader = shader.vertexShader.replace(
+          'void main() {',
+          'varying vec3 vWPos;\nvoid main() {'
+        );
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <fog_vertex>',
+          '#include <fog_vertex>\nvWPos = (modelMatrix * vec4(position, 1.0)).xyz;'
+        );
+      };
+
+      terrain = new THREE.Mesh(geo, terrainMat);
       scene3.add(terrain);
       terrainWire = new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({ wireframe: true, color: 0x221833, opacity: 0.04, transparent: true }));
       scene3.add(terrainWire);
@@ -491,6 +672,128 @@
       if (renderer) renderer.dispose();
     }
 
+    // ─── First-person walk mode ──────────────────────────────────
+    var _fpActive = false;
+    var _fpKeys = {};
+    var _fpEuler = { yaw: 0, pitch: 0 };
+    var _fpEyeHeight = 1.6;
+    var _fpSpeed = 8;
+    var _fpPos = { x: 0, z: 0 };
+    var _fpLastTime = 0;
+    var _fpSavedCamPos = null;
+    var _fpSavedTarget = null;
+
+    function _fpOnKeyDown(e) {
+      _fpKeys[e.code] = true;
+      if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].indexOf(e.code) >= 0) e.preventDefault();
+    }
+    function _fpOnKeyUp(e) { _fpKeys[e.code] = false; }
+    function _fpOnMouseMove(e) {
+      if (!_fpActive) return;
+      _fpEuler.yaw -= e.movementX * 0.002;
+      _fpEuler.pitch -= e.movementY * 0.002;
+      _fpEuler.pitch = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, _fpEuler.pitch));
+    }
+
+    function enterFirstPerson() {
+      if (_fpActive || !camera || !canvas) return;
+      _fpActive = true;
+      _fpSavedCamPos = camera.position.clone();
+      _fpSavedTarget = controls ? controls.target.clone() : new THREE.Vector3();
+      if (controls) controls.enabled = false;
+      camera.fov = 90;
+      camera.updateProjectionMatrix();
+      var target = _fpSavedTarget;
+      _fpPos.x = target.x;
+      _fpPos.z = target.z;
+      var h0 = gH(_fpPos.x, _fpPos.z);
+      camera.position.set(_fpPos.x, h0 + _fpEyeHeight, _fpPos.z);
+      _fpEuler.yaw = 0;
+      _fpEuler.pitch = 0;
+      _fpLastTime = performance.now();
+      canvas.requestPointerLock();
+      document.addEventListener('keydown', _fpOnKeyDown);
+      document.addEventListener('keyup', _fpOnKeyUp);
+      document.addEventListener('mousemove', _fpOnMouseMove);
+    }
+
+    function exitFirstPerson() {
+      if (!_fpActive) return;
+      _fpActive = false;
+      document.removeEventListener('keydown', _fpOnKeyDown);
+      document.removeEventListener('keyup', _fpOnKeyUp);
+      document.removeEventListener('mousemove', _fpOnMouseMove);
+      if (document.pointerLockElement) document.exitPointerLock();
+      _fpKeys = {};
+      camera.fov = 50;
+      camera.updateProjectionMatrix();
+      if (controls) controls.enabled = true;
+      if (_fpSavedCamPos) camera.position.copy(_fpSavedCamPos);
+      if (_fpSavedTarget && controls) { controls.target.copy(_fpSavedTarget); controls.update(); }
+    }
+
+    function _fpTick() {
+      if (!_fpActive) return;
+      var now = performance.now();
+      var dt = Math.min((now - _fpLastTime) / 1000, 0.1);
+      _fpLastTime = now;
+      var forward = { x: -Math.sin(_fpEuler.yaw), z: -Math.cos(_fpEuler.yaw) };
+      var right   = { x:  Math.cos(_fpEuler.yaw), z: -Math.sin(_fpEuler.yaw) };
+      var mx = 0, mz = 0;
+      if (_fpKeys['KeyW'] || _fpKeys['ArrowUp'])    { mx += forward.x; mz += forward.z; }
+      if (_fpKeys['KeyS'] || _fpKeys['ArrowDown'])   { mx -= forward.x; mz -= forward.z; }
+      if (_fpKeys['KeyA'] || _fpKeys['ArrowLeft'])    { mx -= right.x;   mz -= right.z;   }
+      if (_fpKeys['KeyD'] || _fpKeys['ArrowRight'])   { mx += right.x;   mz += right.z;   }
+      var len = Math.sqrt(mx * mx + mz * mz);
+      if (len > 0) { mx /= len; mz /= len; }
+      _fpPos.x += mx * _fpSpeed * dt;
+      _fpPos.z += mz * _fpSpeed * dt;
+      var half = SZ / 2 - 1;
+      _fpPos.x = Math.max(-half, Math.min(half, _fpPos.x));
+      _fpPos.z = Math.max(-half, Math.min(half, _fpPos.z));
+      var terrainH = gH(_fpPos.x, _fpPos.z);
+      if (terrainH < -6) terrainH = -6;
+      camera.position.set(_fpPos.x, terrainH + _fpEyeHeight, _fpPos.z);
+      camera.rotation.order = 'YXZ';
+      camera.rotation.set(_fpEuler.pitch, _fpEuler.yaw, 0);
+    }
+
+    var _origTick = tick;
+    tick = function () {
+      if (_fpActive) {
+        _fpTick();
+        time += 0.004;
+        if (oP1 && oP2) {
+          oP1.position.set(Math.sin(time * 0.6) * 22, 6 + Math.sin(time * 0.3) * 3, Math.cos(time * 0.4) * 22);
+          oP2.position.set(Math.cos(time * 0.5) * 18, 8, Math.sin(time * 0.7) * 18);
+        }
+        if (seedGrp) {
+          seedGrp.children.forEach(function (c, i) {
+            if (c.isMesh && c.geometry && c.geometry.type === 'CylinderGeometry') {
+              var p = 1 + Math.sin(time * 2.5 + i * 1.2) * 0.08;
+              c.scale.set(p, 1, p);
+              if (c.material && c.material.emissiveIntensity !== undefined) c.material.emissiveIntensity = 0.35 + Math.sin(time * 3 + i * 0.8) * 0.2;
+            }
+          });
+        }
+        if (parts && parts.geometry && parts.geometry.attributes.position) {
+          var pp = parts.geometry.attributes.position;
+          for (var i = 0; i < 400; i++) {
+            var y = pp.getY(i) + pVl[i]; if (y > 18) y = -5;
+            pp.setY(i, y); pp.setX(i, pp.getX(i) + Math.sin(time + i * 0.3) * 0.0015);
+          }
+          pp.needsUpdate = true;
+        }
+        if (renderer && scene3 && camera) renderer.render(scene3, camera);
+      } else {
+        _origTick();
+      }
+    };
+
+    document.addEventListener('pointerlockchange', function () {
+      if (_fpActive && !document.pointerLockElement) exitFirstPerson();
+    });
+
     return {
       init: init,
       setP: setP,
@@ -506,13 +809,23 @@
       gH: gH,
       focusCameraOnSeed: focusCameraOnSeed,
       dispose: dispose,
+      enterFirstPerson: enterFirstPerson,
+      exitFirstPerson: exitFirstPerson,
+      isFirstPerson: function () { return _fpActive; },
     };
   }
 
   global.TemAfStrataTerrain = {
     buildMemoryItems: buildMemoryItems,
     computeAfTerrainFields: computeAfTerrainFields,
-    createStrataTerrain: createStrataTerrain,
+    createStrataTerrain: function (THREE, canvas, opts) {
+      var rt = createStrataTerrain(THREE, canvas, opts);
+      global.TemAfStrataTerrain._lastRuntime = rt;
+      return rt;
+    },
     playAlignment: playAlignment,
+    _lastRuntime: null,
+    _eA: eA, _eF: eF, _pX: pX, _pZ: pZ, _hashWorldOffset: hashWorldOffset,
+    _E2A: E2A, _E2F: E2F,
   };
 })(typeof window !== 'undefined' ? window : this);

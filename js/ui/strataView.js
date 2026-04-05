@@ -197,6 +197,14 @@
         else memRow = getMemoryRowFallback(memoryId);
       }
 
+      // Fetch scenes for scene pins (admin mode)
+      var scenesRes = await client
+        .from('scenes')
+        .select('id, memory_id, scene_order, text, original_emotion')
+        .eq('memory_id', memoryId)
+        .order('scene_order', { ascending: true });
+      var sceneRows = (scenesRes && !scenesRes.error && scenesRes.data) ? scenesRes.data : [];
+
       var playsRes = await client
         .from('plays')
         .select('id, memory_id, scene_id, user_emotion, alignment, mismatch_type, created_at, user_id')
@@ -227,7 +235,9 @@
 
       var playsByMem = {};
       playsByMem[memoryId] = plays;
-      var P = T.buildMemoryItems([memRow], playsByMem);
+      var scenesByMem = {};
+      scenesByMem[memoryId] = sceneRows;
+      var P = T.buildMemoryItems([memRow], playsByMem, scenesByMem);
 
       // Mark which plays belong to the current user
       var userPlayCount = 0;
@@ -235,11 +245,19 @@
         userPlayCount = plays.filter(function (p) { return p.user_id === currentUserId; }).length;
       }
 
+      // Collect current user's plays with emotion data for markers
+      var userPlays = [];
+      if (currentUserId) {
+        userPlays = plays.filter(function (p) { return p.user_id === currentUserId; });
+      }
+
       return {
         P: P,
         title: memRow.title || memRow.completed_sentence || memRow.memory_words || 'Memory',
         playCount: plays.length,
         userPlayCount: userPlayCount,
+        userPlays: userPlays,
+        scenes: sceneRows,
         currentUserId: currentUserId,
         contamination: computeContamination(plays),
         subtitle: '',
@@ -259,6 +277,228 @@
     }
   }
 
+  // ─── Proximity monologue generation ──────────────────────────
+  var EMOTION_KO = {
+    fear:'공포', sadness:'슬픔', anger:'분노', guilt:'죄책감', shame:'수치심',
+    isolation:'고립', numbness:'무감각', moral_pain:'도덕적 고통', helplessness:'무력감',
+    despair:'절망', joy:'기쁨', hope:'희망', relief:'안도', gratitude:'감사',
+    love:'사랑', peace:'평화', comfort:'위로', longing:'그리움', nostalgia:'향수',
+    confusion:'혼란', emptiness:'공허'
+  };
+
+  function _generateProximityMonologue(origDom, playDom, avgAlignment, playCount) {
+    if (playCount === 0) return '…아무도 여기 오지 않았다.';
+
+    // Same emotion
+    if (origDom === playDom) {
+      if (avgAlignment > 0.6) return '…여기는 익숙해. 누군가 같은 걸 느꼈나 봐.';
+      return '…같은 감정인데, 무게가 다르다.';
+    }
+
+    // Categorize emotions
+    var neg = ['fear','sadness','anger','guilt','shame','isolation','numbness','moral_pain','helplessness','despair','emptiness'];
+    var pos = ['joy','hope','relief','gratitude','love','peace','comfort'];
+    var origNeg = neg.indexOf(origDom) >= 0;
+    var playNeg = neg.indexOf(playDom) >= 0;
+
+    // Negative original + positive play overlay
+    if (origNeg && !playNeg) return '…여긴 원래 어두웠는데. 누가 빛을 가져다 놨어.';
+    // Positive original + negative play overlay
+    if (!origNeg && playNeg) return '…밝았던 곳인데. 무거운 게 얹어져 있다.';
+    // Different negative emotions
+    if (origNeg && playNeg) {
+      if (origDom === 'sadness' && playDom === 'anger') return '…슬픔이었는데, 누가 여기서 화를 냈다.';
+      if (origDom === 'anger' && playDom === 'sadness') return '…분노의 자리에 슬픔이 스며들었어.';
+      if (origDom === 'fear') return '…두려움 위에 다른 그림자가 겹쳐 있다.';
+      return '…여긴 어디지. 원래 이런 곳이 아니었는데.';
+    }
+    // Different positive emotions
+    if (!origNeg && !playNeg) return '…같은 빛인데 색이 다르다.';
+
+    return '…뭔가 달라졌다. 원래 이랬나.';
+  }
+
+  // ─── Proximity system (first-person, admin only) ────────────
+  var _proxState = { nearPin: null, el: null, hintEl: null, panelEl: null, longPressTimer: null, shakeTimer: null };
+
+  function _ensureProximityUI() {
+    if (_proxState.el) return;
+
+    // Find the best parent — fullscreen container or strataView or body
+    var parent = document.getElementById('adminStrataContainer') || document.getElementById('strataView') || document.body;
+
+    // Monologue text (bottom center)
+    var el = document.createElement('div');
+    el.id = 'strataProximityText';
+    el.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);color:#c4a882;font-size:14px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 0 10px rgba(196,168,130,0.4);max-width:400px;';
+    parent.appendChild(el);
+    _proxState.el = el;
+
+    // Long-press hint (below monologue)
+    var hint = document.createElement('div');
+    hint.id = 'strataProximityHint';
+    hint.style.cssText = 'position:absolute;bottom:50px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.4);font-size:11px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;';
+    parent.appendChild(hint);
+    _proxState.hintEl = hint;
+
+    // Detail panel (center overlay)
+    var panel = document.createElement('div');
+    panel.id = 'strataScenePanel';
+    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,15,0.95);color:#c4a882;border:1px solid rgba(196,168,130,0.2);border-radius:6px;padding:24px 32px;max-width:420px;width:90%;z-index:300;display:none;font-size:13px;line-height:1.8;max-height:70vh;overflow-y:auto;';
+    parent.appendChild(panel);
+    _proxState.panelEl = panel;
+  }
+
+  function _showProximityMonologue(pin) {
+    var sd = pin.userData._sceneData;
+    if (!sd) return;
+    _ensureProximityUI();
+    _proxState.el.textContent = sd.monologue;
+    _proxState.el.style.opacity = '1';
+    _proxState.hintEl.textContent = '클릭을 길게 눌러 들여다 보세요';
+    _proxState.hintEl.style.opacity = '1';
+    _proxState.nearPin = pin;
+  }
+
+  function _hideProximityMonologue() {
+    if (_proxState.el) _proxState.el.style.opacity = '0';
+    if (_proxState.hintEl) _proxState.hintEl.style.opacity = '0';
+    _proxState.nearPin = null;
+  }
+
+  function _openScenePanel(pin) {
+    var sd = pin.userData._sceneData;
+    if (!sd) return;
+    _ensureProximityUI();
+
+    var origDomKo = EMOTION_KO[sd.originalDominant] || sd.originalDominant;
+    var playDomKo = EMOTION_KO[sd.playDominant] || sd.playDominant || '—';
+
+    var html = '<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(196,168,130,0.4);margin-bottom:8px;">Scene ' + (sd.sceneOrder + 1) + '</div>';
+    html += '<div style="font-size:14px;line-height:1.8;margin-bottom:16px;color:rgba(196,168,130,0.8);">' + sd.text + '</div>';
+    html += '<div style="border-top:1px solid rgba(196,168,130,0.1);padding-top:12px;font-size:12px;">';
+    html += '<div style="margin-bottom:4px;">원본 감정: <span style="color:#6a9fd8;">' + origDomKo + '</span></div>';
+    if (sd.playCount > 0) {
+      html += '<div style="margin-bottom:4px;">체험자 감정: <span style="color:#c4a882;">' + playDomKo + '</span> (' + sd.playCount + '회 체험)</div>';
+      html += '<div style="margin-bottom:4px;">평균 정렬도: ' + (sd.avgAlignment * 100).toFixed(0) + '%</div>';
+    } else {
+      html += '<div style="color:rgba(196,168,130,0.3);">아직 아무도 이 장면을 체험하지 않았다</div>';
+    }
+
+    // Show each play's dominant emotion
+    if (sd.plays && sd.plays.length > 0) {
+      html += '<div style="margin-top:12px;border-top:1px solid rgba(196,168,130,0.1);padding-top:8px;font-size:11px;color:rgba(196,168,130,0.5);">';
+      sd.plays.forEach(function (p, pi) {
+        var ue = p.user_emotion;
+        if (typeof ue === 'string') { try { ue = JSON.parse(ue); } catch (_) { ue = {}; } }
+        var dk = ''; var dv = 0;
+        for (var k in ue) { if (ue[k] > dv) { dv = ue[k]; dk = k; } }
+        var dkKo = EMOTION_KO[dk] || dk;
+        var al = p.alignment ? (p.alignment * 100).toFixed(0) + '%' : '—';
+        html += '<div>' + (pi + 1) + '. ' + dkKo + ' — ' + al + '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>';
+    html += '<div style="margin-top:16px;text-align:center;font-size:11px;color:rgba(196,168,130,0.3);cursor:pointer;" id="strataScenePanelClose">클릭하여 닫기</div>';
+
+    _proxState.panelEl.innerHTML = html;
+    _proxState.panelEl.style.display = 'block';
+    _proxState.panelEl.style.pointerEvents = 'auto';
+
+    // Exit pointer lock so user can interact with panel
+    if (document.pointerLockElement) document.exitPointerLock();
+
+    function _closePanel() {
+      _proxState.panelEl.style.display = 'none';
+      document.removeEventListener('keydown', _panelKeyHandler);
+    }
+
+    // Close on click
+    var closeEl = document.getElementById('strataScenePanelClose');
+    if (closeEl) closeEl.onclick = _closePanel;
+    _proxState.panelEl.onclick = function (e) {
+      if (e.target === _proxState.panelEl || e.target === closeEl) _closePanel();
+    };
+
+    // Close on any key press (ESC, space, etc.)
+    function _panelKeyHandler(e) {
+      _closePanel();
+      e.preventDefault();
+    }
+    document.addEventListener('keydown', _panelKeyHandler);
+  }
+
+  function _screenShakeThenOpen(pin) {
+    if (!canvas) { _openScenePanel(pin); return; }
+    var orig = canvas.style.transform || '';
+    var count = 0;
+    var interval = setInterval(function () {
+      var dx = (Math.random() - 0.5) * 4;
+      var dy = (Math.random() - 0.5) * 4;
+      canvas.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      count++;
+      if (count > 8) {
+        clearInterval(interval);
+        canvas.style.transform = orig;
+        _openScenePanel(pin);
+      }
+    }, 40);
+  }
+
+  function _setupProximitySystem(scenePins, runtime, cvs) {
+    var PROXIMITY_DIST = 6;
+    var LONG_PRESS_MS = 800;
+
+    // Check proximity every frame — works in both orbit and first-person
+    var _proxInterval = setInterval(function () {
+      if (!runtime) return;
+      var cam = runtime.getCamera();
+      if (!cam) return;
+
+      var closest = null; var closestDist = Infinity;
+      scenePins.forEach(function (pin) {
+        var dx = cam.position.x - pin.position.x;
+        var dz = cam.position.z - pin.position.z;
+        var dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < closestDist) { closestDist = dist; closest = pin; }
+      });
+
+      if (closest && closestDist < PROXIMITY_DIST) {
+        if (_proxState.nearPin !== closest) {
+          console.log('[Strata Proximity] Near pin, dist=' + closestDist.toFixed(1), closest.userData._sceneData?.monologue);
+          _showProximityMonologue(closest);
+        }
+        // Pulse the pin
+        closest.material.emissiveIntensity = 0.5 + Math.sin(performance.now() * 0.004) * 0.3;
+      } else {
+        if (_proxState.nearPin) _hideProximityMonologue();
+      }
+    }, 100);
+
+    // Long-press to open panel
+    var _pressStart = 0;
+    var _pressTimer = null;
+    var _onMouseDown = function () {
+      if (!_proxState.nearPin) return;
+      _pressStart = Date.now();
+      _pressTimer = setTimeout(function () {
+        if (_proxState.nearPin) _screenShakeThenOpen(_proxState.nearPin);
+      }, LONG_PRESS_MS);
+    };
+    var _onMouseUp = function () {
+      if (_pressTimer) { clearTimeout(_pressTimer); _pressTimer = null; }
+    };
+    cvs.addEventListener('mousedown', _onMouseDown);
+    cvs.addEventListener('mouseup', _onMouseUp);
+
+    // Store cleanup refs
+    cvs._proxInterval = _proxInterval;
+    cvs._proxMouseDown = _onMouseDown;
+    cvs._proxMouseUp = _onMouseUp;
+  }
+
   function animateLoop() {
     if (terrainRuntime) terrainRuntime.tick();
     animId = requestAnimationFrame(animateLoop);
@@ -268,6 +508,19 @@
     g.Strata.stop();
     var viewEl = document.getElementById('strataView');
     if (viewEl) viewEl.style.display = 'none';
+    // Cleanup hover tooltip and listener
+    var tip = document.getElementById('strataTooltip');
+    if (tip) tip.style.display = 'none';
+    if (canvas && canvas._strataMouseMove) {
+      canvas.removeEventListener('mousemove', canvas._strataMouseMove);
+      canvas._strataMouseMove = null;
+    }
+    // Cleanup proximity system
+    if (canvas && canvas._proxInterval) { clearInterval(canvas._proxInterval); canvas._proxInterval = null; }
+    if (canvas && canvas._proxMouseDown) { canvas.removeEventListener('mousedown', canvas._proxMouseDown); canvas._proxMouseDown = null; }
+    if (canvas && canvas._proxMouseUp) { canvas.removeEventListener('mouseup', canvas._proxMouseUp); canvas._proxMouseUp = null; }
+    _hideProximityMonologue();
+    if (_proxState.panelEl) _proxState.panelEl.style.display = 'none';
     if (_onCloseCallback) {
       _onCloseCallback();
     } else if (typeof g.enterArchive === 'function') {
@@ -299,38 +552,238 @@
       g.Strata.start();
       g.Strata.init(strataInput);
 
-      // Add user play markers if the current user has played this memory
-      if (strataInput.userPlayCount > 0 && terrainRuntime) {
+      // Clean up previous user markers
+      if (terrainRuntime) {
+        var scene3 = terrainRuntime.getScene();
+        if (scene3) {
+          var toRemove = [];
+          scene3.traverse(function (obj) { if (obj.userData._userMarker) toRemove.push(obj); });
+          toRemove.forEach(function (obj) {
+            scene3.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+          });
+        }
+      }
+
+      // Add user play markers with hover data
+      var _userMarkerMeshes = [];
+      if (strataInput.userPlays && strataInput.userPlays.length > 0 && terrainRuntime) {
         try {
           var scene3 = terrainRuntime.getScene();
           var seedData = terrainRuntime.getSeedData ? terrainRuntime.getSeedData() : null;
           if (scene3 && seedData && seedData.length > 0) {
-            seedData.forEach(function (seed) {
-              // Glowing ring at each seed position to mark "you were here"
-              var ringGeo = new THREE.RingGeometry(0.25, 0.35, 16);
-              ringGeo.rotateX(-Math.PI / 2);
-              var ringMat = new THREE.MeshBasicMaterial({
-                color: 0xc4a882,
-                transparent: true,
-                opacity: 0.7,
-                side: THREE.DoubleSide,
-              });
-              var ring = new THREE.Mesh(ringGeo, ringMat);
-              ring.position.set(seed.wx, seed.h + 0.15, seed.wz);
-              ring.userData._userMarker = true;
-              scene3.add(ring);
+            // Place one marker per play, distributed around seed positions
+            strataInput.userPlays.forEach(function (play, pi) {
+              var seed = seedData[pi % seedData.length];
+              // Offset each play slightly so they don't overlap
+              var angle = (pi / Math.max(1, strataInput.userPlays.length)) * Math.PI * 2;
+              var offsetR = 0.4 + (pi % 3) * 0.2;
+              var mx = seed.wx + Math.cos(angle) * offsetR;
+              var mz = seed.wz + Math.sin(angle) * offsetR;
+              var mh = terrainRuntime.gH(mx, mz);
 
-              // Soft point light to highlight
-              var glow = new THREE.PointLight(0xc4a882, 0.4, 5, 2);
-              glow.position.set(seed.wx, seed.h + 1.0, seed.wz);
+              // Sphere marker
+              var sphereGeo = new THREE.SphereGeometry(0.15, 12, 12);
+              var sphereMat = new THREE.MeshStandardMaterial({
+                color: 0xc4a882, emissive: 0xc4a882, emissiveIntensity: 0.4,
+                transparent: true, opacity: 0.85, roughness: 0.3
+              });
+              var sphere = new THREE.Mesh(sphereGeo, sphereMat);
+              sphere.position.set(mx, mh + 0.3, mz);
+              sphere.userData._userMarker = true;
+
+              // Store play data for hover tooltip
+              var emo = play.user_emotion || {};
+              var dominantKey = ''; var dominantVal = 0;
+              Object.keys(emo).forEach(function (k) {
+                if (emo[k] > dominantVal) { dominantVal = emo[k]; dominantKey = k; }
+              });
+              sphere.userData._playInfo = {
+                alignment: play.alignment,
+                dominantEmotion: dominantKey,
+                dominantValue: dominantVal,
+                mismatch: play.mismatch_type,
+                date: play.created_at ? play.created_at.substring(0, 10) : ''
+              };
+
+              scene3.add(sphere);
+              _userMarkerMeshes.push(sphere);
+
+              // Subtle glow
+              var glow = new THREE.PointLight(0xc4a882, 0.25, 4, 2);
+              glow.position.set(mx, mh + 1.0, mz);
               glow.userData._userMarker = true;
               scene3.add(glow);
             });
-            console.log('[Strata] Added user play markers:', seedData.length);
+            console.log('[Strata] Added user play markers:', strataInput.userPlays.length);
           }
         } catch (e) {
           console.warn('[Strata] User marker error:', e.message);
         }
+      }
+
+      // ─── Scene pins (admin only — all scenes visible) ───────────
+      var _scenePinMeshes = [];
+      var isAdmin = !!document.getElementById('adminDashboard');
+
+      // Collect plays grouped by scene_id for proximity monologue
+      var _playsByScene = {};
+      if (strataInput.P && strataInput.P[0] && strataInput.P[0].plays) {
+        strataInput.P[0].plays.forEach(function (p) {
+          if (p.scene_id) {
+            if (!_playsByScene[p.scene_id]) _playsByScene[p.scene_id] = [];
+            _playsByScene[p.scene_id].push(p);
+          }
+        });
+      }
+
+      if (isAdmin && strataInput.scenes && strataInput.scenes.length > 0 && terrainRuntime) {
+        try {
+          var scene3 = terrainRuntime.getScene();
+          var T = g.TemAfStrataTerrain;
+          strataInput.scenes.forEach(function (sc, si) {
+            var emo = sc.original_emotion;
+            if (!emo) return;
+            if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
+
+            // Compute AF coordinates using exposed helpers
+            var sA = T._eA(emo);
+            var sF = T._eF(emo);
+            var H2 = 23;
+            var sx = T._pX(sA) * H2;
+            var sz = T._pZ(sF) * H2;
+            var off = T._hashWorldOffset(strataInput.P[0] ? strataInput.P[0].id : '');
+            sx += off.ox; sz += off.oz;
+            var sh = terrainRuntime.gH(sx, sz);
+
+            // Diamond-shaped pin for scenes
+            var pinGeo = new THREE.OctahedronGeometry(0.2, 0);
+            var pinCol = 0x6a9fd8;
+            var pinMat = new THREE.MeshStandardMaterial({
+              color: pinCol, emissive: pinCol, emissiveIntensity: 0.3,
+              transparent: true, opacity: 0.9, roughness: 0.4
+            });
+            var pin = new THREE.Mesh(pinGeo, pinMat);
+            pin.position.set(sx, sh + 0.5, sz);
+            pin.userData._userMarker = true;
+            pin.userData._isScenePin = true;
+
+            // Find dominant original emotion
+            var origDom = ''; var origDomVal = 0;
+            for (var ek in emo) { if (emo[ek] > origDomVal) { origDomVal = emo[ek]; origDom = ek; } }
+
+            // Find dominant play emotion for this scene (if any plays exist)
+            var scenePlays = _playsByScene[sc.id] || [];
+            var playDom = ''; var playDomVal = 0;
+            var avgAlignment = 0;
+            scenePlays.forEach(function (sp) {
+              if (sp.alignment) avgAlignment += sp.alignment;
+              var ue = sp.user_emotion;
+              if (!ue) return;
+              if (typeof ue === 'string') { try { ue = JSON.parse(ue); } catch (_) { return; } }
+              for (var pk in ue) { if (ue[pk] > playDomVal) { playDomVal = ue[pk]; playDom = pk; } }
+            });
+            if (scenePlays.length > 0) avgAlignment /= scenePlays.length;
+
+            // Generate proximity monologue based on emotional comparison
+            var monologue = _generateProximityMonologue(origDom, playDom, avgAlignment, scenePlays.length);
+
+            pin.userData._sceneData = {
+              sceneOrder: sc.scene_order != null ? sc.scene_order : si,
+              text: sc.text || '',
+              originalEmotion: emo,
+              originalDominant: origDom,
+              playDominant: playDom,
+              playCount: scenePlays.length,
+              avgAlignment: avgAlignment,
+              monologue: monologue,
+              plays: scenePlays
+            };
+
+            pin.userData._playInfo = {
+              alignment: scenePlays.length > 0 ? avgAlignment : null,
+              dominantEmotion: 'Scene ' + ((sc.scene_order != null ? sc.scene_order : si) + 1),
+              dominantValue: null,
+              mismatch: (sc.text || '').substring(0, 50) + (sc.text && sc.text.length > 50 ? '…' : ''),
+              date: scenePlays.length > 0 ? scenePlays.length + ' plays' : 'no plays'
+            };
+
+            scene3.add(pin);
+            _scenePinMeshes.push(pin);
+
+            // Thin vertical line from terrain to pin
+            var lineGeo = new THREE.BufferGeometry().setFromPoints([
+              new THREE.Vector3(sx, sh, sz),
+              new THREE.Vector3(sx, sh + 0.5, sz)
+            ]);
+            var line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: pinCol, opacity: 0.4, transparent: true }));
+            line.userData._userMarker = true;
+            scene3.add(line);
+          });
+          console.log('[Strata] Added scene pins (admin):', _scenePinMeshes.length);
+        } catch (e) {
+          console.warn('[Strata] Scene pin error:', e.message);
+        }
+      }
+
+      // ─── Proximity system (admin only) ──────────────────────────
+      console.log('[Strata] isAdmin:', isAdmin, 'scenePins:', _scenePinMeshes.length, 'scenes:', strataInput.scenes ? strataInput.scenes.length : 0);
+      if (isAdmin && _scenePinMeshes.length > 0) {
+        _setupProximitySystem(_scenePinMeshes, terrainRuntime, canvas);
+        console.log('[Strata] Proximity system initialized with', _scenePinMeshes.length, 'pins');
+      }
+
+      // ─── Hover tooltip for markers + scene pins ─────────────────
+      var _allHoverTargets = _userMarkerMeshes.concat(_scenePinMeshes);
+      if (_allHoverTargets.length > 0 && terrainRuntime && canvas) {
+        var raycaster = new THREE.Raycaster();
+        var mouse = new THREE.Vector2();
+        var tooltip = document.getElementById('strataTooltip');
+        if (!tooltip) {
+          tooltip = document.createElement('div');
+          tooltip.id = 'strataTooltip';
+          tooltip.style.cssText = 'position:fixed;pointer-events:none;background:rgba(10,10,15,0.92);color:#c4a882;font-size:12px;padding:6px 10px;border:1px solid rgba(196,168,130,0.3);border-radius:4px;display:none;z-index:9999;max-width:220px;line-height:1.5;';
+          document.body.appendChild(tooltip);
+        }
+        var _hoveredMarker = null;
+
+        var _onStrataMouseMove = function (e) {
+          var rect = canvas.getBoundingClientRect();
+          mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(mouse, terrainRuntime.getCamera());
+          var hits = raycaster.intersectObjects(_allHoverTargets);
+          if (hits.length > 0) {
+            var info = hits[0].object.userData._playInfo;
+            if (info) {
+              var lines = [];
+              if (info.dominantValue != null) {
+                lines.push(info.dominantEmotion + ' ' + ((info.dominantValue) * 100).toFixed(0) + '%');
+              } else {
+                lines.push('<b>' + info.dominantEmotion + '</b>');
+              }
+              if (info.alignment != null) lines.push('alignment ' + ((info.alignment) * 100).toFixed(0) + '%');
+              if (info.mismatch) lines.push(info.mismatch);
+              if (info.date) lines.push(info.date);
+              tooltip.innerHTML = lines.join('<br>');
+              tooltip.style.display = 'block';
+              tooltip.style.left = (e.clientX + 12) + 'px';
+              tooltip.style.top = (e.clientY - 10) + 'px';
+              if (_hoveredMarker !== hits[0].object) {
+                if (_hoveredMarker) _hoveredMarker.material.emissiveIntensity = _hoveredMarker.userData._baseEmissive || 0.4;
+                _hoveredMarker = hits[0].object;
+                _hoveredMarker.userData._baseEmissive = _hoveredMarker.material.emissiveIntensity;
+                _hoveredMarker.material.emissiveIntensity = 1.0;
+              }
+            }
+          } else {
+            tooltip.style.display = 'none';
+            if (_hoveredMarker) { _hoveredMarker.material.emissiveIntensity = _hoveredMarker.userData._baseEmissive || 0.4; _hoveredMarker = null; }
+          }
+        };
+        canvas.addEventListener('mousemove', _onStrataMouseMove);
+        canvas._strataMouseMove = _onStrataMouseMove;
       }
 
       var viewEl = document.getElementById('strataView');

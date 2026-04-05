@@ -20,38 +20,10 @@ import { uiManager } from './ui/UIManager.js';
 import { visualizer } from './ui/Visualizer.js';
 import { bindEvents } from './app/bindEvents.js';
 import { showNotification, showNpcDialogue } from './ui/notify.js';
-import {
-    selectRole, generateSessionCode, copySessionCode, joinSession,
-    createLiveSession, subscribeToSessionJoin, checkExperiencerJoin,
-    subscribeToLiveScenes, subscribeToLiveInterpretations,
-    subscribeToExperiencerChoices, subscribeToScenes, subscribeToNarratorEmotion,
-    displayExperiencerEmotionForNarrator, onExperiencerChoiceReceived,
-    checkAlignment, updateAlignmentWave, updateExperiencerAlignment,
-    saveLiveScene, saveSceneToLiveSession,
-    endLiveSession, stopAllLiveSubscriptions, exitLive,
-    // Phase 2
-    startLiveSession, sendNarratorInput, handleUnifiedSubmit,
-    generateSceneAI, analyzeEmotionWithVector,
-    sendChatMessage, sendChatMessageWithDeps,
-    sendExpChatMessage, sendExpChatMessageWithDeps,
-    addChatMessage, addChatMessageWithConfirm, removeConfirmButtons,
-    addExpChatMessage, addExpChatMessageWithConfirm, removeExpConfirmButtons,
-    switchGeneratedTab, switchExpGeneratedTab,
-    extractGeneratedText, parseEmotionInput, formatEmotionVector,
-    parseEmotionAnalysisResult, parseSceneGenerationResult,
-    handleConfirm, handleExpConfirm,
-    simulateNarratorInput, renderLiveEchoLayer, makeLiveChoice,
-    submitExperiencerFeeling, submitScene,
-    updateLiveAlignment, updateNarratorWave, renderExperiencerWave,
-    computeArchiveWaveData, updateExperiencerStatus,
-    toggleEditMode, saveEditedScene,
-    startVoiceMode, switchToTextMode, switchToTextInput, switchToVoiceInput,
-    switchExpToTextInput, switchExpToVoiceInput,
-    toggleRecording, toggleExpRecording,
-    startLiveVoiceInput, stopLiveVoiceInput,
-    startVoiceWaveLiveAnimation, stopVoiceWaveLiveAnimation,
-    resetLiveState,
-} from './app/live.js';
+// Live mode: dynamic import — only loaded when live session is actually started.
+// This keeps ~2,900 LOC out of the initial bundle.
+// (static import block removed; all live functions accessed via _loadLive/_liveFn)
+
 import {
     fadeInSound, fadeOutSound, setupLoopWithCrossfade,
     startOpeningSequence, startOpeningWaveAnimation,
@@ -105,6 +77,19 @@ import {
     collectEmotionInput, runEngineStep, applyEngineResult,
     updateUIAfterSubmit, persistAfterSubmit, proceedToNextSceneOrEnd,
 } from './app/archive.js';
+
+// ─── Live mode: lazy loading ─────────────────────────────────────
+let _liveModule = null;
+async function _loadLive() {
+    if (!_liveModule) _liveModule = await import('./app/live.js');
+    return _liveModule;
+}
+function _liveFn(name) {
+    return async function (...args) {
+        const m = await _loadLive();
+        return m[name]?.(...args);
+    };
+}
 
 console.log('=== Shared Modules Loaded ===');
 console.log('API:', typeof fetchMemories);
@@ -369,7 +354,7 @@ function backToIntro() { if (window.soundscape) window.soundscape.stop(); const 
 function backToModeSelection() { const sessionSetupEl = document.getElementById('sessionSetup'); if (sessionSetupEl) { sessionSetupEl.classList.remove('active'); sessionSetupEl.style.display = 'none' } const modeSelectionEl = document.getElementById('modeSelection'); if (modeSelectionEl) { modeSelectionEl.classList.add('active'); modeSelectionEl.style.cssText = 'display:flex !important;z-index:1900 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important' } }
 // DORMANT: Live mode uses intentional linear progression (currentScene + 1).
 // Do NOT replace with SceneNavigator — live mode is not in active menu.
-function proceedToNextSceneLive() { try { const currentData = appStore.getState().currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('Unable to load scene data'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); simulateNarratorInput() } else { showEndScreen() } } catch (e) { console.error('proceedToNextSceneLive error:', e); showNotification('An error occurred') } }
+async function proceedToNextSceneLive() { try { const currentData = appStore.getState().currentStoryData || storyData; const state = appStore.getState(); if (!currentData || !currentData.scenes || !currentData.scenes[state.currentScene]) { showNotification('Unable to load scene data'); return } if (state.currentScene < currentData.scenes.length - 1) { appStore.setState({ currentScene: state.currentScene + 1 }); const live = await _loadLive(); live.simulateNarratorInput() } else { showEndScreen() } } catch (e) { console.error('proceedToNextSceneLive error:', e); showNotification('An error occurred') } }
 function updateStrata() { const state = appStore.getState(); const originalPercent = 70 - (state.currentScene * 10), interpretPercent = 30 + (state.currentScene * 10); document.getElementById('strataOriginal').style.height = originalPercent + '%'; document.getElementById('strataInterpretation').style.height = interpretPercent + '%'; document.getElementById('strataInterpretation').style.bottom = originalPercent + '%' }
 function getAlignmentLevel(alignment) { if (alignment >= 0.55) return 'HIGH'; if (alignment >= 0.35) return 'MID'; return 'LOW' } function startWaveAnimation() { const canvas = document.getElementById('waveCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); let time = 0; const state = appStore.getState(); const alignmentLevel = getAlignmentLevel(state.currentAlignment); function animate() { const width = canvas.width / 2, height = canvas.height / 2, centerY = height / 2; ctx.fillStyle = 'rgba(18,18,26,0.1)'; ctx.fillRect(0, 0, width, height); if (alignmentLevel === 'HIGH') { ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.8)'; ctx.lineWidth = 2; const syncPhase = time * 0.05; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.02 + syncPhase) * 15 + Math.sin(x * 0.01 + syncPhase * 0.6) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(122,154,122,0.7)'; ctx.lineWidth = 2; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.02 + syncPhase + Math.PI * 0.1) * 15 + Math.sin(x * 0.01 + syncPhase * 0.6 + Math.PI * 0.1) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'MID') { ctx.save(); ctx.filter = 'blur(1px)'; const irregularity = Math.sin(time * 0.1) * 0.3 + 0.7; ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.6)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const noise = Math.random() * 5 - 2.5; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + noise * 0.1) * 15 * irregularity + Math.sin(x * 0.01 + time * 0.03 + noise * 0.05) * 10 * irregularity; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.restore(); ctx.beginPath(); ctx.strokeStyle = 'rgba(123,143,168,0.5)'; ctx.lineWidth = 1.5; const state = appStore.getState(); const offset = (1 - state.currentAlignment) * 30; for (let x = 0; x < width; x++) { const noise = Math.random() * 3 - 1.5; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + offset + noise * 0.1) * 15 + Math.sin(x * 0.01 + time * 0.03 + offset * 0.5 + noise * 0.05) * 10; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'LOW') { const glitch = Math.random() > 0.9; if (glitch) { ctx.save(); ctx.filter = 'invert(1)'; ctx.fillStyle = 'rgba(217,74,74,0.3)'; ctx.fillRect(0, 0, width, height); ctx.restore() } const noiseAmplitude = 10 + Math.random() * 10; ctx.beginPath(); ctx.strokeStyle = glitch ? 'rgba(217,74,74,0.8)' : 'rgba(196,168,130,0.4)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const noise = Math.random() * noiseAmplitude - noiseAmplitude / 2; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + noise * 0.2) * 15 + Math.sin(x * 0.01 + time * 0.03 + noise * 0.1) * 10 + noise; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = glitch ? 'rgba(217,74,74,0.6)' : 'rgba(123,143,168,0.3)'; ctx.lineWidth = 1.5; const state = appStore.getState(); const offset = (1 - state.currentAlignment) * 30; for (let x = 0; x < width; x++) { const noise = Math.random() * noiseAmplitude - noiseAmplitude / 2; const y = centerY + Math.sin(x * 0.02 + time * 0.05 + offset + noise * 0.2) * 15 + Math.sin(x * 0.01 + time * 0.03 + offset * 0.5 + noise * 0.1) * 10 + noise; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke() } else if (alignmentLevel === 'FIXATED') { const slowTime = time * 0.02; const vignetteGradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height)); vignetteGradient.addColorStop(0, 'rgba(0,0,0,0)'); vignetteGradient.addColorStop(1, 'rgba(0,0,0,0.4)'); ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.9)'; ctx.lineWidth = 2.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.015 + slowTime) * 12 + Math.sin(x * 0.008 + slowTime * 0.5) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(122,154,122,0.8)'; ctx.lineWidth = 2.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.015 + slowTime + Math.PI * 0.05) * 12 + Math.sin(x * 0.008 + slowTime * 0.5 + Math.PI * 0.05) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.fillStyle = vignetteGradient; ctx.fillRect(0, 0, width, height) } time++; const animId = requestAnimationFrame(animate); appStore.setState({ waveAnimationId: animId }) } animate() }
 function startLiveWaveAnimation() { const canvas = document.getElementById('liveWaveCanvas'); if (!canvas) return; const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth * 2; canvas.height = canvas.offsetHeight * 2; ctx.scale(2, 2); let time = 0; function animate() { ctx.fillStyle = 'rgba(18,18,26,0.15)'; ctx.fillRect(0, 0, canvas.width / 2, canvas.height / 2); const width = canvas.width / 2, height = canvas.height / 2, centerY = height / 2; ctx.beginPath(); ctx.strokeStyle = 'rgba(196,168,130,0.7)'; ctx.lineWidth = 1.5; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.025 + time * 0.04) * 12 + Math.sin(x * 0.015 + time * 0.025) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); ctx.beginPath(); ctx.strokeStyle = 'rgba(123,143,168,0.7)'; ctx.lineWidth = 1.5; const offset = (1 - appStore.getState().currentAlignment) * 25; for (let x = 0; x < width; x++) { const y = centerY + Math.sin(x * 0.025 + time * 0.04 + offset) * 12 + Math.sin(x * 0.015 + time * 0.025 + offset * 0.6) * 8; if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y) } ctx.stroke(); time++; const animId = requestAnimationFrame(animate); appStore.setState({ liveWaveAnimationId: animId }) } animate() }
@@ -379,8 +364,11 @@ function stopAllAnimations() {
     stopWaveAnimation();
     stopLiveWaveAnimation();
     visualizer.stopAlignmentWaveAnimation();
-    stopVoiceWaveLiveAnimation();
-    stopLiveVoiceInput();
+    // Live voice/wave: only call if module was already loaded (no await needed for cleanup)
+    if (_liveModule) {
+        _liveModule.stopVoiceWaveLiveAnimation?.();
+        _liveModule.stopLiveVoiceInput?.();
+    }
 }
 function startEndStrataAnimation() {}
 function getUserDominantEmotion() { const emotions = ['fear', 'sadness', 'guilt', 'anger', 'longing', 'isolation', 'numbness', 'moralPain']; const lastScene = appStore.getState().currentStoryData?.scenes?.[appStore.getState().currentStoryData.scenes.length - 1]; if (lastScene && lastScene.emotionDist) { const dist = lastScene.emotionDist; let max = 0, dominant = 'fear'; if ((dist.fear || 0) > max) { max = dist.fear; dominant = 'fear' } if ((dist.sadness || 0) > max) { max = dist.sadness; dominant = 'sadness' } if ((dist.guilt || 0) > max) { max = dist.guilt; dominant = 'guilt' } if ((dist.anger || 0) > max) { max = dist.anger; dominant = 'anger' } if ((dist.longing || 0) > max) { max = dist.longing; dominant = 'longing' } if ((dist.isolation || 0) > max) { max = dist.isolation; dominant = 'isolation' } if ((dist.numbness || 0) > max) { max = dist.numbness; dominant = 'numbness' } if ((dist.moralPain || 0) > max) { max = dist.moralPain; dominant = 'moralPain' } return dominant } return emotions[Math.floor(Math.random() * emotions.length)] }
@@ -637,15 +625,15 @@ window.handleLogout = handleLogout;
 window.closeMypage = closeMypage;
 window.selectMatching = selectMatching;
 window.backToIntro = backToIntro;
-window.selectRole = selectRole;
-window.copySessionCode = copySessionCode;
-window.joinSession = joinSession;
+window.selectRole = _liveFn('selectRole');
+window.copySessionCode = _liveFn('copySessionCode');
+window.joinSession = _liveFn('joinSession');
 window.filterByCategory = filterByCategory;
 window.sortMemories = sortMemories;
 window.loadMemoriesFromSupabase = loadMemoriesFromSupabase;
 window.backToMatchingSelection = backToMatchingSelection;
 window.backToModeSelection = backToModeSelection;
-window.exitLive = exitLive;
+window.exitLive = _liveFn('exitLive');
 // Expose shared functions for app/live.js (temporary, phase 3 cleanup)
 window.showNotification = showNotification;
 window.showEndScreen = showEndScreen;
@@ -653,9 +641,9 @@ window.restart = restart;
 window.stopAllAnimations = stopAllAnimations;
 window.showNpcDialogue = showNpcDialogue;
 window.updateUserStats = updateUserStats;
-window.startLiveSession = startLiveSession;
-window.updateLiveAlignment = updateLiveAlignment;
-window.updateAlignmentWave = updateAlignmentWave;
+window.startLiveSession = _liveFn('startLiveSession');
+window.updateLiveAlignment = _liveFn('updateLiveAlignment');
+window.updateAlignmentWave = _liveFn('updateAlignmentWave');
 window.proceedToNextSceneLive = proceedToNextSceneLive;
 window.saveRitualScene = saveRitualScene;
 window.startAlignmentWaveAnimation = function() {
@@ -678,26 +666,25 @@ window.startAlignmentWaveAnimation = function() {
         }
     });
 };
-window.switchGeneratedTab = switchGeneratedTab;
-window.toggleEditMode = toggleEditMode;
-window.handleUnifiedSubmit = handleUnifiedSubmit;
-window.addChatMessageWithConfirm = addChatMessageWithConfirm;
-window.switchGeneratedTab = switchGeneratedTab;
-window.toggleRecording = toggleRecording;
-window.switchToTextInput = switchToTextInput;
-window.sendExpChatMessage = sendExpChatMessage;
-window.toggleExpRecording = toggleExpRecording;
-window.switchExpToTextInput = switchExpToTextInput;
+window.switchGeneratedTab = _liveFn('switchGeneratedTab');
+window.toggleEditMode = _liveFn('toggleEditMode');
+window.handleUnifiedSubmit = _liveFn('handleUnifiedSubmit');
+window.addChatMessageWithConfirm = _liveFn('addChatMessageWithConfirm');
+window.toggleRecording = _liveFn('toggleRecording');
+window.switchToTextInput = _liveFn('switchToTextInput');
+window.sendExpChatMessage = _liveFn('sendExpChatMessage');
+window.toggleExpRecording = _liveFn('toggleExpRecording');
+window.switchExpToTextInput = _liveFn('switchExpToTextInput');
 window.backToList = backToList;
 window.saveMemory = saveMemory;
 window.goToIntro = goToIntro;
 // window.submitEmotion expInterview 모듈 대체됨
 window.selectMemoryFate = selectMemoryFate;
 window.closeSessionDetail = closeSessionDetail;
-window.sendChatMessage = sendChatMessage;
+window.sendChatMessage = _liveFn('sendChatMessage');
 window.selectMemory = selectMemory;
-window.handleConfirm = handleConfirm;
-window.handleExpConfirm = handleExpConfirm;
+window.handleConfirm = _liveFn('handleConfirm');
+window.handleExpConfirm = _liveFn('handleExpConfirm');
 window.filterMemories = filterMemories;
 
 function initMainMenu() {
@@ -812,10 +799,10 @@ window.closeComparisonView = closeComparisonView;
 window.endComparisonSession = endComparisonSession;
 
 // test용 function export (test-chat-pipeline.js 서 )
-window.sendExpChatMessageWithDeps = sendExpChatMessageWithDeps;
-window.sendChatMessageWithDeps = sendChatMessageWithDeps;
-window.parseEmotionAnalysisResult = parseEmotionAnalysisResult;
-window.parseSceneGenerationResult = parseSceneGenerationResult;
+window.sendExpChatMessageWithDeps = _liveFn('sendExpChatMessageWithDeps');
+window.sendChatMessageWithDeps = _liveFn('sendChatMessageWithDeps');
+window.parseEmotionAnalysisResult = _liveFn('parseEmotionAnalysisResult');
+window.parseSceneGenerationResult = _liveFn('parseSceneGenerationResult');
 window.AIService = AIService; // 테스트에서 모킹할 수 있도록 노출
 window.MemoryService = MemoryService; // 테스트에서 사용할 수 있도록 노출
 window.getSupabaseClient = getSupabaseClient; // Strata 뷰에서 사용

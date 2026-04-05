@@ -77,7 +77,7 @@ export async function listMemoriesWithScenesChoices(client) {
             author_note: memory.author_note || null,
             status: memory.status || 'Fetus',
             scenes: scenes,
-            interpretationLayers: memory.layers || 0,
+            interpretationLayers: memory.cont_depth || 0,
             visible: memory.is_public !== undefined ? memory.is_public : true,
             sensory_anchor: memory.sensory_anchor || null,
             body_response: memory.body_response || null,

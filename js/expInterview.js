@@ -662,13 +662,58 @@ let _waveBucket = 'IDLE';
 let _waveTime = 0;
 let _waveAnimId = null;
 
+// ── 파동 전환 (transition) 상태 ──
+let _waveTxBucket = null; // { from: params, to: params, progress: 0, duration: s }
+
+/** Bucket → 파동 파라미터 매핑 */
+function _bucketToParams(bucket) {
+  switch (bucket) {
+    case 'HIGH':    return { r: 196, g: 168, b: 130, a: 0.74, amp1: 13, amp2: 7, f1: 0.018, f2: 0.009, spd: 0.045, jitter: 0, lw: 1.7 };
+    case 'MID':     return { r: 196, g: 168, b: 130, a: 0.58, amp1: 11, amp2: 6, f1: 0.017, f2: 0.009, spd: 0.04,  jitter: 0, lw: 1.6 };
+    case 'LOW':     return { r: 217, g: 74,  b: 74,  a: 0.62, amp1: 12, amp2: 5, f1: 0.02,  f2: 0.011, spd: 0.05, jitter: 3.2, lw: 1.6 };
+    case 'FIXATED': return { r: 138, g: 90,  b: 138, a: 0.68, amp1: 10, amp2: 5, f1: 0.012, f2: 0.006, spd: 0.016, jitter: 0, lw: 1.9 };
+    default:        return { r: 196, g: 168, b: 130, a: 0.10, amp1: 4,  amp2: 1.4, f1: 0.014, f2: 0.007, spd: 0.018, jitter: 0, lw: 1.0 };
+  }
+}
+
+/** 두 파라미터 세트를 easeInOutQuad로 보간 */
+function _lerpParams(a, b, t) {
+  const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const out = {};
+  for (const k of Object.keys(a)) out[k] = a[k] + (b[k] - a[k]) * e;
+  return out;
+}
+
+/** 유령 요동 — 전환 중 파동이 위아래로 요동치다 잦아드는 모션 */
+function _ghostTremor(x, t, progress) {
+  const intensity = Math.pow(1 - progress, 2.5);
+  const tremAmp = intensity * 12;
+  return Math.sin(x * 0.06 + t * 0.13) * tremAmp
+       + Math.sin(x * 0.02 - t * 0.055) * tremAmp * 0.6;
+}
+
+let _currentWaveParams = _bucketToParams('IDLE');
+
 function updateWaveBucket(bucket) {
+  if (bucket === _waveBucket) return;
+  const prevBucket = _waveBucket;
   _waveBucket = bucket;
+
+  const fromParams = _waveTxBucket && _waveTxBucket.progress < 1
+    ? _lerpParams(_waveTxBucket.from, _waveTxBucket.to, _waveTxBucket.progress)
+    : _currentWaveParams;
+
+  const toParams = _bucketToParams(bucket);
+  // 빠른 연속 호출(타이핑) vs 느린 호출(씬 전환) 구분
+  const isFast = _waveTxBucket && _waveTxBucket.progress < 0.3;
+  _waveTxBucket = { from: fromParams, to: toParams, progress: 0, duration: isFast ? 0.5 : 1.6 };
+  _currentWaveParams = toParams;
 }
 
 /**
  * Replaces existing startWaveAnimation() with this function.
  * Draws on existing waveCanvas (#waveCanvas).
+ * 전환 보간 + 유령 요동 지원
  */
 function startBucketWaveAnimation() {
   const canvas = document.getElementById('waveCanvas');
@@ -679,59 +724,73 @@ function startBucketWaveAnimation() {
   ctx.scale(2, 2);
 
   _waveTime = 0;
+  _currentWaveParams = _bucketToParams(_waveBucket);
+  _waveTxBucket = null;
 
   function animate() {
     const w = canvas.width / 2;
     const h = canvas.height / 2;
     const cy = h / 2;
 
+    // ── 전환 보간 처리 ──
+    let p = _currentWaveParams;
+    let txProgress = -1;
+    let txFrom = null;
+    if (_waveTxBucket) {
+      _waveTxBucket.progress = Math.min(1, _waveTxBucket.progress + (1 / 60) / _waveTxBucket.duration);
+      txProgress = _waveTxBucket.progress;
+      txFrom = _waveTxBucket.from;
+      p = _lerpParams(_waveTxBucket.from, _waveTxBucket.to, txProgress);
+      if (_waveTxBucket.progress >= 1) _waveTxBucket = null;
+    }
+
     ctx.fillStyle = 'rgba(18, 18, 26, 0.12)';
     ctx.fillRect(0, 0, w, h);
 
-    const bucket = _waveBucket;
-
-    let stroke = 'rgba(196, 168, 130, 0.2)';
-    let amp1 = 6;
-    let amp2 = 2.4;
-    let f1 = 0.015;
-    let f2 = 0.008;
-    let spd = 0.02;
-    let jitter = 0;
-    let lw = 1.2;
-
-    if (bucket === 'HIGH') {
-      stroke = 'rgba(196, 168, 130, 0.74)';
-      amp1 = 13; amp2 = 7; f1 = 0.018; f2 = 0.009; spd = 0.045; lw = 1.7;
-    } else if (bucket === 'MID') {
-      stroke = 'rgba(196, 168, 130, 0.58)';
-      amp1 = 11; amp2 = 6; f1 = 0.017; f2 = 0.009; spd = 0.04; lw = 1.6;
-    } else if (bucket === 'LOW') {
-      stroke = 'rgba(217, 74, 74, 0.62)';
-      amp1 = 12; amp2 = 5; f1 = 0.02; f2 = 0.011; spd = 0.05; jitter = 3.2; lw = 1.6;
-      if (Math.random() > 0.94) {
-        ctx.fillStyle = 'rgba(217, 74, 74, 0.08)';
-        ctx.fillRect(0, 0, w, h);
-      }
-    } else if (bucket === 'FIXATED') {
-      stroke = 'rgba(138, 90, 138, 0.68)';
-      amp1 = 10; amp2 = 5; f1 = 0.012; f2 = 0.006; spd = 0.016; lw = 1.9;
+    // ── LOW bucket 글리치 ──
+    if (_waveBucket === 'LOW' && Math.random() > 0.94) {
+      ctx.fillStyle = 'rgba(217, 74, 74, 0.08)';
+      ctx.fillRect(0, 0, w, h);
+    }
+    // ── FIXATED bucket 비네트 ──
+    if (_waveBucket === 'FIXATED') {
       const vg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.6);
       vg.addColorStop(0, 'rgba(0,0,0,0)');
       vg.addColorStop(1, 'rgba(0,0,0,0.35)');
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, w, h);
-    } else if (bucket === 'IDLE') {
-      stroke = 'rgba(196, 168, 130, 0.1)';
-      amp1 = 4; amp2 = 1.4; f1 = 0.014; f2 = 0.007; spd = 0.018; lw = 1.0;
     }
 
-    const phase = _waveTime * spd;
+    // ── 유령 잔상 (전환 중): 이전 파동이 흐릿하게 남아 사라짐 ──
+    if (txProgress >= 0 && txProgress < 1 && txFrom) {
+      const ghostAlpha = txFrom.a * 0.5 * Math.pow(1 - txProgress, 2);
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(${Math.round(txFrom.r)},${Math.round(txFrom.g)},${Math.round(txFrom.b)},${ghostAlpha.toFixed(3)})`;
+      ctx.lineWidth = txFrom.lw * 0.8;
+      const ghostPhase = _waveTime * txFrom.spd;
+      for (let x = 0; x < w; x++) {
+        const y = cy
+          + Math.sin(x * txFrom.f1 + ghostPhase) * txFrom.amp1
+          + Math.sin(x * txFrom.f2 + ghostPhase * 0.62) * txFrom.amp2
+          + _ghostTremor(x, _waveTime, txProgress) * 0.4;
+        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+
+    // ── 메인 파동 ──
+    const mainAlpha = txProgress >= 0 ? p.a * (0.4 + 0.6 * txProgress) : p.a;
     ctx.beginPath();
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = lw;
+    ctx.strokeStyle = `rgba(${Math.round(p.r)},${Math.round(p.g)},${Math.round(p.b)},${mainAlpha.toFixed(3)})`;
+    ctx.lineWidth = p.lw;
+    const phase = _waveTime * p.spd;
     for (let x = 0; x < w; x++) {
-      const n = jitter ? (Math.random() - 0.5) * jitter : 0;
-      const y = cy + Math.sin(x * f1 + phase) * amp1 + Math.sin(x * f2 + phase * 0.62) * amp2 + n;
+      const n = p.jitter > 0 ? (Math.random() - 0.5) * p.jitter : 0;
+      let y = cy + Math.sin(x * p.f1 + phase) * p.amp1 + Math.sin(x * p.f2 + phase * 0.62) * p.amp2 + n;
+      // 전환 중: 유령 요동 추가
+      if (txProgress >= 0 && txProgress < 1) {
+        y += _ghostTremor(x, _waveTime, txProgress);
+      }
       x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
     ctx.stroke();

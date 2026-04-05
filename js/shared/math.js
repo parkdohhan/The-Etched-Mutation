@@ -541,3 +541,22 @@ export {
   EMOTION_COLORS as AF_EMOTION_COLORS,
 } from './tem_af_map.js';
 
+// ─── Archive wave data (moved from live.js) ─────────────────────
+
+export function computeArchiveWaveData(emotionVector, sceneTextLength, voidLevel) {
+  const totalEmotion = Object.values(emotionVector).reduce((sum, val) => sum + (val || 0), 0);
+  const intensity = Math.min(1, Math.max(0.3, totalEmotion / 8));
+  const waveStyle = emotionVectorToWaveStyle(emotionVector);
+  const wavePoints = [];
+  const width = Math.max(100, Math.min(500, sceneTextLength * 10));
+  for (let i = 0; i < width; i++) {
+    const x = i / width;
+    const baseY = 0.5;
+    const amplitude = voidLevel === 'high' ? 0.15 : 0.25;
+    const frequency = 0.02 + intensity * 0.01;
+    const y = baseY + Math.sin(x * Math.PI * 2 * frequency * 10) * amplitude;
+    wavePoints.push({ x, y });
+  }
+  const c = waveStyle.color;
+  return { wavePoints, color: `rgba(${c.r},${c.g},${c.b},0.8)`, intensity, voidLevel };
+}
