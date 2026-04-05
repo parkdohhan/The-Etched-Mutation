@@ -176,11 +176,11 @@ function _getMemoryEmotionVector(m) {
 
 function _finderMatch(emotion, lang) {
   const memories = appStore.getState().allMemoriesData || [];
+  const preferKo = lang === 'ko';
   const scored = memories.map(m => {
     let score = 0;
     const vec = _getMemoryEmotionVector(m);
     if (vec) {
-      // 정확한 키 매칭 + grief→sadness, numbness→sadness 등 유사 감정 매핑
       score = vec[emotion] || 0;
       if (emotion === 'sadness') score = Math.max(score, vec.grief || 0, vec.numbness || 0);
       if (emotion === 'fear') score = Math.max(score, vec.anxiety || 0);
@@ -188,21 +188,35 @@ function _finderMatch(emotion, lang) {
     }
     const text = (m.title || '') + ' ' + (m.completed_sentence || '');
     if (text.toLowerCase().includes(emotion)) score += 0.3;
+    // Language affinity
+    if (score > 0 && _isMemoryKorean(m) === preferKo) score += 0.2;
     return { memory: m, score };
   }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
 
   const matched = scored.slice(0, 3).map(s => s.memory);
   if (matched.length === 0) {
-    // Fallback: 랜덤 3개 (항상 같은 3개 방지)
-    const shuffled = memories.slice().sort(() => Math.random() - 0.5);
+    const sameLang = memories.filter(m => _isMemoryKorean(m) === preferKo);
+    const pool = sameLang.length >= 3 ? sameLang : memories;
+    const shuffled = pool.slice().sort(() => Math.random() - 0.5);
     matched.push(...shuffled.slice(0, Math.min(3, shuffled.length)));
   }
   _showFinderResults(matched, lang);
 }
 
+function _isKoreanInput(text) {
+  return /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(text);
+}
+
+function _isMemoryKorean(m) {
+  const text = (m.title || '') + (m.completed_sentence || '');
+  return /[가-힣]/.test(text);
+}
+
 function _finderMatchByText(query, lang) {
   const memories = appStore.getState().allMemoriesData || [];
   const lower = query.toLowerCase();
+  const inputIsKo = _isKoreanInput(query);
+
   const emotionWords = {
     sadness: ['슬', '울', 'sad', 'cry', '아프', '힘들'],
     anger: ['화', '분노', 'angry', 'rage', '짜증'],
@@ -214,6 +228,11 @@ function _finderMatchByText(query, lang) {
   const scored = memories.map(m => {
     const text = ((m.title || '') + ' ' + (m.completed_sentence || '')).toLowerCase();
     let score = 0;
+
+    // Language affinity: boost memories matching input language
+    const memIsKo = _isMemoryKorean(m);
+    if (inputIsKo === memIsKo) score += 0.5;
+
     lower.split(/\s+/).forEach(word => {
       if (word.length >= 2 && text.includes(word)) score += 1;
     });
@@ -221,7 +240,6 @@ function _finderMatchByText(query, lang) {
     for (const [emo, keywords] of Object.entries(emotionWords)) {
       if (keywords.some(kw => lower.includes(kw))) {
         if (vec && vec[emo]) score += vec[emo];
-        // grief, shame 등 유사 감정도 체크
         if (emo === 'sadness' && vec) score += (vec.grief || 0) * 0.8;
         if (emo === 'guilt' && vec) score += (vec.shame || 0) * 0.6;
       }
@@ -231,7 +249,10 @@ function _finderMatchByText(query, lang) {
 
   const matched = scored.slice(0, 3).map(s => s.memory);
   if (matched.length === 0) {
-    const shuffled = memories.slice().sort(() => Math.random() - 0.5);
+    // Fallback: prefer memories in the same language as input
+    const sameLang = memories.filter(m => _isMemoryKorean(m) === inputIsKo);
+    const pool = sameLang.length >= 3 ? sameLang : memories;
+    const shuffled = pool.slice().sort(() => Math.random() - 0.5);
     matched.push(...shuffled.slice(0, Math.min(3, shuffled.length)));
   }
   _showFinderResults(matched, lang);

@@ -310,7 +310,7 @@
             </header>
             <div class="archive-controls" id="archiveControls">
                 <div class="archive-search-row">
-                    <input type="text" class="archive-search" id="archiveSearch" placeholder="제목으로 검색" oninput="filterMemories()">
+                    <input type="text" class="archive-search" id="archiveSearch" placeholder="Search by title" data-i18n="archive.searchPlaceholder" oninput="filterMemories()">
                 </div>
                 <div class="archive-filters" style="margin-top:18px;">
                     <button class="filter-btn active" data-sort="all" onclick="sortMemories('all',this)">All</button>
@@ -389,7 +389,7 @@
             <button class="settings-close-btn" onclick="window.closeSettings()" data-i18n="settings.close">Close</button>
         </div>
     </div>
-    <div class="npc-dialogue" id="npcDialogue"><div class="npc-name" style="font-size:9px;letter-spacing:3px;opacity:0.5;">기억이 속삭인다 · the memory whispers</div><div id="npcText"></div></div>
+    <div class="npc-dialogue" id="npcDialogue"><div class="npc-name" style="font-size:9px;letter-spacing:3px;opacity:0.5;" data-i18n="npc.label">the memory whispers</div><div id="npcText"></div></div>
     <div class="system-message" id="systemMessage"></div>
     <div class="notification" id="notification"></div>
     <footer class="footer">

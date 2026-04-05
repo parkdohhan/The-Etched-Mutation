@@ -348,7 +348,7 @@
       <div class="esc-title">paused</div>
       <div class="esc-row">
         <span class="esc-label" id="escLangLabel">Language</span>
-        <button type="button" class="esc-toggle" id="escLangBtn">한국어</button>
+        <button type="button" class="esc-toggle" id="escLangBtn">Language</button>
       </div>
       <div class="esc-row">
         <span class="esc-label" id="escBrightLabel">Brightness</span>
@@ -385,7 +385,7 @@
         <span class="play-alignment-label">Alignment</span>
         <span class="play-alignment-pct" id="playAlignmentPct">00%</span>
       </div>
-      <div class="play-alignment-sub">각인(상) · 나의 응답(하)</div>
+      <div class="play-alignment-sub" id="playAlignmentSub">Engraving(top) · My response(bottom)</div>
       <div class="alignment-wave-container">
         <canvas class="alignment-wave-canvas" id="alignmentWaveCanvas"></canvas>
       </div>
@@ -570,6 +570,13 @@
   const urlParams = new URLSearchParams(window.location.search);
   const LANG = urlParams.get('lang') === 'ko' ? 'ko' : 'en';
   const T = I18N[LANG];
+  document.documentElement.lang = LANG;
+
+  // Set lang-dependent static elements
+  (function () {
+    var alignSub = document.getElementById('playAlignmentSub');
+    if (alignSub) alignSub.textContent = LANG === 'ko' ? '각인(상) · 나의 응답(하)' : 'Engraving(top) · My response(bottom)';
+  })();
 
   function getEmotionsUi() {
     return [

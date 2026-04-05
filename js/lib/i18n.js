@@ -30,6 +30,7 @@ const STRINGS = {
         'archive.filter.recent':'Recent',
         'archive.sort.layers':  'By Layers',
         'archive.empty':        'Nothing surfaces here yet.',
+        'archive.searchPlaceholder': 'Search by title',
 
         // ── Scene viewer ──────────────────────────────────────────
         'scene.next':           'Next',
@@ -87,6 +88,7 @@ const STRINGS = {
         'settings.close':       'Close',
 
         // ── NPC / inner voice ─────────────────────────────────────
+        'npc.label':    'the memory whispers',
         'npc.waiting':  'Waiting for the next one to surface…',
         'npc.sealed':   'Sealed.',
         'npc.fallback': 'A fragment pulls from somewhere.',
@@ -143,6 +145,7 @@ const STRINGS = {
         'archive.filter.recent': '최근',
         'archive.sort.layers':   '레이어순',
         'archive.empty':         '아직 아무것도 떠오르지 않는다.',
+        'archive.searchPlaceholder': '제목으로 검색',
 
         // ── Scene viewer ──────────────────────────────────────────
         'scene.next':           '다음',
@@ -200,6 +203,7 @@ const STRINGS = {
         'settings.close':       '닫기',
 
         // ── NPC / inner voice ─────────────────────────────────────
+        'npc.label':    '기억이 속삭인다',
         'npc.waiting':  '다음 기억이 떠오르길 기다리는 중…',
         'npc.sealed':   '봉인되었다.',
         'npc.fallback': '어딘가에서 파편이 끌려온다.',

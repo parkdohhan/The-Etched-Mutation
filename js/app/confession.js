@@ -433,9 +433,10 @@ function onFlowComplete() {
     const flowEl = document.getElementById('confessionFlow');
     const completeEl = document.createElement('div');
     completeEl.className = 'flow-complete';
+    const _lang = getCurrentLanguage();
     completeEl.innerHTML = `
-        <p class="flow-complete-text">기억이 수집 complete.</p>
-        <button class="flow-generate-btn" onclick="generateSceneFromRitual()">이 기억을 현상합니다</button>
+        <p class="flow-complete-text">${_lang === 'ko' ? '기억이 수집되었습니다.' : 'Memory collected.'}</p>
+        <button class="flow-generate-btn" onclick="generateSceneFromRitual()">${_lang === 'ko' ? '이 기억을 현상합니다' : 'Develop this memory'}</button>
     `;
     flowEl.appendChild(completeEl);
 
@@ -596,7 +597,7 @@ function showSafetyResources() {
     popup.className = 'safety-popup';
     popup.innerHTML = `
         <div class="safety-popup-content">
-            <p class="safety-message">누군가에게는, 솔직하게 말해도 괜찮아.</p>
+            <p class="safety-message">${getCurrentLanguage() === 'ko' ? '누군가에게는, 솔직하게 말해도 괜찮아.' : 'It\'s okay to be honest with someone.'}</p>
             <div class="safety-resources">
                 ${SAFETY_RESOURCES.map(r => `
                     <a href="${r.action}" class="safety-resource">
@@ -607,7 +608,7 @@ function showSafetyResources() {
                 `).join('')}
             </div>
             <button class="safety-close-btn">Close</button>
-            <button class="safety-return-btn" style="opacity:0;margin-top:1.5rem;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:0.9rem;padding:0.6rem 1.5rem;cursor:pointer;transition:opacity 1s ease;display:block;margin-left:auto;margin-right:auto;">돌아가기</button>
+            <button class="safety-return-btn" style="opacity:0;margin-top:1.5rem;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:0.9rem;padding:0.6rem 1.5rem;cursor:pointer;transition:opacity 1s ease;display:block;margin-left:auto;margin-right:auto;">${getCurrentLanguage() === 'ko' ? '돌아가기' : 'Go back'}</button>
         </div>
     `;
 
@@ -697,7 +698,7 @@ async function generateScenesFromRitual(inputData) {
  // Authentication 토큰 져오기 (generate-scene-from-ritual login 필수)
     const accessToken = await getAccessToken();
     if (!accessToken) {
-        throw new Error('기억을 생성하려면 로그인이 필요합니다.');
+        throw new Error(getCurrentLanguage() === 'ko' ? '기억을 생성하려면 로그인이 필요합니다.' : 'Please sign in to create a memory.');
     }
 
  // V2: flowData 있으면 그대 , 없으면 inputData flowData 간주
@@ -793,12 +794,12 @@ async function generateSceneFromRitual() {
     try {
         const accessToken = await getAccessToken();
         if (!accessToken) {
-            throw new Error('로그인이 필요합니다.');
+            throw new Error(getCurrentLanguage() === 'ko' ? '로그인이 필요합니다.' : 'Please sign in.');
         }
 
  // flowData 유효성 검사
         if (!flowData || !flowData.sensory || !flowData.anchor || !flowData.action || !flowData.crash || !flowData.seal) {
-            throw new Error('flowData가 완전하지 않습니다. 모든 질문에 답변 please.');
+            throw new Error(getCurrentLanguage() === 'ko' ? '모든 질문에 답변해 주세요.' : 'Please answer all questions.');
         }
 
         console.log('[V2] flowData to send:', JSON.stringify(flowData, null, 2));
@@ -851,7 +852,7 @@ async function generateSceneFromRitual() {
             const errorEl = document.createElement('div');
             errorEl.className = 'flow-complete';
             errorEl.innerHTML = `
-                <p class="flow-complete-text" style="color: #ff6b6b;">기억 현상 failed: ${error.message || 'Unknown error'}</p>
+                <p class="flow-complete-text" style="color: #ff6b6b;">${getCurrentLanguage() === 'ko' ? '기억 현상 실패' : 'Memory development failed'}: ${error.message || 'Unknown error'}</p>
             `;
             flowEl.appendChild(errorEl);
         }
@@ -864,13 +865,13 @@ function renderSceneResult(result) {
     const resultEl = document.createElement('div');
     resultEl.className = 'flow-complete';
     resultEl.innerHTML = `
-        <p class="flow-complete-text">기억이 현상 complete.</p>
+        <p class="flow-complete-text">${getCurrentLanguage() === 'ko' ? '기억이 현상되었습니다.' : 'Memory developed.'}</p>
         <div class="flow-answer" style="white-space:pre-line; margin:16px 0;">
-            ${result.scenes.map((s, i) => 
+            ${result.scenes.map((s, i) =>
                 `<p style="margin-bottom:12px; opacity:${0.5 + i * 0.1};">${s.text}</p>`
             ).join('')}
         </div>
-        <button class="flow-generate-btn" onclick="saveAndBury()">지층에 묻기</button>
+        <button class="flow-generate-btn" onclick="saveAndBury()">${getCurrentLanguage() === 'ko' ? '지층에 묻기' : 'Bury into strata'}</button>
     `;
     flowEl.appendChild(resultEl);
     setTimeout(() => {
@@ -894,7 +895,7 @@ async function saveConfessionToDB() {
         const scenes = confessionState.generatedScenes || confessionState.scenes || [];
         
         if (scenes.length === 0) {
-            throw new Error('저장할 장면이 not found. 먼저 기억을 현상 please.');
+            throw new Error(getCurrentLanguage() === 'ko' ? '저장할 장면이 없습니다. 먼저 기억을 현상해 주세요.' : 'No scenes to save. Please develop the memory first.');
         }
 
         supabaseClient = getSupabaseClient();

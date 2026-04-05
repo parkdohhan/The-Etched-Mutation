@@ -13,6 +13,7 @@
   var animId = null;
   var canvas = null;
   var _lastConfig = null;
+  function _strataLang() { return (document.documentElement.lang || 'en').substring(0, 2) === 'ko' ? 'ko' : 'en'; }
   var STRATA_BRIGHTNESS_KEY = 'tem_strata_default_brightness';
   var STRATA_BRIGHTNESS_MIN = 0.8;
   var STRATA_BRIGHTNESS_MAX = 2.4;
@@ -278,21 +279,32 @@
   }
 
   // ─── Proximity monologue generation ──────────────────────────
-  var EMOTION_KO = {
-    fear:'공포', sadness:'슬픔', anger:'분노', guilt:'죄책감', shame:'수치심',
-    isolation:'고립', numbness:'무감각', moral_pain:'도덕적 고통', helplessness:'무력감',
-    despair:'절망', joy:'기쁨', hope:'희망', relief:'안도', gratitude:'감사',
-    love:'사랑', peace:'평화', comfort:'위로', longing:'그리움', nostalgia:'향수',
-    confusion:'혼란', emptiness:'공허'
+  var EMOTION_LABELS = {
+    ko: {
+      fear:'공포', sadness:'슬픔', anger:'분노', guilt:'죄책감', shame:'수치심',
+      isolation:'고립', numbness:'무감각', moral_pain:'도덕적 고통', helplessness:'무력감',
+      despair:'절망', joy:'기쁨', hope:'희망', relief:'안도', gratitude:'감사',
+      love:'사랑', peace:'평화', comfort:'위로', longing:'그리움', nostalgia:'향수',
+      confusion:'혼란', emptiness:'공허'
+    },
+    en: {
+      fear:'Fear', sadness:'Sadness', anger:'Anger', guilt:'Guilt', shame:'Shame',
+      isolation:'Isolation', numbness:'Numbness', moral_pain:'Moral pain', helplessness:'Helplessness',
+      despair:'Despair', joy:'Joy', hope:'Hope', relief:'Relief', gratitude:'Gratitude',
+      love:'Love', peace:'Peace', comfort:'Comfort', longing:'Longing', nostalgia:'Nostalgia',
+      confusion:'Confusion', emptiness:'Emptiness'
+    }
   };
+  function _emoLabel(key) { var m = EMOTION_LABELS[_strataLang()]; return (m && m[key]) || key; }
 
   function _generateProximityMonologue(origDom, playDom, avgAlignment, playCount) {
-    if (playCount === 0) return '…아무도 여기 오지 않았다.';
+    var ko = _strataLang() === 'ko';
+    if (playCount === 0) return ko ? '…아무도 여기 오지 않았다.' : '…no one has been here.';
 
     // Same emotion
     if (origDom === playDom) {
-      if (avgAlignment > 0.6) return '…여기는 익숙해. 누군가 같은 걸 느꼈나 봐.';
-      return '…같은 감정인데, 무게가 다르다.';
+      if (avgAlignment > 0.6) return ko ? '…여기는 익숙해. 누군가 같은 걸 느꼈나 봐.' : '…this feels familiar. someone felt the same.';
+      return ko ? '…같은 감정인데, 무게가 다르다.' : '…the same emotion, but it weighs differently.';
     }
 
     // Categorize emotions
@@ -302,20 +314,20 @@
     var playNeg = neg.indexOf(playDom) >= 0;
 
     // Negative original + positive play overlay
-    if (origNeg && !playNeg) return '…여긴 원래 어두웠는데. 누가 빛을 가져다 놨어.';
+    if (origNeg && !playNeg) return ko ? '…여긴 원래 어두웠는데. 누가 빛을 가져다 놨어.' : '…this was dark before. someone brought light.';
     // Positive original + negative play overlay
-    if (!origNeg && playNeg) return '…밝았던 곳인데. 무거운 게 얹어져 있다.';
+    if (!origNeg && playNeg) return ko ? '…밝았던 곳인데. 무거운 게 얹어져 있다.' : '…it was bright here. something heavy has settled.';
     // Different negative emotions
     if (origNeg && playNeg) {
-      if (origDom === 'sadness' && playDom === 'anger') return '…슬픔이었는데, 누가 여기서 화를 냈다.';
-      if (origDom === 'anger' && playDom === 'sadness') return '…분노의 자리에 슬픔이 스며들었어.';
-      if (origDom === 'fear') return '…두려움 위에 다른 그림자가 겹쳐 있다.';
-      return '…여긴 어디지. 원래 이런 곳이 아니었는데.';
+      if (origDom === 'sadness' && playDom === 'anger') return ko ? '…슬픔이었는데, 누가 여기서 화를 냈다.' : '…it was sadness, but someone left anger here.';
+      if (origDom === 'anger' && playDom === 'sadness') return ko ? '…분노의 자리에 슬픔이 스며들었어.' : '…sadness seeped into where anger once stood.';
+      if (origDom === 'fear') return ko ? '…두려움 위에 다른 그림자가 겹쳐 있다.' : '…another shadow overlaps the fear.';
+      return ko ? '…여긴 어디지. 원래 이런 곳이 아니었는데.' : '…where is this. it wasn\'t like this before.';
     }
     // Different positive emotions
-    if (!origNeg && !playNeg) return '…같은 빛인데 색이 다르다.';
+    if (!origNeg && !playNeg) return ko ? '…같은 빛인데 색이 다르다.' : '…the same light, but a different color.';
 
-    return '…뭔가 달라졌다. 원래 이랬나.';
+    return ko ? '…뭔가 달라졌다. 원래 이랬나.' : '…something changed. was it always like this?';
   }
 
   // ─── Proximity system (first-person, admin only) ────────────
@@ -355,7 +367,7 @@
     _ensureProximityUI();
     _proxState.el.textContent = sd.monologue;
     _proxState.el.style.opacity = '1';
-    _proxState.hintEl.textContent = '클릭을 길게 눌러 들여다 보세요';
+    _proxState.hintEl.textContent = _strataLang() === 'ko' ? '클릭을 길게 눌러 들여다 보세요' : 'Hold click to look inside';
     _proxState.hintEl.style.opacity = '1';
     _proxState.nearPin = pin;
   }
@@ -371,18 +383,19 @@
     if (!sd) return;
     _ensureProximityUI();
 
-    var origDomKo = EMOTION_KO[sd.originalDominant] || sd.originalDominant;
-    var playDomKo = EMOTION_KO[sd.playDominant] || sd.playDominant || '—';
+    var origDomLabel = _emoLabel(sd.originalDominant);
+    var playDomLabel = _emoLabel(sd.playDominant) || '—';
+    var ko = _strataLang() === 'ko';
 
     var html = '<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(196,168,130,0.4);margin-bottom:8px;">Scene ' + (sd.sceneOrder + 1) + '</div>';
     html += '<div style="font-size:14px;line-height:1.8;margin-bottom:16px;color:rgba(196,168,130,0.8);">' + sd.text + '</div>';
     html += '<div style="border-top:1px solid rgba(196,168,130,0.1);padding-top:12px;font-size:12px;">';
-    html += '<div style="margin-bottom:4px;">원본 감정: <span style="color:#6a9fd8;">' + origDomKo + '</span></div>';
+    html += '<div style="margin-bottom:4px;">' + (ko ? '원본 감정' : 'Original') + ': <span style="color:#6a9fd8;">' + origDomLabel + '</span></div>';
     if (sd.playCount > 0) {
-      html += '<div style="margin-bottom:4px;">체험자 감정: <span style="color:#c4a882;">' + playDomKo + '</span> (' + sd.playCount + '회 체험)</div>';
-      html += '<div style="margin-bottom:4px;">평균 정렬도: ' + (sd.avgAlignment * 100).toFixed(0) + '%</div>';
+      html += '<div style="margin-bottom:4px;">' + (ko ? '체험자 감정' : 'Player') + ': <span style="color:#c4a882;">' + playDomLabel + '</span> (' + sd.playCount + (ko ? '회 체험' : ' plays') + ')</div>';
+      html += '<div style="margin-bottom:4px;">' + (ko ? '평균 정렬도' : 'Avg alignment') + ': ' + (sd.avgAlignment * 100).toFixed(0) + '%</div>';
     } else {
-      html += '<div style="color:rgba(196,168,130,0.3);">아직 아무도 이 장면을 체험하지 않았다</div>';
+      html += '<div style="color:rgba(196,168,130,0.3);">' + (ko ? '아직 아무도 이 장면을 체험하지 않았다' : 'No one has experienced this scene yet') + '</div>';
     }
 
     // Show each play's dominant emotion
@@ -393,7 +406,7 @@
         if (typeof ue === 'string') { try { ue = JSON.parse(ue); } catch (_) { ue = {}; } }
         var dk = ''; var dv = 0;
         for (var k in ue) { if (ue[k] > dv) { dv = ue[k]; dk = k; } }
-        var dkKo = EMOTION_KO[dk] || dk;
+        var dkKo = _emoLabel(dk);
         var al = p.alignment ? (p.alignment * 100).toFixed(0) + '%' : '—';
         html += '<div>' + (pi + 1) + '. ' + dkKo + ' — ' + al + '</div>';
       });
@@ -401,7 +414,7 @@
     }
 
     html += '</div>';
-    html += '<div style="margin-top:16px;text-align:center;font-size:11px;color:rgba(196,168,130,0.3);cursor:pointer;" id="strataScenePanelClose">클릭하여 닫기</div>';
+    html += '<div style="margin-top:16px;text-align:center;font-size:11px;color:rgba(196,168,130,0.3);cursor:pointer;" id="strataScenePanelClose">' + (ko ? '클릭하여 닫기' : 'Click to close') + '</div>';
 
     _proxState.panelEl.innerHTML = html;
     _proxState.panelEl.style.display = 'block';
