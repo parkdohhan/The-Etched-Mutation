@@ -3805,6 +3805,12 @@
             const viewEl = document.getElementById('strataView');
             const backBtn = document.getElementById('backToMenu');
             if (backBtn) backBtn.style.display = 'block';
+            // Skip strata after reveal if first-person play was active
+            if (window._fpPlay && window._fpPlay.wasActive) {
+              if (viewEl) viewEl.style.display = 'none';
+              if (backBtn) backBtn.style.display = 'block';
+              return;
+            }
             if (!window.showStrataView) {
               console.warn('[play-test] window.showStrataView가 없습니다. strataView.js 로딩을 확인하세요.');
               if (viewEl) viewEl.style.display = 'none';
@@ -3992,6 +3998,7 @@
     var _fpPlayActive = false;
     var _fpScenePins = [];
     var _fpNearPin = null;
+    var _fpNearDoor = false;
     var _fpProxEl = null;
     var _fpHintEl = null;
     var _fpInterval = null;
@@ -4053,8 +4060,20 @@
     function initFpPlay(memoryId) {
       if (!memoryId || !window.showStrataView || !window.TemAfStrataTerrain) return false;
       _fpPlayActive = true;
+      if (window._fpPlay) window._fpPlay.wasActive = true;
 
-      // Hide mapMode, show strataView
+      // Place black overlay BEFORE showing strata so terrain is never visible
+      var overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;background:#000;';
+      document.body.appendChild(overlay);
+      var lidTop = document.createElement('div');
+      lidTop.style.cssText = 'position:fixed;top:0;left:0;right:0;height:50%;background:#000;z-index:10000;pointer-events:none;';
+      document.body.appendChild(lidTop);
+      var lidBot = document.createElement('div');
+      lidBot.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:50%;background:#000;z-index:10000;pointer-events:none;';
+      document.body.appendChild(lidBot);
+
+      // Hide mapMode, show strataView (behind black overlay)
       if (mapMode) mapMode.classList.remove('active');
       var sv = document.getElementById('strataView');
       if (sv) sv.style.display = 'block';
@@ -4062,7 +4081,6 @@
       // Hide strata UI elements during first-person play
       var closeBtn = document.getElementById('strataCloseBtn');
       if (closeBtn) closeBtn.style.display = 'none';
-      // Hide all HUD overlays (title, structure label, contamination bar, hints)
       document.querySelectorAll('.strata-hud, .strata-hint, .strata-grain').forEach(function (el) {
         el.style.display = 'none';
       });
@@ -4091,22 +4109,31 @@
           // Wider FOV for play
           if (cam) { cam.fov = 90; cam.updateProjectionMatrix(); }
 
+          // Set initial yaw to face toward terrain center (0,0) from spawn (22,22)
+          // forward = -sin(yaw), -cos(yaw), so to face (-22,-22) direction:
+          var _initYaw = Math.atan2(22, 22); // face toward (0,0)
+          rt.setYaw(_initYaw);
+
+          // Hide pillar/seed group and user play markers (orbit-only visuals)
+          var scene3fp = rt.getScene();
+          if (scene3fp) {
+            scene3fp.traverse(function (obj) {
+              // Hide seed pillars + lights
+              if (obj.parent && obj.parent.type === 'Group' && !obj.userData._fpPin && !obj.userData._exitDoor) {
+                if (obj.isMesh && obj.geometry && obj.geometry.type === 'CylinderGeometry') obj.visible = false;
+                if (obj.isPointLight && !obj.userData._exitDoor) obj.visible = false;
+              }
+              // Hide user play markers (spheres from strataView)
+              if (obj.userData._userMarker) obj.visible = false;
+              // Hide scene pins from strataView (we build our own _fpPin versions)
+              if (obj.userData._isScenePin) obj.visible = false;
+            });
+          }
+
           _buildPlayScenePins();
           _startProximityLoop();
 
-          // ─── Eye-opening effect ─────────────────────────────
-          var overlay = document.createElement('div');
-          overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;background:#000;transition:opacity 2.5s ease-out;';
-          document.body.appendChild(overlay);
-
-          // Eyelid bars (top and bottom)
-          var lidTop = document.createElement('div');
-          lidTop.style.cssText = 'position:fixed;top:0;left:0;right:0;height:50%;background:#000;z-index:10000;pointer-events:none;transition:height 2s ease-in-out;';
-          document.body.appendChild(lidTop);
-          var lidBot = document.createElement('div');
-          lidBot.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:50%;background:#000;z-index:10000;pointer-events:none;transition:height 2s ease-in-out;';
-          document.body.appendChild(lidBot);
-
+          // ─── Eye-opening effect (overlay already placed before strata load) ─
           // Blink sequence — one quick blink, then eyes open
           lidTop.style.transition = 'height 0.2s ease-in-out';
           lidBot.style.transition = 'height 0.2s ease-in-out';
@@ -4155,13 +4182,140 @@
             monoEl.style.opacity = '0';
           }, 7600);
 
+          // ─── Build exit door behind spawn ────────────────────
+          // Door at terrain edge, behind player spawn direction
+          var scene3 = rt.getScene();
+          var spawnX = 22, spawnZ = 22;
+          var doorX = 22, doorZ = 22; // terrain edge (SZ/2 = 23, just inside)
+          var doorH = rt.gH(doorX, doorZ);
+          var doorGrp = new THREE.Group();
+          doorGrp.userData._exitDoor = true;
+
+          // Door frame (two pillars + lintel)
+          var frameMat = new THREE.MeshStandardMaterial({ color: 0x8a7a65, roughness: 0.9, metalness: 0.05 });
+          var pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 0.15), frameMat);
+          pillarL.position.set(-0.7, 1.6, 0);
+          doorGrp.add(pillarL);
+          var pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 0.15), frameMat);
+          pillarR.position.set(0.7, 1.6, 0);
+          doorGrp.add(pillarR);
+          var lintel = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.15, 0.15), frameMat);
+          lintel.position.set(0, 3.25, 0);
+          doorGrp.add(lintel);
+
+          // Door panel (slightly inset, darker)
+          var panelMat = new THREE.MeshStandardMaterial({
+            color: 0x1a1518, roughness: 0.95, metalness: 0,
+            transparent: true, opacity: 0.85
+          });
+          var panel = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 3.0), panelMat);
+          panel.position.set(0, 1.55, -0.02);
+          doorGrp.add(panel);
+
+          // Soft glow above door
+          var doorLight = new THREE.PointLight(0xc4a882, 0.3, 6, 2);
+          doorLight.position.set(0, 3.5, 0.3);
+          doorGrp.add(doorLight);
+
+          doorGrp.position.set(doorX, doorH, doorZ);
+          // Face the door toward player spawn
+          doorGrp.lookAt(spawnX, doorH, spawnZ);
+          scene3.add(doorGrp);
+
+          // Store door position for exit detection later
+          window._temExitDoor = { x: doorX, z: doorZ, group: doorGrp };
+
+          // ─── Door look-back sequence (after mono2 fades) ─────
+          var _doorSeqDone = false;
+          var _doorSeqSkipped = false;
+          var mono3 = lang === 'ko' ? '나갈 땐, 저기로 나가는 게 좋겠어.' : 'When it\'s time to leave, that\'s the way out.';
+
+          function _skipDoorSeq() {
+            if (_doorSeqDone) return;
+            _doorSeqSkipped = true;
+          }
+
+          // Start door sequence at 8.0s (after mono2 fades at 7.6s)
           setTimeout(function () {
-            // Cleanup all
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-            if (lidTop.parentNode) lidTop.parentNode.removeChild(lidTop);
-            if (lidBot.parentNode) lidBot.parentNode.removeChild(lidBot);
-            if (monoEl.parentNode) monoEl.parentNode.removeChild(monoEl);
-          }, 8800);
+            if (_doorSeqDone) return;
+
+            // Listen for any key to skip
+            var _skipHandler = function () { _skipDoorSeq(); };
+            document.addEventListener('keydown', _skipHandler, { once: false });
+            document.addEventListener('mousedown', _skipHandler, { once: false });
+
+            var _savedYaw = rt.getYaw();
+
+            // Door is behind player = 180 degrees turn
+            var doorYaw = _savedYaw + Math.PI;
+
+            // Smoothly rotate to look at door
+            var turnStart = performance.now();
+            var turnDuration = 1200; // ms
+
+            function _animTurn() {
+              if (_doorSeqSkipped || _doorSeqDone) {
+                rt.setYaw(_savedYaw);
+                _finishDoorSeq();
+                return;
+              }
+              var elapsed = performance.now() - turnStart;
+              var t = Math.min(1, elapsed / turnDuration);
+              var eased = t * t * (3 - 2 * t); // smoothstep
+              var currentYaw = _savedYaw + (doorYaw - _savedYaw) * eased;
+              rt.setYaw(currentYaw);
+              if (t < 1) {
+                requestAnimationFrame(_animTurn);
+              } else {
+                // Hold: show mono3
+                monoEl.textContent = mono3;
+                monoEl.style.opacity = '1';
+
+                // Wait 2.5s then turn back
+                setTimeout(function () {
+                  if (_doorSeqSkipped || _doorSeqDone) { _finishDoorSeq(); return; }
+                  monoEl.style.opacity = '0';
+
+                  // Turn back to original facing
+                  var backStart = performance.now();
+                  function _animBack() {
+                    if (_doorSeqSkipped || _doorSeqDone) {
+                      rt.setYaw(_savedYaw);
+                      _finishDoorSeq();
+                      return;
+                    }
+                    var elapsed2 = performance.now() - backStart;
+                    var t2 = Math.min(1, elapsed2 / turnDuration);
+                    var eased2 = t2 * t2 * (3 - 2 * t2);
+                    var currentYaw2 = doorYaw + (_savedYaw - doorYaw) * eased2;
+                    rt.setYaw(currentYaw2);
+                    if (t2 < 1) {
+                      requestAnimationFrame(_animBack);
+                    } else {
+                      _finishDoorSeq();
+                    }
+                  }
+                  requestAnimationFrame(_animBack);
+                }, 2500);
+              }
+            }
+            requestAnimationFrame(_animTurn);
+
+            function _finishDoorSeq() {
+              if (_doorSeqDone) return;
+              _doorSeqDone = true;
+              monoEl.style.opacity = '0';
+              document.removeEventListener('keydown', _skipHandler);
+              document.removeEventListener('mousedown', _skipHandler);
+              // Cleanup overlay elements
+              setTimeout(function () {
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                if (lidTop.parentNode) lidTop.parentNode.removeChild(lidTop);
+                if (lidBot.parentNode) lidBot.parentNode.removeChild(lidBot);
+                if (monoEl.parentNode) monoEl.parentNode.removeChild(monoEl);
+              }, 1500);
+            }
+          }, 8000);
         }
       }, 1500);
 
@@ -4299,9 +4453,39 @@
             _fpNearPin = null;
             if (_fpProxEl) _fpProxEl.style.opacity = '0';
             if (_fpHintEl) _fpHintEl.style.opacity = '0';
-            // Reset sound to base
             if (window._temGame && window._temGame._soundscape) {
               try { window._temGame._soundscape.setVolume(0.15); } catch (_) {}
+            }
+          }
+        }
+
+        // ─── Exit door proximity ───────────────────────────────
+        var door = window._temExitDoor;
+        if (door && !_fpNearPin) {
+          var ddx = cam.position.x - door.x;
+          var ddz = cam.position.z - door.z;
+          var doorDist = Math.sqrt(ddx * ddx + ddz * ddz);
+          if (doorDist < 5) {
+            if (!_fpNearDoor) {
+              _fpNearDoor = true;
+              _ensureProxUI();
+              var lang = (document.documentElement.lang || 'en').substring(0, 2);
+              _fpProxEl.textContent = lang === 'ko' ? '......나가자.' : '......let\'s go.';
+              _fpProxEl.style.opacity = '1';
+              _fpHintEl.textContent = lang === 'ko' ? '길게 눌러 나가기' : 'Hold to leave';
+              _fpHintEl.style.opacity = '1';
+            }
+            // Pulse door light
+            if (door.group) {
+              door.group.traverse(function (c) {
+                if (c.isPointLight) c.intensity = 0.3 + Math.sin(performance.now() * 0.004) * 0.2;
+              });
+            }
+          } else {
+            if (_fpNearDoor) {
+              _fpNearDoor = false;
+              if (_fpProxEl) _fpProxEl.style.opacity = '0';
+              if (_fpHintEl) _fpHintEl.style.opacity = '0';
             }
           }
         }
@@ -4313,8 +4497,8 @@
       var _canvasOrigTransform = '';
 
       canvas.addEventListener('mousedown', function () {
-        if (!_fpNearPin || !_fpPlayActive) return;
-        var targetPin = _fpNearPin;
+        if (!_fpPlayActive) return;
+        if (!_fpNearPin && !_fpNearDoor) return;
 
         // Start screen shake while holding
         _canvasOrigTransform = canvas.style.transform || '';
@@ -4326,31 +4510,69 @@
           canvas.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
         }, 30);
 
-        _pressTimer = setTimeout(function () {
-          // Stop shake
-          if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }
-          canvas.style.transform = _canvasOrigTransform;
+        if (_fpNearDoor) {
+          // ─── Exit door long press ─────────────────────────
+          var targetDoor = true;
+          _pressTimer = setTimeout(function () {
+            if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }
+            canvas.style.transform = _canvasOrigTransform;
+            if (!targetDoor) return;
 
-          if (!targetPin) return;
-          // Save current position before exiting
-          var rt2 = window.TemAfStrataTerrain._lastRuntime;
-          if (rt2 && rt2.getCamera()) {
-            var cam = rt2.getCamera();
-            _lastFpPos = { x: cam.position.x, z: cam.position.z };
-            _lastFpYaw = cam.rotation.y;
-          }
-          // Exit first person
-          if (rt2) rt2.exitFirstPerson();
-          // Hide strata, show scene
-          var sv = document.getElementById('strataView');
-          if (sv) sv.style.display = 'none';
-          if (_fpProxEl) _fpProxEl.style.opacity = '0';
-          if (_fpHintEl) _fpHintEl.style.opacity = '0';
-          // Call existing enterSceneMode
-          if (window._temEnterSceneMode) {
-            window._temEnterSceneMode(targetPin.pin);
-          }
-        }, LONG_PRESS_MS);
+            // Check: need at least 3 scenes visited
+            var g = window._temGame;
+            var visitedCount = g && g.visitedCore ? Object.keys(g.visitedCore).length : 0;
+            var lang = (document.documentElement.lang || 'en').substring(0, 2);
+
+            if (visitedCount < 3) {
+              // Not enough scenes — show warning
+              _ensureProxUI();
+              _fpProxEl.textContent = lang === 'ko' ? '좀 더 살펴보고 나가야 할 것 같아.' : 'I should look around more before leaving.';
+              _fpProxEl.style.opacity = '1';
+              setTimeout(function () { if (_fpProxEl) _fpProxEl.style.opacity = '0'; }, 2500);
+              return;
+            }
+
+            // Exit: trigger seal flow
+            _fpPlayActive = false;
+            var rt2 = window.TemAfStrataTerrain._lastRuntime;
+            if (rt2) rt2.exitFirstPerson();
+            var sv = document.getElementById('strataView');
+            if (sv) sv.style.display = 'none';
+            if (_fpProxEl) _fpProxEl.style.opacity = '0';
+            if (_fpHintEl) _fpHintEl.style.opacity = '0';
+
+            // Trigger the existing seal/reveal flow
+            var sealBtn = document.getElementById('sealBtn');
+            if (sealBtn) {
+              sealBtn.disabled = false;
+              sealBtn.click();
+            }
+          }, LONG_PRESS_MS);
+
+        } else if (_fpNearPin) {
+          // ─── Scene pin long press ─────────────────────────
+          var targetPin = _fpNearPin;
+          _pressTimer = setTimeout(function () {
+            if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }
+            canvas.style.transform = _canvasOrigTransform;
+
+            if (!targetPin) return;
+            var rt2 = window.TemAfStrataTerrain._lastRuntime;
+            if (rt2 && rt2.getCamera()) {
+              var cam2 = rt2.getCamera();
+              _lastFpPos = { x: cam2.position.x, z: cam2.position.z };
+              _lastFpYaw = cam2.rotation.y;
+            }
+            if (rt2) rt2.exitFirstPerson();
+            var sv = document.getElementById('strataView');
+            if (sv) sv.style.display = 'none';
+            if (_fpProxEl) _fpProxEl.style.opacity = '0';
+            if (_fpHintEl) _fpHintEl.style.opacity = '0';
+            if (window._temEnterSceneMode) {
+              window._temEnterSceneMode(targetPin.pin);
+            }
+          }, LONG_PRESS_MS);
+        }
       });
       canvas.addEventListener('mouseup', function () {
         if (_pressTimer) { clearTimeout(_pressTimer); _pressTimer = null; }
@@ -4761,6 +4983,7 @@
     window._fpPlay = {
       init: initFpPlay,
       isActive: function () { return _fpPlayActive; },
+      wasActive: false,
       pins: function () { return _fpScenePins; }
     };
   })();

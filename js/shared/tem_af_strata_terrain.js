@@ -556,7 +556,7 @@
       var vp0 = getViewportSize();
       scene3 = new THREE.Scene();
       scene3.background = new THREE.Color(opts.clearColor != null ? opts.clearColor : 0x12121a);
-      scene3.fog = new THREE.FogExp2(opts.fogColor != null ? opts.fogColor : 0x12121a, opts.fogDensity != null ? opts.fogDensity : 0.004);
+      scene3.fog = new THREE.FogExp2(opts.fogColor != null ? opts.fogColor : 0x12121a, opts.fogDensity != null ? opts.fogDensity : 0.018);
 
       camera = new THREE.PerspectiveCamera(50, vp0.w / vp0.h, 0.1, 500);
       camera.position.set(35, 28, 45);
@@ -599,17 +599,7 @@
       parts = new THREE.Points(pg2, new THREE.PointsMaterial({ color: 0x3a3a50, size: 0.1, transparent: true, opacity: 0.3, sizeAttenuation: true }));
       scene3.add(parts);
 
-      function mkD(x, y, z, c, s2) {
-        var m = new THREE.Mesh(new THREE.SphereGeometry(s2 || 0.2, 8, 8), new THREE.MeshBasicMaterial({ color: c }));
-        m.position.set(x, y, z); scene3.add(m);
-      }
-      function mkL(a, b, c) {
-        scene3.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a[0], a[1], a[2]), new THREE.Vector3(b[0], b[1], b[2])]), new THREE.LineBasicMaterial({ color: c, opacity: 0.2, transparent: true })));
-      }
-      mkD(-H2 * 0.9, -6, H2 + 3, 0xc44040, 0.3); mkD(0, -6, H2 + 3, 0x555555, 0.2); mkD(H2 * 0.9, -6, H2 + 3, 0x4050c4, 0.3);
-      mkL([-H2 * 0.95, -5.8, H2 + 3], [H2 * 0.95, -5.8, H2 + 3], 0x332233);
-      mkD(-H2 - 3, -6, -H2 * 0.9, 0xc4a040, 0.3); mkD(-H2 - 3, -6, 0, 0x555555, 0.2); mkD(-H2 - 3, -6, H2 * 0.9, 0x40c4a0, 0.3);
-      mkL([-H2 - 3, -5.8, -H2 * 0.95], [-H2 - 3, -5.8, H2 * 0.95], 0x223333);
+      // Axis markers removed — fog hides terrain edges instead
 
       return { scene: scene3, camera: camera, renderer: renderer, controls: controls };
     }
@@ -711,7 +701,15 @@
       _fpEuler.yaw = 0;
       _fpEuler.pitch = 0;
       _fpLastTime = performance.now();
-      canvas.requestPointerLock();
+      try { canvas.requestPointerLock(); } catch (_) {}
+      // If pointer lock fails (no user gesture), retry on next click
+      var _plRetry = function () {
+        if (_fpActive && !document.pointerLockElement) {
+          try { canvas.requestPointerLock(); } catch (_) {}
+        }
+        canvas.removeEventListener('click', _plRetry);
+      };
+      if (!document.pointerLockElement) canvas.addEventListener('click', _plRetry);
       document.addEventListener('keydown', _fpOnKeyDown);
       document.addEventListener('keyup', _fpOnKeyUp);
       document.addEventListener('mousemove', _fpOnMouseMove);
@@ -748,7 +746,7 @@
       if (len > 0) { mx /= len; mz /= len; }
       _fpPos.x += mx * _fpSpeed * dt;
       _fpPos.z += mz * _fpSpeed * dt;
-      var half = SZ / 2 - 1;
+      var half = SZ / 2 + 3; // allow walking slightly beyond terrain edge (for exit door etc.)
       _fpPos.x = Math.max(-half, Math.min(half, _fpPos.x));
       _fpPos.z = Math.max(-half, Math.min(half, _fpPos.z));
       var terrainH = gH(_fpPos.x, _fpPos.z);
@@ -812,6 +810,8 @@
       enterFirstPerson: enterFirstPerson,
       exitFirstPerson: exitFirstPerson,
       isFirstPerson: function () { return _fpActive; },
+      setYaw: function (y) { _fpEuler.yaw = y; },
+      getYaw: function () { return _fpEuler.yaw; },
     };
   }
 
