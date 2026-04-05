@@ -4623,7 +4623,7 @@
       _fpProxEl.style.cssText = 'position:absolute;bottom:120px;left:50%;transform:translateX(-50%);color:#c4a882;font-size:15px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 0 12px rgba(196,168,130,0.5);max-width:400px;';
       parent.appendChild(_fpProxEl);
       _fpHintEl = document.createElement('div');
-      _fpHintEl.style.cssText = 'position:absolute;bottom:90px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.4);font-size:11px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;';
+      _fpHintEl.style.cssText = 'position:absolute;bottom:90px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.65);font-size:14px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.3);';
       parent.appendChild(_fpHintEl);
     }
 
@@ -4653,7 +4653,8 @@
             // Show whisper text (same style as contour map hover)
             _fpProxEl.textContent = _getFpWhisper(closest);
             _fpProxEl.style.opacity = '1';
-            _fpHintEl.textContent = '길게 눌러 이 장면에 들어가세요';
+            var _hl = (document.documentElement.lang || 'en').substring(0, 2);
+            _fpHintEl.textContent = _hl === 'ko' ? '길게 눌러 이 장면에 들어가세요' : 'Hold to enter this scene';
             _fpHintEl.style.opacity = '1';
           }
           // Pulse pin
