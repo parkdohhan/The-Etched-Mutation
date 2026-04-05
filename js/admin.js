@@ -281,6 +281,12 @@ function editMemory(index) {
     document.getElementById('memoryDescription').value = memory.description || '';
     document.getElementById('memoryWords').value = memory.memory_words || '';
     document.getElementById('completedSentence').value = memory.completed_sentence || '';
+    // original_vector 로드
+    const ov = memory.original_vector || {};
+    ['fear','sadness','anger','joy','longing','guilt'].forEach(k => {
+        const el = document.getElementById('ov_' + k);
+        if (el) el.value = ov[k] != null ? ov[k] : '';
+    });
     document.getElementById('authorNote').value = memory.author_note || '';
     document.getElementById('memoryStatus').value = memory.status || 'Fetus';
  // sound mapping load
@@ -1663,6 +1669,15 @@ async function saveMemory() {
     const description = document.getElementById('memoryDescription').value.trim();
     const memoryWords = document.getElementById('memoryWords').value.trim();
     const completedSentence = document.getElementById('completedSentence').value.trim();
+    // original_vector 수집
+    const _ovKeys = ['fear','sadness','anger','joy','longing','guilt'];
+    const _ovObj = {};
+    let _ovHasValue = false;
+    _ovKeys.forEach(k => {
+        const v = parseFloat(document.getElementById('ov_' + k)?.value);
+        if (!isNaN(v)) { _ovObj[k] = Math.max(0, Math.min(1, v)); _ovHasValue = true; }
+    });
+    const originalVector = _ovHasValue ? _ovObj : null;
     const authorNote = document.getElementById('authorNote').value.trim();
  // sound mapping 수집
     var soundMap = {};
@@ -1783,6 +1798,7 @@ async function saveMemory() {
             sound_map: Object.keys(soundMap).length > 0 ? soundMap : null,
             memory_words: memoryWords || null,
             completed_sentence: completedSentence || null,
+            original_vector: originalVector,
             author_note: authorNote || null,
             status: status,
             scenes: scenesWithWaveData,
@@ -2847,6 +2863,40 @@ function stopPreviewSound() {
 
 window.previewSound = previewSound;
 window.stopPreviewSound = stopPreviewSound;
+// 씬의 original_emotion에서 평균 감정벡터를 자동 유도
+function autoFillOriginalVector() {
+    if (!currentScenes || currentScenes.length === 0) {
+        alert('씬이 없습니다. 먼저 씬을 추가하세요.');
+        return;
+    }
+    const keys = ['fear','sadness','anger','joy','longing','guilt'];
+    const avg = {};
+    keys.forEach(k => { avg[k] = 0; });
+    let count = 0;
+    currentScenes.forEach(s => {
+        let emo = s.original_emotion || s.originalVector;
+        if (!emo) return;
+        if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
+        if (typeof emo !== 'object') return;
+        count++;
+        keys.forEach(k => {
+            avg[k] += Number(emo[k]) || 0;
+            // grief→sadness, shame→guilt 매핑
+            if (k === 'sadness') avg[k] += Number(emo.grief) || 0;
+            if (k === 'guilt') avg[k] += (Number(emo.shame) || 0) * 0.6;
+        });
+    });
+    if (count === 0) {
+        alert('씬에 original_emotion 데이터가 없습니다.');
+        return;
+    }
+    keys.forEach(k => {
+        avg[k] = Math.min(1, Math.round((avg[k] / count) * 100) / 100);
+        const el = document.getElementById('ov_' + k);
+        if (el) el.value = avg[k];
+    });
+}
+window.autoFillOriginalVector = autoFillOriginalVector;
 window.editMemory = editMemory;
 window.deleteMemory = deleteMemory;
 window.deleteSessionById = deleteSessionById;

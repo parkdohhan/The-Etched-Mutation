@@ -131,9 +131,22 @@
                         <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">예: 고독, 상실, 그리움</small>
                     </div>
                     <div class="editor-input-group">
-                        <label class="editor-label">완성 문장</label>
+                        <label class="editor-label">완성 문장 (Finder 혼잣말)</label>
                         <textarea class="editor-textarea" id="completedSentence" placeholder="이 메모리를 완성하는 문장 입력" rows="2"></textarea>
-                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">메모리의 핵심을 담은 문장</small>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">Memory Finder에서 유령처럼 떠다니는 문장</small>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">감정 벡터 (Finder 매칭용)</label>
+                        <div id="originalVectorEditor" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+                            <label style="font-size:0.85rem;color:var(--text-muted);width:100%;">0~1 사이 값. 비워두면 씬에서 자동 유도</label>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">fear</span><input type="number" id="ov_fear" min="0" max="1" step="0.05" style="width:60px;" class="editor-input"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">sadness</span><input type="number" id="ov_sadness" min="0" max="1" step="0.05" style="width:60px;" class="editor-input"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">anger</span><input type="number" id="ov_anger" min="0" max="1" step="0.05" style="width:60px;" class="editor-input"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">joy</span><input type="number" id="ov_joy" min="0" max="1" step="0.05" style="width:60px;" class="editor-input"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">longing</span><input type="number" id="ov_longing" min="0" max="1" step="0.05" style="width:60px;" class="editor-input"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">guilt</span><input type="number" id="ov_guilt" min="0" max="1" step="0.05" style="width:60px;" class="editor-input"></div>
+                        </div>
+                        <button type="button" class="table-btn" onclick="autoFillOriginalVector()" style="font-size:0.8rem;">씬에서 자동 유도</button>
                     </div>
                     <div class="editor-input-group">
                         <label class="editor-label">작가의 말 (진엔딩 보상)</label>

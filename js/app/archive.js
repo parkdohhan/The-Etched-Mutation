@@ -147,26 +147,55 @@ function _initMemoryFinder() {
   }
 }
 
+/**
+ * 기억의 감정 벡터를 가져옴 (original_vector 우선, 없으면 씬에서 유도)
+ */
+function _getMemoryEmotionVector(m) {
+  if (m.original_vector && typeof m.original_vector === 'object') return m.original_vector;
+  // 씬의 original_emotion에서 평균 벡터 유도
+  if (m.scenes && m.scenes.length > 0) {
+    const avg = {};
+    let count = 0;
+    for (const s of m.scenes) {
+      let emo = s.original_emotion || s.originalVector;
+      if (!emo) continue;
+      if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { continue; } }
+      if (typeof emo !== 'object') continue;
+      count++;
+      for (const [k, v] of Object.entries(emo)) {
+        avg[k] = (avg[k] || 0) + (Number(v) || 0);
+      }
+    }
+    if (count > 0) {
+      for (const k in avg) avg[k] /= count;
+      return avg;
+    }
+  }
+  return null;
+}
+
 function _finderMatch(emotion, lang) {
   const memories = appStore.getState().allMemoriesData || [];
-  // Score memories by emotion match
   const scored = memories.map(m => {
-    // Use scenes' original_emotion if available, or fall back to memory-level vector
     let score = 0;
-    const vec = m.original_vector;
-    if (vec && typeof vec === 'object') {
+    const vec = _getMemoryEmotionVector(m);
+    if (vec) {
+      // 정확한 키 매칭 + grief→sadness, numbness→sadness 등 유사 감정 매핑
       score = vec[emotion] || 0;
+      if (emotion === 'sadness') score = Math.max(score, vec.grief || 0, vec.numbness || 0);
+      if (emotion === 'fear') score = Math.max(score, vec.anxiety || 0);
+      if (emotion === 'guilt') score = Math.max(score, vec.shame || 0);
     }
-    // Also check title/sentence for keyword proximity
     const text = (m.title || '') + ' ' + (m.completed_sentence || '');
     if (text.toLowerCase().includes(emotion)) score += 0.3;
     return { memory: m, score };
   }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
 
   const matched = scored.slice(0, 3).map(s => s.memory);
-  // Fallback: if no match, take most recent
   if (matched.length === 0) {
-    matched.push(...memories.slice(0, Math.min(3, memories.length)));
+    // Fallback: 랜덤 3개 (항상 같은 3개 방지)
+    const shuffled = memories.slice().sort(() => Math.random() - 0.5);
+    matched.push(...shuffled.slice(0, Math.min(3, shuffled.length)));
   }
   _showFinderResults(matched, lang);
 }
@@ -174,19 +203,27 @@ function _finderMatch(emotion, lang) {
 function _finderMatchByText(query, lang) {
   const memories = appStore.getState().allMemoriesData || [];
   const lower = query.toLowerCase();
+  const emotionWords = {
+    sadness: ['슬', '울', 'sad', 'cry', '아프', '힘들'],
+    anger: ['화', '분노', 'angry', 'rage', '짜증'],
+    fear: ['무서', '두려', 'fear', 'afraid', '불안'],
+    longing: ['그리', '보고싶', 'miss', 'long', '그립'],
+    guilt: ['미안', '죄책', 'sorry', 'guilt', '후회'],
+    joy: ['기쁨', '행복', 'happy', 'joy', '좋'],
+  };
   const scored = memories.map(m => {
     const text = ((m.title || '') + ' ' + (m.completed_sentence || '')).toLowerCase();
     let score = 0;
-    // Simple keyword matching
     lower.split(/\s+/).forEach(word => {
       if (word.length >= 2 && text.includes(word)) score += 1;
     });
-    // Emotion keyword matching
-    const emotionWords = { sadness: ['슬', '울', 'sad', 'cry'], anger: ['화', '분노', 'angry', 'rage'], fear: ['무서', '두려', 'fear', 'afraid'], longing: ['그리', '보고싶', 'miss', 'long'], guilt: ['미안', '죄책', 'sorry', 'guilt'], joy: ['기쁨', '행복', 'happy', 'joy'] };
+    const vec = _getMemoryEmotionVector(m);
     for (const [emo, keywords] of Object.entries(emotionWords)) {
       if (keywords.some(kw => lower.includes(kw))) {
-        const vec = m.original_vector;
         if (vec && vec[emo]) score += vec[emo];
+        // grief, shame 등 유사 감정도 체크
+        if (emo === 'sadness' && vec) score += (vec.grief || 0) * 0.8;
+        if (emo === 'guilt' && vec) score += (vec.shame || 0) * 0.6;
       }
     }
     return { memory: m, score };
@@ -194,7 +231,8 @@ function _finderMatchByText(query, lang) {
 
   const matched = scored.slice(0, 3).map(s => s.memory);
   if (matched.length === 0) {
-    matched.push(...memories.slice(0, Math.min(3, memories.length)));
+    const shuffled = memories.slice().sort(() => Math.random() - 0.5);
+    matched.push(...shuffled.slice(0, Math.min(3, shuffled.length)));
   }
   _showFinderResults(matched, lang);
 }

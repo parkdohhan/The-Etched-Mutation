@@ -178,6 +178,13 @@
     .scene-main { width: 100%; max-width: 560px; text-align: center; }
     #sceneNpc { font-family: 'Cormorant Garamond', serif; font-style: italic; color: rgba(196, 168, 130, 0.5); font-size: 0.9rem; min-height: 1.2em; margin-bottom: 0.8rem; }
     #sceneText { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; line-height: 2; letter-spacing: 0.03em; color: var(--text-primary); margin-bottom: 1.5rem; }
+    /* 오염된 단어: 미세한 색상 차이 + hover시 원문 노출 */
+    .cont-word { color: rgba(196, 140, 120, 0.75); transition: color 0.3s; cursor: help; position: relative; }
+    .cont-word:hover { color: rgba(196, 168, 130, 0.95); }
+    .cont-word:hover::after { content: attr(title); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: rgba(10,10,12,0.9); color: rgba(196,168,130,0.7); font-size: 0.75rem; padding: 3px 8px; border-radius: 3px; white-space: nowrap; pointer-events: none; letter-spacing: 1px; border: 1px solid rgba(196,168,130,0.15); }
+    .cont-erosion { text-decoration-line: underline; text-decoration-style: dotted; text-decoration-color: rgba(196,140,120,0.25); text-underline-offset: 3px; }
+    .cont-echo { font-weight: 600; letter-spacing: -0.02em; }
+    .cont-glitch { font-family: monospace; letter-spacing: 0.08em; }
     #emotionInputArea { opacity: 0; transition: opacity 0.6s; }
     #emotionInputArea.warn-border { box-shadow: 0 0 0 1px rgba(196, 168, 130, 0.15); border-radius: 8px; padding: 8px; }
     .emotion-chip {
@@ -316,9 +323,43 @@
       .map-pin.visited::after { width: 6px; height: 6px; }
       .map-pin-label { font-size: 12px; left: 22px; }
     }
+    /* ── ESC 메뉴 ────────────────────────── */
+    #escMenu { display:none; position:fixed; inset:0; z-index:9000; background:rgba(6,6,10,0.88); backdrop-filter:blur(8px); justify-content:center; align-items:center; }
+    #escMenu.active { display:flex; }
+    .esc-panel { text-align:center; min-width:280px; max-width:340px; }
+    .esc-title { font-family:'Cormorant Garamond',serif; font-size:13px; letter-spacing:6px; color:rgba(196,168,130,0.4); margin-bottom:2.5rem; text-transform:uppercase; }
+    .esc-row { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid rgba(196,168,130,0.08); }
+    .esc-row:last-child { border-bottom:none; }
+    .esc-label { font-family:'Cormorant Garamond',serif; font-size:14px; letter-spacing:1px; color:rgba(196,168,130,0.7); }
+    .esc-toggle { background:none; border:1px solid rgba(196,168,130,0.25); color:rgba(196,168,130,0.85); font-family:'Cormorant Garamond',serif; font-size:13px; letter-spacing:2px; padding:6px 18px; cursor:pointer; border-radius:3px; transition:all 0.3s; }
+    .esc-toggle:hover { border-color:rgba(196,168,130,0.5); color:rgba(196,168,130,1); }
+    .esc-slider { width:120px; accent-color:#c4a882; }
+    .esc-slider-val { font-family:'Cormorant Garamond',serif; font-size:12px; color:rgba(196,168,130,0.5); min-width:36px; text-align:right; }
+    .esc-exit { margin-top:2rem; background:none; border:1px solid rgba(180,80,80,0.3); color:rgba(180,80,80,0.7); font-family:'Cormorant Garamond',serif; font-size:13px; letter-spacing:3px; padding:10px 32px; cursor:pointer; border-radius:3px; transition:all 0.3s; }
+    .esc-exit:hover { border-color:rgba(180,80,80,0.6); color:rgba(180,80,80,1); }
+    .esc-resume { margin-top:1rem; background:none; border:none; color:rgba(196,168,130,0.35); font-family:'Cormorant Garamond',serif; font-size:11px; letter-spacing:3px; cursor:pointer; padding:8px 20px; }
+    .esc-resume:hover { color:rgba(196,168,130,0.6); }
   </style>
 </head>
 <body>
+  <!-- ESC 메뉴 -->
+  <div id="escMenu">
+    <div class="esc-panel">
+      <div class="esc-title">paused</div>
+      <div class="esc-row">
+        <span class="esc-label" id="escLangLabel">Language</span>
+        <button type="button" class="esc-toggle" id="escLangBtn">한국어</button>
+      </div>
+      <div class="esc-row">
+        <span class="esc-label" id="escBrightLabel">Brightness</span>
+        <input type="range" class="esc-slider" id="escBrightSlider" min="0.5" max="1.5" step="0.05" value="1">
+        <span class="esc-slider-val" id="escBrightVal">100%</span>
+      </div>
+      <button type="button" class="esc-exit" id="escExitBtn">Exit</button>
+      <br>
+      <button type="button" class="esc-resume" id="escResumeBtn">press ESC to resume</button>
+    </div>
+  </div>
   <div id="selectScreen">
     <h1 style="font-family:'Cormorant Garamond',serif;color:#e8e4df;font-size:2rem;font-weight:400;letter-spacing:0.05em;margin-bottom:2rem;">The Etched Mutation</h1>
     <select id="memorySelect" style="background:#111;color:#e8e4df;border:1px solid rgba(196,168,130,0.3);padding:0.6rem 1.2rem;font-family:'Cormorant Garamond',serif;font-size:1rem;border-radius:4px;margin-bottom:1rem;min-width:250px;"></select>
@@ -2003,6 +2044,8 @@
   // Intensity bands: weak(0~0.33), medium(0.34~0.66), strong(0.67~1.0)
 
   const GLITCH_CHARS = '░▒▓█▪▫';
+  function _escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function _escAttr(s) { return _escHtml(s).replace(/"/g,'&quot;'); }
 
   // Seeded PRNG (mulberry32) — same text always produces same effect
   function _seedFromText(text) {
@@ -2022,6 +2065,9 @@
     const { stage, intensity, band } = pres;
     if (stage === 'stable' || intensity < 0.01) return originalText;
 
+    // 첫 씬은 무조건 깨끗하게 — 유저에게 원문 기준선을 만들어줌
+    if (game.coreVisitCount <= 0) return originalText;
+
     // Pre-generated stage text: DB text_stage_1/2/3 mapped to contamination state
     if (stage === 'biased_inclination') {
       if (band === 'strong' && scene.text_stage_2) return scene.text_stage_2;
@@ -2038,47 +2084,47 @@
     const isKo = /[가-힣]/.test(originalText);
     const words = originalText.split(/(\s+)/);
 
-    // Effect probability scales with intensity band
-    const prob = band === 'strong' ? 0.18
+    // 이 씬이 얼마나 만져졌는지 — 많이 만져질수록 더 침식
+    const touchCount = game.plays ? game.plays.filter(p => p.scene_id === scene.id).length : 0;
+    const touchBoost = Math.min(0.14, touchCount * 0.002);
+
+    // Effect probability scales with intensity band + touch erosion
+    const prob = (band === 'strong' ? 0.18
       : band === 'medium' ? 0.10
-      : 0.04;
+      : 0.04) + touchBoost;
 
     let out = '';
+    let hasContamination = false;
     for (let i = 0; i < words.length; i++) {
       const w = words[i];
       if (/^\s+$/.test(w)) { out += w; continue; }
-      if (rng() >= prob) { out += w; continue; }
+      if (rng() >= prob) { out += _escHtml(w); continue; }
 
+      hasContamination = true;
       if (stage === 'biased_inclination') {
-        // Directional erosion: trailing chars dissolve (Korean particles/endings fade)
-        // Spec: "핵심 단어만 편향 방향으로 치환", "기억이 한 방향으로 틀어지고 있다"
         const fadeStart = isKo
-          ? Math.max(1, Math.floor(w.length * 0.5))  // Korean: keep first half, fade tail
-          : Math.max(1, Math.floor(w.length * 0.6));  // English: keep more, fade ending
-        let result = w.slice(0, fadeStart);
+          ? Math.max(1, Math.floor(w.length * 0.5))
+          : Math.max(1, Math.floor(w.length * 0.6));
+        let result = _escHtml(w.slice(0, fadeStart));
         for (let c = fadeStart; c < w.length; c++) {
-          result += rng() < 0.5 ? '·' : w[c];  // middle-dot for subtle erosion
+          result += rng() < 0.5 ? '·' : _escHtml(w[c]);
         }
-        out += result;
+        out += '<span class="cont-word cont-erosion" title="' + _escAttr(w) + '">' + result + '</span>';
       } else if (stage === 'hypercompletion') {
-        // Over-solidification: text becomes too certain, too fixed
-        // Spec: "기억이 스스로 답을 확정하고 있다", "반복성 누적"
         if (rng() < 0.3 && w.length > 1) {
-          // Word echo: repeat the word (memory over-confirming itself)
-          out += w + w;
+          out += '<span class="cont-word cont-echo" title="' + _escAttr(w) + '">' + _escHtml(w) + _escHtml(w) + '</span>';
         } else {
-          // Glitch solidification: block chars replace parts
           let result = '';
           for (let c = 0; c < w.length; c++) {
             result += rng() < 0.4
               ? GLITCH_CHARS[Math.floor(rng() * GLITCH_CHARS.length)]
-              : w[c];
+              : _escHtml(w[c]);
           }
-          out += result;
+          out += '<span class="cont-word cont-glitch" title="' + _escAttr(w) + '">' + result + '</span>';
         }
       }
     }
-    return out;
+    return hasContamination ? out : originalText;
   }
 
   function buildTerrainFromData() {
@@ -2528,6 +2574,116 @@
     if (v) v.stopAlignmentWaveAnimation();
   }
 
+  // ── 파동 위 감정 키워드 에코 표시 ──────────────────────────
+  function _showWaveEchoLabel(emBase, rgb) {
+    const waveTop = document.getElementById('waveTop');
+    if (!waveTop) return;
+    // 지배 감정 찾기
+    const entries = Object.entries(emBase || {}).sort((a, b) => (b[1] || 0) - (a[1] || 0));
+    const topKey = entries.length ? entries[0][0] : null;
+    if (!topKey) return;
+    const label = (T.emotionSlider && T.emotionSlider[topKey]) || topKey;
+    // 기존 에코 제거
+    const old = waveTop.querySelector('.wave-echo-label');
+    if (old) old.remove();
+    const el = document.createElement('div');
+    el.className = 'wave-echo-label';
+    el.textContent = label;
+    el.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);'
+      + 'font-family:"Cormorant Garamond",serif;font-size:22px;letter-spacing:6px;'
+      + 'color:rgba(' + (rgb[0]||196) + ',' + (rgb[1]||168) + ',' + (rgb[2]||130) + ',0.85);'
+      + 'pointer-events:none;z-index:10;opacity:0;'
+      + 'transition:opacity 0.5s ease-in, transform 1.5s ease-out;'
+      + 'text-shadow:0 0 30px rgba(' + (rgb[0]||196) + ',' + (rgb[1]||168) + ',' + (rgb[2]||130) + ',0.4);';
+    waveTop.appendChild(el);
+    requestAnimationFrame(() => {
+      el.style.opacity = '1';
+      el.style.transform = 'translate(-50%, -50%) scale(1.08)';
+    });
+    setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%, -60%) scale(1.02)';
+    }, 1800);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  // ── 패턴 독백: transition pattern → 1인칭 속삭임 ──────────
+  const _PATTERN_WHISPERS = {
+    ko: {
+      echo_follow:   '…그대로 따라가고 있다.',
+      bridge:        null,
+      contradiction: '…기억이 충돌한다.',
+      displacement:  '…어딘가로 밀려나고 있다.',
+      avoidance:     '…피하고 있잖아.',
+      fixation:      '…같은 곳만 맴돈다.',
+    },
+    en: {
+      echo_follow:   '…following it exactly.',
+      bridge:        null,
+      contradiction: '…the memories collide.',
+      displacement:  '…drifting somewhere else.',
+      avoidance:     '…you\'re avoiding it.',
+      fixation:      '…circling the same place.',
+    },
+  };
+
+  function _showPatternWhisper(pattern, sceneCount) {
+    if (sceneCount < 3) return; // 3씬 이후부터
+    if (!pattern || pattern === 'bridge') return; // bridge는 무표시
+    const pool = _PATTERN_WHISPERS[LANG] || _PATTERN_WHISPERS.en;
+    const text = pool[pattern];
+    if (!text) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;bottom:22%;left:50%;transform:translateX(-50%);z-index:3000;'
+      + 'pointer-events:none;color:rgba(196,168,130,0.6);font-size:13px;letter-spacing:3px;'
+      + 'font-family:"Cormorant Garamond",serif;font-style:italic;'
+      + 'text-shadow:0 0 15px rgba(196,168,130,0.2);opacity:0;transition:opacity 1.2s ease;';
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '1'; }, 100);
+    setTimeout(() => { el.style.opacity = '0'; }, 3500);
+    setTimeout(() => el.remove(), 5000);
+  }
+
+  // ── Clarity 속삭임: 앵커 변화 이유 전달 ─────────────────────
+  const _CLARITY_WHISPERS = {
+    ko: {
+      echo_follow:   '…선명해진다.',
+      contradiction: '…기억이 흐려진다.',
+      displacement:  '…윤곽이 번진다.',
+      avoidance:     '…안개가 짙어진다.',
+      fixation:      '…또렷하지만 일그러진다.',
+    },
+    en: {
+      echo_follow:   '…it\'s becoming clearer.',
+      contradiction: '…the memory blurs.',
+      displacement:  '…the edges smear.',
+      avoidance:     '…the fog thickens.',
+      fixation:      '…sharp, but distorted.',
+    },
+  };
+
+  function _showClarityWhisper(pattern) {
+    if (!pattern || pattern === 'bridge') return;
+    const pool = _CLARITY_WHISPERS[LANG] || _CLARITY_WHISPERS.en;
+    const text = pool[pattern];
+    if (!text) return;
+    // 앵커 위치 근처에 표시
+    const anchor = document.querySelector('.floating-anchor');
+    const container = anchor ? anchor.parentElement : document.querySelector('.scene-main');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:absolute;top:15%;right:10%;z-index:20;'
+      + 'pointer-events:none;color:rgba(196,168,130,0.45);font-size:11px;letter-spacing:2px;'
+      + 'font-family:"Cormorant Garamond",serif;font-style:italic;'
+      + 'opacity:0;transition:opacity 1.5s ease;';
+    el.textContent = text;
+    container.appendChild(el);
+    setTimeout(() => { el.style.opacity = '1'; }, 200);
+    setTimeout(() => { el.style.opacity = '0'; }, 4000);
+    setTimeout(() => el.remove(), 5800);
+  }
+
   function transitionWavePostSubmit(rgb, bucket, emotionBase, alignmentScore) {
     game.playTestWaveUserIdle = false;
     game.waveTargetRgb = rgb.slice();
@@ -2656,14 +2812,19 @@
     textEl.textContent = '';
     // Apply contamination per Presentation spec (dominant stage + intensity band)
     const _pres = game.contPresentation || { stage: 'stable', intensity: 0, band: 'weak' };
-    let fullText = applyStageText(pin.text || scene.text || '…', scene, _pres);
+    const _contResult = applyStageText(pin.text || scene.text || '…', scene, _pres);
+    const _hasHtml = /<span\s/.test(_contResult);
+    // Plain text for typing animation; HTML for final contamination reveal
+    const _plainText = _hasHtml ? _contResult.replace(/<[^>]+>/g, '') : _contResult;
     const _typeStart = performance.now();
     const _charMs = 28;
     (function _typeFrame(now) {
       const elapsed = now - _typeStart;
-      const chars = Math.min(fullText.length, Math.floor(elapsed / _charMs) + 1);
-      textEl.textContent = fullText.slice(0, chars);
-      if (chars >= fullText.length) {
+      const chars = Math.min(_plainText.length, Math.floor(elapsed / _charMs) + 1);
+      textEl.textContent = _plainText.slice(0, chars);
+      if (chars >= _plainText.length) {
+        // 타이핑 완료 → 오염 HTML로 교체 (hover시 원문 title 표시)
+        if (_hasHtml) textEl.innerHTML = _contResult;
         setupEmotionInputByPinType(pin, scene);
         return;
       }
@@ -2677,6 +2838,16 @@
       _npcClear.innerHTML =
         '<span class="another-me-label">' + _introLabel + '</span>' +
         '<span class="another-me-whisper">' + T.anotherMeIntro + '</span>';
+    } else if (game.coreVisitCount === 1 && _hasHtml && !game._contFirstNoticed) {
+      // 오염이 처음 눈에 보이는 씬 — 더 깊이 들여다보기 시작했다
+      game._contFirstNoticed = true;
+      const _contLabel = LANG === 'ko' ? '또다른 나' : 'Another Me';
+      const _contWhisper = LANG === 'ko'
+        ? '…더 깊이 보이기 시작했어.'
+        : '…you\'re starting to see deeper.';
+      _npcClear.innerHTML =
+        '<span class="another-me-label">' + _contLabel + '</span>' +
+        '<span class="another-me-whisper">' + _contWhisper + '</span>';
     } else {
       _npcClear.textContent = '';
     }
@@ -2687,6 +2858,24 @@
 
     // Contamination monologue — "또다른 나" whisper (Presentation Spec §5)
     if (_pres.stage !== 'stable') {
+      // touchCount 기반 속삭임 (많이 만져진 기억일 때 — monologue보다 먼저)
+      const _touchCount = game.plays ? game.plays.filter(p => p.scene_id === scene.id).length : 0;
+      if (_touchCount >= 10 && game.coreVisitCount > 0) {
+        const _touchLabel = LANG === 'ko' ? '또다른 나' : 'Another Me';
+        const _touchLines = LANG === 'ko'
+          ? ['…깊이 파인 기억이야.', '…많은 시선이 지나간 자리야.', '…오래된 흔적이 보여.']
+          : ['…a deeply carved memory.', '…many eyes have passed through here.', '…old traces are showing.'];
+        const _touchWhisper = _touchLines[Math.floor(Math.random() * _touchLines.length)];
+        setTimeout(() => {
+          const npcEl = document.getElementById('sceneNpc');
+          if (npcEl) {
+            npcEl.innerHTML =
+              '<span class="another-me-label">' + _touchLabel + '</span>' +
+              '<span class="another-me-whisper">' + _touchWhisper + '</span>';
+          }
+        }, 800);
+      }
+
       const _monoText = getMonologue(_pres, game.contMismatch, pin.sceneIndex, game.contState?.cont_depth || 0);
       if (_monoText) {
         const _anotherMeLabel = LANG === 'ko' ? '또다른 나' : 'Another Me';
@@ -2697,7 +2886,7 @@
               '<span class="another-me-label">' + _anotherMeLabel + '</span>' +
               '<span class="another-me-whisper">' + _monoText + '</span>';
           }
-        }, 1500);
+        }, _touchCount >= 10 ? 4000 : 1500);
       }
     }
 
@@ -3297,8 +3486,13 @@
       result: result || game.lastResult || {},
       originSceneId,
     });
-    // 차집합: 새로 열린 핀 계산
+    // ── 패턴 독백 + clarity 속삭임 (씬 완료 → 지도 복귀 시) ──
     const _pattern = (result && result.transition_pattern) || 'bridge';
+    const _sceneCount = game.visitOrder ? game.visitOrder.length : 0;
+    setTimeout(() => _showPatternWhisper(_pattern, _sceneCount), 800);
+    setTimeout(() => _showClarityWhisper(_pattern), 2200);
+
+    // 차집합: 새로 열린 핀 계산
     const _newPinIds = new Set();
     if (game.accessiblePinIds) {
       game.accessiblePinIds.forEach(id => {
@@ -3426,6 +3620,9 @@
     const dom = getDominantColor(emBase);
     const bucket = result.alignment_bucket || 'MID';
     transitionWavePostSubmit(dom, bucket, emBase, result.alignment_score);
+
+    // ── 파동 위 감정 키워드 에코 ──
+    _showWaveEchoLabel(emBase, dom);
 
     const npc = document.getElementById('sceneNpc');
     const _postPres = game.contPresentation || { stage: 'stable', band: 'weak' };
@@ -4313,6 +4510,18 @@
                 if (lidTop.parentNode) lidTop.parentNode.removeChild(lidTop);
                 if (lidBot.parentNode) lidBot.parentNode.removeChild(lidBot);
                 if (monoEl.parentNode) monoEl.parentNode.removeChild(monoEl);
+
+                // Show movement control hint
+                var hintEl = document.createElement('div');
+                hintEl.style.cssText = 'position:fixed;bottom:35%;left:50%;transform:translateX(-50%);color:rgba(160,160,160,0.7);font-size:15px;letter-spacing:3px;pointer-events:none;opacity:0;transition:opacity 1.2s ease;z-index:9999;text-align:center;font-family:"Cormorant Garamond",serif;';
+                hintEl.textContent = lang === 'ko' ? '[방향키로 움직이고, 커서로 둘러보세요]' : '[Move with arrow keys, look around with cursor]';
+                document.body.appendChild(hintEl);
+                requestAnimationFrame(function () { hintEl.style.opacity = '1'; });
+                // Auto-fade after 5s
+                setTimeout(function () {
+                  hintEl.style.opacity = '0';
+                  setTimeout(function () { if (hintEl.parentNode) hintEl.parentNode.removeChild(hintEl); }, 1500);
+                }, 5000);
               }, 1500);
             }
           }, 8000);
@@ -4986,6 +5195,93 @@
       wasActive: false,
       pins: function () { return _fpScenePins; }
     };
+  })();
+  </script>
+  <script>
+  // ── ESC 메뉴 컨트롤러 ──────────────────────────────
+  (function () {
+    'use strict';
+    var menu = document.getElementById('escMenu');
+    var langBtn = document.getElementById('escLangBtn');
+    var langLabel = document.getElementById('escLangLabel');
+    var brightSlider = document.getElementById('escBrightSlider');
+    var brightVal = document.getElementById('escBrightVal');
+    var brightLabel = document.getElementById('escBrightLabel');
+    var exitBtn = document.getElementById('escExitBtn');
+    var resumeBtn = document.getElementById('escResumeBtn');
+    var isOpen = false;
+
+    function getLang() {
+      var p = new URLSearchParams(window.location.search);
+      return p.get('lang') === 'ko' ? 'ko' : 'en';
+    }
+
+    function updateLabels() {
+      var ko = getLang() === 'ko';
+      langBtn.textContent = ko ? 'English' : '한국어';
+      langLabel.textContent = ko ? '언어' : 'Language';
+      brightLabel.textContent = ko ? '밝기' : 'Brightness';
+      exitBtn.textContent = ko ? '나가기' : 'Exit';
+      resumeBtn.textContent = ko ? 'ESC로 돌아가기' : 'press ESC to resume';
+    }
+
+    function openMenu() {
+      isOpen = true;
+      menu.classList.add('active');
+      updateLabels();
+    }
+
+    function closeMenu() {
+      isOpen = false;
+      menu.classList.remove('active');
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        // 오프닝 시퀀스 스킵 등 다른 ESC 핸들러와 충돌 방지
+        if (document.getElementById('selectScreen') && document.getElementById('selectScreen').style.display !== 'none') return;
+        e.preventDefault();
+        if (isOpen) closeMenu();
+        else openMenu();
+      }
+    });
+
+    resumeBtn.addEventListener('click', closeMenu);
+    menu.addEventListener('click', function (e) {
+      if (e.target === menu) closeMenu(); // 배경 클릭 시 닫기
+    });
+
+    // 언어 전환
+    langBtn.addEventListener('click', function () {
+      var cur = getLang();
+      var next = cur === 'ko' ? 'en' : 'ko';
+      var url = new URL(window.location.href);
+      url.searchParams.set('lang', next);
+      window.location.href = url.toString();
+    });
+
+    // 밝기 조절
+    var savedBrightness = sessionStorage.getItem('tem_brightness');
+    if (savedBrightness) {
+      brightSlider.value = savedBrightness;
+      document.body.style.filter = 'brightness(' + savedBrightness + ')';
+    }
+    brightSlider.addEventListener('input', function () {
+      var v = parseFloat(brightSlider.value);
+      brightVal.textContent = Math.round(v * 100) + '%';
+      document.body.style.filter = v === 1 ? '' : 'brightness(' + v + ')';
+      sessionStorage.setItem('tem_brightness', v);
+    });
+    brightVal.textContent = Math.round(parseFloat(brightSlider.value) * 100) + '%';
+
+    // 나가기
+    exitBtn.addEventListener('click', function () {
+      var ko = getLang() === 'ko';
+      var msg = ko ? '정말 나가시겠습니까? 진행 상황은 저장되지 않습니다.' : 'Are you sure you want to exit? Progress will not be saved.';
+      if (confirm(msg)) {
+        window.location.href = '/';
+      }
+    });
   })();
   </script>
 </body>

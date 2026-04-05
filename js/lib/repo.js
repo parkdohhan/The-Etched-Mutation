@@ -103,7 +103,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         throw new Error('Supabase client not initialized.');
     }
 
-    const { memoryId, code, title, description, memory_words, completed_sentence, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions } = memoryPayload;
+    const { memoryId, code, title, description, memory_words, completed_sentence, original_vector, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
@@ -118,6 +118,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 description: description || null,
                 memory_words: memory_words || null,
                 completed_sentence: completed_sentence || null,
+                original_vector: original_vector || null,
                 author_note: author_note || null,
                 status: status || 'Fetus',
                 source: source || 'beginner',
@@ -166,6 +167,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
             description: description || null,
             memory_words: memory_words || null,
             completed_sentence: completed_sentence || null,
+            original_vector: original_vector || null,
             author_note: author_note || null,
             status: status || 'Fetus',
             source: source || 'beginner',
