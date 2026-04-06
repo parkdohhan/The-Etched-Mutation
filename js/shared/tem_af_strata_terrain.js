@@ -82,6 +82,52 @@
     return mk;
   }
 
+  // ─── VAD projection (contour-test 동일) ─────────────────────
+  var VAD_FULL = {
+    fear:{v:-0.9,a:0.9,d:-0.8}, sadness:{v:-0.8,a:-0.4,d:-0.7}, anger:{v:-0.7,a:0.8,d:0.3},
+    guilt:{v:-0.8,a:0.2,d:-0.6}, shame:{v:-0.9,a:-0.2,d:-0.9}, isolation:{v:-0.7,a:-0.5,d:-0.6},
+    numbness:{v:-0.6,a:-0.8,d:-0.4}, longing:{v:-0.3,a:0.2,d:-0.2}, resentment:{v:-0.5,a:0.6,d:0.1},
+    resignation:{v:-0.4,a:-0.6,d:-0.5}, joy:{v:0.9,a:0.6,d:0.5}, hope:{v:0.7,a:0.4,d:0.6},
+    relief:{v:0.6,a:-0.3,d:0.4}, gratitude:{v:0.8,a:-0.2,d:0.7}, love:{v:1.0,a:0.5,d:0.6},
+    peace:{v:0.8,a:-0.6,d:0.7}, confusion:{v:-0.4,a:0.3,d:-0.5},
+  };
+
+  // VA-space anchors: emotion → {v, a} position + EC color
+  var VA_ANCHORS = {};
+  (function () {
+    for (var ek in EC) {
+      var vad = VAD_FULL[ek];
+      if (!vad) continue;
+      VA_ANCHORS[ek] = { v: vad.v, a: vad.a, color: EC[ek] };
+    }
+  })();
+
+  function projectToVAD(emoVec) {
+    var V = 0, A = 0, wSum = 0;
+    for (var k in emoVec) {
+      if (!Object.prototype.hasOwnProperty.call(emoVec, k)) continue;
+      var w = Number(emoVec[k] || 0);
+      var m = VAD_FULL[k];
+      if (!w || !m) continue;
+      V += w * m.v; A += w * m.a; wSum += w;
+    }
+    if (wSum <= 0) return { v: 0, a: 0 };
+    return { v: Math.max(-1, Math.min(1, V / wSum)), a: Math.max(-1, Math.min(1, A / wSum)) };
+  }
+
+  function computeVAWeights(vad, anchors) {
+    var weights = {}; var totalW = 0;
+    for (var name in anchors) {
+      var anc = anchors[name];
+      var dv = vad.v - anc.v; var da = vad.a - anc.a;
+      var dist2 = dv * dv + da * da;
+      var w = Math.exp(-dist2 / 0.5);
+      if (w > 0.01) { weights[name] = w; totalW += w; }
+    }
+    if (totalW > 0) { for (var k in weights) weights[k] /= totalW; }
+    return weights;
+  }
+
   function playAlignment(play) {
     if (play.alignment != null) return Number(play.alignment);
     if (play.alignment_score != null) return Number(play.alignment_score);
@@ -144,17 +190,23 @@
       var af = { x: pX(attr), z: pZ(fear) };
       var off = hashWorldOffset(m.id);
 
-      // C방식: 장면별 AF 좌표 (original_emotion 궤적)
+      // VA 좌표: pillar 위치를 Valence × Arousal 공간에 배치
+      var mergedVad = projectToVAD(Object.keys(merged).length ? merged : { numbness: 1 });
+      var pillarVx = mergedVad.v * H2 + off.ox;
+      var pillarVz = mergedVad.a * H2 + off.oz;
+
+      // 장면별 VA 좌표 (original_emotion 궤적)
       var sceneAF = [];
       scenes.forEach(function (sc, si) {
         var emo = sc.original_emotion;
         if (!emo) return;
         if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
+        var scVad = projectToVAD(emo);
         sceneAF.push({
           id: sc.id,
           order: sc.scene_order != null ? sc.scene_order : si,
-          wx: pX(eA(emo)) * H2 + off.ox,
-          wz: pZ(eF(emo)) * H2 + off.oz,
+          wx: scVad.v * H2 + off.ox,
+          wz: scVad.a * H2 + off.oz,
           emo: emo
         });
       });
@@ -168,8 +220,8 @@
         attr: attr,
         fear: fear,
         af: af,
-        pillarWx: af.x * H2 + off.ox,
-        pillarWz: af.z * H2 + off.oz,
+        pillarWx: pillarVx,
+        pillarWz: pillarVz,
         sceneAF: sceneAF,
       };
     });
@@ -189,161 +241,112 @@
     var H2 = SZ / 2;
     var hts = new Float32Array(G * G);
     var cls = new Float32Array(G * G * 3);
+    var pollField = new Float32Array(G * G);
 
     var layers = filterIdx == null
       ? P.map(function (m, mi) { return { m: m, mi: mi }; })
       : (P[filterIdx] ? [{ m: P[filterIdx], mi: filterIdx }] : []);
 
-    var pollField = new Float32Array(G * G);
+    // ─── VA-space anchors: emotion → Valence×Arousal position + EC color ───
+    var anchorKeys = Object.keys(VA_ANCHORS);
 
+    // ─── Pass 1: pollution field (radius-limited, VAD-weighted) ──
     layers.forEach(function (layer) {
-      var m = layer.m; var mi = layer.mi;
-      var cx = m.pillarWx; var cz = m.pillarWz;
-      var scenes = m.sceneAF || [];
-      var r = sR(mi * 777);
-
-      // ─── Base terrain: memory center (기존 유지, 전체 기반 지형) ───
-      var eT = 0;
-      for (var ek in m.emo) { if (Object.prototype.hasOwnProperty.call(m.emo, ek)) eT += m.emo[ek]; }
-      if (!eT) eT = 1;
-
-      for (var iz = 0; iz < G; iz++) for (var ix = 0; ix < G; ix++) {
-        var wx = (ix / (G - 1) - 0.5) * SZ; var wz = (iz / (G - 1) - 0.5) * SZ;
-        var inf = Math.exp(-((wx - cx) * (wx - cx) + (wz - cz) * (wz - cz)) / 40.5);
-        hts[iz * G + ix] += inf * Math.min(eT, 3) * 0.15;  // reduced base (was 0.25)
-        var ci = (iz * G + ix) * 3;
-        for (var e in m.emo) {
-          if (!Object.prototype.hasOwnProperty.call(m.emo, e)) continue;
-          var v = m.emo[e];
-          var c = EC[e] || [0.3, 0.3, 0.3];
-          cls[ci] += c[0] * v * inf * 0.08; cls[ci + 1] += c[1] * v * inf * 0.08; cls[ci + 2] += c[2] * v * inf * 0.08;
-        }
-      }
-
-      // ─── Scene bumps: 장면별 봉우리 (C방식) ────────────────────
-      if (scenes.length > 0) {
-        scenes.forEach(function (sc, si) {
-          var scx = sc.wx; var scz = sc.wz;
-          var scEmo = sc.emo;
-          var scET = 0;
-          for (var ek2 in scEmo) { if (Object.prototype.hasOwnProperty.call(scEmo, ek2)) scET += scEmo[ek2]; }
-          if (!scET) scET = 1;
-
-          for (var iz = 0; iz < G; iz++) for (var ix = 0; ix < G; ix++) {
-            var wx = (ix / (G - 1) - 0.5) * SZ; var wz = (iz / (G - 1) - 0.5) * SZ;
-            var inf = Math.exp(-((wx - scx) * (wx - scx) + (wz - scz) * (wz - scz)) / 18);
-            hts[iz * G + ix] += inf * Math.min(scET, 3) * 0.2;
-            var ci = (iz * G + ix) * 3;
-            for (var e in scEmo) {
-              if (!Object.prototype.hasOwnProperty.call(scEmo, e)) continue;
-              var v = scEmo[e];
-              var c = EC[e] || [0.3, 0.3, 0.3];
-              cls[ci] += c[0] * v * inf * 0.1; cls[ci + 1] += c[1] * v * inf * 0.1; cls[ci + 2] += c[2] * v * inf * 0.1;
-            }
-          }
-        });
-
-        // ─── Scene connections: 장면 간 능선 (D방식 — transition_pattern) ─
-        // Group plays by scene_id to get per-scene dominant pattern
-        var patternByScene = {};
-        m.plays.forEach(function (p) {
-          if (!p.scene_id) return;
-          var al = playAlignment(p);
-          // Infer pattern from alignment (simplified — full engine not available here)
-          var pat = al >= 0.5 ? 'echo_follow' : al >= 0.1 ? 'bridge' : 'contradiction';
-          if (al < 0.15) pat = 'avoidance';
-          if (!patternByScene[p.scene_id]) patternByScene[p.scene_id] = [];
-          patternByScene[p.scene_id].push(pat);
-        });
-
-        for (var si2 = 0; si2 < scenes.length - 1; si2++) {
-          var sA = scenes[si2]; var sB = scenes[si2 + 1];
-          // Determine dominant pattern for the connection
-          var pats = patternByScene[sA.id] || [];
-          var domPat = 'bridge'; // default
-          if (pats.length > 0) {
-            var patCount = {};
-            pats.forEach(function (p) { patCount[p] = (patCount[p] || 0) + 1; });
-            domPat = Object.keys(patCount).sort(function (a, b) { return patCount[b] - patCount[a]; })[0];
-          }
-
-          // Ridge/valley between consecutive scenes based on pattern
-          var ridgeH, ridgeW;
-          if (domPat === 'echo_follow')   { ridgeH = 0.15; ridgeW = 12; }  // gentle ridge
-          else if (domPat === 'bridge')    { ridgeH = 0.08; ridgeW = 16; }  // subtle connection
-          else if (domPat === 'contradiction') { ridgeH = -0.12; ridgeW = 8; }  // valley between
-          else if (domPat === 'avoidance') { ridgeH = -0.18; ridgeW = 6; }  // deep cut
-          else if (domPat === 'displacement') { ridgeH = 0.05; ridgeW = 10; }
-          else if (domPat === 'fixation')  { ridgeH = 0.20; ridgeW = 6; }   // sharp ridge
-          else { ridgeH = 0.05; ridgeW = 14; }
-
-          // Draw ridge/valley along line from sA to sB
-          var dx = sB.wx - sA.wx; var dz = sB.wz - sA.wz;
-          var segLen = Math.sqrt(dx * dx + dz * dz);
-          if (segLen < 0.5) continue;
-          var nx = -dz / segLen; var nz = dx / segLen; // normal to line
-
-          for (var iz = 0; iz < G; iz++) for (var ix = 0; ix < G; ix++) {
-            var wx = (ix / (G - 1) - 0.5) * SZ; var wz = (iz / (G - 1) - 0.5) * SZ;
-            // Project point onto line segment
-            var t = ((wx - sA.wx) * dx + (wz - sA.wz) * dz) / (segLen * segLen);
-            if (t < -0.05 || t > 1.05) continue;
-            t = Math.max(0, Math.min(1, t));
-            var projX = sA.wx + t * dx; var projZ = sA.wz + t * dz;
-            var perpDist = Math.abs((wx - projX) * nx + (wz - projZ) * nz);
-            if (perpDist > ridgeW) continue;
-            var falloff = Math.exp(-(perpDist * perpDist) / (ridgeW * 0.4 * ridgeW * 0.4));
-            // Taper at endpoints
-            var endTaper = 1 - Math.pow(2 * t - 1, 4);
-            hts[iz * G + ix] += ridgeH * falloff * endTaper;
-          }
-        }
-      }
-
-      // ─── Play effects: 각 play가 자기 AF 좌표에 흔적 + 오염 ────
+      var m = layer.m;
+      var off = hashWorldOffset(m.id);
       m.plays.forEach(function (play) {
         var ue = play.user_emotion;
         if (!ue) return;
         if (typeof ue === 'string') { try { ue = JSON.parse(ue); } catch (_) { return; } }
-        var pAttr = eA(ue); var pFear = eF(ue);
-        var jt = 0.12;
-        var px2 = pX({
-          self_blame: Math.max(0, (pAttr.self_blame || 0) + (r() - 0.5) * jt),
-          other_blame: Math.max(0, (pAttr.other_blame || 0) + (r() - 0.5) * jt),
-          fate_blame: Math.max(0, (pAttr.fate_blame || 0) + (r() - 0.5) * jt),
-        }) * H2;
-        var pz2 = pZ({
-          abandonment: Math.max(0, (pFear.abandonment || 0) + (r() - 0.5) * jt),
-          rejection: Math.max(0, (pFear.rejection || 0) + (r() - 0.5) * jt),
-          powerlessness: Math.max(0, (pFear.powerlessness || 0) + (r() - 0.5) * jt),
-          loss: Math.max(0, (pFear.loss || 0) + (r() - 0.5) * jt),
-        }) * H2;
+        var al = playAlignment(play);
+        var evPoll = 1 - al;
+        if (evPoll < 0.1) return;
+        var vad = projectToVAD(ue);
+        var weights = computeVAWeights(vad, VA_ANCHORS);
+        for (var eName in weights) {
+          var ew = weights[eName];
+          if (!ew || !VA_ANCHORS[eName]) continue;
+          var anc = VA_ANCHORS[eName];
+          var ancGx = Math.round(((anc.v * H2 + off.ox) / SZ + 0.5) * (G - 1));
+          var ancGz = Math.round(((anc.a * H2 + off.oz) / SZ + 0.5) * (G - 1));
+          var radius = Math.ceil(2 + ew * 6);
+          for (var dz = -radius; dz <= radius; dz++) {
+            for (var dx = -radius; dx <= radius; dx++) {
+              var gix = ancGx + dx; var giz = ancGz + dz;
+              if (gix < 0 || gix >= G || giz < 0 || giz >= G) continue;
+              var d = Math.sqrt(dx * dx + dz * dz);
+              if (d > radius) continue;
+              var sig = radius * 0.4;
+              var falloff = Math.exp(-(d * d) / (2 * sig * sig));
+              pollField[giz * G + gix] += evPoll * ew * falloff * 0.3;
+            }
+          }
+        }
+      });
+    });
+    for (var pi = 0; pi < G * G; pi++) pollField[pi] = Math.min(1, pollField[pi]);
+
+    // ─── Pass 2: event-based height + color (VAD → anchor weights) ─
+    layers.forEach(function (layer) {
+      var m = layer.m; var mi = layer.mi;
+      var off = hashWorldOffset(m.id);
+
+      m.plays.forEach(function (play, pi) {
+        var ue = play.user_emotion;
+        if (!ue) return;
+        if (typeof ue === 'string') { try { ue = JSON.parse(ue); } catch (_) { return; } }
 
         var al = playAlignment(play);
-        var isV = al < 0.15;
-        var dm = Object.keys(pAttr).sort(function (a, b) { return pAttr[b] - pAttr[a]; })[0];
-        var sX = 5; var sZ2 = 5;
-        if (dm === 'self_blame') { sX = 2.5; sZ2 = 2.5; } else if (dm === 'other_blame') { sX = 4; sZ2 = 3; }
-        var ds = al > 0.4 ? 1 : -0.6;
-        var inten = isV ? 0.12 : 0.4 + al * 0.5;
+        var deviation = Math.max(0, 1 - al);
+        var erosion = deviation * 0.6 + 0.2;
+        var voidRupture = al < 0.15 ? Math.max(0.3, deviation) : 0;
+        var intensity = 0.5 + al * 0.5;
 
-        for (var iz2 = 0; iz2 < G; iz2++) for (var ix2 = 0; ix2 < G; ix2++) {
-          var wx2 = (ix2 / (G - 1) - 0.5) * SZ; var wz2 = (iz2 / (G - 1) - 0.5) * SZ;
-          var inf2 = Math.exp(-((wx2 - px2) * (wx2 - px2) / (sX * sX) + (wz2 - pz2) * (wz2 - pz2) / (sZ2 * sZ2)) / 2);
-          var idx = iz2 * G + ix2;
-          if (isV) hts[idx] -= inf2 * fb(ix2 * 0.15, iz2 * 0.15, 3) * 0.21;
-          else hts[idx] += inf2 * inten * ds * (0.5 + (fb(ix2 * 0.1 + mi, iz2 * 0.1, 4) - 0.35) * 0.7);
-          var ci2 = idx * 3;
-          for (var e2 in ue) {
-            if (!Object.prototype.hasOwnProperty.call(ue, e2)) continue;
-            var vv = ue[e2];
-            var c2 = EC[e2] || [0.3, 0.3, 0.3];
-            var cI = inf2 * (typeof vv === 'number' ? vv : 0) * 0.025 * (isV ? 0.3 : 1);
-            cls[ci2] += c2[0] * cI; cls[ci2 + 1] += c2[1] * cI; cls[ci2 + 2] += c2[2] * cI;
+        // VAD projection → anchor weights (contour-test 동일 방식)
+        var vad = projectToVAD(ue);
+        var weights = computeVAWeights(vad, VA_ANCHORS);
+
+        for (var iz = 0; iz < G; iz++) {
+          for (var ix = 0; ix < G; ix++) {
+            var idx = iz * G + ix;
+            var gx = (ix / (G - 1) - 0.5) * SZ;
+            var gz = (iz / (G - 1) - 0.5) * SZ;
+            var ci = idx * 3;
+            var localPoll = pollField[idx];
+
+            for (var eName in weights) {
+              var ew = weights[eName];
+              if (!ew || !VA_ANCHORS[eName]) continue;
+              var anc = VA_ANCHORS[eName];
+              var ax = anc.v * H2 + off.ox;
+              var az = anc.a * H2 + off.oz;
+              var ddx = gx - ax; var ddz = gz - az;
+              var dist = Math.sqrt(ddx * ddx + ddz * ddz);
+              var radius = 3 + ew * 9;
+              if (dist >= radius * 1.5) continue;
+              var sig = radius * 0.4;
+              var inf = Math.exp(-(dist * dist) / (2 * sig * sig)) * ew * intensity;
+
+              // Height: base + deviation noise + erosion noise
+              var dh = ew * 38 * inf;
+              dh += deviation * fb(gx * 0.15 + pi * 3 + mi, gz * 0.15 + pi * 2, 4) * 4 * inf;
+              dh += erosion * (hs(gx * 0.3 + pi + mi, gz * 0.3) - 0.5) * 2.5 * inf;
+
+              // Void rupture + local pollution
+              var vrEff = voidRupture + localPoll * 0.15;
+              if (vrEff > 0.15) {
+                var vn = fb(gx * 0.2 + pi * 5 + mi, gz * 0.2, 3);
+                if (vn > (1 - vrEff * 0.6)) dh -= 4 * vrEff * inf;
+              }
+
+              hts[idx] += dh;
+
+              // EC emotion color
+              var c = anc.color;
+              var cI = inf * ew * 0.08;
+              cls[ci] += c[0] * cI; cls[ci + 1] += c[1] * cI; cls[ci + 2] += c[2] * cI;
+            }
           }
-          // Pollution: low alignment → bone tint at play's AF location
-          var evPoll = 1 - al;
-          if (evPoll > 0.1) pollField[idx] += evPoll * inf2 * 0.3;
         }
       });
     });
@@ -354,17 +357,14 @@
       }
     }
 
-    // Clamp pollution field
-    for (var pi = 0; pi < G * G; pi++) pollField[pi] = Math.min(1, pollField[pi]);
-
-    // Color normalization: prevent brightening from play accumulation
+    // ─── Pass 3: global noise (0.05) + color normalization + contamination ─
     var totalPlaysAll = 0;
     layers.forEach(function (layer) { totalPlaysAll += layer.m.plays.length; });
     var colorNorm = totalPlaysAll > 1 ? 1.0 / (1.0 + totalPlaysAll * 0.08) : 1.0;
 
     for (var iz3 = 0; iz3 < G; iz3++) for (var ix3 = 0; ix3 < G; ix3++) {
       var idx3 = iz3 * G + ix3;
-      hts[idx3] += (fb(ix3 * 0.07, iz3 * 0.07, 5) - 0.4) * 1.8;
+      hts[idx3] += (fb(ix3 * 0.05, iz3 * 0.05, 5) - 0.4) * 1.8;
       var ci3 = idx3 * 3;
       cls[ci3] *= colorNorm; cls[ci3 + 1] *= colorNorm; cls[ci3 + 2] *= colorNorm;
       var av = (cls[ci3] + cls[ci3 + 1] + cls[ci3 + 2]) / 3;

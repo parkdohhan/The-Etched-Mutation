@@ -4207,6 +4207,7 @@
     var _fpHintEl = null;
     var _fpInterval = null;
     var _fpLongPress = null;
+    var _fpIntroSeqDone = false;
     var PROXIMITY_ENTER = 5;
     var LONG_PRESS_MS = 1200;
     var _lastFpPos = null;  // save position before entering scene
@@ -4264,6 +4265,7 @@
     function initFpPlay(memoryId) {
       if (!memoryId || !window.showStrataView || !window.TemAfStrataTerrain) return false;
       _fpPlayActive = true;
+      _fpIntroSeqDone = false;
       if (window._fpPlay) window._fpPlay.wasActive = true;
 
       // Place black overlay BEFORE showing strata so terrain is never visible
@@ -4508,6 +4510,7 @@
             function _finishDoorSeq() {
               if (_doorSeqDone) return;
               _doorSeqDone = true;
+              _fpIntroSeqDone = true;
               monoEl.style.opacity = '0';
               document.removeEventListener('keydown', _skipHandler);
               document.removeEventListener('mousedown', _skipHandler);
@@ -4678,7 +4681,7 @@
 
         // ─── Exit door proximity ───────────────────────────────
         var door = window._temExitDoor;
-        if (door && !_fpNearPin) {
+        if (door && !_fpNearPin && _fpIntroSeqDone) {
           var ddx = cam.position.x - door.x;
           var ddz = cam.position.z - door.z;
           var doorDist = Math.sqrt(ddx * ddx + ddz * ddz);
