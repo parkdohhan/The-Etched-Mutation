@@ -61,7 +61,7 @@
     terrainRuntime = g.TemAfStrataTerrain.createStrataTerrain(THREE, canvas, {
       clearColor: 0x12121a,
       fogColor: 0x12121a,
-      fogDensity: 0.004,
+      fogDensity: 0.006,
     });
     terrainRuntime.init();
     applyRendererBrightness();
@@ -186,7 +186,7 @@
 
       var memRes = await client
         .from('memories')
-        .select('id, title, memory_words, completed_sentence')
+        .select('id, title, memory_words, completed_sentence, cont_drift, cont_fixation, cont_divergence, cont_convergence, cont_heterogeneity, cont_depth, cont_stage, cont_stage_1, cont_stage_2, cont_stage_3, dilution, drift_dir_v, drift_dir_a, drift_dir_d, sensory_anchor, _cont_align_mean')
         .eq('id', memoryId)
         .maybeSingle();
 
@@ -201,7 +201,7 @@
       // Fetch scenes for scene pins (admin mode)
       var scenesRes = await client
         .from('scenes')
-        .select('id, memory_id, scene_order, text, original_emotion')
+        .select('id, memory_id, scene_order, text, original_emotion, echo_words, void_info')
         .eq('memory_id', memoryId)
         .order('scene_order', { ascending: true });
       var sceneRows = (scenesRes && !scenesRes.error && scenesRes.data) ? scenesRes.data : [];
@@ -353,10 +353,10 @@
     parent.appendChild(hint);
     _proxState.hintEl = hint;
 
-    // Detail panel (center overlay)
+    // Detail panel (translucent overlay — terrain stays visible behind)
     var panel = document.createElement('div');
     panel.id = 'strataScenePanel';
-    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,10,15,0.95);color:#c4a882;border:1px solid rgba(196,168,130,0.2);border-radius:6px;padding:24px 32px;max-width:420px;width:90%;z-index:300;display:none;font-size:13px;line-height:1.8;max-height:70vh;overflow-y:auto;';
+    panel.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(6,6,10,0.82);color:#c4a882;border:1px solid rgba(196,168,130,0.12);border-radius:4px;padding:28px 36px;max-width:400px;width:85%;z-index:300;display:none;font-size:13px;line-height:1.8;max-height:60vh;overflow-y:auto;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);';
     parent.appendChild(panel);
     _proxState.panelEl = panel;
   }
@@ -378,69 +378,206 @@
     _proxState.nearPin = null;
   }
 
+  // Emotion chip definitions for terrain interaction
+  var TERRAIN_EMOTIONS = [
+    { key: 'fear', ko: '공포', en: 'Fear' },
+    { key: 'sadness', ko: '슬픔', en: 'Sadness' },
+    { key: 'anger', ko: '분노', en: 'Anger' },
+    { key: 'longing', ko: '그리움', en: 'Longing' },
+    { key: 'guilt', ko: '죄책감', en: 'Guilt' },
+    { key: 'shame', ko: '수치심', en: 'Shame' },
+    { key: 'numbness', ko: '무감각', en: 'Numbness' },
+    { key: 'isolation', ko: '고립', en: 'Isolation' },
+    { key: 'joy', ko: '기쁨', en: 'Joy' },
+    { key: 'hope', ko: '희망', en: 'Hope' },
+    { key: 'peace', ko: '평화', en: 'Peace' },
+  ];
+
+  var _frozenTick = false;
+
   function _openScenePanel(pin) {
     var sd = pin.userData._sceneData;
     if (!sd) return;
     _ensureProximityUI();
 
+    // Freeze terrain animation (camera stays, world pauses)
+    _frozenTick = true;
+
+    var isAdmin = !!document.getElementById('adminDashboard');
+    var ko = _strataLang() === 'ko';
     var origDomLabel = _emoLabel(sd.originalDominant);
     var playDomLabel = _emoLabel(sd.playDominant) || '—';
-    var ko = _strataLang() === 'ko';
 
-    var html = '<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(196,168,130,0.4);margin-bottom:8px;">Scene ' + (sd.sceneOrder + 1) + '</div>';
-    html += '<div style="font-size:14px;line-height:1.8;margin-bottom:16px;color:rgba(196,168,130,0.8);">' + sd.text + '</div>';
-    html += '<div style="border-top:1px solid rgba(196,168,130,0.1);padding-top:12px;font-size:12px;">';
-    html += '<div style="margin-bottom:4px;">' + (ko ? '원본 감정' : 'Original') + ': <span style="color:#6a9fd8;">' + origDomLabel + '</span></div>';
-    if (sd.playCount > 0) {
-      html += '<div style="margin-bottom:4px;">' + (ko ? '체험자 감정' : 'Player') + ': <span style="color:#c4a882;">' + playDomLabel + '</span> (' + sd.playCount + (ko ? '회 체험' : ' plays') + ')</div>';
-      html += '<div style="margin-bottom:4px;">' + (ko ? '평균 정렬도' : 'Avg alignment') + ': ' + (sd.avgAlignment * 100).toFixed(0) + '%</div>';
+    var html = '';
+
+    if (isAdmin) {
+      // ─── Admin: detailed info panel ──
+      html += '<div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:rgba(196,168,130,0.4);margin-bottom:8px;">Scene ' + (sd.sceneOrder + 1) + '</div>';
+      html += '<div style="font-size:14px;line-height:1.8;margin-bottom:16px;color:rgba(196,168,130,0.8);">' + sd.text + '</div>';
+      html += '<div style="border-top:1px solid rgba(196,168,130,0.1);padding-top:12px;font-size:12px;">';
+      html += '<div style="margin-bottom:4px;">' + (ko ? '원본 감정' : 'Original') + ': <span style="color:#6a9fd8;">' + origDomLabel + '</span></div>';
+      if (sd.playCount > 0) {
+        html += '<div style="margin-bottom:4px;">' + (ko ? '체험자 감정' : 'Player') + ': <span style="color:#c4a882;">' + playDomLabel + '</span> (' + sd.playCount + (ko ? '회 체험' : ' plays') + ')</div>';
+        html += '<div style="margin-bottom:4px;">' + (ko ? '평균 정렬도' : 'Avg alignment') + ': ' + (sd.avgAlignment * 100).toFixed(0) + '%</div>';
+      } else {
+        html += '<div style="color:rgba(196,168,130,0.3);">' + (ko ? '아직 아무도 이 장면을 체험하지 않았다' : 'No one has experienced this scene yet') + '</div>';
+      }
+      if (sd.plays && sd.plays.length > 0) {
+        html += '<div style="margin-top:12px;border-top:1px solid rgba(196,168,130,0.1);padding-top:8px;font-size:11px;color:rgba(196,168,130,0.5);">';
+        sd.plays.forEach(function (p, pi) {
+          var ue = p.user_emotion;
+          if (typeof ue === 'string') { try { ue = JSON.parse(ue); } catch (_) { ue = {}; } }
+          var dk = ''; var dv = 0;
+          for (var k in ue) { if (ue[k] > dv) { dv = ue[k]; dk = k; } }
+          html += '<div>' + (pi + 1) + '. ' + _emoLabel(dk) + ' — ' + (p.alignment ? (p.alignment * 100).toFixed(0) + '%' : '—') + '</div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>';
     } else {
-      html += '<div style="color:rgba(196,168,130,0.3);">' + (ko ? '아직 아무도 이 장면을 체험하지 않았다' : 'No one has experienced this scene yet') + '</div>';
-    }
-
-    // Show each play's dominant emotion
-    if (sd.plays && sd.plays.length > 0) {
-      html += '<div style="margin-top:12px;border-top:1px solid rgba(196,168,130,0.1);padding-top:8px;font-size:11px;color:rgba(196,168,130,0.5);">';
-      sd.plays.forEach(function (p, pi) {
-        var ue = p.user_emotion;
-        if (typeof ue === 'string') { try { ue = JSON.parse(ue); } catch (_) { ue = {}; } }
-        var dk = ''; var dv = 0;
-        for (var k in ue) { if (ue[k] > dv) { dv = ue[k]; dk = k; } }
-        var dkKo = _emoLabel(dk);
-        var al = p.alignment ? (p.alignment * 100).toFixed(0) + '%' : '—';
-        html += '<div>' + (pi + 1) + '. ' + dkKo + ' — ' + al + '</div>';
+      // ─── Play: emotion chip interaction ──
+      html += '<div style="font-size:11px;letter-spacing:2px;text-align:center;color:rgba(196,168,130,0.4);margin-bottom:12px;">'
+        + (ko ? '이 흔적에서 무엇을 느끼시나요?' : 'What do you feel from this trace?') + '</div>';
+      html += '<div style="font-size:13px;line-height:1.8;margin-bottom:16px;color:rgba(196,168,130,0.6);text-align:center;font-style:italic;">"' + (sd.text || '').substring(0, 80) + (sd.text && sd.text.length > 80 ? '…' : '') + '"</div>';
+      html += '<div id="strataEmotionChips" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;">';
+      TERRAIN_EMOTIONS.forEach(function (em) {
+        html += '<button type="button" class="strata-emo-chip" data-emo="' + em.key + '" style="'
+          + 'padding:6px 14px;border:1px solid rgba(196,168,130,0.25);border-radius:16px;'
+          + 'background:transparent;color:rgba(196,168,130,0.7);font-size:12px;cursor:pointer;'
+          + 'transition:all 0.3s;letter-spacing:1px;">'
+          + (ko ? em.ko : em.en) + '</button>';
       });
+      html += '</div>';
+      html += '<div style="text-align:center;">';
+      html += '<button type="button" id="strataEmoSubmit" disabled style="'
+        + 'padding:8px 24px;border:1px solid rgba(196,168,130,0.3);border-radius:4px;'
+        + 'background:rgba(196,168,130,0.08);color:rgba(196,168,130,0.5);font-size:12px;'
+        + 'cursor:not-allowed;transition:all 0.3s;letter-spacing:2px;">'
+        + (ko ? '남기다' : 'Leave a mark') + '</button>';
       html += '</div>';
     }
 
-    html += '</div>';
     html += '<div style="margin-top:16px;text-align:center;font-size:11px;color:rgba(196,168,130,0.3);cursor:pointer;" id="strataScenePanelClose">' + (ko ? '클릭하여 닫기' : 'Click to close') + '</div>';
 
     _proxState.panelEl.innerHTML = html;
     _proxState.panelEl.style.display = 'block';
     _proxState.panelEl.style.pointerEvents = 'auto';
 
-    // Exit pointer lock so user can interact with panel
     if (document.pointerLockElement) document.exitPointerLock();
 
     function _closePanel() {
       _proxState.panelEl.style.display = 'none';
+      _frozenTick = false; // unfreeze terrain
       document.removeEventListener('keydown', _panelKeyHandler);
     }
 
-    // Close on click
+    // ─── Emotion chip interaction (play mode) ──
+    if (!isAdmin) {
+      var selectedEmotions = {};
+      var chips = _proxState.panelEl.querySelectorAll('.strata-emo-chip');
+      var submitBtn = document.getElementById('strataEmoSubmit');
+
+      chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          var key = chip.dataset.emo;
+          if (selectedEmotions[key]) {
+            delete selectedEmotions[key];
+            chip.style.borderColor = 'rgba(196,168,130,0.25)';
+            chip.style.color = 'rgba(196,168,130,0.7)';
+            chip.style.background = 'transparent';
+          } else {
+            selectedEmotions[key] = 1;
+            chip.style.borderColor = '#c4a882';
+            chip.style.color = '#c4a882';
+            chip.style.background = 'rgba(196,168,130,0.12)';
+          }
+          var hasSelection = Object.keys(selectedEmotions).length > 0;
+          submitBtn.disabled = !hasSelection;
+          submitBtn.style.cursor = hasSelection ? 'pointer' : 'not-allowed';
+          submitBtn.style.color = hasSelection ? '#c4a882' : 'rgba(196,168,130,0.5)';
+          submitBtn.style.borderColor = hasSelection ? 'rgba(196,168,130,0.5)' : 'rgba(196,168,130,0.3)';
+        });
+      });
+
+      submitBtn.addEventListener('click', function () {
+        if (submitBtn.disabled) return;
+        // Build emotion vector (equal weight for selected emotions)
+        var emoVec = {};
+        var keys = Object.keys(selectedEmotions);
+        var w = 1.0 / keys.length;
+        keys.forEach(function (k) { emoVec[k] = w; });
+
+        // Compute alignment with original emotion
+        var origEmo = sd.originalEmotion || {};
+        var dot = 0; var magA = 0; var magB = 0;
+        for (var ek in emoVec) { dot += (emoVec[ek] || 0) * (origEmo[ek] || 0); magA += emoVec[ek] * emoVec[ek]; }
+        for (var ok in origEmo) { magB += origEmo[ok] * origEmo[ok]; }
+        var alignment = (magA > 0 && magB > 0) ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0.5;
+
+        // Save play to Supabase
+        _saveTerrainPlay(sd.sceneId, emoVec, alignment);
+
+        // Push emotion to heartbeat waveform
+        _pushHeartbeatEmotion(emoVec);
+
+        // Visual feedback
+        submitBtn.textContent = ko ? '새겨졌다' : 'Etched';
+        submitBtn.disabled = true;
+        submitBtn.style.color = 'rgba(196,168,130,0.3)';
+        setTimeout(_closePanel, 1200);
+      });
+    }
+
     var closeEl = document.getElementById('strataScenePanelClose');
     if (closeEl) closeEl.onclick = _closePanel;
     _proxState.panelEl.onclick = function (e) {
       if (e.target === _proxState.panelEl || e.target === closeEl) _closePanel();
     };
 
-    // Close on any key press (ESC, space, etc.)
     function _panelKeyHandler(e) {
-      _closePanel();
-      e.preventDefault();
+      if (e.code === 'Escape') { _closePanel(); e.preventDefault(); }
     }
     document.addEventListener('keydown', _panelKeyHandler);
+  }
+
+  // Save terrain play and rebuild terrain
+  async function _saveTerrainPlay(sceneId, emoVec, alignment) {
+    try {
+      var client = null;
+      if (g.getSupabaseClient) client = g.getSupabaseClient();
+      else if (g.networkService && g.networkService.getClient) client = g.networkService.getClient();
+      if (!client) { console.warn('[Strata] No Supabase client for terrain play'); return; }
+
+      var memoryId = _lastConfig && _lastConfig.P && _lastConfig.P[0] ? _lastConfig.P[0].id : null;
+      if (!memoryId) return;
+
+      var userId = null;
+      try {
+        var authRes = await client.auth.getUser();
+        userId = authRes && authRes.data && authRes.data.user ? authRes.data.user.id : null;
+      } catch (_) {}
+
+      var playRow = {
+        memory_id: memoryId,
+        scene_id: sceneId,
+        user_id: userId,
+        user_emotion: emoVec,
+        alignment: alignment,
+        mismatch_type: alignment < 0.3 ? 'emotion_mismatch' : 'none',
+      };
+
+      var res = await client.from('plays').insert(playRow);
+      if (res.error) { console.warn('[Strata] Play insert error:', res.error.message); return; }
+
+      console.log('[Strata] Terrain play saved, rebuilding terrain...');
+
+      // Rebuild terrain with new data
+      if (memoryId && g.showStrataView) {
+        g.showStrataView(memoryId, null, null);
+      }
+    } catch (e) {
+      console.warn('[Strata] saveTerrainPlay error:', e.message);
+    }
   }
 
   function _screenShakeThenOpen(pin) {
@@ -512,8 +649,108 @@
     cvs._proxMouseUp = _onMouseUp;
   }
 
+  // ─── Heartbeat emotion waveform ──────────────────────────────
+  var _heartbeat = {
+    buffer: new Float32Array(200),
+    writeIdx: 0,
+    color: [196, 168, 130], // default amber
+    targetColor: [196, 168, 130],
+    intensity: 0.3,
+    targetIntensity: 0.3,
+    lastBeatTime: 0,
+  };
+
+  function _pushHeartbeatEmotion(emoVec) {
+    if (!emoVec) return;
+    // Find dominant emotion for color
+    var domK = ''; var domV = 0;
+    for (var k in emoVec) { if (emoVec[k] > domV) { domV = emoVec[k]; domK = k; } }
+    var EC_HB = {
+      fear: [102,71,179], sadness: [64,97,166], anger: [204,64,56], guilt: [153,122,89],
+      longing: [71,158,166], numbness: [82,82,97], shame: [148,89,122], isolation: [36,36,61],
+      joy: [209,184,97], hope: [140,166,115], love: [179,102,128], peace: [115,148,133],
+      gratitude: [166,148,102], relief: [122,173,122], confusion: [122,97,140],
+      resentment: [153,51,38], resignation: [102,97,89],
+    };
+    _heartbeat.targetColor = EC_HB[domK] || [196, 168, 130];
+    // Intensity spike
+    _heartbeat.targetIntensity = Math.min(1, 0.5 + domV * 0.5);
+  }
+
+  function _drawHeartbeat() {
+    var cvs = document.getElementById('strataHeartbeat');
+    if (!cvs) return;
+    var ctx = cvs.getContext('2d');
+    var w = cvs.width; var h = cvs.height;
+    ctx.clearRect(0, 0, w, h);
+
+    var buf = _heartbeat.buffer;
+    var idx = _heartbeat.writeIdx;
+
+    // Lerp color
+    for (var ci = 0; ci < 3; ci++) {
+      _heartbeat.color[ci] += (_heartbeat.targetColor[ci] - _heartbeat.color[ci]) * 0.03;
+    }
+    _heartbeat.intensity += (_heartbeat.targetIntensity - _heartbeat.intensity) * 0.02;
+    // Decay intensity slowly
+    _heartbeat.targetIntensity = Math.max(0.15, _heartbeat.targetIntensity - 0.001);
+
+    // Generate heartbeat-like signal
+    var now = performance.now();
+    var beatInterval = 800 + (1 - _heartbeat.intensity) * 600; // faster when intense
+    var timeSinceBeat = (now - _heartbeat.lastBeatTime) % beatInterval;
+    var beatPhase = timeSinceBeat / beatInterval;
+
+    var sample = 0;
+    if (beatPhase < 0.08) {
+      sample = Math.sin(beatPhase / 0.08 * Math.PI) * 0.3 * _heartbeat.intensity;
+    } else if (beatPhase < 0.15) {
+      sample = -Math.sin((beatPhase - 0.08) / 0.07 * Math.PI) * 0.15 * _heartbeat.intensity;
+    } else if (beatPhase < 0.25) {
+      sample = Math.sin((beatPhase - 0.15) / 0.1 * Math.PI) * _heartbeat.intensity;
+    } else if (beatPhase < 0.35) {
+      sample = -Math.sin((beatPhase - 0.25) / 0.1 * Math.PI) * 0.4 * _heartbeat.intensity;
+    } else {
+      sample = Math.sin(beatPhase * Math.PI * 2) * 0.02 * _heartbeat.intensity;
+    }
+    if (timeSinceBeat < 16) _heartbeat.lastBeatTime = now - timeSinceBeat;
+
+    buf[idx] = sample;
+    _heartbeat.writeIdx = (idx + 1) % buf.length;
+
+    // Draw
+    var r = Math.round(_heartbeat.color[0]);
+    var g2 = Math.round(_heartbeat.color[1]);
+    var b = Math.round(_heartbeat.color[2]);
+    ctx.strokeStyle = 'rgba(' + r + ',' + g2 + ',' + b + ',0.8)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (var i = 0; i < buf.length; i++) {
+      var si = (idx + 1 + i) % buf.length;
+      var x = (i / buf.length) * w;
+      var y = h / 2 - buf[si] * h * 0.45;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Faint glow line
+    ctx.strokeStyle = 'rgba(' + r + ',' + g2 + ',' + b + ',0.15)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  }
+
+  g._pushHeartbeatEmotion = _pushHeartbeatEmotion;
+
   function animateLoop() {
-    if (terrainRuntime) terrainRuntime.tick();
+    if (terrainRuntime && !_frozenTick) terrainRuntime.tick();
+    else if (terrainRuntime && _frozenTick) {
+      var r = terrainRuntime.getRenderer();
+      var s = terrainRuntime.getScene();
+      var c = terrainRuntime.getCamera();
+      if (r && s && c) r.render(s, c);
+    }
+    _drawHeartbeat();
     animId = requestAnimationFrame(animateLoop);
   }
 
@@ -534,6 +771,18 @@
     if (canvas && canvas._proxMouseUp) { canvas.removeEventListener('mouseup', canvas._proxMouseUp); canvas._proxMouseUp = null; }
     _hideProximityMonologue();
     if (_proxState.panelEl) _proxState.panelEl.style.display = 'none';
+    // Cleanup floating anchors
+    if (canvas && canvas._faAnimId) { cancelAnimationFrame(canvas._faAnimId); canvas._faAnimId = null; }
+    if (canvas && canvas._faSprites) {
+      var scene3 = terrainRuntime ? terrainRuntime.getScene() : null;
+      if (scene3) {
+        canvas._faSprites.forEach(function (s) {
+          scene3.remove(s);
+          if (s.material) { if (s.material.map) s.material.map.dispose(); s.material.dispose(); }
+        });
+      }
+      canvas._faSprites = null;
+    }
     if (_onCloseCallback) {
       _onCloseCallback();
     } else if (typeof g.enterArchive === 'function') {
@@ -579,62 +828,7 @@
         }
       }
 
-      // Add user play markers with hover data
       var _userMarkerMeshes = [];
-      if (strataInput.userPlays && strataInput.userPlays.length > 0 && terrainRuntime) {
-        try {
-          var scene3 = terrainRuntime.getScene();
-          var seedData = terrainRuntime.getSeedData ? terrainRuntime.getSeedData() : null;
-          if (scene3 && seedData && seedData.length > 0) {
-            // Place one marker per play, distributed around seed positions
-            strataInput.userPlays.forEach(function (play, pi) {
-              var seed = seedData[pi % seedData.length];
-              // Offset each play slightly so they don't overlap
-              var angle = (pi / Math.max(1, strataInput.userPlays.length)) * Math.PI * 2;
-              var offsetR = 0.4 + (pi % 3) * 0.2;
-              var mx = seed.wx + Math.cos(angle) * offsetR;
-              var mz = seed.wz + Math.sin(angle) * offsetR;
-              var mh = terrainRuntime.gH(mx, mz);
-
-              // Sphere marker
-              var sphereGeo = new THREE.SphereGeometry(0.15, 12, 12);
-              var sphereMat = new THREE.MeshStandardMaterial({
-                color: 0xc4a882, emissive: 0xc4a882, emissiveIntensity: 0.4,
-                transparent: true, opacity: 0.85, roughness: 0.3
-              });
-              var sphere = new THREE.Mesh(sphereGeo, sphereMat);
-              sphere.position.set(mx, mh + 0.3, mz);
-              sphere.userData._userMarker = true;
-
-              // Store play data for hover tooltip
-              var emo = play.user_emotion || {};
-              var dominantKey = ''; var dominantVal = 0;
-              Object.keys(emo).forEach(function (k) {
-                if (emo[k] > dominantVal) { dominantVal = emo[k]; dominantKey = k; }
-              });
-              sphere.userData._playInfo = {
-                alignment: play.alignment,
-                dominantEmotion: dominantKey,
-                dominantValue: dominantVal,
-                mismatch: play.mismatch_type,
-                date: play.created_at ? play.created_at.substring(0, 10) : ''
-              };
-
-              scene3.add(sphere);
-              _userMarkerMeshes.push(sphere);
-
-              // Subtle glow
-              var glow = new THREE.PointLight(0xc4a882, 0.25, 4, 2);
-              glow.position.set(mx, mh + 1.0, mz);
-              glow.userData._userMarker = true;
-              scene3.add(glow);
-            });
-            console.log('[Strata] Added user play markers:', strataInput.userPlays.length);
-          }
-        } catch (e) {
-          console.warn('[Strata] User marker error:', e.message);
-        }
-      }
 
       // ─── Scene pins (admin only — all scenes visible) ───────────
       var _scenePinMeshes = [];
@@ -655,19 +849,21 @@
         try {
           var scene3 = terrainRuntime.getScene();
           var T = g.TemAfStrataTerrain;
+          // Use sceneAF coordinates from buildMemoryItems (VA projection)
+          var sceneAFList = (strataInput.P && strataInput.P[0]) ? strataInput.P[0].sceneAF : [];
           strataInput.scenes.forEach(function (sc, si) {
             var emo = sc.original_emotion;
             if (!emo) return;
             if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
 
-            // Compute AF coordinates using exposed helpers
-            var sA = T._eA(emo);
-            var sF = T._eF(emo);
-            var H2 = 23;
-            var sx = T._pX(sA) * H2;
-            var sz = T._pZ(sF) * H2;
-            var off = T._hashWorldOffset(strataInput.P[0] ? strataInput.P[0].id : '');
-            sx += off.ox; sz += off.oz;
+            // Find matching sceneAF entry for this scene's coordinates
+            var saf = null;
+            for (var sai = 0; sai < sceneAFList.length; sai++) {
+              if (sceneAFList[sai].id === sc.id) { saf = sceneAFList[sai]; break; }
+            }
+            if (!saf) return; // no VA coordinates computed
+            var sx = saf.wx;
+            var sz = saf.wz;
             var sh = terrainRuntime.gH(sx, sz);
 
             // Diamond-shaped pin for scenes
@@ -740,11 +936,144 @@
         }
       }
 
-      // ─── Proximity system (admin only) ──────────────────────────
-      console.log('[Strata] isAdmin:', isAdmin, 'scenePins:', _scenePinMeshes.length, 'scenes:', strataInput.scenes ? strataInput.scenes.length : 0);
-      if (isAdmin && _scenePinMeshes.length > 0) {
-        _setupProximitySystem(_scenePinMeshes, terrainRuntime, canvas);
-        console.log('[Strata] Proximity system initialized with', _scenePinMeshes.length, 'pins');
+      // ─── 3D Floating Anchors (echo_words as floating text sprites) ──
+      var _floatingAnchorSprites = [];
+      if (strataInput.scenes && strataInput.scenes.length > 0 && terrainRuntime) {
+        try {
+          var scene3 = terrainRuntime.getScene();
+          var T = g.TemAfStrataTerrain;
+
+          function _makeTextSprite(text, color, opacity) {
+            var canvas2 = document.createElement('canvas');
+            var ctx = canvas2.getContext('2d');
+            var fontSize = 48;
+            ctx.font = fontSize + 'px "Courier New", monospace';
+            var w = ctx.measureText(text).width + 24;
+            canvas2.width = Math.min(512, Math.max(128, Math.pow(2, Math.ceil(Math.log2(w)))));
+            canvas2.height = 64;
+            ctx.font = fontSize + 'px "Courier New", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = color || 'rgba(196,168,130,0.7)';
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 6;
+            ctx.fillText(text, canvas2.width / 2, canvas2.height / 2);
+            var tex = new THREE.CanvasTexture(canvas2);
+            tex.minFilter = THREE.LinearFilter;
+            var mat = new THREE.SpriteMaterial({
+              map: tex,
+              transparent: true,
+              opacity: opacity != null ? opacity : 0.7,
+              fog: true,
+              depthWrite: false
+            });
+            var sprite = new THREE.Sprite(mat);
+            sprite.scale.set(canvas2.width / 64, 1, 1);
+            return sprite;
+          }
+
+          strataInput.scenes.forEach(function (sc, si) {
+            var words = sc.echo_words;
+            if (!words || !words.length) return;
+            var emo = sc.original_emotion;
+            if (!emo) return;
+            if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
+
+            var sA = T._eA(emo);
+            var sF = T._eF(emo);
+            var H2 = 40;
+            var sx = T._pX(sA) * H2;
+            var sz = T._pZ(sF) * H2;
+            var off = T._hashWorldOffset(strataInput.P[0] ? strataInput.P[0].id : '');
+            sx += off.ox; sz += off.oz;
+            var sh = terrainRuntime.gH(sx, sz);
+
+            // Determine color from dominant emotion
+            var EC = { fear:[0.4,0.28,0.7], sadness:[0.25,0.38,0.65], anger:[0.8,0.25,0.22], guilt:[0.6,0.48,0.35],
+              longing:[0.28,0.62,0.65], numbness:[0.32,0.32,0.38], shame:[0.58,0.35,0.48], isolation:[0.14,0.14,0.24],
+              joy:[0.82,0.72,0.38], resentment:[0.6,0.2,0.15], resignation:[0.4,0.38,0.35], hope:[0.55,0.65,0.45],
+              relief:[0.48,0.68,0.48], love:[0.7,0.4,0.5], gratitude:[0.65,0.58,0.4], peace:[0.45,0.58,0.52],
+              confusion:[0.48,0.38,0.55] };
+            var domK = ''; var domV = 0;
+            for (var ek in emo) { if (emo[ek] > domV) { domV = emo[ek]; domK = ek; } }
+            var ec = EC[domK] || [0.76, 0.66, 0.51];
+            var cssCol = 'rgba(' + Math.round(ec[0]*255) + ',' + Math.round(ec[1]*255) + ',' + Math.round(ec[2]*255) + ',0.7)';
+
+            // Place up to 2 echo words per scene, offset around the pin
+            var count = Math.min(2, words.length);
+            for (var wi = 0; wi < count; wi++) {
+              var word = words[wi];
+              if (!word) continue;
+              var angle = (si * 2.39 + wi * 1.8);
+              var radius = 2.5 + wi * 1.5;
+              var wx = sx + Math.cos(angle) * radius;
+              var wz = sz + Math.sin(angle) * radius;
+              var wh = terrainRuntime.gH(wx, wz);
+
+              var sprite = _makeTextSprite(word, cssCol, 0.6);
+              sprite.position.set(wx, wh + 2.5 + wi * 1.2, wz);
+              sprite.userData._floatingAnchor = {
+                baseY: wh + 2.5 + wi * 1.2,
+                phase: si * 1.3 + wi * 2.1,
+                speed: 0.3 + Math.random() * 0.2,
+                driftX: (Math.random() - 0.5) * 0.003,
+                driftZ: (Math.random() - 0.5) * 0.003
+              };
+              // Attach scene data for proximity interaction
+              sprite.userData._sceneData = {
+                sceneId: sc.id,
+                sceneOrder: sc.scene_order != null ? sc.scene_order : si,
+                text: sc.text || '',
+                originalEmotion: emo,
+                originalDominant: domK,
+                playDominant: '',
+                playCount: 0,
+                avgAlignment: 0,
+                monologue: ko ? '…이 단어가 떠돈다.' : '…this word lingers.',
+              };
+              sprite.userData._isScenePin = true;
+              scene3.add(sprite);
+              _floatingAnchorSprites.push(sprite);
+            }
+          });
+          console.log('[Strata] Added 3D floating anchors:', _floatingAnchorSprites.length);
+        } catch (e) {
+          console.warn('[Strata] Floating anchor error:', e.message);
+        }
+      }
+
+      // Animate floating anchors in tick
+      if (_floatingAnchorSprites.length > 0) {
+        var _faAnimId = null;
+        var _faTime = 0;
+        function _faAnimate() {
+          _faTime += 0.016;
+          for (var i = 0; i < _floatingAnchorSprites.length; i++) {
+            var s = _floatingAnchorSprites[i];
+            var fa = s.userData._floatingAnchor;
+            if (!fa) continue;
+            s.position.y = fa.baseY + Math.sin(_faTime * fa.speed + fa.phase) * 0.8;
+            s.position.x += fa.driftX;
+            s.position.z += fa.driftZ;
+            // Gentle opacity pulse
+            if (s.material) s.material.opacity = 0.45 + Math.sin(_faTime * 0.5 + fa.phase) * 0.15;
+          }
+          _faAnimId = requestAnimationFrame(_faAnimate);
+        }
+        _faAnimate();
+        // Store cleanup ref
+        canvas._faAnimId = _faAnimId;
+        canvas._faSprites = _floatingAnchorSprites;
+      }
+
+      // ─── Proximity system (admin: scene pins, play: floating anchors) ──
+      var _allProximityTargets = _scenePinMeshes.concat(
+        _floatingAnchorSprites.filter(function (s) { return s.userData._sceneData; })
+      );
+      console.log('[Strata] isAdmin:', isAdmin, 'proximityTargets:', _allProximityTargets.length);
+      if (_allProximityTargets.length > 0) {
+        _setupProximitySystem(_allProximityTargets, terrainRuntime, canvas);
+        console.log('[Strata] Proximity system initialized with', _allProximityTargets.length, 'targets');
       }
 
       // ─── Hover tooltip for markers + scene pins ─────────────────

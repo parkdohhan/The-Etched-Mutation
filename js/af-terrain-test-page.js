@@ -94,7 +94,7 @@ function hashWorldOffset(id) {
 let sb; let scene3; let camera; let renderer; let controls; let terrain; let terrainWire; let seedGrp; let sD = []; let P = [];
 /** null = 전체 기억 합산, 숫자 = 해당 인덱스만 지형에 반영 */
 let terrainMemFilter = null;
-const G = 72; const SZ = 46; const H2 = SZ / 2;
+const G = 110; const SZ = 80; const H2 = SZ / 2;
 let hts; let cls; let pos;
 
 document.getElementById('goBtn').onclick = async () => {
@@ -179,10 +179,10 @@ function initThree() {
   const cv = document.getElementById('c');
   scene3 = new THREE.Scene();
   scene3.background = new THREE.Color(0x07070b);
-  scene3.fog = new THREE.FogExp2(0x07070b, 0.006);
+  scene3.fog = new THREE.FogExp2(0x07070b, 0.003);
 
-  camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 500);
-  camera.position.set(35, 28, 45);
+  camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 600);
+  camera.position.set(75, 50, 90);
 
   renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });
   renderer.setSize(innerWidth, innerHeight);
@@ -192,29 +192,29 @@ function initThree() {
   controls = new THREE.OrbitControls(camera, cv);
   controls.enableDamping = true;
   controls.dampingFactor = 0.06;
-  controls.minDistance = 8;
-  controls.maxDistance = 120;
+  controls.minDistance = 12;
+  controls.maxDistance = 250;
   controls.maxPolarAngle = Math.PI * 0.48;
   controls.target.set(0, -1, 0);
 
   scene3.add(new THREE.AmbientLight(0x1a1828, 1.3));
   const dl = new THREE.DirectionalLight(0xc4a882, 0.7);
-  dl.position.set(25, 45, 18); dl.castShadow = true;
+  dl.position.set(55, 80, 40); dl.castShadow = true;
   dl.shadow.mapSize.set(1024, 1024);
-  dl.shadow.camera.left = -30; dl.shadow.camera.right = 30; dl.shadow.camera.top = 30; dl.shadow.camera.bottom = -30;
+  dl.shadow.camera.left = -70; dl.shadow.camera.right = 70; dl.shadow.camera.top = 70; dl.shadow.camera.bottom = -70;
   scene3.add(dl);
-  const dl2 = new THREE.DirectionalLight(0x3a4a80, 0.3); dl2.position.set(-18, 25, -12); scene3.add(dl2);
-  window.oP1 = new THREE.PointLight(0x7a3020, 0.4, 55); scene3.add(oP1);
-  window.oP2 = new THREE.PointLight(0x203a7a, 0.25, 45); scene3.add(oP2);
+  const dl2 = new THREE.DirectionalLight(0x3a4a80, 0.3); dl2.position.set(-40, 50, -30); scene3.add(dl2);
+  window.oP1 = new THREE.PointLight(0x7a3020, 0.4, 100); scene3.add(oP1);
+  window.oP2 = new THREE.PointLight(0x203a7a, 0.25, 80); scene3.add(oP2);
 
-  const bp = new THREE.Mesh(new THREE.PlaneGeometry(130, 130), new THREE.MeshStandardMaterial({ color: 0x050509, roughness: 1 }));
-  bp.rotation.x = -Math.PI / 2; bp.position.y = -8; scene3.add(bp);
+  const bp = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ color: 0x050509, roughness: 1 }));
+  bp.rotation.x = -Math.PI / 2; bp.position.y = -12; scene3.add(bp);
 
-  const pc2 = 400; const pg2 = new THREE.BufferGeometry(); const pp2 = new Float32Array(pc2 * 3);
+  const pc2 = 800; const pg2 = new THREE.BufferGeometry(); const pp2 = new Float32Array(pc2 * 3);
   window.pVl = new Float32Array(pc2);
   for (let i = 0; i < pc2; i++) {
     pp2[i * 3] = (Math.random() - 0.5) * SZ * 2;
-    pp2[i * 3 + 1] = Math.random() * 20 - 4;
+    pp2[i * 3 + 1] = Math.random() * 30 - 8;
     pp2[i * 3 + 2] = (Math.random() - 0.5) * SZ * 2;
     pVl[i] = 0.002 + Math.random() * 0.006;
   }
@@ -375,7 +375,7 @@ function buildTerrain(filterIdx) {
   for (let i = 0; i < G * G; i++) { if (hts[i] < mn) mn = hts[i]; if (hts[i] > mx) mx = hts[i]; }
   const rg = mx - mn || 1;
   for (let i = 0; i < G * G; i++) {
-    pos[i * 3 + 1] = ((hts[i] - mn) / rg - 0.5) * 15;
+    pos[i * 3 + 1] = ((hts[i] - mn) / rg - 0.5) * 22;
     const ci = i * 3;
     colA[ci] = Math.min(1, Math.max(0, cls[ci]));
     colA[ci + 1] = Math.min(1, Math.max(0, cls[ci + 1]));
@@ -573,7 +573,7 @@ document.getElementById('c').addEventListener('mousemove', (e) => {
   ptr.y = -((e.clientY - r.top) / r.height) * 2 + 1;
 });
 
-let time = 0; const baseFog = 0.006;
+let time = 0; const baseFog = 0.003;
 function animate() {
   requestAnimationFrame(animate);
   time += 0.004;
@@ -608,8 +608,8 @@ function animate() {
     document.getElementById('vig').style.opacity = '0';
   }
 
-  oP1.position.set(Math.sin(time * 0.6) * 22, 6 + Math.sin(time * 0.3) * 3, Math.cos(time * 0.4) * 22);
-  oP2.position.set(Math.cos(time * 0.5) * 18, 8, Math.sin(time * 0.7) * 18);
+  oP1.position.set(Math.sin(time * 0.6) * 50, 10 + Math.sin(time * 0.3) * 5, Math.cos(time * 0.4) * 50);
+  oP2.position.set(Math.cos(time * 0.5) * 40, 12, Math.sin(time * 0.7) * 40);
 
   if (seedGrp) {
     seedGrp.children.forEach((c, i) => {
@@ -622,9 +622,9 @@ function animate() {
   }
 
   const pp = parts.geometry.attributes.position;
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 800; i++) {
     let y = pp.getY(i) + pVl[i];
-    if (y > 18) y = -5;
+    if (y > 28) y = -8;
     pp.setY(i, y);
     pp.setX(i, pp.getX(i) + Math.sin(time + i * 0.3) * 0.0015);
   }
