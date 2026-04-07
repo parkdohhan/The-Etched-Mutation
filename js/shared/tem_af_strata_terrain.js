@@ -431,8 +431,36 @@
         }
       }
 
-      // ─── Pass 2: Tectonic — divergence fissures + convergence terracing ──
+      // ─── Pass 2: Tectonic — divergence fissures + per-scene convergence terracing ──
       if (divergence > 0.05 || convergence > 0.05) {
+        // Pre-compute per-scene convergence: scenes with high play alignment → high local convergence
+        var sceneConvData = [];
+        if (convergence > 0.05 && scenes.length > 0) {
+          var playsByScene = {};
+          m.plays.forEach(function (p) {
+            if (!p.scene_id) return;
+            if (!playsByScene[p.scene_id]) playsByScene[p.scene_id] = [];
+            playsByScene[p.scene_id].push(p);
+          });
+          scenes.forEach(function (sc) {
+            var sPlays = playsByScene[sc.id] || [];
+            if (sPlays.length < 2) return; // need multiple plays to converge
+            // Scene convergence = how similar the plays are (low alignment variance = high convergence)
+            var alSum = 0; var alSum2 = 0;
+            sPlays.forEach(function (p) {
+              var al = playAlignment(p);
+              alSum += al; alSum2 += al * al;
+            });
+            var mean = alSum / sPlays.length;
+            var variance = alSum2 / sPlays.length - mean * mean;
+            // Low variance + high mean = strong convergence at this scene
+            var localConv = convergence * Math.max(0, 1 - variance * 8) * Math.min(1, sPlays.length / 10);
+            if (localConv > 0.05) {
+              sceneConvData.push({ wx: sc.wx, wz: sc.wz, conv: localConv, radius: 12 + localConv * 10 });
+            }
+          });
+        }
+
         for (var iz2 = 0; iz2 < G; iz2++) {
           for (var ix2 = 0; ix2 < G; ix2++) {
             var idx2 = iz2 * G + ix2;
@@ -442,18 +470,32 @@
             // Fissures: noise-based cracks, depth controlled by divergence
             if (divergence > 0.05) {
               var fissN = fb(gx2 * 0.12 + mi * 13, gz2 * 0.12, 4);
-              var fissThresh = 1.0 - divergence * 0.5; // higher divergence → more area affected
+              var fissThresh = 1.0 - divergence * 0.5;
               if (fissN > fissThresh) {
                 var fissDepth = (fissN - fissThresh) / (1 - fissThresh);
                 hts[idx2] -= fissDepth * divergence * 15;
               }
             }
 
-            // Terracing: quantize height
-            if (convergence > 0.1) {
-              var steps = 3 + Math.round(convergence * 8); // 3~11 steps
-              var h = hts[idx2];
-              hts[idx2] = Math.round(h * steps / 10) * 10 / steps;
+            // Per-scene terracing: only near scenes with converged plays
+            if (sceneConvData.length > 0) {
+              var maxLocalConv = 0;
+              for (var sci = 0; sci < sceneConvData.length; sci++) {
+                var scd = sceneConvData[sci];
+                var sdx = gx2 - scd.wx; var sdz = gz2 - scd.wz;
+                var sDist = Math.sqrt(sdx * sdx + sdz * sdz);
+                if (sDist < scd.radius) {
+                  var falloff = 1 - (sDist / scd.radius);
+                  falloff = falloff * falloff; // quadratic falloff
+                  var lc = scd.conv * falloff;
+                  if (lc > maxLocalConv) maxLocalConv = lc;
+                }
+              }
+              if (maxLocalConv > 0.08) {
+                var steps = 3 + Math.round(maxLocalConv * 8);
+                var h = hts[idx2];
+                hts[idx2] = Math.round(h * steps / 10) * 10 / steps;
+              }
             }
           }
         }
@@ -1222,6 +1264,8 @@
     document.addEventListener('pointerlockchange', function () {
       // Don't exit 1st-person when pointer lock drops due to overlays
       if (_fpSceneTransition) return;
+      // If fp play mode is active (play-test), never auto-exit
+      if (typeof window._fpPlay !== 'undefined' && window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive()) return;
       var scM = document.getElementById('sceneMode');
       var escM = document.getElementById('escMenu');
       if (scM && scM.classList.contains('active')) return;
