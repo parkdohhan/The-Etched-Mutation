@@ -154,9 +154,10 @@
     }
     .seal-btn:not(:disabled) { color: rgba(248, 240, 255, 0.95); background: rgba(100, 70, 130, 0.55); cursor: pointer; border-color: rgba(210, 190, 255, 0.55); }
 
-    #sceneMode { display: none; position: fixed; inset: 0; background: var(--bg-deep); z-index: 50; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; }
+    #sceneMode { display: none; position: fixed; inset: 0; background: transparent; z-index: 2700; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
     #sceneMode.active { display: flex; opacity: 1; }
-    .wave-top { width: 100%; min-height: 140px; max-height: 220px; position: relative; overflow: hidden; flex-shrink: 0; background: var(--bg-deep); transition: box-shadow 0.4s ease-in; }
+    #sceneMode > * { pointer-events: auto; }
+    .wave-top { width: 100%; min-height: 140px; max-height: 220px; position: relative; overflow: hidden; flex-shrink: 0; background: rgba(10,10,14,0.85); transition: box-shadow 0.4s ease-in; }
     .wave-top.wave-draining { /* box-shadow set dynamically via JS */ }
     .play-alignment-header {
       display: flex; align-items: baseline; justify-content: space-between; padding: 0.55rem 1rem 0.15rem;
@@ -171,11 +172,11 @@
       padding: 0 1rem 0.35rem;
     }
     .alignment-wave-container {
-      width: 100%; height: 120px; background: var(--bg-deep); position: relative; overflow: hidden;
+      width: 100%; height: 120px; background: rgba(10,10,14,0.85); position: relative; overflow: hidden;
     }
     .alignment-wave-container canvas.alignment-wave-canvas { width: 100%; height: 100%; display: block; transform: scale(1.15); transform-origin: center center; }
-    .scene-content-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1rem; overflow-y: auto; }
-    .scene-main { width: 100%; max-width: 560px; text-align: center; }
+    .scene-content-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1rem; overflow-y: auto; background: transparent; }
+    .scene-main { width: 100%; max-width: 560px; text-align: center; background: rgba(10,10,14,0.82); border-radius: 12px; padding: 1.5rem; }
     #sceneNpc { font-family: 'Cormorant Garamond', serif; font-style: italic; color: rgba(196, 168, 130, 0.5); font-size: 0.9rem; min-height: 1.2em; margin-bottom: 0.8rem; }
     #sceneText { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; line-height: 2; letter-spacing: 0.03em; color: var(--text-primary); margin-bottom: 1.5rem; }
     /* 오염된 단어: 미세한 색상 차이 + hover시 원문 노출 */
@@ -185,7 +186,7 @@
     .cont-erosion { text-decoration-line: underline; text-decoration-style: dotted; text-decoration-color: rgba(196,140,120,0.25); text-underline-offset: 3px; }
     .cont-echo { font-weight: 600; letter-spacing: -0.02em; }
     .cont-glitch { font-family: monospace; letter-spacing: 0.08em; }
-    #emotionInputArea { opacity: 0; transition: opacity 0.6s; }
+    #emotionInputArea { opacity: 0; transition: opacity 0.6s; background: rgba(10,10,14,0.82); border-radius: 12px; padding: 1rem; }
     #emotionInputArea.warn-border { box-shadow: 0 0 0 1px rgba(196, 168, 130, 0.15); border-radius: 8px; padding: 8px; }
     .emotion-chip {
       background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.35); color: #ccc;
@@ -2793,13 +2794,17 @@
     if (typeof window.destroyFloatingAnchor === 'function') window.destroyFloatingAnchor();
     if (game.postSubmitTerrainCleanup) game.postSubmitTerrainCleanup();
     game.postSubmitTerrainCleanup = null;
-    stopTerrainAnimLoop();
+    // Keep terrain running behind scene UI when in first-person mode
+    var _fpKeepTerrain = window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive();
+    if (!_fpKeepTerrain) {
+      stopTerrainAnimLoop();
+      document.getElementById('mapMode').classList.remove('active');
+    }
     const _tc = document.getElementById('terrainCanvas');
     if (_tc) _tc.classList.remove('clickable');
     document.getElementById('terrainBar').classList.remove('awaiting-terrain');
     game.currentPinId = pin.id;
     game.currentSceneIndex = pin.sceneIndex;
-    document.getElementById('mapMode').classList.remove('active');
     const sm = document.getElementById('sceneMode');
     sm.classList.add('active');
     const _ia = document.getElementById('emotionInputArea');
@@ -4783,14 +4788,18 @@
               _lastFpPos = { x: cam2.position.x, z: cam2.position.z };
               _lastFpYaw = cam2.rotation.y;
             }
-            if (rt2) rt2.exitFirstPerson();
-            var sv = document.getElementById('strataView');
-            if (sv) sv.style.display = 'none';
+            // Keep 1st-person terrain running — don't exit or hide
+            // Set transition flag BEFORE releasing pointer lock
+            var rt3 = window.TemAfStrataTerrain._lastRuntime;
+            if (rt3 && rt3.setSceneTransition) rt3.setSceneTransition(true);
+            if (document.pointerLockElement) document.exitPointerLock();
             if (_fpProxEl) _fpProxEl.style.opacity = '0';
             if (_fpHintEl) _fpHintEl.style.opacity = '0';
             if (window._temEnterSceneMode) {
               window._temEnterSceneMode(targetPin.pin);
             }
+            // Clear transition flag after scene mode is active
+            if (rt3 && rt3.setSceneTransition) rt3.setSceneTransition(false);
           }, LONG_PRESS_MS);
         }
       });
@@ -4809,25 +4818,22 @@
         if (m.type === 'attributes' && m.attributeName === 'class') {
           var el = m.target;
           if (el.id === 'mapMode' && el.classList.contains('active')) {
-            // Intercept: hide mapMode, resume 3D walk
+            // Intercept: hide mapMode, terrain is already running
             el.classList.remove('active');
-            var sv = document.getElementById('strataView');
-            if (sv) sv.style.display = 'block';
+            // Dismiss scene overlay
+            var scm = document.getElementById('sceneMode');
+            if (scm) scm.classList.remove('active');
+            // Re-acquire pointer lock for 1st-person controls
+            var _plCanvas = document.getElementById('strataCanvas');
+            if (_plCanvas) {
+              var _plClick = function () {
+                if (!document.pointerLockElement) _plCanvas.requestPointerLock().catch(function () {});
+                _plCanvas.removeEventListener('click', _plClick);
+              };
+              _plCanvas.addEventListener('click', _plClick);
+            }
             var rt = window.TemAfStrataTerrain._lastRuntime;
             if (rt) {
-              // Set orbit target to saved position so enterFirstPerson spawns there
-              if (_lastFpPos && rt.getControls() && rt.getCamera()) {
-                var cam = rt.getCamera();
-                var ctrl = rt.getControls();
-                ctrl.target.set(_lastFpPos.x, 0, _lastFpPos.z);
-                cam.position.set(_lastFpPos.x + 5, 10, _lastFpPos.z + 5);
-                ctrl.update();
-              }
-              rt.enterFirstPerson();
-              // Restore yaw
-              if (_lastFpPos && rt.getCamera()) {
-                rt.getCamera().rotation.y = _lastFpYaw;
-              }
               // Rebuild pins with updated accessibility
               var scene3 = rt.getScene();
               if (scene3) {

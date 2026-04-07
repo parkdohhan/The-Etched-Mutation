@@ -1084,6 +1084,7 @@
 
     // ─── First-person walk mode ──────────────────────────────────
     var _fpActive = false;
+    var _fpSceneTransition = false; // true while entering scene overlay
     var _fpKeys = {};
     var _fpEuler = { yaw: 0, pitch: 0 };
     var _fpEyeHeight = 1.6;
@@ -1103,6 +1104,8 @@
     function _fpOnKeyUp(e) { _fpKeys[e.code] = false; }
     function _fpOnMouseMove(e) {
       if (!_fpActive) return;
+      var _scM = document.getElementById('sceneMode');
+      if (_scM && _scM.classList.contains('active')) return;
       _fpEuler.yaw -= e.movementX * 0.002;
       _fpEuler.pitch -= e.movementY * 0.002;
       _fpEuler.pitch = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, _fpEuler.pitch));
@@ -1157,6 +1160,13 @@
       var now = performance.now();
       var dt = Math.min((now - _fpLastTime) / 1000, 0.1);
       _fpLastTime = now;
+      // Freeze movement while scene UI is open (terrain keeps rendering)
+      var _sceneOpen = document.getElementById('sceneMode');
+      if (_sceneOpen && _sceneOpen.classList.contains('active')) {
+        _fpLastTime = now;
+        camera.rotation.set(_fpEuler.pitch, _fpEuler.yaw, 0, 'YXZ');
+        return;
+      }
       var forward = { x: -Math.sin(_fpEuler.yaw), z: -Math.cos(_fpEuler.yaw) };
       var right   = { x:  Math.cos(_fpEuler.yaw), z: -Math.sin(_fpEuler.yaw) };
       var mx = 0, mz = 0;
@@ -1210,6 +1220,12 @@
     };
 
     document.addEventListener('pointerlockchange', function () {
+      // Don't exit 1st-person when pointer lock drops due to overlays
+      if (_fpSceneTransition) return;
+      var scM = document.getElementById('sceneMode');
+      var escM = document.getElementById('escMenu');
+      if (scM && scM.classList.contains('active')) return;
+      if (escM && escM.classList.contains('active')) return;
       if (_fpActive && !document.pointerLockElement) exitFirstPerson();
     });
 
@@ -1231,6 +1247,7 @@
       enterFirstPerson: enterFirstPerson,
       exitFirstPerson: exitFirstPerson,
       isFirstPerson: function () { return _fpActive; },
+      setSceneTransition: function (v) { _fpSceneTransition = !!v; },
       setYaw: function (y) { _fpEuler.yaw = y; },
       getYaw: function () { return _fpEuler.yaw; },
     };
