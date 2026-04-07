@@ -3147,7 +3147,16 @@ window.loadArchive2DPreview = async function () {
     // terrain 필드 생성 (TemAfStrataTerrain 사용)
     const memRow = { id: currentMemoryId, title: document.getElementById('memoryTitle')?.value || '' };
     const playsByMem = {}; playsByMem[currentMemoryId] = plays;
-    const P = T.buildMemoryItems([memRow], playsByMem);
+    // Load scenes for terrain bedrock
+    let sceneRows = currentScenes || [];
+    if (!sceneRows.length) {
+        try {
+            const { data } = await supabaseClient.from('scenes').select('*').eq('memory_id', currentMemoryId).order('scene_order');
+            sceneRows = data || [];
+        } catch (_) {}
+    }
+    const scenesByMem = {}; scenesByMem[currentMemoryId] = sceneRows;
+    const P = T.buildMemoryItems([memRow], playsByMem, scenesByMem);
     const field = T.computeAfTerrainFields(P, null);
     const total = field.G * field.G;
     const agg = {
@@ -3272,3 +3281,376 @@ window.deleteAnchorImage = async function (id) {
 setTimeout(() => {
     if (document.getElementById('anchorImagesList')) loadAnchorImages();
 }, 2000);
+
+// ─── Seed Data: 박소정 기억 + 50 play 시뮬레이션 ──────────────────
+window.seedParkSojungMemory = async function () {
+    const client = await getSupabaseClient();
+    if (!client) { console.error('[Seed] No Supabase client'); return; }
+
+    const TITLE = '당신에게';
+    const SENTENCE = '당신입니까? 지금 내 배 안에 있는 게 당신입니까? 아니면 엄마입니까?';
+
+    // ── 1. Insert memory ──
+    console.log('[Seed] Creating memory...');
+    const { data: mem, error: memErr } = await client.from('memories').insert({
+        title: TITLE,
+        code: Array.from({length:5}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*31)]).join(''),
+        completed_sentence: SENTENCE,
+        sensory_anchor: '짜사이의 오독거리는 식감, 차가운 대리석 바닥, 욕조 물의 차가움',
+        body_response: ['구토', '소름', '손발톱이 퍼렇게 뜸', '배를 가리는 반사'],
+        self_questions: ['당신입니까?', '엄마입니까?', '핏줄이 아닌 사랑은 차선인가?'],
+        status: 'Fetus',
+        original_vector: {
+            fear: 0.25, guilt: 0.22, longing: 0.20, sadness: 0.15,
+            love: 0.08, numbness: 0.05, shame: 0.03, confusion: 0.02,
+        },
+        original_reason_vector: {
+            is_void: false,
+            attribution: 'fate_blame',
+            target: 'self_and_mother',
+            core_fear: 'abandonment',
+        },
+        lang: 'ko',
+        // contamination: heavy erosion to match jacket-level terrain
+        cont_drift: 0.55,
+        cont_fixation: 0.48,
+        cont_depth: 85,
+        cont_stage: 'hypercompletion',
+        cont_stage_1: 0.30,
+        cont_stage_2: 0.40,
+        cont_stage_3: 0.30,
+        cont_last_mismatch: 'attribution_mismatch',
+        dilution: 5,
+        drift_dir_v: -0.4,
+        drift_dir_a: 0.3,
+        drift_dir_d: -0.5,
+        cont_divergence: 0.42,
+        cont_convergence: 0.20,
+        cont_heterogeneity: 0.45,
+    }).select('id').single();
+
+    if (memErr) { console.error('[Seed] Memory insert failed:', memErr); return; }
+    const memoryId = mem.id;
+    console.log('[Seed] Memory created:', memoryId);
+
+    // ── 2. Insert scenes (7 core + 3 residual) ──
+    const SCENES = [
+        // === Core scenes ===
+        {
+            scene_order: 1,
+            scene_type: 'normal',
+            scene_role: 'anchor',
+            text: '엄마에게 투정을 부리거나 매달리는 엄마의 모습이 그랬습니다. 무뚝뚝한 저는 그런 식으로 엄마에게 달라붙어본 적이 없었는데, 그것이 핏줄이 아니어서인가, 하는 쓸모없는 결론에 다다르곤 했습니다.',
+            text_stage_1: '엄마에게 투정을 부리는 엄마의 모습이 그랬습니다. 무뚝뚝한 저는 그런 식으로 달라붙어본 적이 없었는데, 그것이 핏줄이 아니어서인가, 하는 결론에 미끄러지곤 했습니다. 결론은 늘 같은 자리에서 기다리고 있었습니다.',
+            text_stage_2: '엄마에게 매달리는 모습. 저는 한 번도. 핏줄이 아니어서? 아니, 핏줄이라는 단어가 입 안에서 녹지 않고 남아 있습니다. 삼킬 수도 뱉을 수도 없는 것.',
+            text_stage_3: '투정. 매달림. 핏줄. 결론. 모든 단어가 같은 뜻이었다는 것을 지금에서야.',
+            original_emotion: { shame: 0.35, isolation: 0.25, longing: 0.20, sadness: 0.15, confusion: 0.05 },
+            anchor_emotions: ['shame', 'isolation', 'longing'],
+            echo_words: ['핏줄', '무뚝뚝', '달라붙다'],
+            void_info: null,
+        },
+        {
+            scene_order: 2,
+            scene_type: 'normal',
+            scene_role: 'anchor',
+            text: '처음 임신했을 때 엄마에게 말하지 않기로 했습니다. 불임인 엄마, 산부인과는 밥먹듯이 갔을 엄마를 생각하면, 대학에 떨어진 친구에게 합격 소식을 전하는 것 같았습니다.',
+            text_stage_1: '처음 임신했을 때 말하지 않기로 했습니다. 불임인 엄마를 생각하면, 합격 소식을 전하는 것 같았습니다. 못생긴 친구에게 축의금을 받는 것 같았습니다. 그 비유들이 연속으로 스쳤고, 하나도 정확하지 않았습니다.',
+            text_stage_2: '말하지 않기로. 이유는 선명했는데 말로 하면 잔인해지니까. 합격. 축의금. 취직. 전부 남의 말처럼 나열되었습니다. 제 입에서 나온 말인데.',
+            text_stage_3: '말하지 않았다. 이유를 나열할수록 이유가 아닌 것들만 남았다.',
+            original_emotion: { guilt: 0.40, fear: 0.20, shame: 0.15, love: 0.10, sadness: 0.15 },
+            anchor_emotions: ['guilt', 'fear', 'shame'],
+            echo_words: ['불임', '합격', '축의금', '숨기다'],
+            void_info: null,
+        },
+        {
+            scene_order: 3,
+            scene_type: 'normal',
+            scene_role: 'anchor',
+            text: '"이거 알지, 네가 제일 좋아하는 거." 나는 고개를 끄덕였지만 동시에 조금 이상하다고 느꼈습니다. 짜사이는 늘 중국집에서만 먹던 음식이었고, 엄마는 집에서 그런 반찬을 만드는 사람이 아니었습니다.',
+            text_stage_1: '"네가 제일 좋아하는 거." 고개를 끄덕였지만 이상했습니다. 짜사이는 중국집에서만 먹던 것이었고, 엄마의 밥상에는 정해진 것들만 올라왔습니다. "어릴 땐 이런 거 좋아했어." 어릴 적 기억 속에 짜사이는 없었습니다.',
+            text_stage_2: '짜사이. 제가 좋아한 적 없는 것을 엄마는 확신했습니다. "그래도 좋아했을 거야." 추측이 아니라 확신이었습니다. 누구의 기억입니까.',
+            text_stage_3: '오독오독. 엄마가 기억하는 나는 내가 아니었다.',
+            original_emotion: { confusion: 0.30, fear: 0.25, longing: 0.15, love: 0.15, sadness: 0.15 },
+            anchor_emotions: ['confusion', 'fear', 'longing'],
+            echo_words: ['짜사이', '오독오독', '좋아했을 거야'],
+            void_info: null,
+        },
+        {
+            scene_order: 4,
+            scene_type: 'normal',
+            scene_role: 'anchor',
+            text: '한 달 뒤, 엄마는 트럭에 치여 죽었습니다.',
+            text_stage_1: '한 달 뒤, 엄마는 트럭에 치여 죽었습니다. 네 명이 죽고 열두 명이 부상당했습니다. 안개가 가득 낀 서해안고속도로에서.',
+            text_stage_2: '한 달. 트럭. 네 명. 열두 명. 안개. 숫자들만 남았습니다.',
+            text_stage_3: '죽었습니다.',
+            original_emotion: { numbness: 0.35, guilt: 0.30, sadness: 0.20, fear: 0.10, shame: 0.05 },
+            anchor_emotions: ['numbness', 'guilt', 'sadness'],
+            echo_words: ['트럭', '안개', '한 달'],
+            void_info: null,
+        },
+        {
+            scene_order: 5,
+            scene_type: 'normal',
+            scene_role: 'anchor',
+            text: '영안실에서 엄마의 발가락을 만졌을 때, 엄지발가락의 굳은살과 뒤꿈치의 갈라진 틈이 손에 박혔습니다. 만져본 적 없는 촉감을 눈을 감고 느껴봅니다.',
+            text_stage_1: '엄마의 발가락을 만졌을 때, 굳은살과 갈라진 틈이 손에 박혔습니다. 어린 발이 떠올랐습니다. 만져본 적 없는 촉감을 눈을 감고 느껴봅니다. 둥실둥실.',
+            text_stage_2: '굳은살. 갈라진 틈. 어린 발. 만져본 적 없는. 있었을 것입니다. 부드러웠을 것입니다.',
+            text_stage_3: '발가락. 둥실둥실. 천 위로 그려지다가 흐려졌습니다.',
+            original_emotion: { sadness: 0.35, longing: 0.25, love: 0.15, numbness: 0.15, guilt: 0.10 },
+            anchor_emotions: ['sadness', 'longing', 'love'],
+            echo_words: ['발가락', '둥실둥실', '촉감'],
+            void_info: null,
+        },
+        {
+            scene_order: 6,
+            scene_type: 'normal',
+            scene_role: 'anchor',
+            text: '현관문을 열어놓고 대리석 바닥에 드러누웠습니다. 소리가 들렸습니다. 당신임을 알았습니다. 미안했어요. 미안했어요. 그 말밖에 나오지 않았습니다.',
+            text_stage_1: '현관문을 열어놓고 드러누웠습니다. 발을 끄는 소리인지 바람인지 구분이 되지 않았지만 당신임을 알았습니다. 미안했어요. 구체적으로 말하면 더 진짜가 되어버릴 것 같아서.',
+            text_stage_2: '대리석. 서늘함. 소리. 당신. 미안했어요. 반복할수록 의미가 닳아 없어졌습니다.',
+            text_stage_3: '미안했어요. 미안했어요. 미안했어요.',
+            original_emotion: { guilt: 0.35, longing: 0.25, sadness: 0.20, love: 0.10, fear: 0.10 },
+            anchor_emotions: ['guilt', 'longing', 'sadness'],
+            echo_words: ['현관문', '미안', '소리'],
+            void_info: null,
+        },
+        {
+            scene_order: 7,
+            scene_type: 'ending',
+            scene_role: 'anchor',
+            text: '샤워기를 급하게 켜봅니다. 반도 채워지지 않은 찬물에 몸을 던집니다. 차갑다. 돌아와. 당신이 양막 안에서 몸을 웅크리고 있습니다.',
+            text_stage_1: '찬물에 몸을 던집니다. 차갑다. 솜털을 적시는 것이 전부 느껴집니다. 돌아와. 당신이 양막 안에서 웅크리고 있습니다. 머리는 어느 때보다도 뚜렷했습니다.',
+            text_stage_2: '찬물. 차갑다. 솜털. 양막. 웅크림. 뚜렷함. 모든 감각이 필요 이상으로 생생했습니다.',
+            text_stage_3: '"조금 더 품고 있으면 살아나지 않을까요?" "아니오."',
+            original_emotion: { fear: 0.30, longing: 0.25, love: 0.15, numbness: 0.15, sadness: 0.15 },
+            anchor_emotions: ['fear', 'longing', 'love'],
+            echo_words: ['찬물', '양막', '돌아와', '차갑다'],
+            void_info: null,
+        },
+        // === Residual (bridge) scenes ===
+        {
+            scene_order: 8,
+            scene_type: 'branch',
+            scene_role: 'residual',
+            text: '"다시 태어나도 다시 똑같이 널 사랑할게." 꿈에서 들었던 엄마의 목소리. 안 된다고, 그것만은 안 된다고 소리치려 하는데 입이 열리지 않습니다.',
+            text_stage_1: '"다시 태어나도 다시 똑같이 널 사랑할게." 꿈에서. 안 된다고. 입이 열리지 않습니다. 전화가 꺼지고.',
+            original_emotion: { fear: 0.40, love: 0.20, longing: 0.15, guilt: 0.15, confusion: 0.10 },
+            anchor_emotions: ['fear', 'love'],
+            echo_words: ['다시 태어나도', '전화', '입이 열리지'],
+            void_info: null,
+        },
+        {
+            scene_order: 9,
+            scene_type: 'branch',
+            scene_role: 'residual',
+            text: '짜사이가 밥상에 올라옵니다. 식감이 엄마가 해준 것과 다릅니다. "갑자기 먹고 싶길래." 엄마가 이 집안 어딘가에 돌아와 있다는 것을 알아챕니다.',
+            text_stage_1: '짜사이. 식감이 다릅니다. 남편이 사 온 것. 엄마가 돌아와 있다는 것을 알아챕니다.',
+            original_emotion: { confusion: 0.30, longing: 0.25, fear: 0.20, love: 0.15, hope: 0.10 },
+            anchor_emotions: ['confusion', 'longing', 'fear'],
+            echo_words: ['짜사이', '식감', '돌아와'],
+            void_info: null,
+        },
+        {
+            scene_order: 10,
+            scene_type: 'branch',
+            scene_role: 'residual',
+            text: '껌껌한 어둠으로 채워진 현관문을 보았습니다. 누군가 복도에 서 있습니다. 그것이 당신임을 느낍니다. 현관에 발을 디디는 순간 바람이 불어와 문을 쳐닫습니다.',
+            text_stage_1: '어둠. 현관문. 누군가. 당신. 발을 디디는 순간 바람이 문을 쳐닫습니다.',
+            original_emotion: { fear: 0.35, longing: 0.30, numbness: 0.15, love: 0.10, confusion: 0.10 },
+            anchor_emotions: ['fear', 'longing'],
+            echo_words: ['현관문', '복도', '바람'],
+            void_info: { sceneVoid: true, voidLevel: 'high', voidType: 'absence' },
+        },
+    ];
+
+    console.log('[Seed] Inserting', SCENES.length, 'scenes...');
+    const scenesToInsert = SCENES.map(s => ({
+        memory_id: memoryId,
+        scene_order: s.scene_order,
+        scene_type: s.scene_type,
+        scene_role: s.scene_role || null,
+        text: s.text,
+        text_stage_1: s.text_stage_1 || null,
+        text_stage_2: s.text_stage_2 || null,
+        text_stage_3: s.text_stage_3 || null,
+        original_emotion: s.original_emotion,
+        anchor_emotions: s.anchor_emotions,
+        echo_words: s.echo_words,
+        void_info: s.void_info,
+    }));
+
+    const { data: insertedScenes, error: scErr } = await client
+        .from('scenes').insert(scenesToInsert).select('id, scene_order');
+    if (scErr) { console.error('[Seed] Scenes insert failed:', scErr); return; }
+    console.log('[Seed] Scenes created:', insertedScenes.length);
+
+    // Map scene_order → scene id
+    const sceneIdByOrder = {};
+    insertedScenes.forEach(s => { sceneIdByOrder[s.scene_order] = s.id; });
+
+    // ── 3. Persona-based play simulation ──
+    console.log('[Seed] Generating persona-based plays...');
+
+    function normalize(v) {
+        let t = 0; for (const k in v) t += v[k];
+        if (t > 0) for (const k in v) v[k] = Math.round((v[k] / t) * 100) / 100;
+        return v;
+    }
+    function jitter(base, amt) {
+        const v = {};
+        for (const k in base) {
+            const val = base[k] + (Math.random() - 0.5) * amt;
+            if (val > 0.02) v[k] = Math.max(0, Math.min(1, val));
+        }
+        return normalize(v);
+    }
+
+    // 15 personas × high visit counts → ~350 plays, wide alignment spread
+    const PERSONAS = [
+        { name: '유산 경험자', scenes: [2,5,7,3,6,1],
+          lens: { guilt: 0.30, fear: 0.25, longing: 0.20, sadness: 0.15, love: 0.10 },
+          alignRange: [0.65, 0.94], drift: 0.15, mismatch: null, reason: 'memory', visits: 6 },
+        { name: '입양인 (30대)', scenes: [1,3,9,8,2,6],
+          lens: { shame: 0.25, anger: 0.20, isolation: 0.20, longing: 0.15, resentment: 0.10, sadness: 0.10 },
+          alignRange: [0.20, 0.55], drift: 0.35, mismatch: 'emotion_mismatch', reason: 'projection', visits: 5 },
+        { name: '사별한 딸', scenes: [4,5,6,8,10,1,3],
+          lens: { sadness: 0.35, numbness: 0.20, longing: 0.20, guilt: 0.15, love: 0.10 },
+          alignRange: [0.45, 0.92], drift: 0.22, mismatch: 'attribution_mismatch', reason: 'empathy', visits: 7 },
+        { name: '임산부 (첫째)', scenes: [7,2,3,9,5,10],
+          lens: { fear: 0.45, confusion: 0.15, love: 0.15, hope: 0.10, guilt: 0.15 },
+          alignRange: [0.08, 0.45], drift: 0.40, mismatch: 'emotion_mismatch', reason: 'instinct', visits: 4 },
+        { name: '불임 치료 중인 여성', scenes: [2,7,8,5,9,1,4],
+          lens: { longing: 0.30, guilt: 0.20, sadness: 0.20, hope: 0.10, resignation: 0.10, shame: 0.10 },
+          alignRange: [0.12, 0.50], drift: 0.38, mismatch: 'attribution_mismatch', reason: 'projection', visits: 6 },
+        { name: '해리 경험자', scenes: [10,7,4,6,1,3,8],
+          lens: { numbness: 0.40, fear: 0.15, isolation: 0.15, confusion: 0.15, resignation: 0.15 },
+          alignRange: [0.04, 0.30], drift: 0.45, mismatch: 'void_mismatch', reason: 'void', visits: 5 },
+        { name: '영적 탐구자', scenes: [8,9,10,5,3,6,7],
+          lens: { peace: 0.25, hope: 0.20, love: 0.20, longing: 0.15, confusion: 0.10, gratitude: 0.10 },
+          alignRange: [0.10, 0.40], drift: 0.42, mismatch: 'emotion_mismatch', reason: 'empathy', visits: 4 },
+        { name: '분석적 관찰자', scenes: [1,2,4,7,3,5,9],
+          lens: { confusion: 0.30, sadness: 0.15, peace: 0.15, resignation: 0.15, guilt: 0.10, fear: 0.15 },
+          alignRange: [0.25, 0.55], drift: 0.25, mismatch: 'target_displacement', reason: 'empathy', visits: 3 },
+        { name: '유사 가족역학 경험자', scenes: [1,6,3,4,5,9,7,2],
+          lens: { guilt: 0.25, longing: 0.20, love: 0.15, shame: 0.15, fear: 0.15, sadness: 0.10 },
+          alignRange: [0.55, 0.90], drift: 0.18, mismatch: 'attribution_mismatch', reason: 'memory', visits: 7 },
+        { name: '20대 초반 학생', scenes: [3,7,9,10,1,5],
+          lens: { confusion: 0.30, fear: 0.20, sadness: 0.15, longing: 0.15, hope: 0.10, isolation: 0.10 },
+          alignRange: [0.15, 0.45], drift: 0.35, mismatch: 'emotion_mismatch', reason: 'instinct', visits: 3 },
+        { name: '상실 치유 중 (사별 2년차)', scenes: [5,6,4,8,9,7,1,2],
+          lens: { sadness: 0.20, hope: 0.20, longing: 0.15, relief: 0.15, love: 0.15, peace: 0.15 },
+          alignRange: [0.35, 0.75], drift: 0.25, mismatch: 'attribution_mismatch', reason: 'memory', visits: 5 },
+        { name: '남편/파트너 시점', scenes: [6,4,7,2,9,3,10],
+          lens: { guilt: 0.20, fear: 0.20, love: 0.20, sadness: 0.15, confusion: 0.10, resignation: 0.15 },
+          alignRange: [0.15, 0.50], drift: 0.30, mismatch: 'target_displacement', reason: 'projection', visits: 5 },
+        { name: '공감각자', scenes: [3,7,5,9,10,6],
+          lens: { fear: 0.20, longing: 0.20, love: 0.15, confusion: 0.15, sadness: 0.15, joy: 0.05, numbness: 0.10 },
+          alignRange: [0.40, 0.80], drift: 0.28, mismatch: 'emotion_mismatch', reason: 'instinct', visits: 4 },
+        { name: '분노 투사자', scenes: [1,2,4,6,8,3,7],
+          lens: { anger: 0.30, resentment: 0.25, guilt: 0.10, sadness: 0.10, shame: 0.10, fear: 0.15 },
+          alignRange: [0.04, 0.25], drift: 0.48, mismatch: 'emotion_mismatch', reason: 'projection', visits: 5 },
+        { name: '체화 명상 수련자', scenes: [5,7,3,10,6,1,8],
+          lens: { peace: 0.20, numbness: 0.15, sadness: 0.15, love: 0.15, relief: 0.15, longing: 0.10, fear: 0.10 },
+          alignRange: [0.30, 0.65], drift: 0.22, mismatch: null, reason: 'empathy', visits: 3 },
+    ];
+
+    const plays = [];
+    let dayCounter = 0;
+
+    PERSONAS.forEach((p, pi) => {
+        for (let visit = 0; visit < p.visits; visit++) {
+            const visitDayBase = dayCounter;
+            dayCounter += 1 + Math.floor(Math.random() * 2);
+            // Play most scenes each visit (4~all)
+            const minScenes = Math.min(4, p.scenes.length);
+            const numScenes = minScenes + Math.floor(Math.random() * (p.scenes.length - minScenes + 1));
+            const scenesToPlay = p.scenes.slice(0, numScenes);
+
+            scenesToPlay.forEach((scOrder, si) => {
+                const sceneId = sceneIdByOrder[scOrder];
+                if (!sceneId) return;
+                const sceneOrig = SCENES[scOrder - 1].original_emotion;
+
+                // Blend persona lens with scene's original emotion
+                const blended = {};
+                for (const k in sceneOrig) blended[k] = (sceneOrig[k] || 0) * 0.35;
+                for (const k in p.lens) blended[k] = (blended[k] || 0) + p.lens[k] * 0.65;
+                const userEmotion = jitter(blended, p.drift + visit * 0.06);
+
+                // Alignment: wider range + per-visit decay + scene noise
+                const visitDecay = visit * 0.05;
+                const sceneNoise = (Math.random() - 0.5) * 0.20;
+                const al = Math.max(0.05, Math.min(0.95,
+                    p.alignRange[0] + (p.alignRange[1] - p.alignRange[0]) * Math.random() - visitDecay + sceneNoise));
+
+                // Mismatch: frequent, especially on revisits
+                let mm = null;
+                if (p.mismatch && Math.random() < 0.4 + visit * 0.12) {
+                    mm = p.mismatch;
+                }
+                // 20% chance of secondary mismatch type for variety
+                if (!mm && Math.random() < 0.20) {
+                    mm = ['attribution_mismatch', 'target_displacement', 'void_mismatch'][Math.floor(Math.random() * 3)];
+                }
+
+                const created = new Date(Date.now() - (90 - visitDayBase - si * 0.3) * 86400000 + Math.random() * 43200000);
+
+                plays.push({
+                    memory_id: memoryId,
+                    scene_id: sceneId,
+                    user_emotion: userEmotion,
+                    user_reason: mm === 'void_mismatch' ? 'void' : p.reason,
+                    alignment: Math.round(al * 1000) / 1000,
+                    mismatch_type: mm,
+                    wave_data: null,
+                    layer_id: 0,
+                    created_at: created.toISOString(),
+                });
+            });
+        }
+    });
+
+    plays.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    // Insert in batches
+    for (let b = 0; b < plays.length; b += 25) {
+        const batch = plays.slice(b, b + 25);
+        const { error: plErr } = await client.from('plays').insert(batch);
+        if (plErr) { console.error('[Seed] Plays batch insert failed:', plErr); return; }
+    }
+    console.log('[Seed]', plays.length, 'plays inserted from', PERSONAS.length, 'personas');
+
+    // ── 4. Summary ──
+    console.log('═══════════════════════════════════════');
+    console.log('[Seed] ✓ Complete!');
+    console.log('  Memory ID:', memoryId);
+    console.log('  Title:', TITLE);
+    console.log('  Scenes: 7 core + 3 residual (1 void)');
+    console.log('  Personas:', PERSONAS.length);
+    console.log('  Total plays:', plays.length);
+    PERSONAS.forEach(p => {
+        const ct = plays.filter(pl => {
+            const blended = {}; for (const k in p.lens) blended[k] = p.lens[k];
+            return true;
+        }).length;
+        console.log('    ' + p.name + ': ' + p.visits + ' visit(s), scenes ' + p.scenes.join(','));
+    });
+    console.log('');
+    console.log('  To play: play-test.html?memory=' + memoryId);
+    console.log('═══════════════════════════════════════');
+    return memoryId;
+};
+
+// ─── Nuke a memory + all related data, then re-seed ──────────
+window.nukeThenReseed = async function (memoryId) {
+    if (!memoryId) { console.error('[Nuke] memoryId required'); return; }
+    const client = await getSupabaseClient();
+    if (!client) { console.error('[Nuke] No Supabase client'); return; }
+
+    console.log('[Nuke] Deleting plays, scenes, memory for', memoryId, '...');
+    await client.from('plays').delete().eq('memory_id', memoryId);
+    await client.from('scenes').delete().eq('memory_id', memoryId);
+    await client.from('memories').delete().eq('id', memoryId);
+    console.log('[Nuke] Deleted. Re-seeding...');
+    return await seedParkSojungMemory();
+};

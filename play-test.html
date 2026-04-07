@@ -2156,7 +2156,9 @@
     };
     const playsByMem = {};
     playsByMem[game.memoryId] = game.plays || [];
-    const P = T.buildMemoryItems([memRow], playsByMem);
+    const scenesByMem = {};
+    scenesByMem[game.memoryId] = game.scenes || [];
+    const P = T.buildMemoryItems([memRow], playsByMem, scenesByMem);
     const field = T.computeAfTerrainFields(P, null);
     const total = field.G * field.G;
     game.agg = {

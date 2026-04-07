@@ -326,7 +326,7 @@
 
   function computeAfTerrainFields(P, filterIdx, opt) {
     opt = opt || {};
-    var G = opt.G != null ? opt.G : 110;
+    var G = opt.G != null ? opt.G : 160;
     var SZ = opt.SZ != null ? opt.SZ : 80;
     var H2 = SZ / 2;
     var hts = new Float32Array(G * G);
@@ -388,20 +388,20 @@
               var az = anc.a * H2 + off2.oz;
               var ddx = wx - ax; var ddz = wz - az;
               var dist = Math.sqrt(ddx * ddx + ddz * ddz);
-              var radius = 6 + aw * 18;
-              if (dist >= radius * 1.6) continue;
+              var radius = 10 + aw * 22;
+              if (dist >= radius * 1.8) continue;
 
-              var sig = radius * 0.4;
+              var sig = radius * 0.55;
               var inf = Math.exp(-(dist * dist) / (2 * sig * sig)) * aw;
 
               // Emotion-specific noise pattern
-              var emoNoise = fbCustom(wx * np.freq + si * 5, wz * np.freq + si * 3, np.freq, np.lac, np.oct, np.amp);
+              var emoNoise = fbCustom(wx * np.freq * 0.7 + si * 5, wz * np.freq * 0.7 + si * 3, np.freq * 0.7, np.lac, np.oct, np.amp);
 
               // Height = magnitude × anchor weight × gaussian × emotion noise
-              var dh = sc.eMag * 28 * inf * (0.3 + emoNoise * 0.7);
+              var dh = sc.eMag * 22 * inf * (0.4 + emoNoise * 0.6);
 
               // Surface roughness from heterogeneity
-              dh += heterogeneity * (hs(wx * 0.4 + si + ancName.length, wz * 0.4) - 0.5) * 3 * inf;
+              dh += heterogeneity * (hs(wx * 0.25 + si + ancName.length, wz * 0.25) - 0.5) * 2.5 * inf;
 
               totalH += dh;
 
@@ -415,9 +415,9 @@
             if (sc.voidScore > 0.3) {
               var vddx = wx - sc.wx; var vddz = wz - sc.wz;
               var vdist = Math.sqrt(vddx * vddx + vddz * vddz);
-              var vSig = 5;
+              var vSig = 8;
               var voidInf = Math.exp(-(vdist * vdist) / (2 * vSig * vSig));
-              totalH -= sc.voidScore * 18 * voidInf;
+              totalH -= sc.voidScore * 14 * voidInf;
             }
           }
 
@@ -467,7 +467,7 @@
     for (var iz3 = 0; iz3 < G; iz3++) for (var ix3 = 0; ix3 < G; ix3++) {
       var idx3 = iz3 * G + ix3;
       // Base terrain noise (always present, gives texture even with no scenes)
-      hts[idx3] += (fb(ix3 * 0.04, iz3 * 0.04, 5) - 0.4) * 2.5;
+      hts[idx3] += (fb(ix3 * 0.025, iz3 * 0.025, 5) - 0.4) * 2.0;
 
       var ci3 = idx3 * 3;
       // Ensure minimum color (not pure black)
@@ -565,7 +565,7 @@
    */
   function createStrataTerrain(THREE, canvas, opts) {
     opts = opts || {};
-    var G = 110; var SZ = 80; var H2 = SZ / 2;
+    var G = 160; var SZ = 80; var H2 = SZ / 2;
     var scene3; var camera; var renderer; var controls;
     var terrain; var terrainWire; var seedGrp;
     var sD = []; var P = [];
@@ -673,7 +673,7 @@
       var mn = field.minH; var mx = field.maxH;
       var rg = mx - mn || 1;
       for (var j = 0; j < G * G; j++) {
-        pos[j * 3 + 1] = ((hts[j] - mn) / rg - 0.5) * 16;
+        pos[j * 3 + 1] = ((hts[j] - mn) / rg - 0.5) * 20;
         var cj = j * 3;
         colA[cj] = Math.min(1, Math.max(0, cls[cj]));
         colA[cj + 1] = Math.min(1, Math.max(0, cls[cj + 1]));
@@ -760,7 +760,7 @@
 
       terrain = new THREE.Mesh(geo, terrainMat);
       scene3.add(terrain);
-      terrainWire = new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({ wireframe: true, color: 0x221833, opacity: 0.04, transparent: true }));
+      terrainWire = new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({ wireframe: true, color: 0x221833, opacity: 0.02, transparent: true }));
       scene3.add(terrainWire);
 
       seedGrp = new THREE.Group(); sD = [];
