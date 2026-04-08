@@ -1266,15 +1266,32 @@
     };
 
     document.addEventListener('pointerlockchange', function () {
-      // Don't exit 1st-person when pointer lock drops due to overlays
+      if (!_fpActive) return;
+      if (document.pointerLockElement) return; // lock acquired, nothing to do
+
+      // Pointer lock was released while in 1st person
       if (_fpSceneTransition) return;
-      // If fp play mode is active (play-test), never auto-exit
-      if (typeof window._fpPlay !== 'undefined' && window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive()) return;
+
       var scM = document.getElementById('sceneMode');
       var escM = document.getElementById('escMenu');
-      if (scM && scM.classList.contains('active')) return;
-      if (escM && escM.classList.contains('active')) return;
-      if (_fpActive && !document.pointerLockElement) exitFirstPerson();
+      var isOverlay = (scM && scM.classList.contains('active')) || (escM && escM.classList.contains('active'));
+      var isFpPlay = typeof window._fpPlay !== 'undefined' && window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive();
+
+      if (isOverlay || isFpPlay) {
+        // Don't exit, but re-acquire pointer lock on next click
+        if (canvas) {
+          var _relock = function () {
+            if (_fpActive && !document.pointerLockElement) {
+              try { canvas.requestPointerLock(); } catch (_) {}
+            }
+            canvas.removeEventListener('click', _relock);
+          };
+          canvas.addEventListener('click', _relock);
+        }
+        return;
+      }
+
+      exitFirstPerson();
     });
 
     return {
