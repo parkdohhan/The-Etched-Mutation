@@ -3679,37 +3679,35 @@
         charIdx++;
       } else {
         clearInterval(typeInterval);
-        // After typing done: show "hold to return" hint + long-press handler
-        const _returnHint = document.createElement('p');
-        _returnHint.style.cssText = 'font-size:13px;color:rgba(196,168,130,0.6);letter-spacing:2px;text-align:center;margin-top:12px;animation:fadeInSlow 1s ease;';
-        _returnHint.textContent = LANG === 'ko' ? '돌아가려면 길게 누르세요' : 'Hold to return';
-        inputArea.appendChild(_returnHint);
+        // After typing done: show return button (long-press)
+        var _returnBtn = document.createElement('button');
+        _returnBtn.style.cssText = 'display:block;margin:18px auto 0;padding:14px 48px;font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:3px;color:rgba(196,168,130,0.6);background:rgba(30,28,35,0.7);border:1px solid rgba(196,168,130,0.2);border-radius:8px;cursor:pointer;animation:fadeInSlow 1s ease;transition:all 0.3s;';
+        _returnBtn.textContent = LANG === 'ko' ? '길게 눌러 돌아가기' : 'Hold to return';
+        inputArea.appendChild(_returnBtn);
 
-        // Long press on scene content area to return
         var _returnTimer = null;
-        var _returnTarget = document.querySelector('.scene-content-area') || document.getElementById('sceneMode');
+        _returnBtn.addEventListener('mousedown', _onReturnDown);
+        _returnBtn.addEventListener('touchstart', _onReturnDown);
+        _returnBtn.addEventListener('mouseup', _onReturnUp);
+        _returnBtn.addEventListener('touchend', _onReturnUp);
+        _returnBtn.addEventListener('mouseleave', _onReturnUp);
+
         function _onReturnDown(e) {
+          e.preventDefault();
           if (_returnTimer) return;
-          _returnHint.style.opacity = '1';
+          _returnBtn.style.color = 'rgba(196,168,130,0.95)';
+          _returnBtn.style.borderColor = 'rgba(196,168,130,0.5)';
           _returnTimer = setTimeout(function () {
             _returnTimer = null;
-            _returnTarget.removeEventListener('mousedown', _onReturnDown);
-            _returnTarget.removeEventListener('touchstart', _onReturnDown);
-            _returnTarget.removeEventListener('mouseup', _onReturnUp);
-            _returnTarget.removeEventListener('touchend', _onReturnUp);
-            // Trigger return to map/terrain
-            const _scene = game.scenes[game.currentSceneIndex];
+            _returnBtn.remove();
+            var _scene = game.scenes[game.currentSceneIndex];
             finishScene(_scene, result, game.lastUserEmotion || {}, 'return', false);
           }, 800);
         }
         function _onReturnUp() {
           if (_returnTimer) { clearTimeout(_returnTimer); _returnTimer = null; }
-        }
-        if (_returnTarget) {
-          _returnTarget.addEventListener('mousedown', _onReturnDown);
-          _returnTarget.addEventListener('touchstart', _onReturnDown);
-          _returnTarget.addEventListener('mouseup', _onReturnUp);
-          _returnTarget.addEventListener('touchend', _onReturnUp);
+          _returnBtn.style.color = 'rgba(196,168,130,0.6)';
+          _returnBtn.style.borderColor = 'rgba(196,168,130,0.2)';
         }
       }
     }, 45);
