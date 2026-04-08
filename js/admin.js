@@ -297,6 +297,12 @@ function editMemory(index) {
     document.getElementById('soundMapLow').value = soundMap.LOW || '';
     document.getElementById('soundMapFixated').value = soundMap.FIXATED || '';
     currentScenes = memory.scenes ? JSON.parse(JSON.stringify(memory.scenes)) : [];
+    // Clear previous diagnostics
+    var _diagEl = document.getElementById('sceneNavDiagResult');
+    if (_diagEl) _diagEl.innerHTML = '';
+    var _graphEl = document.getElementById('sceneGraphContainer');
+    if (_graphEl) { _graphEl.style.display = 'none'; document.getElementById('sceneGraphNodes').innerHTML = ''; document.getElementById('sceneGraphSvg').innerHTML = ''; }
+    window._diagAccessMatrix = null;
     renderScenes();
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
@@ -2288,11 +2294,21 @@ window.runSceneNavDiagnostics = function() {
         html += `<div style="color:#7a9a7a;font-size:0.85rem;margin-bottom:1.5rem;">✓ 고립 씬 없음 — 모든 씬이 최소 1개 패턴으로 접근 가능</div>`;
     }
 
-    // ── Accessibility table ──
+    // ── Editable accessibility table ──
     const patternColors = {
         echo_follow: '#8888cc', bridge: '#7a9a7a', displacement: '#c4a048',
         contradiction: '#c46a6a', avoidance: '#888', fixation: '#aa88cc',
     };
+    const patternNames = Object.keys(patternColors);
+
+    // Store editable matrix globally for saving
+    window._diagAccessMatrix = accessMatrix.map(row => row.map(s => new Set(s)));
+
+    window.renderDots = function renderDots(fi, ti) {
+        const pats = window._diagAccessMatrix[fi][ti];
+        if (pats.size === 0) return '<span style="color:rgba(196,168,130,0.2);">✗</span>';
+        return [...pats].map(p => `<span title="${p}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${patternColors[p] || '#888'};margin:1px;"></span>`).join('');
+    }
 
     html += `<div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
@@ -2308,24 +2324,400 @@ window.runSceneNavDiagnostics = function() {
                 <td style="padding:4px 8px;color:var(--text-muted);white-space:nowrap;border-bottom:1px solid rgba(196,168,130,0.07);">S${fi + 1} ${fromScene.text ? '"' + fromScene.text.slice(0, 20) + '…"' : ''}</td>
                 ${scenes.map((_, ti) => {
                     if (ti === fi) return `<td style="padding:4px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(196,168,130,0.07);">—</td>`;
-                    const pats = accessMatrix[fi][ti];
-                    if (pats.size === 0) {
-                        return `<td style="padding:4px;text-align:center;border-bottom:1px solid rgba(196,168,130,0.07);"><span style="color:rgba(196,168,130,0.2);">✗</span></td>`;
-                    }
-                    const dots = [...pats].map(p => `<span title="${p}" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${patternColors[p] || '#888'};margin:1px;"></span>`).join('');
-                    return `<td style="padding:4px;text-align:center;border-bottom:1px solid rgba(196,168,130,0.07);">${dots}</td>`;
+                    return `<td id="diagCell_${fi}_${ti}" data-fi="${fi}" data-ti="${ti}" style="padding:4px;text-align:center;border-bottom:1px solid rgba(196,168,130,0.07);cursor:pointer;" onclick="openPatternEditor(${fi},${ti})">${renderDots(fi, ti)}</td>`;
                 }).join('')}
             </tr>`).join('')}
         </tbody>
     </table>
     </div>
-    <div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.75rem;">
+    <div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;">
         ${Object.entries(patternColors).map(([p, c]) => `<span style="font-size:0.72rem;color:var(--text-muted);"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:4px;vertical-align:middle;"></span>${p}</span>`).join('')}
-        <span style="font-size:0.72rem;color:var(--text-muted);">avoidance/fixation은 항상 fallback (void 제외)</span>
+        <span style="font-size:0.72rem;color:var(--text-muted);">셀 클릭으로 편집</span>
+    </div>`;
+
+    // Pattern editor popup
+    html += `<div id="diagPatternPopup" style="display:none;position:fixed;z-index:9999;background:rgba(10,10,15,0.95);border:1px solid rgba(196,168,130,0.3);border-radius:6px;padding:12px 16px;min-width:160px;backdrop-filter:blur(6px);">
+        <div style="font-size:11px;color:rgba(196,168,130,0.5);margin-bottom:8px;" id="diagPopupTitle">S1 → S2</div>
+        ${patternNames.map(p => `
+            <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:#c4a882;">
+                <input type="checkbox" data-pattern="${p}" onchange="toggleDiagPattern(this)" style="accent-color:${patternColors[p]};">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${patternColors[p]};"></span>
+                ${p}
+            </label>
+        `).join('')}
+        <div style="margin-top:8px;display:flex;gap:6px;">
+            <button onclick="diagSelectAll(true)" style="flex:1;padding:4px;border:1px solid rgba(196,168,130,0.2);background:transparent;color:rgba(196,168,130,0.6);font-size:10px;cursor:pointer;border-radius:3px;">전체 선택</button>
+            <button onclick="diagSelectAll(false)" style="flex:1;padding:4px;border:1px solid rgba(196,168,130,0.2);background:transparent;color:rgba(196,168,130,0.6);font-size:10px;cursor:pointer;border-radius:3px;">전체 해제</button>
+        </div>
+        <div style="margin-top:6px;text-align:right;">
+            <button onclick="closeDiagPopup()" style="padding:4px 12px;border:1px solid rgba(196,168,130,0.2);background:transparent;color:rgba(196,168,130,0.5);font-size:10px;cursor:pointer;border-radius:3px;">닫기</button>
+        </div>
     </div>`;
 
     el.innerHTML = html;
+
+    // ── Popup logic ──
+    window._diagEditFi = -1;
+    window._diagEditTi = -1;
+
+    window.openPatternEditor = function(fi, ti) {
+        const popup = document.getElementById('diagPatternPopup');
+        const cell = document.getElementById('diagCell_' + fi + '_' + ti);
+        if (!popup || !cell) return;
+        window._diagEditFi = fi;
+        window._diagEditTi = ti;
+        document.getElementById('diagPopupTitle').textContent = 'S' + (fi+1) + ' → S' + (ti+1);
+        const pats = window._diagAccessMatrix[fi][ti];
+        popup.querySelectorAll('input[data-pattern]').forEach(function(cb) {
+            cb.checked = pats.has(cb.dataset.pattern);
+        });
+        // Position near cell
+        const rect = cell.getBoundingClientRect();
+        popup.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+        popup.style.top = Math.min(rect.bottom + 4, window.innerHeight - 300) + 'px';
+        popup.style.display = 'block';
+    };
+
+    window.toggleDiagPattern = function(cb) {
+        const fi = window._diagEditFi, ti = window._diagEditTi;
+        if (fi < 0) return;
+        const pat = cb.dataset.pattern;
+        const pats = window._diagAccessMatrix[fi][ti];
+        if (cb.checked) pats.add(pat);
+        else pats.delete(pat);
+        // Update cell dots
+        const cell = document.getElementById('diagCell_' + fi + '_' + ti);
+        if (cell) cell.innerHTML = renderDots(fi, ti);
+    };
+
+    window.diagSelectAll = function(selectAll) {
+        const fi = window._diagEditFi, ti = window._diagEditTi;
+        if (fi < 0) return;
+        const popup = document.getElementById('diagPatternPopup');
+        const pats = window._diagAccessMatrix[fi][ti];
+        popup.querySelectorAll('input[data-pattern]').forEach(function(cb) {
+            cb.checked = selectAll;
+            if (selectAll) pats.add(cb.dataset.pattern);
+            else pats.delete(cb.dataset.pattern);
+        });
+        const cell = document.getElementById('diagCell_' + fi + '_' + ti);
+        if (cell) cell.innerHTML = renderDots(fi, ti);
+    };
+
+    window.closeDiagPopup = function() {
+        const popup = document.getElementById('diagPatternPopup');
+        if (popup) popup.style.display = 'none';
+    };
+
+    // Close popup on click outside
+    document.addEventListener('click', function(e) {
+        const popup = document.getElementById('diagPatternPopup');
+        if (!popup || popup.style.display === 'none') return;
+        if (!popup.contains(e.target) && !e.target.closest('[id^="diagCell_"]')) {
+            popup.style.display = 'none';
+        }
+    });
+
+    // ── Twine-style node graph ──
+    _renderSceneGraph(scenes, patternColors);
 };
+
+function _renderSceneGraph(scenes, patternColors) {
+    const container = document.getElementById('sceneGraphContainer');
+    const svg = document.getElementById('sceneGraphSvg');
+    const nodesEl = document.getElementById('sceneGraphNodes');
+    const popup = document.getElementById('sceneGraphPopup');
+    if (!container || !svg || !nodesEl) return;
+    container.style.display = 'block';
+    container.style.height = '550px';
+    nodesEl.innerHTML = '';
+    svg.innerHTML = '';
+    svg.style.pointerEvents = 'all';
+
+    const W = container.offsetWidth || 800;
+    const H = container.offsetHeight || 550;
+    const N = scenes.length;
+    const patternNames = Object.keys(patternColors);
+    const PAD = 50;
+
+    // ── VA projection per scene ──
+    const sceneVA = scenes.map(sc => {
+        const emo = safeParseEmotion(sc.originalEmotion || sc.original_emotion);
+        let V = 0, A = 0, wSum = 0;
+        const VAD = {
+            fear:{v:-0.9,a:0.9}, sadness:{v:-0.8,a:-0.4}, anger:{v:-0.7,a:0.8},
+            guilt:{v:-0.8,a:0.2}, shame:{v:-0.9,a:-0.2}, isolation:{v:-0.7,a:-0.5},
+            numbness:{v:-0.6,a:-0.8}, longing:{v:-0.3,a:0.2}, resentment:{v:-0.5,a:0.6},
+            resignation:{v:-0.4,a:-0.6}, joy:{v:0.9,a:0.6}, hope:{v:0.7,a:0.4},
+            relief:{v:0.6,a:-0.3}, gratitude:{v:0.8,a:-0.2}, love:{v:1.0,a:0.5},
+            peace:{v:0.8,a:-0.6}, confusion:{v:-0.4,a:0.3},
+        };
+        for (const k in emo) {
+            const w = emo[k] || 0; const m = VAD[k];
+            if (!w || !m) continue;
+            V += w * m.v; A += w * m.a; wSum += w;
+        }
+        if (wSum > 0) { V /= wSum; A /= wSum; }
+        // Dominant emotion
+        let dk = '', dv = 0;
+        for (const k in emo) { if (emo[k] > dv) { dv = emo[k]; dk = k; } }
+        return { v: V, a: A, domEmo: dk };
+    });
+
+    // VA → pixel
+    function vaToXY(v, a) {
+        return {
+            x: PAD + (v + 1) / 2 * (W - PAD * 2),
+            y: PAD + (1 - (a + 1) / 2) * (H - PAD * 2), // invert Y (arousal up)
+        };
+    }
+    function xyToVA(x, y) {
+        return {
+            v: ((x - PAD) / (W - PAD * 2)) * 2 - 1,
+            a: 1 - ((y - PAD) / (H - PAD * 2)) * 2,
+        };
+    }
+
+    const nodePositions = sceneVA.map(va => vaToXY(va.v, va.a));
+
+    const EC = { fear:'#6647b3', sadness:'#4061a6', anger:'#cc4038', guilt:'#997a59', longing:'#479ea6',
+        numbness:'#525261', shame:'#94597a', isolation:'#24243d', joy:'#d1b861', hope:'#8ca673',
+        love:'#b3667f', peace:'#739485', gratitude:'#a69466', relief:'#7aad7a', confusion:'#7a618c' };
+    const emColors = sceneVA.map(va => EC[va.domEmo] || '#888');
+
+    let selectedIdx = -1;
+
+    // ── Draw axis labels + grid ──
+    function _drawGrid() {
+        // Axis labels as HTML
+        let gridHtml = '';
+        gridHtml += '<div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(196,168,130,0.3);letter-spacing:2px;">AROUSAL ↑</div>';
+        gridHtml += '<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(196,168,130,0.3);letter-spacing:2px;">↓ CALM</div>';
+        gridHtml += '<div style="position:absolute;left:8px;top:50%;transform:translateY(-50%) rotate(-90deg);font-size:10px;color:rgba(196,168,130,0.3);letter-spacing:2px;">NEGATIVE</div>';
+        gridHtml += '<div style="position:absolute;right:8px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:10px;color:rgba(196,168,130,0.3);letter-spacing:2px;">POSITIVE</div>';
+        // Quadrant labels
+        gridHtml += '<div style="position:absolute;top:' + (PAD + 10) + 'px;left:' + (PAD + 10) + 'px;font-size:9px;color:rgba(196,168,130,0.15);">공포·분노</div>';
+        gridHtml += '<div style="position:absolute;top:' + (PAD + 10) + 'px;right:' + (PAD + 10) + 'px;font-size:9px;color:rgba(196,168,130,0.15);">기쁨·사랑</div>';
+        gridHtml += '<div style="position:absolute;bottom:' + (PAD + 10) + 'px;left:' + (PAD + 10) + 'px;font-size:9px;color:rgba(196,168,130,0.15);">슬픔·무감각</div>';
+        gridHtml += '<div style="position:absolute;bottom:' + (PAD + 10) + 'px;right:' + (PAD + 10) + 'px;font-size:9px;color:rgba(196,168,130,0.15);">평화·안도</div>';
+        return gridHtml;
+    }
+
+    // ── Draw SVG grid lines ──
+    function _drawSvgGrid() {
+        let s = '';
+        const cx = vaToXY(0, 0);
+        // Cross hair at origin
+        s += `<line x1="${PAD}" y1="${cx.y}" x2="${W-PAD}" y2="${cx.y}" stroke="rgba(196,168,130,0.08)" stroke-width="1"/>`;
+        s += `<line x1="${cx.x}" y1="${PAD}" x2="${cx.x}" y2="${H-PAD}" stroke="rgba(196,168,130,0.08)" stroke-width="1"/>`;
+        // Border
+        s += `<rect x="${PAD}" y="${PAD}" width="${W-PAD*2}" height="${H-PAD*2}" fill="none" stroke="rgba(196,168,130,0.06)" stroke-width="1"/>`;
+        return s;
+    }
+
+    // ── Create nodes ──
+    let gridLabels = _drawGrid();
+    nodesEl.innerHTML = gridLabels;
+
+    scenes.forEach((sc, i) => {
+        const node = document.createElement('div');
+        const letter = String.fromCharCode(65 + i); // A, B, C...
+        const preview = sc.text ? sc.text.slice(0, 18) + (sc.text.length > 18 ? '…' : '') : '';
+        node.id = 'sgNode_' + i;
+        node.dataset.idx = i;
+        node.style.cssText = `position:absolute;left:${nodePositions[i].x - 28}px;top:${nodePositions[i].y - 28}px;width:56px;height:56px;background:rgba(15,15,20,0.85);border:2px solid ${emColors[i]};border-radius:50%;cursor:grab;user-select:none;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:box-shadow 0.2s;`;
+        node.innerHTML = `<div style="font-size:14px;font-weight:bold;color:${emColors[i]};">${letter}</div><div style="font-size:7px;color:rgba(196,168,130,0.4);max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</div>`;
+        nodesEl.appendChild(node);
+
+        // Click to select
+        node.addEventListener('click', e => {
+            if (e.detail > 0 && !node._wasDragged) {
+                selectedIdx = selectedIdx === i ? -1 : i;
+                _redraw();
+            }
+            node._wasDragged = false;
+        });
+
+        // Drag
+        let dragging = false, startX, startY, origX, origY, moved = false;
+        node.addEventListener('mousedown', e => {
+            if (e.button !== 0) return;
+            dragging = true; moved = false;
+            node.style.cursor = 'grabbing'; node.style.zIndex = '5';
+            startX = e.clientX; startY = e.clientY;
+            origX = nodePositions[i].x; origY = nodePositions[i].y;
+            e.preventDefault(); e.stopPropagation();
+        });
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            const dx = e.clientX - startX, dy = e.clientY - startY;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+            nodePositions[i].x = Math.max(PAD, Math.min(W - PAD, origX + dx));
+            nodePositions[i].y = Math.max(PAD, Math.min(H - PAD, origY + dy));
+            node.style.left = (nodePositions[i].x - 28) + 'px';
+            node.style.top = (nodePositions[i].y - 28) + 'px';
+            // Update VA
+            const newVA = xyToVA(nodePositions[i].x, nodePositions[i].y);
+            sceneVA[i].v = newVA.v; sceneVA[i].a = newVA.a;
+            // Recalculate connections for this scene
+            _recalcConnections();
+            _redraw();
+        });
+        document.addEventListener('mouseup', () => {
+            if (dragging) {
+                dragging = false; node.style.cursor = 'grab'; node.style.zIndex = '2';
+                if (moved) node._wasDragged = true;
+            }
+        });
+    });
+
+    // ── Recalculate accessibility from VA positions ──
+    function _recalcConnections() {
+        const matrix = window._diagAccessMatrix;
+        if (!matrix) return;
+        for (let fi = 0; fi < N; fi++) {
+            for (let ti = 0; ti < N; ti++) {
+                if (fi === ti) continue;
+                const reachable = new Set();
+                // Compute cosine similarity between scenes in emotion space
+                // Use VA distance as proxy (simpler than full emotion vector cosine)
+                const dv = sceneVA[fi].v - sceneVA[ti].v;
+                const da = sceneVA[fi].a - sceneVA[ti].a;
+                const dist = Math.sqrt(dv * dv + da * da);
+                // Pattern-specific radii (in VA space, scaled from cosine similarity)
+                if (dist < 1.2) reachable.add('echo_follow');
+                if (dist < 1.5) reachable.add('bridge');
+                if (dist < 1.8) reachable.add('displacement');
+                // Contradiction: far away is better (negate)
+                if (dist > 0.8) reachable.add('contradiction');
+                // Avoidance/fixation always available
+                reachable.add('avoidance');
+                reachable.add('fixation');
+                matrix[fi][ti] = reachable;
+            }
+        }
+    }
+
+    // ── Main redraw ──
+    function _redraw() {
+        svg.innerHTML = _drawSvgGrid();
+        const matrix = window._diagAccessMatrix;
+        if (!matrix) return;
+
+        // Draw radius circles for selected node
+        if (selectedIdx >= 0) {
+            const sel = nodePositions[selectedIdx];
+            const radii = [
+                { name: 'echo_follow', r: 1.2, color: patternColors.echo_follow },
+                { name: 'bridge', r: 1.5, color: patternColors.bridge },
+                { name: 'displacement', r: 1.8, color: patternColors.displacement },
+                { name: 'contradiction (외부)', r: 0.8, color: patternColors.contradiction },
+            ];
+            radii.forEach(rd => {
+                const rPx = rd.r / 2 * (W - PAD * 2);
+                if (rd.name.startsWith('contra')) {
+                    // Contradiction: show as dashed inner circle (outside = reachable)
+                    svg.innerHTML += `<circle cx="${sel.x}" cy="${sel.y}" r="${rPx}" fill="none" stroke="${rd.color}" stroke-width="1" stroke-opacity="0.2" stroke-dasharray="4 4"/>`;
+                } else {
+                    svg.innerHTML += `<circle cx="${sel.x}" cy="${sel.y}" r="${rPx}" fill="none" stroke="${rd.color}" stroke-width="1" stroke-opacity="0.15"/>`;
+                }
+            });
+        }
+
+        // Draw connections (only from selected, or all dimmed if none selected)
+        for (let fi = 0; fi < N; fi++) {
+            for (let ti = 0; ti < N; ti++) {
+                if (fi === ti) continue;
+                const pats = matrix[fi][ti];
+                if (!pats || pats.size === 0) continue;
+
+                const showFull = selectedIdx < 0 || fi === selectedIdx;
+                if (!showFull && selectedIdx >= 0) continue; // Only show selected node's connections
+
+                const from = nodePositions[fi], to = nodePositions[ti];
+                const dx = to.x - from.x, dy = to.y - from.y;
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+                // Arrow line
+                const strongest = [...pats][0];
+                const col = patternColors[strongest] || '#888';
+                const opacity = showFull ? 0.5 : 0.1;
+
+                // Shorten line to not overlap nodes
+                const shrink = 30;
+                const sx = from.x + (dx / len) * shrink;
+                const sy = from.y + (dy / len) * shrink;
+                const ex = to.x - (dx / len) * shrink;
+                const ey = to.y - (dy / len) * shrink;
+
+                svg.innerHTML += `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="${col}" stroke-width="1.5" stroke-opacity="${opacity}"/>`;
+
+                // Arrowhead
+                const ax = dx / len, ay = dy / len;
+                const ahx = ex - ax * 8, ahy = ey - ay * 8;
+                svg.innerHTML += `<polygon points="${ex},${ey} ${ahx + ay * 4},${ahy - ax * 4} ${ahx - ay * 4},${ahy + ax * 4}" fill="${col}" fill-opacity="${opacity}"/>`;
+
+                // Pattern dots along the line
+                if (showFull && pats.size > 0) {
+                    const mx = (sx + ex) / 2, my = (sy + ey) / 2;
+                    let di = 0;
+                    pats.forEach(p => {
+                        const off = (di - (pats.size - 1) / 2) * 10;
+                        const nx = -dy / len, ny = dx / len;
+                        svg.innerHTML += `<circle cx="${mx + nx * off}" cy="${my + ny * off}" r="3" fill="${patternColors[p]}" fill-opacity="0.8"><title>${p}</title></circle>`;
+                        di++;
+                    });
+                }
+            }
+        }
+
+        // Highlight selected node
+        document.querySelectorAll('[id^="sgNode_"]').forEach((n, i) => {
+            if (i === selectedIdx) {
+                n.style.boxShadow = '0 0 16px ' + emColors[i];
+                n.style.transform = 'scale(1.15)';
+            } else {
+                n.style.boxShadow = '';
+                n.style.transform = '';
+                n.style.opacity = selectedIdx >= 0 ? '0.5' : '1';
+            }
+            if (i === selectedIdx) n.style.opacity = '1';
+        });
+
+        // Update info panel
+        _updateInfoPanel();
+    }
+
+    // ── Info panel for selected scene ──
+    function _updateInfoPanel() {
+        let info = popup;
+        if (selectedIdx < 0) { info.style.display = 'none'; return; }
+        const matrix = window._diagAccessMatrix;
+        const letter = String.fromCharCode(65 + selectedIdx);
+        const sc = scenes[selectedIdx];
+        const va = sceneVA[selectedIdx];
+        let html = `<div style="font-size:13px;font-weight:bold;color:#c4a882;margin-bottom:6px;">${letter}. ${(sc.text || '').slice(0, 30)}${(sc.text || '').length > 30 ? '…' : ''}</div>`;
+        html += `<div style="font-size:10px;color:rgba(196,168,130,0.5);margin-bottom:8px;">V: ${va.v.toFixed(2)} · A: ${va.a.toFixed(2)} · ${sceneVA[selectedIdx].domEmo}</div>`;
+        html += `<div style="font-size:11px;color:rgba(196,168,130,0.7);margin-bottom:4px;">도달 가능:</div>`;
+        for (let ti = 0; ti < N; ti++) {
+            if (ti === selectedIdx) continue;
+            const pats = matrix[selectedIdx][ti];
+            if (!pats || pats.size === 0) continue;
+            const tLetter = String.fromCharCode(65 + ti);
+            const dots = [...pats].map(p => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${patternColors[p]};margin:0 1px;" title="${p}"></span>`).join('');
+            html += `<div style="font-size:10px;padding:2px 0;">→ ${tLetter} ${dots}</div>`;
+        }
+        info.innerHTML = html;
+        info.style.display = 'block';
+        info.style.right = '12px';
+        info.style.top = '12px';
+        info.style.left = 'auto';
+    }
+
+    // Initial draw
+    _recalcConnections();
+    _redraw();
+}
 
 function renderSessions() {
     const filtered = currentFilter === 'all' 

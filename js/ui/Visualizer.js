@@ -25,6 +25,11 @@ export class Visualizer {
         this._waveOverride = null; // { speedMultiplier: 0-1, colorOverride: {r,g,b} }
         this._frozenTime = null;   // 파동 정지 시 고정된 시간값
 
+        // 투명 배경 모드 (ambient wave용)
+        this.transparentBackground = false;
+        // 파동 두께 배율
+        this.lineWidthMultiplier = 1;
+
         // ── 파동 전환 (transition) 상태 ──
         this._waveTx = null;       // { fromNarrator, fromExperiencer, progress, duration }
         this._prevNarratorWaveStyle = null;
@@ -171,10 +176,28 @@ export class Visualizer {
         const color = this._waveOverride && this._waveOverride.colorOverride
             ? this._waveOverride.colorOverride : waveStyle.color;
         ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},${opacity})`;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * (this.lineWidthMultiplier || 1);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.stroke();
+
+        // 투명 배경 모드: 파동 아래를 반투명 그라데이션으로 채움
+        if (this.transparentBackground && points.length > 1) {
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x, points[i].y);
+            }
+            ctx.lineTo(points[points.length - 1].x, height);
+            ctx.lineTo(points[0].x, height);
+            ctx.closePath();
+            const grad = ctx.createLinearGradient(0, offsetY - (waveStyle.amplitude || 30), 0, height);
+            grad.addColorStop(0, `rgba(${color.r},${color.g},${color.b},${opacity * 0.3})`);
+            grad.addColorStop(0.5, `rgba(${color.r},${color.g},${color.b},${opacity * 0.12})`);
+            grad.addColorStop(1, `rgba(${color.r},${color.g},${color.b},0)`);
+            ctx.fillStyle = grad;
+            ctx.fill();
+        }
     }
 
     /**
@@ -271,8 +294,12 @@ export class Visualizer {
                     if (this._waveTx.progress >= 1) this._waveTx = null;
                 }
 
-                ctx.fillStyle = 'rgba(10,10,12,0.85)';
-                ctx.fillRect(0, 0, width, height);
+                if (this.transparentBackground) {
+                    ctx.clearRect(0, 0, width, height);
+                } else {
+                    ctx.fillStyle = 'rgba(10,10,12,0.85)';
+                    ctx.fillRect(0, 0, width, height);
+                }
 
                 const mouseState = {
                     isDown: this.alignmentIsMouseDown,

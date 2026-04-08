@@ -135,6 +135,12 @@ function _initMemoryFinder() {
       _finderMatchByText(inputEl.value.trim(), lang);
     }
   };
+  const submitBtn = document.getElementById('finderSubmitBtn');
+  if (submitBtn) {
+    submitBtn.onclick = () => {
+      if (inputEl.value.trim()) _finderMatchByText(inputEl.value.trim(), lang);
+    };
+  }
 
   // Browse button
   if (browseBtn) {

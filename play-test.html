@@ -25,7 +25,7 @@
       --ghost: rgba(196, 168, 130, 0.35);
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: #0a0a0e; color: var(--text-primary); font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; }
+    html, body { margin: 0; min-height: 100%; background: #0a0a0e; color: var(--text-primary); font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; overflow: hidden; }
     #selectScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0e; }
     #mapMode {
       position: fixed; inset: 0; background: #0a0a0e; display: none; flex-direction: column; z-index: 50;
@@ -2809,6 +2809,15 @@
     game.currentSceneIndex = pin.sceneIndex;
     const sm = document.getElementById('sceneMode');
     sm.classList.add('active');
+
+    // FP 모드: waveTop/terrainBar 숨기고 ambient wave 유지
+    if (_fpKeepTerrain) {
+      var _wt = document.getElementById('waveTop');
+      var _tb = document.getElementById('terrainBar');
+      if (_wt) _wt.style.display = 'none';
+      if (_tb) _tb.style.display = 'none';
+    }
+
     const _ia = document.getElementById('emotionInputArea');
     _ia.style.opacity = '0';
     _ia.innerHTML = '';
@@ -2816,11 +2825,14 @@
     // 이전 장면의 파동 굳음(override) 해제 — 새 장면에서 파동 다시 살아남
     var _v = getPlayTestAlignVisualizerSync();
     if (_v) _v.clearWaveOverride();
-    const origBase = normalizeOriginalEmotionForWave(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
-    const alignInit = (game.lastResult && typeof game.lastResult.alignment_score === 'number')
-      ? game.lastResult.alignment_score
-      : 0;
-    void startPlayTestAlignmentWaves(origBase, {}, alignInit, { userIdle: true });
+
+    if (!_fpKeepTerrain) {
+      const origBase = normalizeOriginalEmotionForWave(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
+      const alignInit = (game.lastResult && typeof game.lastResult.alignment_score === 'number')
+        ? game.lastResult.alignment_score
+        : 0;
+      void startPlayTestAlignmentWaves(origBase, {}, alignInit, { userIdle: true });
+    }
 
     const textEl = document.getElementById('sceneText');
     textEl.textContent = '';
@@ -3397,6 +3409,11 @@
       game.emotionTrajectory.push({ ...game.emotionCursor });
     }
 
+    // Apply contamination to ambient wave
+    if (window._fpAmbientWave && window._fpAmbientWave.applyContamination) {
+      window._fpAmbientWave.applyContamination(baseEmotion);
+    }
+
     const reasonLabel = userVector.reason_analysis?.attribution || '';
     insertPlay(scene, baseEmotion, reasonLabel, engineResult, !!userVector.reason_analysis?.is_void).then(() => {
       reloadPlaysOnly().then(() => {
@@ -3630,13 +3647,14 @@
   }
 
   function beginPostSubmitSequence(result, baseEmotion) {
+    var _isFpMode = window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive();
     const emBase = baseEmotion || {};
     const dom = getDominantColor(emBase);
     const bucket = result.alignment_bucket || 'MID';
-    transitionWavePostSubmit(dom, bucket, emBase, result.alignment_score);
 
-    // ── 파동 위 감정 키워드 에코 ──
-    _showWaveEchoLabel(emBase, dom);
+    if (!_isFpMode) {
+      transitionWavePostSubmit(dom, bucket, emBase, result.alignment_score);
+    }
 
     const npc = document.getElementById('sceneNpc');
     const _postPres = game.contPresentation || { stage: 'stable', band: 'weak' };
@@ -3652,16 +3670,10 @@
       '<span class="another-me-label">' + _anotherMeLabel + '</span>' +
       '<span class="another-me-whisper">' + _postLine + '</span>';
 
-    renderTerrainBar(game.currentSceneIndex, game.lastTerrainTint || null, {});
-    document.getElementById('terrainClickHint').style.display = 'block';
     const sub = document.getElementById('submitBtn');
     const voi = document.getElementById('voidBtn');
     if (sub) sub.disabled = true;
     if (voi) voi.disabled = true;
-    document.querySelector('#terrainClickHint .hint-txt').textContent = T.terrainHintAlign(
-      (result.alignment_score * 100).toFixed(0),
-      result.alignment_bucket || ''
-    );
 
     // 입력 영역을 분석 완료 타이핑 메시지로 교체
     const inputArea = document.getElementById('emotionInputArea');
@@ -3679,6 +3691,50 @@
       }
     }, 45);
 
+    // ── FP 모드: ambient wave 클릭으로 복귀 ──
+    if (_isFpMode) {
+      // 1.5초 후 ambient wave에 복귀 힌트 표시 + 클릭 활성화
+      setTimeout(function () {
+        var awWrap = document.getElementById('fpAmbientWaveWrap');
+        if (!awWrap) return;
+        // 힌트 텍스트
+        var hint = document.createElement('div');
+        hint.id = 'fpWaveReturnHint';
+        hint.style.cssText = 'position:absolute;top:-28px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.7);font-size:12px;letter-spacing:2px;pointer-events:none;opacity:0;transition:opacity 0.8s;font-family:"Cormorant Garamond",serif;text-shadow:0 0 8px rgba(196,168,130,0.3);white-space:nowrap;';
+        hint.textContent = LANG === 'ko' ? '파동을 눌러 지형으로 돌아가세요' : 'Click the wave to return';
+        awWrap.appendChild(hint);
+        requestAnimationFrame(function () { hint.style.opacity = '1'; });
+        // 파동 클릭 가능하게 (sceneMode z-index 2700 위로)
+        awWrap.style.pointerEvents = 'auto';
+        awWrap.style.cursor = 'pointer';
+        awWrap.style.zIndex = '2800';
+        // 부드러운 펄스 글로우
+        awWrap.style.boxShadow = '0 -4px 20px rgba(196,168,130,0.15)';
+
+        function _onWaveClick() {
+          awWrap.removeEventListener('click', _onWaveClick);
+          awWrap.style.pointerEvents = 'none';
+          awWrap.style.cursor = '';
+          awWrap.style.boxShadow = '';
+          awWrap.style.zIndex = '260';
+          var h = document.getElementById('fpWaveReturnHint');
+          if (h && h.parentNode) h.parentNode.removeChild(h);
+          // 기존 afterTerrainReturn 로직 호출
+          afterTerrainReturn(result);
+        }
+        awWrap.addEventListener('click', _onWaveClick);
+      }, 1500);
+      return; // FP 모드에서는 아래 wave absorption 시퀀스 스킵
+    }
+
+    // ── 일반 모드: 기존 wave absorption + terrainBar 클릭 ──
+    renderTerrainBar(game.currentSceneIndex, game.lastTerrainTint || null, {});
+    document.getElementById('terrainClickHint').style.display = 'block';
+    document.querySelector('#terrainClickHint .hint-txt').textContent = T.terrainHintAlign(
+      (result.alignment_score * 100).toFixed(0),
+      result.alignment_bucket || ''
+    );
+
     game.terrainTintFrom = null;
     game.terrainTintTo = null;
     game.terrainTintLerp = 1;
@@ -3688,16 +3744,14 @@
     // ── 파동 흡수 시퀀스 (Wave Absorption) ──
     var waveTopEl = document.getElementById('waveTop');
     var terrainBarEl = document.getElementById('terrainBar');
-    var _rgb = dom; // emotion RGB [r, g, b]
+    var _rgb = dom;
 
-    // 200ms: Phase 1 — 파동 소멸 시작 + #waveTop 하단 잔광
     setTimeout(function () {
       collapseWaveAnimation(800, _rgb);
       waveTopEl.classList.add('wave-draining');
       waveTopEl.style.boxShadow = 'inset 0 -20px 40px -10px rgba(' + _rgb[0] + ',' + _rgb[1] + ',' + _rgb[2] + ',0.3)';
     }, 200);
 
-    // 600ms: Phase 2 — 잔광 전이 (waveTop → terrainBar)
     setTimeout(function () {
       waveTopEl.classList.remove('wave-draining');
       waveTopEl.style.boxShadow = '';
@@ -3705,7 +3759,6 @@
       terrainBarEl.style.boxShadow = 'inset 0 20px 40px -10px rgba(' + _rgb[0] + ',' + _rgb[1] + ',' + _rgb[2] + ',0.25)';
     }, 600);
 
-    // 700ms: 지형 tint 시작 (감정색으로 물들기, 브라이트 부스트)
     setTimeout(function () {
       var bright = [Math.min(255, Math.round(_rgb[0] * 1.3)), Math.min(255, Math.round(_rgb[1] * 1.3)), Math.min(255, Math.round(_rgb[2] * 1.3))];
       game.terrainTintFrom = (game.lastTerrainTint || [196, 168, 130]).slice();
@@ -3714,25 +3767,21 @@
       ensureTerrainAnimLoop();
     }, 700);
 
-    // 800ms: 지형 ripple 강화 + terrainBar 잔광 소멸
     setTimeout(function () {
       game.terrainRipple = 1.8;
       game.terrainRipplePhase = performance.now() * 0.001;
       ensureTerrainAnimLoop();
       fadeIn(SFX.void, 0.25, 800);
-      // 브라이트 tint를 원래 감정색으로 서서히 되돌림
       game.terrainTintFrom = game.terrainTintTo ? game.terrainTintTo.slice() : _rgb.slice();
       game.terrainTintTo = _rgb.slice();
       game.terrainTintLerp = 0;
     }, 800);
 
-    // 1000ms: terrainBar 잔광 제거
     setTimeout(function () {
       terrainBarEl.classList.remove('terrain-absorbing');
       terrainBarEl.style.boxShadow = '';
     }, 1000);
 
-    // 1400ms: 지형 클릭 활성화
     setTimeout(function () { enableTerrainCanvasClick(result); }, 1400);
   }
 
@@ -3899,7 +3948,9 @@
     if (!id) return;
     initAudio();
     document.getElementById('selectScreen').style.display = 'none';
-    document.getElementById('mapMode').classList.add('active');
+    var _mm2 = document.getElementById('mapMode');
+    _mm2.style.visibility = 'hidden';
+    _mm2.classList.add('active');
     try {
       await loadMemoryData(id);
       fadeIn(SFX.ambient, 0.12, 3000);
@@ -4177,7 +4228,10 @@
 
     if (urlMemoryId) {
       document.getElementById('selectScreen').style.display = 'none';
-      document.getElementById('mapMode').classList.add('active');
+      // Hide mapMode visually while activating it — FP adapter will take over
+      var _mm = document.getElementById('mapMode');
+      _mm.style.visibility = 'hidden';
+      _mm.classList.add('active');
       try {
         await loadMemoryData(urlMemoryId);
         try {
@@ -4528,10 +4582,24 @@
                 if (lidBot.parentNode) lidBot.parentNode.removeChild(lidBot);
                 if (monoEl.parentNode) monoEl.parentNode.removeChild(monoEl);
 
+                // Request pointer lock for 360° mouse look
+                var _plC = document.getElementById('strataCanvas');
+                if (_plC) {
+                  var _plLock = function () {
+                    if (_fpPlayActive && !document.pointerLockElement) {
+                      try { _plC.requestPointerLock(); } catch (_) {}
+                    }
+                  };
+                  // Persistent: re-lock on every click while fp is active
+                  _plC.addEventListener('click', _plLock);
+                  // Store ref so we can clean up later
+                  _plC._fpClickLock = _plLock;
+                }
+
                 // Show movement control hint
                 var hintEl = document.createElement('div');
                 hintEl.style.cssText = 'position:fixed;bottom:35%;left:50%;transform:translateX(-50%);color:rgba(160,160,160,0.7);font-size:15px;letter-spacing:3px;pointer-events:none;opacity:0;transition:opacity 1.2s ease;z-index:9999;text-align:center;font-family:"Cormorant Garamond",serif;';
-                hintEl.textContent = lang === 'ko' ? '[방향키로 움직이고, 커서로 둘러보세요]' : '[Move with arrow keys, look around with cursor]';
+                hintEl.textContent = lang === 'ko' ? '[화면을 클릭하고, 방향키로 움직이세요]' : '[Click to look around, move with arrow keys]';
                 document.body.appendChild(hintEl);
                 requestAnimationFrame(function () { hintEl.style.opacity = '1'; });
                 // Auto-fade after 5s
@@ -4617,6 +4685,7 @@
           pin: pin,
           scene: scene,
           wx: wx, wz: wz,
+          _baseY: wh + 0.6,
           accessible: isAccessible,
           visited: isVisited
         });
@@ -4624,6 +4693,70 @@
 
       console.log('[FP Play] Built scene pins:', _fpScenePins.length,
         'accessible:', _fpScenePins.filter(function (p) { return p.accessible; }).length);
+    }
+
+    // ─── Crosshair ─────────────────────────────────────────────
+    var _crosshairEl = null;
+    var _crosshairRingEl = null;
+    var _aimedPin = null;
+
+    function _ensureCrosshair() {
+      if (_crosshairEl) return;
+      var parent = document.getElementById('strataView') || document.body;
+      // Center dot
+      _crosshairEl = document.createElement('div');
+      _crosshairEl.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;background:rgba(196,168,130,0.5);border-radius:50%;pointer-events:none;z-index:300;transition:background 0.3s,box-shadow 0.3s,transform 0.3s;';
+      parent.appendChild(_crosshairEl);
+      // Outer ring (appears when aiming at pin)
+      _crosshairRingEl = document.createElement('div');
+      _crosshairRingEl.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.5);width:20px;height:20px;border:1px solid rgba(196,168,130,0);border-radius:50%;pointer-events:none;z-index:299;transition:border-color 0.3s,transform 0.4s;';
+      parent.appendChild(_crosshairRingEl);
+    }
+
+    function _setCrosshairAiming(isAiming) {
+      if (!_crosshairEl) return;
+      if (isAiming) {
+        _crosshairEl.style.background = 'rgba(196,168,130,0.9)';
+        _crosshairEl.style.boxShadow = '0 0 8px rgba(196,168,130,0.6)';
+        _crosshairEl.style.transform = 'translate(-50%,-50%) scale(1.5)';
+        _crosshairRingEl.style.borderColor = 'rgba(196,168,130,0.4)';
+        _crosshairRingEl.style.transform = 'translate(-50%,-50%) scale(1)';
+      } else {
+        _crosshairEl.style.background = 'rgba(196,168,130,0.5)';
+        _crosshairEl.style.boxShadow = 'none';
+        _crosshairEl.style.transform = 'translate(-50%,-50%) scale(1)';
+        _crosshairRingEl.style.borderColor = 'rgba(196,168,130,0)';
+        _crosshairRingEl.style.transform = 'translate(-50%,-50%) scale(0.5)';
+      }
+    }
+
+    // Raycast from camera center to detect aimed pin
+    var _aimRaycaster = null;
+    function _getAimedPin(cam) {
+      if (!_aimRaycaster) _aimRaycaster = new THREE.Raycaster();
+      _aimRaycaster.set(cam.position, cam.getWorldDirection(new THREE.Vector3()));
+      _aimRaycaster.far = 30;
+      var meshes = [];
+      _fpScenePins.forEach(function (sp) { if (sp.accessible && !sp.visited) meshes.push(sp.mesh); });
+      // Also check exit door
+      var door = window._temExitDoor;
+      if (door && door.group) {
+        door.group.traverse(function (c) { if (c.isMesh) meshes.push(c); });
+      }
+      var hits = _aimRaycaster.intersectObjects(meshes, false);
+      if (hits.length === 0) return null;
+      // Find which sp this mesh belongs to
+      var hitMesh = hits[0].object;
+      // Check door first
+      if (door && door.group) {
+        var isDoor = false;
+        door.group.traverse(function (c) { if (c === hitMesh) isDoor = true; });
+        if (isDoor) return { type: 'door', dist: hits[0].distance };
+      }
+      for (var i = 0; i < _fpScenePins.length; i++) {
+        if (_fpScenePins[i].mesh === hitMesh) return { type: 'pin', sp: _fpScenePins[i], dist: hits[0].distance };
+      }
+      return null;
     }
 
     function _ensureProxUI() {
@@ -4642,11 +4775,50 @@
       var canvas = document.getElementById('strataCanvas');
       if (!rt || !canvas) return;
 
+      _ensureCrosshair();
+
       _fpInterval = setInterval(function () {
         if (!_fpPlayActive || !rt.isFirstPerson()) return;
         var cam = rt.getCamera();
         if (!cam) return;
 
+        // ─── Aim detection (raycast from crosshair) ──────────
+        var aimed = _getAimedPin(cam);
+        var nowAiming = aimed && aimed.type === 'pin';
+        var nowAimingDoor = aimed && aimed.type === 'door';
+
+        // Reset previous aimed pin
+        if (_aimedPin && (!nowAiming || (aimed && aimed.sp !== _aimedPin))) {
+          _aimedPin.mesh.position.y = _aimedPin._baseY;
+          _aimedPin.mesh.scale.set(1, 1, 1);
+          _aimedPin.mesh.material.emissiveIntensity = _aimedPin._baseEmissive || 0.5;
+          _aimedPin = null;
+        }
+
+        // Vibrate aimed pin
+        if (nowAiming && aimed.sp) {
+          var sp = aimed.sp;
+          if (_aimedPin !== sp) {
+            _aimedPin = sp;
+            sp._baseY = sp._baseY || sp.mesh.position.y;
+            sp._baseEmissive = sp.mesh.material.emissiveIntensity;
+          }
+          var t = performance.now();
+          // Gentle float — slow breathing motion
+          var floatY = Math.sin(t * 0.002) * 0.06;
+          sp.mesh.position.y = sp._baseY + floatY;
+          sp.mesh.position.x = sp.wx;
+          sp.mesh.position.z = sp.wz;
+          // Slow breath scale
+          var sc = 1.0 + Math.sin(t * 0.003) * 0.08;
+          sp.mesh.scale.set(sc, sc, sc);
+          // Soft glow pulse
+          sp.mesh.material.emissiveIntensity = 0.7 + Math.sin(t * 0.003) * 0.2;
+        }
+
+        _setCrosshairAiming(nowAiming || nowAimingDoor);
+
+        // ─── Distance-based proximity ────────────────────────
         var closest = null, closestDist = Infinity;
         _fpScenePins.forEach(function (sp) {
           if (!sp.accessible || sp.visited) return;
@@ -4660,17 +4832,17 @@
           if (_fpNearPin !== closest) {
             _fpNearPin = closest;
             _ensureProxUI();
-            // Show whisper text (same style as contour map hover)
             _fpProxEl.textContent = _getFpWhisper(closest);
             _fpProxEl.style.opacity = '1';
             var _hl = (document.documentElement.lang || 'en').substring(0, 2);
             _fpHintEl.textContent = _hl === 'ko' ? '길게 눌러 이 장면에 들어가세요' : 'Hold to enter this scene';
             _fpHintEl.style.opacity = '1';
           }
-          // Pulse pin
-          closest.mesh.material.emissiveIntensity = 0.6 + Math.sin(performance.now() * 0.005) * 0.3;
+          // Pulse pin (distance-based, only if not already aimed)
+          if (!_aimedPin || _aimedPin !== closest) {
+            closest.mesh.material.emissiveIntensity = 0.6 + Math.sin(performance.now() * 0.005) * 0.3;
+          }
 
-          // Sound proximity: get closer → louder
           if (window._temGame && window._temGame._soundscape) {
             var vol = Math.max(0.1, Math.min(0.6, 1 - closestDist / PROXIMITY_ENTER) * 0.5 + 0.1);
             try { window._temGame._soundscape.setVolume(vol); } catch (_) {}
@@ -4745,22 +4917,13 @@
             canvas.style.transform = _canvasOrigTransform;
             if (!targetDoor) return;
 
-            // Check: need at least 3 scenes visited
-            var g = window._temGame;
-            var visitedCount = g && g.visitedCore ? Object.keys(g.visitedCore).length : 0;
-            var lang = (document.documentElement.lang || 'en').substring(0, 2);
-
-            if (visitedCount < 3) {
-              // Not enough scenes — show warning
-              _ensureProxUI();
-              _fpProxEl.textContent = lang === 'ko' ? '좀 더 살펴보고 나가야 할 것 같아.' : 'I should look around more before leaving.';
-              _fpProxEl.style.opacity = '1';
-              setTimeout(function () { if (_fpProxEl) _fpProxEl.style.opacity = '0'; }, 2500);
-              return;
-            }
-
             // Exit: trigger seal flow
+            var g = window._temGame;
+            var lang = (document.documentElement.lang || 'en').substring(0, 2);
             _fpPlayActive = false;
+            if (_crosshairEl) _crosshairEl.style.display = 'none';
+            if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
+            _destroyAmbientWave();
             var rt2 = window.TemAfStrataTerrain._lastRuntime;
             if (rt2) rt2.exitFirstPerson();
             var sv = document.getElementById('strataView');
@@ -4795,6 +4958,9 @@
             var rt3 = window.TemAfStrataTerrain._lastRuntime;
             if (rt3 && rt3.setSceneTransition) rt3.setSceneTransition(true);
             if (document.pointerLockElement) document.exitPointerLock();
+            if (_crosshairEl) _crosshairEl.style.display = 'none';
+            if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
+            // Keep ambient wave visible during scene — hide waveTop/terrainBar instead
             if (_fpProxEl) _fpProxEl.style.opacity = '0';
             if (_fpHintEl) _fpHintEl.style.opacity = '0';
             if (window._temEnterSceneMode) {
@@ -4825,6 +4991,19 @@
             // Dismiss scene overlay
             var scm = document.getElementById('sceneMode');
             if (scm) scm.classList.remove('active');
+            // Restore crosshair + ambient wave + hidden scene elements
+            if (_crosshairEl) _crosshairEl.style.display = '';
+            if (_crosshairRingEl) _crosshairRingEl.style.display = '';
+            // Restore waveTop/terrainBar display (hidden during FP scene)
+            var _wt2 = document.getElementById('waveTop');
+            var _tb2 = document.getElementById('terrainBar');
+            if (_wt2) _wt2.style.display = '';
+            if (_tb2) _tb2.style.display = '';
+            // Clean up ambient wave click state
+            var _awW = document.getElementById('fpAmbientWaveWrap');
+            if (_awW) { _awW.style.pointerEvents = 'none'; _awW.style.cursor = ''; _awW.style.boxShadow = ''; _awW.style.zIndex = '260'; }
+            var _awH = document.getElementById('fpWaveReturnHint');
+            if (_awH && _awH.parentNode) _awH.parentNode.removeChild(_awH);
             // Re-acquire pointer lock immediately + fallback to click
             var _plCanvas = document.getElementById('strataCanvas');
             if (_plCanvas) {
@@ -4963,6 +5142,9 @@
             if (allVisited && _fpScenePins.length > 0) {
               // Trigger seal/end via existing seal button
               _fpPlayActive = false;
+              if (_crosshairEl) _crosshairEl.style.display = 'none';
+              if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
+              _destroyAmbientWave();
               if (rt) rt.exitFirstPerson();
               var svEnd = document.getElementById('strataView');
               if (svEnd) svEnd.style.display = 'none';
@@ -4983,6 +5165,8 @@
     var _isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (_isMobile) {
       console.log('[FP Adapter] Mobile detected, skipping first-person mode');
+      // Restore mapMode visibility for mobile (no FP takeover)
+      if (mapMode) mapMode.style.visibility = '';
     }
 
     var _pollCount = 0;
@@ -5005,10 +5189,11 @@
         });
       }
 
-      if (!mapActive) return;
       if (memId && hasPins && hasStrata && !_fpPlayActive) {
         console.log('[FP Adapter] Conditions met, initializing first-person play');
         clearInterval(_startPoll);
+        // Hide contour map immediately to prevent flash
+        if (mapMode) mapMode.classList.remove('active');
         initFpPlay(memId);
       }
     }, 300);
@@ -5018,7 +5203,7 @@
     var _miniCanvas = null;
     var _miniCtx = null;
     var _miniContourImg = null; // cached contour background
-    var MINI_SIZE = 200;
+    var MINI_SIZE = 260;
     var SZ_TERRAIN = 46; // must match terrain SZ
 
     function _initMinimap() {
@@ -5028,7 +5213,7 @@
       // Container
       var wrap = document.createElement('div');
       wrap.id = 'fpMinimap';
-      wrap.style.cssText = 'position:absolute;bottom:20px;left:20px;width:' + MINI_SIZE + 'px;height:' + MINI_SIZE + 'px;z-index:250;border:1px solid rgba(196,168,130,0.25);border-radius:4px;overflow:hidden;background:rgba(10,10,15,0.8);pointer-events:none;';
+      wrap.style.cssText = 'position:absolute;top:20px;left:20px;width:' + MINI_SIZE + 'px;height:' + MINI_SIZE + 'px;z-index:250;border:1px solid rgba(196,168,130,0.25);border-radius:4px;overflow:hidden;background:rgba(10,10,15,0.8);pointer-events:none;';
       parent.appendChild(wrap);
 
       _miniCanvas = document.createElement('canvas');
@@ -5213,6 +5398,225 @@
       // Add minimap update to existing interval won't work since it's local.
       // Create separate interval for minimap.
       setInterval(_updateMinimap, 80);
+    };
+
+    // ─── Ambient Emotion Wave (Visualizer 기반 하단 파동) ─────
+    var _awViz = null;        // Visualizer 인스턴스
+    var _awCanvas = null;
+    var _awCurrentNarrator = null;   // 현재 원본 감정 waveStyle
+    var _awCurrentUser = null;       // 현재 유저 오염 waveStyle
+    var _awPollInterval = null;
+    var AW_HEIGHT = 150;
+    var AW_FADE_DIST = 15;
+
+    // idle 파동 스타일 (아무 핀에도 안 가까울 때)
+    var _awIdleStyle = {
+      color: { r: 100, g: 110, b: 140 },
+      speed: 0.5, amplitude: 15, frequency: 0.018, chaos: 0.2,
+    };
+
+    function _awEmotionToWaveStyle(emo) {
+      if (!emo || typeof emo !== 'object') return Object.assign({}, _awIdleStyle);
+      var total = 0, maxK = 'sadness', maxV = 0;
+      Object.entries(emo).forEach(function (e) {
+        var v = Number(e[1]) || 0;
+        total += v;
+        if (v > maxV) { maxV = v; maxK = e[0]; }
+      });
+      var intensity = Math.max(0, Math.min(1, total / 5));
+      var colors = {
+        fear: { r: 100, g: 80, b: 180 }, sadness: { r: 80, g: 100, b: 160 },
+        anger: { r: 200, g: 80, b: 80 }, joy: { r: 200, g: 180, b: 100 },
+        longing: { r: 80, g: 180, b: 180 }, guilt: { r: 150, g: 130, b: 100 },
+        shame: { r: 160, g: 100, b: 130 }, numbness: { r: 90, g: 90, b: 110 },
+        isolation: { r: 70, g: 90, b: 130 }, confusion: { r: 120, g: 100, b: 140 },
+        relief: { r: 140, g: 180, b: 120 },
+      };
+      return {
+        color: colors[maxK] || colors.sadness,
+        speed: 0.3 + intensity * 0.9,
+        amplitude: 30 + intensity * 50,
+        frequency: 0.008 + intensity * 0.012,
+        chaos: 0.1 + intensity * 0.7,
+      };
+    }
+
+    function _awLerpStyle(a, b, t) {
+      if (!a) return b; if (!b) return a;
+      return {
+        color: {
+          r: Math.round(a.color.r + (b.color.r - a.color.r) * t),
+          g: Math.round(a.color.g + (b.color.g - a.color.g) * t),
+          b: Math.round(a.color.b + (b.color.b - a.color.b) * t),
+        },
+        speed: a.speed + (b.speed - a.speed) * t,
+        amplitude: a.amplitude + (b.amplitude - a.amplitude) * t,
+        frequency: a.frequency + (b.frequency - a.frequency) * t,
+        chaos: a.chaos + (b.chaos - a.chaos) * t,
+      };
+    }
+
+    async function _initAmbientWave() {
+      if (_awCanvas) return;
+      var parent = document.getElementById('strataView') || document.body;
+      var wrap = document.createElement('div');
+      wrap.id = 'fpAmbientWaveWrap';
+      wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:' + AW_HEIGHT + 'px;z-index:260;pointer-events:none;background:transparent;';
+      _awCanvas = document.createElement('canvas');
+      _awCanvas.id = 'fpAmbientWaveCanvas';
+      _awCanvas.style.cssText = 'width:100%;height:100%;';
+      wrap.appendChild(_awCanvas);
+      parent.appendChild(wrap);
+
+      // Visualizer 인스턴스 생성 (투명 배경 + 두꺼운 선)
+      var mod = await import('./js/ui/Visualizer.js');
+      _awViz = new mod.Visualizer();
+      _awViz.transparentBackground = true;
+      _awViz.lineWidthMultiplier = 2;
+
+      // idle 파동으로 시작
+      _awCurrentNarrator = Object.assign({}, _awIdleStyle);
+      _awCurrentUser = null;
+      _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
+        alignment: 0,
+        narratorEmotionVector: { sadness: 0.2 },
+        experiencerEmotionVector: null,
+        narratorWaveStyle: _awCurrentNarrator,
+        experiencerWaveStyle: null,
+        onUpdateAlignmentDisplay: function () {},
+      });
+    }
+
+    // 파동 스타일을 Visualizer에 반영 (단일 파동, 오염은 색 블렌드)
+    function _awApplyStyle(narratorStyle) {
+      if (!_awViz || !_awCanvas) return;
+      // 오염이 있으면 narrator 색에 블렌드
+      var finalStyle = narratorStyle;
+      if (_awContamColor) {
+        var ca = _awContamAmount;
+        finalStyle = Object.assign({}, narratorStyle, {
+          color: {
+            r: Math.round(narratorStyle.color.r * (1 - ca) + _awContamColor.r * ca),
+            g: Math.round(narratorStyle.color.g * (1 - ca) + _awContamColor.g * ca),
+            b: Math.round(narratorStyle.color.b * (1 - ca) + _awContamColor.b * ca),
+          }
+        });
+      }
+      _awCurrentNarrator = finalStyle;
+      _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
+        alignment: 0,
+        narratorEmotionVector: { _ambient: 1 },
+        experiencerEmotionVector: null,
+        narratorWaveStyle: finalStyle,
+        experiencerWaveStyle: null,
+        onUpdateAlignmentDisplay: function () {},
+      });
+    }
+
+    // 거리 기반 파동 업데이트
+    function _awUpdateFromProximity() {
+      if (!_fpPlayActive || !_awViz) return;
+      var rt = window.TemAfStrataTerrain._lastRuntime;
+      if (!rt) return;
+      var cam = rt.getCamera();
+      if (!cam) return;
+
+      // 가장 가까운 핀 찾기
+      var closest = null, closestDist = Infinity;
+      _fpScenePins.forEach(function (sp) {
+        if (!sp.accessible) return;
+        var dx = cam.position.x - sp.wx;
+        var dz = cam.position.z - sp.wz;
+        var dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < closestDist) { closestDist = dist; closest = sp; }
+      });
+
+      // 두 번째 가까운 핀
+      var second = null, secondDist = Infinity;
+      if (closest) {
+        _fpScenePins.forEach(function (sp) {
+          if (sp === closest || !sp.accessible) return;
+          var dx = cam.position.x - sp.wx;
+          var dz = cam.position.z - sp.wz;
+          var dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist < secondDist) { secondDist = dist; second = sp; }
+        });
+      }
+
+      if (!closest || closestDist > AW_FADE_DIST * 2) {
+        _awApplyStyle(_awIdleStyle);
+        return;
+      }
+
+      // 원본 감정 가져오기
+      var emo1 = closest.pin.originalEmotion || {};
+      if (typeof emo1 === 'string') { try { emo1 = JSON.parse(emo1); } catch (_) { emo1 = {}; } }
+
+      // 방문한 핀이면 오염된 감정 블렌드
+      if (closest.pin.emotion_data && closest.pin.emotion_data.base) {
+        var origE = emo1, userE = closest.pin.emotion_data.base;
+        var contam = 0.3;
+        var blended = {};
+        var allK = Object.keys(origE).concat(Object.keys(userE));
+        allK.forEach(function (k) {
+          if (blended[k] !== undefined) return;
+          blended[k] = (Number(origE[k]) || 0) * (1 - contam) + (Number(userE[k]) || 0) * contam;
+        });
+        emo1 = blended;
+      }
+
+      var style1 = _awEmotionToWaveStyle(emo1);
+      var t1 = Math.max(0, Math.min(1, 1 - closestDist / AW_FADE_DIST));
+
+      var finalStyle;
+      if (second && secondDist < AW_FADE_DIST * 1.5) {
+        var emo2 = second.pin.originalEmotion || {};
+        if (typeof emo2 === 'string') { try { emo2 = JSON.parse(emo2); } catch (_) { emo2 = {}; } }
+        var style2 = _awEmotionToWaveStyle(emo2);
+        var t2 = Math.max(0, Math.min(1, 1 - secondDist / (AW_FADE_DIST * 1.5)));
+        var totalT = t1 + t2 || 1;
+        finalStyle = _awLerpStyle(style1, style2, t2 / totalT);
+      } else {
+        finalStyle = _awLerpStyle(_awIdleStyle, style1, t1);
+      }
+
+      _awApplyStyle(finalStyle);
+    }
+
+    // 오염 색상 상태
+    var _awContamColor = null;
+    var _awContamAmount = 0;
+
+    // 유저 감정 입력 후 오염 — narrator 파동 색에 블렌드
+    function _awApplyContamination(userEmotion) {
+      if (!userEmotion || typeof userEmotion !== 'object') return;
+      var style = _awEmotionToWaveStyle(userEmotion);
+      _awContamColor = style.color;
+      _awContamAmount = Math.min(1, _awContamAmount + 0.25);
+    }
+
+    function _destroyAmbientWave() {
+      if (_awViz) { _awViz.stopAlignmentWaveAnimation(); _awViz = null; }
+      if (_awPollInterval) { clearInterval(_awPollInterval); _awPollInterval = null; }
+      var wrap = document.getElementById('fpAmbientWaveWrap');
+      if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+      _awCanvas = null;
+      _awCurrentNarrator = null;
+      _awContamColor = null;
+      _awContamAmount = 0;
+    }
+
+    window._fpAmbientWave = {
+      applyContamination: _awApplyContamination,
+      destroy: _destroyAmbientWave,
+    };
+
+    // Hook into proximity loop — start wave + update interval
+    var _origStartProx2 = _startProximityLoop;
+    _startProximityLoop = function () {
+      _origStartProx2();
+      _initAmbientWave();
+      _awPollInterval = setInterval(_awUpdateFromProximity, 200);
     };
 
     window._fpPlay = {

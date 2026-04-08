@@ -297,11 +297,16 @@
                 <!-- 3. SceneNavigator 감정공간 진단 -->
                 <div class="preview-section" style="padding: 2rem;">
                     <h3 class="editor-section-title" style="margin-bottom: 0.5rem;">3. 감정공간 진단</h3>
-                    <p style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted);">패턴별 씬 접근 가능 여부를 시뮬레이션합니다. 중립 감정 기준. 색상 점 = 해당 패턴으로 도달 가능. ✗ = 반경(0.35) 밖 → fallback.</p>
-                    <div style="margin-bottom: 1rem; text-align: center;">
+                    <p style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted);">노드를 드래그하여 배치. 연결선 클릭으로 패턴 편집. 자동 계산 후 수동 조정 가능.</p>
+                    <div style="margin-bottom: 1rem; text-align: center; display: flex; gap: 8px; justify-content: center;">
                         <button class="editor-btn" onclick="runSceneNavDiagnostics()" style="padding: 0.8rem 2rem; font-size: 1rem;">진단 실행</button>
                     </div>
                     <div id="sceneNavDiagResult"></div>
+                    <div id="sceneGraphContainer" style="position:relative;width:100%;height:600px;background:rgba(5,5,10,0.6);border:1px solid rgba(196,168,130,0.1);border-radius:6px;margin-top:1rem;overflow:hidden;display:none;">
+                        <svg id="sceneGraphSvg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
+                        <div id="sceneGraphNodes" style="position:absolute;inset:0;"></div>
+                        <div id="sceneGraphPopup" style="display:none;position:absolute;z-index:10;background:rgba(10,10,15,0.95);border:1px solid rgba(196,168,130,0.3);border-radius:6px;padding:12px 16px;min-width:160px;backdrop-filter:blur(6px);"></div>
+                    </div>
                 </div>
             </div>
         </div>

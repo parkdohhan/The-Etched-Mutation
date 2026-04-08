@@ -324,8 +324,15 @@
                     <!-- Phase 1: Question -->
                     <div id="finderQuestionPhase">
                         <div style="font-family:'Cormorant Garamond',serif;font-size:15px;color:rgba(196,168,130,0.6);letter-spacing:3px;margin-bottom:24px;" id="finderQuestion"></div>
-                        <input type="text" id="finderInput" placeholder="" autocomplete="off"
-                            style="width:280px;background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.9);font-family:'Cormorant Garamond',serif;font-size:16px;letter-spacing:1px;padding:8px 0;text-align:center;outline:none;" />
+                        <div style="display:flex;align-items:center;justify-content:center;gap:0;">
+                            <input type="text" id="finderInput" placeholder="" autocomplete="off"
+                                style="width:250px;background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.9);font-family:'Cormorant Garamond',serif;font-size:16px;letter-spacing:1px;padding:8px 0;text-align:center;outline:none;" />
+                            <button id="finderSubmitBtn" type="button"
+                                style="background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.4);font-size:18px;padding:8px 10px;cursor:pointer;transition:color 0.3s,border-color 0.3s;line-height:1;"
+                                onmouseenter="this.style.color='rgba(196,168,130,0.9)';this.style.borderColor='rgba(196,168,130,0.6)'"
+                                onmouseleave="this.style.color='rgba(196,168,130,0.4)';this.style.borderColor='rgba(196,168,130,0.3)'"
+                                >&#x2192;</button>
+                        </div>
                         <div id="finderChips" style="margin-top:20px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;"></div>
                     </div>
                     <!-- Phase 2: Matched results (floating monologue style) -->
