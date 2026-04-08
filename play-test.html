@@ -87,7 +87,6 @@
       100% { opacity: 1; transform: translate(-50%,-50%) scale(1); box-shadow: 0 0 12px rgba(196,168,130,0.3); }
     }
     .map-pin.unlock-contradiction { animation: unlockContradiction 0.8s ease-out forwards; }
-    @keyframes fadeInSlow { from { opacity: 0; } to { opacity: 1; } }
     @keyframes unlockContradiction {
       0% { opacity: 0; transform: translate(-50%,-50%) scale(2); box-shadow: 0 0 30px 8px rgba(200,80,80,0.6); filter: brightness(2); }
       50% { opacity: 1; transform: translate(-50%,-50%) scale(0.8); filter: brightness(1.2); }
@@ -488,7 +487,7 @@
       mapStatus: (cores, pollution) => `Explored: ${cores} cores | Pollution: ${pollution}%`,
       exploreTerrain: 'Explore the terrain',
       terrainHintAlign: () => 'tap terrain to return to the map',
-      analysisDone: 'Analysis complete.',
+      analysisDone: 'Analysis complete. Tap the terrain above to return to the map.',
       anotherMePost: {
         weak:   '…something shifted, but only slightly.',
         medium: 'The shape of it changed when you touched it.',
@@ -541,7 +540,7 @@
       mapStatus: (cores, pollution) => `탐색 코어: ${cores} · 오염도: ${pollution}%`,
       exploreTerrain: '지형 살펴보기',
       terrainHintAlign: () => '지도로 돌아가려면 지형을 누르세요',
-      analysisDone: '분석이 끝났어.',
+      analysisDone: '분석이 끝났어. 이제 위의 지형을 눌러 다시 지도로 돌아가봐.',
       anotherMePost: {
         weak:   '…뭔가 조금 달라졌어.',
         medium: '네가 만지니까 모양이 바뀌었어.',
@@ -3672,29 +3671,12 @@
     const msgEl = document.getElementById('analysisDoneMsg');
     const fullText = T.analysisDone;
     let charIdx = 0;
-    const _isFpMode = window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive();
     const typeInterval = setInterval(() => {
       if (charIdx < fullText.length) {
         msgEl.textContent += fullText[charIdx];
         charIdx++;
       } else {
         clearInterval(typeInterval);
-        // After typing done: show return button (click)
-        var _savedSceneIdx = game.currentSceneIndex;
-        var _savedResult = result;
-        var _savedUserEmo = game.lastUserEmotion || {};
-        var _returnBtn = document.createElement('button');
-        _returnBtn.style.cssText = 'display:block;margin:18px auto 0;padding:14px 48px;font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:3px;color:rgba(196,168,130,0.7);background:rgba(30,28,35,0.7);border:1px solid rgba(196,168,130,0.25);border-radius:8px;cursor:pointer;animation:fadeInSlow 1s ease;transition:all 0.3s;pointer-events:auto;';
-        _returnBtn.textContent = LANG === 'ko' ? '돌아가기' : 'Return';
-        inputArea.appendChild(_returnBtn);
-
-        _returnBtn.onclick = function () {
-          _returnBtn.onclick = null;
-          _returnBtn.remove();
-          game.currentSceneIndex = _savedSceneIdx;
-          var _scene = game.scenes[_savedSceneIdx];
-          if (_scene) finishScene(_scene, _savedResult, _savedUserEmo, 'return', false);
-        };
       }
     }, 45);
 
