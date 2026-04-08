@@ -1140,6 +1140,10 @@
     var _fpSavedTarget = null;
 
     function _fpOnKeyDown(e) {
+      // Don't intercept keys when scene UI or ESC menu is open (allow typing)
+      var _scO = document.getElementById('sceneMode');
+      var _esO = document.getElementById('escMenu');
+      if ((_scO && _scO.classList.contains('active')) || (_esO && _esO.classList.contains('active'))) return;
       _fpKeys[e.code] = true;
       if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].indexOf(e.code) >= 0) e.preventDefault();
     }
