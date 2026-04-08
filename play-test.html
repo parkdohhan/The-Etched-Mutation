@@ -87,6 +87,7 @@
       100% { opacity: 1; transform: translate(-50%,-50%) scale(1); box-shadow: 0 0 12px rgba(196,168,130,0.3); }
     }
     .map-pin.unlock-contradiction { animation: unlockContradiction 0.8s ease-out forwards; }
+    @keyframes fadeInSlow { from { opacity: 0; } to { opacity: 1; } }
     @keyframes unlockContradiction {
       0% { opacity: 0; transform: translate(-50%,-50%) scale(2); box-shadow: 0 0 30px 8px rgba(200,80,80,0.6); filter: brightness(2); }
       50% { opacity: 1; transform: translate(-50%,-50%) scale(0.8); filter: brightness(1.2); }
@@ -3671,12 +3672,45 @@
     const msgEl = document.getElementById('analysisDoneMsg');
     const fullText = T.analysisDone;
     let charIdx = 0;
+    const _isFpMode = window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive();
     const typeInterval = setInterval(() => {
       if (charIdx < fullText.length) {
         msgEl.textContent += fullText[charIdx];
         charIdx++;
       } else {
         clearInterval(typeInterval);
+        // After typing done: show "hold to return" hint + long-press handler
+        const _returnHint = document.createElement('p');
+        _returnHint.style.cssText = 'font-size:13px;color:rgba(196,168,130,0.6);letter-spacing:2px;text-align:center;margin-top:12px;animation:fadeInSlow 1s ease;';
+        _returnHint.textContent = LANG === 'ko' ? '돌아가려면 길게 누르세요' : 'Hold to return';
+        inputArea.appendChild(_returnHint);
+
+        // Long press anywhere on sceneMode to return
+        var _returnTimer = null;
+        var _returnTarget = document.getElementById('sceneMode');
+        function _onReturnDown(e) {
+          if (_returnTimer) return;
+          _returnHint.style.opacity = '1';
+          _returnTimer = setTimeout(function () {
+            _returnTimer = null;
+            _returnTarget.removeEventListener('mousedown', _onReturnDown);
+            _returnTarget.removeEventListener('touchstart', _onReturnDown);
+            _returnTarget.removeEventListener('mouseup', _onReturnUp);
+            _returnTarget.removeEventListener('touchend', _onReturnUp);
+            // Trigger return to map/terrain
+            const _scene = game.scenes[game.currentSceneIndex];
+            finishScene(_scene, result, game.lastUserEmotion || {}, 'return', false);
+          }, 800);
+        }
+        function _onReturnUp() {
+          if (_returnTimer) { clearTimeout(_returnTimer); _returnTimer = null; }
+        }
+        if (_returnTarget) {
+          _returnTarget.addEventListener('mousedown', _onReturnDown);
+          _returnTarget.addEventListener('touchstart', _onReturnDown);
+          _returnTarget.addEventListener('mouseup', _onReturnUp);
+          _returnTarget.addEventListener('touchend', _onReturnUp);
+        }
       }
     }, 45);
 
