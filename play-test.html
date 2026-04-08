@@ -4825,14 +4825,21 @@
             // Dismiss scene overlay
             var scm = document.getElementById('sceneMode');
             if (scm) scm.classList.remove('active');
-            // Re-acquire pointer lock for 1st-person controls
+            // Re-acquire pointer lock immediately + fallback to click
             var _plCanvas = document.getElementById('strataCanvas');
             if (_plCanvas) {
+              // Try immediate re-lock (works if triggered from user gesture chain)
+              try { _plCanvas.requestPointerLock(); } catch (_) {}
+              // Fallback: click to re-lock if immediate fails
               var _plClick = function () {
-                if (!document.pointerLockElement) _plCanvas.requestPointerLock().catch(function () {});
+                if (!document.pointerLockElement) {
+                  try { _plCanvas.requestPointerLock(); } catch (_) {}
+                }
                 _plCanvas.removeEventListener('click', _plClick);
               };
-              _plCanvas.addEventListener('click', _plClick);
+              setTimeout(function () {
+                if (!document.pointerLockElement) _plCanvas.addEventListener('click', _plClick);
+              }, 200);
             }
             var rt = window.TemAfStrataTerrain._lastRuntime;
             if (rt) {
