@@ -3679,41 +3679,22 @@
         charIdx++;
       } else {
         clearInterval(typeInterval);
-        // After typing done: show return button (long-press)
+        // After typing done: show return button (click)
         var _savedSceneIdx = game.currentSceneIndex;
         var _savedResult = result;
         var _savedUserEmo = game.lastUserEmotion || {};
         var _returnBtn = document.createElement('button');
-        _returnBtn.style.cssText = 'display:block;margin:18px auto 0;padding:14px 48px;font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:3px;color:rgba(196,168,130,0.6);background:rgba(30,28,35,0.7);border:1px solid rgba(196,168,130,0.2);border-radius:8px;cursor:pointer;animation:fadeInSlow 1s ease;transition:all 0.3s;';
-        _returnBtn.textContent = LANG === 'ko' ? '길게 눌러 돌아가기' : 'Hold to return';
+        _returnBtn.style.cssText = 'display:block;margin:18px auto 0;padding:14px 48px;font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:3px;color:rgba(196,168,130,0.7);background:rgba(30,28,35,0.7);border:1px solid rgba(196,168,130,0.25);border-radius:8px;cursor:pointer;animation:fadeInSlow 1s ease;transition:all 0.3s;pointer-events:auto;';
+        _returnBtn.textContent = LANG === 'ko' ? '돌아가기' : 'Return';
         inputArea.appendChild(_returnBtn);
 
-        var _returnTimer = null;
-        _returnBtn.addEventListener('mousedown', _onReturnDown);
-        _returnBtn.addEventListener('touchstart', _onReturnDown);
-        _returnBtn.addEventListener('mouseup', _onReturnUp);
-        _returnBtn.addEventListener('touchend', _onReturnUp);
-        _returnBtn.addEventListener('mouseleave', _onReturnUp);
-
-        function _onReturnDown(e) {
-          e.preventDefault();
-          if (_returnTimer) return;
-          _returnBtn.style.color = 'rgba(196,168,130,0.95)';
-          _returnBtn.style.borderColor = 'rgba(196,168,130,0.5)';
-          _returnTimer = setTimeout(function () {
-            _returnTimer = null;
-            _returnBtn.remove();
-            var _scene = game.scenes[_savedSceneIdx];
-            if (!_scene) { console.error('[Return] no scene at idx', _savedSceneIdx); return; }
-            game.currentSceneIndex = _savedSceneIdx; // restore in case cleared
-            finishScene(_scene, _savedResult, _savedUserEmo, 'return', false);
-          }, 800);
-        }
-        function _onReturnUp() {
-          if (_returnTimer) { clearTimeout(_returnTimer); _returnTimer = null; }
-          _returnBtn.style.color = 'rgba(196,168,130,0.6)';
-          _returnBtn.style.borderColor = 'rgba(196,168,130,0.2)';
-        }
+        _returnBtn.onclick = function () {
+          _returnBtn.onclick = null;
+          _returnBtn.remove();
+          game.currentSceneIndex = _savedSceneIdx;
+          var _scene = game.scenes[_savedSceneIdx];
+          if (_scene) finishScene(_scene, _savedResult, _savedUserEmo, 'return', false);
+        };
       }
     }, 45);
 
