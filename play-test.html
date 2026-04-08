@@ -25,8 +25,7 @@
       --ghost: rgba(196, 168, 130, 0.35);
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; background: #0a0a0e; color: var(--text-primary); font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; scrollbar-width: none; -ms-overflow-style: none; }
-    html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+    html, body { margin: 0; min-height: 100%; background: #0a0a0e; color: var(--text-primary); font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; }
     #selectScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0e; }
     #mapMode {
       position: fixed; inset: 0; background: #0a0a0e; display: none; flex-direction: column; z-index: 50;
@@ -155,9 +154,8 @@
     }
     .seal-btn:not(:disabled) { color: rgba(248, 240, 255, 0.95); background: rgba(100, 70, 130, 0.55); cursor: pointer; border-color: rgba(210, 190, 255, 0.55); }
 
-    #sceneMode { display: none; position: fixed; inset: 0; background: transparent; z-index: 2700; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; overflow: hidden; }
+    #sceneMode { display: none; position: fixed; inset: 0; background: transparent; z-index: 2700; flex-direction: column; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
     #sceneMode.active { display: flex; opacity: 1; }
-    body.scene-active { overflow: hidden; }
     #sceneMode > * { pointer-events: auto; }
     .wave-top { width: 100%; min-height: 140px; max-height: 220px; position: relative; overflow: hidden; flex-shrink: 0; background: rgba(10,10,14,0.85); transition: box-shadow 0.4s ease-in; }
     .wave-top.wave-draining { /* box-shadow set dynamically via JS */ }
@@ -177,8 +175,7 @@
       width: 100%; height: 120px; background: rgba(10,10,14,0.85); position: relative; overflow: hidden;
     }
     .alignment-wave-container canvas.alignment-wave-canvas { width: 100%; height: 100%; display: block; transform: scale(1.15); transform-origin: center center; }
-    .scene-content-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1rem; overflow-y: auto; background: transparent; scrollbar-width: none; -ms-overflow-style: none; }
-    .scene-content-area::-webkit-scrollbar { display: none; }
+    .scene-content-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem 1rem; overflow-y: auto; background: transparent; }
     .scene-main { width: 100%; max-width: 560px; text-align: center; background: rgba(10,10,14,0.82); border-radius: 12px; padding: 1.5rem; }
     #sceneNpc { font-family: 'Cormorant Garamond', serif; font-style: italic; color: rgba(196, 168, 130, 0.5); font-size: 0.9rem; min-height: 1.2em; margin-bottom: 0.8rem; }
     #sceneText { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; line-height: 2; letter-spacing: 0.03em; color: var(--text-primary); margin-bottom: 1.5rem; }
@@ -208,7 +205,11 @@
     @keyframes blink { 50% { opacity: 0; } }
 
     #terrainBar {
-      display: none !important;
+      width: 100%; height: 120px; position: relative; flex-shrink: 0;
+      border-top: none;
+      background: #09090d;
+      box-shadow: none;
+      transition: box-shadow 0.5s ease-out;
     }
     #terrainBar.terrain-absorbing { /* box-shadow set dynamically via JS */ }
     #terrainBar.awaiting-terrain { animation: none; }
@@ -405,8 +406,7 @@
         </div>
       </div>
     </div>
-    <!-- terrainBar removed -->
-    <div id="terrainBar" style="display:none!important;width:0;height:0;overflow:hidden;">
+    <div id="terrainBar">
       <canvas id="terrainCanvas"></canvas>
       <div id="terrainClickHint"><div class="hint-txt"></div></div>
     </div>
@@ -2148,12 +2148,12 @@
       }
       return pollution;
     }
-    const memRow = Object.assign({
+    const memRow = {
       id: game.memoryId,
       title: game.memoryTitle || '',
       memory_words: '',
       completed_sentence: '',
-    }, game.memoryRow || {});
+    };
     const playsByMem = {};
     playsByMem[game.memoryId] = game.plays || [];
     const scenesByMem = {};
@@ -2809,7 +2809,6 @@
     game.currentSceneIndex = pin.sceneIndex;
     const sm = document.getElementById('sceneMode');
     sm.classList.add('active');
-    document.body.classList.add('scene-active');
     const _ia = document.getElementById('emotionInputArea');
     _ia.style.opacity = '0';
     _ia.innerHTML = '';
@@ -3489,7 +3488,6 @@
       if (!pin || pin.type === 'core') game.coreVisitCount++;
     }
     document.getElementById('sceneMode').classList.remove('active');
-    document.body.classList.remove('scene-active');
     document.getElementById('mapMode').classList.add('active');
     document.getElementById('terrainBar').classList.remove('clickable');
     document.getElementById('terrainClickHint').style.display = 'none';
@@ -3544,7 +3542,9 @@
   }
 
   function renderTerrainBar(sceneIndex, tintRGB, opts) {
-    return; // terrainBar removed
+    const canvas = document.getElementById('terrainCanvas');
+    renderTerrainProfile(canvas, game.scenes, game.traces, sceneIndex, tintRGB, opts);
+    if (tintRGB && tintRGB.length === 3) game.lastTerrainTint = tintRGB.slice();
   }
 
   function stopTerrainAnimLoop() {
@@ -3555,7 +3555,6 @@
   }
 
   function ensureTerrainAnimLoop() {
-    return; // terrainBar removed
     if (game.terrainAnimRaf) return;
     function tick() {
       let tint = null;
@@ -3805,7 +3804,7 @@
         .eq('memory_id', memoryId)
         .order('created_at'),
       sb.from('memories')
-        .select('id, title, layers, cont_stage, cont_drift, cont_fixation, cont_depth, cont_last_mismatch, cont_divergence, cont_convergence, cont_heterogeneity, cont_stage_1, cont_stage_2, cont_stage_3, dilution, drift_dir_v, drift_dir_a, drift_dir_d, sensory_anchor, _cont_align_mean')
+        .select('id, title, layers, cont_stage, cont_drift, cont_fixation, cont_depth, cont_last_mismatch')
         .eq('id', memoryId),
     ]);
     if (scenesRes.error) throw scenesRes.error;
@@ -3818,7 +3817,6 @@
     if (memRow) {
       game.memoryTitle = memRow.title || game.memoryTitle || '';
       game.memoryLayers = memRow.layers || game.memoryLayers || 0;
-      game.memoryRow = memRow;
     }
 
     if (!game.scenes.length && window._simulatedScenesMap && window._simulatedScenesMap[memoryId]) {
@@ -4018,7 +4016,12 @@
             const viewEl = document.getElementById('strataView');
             const backBtn = document.getElementById('backToMenu');
             if (backBtn) backBtn.style.display = 'block';
-            // After first-person play, show strata normally (don't skip)
+            // Skip strata after reveal if first-person play was active
+            if (window._fpPlay && window._fpPlay.wasActive) {
+              if (viewEl) viewEl.style.display = 'none';
+              if (backBtn) backBtn.style.display = 'block';
+              return;
+            }
             if (!window.showStrataView) {
               console.warn('[play-test] window.showStrataView가 없습니다. strataView.js 로딩을 확인하세요.');
               if (viewEl) viewEl.style.display = 'none';
@@ -4571,7 +4574,7 @@
 
         var sA = T._eA(emo);
         var sF = T._eF(emo);
-        var H2 = 40;
+        var H2 = 23;
         var memId = window._temGame.memoryId || '';
         var off = T._hashWorldOffset(memId);
         var wx = T._pX(sA) * H2 + off.ox;
