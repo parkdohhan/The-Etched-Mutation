@@ -488,7 +488,7 @@
       mapStatus: (cores, pollution) => `Explored: ${cores} cores | Pollution: ${pollution}%`,
       exploreTerrain: 'Explore the terrain',
       terrainHintAlign: () => 'tap terrain to return to the map',
-      analysisDone: 'Analysis complete. Tap the terrain above to return to the map.',
+      analysisDone: 'Analysis complete.',
       anotherMePost: {
         weak:   '…something shifted, but only slightly.',
         medium: 'The shape of it changed when you touched it.',
@@ -541,7 +541,7 @@
       mapStatus: (cores, pollution) => `탐색 코어: ${cores} · 오염도: ${pollution}%`,
       exploreTerrain: '지형 살펴보기',
       terrainHintAlign: () => '지도로 돌아가려면 지형을 누르세요',
-      analysisDone: '분석이 끝났어. 이제 위의 지형을 눌러 다시 지도로 돌아가봐.',
+      analysisDone: '분석이 끝났어.',
       anotherMePost: {
         weak:   '…뭔가 조금 달라졌어.',
         medium: '네가 만지니까 모양이 바뀌었어.',
@@ -3685,9 +3685,9 @@
         _returnHint.textContent = LANG === 'ko' ? '돌아가려면 길게 누르세요' : 'Hold to return';
         inputArea.appendChild(_returnHint);
 
-        // Long press anywhere on sceneMode to return
+        // Long press on scene content area to return
         var _returnTimer = null;
-        var _returnTarget = document.getElementById('sceneMode');
+        var _returnTarget = document.querySelector('.scene-content-area') || document.getElementById('sceneMode');
         function _onReturnDown(e) {
           if (_returnTimer) return;
           _returnHint.style.opacity = '1';
