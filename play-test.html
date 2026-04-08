@@ -3680,6 +3680,9 @@
       } else {
         clearInterval(typeInterval);
         // After typing done: show return button (long-press)
+        var _savedSceneIdx = game.currentSceneIndex;
+        var _savedResult = result;
+        var _savedUserEmo = game.lastUserEmotion || {};
         var _returnBtn = document.createElement('button');
         _returnBtn.style.cssText = 'display:block;margin:18px auto 0;padding:14px 48px;font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:3px;color:rgba(196,168,130,0.6);background:rgba(30,28,35,0.7);border:1px solid rgba(196,168,130,0.2);border-radius:8px;cursor:pointer;animation:fadeInSlow 1s ease;transition:all 0.3s;';
         _returnBtn.textContent = LANG === 'ko' ? '길게 눌러 돌아가기' : 'Hold to return';
@@ -3700,8 +3703,10 @@
           _returnTimer = setTimeout(function () {
             _returnTimer = null;
             _returnBtn.remove();
-            var _scene = game.scenes[game.currentSceneIndex];
-            finishScene(_scene, result, game.lastUserEmotion || {}, 'return', false);
+            var _scene = game.scenes[_savedSceneIdx];
+            if (!_scene) { console.error('[Return] no scene at idx', _savedSceneIdx); return; }
+            game.currentSceneIndex = _savedSceneIdx; // restore in case cleared
+            finishScene(_scene, _savedResult, _savedUserEmo, 'return', false);
           }, 800);
         }
         function _onReturnUp() {
