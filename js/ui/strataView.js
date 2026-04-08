@@ -755,6 +755,10 @@
   }
 
   function closeStrataView() {
+    // Exit first-person mode if active
+    if (terrainRuntime && terrainRuntime.isFirstPerson && terrainRuntime.isFirstPerson()) {
+      terrainRuntime.exitFirstPerson();
+    }
     g.Strata.stop();
     var viewEl = document.getElementById('strataView');
     if (viewEl) viewEl.style.display = 'none';
