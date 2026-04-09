@@ -1227,8 +1227,8 @@ async function handleRecordComplete(extractedScene, lang) {
             originalVector: sceneData.originalVector,
             lang,
             onConfirm: async () => {
-                const userTitle = await _showTitleInput(burialContainer, lang);
-                const memoryId = await saveRecordMemory(extractedScene, sceneData, lang, userTitle);
+                const { title: userTitle, consent: shareConsent } = await _showTitleInput(burialContainer, lang);
+                const memoryId = await saveRecordMemory(extractedScene, sceneData, lang, userTitle, shareConsent);
                 if (memoryId) _autoCreateFirstPlay(memoryId, sceneData);
                 showBurialAnimation(burialContainer, {
                     originalVector: sceneData.originalVector,
@@ -1274,7 +1274,7 @@ async function _resolveUserId() {
     return null;
 }
 
-async function saveRecordMemory(conversationData, sceneData, lang, userTitle) {
+async function saveRecordMemory(conversationData, sceneData, lang, userTitle, shareConsent = false) {
     const userId = await _resolveUserId();
 
     try {
@@ -1341,6 +1341,7 @@ async function saveRecordMemory(conversationData, sceneData, lang, userTitle) {
                 memoryId: memory.id,
                 contributorId: userId || null,
                 emotionTags,
+                isPublic: !!shareConsent,
             });
         } catch (e) {
             console.warn('[Record] utterance harvest skipped:', e?.message || e);
@@ -1431,15 +1432,23 @@ export async function savePendingRecordMemory() {
  */
 function _showTitleInput(container, lang) {
     return new Promise((resolve) => {
+        const consentLine = lang === 'en'
+            ? 'Let a fragment of this memory rise in someone else\u2019s scene.'
+            : '이 기억의 조각이 누군가의 장면 끝에 떠올라도 좋다.';
         container.innerHTML = `
             <div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0a0a0e;">
-                <div style="text-align:center;max-width:340px;padding:2rem;">
+                <div style="text-align:center;max-width:360px;padding:2rem;">
                     <div style="font-family:'Cormorant Garamond',serif;font-size:14px;color:rgba(196,168,130,0.6);letter-spacing:2px;margin-bottom:24px;">
                         ${lang === 'en' ? 'Name this memory.' : '이 기억의 제목을 정해주세요.'}
                     </div>
                     <input id="recordTitleInput" type="text" maxlength="40" placeholder="${lang === 'en' ? 'A short title...' : '짧은 제목...'}"
                         style="width:100%;background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.9);font-family:'Cormorant Garamond',serif;font-size:18px;letter-spacing:1px;padding:8px 0;text-align:center;outline:none;" />
-                    <div style="margin-top:28px;">
+                    <label id="recordConsentLabel" for="recordConsentInput"
+                        style="display:flex;align-items:flex-start;gap:8px;margin-top:28px;cursor:pointer;text-align:left;font-family:'Cormorant Garamond',serif;font-size:11px;letter-spacing:1px;line-height:1.55;color:rgba(196,168,130,0.45);">
+                        <input id="recordConsentInput" type="checkbox" style="margin-top:3px;accent-color:rgba(196,168,130,0.7);cursor:pointer;" />
+                        <span>${consentLine}</span>
+                    </label>
+                    <div style="margin-top:24px;">
                         <button id="recordTitleConfirm" style="background:none;border:1px solid rgba(196,168,130,0.4);color:rgba(196,168,130,0.8);font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:2px;padding:10px 32px;cursor:pointer;transition:all 0.3s;">
                             ${lang === 'en' ? 'Bury' : '묻기'}
                         </button>
@@ -1450,10 +1459,14 @@ function _showTitleInput(container, lang) {
 
         const input = container.querySelector('#recordTitleInput');
         const btn = container.querySelector('#recordTitleConfirm');
+        const consentEl = container.querySelector('#recordConsentInput');
 
         const submit = () => {
             const val = input.value.trim();
-            resolve(val || (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억'));
+            resolve({
+                title: val || (lang === 'en' ? 'Untitled Memory' : '제목 없는 기억'),
+                consent: !!(consentEl && consentEl.checked),
+            });
         };
         btn.addEventListener('click', submit);
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });

@@ -1156,8 +1156,134 @@ function switchTab(tab) {
         document.querySelectorAll('.editor-tab')[1].classList.add('active');
         document.getElementById('previewContent').classList.add('active');
         // 2D/3D 미리보기는 사용자가 해당 버튼을 클릭했을 때만 로드
+    } else if (tab === 'utterances') {
+        document.querySelectorAll('.editor-tab')[2].classList.add('active');
+        document.getElementById('utterancesContent').classList.add('active');
+        loadUtterances();
     }
 }
+
+// ─── Afterimage utterance moderation ──────────────────────────────
+// See docs/잔상_시스템_설계-260409.md §5
+
+function _escapeUtteranceText(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+}
+
+async function loadUtterances() {
+    const listEl = document.getElementById('utterancesList');
+    const countEl = document.getElementById('utterancesCount');
+    if (!listEl) return;
+    listEl.innerHTML = '<div style="color:var(--text-muted);padding:1rem;">불러오는 중…</div>';
+
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error('Supabase client unavailable');
+
+        const status = document.getElementById('utterancesFilterStatus')?.value || 'pending';
+        const lang = document.getElementById('utterancesFilterLang')?.value || 'all';
+
+        let q = supabase
+            .from('utterances')
+            .select('id, text, lang, source_type, contributor_id, memory_id, emotion_tags, keywords, is_public, moderation_status, moderation_flags, show_count, created_at')
+            .order('created_at', { ascending: false })
+            .limit(200);
+
+        if (status !== 'all') q = q.eq('moderation_status', status);
+        if (lang !== 'all') q = q.eq('lang', lang);
+
+        const { data, error } = await q;
+        if (error) throw error;
+
+        countEl.textContent = `${data.length}건`;
+
+        if (!data.length) {
+            listEl.innerHTML = '<div style="color:var(--text-muted);padding:1rem;">해당 항목이 없습니다.</div>';
+            return;
+        }
+
+        listEl.innerHTML = data.map((u) => {
+            const tags = Array.isArray(u.emotion_tags) && u.emotion_tags.length ? u.emotion_tags.join(', ') : '—';
+            const keys = Array.isArray(u.keywords) && u.keywords.length ? u.keywords.join(', ') : '—';
+            const consent = u.is_public ? '✓ 공개동의' : '비공개';
+            const status = u.moderation_status;
+            const sourceLabel = ({ record: 'Record', play: 'Play', seed: 'Seed', scene_input: 'SceneInput' })[u.source_type] || u.source_type;
+            return `
+                <div data-uid="${u.id}" style="background:var(--bg-surface);border:1px solid rgba(196,168,130,0.18);padding:1rem;display:flex;flex-direction:column;gap:0.5rem;">
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:rgba(245,240,232,0.9);line-height:1.55;">
+                        ${_escapeUtteranceText(u.text)}
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:0.75rem;color:var(--text-muted);">
+                        <span>[${sourceLabel}]</span>
+                        <span>${u.lang}</span>
+                        <span>${consent}</span>
+                        <span>상태: ${status}</span>
+                        <span>표시: ${u.show_count}</span>
+                        <span>감정: ${_escapeUtteranceText(tags)}</span>
+                        <span>키워드: ${_escapeUtteranceText(keys)}</span>
+                    </div>
+                    <div style="display:flex;gap:6px;">
+                        <button class="editor-btn" data-act="approve" data-uid="${u.id}" type="button">승인</button>
+                        <button class="editor-btn" data-act="reject" data-uid="${u.id}" type="button">거절</button>
+                        <button class="editor-btn" data-act="toggle-public" data-uid="${u.id}" type="button">${u.is_public ? '비공개 처리' : '공개 처리'}</button>
+                        <button class="editor-btn" data-act="delete" data-uid="${u.id}" type="button" style="margin-left:auto;color:#c66;">삭제</button>
+                    </div>
+                </div>`;
+        }).join('');
+
+        // Wire buttons
+        listEl.querySelectorAll('button[data-act]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const act = btn.dataset.act;
+                const id = btn.dataset.uid;
+                await handleUtteranceAction(act, id);
+            });
+        });
+    } catch (e) {
+        console.error('[utterances] load error:', e);
+        listEl.innerHTML = `<div style="color:#c66;padding:1rem;">불러오기 실패: ${_escapeUtteranceText(e?.message || e)}</div>`;
+    }
+}
+
+async function handleUtteranceAction(act, id) {
+    if (!id) return;
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) throw new Error('Supabase client unavailable');
+
+        if (act === 'delete') {
+            if (!confirm('이 잔상을 영구 삭제할까요?')) return;
+            const { error } = await supabase.from('utterances').delete().eq('id', id);
+            if (error) throw error;
+        } else if (act === 'approve') {
+            const { error } = await supabase.from('utterances').update({ moderation_status: 'approved' }).eq('id', id);
+            if (error) throw error;
+        } else if (act === 'reject') {
+            const { error } = await supabase.from('utterances').update({ moderation_status: 'rejected' }).eq('id', id);
+            if (error) throw error;
+        } else if (act === 'toggle-public') {
+            // Read current value, flip
+            const { data, error: readErr } = await supabase.from('utterances').select('is_public').eq('id', id).single();
+            if (readErr) throw readErr;
+            const { error } = await supabase.from('utterances').update({ is_public: !data.is_public }).eq('id', id);
+            if (error) throw error;
+        }
+        await loadUtterances();
+    } catch (e) {
+        console.error('[utterances] action error:', e);
+        alert('처리 실패: ' + (e?.message || e));
+    }
+}
+
+// Wire filter changes
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('utterancesRefresh')?.addEventListener('click', loadUtterances);
+    document.getElementById('utterancesFilterStatus')?.addEventListener('change', loadUtterances);
+    document.getElementById('utterancesFilterLang')?.addEventListener('change', loadUtterances);
+});
 
 // 미리보기 렌더링
 function renderPreview() {

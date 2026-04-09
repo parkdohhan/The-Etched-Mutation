@@ -19,6 +19,9 @@ export default defineConfig({
   },
 
   build: {
+    // lightningcss (Vite default) chokes on a malformed inline <style> block
+    // somewhere in the demo HTML files; esbuild's CSS minifier is more lenient.
+    cssMinify: 'esbuild',
     rollupOptions: {
       input,
     },

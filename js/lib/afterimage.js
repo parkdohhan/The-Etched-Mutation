@@ -11,7 +11,31 @@
 import { getSupabaseClient } from './supabaseClient.js';
 
 const SESSION_KEY = 'tem_viewer_session_id';
-const PUBLIC_DEFAULT_FOR_DEMO = false; // see §4 — set true only with explicit user consent
+
+// ─── PII / safety auto-filter ────────────────────────────────────
+// Reject candidates that look like they contain personal data, links, or
+// loud identifying markers. Conservative on purpose — false positives drop
+// the line, false negatives surface to the admin queue.
+const PII_PATTERNS = [
+  // emails
+  /[\w.+-]+@[\w-]+\.[\w.-]+/,
+  // phone numbers (KR / international, loose)
+  /\b\d{2,4}[-\s]?\d{3,4}[-\s]?\d{4}\b/,
+  // KR resident registration number (RRN) and similar 13-digit ids
+  /\b\d{6}[-\s]?[1-4]\d{6}\b/,
+  // URLs
+  /https?:\/\/\S+/i,
+  /\bwww\.\S+/i,
+  // long digit runs (likely card / id / account)
+  /\b\d{10,}\b/,
+  // social handles
+  /(^|\s)@[A-Za-z0-9_]{3,}/,
+];
+
+function _looksLikePII(text) {
+  if (!text) return false;
+  return PII_PATTERNS.some((re) => re.test(text));
+}
 
 // ─── Anonymous viewer session id ─────────────────────────────────
 
@@ -143,8 +167,8 @@ export async function markAfterimageReaction(eventId, kind) {
 
 /**
  * Extract candidate utterances from a Record conversation and save them.
- * Stored as is_public=false / moderation_status=pending — never visible to
- * other viewers without explicit consent + admin approval.
+ * Always stored as moderation_status=pending — admin approval still required.
+ * is_public reflects the contributor's explicit consent at record time.
  *
  * @param {Object} args
  * @param {Array}  args.conversation   getConversationHistory() output
@@ -152,6 +176,7 @@ export async function markAfterimageReaction(eventId, kind) {
  * @param {string} [args.memoryId]
  * @param {string} [args.contributorId]  auth.uid() if logged in
  * @param {string[]} [args.emotionTags]
+ * @param {boolean} [args.isPublic]    contributor consent flag
  * @returns {Promise<number>}  number of candidates saved
  */
 export async function saveUtteranceCandidates({
@@ -160,6 +185,7 @@ export async function saveUtteranceCandidates({
   memoryId = null,
   contributorId = null,
   emotionTags = [],
+  isPublic = false,
 }) {
   if (!Array.isArray(conversation) || conversation.length === 0) return 0;
   const supabase = getSupabaseClient();
@@ -174,7 +200,13 @@ export async function saveUtteranceCandidates({
       if (t.startsWith('[') && t.endsWith(']')) return false;
       // length sanity (matches DB CHECK)
       const len = [...t].length;
-      return len >= 3 && len <= 280;
+      if (len < 3 || len > 280) return false;
+      // PII / link auto-reject
+      if (_looksLikePII(t)) {
+        console.log('[afterimage] dropped candidate (PII match)');
+        return false;
+      }
+      return true;
     });
 
   if (userMessages.length === 0) return 0;
@@ -205,7 +237,7 @@ export async function saveUtteranceCandidates({
     source_type: 'record',
     memory_id: memoryId,
     emotion_tags: emotionTags,
-    is_public: PUBLIC_DEFAULT_FOR_DEMO,
+    is_public: !!isPublic,
     moderation_status: 'pending',
   }));
 

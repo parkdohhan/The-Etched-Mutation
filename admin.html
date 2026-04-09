@@ -106,6 +106,7 @@
                 <div class="editor-tabs">
                     <button class="editor-tab active" onclick="switchTab('edit')">편집</button>
                     <button class="editor-tab" onclick="switchTab('preview')">미리보기</button>
+                    <button class="editor-tab" onclick="switchTab('utterances')">잔상</button>
                 </div>
                 <button type="button" class="editor-back-home" onclick="cancelEdit()">대시보드로 돌아가기</button>
             </div>
@@ -307,6 +308,33 @@
                         <div id="sceneGraphNodes" style="position:absolute;inset:0;"></div>
                         <div id="sceneGraphPopup" style="display:none;position:absolute;z-index:10;background:rgba(10,10,15,0.95);border:1px solid rgba(196,168,130,0.3);border-radius:6px;padding:12px 16px;min-width:160px;backdrop-filter:blur(6px);"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- ─── 잔상(afterimage) 모더레이션 ─── -->
+            <div class="editor-content" id="utterancesContent">
+                <div class="editor-section" style="padding:2rem;">
+                    <h3 class="editor-section-title">잔상 모더레이션</h3>
+                    <p style="margin:0.5rem 0 1rem;font-size:0.85rem;color:var(--text-muted);line-height:1.6;">
+                        Record/Play 중 수집된 발화 후보. <strong>승인</strong>하면 다른 관객의 장면 종료 후 떠오를 수 있습니다.
+                        <strong>거절</strong>하면 풀에서 제외됩니다. 작가/관객의 목소리는 모두 동일하게 처리됩니다.
+                    </p>
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+                        <button class="editor-btn" id="utterancesRefresh" type="button">새로고침</button>
+                        <select id="utterancesFilterStatus" class="editor-input" style="max-width:160px;">
+                            <option value="pending">대기</option>
+                            <option value="approved">승인됨</option>
+                            <option value="rejected">거절됨</option>
+                            <option value="all">전체</option>
+                        </select>
+                        <select id="utterancesFilterLang" class="editor-input" style="max-width:120px;">
+                            <option value="all">모든 언어</option>
+                            <option value="ko">한국어</option>
+                            <option value="en">English</option>
+                        </select>
+                        <span id="utterancesCount" style="color:var(--text-muted);font-size:0.85rem;"></span>
+                    </div>
+                    <div id="utterancesList" style="display:flex;flex-direction:column;gap:0.5rem;max-height:70vh;overflow-y:auto;"></div>
                 </div>
             </div>
         </div>
