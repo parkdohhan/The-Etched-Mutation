@@ -1,0 +1,18 @@
+{
+  "name": "tem-persona-sim",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Empirically-grounded persona simulation for TEM memory contamination",
+  "scripts": {
+    "sample": "node scripts/1_sample.js",
+    "generate-personas": "node scripts/2_generate_personas.js",
+    "simulate-plays": "node scripts/3_simulate_plays.js",
+    "insert-db": "node scripts/4_insert_db.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
+  }
+}
