@@ -28,19 +28,21 @@ Working Draft v0.1 — 2026-03-31
 
 ### 1.2 기존 연구의 한계
 
-기억 변형 현상은 인지심리학에서 오랫동안 연구되어 왔다. 기억 재고화(reconsolidation)는 회상이 기억을 불안정화시키고 현재 맥락과 함께 재저장하는 과정을 밝혔으며(Nader, 2000; Nader et al., 2000), 오정보 효과(misinformation effect)는 사후 정보가 기억을 왜곡하는 메커니즘을 보여주었고(Loftus & Palmer, 1974; Loftus, 2005), 출처 모니터링 오류(source monitoring error)는 기억의 출처가 혼동되는 현상을 기술했다(Johnson et al., 1993).
+기억 변형 현상은 인지심리학에서 오랫동안 연구되어 왔다. 기억 재고화(reconsolidation)는 회상이 기억을 불안정화시키고 현재 맥락과 함께 재저장하는 과정을 밝혔으며(Nader et al., 2000; Nader, 2003), 오정보 효과(misinformation effect)는 사후 정보가 기억을 왜곡하는 메커니즘을 보여주었고(Loftus & Palmer, 1974; Loftus, 2005), 출처 모니터링 오류(source monitoring error)는 기억의 출처가 혼동되는 현상을 기술했다(Johnson et al., 1993).
 
 그러나 이 연구들은 각각 **개별 현상**으로 다루어져 왔다. 재고화와 오정보 효과와 출처 혼동이 왜 동시에 존재하는지, 이것들이 하나의 동역학의 서로 다른 표현인지, 아니면 독립적 메커니즘인지에 대한 통합적 프레임워크가 부재하다.
 
-또한, 기억 변형을 **계산적으로 측정**하려는 시도는 대부분 자기보고 척도에 의존한다. 두 사람이 같은 기억을 얼마나 비슷하게 경험했는지를 실시간으로, 정량적으로 측정하는 도구는 확립되어 있지 않다. Butler(2011, 2017)의 TIES(Temporal Interpersonal Emotion Systems) 프레임워크는 감정의 동적 패턴이 관계의 질을 예측한다고 제안했으나, 이를 인터랙티브 시스템에서 조작화(operationalize)한 사례는 없다.
+또한, 기억 변형을 **계산적으로 측정**하려는 시도는 대부분 자기보고 척도에 의존한다. 두 사람이 같은 기억을 얼마나 비슷하게 경험했는지를 실시간으로, 정량적으로 측정하는 도구는 확립되어 있지 않다. Butler(2011, 2017)의 TIES(Temporal Interpersonal Emotion Systems) 프레임워크는 감정의 동적 패턴이 관계의 질을 예측한다고 제안했고, Butler et al.(2017)의 CompTIES는 이를 coupled oscillator 모델로 계산적으로 구현했다. 그러나 CompTIES는 커플의 대화 비디오를 rating dial로 기록한 뒤 **사후에 통계 모델을 피팅**하는 관찰 데이터 분석 도구이며, 실시간 인터랙티브 시스템에서 체험자의 감정 입력에 즉각 반응하며 궤적을 비교하는 도구는 확립되어 있지 않다.
 
-### 1.3 본 논문의 기여
+### 1.3 연구 질문과 기여
 
-본 논문은 세 가지 기여를 제시한다.
+본 논문은 다음 질문에 답한다: **기억 변형은 — 오랫동안 인지심리학에서 산발적 현상들의 집합으로 기술되어 온 — 측정 가능한 동역학을 지닌 이산적 연산 체계로 형식화될 수 있는가, 그리고 그러한 형식화가 실제 인터랙티브 시스템의 설계를 구동할 수 있는가?**
+
+이 질문에 답하기 위해 본 논문은 세 가지 기여를 제시한다.
 
 **첫째, 이론적 기여: 기억유전학(Mnemonic Genetics).** 분자유전학의 중심 교의에서 유래하되, 유전학에서는 불가능한 6가지 연산으로 구성된 기억 변형의 형식적 프레임워크를 제시한다. 이 프레임워크는 재고화, 오정보 효과, 출처 혼동, 과잉기억(hypermnesia) 등 기존에 개별적으로 다루어지던 현상들을 하나의 연산 체계로 통합하며, HIV-1 레트로바이러스의 생활사와의 구조적 대응(structural analogy)을 통해 이론적 정당성을 확보한다.
 
-**둘째, 방법론적 기여: 별이엔진(Byeori Engine) V4.** 두 사람이 같은 기억을 얼마나 비슷하게 경험했는지를 감정 궤적(emotional trajectory)의 형태 유사도로 측정하는 계산적 도구를 제시한다. Butler(2017)의 TIES 이론을 인터랙티브 시스템에서 최초로 조작화한 것이며, 기존의 감정 수준(level) 비교를 넘어 감정 변화의 방향(shape)까지 측정한다.
+**둘째, 방법론적 기여: 별이엔진(Byeori Engine) V4.** 두 사람이 같은 기억을 얼마나 비슷하게 경험했는지를 감정 궤적(emotional trajectory)의 형태 유사도로 측정하는 계산적 도구를 제시한다. Butler의 CompTIES(Butler et al., 2017)는 TIES를 coupled oscillator 모델로 계산적으로 구현했으나, 관찰 데이터의 사후 분석에 한정된다. 별이엔진 V4는 TIES의 핵심 원리 — 감정 궤적의 동적 패턴이 수준과 독립적으로 경험의 유사성을 예측한다 — 를 실시간 인터랙티브 시스템에서 체험자의 감정 입력에 즉시 반응하는 형태로 구현하며, 감정 수준(level) 비교를 넘어 감정 변화의 방향(shape)까지 측정한다.
 
 **셋째, 시스템적 기여: 오염 벡터(Contamination Vector)와 TEM.** 기억 오염의 축적을 HIV 계통역학의 표준 메트릭 — root-to-tip divergence, convergent evolution rate, intra-patient diversity — 과 구조적으로 동일한 3축 벡터로 추적하는 모델을 제시하고, 이 전체 프레임워크를 인터랙티브 시스템(The Etched Mutation)으로 구현한 아키텍처를 기술한다.
 
@@ -72,19 +74,19 @@ Boyd & Richerson(1985)의 문화 진화 이론(dual inheritance theory)은 밈�
 
 ### 2.4 감정 측정과 경험 비교
 
-감정의 정량적 측정은 VAD 모델(Russell & Mehrabian, 1977), PANAS(Watson et al., 1988), 감정 단어 규범(Warriner et al., 2013) 등으로 확립되어 있다. 두 사람의 감정적 경험을 비교하는 연구로는 감정 수렴(Anderson et al., 2003)과 TIES 프레임워크(Butler, 2011, 2017)가 있다.
+감정의 정량적 측정은 VAD 모델(Russell & Mehrabian, 1977), PANAS(Watson et al., 1988), 감정 단어 규범(Warriner et al., 2013) 등으로 확립되어 있다. 두 사람의 감정적 경험을 비교하는 연구로는 감정 수렴(Anderson et al., 2003)과 TIES 프레임워크(Butler, 2011, 2017), 그리고 이를 coupled oscillator 모델로 계산 구현한 CompTIES(Butler et al., 2017)가 있다.
 
-그러나 이 연구들은 **실시간 인터랙티브 시스템에서 두 사람의 감정 궤적을 정량적으로 비교하는 도구**를 제공하지 않는다. 자기보고 척도(리커트)에 의존하며, 시간에 걸친 감정 변화의 형태(shape)를 측정하는 방법론은 서사 분석(Reagan et al., 2016)에서 제안되었으나 대인 비교에 적용되지 않았다. 별이엔진 V4는 Butler의 TIES를 인터랙티브 시스템에서 조작화한 최초의 도구이다.
+그러나 이 연구들은 **실시간 인터랙티브 시스템에서 두 사람의 감정 궤적을 정량적으로 비교하는 도구**를 제공하지 않는다. 자기보고 척도(리커트)나 비디오 회상 기반의 rating dial에 의존하며, CompTIES조차 기록된 관찰 데이터에 모델을 사후 피팅하는 방식으로 작동한다. 시간에 걸친 감정 변화의 형태(shape)를 측정하는 방법론은 서사 분석(Reagan et al., 2016)에서 제안되었으나 대인 비교에 적용되지 않았다. 별이엔진 V4는 TIES의 핵심 원리를 **실시간 인터랙티브 시스템**에서 체험자의 감정 입력에 즉각 반응하는 형태로 구현한 최초의 도구이다.
 
 ### 2.5 본 논문의 위치
 
 | 선행 연구 | 기여 | 기억유전학과의 관계 |
 |---|---|---|
 | Bartlett (1932) | 기억의 구성적 성격 발견 | 현상 관찰 → 기억유전학이 연산 유형으로 분해 |
-| Nader (2000), Loftus (1974) 등 | 개별 변형 메커니즘 규명 | 개별 현상 → 기억유전학이 6연산 체계로 통합 |
+| Nader et al. (2000), Loftus (1974) 등 | 개별 변형 메커니즘 규명 | 개별 현상 → 기억유전학이 6연산 체계로 통합 |
 | Dawkins (1976) 밈학 | 문화-유전학 비유 제안 | 형식화 실패 → 기억유전학이 측정 가능한 연산으로 재시도 |
 | Boyd & Richerson (1985) | 문화 전달의 수학적 모델 | 집단 역학 → 기억유전학이 개별 기억 역학으로 보완 |
-| Butler (2017) TIES | 감정 동적 패턴의 이론적 프레임워크 | 이론만 → 별이엔진이 조작화 |
+| Butler (2011, 2017) TIES / CompTIES | 감정 동적 패턴 이론과 coupled oscillator 기반 사후 분석 | 관찰 데이터 사후 피팅 → 별이엔진이 실시간 인터랙티브로 확장 |
 
 ---
 
@@ -92,7 +94,7 @@ Boyd & Richerson(1985)의 문화 진화 이론(dual inheritance theory)은 밈�
 
 ### 3.1 기본 전제: 기억은 의존적 복제자이다
 
-유전학의 자기복제자(self-replicator)는 자율적으로 복제를 수행한다. DNA는 세포 내 효소 시스템을 이용하지만, 복제의 정보적 주체는 DNA 자신이다. 기억은 근본적으로 다르다 — 기억은 타자의 **의식(consciousness)** 없이는 어떤 연산도 수행하지 못하는 **의존적 복제자(dependent replicator)**이다. 회상 자체가 현재 맥락(타자의 존재, 사회적 압력, 자기 자신의 변화된 상태)에 의해 매개되며, 전달은 반드시 수신자를 요구한다. 기억유전학의 6연산 모두 타자의 존재를 전제한다.
+유전학의 자기복제자(self-replicator)는 자율적으로 복제를 수행한다. DNA도 세포 내 효소 시스템을 이용하지만, 복제의 정보적 주체는 DNA 자신이며 의존하는 것은 생화학적 기질(substrate)일 뿐이다. 기억은 근본적으로 다르다 — 기억은 타자의 **의식(consciousness)** 없이는 어떤 연산도 수행하지 못하는 **의존적 복제자(dependent replicator)**이다. 여기서 "의존적"은 강한 의미로 사용된다: 생화학적 기질이 아니라 **능동적으로 참여하는 또 다른 의식**이 연산의 필수 조건이라는 뜻이다. 회상 자체가 현재 맥락(타자의 존재, 사회적 압력, 자기 자신의 변화된 상태)에 의해 매개되며, 전달은 반드시 수신자를 요구한다. 이것은 Dawkins(1976)의 밈 개념이 상정한 "독립 복제자"와 정면으로 대립하는 입장이며, 기억유전학의 6연산 모두 타자의 존재를 전제한다.
 
 ### 3.2 6연산 체계
 
@@ -126,7 +128,7 @@ Boyd & Richerson(1985)의 문화 진화 이론(dual inheritance theory)은 밈�
 
 #### 3.2.5 과잉 수선 (Aberrant Repair)
 
-**유전학적 대응:** DNA 수선은 손상을 복원하지만, 과잉 수선(예: 텔로머레이스)은 암을 유발한다 — 수선 자체가 병리를 만드는 역설.
+**유전학적 대응:** DNA 수선 시스템은 대부분 고충실도이지만, 손상이 심한 영역에서는 오류를 도입하는 방식으로 "수선"이 진행된다. 번역 합성(translesion synthesis, TLS; Sale, 2013)은 DNA 손상을 우회하기 위해 저충실도 폴리머레이스를 동원하여 변이를 도입하며, 비상동 말단 결합(non-homologous end joining, NHEJ; Lieber, 2010)은 이중가닥 절단을 봉합하는 과정에서 염기 삽입·결실을 유발한다. 수선은 원본을 복원하는 것이 아니라 **"복원된 것처럼 보이는 새로운 서열"**을 생성한다 — 수선 행위 자체가 변이의 원천이 되는 역설.
 
 **기억에서의 실제:** 흐릿해진 기억을 "복원"하려는 시도가 오히려 원본에 없던 세부를 추가한다. Loftus(1997)는 "복원된 기억(recovered memory)" 논쟁에서 치료적 복원 시도가 거짓 기억을 생성할 수 있음을 보여주었다. Patihis & Loftus(2016)는 성인에서 없었던 어린 시절 사건의 기억이 "복원"될 수 있음을 실험적으로 확인했다. 결과는 원본이 아니라 **원본보다 더 완결된 구성물** — 과잉기억(hypermnesia)이다. 회상자는 과잉 세부를 원본의 일부로 확신한다.
 
@@ -155,14 +157,14 @@ Boyd & Richerson(1985)의 문화 진화 이론(dual inheritance theory)은 밈�
 
 6연산의 인지심리학적 근거와 별개로, 각 연산은 HIV-1 레트로바이러스의 생활사와 구조적으로 대응한다. 이 대응은 6연산의 증거가 아니라, 기억 변형이 바이러스 진화와 **동일한 수학적 구조를 공유한다**는 보조적 관찰이다. Arc 단백질이 레트로바이러스 유래이며 바이러스 유사 캡시드로 뉴런 간 정보를 전달한다는 사실(Pastuzyn et al., 2018)이 이 구조적 공유의 진화적 배경을 제공한다.
 
-| 기억유전학 연산 | HIV-1 대응 | 공유 구조 |
-|---|---|---|
-| 파괴적 복제 | Provirus 통합 | 원본 소멸 + 숙주/맥락으로 재기록 |
-| 편향적 변이 | APOBEC3G 과변이 (Harris & Dudley, 2015) | 외부 행위자가 변이 방향을 결정 |
-| 의도적 선택 | 항원 변이 | 환경 압력에 따른 표면 변경 |
-| 무규칙 번역 | Arc 캡시드 mRNA 전달 | 확률적 전달, 고정 규칙 없음 |
-| 과잉 수선 | 수렴 진화 (M184V 등) | "복원"이 아닌 강제적 고정 |
-| 기억 재조합 | Template switching | 느슨한 상동성으로 교차 |
+| 기억유전학 연산 | HIV-1 대응 | 공유 구조 | 대응 강도 |
+|---|---|---|---|
+| 파괴적 복제 | Provirus 통합 | 원본 소멸 + 숙주/맥락으로 재기록 | 강 |
+| 편향적 변이 | APOBEC3G 과변이 (Harris & Dudley, 2015) | 외부 행위자가 변이 방향을 결정 | 강 |
+| 의도적 선택 | 항원 변이 | 환경 압력에 따른 표면 변경 | 강 |
+| 기억 재조합 | Template switching | 느슨한 상동성으로 교차 | 강 |
+
+**대응이 성립하지 않거나 약한 연산.** 무규칙 번역(Op 4)과 과잉 수선(Op 5)은 HIV-1 생활사에 정합적 대응물이 존재하지 않는다. 무규칙 번역은 매체 전환(경험→언어→타인의 신경 패턴)의 비결정성을 기술하며, 이는 바이러스 생활사의 리보솜 번역과 범주가 다르다. Arc 캡시드에 의한 mRNA 전달은 세포 간 전달(transmission) 현상이며 "무규칙 번역"의 구조적 아날로그가 아니다. 과잉 수선 역시 HIV의 수렴 진화(예: M184V)와는 다른 메커니즘이다 — 수렴 진화는 약물 선택 압력에 의한 사후적 고정이며, 과잉 수선의 "복원 시도가 생성한 새로운 세부"에 대응하지 않는다. 본 논문은 네 개의 강한 대응만 유지하며, 약한 대응은 향후 다른 생물학적 시스템(예: 단백질 접힘 오류, 프리온 증식)에서 더 적합한 아날로그를 탐색할 여지로 남긴다.
 
 이 대응은 **구조적 유사성(structural analogy)**이며 인과적 주장이 아니다(Gentner, 1983). 섹션 5에서 이 대응이 오염 벡터의 3축 설계를 정당화하는 데 어떻게 활용되는지를 다룬다.
 
@@ -170,7 +172,7 @@ Boyd & Richerson(1985)의 문화 진화 이론(dual inheritance theory)은 밈�
 
 ## 4. 별이엔진 V4: 궤적 기반 정렬도
 
-### 3.1 측정 대상
+### 4.1 측정 대상
 
 별이엔진(Byeori Engine)은 단일한 질문에 답한다:
 
@@ -178,7 +180,7 @@ Boyd & Richerson(1985)의 문화 진화 이론(dual inheritance theory)은 밈�
 
 이 "비슷함"을 0~1 사이의 숫자(alignment score)로 산출하는 것이 엔진의 유일한 역할이다. 기억유전학의 관점에서 별이엔진은 **진단 검사(diagnostic assay)**에 해당한다 — 기억을 변형시키지 않으며, 관찰하고 보고할 뿐이다. 결과의 해석과 그에 따른 조치(렌더링 제어)는 상위 시스템(오염 벡터)의 영역이다.
 
-### 3.2 이론적 기반: Butler의 TIES 이론
+### 4.2 이론적 기반: Butler의 TIES 이론
 
 Butler(2011, 2017)의 TIES(Temporal Interpersonal Emotion Systems) 프레임워크는 감정을 개인 내부의 정적 상태가 아니라, 시간에 걸쳐 전개되는 대인적 동적 시스템으로 개념화했다. 핵심 주장: **감정의 동적 패턴(dynamics)은 감정의 수준(level)과 독립적으로 관계의 질과 안녕(well-being)을 예측한다.**
 
@@ -186,7 +188,7 @@ Butler(2011, 2017)의 TIES(Temporal Interpersonal Emotion Systems) 프레임워�
 
 Anderson, Keltner & John(2003)은 연인 커플과 룸메이트가 1년에 걸쳐 정서 반응이 수렴한다는 것을 보여주었으며, 이 수렴 자체가 관계 응집력과 관계 지속을 예측했다. 별이엔진의 shape_similarity는 이 정서 수렴의 순간적 스냅샷을 측정한다.
 
-### 3.3 최종 공식
+### 4.3 최종 공식
 
 ```
 shape_raw = (scenes_played >= 3)
@@ -215,11 +217,11 @@ shape_raw = cosine(flatten(delta_B), flatten(delta_A))
 
 원본 A의 감정은 **B의 방문 순서대로 재배열**된다. 이는 철학적 선택이다 — 체험자의 탐색 행위(어떤 장면을 먼저 방문하는가)가 경험의 일부이며, 정전적(canonical) 순서가 아닌 체험 순서가 의미의 단위가 된다.
 
-장면 3개 미만일 때 shape = 1.0으로 설정하는 이유: delta 계산에 최소 2개의 차이값이 필요하고, 이를 위해 3개 이상의 장면이 필요하다. 정보 부재 시 shape를 중립(1.0)으로 두어, level만으로 정렬도가 결정되도록 한다.
+장면 3개 미만일 때 shape = 1.0으로 설정하는 이유: delta 계산에 최소 2개의 차이값이 필요하고, 이를 위해 3개 이상의 장면이 필요하다. 정보 부재 시 shape를 중립(1.0)으로 두어, level만으로 정렬도가 결정되도록 한다. 장면이 충분하더라도 체험자 또는 기록자의 감정 궤적이 장면 간에 전혀 변하지 않아 delta 벡터 중 하나가 영벡터가 되는 경우(코사인 유사도가 정의되지 않는 경우) 역시 shape = 1.0으로 방어한다 — 변화가 없다는 것은 궤적 분기의 부재를 의미하므로 중립 처리가 타당하다.
 
 **void_modifier (void_mod):** 체험자가 감정 입력을 회피(VOID)했고 기록자는 감정을 드러냈을 때 ×0.7 페널티. 둘 다 VOID면 페널티 없음(공명).
 
-### 3.4 곱셈 구조의 설계 근거
+### 4.4 곱셈 구조의 설계 근거
 
 V4의 가장 중요한 설계 판단은 **곱셈 결합**이다. 이전 버전(V3)의 선형 결합과의 비교:
 
@@ -234,7 +236,7 @@ V4: alignment = level × shape × void_mod           (곱셈)
 
 추가로, V3의 0.4/0.4/0.2 가중치 비율에는 이론적·경험적 근거가 없었다. 곱셈 구조는 임의의 가중치를 제거한다.
 
-### 3.5 V1에서 V4까지의 진화 경로
+### 4.5 V1에서 V4까지의 진화 경로
 
 | 버전 | 공식 | 실패 이유 |
 |------|------|-----------|
@@ -247,7 +249,7 @@ V4의 핵심 전환: **이유를 직접 측정하는 대신 이유의 결과를 
 
 이 전환은 인지적 평가 이론(Lazarus & Folkman, 1984)의 측정 한계에 대한 응답이다. 심리학에서 인지적 평가를 측정하는 검증된 도구(SAM, CAHS 등)는 전부 자기보고 척도이며, AI가 자유 텍스트에서 레이블을 추출하는 방식은 검증된 측정 도구가 아니다. V4는 인지적 평가를 직접 측정하는 대신, 평가 차이의 결과(= 궤적 분기)를 관찰하는 간접 접근으로 전환했다.
 
-### 3.6 전이 패턴
+### 4.6 전이 패턴
 
 alignment 점수와 별개로, 궤적의 형태에서 6가지 서사적 전이 패턴을 도출한다. 이 패턴은 점수 계산에 관여하지 않으며, 상위 시스템이 서사 분기와 시각적 연출에 사용한다.
 
@@ -264,13 +266,13 @@ alignment 점수와 별개로, 궤적의 형태에서 6가지 서사적 전이 �
 
 ## 5. 오염 벡터 (Contamination Vector)
 
-### 4.1 모듈의 성격: 연출 제어 모델
+### 5.1 모듈의 성격: 연출 제어 모델
 
 오염 벡터는 **진실 모델(truth model)이 아니라 연출 제어 모델(control signal model)**이다. 기억의 객관적 상태를 측정하는 계측기가 아니라, 체험자가 기억의 변이를 체감할 수 있도록 프론트엔드에 제어 신호를 보내는 장치다.
 
 이 구분이 중요한 이유: 별이엔진(진단 검사)이 기억의 상태를 관찰하고, 오염 벡터(치료 방침)가 그 관찰에 기반하여 렌더링 강도를 결정한다. 바이러스학에서 RT-qPCR(진단)과 항바이러스 요법(치료)이 분리되어 있듯, 측정과 제어가 분리된다.
 
-### 4.2 3축 + depth: HIV 계통역학 메트릭과의 구조적 대응
+### 5.2 3축 + depth: HIV 계통역학 메트릭과의 구조적 대응
 
 오염 벡터의 3축(divergence, convergence, heterogeneity) + depth는 HIV-1 계통역학(phylodynamics)에서 바이러스 진화를 추적하는 표준 메트릭과 구조적으로 동일하다. 이 대응이 3축 선택의 이론적 정당화를 제공한다.
 
@@ -281,7 +283,7 @@ alignment 점수와 별개로, 궤적의 형태에서 6가지 서사적 전이 �
 | **Intra-patient diversity (π)** | **heterogeneity** | 해석 간 정렬도 분산 |
 | **Serial passage count** | **depth** | 해석 반복 횟수 |
 
-### 4.3 각 축의 정의와 갱신 공식
+### 5.3 각 축의 정의와 갱신 공식
 
 #### depth — Muller's Ratchet
 
@@ -333,7 +335,7 @@ if n >= 2:
 
 Eigen & Schuster(1977)의 준종 이론에 따르면, 높은 변이율의 자기복제자 집단은 단일 서열이 아니라 변이체의 구름(cloud of mutants)으로 존재하며, 구름의 폭이 적응적 다양성을 결정한다. heterogeneity를 분산(variance)으로 계산하는 것은 준종의 "구름 폭 측정"과 동일한 수학적 조작이다.
 
-### 4.4 Stage Mixing: 바이러스 적응도 지형의 세 국면
+### 5.4 Stage Mixing: 바이러스 적응도 지형의 세 국면
 
 3축의 값으로부터 렌더링 강도를 결정하는 Stage mixing 비율을 산출한다:
 
@@ -357,7 +359,7 @@ Stage 1과 Stage 3이 반상관(anti-correlated)인 것은 바이러스 집단�
 
 ## 6. 시스템: The Etched Mutation (TEM)
 
-### 5.1 아키텍처 개요
+### 6.1 아키텍처 개요
 
 TEM은 기억유전학의 6연산, 별이엔진 V4, 오염 벡터를 하나의 인터랙티브 시스템으로 통합한 웹 기반 "기억 극장(memory theater)"이다. 사용자는 타인의 기억을 체험하고, 그 체험이 기억을 변형시키며, 변형된 기억을 다음 체험자가 다시 만나는 순환 구조를 경험한다.
 
@@ -374,7 +376,7 @@ TEM은 기억유전학의 6연산, 별이엔진 V4, 오염 벡터를 하나의 �
 
 별이엔진은 기억을 변형시키지 않는다 — 관찰하고 보고할 뿐이다. 오염 벡터는 별이엔진의 출력을 소비하여 렌더링 강도를 결정한다. 렌더링은 체험자에게 기억의 변이를 체감하게 한다. 각 층은 역할이 명확하고 역류(backflow)가 없다.
 
-### 5.2 세 가지 모드
+### 6.2 세 가지 모드
 
 **Record 모드:** 사용자가 자신의 기억을 AI 대화("또 다른 나")를 통해 서사화한다. 이 행위는 기억유전학의 Op 4(무규칙 번역: 경험→언어)와 Op 3(의도적 선택: 무엇을 말하고 숨길지)이 동시에 작동하는 과정이다. 기록된 결과는 "원본"이 아니라 **최초 발화 궤적(initial telling trajectory)** — 기억의 첫 번째 전파 이벤트의 산물이다. TEM의 철학은 순수한 원본 기억의 존재를 부정한다.
 
@@ -382,13 +384,13 @@ TEM은 기억유전학의 6연산, 별이엔진 V4, 오염 벡터를 하나의 �
 
 **Archive/Strata 모드:** 누적된 해석들이 3D 지형(Attribution × Core Fear 좌표계)으로 시각화된다. 각 Play가 지형에 미세한 융기를 만들고, 다수의 Play가 축적되면 기억의 "지층(strata)"이 형성된다. 이것은 기억유전학의 모든 연산이 남긴 흔적의 지질학적 기록이다.
 
-### 5.3 Record = First Play
+### 6.3 Record = First Play
 
 TEM의 핵심 설계 원칙 중 하나: **기억을 기록하는 행위 자체가 첫 번째 체험이다.** Record는 Play의 특수한 경우이며, AI 대화 과정에서 별이엔진의 전이 패턴이 AI의 질문 리듬을 조절한다. AI는 패턴을 이름 붙이거나 해석하지 않으며, 질문의 질감(texture)만 변화시킨다 — echo_follow일 때는 부드러운 연속, contradiction일 때는 방향 전환, fixation일 때는 침묵.
 
 이 원칙은 기억유전학의 Op 1(파괴적 복제)과 정합한다: 기억을 말하는 행위가 이미 기억을 변형한다. "원본을 기록"하는 것이 아니라 "첫 번째 변형을 수행"하는 것이다.
 
-### 5.4 데이터 순환
+### 6.4 데이터 순환
 
 ```
 Record (기록자 A)
@@ -413,7 +415,7 @@ Strata (누적)
 
 매 Play마다 기억은 조금씩 변형된다. 충분한 Play가 축적되면(depth ≥ 5, heterogeneity ≥ 0.5) 재조합 트리거가 활성화되어, 서로 다른 해석이 교차한 제3의 서사가 생성될 가능성이 열린다.
 
-### 5.5 Strata 시각화: 기억의 적응도 지형
+### 6.5 Strata 시각화: 기억의 적응도 지형
 
 TEM은 누적된 해석들을 AF 좌표계(Attribution × Core Fear)의 3D 지형으로 시각화한다.
 
@@ -440,7 +442,7 @@ vertex color의 감정별 색 혼합은 항원 지도(antigenic cartography; Smi
 
 Eigen의 준종 이론에는 **오류 임계(error threshold)**가 존재한다 — 변이율이 임계값을 넘으면 정보 자체가 소멸한다(error catastrophe). 이 대응이 유효하다면, 기억에도 **해석의 다양성이 임계점을 넘으면 기억의 핵심 서사가 소멸하는 현상**이 존재해야 한다. 구체적으로, heterogeneity가 특정 값을 초과하면 기억의 핵심 장면조차 원본과의 연결을 잃는 "기억의 오류 파국(mnemonic error catastrophe)"이 관찰되어야 한다. 이것은 TEM에서 경험적으로 테스트 가능한 예측이다.
 
-### 5.6 구조적 유추의 범위와 한계
+### 6.6 구조적 유추의 범위와 한계
 
 본 논문에서 제시한 레트로바이러스 대응은 전체가 균질한 강도를 가지지 않는다. 학술적 가치가 있는 것은 **수학적으로 동일한 연산을 독립적으로 선택한 경우** — 분산(heterogeneity = π), 단조 증가(depth = Muller's Ratchet), 포화 곡선(decay = 분자시계), 곱셈 구조(축 간 보상 차단) — 에 한정된다.
 
@@ -478,17 +480,21 @@ Eigen, M., & Schuster, P. (1977). The hypercycle: a principle of natural self-or
 
 Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy. *Cognitive Science*, 7(2), 155-170.
 
+Goldberg, L. R. (1999). A broad-bandwidth, public domain, personality inventory measuring the lower-level facets of several five-factor models. In I. Mervielde, I. Deary, F. De Fruyt, & F. Ostendorf (Eds.), *Personality Psychology in Europe* (Vol. 7, pp. 7–28). Tilburg University Press. [International Personality Item Pool (IPIP-NEO-300), 공개 데이터: automoto/big-five-data, N=307,313]
+
 Harris, R. S., & Dudley, J. P. (2015). APOBECs and virus restriction. *Virology*, 479-480, 131-145.
 
-Henikoff, S., & Henikoff, J. G. (1992).
+Henikoff, S., & Henikoff, J. G. (1992). Amino acid substitution matrices from protein blocks. *Proceedings of the National Academy of Sciences*, 89(22), 10915-10919.
 
-Hirst, W., & Echterhoff, G. (2012). Remembering in conversations: The social sharing and reshaping of memories. *Annual Review of Psychology*, 63, 55-79. Amino acid substitution matrices from protein blocks. *Proceedings of the National Academy of Sciences*, 89(22), 10915-10919.
+Hirst, W., & Echterhoff, G. (2012). Remembering in conversations: The social sharing and reshaping of memories. *Annual Review of Psychology*, 63, 55-79.
 
 Johnson, M. K., Hashtroudi, S., & Lindsay, D. S. (1993). Source monitoring. *Psychological Bulletin*, 114(1), 3–28.
 
 Lazarus, R. S., & Folkman, S. (1984). *Stress, appraisal, and coping*. Springer.
 
 Levine, L. J. (1997). Reconstructing memory for emotions. *Journal of Experimental Psychology: General*, 126(2), 165-177.
+
+Lieber, M. R. (2010). The mechanism of double-strand DNA break repair by the nonhomologous DNA end-joining pathway. *Annual Review of Biochemistry*, 79, 181-211.
 
 Loftus, E. F. (1997). Creating false memories. *Scientific American*, 277(3), 70-75.
 
@@ -498,7 +504,7 @@ Loftus, E. F., & Palmer, J. C. (1974). Reconstruction of automobile destruction:
 
 Muller, H. J. (1964). The relation of recombination to mutational advance. *Mutation Research*, 1(1), 2-9.
 
-Nader, K. (2000). Memory traces unbound. *Trends in Neurosciences*, 26(2), 65-72.
+Nader, K. (2003). Memory traces unbound. *Trends in Neurosciences*, 26(2), 65-72.
 
 Nader, K., Schafe, G. E., & LeDoux, J. E. (2000). Fear memories require protein synthesis in the amygdala for reconsolidation after retrieval. *Nature*, 406(6797), 722-726.
 
@@ -513,6 +519,8 @@ Patihis, L., & Loftus, E. F. (2016). Crashing memories 2.0: False memories in ad
 Plath, N., Ohana, O., Dammermann, B., et al. (2006). Arc/Arg3.1 is essential for the consolidation of synaptic plasticity and memories. *Neuron*, 52(3), 437-444.
 
 Russell, J. A., & Mehrabian, A. (1977). Evidence for a three-factor theory of emotions. *Journal of Research in Personality*, 11(3), 273-294.
+
+Sale, J. E. (2013). Translesion DNA synthesis and mutagenesis in eukaryotes. *Cold Spring Harbor Perspectives in Biology*, 5(3), a012708.
 
 Rambaut, A., Posada, D., Crandall, K. A., & Holmes, E. C. (2004). The causes and consequences of HIV evolution. *Nature Reviews Genetics*, 5(1), 52-61.
 
@@ -550,13 +558,15 @@ Zanini, F., Brober, V., Thesing, R., et al. (2015). Population genomics of intra
 
 ## 8. 논의 (Discussion)
 
-### 7.1 요약
+### 8.1 요약
 
 본 논문은 기억 변형을 기술하는 형식적 프레임워크(기억유전학 6연산), 경험의 유사성을 측정하는 계산적 도구(별이엔진 V4), 오염의 축적을 추적하는 모델(오염 벡터), 그리고 이를 통합한 인터랙티브 시스템(TEM)을 제시했다. 레트로바이러스(HIV-1)의 생활사와의 구조적 대응을 통해 이론적 정당성을 확보하되, 대응의 강도를 수학적 동일성과 표면적 비유로 명시적으로 구분했다.
 
-### 7.2 한계
+### 8.2 한계
 
 **실증 검증의 부재.** 별이엔진 V4의 shape_similarity가 자기보고와 유의미한 상관을 보이는지는 파일럿 테스트를 통해 확인해야 한다. 이 검증이 실패하면 — 즉 shape가 level 단독 대비 예측력을 추가하지 못하면 — V4의 곱셈 구조는 alignment = level × void_mod로 축소되어야 한다.
+
+**페르소나 시뮬레이션의 방법론적 위치.** 인간 참여자 데이터 수집 이전 단계에서, 오염 벡터와 Strata 시각화의 파라미터 민감도를 탐색하기 위해 실증 기반 페르소나 시뮬레이션을 수행하였다. 페르소나 파라미터는 실제 인간 307,313명의 IPIP-NEO-300 응답에서 계산된 Big Five 점수 분포(automoto/big-five-data; Goldberg, 1999)에서 층화 표집되었으며, 표적 기억의 주제(상실, 애착, 정체성, 해리)와 이론적으로 관련된 성격 조합을 커버하도록 설계되었다. 이 접근은 순수 LLM 생성 페르소나에 내재한 모드 붕괴(mode collapse)를 회피하기 위함이다 — 즉, 페르소나 점수 자체는 실제 인간 측정치에서 왔으므로 LLM이 평균적 응답 패턴으로 수렴하는 문제를 완화할 수 있다. 각 점수 세트는 Claude Opus 4.6을 통해 전기적 서사로 확장되었으며, 프롬프트에는 특성 레이블(trait label)을 사용하지 못하도록 제약하여 구체적 삶의 사건과 반응 패턴으로만 서사를 구성하게 하였다. 페르소나들은 표적 기억을 장면 단위로 읽고 Claude Sonnet 4.6을 통해 일인칭 정서 반응을 생성하였다. 이 시뮬레이션은 인간 피험자 데이터를 대체하지 않으며, 파라미터 튜닝과 Strata 렌더링의 시각적 검증을 위한 탐색적 도구로 한정된다. 본 논문이 제시하는 결과는 모두 이 한정된 시뮬레이션 맥락에서 해석되어야 한다.
 
 **오염 벡터 상수의 미튜닝.** DECAY_RATE(0.05), HETERO_SCALE(4.0), FIXATION_CONV_WEIGHT(0.4) 등 모든 상수는 시뮬레이션 전 잠정값이다. 실데이터 기반 파라미터 민감도 분석이 필요하다.
 
@@ -564,9 +574,9 @@ Zanini, F., Brober, V., Thesing, R., et al. (2015). Population genomics of intra
 
 **구조적 유추의 범위.** 레트로바이러스 대응은 수학적으로 동일한 연산(분산, 단조 증가, 포화 곡선, 곱셈 구조)에 한정하여 주장하였으나, 두 시스템이 "같은 방정식을 푼다"는 것이 "같은 현상이다"를 의미하지는 않는다. 구조적 유추의 학술적 가치는 예측의 전이 가능성에 의해 결정되며(Gentner, 1983), 이는 경험적 검증을 기다린다.
 
-### 7.3 향후 방향
+### 8.3 향후 방향
 
-#### 7.3.1 보편적 감정 지형의 추출
+#### 8.3.1 보편적 감정 지형의 추출
 
 본 논문에서 Strata는 개별 기억의 해석 누적을 시각화한다. 그러나 충분한 기억과 play가 축적되면, **개별 기억의 지형을 중첩하여 기억 내용에 비의존적인 보편적 감정 패턴을 추출**할 수 있다.
 
@@ -580,11 +590,11 @@ TEM에서 동일한 방법론을 적용하면:
 
 이것은 TEM을 개별 기억의 체험 도구에서 **인간 감정 구조의 관측 도구(observatory)**로 확장하는 경로이다.
 
-#### 7.3.2 오류 파국 임계의 경험적 탐색
+#### 8.3.2 오류 파국 임계의 경험적 탐색
 
 섹션 6.5에서 제시한 예측 — heterogeneity가 임계값을 넘으면 기억의 핵심 서사가 소멸하는 "기억의 오류 파국(mnemonic error catastrophe)" — 을 경험적으로 탐색한다. 충분한 depth가 축적된 기억에서 heterogeneity와 Strata 봉우리 높이의 관계를 분석하여, 오류 임계가 실재하는지, 실재한다면 어디인지를 결정한다.
 
-#### 7.3.3 보편적 변형 역학: 기질-비의존적 속성의 비교
+#### 8.3.3 보편적 변형 역학: 기질-비의존적 속성의 비교
 
 본 논문에서 제시한 레트로바이러스 대응의 가장 큰 한계는, 변이의 **방향**이 분자 수준과 경험 수준에서 다를 수밖에 없다는 점이다. 분자 수준의 변이 방향은 물리화학적 제약(아미노산의 크기, 전하, 소수성)에 의해 결정되고, 경험 수준의 변이 방향은 사회적 맥락(감정, 관계, 문화)에 의해 결정된다. 기억은 사회적 맥락 안에서만 존재하는 개념이므로, 두 층위의 변이 방향이 대응하리라는 기대는 비현실적이다.
 
@@ -592,7 +602,7 @@ TEM에서 동일한 방법론을 적용하면:
 
 구체적으로 다음 네 가지가 측정 가능한 비교 대상이다:
 
-**(1) 금지 구조의 분포 (Distribution of Forbidden Zones).** 분자 수준에서 아미노산 치환 행렬(BLOSUM; Henikoff & Henikoff, 1992)은 모든 치환이 동등하지 않으며 거의 일어나지 않는 조합이 있음을 보여준다. 기억 수준에서도 감정 전이 행렬 — 한 장면의 감정에서 다음 장면의 감정으로의 전환 빈도 — 이 동등하지 않을 것이다. 비교 대상은 두 행렬의 **방향이 아니라 형태**: 금지 구역의 비율(희소성, sparsity), 금지 구역의 공간적 분포(클러스터링 계수), 허용된 전환의 연결 구조. 이것은 AlphaFold에 의한 CPEB3 변이체 안정성 행렬과 TEM의 감정 전이 행렬을 비교하여 테스트할 수 있다.
+**(1) 금지 구조의 분포 (Distribution of Forbidden Zones).** 분자 수준에서 아미노산 치환 행렬(BLOSUM; Henikoff & Henikoff, 1992)은 모든 치환이 동등하지 않으며 거의 일어나지 않는 조합이 있음을 보여준다. 기억 수준에서도 감정 전이 행렬 — 한 장면의 감정에서 다음 장면의 감정으로의 전환 빈도 — 이 동등하지 않을 것이다. 비교 대상은 두 행렬의 **방향이 아니라 형태**: 금지 구역의 비율(희소성, sparsity), 금지 구역의 공간적 분포(클러스터링 계수), 허용된 전환의 연결 구조. 분자 수준의 구체적 비교 대상(예: 단백질 변이체 안정성 행렬, 계산적 구조 예측 도구의 출력)은 상당한 계산 자원과 생물학적 검증 요구사항을 동반하므로 본 논문의 사정 범위를 넘어서며, 본 논문은 비교 프레임워크의 제시에 한정한다.
 
 **(2) 강건성/취약성 분포 (Robustness Distribution).** 단백질에서 어떤 위치는 변이에 강건(conserved)하고 어떤 위치는 취약(variable)하다. 기억에서 어떤 장면은 해석에 강건(모든 체험자가 비슷하게 반응)하고 어떤 장면은 취약(반응이 크게 분산)하다. 비교 대상은 position-wise conservation score(분자)와 scene-wise alignment score 분산(기억)의 **분포 형태** — 두 분포가 같은 통계적 패밀리(예: 멱법칙, 로그정규분포)를 따르는가. 만약 둘 다 멱법칙을 따른다면, "소수의 핵심 위치/장면이 전체 구조를 지탱하고 나머지는 자유롭다"는 설계 원리가 기질에 관계없이 공유되는 것이다.
 
@@ -602,7 +612,7 @@ TEM에서 동일한 방법론을 적용하면:
 
 이 네 가지 비교가 **보편적 변형 역학(universal transformation dynamics)**의 존재 여부를 묻는 프로그램을 구성하며, 기억유전학과 분자유전학의 구조적 유추가 표면적 비유를 넘어서는지를 결정하는 경험적 경로가 된다.
 
-#### 7.3.4 화자 상태 붕괴
+#### 8.3.4 화자 상태 붕괴
 
 초기 설계 문서(기억 변질 엔진, 2026)에서 제안된 화자 상태의 3단계 붕괴 — narrator("나는 울고 있었다") → object("그녀는 울고 있었다") → absent("누군가 울고 있었던 것 같다") — 는 바이러스학의 세포병변 효과(cytopathic effect)에 대응한다. 오염이 충분히 축적되면 기억의 화자(= 숙주 세포) 자체가 변형·소멸하는 것이다. 이것은 Stage 3(과잉완성)의 극단적 결과로 오염 벡터 시스템에 통합될 수 있다.
 
