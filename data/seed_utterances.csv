@@ -1,0 +1,9 @@
+text,lang,emotion_tags,keywords,axis_x,axis_z
+울었었나. 아닌것같은데,ko,"sadness,confusion","눈물,기억",0.3,-0.2
+그때 그 사람 표정이 아직도,ko,"longing,sadness","사람,표정,기억",0.0,0.4
+나는 가만히 있었다. 그게 다였다,ko,"numbness,shame","침묵,정지",-0.5,-0.1
+밥을 먹을 수가 없었어,ko,"sadness,numbness","음식,몸",0.0,0.5
+"왜 그랬을까. 왜",ko,"guilt,confusion","후회",-0.7,0.0
+the rain just kept falling,en,"sadness,numbness","rain,weather",0.4,0.3
+i didn't say anything,en,"shame,numbness","silence,stillness",-0.5,-0.1
+i don't remember the day after,en,"numbness,confusion","memory,absence",0.5,0.3

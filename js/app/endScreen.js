@@ -180,6 +180,38 @@ export async function showEndScreen(alignmentResult, forceEndScreen = false) {
             }
         }, 2000);
 
+        // ─── Afterimage: rise after the end screen settles ───
+        // §7.1: trigger after the scene closes and a beat of silence has passed.
+        // See docs/잔상_시스템_설계-260409.md
+        setTimeout(async () => {
+            try {
+                const { showAfterimage } = await import('../ui/afterimage.js');
+                const s = appStore.getState();
+                const data = s.currentStoryData;
+                const lastSceneObj = data?.scenes?.length ? data.scenes[data.scenes.length - 1] : null;
+                const baseVec = data?.original_vector || lastSceneObj?.original_emotion || {};
+                const emotionTags = Object.entries(baseVec || {})
+                    .filter(([, v]) => typeof v === 'number' && v > 0.15)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 4)
+                    .map(([k]) => k);
+                const lang = (data?.lang) || (typeof navigator !== 'undefined' && /^en/i.test(navigator.language) ? 'en' : 'ko');
+                await showAfterimage(
+                    {
+                        lang,
+                        emotionTags,
+                        keywords: [],
+                        axisX: 0,
+                        axisZ: 0,
+                        preferOwn: true,
+                    },
+                    { dwellMs: 10000 }
+                );
+            } catch (e) {
+                console.warn('[Ending] afterimage skipped:', e?.message || e);
+            }
+        }, 3800);
+
         const footer = document.querySelector('.footer');
         if (footer) footer.classList.add('visible');
         console.log('[Ending] showEndScreen complete');

@@ -1319,6 +1319,33 @@ async function saveRecordMemory(conversationData, sceneData, lang, userTitle) {
 
         console.log('[Record] Memory saved:', memory.id, userId ? '(logged in)' : '(anonymous)');
         _pendingSave = null;
+
+        // ─── Afterimage: harvest utterance candidates from this Record session ───
+        // Stored as is_public=false / pending. Never shown to other viewers without
+        // explicit consent + admin moderation. See docs/잔상_시스템_설계-260409.md
+        try {
+            const [{ getConversationHistory }, { saveUtteranceCandidates }] = await Promise.all([
+                import('./recordChat.js'),
+                import('../lib/afterimage.js'),
+            ]);
+            const conversation = getConversationHistory?.() || [];
+            const baseVec = sceneData?.originalVector?.base || {};
+            const emotionTags = Object.entries(baseVec)
+                .filter(([, v]) => typeof v === 'number' && v > 0.15)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 4)
+                .map(([k]) => k);
+            await saveUtteranceCandidates({
+                conversation,
+                lang,
+                memoryId: memory.id,
+                contributorId: userId || null,
+                emotionTags,
+            });
+        } catch (e) {
+            console.warn('[Record] utterance harvest skipped:', e?.message || e);
+        }
+
         return memory.id;
     } catch (e) {
         console.error('[Record] Save error:', e);
