@@ -3697,6 +3697,13 @@
       setTimeout(function () {
         var awWrap = document.getElementById('fpAmbientWaveWrap');
         if (!awWrap) return;
+        // 파동 캔버스 숨기기 (하얀색 선 제거)
+        var awCvs = document.getElementById('fpAmbientWaveCanvas');
+        if (awCvs) awCvs.style.display = 'none';
+        // stacking context 탈출: strataView(z-index:2600) 안에서는
+        // sceneMode(z-index:2700) 위로 올라갈 수 없으므로 body로 이동
+        var _awOrigParent = awWrap.parentNode;
+        document.body.appendChild(awWrap);
         // 힌트 텍스트
         var hint = document.createElement('div');
         hint.id = 'fpWaveReturnHint';
@@ -3704,7 +3711,7 @@
         hint.textContent = LANG === 'ko' ? '파동을 눌러 지형으로 돌아가세요' : 'Click the wave to return';
         awWrap.appendChild(hint);
         requestAnimationFrame(function () { hint.style.opacity = '1'; });
-        // 파동 클릭 가능하게 (sceneMode z-index 2700 위로)
+        // 파동 클릭 가능하게 (body 직속이므로 z-index 2800이 실제로 동작)
         awWrap.style.pointerEvents = 'auto';
         awWrap.style.cursor = 'pointer';
         awWrap.style.zIndex = '2800';
@@ -3717,6 +3724,9 @@
           awWrap.style.cursor = '';
           awWrap.style.boxShadow = '';
           awWrap.style.zIndex = '260';
+          // 캔버스 다시 표시 + 원래 부모로 복귀
+          if (awCvs) awCvs.style.display = '';
+          if (_awOrigParent) _awOrigParent.appendChild(awWrap);
           var h = document.getElementById('fpWaveReturnHint');
           if (h && h.parentNode) h.parentNode.removeChild(h);
           // 기존 afterTerrainReturn 로직 호출
@@ -4999,9 +5009,15 @@
             var _tb2 = document.getElementById('terrainBar');
             if (_wt2) _wt2.style.display = '';
             if (_tb2) _tb2.style.display = '';
-            // Clean up ambient wave click state
+            // Clean up ambient wave click state + body에서 strataView로 복귀
             var _awW = document.getElementById('fpAmbientWaveWrap');
-            if (_awW) { _awW.style.pointerEvents = 'none'; _awW.style.cursor = ''; _awW.style.boxShadow = ''; _awW.style.zIndex = '260'; }
+            if (_awW) {
+              _awW.style.pointerEvents = 'none'; _awW.style.cursor = ''; _awW.style.boxShadow = ''; _awW.style.zIndex = '260';
+              var _awCvs2 = document.getElementById('fpAmbientWaveCanvas');
+              if (_awCvs2) _awCvs2.style.display = '';
+              var _svParent = document.getElementById('strataView');
+              if (_svParent && _awW.parentNode === document.body) _svParent.appendChild(_awW);
+            }
             var _awH = document.getElementById('fpWaveReturnHint');
             if (_awH && _awH.parentNode) _awH.parentNode.removeChild(_awH);
             // Re-acquire pointer lock immediately + fallback to click

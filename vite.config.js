@@ -28,7 +28,8 @@ export default defineConfig({
   },
 
   test: {
-    include: ['test/unit/math.test.js', 'test/unit/byeoriEngine.test.js', 'test/unit/contaminationTracker.test.js', 'test/unit/sceneNavigator.test.js'],
+    include: ['test/unit/**/*.test.js'],
+    exclude: ['test/unit/byeori_v2_scoring.test.js', 'test/unit/byeori_v3_scoring.test.js'],
     environment: 'node',
   },
 });

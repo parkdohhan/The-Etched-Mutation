@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEM Pilot Survey</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Serif KR', serif;
+    background: #0a0a0a;
+    color: #d4cfc4;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #2a2a2a;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+    font-weight: 300;
+    letter-spacing: 0.3em;
+    color: #8a8578;
+    margin-bottom: 0.8rem;
+  }
+
+  header p.subtitle {
+    font-size: 0.85rem;
+    color: #5a5750;
+    line-height: 1.8;
+  }
+
+  /* ── 메타 정보 ── */
+  .meta-section {
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    border: 1px solid #1a1a1a;
+    border-radius: 4px;
+  }
+
+  .meta-section h2 {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6a6560;
+    letter-spacing: 0.15em;
+    margin-bottom: 1.2rem;
+  }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.8rem;
+    gap: 1rem;
+  }
+
+  .meta-row label {
+    font-size: 0.85rem;
+    color: #8a8578;
+    min-width: 100px;
+  }
+
+  .meta-row input, .meta-row select {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #2a2a2a;
+    color: #d4cfc4;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.9rem;
+    padding: 0.4rem 0;
+    outline: none;
+  }
+
+  .meta-row input:focus, .meta-row select:focus {
+    border-bottom-color: #8a8578;
+  }
+
+  .meta-row select { cursor: pointer; }
+  .meta-row select option { background: #1a1a1a; }
+
+  /* ── 섹션 ── */
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  .section-number {
+    font-size: 0.7rem;
+    color: #4a4540;
+    letter-spacing: 0.2em;
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #a09a90;
+  }
+
+  .section-desc {
+    font-size: 0.78rem;
+    color: #5a5750;
+    margin-top: 0.5rem;
+    line-height: 1.7;
+  }
+
+  /* ── 질문 ── */
+  .question {
+    margin-bottom: 2rem;
+    padding-left: 0.5rem;
+  }
+
+  .q-label {
+    font-size: 0.88rem;
+    color: #c4bfb4;
+    line-height: 1.7;
+    margin-bottom: 1rem;
+  }
+
+  .q-label .q-num {
+    color: #5a5750;
+    margin-right: 0.5rem;
+  }
+
+  .q-label .q-tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    color: #6a6560;
+    border: 1px solid #2a2a2a;
+    padding: 0.1rem 0.5rem;
+    border-radius: 2px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+
+  /* 리커트 */
+  .likert {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 0.5rem;
+  }
+
+  .likert-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+
+  .likert-item input[type="radio"] {
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    border: 1px solid #3a3a3a;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .likert-item input[type="radio"]:hover {
+    border-color: #6a6560;
+  }
+
+  .likert-item input[type="radio"]:checked {
+    background: #8a8578;
+    border-color: #8a8578;
+  }
+
+  .likert-label {
+    font-size: 0.7rem;
+    color: #4a4540;
+    text-align: center;
+    max-width: 60px;
+  }
+
+  .likert-number {
+    font-size: 0.75rem;
+    color: #5a5750;
+  }
+
+  .likert-ends {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 0.5rem;
+    margin-top: 0.4rem;
+  }
+
+  .likert-ends span {
+    font-size: 0.72rem;
+    color: #4a4540;
+  }
+
+  /* 선택지 */
+  .choice-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .choice-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    cursor: pointer;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #1a1a1a;
+    border-radius: 3px;
+    transition: border-color 0.2s;
+  }
+
+  .choice-item:hover { border-color: #3a3a3a; }
+
+  .choice-item input[type="radio"] {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #3a3a3a;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .choice-item input[type="radio"]:checked {
+    background: #8a8578;
+    border-color: #8a8578;
+  }
+
+  .choice-item label {
+    font-size: 0.85rem;
+    color: #b0a89a;
+    cursor: pointer;
+  }
+
+  /* 텍스트 입력 */
+  .text-answer {
+    width: 100%;
+    background: transparent;
+    border: 1px solid #1a1a1a;
+    border-radius: 3px;
+    color: #d4cfc4;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.88rem;
+    padding: 1rem;
+    min-height: 120px;
+    resize: vertical;
+    outline: none;
+    line-height: 1.8;
+  }
+
+  .text-answer:focus { border-color: #3a3a3a; }
+
+  .text-answer::placeholder { color: #3a3a3a; }
+
+  /* ── 잔상 섹션 (조건부) ── */
+  .conditional {
+    border-left: 2px solid #2a2520;
+    padding-left: 1.2rem;
+    margin-left: 0.5rem;
+  }
+
+  .conditional-note {
+    font-size: 0.75rem;
+    color: #5a4a40;
+    font-style: italic;
+    margin-bottom: 1rem;
+  }
+
+  /* ── 제출 ── */
+  .submit-section {
+    text-align: center;
+    padding: 2rem 0 4rem;
+    border-top: 1px solid #1a1a1a;
+    margin-top: 2rem;
+  }
+
+  .submit-btn {
+    background: transparent;
+    border: 1px solid #3a3a3a;
+    color: #8a8578;
+    font-family: 'Noto Serif KR', serif;
+    font-size: 0.85rem;
+    padding: 0.8rem 3rem;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.3s;
+    border-radius: 2px;
+  }
+
+  .submit-btn:hover {
+    border-color: #8a8578;
+    color: #d4cfc4;
+  }
+
+  .submit-note {
+    font-size: 0.72rem;
+    color: #3a3a3a;
+    margin-top: 1rem;
+  }
+
+  /* ── 결과 (제출 후) ── */
+  .result-json {
+    display: none;
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #111;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #6a6560;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .copy-btn {
+    display: none;
+    margin: 1rem auto 0;
+    background: transparent;
+    border: 1px solid #2a2a2a;
+    color: #6a6560;
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.4rem 1.5rem;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  .copy-btn:hover { border-color: #5a5750; color: #8a8578; }
+
+  /* ── 반응형 ── */
+  @media (max-width: 480px) {
+    body { padding: 1.5rem 0.8rem; }
+    .likert-label { font-size: 0.6rem; max-width: 40px; }
+    .likert-item input[type="radio"] { width: 24px; height: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══ 헤더 ═══ -->
+  <header>
+    <h1>THE ETCHED MUTATION</h1>
+    <p class="subtitle">
+      파일럿 테스트 사후 설문<br>
+      Play 종료 직후 작성해주세요.
+    </p>
+  </header>
+
+  <form id="surveyForm">
+
+  <!-- ═══ 메타 ═══ -->
+  <div class="meta-section">
+    <h2>참여 정보</h2>
+    <div class="meta-row">
+      <label for="pid">참여자 ID</label>
+      <input type="text" id="pid" placeholder="P-01" required>
+    </div>
+    <div class="meta-row">
+      <label for="memoryCode">체험한 기억</label>
+      <input type="text" id="memoryCode" placeholder="E-001">
+    </div>
+    <div class="meta-row">
+      <label for="sessionType">세션 유형</label>
+      <select id="sessionType">
+        <option value="first_play">첫 체험 (depth 낮음)</option>
+        <option value="mid_play">중간 체험 (depth 3~5)</option>
+        <option value="deep_play">깊은 체험 (depth 6+)</option>
+        <option value="own_memory">본인 기억 체험</option>
+      </select>
+    </div>
+    <div class="meta-row">
+      <label for="afterimageShown">잔상 표시 여부</label>
+      <select id="afterimageShown">
+        <option value="no">잔상 안 나옴</option>
+        <option value="yes">잔상 나옴</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION A: 별이엔진 검증 ═══ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">SECTION A</span>
+      <div class="section-title">경험의 유사성</div>
+      <div class="section-desc">
+        방금 체험한 기억에 대해 답해주세요.<br>
+        정답은 없습니다. 느낀 그대로.
+      </div>
+    </div>
+
+    <!-- A1 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">A1.</span>
+        이 기억을 기록한 사람과 당신의 경험이 얼마나 비슷했다고 느끼나요?
+        <span class="q-tag">핵심</span>
+      </div>
+      <div class="likert">
+        <div class="likert-item"><input type="radio" name="a1" value="1" required><span class="likert-number">1</span></div>
+        <div class="likert-item"><input type="radio" name="a1" value="2"><span class="likert-number">2</span></div>
+        <div class="likert-item"><input type="radio" name="a1" value="3"><span class="likert-number">3</span></div>
+        <div class="likert-item"><input type="radio" name="a1" value="4"><span class="likert-number">4</span></div>
+        <div class="likert-item"><input type="radio" name="a1" value="5"><span class="likert-number">5</span></div>
+        <div class="likert-item"><input type="radio" name="a1" value="6"><span class="likert-number">6</span></div>
+        <div class="likert-item"><input type="radio" name="a1" value="7"><span class="likert-number">7</span></div>
+      </div>
+      <div class="likert-ends">
+        <span>전혀 비슷하지 않다</span>
+        <span>완전히 같은 경험이다</span>
+      </div>
+    </div>
+
+    <!-- A2 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">A2.</span>
+        감정의 <b>종류</b>가 비슷했나요?<br>
+        <span style="font-size:0.78rem;color:#5a5750;">(기록자와 같은 감정을 느꼈는가)</span>
+      </div>
+      <div class="likert">
+        <div class="likert-item"><input type="radio" name="a2" value="1" required><span class="likert-number">1</span></div>
+        <div class="likert-item"><input type="radio" name="a2" value="2"><span class="likert-number">2</span></div>
+        <div class="likert-item"><input type="radio" name="a2" value="3"><span class="likert-number">3</span></div>
+        <div class="likert-item"><input type="radio" name="a2" value="4"><span class="likert-number">4</span></div>
+        <div class="likert-item"><input type="radio" name="a2" value="5"><span class="likert-number">5</span></div>
+        <div class="likert-item"><input type="radio" name="a2" value="6"><span class="likert-number">6</span></div>
+        <div class="likert-item"><input type="radio" name="a2" value="7"><span class="likert-number">7</span></div>
+      </div>
+      <div class="likert-ends">
+        <span>완전히 다른 감정</span>
+        <span>같은 감정</span>
+      </div>
+    </div>
+
+    <!-- A3 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">A3.</span>
+        감정이 <b>움직인 방향</b>이 비슷했나요?<br>
+        <span style="font-size:0.78rem;color:#5a5750;">(장면이 넘어갈 때 감정이 변하는 흐름이 기록자와 같았는가)</span>
+        <span class="q-tag">핵심</span>
+      </div>
+      <div class="likert">
+        <div class="likert-item"><input type="radio" name="a3" value="1" required><span class="likert-number">1</span></div>
+        <div class="likert-item"><input type="radio" name="a3" value="2"><span class="likert-number">2</span></div>
+        <div class="likert-item"><input type="radio" name="a3" value="3"><span class="likert-number">3</span></div>
+        <div class="likert-item"><input type="radio" name="a3" value="4"><span class="likert-number">4</span></div>
+        <div class="likert-item"><input type="radio" name="a3" value="5"><span class="likert-number">5</span></div>
+        <div class="likert-item"><input type="radio" name="a3" value="6"><span class="likert-number">6</span></div>
+        <div class="likert-item"><input type="radio" name="a3" value="7"><span class="likert-number">7</span></div>
+      </div>
+      <div class="likert-ends">
+        <span>완전히 다른 방향</span>
+        <span>같은 방향으로 움직임</span>
+      </div>
+    </div>
+
+    <!-- A4 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">A4.</span>
+        감정은 비슷했지만 <b>이유</b>는 달랐던 장면이 있었나요?
+      </div>
+      <div class="choice-group">
+        <div class="choice-item">
+          <input type="radio" name="a4" value="none" required id="a4_none">
+          <label for="a4_none">없었다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="a4" value="maybe" id="a4_maybe">
+          <label for="a4_maybe">있었던 것 같다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="a4" value="clear" id="a4_clear">
+          <label for="a4_clear">분명히 있었다</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION B: 오염 체감 ═══ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">SECTION B</span>
+      <div class="section-title">기억의 상태</div>
+      <div class="section-desc">
+        체험한 기억의 텍스트와 분위기에 대해 답해주세요.
+      </div>
+    </div>
+
+    <!-- B1 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">B1.</span>
+        이 기억이 원래 이랬을 것 같나요, 아니면 뭔가 변형된 것 같나요?
+      </div>
+      <div class="likert">
+        <div class="likert-item"><input type="radio" name="b1" value="1" required><span class="likert-number">1</span></div>
+        <div class="likert-item"><input type="radio" name="b1" value="2"><span class="likert-number">2</span></div>
+        <div class="likert-item"><input type="radio" name="b1" value="3"><span class="likert-number">3</span></div>
+        <div class="likert-item"><input type="radio" name="b1" value="4"><span class="likert-number">4</span></div>
+        <div class="likert-item"><input type="radio" name="b1" value="5"><span class="likert-number">5</span></div>
+        <div class="likert-item"><input type="radio" name="b1" value="6"><span class="likert-number">6</span></div>
+        <div class="likert-item"><input type="radio" name="b1" value="7"><span class="likert-number">7</span></div>
+      </div>
+      <div class="likert-ends">
+        <span>원래 이랬을 것 같다</span>
+        <span>분명히 변형되었다</span>
+      </div>
+    </div>
+
+    <!-- B2 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">B2.</span>
+        이 기억의 느낌은 어느 쪽에 가까운가요?
+      </div>
+      <div class="likert">
+        <div class="likert-item"><input type="radio" name="b2" value="1" required><span class="likert-number">1</span></div>
+        <div class="likert-item"><input type="radio" name="b2" value="2"><span class="likert-number">2</span></div>
+        <div class="likert-item"><input type="radio" name="b2" value="3"><span class="likert-number">3</span></div>
+        <div class="likert-item"><input type="radio" name="b2" value="4"><span class="likert-number">4</span></div>
+        <div class="likert-item"><input type="radio" name="b2" value="5"><span class="likert-number">5</span></div>
+        <div class="likert-item"><input type="radio" name="b2" value="6"><span class="likert-number">6</span></div>
+        <div class="likert-item"><input type="radio" name="b2" value="7"><span class="likert-number">7</span></div>
+      </div>
+      <div class="likert-ends">
+        <span>흐릿하고 불분명하다</span>
+        <span>과도하게 선명하다</span>
+      </div>
+    </div>
+
+    <!-- B3 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">B3.</span>
+        텍스트에서 이상한 점(글자가 깨지거나, 반복되거나, 빠져 있는 부분)을 눈치챘나요?
+      </div>
+      <div class="choice-group">
+        <div class="choice-item">
+          <input type="radio" name="b3" value="not_noticed" required id="b3_no">
+          <label for="b3_no">눈치 못 챘다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="b3" value="noticed_ok" id="b3_ok">
+          <label for="b3_ok">눈치챘지만 자연스러웠다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="b3" value="noticed_weird" id="b3_weird">
+          <label for="b3_weird">눈치챘고 어색했다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="b3" value="noticed_good" id="b3_good">
+          <label for="b3_good">눈치챘고 의도된 것 같았다</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- B4 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">B4.</span>
+        중간에 내면 독백("또 다른 나"의 목소리)이 나왔다면, 어떻게 느꼈나요?
+      </div>
+      <div class="choice-group">
+        <div class="choice-item">
+          <input type="radio" name="b4" value="not_shown" required id="b4_none">
+          <label for="b4_none">독백이 안 나왔다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="b4" value="immersive" id="b4_imm">
+          <label for="b4_imm">몰입에 도움이 됐다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="b4" value="neutral" id="b4_neu">
+          <label for="b4_neu">있어도 없어도 상관없었다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="b4" value="distracting" id="b4_dis">
+          <label for="b4_dis">방해가 됐다</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION C: 잔상 (조건부) ═══ -->
+  <div class="section" id="sectionC">
+    <div class="section-header">
+      <span class="section-number">SECTION C</span>
+      <div class="section-title">떠오른 문장</div>
+      <div class="section-desc">
+        체험 종료 후 문장이 하나 떠올랐다면 답해주세요.<br>
+        안 떠올랐으면 이 섹션을 건너뛰세요.
+      </div>
+    </div>
+
+    <div class="conditional">
+      <div class="conditional-note">잔상이 표시된 경우에만 작성</div>
+
+      <!-- C1 -->
+      <div class="question">
+        <div class="q-label">
+          <span class="q-num">C1.</span>
+          그 문장이 당신이 한 말이라고 느꼈나요?
+          <span class="q-tag">핵심</span>
+        </div>
+        <div class="choice-group">
+          <div class="choice-item">
+            <input type="radio" name="c1" value="mine" id="c1_mine">
+            <label for="c1_mine">내가 한 말 같다</label>
+          </div>
+          <div class="choice-item">
+            <input type="radio" name="c1" value="others" id="c1_others">
+            <label for="c1_others">다른 사람이 한 말 같다</label>
+          </div>
+          <div class="choice-item">
+            <input type="radio" name="c1" value="unsure" id="c1_unsure">
+            <label for="c1_unsure">모르겠다</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- C2 -->
+      <div class="question">
+        <div class="q-label">
+          <span class="q-num">C2.</span>
+          그 문장이 방금 체험한 기억과 어울린다고 느꼈나요?
+        </div>
+        <div class="likert">
+          <div class="likert-item"><input type="radio" name="c2" value="1"><span class="likert-number">1</span></div>
+          <div class="likert-item"><input type="radio" name="c2" value="2"><span class="likert-number">2</span></div>
+          <div class="likert-item"><input type="radio" name="c2" value="3"><span class="likert-number">3</span></div>
+          <div class="likert-item"><input type="radio" name="c2" value="4"><span class="likert-number">4</span></div>
+          <div class="likert-item"><input type="radio" name="c2" value="5"><span class="likert-number">5</span></div>
+          <div class="likert-item"><input type="radio" name="c2" value="6"><span class="likert-number">6</span></div>
+          <div class="likert-item"><input type="radio" name="c2" value="7"><span class="likert-number">7</span></div>
+        </div>
+        <div class="likert-ends">
+          <span>전혀 안 어울린다</span>
+          <span>완벽히 어울린다</span>
+        </div>
+      </div>
+
+      <!-- C3 -->
+      <div class="question">
+        <div class="q-label">
+          <span class="q-num">C3.</span>
+          그 문장이 떠오른 순간, 어떤 느낌이었나요?
+        </div>
+        <div class="choice-group">
+          <div class="choice-item">
+            <input type="radio" name="c3" value="nothing" id="c3_nothing">
+            <label for="c3_nothing">별 느낌 없었다</label>
+          </div>
+          <div class="choice-item">
+            <input type="radio" name="c3" value="curious" id="c3_curious">
+            <label for="c3_curious">궁금했다</label>
+          </div>
+          <div class="choice-item">
+            <input type="radio" name="c3" value="unsettling" id="c3_unsettling">
+            <label for="c3_unsettling">묘하게 불안했다</label>
+          </div>
+          <div class="choice-item">
+            <input type="radio" name="c3" value="resonant" id="c3_resonant">
+            <label for="c3_resonant">울림이 있었다</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION D: 전체 체험 ═══ -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-number">SECTION D</span>
+      <div class="section-title">전체 체험</div>
+    </div>
+
+    <!-- D1 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">D1.</span>
+        이 체험을 한 단어로 표현한다면?
+      </div>
+      <input type="text" class="text-answer" name="d1" placeholder="한 단어" style="min-height:auto;padding:0.6rem 1rem;">
+    </div>
+
+    <!-- D2 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">D2.</span>
+        체험하면서 가장 인상적이었던 순간이 있다면 자유롭게 써주세요.
+      </div>
+      <textarea class="text-answer" name="d2" placeholder="장면, 감정, 분위기, 소리, 텍스트... 무엇이든."></textarea>
+    </div>
+
+    <!-- D3 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">D3.</span>
+        불편하거나 어색하거나 깨진 느낌이 든 순간이 있었나요?
+      </div>
+      <textarea class="text-answer" name="d3" placeholder="없었으면 비워두셔도 됩니다."></textarea>
+    </div>
+
+    <!-- D4 -->
+    <div class="question">
+      <div class="q-label">
+        <span class="q-num">D4.</span>
+        이 기억이 "타인의 기억"이라는 느낌이 유지되었나요, 아니면 어느 순간 "내 기억"처럼 느껴졌나요?
+      </div>
+      <div class="choice-group">
+        <div class="choice-item">
+          <input type="radio" name="d4" value="always_others" required id="d4_ao">
+          <label for="d4_ao">계속 타인의 기억이었다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="d4" value="moment_mine" id="d4_mm">
+          <label for="d4_mm">어느 순간 내 기억처럼 느껴졌다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="d4" value="blurred" id="d4_bl">
+          <label for="d4_bl">구분이 흐려졌다</label>
+        </div>
+        <div class="choice-item">
+          <input type="radio" name="d4" value="always_mine" id="d4_am">
+          <label for="d4_am">처음부터 내 기억 같았다</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ 제출 ═══ -->
+  <div class="submit-section">
+    <button type="submit" class="submit-btn">제출</button>
+    <div class="submit-note">제출 후 수정할 수 없습니다.</div>
+    <pre class="result-json" id="resultJson"></pre>
+    <button type="button" class="copy-btn" id="copyBtn">복사</button>
+  </div>
+
+  </form>
+</div>
+
+<script>
+// 잔상 섹션 표시/숨김
+const afterimageSelect = document.getElementById('afterimageShown');
+const sectionC = document.getElementById('sectionC');
+
+afterimageSelect.addEventListener('change', () => {
+  sectionC.style.display = afterimageSelect.value === 'yes' ? 'block' : 'none';
+  if (afterimageSelect.value === 'no') {
+    sectionC.querySelectorAll('input').forEach(i => i.checked = false);
+  }
+});
+// 기본 숨김
+sectionC.style.display = 'none';
+
+// 제출
+document.getElementById('surveyForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const data = {
+    timestamp: new Date().toISOString(),
+    participant_id: fd.get('pid') || null,
+    memory_code: fd.get('memoryCode') || null,
+    session_type: fd.get('sessionType'),
+    afterimage_shown: fd.get('afterimageShown') === 'yes',
+    responses: {
+      a1_overall_similarity: Number(fd.get('a1')) || null,
+      a2_emotion_similarity: Number(fd.get('a2')) || null,
+      a3_trajectory_similarity: Number(fd.get('a3')) || null,
+      a4_same_emotion_diff_reason: fd.get('a4') || null,
+      b1_perceived_transformation: Number(fd.get('b1')) || null,
+      b2_clarity_spectrum: Number(fd.get('b2')) || null,
+      b3_text_contamination: fd.get('b3') || null,
+      b4_monologue: fd.get('b4') || null,
+      c1_whose_words: fd.get('c1') || null,
+      c2_afterimage_fit: Number(fd.get('c2')) || null,
+      c3_afterimage_feeling: fd.get('c3') || null,
+      d1_one_word: fd.get('d1') || null,
+      d2_memorable_moment: fd.get('d2') || null,
+      d3_discomfort: fd.get('d3') || null,
+      d4_ownership: fd.get('d4') || null,
+    }
+  };
+
+  const jsonEl = document.getElementById('resultJson');
+  const copyBtn = document.getElementById('copyBtn');
+  jsonEl.textContent = JSON.stringify(data, null, 2);
+  jsonEl.style.display = 'block';
+  copyBtn.style.display = 'block';
+
+  // 폼 비활성화
+  e.target.querySelectorAll('input, select, textarea, button[type="submit"]').forEach(el => {
+    el.disabled = true;
+    el.style.opacity = '0.4';
+  });
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const text = document.getElementById('resultJson').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById('copyBtn').textContent = '복사됨';
+    setTimeout(() => { document.getElementById('copyBtn').textContent = '복사'; }, 2000);
+  });
+});
+</script>
+</body>
+</html>

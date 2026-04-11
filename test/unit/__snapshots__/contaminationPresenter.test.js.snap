@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`contaminationPresenter — output snapshots > snapshot: "The cold morning. The wet..." biased_inclination/medium 1`] = `"The cold morning. The wet grass. You were there."`;
+
+exports[`contaminationPresenter — output snapshots > snapshot: "The cold morning. The wet..." biased_inclination/strong 1`] = `"The cold morning. The w·t grass. Y·u wer· there."`;
+
+exports[`contaminationPresenter — output snapshots > snapshot: "The cold morning. The wet..." hypercompletion/medium 1`] = `"The cold morning. The wet grass. You were there."`;
+
+exports[`contaminationPresenter — output snapshots > snapshot: "The cold morning. The wet..." hypercompletion/strong 1`] = `"The cold morning. ▒he wet grass. You were there."`;
+
+exports[`contaminationPresenter — output snapshots > snapshot: "비가 내리던 날. 병원 복도. 발소리...." biased_inclination/medium 1`] = `"비가 내리던 날. 병원 복도. 발소리."`;
+
+exports[`contaminationPresenter — output snapshots > snapshot: "비가 내리던 날. 병원 복도. 발소리...." biased_inclination/strong 1`] = `"비가 내리던 날. 병원 복도. 발소리."`;
+
+exports[`contaminationPresenter — output snapshots > snapshot: "비가 내리던 날. 병원 복도. 발소리...." hypercompletion/medium 1`] = `"비가 내리던 날. 병원 복도. 발소리."`;
+
+exports[`contaminationPresenter — output snapshots > snapshot: "비가 내리던 날. 병원 복도. 발소리...." hypercompletion/strong 1`] = `"비▓ 내리던 날.날. 병원 복도. 발소리."`;
