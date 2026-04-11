@@ -21,6 +21,14 @@
 \usepackage{amsmath, amssymb}
 \usepackage{graphicx}
 
+% ── 알고리즘 ──
+\usepackage[ruled,lined,linesnumbered]{algorithm2e}
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwOutput}{Output}
+\SetAlgoNlRelativeSize{0}
+\SetAlCapNameFnt{\small}
+\SetAlCapFnt{\small}
+
 % ── 코드 블록 ──
 \usepackage{listings}
 \lstset{
@@ -290,6 +298,79 @@ alignment = level * shape * void_mod
 장면 3개 미만일 때 $\text{shape} = 1.0$인 이유: delta 계산에 최소 2개의 차이값이 필요하고, 이를 위해 3개 이상의 장면이 필요하다. 정보 부재 시 shape를 중립(1.0)으로 두어, level만으로 정렬도가 결정되도록 한다.
 
 \textbf{void\_mod}는 체험자가 감정 입력을 회피(VOID)했고 기록자는 감정을 드러냈을 때 $\times 0.7$ 페널티이다. 둘 다 VOID면 페널티 없음~--- 이것은 ``공명''이다. TEM에서 침묵은 결손이 아니라 의미 있는 데이터이다.
+
+Algorithm~\ref{alg:byeori}은 별이엔진 V4의 전체 계산 과정을 의사코드로 기술한다. 이 알고리즘은 TEM의 구현과 1:1로 대응하며, 감정 벡터의 차원(17D 앵커 기반), 코사인 유사도에 의한 장면별 비교, delta 궤적의 평탄화(flatten) 후 형태 비교, 그리고 bucket 판정에서의 히스테리시스까지 재현에 필요한 모든 세부를 포함한다. 고착 감지(fixation detection)는 단순 횟수 카운트가 아닌 최근 3개 감정 벡터의 쌍별(pairwise) 코사인 유사도 평균으로 판정하며, 이 복합 신호 접근이 V4의 설계 원칙이다.
+
+\begin{algorithm}[htbp]
+\caption{별이엔진 V4 --- 궤적 기반 정렬도 (Byeori Engine V4: Trajectory-Based Alignment)}
+\label{alg:byeori}
+\DontPrintSemicolon
+\KwInput{%
+  $\mathbf{u}_1, \ldots, \mathbf{u}_n$: 체험자의 장면별 감정 벡터 (17D, 방문 순서)\;
+  $\mathbf{o}_1, \ldots, \mathbf{o}_n$: 기록자의 장면별 감정 벡터 (체험자 방문 순서로 재배열)\;
+  $\text{void}_u, \text{void}_o$: 각 장면의 VOID 여부\;
+  $B_{\text{prev}}$: 이전 세션의 bucket\;
+}
+\KwOutput{%
+  $\alpha \in [0,1]$: alignment score\;
+  $P$: transition pattern\;
+}
+\BlankLine
+\tcc{Step 1 --- 장면별 감정 유사도 (Scene Score)}
+\For{$i \leftarrow 1$ \KwTo $n$}{
+  $s_i \leftarrow \max\!\big(0,\; \cos(\mathbf{u}_i,\, \mathbf{o}_i)\big)$ \tcp*{17D 코사인 유사도}
+}
+\BlankLine
+\tcc{Step 2 --- 수준 유사도 (Level)}
+$\ell \leftarrow \dfrac{1}{n}\displaystyle\sum_{i=1}^{n} s_i$\;
+\BlankLine
+\tcc{Step 3 --- 궤적 형태 유사도 (Shape)}
+\eIf{$n < 3$}{
+  $\sigma \leftarrow 1.0$ \tcp*{정보 부재 $\to$ 중립}
+}{
+  \For{$i \leftarrow 2$ \KwTo $n$}{
+    $\Delta\mathbf{u}_{i-1} \leftarrow \mathbf{u}_i - \mathbf{u}_{i-1}$\;
+    $\Delta\mathbf{o}_{i-1} \leftarrow \mathbf{o}_i - \mathbf{o}_{i-1}$\;
+  }
+  $\sigma_{\text{raw}} \leftarrow \cos\!\big(\text{flatten}(\Delta\mathbf{u}),\; \text{flatten}(\Delta\mathbf{o})\big)$\;
+  $\sigma \leftarrow \max(0,\, \sigma_{\text{raw}})$\;
+}
+\BlankLine
+\tcc{Step 4 --- VOID 보정}
+$\nu \leftarrow \begin{cases} 0.7 & \text{if } \text{void}_u \wedge \neg\,\text{void}_o \\ 1.0 & \text{otherwise} \end{cases}$\;
+\BlankLine
+\tcc{Step 5 --- 정렬도 산출}
+$\alpha \leftarrow \text{clamp}\!\big(\ell \times \sigma \times \nu,\; 0,\; 1\big)$\;
+\BlankLine
+\tcc{Step 6 --- 고착 감지 (Fixation Detection)}
+\If{$n \geq 3$}{
+  $\mathcal{R} \leftarrow$ last 3 vectors of $\{\mathbf{u}_i\}$\;
+  $f \leftarrow \text{mean pairwise } \cos(\mathcal{R})$\;
+  \If{$f \geq 0.85$}{$B \leftarrow \texttt{FIXATED}$\;}
+}
+\BlankLine
+\tcc{Step 7 --- Bucket 판정 (히스테리시스 적용)}
+\uIf{$B \neq \texttt{FIXATED}$}{
+  \uIf{$B_{\text{prev}} = \texttt{HIGH}$ \textbf{and} $\alpha \geq 0.40$}{$B \leftarrow \texttt{HIGH}$}
+  \uElseIf{$B_{\text{prev}} = \texttt{LOW}$ \textbf{and} $\alpha \leq 0.15$}{$B \leftarrow \texttt{LOW}$}
+  \uElseIf{$\alpha \geq 0.50$}{$B \leftarrow \texttt{HIGH}$}
+  \uElseIf{$\alpha < 0.10$}{$B \leftarrow \texttt{LOW}$}
+  \Else{$B \leftarrow \texttt{MID}$}
+}
+\BlankLine
+\tcc{Step 8 --- 전이 패턴 결정}
+\uIf{$B = \texttt{FIXATED}$}{$P \leftarrow \texttt{fixation}$}
+\uElseIf{$\ell \geq 0.5$ \textbf{and} $\sigma < 0.3$ \textbf{and} $n \geq 3$}{$P \leftarrow \texttt{displacement}$}
+\uElseIf{$B = \texttt{HIGH}$}{$P \leftarrow \texttt{echo\_follow}$}
+\uElseIf{$B = \texttt{MID}$}{$P \leftarrow \texttt{bridge}$}
+\uElseIf{$B = \texttt{LOW}$}{
+  $P \leftarrow$ match mismatch type: void $\to$ \texttt{avoidance}, target $\to$ \texttt{displacement}, emotion/attribution $\to$ \texttt{contradiction}, default $\to$ \texttt{bridge}\;
+}
+\BlankLine
+\Return $(\alpha,\, P)$\;
+\end{algorithm}
+
+별이엔진의 출력 $(\alpha, P)$는 후속 모듈에 의해 소비된다. alignment score $\alpha$는 오염 벡터(섹션~\ref{sec:contamination})의 divergence·convergence·heterogeneity 갱신에 사용되며, transition pattern $P$는 SceneNavigator(섹션~5)의 탐색 기하를 결정하고, 오염 렌더링 시스템의 NPC 내면 독백 선택과 Floating Anchor의 clarity 변동에도 전파된다. 이 단방향 데이터 흐름~--- 별이엔진은 관찰만 하고, 모든 후속 모듈이 그 관찰을 소비한다~--- 이 TEM 아키텍처의 핵심 제약이다.
 
 \subsection{곱셈 구조의 설계 근거}
 
