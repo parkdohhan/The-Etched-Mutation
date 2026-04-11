@@ -20,6 +20,10 @@
 \usepackage{longtable}
 \usepackage{amsmath, amssymb}
 \usepackage{graphicx}
+% ── 다이어그램 (TikZ) ──
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, backgrounds, fit}
+
 
 % ── 알고리즘 ──
 \usepackage[ruled,lined,linesnumbered]{algorithm2e}
@@ -195,6 +199,85 @@ $\text{Recombine}(M_a, M_b, \text{breakpoint}) = M_c$, 여기서 $M_c \neq M_a$,
 
 TEM에서 이 연산은 \textbf{잔상(Afterimage) 시스템}으로 구현된다. 다른 사람의 발화가 자기 기억 체험 도중에 스며들어, ``이게 내 기억이었나, 남의 기억이었나''를 구분할 수 없게 만드는 잠재기억(cryptomnesia) 시뮬레이션이다.
 
+
+\begin{figure}[htbp]
+\centering
+\makebox[\textwidth][c]{%
+\resizebox{1.05\textwidth}{!}{%
+\begin{tikzpicture}[
+    node distance=2.5cm and 3cm, % 간격 넓게 유지
+    box/.style={draw, rounded corners, minimum width=2.5cm, minimum height=1cm, align=center, font=\small},
+    molecular/.style={box, fill=gray!10, draw=gray!80, thick},
+    mnemonic/.style={box, fill=blue!5, draw=blue!60, thick},
+    arrow/.style={->, >=stealth, thick},
+    dashed_arrow/.style={->, >=stealth, dashed, thick},
+    reverse_arrow/.style={->, >=stealth, ultra thick, red!80!black}
+]
+
+% ===================================
+% --- [분자유전학: Central Dogma] ---
+% ===================================
+
+\node[molecular] (dna) {DNA\\(원본 정보)};
+\node[molecular, right=of dna] (rna) {RNA\\(매개체)};
+\node[molecular, right=of rna, fill=red!10, draw=red!60] (prot) {Protein\\(발현된 형질)};
+\node[molecular, below=1.5cm of dna] (mut_dna) {Mutated DNA};
+
+% 1. 복제를 위쪽 루프에서 '왼쪽' 루프로 이동하여 공간 확보
+\draw[arrow] (dna) edge[loop left] node[left, font=\footnotesize, align=center] {1. 복제} (dna);
+
+\draw[arrow] (dna) -- node[above, font=\footnotesize] {2. 전사} (rna);
+\draw[arrow] (rna) -- node[above, font=\footnotesize] {4. 번역} (prot);
+
+% 핵심 수정: x 역류 불가 궤적을 "아래"가 아닌 "위"로 넘겨서 mut_dna와 충돌 방지 
+% (왼쪽으로 향하는 화살표에서 bend right는 위로 볼록하게 휩니다)
+\draw[arrow, red, dashed] (prot) to[bend right=35] node[above, font=\footnotesize] {\textbf{X 역류 불가}} (dna);
+
+% 변이와 수선도 직선/bend 명확하게 분리
+\draw[dashed_arrow] (dna) edge[bend right=20] node[left, font=\footnotesize] {3. 변이} (mut_dna);
+\draw[dashed_arrow] (mut_dna) edge[bend right=20] node[right, font=\footnotesize] {5. 수선} (dna);
+
+\node[font=\bfseries\Large] at ([yshift=2.5cm]rna.north) {분자유전학 (Molecular Genetics)};
+
+
+% ===================================
+% --- [기억유전학: Mnemonic Genetics] ---
+% ===================================
+
+\node[mnemonic, below=5.5cm of dna] (eng) {기억 엔그램\\(잠재 기억)};
+\node[mnemonic, right=of eng] (wm) {작업 기억\\(활성화된 궤적)};
+\node[mnemonic, right=of wm, fill=green!10, draw=green!60] (exp) {발화/행동\\(표현된 기억)};
+\node[mnemonic, below=1.5cm of wm] (mut_wm) {오염된 궤적};
+\node[mnemonic, left=of mut_wm, dashed] (ext) {타인의 기억\\(외부 정보)};
+
+% 1. 회상을 왼쪽 루프로 이동
+\draw[arrow] (eng) edge[loop left] node[left, font=\footnotesize, align=center] {1. 회상} (eng);
+
+\draw[arrow] (eng) -- node[above, font=\footnotesize] {1. 인출(전사)} (wm);
+\draw[arrow] (wm) -- node[above, font=\footnotesize] {4. 서사 번역} (exp);
+
+% 핵심 수정: 기억 덮어쓰기 궤도를 "위"로 올려 아래쪽 mut_wm과 겹치지 않게 함
+\draw[reverse_arrow] (exp) to[bend right=35] node[above, font=\small] {\textbf{역전사 (기억 덮어쓰기)}} (eng);
+
+% 오염루프 
+\draw[dashed_arrow] (wm) edge[bend right=20] node[left, font=\footnotesize] {3. 오염 변이} (mut_wm);
+\draw[dashed_arrow] (mut_wm) edge[bend right=20] node[right, font=\footnotesize] {5. 인지부조화 수선} (wm);
+
+% 재조합
+\draw[dashed_arrow, blue!80] (ext) -- node[left, font=\footnotesize] {6. 재조합} (eng);
+
+\node[font=\bfseries\Large] at ([yshift=2.5cm]wm.north) {기억유전학 (Mnemonic Genetics)};
+
+% --- 경계선 ---
+\draw[loosely dashed, gray, thick] (-4, -3.2) -- (12, -3.2);
+
+\end{tikzpicture}
+}
+}
+\caption{분자유전학과 기억유전학의 6연산 위상수학적 대응. 분자 단위에서는 차단된 '역전사(Reverse Transcription)' 경로가 기억 체계에서는 표현된 서사가 원본 엔그램을 재구성하는 핵심 기제로 작동함을 보여준다.}
+\label{fig:central_dogma_vs_mnemonic}
+\end{figure}
+
 \subsection{6연산의 축 분리}
 
 6연산은 두 가지 축으로 나뉜다.
@@ -206,6 +289,61 @@ TEM에서 이 연산은 \textbf{잔상(Afterimage) 시스템}으로 구현된다
 \subsection{레트로바이러스 구조적 대응}
 
 6연산의 인지심리학적 근거와 별개로, 각 연산은 HIV-1 레트로바이러스의 생활사와 구조적으로 대응한다. 이 대응은 6연산의 증거가 아니라, 기억 변형이 바이러스 진화와 동일한 수학적 구조를 공유한다는 보조적 관찰이다\cite{pastuzyn2018}.
+
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.9\textwidth}{!}{%
+\begin{tikzpicture}[
+    auto, node distance=1.5cm and 4.5cm,
+    box/.style={rectangle, draw, rounded corners, minimum height=0.8cm, inner sep=2mm, align=center, thick},
+    hiv/.style={box, fill=purple!5, draw=purple!80!black},
+    mem/.style={box, fill=orange!5, draw=orange!80!black},
+    arr/.style={-Stealth, thick},
+    matcharr/.style={Stealth-Stealth, thick, densely dotted, draw=black!50},
+    lbl/.style={fill=white, inner sep=2pt, font=\scriptsize}
+]
+
+% HIV Lifecycle (Left Column)
+\node[hiv] (h1) {1. 세포 진입 및 탈각};
+\node[hiv, below=of h1] (h3) {2. Provirus 통합 (Host DNA 덮어쓰기)};
+\node[hiv, below=of h3] (h4) {3. APOBEC3G 과변이};
+\node[hiv, below=of h4] (h5) {4. 항원 변이 (환경 압력 적응)};
+\node[hiv, below=of h5] (h6) {5. Template Switching (재조합)};
+
+\draw[arr] (h1) -- (h3);
+\draw[arr] (h3) -- (h4);
+\draw[arr] (h4) -- (h5);
+\draw[arr] (h5) -- (h6);
+
+% Memory Cycle (Right Column)
+\node[mem, right=of h1] (m1) {1. 회상 (기억 불안정화)};
+\node[mem, below=of m1] (m3) {2. 파괴적 복제 (Op 1. 통합)};
+\node[mem, below=of m3] (m4) {3. 편향적 변이 (Op 2)};
+\node[mem, below=of m4] (m5) {4. 의도적 선택 (Op 3)};
+\node[mem, below=of m5] (m6) {5. 기억 재조합 (Op 6)};
+
+\draw[arr] (m1) -- (m3);
+\draw[arr] (m3) -- (m4);
+\draw[arr] (m4) -- (m5);
+\draw[arr] (m5) -- (m6);
+
+% Correspondences
+\draw[matcharr] (h1) -- node[lbl]{Destabilization} (m1);
+\draw[matcharr] (h3) -- node[lbl]{Overwrite / Integration} (m3);
+\draw[matcharr] (h4) -- node[lbl]{External direction} (m4);
+\draw[matcharr] (h5) -- node[lbl]{Curation / Evasion} (m5);
+\draw[matcharr] (h6) -- node[lbl]{Cross-template} (m6);
+
+% Titles
+\node[font=\bfseries\color{purple!60!black}, above=1cm of h1] {HIV-1 생활사 (Lifecycle)};
+\node[font=\bfseries\color{orange!60!black}, above=1cm of m1] {기억 변형 사이클 (Memory Cycle)};
+
+\end{tikzpicture}
+}
+\caption{레트로바이러스(HIV-1) 생활사와 기억 변형 사이클의 구조적 병렬 대응 시각화.}
+\label{fig:retrovirus}
+\end{figure}
 
 \begin{table}[htbp]
 \centering
@@ -312,21 +450,20 @@ Algorithm~\ref{alg:byeori}은 별이엔진 V4의 전체 계산 과정을 의사�
   $B_{\text{prev}}$: 이전 세션의 bucket\;
 }
 \KwOutput{%
-  $\alpha \in [0,1]$: alignment score\;
-  $P$: transition pattern\;
+  $\alpha \in [0,1]$: alignment score, \quad $P$: transition pattern\;
 }
 \BlankLine
-\tcc{Step 1 --- 장면별 감정 유사도 (Scene Score)}
+\tcp*[l]{\textsf{\textbf{Step 1:}} 장면별 감정 유사도 (Scene Score)}
 \For{$i \leftarrow 1$ \KwTo $n$}{
-  $s_i \leftarrow \max\!\big(0,\; \cos(\mathbf{u}_i,\, \mathbf{o}_i)\big)$ \tcp*{17D 코사인 유사도}
+  $s_i \leftarrow \max\!\big(0,\; \cos(\mathbf{u}_i,\, \mathbf{o}_i)\big)$ \tcp*[r]{17D 코사인 유사도}
 }
 \BlankLine
-\tcc{Step 2 --- 수준 유사도 (Level)}
+\tcp*[l]{\textsf{\textbf{Step 2:}} 수준 유사도 (Level)}
 $\ell \leftarrow \dfrac{1}{n}\displaystyle\sum_{i=1}^{n} s_i$\;
 \BlankLine
-\tcc{Step 3 --- 궤적 형태 유사도 (Shape)}
+\tcp*[l]{\textsf{\textbf{Step 3:}} 궤적 형태 유사도 (Shape)}
 \eIf{$n < 3$}{
-  $\sigma \leftarrow 1.0$ \tcp*{정보 부재 $\to$ 중립}
+  $\sigma \leftarrow 1.0$ \tcp*[r]{정보 부재 $\to$ 중립}
 }{
   \For{$i \leftarrow 2$ \KwTo $n$}{
     $\Delta\mathbf{u}_{i-1} \leftarrow \mathbf{u}_i - \mathbf{u}_{i-1}$\;
@@ -336,20 +473,24 @@ $\ell \leftarrow \dfrac{1}{n}\displaystyle\sum_{i=1}^{n} s_i$\;
   $\sigma \leftarrow \max(0,\, \sigma_{\text{raw}})$\;
 }
 \BlankLine
-\tcc{Step 4 --- VOID 보정}
-$\nu \leftarrow \begin{cases} 0.7 & \text{if } \text{void}_u \wedge \neg\,\text{void}_o \\ 1.0 & \text{otherwise} \end{cases}$\;
+\tcp*[l]{\textsf{\textbf{Step 4:}} VOID 보정}
+\eIf{$\text{void}_u = \text{true}$ \textbf{and} $\text{void}_o = \text{false}$}{
+  $\nu \leftarrow 0.7$\;
+}{
+  $\nu \leftarrow 1.0$\;
+}
 \BlankLine
-\tcc{Step 5 --- 정렬도 산출}
+\tcp*[l]{\textsf{\textbf{Step 5:}} 정렬도 산출}
 $\alpha \leftarrow \text{clamp}\!\big(\ell \times \sigma \times \nu,\; 0,\; 1\big)$\;
 \BlankLine
-\tcc{Step 6 --- 고착 감지 (Fixation Detection)}
+\tcp*[l]{\textsf{\textbf{Step 6:}} 고착 감지 (Fixation Detection)}
 \If{$n \geq 3$}{
   $\mathcal{R} \leftarrow$ last 3 vectors of $\{\mathbf{u}_i\}$\;
   $f \leftarrow \text{mean pairwise } \cos(\mathcal{R})$\;
   \If{$f \geq 0.85$}{$B \leftarrow \texttt{FIXATED}$\;}
 }
 \BlankLine
-\tcc{Step 7 --- Bucket 판정 (히스테리시스 적용)}
+\tcp*[l]{\textsf{\textbf{Step 7:}} Bucket 판정 (히스테리시스 적용)}
 \uIf{$B \neq \texttt{FIXATED}$}{
   \uIf{$B_{\text{prev}} = \texttt{HIGH}$ \textbf{and} $\alpha \geq 0.40$}{$B \leftarrow \texttt{HIGH}$}
   \uElseIf{$B_{\text{prev}} = \texttt{LOW}$ \textbf{and} $\alpha \leq 0.15$}{$B \leftarrow \texttt{LOW}$}
@@ -358,13 +499,16 @@ $\alpha \leftarrow \text{clamp}\!\big(\ell \times \sigma \times \nu,\; 0,\; 1\bi
   \Else{$B \leftarrow \texttt{MID}$}
 }
 \BlankLine
-\tcc{Step 8 --- 전이 패턴 결정}
-\uIf{$B = \texttt{FIXATED}$}{$P \leftarrow \texttt{fixation}$}
-\uElseIf{$\ell \geq 0.5$ \textbf{and} $\sigma < 0.3$ \textbf{and} $n \geq 3$}{$P \leftarrow \texttt{displacement}$}
-\uElseIf{$B = \texttt{HIGH}$}{$P \leftarrow \texttt{echo\_follow}$}
-\uElseIf{$B = \texttt{MID}$}{$P \leftarrow \texttt{bridge}$}
-\uElseIf{$B = \texttt{LOW}$}{
-  $P \leftarrow$ match mismatch type: void $\to$ \texttt{avoidance}, target $\to$ \texttt{displacement}, emotion/attribution $\to$ \texttt{contradiction}, default $\to$ \texttt{bridge}\;
+\tcp*[l]{\textsf{\textbf{Step 8:}} 전이 패턴 결정}
+\uIf{$B = \texttt{FIXATED}$}{ $P \leftarrow \texttt{fixation}$ }
+\uElseIf{$\ell \geq 0.5$ \textbf{and} $\sigma < 0.3$ \textbf{and} $n \geq 3$}{ $P \leftarrow \texttt{displacement}$ }
+\uElseIf{$B = \texttt{HIGH}$}{ $P \leftarrow \texttt{echo\_follow}$ }
+\uElseIf{$B = \texttt{MID}$}{ $P \leftarrow \texttt{bridge}$ }
+\Else{
+  \uIf{\text{mismatch is void}}{ $P \leftarrow \texttt{avoidance}$ }
+  \uElseIf{\text{mismatch is target}}{ $P \leftarrow \texttt{displacement}$ }
+  \uElseIf{\text{mismatch is emotion/attribution}}{ $P \leftarrow \texttt{contradiction}$ }
+  \Else{ $P \leftarrow \texttt{bridge}$ }
 }
 \BlankLine
 \Return $(\alpha,\, P)$\;
@@ -797,11 +941,11 @@ clarity 값에 따라 세 가지 유형의 앵커 이미지가 선택된다: tex
 
 TEM은 기억~--- 트라우마를 포함한~--- 을 다루므로, 안전 시스템이 필수적이다. 세 단계로 필터링한다.
 
-\textbf{BLOCK\_HIGH:} 즉시 세션 중단 + 위기 대응 리소스 제공. 자살, 살인, 강간, 성착취 등.
-
-\textbf{BLOCK\_MID:} 경고 다이얼로그 + 계속 여부 선택. ``죽여버리'', ``학교 폭력'' 등.
-
-\textbf{MONITOR\_ONLY:} 통과 + 로그. ``우울해'', ``사라지고 싶어'', ``허무해'' 등. 이것들은 TEM의 핵심 소재이므로 차단하지 않는다.
+\begin{itemize}
+    \item \textbf{BLOCK\_HIGH:} 즉시 세션 중단 + 위기 대응 리소스 제공. 자살, 살인, 강간, 성착취 등.
+    \item \textbf{BLOCK\_MID:} 경고 다이얼로그 + 계속 여부 선택. ``죽여버리'', ``학교 폭력'' 등.
+    \item \textbf{MONITOR\_ONLY:} 통과 + 로그. ``우울해'', ``사라지고 싶어'', ``허무해'' 등. 이것들은 TEM의 핵심 소재이므로 차단하지 않는다.
+\end{itemize}
 
 \subsection{N회차 트리거와 시제 감지}
 
@@ -827,31 +971,22 @@ TEM은 기억~--- 트라우마를 포함한~--- 을 다루므로, 안전 시스�
 
 \subsection{한계}
 
-\textbf{실증 검증의 부재.} 별이엔진 V4의 shape\_similarity가 자기보고와 유의미한 상관을 보이는지는 파일럿 테스트로 확인해야 한다. 이 검증이 실패하면 V4의 곱셈 구조는 $\text{alignment} = \text{level} \times \text{void\_mod}$로 축소되어야 한다.
-
-\textbf{오염 벡터 상수의 미튜닝.} DECAY\_RATE(0.05), HETERO\_SCALE(4.0), FIXATION\_CONV\_WEIGHT(0.4) 등 모든 상수는 잠정값이다.
-
-\textbf{재조합 트리거의 미구현.} Op~6의 트리거 조건은 정의되었으나 후속 연출은 미구현이다.
-
-\textbf{SceneNavigator 통합 미완.} 일부 경로에서 선형 진행($\text{currentScene} + 1$)이 잔존한다.
-
-\textbf{감정 차원 불일치.} 사용자 입력은 6D이고 내부 표현은 17D이다. 부분 매핑으로 처리하고 있으나 통일이 필요하다.
-
-\textbf{구조적 유추의 범위.} 레트로바이러스 대응은 수학적으로 동일한 연산에 한정하여 주장하였으나, 두 시스템이 ``같은 방정식을 푼다''는 것이 ``같은 현상이다''를 의미하지는 않는다\cite{gentner1983}.
+\begin{itemize}
+    \item \textbf{실증 검증의 부재.} 별이엔진 V4의 shape\_similarity가 자기보고와 유의미한 상관을 보이는지는 파일럿 테스트로 확인해야 한다. 이 검증이 실패하면 V4의 곱셈 구조는 $\text{alignment} = \text{level} \times \text{void\_mod}$로 축소되어야 한다.
+    \item \textbf{오염 벡터 상수의 미튜닝.} DECAY\_RATE(0.05), HETERO\_SCALE(4.0), FIXATION\_CONV\_WEIGHT(0.4) 등 모든 상수는 잠정값이다.
+    \item \textbf{재조합 트리거의 미구현.} Op~6의 트리거 조건은 정의되었으나 후속 연출은 미구현이다.
+    \item \textbf{SceneNavigator 통합 미완.} 일부 경로에서 선형 진행($\text{currentScene} + 1$)이 잔존한다.
+    \item \textbf{감정 차원 불일치.} 사용자 입력은 6D이고 내부 표현은 17D이다. 부분 매핑으로 처리하고 있으나 통일이 필요하다.
+    \item \textbf{구조적 유추의 범위.} 레트로바이러스 대응은 수학적으로 동일한 연산에 한정하여 주장하였으나, 두 시스템이 ``같은 방정식을 푼다''는 것이 ``같은 현상이다''를 의미하지는 않는다\cite{gentner1983}.
+\end{itemize}
 
 \subsection{향후 방향}
 
-\subsubsection{보편적 감정 지형의 추출}
-
-충분한 기억과 play가 축적되면, 개별 기억의 Strata 지형을 중첩하여 기억 내용에 비의존적인 보편적 감정 패턴을 추출할 수 있다. HIV 계통역학에서 Zanini et al.(2015)은 여러 환자의 바이러스 진화를 중첩하여 적응도 지형의 봉우리 위치가 반복됨을 발견했다\cite{zanini2015}. 동일한 방법론이 TEM에서 보편적 감정 어트랙터, 금지된 감정 조합, 문화 간 지형 차이를 드러낼 수 있다.
-
-\subsubsection{기질-비의존적 속성의 비교}
-
-변이의 방향은 분자 수준과 경험 수준에서 다르다. 그러나 방향이 아닌 기질-비의존적 속성~--- 금지 구조의 분포(BLOSUM 치환 행렬\cite{henikoff1992} vs 감정 전이 행렬), 강건성/취약성 분포, 축적 역학의 곡선 형태\cite{rambaut2004}, 오류 임계의 스케일링 관계~--- 은 비교 가능하다. 이 네 가지 비교가 보편적 변형 역학(universal transformation dynamics)의 존재 여부를 묻는 프로그램을 구성한다.
-
-\subsubsection{화자 상태 붕괴}
-
-오염이 충분히 축적되면 화자 상태가 3단계로 붕괴한다: narrator(``나는 울고 있었다'') $\to$ object(``그녀는 울고 있었다'') $\to$ absent(``누군가 울고 있었던 것 같다''). 바이러스학의 세포병변 효과(cytopathic effect)에 대응한다.
+\begin{itemize}
+    \item \textbf{보편적 감정 지형의 추출:} 충분한 기억과 play가 축적되면, 개별 기억의 Strata 지형을 중첩하여 기억 내용에 비의존적인 보편적 감정 패턴을 추출할 수 있다. HIV 계통역학에서 Zanini et al.(2015)은 여러 환자의 바이러스 진화를 중첩하여 적응도 지형의 봉우리 위치가 반복됨을 발견했다\cite{zanini2015}. 동일한 방법론이 TEM에서 보편적 감정 어트랙터, 금지된 감정 조합, 문화 간 지형 차이를 드러낼 수 있다.
+    \item \textbf{기질-비의존적 속성의 비교:} 변이의 방향은 분자 수준과 경험 수준에서 다르다. 그러나 방향이 아닌 기질-비의존적 속성~--- 금지 구조의 분포(BLOSUM 치환 행렬\cite{henikoff1992} vs 감정 전이 행렬), 강건성/취약성 분포, 축적 역학의 곡선 형태\cite{rambaut2004}, 오류 임계의 스케일링 관계~--- 은 비교 가능하다. 이 네 가지 비교가 보편적 변형 역학(universal transformation dynamics)의 존재 여부를 묻는 프로그램을 구성한다.
+    \item \textbf{화자 상태 붕괴:} 오염이 충분히 축적되면 화자 상태가 3단계로 붕괴한다: narrator(``나는 울고 있었다'') $\to$ object(``그녀는 울고 있었다'') $\to$ absent(``누군가 울고 있었던 것 같다''). 바이러스학의 세포병변 효과(cytopathic effect)에 대응한다.
+\end{itemize}
 
 
 % ────────────────────────────────────────
