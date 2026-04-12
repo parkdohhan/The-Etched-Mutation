@@ -299,3 +299,70 @@ PLAY 클릭 → archive.js (기억 목록)
 2. 우선순위 A — fixation 복합 신호 / 재조합 트리거 / 장면 단위 잔상
 3. 우선순위 B — AF 간섭 억압 / telling_trajectory / 17D↔6D
 4. 우선순위 C — LIVE 메뉴 연결 등
+
+---
+
+## 📚 레퍼런스 (다궤적 시각화 / 비선형 서사 / 독자 흔적)
+
+TEM과 정확히 일치하는 도구는 없지만, 부분 레퍼런스 4개를 합치면 시각 문법의 대부분을 커버함.
+**핵심 정의**: TEM ≈ "문학 작품용 XState Visualizer + 독자 흔적 레이어".
+
+### 시각화 패턴 — 직접 UI 훔쳐올 만한 것
+
+- **[stately.ai/viz](https://stately.ai/viz)** (XState Visualizer) — ⭐ 가장 가까움.
+  상태 기계를 노드 그래프로 자동 배치. **현재 경로 하이라이트 + 노드 클릭 시 우측 Inspector 패널** 패턴이 우리 도구와 거의 동일. 단, **한 번에 한 궤적만** 시뮬레이션. 우리는 여러 궤적 동시 비교가 필요.
+  주의: 도구 자체는 프로그래머용 학습곡선 가파름 — 배울 필요 없음, **UI 패턴만 훔칠 것**.
+
+- **Mixpanel Pathfinder / Amplitude Pathfinder** — 유저 행동 분석 툴.
+  "다수 진입점 → 수렴점"을 Sankey로 시각화. 우리의 "8개 감정 진입 → K 수렴" 구조와 형태가 일치. 무료 계정 데모 데이터로 확인 가능.
+
+- **Articy:Draft** — 게임 내러티브 저작도구.
+  분기 서사 DAG. 작가가 노드 직접 배치. **노드 안에 메타데이터 박는 시각 레이아웃** 참고. 유튜브 데모 영상 다수.
+
+### 비선형 서사 저작도구 — 개념적 조상
+
+- **Tinderbox / Storyspace** (Eastgate, Mark Bernstein) — 하이퍼텍스트 문학 도구 원조 (1980s).
+  씬 노드 + 의미 연결이라는 발상의 학술적 조상. **우리 "브릿지" 개념과 가장 가까운 역사적 전례.** 유료/Mac 전용이라 도구 자체는 접근 어려움. 구글 학술 검색으로 논문 읽는 게 실용적.
+
+- **Twine** — 가장 유명한 분기 서사 무료 도구. 배우기 쉬움.
+  한계: 명시적 분기만. **누적 상태 기반 변주 없음**.
+
+- **Ink (Inkle)** — 80 Days, Heaven's Vault 제작사 도구.
+  Twine보다 훨씬 정교. 변수/상태 기반 분기. VSCode 플러그인으로 시각 그래프 지원.
+
+### 독자 해석 누적 — 궤적 브릿지의 기술 모델
+
+- **[hypothes.is](https://hypothes.is)** (Hypothesis) — 웹 페이지에 주석 다는 도구.
+  다른 사람 주석을 같이 봄. **궤적 브릿지가 다음 플레이어에게 노출되는 메커니즘의 기술적 모델**로 쓸 수 있음.
+
+- **[Genius.com](https://genius.com)** — 가사 주석 플랫폼.
+  한 줄에 여러 해석. **단, Genius는 인기도 정렬** — 우리는 공명 도달 여부만 씀. 페이스북식 인기도 매커닉은 TEM에 안 맞음 (명시적 거부).
+
+- **Soulsborne 메시지 시스템** (From Software 게임) — ⭐ 가장 닮은 형태.
+  "Try jumping" 같은 짧은 메시지를 다음 플레이어가 봄. 익명, 궤적 기반. **trajectory_bridge가 가장 가까움.**
+
+### 학술 토대
+
+- Janet Murray, *Hamlet on the Holodeck* (1997) — 인터랙티브 서사의 바이블.
+- Marie-Laure Ryan, *Narrative as Virtual Reality* — 다궤적 서사 이론.
+- Espen Aarseth, *Cybertext* — ergodic literature 개념. **TEM이 정확히 이 카테고리.**
+
+### 문학적 전례 (작품 레벨, 도구 아님)
+
+- Cortázar, *Hopscotch (Rayuela)* — 다중 읽기 순서.
+- B.S. Johnson, *The Unfortunates* — 분권본, 임의 순서 읽기.
+- Mark Z. Danielewski, *Only Revolutions* — 비선형 인쇄.
+- Aaron Reed, *Subcutanean* — 독자마다 다른 책(작품 단위 변이, 궤적 단위는 아님).
+
+### 요약 — TEM의 새로움
+
+```
+시각 문법       = XState Visualizer
+수렴 흐름       = Mixpanel Pathfinder
+노드 저작       = Tinderbox / Articy
+독자 흔적       = Soulsborne / Hypothesis
+─────────────────────────────────────
+TEM = 위 4개 조합 + 감정 진입 + 누적 오염 + 공명 도달자의 해석 누적
+```
+
+이 네 개를 한 시스템에 묶은 전례는 확인되지 않음.

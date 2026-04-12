@@ -3432,6 +3432,10 @@ window.saveMemory = saveMemory;
 window.cancelEdit = cancelEdit;
 window.exportMemoriesJSON = exportMemoriesJSON;
 window.importMemoriesJSON = importMemoriesJSON;
+window.openTrajectoryViewer = function() {
+    const id = currentMemoryId || '';
+    window.open('admin-trajectory.html?memory=' + encodeURIComponent(id), '_blank');
+};
 window.previewMakeChoice = previewMakeChoice;
 window.toggleVectorPanel = toggleVectorPanel;
 window.toggleVoidPanel = toggleVoidPanel;
