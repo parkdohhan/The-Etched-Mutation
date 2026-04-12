@@ -97,8 +97,72 @@ async function initTrajectoryViewer(memoryId) {
 
   renderEmotionList();
   renderStats();
+  renderMemoryMeta();
   bindToggles();
   renderGraph();
+}
+
+// ─── 메모리 기본 설정 패널 (우측 하단) ─────────────────────
+function renderMemoryMeta() {
+  const el = document.getElementById('tvMemoryMeta');
+  if (!el) return;
+  const m = state.memory;
+  if (!m) { el.innerHTML = '<div class="tv-detail-empty">메모리 없음</div>'; return; }
+
+  const keywords = Array.isArray(m.memory_words) ? m.memory_words.join(', ') : '';
+
+  el.innerHTML = `
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:#c4a882;margin-bottom:2px;">${escapeHtml(m.code || '')}</div>
+    <div style="font-size:0.7rem;color:#7c7466;margin-bottom:14px;">id: ${m.id?.slice(0,8) || '—'}…</div>
+
+    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">제목</div>
+    <input type="text" id="metaTitle" value="${escapeHtml(m.title || '')}" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.85rem;border-radius:2px;margin-bottom:12px;" />
+
+    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">설명</div>
+    <textarea id="metaDescription" rows="3" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:12px;resize:vertical;">${escapeHtml(m.description || '')}</textarea>
+
+    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">키워드 (쉼표 구분)</div>
+    <input type="text" id="metaKeywords" value="${escapeHtml(keywords)}" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:12px;" />
+
+    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">완성 문장</div>
+    <textarea id="metaCompletedSentence" rows="2" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:14px;resize:vertical;">${escapeHtml(m.completed_sentence || '')}</textarea>
+
+    <button class="tv-toggle" id="metaSaveBtn" style="padding:6px 12px;font-size:0.75rem;">저장</button>
+    <span id="metaSaveStatus" style="margin-left:10px;font-size:0.7rem;color:#7c7466;"></span>
+  `;
+
+  document.getElementById('metaSaveBtn').addEventListener('click', saveMemoryMeta);
+}
+
+async function saveMemoryMeta() {
+  const statusEl = document.getElementById('metaSaveStatus');
+  const title = document.getElementById('metaTitle').value.trim();
+  const desc = document.getElementById('metaDescription').value.trim();
+  const keywords = document.getElementById('metaKeywords').value.split(',').map(s => s.trim()).filter(Boolean);
+  const completed = document.getElementById('metaCompletedSentence').value.trim();
+
+  statusEl.textContent = '저장 중…';
+  statusEl.style.color = '#7c7466';
+  try {
+    const sb = await getSupabaseClient();
+    const { error } = await sb.from('memories').update({
+      title, description: desc || null,
+      memory_words: keywords.length ? keywords : null,
+      completed_sentence: completed || null,
+    }).eq('id', state.memory.id);
+    if (error) throw error;
+    state.memory.title = title;
+    state.memory.description = desc || null;
+    state.memory.memory_words = keywords;
+    state.memory.completed_sentence = completed || null;
+    document.getElementById('tvMemoryLabel').textContent = `${state.memory.code} — ${state.memory.title}`;
+    statusEl.textContent = '✓ 저장됨';
+    statusEl.style.color = '#6aa383';
+    setTimeout(() => { statusEl.textContent = ''; }, 2000);
+  } catch (e) {
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.color = '#b85540';
+  }
 }
 
 // 외부(admin.html)에서 호출 가능하도록 노출
@@ -194,6 +258,179 @@ function renderStats() {
     `씬: ${sceneCount}<br>선택지: ${choiceCount}<br>작가 브릿지: ${authorBridgeCount}<br>궤적 브릿지: ${trajBridgeCount}<br>활성 궤적: ${selected}`;
 }
 
+// ─── 모달 ───────────────────────────────────────────────────
+function openModal(html) {
+  const modal = document.getElementById('tvModal');
+  const body = document.getElementById('tvModalBody');
+  if (!modal || !body) return;
+  body.innerHTML = html;
+  modal.style.display = 'flex';
+  // ESC / 배경 클릭으로 닫기
+  modal.onclick = (ev) => { if (ev.target === modal) closeModal(); };
+}
+function closeModal() {
+  const modal = document.getElementById('tvModal');
+  if (modal) modal.style.display = 'none';
+}
+window.tvCloseModal = closeModal;
+
+// ─── 새 기억 추가 ───────────────────────────────────────────
+function openNewMemoryModal() {
+  openModal(`
+    <h3 style="margin:0 0 14px;font-family:'Cormorant Garamond',serif;color:#c4a882;font-weight:300;">새 기억 만들기</h3>
+    <p style="color:#7c7466;font-size:0.78rem;margin:0 0 16px;line-height:1.6;">제목과 코드를 입력하세요. 이후 Canvas에서 씬을 추가합니다.</p>
+
+    <label style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;">제목</label>
+    <input id="nmTitle" type="text" placeholder="편지" style="width:100%;margin-top:4px;margin-bottom:10px;padding:8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.88rem;border-radius:2px;" />
+
+    <label style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;">코드 (E-NNN)</label>
+    <input id="nmCode" type="text" placeholder="E-005" style="width:100%;margin-top:4px;margin-bottom:10px;padding:8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.88rem;border-radius:2px;" />
+
+    <label style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;">첫 씬 본문 (선택)</label>
+    <textarea id="nmFirstText" rows="3" placeholder="(비워두면 빈 씬 하나로 시작)" style="width:100%;margin-top:4px;margin-bottom:14px;padding:8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.82rem;border-radius:2px;resize:vertical;"></textarea>
+
+    <div id="nmStatus" style="font-size:0.72rem;color:#7c7466;margin-bottom:10px;min-height:1em;"></div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="tv-toggle" onclick="tvCloseModal()" style="padding:6px 14px;font-size:0.78rem;">취소</button>
+      <button class="tv-toggle" id="nmCreateBtn" style="padding:6px 14px;font-size:0.78rem;background:rgba(106,163,131,0.12);border-color:rgba(106,163,131,0.4);">생성</button>
+    </div>
+  `);
+  document.getElementById('nmCreateBtn').addEventListener('click', createNewMemory);
+  document.getElementById('nmTitle').focus();
+}
+
+async function createNewMemory() {
+  const title = document.getElementById('nmTitle').value.trim();
+  const code = document.getElementById('nmCode').value.trim();
+  const firstText = document.getElementById('nmFirstText').value.trim();
+  const statusEl = document.getElementById('nmStatus');
+
+  if (!title) { statusEl.textContent = '제목을 입력하세요.'; statusEl.style.color = '#b85540'; return; }
+  if (!code)  { statusEl.textContent = '코드를 입력하세요.'; statusEl.style.color = '#b85540'; return; }
+
+  statusEl.textContent = '생성 중…';
+  statusEl.style.color = '#7c7466';
+
+  try {
+    const sb = await getSupabaseClient();
+    // 1) memories insert
+    const { data: mem, error: me } = await sb.from('memories').insert({
+      code, title,
+      status: 'Fetus', source: 'curated',
+      layers: 0, dilution: 100, is_public: true,
+      meta: { emotion_entries: {}, key_scenes: [] }
+    }).select().single();
+    if (me) throw me;
+
+    // 2) 첫 씬 insert
+    const { data: sc, error: se } = await sb.from('scenes').insert({
+      memory_id: mem.id, scene_order: 0,
+      text: firstText || '',
+      emotion_dist: {}, emotion_vector: {},
+      scene_type: 'normal',
+      meta: { scene_code: 'A', motif_tags: [], author_bridges: [] }
+    }).select().single();
+    if (se) throw se;
+
+    statusEl.textContent = '✓ 생성됨. 로딩…';
+    statusEl.style.color = '#6aa383';
+
+    // 3) 해당 메모리로 Canvas 전환
+    setTimeout(async () => {
+      closeModal();
+      window.currentMemoryId = mem.id;
+      state.memory = null; // 강제 리로드
+      await initTrajectoryViewer(mem.id);
+    }, 600);
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.color = '#b85540';
+  }
+}
+
+// ─── 씬 삭제 ────────────────────────────────────────────────
+async function deleteScene(s) {
+  if (!confirm(`씬 "${s.meta?.scene_code || s.scene_order}" 을(를) 삭제할까요?\n(복구 불가)`)) return;
+  try {
+    const sb = await getSupabaseClient();
+    // choices 먼저 삭제 (FK)
+    await sb.from('choices').delete().eq('scene_id', s.id);
+    const { error } = await sb.from('scenes').delete().eq('id', s.id);
+    if (error) throw error;
+    // 로컬 state에서 제거
+    state.scenes = state.scenes.filter(x => x.id !== s.id);
+    state.selectedSceneId = null;
+    document.getElementById('tvDetail').innerHTML = '<div class="tv-detail-empty">씬이 삭제되었습니다.</div>';
+    renderGraph();
+    renderStats();
+  } catch (e) {
+    console.error(e);
+    alert('삭제 실패: ' + e.message);
+  }
+}
+
+// ─── 사운드 미리듣기 (Web Audio API) ────────────────────────
+let _audioCtx = null;
+let _currentPreview = null;
+async function previewSound(url, volume) {
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_currentPreview) { try { _currentPreview.stop(); } catch(e){} _currentPreview = null; }
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('파일 로드 실패: ' + res.status);
+    const buf = await res.arrayBuffer();
+    const audioBuf = await _audioCtx.decodeAudioData(buf);
+
+    const src = _audioCtx.createBufferSource();
+    src.buffer = audioBuf;
+    const gain = _audioCtx.createGain();
+    gain.gain.value = Math.max(0, Math.min(1, volume));
+    src.connect(gain).connect(_audioCtx.destination);
+    src.start();
+    _currentPreview = src;
+    // 최대 10초 미리듣기
+    setTimeout(() => { try { src.stop(); } catch(e){} }, 10000);
+  } catch (e) {
+    alert('재생 실패: ' + e.message);
+  }
+}
+
+// ─── 새 씬 추가 ─────────────────────────────────────────────
+async function addNewScene() {
+  if (!state.memory) { alert('먼저 메모리를 선택하세요.'); return; }
+  const existingCodes = new Set(state.scenes.map(s => s.meta?.scene_code).filter(Boolean));
+  // 기본 코드: 다음 알파벳 (A..Z)
+  let nextCode = '';
+  for (let i = 0; i < 26; i++) {
+    const c = String.fromCharCode(65 + i);
+    if (!existingCodes.has(c)) { nextCode = c; break; }
+  }
+  const nextOrder = Math.max(-1, ...state.scenes.map(s => s.scene_order ?? -1)) + 1;
+
+  try {
+    const sb = await getSupabaseClient();
+    const { data: sc, error: se } = await sb.from('scenes').insert({
+      memory_id: state.memory.id,
+      scene_order: nextOrder,
+      text: '',
+      emotion_dist: {}, emotion_vector: {},
+      scene_type: 'normal',
+      meta: { scene_code: nextCode || String(nextOrder), motif_tags: [], author_bridges: [] }
+    }).select().single();
+    if (se) throw se;
+    state.scenes.push(sc);
+    renderGraph();
+    renderStats();
+    selectScene(sc);
+  } catch (e) {
+    console.error(e);
+    alert('씬 추가 실패: ' + e.message);
+  }
+}
+
 function bindToggles() {
   document.getElementById('tvToggleAll').addEventListener('click', (ev) => {
     const allOn = ev.target.classList.toggle('active');
@@ -222,6 +459,10 @@ function bindToggles() {
     // 모드 전환 시 드래그 저장 초기화 여부 물음 (노드가 튈 수 있으니)
     renderGraph();
   });
+  const addMemBtn = document.getElementById('tvAddMemoryBtn');
+  if (addMemBtn) addMemBtn.addEventListener('click', openNewMemoryModal);
+  const addSceneBtn = document.getElementById('tvAddSceneBtn');
+  if (addSceneBtn) addSceneBtn.addEventListener('click', addNewScene);
 }
 
 // ─── 그래프 ────────────────────────────────────────────────
@@ -550,42 +791,202 @@ function renderDetail(s, tab) {
   container.querySelectorAll('.tv-tab').forEach(btn => {
     btn.addEventListener('click', () => renderDetail(s, btn.dataset.tab));
   });
+
+  // 편집 모드 이벤트 바인딩
+  if (tab === 'detail') bindDetailFormEvents(s);
+}
+
+function bindDetailFormEvents(s) {
+  // 저장 버튼
+  const saveBtn = document.getElementById('sceneSaveBtn');
+  if (saveBtn) saveBtn.addEventListener('click', () => saveScene(s));
+
+  // 삭제 버튼
+  const delBtn = document.getElementById('sceneDeleteBtn');
+  if (delBtn) delBtn.addEventListener('click', () => deleteScene(s));
+
+  // 사운드 미리듣기
+  const testBtn = document.getElementById('sceneSoundTestBtn');
+  if (testBtn) testBtn.addEventListener('click', () => {
+    const url = document.getElementById('sceneSoundUrl').value.trim();
+    const vol = parseFloat(document.getElementById('sceneSoundVolume').value) || 1;
+    if (!url) { alert('사운드 URL이 비어있습니다.'); return; }
+    previewSound(url, vol);
+  });
+
+  // 브릿지 추가
+  const addBtn = document.getElementById('bridgeAddBtn');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    if (!s.meta) s.meta = {};
+    if (!Array.isArray(s.meta.author_bridges)) s.meta.author_bridges = [];
+    s.meta.author_bridges.push({ id: `ab-${Date.now()}`, text: '', reveal_hint: '' });
+    renderDetail(s, 'detail'); // 재렌더
+  });
+
+  // 브릿지 삭제
+  document.querySelectorAll('.bridgeDel').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (s.meta?.author_bridges) {
+        s.meta.author_bridges.splice(idx, 1);
+        renderDetail(s, 'detail');
+      }
+    });
+  });
+}
+
+async function saveScene(s) {
+  const statusEl = document.getElementById('sceneSaveStatus');
+  const text = document.getElementById('sceneText').value;
+  const emo = {};
+  document.querySelectorAll('.sceneEmoInput').forEach(inp => {
+    const v = parseFloat(inp.value);
+    if (!isNaN(v) && v > 0) emo[inp.dataset.emo] = Math.min(1, Math.max(0, v));
+  });
+  const motifsStr = document.getElementById('sceneMotifs').value;
+  const motifs = motifsStr.split(',').map(x => x.trim()).filter(Boolean);
+  const sceneCode = document.getElementById('sceneCode').value.trim();
+  const soundUrl = document.getElementById('sceneSoundUrl')?.value.trim() || '';
+  const soundVolume = parseFloat(document.getElementById('sceneSoundVolume')?.value) || 1;
+  const soundRadius = parseFloat(document.getElementById('sceneSoundRadius')?.value) || 15;
+
+  // 브릿지 입력 수집
+  const bridges = [];
+  document.querySelectorAll('.bridgeText').forEach((ta, i) => {
+    const hintEl = document.querySelectorAll('.bridgeHint')[i];
+    const txt = ta.value.trim();
+    if (!txt) return;
+    const existing = s.meta?.author_bridges?.[i] || {};
+    bridges.push({
+      id: existing.id || `ab-${Date.now()}-${i}`,
+      text: txt,
+      reveal_hint: hintEl ? hintEl.value.trim() : ''
+    });
+  });
+
+  statusEl.textContent = '저장 중…';
+  statusEl.style.color = '#7c7466';
+
+  try {
+    const sb = await getSupabaseClient();
+    const newMeta = { ...(s.meta || {}) };
+    newMeta.motif_tags = motifs;
+    newMeta.author_bridges = bridges;
+    if (sceneCode) newMeta.scene_code = sceneCode;
+    if (soundUrl) {
+      newMeta.sound_url = soundUrl;
+      newMeta.sound_volume = soundVolume;
+      newMeta.sound_radius = soundRadius;
+    } else {
+      delete newMeta.sound_url;
+      delete newMeta.sound_volume;
+      delete newMeta.sound_radius;
+    }
+
+    const { error } = await sb.from('scenes').update({
+      text,
+      emotion_dist: emo,
+      emotion_vector: emo,
+      original_emotion: JSON.stringify(emo),
+      meta: newMeta,
+    }).eq('id', s.id);
+    if (error) throw error;
+
+    // 로컬 state 업데이트
+    s.text = text;
+    s.emotion_dist = emo;
+    s.original_emotion = emo;
+    s.meta = newMeta;
+
+    statusEl.textContent = '✓ 저장됨';
+    statusEl.style.color = '#6aa383';
+    setTimeout(() => { statusEl.textContent = ''; }, 2000);
+
+    // 그래프 재렌더 (모티프/코드 바뀌면 뱃지/브릿지선 변화)
+    renderGraph();
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.color = '#b85540';
+  }
 }
 
 function renderDetailTab(s) {
   const authorBridges = (s.meta && Array.isArray(s.meta.author_bridges)) ? s.meta.author_bridges : [];
   const trajBridges = state.trajectoryBridges.filter(b => b.scene_id === s.id);
   const motifs = (s.meta && Array.isArray(s.meta.motif_tags)) ? s.meta.motif_tags : [];
+  const emo = s.original_emotion ? (typeof s.original_emotion === 'string' ? safeJsonParse(s.original_emotion) : s.original_emotion) : (s.emotion_dist || {});
+
+  // 편집 폼
+  const inputStyle = `width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;`;
+  const labelStyle = `font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;display:block;margin-top:14px;`;
+  const EMO_KEYS = ['fear','sadness','anger','guilt','shame','longing','numbness','isolation'];
 
   return `
-    <div style="font-size:0.85rem;line-height:1.6;color:#d0c8b4;margin-bottom:18px;">${escapeHtml(s.text || '')}</div>
+    <label style="${labelStyle}margin-top:0;">본문</label>
+    <textarea id="sceneText" rows="6" style="${inputStyle}resize:vertical;line-height:1.5;">${escapeHtml(s.text || '')}</textarea>
 
-    ${motifs.length ? `
-    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">모티프</div>
-    <div style="margin-bottom:14px;">${motifs.map(m => `<span style="display:inline-block;padding:2px 8px;margin:2px 4px 2px 0;font-size:0.7rem;background:rgba(196,168,130,0.1);border-radius:2px;">${m}</span>`).join('')}</div>
-    ` : ''}
+    <label style="${labelStyle}">감정 분포 (0~1)</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      ${EMO_KEYS.map(k => `
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.75rem;color:#a09886;">
+          <span style="width:54px;flex-shrink:0;">${k}</span>
+          <input type="number" class="sceneEmoInput" data-emo="${k}" min="0" max="1" step="0.05" value="${(emo[k] != null ? emo[k] : 0).toFixed(2)}" style="flex:1;padding:3px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.12);color:#e0d8c4;font-family:inherit;font-size:0.75rem;border-radius:2px;" />
+        </label>
+      `).join('')}
+    </div>
 
-    ${authorBridges.length ? `
-    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">🔗 작가 브릿지 (${authorBridges.length})</div>
-    ${authorBridges.map(b => `
-      <div style="font-size:0.78rem;color:#c0b8a4;padding:8px 10px;border-left:2px solid #6a655a;background:rgba(106,101,90,0.08);margin-bottom:6px;">
-        ${escapeHtml(b.text || '')}
-        ${b.reveal_hint ? `<div style="font-size:0.65rem;color:#7c7466;margin-top:4px;">↳ ${escapeHtml(b.reveal_hint)}</div>` : ''}
+    <label style="${labelStyle}">모티프 태그 (쉼표 구분)</label>
+    <input type="text" id="sceneMotifs" value="${escapeHtml(motifs.join(', '))}" style="${inputStyle}" />
+
+    <label style="${labelStyle}">씬 코드 (A, B, C…)</label>
+    <input type="text" id="sceneCode" value="${escapeHtml(s.meta?.scene_code || '')}" maxlength="4" style="${inputStyle}width:80px;" />
+
+    <label style="${labelStyle}">사운드 URL (Web Audio API — 공간음향)</label>
+    <input type="text" id="sceneSoundUrl" placeholder="sounds/... 또는 https://..." value="${escapeHtml(s.meta?.sound_url || '')}" style="${inputStyle}" />
+    <div style="display:flex;gap:6px;margin-top:4px;align-items:center;">
+      <label style="font-size:0.7rem;color:#7c7466;">볼륨</label>
+      <input type="number" id="sceneSoundVolume" min="0" max="1" step="0.1" value="${s.meta?.sound_volume ?? 1}" style="width:60px;padding:3px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.12);color:#e0d8c4;font-size:0.75rem;border-radius:2px;" />
+      <label style="font-size:0.7rem;color:#7c7466;">반경</label>
+      <input type="number" id="sceneSoundRadius" min="1" max="100" step="1" value="${s.meta?.sound_radius ?? 15}" style="width:60px;padding:3px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.12);color:#e0d8c4;font-size:0.75rem;border-radius:2px;" title="이 반경 안에 플레이어가 오면 최대 볼륨" />
+      <button class="tv-toggle" id="sceneSoundTestBtn" style="padding:3px 10px;font-size:0.7rem;">▶ 미리듣기</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;align-items:center;">
+      <button class="tv-toggle" id="sceneSaveBtn" style="padding:6px 14px;font-size:0.78rem;">저장</button>
+      <button class="tv-toggle" id="sceneDeleteBtn" style="padding:6px 14px;font-size:0.78rem;color:#b85540;border-color:rgba(184,85,64,0.3);">씬 삭제</button>
+      <span id="sceneSaveStatus" style="font-size:0.7rem;color:#7c7466;"></span>
+    </div>
+
+    <div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(196,168,130,0.08);">
+      <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">🔗 작가 브릿지 (${authorBridges.length})</div>
+      <div id="authorBridgesList">
+        ${authorBridges.map((b, i) => `
+          <div style="font-size:0.75rem;color:#c0b8a4;padding:8px 10px;border-left:2px solid #6a655a;background:rgba(106,101,90,0.08);margin-bottom:6px;position:relative;">
+            <textarea class="bridgeText" data-idx="${i}" rows="2" style="width:100%;padding:4px 6px;background:rgba(20,20,28,0.5);border:1px solid rgba(196,168,130,0.1);color:#c0b8a4;font-family:inherit;font-size:0.75rem;border-radius:2px;resize:vertical;">${escapeHtml(b.text || '')}</textarea>
+            <input class="bridgeHint" data-idx="${i}" placeholder="reveal_hint (선택)" value="${escapeHtml(b.reveal_hint || '')}" style="width:calc(100% - 60px);margin-top:4px;padding:3px 6px;background:rgba(20,20,28,0.5);border:1px solid rgba(196,168,130,0.08);color:#c0b8a4;font-family:inherit;font-size:0.7rem;border-radius:2px;" />
+            <button class="bridgeDel" data-idx="${i}" style="position:absolute;top:6px;right:6px;padding:2px 6px;font-size:0.65rem;background:transparent;border:1px solid rgba(184,85,64,0.3);color:#b85540;cursor:pointer;border-radius:2px;">삭제</button>
+          </div>
+        `).join('')}
       </div>
-    `).join('')}
-    ` : ''}
+      <button class="tv-toggle" id="bridgeAddBtn" style="padding:4px 10px;font-size:0.7rem;margin-top:4px;">+ 작가 브릿지 추가</button>
+    </div>
 
     ${trajBridges.length ? `
-    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin:14px 0 6px;">🌊 궤적 브릿지 (${trajBridges.length})</div>
-    ${trajBridges.map(b => `
-      <div style="font-size:0.78rem;color:#a8c4d8;padding:8px 10px;border-left:2px solid #4a7c9d;background:rgba(74,124,157,0.08);margin-bottom:6px;">
-        ${escapeHtml(b.source_completed_sentence || '(본문 없음)')}
-        <div style="font-size:0.65rem;color:#7c7466;margin-top:4px;">진입: ${b.entry_emotion}</div>
-      </div>
-    `).join('')}
+    <div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(196,168,130,0.08);">
+      <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">🌊 궤적 브릿지 (${trajBridges.length}) — 읽기 전용</div>
+      ${trajBridges.map(b => `
+        <div style="font-size:0.75rem;color:#a8c4d8;padding:8px 10px;border-left:2px solid #4a7c9d;background:rgba(74,124,157,0.08);margin-bottom:6px;">
+          ${escapeHtml(b.source_completed_sentence || '(본문 없음)')}
+          <div style="font-size:0.65rem;color:#7c7466;margin-top:4px;">진입: ${b.entry_emotion}</div>
+        </div>
+      `).join('')}
+    </div>
     ` : ''}
   `;
 }
+
+function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return {}; } }
 
 function renderCompareTab(s) {
   const entries = (state.memory.meta && state.memory.meta.emotion_entries) || {};
