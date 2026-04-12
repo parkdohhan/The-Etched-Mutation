@@ -302,6 +302,88 @@ PLAY 클릭 → archive.js (기억 목록)
 
 ---
 
+## 🎯 admin Canvas 통합 프로젝트 (2026-04-12 진행 중)
+
+**목표**: admin을 순차 씬 편집기에서 **궤적 기반 캔버스 에디터**로 재구축.
+작가는 등고선 지형 위에 노드를 직접 배치 → 공간 배치가 곧 공간음향/UX 큐레이션이 되는 구조.
+
+### ✅ 완료
+
+- **데이터 계약 v1** ([docs/데이터계약_브릿지_v1-260412.md](../데이터계약_브릿지_v1-260412.md))
+  - author_bridge / trajectory_bridge / emotion_entries 스키마
+  - 공명 엔딩 도달 자동 브릿지화 합의
+- **시각화 설계 v1** ([docs/시각화_설계_v1-260412.md](../시각화_설계_v1-260412.md))
+  - 3뷰 분리: 전역 DAG / 국소 그래프 / 의미 비교
+- **DB 스키마**: `memories.meta jsonb`, `scenes.meta jsonb`, `trajectory_bridges` 테이블 + RLS
+- **E-004 「편지」(박소정)** Supabase 등록 — 11씬, 11 author_bridges, 8 emotion_entries
+- **시각화 뷰어 Phase 1~3** (`admin-trajectory.html` + `js/admin-trajectory.js`)
+  - dagre + SVG + 수동 zoom/pan
+  - 감정 진입점 체크박스 (기본 빈 캔버스)
+  - 노드 뱃지: 통과 카운터, author/trajectory bridge 구분 (회색/푸른빛)
+  - 경로 비교 탭 (누적 모티프/echo_words/궤적 브릿지)
+  - 브릿지 점선 edge (모티프 공명 자동 탐지) + 전체 브릿지 토글
+  - 감정 지형 모드 (VAD 2D 투영 + 사분면 축)
+  - ComfyUI 스타일 cable edges + 실시간 드래그 업데이트
+  - 레퍼런스 목록 정리 (Feedback.md)
+- **admin 구조 분리 Phase 0**: 네비바 [목록][Canvas][운영] + 3섹션 래퍼 + localStorage 탭 기억
+- **admin 구조 분리 Phase 0.5**: Canvas iframe 제거 → inline 마운트, 잔상 모더레이션 운영으로 이동
+- **Canvas 편집 통합 Phase 1**
+  - 우측 패널 2층: 씬 편집 (상단) / 기본 설정 (하단)
+  - 씬 편집 폼: 본문/감정 분포 8축/모티프/코드/작가 브릿지 CRUD → DB 즉시 저장
+  - 메모리 기본 설정: 제목/설명/키워드/완성 문장
+  - 사이드바 [+ 새 기억] 모달, [+ 새 씬] 버튼
+- **사운드 스키마 Phase 2a**
+  - 씬별 sound_url / sound_volume / sound_radius 필드
+  - ▶ 미리듣기 버튼 (Web Audio API)
+  - 씬 삭제 버튼 (choices FK 처리)
+  - `js/shared/spatialAudio.js` 신규 — HRTF PannerNode 기반 3D 공간음향 엔진
+
+### ⏳ 남은 작업
+
+#### Phase 2b — strata에 공간음향 연결 (반나절~하루)
+- [ ] `strataView.js`에서 `createSpatialAudioEngine()` 초기화
+- [ ] 씬 등록 시 `scene.meta.sound_url` 있으면 engine.register
+- [ ] 씬 pin 위치 (wx/wz/h) → engine.register의 x/y/z로 매핑
+- [ ] 카메라/OrbitControls 이동 시 engine.setListener 갱신
+- [ ] 관리자 캔버스에서 핀 드래그로 pin_override 편집 → strata 즉시 반영
+  - 선결: `scenes.meta.pin_override: {x,y,z}` 스키마 확정
+  - `tem_af_strata_terrain.js:221`에서 pin_override 있으면 VAD 계산 대신 우선 사용
+
+#### Phase 3 — 페르소나 시뮬레이션 (반나절~하루)
+- [ ] `tools/persona-sim/data/plays.json` 또는 Supabase `plays` 테이블 조회
+- [ ] Canvas 사이드바에 페르소나 드롭다운 + [▶ 시뮬레이션] 버튼
+- [ ] 선택 시 해당 페르소나의 궤적이 케이블 따라 **애니메이션** (순차 하이라이트)
+- [ ] 씬 도착마다 그 페르소나의 emotion vector / mismatch type 우측 패널에 표시
+- [ ] (옵션) Big Five 슬라이더로 즉석 페르소나 생성 → Claude API로 즉시 시뮬
+
+#### Phase 4 — 레거시 정리 (1~2시간)
+- [ ] `admin.html` 내 editorScreen의 등고선 핀맵/3D strata/감정공간 진단 3섹션 — Canvas로 대체 확인 후 삭제
+- [ ] 세션/앵커 이미지 섹션 — 운영 탭으로 실제 이동
+- [ ] `admin-trajectory.html` 독립 페이지 — 유지 vs 삭제 결정 (현재 잉여)
+- [ ] 기존 `memories.sound_map` 5개 mp3 필드 — 레거시로 남김 (플레이어 뷰 호환)
+
+#### [결정 대기] 항목
+- [ ] **명시적 분기 도입 여부**: `choices.next_scene_id` 컬럼 추가할 것인가.
+  - 현재: 씬은 선형(`scene_order` 순서), choice는 감정 결만 기록
+  - "노드 연결 수동"이 진짜 필요한지 작가 판단 필요
+- [ ] **공명궤적→브릿지 연출**: 공명 도달자의 흔적을 다음 플레이어에게 어떻게 보일 것인지
+  - completed_sentence 그대로? 경로 모양만? echo_words 잔상?
+- [ ] **사운드 마이그레이션**: 기존 E-001~E-003의 `memories.sound_map` 5곡을 씬별로 재배분할지 방치할지
+
+### 🧭 우선순위
+
+```
+현재     : Phase 2a 완료 (admin Canvas 편집 + 사운드 UI)
+다음     : Phase 2b — strata 공간음향 연결 (작가 체험 가능)
+그 다음  : Phase 3 — 페르소나 시뮬레이션 (작가 검증 도구 완성)
+마지막   : Phase 4 — 레거시 editorScreen 제거
+```
+
+Canvas 통합 프로젝트는 **PLAY 통합(§18.4)과 독립**. 병렬 진행 가능.
+다만 작가 제작 흐름을 먼저 궤도에 올리면, PLAY 쪽 리팩터링 시 "작가 의도가 무엇이었나" 추적이 쉬워짐.
+
+---
+
 ## 📚 레퍼런스 (다궤적 시각화 / 비선형 서사 / 독자 흔적)
 
 TEM과 정확히 일치하는 도구는 없지만, 부분 레퍼런스 4개를 합치면 시각 문법의 대부분을 커버함.
