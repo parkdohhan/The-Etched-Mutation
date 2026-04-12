@@ -476,6 +476,24 @@
     </style>
 
     <script>
+    // ═══ 사운드 라이브러리 (sounds/ 폴더 정적 목록) ═══
+    // 새 파일 추가 시 이 배열에 추가하거나, 서버 리스팅으로 자동화.
+    window.TEM_SOUND_LIBRARY = [
+      'sounds/ambient-opening.mp3',
+      'sounds/amb_base.mp3',
+      'sounds/amb_crowd.mp3',
+      'sounds/amb_silence.mp3',
+      'sounds/amb_wind.mp3',
+      'sounds/amb_window_rain.mp3',
+      'sounds/Base_Void.mp3',
+      'sounds/Base_white.mp3',
+      'sounds/footstep.mp3',
+      'sounds/Rain_indoor.mp3',
+      'sounds/sfx_resonance.mp3',
+      'sounds/sfx_settle.mp3',
+    ];
+    </script>
+    <script>
     // ═══ 섹션 스위처 ═══
     window.switchAdminSection = function(id) {
         document.querySelectorAll('.admin-section').forEach(el => { el.style.display = 'none'; });

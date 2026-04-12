@@ -805,12 +805,29 @@ function bindDetailFormEvents(s) {
   const delBtn = document.getElementById('sceneDeleteBtn');
   if (delBtn) delBtn.addEventListener('click', () => deleteScene(s));
 
+  // 사운드 드롭다운 → URL 입력칸 연동
+  const soundSelect = document.getElementById('sceneSoundSelect');
+  const soundUrlInput = document.getElementById('sceneSoundUrl');
+  if (soundSelect && soundUrlInput) {
+    soundSelect.addEventListener('change', () => {
+      if (soundSelect.value === '__custom__') {
+        soundUrlInput.style.display = 'block';
+        soundUrlInput.focus();
+      } else {
+        soundUrlInput.style.display = 'none';
+        soundUrlInput.value = soundSelect.value;
+      }
+    });
+  }
+
   // 사운드 미리듣기
   const testBtn = document.getElementById('sceneSoundTestBtn');
   if (testBtn) testBtn.addEventListener('click', () => {
-    const url = document.getElementById('sceneSoundUrl').value.trim();
+    const sel = document.getElementById('sceneSoundSelect');
+    const inp = document.getElementById('sceneSoundUrl');
+    const url = (sel && sel.value && sel.value !== '__custom__') ? sel.value : (inp?.value.trim() || '');
     const vol = parseFloat(document.getElementById('sceneSoundVolume').value) || 1;
-    if (!url) { alert('사운드 URL이 비어있습니다.'); return; }
+    if (!url) { alert('사운드를 선택하세요.'); return; }
     previewSound(url, vol);
   });
 
@@ -846,7 +863,12 @@ async function saveScene(s) {
   const motifsStr = document.getElementById('sceneMotifs').value;
   const motifs = motifsStr.split(',').map(x => x.trim()).filter(Boolean);
   const sceneCode = document.getElementById('sceneCode').value.trim();
-  const soundUrl = document.getElementById('sceneSoundUrl')?.value.trim() || '';
+  const soundSelectEl = document.getElementById('sceneSoundSelect');
+  const soundUrlInputEl = document.getElementById('sceneSoundUrl');
+  const soundSelectVal = soundSelectEl?.value || '';
+  const soundUrl = (soundSelectVal && soundSelectVal !== '__custom__')
+    ? soundSelectVal
+    : (soundUrlInputEl?.value.trim() || '');
   const soundVolume = parseFloat(document.getElementById('sceneSoundVolume')?.value) || 1;
   const soundRadius = parseFloat(document.getElementById('sceneSoundRadius')?.value) || 15;
 
@@ -942,8 +964,13 @@ function renderDetailTab(s) {
     <label style="${labelStyle}">씬 코드 (A, B, C…)</label>
     <input type="text" id="sceneCode" value="${escapeHtml(s.meta?.scene_code || '')}" maxlength="4" style="${inputStyle}width:80px;" />
 
-    <label style="${labelStyle}">사운드 URL (Web Audio API — 공간음향)</label>
-    <input type="text" id="sceneSoundUrl" placeholder="sounds/... 또는 https://..." value="${escapeHtml(s.meta?.sound_url || '')}" style="${inputStyle}" />
+    <label style="${labelStyle}">사운드 (공간음향)</label>
+    <select id="sceneSoundSelect" style="${inputStyle}">
+      <option value="">— 없음 —</option>
+      ${window.TEM_SOUND_LIBRARY ? window.TEM_SOUND_LIBRARY.map(f => `<option value="${escapeHtml(f)}" ${s.meta?.sound_url === f ? 'selected' : ''}>${escapeHtml(f.replace(/^sounds\//, ''))}</option>`).join('') : ''}
+      <option value="__custom__" ${s.meta?.sound_url && !(window.TEM_SOUND_LIBRARY || []).includes(s.meta.sound_url) ? 'selected' : ''}>⚙ 직접 입력…</option>
+    </select>
+    <input type="text" id="sceneSoundUrl" placeholder="경로 또는 https://..." value="${escapeHtml(s.meta?.sound_url || '')}" style="${inputStyle}margin-top:4px;display:${s.meta?.sound_url && !(window.TEM_SOUND_LIBRARY || []).includes(s.meta.sound_url) ? 'block' : 'none'};" />
     <div style="display:flex;gap:6px;margin-top:4px;align-items:center;">
       <label style="font-size:0.7rem;color:#7c7466;">볼륨</label>
       <input type="number" id="sceneSoundVolume" min="0" max="1" step="0.1" value="${s.meta?.sound_volume ?? 1}" style="width:60px;padding:3px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.12);color:#e0d8c4;font-size:0.75rem;border-radius:2px;" />
