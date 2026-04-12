@@ -77,6 +77,7 @@ async function checkPassword() {
         adminUser = authData.user;
         document.getElementById('passwordScreen').style.display = 'none';
         document.getElementById('adminDashboard').classList.add('active');
+        if (window.showAdminNav) window.showAdminNav();
         loadMemories();
         loadAllSessions();
 
@@ -112,6 +113,7 @@ async function checkExistingSession() {
             adminUser = session.user;
             document.getElementById('passwordScreen').style.display = 'none';
             document.getElementById('adminDashboard').classList.add('active');
+            if (window.showAdminNav) window.showAdminNav();
             loadMemories();
             loadAllSessions();
         }
@@ -257,6 +259,7 @@ function editMemory(index) {
     currentMemoryIndex = index;
     const memory = memories[index];
     currentMemoryId = memory.id || null;
+    window.currentMemoryId = currentMemoryId; // 다른 모듈(admin-trajectory)에서 참조
     currentLayers = []; // 메모리 편집 시작 시 레이어 초기화
 
     // Clear previous strata preview so it doesn't persist across memories
@@ -3434,7 +3437,8 @@ window.exportMemoriesJSON = exportMemoriesJSON;
 window.importMemoriesJSON = importMemoriesJSON;
 window.openTrajectoryViewer = function() {
     const id = currentMemoryId || '';
-    window.open('admin-trajectory.html?memory=' + encodeURIComponent(id), '_blank');
+    if (window.switchAdminSection) window.switchAdminSection('canvas');
+    if (window.initTrajectoryViewer) window.initTrajectoryViewer(id || null);
 };
 window.previewMakeChoice = previewMakeChoice;
 window.toggleVectorPanel = toggleVectorPanel;

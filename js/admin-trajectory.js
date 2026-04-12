@@ -66,9 +66,12 @@ function saveNodePositions() {
 }
 
 // ─── 부트 ──────────────────────────────────────────────────
-(async function init() {
-  const params = new URLSearchParams(location.search);
-  const memoryId = params.get('memory');
+async function initTrajectoryViewer(memoryId) {
+  // tv* DOM 없으면 (이 페이지에 뷰어가 없음) 중단
+  if (!document.getElementById('tvSvg')) return;
+
+  // 이미 같은 memory로 init됐으면 skip
+  if (state.memory && memoryId && state.memory.id === memoryId) return;
 
   setStatus('Supabase 연결 중…');
   const sb = await getSupabaseClient();
@@ -96,6 +99,19 @@ function saveNodePositions() {
   renderStats();
   bindToggles();
   renderGraph();
+}
+
+// 외부(admin.html)에서 호출 가능하도록 노출
+window.initTrajectoryViewer = initTrajectoryViewer;
+
+// 독립 페이지(admin-trajectory.html)에서는 URL 파라미터로 자동 init
+(function autoInit() {
+  // admin.html이 아닌 독립 페이지일 때만 자동 실행
+  // 판별: admin 고유 DOM(#adminDashboard)이 없으면 독립 페이지
+  if (document.getElementById('adminDashboard')) return;
+  const params = new URLSearchParams(location.search);
+  const memoryId = params.get('memory');
+  initTrajectoryViewer(memoryId);
 })();
 
 // ─── 데이터 ────────────────────────────────────────────────

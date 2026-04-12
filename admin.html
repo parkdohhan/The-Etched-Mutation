@@ -29,6 +29,21 @@
         </div>
     </div>
 
+    <!-- ═══ 네비바 (로그인 후 표시) ═══ -->
+    <nav id="adminNav" class="admin-nav" style="display:none;position:sticky;top:0;z-index:200;background:rgba(10,10,15,0.95);border-bottom:1px solid rgba(196,168,130,0.15);padding:10px 24px;backdrop-filter:blur(8px);">
+        <div style="display:flex;align-items:center;gap:4px;max-width:1400px;margin:0 auto;">
+            <span style="color:#c4a882;font-family:'Cormorant Garamond',serif;font-size:1.1rem;letter-spacing:0.08em;margin-right:20px;">TEM Admin</span>
+            <button class="nav-tab active" data-section="memories" onclick="switchAdminSection('memories')">목록</button>
+            <button class="nav-tab" data-section="canvas" onclick="switchAdminSection('canvas')">Canvas</button>
+            <button class="nav-tab" data-section="operations" onclick="switchAdminSection('operations')">운영</button>
+            <span style="flex:1;"></span>
+            <button class="nav-tab" onclick="logout()" style="color:#7c7466;">로그아웃</button>
+        </div>
+    </nav>
+
+    <!-- ═══ 섹션: 메모리 (기존 adminDashboard + editorScreen) ═══ -->
+    <div class="admin-section" id="section-memories">
+
     <div class="admin-dashboard" id="adminDashboard">
         <div class="container">
             <div class="admin-header">
@@ -341,11 +356,162 @@
         </div>
     </div>
 
+    </div><!-- /#section-memories -->
+
+    <!-- ═══ 섹션: Canvas (궤적 큐레이터 — inline) ═══ -->
+    <div class="admin-section" id="section-canvas" style="display:none;">
+        <div class="tv-root" style="position:fixed;top:52px;left:0;right:0;bottom:0;">
+            <aside class="tv-sidebar">
+                <h2 class="tv-title">궤적 뷰어</h2>
+                <p class="tv-subtitle" id="tvMemoryLabel">로딩 중…</p>
+
+                <div class="tv-section-label">감정 진입점</div>
+                <div id="tvEmotionList"></div>
+
+                <div class="tv-section-label">표시 옵션</div>
+                <div class="tv-toggle-row">
+                    <button class="tv-toggle" id="tvToggleAll">전체 표시</button>
+                    <button class="tv-toggle" id="tvToggleBridges">모든 브릿지</button>
+                    <button class="tv-toggle" id="tvToggleTerrain" title="감정 좌표 (V/A) 기반 배치">감정 지형 모드</button>
+                    <button class="tv-toggle" id="tvResetLayout" title="드래그로 옮긴 위치 초기화">레이아웃 초기화</button>
+                </div>
+
+                <div class="tv-section-label">통계</div>
+                <div id="tvStats" class="tv-emo-meta" style="line-height: 1.6;"></div>
+            </aside>
+
+            <main class="tv-canvas-wrap">
+                <svg id="tvSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div class="tv-status" id="tvStatus" style="position:absolute; top:10px; left:50%; transform:translateX(-50%);"></div>
+                <div id="tvLegend" style="position:absolute;top:14px;right:14px;background:rgba(10,10,15,0.85);border:1px solid rgba(196,168,130,0.15);border-radius:4px;padding:10px 12px;font-size:0.72rem;color:#c0b8a4;backdrop-filter:blur(6px);line-height:1.7;pointer-events:none;">
+                    <div style="font-size:0.65rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">범례</div>
+                    <div><span style="display:inline-block;width:24px;border-top:1.2px solid rgba(196,168,130,0.5);vertical-align:middle;margin-right:6px;"></span>Choice (명시 분기)</div>
+                    <div><span style="display:inline-block;width:24px;border-top:1.2px dashed #6aa383;vertical-align:middle;margin-right:6px;"></span>Bridge (숨은 공명)</div>
+                    <div style="margin-top:6px;"><span style="display:inline-block;width:10px;height:10px;border:2px solid #c4a882;border-radius:50%;vertical-align:middle;margin-right:6px;"></span>감정 진입점</div>
+                    <div><span style="display:inline-block;width:12px;height:12px;background:#6a655a;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>🔗 작가 브릿지</div>
+                    <div><span style="display:inline-block;width:12px;height:12px;background:#4a7c9d;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>🌊 궤적 브릿지</div>
+                </div>
+            </main>
+
+            <aside class="tv-detail">
+                <h3 class="tv-title">씬 디테일</h3>
+                <div id="tvDetail"><div class="tv-detail-empty">노드를 클릭하세요</div></div>
+            </aside>
+        </div>
+    </div>
+
+    <style>
+        /* 궤적 뷰어 스타일 (admin-trajectory.html과 동일) */
+        #section-canvas .tv-root { display: grid; grid-template-columns: 220px 1fr 320px; height: 100%; }
+        #section-canvas .tv-sidebar { background: rgba(15,15,22,0.9); border-right: 1px solid rgba(196,168,130,0.15); padding: 20px 16px; overflow-y: auto; }
+        #section-canvas .tv-canvas-wrap { position: relative; overflow: hidden; background: #07070b; }
+        #section-canvas .tv-canvas-wrap svg { width: 100%; height: 100%; display: block; }
+        #section-canvas .tv-detail { background: rgba(15,15,22,0.9); border-left: 1px solid rgba(196,168,130,0.15); padding: 20px 16px; overflow-y: auto; }
+        #section-canvas .tv-title { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: #c4a882; margin: 0 0 4px; letter-spacing: 0.04em; }
+        #section-canvas .tv-subtitle { font-size: 0.75rem; color: #7c7466; margin: 0 0 18px; }
+        #section-canvas .tv-section-label { font-size: 0.7rem; color: #7c7466; text-transform: uppercase; letter-spacing: 0.1em; margin: 18px 0 8px; }
+        #section-canvas .tv-emo-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; cursor: pointer; border-radius: 3px; font-size: 0.85rem; }
+        #section-canvas .tv-emo-row:hover { background: rgba(196,168,130,0.06); }
+        #section-canvas .tv-emo-swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        #section-canvas .tv-emo-name { flex: 1; }
+        #section-canvas .tv-emo-meta { font-size: 0.7rem; color: #7c7466; }
+        #section-canvas .tv-toggle-row { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+        #section-canvas .tv-toggle { padding: 4px 8px; font-size: 0.7rem; border: 1px solid rgba(196,168,130,0.2); background: transparent; color: #c4a882; cursor: pointer; border-radius: 2px; }
+        #section-canvas .tv-toggle.active { background: rgba(196,168,130,0.15); }
+        #section-canvas .tv-status { padding: 12px; font-size: 0.75rem; color: #7c7466; text-align: center; }
+        #section-canvas .tv-detail-empty { color: #5c544a; font-size: 0.85rem; padding: 40px 0; text-align: center; }
+        #section-canvas .scene-node { cursor: pointer; }
+        #section-canvas .scene-node-rect { fill: rgba(20,20,28,0.95); stroke: rgba(196,168,130,0.3); stroke-width: 1.2; }
+        #section-canvas .scene-node:hover .scene-node-rect { stroke: #c4a882; }
+        #section-canvas .scene-node-text { fill: #e0d8c4; font-family: 'Noto Serif KR', serif; font-size: 11px; }
+        #section-canvas .scene-node-code { fill: #c4a882; font-family: 'Cormorant Garamond', serif; font-size: 14px; font-style: italic; }
+        #section-canvas .scene-node-counter { fill: #7c7466; font-size: 9px; }
+        #section-canvas .badge-author { fill: #6a655a; }
+        #section-canvas .badge-trajectory { fill: #4a7c9d; }
+        #section-canvas .badge-text { fill: #e0d8c4; font-size: 8px; font-family: 'Noto Serif KR', serif; }
+        #section-canvas .choice-edge { stroke: rgba(196,168,130,0.25); stroke-width: 1; fill: none; }
+        #section-canvas .traj-edge { stroke-width: 1.5; fill: none; opacity: 0.7; }
+        #section-canvas .entry-marker { fill: none; stroke-width: 2; }
+    </style>
+
+    <!-- ═══ 섹션: 운영 (잔상 모더레이션 이관됨) ═══ -->
+    <div class="admin-section" id="section-operations" style="display:none;">
+        <div style="max-width:1200px;margin:40px auto;padding:20px;">
+            <h2 style="color:#c4a882;font-family:'Cormorant Garamond',serif;font-weight:300;margin:0 0 20px;letter-spacing:0.04em;">운영</h2>
+            <p style="color:#7c7466;font-size:0.8rem;margin:0 0 24px;line-height:1.6;">
+                세션 관리 · 앵커 이미지 · 잔상 모더레이션<br>
+                <span style="color:#5c544a;font-size:0.75rem;">(세션 관리 / 앵커 이미지는 현재 [목록] 탭에서. 향후 이곳으로 이관 예정.)</span>
+            </p>
+            <!-- 잔상 모더레이션은 Phase 0.5 이관 미완 — 실제 DOM은 #utterancesContent에 유지 (id 유일성) -->
+            <div id="operationsMount" style="color:#7c7466;font-size:0.9rem;">
+                <p>잔상 모더레이션은 아직 [목록] 탭의 편집 화면 하단에 있습니다. 다음 작업에서 여기로 이동됩니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .admin-nav .nav-tab {
+            padding: 6px 14px; background: transparent; border: none;
+            color: #7c7466; font-family: 'Noto Serif KR', serif; font-size: 0.88rem;
+            cursor: pointer; border-radius: 3px; transition: all 0.15s;
+        }
+        .admin-nav .nav-tab:hover { color: #c4a882; background: rgba(196,168,130,0.06); }
+        .admin-nav .nav-tab.active { color: #c4a882; background: rgba(196,168,130,0.1); }
+    </style>
+
+    <script>
+    // ═══ 섹션 스위처 ═══
+    window.switchAdminSection = function(id) {
+        document.querySelectorAll('.admin-section').forEach(el => { el.style.display = 'none'; });
+        const target = document.getElementById('section-' + id);
+        if (target) target.style.display = '';
+        document.querySelectorAll('#adminNav .nav-tab[data-section]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.section === id);
+        });
+        try { localStorage.setItem('tv_admin_section', id); } catch (e) {}
+        // Canvas 탭 진입 시 뷰어 init (지연 실행 — 모듈 로드 대기)
+        if (id === 'canvas' && window.initTrajectoryViewer) {
+            window.initTrajectoryViewer(window.currentMemoryId || null);
+        }
+    };
+    // 로그인 성공 후 adminDashboard가 표시될 때 네비바도 표시
+    window.showAdminNav = function() {
+        document.getElementById('adminNav').style.display = '';
+        // 마지막 섹션 복원 (기본: memories)
+        let last = 'memories';
+        try { last = localStorage.getItem('tv_admin_section') || 'memories'; } catch (e) {}
+        window.switchAdminSection(last);
+    };
+    </script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
     <script src="js/shared/tem_af_strata_terrain.js"></script>
     <script src="js/ui/strataView.js"></script>
     <script type="module" src="js/admin.js"></script>
+    <script type="module" src="js/admin-trajectory.js"></script>
     <script src="js/contamination.js"></script>
+
+    <script>
+    // ═══ 잔상 모더레이션 DOM을 Operations 섹션으로 이동 ═══
+    (function relocateUtterances() {
+        function tryMove() {
+            const src = document.getElementById('utterancesContent');
+            const dest = document.getElementById('operationsMount');
+            if (src && dest && !dest.contains(src)) {
+                dest.innerHTML = '';
+                dest.appendChild(src);
+                return true;
+            }
+            return false;
+        }
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(tryMove, 0);
+        } else {
+            document.addEventListener('DOMContentLoaded', () => setTimeout(tryMove, 0));
+        }
+    })();
+    </script>
 </body>
 </html>
