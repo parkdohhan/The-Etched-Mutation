@@ -187,3 +187,115 @@ DB/코드/admin까지 다 들어감. 이제 내가 할 일만 남음.
 - [ ] 데모 영상 촬영 일정이 2주째 안 잡히고 있는가?
 
 → 2개 이상 ✓면 도구 도입 멈추고 데모 마무리.
+
+---
+
+## 📌 TODO — 기획서(매뉴얼)에는 있으나 PLAY에 연결 안 된 것들 (2026-04-11)
+
+> 출처: `docs/TEM_시스템_매뉴얼-260410.md` 대조 검증.
+> PLAY 체감에 직접 영향 있는 것 우선. 1→2→3 순으로 진행.
+
+### 🎯 우선순위 A — PLAY 체감에 직접 영향 (즉시 작업)
+
+- [ ] **1. fixation 복합 신호** — §8.3, §18.1
+  - 현재: `calculateFixationLevel()`이 감정 코사인 유사도 **하나만** 봄 ([js/shared/math.js:392](../../js/shared/math.js#L392))
+  - 기획서: "유사도 > 0.85 + 반복 귀인 + 낮은 탐색률" **3-way 복합**
+  - 작업:
+    - `calculateFixationLevel(emotionHistory, reasonHistory, explorationRate)` 시그니처 확장
+    - `getBucket()`에 컨텍스트 추가 전달
+    - `ByeoriEngine.calculateStep()` context에 `reasonHistory` / `explorationRate` 주입 (엔진 내부 로직 변경 금지 — context만 확장)
+    - `archive.js` `runEngineStep()`에서 `appStore.userReasons` + `visitedScenes / scenes.length` 전달
+  - 판정식(제안):
+    ```
+    signal_sim   = emotionSim >= 0.85 ? 1 : 0
+    signal_attr  = (최근 3개 attribution 중 동일 비율 >= 0.8) ? 1 : 0
+    signal_expl  = explorationRate <= 0.3 ? 1 : 0
+    fixLevel = 0.5*sim + 0.3*attr + 0.2*expl
+    FIXATED if fixLevel >= 0.65
+    ```
+
+- [ ] **2. 재조합(6연산 6번) 트리거 + 후속 연출** — §2.3, §10.8
+  - 현재: `ContaminationTracker.js`에 `RECOMBO_HETERO_THRESHOLD`/`RECOMBO_DEPTH_THRESHOLD`/`isRecombinationReady` **코드에 아예 없음** (grep 0건)
+  - 기획서: `heterogeneity >= 0.5 AND depth >= 5` 시 재조합 활성화
+  - 작업:
+    - ContaminationTracker에 상수 + `isRecombinationReady` flag 계산 추가
+    - PLAY 경로에서 flag true일 때 "다른 기억이 이 장면에 겹쳐진다" 연출 훅 (가장 가벼운 안: 장면 시작 시 잔상 확률 가중)
+
+- [ ] **3. 장면(scene) 단위 잔상** — §13, §18.2
+  - 현재: `showAfterimage()` 호출이 `endScreen.js`에만 존재 ([js/app/endScreen.js:188](../../js/app/endScreen.js#L188))
+  - 기획서: 씬 종료 후 정적에 확률적 등장 (세션당 최대 2회 유지)
+  - 작업:
+    - `proceedToNextScene()` 끝에 장면 간 잔상 트리거 지점 추가
+    - 세션 카운터로 2회 cap, 게이트 확률은 엔드 스크린보다 낮게(예: 15%)
+    - 엔드 스크린 잔상과 중복 회피
+
+### 🟡 우선순위 B — 데이터/Strata (후속)
+
+- [ ] **4. AF 근접 기억의 간섭 억압** — §2.3, §11.5
+  - Strata에서 같은 (x,z) 영역의 봉우리끼리 서로를 깎는 로직
+  - 파일: [js/shared/tem_af_strata_terrain.js](../../js/shared/tem_af_strata_terrain.js)
+
+- [ ] **5. `telling_trajectory` 컬럼 저장** — §1.1, §18.2
+  - 코드 grep 0건. Record 시 말한 순서/흐름이 버려지고 있음
+  - 파일: DB 스키마 + [js/app/confession.js](../../js/app/confession.js)
+
+- [ ] **6. 17D ↔ 6D 차원 통일** — §8.6, §18.4
+  - 현재 부분 매핑으로 손실. 큰 작업 — 별도 세션에서.
+
+### 🟢 우선순위 C — PLAY 바깥
+
+- [ ] LIVE 모드 메인 메뉴 연결 ([js/index.js:84](../../js/index.js#L84))
+- [ ] RECORD 패턴 인식 → AI 질문 리듬 변조
+- [ ] 사용자 동의 철회 페이지 (`/profile/utterances`)
+- [ ] 잔상 디버그 패널 / 통계 대시보드
+
+### ✅ 매뉴얼과 실제 코드 불일치 (문서 업데이트 필요)
+
+- [ ] 매뉴얼 §7-2 / §9.3 "SceneNavigator 통합 미완" → 실제로는 [js/app/archive.js:1264](../../js/app/archive.js#L1264), [:1504](../../js/app/archive.js#L1504)에서 이미 `sceneNavigator.navigate()` 호출 중. 남은 선형 진행은 `goToScene()` 수동 되감기뿐. 매뉴얼 문구 완화 필요.
+
+---
+
+## 📋 지금 할 일 (2026-04-11 기준)
+
+### ✅ 완료
+- [x] **코어 회귀 테스트 인프라** — vitest 8파일 261테스트, 골든 픽스처 스냅샷 포함
+  - [test/unit/pipeline.regression.test.js](../../test/unit/pipeline.regression.test.js) — Engine→Contamination→SceneNavigator 풀 파이프라인
+  - [test/unit/contaminationPresenter.test.js](../../test/unit/contaminationPresenter.test.js) — 시드 결정론 + 5종 텍스트 × 4 stage/band
+  - [test/unit/safety.test.js](../../test/unit/safety.test.js) — 3단계 필터 + 시제 감지 + 세션 에스컬레이션
+  - [test/unit/piiFilter.test.js](../../test/unit/piiFilter.test.js) — 잔상 PII 17종 케이스
+  - 스냅샷: [test/unit/__snapshots__/](../../test/unit/__snapshots__/) 960줄
+- [x] **GitHub Actions CI** — [.github/workflows/test.yml](../../.github/workflows/test.yml), push/PR 시 자동 `npm test`
+
+### 🔥 다음 작업 — `play-test.html` 해체 & 단일 PLAY 경로 통합
+
+**현재 구조 (확인 완료):**
+```
+PLAY 클릭 → archive.js (기억 목록)
+  → 기억 선택
+    → window.location.href = "play-test.html?memory=..."
+      → 5,718줄짜리 별도 HTML 페이지로 이동
+```
+
+**`play-test.html`이 테스트용이 아니라 실제 PLAY 실행 화면 그 자체.**
+호출 지점: [js/app/archive.js:369](../../js/app/archive.js#L369), [:835](../../js/app/archive.js#L835), [js/app/archiveEntry.js:138](../../js/app/archiveEntry.js#L138), [js/app/auth.js:157](../../js/app/auth.js#L157)
+
+**방향: 해체가 아니라 통합.** 5,718줄의 좋은 로직을 모듈로 분리해 `index.html` SPA로 흡수.
+
+- [ ] **1. `play-test.html` 구역 분석** — 5,718줄이 어떤 덩어리로 나뉘는지 파악 (state / scene renderer / input / navigation / strata / end screen / etc.)
+- [ ] **2. 모듈 추출** — `js/app/play.js`로 핵심 로직 이관. inline `<script>`를 ES6 모듈로 분리.
+- [ ] **3. `index.html`에 PLAY 컨테이너 추가** — archive 컨테이너와 같은 방식으로 SPA 전환.
+- [ ] **4. 라우팅 교체** — `window.location.href = 'play-test.html?...'` → `showPlay(memoryId)` 함수 호출로.
+- [ ] **5. SceneNavigator 완전 통합** — `play-test.html`에 남은 선형 진행(`currentScene + 1`)을 SceneNavigator로 교체 (`archive.js`는 이미 통합됨).
+- [ ] **6. 회귀 검증** — 매 단계마다 `npm test` + 수동 플레이스루 (5,718줄 안의 장면 렌더/오염/잔상/strata 모두 동작 확인).
+- [ ] **7. `play-test.html` 제거** — 모든 호출 지점이 SPA로 바뀐 뒤 파일 삭제 (또는 dev redirect stub으로 남김).
+
+**이 작업이 우선인 이유:**
+- 매뉴얼 §18.4 "두 개의 병렬 구현"이 가장 큰 기술 부채.
+- SceneNavigator 메인 경로 완전 통합 / 고착 복합 신호 / 재조합 연출 모두 **단일 PLAY 경로 위에서** 해야 의미 있음.
+- 시간 갈수록 양쪽 싱크 비용이 복리로 불어남.
+
+### 🟡 그 다음 순서
+1. 🔥 (위 PLAY 통합)
+2. 우선순위 A — fixation 복합 신호 / 재조합 트리거 / 장면 단위 잔상
+3. 우선순위 B — AF 간섭 억압 / telling_trajectory / 17D↔6D
+4. 우선순위 C — LIVE 메뉴 연결 등
