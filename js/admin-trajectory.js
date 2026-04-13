@@ -125,7 +125,10 @@ function renderMemoryMeta() {
     <input type="text" id="metaKeywords" value="${escapeHtml(keywords)}" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:12px;" />
 
     <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">완성 문장</div>
-    <textarea id="metaCompletedSentence" rows="2" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:14px;resize:vertical;">${escapeHtml(m.completed_sentence || '')}</textarea>
+    <textarea id="metaCompletedSentence" rows="2" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:12px;resize:vertical;">${escapeHtml(m.completed_sentence || '')}</textarea>
+
+    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">페르소나 컨텍스트 <span style="color:#5c544a;text-transform:none;letter-spacing:0;">— 시뮬레이션용 주제 요약 (1-2단락)</span></div>
+    <textarea id="metaPersonaContext" rows="4" placeholder="이 작품의 핵심 테마, 상징, 관계 구도를 시뮬 독자가 알아야 할 만큼 요약. 예: '편지로 끝내지 못한 말, 침묵, 부모와 연인 사이의 미완성된 대화.'" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:14px;resize:vertical;">${escapeHtml(m.meta?.persona_context || '')}</textarea>
 
     <button class="tv-toggle" id="metaSaveBtn" style="padding:6px 12px;font-size:0.75rem;">저장</button>
     <span id="metaSaveStatus" style="margin-left:10px;font-size:0.7rem;color:#7c7466;"></span>
@@ -140,21 +143,28 @@ async function saveMemoryMeta() {
   const desc = document.getElementById('metaDescription').value.trim();
   const keywords = document.getElementById('metaKeywords').value.split(',').map(s => s.trim()).filter(Boolean);
   const completed = document.getElementById('metaCompletedSentence').value.trim();
+  const personaCtx = document.getElementById('metaPersonaContext').value.trim();
 
   statusEl.textContent = '저장 중…';
   statusEl.style.color = '#7c7466';
   try {
     const sb = await getSupabaseClient();
+    const nextMeta = { ...(state.memory.meta || {}) };
+    if (personaCtx) nextMeta.persona_context = personaCtx;
+    else delete nextMeta.persona_context;
+
     const { error } = await sb.from('memories').update({
       title, description: desc || null,
       memory_words: keywords.length ? keywords : null,
       completed_sentence: completed || null,
+      meta: nextMeta,
     }).eq('id', state.memory.id);
     if (error) throw error;
     state.memory.title = title;
     state.memory.description = desc || null;
     state.memory.memory_words = keywords;
     state.memory.completed_sentence = completed || null;
+    state.memory.meta = nextMeta;
     document.getElementById('tvMemoryLabel').textContent = `${state.memory.code} — ${state.memory.title}`;
     statusEl.textContent = '✓ 저장됨';
     statusEl.style.color = '#6aa383';
@@ -165,18 +175,8 @@ async function saveMemoryMeta() {
   }
 }
 
-// 외부(admin.html)에서 호출 가능하도록 노출
+// admin.html에서 호출
 window.initTrajectoryViewer = initTrajectoryViewer;
-
-// 독립 페이지(admin-trajectory.html)에서는 URL 파라미터로 자동 init
-(function autoInit() {
-  // admin.html이 아닌 독립 페이지일 때만 자동 실행
-  // 판별: admin 고유 DOM(#adminDashboard)이 없으면 독립 페이지
-  if (document.getElementById('adminDashboard')) return;
-  const params = new URLSearchParams(location.search);
-  const memoryId = params.get('memory');
-  initTrajectoryViewer(memoryId);
-})();
 
 // ─── 데이터 ────────────────────────────────────────────────
 async function loadByMemoryId(sb, memoryId) {
@@ -223,8 +223,21 @@ async function loadTrajectoryBridges(sb, memoryId) {
 // ─── 사이드바 ──────────────────────────────────────────────
 function renderEmotionList() {
   const entries = (state.memory.meta && state.memory.meta.emotion_entries) || {};
+  const hasEntries = Object.keys(entries).length > 0;
   const container = document.getElementById('tvEmotionList');
   container.innerHTML = '';
+
+  if (!hasEntries) {
+    // emotion_entries 없는 기억 — 선형 모드 안내
+    container.innerHTML = `
+      <div style="padding:10px 0;color:#5a5446;font-size:0.72rem;line-height:1.6;">
+        감정 진입점 미설정<br>
+        <span style="color:#7c7466;">전체 씬 선형 표시 중</span><br><br>
+        기본 설정에서<br>emotion_entries를<br>등록하면 궤적별 필터가 활성화됩니다.
+      </div>`;
+    return;
+  }
+
   EMOTIONS.forEach(e => {
     const entryCode = entries[e.key];
     if (!entryCode) return; // 작품에 없는 감정은 숨김
@@ -471,6 +484,7 @@ function renderGraph() {
   svg.innerHTML = '';
 
   const entries = (state.memory.meta && state.memory.meta.emotion_entries) || {};
+  const hasEntries = Object.keys(entries).length > 0;
   const codeToScene = {};
   state.scenes.forEach(s => {
     const code = s.meta && s.meta.scene_code ? s.meta.scene_code : String(s.scene_order);
@@ -479,8 +493,12 @@ function renderGraph() {
 
   // 어떤 씬을 그릴지 결정
   let visibleScenes;
-  if (state.selectedEmotions.size === 0) {
-    // 빈 캔버스
+  const linearMode = !hasEntries; // emotion_entries 없는 기억: 선형 전체 표시
+  if (linearMode) {
+    // 선형 모드: 전체 씬을 scene_order 순으로 표시
+    visibleScenes = state.scenes;
+  } else if (state.selectedEmotions.size === 0) {
+    // emotion_entries 있지만 아무것도 선택 안 됨: 빈 캔버스
     return;
   } else {
     // 선택된 감정의 진입 씬부터 scene_order 끝까지 통과
@@ -499,16 +517,21 @@ function renderGraph() {
   if (visibleScenes.length === 0) return;
 
   // 통과 카운터: 각 씬을 몇 개의 활성 감정 궤적이 지나가는가
+  // 선형 모드에서는 모든 씬 passCount = 1 (단순 표시)
   const passCount = {};
-  visibleScenes.forEach(s => {
-    let count = 0;
-    state.selectedEmotions.forEach(emoKey => {
-      const entryCode = entries[emoKey];
-      const entryScene = codeToScene[entryCode];
-      if (entryScene && s.scene_order >= entryScene.scene_order) count++;
+  if (linearMode) {
+    visibleScenes.forEach(s => { passCount[s.id] = 1; });
+  } else {
+    visibleScenes.forEach(s => {
+      let count = 0;
+      state.selectedEmotions.forEach(emoKey => {
+        const entryCode = entries[emoKey];
+        const entryScene = codeToScene[entryCode];
+        if (entryScene && s.scene_order >= entryScene.scene_order) count++;
+      });
+      passCount[s.id] = count;
     });
-    passCount[s.id] = count;
-  });
+  }
 
   // dagre 레이아웃
   const g = new dagre.graphlib.Graph();

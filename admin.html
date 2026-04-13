@@ -120,7 +120,6 @@
             <div class="editor-screen-bar">
                 <div class="editor-tabs">
                     <button class="editor-tab active" onclick="switchTab('edit')">편집</button>
-                    <button class="editor-tab" onclick="switchTab('preview')">미리보기</button>
                     <button class="editor-tab" onclick="switchTab('utterances')">잔상</button>
                 </div>
                 <button type="button" class="editor-back-home" onclick="cancelEdit()">대시보드로 돌아가기</button>
@@ -252,81 +251,6 @@
                 </div>
             </div>
 
-            <div class="editor-content" id="previewContent">
-                <!-- 1. 플레이시 보이는 등고선 핀맵 미리보기 -->
-                <div class="preview-section archive-section" style="padding: 2rem;">
-                    <h3 class="editor-section-title" style="margin-bottom: 1rem;">1. 플레이시 보이는 등고선 핀맵</h3>
-                    <div id="adminMapContainer" style="position: relative; width: 100%; max-width: 1000px; margin: 0 auto; aspect-ratio: 5/3; background: #0a0a0e; border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px; overflow: hidden;">
-                        <canvas id="adminContourCanvas" style="width: 100%; height: 100%; display: block;"></canvas>
-                        <div id="adminPinsLayer" style="position: absolute; inset: 0; pointer-events: none; z-index: 2;"></div>
-                    </div>
-                    <div style="margin-top: 1rem; text-align: center;">
-                        <button class="editor-btn" onclick="loadArchive2DPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">등고선 핀맵 불러오기</button>
-                    </div>
-                </div>
-
-                <!-- 2. Strata 3D 지형 미리보기 -->
-                <div class="preview-section strata-section" style="padding: 2rem;">
-                    <h3 class="editor-section-title" style="margin-bottom: 1rem;">2. Strata 3D 지형 미리보기</h3>
-                    <p class="admin-strata-hint" style="margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--text-muted);">선택한 기억 기준으로 3D 지형을 불러옵니다. 미리보기 영역을 더블클릭하거나 «전체 화면»으로 크게 볼 수 있습니다. 우측 하단 밝기 슬라이더는 메인 플레이 화면 Strata의 기본 밝기로 저장됩니다(같은 브라우저).</p>
-                    <div id="adminStrataContainer" class="admin-strata-wrap" style="position:relative;width:100%;height:600px;background:#0a0a0f;border:1px solid rgba(196,168,130,.2);border-radius:4px;overflow:hidden;">
-                        <button type="button" id="strataFullscreenBtn" class="admin-strata-fs-enter" hidden>전체 화면</button>
-                        <button type="button" id="strataFirstPersonBtn" class="admin-strata-fs-enter" style="right:130px;" hidden>1인칭 걷기</button>
-                        <button type="button" id="strataFullscreenBackBtn" class="admin-strata-fs-back" hidden>돌아가기</button>
-                        <div id="strataView" style="position:relative;width:100%;height:100%;display:none;">
-                            <canvas id="strataCanvas" style="width:100%;height:100%;"></canvas>
-                            <div class="strata-hud strata-h-tl" style="position:absolute;top:20px;left:28px;z-index:100;pointer-events:none;">
-                                <div class="strata-tsm" style="font-size:11px;letter-spacing:4px;text-transform:uppercase;color:rgba(196,168,130,0.4);font-weight:300;">감정의 지질학</div>
-                                <div class="strata-tlg" style="font-size:22px;letter-spacing:8px;color:#c4a882;font-weight:300;margin-top:4px;">S T R A T A</div>
-                            </div>
-                            <div class="strata-hud strata-h-tr" id="strataHudTR" style="position:absolute;top:20px;right:28px;z-index:100;pointer-events:none;text-align:right;font-size:11px;color:rgba(196,168,130,0.4);line-height:1.8;font-style:italic;"></div>
-                            <div class="strata-hud strata-h-bl" style="position:absolute;bottom:20px;left:28px;z-index:100;pointer-events:none;">
-                                <div class="strata-dlb" style="font-size:10px;letter-spacing:2px;color:rgba(196,168,130,0.4);text-transform:uppercase;">층 구조</div>
-                                <div class="strata-dvl" id="strataDv" style="font-size:14px;color:#c4a882;font-weight:300;margin-top:2px;line-height:1.5;">위: 감정 지형<br>측면: 시간 단층</div>
-                            </div>
-                            <div class="strata-hud strata-h-br" style="position:absolute;bottom:20px;right:28px;z-index:100;pointer-events:auto;text-align:right;">
-                                <canvas id="strataHeartbeat" width="200" height="40" style="width:200px;height:40px;opacity:0.7;margin-bottom:6px;"></canvas>
-                                <div class="strata-ct" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:10px;color:rgba(196,168,130,0.4);pointer-events:none;">
-                                    오염도
-                                    <div class="strata-ct-tk" style="width:80px;height:2px;background:rgba(196,168,130,0.08);">
-                                        <div class="strata-ct-fl" id="strataCtFl" style="height:100%;background:#c4a882;transition:width .6s;width:0%;"></div>
-                                    </div>
-                                    <span id="strataCtVal" style="color:rgba(196,168,130,0.4);">0.00</span>
-                                </div>
-                                <div class="strata-ct" style="margin-top:8px;display:flex;align-items:center;justify-content:flex-end;gap:6px;font-size:10px;color:rgba(196,168,130,0.4);pointer-events:auto;">
-                                    <span style="pointer-events:none;">밝기</span>
-                                    <input id="strataBrightness" type="range" min="0.8" max="2.4" step="0.05" value="1.35" style="width:120px;margin:0;vertical-align:middle;" />
-                                    <span id="strataBrightnessVal" style="min-width:2.5em;text-align:left;">1.35x</span>
-                                </div>
-                            </div>
-                            <div id="strataLc" style="position:absolute;inset:0;z-index:110;pointer-events:none;"></div>
-                        </div>
-                        <div id="strataLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(196,168,130,0.4);font-size:14px;">
-                            버튼을 클릭하여 Strata 미리보기 불러오기
-                        </div>
-                    </div>
-                    <div style="margin-top: 1rem; text-align: center;">
-                        <button class="editor-btn" onclick="loadStrataPreview()" style="padding: 0.8rem 2rem; font-size: 1rem;">Strata 미리보기 불러오기</button>
-                    </div>
-                </div>
-
-                <!-- 3. SceneNavigator 감정공간 진단 -->
-                <div class="preview-section" style="padding: 2rem;">
-                    <h3 class="editor-section-title" style="margin-bottom: 0.5rem;">3. 감정공간 진단</h3>
-                    <p style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted);">노드를 드래그하여 배치. 연결선 클릭으로 패턴 편집. 자동 계산 후 수동 조정 가능.</p>
-                    <div style="margin-bottom: 1rem; text-align: center; display: flex; gap: 8px; justify-content: center;">
-                        <button class="editor-btn" onclick="runSceneNavDiagnostics()" style="padding: 0.8rem 2rem; font-size: 1rem;">진단 실행</button>
-                        <button class="editor-btn" onclick="openTrajectoryViewer()" style="padding: 0.8rem 2rem; font-size: 1rem;">궤적 뷰어 열기</button>
-                    </div>
-                    <div id="sceneNavDiagResult"></div>
-                    <div id="sceneGraphContainer" style="position:relative;width:100%;height:600px;background:rgba(5,5,10,0.6);border:1px solid rgba(196,168,130,0.1);border-radius:6px;margin-top:1rem;overflow:hidden;display:none;">
-                        <svg id="sceneGraphSvg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"></svg>
-                        <div id="sceneGraphNodes" style="position:absolute;inset:0;"></div>
-                        <div id="sceneGraphPopup" style="display:none;position:absolute;z-index:10;background:rgba(10,10,15,0.95);border:1px solid rgba(196,168,130,0.3);border-radius:6px;padding:12px 16px;min-width:160px;backdrop-filter:blur(6px);"></div>
-                    </div>
-                </div>
-            </div>
-
             <!-- ─── 잔상(afterimage) 모더레이션 ─── -->
             <div class="editor-content" id="utterancesContent">
                 <div class="editor-section" style="padding:2rem;">
@@ -417,7 +341,7 @@
     </div>
 
     <style>
-        /* 궤적 뷰어 스타일 (admin-trajectory.html과 동일) */
+        /* 궤적 뷰어 스타일 */
         #section-canvas .tv-root { display: grid; grid-template-columns: 220px 1fr 320px; height: 100%; }
         #section-canvas .tv-sidebar { background: rgba(15,15,22,0.9); border-right: 1px solid rgba(196,168,130,0.15); padding: 20px 16px; overflow-y: auto; }
         #section-canvas .tv-canvas-wrap { position: relative; overflow: hidden; background: #07070b; }

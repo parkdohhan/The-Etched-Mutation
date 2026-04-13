@@ -6,8 +6,7 @@
 
 ## 0단계: 이 창을 열어둔 채로, 새 터미널을 열어라
 
-- Mac 기준: **⌘ + Space → "terminal" → 엔터**
-- 터미널 창이 뜬다
+- Windows: **Win + R → cmd → 엔터** 또는 VS Code 터미널 쓰면 됨
 
 ---
 
@@ -16,7 +15,7 @@
 터미널에 **이 한 줄**을 그대로 복사해서 붙여넣고 엔터:
 
 ```bash
-cd "/Users/parksojung/The Etched Mutation/tools/persona-sim"
+cd "d:/The Etched Mutation/tools/persona-sim"
 ```
 
 성공이면 아무 메시지 없이 프롬프트만 나온다.
@@ -45,20 +44,16 @@ cp .env.example .env
 
 이러면 `.env`라는 파일이 생긴다.
 
-그 다음 이 명령어로 그 파일을 열어라:
-
-```bash
-open -e .env
-```
-
-텍스트 편집기가 뜬다. 안에 이런 게 보일 거다:
+그 다음 `.env` 파일을 VS Code나 메모장으로 열어라. 안에 이런 게 보일 거다:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 SUPABASE_URL=https://bxmppaxpzbkwebfbgpsm.supabase.co
 SUPABASE_SERVICE_KEY=eyJ...
-TARGET_MEMORY_ID=c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0
+TARGET_MEMORY_ID=<기억 UUID — Supabase memories 테이블에서 확인>
 ```
+
+> **`TARGET_MEMORY_ID`**: 시뮬레이션할 기억의 UUID. admin에서 기억 선택 후 브라우저 주소창에 `?memory=UUID` 형태로 보인다. 기억마다 다르니 바꿔가며 쓴다.
 
 ### 3-1. `ANTHROPIC_API_KEY` 채우기
 
@@ -107,13 +102,11 @@ npm run generate-personas
 
 ### 완료 후 직접 검사
 
-다음 명령어로 생성된 페르소나를 열어봐라:
-
-```bash
-open -e data/personas.json
-```
+생성된 페르소나는 `data/{기억코드}_personas.json`에 저장됨. VS Code에서 열어보면 됨.
 
 15명의 배경/경험/읽기 렌즈가 **서로 확실히 달라야 한다.** 만약 3~4명이 비슷비슷하면 나한테 말해라 — 프롬프트를 고쳐줄 거다.
+
+> **중요**: 같은 기억으로 다시 돌리면 기존 파일에 이어쓴다 (중복 skip). 다른 기억으로 바꾸면 `TARGET_MEMORY_ID`만 수정하면 됨.
 
 ---
 
@@ -141,7 +134,7 @@ npm run simulate-plays
 npm run insert-db -- --wipe
 ```
 
-- `--wipe`는 "기존 51개 다 지우고 새로 넣어라"는 뜻이다
+- `--wipe`는 "해당 기억의 기존 plays 다 지우고 새로 넣어라"는 뜻이다
 - 끝나면 `✓ N plays now in DB for memory ...` 메시지
 
 ---
@@ -159,7 +152,7 @@ npm run insert-db -- --wipe
 
 ## 8단계: 시각적 확인
 
-브라우저에서 admin.html 열고 → 로그인 → **"당신에게"** 기억 선택 → Strata 3D 뷰 열기.
+브라우저에서 admin.html 열고 → 로그인 → 해당 기억 선택 → Canvas 탭에서 씬 노드 확인.
 
 유기적인 지형과 오염 자국이 보여야 한다.
 

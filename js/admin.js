@@ -1155,12 +1155,8 @@ function switchTab(tab) {
         document.querySelectorAll('.editor-tab')[0].classList.add('active');
         document.getElementById('editContent').classList.add('active');
         stopPreviewWaveAnimation();
-    } else if (tab === 'preview') {
-        document.querySelectorAll('.editor-tab')[1].classList.add('active');
-        document.getElementById('previewContent').classList.add('active');
-        // 2D/3D 미리보기는 사용자가 해당 버튼을 클릭했을 때만 로드
     } else if (tab === 'utterances') {
-        document.querySelectorAll('.editor-tab')[2].classList.add('active');
+        document.querySelectorAll('.editor-tab')[1].classList.add('active');
         document.getElementById('utterancesContent').classList.add('active');
         loadUtterances();
     }

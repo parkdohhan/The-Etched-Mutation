@@ -24,12 +24,12 @@ context, but should retain a life shape consistent with the scores.)
    where the persona acts against their dominant trait pattern — this is what
    real humans look like.
 
-3. **Anchor in the reading context.** This persona will read a narrative about:
-   an adopted daughter whose adoptive mother dies in a truck accident,
-   pregnancy loss, a haunting presence at the door, reincarnation beliefs,
-   Chinese food (짜사이) as a loaded symbol. Generate life events that will
-   make their reading feel natural — not necessarily matching, but
-   *reactive* to these themes.
+3. **Anchor in the reading context.** This persona will read:
+
+   {{reading_context}}
+
+   Generate life events that will make their reading feel natural —
+   not necessarily matching, but *reactive* to these themes.
 
 === OUTPUT ===
 

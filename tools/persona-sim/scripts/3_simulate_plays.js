@@ -1,8 +1,8 @@
 // Simulate TEM plays as each persona reading each scene.
 // Uses Claude Sonnet 4.6 for cost efficiency at scale.
 //
-// Input:  data/personas.json + scenes fetched from Supabase
-// Output: data/plays.json
+// Input:  data/{MEMORY_CODE}_personas.json + scenes fetched from Supabase
+// Output: data/{MEMORY_CODE}_plays.json
 
 import fs from 'fs';
 import path from 'path';
@@ -12,9 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PERSONAS_PATH = path.join(__dirname, '..', 'data', 'personas.json');
 const TEMPLATE_PATH = path.join(__dirname, '..', 'prompts', 'play_template-260409.md');
-const OUT_PATH = path.join(__dirname, '..', 'data', 'plays.json');
 
 if (!process.env.ANTHROPIC_API_KEY) {
   console.error('[3/sim] Missing ANTHROPIC_API_KEY');
@@ -38,6 +36,27 @@ const VISITS_PER_PERSONA_MIN = 2;
 const VISITS_PER_PERSONA_MAX = 4;
 const SCENES_PER_VISIT_MIN = 4;
 const SCENES_PER_VISIT_MAX = 7;
+
+// Fetch memory code (for file naming)
+console.log('[3/sim] Fetching memory...');
+const { data: memory, error: memErr } = await supabase
+  .from('memories')
+  .select('code')
+  .eq('id', MEM_ID)
+  .single();
+if (memErr || !memory) {
+  console.error('[3/sim] Memory fetch failed:', memErr?.message);
+  process.exit(1);
+}
+const MEMORY_CODE = memory.code;
+const PERSONAS_PATH = path.join(__dirname, '..', 'data', `${MEMORY_CODE}_personas.json`);
+const OUT_PATH = path.join(__dirname, '..', 'data', `${MEMORY_CODE}_plays.json`);
+console.log(`[3/sim] Memory: ${MEMORY_CODE}`);
+
+if (!fs.existsSync(PERSONAS_PATH)) {
+  console.error(`[3/sim] 페르소나 파일 없음: ${PERSONAS_PATH}\n먼저 npm run generate-personas 를 실행하세요.`);
+  process.exit(1);
+}
 
 const personas = JSON.parse(fs.readFileSync(PERSONAS_PATH, 'utf8'));
 const template = fs.readFileSync(TEMPLATE_PATH, 'utf8');

@@ -316,7 +316,7 @@ PLAY 클릭 → archive.js (기억 목록)
   - 3뷰 분리: 전역 DAG / 국소 그래프 / 의미 비교
 - **DB 스키마**: `memories.meta jsonb`, `scenes.meta jsonb`, `trajectory_bridges` 테이블 + RLS
 - **E-004 「편지」(박소정)** Supabase 등록 — 11씬, 11 author_bridges, 8 emotion_entries
-- **시각화 뷰어 Phase 1~3** (`admin-trajectory.html` + `js/admin-trajectory.js`)
+- **시각화 뷰어 Phase 1~3** (`js/admin-trajectory.js` — admin.html Canvas 섹션에 inline 마운트)
   - dagre + SVG + 수동 zoom/pan
   - 감정 진입점 체크박스 (기본 빈 캔버스)
   - 노드 뱃지: 통과 카운터, author/trajectory bridge 구분 (회색/푸른빛)
@@ -357,10 +357,19 @@ PLAY 클릭 → archive.js (기억 목록)
 - [ ] (옵션) Big Five 슬라이더로 즉석 페르소나 생성 → Claude API로 즉시 시뮬
 
 #### Phase 4 — 레거시 정리 (1~2시간)
-- [ ] `admin.html` 내 editorScreen의 등고선 핀맵/3D strata/감정공간 진단 3섹션 — Canvas로 대체 확인 후 삭제
+- [x] ~~`admin.html` 내 editorScreen의 등고선 핀맵/3D strata/감정공간 진단 3섹션~~ — 2026-04-13 삭제 (previewContent 블록 + 미리보기 탭 제거)
+- [ ] editorScreen **기본정보** — `original_vector` 6슬라이더 UI Canvas 이관 보류 (아래 항목 선결)
+- [ ] editorScreen **씬 편집기** — contamination text_stage_1/2/3 폼 Canvas 미이관. 이관 후 제거
+- [ ] editorScreen **사운드 매핑 5곡** — Phase 2b 공간음향 충돌 가능성. (A) 플레이어에서 씬 사운드 우선 (B) UI 유지 결정 필요
+- [ ] editorScreen **데이터 내보내기/가져오기** — UI는 여기만 존재. Canvas로 옮기거나 상단 메뉴로 분리 후 제거
+- [ ] **잔상 모더레이션** — Phase 0.5에서 운영 탭으로 옮기기로 했으나 미완. `#utterancesContent` 그대로 editorScreen에 잔존
 - [ ] 세션/앵커 이미지 섹션 — 운영 탭으로 실제 이동
-- [ ] `admin-trajectory.html` 독립 페이지 — 유지 vs 삭제 결정 (현재 잉여)
+- [x] ~~`admin-trajectory.html` 독립 페이지~~ — 2026-04-13 삭제 (Canvas에 흡수됨)
 - [ ] 기존 `memories.sound_map` 5개 mp3 필드 — 레거시로 남김 (플레이어 뷰 호환)
+
+#### Phase 4.5 — 데이터 모델 미해결 (선결 조사)
+- [ ] **MM23L "당신에게" 자유 키 감정 모델** — `original_vector`와 씬 `original_emotion`이 6축 표준 밖 키 사용 (love/shame/numbness/confusion/isolation). 작가 의도 확인됨 (서사상 의미 있음). 별이엔진/오염추적/Finder 매칭이 비표준 키와 호환되는지 검증 필요. 호환 안 되면 (a) 6축 통일 (b) 자유 키 모델 정식 지원 결정.
+- [ ] **`memories.original_vector` UI 재설계** — 현 6슬라이더는 MM23L 8키 케이스 못 다룸. Canvas 이관 시 자유 키 JSON 에디터로 만들거나, MM23L 정리 후 자동 유도(씬 평균)에만 의존. DB 현황: 8개 중 2개(DJ2DG, MM23L)만 override 사용.
 
 #### [결정 대기] 항목
 - [ ] **명시적 분기 도입 여부**: `choices.next_scene_id` 컬럼 추가할 것인가.

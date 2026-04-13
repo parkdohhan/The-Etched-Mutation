@@ -12,7 +12,6 @@ import { createClient } from '@supabase/supabase-js';
 import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PLAYS_PATH = path.join(__dirname, '..', 'data', 'plays.json');
 
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
   console.error('[4/insert] Missing SUPABASE_URL or SUPABASE_SERVICE_KEY');
@@ -26,6 +25,25 @@ if (!process.env.TARGET_MEMORY_ID) {
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const MEM_ID = process.env.TARGET_MEMORY_ID;
 const WIPE = process.argv.includes('--wipe');
+
+// Fetch memory code (for file naming)
+const { data: memory, error: memErr } = await supabase
+  .from('memories')
+  .select('code')
+  .eq('id', MEM_ID)
+  .single();
+if (memErr || !memory) {
+  console.error('[4/insert] Memory fetch failed:', memErr?.message);
+  process.exit(1);
+}
+const MEMORY_CODE = memory.code;
+const PLAYS_PATH = path.join(__dirname, '..', 'data', `${MEMORY_CODE}_plays.json`);
+console.log(`[4/insert] Memory: ${MEMORY_CODE}`);
+
+if (!fs.existsSync(PLAYS_PATH)) {
+  console.error(`[4/insert] plays 파일 없음: ${PLAYS_PATH}\n먼저 npm run simulate-plays 를 실행하세요.`);
+  process.exit(1);
+}
 
 const raw = JSON.parse(fs.readFileSync(PLAYS_PATH, 'utf8'));
 console.log(`[4/insert] Loaded ${raw.length} plays from JSON`);
