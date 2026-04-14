@@ -366,6 +366,8 @@
   function _showProximityMonologue(pin) {
     var sd = pin.userData._sceneData;
     if (!sd) return;
+    // play-test first-person has its own richer whisper UI — don't double up.
+    if (typeof window !== 'undefined' && window._fpPlayActive) { _proxState.nearPin = pin; return; }
     _ensureProximityUI();
     _proxState.el.textContent = sd.monologue;
     _proxState.el.style.opacity = '1';
@@ -437,29 +439,11 @@
       }
       html += '</div>';
     } else {
-      // ─── Play: emotion chip interaction ──
-      html += '<div style="font-size:11px;letter-spacing:2px;text-align:center;color:rgba(196,168,130,0.4);margin-bottom:12px;">'
-        + (ko ? '이 흔적에서 무엇을 느끼시나요?' : 'What do you feel from this trace?') + '</div>';
-      html += '<div style="font-size:13px;line-height:1.8;margin-bottom:16px;color:rgba(196,168,130,0.6);text-align:center;font-style:italic;">"' + (sd.text || '').substring(0, 80) + (sd.text && sd.text.length > 80 ? '…' : '') + '"</div>';
-      html += '<div id="strataEmotionChips" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:16px;">';
-      TERRAIN_EMOTIONS.forEach(function (em) {
-        html += '<button type="button" class="strata-emo-chip" data-emo="' + em.key + '" style="'
-          + 'padding:6px 14px;border:1px solid rgba(196,168,130,0.25);border-radius:16px;'
-          + 'background:transparent;color:rgba(196,168,130,0.7);font-size:12px;cursor:pointer;'
-          + 'transition:all 0.3s;letter-spacing:1px;">'
-          + (ko ? em.ko : em.en) + '</button>';
-      });
-      html += '</div>';
-      html += '<div style="text-align:center;">';
-      html += '<button type="button" id="strataEmoSubmit" disabled style="'
-        + 'padding:8px 24px;border:1px solid rgba(196,168,130,0.3);border-radius:4px;'
-        + 'background:rgba(196,168,130,0.08);color:rgba(196,168,130,0.5);font-size:12px;'
-        + 'cursor:not-allowed;transition:all 0.3s;letter-spacing:2px;">'
-        + (ko ? '남기다' : 'Leave a mark') + '</button>';
-      html += '</div>';
+      // ─── Play: 흔적 본문만 표시 ──
+      html += '<div style="font-size:14px;line-height:1.9;color:rgba(196,168,130,0.82);text-align:left;font-family:\'Nanum Myeongjo\',\'IBM Plex Serif\',Georgia,serif;white-space:pre-wrap;">'
+        + (sd.text || '')
+        + '</div>';
     }
-
-    html += '<div style="margin-top:16px;text-align:center;font-size:11px;color:rgba(196,168,130,0.3);cursor:pointer;" id="strataScenePanelClose">' + (ko ? '클릭하여 닫기' : 'Click to close') + '</div>';
 
     _proxState.panelEl.innerHTML = html;
     _proxState.panelEl.style.display = 'block';
@@ -471,75 +455,23 @@
       _proxState.panelEl.style.display = 'none';
       _frozenTick = false; // unfreeze terrain
       document.removeEventListener('keydown', _panelKeyHandler);
+      document.removeEventListener('mousedown', _panelMouseHandler, true);
     }
 
-    // ─── Emotion chip interaction (play mode) ──
-    if (!isAdmin) {
-      var selectedEmotions = {};
-      var chips = _proxState.panelEl.querySelectorAll('.strata-emo-chip');
-      var submitBtn = document.getElementById('strataEmoSubmit');
-
-      chips.forEach(function (chip) {
-        chip.addEventListener('click', function () {
-          var key = chip.dataset.emo;
-          if (selectedEmotions[key]) {
-            delete selectedEmotions[key];
-            chip.style.borderColor = 'rgba(196,168,130,0.25)';
-            chip.style.color = 'rgba(196,168,130,0.7)';
-            chip.style.background = 'transparent';
-          } else {
-            selectedEmotions[key] = 1;
-            chip.style.borderColor = '#c4a882';
-            chip.style.color = '#c4a882';
-            chip.style.background = 'rgba(196,168,130,0.12)';
-          }
-          var hasSelection = Object.keys(selectedEmotions).length > 0;
-          submitBtn.disabled = !hasSelection;
-          submitBtn.style.cursor = hasSelection ? 'pointer' : 'not-allowed';
-          submitBtn.style.color = hasSelection ? '#c4a882' : 'rgba(196,168,130,0.5)';
-          submitBtn.style.borderColor = hasSelection ? 'rgba(196,168,130,0.5)' : 'rgba(196,168,130,0.3)';
-        });
-      });
-
-      submitBtn.addEventListener('click', function () {
-        if (submitBtn.disabled) return;
-        // Build emotion vector (equal weight for selected emotions)
-        var emoVec = {};
-        var keys = Object.keys(selectedEmotions);
-        var w = 1.0 / keys.length;
-        keys.forEach(function (k) { emoVec[k] = w; });
-
-        // Compute alignment with original emotion
-        var origEmo = sd.originalEmotion || {};
-        var dot = 0; var magA = 0; var magB = 0;
-        for (var ek in emoVec) { dot += (emoVec[ek] || 0) * (origEmo[ek] || 0); magA += emoVec[ek] * emoVec[ek]; }
-        for (var ok in origEmo) { magB += origEmo[ok] * origEmo[ok]; }
-        var alignment = (magA > 0 && magB > 0) ? dot / (Math.sqrt(magA) * Math.sqrt(magB)) : 0.5;
-
-        // Save play to Supabase
-        _saveTerrainPlay(sd.sceneId, emoVec, alignment);
-
-        // Push emotion to heartbeat waveform
-        _pushHeartbeatEmotion(emoVec);
-
-        // Visual feedback
-        submitBtn.textContent = ko ? '새겨졌다' : 'Etched';
-        submitBtn.disabled = true;
-        submitBtn.style.color = 'rgba(196,168,130,0.3)';
-        setTimeout(_closePanel, 1200);
-      });
+    function _panelMouseHandler(e) {
+      // 좌클릭이면 패널 닫기 (커서 안보여도 동작)
+      if (e.button === 0) { _closePanel(); e.stopPropagation(); e.preventDefault(); }
     }
-
-    var closeEl = document.getElementById('strataScenePanelClose');
-    if (closeEl) closeEl.onclick = _closePanel;
-    _proxState.panelEl.onclick = function (e) {
-      if (e.target === _proxState.panelEl || e.target === closeEl) _closePanel();
-    };
 
     function _panelKeyHandler(e) {
       if (e.code === 'Escape') { _closePanel(); e.preventDefault(); }
     }
-    document.addEventListener('keydown', _panelKeyHandler);
+
+    // 다음 tick에 리스너 부착 (패널 여는 클릭이 즉시 닫는 것 방지)
+    setTimeout(function () {
+      document.addEventListener('mousedown', _panelMouseHandler, true);
+      document.addEventListener('keydown', _panelKeyHandler);
+    }, 50);
   }
 
   // Save terrain play and rebuild terrain
@@ -992,17 +924,36 @@
             var canvas2 = document.createElement('canvas');
             var ctx = canvas2.getContext('2d');
             var fontSize = 48;
-            ctx.font = fontSize + 'px "Courier New", monospace';
-            var w = ctx.measureText(text).width + 24;
+            var font = fontSize + 'px "Gowun Batang", "Courier New", serif';
+            ctx.font = font;
+            var pad = 32; // room for blur halos + color offset
+            var w = ctx.measureText(text).width + pad * 2;
             canvas2.width = Math.min(512, Math.max(128, Math.pow(2, Math.ceil(Math.log2(w)))));
-            canvas2.height = 64;
-            ctx.font = fontSize + 'px "Courier New", monospace';
+            canvas2.height = 96;
+            ctx.font = font;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = color || 'rgba(196,168,130,0.7)';
-            ctx.shadowColor = 'rgba(0,0,0,0.5)';
-            ctx.shadowBlur = 6;
-            ctx.fillText(text, canvas2.width / 2, canvas2.height / 2);
+            var cx = canvas2.width / 2;
+            var cy = canvas2.height / 2;
+
+            // Red/cyan chromatic afterimages (blurred, screen-blended)
+            ctx.save();
+            ctx.filter = 'blur(4px)';
+            ctx.globalCompositeOperation = 'screen';
+            ctx.fillStyle = 'rgba(255,60,60,0.85)';
+            ctx.fillText(text, cx - 6, cy);
+            ctx.fillStyle = 'rgba(60,230,255,0.85)';
+            ctx.fillText(text, cx + 6, cy);
+            ctx.restore();
+
+            // Main body with soft white glow
+            ctx.save();
+            ctx.shadowColor = 'rgba(255,255,255,0.6)';
+            ctx.shadowBlur = 12;
+            ctx.fillStyle = color || 'rgba(255,255,255,0.9)';
+            ctx.fillText(text, cx, cy);
+            ctx.restore();
+
             var tex = new THREE.CanvasTexture(canvas2);
             tex.minFilter = THREE.LinearFilter;
             var mat = new THREE.SpriteMaterial({
@@ -1013,7 +964,7 @@
               depthWrite: false
             });
             var sprite = new THREE.Sprite(mat);
-            sprite.scale.set(canvas2.width / 64, 1, 1);
+            sprite.scale.set(canvas2.width / 64, canvas2.height / 64, 1);
             return sprite;
           }
 
@@ -1100,8 +1051,14 @@
             s.position.y = fa.baseY + Math.sin(_faTime * fa.speed + fa.phase) * 0.8;
             s.position.x += fa.driftX;
             s.position.z += fa.driftZ;
-            // Gentle opacity pulse
-            if (s.material) s.material.opacity = 0.45 + Math.sin(_faTime * 0.5 + fa.phase) * 0.15;
+            // Ghostly breathing (5s cycle: opacity 0.5↔0.9) + film jitter
+            if (s.material) {
+              var breath = 0.7 + Math.sin(_faTime * 1.2566 + fa.phase) * 0.2; // 2π/5 ≈ 1.2566
+              s.material.opacity = breath;
+            }
+            // Film jitter (fast, tiny, deterministic — no cumulative drift)
+            s.position.x += Math.sin(_faTime * 42 + fa.phase) * 0.01;
+            s.position.x -= Math.sin((_faTime - 0.016) * 42 + fa.phase) * 0.01;
           }
           _faAnimId = requestAnimationFrame(_faAnimate);
         }
