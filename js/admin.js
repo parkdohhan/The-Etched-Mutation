@@ -384,7 +384,8 @@ function addScene() {
         originalEmotion: null,
         originalReasonVector: null,
         anchor_emotions: null,
-        voidInfo: null
+        voidInfo: null,
+        exclusions: null
     });
     renderScenes();
 }
@@ -539,6 +540,25 @@ function renderScenes() {
                         </label>
                     </div>
                 </div>
+            </div>
+            <div class="editor-section scene-exclusions-section" data-scene-index="${sceneIndex}" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
+                <h3 class="editor-section-title" style="margin-bottom: 0.5rem;">부정 제약 (연출 레이어)</h3>
+                <small style="display: block; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);">
+                    이 씬이 <b>뜨지 않을 조건</b>을 정의. 하나라도 매칭되면 궤적 후보에서 제외됨. 플레이어에게는 이유가 노출되지 않음.
+                </small>
+                <textarea class="editor-input scene-exclusions-input" data-scene-index="${sceneIndex}"
+                          rows="5"
+                          style="width:100%; font-family: monospace; font-size: 0.82rem;"
+                          placeholder='[{"condition":{"type":"emotion_threshold","emotion":"rage","min":0.6},"reason":"분노 경로에는 안 뜸"}]'>${scene.exclusions ? JSON.stringify(scene.exclusions, null, 2) : ''}</textarea>
+                <div class="scene-exclusions-error" data-scene-index="${sceneIndex}" style="display:none; color: #d66; font-size: 0.8rem; margin-top: 0.4rem;"></div>
+                <details style="margin-top: 0.6rem;">
+                    <summary style="cursor: pointer; font-size: 0.82rem; color: var(--text-muted);">조건 타입 가이드</summary>
+                    <pre style="font-size: 0.75rem; color: var(--text-muted); background: var(--bg-deep); padding: 0.6rem; border-radius: 3px; overflow-x: auto;">
+emotion_threshold  { type:"emotion_threshold", emotion:"rage", min:0.6 }
+contamination_stage{ type:"contamination_stage", stage:"hypercompletion" }
+visited_scene      { type:"visited_scene", sceneIndex:2 }
+                    </pre>
+                </details>
             </div>
         `;
         container.appendChild(sceneBlock);
@@ -793,6 +813,37 @@ function attachSceneListeners() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             currentScenes[sceneIndex].text = this.value;
             renderSceneWave(sceneIndex);
+        });
+    });
+
+ // exclusions (부정 제약) textarea
+    document.querySelectorAll('.scene-exclusions-input').forEach(input => {
+        input.addEventListener('blur', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            const errorEl = document.querySelector(`.scene-exclusions-error[data-scene-index="${sceneIndex}"]`);
+            const raw = this.value.trim();
+            if (!raw) {
+                currentScenes[sceneIndex].exclusions = null;
+                if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
+                return;
+            }
+            try {
+                const parsed = JSON.parse(raw);
+                if (!Array.isArray(parsed)) throw new Error('배열이어야 합니다');
+                for (const entry of parsed) {
+                    if (!entry || typeof entry !== 'object' || !entry.condition) {
+                        throw new Error('각 항목에 condition 필드 필요');
+                    }
+                    const t = entry.condition.type;
+                    if (!['emotion_threshold', 'contamination_stage', 'visited_scene'].includes(t)) {
+                        throw new Error(`알 수 없는 type: ${t}`);
+                    }
+                }
+                currentScenes[sceneIndex].exclusions = parsed.length > 0 ? parsed : null;
+                if (errorEl) { errorEl.style.display = 'none'; errorEl.textContent = ''; }
+            } catch (err) {
+                if (errorEl) { errorEl.style.display = 'block'; errorEl.textContent = 'JSON 오류: ' + err.message; }
+            }
         });
     });
 

@@ -1261,6 +1261,7 @@ function proceedToNextScene() {
         const originalEmotion = currentData.scenes[state.currentScene]?.original_emotion
             || currentData.scenes[state.currentScene]?.originalEmotion || {};
 
+        const _contPresA = (() => { try { return getPresentationState(state.lastEngineResult); } catch { return null; } })();
         const navResult = sceneNavigator.navigate({
             scenes: currentData.scenes,
             currentSceneIndex: state.currentScene,
@@ -1268,6 +1269,11 @@ function proceedToNextScene() {
             transitionPattern: state.lastTransitionPattern || 'bridge',
             userEmotion,
             originalEmotion,
+            playerState: {
+                userEmotion,
+                contaminationStage: _contPresA?.stage || 'stable',
+                visitedScenes: visited,
+            },
         });
 
         if (navResult === null) {
@@ -1501,6 +1507,7 @@ async function proceedToNextSceneOrEnd(currentData, scene) {
         const originalEmotion = currentData.scenes[nextState.currentScene]?.original_emotion
             || currentData.scenes[nextState.currentScene]?.originalEmotion || {};
 
+        const _contPresB = (() => { try { return getPresentationState(nextState.lastEngineResult); } catch { return null; } })();
         const navResult = sceneNavigator.navigate({
             scenes: currentData.scenes,
             currentSceneIndex: nextState.currentScene,
@@ -1508,6 +1515,11 @@ async function proceedToNextSceneOrEnd(currentData, scene) {
             transitionPattern: nextState.lastTransitionPattern || 'bridge',
             userEmotion,
             originalEmotion,
+            playerState: {
+                userEmotion,
+                contaminationStage: _contPresB?.stage || 'stable',
+                visitedScenes: visited,
+            },
         });
 
         if (navResult === null) {

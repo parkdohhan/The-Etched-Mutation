@@ -62,7 +62,9 @@ export async function listMemoriesWithScenesChoices(client) {
                 anchor_emotions: scene.anchor_emotions ? (Array.isArray(scene.anchor_emotions) ? scene.anchor_emotions : (typeof scene.anchor_emotions === 'string' ? JSON.parse(scene.anchor_emotions) : scene.anchor_emotions)) : null,
                 text_stage_1: scene.text_stage_1 || null,
                 text_stage_2: scene.text_stage_2 || null,
-                text_stage_3: scene.text_stage_3 || null
+                text_stage_3: scene.text_stage_3 || null,
+                exclusions: scene.exclusions ? (Array.isArray(scene.exclusions) ? scene.exclusions : (typeof scene.exclusions === 'string' ? JSON.parse(scene.exclusions) : scene.exclusions)) : null,
+                meta: scene.meta || null
             };
         }));
 
@@ -243,7 +245,8 @@ export async function saveMemoryGraph(client, memoryPayload) {
             anchor_emotions: scene.anchor_emotions ? (Array.isArray(scene.anchor_emotions) ? scene.anchor_emotions : JSON.stringify(scene.anchor_emotions)) : null,
             text_stage_1: scene.text_stage_1 || null,
             text_stage_2: scene.text_stage_2 || null,
-            text_stage_3: scene.text_stage_3 || null
+            text_stage_3: scene.text_stage_3 || null,
+            exclusions: scene.exclusions && Array.isArray(scene.exclusions) && scene.exclusions.length > 0 ? scene.exclusions : null
         };
 
         const { data: sceneData, error: sceneError } = await client

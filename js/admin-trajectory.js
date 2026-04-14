@@ -1024,6 +1024,37 @@ function bindDetailFormEvents(s) {
       }
     });
   });
+
+  // 부정 제약 추가
+  document.querySelectorAll('.exclusion-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!s.meta) s.meta = {};
+      if (!Array.isArray(s.meta.exclusions)) s.meta.exclusions = [];
+      // DOM 상태 먼저 수거 (다른 row 편집 유지)
+      const current = collectExclusionsFromDOM() || [];
+      const type = btn.dataset.type;
+      if (type === 'emotion_threshold') current.push({ condition: { type, emotion: 'fear', min: 0.6 } });
+      else if (type === 'contamination_stage') current.push({ condition: { type, stage: 'hypercompletion' } });
+      else if (type === 'visited_scene') {
+        const firstOrder = state.scenes?.[0]?.scene_order ?? 0;
+        current.push({ condition: { type, sceneIndex: firstOrder } });
+      }
+      s.meta.exclusions = current;
+      renderDetail(s, 'detail');
+    });
+  });
+
+  // 부정 제약 삭제
+  document.querySelectorAll('#sceneExclusionsList .exRow-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const current = collectExclusionsFromDOM() || [];
+      const idx = parseInt(btn.dataset.idx, 10);
+      current.splice(idx, 1);
+      if (!s.meta) s.meta = {};
+      s.meta.exclusions = current;
+      renderDetail(s, 'detail');
+    });
+  });
 }
 
 async function saveScene(s) {
@@ -1045,6 +1076,9 @@ async function saveScene(s) {
     : (soundUrlInputEl?.value.trim() || '');
   const soundVolume = parseFloat(document.getElementById('sceneSoundVolume')?.value) || 1;
   const soundRadius = parseFloat(document.getElementById('sceneSoundRadius')?.value) || 15;
+
+  // 부정 제약 (DOM row에서 수거)
+  const exclusions = collectExclusionsFromDOM();
 
   // 브릿지 입력 수집
   const bridges = [];
@@ -1077,6 +1111,11 @@ async function saveScene(s) {
       delete newMeta.sound_url;
       delete newMeta.sound_volume;
       delete newMeta.sound_radius;
+    }
+    if (exclusions) {
+      newMeta.exclusions = exclusions;
+    } else {
+      delete newMeta.exclusions;
     }
 
     const { error } = await sb.from('scenes').update({
@@ -1153,6 +1192,19 @@ function renderDetailTab(s) {
       <button class="tv-toggle" id="sceneSoundTestBtn" style="padding:3px 10px;font-size:0.7rem;">▶ 미리듣기</button>
     </div>
 
+    <label style="${labelStyle}">이 씬이 뜨지 않을 조건</label>
+    <div style="font-size:0.68rem;color:#7c7466;margin-bottom:6px;line-height:1.4;">
+      아래 조건 중 하나라도 맞으면 이 씬은 궤적 후보에서 빠짐. 플레이어에겐 이유가 안 보임.
+    </div>
+    <div id="sceneExclusionsList">
+      ${renderExclusionRows(s, EMO_KEYS)}
+    </div>
+    <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
+      <button class="tv-toggle exclusion-add-btn" data-type="emotion_threshold" style="padding:3px 8px;font-size:0.7rem;">+ 감정 강도</button>
+      <button class="tv-toggle exclusion-add-btn" data-type="contamination_stage" style="padding:3px 8px;font-size:0.7rem;">+ 오염 단계</button>
+      <button class="tv-toggle exclusion-add-btn" data-type="visited_scene" style="padding:3px 8px;font-size:0.7rem;">+ 씬 방문</button>
+    </div>
+
     <div style="display:flex;gap:8px;margin-top:16px;align-items:center;">
       <button class="tv-toggle" id="sceneSaveBtn" style="padding:6px 14px;font-size:0.78rem;">저장</button>
       <button class="tv-toggle" id="sceneDeleteBtn" style="padding:6px 14px;font-size:0.78rem;color:#b85540;border-color:rgba(184,85,64,0.3);">씬 삭제</button>
@@ -1188,6 +1240,90 @@ function renderDetailTab(s) {
 }
 
 function safeJsonParse(s) { try { return JSON.parse(s); } catch (e) { return {}; } }
+
+const EMOTION_LABELS_KO = {
+  fear: '두려움', sadness: '슬픔', anger: '분노', guilt: '죄책감',
+  shame: '수치', longing: '갈망', numbness: '무감각', isolation: '고립'
+};
+const STAGE_OPTIONS = [
+  { v: 'biased_inclination', l: '편향 (biased_inclination)' },
+  { v: 'hypercompletion', l: '과잉 완결 (hypercompletion)' },
+  { v: 'stable', l: '안정 (stable)' },
+];
+
+function renderExclusionRows(s, emoKeys) {
+  const list = Array.isArray(s.meta?.exclusions) ? s.meta.exclusions : [];
+  if (list.length === 0) {
+    return `<div style="font-size:0.72rem;color:#5c544a;padding:6px 0;font-style:italic;">조건 없음 — 항상 후보에 포함됨</div>`;
+  }
+  const rowStyle = `background:rgba(20,20,28,0.5);border:1px solid rgba(196,168,130,0.1);border-radius:3px;padding:6px 8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;`;
+  const selStyle = `padding:2px 4px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-size:0.72rem;border-radius:2px;font-family:inherit;`;
+  const reasonStyle = `flex:1;min-width:80px;padding:2px 4px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.1);color:#a09886;font-size:0.7rem;border-radius:2px;font-family:inherit;`;
+  const delStyle = `padding:2px 6px;font-size:0.65rem;background:transparent;border:1px solid rgba(184,85,64,0.3);color:#b85540;cursor:pointer;border-radius:2px;`;
+
+  return list.map((entry, i) => {
+    const c = entry.condition || {};
+    const reason = escapeHtml(entry.reason || '');
+    if (c.type === 'emotion_threshold') {
+      const emoOpts = emoKeys.map(k => `<option value="${k}" ${c.emotion === k ? 'selected' : ''}>${EMOTION_LABELS_KO[k] || k}</option>`).join('');
+      return `<div class="exclusion-row" data-idx="${i}" data-type="emotion_threshold" style="${rowStyle}">
+        <span style="font-size:0.72rem;color:#7c7466;">플레이어</span>
+        <select class="exRow-emo" style="${selStyle}">${emoOpts}</select>
+        <span style="font-size:0.72rem;color:#7c7466;">가</span>
+        <input type="number" class="exRow-min" min="0" max="1" step="0.05" value="${Number(c.min ?? 0.6).toFixed(2)}" style="${selStyle}width:50px;" />
+        <span style="font-size:0.72rem;color:#7c7466;">이상일 때</span>
+        <input type="text" class="exRow-reason" placeholder="메모 (선택)" value="${reason}" style="${reasonStyle}" />
+        <button class="exRow-del" data-idx="${i}" style="${delStyle}">✕</button>
+      </div>`;
+    }
+    if (c.type === 'contamination_stage') {
+      const opts = STAGE_OPTIONS.map(o => `<option value="${o.v}" ${c.stage === o.v ? 'selected' : ''}>${o.l}</option>`).join('');
+      return `<div class="exclusion-row" data-idx="${i}" data-type="contamination_stage" style="${rowStyle}">
+        <span style="font-size:0.72rem;color:#7c7466;">오염 단계가</span>
+        <select class="exRow-stage" style="${selStyle}">${opts}</select>
+        <span style="font-size:0.72rem;color:#7c7466;">일 때</span>
+        <input type="text" class="exRow-reason" placeholder="메모 (선택)" value="${reason}" style="${reasonStyle}" />
+        <button class="exRow-del" data-idx="${i}" style="${delStyle}">✕</button>
+      </div>`;
+    }
+    if (c.type === 'visited_scene') {
+      const sceneOpts = (state.scenes || []).map(sc => {
+        const lbl = sc.meta?.scene_code || `씬 ${sc.scene_order}`;
+        return `<option value="${sc.scene_order}" ${Number(c.sceneIndex) === sc.scene_order ? 'selected' : ''}>${escapeHtml(lbl)}</option>`;
+      }).join('');
+      return `<div class="exclusion-row" data-idx="${i}" data-type="visited_scene" style="${rowStyle}">
+        <select class="exRow-scene" style="${selStyle}">${sceneOpts}</select>
+        <span style="font-size:0.72rem;color:#7c7466;">을/를 이미 본 뒤</span>
+        <input type="text" class="exRow-reason" placeholder="메모 (선택)" value="${reason}" style="${reasonStyle}" />
+        <button class="exRow-del" data-idx="${i}" style="${delStyle}">✕</button>
+      </div>`;
+    }
+    return '';
+  }).join('');
+}
+
+function collectExclusionsFromDOM() {
+  const rows = document.querySelectorAll('#sceneExclusionsList .exclusion-row');
+  const result = [];
+  rows.forEach(row => {
+    const type = row.dataset.type;
+    const reason = row.querySelector('.exRow-reason')?.value.trim() || '';
+    let condition = null;
+    if (type === 'emotion_threshold') {
+      const emotion = row.querySelector('.exRow-emo')?.value;
+      const min = parseFloat(row.querySelector('.exRow-min')?.value);
+      if (emotion && !isNaN(min)) condition = { type, emotion, min };
+    } else if (type === 'contamination_stage') {
+      const stage = row.querySelector('.exRow-stage')?.value;
+      if (stage) condition = { type, stage };
+    } else if (type === 'visited_scene') {
+      const sceneIndex = parseInt(row.querySelector('.exRow-scene')?.value, 10);
+      if (!isNaN(sceneIndex)) condition = { type, sceneIndex };
+    }
+    if (condition) result.push(reason ? { condition, reason } : { condition });
+  });
+  return result.length > 0 ? result : null;
+}
 
 function renderCompareTab(s) {
   const entries = (state.memory.meta && state.memory.meta.emotion_entries) || {};

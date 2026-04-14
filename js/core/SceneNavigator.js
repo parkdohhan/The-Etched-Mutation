@@ -38,16 +38,38 @@ export class SceneNavigator {
      * @param {string}        params.transitionPattern   From ByeoriEngine output
      * @param {Object}        params.userEmotion         User's last emotion vector
      * @param {Object}        params.originalEmotion     Current scene's original emotion
+     * @param {Object}        [params.playerState]       Optional player context for exclusion filter
+     *   - userEmotion, contaminationStage, visitedScenes
      *
      * @returns {{ index: number, isFallback: boolean, fallbackNarrative?: string } | null}
      *   null = no unvisited scenes remain (session end)
      */
-    navigate({ scenes, currentSceneIndex, visitedScenes = [], transitionPattern, userEmotion, originalEmotion }) {
+    navigate({ scenes, currentSceneIndex, visitedScenes = [], transitionPattern, userEmotion, originalEmotion, playerState }) {
         if (!scenes || scenes.length === 0) return null;
 
-        const unvisited = scenes
+        const effectivePlayerState = playerState || { userEmotion, visitedScenes };
+
+        const beforeExclusion = scenes
             .map((_, i) => i)
             .filter(i => i !== currentSceneIndex && !visitedScenes.includes(i));
+        const unvisited = beforeExclusion.filter(i => !isExcluded(scenes[i], effectivePlayerState));
+
+        if (typeof window !== 'undefined' && window.__TEM_DEBUG_EXCLUSIONS__) {
+            const excluded = beforeExclusion.filter(i => !unvisited.includes(i));
+            if (excluded.length > 0) {
+                console.group('[부정 제약] 제외된 씬');
+                excluded.forEach(i => {
+                    const sc = scenes[i];
+                    const list = sc?.meta?.exclusions || sc?.exclusions || [];
+                    console.log(`  씬 ${i} (${sc?.meta?.scene_code || sc?.id || '?'}) — 조건:`, list);
+                });
+                console.log('  playerState:', effectivePlayerState);
+                console.log(`  전체 ${beforeExclusion.length}개 중 ${unvisited.length}개 후보 남음`);
+                console.groupEnd();
+            } else if (beforeExclusion.length > 0) {
+                console.log(`[부정 제약] 제외 없음 (후보 ${beforeExclusion.length}개)`);
+            }
+        }
 
         if (unvisited.length === 0) return null;
 
@@ -124,6 +146,33 @@ export class SceneNavigator {
         }
         return result;
     }
+}
+
+/**
+ * Evaluate whether a scene should be excluded from the trajectory candidates.
+ * Returns true if ANY exclusion condition matches.
+ * Absent/empty exclusions → never excluded.
+ */
+export function isExcluded(scene, playerState = {}) {
+    const list = scene?.meta?.exclusions || scene?.exclusions;
+    if (!list || !Array.isArray(list) || list.length === 0) return false;
+    return list.some(entry => matchesExclusion(entry?.condition, playerState));
+}
+
+function matchesExclusion(condition, playerState) {
+    if (!condition || typeof condition !== 'object') return false;
+    if (condition.type === 'emotion_threshold') {
+        const val = Number(playerState.userEmotion?.[condition.emotion] || 0);
+        const min = Number(condition.min ?? 0.6);
+        return val >= min;
+    }
+    if (condition.type === 'contamination_stage') {
+        return playerState.contaminationStage === condition.stage;
+    }
+    if (condition.type === 'visited_scene') {
+        return (playerState.visitedScenes || []).includes(condition.sceneIndex);
+    }
+    return false;
 }
 
 export const sceneNavigator = new SceneNavigator();
