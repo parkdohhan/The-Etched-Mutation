@@ -13,6 +13,8 @@
   var animId = null;
   var canvas = null;
   var _lastConfig = null;
+  var _audioEngine = null;
+  var _audioUnlocked = false;
   function _strataLang() { return (document.documentElement.lang || 'en').substring(0, 2) === 'ko' ? 'ko' : 'en'; }
   var STRATA_BRIGHTNESS_KEY = 'tem_strata_default_brightness';
   var STRATA_BRIGHTNESS_MIN = 0.8;
@@ -201,7 +203,7 @@
       // Fetch scenes for scene pins (admin mode)
       var scenesRes = await client
         .from('scenes')
-        .select('id, memory_id, scene_order, text, original_emotion, echo_words, void_info')
+        .select('id, memory_id, scene_order, text, original_emotion, echo_words, void_info, meta')
         .eq('memory_id', memoryId)
         .order('scene_order', { ascending: true });
       var sceneRows = (scenesRes && !scenesRes.error && scenesRes.data) ? scenesRes.data : [];
@@ -750,6 +752,10 @@
       var c = terrainRuntime.getCamera();
       if (r && s && c) r.render(s, c);
     }
+    if (_audioEngine && terrainRuntime) {
+      var cam = terrainRuntime.getCamera();
+      if (cam && cam.position) _audioEngine.setListener(cam.position.x, cam.position.y, cam.position.z);
+    }
     _drawHeartbeat();
     animId = requestAnimationFrame(animateLoop);
   }
@@ -787,6 +793,15 @@
       }
       canvas._faSprites = null;
     }
+    if (_audioEngine) {
+      try { _audioEngine.dispose(); } catch(_){}
+      _audioEngine = null;
+    }
+    _audioUnlocked = false;
+    if (canvas && canvas._audioUnlockHandler) {
+      canvas.removeEventListener('pointerdown', canvas._audioUnlockHandler);
+      canvas._audioUnlockHandler = null;
+    }
     if (_onCloseCallback) {
       _onCloseCallback();
     } else if (typeof g.enterArchive === 'function') {
@@ -813,6 +828,19 @@
       if (!terrainRuntime) {
         if (onClose) onClose();
         return;
+      }
+
+      if (!_audioEngine && typeof g.createSpatialAudioEngine === 'function') {
+        try { _audioEngine = g.createSpatialAudioEngine(); }
+        catch (e) { console.warn('[Strata] audio engine init fail:', e && e.message); _audioEngine = null; }
+      }
+      _audioUnlocked = false;
+      if (_audioEngine && canvas) {
+        var _unlock = function () {
+          if (!_audioUnlocked && _audioEngine) { try { _audioEngine.resume(); } catch(_){} _audioUnlocked = true; }
+        };
+        canvas.addEventListener('pointerdown', _unlock, { once: true });
+        canvas._audioUnlockHandler = _unlock;
       }
 
       g.Strata.start();
@@ -925,6 +953,19 @@
             scene3.add(pin);
             _scenePinMeshes.push(pin);
 
+            // Spatial audio: register scene sound if meta.sound_url exists
+            if (_audioEngine && sc.meta && sc.meta.sound_url) {
+              try {
+                _audioEngine.register(sc.id, {
+                  url: sc.meta.sound_url,
+                  x: sx, y: sh + 0.5, z: sz,
+                  volume: sc.meta.sound_volume != null ? sc.meta.sound_volume : 1,
+                  radius: sc.meta.sound_radius != null ? sc.meta.sound_radius : 15,
+                  loop: true
+                });
+              } catch (ae) { console.warn('[Strata] audio register fail:', ae && ae.message); }
+            }
+
             // Thin vertical line from terrain to pin
             var lineGeo = new THREE.BufferGeometry().setFromPoints([
               new THREE.Vector3(sx, sh, sz),
@@ -1033,7 +1074,7 @@
                 playDominant: '',
                 playCount: 0,
                 avgAlignment: 0,
-                monologue: ko ? '…이 단어가 떠돈다.' : '…this word lingers.',
+                monologue: _strataLang() === 'ko' ? '…이 단어가 떠돈다.' : '…this word lingers.',
               };
               sprite.userData._isScenePin = true;
               scene3.add(sprite);

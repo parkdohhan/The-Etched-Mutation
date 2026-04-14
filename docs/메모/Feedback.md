@@ -366,6 +366,11 @@ PLAY 클릭 → archive.js (기억 목록)
 - [ ] 세션/앵커 이미지 섹션 — 운영 탭으로 실제 이동
 - [x] ~~`admin-trajectory.html` 독립 페이지~~ — 2026-04-13 삭제 (Canvas에 흡수됨)
 - [ ] 기존 `memories.sound_map` 5개 mp3 필드 — 레거시로 남김 (플레이어 뷰 호환)
+- [ ] **🚨 SoundscapeBeta + sound_map 전면 제거** (Phase 2b에서 ADD만 하고 미룬 작업, 2026-04-14 결정)
+  - 영향 파일 17개: `js/audio/SoundscapeBeta.js`, `js/audio/getSoundscape.js`, `js/app/endScreen.js`, `js/app/archive.js`, `js/lib/repo.js`, `js/index.js`, `js/services/NetworkService.js`, `js/admin.js`, `index.html`, `play-test.html` 등
+  - DB 마이그레이션: `memories.sound_map` 컬럼 drop (`20250216000000_add_sound_map_to_memories.sql` 역마이그레이션 필요)
+  - 순수 공간음향(`spatialAudio.js`)으로 일원화. 배경 앰비언트 없음 확정.
+  - 이유: Phase 2b에서 함께 했다가 play-test/archive/endScreen 회귀 위험 커서 분리. 대청소로 한 번에 처리.
 
 #### Phase 4.5 — 데이터 모델 미해결 (선결 조사)
 - [ ] **MM23L "당신에게" 자유 키 감정 모델** — `original_vector`와 씬 `original_emotion`이 6축 표준 밖 키 사용 (love/shame/numbness/confusion/isolation). 작가 의도 확인됨 (서사상 의미 있음). 별이엔진/오염추적/Finder 매칭이 비표준 키와 호환되는지 검증 필요. 호환 안 되면 (a) 6축 통일 (b) 자유 키 모델 정식 지원 결정.

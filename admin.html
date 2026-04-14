@@ -310,6 +310,11 @@
                     <button class="tv-toggle" id="tvResetLayout" title="드래그로 옮긴 위치 초기화">레이아웃 초기화</button>
                 </div>
 
+                <div class="tv-section-label">미리보기</div>
+                <div class="tv-toggle-row">
+                    <button class="tv-toggle" id="tvStrataPreviewBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="현재 기억의 Strata 3D 지형 열기 (공간음향 테스트)">🌐 Strata 미리보기</button>
+                </div>
+
                 <div class="tv-section-label">통계</div>
                 <div id="tvStats" class="tv-emo-meta" style="line-height: 1.6;"></div>
             </aside>
@@ -446,6 +451,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
     <script src="js/shared/tem_af_strata_terrain.js"></script>
+    <script src="js/shared/spatialAudio.js"></script>
     <script src="js/ui/strataView.js"></script>
     <script type="module" src="js/admin.js"></script>
     <script type="module" src="js/admin-trajectory.js"></script>
@@ -471,5 +477,47 @@
         }
     })();
     </script>
+
+    <!-- ═══ Strata 미리보기 컨테이너 (Canvas 사이드바 버튼이 띄움) ═══ -->
+    <div id="strataView" style="display:none;position:fixed;inset:0;z-index:2600;background:#0a0a0f;">
+        <canvas id="strataCanvas" style="width:100%;height:100%;"></canvas>
+        <div class="strata-hud strata-h-tl"><div class="strata-tsm">The Geology of Emotion</div><div class="strata-tlg">S T R A T A</div></div>
+        <div class="strata-hud strata-h-tr" id="strataHudTR"></div>
+        <div class="strata-hud strata-h-bl">
+            <div class="strata-dlb">Strata Structure</div>
+            <div class="strata-dvl" id="strataDv">From above: emotional terrain<br>From the side: temporal fault lines</div>
+        </div>
+        <div class="strata-hud strata-h-br">
+            <div class="strata-ct">Contamination<div class="strata-ct-tk"><div class="strata-ct-fl" id="strataCtFl" style="width:0%"></div></div><span id="strataCtVal">0.00</span></div>
+            <div class="strata-ct" style="margin-top:8px;">Brightness<input id="strataBrightness" type="range" min="0.8" max="2.4" step="0.05" value="1.35" style="width:120px;margin:0 8px;" /><span id="strataBrightnessVal">1.35x</span></div>
+        </div>
+        <div class="strata-hint">drag to rotate — view from side to see cross-section</div>
+        <div class="strata-grain"></div>
+        <div id="strataLc"></div>
+        <button id="strataFirstPersonBtn" style="position:fixed;bottom:40px;left:calc(50% - 180px);z-index:2700;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:12px 24px;font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:2px;cursor:pointer;">1인칭 걷기 (F)</button>
+        <button id="strataCloseBtn" style="position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:2700;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:12px 32px;font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:3px;cursor:pointer;">Leave the strata behind</button>
+        <script>
+        (function(){
+            function bindFP(){
+                var btn = document.getElementById('strataFirstPersonBtn');
+                if (!btn) return;
+                btn.onclick = function(){
+                    var rt = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+                    if (!rt) return;
+                    if (rt.isFirstPerson && rt.isFirstPerson()) { rt.exitFirstPerson(); btn.textContent = '1인칭 걷기 (F)'; }
+                    else if (rt.enterFirstPerson) { rt.enterFirstPerson(); btn.textContent = '3인칭 복귀 (F/ESC)'; }
+                };
+                document.addEventListener('keydown', function(e){
+                    if (e.key === 'f' || e.key === 'F') {
+                        var sv = document.getElementById('strataView');
+                        if (sv && sv.style.display !== 'none') btn.click();
+                    }
+                });
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindFP);
+            else bindFP();
+        })();
+        </script>
+    </div>
 </body>
 </html>

@@ -13,7 +13,7 @@
  *   - 배경 루프 재생; 리스너 이동 시 자동 크로스페이드
  */
 
-export function createSpatialAudioEngine() {
+function createSpatialAudioEngine() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const sources = new Map(); // sceneId -> { panner, gain, source, buffer, opts }
   let listenerPos = { x: 0, y: 0, z: 0 };

@@ -476,6 +476,17 @@ function bindToggles() {
   if (addMemBtn) addMemBtn.addEventListener('click', openNewMemoryModal);
   const addSceneBtn = document.getElementById('tvAddSceneBtn');
   if (addSceneBtn) addSceneBtn.addEventListener('click', addNewScene);
+
+  const strataBtn = document.getElementById('tvStrataPreviewBtn');
+  if (strataBtn) strataBtn.addEventListener('click', () => {
+    const mid = (state.memory && state.memory.id) || window.currentMemoryId;
+    if (!mid) { alert('기억이 선택되지 않았습니다.'); return; }
+    if (typeof window.showStrataView !== 'function') { alert('strataView.js 로딩 실패'); return; }
+    window.showStrataView(mid, null, () => {
+      const sv = document.getElementById('strataView');
+      if (sv) sv.style.display = 'none';
+    });
+  });
 }
 
 // ─── 그래프 ────────────────────────────────────────────────
