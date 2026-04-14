@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>라이브 감정 파동 테스트</title>
+<style>
+  :root {
+    --bg-0: #0a0a10;
+    --bg-1: #14141c;
+    --bg-2: #1c1c28;
+    --ink: #c9c4b3;
+    --ink-dim: #6a6a78;
+    --accent: #b8a184;
+    --ghost: rgba(200, 200, 220, 0.04);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; background: var(--bg-0); color: var(--ink); }
+  body {
+    font-family: 'Georgia', 'Noto Serif KR', serif;
+    padding: 2.5rem 3rem;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* 배경 그레인 + 비네트 */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.6) 100%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+    pointer-events: none;
+    z-index: 1;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(180, 160, 200, 0.03), transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(160, 180, 200, 0.025), transparent 55%);
+    pointer-events: none;
+    z-index: 1;
+    animation: driftGlow 24s ease-in-out infinite alternate;
+  }
+  @keyframes driftGlow {
+    0%   { transform: translate(0, 0); opacity: 0.6; }
+    100% { transform: translate(20px, -10px); opacity: 1; }
+  }
+
+  h1, .sub, .wrap { position: relative; z-index: 2; }
+
+  h1 {
+    font-weight: 200;
+    letter-spacing: 0.12em;
+    margin: 0 0 0.4rem;
+    font-size: 1.6rem;
+    color: rgba(220, 215, 200, 0.75);
+    text-shadow: 0 0 20px rgba(180, 160, 140, 0.15);
+  }
+  h1::after {
+    content: '';
+    display: inline-block;
+    width: 8px; height: 8px;
+    margin-left: 0.6rem;
+    border-radius: 50%;
+    background: rgba(200, 180, 160, 0.4);
+    box-shadow: 0 0 12px rgba(200, 180, 160, 0.6);
+    animation: pulse 3.2s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.9); }
+    50%      { opacity: 1;   transform: scale(1.15); }
+  }
+
+  .sub {
+    color: var(--ink-dim);
+    font-size: 0.8rem;
+    font-style: italic;
+    letter-spacing: 0.03em;
+    margin-bottom: 2rem;
+    max-width: 720px;
+  }
+  .sub code {
+    font-family: 'Consolas', monospace;
+    color: rgba(184, 161, 132, 0.7);
+    font-style: normal;
+    font-size: 0.78rem;
+  }
+
+  .wrap {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 2.5rem;
+    max-width: 1200px;
+  }
+
+  .sliders {
+    background: linear-gradient(160deg, rgba(28,28,40,0.6), rgba(18,18,26,0.4));
+    padding: 1.4rem 1.2rem;
+    border-radius: 2px;
+    border: 1px solid rgba(255,255,255,0.05);
+    backdrop-filter: blur(6px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.03),
+      0 20px 40px rgba(0,0,0,0.4);
+  }
+
+  .slider-row { margin-bottom: 0.75rem; }
+  .slider-row label {
+    display: flex; justify-content: space-between;
+    font-size: 0.78rem; margin-bottom: 0.25rem;
+    letter-spacing: 0.04em;
+    opacity: 0.8;
+  }
+  .slider-row .val {
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    font-family: 'Consolas', monospace;
+    font-size: 0.72rem;
+    opacity: 0.7;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    height: 14px;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(200,200,220,0.2), transparent);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: rgba(220,210,190,0.6);
+    box-shadow: 0 0 8px rgba(220,210,190,0.4), 0 0 16px rgba(220,210,190,0.2);
+    margin-top: -5px;
+    border: none;
+    transition: box-shadow 0.3s;
+  }
+  input[type="range"]:hover::-webkit-slider-thumb {
+    box-shadow: 0 0 12px rgba(220,210,190,0.7), 0 0 24px rgba(220,210,190,0.35);
+  }
+
+  .stage {
+    background: radial-gradient(ellipse at center, #0f0f18 0%, #070709 100%);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      inset 0 0 40px rgba(0,0,0,0.6),
+      0 0 1px rgba(200,200,220,0.15),
+      0 30px 60px rgba(0,0,0,0.5);
+  }
+  /* stage 위에 희미한 스캔라인 — 오래된 모니터의 잔상감 */
+  .stage::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 4px);
+    pointer-events: none;
+    z-index: 2;
+    mix-blend-mode: overlay;
+  }
+  /* 비네트 */
+  .stage::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.7) 100%);
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 360px;
+    filter: blur(0.4px);
+  }
+
+  .readout {
+    background: rgba(20, 20, 30, 0.5);
+    padding: 1rem 1.2rem;
+    margin-top: 1rem;
+    border-radius: 2px;
+    font-size: 0.78rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+    border: 1px solid rgba(255,255,255,0.04);
+    line-height: 1.9;
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(4px);
+  }
+  .readout .k { color: var(--ink-dim); }
+  .readout .v { color: var(--accent); text-shadow: 0 0 8px rgba(184,161,132,0.25); }
+
+  .controls {
+    margin-top: 1.2rem;
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+  }
+  button {
+    background: transparent;
+    color: rgba(200,195,180,0.7);
+    border: 1px solid rgba(200,195,180,0.15);
+    padding: 0.5rem 1rem;
+    border-radius: 1px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-family: inherit;
+    letter-spacing: 0.08em;
+    transition: all 0.4s ease;
+  }
+  button:hover {
+    background: rgba(200,195,180,0.05);
+    color: rgba(220,215,200,0.95);
+    border-color: rgba(200,195,180,0.35);
+    box-shadow: 0 0 16px rgba(200,195,180,0.1);
+  }
+
+  .note {
+    font-size: 0.72rem;
+    color: rgba(140,140,150,0.5);
+    margin-top: 1rem;
+    line-height: 1.7;
+    font-style: italic;
+    letter-spacing: 0.02em;
+  }
+  .note strong { color: rgba(200,195,180,0.65); font-weight: 400; font-style: normal; }
+</style>
+</head>
+<body>
+
+<h1>라이브 감정 파동 (Live Emotion Wave)</h1>
+<div class="sub">
+  <code>computeWaveFromEmotion()</code> + <code>drawWave()</code> (comparison.js 기준) ·
+  슬라이더로 감정 벡터를 조절하며 파동 형태 확인
+</div>
+
+<div class="wrap">
+  <div class="sliders" id="sliders"></div>
+
+  <div>
+    <div class="stage"><canvas id="c"></canvas></div>
+    <div class="readout" id="readout"></div>
+    <div class="controls">
+      <button onclick="preset('calm')">평온 (낮은 강도)</button>
+      <button onclick="preset('grief')">깊은 슬픔</button>
+      <button onclick="preset('panic')">공포 + 분노</button>
+      <button onclick="preset('mixed')">복합 감정</button>
+      <button onclick="preset('zero')">0 (기본값)</button>
+    </div>
+    <div class="note">
+      ※ 이 파동은 <strong>라이브 감정 파동 (Live Emotion Wave)</strong>만 표현.
+      (아카이브 파동 / Admin 파동 / Strata 파동은 계산식이 완전히 다름 — 별도 테스트 필요)<br>
+      amplitude = intensity, frequency = 0.01 + complexity × 0.005, color = 지배 감정
+    </div>
+  </div>
+</div>
+
+<script>
+const EMOTION_COLORS = {
+  fear:      [100, 80, 180],
+  sadness:   [80, 100, 160],
+  anger:     [200, 80, 80],
+  joy:       [200, 180, 100],
+  longing:   [80, 180, 180],
+  guilt:     [150, 130, 100],
+  shame:     [160, 100, 130],
+  numbness:  [90, 90, 110],
+  isolation: [70, 90, 130],
+  emptiness: [90, 90, 110],
+  confusion: [120, 100, 140],
+  relief:    [140, 180, 120],
+};
+
+const EMOTIONS = Object.keys(EMOTION_COLORS);
+const state = Object.fromEntries(EMOTIONS.map(k => [k, 0]));
+
+// ── Build slider UI ──
+const slidersEl = document.getElementById('sliders');
+EMOTIONS.forEach(k => {
+  const [r,g,b] = EMOTION_COLORS[k];
+  const row = document.createElement('div');
+  row.className = 'slider-row';
+  row.innerHTML = `
+    <label>
+      <span style="color: rgb(${r},${g},${b})">● ${k}</span>
+      <span class="val" id="v-${k}">${state[k].toFixed(2)}</span>
+    </label>
+    <input type="range" min="0" max="1" step="0.01" value="${state[k]}" id="s-${k}">
+  `;
+  slidersEl.appendChild(row);
+  document.getElementById('s-' + k).addEventListener('input', e => {
+    state[k] = parseFloat(e.target.value);
+    document.getElementById('v-' + k).textContent = state[k].toFixed(2);
+  });
+});
+
+function preset(name) {
+  const sets = {
+    calm:  { sadness: 0.1, relief: 0.2 },
+    grief: { sadness: 0.8, longing: 0.6, emptiness: 0.4 },
+    panic: { fear: 0.7, anger: 0.6 },
+    mixed: { fear: 0.3, sadness: 0.3, anger: 0.3, joy: 0.2, longing: 0.3, confusion: 0.4 },
+    zero:  {},
+  };
+  EMOTIONS.forEach(k => { state[k] = 0; });
+  Object.assign(state, sets[name] || {});
+  EMOTIONS.forEach(k => {
+    document.getElementById('s-' + k).value = state[k];
+    document.getElementById('v-' + k).textContent = state[k].toFixed(2);
+  });
+}
+
+// ── Compute pipeline ──
+function computeIntensity(base) {
+  // 원본에선 AI 분석이 intensity를 직접 반환. 테스트에선 벡터 크기로 근사.
+  const sum = Object.values(base).reduce((a,b)=>a+b, 0);
+  return Math.min(1, sum);
+}
+
+function computeComplexity(base) {
+  // 0.2 이상인 감정 개수
+  return Object.values(base).filter(v => v >= 0.2).length;
+}
+
+function getDominantColor(base) {
+  let maxKey = 'sadness', maxVal = 0;
+  Object.entries(base).forEach(([k,v]) => { if (v > maxVal) { maxVal = v; maxKey = k; } });
+  if (maxVal === 0) return [120, 120, 140];
+  return EMOTION_COLORS[maxKey] || [120, 120, 140];
+}
+
+function computeWaveStyle(base) {
+  const intensity = computeIntensity(base);
+  const complexity = computeComplexity(base);
+  const [r,g,b] = getDominantColor(base);
+  return {
+    amplitude: 30 + intensity * 80,      // px 스케일 (원본은 0~1 추상값. 시각화 위해 px로 증폭)
+    frequency: 0.01 + complexity * 0.005,
+    speed: 0.5 + intensity * 1.5,
+    chaos: Math.min(1, complexity / 6),
+    color: { r, g, b },
+    _intensity: intensity,
+    _complexity: complexity,
+  };
+}
+
+// ── Canvas + draw (comparison.js drawWave 이식) ──
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let dpr = window.devicePixelRatio || 1;
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// 간이 Perlin 대체 (comparison.js _pnoise 대신 smoothed sin)
+function pnoise(x, y, z) {
+  return (Math.sin(x * 2.1 + y * 3.3 + z) + Math.sin(x * 5.7 - y * 1.2) + Math.sin(x * 0.3 + y * 7.1)) / 6 + 0.5;
+}
+
+// ── 심장 박동 파형 (idle 상태 전용 렌더. 로직 파이프라인은 그대로) ──
+// 한 주기 내 위치(0~1) → ECG-like offset
+function heartbeatShape(phase) {
+  // P-QRS-T 간이 근사. phase 0~1.
+  const p = phase;
+  if (p < 0.08) return Math.sin(p / 0.08 * Math.PI) * 0.12;          // P wave
+  if (p < 0.15) return 0;
+  if (p < 0.17) return -0.15;                                         // Q
+  if (p < 0.20) return 1.0;                                           // R (spike)
+  if (p < 0.23) return -0.35;                                         // S
+  if (p < 0.30) return 0;
+  if (p < 0.48) return Math.sin((p - 0.30) / 0.18 * Math.PI) * 0.22;  // T wave
+  return 0;
+}
+
+function drawHeartbeat(t) {
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const cy = h / 2;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(10, 10, 16, 1)';
+  ctx.fillRect(0, 0, w, h);
+
+  const bpm = 54;                         // 잔잔한 안정 심박
+  const cycle = 60 / bpm;                 // seconds per beat
+  const amp = 70;                         // 스파이크 높이 (px)
+  const speed = 80;                       // 스크롤 px/s
+  const scrollOffset = (t * speed) % w;
+
+  // 잔상 3겹 (시간 뒤로 갈수록 희미)
+  for (let layer = 2; layer >= 0; layer--) {
+    const lag = layer * 0.25;
+    const alpha = layer === 0 ? 0.85 : (layer === 1 ? 0.22 : 0.08);
+    const blur = layer === 0 ? 0 : layer * 6;
+
+    ctx.save();
+    if (blur) ctx.filter = `blur(${blur}px)`;
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += 1) {
+      // "시간축": 화면 왼→오, 오른쪽 끝이 현재 시각
+      const timeAtX = t - lag - (w - x) / speed;
+      const phase = ((timeAtX % cycle) + cycle) % cycle / cycle;
+      const y = cy - heartbeatShape(phase) * amp;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = `rgba(200, 190, 175, ${alpha})`;
+    ctx.lineWidth = layer === 0 ? 1.3 : 1.8;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 진행 커서 (맨 오른쪽 희미한 세로 라인)
+  const grad = ctx.createLinearGradient(w - 60, 0, w, 0);
+  grad.addColorStop(0, 'rgba(200,190,175,0)');
+  grad.addColorStop(1, 'rgba(200,190,175,0.15)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(w - 60, 0, 60, h);
+}
+
+function drawWave(ws, t) {
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const cy = h / 2;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(18, 18, 26, 1)';
+  ctx.fillRect(0, 0, w, h);
+
+  const pts = [];
+  const seg = 120;
+  for (let i = 0; i <= seg; i++) {
+    const x = (i / seg) * w;
+    const nx = x / w;
+    let y = Math.sin(x * ws.frequency + t * ws.speed) * ws.amplitude;
+    y += Math.sin(x * ws.frequency * 2.3 + t * ws.speed * 0.7) * (ws.amplitude * 0.4);
+    y += Math.sin(x * ws.frequency * 0.4 + t * ws.speed * 0.3) * (ws.amplitude * 0.6);
+    y += (pnoise(x * 0.01, t * 0.1, 0) - 0.5) * ws.chaos * 40;
+    y *= Math.sin(nx * Math.PI); // 양 끝 감쇠 (envelope)
+    pts.push({ x, y: cy + y });
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length - 2; i++) {
+    const xc = (pts[i].x + pts[i+1].x) / 2;
+    const yc = (pts[i].y + pts[i+1].y) / 2;
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+  }
+  const c = ws.color;
+  ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.9)`;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // 희미한 잔상 2개 (속도 다른 harmonic)
+  ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},0.25)`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i <= seg; i++) {
+    const x = (i / seg) * w;
+    const nx = x / w;
+    let y = Math.sin(x * ws.frequency * 1.7 + t * ws.speed * 1.3) * ws.amplitude * 0.5;
+    y *= Math.sin(nx * Math.PI);
+    i === 0 ? ctx.moveTo(x, cy + y) : ctx.lineTo(x, cy + y);
+  }
+  ctx.stroke();
+}
+
+// ── Loop ──
+let t = 0;
+function loop() {
+  t += 0.016;
+  const ws = computeWaveStyle(state);
+
+  // 감정 벡터가 사실상 0이면 심장박동(idle) 렌더. 그 외엔 기존 파동.
+  if (ws._intensity < 0.02) {
+    drawHeartbeat(t);
+  } else {
+    drawWave(ws, t);
+  }
+
+  const r = document.getElementById('readout');
+  r.innerHTML = `
+    <span class="k">amplitude:</span> <span class="v">${ws.amplitude.toFixed(1)}px</span>
+    &nbsp; <span class="k">frequency:</span> <span class="v">${ws.frequency.toFixed(4)}</span>
+    &nbsp; <span class="k">speed:</span> <span class="v">${ws.speed.toFixed(2)}</span>
+    &nbsp; <span class="k">chaos:</span> <span class="v">${ws.chaos.toFixed(2)}</span><br>
+    <span class="k">intensity (sum):</span> <span class="v">${ws._intensity.toFixed(2)}</span>
+    &nbsp; <span class="k">complexity (≥0.2 count):</span> <span class="v">${ws._complexity}</span>
+    &nbsp; <span class="k">color:</span> <span class="v" style="color: rgb(${ws.color.r},${ws.color.g},${ws.color.b})">rgb(${ws.color.r},${ws.color.g},${ws.color.b})</span>
+  `;
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
