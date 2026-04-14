@@ -340,21 +340,30 @@ PLAY 클릭 → archive.js (기억 목록)
 
 ### ⏳ 남은 작업
 
-#### Phase 2b — strata에 공간음향 연결 (반나절~하루)
-- [ ] `strataView.js`에서 `createSpatialAudioEngine()` 초기화
-- [ ] 씬 등록 시 `scene.meta.sound_url` 있으면 engine.register
-- [ ] 씬 pin 위치 (wx/wz/h) → engine.register의 x/y/z로 매핑
-- [ ] 카메라/OrbitControls 이동 시 engine.setListener 갱신
-- [ ] 관리자 캔버스에서 핀 드래그로 pin_override 편집 → strata 즉시 반영
+#### Phase 2b — strata에 공간음향 연결 ✅ 2026-04-14
+- [x] `strataView.js`에서 `createSpatialAudioEngine()` 초기화
+- [x] 씬 등록 시 `scene.meta.sound_url` 있으면 engine.register
+- [x] 씬 pin 위치 (wx/wz/h) → engine.register의 x/y/z로 매핑
+- [x] 카메라/OrbitControls 이동 시 engine.setListener 갱신 (animateLoop)
+- [x] 부수: admin Canvas 사이드바 '🌐 Strata 미리보기' 버튼 + strataView 컨테이너 복구
+- [x] 부수: strataView HUD에 '1인칭 걷기 (F)' 토글 — WASD로 거리 감쇠 체감
+- [x] 부수: floating anchor `ko is not defined` 스코프 버그 수정
+- [ ] 관리자 캔버스에서 핀 드래그로 pin_override 편집 → strata 즉시 반영 (별건으로 미룸)
   - 선결: `scenes.meta.pin_override: {x,y,z}` 스키마 확정
   - `tem_af_strata_terrain.js:221`에서 pin_override 있으면 VAD 계산 대신 우선 사용
 
-#### Phase 3 — 페르소나 시뮬레이션 (반나절~하루)
-- [ ] `tools/persona-sim/data/plays.json` 또는 Supabase `plays` 테이블 조회
-- [ ] Canvas 사이드바에 페르소나 드롭다운 + [▶ 시뮬레이션] 버튼
-- [ ] 선택 시 해당 페르소나의 궤적이 케이블 따라 **애니메이션** (순차 하이라이트)
-- [ ] 씬 도착마다 그 페르소나의 emotion vector / mismatch type 우측 패널에 표시
-- [ ] (옵션) Big Five 슬라이더로 즉석 페르소나 생성 → Claude API로 즉시 시뮬
+#### Phase 3 — 페르소나 시뮬레이션 ✅ 2026-04-14 (MVP)
+- [x] Supabase `plays` 테이블 조회 (persona_id 기준 그룹핑)
+- [x] Canvas 사이드바에 페르소나 드롭다운 + [▶ 재생] / [⏹ 중지] 버튼
+- [x] 선택 시 해당 페르소나의 궤적이 scene_order 순서대로 순차 하이라이트 (1.4s 간격)
+- [x] 씬 도착마다 우측 패널에 user_emotion top3 / alignment / mismatch_type / inner_reason
+- [x] 선결: migration `20260414000000_add_persona_cols_to_plays.sql`
+  (plays에 persona_id/persona_name/strata_label/visit 추가, 모두 nullable)
+- [x] `4_insert_db.js` 매핑 업데이트
+- [x] `3_simulate_plays.js`에 MAX_PLAYS env 캡 추가 (기본 무제한, E-004는 100개로 돌림)
+- [x] 데이터: MM23L 193 plays · E-004 100 plays · 공통 15 personas (JSON은 .gitignore)
+- [ ] **Phase 3.5 (옵션)** Big Five 슬라이더로 즉석 페르소나 생성 → Claude API로 실시간 시뮬
+  - 이유: API 비용·레이턴시 있음. MVP 이후 분리 처리.
 
 #### Phase 4 — 레거시 정리 (1~2시간)
 - [x] ~~`admin.html` 내 editorScreen의 등고선 핀맵/3D strata/감정공간 진단 3섹션~~ — 2026-04-13 삭제 (previewContent 블록 + 미리보기 탭 제거)
@@ -387,10 +396,10 @@ PLAY 클릭 → archive.js (기억 목록)
 ### 🧭 우선순위
 
 ```
-현재     : Phase 2a 완료 (admin Canvas 편집 + 사운드 UI)
-다음     : Phase 2b — strata 공간음향 연결 (작가 체험 가능)
-그 다음  : Phase 3 — 페르소나 시뮬레이션 (작가 검증 도구 완성)
-마지막   : Phase 4 — 레거시 editorScreen 제거
+현재     : Phase 2b + Phase 3 MVP 완료 (2026-04-14)
+다음     : Phase 4 — 레거시 editorScreen 제거 + SoundscapeBeta 대청소
+그 다음  : Phase 3.5 — Big Five 실시간 슬라이더 (옵션)
+미해결   : Phase 4.5 데이터 모델 (original_vector 재설계)
 ```
 
 Canvas 통합 프로젝트는 **PLAY 통합(§18.4)과 독립**. 병렬 진행 가능.
