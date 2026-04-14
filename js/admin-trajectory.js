@@ -100,6 +100,7 @@ async function initTrajectoryViewer(memoryId) {
   renderMemoryMeta();
   bindToggles();
   renderGraph();
+  loadPersonasForMemory();
 }
 
 // ─── 메모리 기본 설정 패널 (우측 하단) ─────────────────────
@@ -487,6 +488,145 @@ function bindToggles() {
       if (sv) sv.style.display = 'none';
     });
   });
+
+  const playBtn = document.getElementById('tvPersonaPlayBtn');
+  const stopBtn = document.getElementById('tvPersonaStopBtn');
+  if (playBtn) playBtn.addEventListener('click', startPersonaPlayback);
+  if (stopBtn) stopBtn.addEventListener('click', stopPersonaPlayback);
+}
+
+// ─── 페르소나 재생 ────────────────────────────────────────
+const personaState = {
+  personas: [],      // [{ persona_id, persona_name, strata_label, plays: [...] }]
+  plays: [],
+  timerId: null,
+  currentIdx: 0,
+};
+
+async function loadPersonasForMemory() {
+  const sel = document.getElementById('tvPersonaSelect');
+  if (!sel || !state.memory) return;
+  sel.innerHTML = '<option value="">— 로딩 중 —</option>';
+  try {
+    const sb = await getSupabaseClient();
+    const { data, error } = await sb
+      .from('plays')
+      .select('id, scene_id, persona_id, persona_name, strata_label, visit, user_emotion, alignment, mismatch_type, created_at')
+      .eq('memory_id', state.memory.id)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    personaState.plays = data || [];
+    const byPersona = new Map();
+    for (const p of personaState.plays) {
+      if (!p.persona_id) continue;
+      if (!byPersona.has(p.persona_id)) {
+        byPersona.set(p.persona_id, {
+          persona_id: p.persona_id,
+          persona_name: p.persona_name || p.persona_id,
+          strata_label: p.strata_label || '',
+          plays: []
+        });
+      }
+      byPersona.get(p.persona_id).plays.push(p);
+    }
+    personaState.personas = Array.from(byPersona.values());
+    sel.innerHTML = personaState.personas.length
+      ? ['<option value="">— 선택 —</option>'].concat(
+          personaState.personas.map(p =>
+            `<option value="${p.persona_id}">${escapeHtml(p.persona_name)} ${p.strata_label ? '· ' + escapeHtml(p.strata_label) : ''} (${p.plays.length})</option>`
+          )
+        ).join('')
+      : '<option value="">— 시뮬 데이터 없음 —</option>';
+  } catch (e) {
+    console.warn('[persona] load fail:', e.message);
+    sel.innerHTML = '<option value="">— 로드 실패 —</option>';
+  }
+}
+
+function startPersonaPlayback() {
+  stopPersonaPlayback();
+  const sel = document.getElementById('tvPersonaSelect');
+  const id = sel && sel.value;
+  if (!id) { alert('페르소나를 선택하세요.'); return; }
+  const persona = personaState.personas.find(p => p.persona_id === id);
+  if (!persona || !persona.plays.length) return;
+
+  // Order plays by the current scene order
+  const sceneOrderMap = new Map();
+  state.scenes.forEach((s, i) => sceneOrderMap.set(s.id, s.scene_order != null ? s.scene_order : i));
+  const orderedPlays = persona.plays.slice().sort((a, b) => {
+    const oa = sceneOrderMap.get(a.scene_id); const ob = sceneOrderMap.get(b.scene_id);
+    return (oa != null ? oa : 999) - (ob != null ? ob : 999);
+  });
+
+  personaState.currentIdx = 0;
+  document.getElementById('tvPersonaStopBtn').disabled = false;
+  document.getElementById('tvPersonaPlayBtn').disabled = true;
+
+  function step() {
+    if (personaState.currentIdx >= orderedPlays.length) {
+      stopPersonaPlayback();
+      return;
+    }
+    const play = orderedPlays[personaState.currentIdx];
+    highlightSceneNode(play.scene_id);
+    updatePersonaPanel(persona, play);
+    personaState.currentIdx++;
+    personaState.timerId = setTimeout(step, 1400);
+  }
+  step();
+}
+
+function stopPersonaPlayback() {
+  if (personaState.timerId) { clearTimeout(personaState.timerId); personaState.timerId = null; }
+  clearSceneHighlight();
+  const stopBtn = document.getElementById('tvPersonaStopBtn');
+  const playBtn = document.getElementById('tvPersonaPlayBtn');
+  if (stopBtn) stopBtn.disabled = true;
+  if (playBtn) playBtn.disabled = false;
+}
+
+function highlightSceneNode(sceneId) {
+  document.querySelectorAll('#tvSvg .scene-node .scene-node-rect').forEach(r => {
+    r.setAttribute('stroke', 'rgba(196,168,130,0.3)');
+    r.setAttribute('stroke-width', '1.2');
+  });
+  const node = document.querySelector(`#tvSvg .scene-node[data-scene-id="${sceneId}"] .scene-node-rect`);
+  if (node) {
+    node.setAttribute('stroke', '#c4a882');
+    node.setAttribute('stroke-width', '3');
+  }
+}
+
+function clearSceneHighlight() {
+  document.querySelectorAll('#tvSvg .scene-node .scene-node-rect').forEach(r => {
+    r.setAttribute('stroke', 'rgba(196,168,130,0.3)');
+    r.setAttribute('stroke-width', '1.2');
+  });
+}
+
+function updatePersonaPanel(persona, play) {
+  const infoEl = document.getElementById('tvPersonaInfo');
+  const detailEl = document.getElementById('tvDetail');
+  const scene = state.scenes.find(s => s.id === play.scene_id);
+  const ue = play.user_emotion || {};
+  const top3 = Object.entries(typeof ue === 'string' ? JSON.parse(ue) : ue)
+    .sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([k, v]) => `${k}:${Number(v).toFixed(2)}`).join(' · ');
+  if (infoEl) {
+    infoEl.innerHTML = `<b style="color:#c4a882;">${escapeHtml(persona.persona_name)}</b><br>씬 ${scene ? (scene.scene_order + 1) : '?'} · 정렬도 ${(play.alignment != null ? (play.alignment * 100).toFixed(0) + '%' : '—')}`;
+  }
+  if (detailEl) {
+    detailEl.innerHTML = `
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:#c4a882;margin-bottom:8px;">▶ ${escapeHtml(persona.persona_name)}</div>
+      <div style="font-size:0.75rem;color:#7c7466;margin-bottom:10px;">${escapeHtml(persona.strata_label || '')}</div>
+      <div style="font-size:0.8rem;color:#e0d8c4;margin-bottom:6px;"><b>씬 ${scene ? (scene.scene_order + 1) : '?'}</b> ${scene ? escapeHtml((scene.text || '').slice(0, 60)) : ''}…</div>
+      <div style="font-size:0.75rem;color:#c0b8a4;line-height:1.7;margin-top:10px;">
+        <div>🎯 정렬도: <b>${play.alignment != null ? (play.alignment * 100).toFixed(0) + '%' : '—'}</b></div>
+        <div>⚠️ mismatch: <b>${escapeHtml(play.mismatch_type || '—')}</b></div>
+        <div style="margin-top:6px;color:#7c7466;">감정 top3: ${top3 || '—'}</div>
+      </div>`;
+  }
 }
 
 // ─── 그래프 ────────────────────────────────────────────────

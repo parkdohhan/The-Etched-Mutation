@@ -31,11 +31,12 @@ const anthropic = new Anthropic();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const MEM_ID = process.env.TARGET_MEMORY_ID;
 
-// Config
-const VISITS_PER_PERSONA_MIN = 2;
-const VISITS_PER_PERSONA_MAX = 4;
-const SCENES_PER_VISIT_MIN = 4;
-const SCENES_PER_VISIT_MAX = 7;
+// Config (env overrides)
+const VISITS_PER_PERSONA_MIN = Number(process.env.VISITS_MIN || 2);
+const VISITS_PER_PERSONA_MAX = Number(process.env.VISITS_MAX || 4);
+const SCENES_PER_VISIT_MIN = Number(process.env.SCENES_MIN || 4);
+const SCENES_PER_VISIT_MAX = Number(process.env.SCENES_MAX || 7);
+const MAX_PLAYS = Number(process.env.MAX_PLAYS || 0); // 0 = unlimited
 
 // Fetch memory code (for file naming)
 console.log('[3/sim] Fetching memory...');
@@ -167,13 +168,19 @@ for (let pi = 0; pi < personas.length; pi++) {
         // Incremental save
         if (plays.length % 5 === 0) fs.writeFileSync(OUT_PATH, JSON.stringify(plays, null, 2));
 
-        console.log(`[3/sim] ${persona.persona_id} v${visit} s${scene.scene_order} al=${out.alignment.toFixed(2)} mm=${out.mismatch_type || '-'}`);
+        console.log(`[3/sim] ${persona.persona_id} v${visit} s${scene.scene_order} al=${out.alignment.toFixed(2)} mm=${out.mismatch_type || '-'} (${plays.length})`);
         await new Promise(r => setTimeout(r, 400));
+        if (MAX_PLAYS > 0 && plays.length >= MAX_PLAYS) {
+          console.log(`[3/sim] MAX_PLAYS=${MAX_PLAYS} reached, stopping.`);
+          break;
+        }
       } catch (err) {
         console.error(`[3/sim] ✗ ${key}:`, err.message);
       }
     }
+    if (MAX_PLAYS > 0 && plays.length >= MAX_PLAYS) break;
   }
+  if (MAX_PLAYS > 0 && plays.length >= MAX_PLAYS) break;
 }
 
 fs.writeFileSync(OUT_PATH, JSON.stringify(plays, null, 2));

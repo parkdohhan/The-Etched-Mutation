@@ -315,6 +315,16 @@
                     <button class="tv-toggle" id="tvStrataPreviewBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="현재 기억의 Strata 3D 지형 열기 (공간음향 테스트)">🌐 Strata 미리보기</button>
                 </div>
 
+                <div class="tv-section-label">페르소나 재생</div>
+                <select id="tvPersonaSelect" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.2);color:#e0d8c4;font-family:inherit;font-size:0.78rem;border-radius:2px;margin-bottom:6px;">
+                    <option value="">— 페르소나 로드 중 —</option>
+                </select>
+                <div class="tv-toggle-row">
+                    <button class="tv-toggle" id="tvPersonaPlayBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="선택한 페르소나의 궤적 재생">▶ 재생</button>
+                    <button class="tv-toggle" id="tvPersonaStopBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="중지" disabled>⏹ 중지</button>
+                </div>
+                <div id="tvPersonaInfo" style="font-size:0.7rem;color:#7c7466;margin-top:6px;line-height:1.5;"></div>
+
                 <div class="tv-section-label">통계</div>
                 <div id="tvStats" class="tv-emo-meta" style="line-height: 1.6;"></div>
             </aside>
