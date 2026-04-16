@@ -415,7 +415,7 @@
   <div id="revealScreen">
     <h2 id="revealTitle"></h2>
     <p id="revealBody"></p>
-    <p id="revealStats" style="font-size:0.85rem;color:var(--text-muted);"></p>
+    <p id="revealStats" style="display:none;"></p>
     <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;"></button>
   </div>
 
@@ -469,6 +469,9 @@
       corePromptPhase2: 'What were you feeling then?',
       corePlaceholder: 'Write freely…',
       corePlaceholderPhase0: 'Write what comes to mind…',
+      continuationCue: "I can't remember what comes next… will you fill it in?",
+      continuationCueAlt: "This part is hazy…",
+      continuationPlaceholder: 'Continue the story…',
       coreSubmit: 'Submit',
       coreLoading: 'Analyzing...',
       coreError: 'Error',
@@ -514,6 +517,17 @@
         'Records set at their own pace.',
         'What went unsaid still has weight here.',
       ],
+      connectors: [
+        { value: '', label: '…' },
+        { value: 'But', label: 'But' },
+        { value: 'However', label: 'However' },
+        { value: 'And', label: 'And' },
+        { value: 'Even so', label: 'Even so' },
+        { value: 'So', label: 'So' },
+        { value: 'Then', label: 'Then' },
+        { value: 'Suddenly', label: 'Suddenly' },
+        { value: 'At that moment', label: 'At that moment' },
+      ],
     },
     ko: {
       corePrompt: '이때를 떠올려 봐. 어떤 기분이었어? 무슨 생각을 했어?',
@@ -522,6 +536,9 @@
       corePromptPhase2: '그때, 어떤 기분이었어?',
       corePlaceholder: '자유롭게 적어 주세요…',
       corePlaceholderPhase0: '떠오르는 대로 적어봐…',
+      continuationCue: '여기서부터 기억이 흐려져. 네가 이어줄래?',
+      continuationCueAlt: '이 다음이 잘 기억이 안 나…',
+      continuationPlaceholder: '이어서 적어봐…',
       coreSubmit: '제출',
       coreLoading: '분석 중...',
       coreError: '오류',
@@ -567,11 +584,24 @@
         '기록은 제 속도로 남는다.',
         '말하지 않은 것에도 무게가 있다.',
       ],
+      connectors: [
+        { value: '', label: '…' },
+        { value: '그런데', label: '그런데' },
+        { value: '하지만', label: '하지만' },
+        { value: '그리고', label: '그리고' },
+        { value: '그럼에도 불구하고', label: '그럼에도 불구하고' },
+        { value: '그래서', label: '그래서' },
+        { value: '그러다가', label: '그러다가' },
+        { value: '그러자', label: '그러자' },
+        { value: '그 순간', label: '그 순간' },
+      ],
     },
   };
 
   const urlParams = new URLSearchParams(window.location.search);
-  const LANG = urlParams.get('lang') === 'ko' ? 'ko' : 'en';
+  const _urlLang = urlParams.get('lang');
+  const _storedLang = (function () { try { return localStorage.getItem('tem_language'); } catch (_) { return null; } })();
+  const LANG = (_urlLang || _storedLang || 'en') === 'ko' ? 'ko' : 'en';
   const T = I18N[LANG];
   document.documentElement.lang = LANG;
 
@@ -2845,13 +2875,25 @@
       requestAnimationFrame(_typeFrame);
     })(performance.now());
 
-    // Phase 0: 첫 core 씬 진입 시 "또다른 나" 안내
+    // Phase 0: 첫 core 씬 진입 시 "또다른 나" — continuation cue (typing animation)
     const _npcClear = document.getElementById('sceneNpc');
-    if (game.coreVisitCount === 0 && pin.type === 'core' && T.anotherMeIntro) {
+    if (game.coreVisitCount === 0 && pin.type === 'core') {
       const _introLabel = LANG === 'ko' ? '또다른 나' : 'Another Me';
-      _npcClear.innerHTML =
-        '<span class="another-me-label">' + _introLabel + '</span>' +
-        '<span class="another-me-whisper">' + T.anotherMeIntro + '</span>';
+      const _contCues = [T.continuationCue, T.continuationCueAlt].filter(Boolean);
+      const _contCue = _contCues.length ? _contCues[Math.floor(Math.random() * _contCues.length)]
+        : (T.anotherMeIntro || '');
+      _npcClear.innerHTML = '<span class="another-me-label">' + _introLabel + '</span>' +
+        '<span class="another-me-whisper" id="npcTypingTarget"></span>';
+      // Typing animation
+      const _typTarget = document.getElementById('npcTypingTarget');
+      if (_typTarget && _contCue) {
+        let _ti = 0;
+        const _typInterval = setInterval(() => {
+          _ti++;
+          _typTarget.textContent = _contCue.slice(0, _ti);
+          if (_ti >= _contCue.length) clearInterval(_typInterval);
+        }, 45);
+      }
     } else if (game.coreVisitCount === 1 && _hasHtml && !game._contFirstNoticed) {
       // 오염이 처음 눈에 보이는 씬 — 더 깊이 들여다보기 시작했다
       game._contFirstNoticed = true;
@@ -2970,38 +3012,72 @@
   }
 
   function setupCoreInput(pin, scene) {
-    // 관찰자→체험자 단계별 프롬프트 전환
-    let _corePrompt, _corePlaceholder;
-    if (game.coreVisitCount === 0) {
-      _corePrompt = T.corePromptPhase0 || T.corePrompt;
-      _corePlaceholder = T.corePlaceholderPhase0 || T.corePlaceholder;
-    } else if (game.coreVisitCount === 1) {
-      _corePrompt = T.corePromptPhase1 || T.corePrompt;
-      _corePlaceholder = T.corePlaceholder;
-    } else {
-      _corePrompt = T.corePromptPhase2 || T.corePrompt;
-      _corePlaceholder = T.corePlaceholder;
-    }
+    const _connectors = T.connectors || [
+      { value: '', label: '…' },
+      { value: '그런데', label: '그런데' },
+      { value: '하지만', label: '하지만' },
+      { value: '그리고', label: '그리고' },
+      { value: '그럼에도 불구하고', label: '그럼에도 불구하고' },
+      { value: '그래서', label: '그래서' },
+      { value: '그러다가', label: '그러다가' },
+      { value: '그러자', label: '그러자' },
+      { value: '그 순간', label: '그 순간' },
+    ];
+    const _cues = [T.continuationCue || T.corePromptPhase0, T.continuationCueAlt].filter(Boolean);
+    const _cue = _cues[Math.floor(Math.random() * _cues.length)];
+    const _placeholder = T.continuationPlaceholder || T.corePlaceholderPhase0 || T.corePlaceholder;
+
     const inputArea = document.getElementById('emotionInputArea');
+    let optionsHtml = _connectors.map(c =>
+      `<option value="${c.value}">${c.label}</option>`
+    ).join('');
+
     inputArea.innerHTML = `
-      <p style="font-size:13px;opacity:0.5;margin-bottom:12px;">${_corePrompt}</p>
-      <textarea id="coreTextInput" placeholder="${_corePlaceholder.replace(/"/g, '&quot;')}"
+      <div style="text-align:center;margin-bottom:14px;">
+        <select id="coreConnectorSelect" style="min-width:140px;padding:10px 28px 10px 14px;
+          background:rgba(10,10,14,0.9);border:1px solid rgba(196,168,130,0.3);border-radius:4px;
+          color:#c4a882;font-family:inherit;font-size:15px;cursor:pointer;
+          appearance:none;-webkit-appearance:none;
+          background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27%3E%3Cpath d=%27M0 0l5 6 5-6z%27 fill=%27%23c4a882%27/%3E%3C/svg%3E');
+          background-repeat:no-repeat;background-position:right 10px center;">
+          ${optionsHtml}
+        </select>
+      </div>
+      <textarea id="coreTextInput" placeholder="${_placeholder.replace(/"/g, '&quot;')}"
         style="width:100%;background:rgba(196,168,130,0.05);border:1px solid rgba(196,168,130,0.15);
-        color:#c4a882;font-family:inherit;font-size:15px;padding:12px;resize:none;border-radius:4px;min-height:80px;"></textarea>
-      <button id="coreSubmitBtn" style="margin-top:12px;float:right;background:none;
-        border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:8px 24px;cursor:pointer;
-        font-family:inherit;font-size:13px;">${T.coreSubmit}</button>
+        color:#c4a882;font-family:inherit;font-size:15px;padding:12px;resize:none;border-radius:4px;min-height:80px;margin-bottom:12px;"></textarea>
+      <div style="text-align:center;">
+        <button id="coreSubmitBtn" style="background:none;
+          border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:8px 24px;cursor:pointer;
+          font-family:inherit;font-size:13px;">${T.coreSubmit}</button>
+      </div>
     `;
     inputArea.style.opacity = '1';
     fadeIn(SFX.white, 0.08, 2000);
     const submitBtn = document.getElementById('coreSubmitBtn');
     const coreTextInput = document.getElementById('coreTextInput');
+    const connectorSelect = document.getElementById('coreConnectorSelect');
+
     const submitCoreInput = async () => {
-      const text = (coreTextInput.value || '').trim();
-      if (!text) return;
+      const userText = (coreTextInput.value || '').trim();
+      if (!userText) return;
+      const connector = connectorSelect.value;
+      const fullText = connector ? `${connector} ${userText}` : userText;
+
       submitBtn.disabled = true;
       submitBtn.textContent = T.coreLoading;
-      previewWaveFromCoreUserText(text);
+      previewWaveFromCoreUserText(fullText);
+
+      // Show merged text in scene area
+      const sceneTextEl = document.getElementById('sceneText');
+      if (sceneTextEl) {
+        const origText = sceneTextEl.textContent;
+        let merged = origText + ' ';
+        if (connector) merged += '<span style="color:#c4a882;font-weight:500;">' + connector + '</span> ';
+        merged += '<span style="color:rgba(196,168,130,0.85);font-style:italic;">' + userText + '</span>';
+        sceneTextEl.innerHTML = merged;
+      }
+
       try {
         const res = await fetch(SUPABASE_URL + '/functions/v1/claude-scene', {
           method: 'POST',
@@ -3009,7 +3085,7 @@
           body: JSON.stringify({
             type: 'emotion_extract',
             scene_text: scene.text || '',
-            user_text: text,
+            user_text: fullText,
           }),
         });
         const raw = await res.json();
@@ -3029,9 +3105,11 @@
     coreTextInput.addEventListener('input', function () {
       var v = (coreTextInput.value || '').trim();
       if (!v) return;
+      const connector = connectorSelect.value;
+      const fullText = connector ? connector + ' ' + v : v;
       if (game.playTestWaveUserIdle) {
         game.playTestWaveUserIdle = false;
-        var matched = previewWaveFromCoreUserText(v);
+        var matched = previewWaveFromCoreUserText(fullText);
         if (!matched) {
           var sc = game.scenes[game.currentSceneIndex];
           var pin2 = game.currentPinId ? game.pins.find(function (p) { return p.id === game.currentPinId; }) : null;
@@ -3040,7 +3118,7 @@
           void startPlayTestAlignmentWaves(orig2, { confusion: 0.22, sadness: 0.18 }, align2, { userIdle: false });
         }
       } else {
-        previewWaveFromCoreUserText(v);
+        previewWaveFromCoreUserText(fullText);
       }
     });
     coreTextInput.addEventListener('keydown', (e) => {
@@ -3685,20 +3763,11 @@
       setTimeout(function () {
         var awWrap = document.getElementById('fpAmbientWaveWrap');
         if (!awWrap) return;
-        // 파동 캔버스 숨기기 (하얀색 선 제거)
         var awCvs = document.getElementById('fpAmbientWaveCanvas');
-        if (awCvs) awCvs.style.display = 'none';
         // stacking context 탈출: strataView(z-index:2600) 안에서는
         // sceneMode(z-index:2700) 위로 올라갈 수 없으므로 body로 이동
         var _awOrigParent = awWrap.parentNode;
         document.body.appendChild(awWrap);
-        // 힌트 텍스트
-        var hint = document.createElement('div');
-        hint.id = 'fpWaveReturnHint';
-        hint.style.cssText = 'position:absolute;top:-28px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.7);font-size:12px;letter-spacing:2px;pointer-events:none;opacity:0;transition:opacity 0.8s;font-family:"Cormorant Garamond",serif;text-shadow:0 0 8px rgba(196,168,130,0.3);white-space:nowrap;';
-        hint.textContent = LANG === 'ko' ? '파동을 눌러 지형으로 돌아가세요' : 'Click the wave to return';
-        awWrap.appendChild(hint);
-        requestAnimationFrame(function () { hint.style.opacity = '1'; });
         // 파동 클릭 가능하게 (body 직속이므로 z-index 2800이 실제로 동작)
         awWrap.style.pointerEvents = 'auto';
         awWrap.style.cursor = 'pointer';
@@ -3712,11 +3781,8 @@
           awWrap.style.cursor = '';
           awWrap.style.boxShadow = '';
           awWrap.style.zIndex = '260';
-          // 캔버스 다시 표시 + 원래 부모로 복귀
-          if (awCvs) awCvs.style.display = '';
+          // 원래 부모로 복귀
           if (_awOrigParent) _awOrigParent.appendChild(awWrap);
-          var h = document.getElementById('fpWaveReturnHint');
-          if (h && h.parentNode) h.parentNode.removeChild(h);
           // 기존 afterTerrainReturn 로직 호출
           afterTerrainReturn(result);
         }
@@ -3959,7 +4025,8 @@
     }
   });
   document.getElementById('sealBtn').addEventListener('click', async () => {
-    if (game.sealed || game.coreVisitCount < 3) return;
+    if (game.sealed) return;
+    if (game.coreVisitCount < 3 && !game._exitDoorUsed) return;
     game.sealed = true;
 
     // === Session-end contamination update (MVP v3) ===
@@ -4019,29 +4086,35 @@
       emotion_data: t.userVector || { base: t.userEmotion || {} },
       engine_result: { alignment_score: t.alignment, alignment_bucket: t.bucket || 'MID', transition_pattern: t.pattern || 'bridge', mismatch_type: t.mismatch || null }
     }));
-    try {
-      const res = await fetch(SUPABASE_URL + '/functions/v1/generate-reveal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
-        body: JSON.stringify({
-          visits,
-          memory_title: game.memoryTitle || '',
-          emotion_trajectory: game.emotionTrajectory || [],
-          lang: LANG,
-        })
-      });
-      const data = await res.json();
-      if (data.narrative) {
-        document.getElementById('revealTitle').textContent = T.revealTitle;
-        typeRevealText(document.getElementById('revealBody'), data.narrative);
-      } else {
+    if (visits.length === 0) {
+      // 아무 장면도 체험하지 않고 나간 경우 — API 호출 없이 fallback
+      document.getElementById('revealTitle').textContent = T.revealTitle;
+      document.getElementById('revealBody').textContent = T.revealFallback;
+    } else {
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/generate-reveal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+          body: JSON.stringify({
+            visits,
+            memory_title: game.memoryTitle || '',
+            emotion_trajectory: game.emotionTrajectory || [],
+            lang: LANG,
+          })
+        });
+        const data = await res.json();
+        if (data.narrative) {
+          document.getElementById('revealTitle').textContent = T.revealTitle;
+          typeRevealText(document.getElementById('revealBody'), data.narrative);
+        } else {
+          document.getElementById('revealTitle').textContent = T.revealTitle;
+          document.getElementById('revealBody').textContent = T.revealFallback;
+        }
+      } catch (e) {
+        console.error('Reveal error:', e);
         document.getElementById('revealTitle').textContent = T.revealTitle;
         document.getElementById('revealBody').textContent = T.revealFallback;
       }
-    } catch (e) {
-      console.error('Reveal error:', e);
-      document.getElementById('revealTitle').textContent = T.revealTitle;
-      document.getElementById('revealBody').textContent = T.revealFallback;
     }
     document.getElementById('revealStats').textContent = T.stats(avgAlign, game.coreVisitCount);
 
@@ -4062,13 +4135,14 @@
           setTimeout(() => {
             const id = _targetMemoryId;
             if (!id) return;
+            const revEl = document.getElementById('revealScreen');
+            if (revEl) revEl.classList.remove('active');
             const viewEl = document.getElementById('strataView');
             const backBtn = document.getElementById('backToMenu');
             if (backBtn) backBtn.style.display = 'block';
-            // Skip strata after reveal if first-person play was active
+            // Skip strata after reveal if first-person play was active → go to menu
             if (window._fpPlay && window._fpPlay.wasActive) {
-              if (viewEl) viewEl.style.display = 'none';
-              if (backBtn) backBtn.style.display = 'block';
+              window.location.href = temMenuHref();
               return;
             }
             if (!window.showStrataView) {
@@ -4512,8 +4586,19 @@
 
             var _savedYaw = rt.getYaw();
 
-            // Door is behind player = 180 degrees turn
-            var doorYaw = _savedYaw + Math.PI;
+            // Compute yaw that points from current camera position toward door
+            // Forward direction convention: (-sin(yaw), -cos(yaw))
+            var _camNow = rt.getCamera();
+            var _doorX = (window._temExitDoor && window._temExitDoor.x) != null ? window._temExitDoor.x : doorX;
+            var _doorZ = (window._temExitDoor && window._temExitDoor.z) != null ? window._temExitDoor.z : doorZ;
+            var _camX = _camNow ? _camNow.position.x : spawnX;
+            var _camZ = _camNow ? _camNow.position.z : spawnZ;
+            var doorYaw = Math.atan2(_camX - _doorX, _camZ - _doorZ);
+
+            // Normalize delta to shortest rotation path [-π, π]
+            var _yawDelta = doorYaw - _savedYaw;
+            while (_yawDelta > Math.PI) _yawDelta -= Math.PI * 2;
+            while (_yawDelta < -Math.PI) _yawDelta += Math.PI * 2;
 
             // Smoothly rotate to look at door
             var turnStart = performance.now();
@@ -4528,7 +4613,7 @@
               var elapsed = performance.now() - turnStart;
               var t = Math.min(1, elapsed / turnDuration);
               var eased = t * t * (3 - 2 * t); // smoothstep
-              var currentYaw = _savedYaw + (doorYaw - _savedYaw) * eased;
+              var currentYaw = _savedYaw + _yawDelta * eased;
               rt.setYaw(currentYaw);
               if (t < 1) {
                 requestAnimationFrame(_animTurn);
@@ -4553,7 +4638,7 @@
                     var elapsed2 = performance.now() - backStart;
                     var t2 = Math.min(1, elapsed2 / turnDuration);
                     var eased2 = t2 * t2 * (3 - 2 * t2);
-                    var currentYaw2 = doorYaw + (_savedYaw - doorYaw) * eased2;
+                    var currentYaw2 = (_savedYaw + _yawDelta) + (-_yawDelta) * eased2;
                     rt.setYaw(currentYaw2);
                     if (t2 < 1) {
                       requestAnimationFrame(_animBack);
@@ -4918,8 +5003,13 @@
 
             // Exit: trigger seal flow
             var g = window._temGame;
+            if (g) g._exitDoorUsed = true;
             var lang = (document.documentElement.lang || 'en').substring(0, 2);
             _fpPlayActive = false; window._fpPlayActive = false;
+            // Release pointer lock so cursor returns on reveal screen
+            if (document.pointerLockElement) {
+              try { document.exitPointerLock(); } catch (_) {}
+            }
             if (_crosshairEl) _crosshairEl.style.display = 'none';
             if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
             _destroyAmbientWave();
@@ -5002,13 +5092,9 @@
             var _awW = document.getElementById('fpAmbientWaveWrap');
             if (_awW) {
               _awW.style.pointerEvents = 'none'; _awW.style.cursor = ''; _awW.style.boxShadow = ''; _awW.style.zIndex = '260';
-              var _awCvs2 = document.getElementById('fpAmbientWaveCanvas');
-              if (_awCvs2) _awCvs2.style.display = '';
               var _svParent = document.getElementById('strataView');
               if (_svParent && _awW.parentNode === document.body) _svParent.appendChild(_awW);
             }
-            var _awH = document.getElementById('fpWaveReturnHint');
-            if (_awH && _awH.parentNode) _awH.parentNode.removeChild(_awH);
             // Re-acquire pointer lock immediately + fallback to click
             var _plCanvas = document.getElementById('strataCanvas');
             if (_plCanvas) {

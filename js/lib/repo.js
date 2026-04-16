@@ -386,18 +386,49 @@ export async function deleteMemoryGraph(client, memoryId) {
         await client.from('choices').delete().in('scene_id', sceneIds);
     }
 
+ // 3-b. trajectory_bridges delete (FK constraint 방지)
+    try {
+        const { error: bridgesError } = await client
+            .from('trajectory_bridges')
+            .delete()
+            .eq('memory_id', memoryId);
+        if (bridgesError) {
+            console.warn('trajectory_bridges 삭제 중 오류:', bridgesError);
+        }
+    } catch (error) {
+        console.warn('trajectory_bridges 삭제 중 예외 발생 (무시하고 계속 진행):', error);
+    }
+
  // 4. scenes delete
     if (sceneIds.length > 0) {
         await client.from('scenes').delete().eq('memory_id', memoryId);
     }
 
- // 5. memory delete
-    const { error } = await client
+ // 5. memory delete — .select() returns deleted rows; empty array = silent RLS failure
+    const { data: deletedRows, error } = await client
         .from('memories')
         .delete()
-        .eq('id', memoryId);
+        .eq('id', memoryId)
+        .select();
 
     if (error) throw error;
+
+ // 6. Verify deletion (RLS 등으로 silent failure 감지)
+    if (!deletedRows || deletedRows.length === 0) {
+        throw new Error(`삭제에 실패했습니다. memory id=${memoryId}. RLS 정책 또는 권한 문제일 수 있습니다.`);
+    }
+
+ // 7. Post-delete verification — re-query to ensure the row is gone
+    const { data: verifyRows, error: verifyError } = await client
+        .from('memories')
+        .select('id')
+        .eq('id', memoryId);
+    if (verifyError) {
+        console.warn('[deleteMemoryGraph] 삭제 검증 쿼리 실패:', verifyError);
+    } else if (verifyRows && verifyRows.length > 0) {
+        throw new Error(`삭제 후에도 memory id=${memoryId}가 남아있습니다. RLS 정책을 확인하세요.`);
+    }
+    console.log(`[deleteMemoryGraph] memory id=${memoryId} 삭제 확인됨 (${deletedRows.length}행 삭제)`);
 }
 
 /**

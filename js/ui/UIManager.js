@@ -149,12 +149,22 @@ export class UIManager {
         }
         
         let sortedMemories;
+        const _hasKorean = (m) => {
+            const s = `${m.title || ''} ${m.completed_sentence || ''} ${m.description || ''}`;
+            return /[\uAC00-\uD7A3]/.test(s);
+        };
         if (currentSort === 'all') {
             sortedMemories = filteredMemories;
+        } else if (currentSort === 'english') {
+            sortedMemories = filteredMemories.filter(m => !_hasKorean(m));
+        } else if (currentSort === 'korean') {
+            sortedMemories = filteredMemories.filter(m => _hasKorean(m));
         } else if (currentSort === 'popular') {
             sortedMemories = [...filteredMemories].sort((a, b) => (b.layers || 0) - (a.layers || 0));
         } else if (currentSort === 'recent') {
             sortedMemories = [...filteredMemories].sort((a, b) => (b.recentRank || 0) - (a.recentRank || 0));
+        } else {
+            sortedMemories = filteredMemories;
         }
         
         list.innerHTML = '';

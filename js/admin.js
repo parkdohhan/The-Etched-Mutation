@@ -2304,18 +2304,35 @@ const fateColors={'preserve':'#7a9a7a','dilute':'#c4a882','anonymous':'#7b8fa8'}
 
 async function loadAllSessions() {
     allSessions = [];
-    
+
  // archive session load (existing memories)
     const supabaseClient = getSupabaseClient();
     const { data: archiveData } = await supabaseClient
         .from('memories')
         .select('*')
         .order('created_at', { ascending: false });
-    
+
     if (archiveData) {
+        // Count simulation plays per memory and merge into layers count
+        const memoryIds = archiveData.map(m => m.id).filter(Boolean);
+        const playCounts = {};
+        if (memoryIds.length > 0) {
+            const { data: playsData } = await supabaseClient
+                .from('plays')
+                .select('memory_id')
+                .in('memory_id', memoryIds);
+            if (playsData) {
+                playsData.forEach(p => {
+                    playCounts[p.memory_id] = (playCounts[p.memory_id] || 0) + 1;
+                });
+            }
+        }
         archiveData.forEach(m => {
+            const baseLayers = m.layers || 0;
+            const simCount = playCounts[m.id] || 0;
             allSessions.push({
                 ...m,
+                layers: baseLayers + simCount,
                 type: 'archive',
                 displayTitle: m.title || m.code
             });

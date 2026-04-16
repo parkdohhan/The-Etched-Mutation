@@ -1,6 +1,7 @@
 import { appStore } from './appStore.js'
 import { showNotification, showNpcDialogue } from '../ui/notify.js'
 import { showEndScreen } from './endScreen.js'
+import { t, getCurrentLanguage } from '../lib/i18n.js'
 /**
  * Live Session Module — DORMANT
  *
@@ -339,19 +340,7 @@ function subscribeToLiveScenes() {
       if (roleState.currentRole === 'B') {
         const sceneText = sceneData.scene_text
         if (sceneText) {
-          const expSceneText = document.getElementById('expSceneText')
-          if (expSceneText) {
-            expSceneText.textContent = sceneText
-            window.switchExpGeneratedTab('scene')
-            window.expCurrentPhase = 'interpret'
-            const emotionCueMsg = window.lastSceneData?.emotionCue || NPC_DIALOGUES.live.emotionCue
-            window.addExpChatMessage('ai', "The narrator's memory has arrived. " + emotionCueMsg)
-            const expTextInput = document.getElementById('expTextInput')
-            if (expTextInput) {
-              expTextInput.value = ''
-              expTextInput.focus()
-            }
-          }
+          showContinuationUI(sceneText)
         }
       }
     },
@@ -808,7 +797,7 @@ async function startLiveSession() {
     const chatMessages = document.getElementById('chatMessages')
     if (chatMessages) {
       chatMessages.innerHTML =
-        '<div class="chat-message ai"><div class="chat-message-label">Another Me</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>'
+        `<div class="chat-message ai"><div class="chat-message-label">${t('anotherme.label')}</div><div class="chat-message-content">${t('anotherme.intro')}</div></div>`
     }
     const editBtn = document.querySelector('.edit-toggle-btn')
     if (editBtn) {
@@ -1424,6 +1413,163 @@ async function sendExpChatMessage() {
   }
 }
 
+// ─────────────────────────────────────
+// === Continuation UI (connector + free-write) ===
+// ─────────────────────────────────────
+
+/** Store the original scene text for merging */
+let _continuationOriginalText = ''
+
+function showContinuationUI(sceneText) {
+  _continuationOriginalText = sceneText
+
+  // Display scene text
+  const expSceneText = document.getElementById('expSceneText')
+  if (expSceneText) {
+    expSceneText.textContent = sceneText
+    expSceneText.style.display = ''
+  }
+
+  window.switchExpGeneratedTab('scene')
+  window.expCurrentPhase = 'interpret'
+
+  // Show continuation cue as a typing-animated chat message (또다른나 whisper)
+  const cues = [NPC_DIALOGUES.live.continuationCue, NPC_DIALOGUES.live.continuationCueAlt]
+  const cue = cues[Math.floor(Math.random() * cues.length)]
+  addExpChatMessage('ai', NPC_DIALOGUES.live.sceneArrived)
+  // Typing animation for the cue
+  const chatContainer = document.getElementById('expChatMessages')
+  if (chatContainer && cue) {
+    const msgEl = document.createElement('div')
+    msgEl.className = 'chat-message ai'
+    msgEl.style.fontStyle = 'italic'
+    const textSpan = document.createElement('span')
+    textSpan.className = 'typing-cue'
+    msgEl.appendChild(textSpan)
+    chatContainer.appendChild(msgEl)
+    chatContainer.scrollTop = chatContainer.scrollHeight
+    let ti = 0
+    const typInterval = setInterval(() => {
+      ti++
+      textSpan.textContent = cue.slice(0, ti)
+      chatContainer.scrollTop = chatContainer.scrollHeight
+      if (ti >= cue.length) clearInterval(typInterval)
+    }, 45)
+  }
+
+  // Show continuation area (dropdown + textarea)
+  const contArea = document.getElementById('expContinuationArea')
+  if (contArea) {
+    contArea.style.display = 'block'
+    const select = document.getElementById('expConnectorSelect')
+    if (select) select.selectedIndex = 0
+    const textarea = document.getElementById('expContinuationText')
+    if (textarea) {
+      textarea.value = ''
+      textarea.focus()
+    }
+  }
+
+  // Hide merged text from previous scene
+  const mergedEl = document.getElementById('expMergedText')
+  if (mergedEl) mergedEl.style.display = 'none'
+
+  // Hide the old text input container
+  const oldInput = document.getElementById('expTextInputContainer')
+  if (oldInput) oldInput.style.display = 'none'
+}
+
+async function submitContinuation() {
+  const select = document.getElementById('expConnectorSelect')
+  const textarea = document.getElementById('expContinuationText')
+  const connector = select ? select.value : ''
+  const userText = textarea ? textarea.value.trim() : ''
+
+  if (!userText) {
+    showNotification('이어질 내용을 적어줘')
+    return
+  }
+
+  // Build the full continuation string
+  const continuation = connector ? `${connector} ${userText}` : userText
+
+  // Disable UI while processing
+  const submitBtn = document.getElementById('expContinuationSubmit')
+  if (submitBtn) {
+    submitBtn.disabled = true
+    submitBtn.textContent = '분석 중…'
+  }
+
+  // Show merged text
+  showMergedText(_continuationOriginalText, connector, userText)
+
+  // Hide continuation input area
+  const contArea = document.getElementById('expContinuationArea')
+  if (contArea) contArea.style.display = 'none'
+
+  // Feed into emotion analysis (reuse existing pipeline)
+  addExpChatMessage('user', continuation)
+  appStore.setState({ expPendingEmotion: continuation })
+
+  let emotionResult = null
+  try {
+    const aiService = window.AIService || AIService
+    emotionResult = await aiService.call('emotion_analysis', continuation, {
+      reasonText: '',
+    })
+    console.log('Continuation emotionResult (raw):', JSON.stringify(emotionResult))
+  } catch (e) {
+    console.error('Continuation emotion analysis failed:', e)
+    addExpChatMessage('ai', '감정 분석에 실패했어. 다시 시도해줄래?')
+    // Re-enable
+    if (submitBtn) {
+      submitBtn.disabled = false
+      submitBtn.textContent = '제출'
+    }
+    if (contArea) contArea.style.display = 'block'
+    return
+  }
+
+  const parsedResult = parseEmotionAnalysisResult(emotionResult)
+  persistExpEmotionResult(parsedResult, continuation)
+  addExpChatMessageWithConfirm('ai', '이 감정이 맞는 것 같아?')
+
+  // Re-enable button for next scene
+  if (submitBtn) {
+    submitBtn.disabled = false
+    submitBtn.textContent = '제출'
+  }
+}
+
+function showMergedText(originalText, connector, userText) {
+  const mergedEl = document.getElementById('expMergedText')
+  if (!mergedEl) return
+
+  mergedEl.innerHTML = ''
+  mergedEl.style.display = 'block'
+
+  const originalSpan = document.createElement('span')
+  originalSpan.className = 'original-part'
+  originalSpan.textContent = originalText + ' '
+  mergedEl.appendChild(originalSpan)
+
+  if (connector) {
+    const connectorSpan = document.createElement('span')
+    connectorSpan.className = 'connector-part'
+    connectorSpan.textContent = connector + ' '
+    mergedEl.appendChild(connectorSpan)
+  }
+
+  const userSpan = document.createElement('span')
+  userSpan.className = 'user-part'
+  userSpan.textContent = userText
+  mergedEl.appendChild(userSpan)
+
+  // Hide the original scene text since merged text replaces it
+  const expSceneText = document.getElementById('expSceneText')
+  if (expSceneText) expSceneText.style.display = 'none'
+}
+
 async function sendChatMessageWithDeps(deps = {}) {
   const {
     persistSceneGenerationResult: persistFn = persistSceneGenerationResult,
@@ -1864,7 +2010,7 @@ function makeLiveChoice(choiceIndex) {
     if (sceneType === 'branch' || sceneType === 'ending') {
       const questionEl = document.getElementById('emotionQuestion')
       if (questionEl)
-        questionEl.textContent = updatedState.currentScene === 0 ? '왜 그렇게 했어?' : '지금 어떤 감정이 들어?'
+        questionEl.textContent = updatedState.currentScene === 0 ? t('scene.emotion.why') : t('scene.emotion.now')
       const modalEl = document.getElementById('emotionModal')
       if (modalEl) modalEl.classList.add('active')
       const inputEl = document.getElementById('emotionInputField')
@@ -1943,7 +2089,7 @@ function submitScene() {
       currentSceneText = ''
       recognizedText = ''
       submitBtn.disabled = false
-      submitBtn.textContent = '제출'
+      submitBtn.textContent = t('scene.emotion.submit')
       const voiceStartPrompt = document.getElementById('voiceStartPrompt')
       if (voiceStartPrompt) voiceStartPrompt.style.display = 'flex'
       const textInputContainer = document.getElementById('textInputContainer')
@@ -2867,6 +3013,8 @@ export {
   sendChatMessageWithDeps,
   sendExpChatMessage,
   sendExpChatMessageWithDeps,
+  submitContinuation,
+  showContinuationUI,
 
   // Phase 2: Chat UI
   addChatMessage,
