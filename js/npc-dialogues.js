@@ -117,6 +117,8 @@ const NPC_DIALOGUES = {
   live: {
     sceneArrived: "The narrator's memory has arrived.",
     emotionCue: "What do you feel in this scene?",
+    continuationCue: "여기서부터 기억이 흐려져. 네가 이어줄래?",
+    continuationCueAlt: "이 다음이 잘 기억이 안 나…",
     memoryTransition: "This memory will now pass from Live to Archive. Along with your interpretation."
   },
 

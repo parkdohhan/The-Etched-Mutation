@@ -3626,6 +3626,131 @@ body::before {
   }
 }
 
+/* ── Continuation (connector + free-write) ── */
+
+.exp-continuation-area {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(196, 168, 130, .15);
+  padding-top: 1.2rem;
+  animation: fadeInUp .5s ease-out
+}
+
+.exp-continuation-connector-row {
+  text-align: center;
+  margin-bottom: 1rem
+}
+
+.exp-connector-select {
+  flex-shrink: 0;
+  min-width: 130px;
+  padding: .7rem .8rem;
+  background: var(--bg-deep);
+  border: 1px solid rgba(196, 168, 130, .3);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1rem;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c4a882'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .8rem center
+}
+
+.exp-connector-select:focus {
+  outline: none;
+  border-color: var(--accent-memory)
+}
+
+.exp-connector-select option {
+  background: var(--bg-deep);
+  color: var(--text-primary)
+}
+
+.exp-continuation-textarea {
+  width: 100%;
+  min-height: 60px;
+  max-height: 120px;
+  background: var(--bg-deep);
+  border: 1px solid rgba(196, 168, 130, .2);
+  padding: .7rem 1rem;
+  font-family: 'Noto Serif KR', serif;
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.8;
+  resize: vertical;
+  border-radius: 4px
+}
+
+.exp-continuation-textarea:focus {
+  outline: none;
+  border-color: var(--accent-memory)
+}
+
+.exp-continuation-textarea::placeholder {
+  color: var(--text-ghost)
+}
+
+.exp-continuation-submit-row {
+  text-align: center;
+  margin-top: .8rem
+}
+
+.exp-continuation-submit {
+  display: inline-block;
+  padding: .6rem 2rem;
+  background: transparent;
+  border: 1px solid var(--accent-memory);
+  color: var(--accent-memory);
+  font-family: 'Noto Serif KR', serif;
+  font-size: .95rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all .3s
+}
+
+.exp-continuation-submit:hover {
+  background: rgba(196, 168, 130, .1)
+}
+
+.exp-continuation-submit:disabled {
+  opacity: .4;
+  cursor: not-allowed
+}
+
+.exp-merged-text {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(196, 168, 130, .1)
+}
+
+.exp-merged-text .original-part {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  line-height: 2
+}
+
+.exp-merged-text .connector-part {
+  color: var(--accent-memory);
+  font-size: 1.2rem;
+  line-height: 2;
+  font-weight: 500
+}
+
+.exp-merged-text .user-part {
+  color: rgba(196, 168, 130, .85);
+  font-size: 1.2rem;
+  line-height: 2;
+  font-style: italic
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+
+/* ── end continuation ── */
+
 .exp-emotion-display {
   background: rgba(123, 143, 168, .1);
   border: 1px solid rgba(123, 143, 168, .2);

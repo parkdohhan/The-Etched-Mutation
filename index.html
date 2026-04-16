@@ -281,15 +281,35 @@
                     </div>
                     <div class="exp-scene-display" id="expGeneratedSceneContent">
                         <div class="exp-scene-text" id="expSceneText">The narrator is recalling a memory<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span></div>
+                        <div class="exp-continuation-area" id="expContinuationArea" style="display:none">
+                            <div class="exp-continuation-connector-row">
+                                <select class="exp-connector-select" id="expConnectorSelect">
+                                    <option value="">…</option>
+                                    <option value="그런데">그런데</option>
+                                    <option value="하지만">하지만</option>
+                                    <option value="그리고">그리고</option>
+                                    <option value="그럼에도 불구하고">그럼에도 불구하고</option>
+                                    <option value="그래서">그래서</option>
+                                    <option value="그러다가">그러다가</option>
+                                    <option value="그러자">그러자</option>
+                                    <option value="그 순간">그 순간</option>
+                                </select>
+                            </div>
+                            <textarea class="exp-continuation-textarea" id="expContinuationText" rows="2" placeholder="이어서 적어봐…"></textarea>
+                            <div class="exp-continuation-submit-row">
+                                <button class="exp-continuation-submit" id="expContinuationSubmit" onclick="submitContinuation()">제출</button>
+                            </div>
+                        </div>
+                        <div class="exp-merged-text" id="expMergedText" style="display:none"></div>
                     </div>
                     <div class="exp-emotion-display" id="expGeneratedEmotionContent" style="display:none">
                         <div class="exp-emotion-text" id="expEmotionText"></div>
                     </div>
                     <div class="chat-messages" id="expChatMessages"></div>
-                    <div class="text-input-container-live">
+                    <div class="text-input-container-live" id="expTextInputContainer">
                         <div class="chat-input-wrapper">
-                            <textarea class="chat-input-textarea" id="expTextInput" rows="2" placeholder="What emotions do you feel in this scene?"></textarea>
-                            <button class="chat-send-btn" id="expChatSendBtn" onclick="sendExpChatMessage()">Send</button>
+                            <textarea class="chat-input-textarea" id="expTextInput" rows="2" placeholder="떠오르는 대로 적어봐…"></textarea>
+                            <button class="chat-send-btn" id="expChatSendBtn" onclick="sendExpChatMessage()">제출</button>
                         </div>
                     </div>
                     <div class="voice-input-section" style="margin-top:1rem">
@@ -306,7 +326,7 @@
             <button class="archive-back-btn" onclick="backToIntro()">← Return to Start</button>
             <header class="archive-header">
                 <h1 class="archive-title">ARCHIVE</h1>
-                <p class="archive-subtitle">All memories are visible here. Click one to start Play.</p>
+                <p class="archive-subtitle" data-i18n="archive.subtitle">The self as terrain, etched by others.</p>
             </header>
             <div class="archive-controls" id="archiveControls">
                 <div class="archive-search-row">
@@ -344,6 +364,28 @@
                     onmouseleave="this.style.background='rgba(196,168,130,0.08)';this.style.borderColor='rgba(196,168,130,0.4)';this.style.color='rgba(196,168,130,0.8)'"></button>
             </div>
             <div id="archiveEntryContainer" class="archive-entry-screen" style="display:none;"></div>
+            <footer class="footer archive-inline-footer visible" id="archiveInlineFooter" style="background:transparent;border-top:1px solid rgba(196,168,130,0.1);margin-top:4rem;">
+                <div class="footer-content">
+                    <div class="footer-line">
+                        <span>Crisis Hotline:</span>
+                        <span>988 Suicide &amp; Crisis Lifeline</span>
+                        <span class="footer-divider">|</span>
+                        <span>Crisis Text Line: Text HOME to 741741</span>
+                    </div>
+                    <div class="footer-line">
+                        <span>SAMHSA Helpline: 1-800-662-4357</span>
+                    </div>
+                    <div class="footer-line">
+                        <a href="mailto:dohhan92947@gmail.com" class="footer-link">dohhan92947@gmail.com</a>
+                    </div>
+                    <div class="footer-line">
+                        <span>© 2025 Dohan Park. All rights reserved.</span>
+                    </div>
+                    <div class="footer-line">
+                        <span>@dohhan_</span>
+                    </div>
+                </div>
+            </footer>
         </div>
         <div class="end-screen" id="endScreen">
             <div class="end-content" id="endContent" style="opacity:0">

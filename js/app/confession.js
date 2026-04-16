@@ -12,7 +12,7 @@ import { showNotification, showNpcDialogue } from '../ui/notify.js';
 
 import { getSupabaseClient, getAccessToken } from '../lib/supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
-import { getCurrentLanguage } from '../lib/i18n.js';
+import { getCurrentLanguage, t } from '../lib/i18n.js';
 import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from '../safety.js';
 import { emotionVectorToWaveStyle } from '../shared/math.js';
 import { visualizer } from '../ui/Visualizer.js';
@@ -1698,7 +1698,7 @@ async function startRitualFlow() {
 
         const chatMessages = document.getElementById('chatMessages');
         if (chatMessages) {
-            chatMessages.innerHTML = '<div class="chat-message ai"><div class="chat-message-label">Another Me</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>';
+            chatMessages.innerHTML = `<div class="chat-message ai"><div class="chat-message-label">${t('anotherme.label')}</div><div class="chat-message-content">${t('anotherme.intro')}</div></div>`;
         }
 
         const editBtn = document.querySelector('.edit-toggle-btn');
@@ -1813,7 +1813,7 @@ async function saveRitualScene(sceneData) {
 
     const chatMessages = document.getElementById('chatMessages');
     if (chatMessages) {
-        chatMessages.innerHTML = '<div class="chat-message ai"><div class="chat-message-label">Another Me</div><div class="chat-message-content">기억을 이야기해줘. 천천히, 편하게.</div></div>';
+        chatMessages.innerHTML = `<div class="chat-message ai"><div class="chat-message-label">${t('anotherme.label')}</div><div class="chat-message-content">${t('anotherme.intro')}</div></div>`;
     }
 
     if (ritualScenes.length >= 5) {

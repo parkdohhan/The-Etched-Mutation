@@ -673,6 +673,7 @@ window.addChatMessageWithConfirm = _liveFn('addChatMessageWithConfirm');
 window.toggleRecording = _liveFn('toggleRecording');
 window.switchToTextInput = _liveFn('switchToTextInput');
 window.sendExpChatMessage = _liveFn('sendExpChatMessage');
+window.submitContinuation = _liveFn('submitContinuation');
 window.toggleExpRecording = _liveFn('toggleExpRecording');
 window.switchExpToTextInput = _liveFn('switchExpToTextInput');
 window.backToList = backToList;

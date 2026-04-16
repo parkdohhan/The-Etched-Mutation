@@ -653,7 +653,9 @@ async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const 
   appStore.setState({ currentMode: 'archive' });
   stopArchiveWaveAnimation();
   const footer = document.querySelector('.footer');
-  if (footer) footer.classList.add('visible') }
+  if (footer) footer.classList.add('visible');
+  setTimeout(() => { showNpcDialogue(t('archive.enterNotice'), 6000, t('anotherme.label')); }, 600);
+}
 function filterByCategory(category, btnElement) {
     if (!category) return;
     const state = appStore.getState();
@@ -1083,8 +1085,7 @@ function selectMemory(index) {
     console.warn('[Archive] memory not found for index:', index);
             return; 
         } 
-  const titleSrc = String(memory.title || memory.completed_sentence || '');
-  const lang = /[가-힣]/.test(titleSrc) ? 'ko' : 'en';
+  const lang = getCurrentLanguage();
   try {
     sessionStorage.setItem('demoMemoryId', String(memory.id));
     sessionStorage.setItem('tem_archive_memory_id', String(memory.id));

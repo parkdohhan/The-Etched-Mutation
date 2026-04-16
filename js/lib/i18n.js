@@ -30,6 +30,8 @@ const STRINGS = {
         'archive.filter.english':'English',
         'archive.filter.korean':'Korean',
         'archive.filter.recent':'Recent',
+        'archive.subtitle':     'The self as terrain, etched by others.',
+        'archive.enterNotice':  'My memory is no longer mine. Interpretation covers it like strata.',
         'archive.sort.layers':  'By Layers',
         'archive.empty':        'Nothing surfaces here yet.',
         'archive.searchPlaceholder': 'Search by title',
@@ -39,6 +41,8 @@ const STRINGS = {
         'scene.emotion.prompt': 'What do you feel?',
         'scene.emotion.submit': 'Leave it here',
         'scene.emotion.skip':   'I feel nothing',
+        'scene.emotion.why':    'Why did you do that?',
+        'scene.emotion.now':    'What are you feeling right now?',
 
         // ── End screen ────────────────────────────────────────────
         'end.title':       'The memory settles.',
@@ -120,7 +124,9 @@ const STRINGS = {
         'monologue.void.weak':   '…here.',
         'monologue.void.medium': 'There was something here.',
         'monologue.void.strong': 'Something was definitely here. I just can\'t reach it.',
-        // Another Me — post-submit
+        // ── Another Me ────────────────────────────────────────────
+        'anotherme.label':       'Another Me',
+        'anotherme.intro':       'Tell me your memory. Slowly, in your own way.',
         'anotherme.post.weak':   '…something shifted, but only slightly.',
         'anotherme.post.medium': 'The shape of it changed when you touched it.',
         'anotherme.post.strong': 'This isn\'t the same memory anymore. That\'s not wrong.',
@@ -132,7 +138,7 @@ const STRINGS = {
         'menu.archive':   '아카이브',
         'menu.record':    '기록',
         'menu.profile':   '프로필',
-        'menu.portfolio': 'MORE PORTFOLIO',
+        'menu.portfolio': '포트폴리오',
         'menu.settings':  '설정',
 
         'menu.desc.play':      '플레이 세션을 시작하고 기억의 지형을 탐색한다.',
@@ -147,6 +153,8 @@ const STRINGS = {
         'archive.filter.english':'영어',
         'archive.filter.korean': '한국어',
         'archive.filter.recent': '최근',
+        'archive.subtitle':      '타자의 잔상으로 빚어진 자기의 지형',
+        'archive.enterNotice':   '내 기억은 이제 내 것이 아니야. 해석이 지층처럼 덮여 있어.',
         'archive.sort.layers':   '레이어순',
         'archive.empty':         '아직 아무것도 떠오르지 않는다.',
         'archive.searchPlaceholder': '제목으로 검색',
@@ -156,6 +164,8 @@ const STRINGS = {
         'scene.emotion.prompt': '무엇이 느껴지나요?',
         'scene.emotion.submit': '여기 남기다',
         'scene.emotion.skip':   '아무것도 느끼지 못했다',
+        'scene.emotion.why':    '왜 그렇게 했어?',
+        'scene.emotion.now':    '지금 어떤 감정이 들어?',
 
         // ── End screen ────────────────────────────────────────────
         'end.title':   '기억이 가라앉는다.',
@@ -234,7 +244,9 @@ const STRINGS = {
         'monologue.void.weak':    '…여기.',
         'monologue.void.medium':  '여기에 뭔가 있었는데.',
         'monologue.void.strong':  '분명히 있었는데. 그게 뭐였는지만 안 떠올라.',
-        // 또다른 나 — post-submit
+        // ── 또다른 나 ────────────────────────────────────────────
+        'anotherme.label':       '또다른 나',
+        'anotherme.intro':       '기억을 이야기해줘. 천천히, 편하게.',
         'anotherme.post.weak':   '…뭔가 조금 달라졌어.',
         'anotherme.post.medium': '네가 만지니까 모양이 바뀌었어.',
         'anotherme.post.strong': '이건 이제 같은 기억이 아니야. 그게 틀린 건 아니야.',
