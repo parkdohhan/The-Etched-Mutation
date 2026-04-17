@@ -4,6 +4,10 @@ node_modules/
 public/portfolio-site/
 portfolio-site/
 
+# macOS
+.DS_Store
+**/.DS_Store
+
 # Environment variables
 .env
 .env.local
