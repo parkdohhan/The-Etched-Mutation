@@ -294,9 +294,12 @@
                 <h2 class="tv-title">궤적 뷰어</h2>
                 <p class="tv-subtitle" id="tvMemoryLabel">로딩 중…</p>
 
-                <div style="display:flex;gap:6px;margin-bottom:12px;">
+                <div style="display:flex;gap:6px;margin-bottom:6px;">
                     <button class="tv-toggle" id="tvAddMemoryBtn" style="flex:1;padding:6px;font-size:0.72rem;">+ 새 기억</button>
-                    <button class="tv-toggle" id="tvAddSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;">+ 새 씬</button>
+                    <button class="tv-toggle" id="tvAddSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="원본(Anchor) 씬 추가">+ 원본 씬</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:12px;">
+                    <button class="tv-toggle" id="tvAddBridgeSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(106,163,131,0.08);border-color:rgba(106,163,131,0.3);" title="잔상(Residual / Bridge) 씬 추가 — scene_role='residual', scene_type='branch'">+ 잔상 씬</button>
                 </div>
 
                 <div class="tv-section-label">감정 진입점</div>

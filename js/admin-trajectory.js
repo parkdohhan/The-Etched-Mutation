@@ -414,15 +414,23 @@ async function previewSound(url, volume) {
 
 // ─── 새 씬 추가 ─────────────────────────────────────────────
 async function addNewScene() {
+  return _insertScene({ role: 'anchor' });
+}
+
+async function addNewBridgeScene() {
+  return _insertScene({ role: 'residual' });
+}
+
+async function _insertScene({ role }) {
   if (!state.memory) { alert('먼저 메모리를 선택하세요.'); return; }
   const existingCodes = new Set(state.scenes.map(s => s.meta?.scene_code).filter(Boolean));
-  // 기본 코드: 다음 알파벳 (A..Z)
   let nextCode = '';
   for (let i = 0; i < 26; i++) {
     const c = String.fromCharCode(65 + i);
     if (!existingCodes.has(c)) { nextCode = c; break; }
   }
   const nextOrder = Math.max(-1, ...state.scenes.map(s => s.scene_order ?? -1)) + 1;
+  const isBridge = role === 'residual';
 
   try {
     const sb = await getSupabaseClient();
@@ -431,7 +439,8 @@ async function addNewScene() {
       scene_order: nextOrder,
       text: '',
       emotion_dist: {}, emotion_vector: {},
-      scene_type: 'normal',
+      scene_type: isBridge ? 'branch' : 'normal',
+      scene_role: isBridge ? 'residual' : 'anchor',
       meta: { scene_code: nextCode || String(nextOrder), motif_tags: [], author_bridges: [] }
     }).select().single();
     if (se) throw se;
@@ -441,7 +450,7 @@ async function addNewScene() {
     selectScene(sc);
   } catch (e) {
     console.error(e);
-    alert('씬 추가 실패: ' + e.message);
+    alert((isBridge ? '잔상 씬' : '씬') + ' 추가 실패: ' + e.message);
   }
 }
 
@@ -477,6 +486,8 @@ function bindToggles() {
   if (addMemBtn) addMemBtn.addEventListener('click', openNewMemoryModal);
   const addSceneBtn = document.getElementById('tvAddSceneBtn');
   if (addSceneBtn) addSceneBtn.addEventListener('click', addNewScene);
+  const addBridgeSceneBtn = document.getElementById('tvAddBridgeSceneBtn');
+  if (addBridgeSceneBtn) addBridgeSceneBtn.addEventListener('click', addNewBridgeScene);
 
   const strataBtn = document.getElementById('tvStrataPreviewBtn');
   if (strataBtn) strataBtn.addEventListener('click', () => {
@@ -1117,8 +1128,18 @@ function renderDetailTab(s) {
   const inputStyle = `width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;`;
   const labelStyle = `font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;display:block;margin-top:14px;`;
   const EMO_KEYS = ['fear','sadness','anger','guilt','shame','longing','numbness','isolation'];
+  const isResidual = s.scene_role === 'residual';
+  const roleLabel = isResidual ? '잔상 (Residual / Bridge)' : '원본 (Anchor)';
+  const roleColor = isResidual ? '#6aa383' : '#c4a882';
+  const hasVoid = s.void_info && s.void_info.sceneVoid;
 
   return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:0.72rem;">
+      <span style="color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;">역할</span>
+      <span style="color:${roleColor};font-weight:500;">${roleLabel}</span>
+      ${hasVoid ? '<span style="color:#8a7c6a;border:1px dotted #8a7c6a;padding:0 6px;border-radius:2px;font-size:0.68rem;">void</span>' : ''}
+    </div>
+
     <label style="${labelStyle}margin-top:0;">본문</label>
     <textarea id="sceneText" rows="6" style="${inputStyle}resize:vertical;line-height:1.5;">${escapeHtml(s.text || '')}</textarea>
 

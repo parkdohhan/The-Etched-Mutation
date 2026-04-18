@@ -18,7 +18,7 @@ The Etched Mutation/
 ├── af-terrain-test.html    # AF 좌표 지형 실험
 ├── test-byeori-engine.html # 별이엔진 수동 테스트
 ├── vite.config.js / package.json / vercel.json
-├── CLAUDE.md               # Claude 작업 가이드 (최신)
+├── CLAUDE-260414.md               # Claude 작업 가이드 (최신)
 ├── run-simulation.mjs      # 노드 시뮬 엔트리
 └── start-portfolio-server.{sh,bat}
 ```
