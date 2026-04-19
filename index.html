@@ -23,7 +23,24 @@
             <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
         </div>
         <div class="opening-dialogue" id="openingDialogue"></div>
-        <div class="opening-start-hint" id="openingStartHint">[ Press any key or click to begin ]</div>
+        <!-- v2: 언어 선택 + Start (Press any key 대체) -->
+        <div class="opening-lang-gate" id="openingLangGate" style="position:absolute;left:50%;top:62%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:22px;opacity:0;transition:opacity 1.2s ease;pointer-events:none;">
+            <div class="opening-lang-toggle" id="openingLangToggle" style="display:flex;gap:18px;">
+                <button type="button" class="opening-lang-btn" data-lang="en" style="background:none;border:1px solid rgba(196,168,130,0.35);color:rgba(196,168,130,0.75);font-family:'Cormorant Garamond',serif;font-size:14px;letter-spacing:3px;padding:8px 22px;cursor:pointer;transition:all 0.3s;">EN</button>
+                <button type="button" class="opening-lang-btn" data-lang="ko" style="background:none;border:1px solid rgba(196,168,130,0.35);color:rgba(196,168,130,0.75);font-family:'Cormorant Garamond',serif;font-size:14px;letter-spacing:3px;padding:8px 22px;cursor:pointer;transition:all 0.3s;">한국어</button>
+            </div>
+            <button type="button" class="opening-start-btn" id="openingStartBtn" style="background:none;border:1px solid rgba(196,168,130,0.4);color:rgba(196,168,130,0.85);font-family:'Cormorant Garamond',serif;font-size:15px;letter-spacing:5px;padding:10px 46px;cursor:pointer;transition:all 0.3s;">Start</button>
+        </div>
+        <!-- v2: 대사 종료 후 나타나는 입력 UI -->
+        <div class="opening-input-phase" id="openingInputPhase" style="position:absolute;left:50%;top:62%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:18px;opacity:0;transition:opacity 0.8s ease;pointer-events:none;">
+            <div style="display:flex;align-items:center;gap:0;">
+                <input type="text" id="openingFinderInput" autocomplete="off" placeholder="" style="width:280px;background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.9);font-family:'Cormorant Garamond',serif;font-size:17px;letter-spacing:1px;padding:8px 0;text-align:center;outline:none;" />
+                <button id="openingFinderSubmitBtn" type="button" style="background:none;border:none;border-bottom:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.5);font-size:19px;padding:8px 12px;cursor:pointer;transition:color 0.3s;line-height:1;">&#x2192;</button>
+            </div>
+            <div id="openingFinderChips" style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;"></div>
+        </div>
+        <!-- v2: 180° 회전 후 나타나는 문 -->
+        <div class="opening-doors-phase" id="openingDoorsPhase" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s ease;"></div>
     </div>
     <audio id="openingSound" preload="auto">
         <source src="sounds/ambient-opening.mp3" type="audio/mpeg">

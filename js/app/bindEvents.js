@@ -116,14 +116,30 @@ function bindOpeningEvents() {
         registerMemoryBtn.addEventListener('click', window.startMemoryRegistration);
     }
 
- // 오프닝 screen 클릭 벤트
+ // v2: 온보딩 완료 플래그 — 첫 플레이 끝나면 이후 방문부턴 오프닝 건너뛰고 메인 메뉴로 바로.
+    try {
+        const _onboarded = localStorage.getItem('tem_onboarded');
+        if (_onboarded === '1') {
+            const _openSc = document.getElementById('openingScreen');
+            if (_openSc) _openSc.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;z-index:-1!important;opacity:0!important';
+            const _introSc = document.getElementById('introScreen');
+            if (_introSc) {
+                _introSc.style.cssText = 'display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:2000!important';
+                _introSc.classList.add('visible');
+                _introSc.classList.remove('hidden');
+            }
+            window.hasZoomedIn = true;
+            window.openingSequenceStarted = true;
+        }
+    } catch (_) {}
+
+ // v2: 오프닝 클릭은 초기 웨이브·사운드 시작만 담당. "Press any key → 메뉴" 스킵 폐기.
     const openingScreenEl = document.getElementById('openingScreen');
     if (openingScreenEl) {
         openingScreenEl.addEventListener('click', function (e) {
-            if (window.hasZoomedIn) {
-                if (window.skipToIntro) window.skipToIntro();
-                return;
-            }
+            if (window.hasZoomedIn) return; // 두 번째 클릭부터는 v2 시퀀스가 Start 버튼으로 진행
+            // 버튼 내부 클릭은 무시 (Start 버튼이 자기 핸들러 처리)
+            if (e.target && (e.target.closest('.opening-lang-btn') || e.target.closest('.opening-start-btn'))) return;
             window.hasZoomedIn = true;
             const waveContainer = document.getElementById('openingWaveContainer');
             if (waveContainer) {
@@ -135,8 +151,6 @@ function bindOpeningEvents() {
                 window.setupLoopWithCrossfade(openingSound, 0.6, 2);
                 window.fadeInSound(openingSound, 0.6, 4000);
             }
-            const hint = document.getElementById('openingStartHint');
-            if (hint) hint.style.opacity = '0';
             setTimeout(() => {
                 if (!window.openingSequenceStarted) {
                     window.openingSequenceStarted = true;
@@ -145,11 +159,7 @@ function bindOpeningEvents() {
             }, 800);
         });
     }
-
- // 오프닝 키보드 벤트
-    if (window.handleOpeningKeydown) {
-        document.addEventListener('keydown', window.handleOpeningKeydown);
-    }
+    // v2: 키보드 스킵 폐기 — 메뉴가 없으므로 스킵 대상 없음
 
  // 오프닝 wave canvas 벤트
  // startOpeningWaveAnimation 내부 서 바인딩되므 여기서 제외

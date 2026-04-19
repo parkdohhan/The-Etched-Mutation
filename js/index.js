@@ -66,6 +66,7 @@ import {
 import { showEndScreen } from './app/endScreen.js';
 import {
     enterPlayIntro, enterArchive,
+    _finderMatch, _finderMatchByText,
     loadMemoriesFromSupabase, filterByCategory, filterMemories, sortMemories,
     updateAlignmentDisplay, renderArchiveEmotionWave,
     startArchiveWaveAnimation, stopArchiveWaveAnimation,
@@ -612,6 +613,9 @@ window.openAbout = openAbout;
 window.openConcept = openConcept;
 window.openMypage = openMypage;
 window.enterPlayIntro = enterPlayIntro;
+// v2: 오프닝 시퀀스가 직접 매칭 호출
+window._finderMatch = _finderMatch;
+window._finderMatchByText = _finderMatchByText;
 window.showModeSelection = showModeSelection;
 window.enterArchive = enterArchive;
 window.handleSocialLogin = handleSocialLogin;

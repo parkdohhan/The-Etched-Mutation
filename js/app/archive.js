@@ -366,10 +366,12 @@ function _extractBaselineFromText(query) {
 }
 
 function _finderMatch(emotion, lang) {
-  // v2: 칩 선택도 baseline 기록 (해당 감정 100%)
   _saveBaselineEmotion({ [emotion]: 1.0 });
-  const memories = appStore.getState().allMemoriesData || [];
+  const all = appStore.getState().allMemoriesData || [];
   const preferKo = lang === 'ko';
+  // v2: 하드 필터 — 선택 언어의 기억만 매칭 대상
+  const memories = all.filter(m => _isMemoryKorean(m) === preferKo);
+  console.log('[_finderMatch] lang=', lang, 'preferKo=', preferKo, 'total=', all.length, 'filtered=', memories.length, 'titles=', memories.map(m => m.title));
   const scored = memories.map(m => {
     let score = 0;
     const vec = _getMemoryEmotionVector(m);
@@ -381,17 +383,14 @@ function _finderMatch(emotion, lang) {
     }
     const text = (m.title || '') + ' ' + (m.completed_sentence || '');
     if (text.toLowerCase().includes(emotion)) score += 0.3;
-    // Language affinity
-    if (score > 0 && _isMemoryKorean(m) === preferKo) score += 0.2;
     return { memory: m, score };
   }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
 
   const matched = scored.slice(0, 3).map(s => s.memory);
-  if (matched.length === 0) {
-    const sameLang = memories.filter(m => _isMemoryKorean(m) === preferKo);
-    const pool = sameLang.length >= 3 ? sameLang : memories;
-    const shuffled = pool.slice().sort(() => Math.random() - 0.5);
-    matched.push(...shuffled.slice(0, Math.min(3, shuffled.length)));
+  if (matched.length === 0 && memories.length > 0) {
+    // 언어 풀 안의 점수 0 기억에서 랜덤. 풀이 비면 그대로 비움(교차언어 폴백 금지).
+    const shuffled = memories.slice().sort(() => Math.random() - 0.5);
+    matched.push(...shuffled.slice(0, Math.min(3, memories.length)));
   }
   _showFinderResults(matched, lang);
 }
@@ -406,11 +405,12 @@ function _isMemoryKorean(m) {
 }
 
 function _finderMatchByText(query, lang) {
-  // v2: baseline_emotion 기록 (키워드 기반, LLM 전환 시 대체)
   _saveBaselineEmotion(_extractBaselineFromText(query));
-  const memories = appStore.getState().allMemoriesData || [];
+  const all = appStore.getState().allMemoriesData || [];
   const lower = query.toLowerCase();
-  const inputIsKo = _isKoreanInput(query);
+  // v2: 하드 필터 — 선택 언어(opening에서 전달)의 기억만. query의 한글 여부 무시.
+  const preferKo = lang === 'ko';
+  const memories = all.filter(m => _isMemoryKorean(m) === preferKo);
 
   const emotionWords = {
     sadness: ['슬', '울', 'sad', 'cry', '아프', '힘들'],
@@ -423,11 +423,6 @@ function _finderMatchByText(query, lang) {
   const scored = memories.map(m => {
     const text = ((m.title || '') + ' ' + (m.completed_sentence || '')).toLowerCase();
     let score = 0;
-
-    // Language affinity: boost memories matching input language
-    const memIsKo = _isMemoryKorean(m);
-    if (inputIsKo === memIsKo) score += 0.5;
-
     lower.split(/\s+/).forEach(word => {
       if (word.length >= 2 && text.includes(word)) score += 1;
     });
@@ -444,9 +439,7 @@ function _finderMatchByText(query, lang) {
 
   const matched = scored.slice(0, 3).map(s => s.memory);
   if (matched.length === 0) {
-    // Fallback: prefer memories in the same language as input
-    const sameLang = memories.filter(m => _isMemoryKorean(m) === inputIsKo);
-    const pool = sameLang.length >= 3 ? sameLang : memories;
+    const pool = memories.length ? memories : all;
     const shuffled = pool.slice().sort(() => Math.random() - 0.5);
     matched.push(...shuffled.slice(0, Math.min(3, shuffled.length)));
   }
@@ -2007,4 +2000,8 @@ export {
     updateUIAfterSubmit,
     persistAfterSubmit,
     proceedToNextSceneOrEnd,
+
+    // v2: 오프닝 시퀀스에서 호출
+    _finderMatch,
+    _finderMatchByText,
 };
