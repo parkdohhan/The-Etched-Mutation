@@ -313,9 +313,9 @@
                     <input type="text" class="archive-search" id="archiveSearch" placeholder="Search by title" data-i18n="archive.searchPlaceholder" oninput="filterMemories()">
                 </div>
                 <div class="archive-filters" style="margin-top:18px;">
-                    <button class="filter-btn active" data-sort="all" onclick="sortMemories('all',this)">All</button>
-                    <button class="filter-btn" data-sort="popular" onclick="sortMemories('popular',this)">Popular</button>
-                    <button class="filter-btn" data-sort="recent" onclick="sortMemories('recent',this)">Recent</button>
+                    <button class="filter-btn active" data-sort="all" onclick="sortMemories('all',this)" data-i18n="archive.filter.all">All</button>
+                    <button class="filter-btn" data-sort="english" onclick="sortMemories('english',this)" data-i18n="archive.filter.english">English</button>
+                    <button class="filter-btn" data-sort="korean" onclick="sortMemories('korean',this)" data-i18n="archive.filter.korean">Korean</button>
                 </div>
             </div>
             <div class="memory-list" id="memoryList"></div>

@@ -34,8 +34,18 @@
   .sub {
     font-size: 0.78rem;
     color: var(--muted);
-    margin-bottom: 36px;
+    margin-bottom: 24px;
     letter-spacing: 0.04em;
+  }
+  .pose-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 0.9rem;
+    color: var(--displaced);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 28px 0 10px;
+    opacity: 0.82;
   }
   .stage {
     background: var(--terrain);
@@ -190,45 +200,14 @@
 </head>
 <body>
 
-<h1>또다른 나 — silhouette sketch v4 (single path)</h1>
-<p class="sub">외곽선 없음. 인체 해부학 기반 단일 path — 머리·목·어깨·팔(겨드랑이 공간 포함)·허리·엉덩이·다리·발. blur는 질감용.</p>
+<h1>또다른 나 — silhouette sketch v5 (bell / single path)</h1>
+<p class="sub">종형 실루엣 단일 path — 머리 타원 + 목 notch + 아래로 넓어지는 망토 + 바닥 접지. 자세 구분 없음. blur는 질감용.</p>
 
 <div class="stage">
   <div class="pedestal">
     <div class="ghost-wrap">
       <svg class="ghost-svg ghost--core" viewBox="-4 -2 48 82" width="112" height="190">
-        <path class="body-fill" d="
-          M 20 2
-          Q 26 2 26 10
-          Q 25 14 22 14
-          L 30 17
-          Q 32 18 32 19
-          L 31 40
-          Q 30 42 29 40
-          L 28 20
-          L 27 32
-          L 28 45
-          L 27 70
-          L 29 74
-          L 22 74
-          L 22 47
-          Q 20 44 19 45
-          L 18 47
-          L 18 74
-          L 11 74
-          L 13 70
-          L 12 45
-          L 13 32
-          L 12 20
-          L 11 40
-          Q 10 42 9 40
-          L 8 19
-          Q 8 18 10 17
-          L 18 14
-          Q 15 14 14 10
-          Q 14 2 20 2
-          Z
-        "/>
+        <path class="body-fill" d="M 20 6 Q 28 6 28 14 Q 28 22 25 23 L 22 25 L 30 27 Q 34 40 37 60 L 38 74 L 2 74 L 3 60 Q 6 40 10 27 L 18 25 L 15 23 Q 12 22 12 14 Q 12 6 20 6 Z"/>
       </svg>
       <div class="whisper">그 소리가 들렸어.</div>
     </div>
@@ -240,38 +219,7 @@
   <div class="pedestal">
     <div class="ghost-wrap">
       <svg class="ghost-svg ghost--bridge" viewBox="-4 -2 48 82" width="112" height="190">
-        <path class="body-fill" d="
-          M 20 2
-          Q 26 2 26 10
-          Q 25 14 22 14
-          L 30 17
-          Q 32 18 32 19
-          L 31 40
-          Q 30 42 29 40
-          L 28 20
-          L 27 32
-          L 28 45
-          L 27 70
-          L 29 74
-          L 22 74
-          L 22 47
-          Q 20 44 19 45
-          L 18 47
-          L 18 74
-          L 11 74
-          L 13 70
-          L 12 45
-          L 13 32
-          L 12 20
-          L 11 40
-          Q 10 42 9 40
-          L 8 19
-          Q 8 18 10 17
-          L 18 14
-          Q 15 14 14 10
-          Q 14 2 20 2
-          Z
-        "/>
+        <path class="body-fill" d="M 20 6 Q 28 6 28 14 Q 28 22 25 23 L 22 25 L 30 27 Q 34 40 37 60 L 38 74 L 2 74 L 3 60 Q 6 40 10 27 L 18 25 L 15 23 Q 12 22 12 14 Q 12 6 20 6 Z"/>
       </svg>
       <div class="whisper">맞아, 그랬지.</div>
     </div>
@@ -283,38 +231,7 @@
   <div class="pedestal">
     <div class="ghost-wrap">
       <svg class="ghost-svg ghost--echo" viewBox="-4 -2 48 82" width="112" height="190">
-        <path class="body-fill" d="
-          M 20 2
-          Q 26 2 26 10
-          Q 25 14 22 14
-          L 30 17
-          Q 32 18 32 19
-          L 31 40
-          Q 30 42 29 40
-          L 28 20
-          L 27 32
-          L 28 45
-          L 27 70
-          L 29 74
-          L 22 74
-          L 22 47
-          Q 20 44 19 45
-          L 18 47
-          L 18 74
-          L 11 74
-          L 13 70
-          L 12 45
-          L 13 32
-          L 12 20
-          L 11 40
-          Q 10 42 9 40
-          L 8 19
-          Q 8 18 10 17
-          L 18 14
-          Q 15 14 14 10
-          Q 14 2 20 2
-          Z
-        "/>
+        <path class="body-fill" d="M 20 6 Q 28 6 28 14 Q 28 22 25 23 L 22 25 L 30 27 Q 34 40 37 60 L 38 74 L 2 74 L 3 60 Q 6 40 10 27 L 18 25 L 15 23 Q 12 22 12 14 Q 12 6 20 6 Z"/>
       </svg>
       <div class="whisper">…였나.</div>
     </div>
@@ -326,38 +243,7 @@
   <div class="pedestal">
     <div class="ghost-wrap">
       <svg class="ghost-svg ghost--void" viewBox="-4 -2 48 82" width="112" height="190">
-        <path class="body-fill" d="
-          M 20 2
-          Q 26 2 26 10
-          Q 25 14 22 14
-          L 30 17
-          Q 32 18 32 19
-          L 31 40
-          Q 30 42 29 40
-          L 28 20
-          L 27 32
-          L 28 45
-          L 27 70
-          L 29 74
-          L 22 74
-          L 22 47
-          Q 20 44 19 45
-          L 18 47
-          L 18 74
-          L 11 74
-          L 13 70
-          L 12 45
-          L 13 32
-          L 12 20
-          L 11 40
-          Q 10 42 9 40
-          L 8 19
-          Q 8 18 10 17
-          L 18 14
-          Q 15 14 14 10
-          Q 14 2 20 2
-          Z
-        "/>
+        <path class="body-fill" d="M 20 6 Q 28 6 28 14 Q 28 22 25 23 L 22 25 L 30 27 Q 34 40 37 60 L 38 74 L 2 74 L 3 60 Q 6 40 10 27 L 18 25 L 15 23 Q 12 22 12 14 Q 12 6 20 6 Z"/>
       </svg>
       <div class="whisper">…</div>
     </div>
@@ -368,15 +254,211 @@
 </div>
 
 <div class="notes">
-  <p><strong>구조</strong>: ellipse 덩어리 포기하고 해부학적 단일 path로 재작성. 머리 — 목 — 어깨(사선 내려감) — 팔(몸통 옆에 붙어 내려옴) — 겨드랑이 공간 — 허리(좁아짐) — 엉덩이(넓어짐) — 다리 둘 — 발.</p>
-  <p style="margin-top:8px;">겨드랑이 삼각형 공간이 핵심 — path가 팔 안쪽으로 올라갔다가 몸통 옆면으로 다시 내려가면서 그 사이에 빈 공간(음영) 생김. blur가 얕으면 팔이 몸에서 분리되어 보이고, 깊으면 합쳐져 흐릿한 사람.</p>
-  <p style="margin-top:8px;"><strong>타입별 blur 조정</strong>:</p>
+  <p><strong>구조</strong>: 해부학/자세 포기하고 종형 단일 실루엣. 머리 타원(y 6~22) → 목 notch(x 25→22→30 V꺾임) → 어깨 → 아래로 넓어지는 망토 → 바닥 접지선(y=74, x 2~38).</p>
+  <p style="margin-top:8px;">자세 구분 없음 — 동일 실루엣에 blur/tone/opacity만 달리해서 네 타입 연출. 유령이 어떤 자세든 해석은 관객 몫.</p>
+  <p style="margin-top:8px;"><strong>타입별 조정</strong>:</p>
   <p style="margin-top:4px;">• <code>core</code> 1.8px · 0.82 · warm</p>
   <p>• <code>bridge</code> <strong>1.1px</strong> · 0.93 · displaced — 거의 또렷 (확신의 과잉)</p>
-  <p>• <code>echo</code> 3.5px · 0.36 · cool — 흐릿하지만 인간형 유지</p>
+  <p>• <code>echo</code> 3.5px · 0.36 · cool — 흐릿하지만 형태 유지</p>
   <p>• <code>void</code> 2.4px · 0.58 · 하체 fade mask</p>
-  <p style="margin-top:12px;">비율 조정은 path 좌표만 바꾸면 됨 (viewBox <code>-4 -2 48 82</code>, 몸 중앙 x=20).</p>
+  <p style="margin-top:12px;">비율 조정은 path 좌표만 바꾸면 됨 (viewBox <code>-4 -2 48 82</code>, 중심 x=20).</p>
 </div>
+
+<h1 style="margin-top:48px;">3D preview — Three.js sprite</h1>
+<p class="sub">같은 SVG 실루엣을 canvas 텍스처로 구워 Three.js Sprite(billboard)로 3D 공간에 배치. 드래그 회전 · 스크롤 줌. 유령은 카메라 항상 바라봄.</p>
+<div id="three-container" style="width:100%;height:520px;background:var(--terrain);border:1px solid rgba(196,168,130,0.12);border-radius:3px;position:relative;overflow:hidden;"></div>
+
+<div class="notes" style="margin-top:20px;">
+  <p><strong>파이프라인</strong>: SVG 실루엣 → data URL → <code>Image</code> → canvas → <code>THREE.CanvasTexture</code> → <code>SpriteMaterial</code> → <code>Sprite</code>. 유령 당 텍스처 1장, 초기화 시 한 번만 굽고 재사용.</p>
+  <p style="margin-top:8px;">TEM strata 렌더러(<code>tem_af_strata_terrain.js</code>, <code>strataView.js</code>)가 이미 쓰는 Sprite 패턴과 동일. CSS2DRenderer 같은 별도 레이어 없음.</p>
+  <p style="margin-top:8px;">Bob 애니메이션은 <code>sprite.position.y += sin(t)</code>. 각 유령마다 phase offset으로 비동기 움직임.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  const GHOST_PATH = 'M 20 6 Q 28 6 28 14 Q 28 22 25 23 L 22 25 L 30 27 Q 34 40 37 60 L 38 74 L 2 74 L 3 60 Q 6 40 10 27 L 18 25 L 15 23 Q 12 22 12 14 Q 12 6 20 6 Z';
+
+  const PRESETS = {
+    core:   { blur: 1.8, opacity: 0.82, tone: '#d4b890', mask: false, label: '또렷한 잔상' },
+    bridge: { blur: 1.1, opacity: 0.93, tone: '#c49668', mask: false, label: '확신에 찬 잔상' },
+    echo:   { blur: 3.5, opacity: 0.36, tone: '#8c9ca5', mask: false, label: '흐릿한 잔상' },
+    voidP:  { blur: 2.4, opacity: 0.58, tone: '#6a6055', mask: true,  label: '침묵한 잔상' },
+  };
+
+  function makeGhostTexture(p) {
+    const w = 256, h = 512;
+    // SVG viewBox units (48 wide) → texture px (256 wide): 1 user unit ≈ 5.33 px.
+    // CSS blur 값은 112px 디스플레이 기준이었으므로 256px 텍스처용은 ~2.3배 스케일.
+    const stdDev = p.blur * 0.45;
+
+    let defs = '<filter id="blur" x="-30%" y="-30%" width="160%" height="160%">' +
+               '<feGaussianBlur stdDeviation="' + stdDev + '"/></filter>';
+    if (p.mask) {
+      defs += '<linearGradient id="fade" x1="0" y1="0" x2="0" y2="82" gradientUnits="userSpaceOnUse">' +
+              '<stop offset="0.4" stop-color="white" stop-opacity="1"/>' +
+              '<stop offset="0.8" stop-color="white" stop-opacity="0.5"/>' +
+              '<stop offset="1.0" stop-color="white" stop-opacity="0"/>' +
+              '</linearGradient>' +
+              '<mask id="fademask"><rect x="-4" y="-2" width="48" height="82" fill="url(#fade)"/></mask>';
+    }
+    const maskAttr = p.mask ? ' mask="url(#fademask)"' : '';
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -2 48 82" width="' + w + '" height="' + h + '">' +
+      '<defs>' + defs + '</defs>' +
+      '<g filter="url(#blur)"' + maskAttr + '>' +
+        '<path fill="' + p.tone + '" opacity="' + p.opacity + '" d="' + GHOST_PATH + '"/>' +
+      '</g></svg>';
+
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    const tex = new THREE.Texture();
+    tex.magFilter = THREE.LinearFilter;
+    tex.minFilter = THREE.LinearFilter;
+
+    const img = new Image();
+    img.onload = function () {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      tex.image = canvas;
+      tex.needsUpdate = true;
+    };
+    img.src = url;
+    return tex;
+  }
+
+  if (typeof THREE === 'undefined') {
+    console.error('Three.js 로딩 실패');
+    return;
+  }
+
+  const container = document.getElementById('three-container');
+  let W = container.clientWidth, H = container.clientHeight;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x12121a);
+  scene.fog = new THREE.FogExp2(0x0a0a10, 0.035);
+
+  const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+  camera.position.set(0, 2.2, 8.5);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  container.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 1.5, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 3;
+  controls.maxDistance = 20;
+  controls.maxPolarAngle = Math.PI * 0.49;
+
+  // 지면 — 그냥 깊은 색 원판. 유령들이 "위에 서 있다"는 감각만 줌.
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(18, 64),
+    new THREE.MeshBasicMaterial({ color: 0x0e0e14, transparent: true, opacity: 0.8 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+
+  // 핀 위치 마커 — 유령 발밑 작은 점
+  function addPin(x, z, tone) {
+    const pin = new THREE.Mesh(
+      new THREE.CircleGeometry(0.08, 16),
+      new THREE.MeshBasicMaterial({ color: tone, transparent: true, opacity: 0.55 })
+    );
+    pin.rotation.x = -Math.PI / 2;
+    pin.position.set(x, 0.01, z);
+    scene.add(pin);
+  }
+
+  const types = ['core', 'bridge', 'echo', 'voidP'];
+  const spacing = 2.3;
+  const startX = -(types.length - 1) * spacing / 2;
+  const ghosts = [];
+
+  // DOM 라벨 레이어 (3D → 스크린 투영)
+  const labelLayer = document.createElement('div');
+  labelLayer.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+  container.appendChild(labelLayer);
+  const labelEls = [];
+
+  types.forEach(function (type, i) {
+    const p = PRESETS[type];
+    const pinColor = new THREE.Color(p.tone);
+
+    const mat = new THREE.SpriteMaterial({
+      map: makeGhostTexture(p),
+      transparent: true,
+      depthWrite: false,
+      fog: true,
+    });
+    const sprite = new THREE.Sprite(mat);
+    // 실제 비율: viewBox 48:82 ≈ 1:1.71. 월드 높이 3.0 단위.
+    sprite.scale.set(1.75, 3.0, 1);
+    const x = startX + i * spacing;
+    sprite.position.set(x, 1.55, 0);
+    sprite.userData.baseY = 1.55;
+    sprite.userData.phase = i * 0.7;
+    sprite.userData.type = type;
+    scene.add(sprite);
+    ghosts.push(sprite);
+
+    addPin(x, 0, pinColor);
+
+    // 라벨
+    const el = document.createElement('div');
+    el.style.cssText =
+      'position:absolute;font-family:"Cormorant Garamond",serif;font-size:0.8rem;' +
+      'font-style:italic;color:#e0d8c4;opacity:0.72;letter-spacing:0.05em;' +
+      'transform:translate(-50%,0);text-align:center;white-space:nowrap;';
+    el.innerHTML =
+      p.label +
+      '<br><span style="font-size:0.62rem;color:#7c7466;letter-spacing:0.14em;' +
+      'text-transform:uppercase;">' + type.replace('voidP', 'void') + '</span>';
+    labelLayer.appendChild(el);
+    labelEls.push(el);
+  });
+
+  // 라벨 위치 업데이트: 유령 발밑 근처를 월드 좌표로 잡아 스크린 투영
+  function updateLabels() {
+    const tmp = new THREE.Vector3();
+    ghosts.forEach(function (g, i) {
+      tmp.set(g.position.x, 0.05, g.position.z);
+      tmp.project(camera);
+      const x = (tmp.x * 0.5 + 0.5) * W;
+      const y = (-tmp.y * 0.5 + 0.5) * H + 18;
+      labelEls[i].style.left = x + 'px';
+      labelEls[i].style.top = y + 'px';
+    });
+  }
+
+  const clock = new THREE.Clock();
+  function animate() {
+    const t = clock.getElapsedTime();
+    ghosts.forEach(function (g) {
+      g.position.y = g.userData.baseY + Math.sin(t * 0.7 + g.userData.phase) * 0.06;
+    });
+    controls.update();
+    renderer.render(scene, camera);
+    updateLabels();
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  window.addEventListener('resize', function () {
+    W = container.clientWidth;
+    H = container.clientHeight;
+    camera.aspect = W / H;
+    camera.updateProjectionMatrix();
+    renderer.setSize(W, H);
+  });
+})();
+</script>
 
 </body>
 </html>

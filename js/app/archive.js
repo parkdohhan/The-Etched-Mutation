@@ -87,7 +87,146 @@ const FINDER_CHIPS = {
   ],
 };
 
-function _initMemoryFinder() {
+// v2 확정 대사 (docs/play_entry_redesign_v2-260419.md)
+const PLAY_ENTRY_DIALOGUES = {
+  ko: [
+    '...너구나.',
+    '너가 그렇게 기억을 찾고싶어할줄은 몰랐네.',
+    '어떤 기억을 찾고있어?',
+  ],
+  en: [
+    'oh. you. again.',
+    "I didn't think you'd be searching this hard.",
+    'what are you looking for?',
+  ],
+};
+
+// v2 Phase 2: 인트로 멀티웨이브 실 — 오프닝 스크린(openingWaveCanvas)의 7-레이어 합성 재활용.
+// (원본: js/demo/demoFlow.js startOpeningWaveLoop)
+function _mountFinderThread(questionPhaseEl) {
+  if (!questionPhaseEl) return null;
+  const old = document.getElementById('finderThreadCanvas');
+  if (old) {
+    if (old._cleanup) old._cleanup();
+    old.remove();
+  }
+
+  if (!document.getElementById('finderThreadStyle')) {
+    const st = document.createElement('style');
+    st.id = 'finderThreadStyle';
+    st.textContent = `
+      #finderThreadCanvas {
+        display:block;
+        width:min(820px, 88vw);
+        height:140px;
+        margin:0 auto 32px;
+        opacity:0;
+        transition:opacity 1.8s ease;
+        pointer-events:none;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.id = 'finderThreadCanvas';
+  canvas.setAttribute('aria-hidden', 'true');
+
+  const questionEl = document.getElementById('finderQuestion');
+  if (questionEl && questionEl.parentNode === questionPhaseEl) {
+    questionPhaseEl.insertBefore(canvas, questionEl);
+  } else {
+    questionPhaseEl.insertBefore(canvas, questionPhaseEl.firstChild);
+  }
+
+  // Size (DPR 반영)
+  const DPR = window.devicePixelRatio || 1;
+  let width = 0, height = 0;
+  const ctx = canvas.getContext('2d');
+  function sizeCanvas() {
+    const w = canvas.offsetWidth || 600;
+    const h = canvas.offsetHeight || 140;
+    canvas.width = Math.round(w * DPR);
+    canvas.height = Math.round(h * DPR);
+    width = w; height = h;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  sizeCanvas();
+
+  // 오프닝 웨이브와 동일한 7-레이어. 색 톤만 TEM archive 팔레트(warm amber)로 이동.
+  const maxAmp = height * 0.36;
+  const waves = [
+    { color: 'rgba(150,140,120,', baseOpacity: 0.09, speed: 0.010, amplitude: Math.min(54, maxAmp),        phase: 0.0, freq: 0.019, noiseScale: 0.8 },
+    { color: 'rgba(170,155,128,', baseOpacity: 0.13, speed: 0.014, amplitude: Math.min(46, maxAmp * 0.9),  phase: 0.8, freq: 0.024, noiseScale: 0.7 },
+    { color: 'rgba(185,168,138,', baseOpacity: 0.18, speed: 0.018, amplitude: Math.min(40, maxAmp * 0.82), phase: 1.5, freq: 0.029, noiseScale: 0.6 },
+    { color: 'rgba(200,180,150,', baseOpacity: 0.23, speed: 0.022, amplitude: Math.min(34, maxAmp * 0.72), phase: 2.3, freq: 0.034, noiseScale: 0.5 },
+    { color: 'rgba(215,192,158,', baseOpacity: 0.30, speed: 0.026, amplitude: Math.min(28, maxAmp * 0.6),  phase: 3.1, freq: 0.040, noiseScale: 0.4 },
+    { color: 'rgba(225,202,168,', baseOpacity: 0.38, speed: 0.030, amplitude: Math.min(22, maxAmp * 0.5),  phase: 3.9, freq: 0.045, noiseScale: 0.32 },
+    { color: 'rgba(240,218,180,', baseOpacity: 0.48, speed: 0.034, amplitude: Math.min(16, maxAmp * 0.4),  phase: 4.7, freq: 0.050, noiseScale: 0.25 },
+  ];
+
+  let t = 0;
+  let rafId = 0;
+  function tick() {
+    ctx.clearRect(0, 0, width, height);
+    const cy = height / 2;
+    for (let wi = 0; wi < waves.length; wi++) {
+      const w = waves[wi];
+      ctx.beginPath();
+      ctx.lineWidth = 1.1;
+      for (let x = 0; x < width; x++) {
+        const baseY = cy
+          + Math.sin(x * w.freq + t * w.speed + w.phase) * w.amplitude
+          + Math.sin(x * w.freq * 0.5 + t * w.speed * 0.6 + w.phase * 1.4) * (w.amplitude * 0.4)
+          + Math.sin(x * w.freq * 2.3 + t * w.speed * 1.3) * (w.amplitude * 0.15)
+          + Math.sin(x * w.freq * 0.3 + t * w.speed * 0.4 + w.phase * 2.1) * (w.amplitude * 0.25)
+          + Math.sin(x * w.freq * 3.7 + t * w.speed * 1.8 + w.phase * 0.7) * (w.amplitude * 0.1);
+        const noise = Math.sin(x * 0.003 + t * 0.02) * Math.cos(x * 0.007 + t * 0.015) * w.noiseScale;
+        const y = baseY + w.amplitude * noise * 0.4;
+        const clamped = Math.max(2, Math.min(height - 2, y));
+        if (x === 0) ctx.moveTo(x, clamped);
+        else ctx.lineTo(x, clamped);
+      }
+      ctx.strokeStyle = w.color + w.baseOpacity + ')';
+      ctx.stroke();
+    }
+    t += 0.5;
+    rafId = requestAnimationFrame(tick);
+  }
+  tick();
+
+  const onResize = () => { sizeCanvas(); };
+  window.addEventListener('resize', onResize);
+  canvas._cleanup = () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    window.removeEventListener('resize', onResize);
+  };
+
+  requestAnimationFrame(() => { canvas.style.opacity = '1'; });
+  return canvas;
+}
+
+async function _typeDialogueLines(containerEl, lines, opts) {
+  opts = opts || {};
+  const charDelay = opts.charDelay != null ? opts.charDelay : 55;
+  const lineDelay = opts.lineDelay != null ? opts.lineDelay : 900;
+  containerEl.innerHTML = '';
+  for (let li = 0; li < lines.length; li++) {
+    const p = document.createElement('p');
+    p.style.cssText = 'margin:0 0 0.55em 0;font-family:inherit;opacity:0;transition:opacity 0.5s ease;';
+    containerEl.appendChild(p);
+    await new Promise(r => requestAnimationFrame(r));
+    p.style.opacity = '1';
+    const text = lines[li];
+    for (let ci = 1; ci <= text.length; ci++) {
+      p.textContent = text.slice(0, ci);
+      await new Promise(r => setTimeout(r, charDelay));
+    }
+    if (li < lines.length - 1) await new Promise(r => setTimeout(r, lineDelay));
+  }
+}
+
+async function _initMemoryFinder() {
   const lang = getCurrentLanguage();
   const questionEl = document.getElementById('finderQuestion');
   const inputEl = document.getElementById('finderInput');
@@ -102,21 +241,22 @@ function _initMemoryFinder() {
   if (questionPhase) questionPhase.style.display = 'block';
   if (resultPhase) { resultPhase.style.display = 'none'; resultPhase.innerHTML = ''; }
 
-  // Question text (typing effect)
-  const qText = lang === 'en' ? 'What kind of memory are you looking for?' : '어떤 기억을 떠올리고 싶어?';
-  questionEl.textContent = '';
-  let qi = 0;
-  const typeQ = setInterval(() => {
-    if (qi < qText.length) { questionEl.textContent += qText[qi]; qi++; }
-    else clearInterval(typeQ);
-  }, 40);
+  // v2 Phase 2: 순차 등장 — 실 → 대사 → 입력/칩/링크
+  // DOM 준비는 모두 숨긴 상태로 await 전에 완료 (flash 방지).
 
-  // Input placeholder
+  // 대사 자리 비움, 아래 요소 모두 hide
+  questionEl.innerHTML = '';
+  inputEl.style.opacity = '0';
+  inputEl.style.transition = 'opacity 0.6s ease';
+  chipsEl.style.opacity = '0';
+  chipsEl.style.transition = 'opacity 0.6s ease';
+  if (browseBtn) { browseBtn.style.opacity = '0'; browseBtn.style.transition = 'opacity 0.6s ease'; }
+
+  // 입력 placeholder
   inputEl.placeholder = lang === 'en' ? 'A word, a feeling...' : '단어 하나, 감정 하나...';
   inputEl.value = '';
-  setTimeout(() => inputEl.focus(), qText.length * 40 + 200);
 
-  // Chips
+  // 칩 미리 populate
   chipsEl.innerHTML = '';
   const chips = FINDER_CHIPS[lang] || FINDER_CHIPS.en;
   chips.forEach(chip => {
@@ -129,7 +269,7 @@ function _initMemoryFinder() {
     chipsEl.appendChild(btn);
   });
 
-  // Input submit
+  // 입력 submit 핸들러
   inputEl.onkeydown = (e) => {
     if (e.key === 'Enter' && inputEl.value.trim()) {
       _finderMatchByText(inputEl.value.trim(), lang);
@@ -142,7 +282,7 @@ function _initMemoryFinder() {
     };
   }
 
-  // Browse button
+  // Browse 버튼 미리 준비
   if (browseBtn) {
     browseBtn.textContent = lang === 'en' ? 'Browse all' : '직접 찾아보기';
     browseBtn.onclick = () => {
@@ -151,6 +291,22 @@ function _initMemoryFinder() {
       enterArchive();
     };
   }
+
+  // 1) 실 마운트 (페이드인 1.8s)
+  _mountFinderThread(questionPhase);
+
+  // 2) 실 안착 후 대사 타이핑
+  const THREAD_SETTLE_MS = 1800;
+  const DIALOGUE_DELAY_MS = 400;
+  const dialogues = PLAY_ENTRY_DIALOGUES[lang] || PLAY_ENTRY_DIALOGUES.en;
+  await new Promise(r => setTimeout(r, THREAD_SETTLE_MS + DIALOGUE_DELAY_MS));
+  await _typeDialogueLines(questionEl, dialogues);
+
+  // 3) 대사 완료 후 입력/칩/링크 페이드인
+  inputEl.style.opacity = '1';
+  chipsEl.style.opacity = '1';
+  if (browseBtn) browseBtn.style.opacity = '1';
+  setTimeout(() => inputEl.focus(), 400);
 }
 
 /**
@@ -180,7 +336,38 @@ function _getMemoryEmotionVector(m) {
   return null;
 }
 
+// v2: 플레이 진입 시 baseline_emotion 저장 (정렬도 reference point)
+// Phase 1은 sessionStorage만, DB 연동은 Phase 3에서.
+function _saveBaselineEmotion(vec) {
+  try {
+    sessionStorage.setItem('tem_baseline_emotion', JSON.stringify(vec || {}));
+  } catch (_) {}
+}
+
+// 텍스트에서 baseline 벡터 추출 — 현재 키워드 기반. LLM 전환 시 대체됨(Phase 2).
+function _extractBaselineFromText(query) {
+  const lower = (query || '').toLowerCase();
+  const emotionWords = {
+    sadness: ['슬', '울', 'sad', 'cry', '아프', '힘들'],
+    anger: ['화', '분노', 'angry', 'rage', '짜증'],
+    fear: ['무서', '두려', 'fear', 'afraid', '불안'],
+    longing: ['그리', '보고싶', 'miss', 'long', '그립'],
+    guilt: ['미안', '죄책', 'sorry', 'guilt', '후회'],
+    joy: ['기쁨', '행복', 'happy', 'joy', '좋'],
+  };
+  const vec = {};
+  let total = 0;
+  for (const [emo, keywords] of Object.entries(emotionWords)) {
+    const hits = keywords.filter(kw => lower.includes(kw)).length;
+    if (hits > 0) { vec[emo] = hits; total += hits; }
+  }
+  if (total > 0) for (const k in vec) vec[k] /= total;
+  return vec;
+}
+
 function _finderMatch(emotion, lang) {
+  // v2: 칩 선택도 baseline 기록 (해당 감정 100%)
+  _saveBaselineEmotion({ [emotion]: 1.0 });
   const memories = appStore.getState().allMemoriesData || [];
   const preferKo = lang === 'ko';
   const scored = memories.map(m => {
@@ -219,6 +406,8 @@ function _isMemoryKorean(m) {
 }
 
 function _finderMatchByText(query, lang) {
+  // v2: baseline_emotion 기록 (키워드 기반, LLM 전환 시 대체)
+  _saveBaselineEmotion(_extractBaselineFromText(query));
   const memories = appStore.getState().allMemoriesData || [];
   const lower = query.toLowerCase();
   const inputIsKo = _isKoreanInput(query);
@@ -267,6 +456,61 @@ function _finderMatchByText(query, lang) {
 let _finderFloatId = null;
 let _finderWords = [];
 
+// v2: ASCII door (closed, doorPhase 0 스타일). confession.js buildDoor 로직 축소.
+// 18 cols × 24 rows. 내부 문 패널 12×20 중앙 배치.
+function _buildAsciiDoorClosed() {
+  const W = 18, H = 24;
+  const cx = W >> 1, cy = H >> 1, dw = 12, dh = 20;
+  const dl = cx - (dw >> 1), dr = cx + (dw >> 1);
+  const dt = cy - (dh >> 1), db = cy + (dh >> 1);
+  const g = Array.from({ length: H }, () => Array(W).fill(' '));
+
+  // 프레임 세로
+  for (let y = dt - 1; y <= db + 1; y++) {
+    if (y >= 0 && y < H) {
+      if (dl - 1 >= 0) g[y][dl - 1] = '║';
+      if (dr + 1 < W) g[y][dr + 1] = '║';
+    }
+  }
+  // 프레임 가로
+  for (let x = dl - 1; x <= dr + 1; x++) {
+    if (x >= 0 && x < W) {
+      if (dt - 1 >= 0) g[dt - 1][x] = '═';
+      if (db + 1 < H) g[db + 1][x] = '═';
+    }
+  }
+  // 모서리
+  if (dt - 1 >= 0 && dl - 1 >= 0) g[dt - 1][dl - 1] = '╔';
+  if (dt - 1 >= 0 && dr + 1 < W) g[dt - 1][dr + 1] = '╗';
+  if (db + 1 < H && dl - 1 >= 0) g[db + 1][dl - 1] = '╚';
+  if (db + 1 < H && dr + 1 < W) g[db + 1][dr + 1] = '╝';
+
+  // 문 페이스 (closed → vw = dw)
+  const vw = dw;
+  for (let y = dt; y <= db; y++) {
+    for (let i = 0; i < vw; i++) {
+      const x = dl + i;
+      if (x < 0 || x >= W || y < 0 || y >= H) continue;
+      if (y === dt || y === db) { g[y][x] = '─'; }
+      else if (i === 0 || i === vw - 1) { g[y][x] = '│'; }
+      else {
+        const py = y - dt, rh = db - dt;
+        const p1t = Math.floor(rh * 0.12), p1b = Math.floor(rh * 0.42);
+        const p2t = Math.floor(rh * 0.52), p2b = Math.floor(rh * 0.88);
+        const pl = 3, pr2 = vw - 4;
+        if (i >= pl && i <= pr2 && (py === p1t || py === p1b || py === p2t || py === p2b)) g[y][x] = '─';
+        else if (i >= pl && i <= pr2 && ((py > p1t && py < p1b) || (py > p2t && py < p2b)) && (i === pl || i === pr2)) g[y][x] = '│';
+        else g[y][x] = '░';
+      }
+    }
+    // 손잡이
+    const kx = dl + vw - 3;
+    if (kx >= 0 && kx < W && y === cy) g[y][kx] = '◉';
+  }
+
+  return g.map(row => row.join('')).join('\n');
+}
+
 function _showFinderResults(matched, lang) {
   const questionPhase = document.getElementById('finderQuestionPhase');
   const resultPhase = document.getElementById('finderResultPhase');
@@ -280,7 +524,12 @@ function _showFinderResults(matched, lang) {
   if (questionPhase) {
     questionPhase.style.transition = 'opacity 0.8s ease';
     questionPhase.style.opacity = '0';
-    setTimeout(() => { questionPhase.style.display = 'none'; }, 800);
+    setTimeout(() => {
+      questionPhase.style.display = 'none';
+      // 스레드 캔버스 RAF 정리 (페이드 완료 후)
+      const threadCv = document.getElementById('finderThreadCanvas');
+      if (threadCv && typeof threadCv._cleanup === 'function') threadCv._cleanup();
+    }, 800);
   }
 
   // Build floating monologue results
@@ -294,70 +543,80 @@ function _showFinderResults(matched, lang) {
     resultPhase.style.minHeight = '60vh';
 
     const leadText = lang === 'en' ? 'The memories that surface...' : '떠오르는 기억들...';
+    // v2 Phase 1: 3 문 (정적 박스). 회전/ASCII 애니는 Phase 2.
     resultPhase.innerHTML = `
-      <div style="position:absolute;top:10%;left:50%;transform:translateX(-50%);font-family:'Cormorant Garamond',serif;font-size:13px;color:rgba(196,168,130,0.35);letter-spacing:3px;pointer-events:none;z-index:1;">${leadText}</div>
+      <div style="position:absolute;top:8%;left:50%;transform:translateX(-50%);font-family:'Cormorant Garamond',serif;font-size:13px;color:rgba(196,168,130,0.35);letter-spacing:3px;pointer-events:none;z-index:1;">${leadText}</div>
+      <div id="finderDoorsRow" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;gap:72px;align-items:flex-end;"></div>
     `;
-
-    // Spread positions across the container
-    const positions = [
-      { x: 0.3, y: 0.35 },
-      { x: 0.7, y: 0.5 },
-      { x: 0.45, y: 0.7 },
-    ];
+    const doorsRow = resultPhase.querySelector('#finderDoorsRow');
 
     matched.forEach((m, i) => {
       const sentence = m.completed_sentence || m.title || '...';
-      const pos = positions[i] || { x: 0.5, y: 0.5 };
 
-      const el = document.createElement('div');
-      el.style.cssText = `
-        position:absolute;
-        left:${pos.x * 100}%;
-        top:${pos.y * 100}%;
-        transform:translate(-50%, -50%);
-        opacity:0;
+      const doorWrap = document.createElement('div');
+      doorWrap.style.cssText = `
+        position:relative;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        gap:18px;
         cursor:pointer;
-        font-family:'Cormorant Garamond',serif;
-        font-size:15px;
-        color:rgba(196,168,130,0.55);
-        letter-spacing:1px;
-        line-height:1.8;
-        text-align:center;
-        max-width:280px;
-        padding:8px;
-        transition:color 0.4s ease, text-shadow 0.4s ease;
-        user-select:none;
+        opacity:0;
+        transition:opacity 1.2s ease;
       `;
-      el.textContent = sentence;
-      el.addEventListener('mouseenter', () => {
-        el.style.color = 'rgba(196,168,130,0.95)';
-        el.style.textShadow = '0 0 20px rgba(196,168,130,0.3)';
-      });
-      el.addEventListener('mouseleave', () => {
-        el.style.color = 'rgba(196,168,130,0.55)';
-        el.style.textShadow = 'none';
-      });
-      el.addEventListener('click', () => _navigateToPlayFromFinder(m));
-      resultPhase.appendChild(el);
 
-      _finderWords.push({ el, baseX: pos.x, baseY: pos.y, idx: i });
+      const monologueEl = document.createElement('div');
+      monologueEl.style.cssText = `
+        font-family:'Cormorant Garamond',serif;
+        font-style:italic;
+        font-size:14px;
+        color:rgba(196,168,130,0.92);
+        max-width:220px;
+        min-height:3.2em;
+        text-align:center;
+        line-height:1.7;
+        letter-spacing:0.5px;
+        opacity:0;
+        transform:translateY(6px);
+        transition:opacity 0.5s ease, transform 0.5s ease;
+        pointer-events:none;
+      `;
+      monologueEl.textContent = sentence;
+      doorWrap.appendChild(monologueEl);
 
-      // Staggered ghost fade-in
-      setTimeout(() => { el.style.opacity = '1'; }, 400 + i * 700);
+      const doorEl = document.createElement('pre');
+      doorEl.textContent = _buildAsciiDoorClosed();
+      doorEl.style.cssText = `
+        margin:0;
+        font-family: 'SFMono-Regular', Menlo, 'Courier New', monospace;
+        font-size:13px;
+        line-height:1.1;
+        color:rgba(196,168,130,0.48);
+        white-space:pre;
+        user-select:none;
+        transition:color 0.5s ease, text-shadow 0.5s ease, transform 0.5s ease;
+      `;
+      doorWrap.appendChild(doorEl);
+
+      doorWrap.addEventListener('mouseenter', () => {
+        monologueEl.style.opacity = '1';
+        monologueEl.style.transform = 'translateY(0)';
+        doorEl.style.color = 'rgba(230,200,150,0.95)';
+        doorEl.style.textShadow = '0 0 16px rgba(196,168,130,0.35)';
+      });
+      doorWrap.addEventListener('mouseleave', () => {
+        monologueEl.style.opacity = '0';
+        monologueEl.style.transform = 'translateY(6px)';
+        doorEl.style.color = 'rgba(196,168,130,0.48)';
+        doorEl.style.textShadow = 'none';
+      });
+      doorWrap.addEventListener('click', () => _navigateToPlayFromFinder(m));
+
+      doorsRow.appendChild(doorWrap);
+
+      // Staggered fade-in
+      setTimeout(() => { doorWrap.style.opacity = '1'; }, 400 + i * 700);
     });
-
-    // Start floating animation (ghost-like drift)
-    let ft = 0;
-    function floatTick() {
-      ft += 0.015;
-      for (const w of _finderWords) {
-        const dy = Math.sin(ft + w.idx * 2.1) * 10;
-        const dx = Math.cos(ft * 0.6 + w.idx * 1.7) * 5;
-        w.el.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-      }
-      _finderFloatId = requestAnimationFrame(floatTick);
-    }
-    floatTick();
 
     requestAnimationFrame(() => { resultPhase.style.opacity = '1'; });
   }, 900);

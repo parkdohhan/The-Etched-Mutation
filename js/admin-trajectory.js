@@ -718,8 +718,16 @@ function renderGraph() {
   if (state.terrainMode) {
     const TERRAIN_W = 1400, TERRAIN_H = 900;
     visibleScenes.forEach(s => {
-      const emoVec = s.emotion_dist || {};
-      const { v, a } = projectToVAD(emoVec);
+      // pin_override 있으면 VAD 대신 그 좌표 사용 (admin 명시 지정)
+      let v, a;
+      const po = s.meta && s.meta.pin_override;
+      if (po && typeof po.v === 'number' && typeof po.a === 'number') {
+        v = po.v; a = po.a;
+      } else {
+        const emoVec = s.emotion_dist || {};
+        const vad = projectToVAD(emoVec);
+        v = vad.v; a = vad.a;
+      }
       const n = g.node(s.id);
       if (n) {
         // v: -1 왼쪽(부정), +1 오른쪽(긍정); a: -1 아래(저각성), +1 위(고각성) — 화면 y 반전
@@ -936,6 +944,8 @@ function attachNodeDrag(svg, g) {
         state.nodePositions[d.sceneId] = { x: d.node.x, y: d.node.y };
         saveNodePositions();
         _nodeDrag.suppressClick = true;
+        // 터레인 모드 드래그 → scene.meta.pin_override 에 VAD 좌표로 저장
+        if (state.terrainMode) savePinOverride(d.sceneId, d.node.x, d.node.y);
       }
       d.group.style.cursor = 'grab';
       _nodeDrag.active = null;
@@ -946,6 +956,25 @@ function attachNodeDrag(svg, g) {
 function updateEdgesForNode(g, sceneId) {
   // 통합 레이어 전체 재그리기 — 노드 수가 적으니 충분히 빠름
   redrawEdges();
+}
+
+// 터레인 모드 드래그 시 호출 — VA 좌표(v, a)를 scene.meta.pin_override 에 저장.
+// 좌표계: TERRAIN_W=1400, TERRAIN_H=900, margin=80.
+async function savePinOverride(sceneId, nodeX, nodeY) {
+  const v = Math.max(-1, Math.min(1, (nodeX - 80) / 700 - 1));
+  const a = Math.max(-1, Math.min(1, 1 - (nodeY - 80) / 450));
+  try {
+    const sb = await getSupabaseClient();
+    const sc = state.scenes.find(s => s.id === sceneId);
+    if (!sc) return;
+    const newMeta = Object.assign({}, sc.meta || {}, { pin_override: { v, a } });
+    const { error } = await sb.from('scenes').update({ meta: newMeta }).eq('id', sceneId);
+    if (error) { console.error('[pin_override] save failed', error); return; }
+    sc.meta = newMeta;
+    console.log('[Admin] pin_override saved', sceneId, { v, a });
+  } catch (e) {
+    console.error('[pin_override] error', e);
+  }
 }
 
 // ─── 디테일 패널 ───────────────────────────────────────────

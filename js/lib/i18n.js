@@ -27,6 +27,8 @@ const STRINGS = {
         // ── Archive ───────────────────────────────────────────────
         'archive.title':        'Memory Archive',
         'archive.filter.all':   'All',
+        'archive.filter.english':'English',
+        'archive.filter.korean':'Korean',
         'archive.filter.recent':'Recent',
         'archive.sort.layers':  'By Layers',
         'archive.empty':        'Nothing surfaces here yet.',
@@ -142,6 +144,8 @@ const STRINGS = {
         // ── Archive ───────────────────────────────────────────────
         'archive.title':         '기억 아카이브',
         'archive.filter.all':    '전체',
+        'archive.filter.english':'영어',
+        'archive.filter.korean': '한국어',
         'archive.filter.recent': '최근',
         'archive.sort.layers':   '레이어순',
         'archive.empty':         '아직 아무것도 떠오르지 않는다.',
