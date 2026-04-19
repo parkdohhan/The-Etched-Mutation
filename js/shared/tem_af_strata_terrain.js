@@ -1131,7 +1131,6 @@
     var _fpEuler = { yaw: 0, pitch: 0 };
     var _fpEyeHeight = 1.6;
     var _fpSpeed = 8;
-    var _fpSprintSpeed = 18;
     var _fpPos = { x: 0, z: 0 };
     var _fpVelocityY = 0;
     var _fpJumpHeight = 0;
@@ -1223,10 +1222,8 @@
       var len = Math.sqrt(mx * mx + mz * mz);
       if (len > 0) { mx /= len; mz /= len; }
 
-      // Sprint (Shift)
-      var speed = (_fpKeys['ShiftLeft'] || _fpKeys['ShiftRight']) ? _fpSprintSpeed : _fpSpeed;
-      _fpPos.x += mx * speed * dt;
-      _fpPos.z += mz * speed * dt;
+      _fpPos.x += mx * _fpSpeed * dt;
+      _fpPos.z += mz * _fpSpeed * dt;
 
       var half = SZ / 2 + 3;
       _fpPos.x = Math.max(-half, Math.min(half, _fpPos.x));
@@ -1254,8 +1251,8 @@
         _fpTick();
         time += 0.004;
         if (oP1 && oP2) {
-          oP1.position.set(Math.sin(time * 0.6) * 50, 10 + Math.sin(time * 0.3) * 5, Math.cos(time * 0.4) * 50);
-          oP2.position.set(Math.cos(time * 0.5) * 40, 12, Math.sin(time * 0.7) * 40);
+          oP1.position.set(Math.sin(time * 0.6) * 35, 8 + Math.sin(time * 0.3) * 4, Math.cos(time * 0.4) * 35);
+          oP2.position.set(Math.cos(time * 0.5) * 28, 10, Math.sin(time * 0.7) * 28);
         }
         _tickSeedGrp();
         _tickParticles();

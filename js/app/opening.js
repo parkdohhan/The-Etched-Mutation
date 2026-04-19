@@ -147,8 +147,7 @@ async function _runV2Sequence() {
   await _typeLinesSequential(dialogue, D.intro);
   await new Promise(r => setTimeout(r, 1200));
 
-  // 대사 사라지기
-  await _fadeOutDialogue(dialogue, 900);
+  // 인트로 질문은 입력 단계와 함께 화면에 유지 (페이드아웃하지 않음)
 
   // 입력 + 칩 페이드인
   const input = document.getElementById('openingFinderInput');

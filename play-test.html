@@ -4488,10 +4488,26 @@
         _fpPlayActive = false;
       });
 
-      // Wait for terrain to load, then enter first person + build scene pins
-      setTimeout(function () {
+      // Terrain runtime은 showStrataView 안의 fetchStrataAfInput 이후에 생김 — 고정 1500ms면
+      // 요청이 느릴 때 rt가 없어 눈 깜박임 전체가 스킵되므로, 준비될 때까지 폴링한다.
+      function _runFpTerrainReady() {
         var rt = window.TemAfStrataTerrain._lastRuntime;
-        if (rt) {
+        if (!rt) {
+          if (!_runFpTerrainReady._tries) _runFpTerrainReady._tries = 0;
+          _runFpTerrainReady._tries++;
+          if (_runFpTerrainReady._tries > 300) {
+            console.warn('[FP Adapter] Terrain runtime timeout — removing eye overlays');
+            try {
+              if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+              if (lidTop.parentNode) lidTop.parentNode.removeChild(lidTop);
+              if (lidBot.parentNode) lidBot.parentNode.removeChild(lidBot);
+            } catch (e) {}
+            return;
+          }
+          setTimeout(_runFpTerrainReady, 50);
+          return;
+        }
+        _runFpTerrainReady._tries = 0;
           // Spawn far from center
           var cam = rt.getCamera();
           var ctrl = rt.getControls();
@@ -4751,8 +4767,8 @@
               }, 1500);
             }
           }, 8000);
-        }
-      }, 1500);
+      }
+      _runFpTerrainReady();
 
       return true;
     }
