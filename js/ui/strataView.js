@@ -815,6 +815,52 @@
           var T = g.TemAfStrataTerrain;
           // Use sceneAF coordinates from buildMemoryItems (VA projection)
           var sceneAFList = (strataInput.P && strataInput.P[0]) ? strataInput.P[0].sceneAF : [];
+
+          var _ghostTexCache = {};
+          function _getGhostTexture(type) {
+            if (_ghostTexCache[type]) return _ghostTexCache[type];
+            var PRESETS = {
+              core:   { blur: 1.8, opacity: 0.82, tone: '#d4b890', mask: false },
+              bridge: { blur: 1.1, opacity: 0.93, tone: '#c49668', mask: false },
+              voidP:  { blur: 2.4, opacity: 0.58, tone: '#6a6055', mask: true  }
+            };
+            var GHOST_PATH = 'M 20 2 Q 26 2 26 10 Q 25 14 22 14 L 30 17 Q 32 18 32 19 L 31 40 Q 30 42 29 40 L 28 20 L 27 32 L 28 45 L 27 70 L 29 74 L 22 74 L 22 47 Q 20 44 19 45 L 18 47 L 18 74 L 11 74 L 13 70 L 12 45 L 13 32 L 12 20 L 11 40 Q 10 42 9 40 L 8 19 Q 8 18 10 17 L 18 14 Q 15 14 14 10 Q 14 2 20 2 Z';
+            var p = PRESETS[type] || PRESETS.core;
+            var w = 256, h = 512;
+            var stdDev = p.blur * 0.45;
+            var defs = '<filter id="blur" x="-30%" y="-30%" width="160%" height="160%">' +
+                       '<feGaussianBlur stdDeviation="' + stdDev + '"/></filter>';
+            if (p.mask) {
+              defs += '<linearGradient id="fade" x1="0" y1="0" x2="0" y2="82" gradientUnits="userSpaceOnUse">' +
+                      '<stop offset="0.4" stop-color="white" stop-opacity="1"/>' +
+                      '<stop offset="0.8" stop-color="white" stop-opacity="0.5"/>' +
+                      '<stop offset="1.0" stop-color="white" stop-opacity="0"/>' +
+                      '</linearGradient>' +
+                      '<mask id="fademask"><rect x="-4" y="-2" width="48" height="82" fill="url(#fade)"/></mask>';
+            }
+            var maskAttr = p.mask ? ' mask="url(#fademask)"' : '';
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -2 48 82" width="' + w + '" height="' + h + '">' +
+              '<defs>' + defs + '</defs>' +
+              '<g filter="url(#blur)"' + maskAttr + '>' +
+                '<path fill="' + p.tone + '" opacity="' + p.opacity + '" d="' + GHOST_PATH + '"/>' +
+              '</g></svg>';
+            var url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+            var tex = new THREE.Texture();
+            tex.magFilter = THREE.LinearFilter;
+            tex.minFilter = THREE.LinearFilter;
+            var img = new Image();
+            img.onload = function () {
+              var cvs = document.createElement('canvas');
+              cvs.width = w; cvs.height = h;
+              cvs.getContext('2d').drawImage(img, 0, 0);
+              tex.image = cvs;
+              tex.needsUpdate = true;
+            };
+            img.src = url;
+            _ghostTexCache[type] = tex;
+            return tex;
+          }
+
           strataInput.scenes.forEach(function (sc, si) {
             var emo = sc.original_emotion;
             if (!emo) return;
@@ -825,22 +871,41 @@
             for (var sai = 0; sai < sceneAFList.length; sai++) {
               if (sceneAFList[sai].id === sc.id) { saf = sceneAFList[sai]; break; }
             }
-            if (!saf) return; // no VA coordinates computed
-            var sx = saf.wx;
-            var sz = saf.wz;
+            // pin_override 있으면 VAD 자동 좌표 대신 그걸로 (admin 명시 지정)
+            var po = sc.meta && sc.meta.pin_override;
+            if (typeof po === 'string') { try { po = JSON.parse(po); } catch (_) { po = null; } }
+            var sx, sz;
+            if (po && typeof po.v === 'number' && typeof po.a === 'number') {
+              var _H2 = 56;
+              var _memId = (strataInput.P && strataInput.P[0]) ? strataInput.P[0].id : null;
+              var _off = (_memId && T._hashWorldOffset) ? T._hashWorldOffset(_memId) : { ox: 0, oz: 0 };
+              sx = po.v * _H2 + _off.ox;
+              sz = po.a * _H2 + _off.oz;
+            } else {
+              if (!saf) return; // no VA coordinates computed
+              sx = saf.wx;
+              sz = saf.wz;
+            }
             var sh = terrainRuntime.gH(sx, sz);
 
-            // Diamond-shaped pin for scenes
-            var pinGeo = new THREE.OctahedronGeometry(0.2, 0);
+            // Ghost sprite replaces diamond pin (visual only).
+            // userData / 이벤트 / 연결선 / 오디오 / long-press 진입은 기존 로직 그대로 유지.
+            var _ghostType = 'core';
+            var _vi = sc.void_info;
+            if (typeof _vi === 'string') { try { _vi = JSON.parse(_vi); } catch (_) { _vi = null; } }
+            if (_vi && _vi.sceneVoid) _ghostType = 'voidP';
+            else if (sc.scene_role === 'residual') _ghostType = 'bridge';
             var pinCol = 0x6a9fd8;
-            var pinMat = new THREE.MeshStandardMaterial({
-              color: pinCol, emissive: pinCol, emissiveIntensity: 0.3,
-              transparent: true, opacity: 0.9, roughness: 0.4
+            var pinMat = new THREE.SpriteMaterial({
+              map: _getGhostTexture(_ghostType),
+              transparent: true, depthWrite: false, fog: true
             });
-            var pin = new THREE.Mesh(pinGeo, pinMat);
-            pin.position.set(sx, sh + 0.5, sz);
+            var pin = new THREE.Sprite(pinMat);
+            pin.scale.set(1.75, 3.0, 1);
+            pin.position.set(sx, sh + 1.6, sz);
             pin.userData._userMarker = true;
             pin.userData._isScenePin = true;
+            pin.userData._ghostType = _ghostType;
 
             // Find dominant original emotion
             var origDom = ''; var origDomVal = 0;
@@ -971,13 +1036,15 @@
           strataInput.scenes.forEach(function (sc, si) {
             var words = sc.echo_words;
             if (!words || !words.length) return;
+            // 스폰 확률 대폭 낮춤 — 씬당 ~22%만 echo 단어 표시
+            if (Math.random() > 0.22) return;
             var emo = sc.original_emotion;
             if (!emo) return;
             if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
 
             var sA = T._eA(emo);
             var sF = T._eF(emo);
-            var H2 = 40;
+            var H2 = 56;
             var sx = T._pX(sA) * H2;
             var sz = T._pZ(sF) * H2;
             var off = T._hashWorldOffset(strataInput.P[0] ? strataInput.P[0].id : '');
@@ -995,8 +1062,8 @@
             var ec = EC[domK] || [0.76, 0.66, 0.51];
             var cssCol = 'rgba(' + Math.round(ec[0]*255) + ',' + Math.round(ec[1]*255) + ',' + Math.round(ec[2]*255) + ',0.7)';
 
-            // Place up to 2 echo words per scene, offset around the pin
-            var count = Math.min(2, words.length);
+            // 씬당 최대 1 단어만 표시 (이전 2)
+            var count = 1;
             for (var wi = 0; wi < count; wi++) {
               var word = words[wi];
               if (!word) continue;

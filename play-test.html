@@ -455,8 +455,9 @@
   import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/lib/config.js';
   import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch, createEmptyState } from './js/core/ContaminationTracker.js';
   import { getMonologue } from './js/ui/contaminationMonologue.js';
-  import { emotionVectorToWaveStyle } from './js/shared/math.js';
-  window.emotionVectorToWaveStyle = emotionVectorToWaveStyle;
+  import { emotionVectorToWaveStyle as sharedEmotionVectorToWaveStyle } from './js/shared/math.js';
+  // Non-module 스크립트(fpAmbientWave 등)에서 접근 가능하게 전역 노출
+  window.sharedEmotionVectorToWaveStyle = sharedEmotionVectorToWaveStyle;
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   // strataView.js가 Supabase client를 찾을 수 있도록 HUB 쪽 API를 흉내낸다.
   window.getSupabaseClient = function () { return sb; };
@@ -1747,10 +1748,22 @@
       }
     }
 
+    // ─── 접근 가능 핀 상한(4개 이하) — center에서 가까운 순으로 컷 ───
+    const MAX_ACCESSIBLE = 4;
+    if (selected.length > MAX_ACCESSIBLE) {
+      const keepSet = new Set(selected.map(p => p.id));
+      const ranked = withDist
+        .filter(o => keepSet.has(o.pin.id))
+        .sort((a, b) => a.d - b.d)
+        .slice(0, MAX_ACCESSIBLE)
+        .map(o => o.pin);
+      selected = ranked;
+    }
+
     const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
     if (voidScene && (pattern === 'avoidance' || pattern === 'contradiction')) {
       const vp = game.pins.find(p => p.type === 'voidPin');
-      if (vp) selected.push(vp);
+      if (vp && !selected.includes(vp)) selected.push(vp);
     }
 
     game.accessiblePinIds = new Set(selected.map(p => p.id));
@@ -2528,16 +2541,11 @@
     return _playTestAlignVisualizer;
   }
 
+  // v2: 체험자 B(live session) 파동 로직으로 교체.
+  // shared emotionVectorToWaveStyle은 이미 {color:{r,g,b}, speed, amplitude, frequency, chaos, lineCount, trailOpacity} 리턴.
+  // Visualizer.drawAlignmentWave가 요구하는 포맷과 일치.
   function vecToVizWaveStyle(emotionVector) {
-    const s = emotionVectorToWaveStylePT(emotionVector || {});
-    const c = s.color;
-    return {
-      color: { r: c[0], g: c[1], b: c[2] },
-      speed: s.speed,
-      amplitude: s.amplitude,
-      frequency: s.frequency,
-      chaos: s.chaos,
-    };
+    return sharedEmotionVectorToWaveStyle(emotionVector || {});
   }
 
   /** 체험자 파동: 입력 전 작은 진폭·나풀 회색 */
@@ -2578,12 +2586,41 @@
     const orig = normalizeOriginalEmotionForWave(originalVec || {});
     const user = (userVec && typeof userVec === 'object') ? userVec : {};
     const align = alignmentScore != null ? Number(alignmentScore) : 0;
-    const narratorWaveStyle = vecToVizWaveStyle(orig);
-    const experiencerWaveStyle = userIdle ? idleExperiencerWaveStyle() : vecToVizWaveStyle(user);
+
+    // v2: 플레이어 파동 carryover — 씬 진입 시 idle 리셋하지 않고 이전 입력 상태 유지
+    const hasUserInput = !userIdle && Object.keys(user).length > 0;
+    if (hasUserInput) {
+      window._lastPlayerEmotionVector = user;
+      window._lastPlayerWaveStyle = sharedEmotionVectorToWaveStyle(user);
+    }
+    const resolvedPlayerVec = hasUserInput
+      ? user
+      : (window._lastPlayerEmotionVector || {});
+    const resolvedPlayerStyle = hasUserInput
+      ? window._lastPlayerWaveStyle
+      : (window._lastPlayerWaveStyle || Object.assign({}, idleExperiencerWaveStyle()));
+
+    // live B 로직 parity — 전역 상태 반영 (화자 A = 씬 원본, 체험자 B = 플레이어)
+    window.narratorEmotionVector = orig;
+    window.experiencerEmotionVector = resolvedPlayerVec;
+    window.currentNarratorWave = sharedEmotionVectorToWaveStyle(orig);
+    window.currentExperiencerWave = resolvedPlayerStyle;
+
+    const narratorWaveStyle = window.currentNarratorWave;
+    const experiencerWaveStyle = window.currentExperiencerWave;
+
+    // FP 모드: 하단 fpAmbientWave 캔버스에 A+B 렌더 (상단 waveTop은 숨김 유지)
+    const _fpActive = window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive();
+    if (_fpActive && window._fpAmbientWave && window._fpAmbientWave.renderDual) {
+      window._fpAmbientWave.renderDual(narratorWaveStyle, experiencerWaveStyle, align);
+      return;
+    }
+
+    // 일반 모드: 상단 alignmentWaveCanvas
     viz.startAlignmentWaveAnimation(canvas, null, {
       alignment: align,
       narratorEmotionVector: orig,
-      experiencerEmotionVector: userIdle ? {} : user,
+      experiencerEmotionVector: resolvedPlayerVec,
       narratorWaveStyle,
       experiencerWaveStyle,
       onUpdateAlignmentDisplay: function (a) {
@@ -2828,7 +2865,7 @@
     const sm = document.getElementById('sceneMode');
     sm.classList.add('active');
 
-    // FP 모드: waveTop/terrainBar 숨기고 ambient wave 유지
+    // FP 모드: waveTop/terrainBar 숨기고 ambient wave(하단)를 플레이어 파동으로 유지
     if (_fpKeepTerrain) {
       var _wt = document.getElementById('waveTop');
       var _tb = document.getElementById('terrainBar');
@@ -2844,7 +2881,8 @@
     var _v = getPlayTestAlignVisualizerSync();
     if (_v) _v.clearWaveOverride();
 
-    if (!_fpKeepTerrain) {
+    // v2: FP 모드에서도 alignment wave(화자 A + 체험자 B) 렌더. 장면 진입 = 씬 감정 파동 등장.
+    {
       const origBase = normalizeOriginalEmotionForWave(pin.originalEmotion || safeParseEmotion(scene.original_emotion));
       const alignInit = (game.lastResult && typeof game.lastResult.alignment_score === 'number')
         ? game.lastResult.alignment_score
@@ -3012,6 +3050,7 @@
   }
 
   function setupCoreInput(pin, scene) {
+    // 연결사 드롭다운 + 이어말하기 (upstream 1976b7d 복구)
     const _connectors = T.connectors || [
       { value: '', label: '…' },
       { value: '그런데', label: '그런데' },
@@ -3574,6 +3613,10 @@
     document.getElementById('mapMode').classList.add('active');
     document.getElementById('terrainBar').classList.remove('clickable');
     document.getElementById('terrainClickHint').style.display = 'none';
+    // v2: FP 모드에서 씬 종료 → fpAmbientWave proximity 모드 복귀
+    if (window._fpAmbientWave && window._fpAmbientWave.exitSceneMode) {
+      window._fpAmbientWave.exitSceneMode();
+    }
     buildTerrainFromData();
     buildPins();
     // 이전 accessible 상태 저장 (unlock 차집합 계산용)
@@ -4140,8 +4183,10 @@
             const viewEl = document.getElementById('strataView');
             const backBtn = document.getElementById('backToMenu');
             if (backBtn) backBtn.style.display = 'block';
-            // Skip strata after reveal if first-person play was active → go to menu
+            // v2: 온보딩 완료 플래그 — 이후 방문은 오프닝/온보딩 건너뛰고 바로 메인 메뉴로
             if (window._fpPlay && window._fpPlay.wasActive) {
+              try { localStorage.setItem('tem_onboarded', '1'); } catch (_) {}
+
               window.location.href = temMenuHref();
               return;
             }
@@ -4431,10 +4476,26 @@
         _fpPlayActive = false; window._fpPlayActive = false;
       });
 
-      // Wait for terrain to load, then enter first person + build scene pins
-      setTimeout(function () {
+      // Terrain runtime은 showStrataView 안의 fetchStrataAfInput 이후에 생김 — 고정 1500ms면
+      // 요청이 느릴 때 rt가 없어 눈 깜박임 전체가 스킵되므로, 준비될 때까지 폴링한다.
+      function _runFpTerrainReady() {
         var rt = window.TemAfStrataTerrain._lastRuntime;
-        if (rt) {
+        if (!rt) {
+          if (!_runFpTerrainReady._tries) _runFpTerrainReady._tries = 0;
+          _runFpTerrainReady._tries++;
+          if (_runFpTerrainReady._tries > 300) {
+            console.warn('[FP Adapter] Terrain runtime timeout — removing eye overlays');
+            try {
+              if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+              if (lidTop.parentNode) lidTop.parentNode.removeChild(lidTop);
+              if (lidBot.parentNode) lidBot.parentNode.removeChild(lidBot);
+            } catch (e) {}
+            return;
+          }
+          setTimeout(_runFpTerrainReady, 50);
+          return;
+        }
+        _runFpTerrainReady._tries = 0;
           // Spawn far from center
           var cam = rt.getCamera();
           var ctrl = rt.getControls();
@@ -4694,8 +4755,8 @@
               }, 1500);
             }
           }, 8000);
-        }
-      }, 1500);
+      }
+      _runFpTerrainReady();
 
       return true;
     }
@@ -5497,7 +5558,7 @@
     var _awCurrentNarrator = null;   // 현재 원본 감정 waveStyle
     var _awCurrentUser = null;       // 현재 유저 오염 waveStyle
     var _awPollInterval = null;
-    var AW_HEIGHT = 150;
+    var AW_HEIGHT = 280; // v2: 상단 잘림 방지 + A/B 슬롯 간격 확보
     var AW_FADE_DIST = 15;
 
     // idle 파동 스타일 (아무 핀에도 안 가까울 때) — 차분히 흐르는 기본
@@ -5506,12 +5567,14 @@
       speed: 0.12, amplitude: 22, frequency: 0.020, chaos: 0.15,
     };
 
-    // shared/math.js의 통일 emotionVectorToWaveStyle 사용 (module에서 window에 expose)
-    // AW 캔버스는 150px로 얇아서 amp를 축소 스케일
+    // v2: shared emotionVectorToWaveStyle을 window 전역으로 접근 (module import 밖이라)
     function _awEmotionToWaveStyle(emo) {
-      if (!emo || typeof emo !== 'object') return Object.assign({}, _awIdleStyle);
-      var s = window.emotionVectorToWaveStyle(emo);
-      return Object.assign({}, s, { amplitude: Math.min(18, s.amplitude * 0.35) });
+      if (!emo || typeof emo !== 'object' || Object.keys(emo).length === 0) {
+        return Object.assign({}, _awIdleStyle);
+      }
+      var fn = window.sharedEmotionVectorToWaveStyle;
+      if (typeof fn === 'function') return fn(emo);
+      return Object.assign({}, _awIdleStyle);
     }
 
     function _awLerpStyle(a, b, t) {
@@ -5550,12 +5613,14 @@
       // idle 파동으로 시작
       _awCurrentNarrator = Object.assign({}, _awIdleStyle);
       _awCurrentUser = null;
+      // v2: 플레이어 파동(= experiencer 슬롯, 0.7h)은 처음부터 끝까지 이어짐.
+      // narrator 슬롯은 비워두고, 씬 진입 시에만 채움.
       _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
         alignment: 0,
-        narratorEmotionVector: { sadness: 0.2 },
-        experiencerEmotionVector: null,
-        narratorWaveStyle: _awCurrentNarrator,
-        experiencerWaveStyle: null,
+        narratorEmotionVector: null,
+        experiencerEmotionVector: window.experiencerEmotionVector || { _idle: 1 },
+        narratorWaveStyle: null,
+        experiencerWaveStyle: window.currentExperiencerWave || Object.assign({}, _awIdleStyle),
         onUpdateAlignmentDisplay: function () {},
       });
     }
@@ -5679,17 +5744,49 @@
       _awContamAmount = 0;
     }
 
+    // v2: 씬 진입 시 narrator 슬롯(0.3h)에만 씬 파동 얹고, experiencer 슬롯(0.7h)의 플레이어 파동은 그대로 지속.
+    // 씬 종료 시 narrator만 비우고 플레이어 파동 유지 → 처음부터 끝까지 이어짐.
+    var _awSceneMode = false;
+    function _awRenderDual(narratorStyle, experiencerStyle, alignment) {
+      if (!_awViz || !_awCanvas) return;
+      _awSceneMode = true;
+      _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
+        alignment: alignment || 0,
+        narratorEmotionVector: window.narratorEmotionVector || { _scene: 1 },
+        experiencerEmotionVector: window.experiencerEmotionVector || { _player: 1 },
+        narratorWaveStyle: narratorStyle,
+        experiencerWaveStyle: experiencerStyle,
+        onUpdateAlignmentDisplay: function () {},
+      });
+    }
+    function _awExitSceneMode() {
+      _awSceneMode = false;
+      if (!_awViz || !_awCanvas) return;
+      // 씬 나감: narrator 슬롯 비움. 플레이어 파동은 최근 상태로 계속 흐름.
+      _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
+        alignment: 0,
+        narratorEmotionVector: null,
+        experiencerEmotionVector: window.experiencerEmotionVector || { _idle: 1 },
+        narratorWaveStyle: null,
+        experiencerWaveStyle: window.currentExperiencerWave || Object.assign({}, _awIdleStyle),
+        onUpdateAlignmentDisplay: function () {},
+      });
+    }
+
     window._fpAmbientWave = {
       applyContamination: _awApplyContamination,
       destroy: _destroyAmbientWave,
+      renderDual: _awRenderDual,
+      exitSceneMode: _awExitSceneMode,
     };
 
-    // Hook into proximity loop — start wave + update interval
+    // v2: proximity 기반 파동 갈아끼움 폐기. 플레이어 파동은 자기 입력만으로 변함.
+    // proximity 감지 자체는 다른 기능(hover, 접근성)에 필요할 수 있어 원본 루프는 유지.
     var _origStartProx2 = _startProximityLoop;
     _startProximityLoop = function () {
       _origStartProx2();
       _initAmbientWave();
-      _awPollInterval = setInterval(_awUpdateFromProximity, 200);
+      // _awPollInterval 제거 — 파동 업데이트는 _awRenderDual / _awExitSceneMode만 수행
     };
 
     window._fpPlay = {

@@ -165,7 +165,7 @@
    * @param {Record<string, Array>} playsByMem memory_id -> plays
    */
   function buildMemoryItems(mems, playsByMem, scenesByMem) {
-    var H2 = 40;
+    var H2 = 56;
     return mems.map(function (m) {
       var plays = playsByMem[m.id] || [];
       var scenes = (scenesByMem && scenesByMem[m.id]) || [];
@@ -327,7 +327,7 @@
   function computeAfTerrainFields(P, filterIdx, opt) {
     opt = opt || {};
     var G = opt.G != null ? opt.G : 160;
-    var SZ = opt.SZ != null ? opt.SZ : 80;
+    var SZ = opt.SZ != null ? opt.SZ : 112;
     var H2 = SZ / 2;
     var hts = new Float32Array(G * G);
     var cls = new Float32Array(G * G * 3);
@@ -607,7 +607,7 @@
    */
   function createStrataTerrain(THREE, canvas, opts) {
     opts = opts || {};
-    var G = 160; var SZ = 80; var H2 = SZ / 2;
+    var G = 160; var SZ = 112; var H2 = SZ / 2;
     var scene3; var camera; var renderer; var controls;
     var terrain; var terrainWire; var seedGrp;
     var sD = []; var P = [];
@@ -1131,7 +1131,6 @@
     var _fpEuler = { yaw: 0, pitch: 0 };
     var _fpEyeHeight = 1.6;
     var _fpSpeed = 8;
-    var _fpSprintSpeed = 18;
     var _fpPos = { x: 0, z: 0 };
     var _fpVelocityY = 0;
     var _fpJumpHeight = 0;
@@ -1223,10 +1222,8 @@
       var len = Math.sqrt(mx * mx + mz * mz);
       if (len > 0) { mx /= len; mz /= len; }
 
-      // Sprint (Shift)
-      var speed = (_fpKeys['ShiftLeft'] || _fpKeys['ShiftRight']) ? _fpSprintSpeed : _fpSpeed;
-      _fpPos.x += mx * speed * dt;
-      _fpPos.z += mz * speed * dt;
+      _fpPos.x += mx * _fpSpeed * dt;
+      _fpPos.z += mz * _fpSpeed * dt;
 
       var half = SZ / 2 + 3;
       _fpPos.x = Math.max(-half, Math.min(half, _fpPos.x));
@@ -1254,8 +1251,8 @@
         _fpTick();
         time += 0.004;
         if (oP1 && oP2) {
-          oP1.position.set(Math.sin(time * 0.6) * 50, 10 + Math.sin(time * 0.3) * 5, Math.cos(time * 0.4) * 50);
-          oP2.position.set(Math.cos(time * 0.5) * 40, 12, Math.sin(time * 0.7) * 40);
+          oP1.position.set(Math.sin(time * 0.6) * 35, 8 + Math.sin(time * 0.3) * 4, Math.cos(time * 0.4) * 35);
+          oP2.position.set(Math.cos(time * 0.5) * 28, 10, Math.sin(time * 0.7) * 28);
         }
         _tickSeedGrp();
         _tickParticles();

@@ -3,4 +3,6 @@ node_modules/
 big-five-data/
 data/personas.json
 data/plays.json
+data/*_personas.json
+data/*_plays.json
 *.log

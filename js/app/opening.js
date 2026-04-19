@@ -48,12 +48,259 @@ function setupLoopWithCrossfade(audio, targetVolume = 0.6, fadeDuration = 2) { i
 // === Dialogue Sequence ===
 // ─────────────────────────────────────
 
-function showContinueButton() { if (openingSkipped) return; const startHint = document.getElementById('openingStartHint'); if (startHint) { startHint.style.opacity = ''; startHint.classList.add('visible') } }
+// v2: 기존 오프닝 대사(Hello / You're here / ... / Come in)는 유지. 끝에 "Press any key" 대신 언어 게이트 + Start.
+// Start 클릭 후 v2 3단 대사 → 입력 → 최종 대사 → 180° 회전 → 문.
+function showContinueButton() {
+    if (openingSkipped) return;
+    // v2: 기존 "Press any key" 힌트 대체 → 언어 게이트 + Start 버튼
+    _initOpeningLangGate();
+}
 function showFourthText(dialogue) { if (openingSkipped) return; typeText(dialogue, '\nCome in.', function () { if (openingSkipped) return; setTimeout(showContinueButton, 500) }) }
 function showThirdText(dialogue) { if (openingSkipped) return; typeDots(dialogue, function () { if (openingSkipped) return; setTimeout(function () { showFourthText(dialogue) }, 1200) }) }
 function showSecondText(dialogue) { if (openingSkipped) return; typeText(dialogue, '\n...you came looking for a memory?', function () { if (openingSkipped) return; setTimeout(function () { showThirdText(dialogue) }, 1200) }) }
 function showFirstTextPart1(dialogue) { if (openingSkipped) return; typeText(dialogue, '\nHello.', function () { if (openingSkipped) return; setTimeout(function () { showFirstTextPart2(dialogue) }, 1500) }) }
 function showFirstTextPart2(dialogue) { if (openingSkipped) return; typeText(dialogue, '\nYou\'re here. It\'s been a while.', function () { if (openingSkipped) return; setTimeout(function () { showSecondText(dialogue) }, 1200) }) }
+const V2_DIALOGUES = {
+  ko: {
+    intro: ['어떤 기억을 찾고있어?'],
+    transition: '...저기로 가봐.',
+    placeholder: '단어 하나, 감정 하나...',
+    chips: [
+      { label: '슬픔', emotion: 'sadness' },
+      { label: '그리움', emotion: 'longing' },
+      { label: '분노', emotion: 'anger' },
+      { label: '두려움', emotion: 'fear' },
+      { label: '죄책감', emotion: 'guilt' },
+      { label: '기쁨', emotion: 'joy' },
+    ],
+  },
+  en: {
+    intro: ['what are you looking for?'],
+    transition: '...you can go there.',
+    placeholder: 'A word, a feeling...',
+    chips: [
+      { label: 'sadness', emotion: 'sadness' },
+      { label: 'longing', emotion: 'longing' },
+      { label: 'anger', emotion: 'anger' },
+      { label: 'fear', emotion: 'fear' },
+      { label: 'guilt', emotion: 'guilt' },
+      { label: 'joy', emotion: 'joy' },
+    ],
+  },
+};
+
+let _openingLang = 'en';
+
+function _typeLinesSequential(element, lines, charDelay = 55, lineDelay = 900) {
+  return new Promise(async (resolve) => {
+    element.classList.add('visible');
+    element.innerHTML = '';
+    for (let i = 0; i < lines.length; i++) {
+      const p = document.createElement('p');
+      p.style.cssText = 'margin:0 0 0.55em 0;font-family:inherit;opacity:0;transition:opacity 0.5s ease;';
+      element.appendChild(p);
+      await new Promise(r => requestAnimationFrame(r));
+      p.style.opacity = '1';
+      const text = lines[i];
+      for (let ci = 1; ci <= text.length; ci++) {
+        p.textContent = text.slice(0, ci);
+        await new Promise(r => setTimeout(r, charDelay));
+      }
+      if (i < lines.length - 1) await new Promise(r => setTimeout(r, lineDelay));
+    }
+    resolve();
+  });
+}
+
+function _fadeOutDialogue(element, duration = 800) {
+  return new Promise((resolve) => {
+    element.style.transition = `opacity ${duration}ms ease`;
+    element.style.opacity = '0';
+    setTimeout(() => {
+      element.innerHTML = '';
+      element.style.opacity = '';
+      resolve();
+    }, duration);
+  });
+}
+
+async function _runV2Sequence() {
+  const dialogue = document.getElementById('openingDialogue');
+  const inputPhase = document.getElementById('openingInputPhase');
+  const langGate = document.getElementById('openingLangGate');
+  if (!dialogue || !inputPhase) return;
+
+  const D = V2_DIALOGUES[_openingLang] || V2_DIALOGUES.en;
+
+  // 언어 게이트 페이드아웃
+  if (langGate) {
+    langGate.style.opacity = '0';
+    langGate.style.pointerEvents = 'none';
+  }
+  await new Promise(r => setTimeout(r, 900));
+
+  // 기존 "...Come in." 대사 부드럽게 페이드아웃 (갑자기 지워지지 않도록)
+  await _fadeOutDialogue(dialogue, 1100);
+  await new Promise(r => setTimeout(r, 900)); // 정적 여백
+
+  // v2 인트로 3단 대사 타이핑
+  await _typeLinesSequential(dialogue, D.intro);
+  await new Promise(r => setTimeout(r, 1200));
+
+  // 인트로 질문은 입력 단계와 함께 화면에 유지 (페이드아웃하지 않음)
+
+  // 입력 + 칩 페이드인
+  const input = document.getElementById('openingFinderInput');
+  const chipsEl = document.getElementById('openingFinderChips');
+  const submitBtn = document.getElementById('openingFinderSubmitBtn');
+  if (input) input.placeholder = D.placeholder;
+
+  // 칩 populate
+  if (chipsEl) {
+    chipsEl.innerHTML = '';
+    D.chips.forEach(chip => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = chip.label;
+      btn.dataset.emotion = chip.emotion;
+      btn.style.cssText = 'background:none;border:1px solid rgba(196,168,130,0.25);color:rgba(196,168,130,0.6);font-family:"Cormorant Garamond",serif;font-size:13px;letter-spacing:1px;padding:6px 16px;cursor:pointer;transition:all 0.3s;border-radius:2px;';
+      btn.addEventListener('mouseenter', () => { btn.style.borderColor = 'rgba(196,168,130,0.6)'; btn.style.color = 'rgba(196,168,130,0.9)'; });
+      btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'rgba(196,168,130,0.25)'; btn.style.color = 'rgba(196,168,130,0.6)'; });
+      btn.addEventListener('click', () => _handleOpeningSubmit(chip.emotion, null));
+      chipsEl.appendChild(btn);
+    });
+  }
+
+  inputPhase.style.pointerEvents = 'auto';
+  inputPhase.style.opacity = '1';
+  setTimeout(() => { if (input) input.focus(); }, 400);
+
+  // 엔터/버튼 제출
+  if (input) {
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter' && input.value.trim()) {
+        _handleOpeningSubmit(null, input.value.trim());
+      }
+    };
+  }
+  if (submitBtn) {
+    submitBtn.onclick = () => {
+      if (input && input.value.trim()) _handleOpeningSubmit(null, input.value.trim());
+    };
+  }
+}
+
+async function _handleOpeningSubmit(emotion, text) {
+  const inputPhase = document.getElementById('openingInputPhase');
+  const dialogue = document.getElementById('openingDialogue');
+  const D = V2_DIALOGUES[_openingLang] || V2_DIALOGUES.en;
+
+  // 입력 페이드아웃
+  if (inputPhase) {
+    inputPhase.style.pointerEvents = 'none';
+    inputPhase.style.opacity = '0';
+  }
+  await new Promise(r => setTimeout(r, 800));
+
+  // 최종 한 줄 타이핑
+  await _typeLinesSequential(dialogue, [D.transition]);
+  await new Promise(r => setTimeout(r, 1400));
+  await _fadeOutDialogue(dialogue, 900);
+
+  // 180° 회전 후 문으로 전환 → archive.js 핑거 결과 재활용
+  try {
+    sessionStorage.setItem('tem_lang', _openingLang);
+    localStorage.setItem('tem_language', _openingLang);
+    sessionStorage.setItem('tem_opening_prefilled', emotion ? `chip:${emotion}` : `text:${text || ''}`);
+  } catch (_) {}
+
+  // openingScreen 180° rotateY + 페이드아웃. intro screen(메뉴)은 건너뜀.
+  const openingScreen = document.getElementById('openingScreen');
+  if (openingScreen) {
+    openingScreen.style.transition = 'transform 1.4s ease-in-out, opacity 1.4s ease-in-out';
+    openingScreen.style.transformOrigin = '50% 50%';
+    openingScreen.style.transform = 'rotateY(180deg)';
+    openingScreen.style.opacity = '0';
+  }
+
+  // 수동 정리: wave anim만 정지. BGM은 crossfade 루프 그대로 유지 (기억선택 단계까지 이어짐).
+  openingSkipped = true;
+  if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
+
+  setTimeout(async () => {
+    if (openingScreen) {
+      openingScreen.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;z-index:-1!important;opacity:0!important';
+    }
+    // archive + finder 컨테이너 노출 + 메모리 로드
+    if (typeof window.enterPlayIntro === 'function') {
+      await window.enterPlayIntro();
+    }
+    // v2: finder 자체 대사 phase(실 + 화살표) 노출 플래시 방지 — 즉시 숨기고 result phase 띄움
+    const qPhase = document.getElementById('finderQuestionPhase');
+    if (qPhase) qPhase.style.display = 'none';
+    const rPhase = document.getElementById('finderResultPhase');
+    if (rPhase) { rPhase.style.display = 'block'; rPhase.style.opacity = '1'; }
+    // finder가 마운트한 실 캔버스 RAF 정리
+    const threadCv = document.getElementById('finderThreadCanvas');
+    if (threadCv && typeof threadCv._cleanup === 'function') threadCv._cleanup();
+
+    // 메모리 로드 정착 대기
+    await new Promise(r => setTimeout(r, 1500));
+
+    // 매칭 트리거 → 문 렌더
+    if (emotion && typeof window._finderMatch === 'function') {
+      window._finderMatch(emotion, _openingLang);
+    } else if (text && typeof window._finderMatchByText === 'function') {
+      window._finderMatchByText(text, _openingLang);
+    }
+  }, 1400);
+}
+
+function _initOpeningLangGate() {
+  const gate = document.getElementById('openingLangGate');
+  if (!gate) return;
+  const btns = gate.querySelectorAll('.opening-lang-btn');
+  const startBtn = document.getElementById('openingStartBtn');
+
+  // 기본: localStorage > 'en'
+  let initialLang = 'en';
+  try {
+    const stored = localStorage.getItem('tem_language');
+    if (stored === 'ko' || stored === 'en') initialLang = stored;
+  } catch (_) {}
+
+  function _markSelected(lang) {
+    btns.forEach(b => {
+      const on = b.dataset.lang === lang;
+      b.classList.toggle('selected', on);
+      b.style.background = on ? 'rgba(196,168,130,0.18)' : 'none';
+      b.style.color = on ? 'rgba(240,216,170,1)' : 'rgba(196,168,130,0.75)';
+      b.style.borderColor = on ? 'rgba(240,216,170,0.9)' : 'rgba(196,168,130,0.35)';
+    });
+  }
+  _markSelected(initialLang);
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => _markSelected(btn.dataset.lang));
+  });
+
+  if (startBtn) {
+    startBtn.addEventListener('click', () => {
+      // Start 시점에 DOM의 selected 클래스에서 언어 직접 읽기 (closure 변수 불신)
+      const selected = gate.querySelector('.opening-lang-btn.selected');
+      const lang = selected ? selected.dataset.lang : 'en';
+      _openingLang = lang;
+      try { localStorage.setItem('tem_language', lang); } catch (_) {}
+      console.log('[opening] Start clicked. lang =', lang);
+      _runV2Sequence();
+    });
+  }
+
+  setTimeout(() => {
+    gate.style.opacity = '1';
+    gate.style.pointerEvents = 'auto';
+  }, 400);
+}
 
 // ─────────────────────────────────────
 // === Wave Animation ===
@@ -160,7 +407,25 @@ function startOpeningWaveAnimation(canvas) {
 // === Sequence Orchestration ===
 // ─────────────────────────────────────
 
-function startOpeningSequence() { if (openingSkipped || window.__oauthRedirectSkipOpening) return; const waveContainer = document.getElementById('openingWaveContainer'); if (waveContainer) { waveContainer.style.transform = 'scale(5, 1)'; waveContainer.style.opacity = '1'; waveContainer.classList.add('visible') } const canvas = document.getElementById('openingWaveCanvas'); if (canvas) startOpeningWaveAnimation(canvas); setTimeout(function () { if (openingSkipped) return; const dialogue = document.getElementById('openingDialogue'); if (dialogue) showFirstTextPart1(dialogue) }, 2500) }
+function startOpeningSequence() {
+    if (openingSkipped || window.__oauthRedirectSkipOpening) return;
+    const waveContainer = document.getElementById('openingWaveContainer');
+    if (waveContainer) {
+        waveContainer.style.transform = 'scale(5, 1)';
+        waveContainer.style.opacity = '1';
+        waveContainer.classList.add('visible');
+    }
+    const canvas = document.getElementById('openingWaveCanvas');
+    if (canvas) startOpeningWaveAnimation(canvas);
+
+    // 최초 진입: 원래 오프닝 체인 재개 — Hello → ... → Come in → 언어 게이트
+    // (온보딩 완료된 유저는 bindEvents.js에서 이미 메인 메뉴로 라우팅됨)
+    setTimeout(function () {
+        if (openingSkipped) return;
+        const dialogue = document.getElementById('openingDialogue');
+        if (dialogue) showFirstTextPart1(dialogue);
+    }, 2500);
+}
 
 function skipOpening() { if (openingSkipped) return; openingSkipped = true; if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null } const sound = openingSound || document.getElementById('openingSound'); if (sound) { if (crossfadeTimeUpdateHandler && sound) { sound.removeEventListener('timeupdate', crossfadeTimeUpdateHandler); crossfadeTimeUpdateHandler = null } if (crossfadeEndedHandler && sound) { sound.removeEventListener('ended', crossfadeEndedHandler); crossfadeEndedHandler = null } fadeOutSound(sound, 500); setTimeout(() => { finishOpeningSequence() }, 600) } else { finishOpeningSequence() } }
 
