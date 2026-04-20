@@ -855,7 +855,7 @@
   // wave-top 캔버스(140~220px)에 맞춰 amp 축소.
   function emotionVectorToWaveStylePT(emotionVector) {
     const ev = (emotionVector && typeof emotionVector === 'object') ? emotionVector : {};
-    const s = emotionVectorToWaveStyle(ev);
+    const s = sharedEmotionVectorToWaveStyle(ev);
     let dominant = 'sadness', maxVal = -1;
     Object.entries(ev).forEach(([k, v]) => {
       const n = Number(v) || 0;

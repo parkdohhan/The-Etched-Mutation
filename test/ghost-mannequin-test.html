@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Ghost Mannequin Test — TEM</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a0f; overflow:hidden; font-family:monospace; color:#c4a882; }
+#scene { position:fixed; inset:0; width:100%; height:100%; display:block; }
+#hud {
+  position:fixed; top:20px; left:50%; transform:translateX(-50%);
+  color:rgba(196,168,130,0.6); font-size:11px; letter-spacing:2px;
+  text-align:center; pointer-events:none; z-index:10;
+}
+#controls {
+  position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+  display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+  max-width:90vw; z-index:10;
+}
+#controls button {
+  background:transparent; border:1px solid rgba(196,168,130,0.4);
+  color:rgba(196,168,130,0.8); font-family:monospace; font-size:10px;
+  letter-spacing:2px; padding:8px 16px; cursor:pointer;
+}
+#controls button:hover { border-color:rgba(196,168,130,0.9); color:#c4a882; }
+#controls button.active { border-color:#c4a882; color:#c4a882; }
+#debug {
+  position:fixed; top:56px; left:50%; transform:translateX(-50%);
+  color:rgba(196,168,130,0.4); font-size:10px; letter-spacing:1px;
+  z-index:10; pointer-events:none; text-align:center;
+}
+#sliders {
+  position:fixed; top:20px; right:20px; z-index:10;
+  display:flex; flex-direction:column; gap:6px; font-size:10px;
+  color:rgba(196,168,130,0.6);
+}
+#sliders label { display:flex; align-items:center; gap:6px; }
+#sliders input { width:100px; }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+<div id="hud">GHOST MANNEQUIN TEST · Xbot (Mixamo 기반)</div>
+<div id="debug">loading…</div>
+
+<div id="sliders">
+  <label>opacity <input id="opa" type="range" min="0" max="100" value="70"></label>
+  <label>grey <input id="grey" type="range" min="40" max="200" value="128"></label>
+  <label>speed <input id="spd" type="range" min="10" max="200" value="100"></label>
+  <label>ghosts <input id="cnt" type="range" min="1" max="6" value="3"></label>
+  <label>mode
+    <select id="mode">
+      <option value="silhouette">silhouette</option>
+      <option value="xray">x-ray</option>
+    </select>
+  </label>
+  <label>model
+    <select id="model">
+      <option value="https://threejs.org/examples/models/gltf/Xbot.glb">Xbot (여성적)</option>
+      <option value="https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb">Robot (무성/블록)</option>
+      <option value="https://threejs.org/examples/models/gltf/Soldier.glb">Soldier (남성/군장)</option>
+      <option value="custom">custom URL…</option>
+    </select>
+  </label>
+  <input id="customUrl" type="text" placeholder="/test/ybot.fbx 또는 .glb URL" style="display:none;width:200px;font-size:10px;padding:3px;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;">
+  <label>extra clips (한 줄당 1개)
+    <textarea id="extraClips" placeholder="/test/Standing Up.fbx" style="width:210px;height:60px;font-size:10px;padding:4px;background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;resize:vertical;"></textarea>
+  </label>
+  <button id="reloadBtn" style="background:transparent;border:1px solid rgba(196,168,130,0.4);color:#c4a882;font-family:monospace;font-size:10px;padding:6px;cursor:pointer;">reload base + extras</button>
+</div>
+
+<div id="controls"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+
+<script>
+// ── 최소 파이프라인 검증 ──────────────────────────────────────────
+// 목적: Three.js r128 스택에 스키닝 애니 휴머노이드가 로드·재생되고,
+//       디테일 죽인 회색 단색 unlit material로 덮어도 "미동하는 유령"이 되는지 확인.
+// 최종 배치(Mixamo Y-Bot + Sitting Idle 등)로 스왑할 때는 MODEL_URL만 교체.
+
+var canvas = document.getElementById('scene');
+var debugEl = document.getElementById('debug');
+var ctrlEl = document.getElementById('controls');
+var opaEl = document.getElementById('opa');
+var greyEl = document.getElementById('grey');
+var spdEl = document.getElementById('spd');
+var cntEl = document.getElementById('cnt');
+var modeEl = document.getElementById('mode');
+var modelEl = document.getElementById('model');
+var customUrlEl = document.getElementById('customUrl');
+var extraClipsEl = document.getElementById('extraClips');
+var reloadBtnEl = document.getElementById('reloadBtn');
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a0f);
+scene.fog = new THREE.FogExp2(0x0a0a0f, 0.055);
+
+var camera = new THREE.PerspectiveCamera(42, innerWidth/innerHeight, 0.1, 200);
+camera.position.set(3.2, 1.8, 5.2);
+
+var renderer = new THREE.WebGLRenderer({ canvas:canvas, antialias:true, alpha:false });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+var ctrl = new THREE.OrbitControls(camera, canvas);
+ctrl.target.set(0, 1.0, 0);
+ctrl.enableDamping = true;
+ctrl.update();
+
+// 바닥 (지형 흉내 — 단색 암회색, TEM 배경 톤)
+var floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40, 1, 1),
+  new THREE.MeshBasicMaterial({ color:0x12121a, fog:true })
+);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+
+// 진단용 레퍼런스 (원점 표시 + 1유닛 큐브). 렌더 자체가 죽었는지 즉시 판별.
+var originMark = new THREE.Mesh(
+  new THREE.BoxGeometry(0.3, 0.3, 0.3),
+  new THREE.MeshBasicMaterial({ color:0xc4a882 })
+);
+originMark.position.set(0, 0.15, 0);
+scene.add(originMark);
+
+// 스키닝 머티리얼에 라이팅 필요한 경로를 위해 보험으로 ambient 하나
+scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+// 공개 호스팅 모델들. Mixamo Y-Bot (진짜 무성 마네킹)은 mixamo.com 계정 다운로드 필요 →
+// 받은 GLB를 /test/ 폴더에 두고 custom URL에 "/test/ybot.glb" 입력.
+
+var ghosts = [];   // { root, mixer, actions, active }
+var clipNames = [];
+var currentClipName = null;
+var sourceGltf = null;
+
+var gltfLoader = new THREE.GLTFLoader();
+var fbxLoader = new THREE.FBXLoader();
+
+function nameFromUrl(url){
+  var base = url.split('/').pop().split('?')[0].split('#')[0];
+  return base.replace(/\.(fbx|glb|gltf)$/i, '');
+}
+
+function loadOne(url){
+  // 범용 로더. Promise로 래핑해서 multi-load 체인에 사용.
+  return new Promise(function(resolve, reject){
+    var ext = (url.split('?')[0].split('#')[0].split('.').pop() || '').toLowerCase();
+    if (ext === 'fbx') {
+      fbxLoader.load(url, function(obj){
+        resolve({ scene: obj, animations: obj.animations || [] });
+      }, null, reject);
+    } else {
+      gltfLoader.load(url, resolve, null, reject);
+    }
+  });
+}
+
+function loadModel(baseUrl, extraUrls){
+  debugEl.textContent = 'loading ' + baseUrl + ' …';
+  ghosts.forEach(function(g){ scene.remove(g.root); });
+  ghosts.length = 0;
+  ctrlEl.innerHTML = '';
+  sourceGltf = null;
+
+  loadOne(baseUrl).then(function(base){
+    if (!extraUrls || !extraUrls.length) return base;
+    debugEl.textContent = 'loading extras (' + extraUrls.length + ') …';
+    return Promise.all(extraUrls.map(loadOne)).then(function(extras){
+      // 각 extra의 첫 클립을 base.animations에 merge (파일명으로 리네임)
+      extras.forEach(function(e, i){
+        if (e.animations && e.animations[0]) {
+          var clip = e.animations[0];
+          clip.name = nameFromUrl(extraUrls[i]);
+          base.animations.push(clip);
+        }
+      });
+      return base;
+    });
+  }).then(onLoaded).catch(function(err){
+    debugEl.textContent = 'load error · ' + (err && err.message || err);
+    console.error(err);
+  });
+}
+
+function currentBaseUrl(){
+  return modelEl.value === 'custom' ? customUrlEl.value.trim() : modelEl.value;
+}
+function currentExtraUrls(){
+  return extraClipsEl.value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+}
+function triggerReload(){
+  var base = currentBaseUrl();
+  if (!base) { debugEl.textContent = 'base URL 비어있음'; return; }
+  loadModel(base, currentExtraUrls());
+}
+
+function onLoaded(gltf){
+  sourceGltf = gltf;
+  clipNames = gltf.animations.map(function(c){ return c.name; });
+
+  // 진단: 모델 스케일·바운딩 로그 (콘솔)
+  var bbox = new THREE.Box3().setFromObject(gltf.scene);
+  var sz = bbox.getSize(new THREE.Vector3());
+
+  // Mixamo FBX는 cm 단위(~180 유닛)라서 자동 리스케일. 씬은 m 단위(~1.8).
+  if (sz.y > 10) {
+    var s = 1.8 / sz.y;
+    gltf.scene.scale.setScalar(s);
+    bbox.setFromObject(gltf.scene);
+    sz.copy(bbox.getSize(new THREE.Vector3()));
+    console.log('[mannequin-test] auto-rescaled x' + s.toFixed(4));
+  }
+
+  var skinCount = 0;
+  gltf.scene.traverse(function(o){ if (o.isSkinnedMesh) skinCount++; });
+  console.log('[mannequin-test] bbox size:', sz, 'skinnedMesh count:', skinCount);
+  debugEl.innerHTML = 'clips: ' + (clipNames.join(' · ') || '(none)') +
+    '<br>bbox h=' + sz.y.toFixed(2) + ' · skinned=' + skinCount;
+
+  clipNames.forEach(function(name){
+    var btn = document.createElement('button');
+    btn.textContent = name;
+    btn.onclick = function(){ switchClip(name); };
+    btn.dataset.clip = name;
+    ctrlEl.appendChild(btn);
+  });
+
+  currentClipName = clipNames[0];
+  rebuildGhosts(parseInt(cntEl.value, 10));
+  highlightActiveBtn();
+}
+
+// 모델 드롭다운 ↔ custom URL input
+modelEl.addEventListener('change', function(){
+  if (modelEl.value === 'custom') {
+    customUrlEl.style.display = 'inline-block';
+    customUrlEl.focus();
+  } else {
+    customUrlEl.style.display = 'none';
+    triggerReload();
+  }
+});
+customUrlEl.addEventListener('change', triggerReload);
+reloadBtnEl.addEventListener('click', triggerReload);
+
+// 초기 로드
+triggerReload();
+
+function makeGreyMat(isSkinned){
+  var g = parseInt(greyEl.value, 10);
+  var o = parseInt(opaEl.value, 10) / 100;
+  var mode = modeEl.value;   // 'silhouette' | 'xray'
+
+  var mat = new THREE.MeshLambertMaterial({
+    color: (g<<16) | (g<<8) | g,
+    transparent: true,
+    opacity: o,
+    fog: true,
+    emissive: 0x000000,
+    side: mode === 'xray' ? THREE.DoubleSide : THREE.FrontSide,
+    depthWrite: mode === 'silhouette',   // silhouette: 최전방만 · xray: 모든 층 통과
+    blending: mode === 'xray' ? THREE.AdditiveBlending : THREE.NormalBlending
+  });
+  if (isSkinned) { mat.skinning = true; mat.morphTargets = true; }
+  return mat;
+}
+
+function stripDetails(root){
+  // 메시에 회색 단색 덮기. 눈·코·입 텍스처 다 무시.
+  root.traverse(function(o){
+    if (o.isSkinnedMesh) {
+      o.material = makeGreyMat(true);
+      o.frustumCulled = false;
+      o.castShadow = false;
+      o.receiveShadow = false;
+    } else if (o.isMesh) {
+      o.material = makeGreyMat(false);
+      o.frustumCulled = false;
+      o.castShadow = false;
+      o.receiveShadow = false;
+    }
+  });
+}
+
+function spawnGhost(idx, total){
+  // SkeletonUtils.clone: SkinnedMesh·스켈레톤 본 참조 안전 복제
+  var root = THREE.SkeletonUtils.clone(sourceGltf.scene);
+  stripDetails(root);
+
+  // 원 배치 (peripheral 레이어 흉내)
+  var ang = (idx/total) * Math.PI*2;
+  var r = 2.2 + 0.4*(idx%2);
+  root.position.set(Math.cos(ang)*r, 0, Math.sin(ang)*r);
+  root.rotation.y = -ang + Math.PI;   // 대충 중심 바라봄
+  // scale은 건드리지 않음 — 소스 auto-rescale(cm→m) 값이 clone에 상속되어야 함
+  scene.add(root);
+
+  var mixer = new THREE.AnimationMixer(root);
+  var actions = {};
+  sourceGltf.animations.forEach(function(clip){
+    actions[clip.name] = mixer.clipAction(clip);
+  });
+
+  var a = actions[currentClipName];
+  if (a) {
+    a.time = Math.random() * (a.getClip().duration || 1);   // 동기화 깨기
+    a.setEffectiveTimeScale(0.8 + Math.random()*0.4);        // 개체별 속도 살짝 변형
+    a.play();
+  }
+
+  return { root:root, mixer:mixer, actions:actions, active:a || null };
+}
+
+function rebuildGhosts(count){
+  ghosts.forEach(function(g){ scene.remove(g.root); });
+  ghosts.length = 0;
+  if (!sourceGltf) return;
+  for (var i=0; i<count; i++) ghosts.push(spawnGhost(i, count));
+}
+
+function switchClip(name){
+  if (!clipNames.includes(name)) return;
+  currentClipName = name;
+  ghosts.forEach(function(g){
+    var next = g.actions[name];
+    if (!next || next === g.active) return;
+    if (g.active) g.active.fadeOut(0.5);
+    next.reset().fadeIn(0.5).play();
+    g.active = next;
+  });
+  highlightActiveBtn();
+}
+
+function highlightActiveBtn(){
+  Array.from(ctrlEl.children).forEach(function(b){
+    b.classList.toggle('active', b.dataset.clip === currentClipName);
+  });
+}
+
+function refreshMaterials(){
+  ghosts.forEach(function(g){ stripDetails(g.root); });
+}
+
+opaEl.addEventListener('input', refreshMaterials);
+greyEl.addEventListener('input', refreshMaterials);
+modeEl.addEventListener('change', refreshMaterials);
+cntEl.addEventListener('change', function(){
+  rebuildGhosts(parseInt(cntEl.value, 10));
+});
+
+var clock = new THREE.Clock();
+function tick(){
+  var dt = clock.getDelta();
+  var spd = parseInt(spdEl.value, 10) / 100;
+  ghosts.forEach(function(g){ g.mixer.update(dt * spd); });
+  ctrl.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+
+addEventListener('resize', function(){
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

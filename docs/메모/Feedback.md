@@ -39,27 +39,7 @@
 
 ## 🎬 유튜브 데모 전 수정 목록 (2026-04-05)
 
-### 1. Play → Strata 연결 (UX 개연성)
-- [v] 1-1. 엔드스크린에 "지형 탐색" 버튼 추가 — "이 기억의 지층을 보시겠습니까?"
-- [v] 1-2. 엔드스크린 → strataView 전환 애니메이션 (fade or zoom-in)
-- [ ] 1-3. strata에서 "내가 방금 남긴 흔적" 하이라이트 (이번 세션 마커 강조)
-- [ ] 1-4. strata에서 메인 메뉴 복귀 동선 확인 (현재 closeStrataView 폴백만 있음)
-- [ ] 5-0a. (#8) '봉인' 이후 strata이 뜨는 맥락을 사용자가 이해 못함 — 엔드스크린에서 strata 전환의 서사적 연결 필요 ("이 기억이 지층에 가라앉는다" 등)
-- [ ] 5-0b. (#11) 봉인 조건과 unlock 여부가 비가시적 — Play 중 or 엔드스크린에서 봉인 상태 시각 피드백 추가
-
-### 2. Strata 지형 탐색 개선
-- [v] 2-1. 핀/기둥 클릭 시 정보 패널 표시 (누구의 해석인지, alignment, 감정 방향)
-- [ ] 2-2. 핀 호버 시 툴팁 (현재 emissive만 변함, 텍스트 정보 없음)
-- [ ] 2-3. 장면 핀 시각 구분 — 방문 완료 / 미방문 / 현재 장면 색상 분리
-- [ ] 2-4. 등고선 + 핀 위치의 의미 설명 온보딩 (첫 진입 시 힌트 텍스트)
-
 ### 3. Play Flow 개선
-
-#### 3-1. Floating Anchor 개선
-- [ ] 3-1a. clarity 시스템 시각 피드백 확인 — 안개 + blur + 속도 변화가 실제로 보이는지
-- [ ] 3-1b. 호버 시 anchor 밝아지는 CSS 추가
-- [ ] 3-1c. anchor-ghost 상태에서 첫 글자만 보이는 연출 확인
-- [ ] 3-1d. photo 타입 anchor의 clarity blur 동작 확인
 
 #### 3-2. 사운드 레이어 개선
 - [ ] 3-2a. 오염 단계(biased/hypercompletion)에 따른 사운드 변화 연결 — 현재 bucket만 반응
@@ -90,16 +70,6 @@
 - [ ] 6-1. 모바일 반응형 — Play 화면, anchor, strata가 모바일에서 깨지지 않는지
 - [ ] 6-2. 초기 로드 속도 — live.js 동적 import 후 초기 로드 개선 확인
 - [ ] 6-4. 영어/한국어 전환 시 전체 flow 정상 동작
-
-
-다른이의 기억보기
-가까이 다가가서 커서를 올리면 번쩍거리는 이펙트
-다른이의 기억같다는 (질문 프롬프트 추가에도 불구하고 이해가 안된다)
-장면위에 감정뜨는것도 삭제
-나갈수있는 조건 설명
-esc를 눌러야 나갈수있게하는것이 사용자 몰입감측면에서 별로다
-감정매칭 엔터 버튼
-가운데에 점을 찍는다
 
 ---
 
@@ -244,14 +214,8 @@ DB/코드/admin까지 다 들어감. 이제 내가 할 일만 남음.
 
 ### 🟢 우선순위 C — PLAY 바깥
 
-- [ ] LIVE 모드 메인 메뉴 연결 ([js/index.js:84](../../js/index.js#L84))
-- [ ] RECORD 패턴 인식 → AI 질문 리듬 변조
 - [ ] 사용자 동의 철회 페이지 (`/profile/utterances`)
 - [ ] 잔상 디버그 패널 / 통계 대시보드
-
-### ✅ 매뉴얼과 실제 코드 불일치 (문서 업데이트 필요)
-
-- [ ] 매뉴얼 §7-2 / §9.3 "SceneNavigator 통합 미완" → 실제로는 [js/app/archive.js:1264](../../js/app/archive.js#L1264), [:1504](../../js/app/archive.js#L1504)에서 이미 `sceneNavigator.navigate()` 호출 중. 남은 선형 진행은 `goToScene()` 수동 되감기뿐. 매뉴얼 문구 완화 필요.
 
 ---
 
@@ -265,41 +229,6 @@ DB/코드/admin까지 다 들어감. 이제 내가 할 일만 남음.
   - [test/unit/piiFilter.test.js](../../test/unit/piiFilter.test.js) — 잔상 PII 17종 케이스
   - 스냅샷: [test/unit/__snapshots__/](../../test/unit/__snapshots__/) 960줄
 - [x] **GitHub Actions CI** — [.github/workflows/test.yml](../../.github/workflows/test.yml), push/PR 시 자동 `npm test`
-
-### 🔥 다음 작업 — `play-test.html` 해체 & 단일 PLAY 경로 통합
-
-**현재 구조 (확인 완료):**
-```
-PLAY 클릭 → archive.js (기억 목록)
-  → 기억 선택
-    → window.location.href = "play-test.html?memory=..."
-      → 5,718줄짜리 별도 HTML 페이지로 이동
-```
-
-**`play-test.html`이 테스트용이 아니라 실제 PLAY 실행 화면 그 자체.**
-호출 지점: [js/app/archive.js:369](../../js/app/archive.js#L369), [:835](../../js/app/archive.js#L835), [js/app/archiveEntry.js:138](../../js/app/archiveEntry.js#L138), [js/app/auth.js:157](../../js/app/auth.js#L157)
-
-**방향: 해체가 아니라 통합.** 5,718줄의 좋은 로직을 모듈로 분리해 `index.html` SPA로 흡수.
-
-- [ ] **1. `play-test.html` 구역 분석** — 5,718줄이 어떤 덩어리로 나뉘는지 파악 (state / scene renderer / input / navigation / strata / end screen / etc.)
-- [ ] **2. 모듈 추출** — `js/app/play.js`로 핵심 로직 이관. inline `<script>`를 ES6 모듈로 분리.
-- [ ] **3. `index.html`에 PLAY 컨테이너 추가** — archive 컨테이너와 같은 방식으로 SPA 전환.
-- [ ] **4. 라우팅 교체** — `window.location.href = 'play-test.html?...'` → `showPlay(memoryId)` 함수 호출로.
-- [ ] **5. SceneNavigator 완전 통합** — `play-test.html`에 남은 선형 진행(`currentScene + 1`)을 SceneNavigator로 교체 (`archive.js`는 이미 통합됨).
-- [ ] **6. 회귀 검증** — 매 단계마다 `npm test` + 수동 플레이스루 (5,718줄 안의 장면 렌더/오염/잔상/strata 모두 동작 확인).
-- [ ] **7. `play-test.html` 제거** — 모든 호출 지점이 SPA로 바뀐 뒤 파일 삭제 (또는 dev redirect stub으로 남김).
-
-**이 작업이 우선인 이유:**
-- 매뉴얼 §18.4 "두 개의 병렬 구현"이 가장 큰 기술 부채.
-- SceneNavigator 메인 경로 완전 통합 / 고착 복합 신호 / 재조합 연출 모두 **단일 PLAY 경로 위에서** 해야 의미 있음.
-- 시간 갈수록 양쪽 싱크 비용이 복리로 불어남.
-
-### 🟡 그 다음 순서
-1. 🔥 (위 PLAY 통합)
-2. 우선순위 A — fixation 복합 신호 / 재조합 트리거 / 장면 단위 잔상
-3. 우선순위 B — AF 간섭 억압 / telling_trajectory / 17D↔6D
-4. 우선순위 C — LIVE 메뉴 연결 등
-
 ---
 
 ## 🎯 admin Canvas 통합 프로젝트 (2026-04-12 진행 중)

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Ghost Billboard Test — TEM</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0f; overflow: hidden; }
+#strataCanvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+#hud {
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  color: rgba(196,168,130,0.6); font-family: monospace; font-size: 11px;
+  letter-spacing: 2px; text-align: center; pointer-events: none; z-index: 10;
+}
+#enterBtn {
+  position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+  background: transparent; border: 1px solid rgba(196,168,130,0.4);
+  color: rgba(196,168,130,0.8); font-family: monospace; font-size: 11px;
+  letter-spacing: 3px; padding: 10px 28px; cursor: pointer; z-index: 10;
+}
+#enterBtn:hover { border-color: rgba(196,168,130,0.9); color: #c4a882; }
+#debug {
+  position: fixed; bottom: 100px; left: 20px; color: rgba(196,168,130,0.4);
+  font-family: monospace; font-size: 10px; z-index: 10; pointer-events: none;
+}
+</style>
+</head>
+<body>
+
+<canvas id="strataCanvas"></canvas>
+<div id="hud">GHOST BILLBOARD TEST · STRATA</div>
+<button id="enterBtn" onclick="enterFP()">클릭 후 1인칭 진입 (WASD 이동)</button>
+<div id="debug"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="/js/shared/tem_af_strata_terrain.js"></script>
+<script>
+
+// ── Ghost iframe overlay (Unicorn Studio embed) ──────────────────
+function createGhostIframe(embedUrl) {
+  var wrap = document.createElement('div');
+  wrap.style.cssText = [
+    'position:fixed',
+    'pointer-events:none',
+    'z-index:5',
+    'transform:translate(-50%,-50%)',
+    'border-radius:4px',
+    'overflow:hidden',
+    'opacity:0',
+    'transition:opacity 0.4s',
+    'mix-blend-mode:screen',
+  ].join(';');
+  var iframe = document.createElement('iframe');
+  iframe.src = embedUrl;
+  iframe.style.cssText = 'width:100%;height:100%;border:none;background:transparent;';
+  iframe.setAttribute('allowtransparency', 'true');
+  iframe.onload = function() { wrap.style.opacity = '1'; };
+  wrap.appendChild(iframe);
+  document.body.appendChild(wrap);
+  return wrap;
+}
+
+// ── 최소 유효 P 데이터 (buildMemoryItems 출력 포맷 그대로) ──────────
+function makeMockP() {
+  var H2 = 56;
+  return [{
+    id: 'test-memory',
+    t: 'test memory',
+    plays: [],
+    pc: 0,
+    emo: { sadness: 0.5, longing: 0.3 },
+    attr: 0.4,
+    fear: 0.3,
+    af: { x: 0, z: 0 },
+    pillarWx: 0,
+    pillarWz: 0,
+    sceneAF: [
+      { id: 'sc1', order: 0, wx: -8,  wz: -3,  emo: { sadness: 0.6 }, eMag: 0.6, domEmo: 'sadness',  voidScore: 0, echoWords: [] },
+      { id: 'sc2', order: 1, wx:  4,  wz:  6,  emo: { longing: 0.7 }, eMag: 0.7, domEmo: 'longing',  voidScore: 0, echoWords: [] },
+      { id: 'sc3', order: 2, wx: -2,  wz:  12, emo: { fear: 0.5 },    eMag: 0.5, domEmo: 'fear',     voidScore: 0.33, echoWords: [] },
+      { id: 'sc4', order: 3, wx:  10, wz: -8,  emo: { joy: 0.4 },     eMag: 0.4, domEmo: 'joy',      voidScore: 0, echoWords: [] },
+    ],
+    cont: {
+      drift: 0.2, fixation: 0.1, divergence: 0.1, convergence: 0.2,
+      heterogeneity: 0.15, depth: 0.3, stage: 'stable',
+      stage1: 0.1, stage2: 0.05, stage3: 0,
+      dilution: 80,
+      driftDir: { v: 0.3, a: 0.5, d: 0 },
+      sensoryAnchor: null, alignMean: 0.5,
+      mismatch: { emotion: 0.1, attribution: 0.05, target: 0.05, void_m: 0, none: 0.8 },
+    },
+  }];
+}
+
+// ── terrain 초기화 ─────────────────────────────────────────────────
+const canvas = document.getElementById('strataCanvas');
+const terrain = window.TemAfStrataTerrain.createStrataTerrain(THREE, canvas, {
+  clearColor: 0x12121a,
+  fogColor:   0x12121a,
+  fogDensity: 0.005,
+});
+terrain.init();
+terrain.setP(makeMockP());
+terrain.buildTerrain(null);
+terrain.focusCameraOnSeed();
+
+const renderer = terrain.getRenderer();
+const scene3   = terrain.getScene();
+const camera   = terrain.getCamera();
+
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.35;
+
+// ── Ghost 3D 마커 (Three.js — 위치 추적용 투명 더미) ───────────────
+var ghostPos1 = new THREE.Vector3(-8, 3.0, -3);
+var ghostPos2 = new THREE.Vector3(4,  3.0,  6);
+
+// 위치 표시용 더미 mesh (invisible — 좌표 추적만)
+var dummyGeo = new THREE.SphereGeometry(0.1, 4, 4);
+var dummyMat = new THREE.MeshBasicMaterial({ visible: false });
+var dummy1 = new THREE.Mesh(dummyGeo, dummyMat);
+var dummy2 = new THREE.Mesh(dummyGeo, dummyMat);
+dummy1.position.copy(ghostPos1);
+dummy2.position.copy(ghostPos2);
+scene3.add(dummy1);
+scene3.add(dummy2);
+
+// iframe 생성
+var EMBED_URL = 'https://www.unicorn.studio/embed/zbNpJVXmsOAR5jQHrzMn';
+var iframe1 = createGhostIframe(EMBED_URL);
+var iframe2 = createGhostIframe(EMBED_URL);
+
+// ── iframe 위치 업데이트: 3D → screen 투영 ──────────────────────
+var _ndc = new THREE.Vector3();
+var _vp  = { w: window.innerWidth, h: window.innerHeight };
+window.addEventListener('resize', function() {
+  _vp.w = window.innerWidth; _vp.h = window.innerHeight;
+});
+
+function project3DToScreen(worldPos) {
+  _ndc.copy(worldPos).project(camera);
+  return {
+    x: (_ndc.x *  0.5 + 0.5) * _vp.w,
+    y: (_ndc.y * -0.5 + 0.5) * _vp.h,
+    z: _ndc.z,  // -1~1, 1이면 뒤에 있음
+  };
+}
+
+function updateGhostIframe(iframe, worldPos, baseSize) {
+  var sc = project3DToScreen(worldPos);
+  if (sc.z > 1.0) { iframe.style.display = 'none'; return; }
+  iframe.style.display = 'block';
+  // 거리에 따른 크기 (카메라에서 멀수록 작게)
+  var camDist = camera.position.distanceTo(worldPos);
+  var size = Math.max(40, Math.min(baseSize, baseSize * 8 / camDist));
+  iframe.style.left   = sc.x + 'px';
+  iframe.style.top    = sc.y + 'px';
+  iframe.style.width  = size + 'px';
+  iframe.style.height = (size * 1.8) + 'px';
+  // 거리에 따른 투명도
+  var fadeOpacity = Math.max(0.15, Math.min(0.95, 6 / camDist));
+  iframe.style.opacity = fadeOpacity;
+}
+
+// ── 루프 ──────────────────────────────────────────────────────────
+var startTime = performance.now();
+function loop() {
+  requestAnimationFrame(loop);
+  terrain.tick();
+  updateGhostIframe(iframe1, ghostPos1, 220);
+  updateGhostIframe(iframe2, ghostPos2, 160);
+
+  // debug
+  if (camera) {
+    document.getElementById('debug').textContent =
+      'cam: ' + camera.position.x.toFixed(1) + ' ' +
+                camera.position.y.toFixed(1) + ' ' +
+                camera.position.z.toFixed(1) +
+      '  ghost1: ' + ghost1.mesh.position.x.toFixed(1) + ' ' +
+                     ghost1.mesh.position.y.toFixed(1) + ' ' +
+                     ghost1.mesh.position.z.toFixed(1);
+  }
+}
+loop();
+
+// ── 1인칭 진입 ────────────────────────────────────────────────────
+function enterFP() {
+  if (terrain.enterFirstPerson) {
+    terrain.enterFirstPerson();
+    document.getElementById('enterBtn').style.display = 'none';
+    document.getElementById('hud').textContent = 'WASD 이동 · 마우스 시점 · ESC 종료';
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.code === 'Escape' && terrain.isFirstPerson && terrain.isFirstPerson()) {
+    terrain.exitFirstPerson();
+    document.getElementById('enterBtn').style.display = 'block';
+    document.getElementById('hud').textContent = 'GHOST BILLBOARD TEST · STRATA';
+  }
+});
+
+window.addEventListener('resize', function() { terrain.resize(); });
+
+</script>
+</body>
+</html>

@@ -6,6 +6,7 @@
  */
 
 import { NPC_DIALOGUES } from '../npc-dialogues.js';
+import { setLanguage } from '../lib/i18n.js';
 
 // === Module State ===
 let openingSkipped = false;
@@ -210,9 +211,10 @@ async function _handleOpeningSubmit(emotion, text) {
   // 180° 회전 후 문으로 전환 → archive.js 핑거 결과 재활용
   try {
     sessionStorage.setItem('tem_lang', _openingLang);
-    localStorage.setItem('tem_language', _openingLang);
     sessionStorage.setItem('tem_opening_prefilled', emotion ? `chip:${emotion}` : `text:${text || ''}`);
   } catch (_) {}
+  // i18n 캐시 재확인 (Start에서 했지만, 브라우저별 예외 대비 1회 더)
+  try { setLanguage(_openingLang); } catch (_) {}
 
   // openingScreen 180° rotateY + 페이드아웃. intro screen(메뉴)은 건너뜀.
   const openingScreen = document.getElementById('openingScreen');
@@ -244,8 +246,18 @@ async function _handleOpeningSubmit(emotion, text) {
     const threadCv = document.getElementById('finderThreadCanvas');
     if (threadCv && typeof threadCv._cleanup === 'function') threadCv._cleanup();
 
-    // 메모리 로드 정착 대기
-    await new Promise(r => setTimeout(r, 1500));
+    // 메모리 로드 완료 대기 (최대 8초 폴링, 최소 1500ms 시네마틱 호흡 유지)
+    // 기존 고정 1500ms 대기는 Supabase 응답이 늦을 때 matched=[] 반환 → 문 0개 렌더되던 버그 원인.
+    const waitStart = Date.now();
+    const MAX_WAIT = 8000;
+    const MIN_WAIT = 1500;
+    while (Date.now() - waitStart < MAX_WAIT) {
+      const all = (window.appStore && window.appStore.getState && window.appStore.getState().allMemoriesData) || [];
+      if (all.length > 0) break;
+      await new Promise(r => setTimeout(r, 150));
+    }
+    const elapsed = Date.now() - waitStart;
+    if (elapsed < MIN_WAIT) await new Promise(r => setTimeout(r, MIN_WAIT - elapsed));
 
     // 매칭 트리거 → 문 렌더
     if (emotion && typeof window._finderMatch === 'function') {
@@ -290,7 +302,8 @@ function _initOpeningLangGate() {
       const selected = gate.querySelector('.opening-lang-btn.selected');
       const lang = selected ? selected.dataset.lang : 'en';
       _openingLang = lang;
-      try { localStorage.setItem('tem_language', lang); } catch (_) {}
+      // i18n 캐시 + localStorage 동시 갱신 (getCurrentLanguage stale 방지)
+      try { setLanguage(lang); } catch (_) { try { localStorage.setItem('tem_language', lang); } catch (__) {} }
       console.log('[opening] Start clicked. lang =', lang);
       _runV2Sequence();
     });
