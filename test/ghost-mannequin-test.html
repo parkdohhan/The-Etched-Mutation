@@ -55,6 +55,10 @@ body { background:#0a0a0f; overflow:hidden; font-family:monospace; color:#c4a882
       <option value="xray">x-ray</option>
     </select>
   </label>
+  <label>rim glow <input id="rim" type="checkbox" checked></label>
+  <label>rim strength <input id="rimI" type="range" min="0" max="300" value="140"></label>
+  <label>rim sharpness <input id="rimP" type="range" min="10" max="80" value="28"></label>
+  <label>rim color <input id="rimC" type="color" value="#c4a882" style="width:60px;height:18px;padding:0;border:none;background:transparent;"></label>
   <label>model
     <select id="model">
       <option value="https://threejs.org/examples/models/gltf/Xbot.glb">Xbot (여성적)</option>
@@ -97,6 +101,10 @@ var modelEl = document.getElementById('model');
 var customUrlEl = document.getElementById('customUrl');
 var extraClipsEl = document.getElementById('extraClips');
 var reloadBtnEl = document.getElementById('reloadBtn');
+var rimEl = document.getElementById('rim');
+var rimIEl = document.getElementById('rimI');
+var rimPEl = document.getElementById('rimP');
+var rimCEl = document.getElementById('rimC');
 
 var scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a0f);
@@ -254,6 +262,48 @@ reloadBtnEl.addEventListener('click', triggerReload);
 // 초기 로드
 triggerReload();
 
+function hexToColor(hex){
+  var h = (hex || '#ffffff').replace('#','');
+  return new THREE.Color(parseInt(h, 16));
+}
+
+// Fresnel rim light 주입. onBeforeCompile로 Lambert 셰이더 확장 — 스키닝·morph 그대로.
+// 엣지(노말과 뷰 방향이 수직)에 추가 컬러 + 알파 증가.
+function injectRimGlow(mat){
+  var rimColor = hexToColor(rimCEl.value);
+  var rimPower = parseInt(rimPEl.value, 10) / 10;       // 1.0 ~ 8.0 (높을수록 얇은 엣지)
+  var rimIntensity = parseInt(rimIEl.value, 10) / 100;  // 0 ~ 3.0
+
+  mat.onBeforeCompile = function(shader){
+    shader.uniforms.uRimColor = { value: rimColor };
+    shader.uniforms.uRimPower = { value: rimPower };
+    shader.uniforms.uRimIntensity = { value: rimIntensity };
+
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>',
+        '#include <common>\nvarying vec3 vRimNormal;\nvarying vec3 vRimViewDir;')
+      .replace('#include <project_vertex>',
+        '#include <project_vertex>\n' +
+        'vec4 wPos = modelMatrix * vec4(transformed, 1.0);\n' +
+        'vRimNormal = normalize(mat3(modelMatrix) * objectNormal);\n' +
+        'vRimViewDir = normalize(cameraPosition - wPos.xyz);');
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>',
+        '#include <common>\n' +
+        'varying vec3 vRimNormal;\nvarying vec3 vRimViewDir;\n' +
+        'uniform vec3 uRimColor;\nuniform float uRimPower;\nuniform float uRimIntensity;')
+      .replace('#include <dithering_fragment>',
+        'float rim = 1.0 - max(dot(normalize(vRimNormal), normalize(vRimViewDir)), 0.0);\n' +
+        'rim = pow(rim, uRimPower) * uRimIntensity;\n' +
+        'gl_FragColor.rgb += uRimColor * rim;\n' +
+        'gl_FragColor.a = clamp(gl_FragColor.a + rim * 0.6, 0.0, 1.0);\n' +
+        '#include <dithering_fragment>');
+  };
+  // Three.js는 shader 변경 후에 material 재컴파일 필요
+  mat.needsUpdate = true;
+}
+
 function makeGreyMat(isSkinned){
   var g = parseInt(greyEl.value, 10);
   var o = parseInt(opaEl.value, 10) / 100;
@@ -270,6 +320,7 @@ function makeGreyMat(isSkinned){
     blending: mode === 'xray' ? THREE.AdditiveBlending : THREE.NormalBlending
   });
   if (isSkinned) { mat.skinning = true; mat.morphTargets = true; }
+  if (rimEl.checked) injectRimGlow(mat);
   return mat;
 }
 
@@ -352,6 +403,10 @@ function refreshMaterials(){
 opaEl.addEventListener('input', refreshMaterials);
 greyEl.addEventListener('input', refreshMaterials);
 modeEl.addEventListener('change', refreshMaterials);
+rimEl.addEventListener('change', refreshMaterials);
+rimIEl.addEventListener('input', refreshMaterials);
+rimPEl.addEventListener('input', refreshMaterials);
+rimCEl.addEventListener('input', refreshMaterials);
 cntEl.addEventListener('change', function(){
   rebuildGhosts(parseInt(cntEl.value, 10));
 });
