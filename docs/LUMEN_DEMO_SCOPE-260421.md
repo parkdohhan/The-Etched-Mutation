@@ -52,37 +52,41 @@
   - [x] `plays.spatial_trajectory` (JSONB)
   - [x] `plays.unreturned_flag` (boolean, partial index)
 
-### 작업 1 — 오프닝 흡수 연출 연결 [0.5 세션]
-- 입력 → 흡수 연출(`js/ui/Visualizer.js` `setWaveOverride` 기구 존재, 미연결) → AF 지형 진입
-- 진입 독백 2문장 유지: "여긴 어디지?" / "나갈 땐 저 문으로 나가면 되겠어"
-- 주: `play-test.html:4586-4632`에 exit door + 한국어 대사(`"나갈 땐, 저기로 나가는 게 좋겠어."`) 이미 존재. 이식 + 회귀 방지가 0.5 세션에 들어갈지 Sprint 1 착수 시 판단.
+### 작업 1 — 오프닝 흡수 연출 연결 [0.5 세션] — ✅ 완료 (2026-04-21)
+- [x] **입력 → 흡수 연출 → AF 지형 진입 (2026-04-21 완료)** — `_handleOpeningSubmit` 재배선: finder 우회 → 파동 freeze+탈채도(`ctx.filter=saturate`, time×speedMul) → confession.js `buildDoor` phase 1(열림 1200ms)·phase 2(빨려들어감 1600ms) 재사용 → `play-test.html?memory=X&lang=Y` 직이동 → 기존 `initFpPlay` → `rt.enterFirstPerson()`. top-1 기억은 `_pickTopMemoryForLumen`(archive.js, finder 스코어링 재사용).
+- [x] **진입 독백 2문장 유지 (2026-04-21 확인)** — `play-test.html:4576-4632`에 mono1("여긴 어디지?")·mono3("나갈 땐, 저기로 나가는 게 좋겠어.") 이미 존재. Lumen 흐름이 그대로 경유.
+- [x] **exit door 이식 (2026-04-21 확인)** — `play-test.html:4586-4632` 원본 코드 유지. 수정 불필요.
+- [x] **play-test 부팅 flash 보정 (2026-04-21 추가)** — `?memory` 감지 시 `#selectScreen` paint 전 숨김 + z-index 9998 검은 boot overlay(`_fpPlayActive` 전까지 유지).
 
-### 작업 3 — 걸음 연출 시스템 [1.5 세션]
-- 카메라 bob (진폭은 오염 depth 연결)
-- 헤드스웨이 (±1도 yaw 미세 진동)
-- 정지 breathing (주기 3~4초, 진폭 1cm)
-- 관성 (가속 0.3s, 감속 0.2s)
-- 스텝 사운드 (지형 오염 층별 3~5 샘플 로테이션)
+### 작업 3 — 걸음 연출 시스템 [1.5 세션] — ✅ 완료 (2026-04-21)
+
+**구현 경로**: 새 모듈 [js/ui/lumen_walk_effects.js](../js/ui/lumen_walk_effects.js). `runtime.tick` 이 `_fpTick` 직후 바로 render 까지 호출하므로 tick wrap 으로는 offset 이 그 프레임에 반영되지 않음 → **`renderer.render` wrap** 으로 전환하여 render 직전에 camera 수정. `_fpTick` / `_fpPos` / `_fpEuler` 건드리지 않음. play-test.html FP 진입 직후 `LumenTerrainAdapter` + `LumenWalkEffects` attach.
+
+- [x] **카메라 bob (2026-04-21)** — sin 기반 y-offset, 기본 8mm / freq 1.2Hz / `bobDepthGain 0.10` · `bobDepthCap 2.0` (depth 폭주 시 최대 16mm로 cap). 정지 시 0.
+- [x] **헤드스웨이 (2026-04-21)** — sin 기반 yaw offset, ±1° (0.01745 rad) / freq 0.6Hz (bob 의 절반). 움직임 중만.
+- [x] **정지 breathing (2026-04-21)** — sin 기반 y-offset, 1cm / freq 0.3Hz (~3.3초 주기). 정지 시만.
+- [x] **관성 (2026-04-21)** — 시각 x,z 지수 smoothing. accel tau 0.10s / decel tau 0.07s. 논리 `_fpPos`는 그대로, 시각만 lag. 스코프 "0.3s / 0.2s" 는 체감 목표 — exp smoothing time constant 는 그보다 작게 튜닝.
+- [x] **스텝 사운드 (2026-04-21)** — bob sin +→− zero-cross 시 WebAudio 합성(흙바닥: 320~460Hz lowpass noise + 180Hz low-shelf +3dB, 240ms decay). **고정 샘플 파일 미사용** — `sounds/footstep.mp3`(15초 ambient)는 겹침 버그로 폐기. 5-variant 로테이션(cutoff + playback rate). 이속 `_fpSpeed` 8→4.5 로 동시 하향. 실 샘플 분리(층별 3~5) 는 V2.
 
 ### 작업 3b — 시각 연출 레이어 [1 세션]
-- Fog 밀도 (FogExp2, 오염 depth 연결)
-- Vignette (오염 depth 연결)
-- Floating Anchor 거리 재튜닝
+- [ ] Fog 밀도 (FogExp2, 오염 depth 연결)
+- [ ] Vignette (오염 depth 연결)
+- [ ] Floating Anchor 거리 재튜닝
 
 ### 작업 3c — 청각 공간 레이어 [1.5 세션]
-- Positional audio (유령 whisper 방향성)
-- Noise floor (오염 depth 연결)
-- Depth drone (중심 근접도 연결)
+- [ ] Positional audio (유령 whisper 방향성)
+- [ ] Noise floor (오염 depth 연결)
+- [ ] Depth drone (중심 근접도 연결)
 
 ### 작업 4 — scene 잔상 공간 배치 [2 세션]
-- 기존 echo word floater 확장
-- 유령 응결 좌표에 잔상 텍스트 배치
-- VAD → 위치 매핑 검증
+- [ ] 기존 echo word floater 확장
+- [ ] 유령 응결 좌표에 잔상 텍스트 배치
+- [ ] VAD → 위치 매핑 검증
 
 ### 작업 11 — 미니맵 수정 [0.3 세션]
-- 유령 점: 전체 응결 좌표 표시 → **시선 교차로 마주친 유령만** 점 누적 표시
-- 출구: 들어온 문과 같은 위치에 고정 표시 (바깥 원 위)
-- 기존 미니맵 로직에 조건부 렌더 + 고정 점 추가
+- [ ] 유령 점: 전체 응결 좌표 표시 → **시선 교차로 마주친 유령만** 점 누적 표시
+- [ ] 출구: 들어온 문과 같은 위치에 고정 표시 (바깥 원 위)
+- [ ] 기존 미니맵 로직에 조건부 렌더 + 고정 점 추가
 
 ### 작업 7 — 메모리 큐레이션 [0.3 세션, 테스터 + 시범]
 
@@ -91,19 +95,17 @@
 - 이유: 작가가 매체 안에서 시뮬 보며 창작하는 게 품질 최고. 워크시트/SQL 왕복은 과정이 바깥에서 돎.
 
 **편지(E-004) = 테스터 확정** (2026-04-21).
-- Sprint 1 코드 테스트용. 이미 fills 완료 ([supabase/seeds/lumen_mem_E-004_fills.sql](../supabase/seeds/lumen_mem_E-004_fills.sql))
+- [x] **E-004 fills 완료 (2026-04-21)** — [supabase/seeds/lumen_mem_E-004_fills.sql](../supabase/seeds/lumen_mem_E-004_fills.sql), Sprint 1 코드 테스트용
 - Lumen 데모 제출용 스토리는 아님.
 
-**Lumen 데모 메모리 창작**:
-- 작가 스스로 작업 12-L 완성 후 **짬짬이** 작성 (Sprint 2 이후 일정에 속박되지 않음)
-- 3개 목표 유지 (이본 시연)
-- 언어 분배 기본값: 2 ko + 1 en
-- 감정 분산: AF 좌표 서로 다른 사분면
+**Lumen 데모 메모리 창작** (Sprint 2 이후 작가 페이스):
+- [ ] 3개 목표 유지 (이본 시연)
+- [ ] 언어 분배 기본값: 2 ko + 1 en
+- [ ] 감정 분산: AF 좌표 서로 다른 사분면
 
 **Sprint 2에 할당된 0.3 세션**:
-- Admin 저작기로 **시범 메모리 1개 작성** (기능 검증 + 워크플로 체감)
-- 응결점·시뮬 가시화 동작 확인
-- 실 창작은 이후 작가 페이스
+- [ ] Admin 저작기로 **시범 메모리 1개 작성** (기능 검증 + 워크플로 체감)
+- [ ] 응결점·시뮬 가시화 동작 확인
 
 **품질 기준** (레퍼런스):
 - 장면 7~10 (공간에 핀 풍부하도록)
@@ -117,20 +119,20 @@
 - [supabase/seeds/lumen_memory_template.sql](../supabase/seeds/lumen_memory_template.sql) — SQL 템플릿 (백업)
 
 ### 작업 2 — 귀환 구조 풀 [3.5 세션]
-- 2-A: 궤적 기록 (`_fpTrajectory.push`, 150ms 단위) + rewind 재생 [1]
-- 2-B: 색감 shift + 속도 ×1.5 + 유령 자세 변화 [1]
-- 2-C: 유령 말투 미세 변화 + 입력 파편 재셔플 [1]
-- 2-D: 귀환 전용 사건 2~3개 (입력 파편 공중 출몰 등) + 통합 [0.5]
+- [ ] 2-A: 궤적 기록 (`_fpTrajectory.push`, 150ms 단위) + rewind 재생 [1] — 어댑터의 `getTrajectory()` 활용
+- [ ] 2-B: 색감 shift + 속도 ×1.5 + 유령 자세 변화 [1]
+- [ ] 2-C: 유령 말투 미세 변화 + 입력 파편 재셔플 [1]
+- [ ] 2-D: 귀환 전용 사건 2~3개 (입력 파편 공중 출몰 등) + 통합 [0.5]
 
-### 작업 8 — Artist statement 계보 명시 [1 세션]
-- 3~4명 실명 레퍼런스 (본인이 실제 아는 작가만)
-- 후보: Lozano-Hemmer / Yoko Ono / 오수경 / 하차연 / Lynn Hershman Leeson / Ian Cheng
-- TEM을 어느 계보 교차점에 놓는지 선언
+### 작업 8 — Artist statement 계보 명시 [1 세션] — 🔄 진행 중
+- [ ] 3~4명 실명 레퍼런스 (본인이 실제 아는 작가만)
+  - 후보: Lozano-Hemmer / Yoko Ono / 오수경 / 하차연 / Lynn Hershman Leeson / Ian Cheng
+- [ ] TEM을 어느 계보 교차점에 놓는지 선언
 
 ### 작업 9 — 증거 패키지 [1.5 세션]
-- 스크린샷 4~10장 (시작 / 첫 유령 / 중간 / void / 귀환 / 종료)
-- 1~2분 데모 영상 (OBS 녹화, 간단 편집)
-- 짧은 프로젝트 설명 (Lumen 카테고리 맞춤)
+- [ ] 스크린샷 4~10장 (시작 / 첫 유령 / 중간 / void / 귀환 / 종료)
+- [ ] 1~2분 데모 영상 (OBS 녹화, 간단 편집)
+- [ ] 짧은 프로젝트 설명 (Lumen 카테고리 맞춤)
 
 ### 작업 12 — Admin 메모리 저작기 (L 티어) [2.2 세션]
 
@@ -147,50 +149,59 @@
 
 → **기존 폼에 섹션 추가**하는 방식이라 원래 3.0 세션 추정 과대. 재견적 2.2.
 
-#### 12-1. 메모리 수준 폼 확장 [0.4]
+#### 12-1. 메모리 수준 폼 확장 [0.4] ✅ **2026-04-21 완료**
 기존 폼 ([admin.html:55~170](../admin.html#L55-L170))에 섹션 끼워넣기:
-- `sensory_anchor` 섹션 (modality 라디오 + content input + weight 슬라이더)
-- `original_reason_vector` (AF) picker — 삼각형(attribution) + 사각형(core_fear) SVG 클릭
-- 오염 초기 상태 섹션: `cont_depth` 슬라이더 + `cont_divergence/convergence/heterogeneity` 3 슬라이더 + `cont_stage_1/2/3` trilinear (or 3 슬라이더 + 합=1 validation)
-- `terrain_shape` 드롭다운 (현재 'circular'만)
-- [admin.js:282](../js/admin.js#L282) `loadMemory()` 확장, [admin.js:1848](../js/admin.js#L1848) `saveMemory()` 확장
+- [x] `sensory_anchor` 섹션 (modality 라디오 + content input + weight 슬라이더)
+- [x] `original_reason_vector` (AF) — 3+4 슬라이더 + 합계 실시간 표시 + 정규화 버튼 (삼각/사각 SVG picker는 V2 폴리시로 이월)
+- [x] 오염 초기 상태 섹션: `cont_depth` range + `cont_divergence/convergence/heterogeneity` 3 슬라이더 + `cont_stage_1/2/3` 3 슬라이더 + 합=1 정규화
+- [x] `terrain_shape` 드롭다운 (현재 'circular'만)
+- [x] [admin.js:282](../js/admin.js#L282) `loadMemory()` 확장, [admin.js:1848](../js/admin.js#L1848) `saveMemory()` 확장
+- [x] [repo.js:108](../js/lib/repo.js#L108) `saveMemoryGraph` 페이로드 확장 (UPDATE/INSERT 양쪽 조건부 spread)
+- [x] 버그 fix: `sound_map` 컬럼 drop된 상태 대응 (조건부 포함)
+- [x] **DB 라운드트립 smoke 검증 (2026-04-21)** — [test/smoke_task_12_1.js](../test/smoke_task_12_1.js), ALL 13 checks PASS + sound_map 잔존 참조 없음 확인
 
 #### 12-2. 씬 수준 폼 확장 [0.2]
-- `original_reason_vector` 씬별 AF picker (작은 버전) — 현재 씬 수준엔 없음
+- [ ] `original_reason_vector` 씬별 AF picker (작은 버전) — 현재 씬 수준엔 없음
 - 나머지(VOID/잔향/Original Emotion 매핑/text_stage_2)는 기존 UI 그대로
 
 #### 12-3. 응결점 편집 [0.4]
-- 원형 지형 SVG (R=56) overlay — 신규
-- `ghost_condensation_points` 드래그 편집 (추가/삭제 + threshold 슬라이더)
-- 씬 pin 자동 배치 (VAD 투영) 참조 표시
-- Canvas 탭 내 서브뷰 or 새 탭
+- [ ] 원형 지형 SVG (R=56) overlay — 신규
+- [ ] `ghost_condensation_points` 드래그 편집 (추가/삭제 + threshold 슬라이더)
+- [ ] 씬 pin 자동 배치 (VAD 투영) 참조 표시
+- [ ] Canvas 탭 내 서브뷰 or 새 탭
 
 #### 12-4. 분기 시뮬·가시화 [1.0]
-- 가상 관객 감정 입력기 (6-dim 슬라이더 or 프리셋 페르소나 로드)
-- 매 씬마다 **alignment·level·shape·transition_pattern** 실시간 계산·표시
-- SceneNavigator 호출하여 **다음에 열릴 후보 씬** 하이라이트
-- 비교 모드: 가상 관객 2명 감정을 다르게 주입하여 궤적이 어떻게 갈라지는지 side-by-side
-- 기존 [admin-trajectory.js](../js/admin-trajectory.js) 페르소나 재생 로직 확장
+- [ ] 가상 관객 감정 입력기 (6-dim 슬라이더 or 프리셋 페르소나 로드)
+- [ ] 매 씬마다 **alignment·level·shape·transition_pattern** 실시간 계산·표시
+- [ ] SceneNavigator 호출하여 **다음에 열릴 후보 씬** 하이라이트
+- [ ] 비교 모드: 가상 관객 2명 감정을 다르게 주입하여 궤적이 어떻게 갈라지는지 side-by-side
+- [ ] 기존 [admin-trajectory.js](../js/admin-trajectory.js) 페르소나 재생 로직 확장
 
 #### 12-5. 마감 [0.2]
-- 스타일 일관성 (기존 admin 패턴 따름)
-- 저장 안정성 (실수 방지 확인 다이얼로그)
-- 에러 처리 최소선
+- [ ] 스타일 일관성 (기존 admin 패턴 따름)
+- [ ] 저장 안정성 (실수 방지 확인 다이얼로그)
+- [ ] 에러 처리 최소선
 
 **V2 이월 (L에 포함 안 됨)**: `original_vector` 17-dim 확장, 동심원 overlay·layer_radii 슬라이더·center_void 위치 지정·색상 테마 프리셋.
 
-### 작업 13 — Play entry 감정진입점 motif 매칭 [0.5 세션]
+### 작업 13 — Play entry 감정진입점 motif 매칭 [0.5 세션] — ✅ 완료 (2026-04-21)
 - 목적: motif_tags를 Play entry 매칭 신호로 활성화. 관객 입력 키워드가 특정 motif와 겹치면 해당 메모리 우선순위 ↑. motif_tags가 "죽은 작가 메모"에서 "감정진입 인덱스"로 재정의.
-- `supabase/functions/claude-scene` `play_entry_match` 프롬프트에 각 메모리의 `meta.motif_tags` 포함하여 전달
-- memories 쿼리 selector에 `meta->'motif_tags'` 포함
-- 유사도 공식: `cosine(emotion) + α × |motif ∩ userKeywords|` (α 초기값 0.15, 튜닝)
-- Sprint 2에 배치
+- [x] **motif_tags 위치 확정 (2026-04-21)** — `scenes.meta.motif_tags`(현행) + `memories.meta.motif_tags`(미래 확장) 둘 다 aggregate. 현 템플릿은 scene-level이므로 메모리의 모든 scene motif_tags 합집합으로 해석.
+- [x] **memories 쿼리 selector (2026-04-21)** — no-op 확인. [js/services/NetworkService.js:37](../js/services/NetworkService.js#L37) `.select('*')` + scenes full fetch 이미 `meta` 포함. 쿼리 수정 불필요.
+- [x] **유사도 보너스 구현 (2026-04-21)** — [js/app/archive.js](../js/app/archive.js)
+  - `_collectMotifTags(memory)` — 메모리 레벨 + scene 레벨 motif_tags를 Set으로 합침 (lowercase 정규화)
+  - `_motifBonus(queryLower, memory)` — 한국어 agglutinative 특성 대응으로 substring 매칭 (`query.includes(motif)` hit count)
+  - α 상수 `_MOTIF_ALPHA = 0.15` — 튜닝 용이하게 module-top 노출
+  - 적용 경로: `_finderMatchByText`, `_pickTopMemoryForLumen` text branch. chip-only `_finderMatch`는 입력 텍스트 없음 → 적용 안 함.
+- [x] **아키텍처 편차 기록 (2026-04-21)** — 원문은 `supabase/functions/claude-scene` `play_entry_match` 프롬프트 확장을 명시했으나, 실제 아키텍처는 100% 클라이언트측 매칭 ([archive.js:_finderMatchByText](../js/app/archive.js)). claude-scene에 `play_entry_match` 타입 부재. LLM 라운드트립은 오프닝 UX 지연을 낳아 회피 — 클라이언트 구현으로 대체. 유사도 공식(cosine + α×intersection)은 동일.
+- Sprint 2에 배치 → **Sprint 0 조기 완료** (작업 0 병행 중 자투리 0.5 세션 소화)
 
 ### 작업 10 — 파일럿 n=5~7 [별도, 5-09~13]
-- 5월 초 대상자 확정, 5-09~13 실시
-- 관찰 항목: 첫 30초 개념 감지, 튜토리얼 탐색 여부, void 체류, 귀환 후 자유 응답
-- 조작적 정의는 5-07 외부 시연 전에 별도 체크리스트 md로 확정 (사후 cherry pick 방지)
-- 결과는 작업 8·9에 반영
+- [ ] 5월 초 대상자 확정
+- [ ] 5-09~13 실시
+- [ ] 조작적 정의는 5-07 외부 시연 전에 별도 체크리스트 md로 확정 (사후 cherry pick 방지)
+- [ ] 결과는 작업 8·9에 반영
+- 관찰 항목 (참고): 첫 30초 개념 감지, 튜토리얼 탐색 여부, void 체류, 귀환 후 자유 응답
 
 ---
 

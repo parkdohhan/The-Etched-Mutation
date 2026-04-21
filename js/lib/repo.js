@@ -124,10 +124,10 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 author_note: author_note || null,
                 status: status || 'Fetus',
                 source: source || 'beginner',
-                sound_map: sound_map || null,
                 layers: 0,
                 dilution: 100,
                 is_public: true,
+                ...(sound_map ? { sound_map } : {}),
                 ...(sensory_anchor !== undefined ? { sensory_anchor } : {}),
                 ...(body_response ? { body_response } : {}),
                 ...(self_questions ? { self_questions } : {}),
@@ -182,7 +182,6 @@ export async function saveMemoryGraph(client, memoryPayload) {
             author_note: author_note || null,
             status: status || 'Fetus',
             source: source || 'beginner',
-            sound_map: sound_map || null,
             layers: 0,
             dilution: 100,
             is_public: true
@@ -192,6 +191,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
             insertPayload.curator_id = curator_id;
         }
  // V3 메타data add
+        if (sound_map) insertPayload.sound_map = sound_map;
         if (sensory_anchor) insertPayload.sensory_anchor = sensory_anchor;
         if (body_response) insertPayload.body_response = body_response;
         if (self_questions) insertPayload.self_questions = self_questions;

@@ -365,6 +365,43 @@ function _extractBaselineFromText(query) {
   return vec;
 }
 
+// 작업 13: motif_tags를 Play entry 매칭 시그널로 활성화 (SCOPE §4)
+// motif는 scene 레벨에 있음 (meta.motif_tags). 메모리 레벨 메타에도 있으면 합산.
+// α 초기값 0.15. SCOPE 표기: cosine(emotion) + α × |motif ∩ userKeywords|
+const _MOTIF_ALPHA = 0.15;
+
+function _collectMotifTags(memory) {
+  const set = new Set();
+  const addArr = (arr) => {
+    if (Array.isArray(arr)) {
+      arr.forEach(t => {
+        if (typeof t === 'string' && t.trim()) set.add(t.trim().toLowerCase());
+      });
+    }
+  };
+  // memory 레벨 (미래 확장 대비)
+  addArr(memory && memory.meta && memory.meta.motif_tags);
+  // scene 레벨 (Lumen 저작 템플릿에서 실제 사용 위치)
+  const scenes = (memory && memory.scenes) || [];
+  for (const sc of scenes) {
+    addArr(sc && sc.meta && sc.meta.motif_tags);
+  }
+  return set;
+}
+
+function _motifBonus(queryLower, memory) {
+  if (!queryLower) return 0;
+  const motifs = _collectMotifTags(memory);
+  if (motifs.size === 0) return 0;
+  // Korean은 agglutinative라 토큰 분리 대신 substring 매칭.
+  // "엄마가 보고싶어" ⊃ motif "엄마" → hit.
+  let hits = 0;
+  for (const m of motifs) {
+    if (queryLower.includes(m)) hits++;
+  }
+  return _MOTIF_ALPHA * hits;
+}
+
 function _finderMatch(emotion, lang) {
   _saveBaselineEmotion({ [emotion]: 1.0 });
   const all = appStore.getState().allMemoriesData || [];
@@ -434,6 +471,7 @@ function _finderMatchByText(query, lang) {
         if (emo === 'guilt' && vec) score += (vec.shame || 0) * 0.6;
       }
     }
+    score += _motifBonus(lower, m);   // 작업 13: motif_tags 교차 보너스
     return { memory: m, score };
   }).filter(s => s.score > 0).sort((a, b) => b.score - a.score);
 
@@ -495,6 +533,7 @@ function _pickTopMemoryForLumen(emotion, text, lang) {
           if (emo === 'guilt' && vec) score += (vec.shame || 0) * 0.6;
         }
       }
+      score += _motifBonus(lower, m);   // 작업 13: motif_tags 교차 보너스
       return { memory: m, score };
     });
   }

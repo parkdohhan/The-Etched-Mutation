@@ -10,9 +10,43 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Lumen 오프닝 직진입: ?memory= 또는 sessionStorage에 id가 있으면 selectScreen flash 방지 + 검은 부팅 overlay -->
+  <script>
+  (function () {
+    var hasMem = false;
+    try {
+      var p = new URLSearchParams(location.search);
+      hasMem = !!p.get('memory') ||
+        !!(sessionStorage && (sessionStorage.getItem('tem_archive_memory_id') || sessionStorage.getItem('demoMemoryId')));
+    } catch (_) {}
+    if (!hasMem) return;
+    var s = document.createElement('style');
+    s.textContent = '#selectScreen{display:none!important}';
+    document.head.appendChild(s);
+    function attachOverlay() {
+      if (document.getElementById('lumenBootOverlay')) return;
+      var o = document.createElement('div');
+      o.id = 'lumenBootOverlay';
+      o.style.cssText = 'position:fixed;inset:0;z-index:9998;background:#050505;pointer-events:none;transition:opacity 0.5s ease;';
+      (document.body || document.documentElement).appendChild(o);
+      var t0 = Date.now();
+      var iv = setInterval(function () {
+        if (window._fpPlayActive || Date.now() - t0 > 15000) {
+          clearInterval(iv);
+          o.style.opacity = '0';
+          setTimeout(function () { if (o.parentNode) o.parentNode.removeChild(o); }, 500);
+        }
+      }, 100);
+    }
+    if (document.body) attachOverlay();
+    else document.addEventListener('DOMContentLoaded', attachOverlay);
+  })();
+  </script>
   <script src="/data/memories.js"></script>
   <script src="js/contamination.js"></script>
   <script src="js/shared/tem_af_strata_terrain.js"></script>
+  <script src="js/ui/lumen_terrain_adapter.js"></script>
+  <script src="js/ui/lumen_walk_effects.js"></script>
   <script src="js/ui/strataSection.js"></script>
   <script src="js/ui/floatingAnchor.js"></script>
   <style>
@@ -4506,6 +4540,25 @@
           }
 
           rt.enterFirstPerson();
+
+          // Lumen 어댑터 attach — terrain adapter(궤적/void) + walk effects(bob/sway/breath/inertia/step)
+          // 둘 다 runtime.tick 을 wrap 하므로 enterFirstPerson 후 호출해도 idempotent.
+          try {
+            if (window.LumenTerrainAdapter && typeof window.LumenTerrainAdapter.attach === 'function') {
+              window.LumenTerrainAdapter.attach(rt, {
+                getContamination: function () {
+                  try { return (window._temGame && window._temGame.contState) || null; } catch (_) { return null; }
+                }
+              });
+            }
+            if (window.LumenWalkEffects && typeof window.LumenWalkEffects.attach === 'function') {
+              window.LumenWalkEffects.attach(rt, {
+                contaminationDepthProvider: function () {
+                  try { return (window._temGame && window._temGame.contState && window._temGame.contState.cont_depth) || 0; } catch (_) { return 0; }
+                }
+              });
+            }
+          } catch (e) { console.warn('[Lumen] adapter attach failed', e); }
 
           // Wider FOV for play
           if (cam) { cam.fov = 90; cam.updateProjectionMatrix(); }

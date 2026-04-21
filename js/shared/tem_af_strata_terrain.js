@@ -1130,7 +1130,7 @@
     var _fpKeys = {};
     var _fpEuler = { yaw: 0, pitch: 0 };
     var _fpEyeHeight = 1.6;
-    var _fpSpeed = 8;
+    var _fpSpeed = 4.5;
     var _fpPos = { x: 0, z: 0 };
     var _fpVelocityY = 0;
     var _fpJumpHeight = 0;
