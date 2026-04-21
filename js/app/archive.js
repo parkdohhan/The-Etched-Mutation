@@ -446,6 +446,65 @@ function _finderMatchByText(query, lang) {
   _showFinderResults(matched, lang);
 }
 
+// Lumen 오프닝 전용: finder UI 우회, top 1 기억만 선정. 점수 공식은 _finderMatch/_finderMatchByText와 동일.
+function _pickTopMemoryForLumen(emotion, text, lang) {
+  const all = appStore.getState().allMemoriesData || [];
+  const preferKo = lang === 'ko';
+  const memories = all.filter(m => _isMemoryKorean(m) === preferKo);
+  if (memories.length === 0) return null;
+
+  let scored;
+  if (emotion) {
+    _saveBaselineEmotion({ [emotion]: 1.0 });
+    scored = memories.map(m => {
+      let score = 0;
+      const vec = _getMemoryEmotionVector(m);
+      if (vec) {
+        score = vec[emotion] || 0;
+        if (emotion === 'sadness') score = Math.max(score, vec.grief || 0, vec.numbness || 0);
+        if (emotion === 'fear') score = Math.max(score, vec.anxiety || 0);
+        if (emotion === 'guilt') score = Math.max(score, vec.shame || 0);
+      }
+      const t = (m.title || '') + ' ' + (m.completed_sentence || '');
+      if (t.toLowerCase().includes(emotion)) score += 0.3;
+      return { memory: m, score };
+    });
+  } else {
+    const query = text || '';
+    _saveBaselineEmotion(_extractBaselineFromText(query));
+    const lower = query.toLowerCase();
+    const emotionWords = {
+      sadness: ['슬', '울', 'sad', 'cry', '아프', '힘들'],
+      anger: ['화', '분노', 'angry', 'rage', '짜증'],
+      fear: ['무서', '두려', 'fear', 'afraid', '불안'],
+      longing: ['그리', '보고싶', 'miss', 'long', '그립'],
+      guilt: ['미안', '죄책', 'sorry', 'guilt', '후회'],
+      joy: ['기쁨', '행복', 'happy', 'joy', '좋'],
+    };
+    scored = memories.map(m => {
+      const t = ((m.title || '') + ' ' + (m.completed_sentence || '')).toLowerCase();
+      let score = 0;
+      lower.split(/\s+/).forEach(word => {
+        if (word.length >= 2 && t.includes(word)) score += 1;
+      });
+      const vec = _getMemoryEmotionVector(m);
+      for (const [emo, keywords] of Object.entries(emotionWords)) {
+        if (keywords.some(kw => lower.includes(kw))) {
+          if (vec && vec[emo]) score += vec[emo];
+          if (emo === 'sadness' && vec) score += (vec.grief || 0) * 0.8;
+          if (emo === 'guilt' && vec) score += (vec.shame || 0) * 0.6;
+        }
+      }
+      return { memory: m, score };
+    });
+  }
+
+  const positive = scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
+  if (positive.length > 0) return positive[0].memory;
+  // fallback: 언어풀 랜덤 1
+  return memories[Math.floor(Math.random() * memories.length)];
+}
+
 let _finderFloatId = null;
 let _finderWords = [];
 
@@ -2016,4 +2075,5 @@ export {
     // v2: 오프닝 시퀀스에서 호출
     _finderMatch,
     _finderMatchByText,
+    _pickTopMemoryForLumen,
 };

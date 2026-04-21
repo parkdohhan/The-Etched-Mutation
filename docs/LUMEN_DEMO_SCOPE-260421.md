@@ -38,15 +38,19 @@
 
 ## 4. 남은 작업 (13 세션)
 
-### 작업 0 — 어댑터 + DB 마이그레이션 [2 세션]
-- `js/ui/lumen_terrain_adapter.js` 신규
-- 기존 `enterFirstPerson`, `_fpTick`, `gH`, `buildMemoryItems`, `computeAfTerrainFields` **수정 금지**, 어댑터로만 확장
-- 궤적 push, onEnterVoid 이벤트, exitFirstPerson 오버라이드
-- DB 마이그레이션:
-  - `memories.terrain_shape` (enum: circular)
-  - `memories.ghost_condensation_points` (JSON) ⚠️ **DB 컬럼 vs JS 상수 결정 보류** — 아래 "결정 보류" 절 참조
-  - `plays.spatial_trajectory` (JSONB)
-  - `plays.unreturned_flag` (boolean)
+### 작업 0 — 어댑터 + DB 마이그레이션 [2 세션] — ✅ 완료 (2026-04-21)
+- [x] **`js/ui/lumen_terrain_adapter.js` 신규 (2026-04-21 완료)** — IIFE + `window.LumenTerrainAdapter.attach(runtime, opts)` API
+- [x] **수정 금지 함수 원칙 유지 (2026-04-21)** — 원본 한 글자도 수정 X. `runtime.tick` / `enterFirstPerson` / `exitFirstPerson`만 wrap. `gH` / `buildMemoryItems` / `computeAfTerrainFields`는 건드리지 않음.
+- [x] **궤적 push + onEnterVoid 이벤트 + exitFirstPerson 오버라이드 (2026-04-21 완료)**
+  - 궤적: 150ms 간격 `{t, x, z, h, yaw}` push (옵션 `includeContamination` 시 `cont` 포함)
+  - 이벤트 API: `on('enterVoid' | 'exitVoid' | 'sample' | 'enter' | 'exit', fn)` — void 반경은 기본 0.1R (5.6 유닛)
+  - exit payload: `{ trajectory, voidEntered, duration, samples }` — 호출자가 `plays.spatial_trajectory` / `unreturned_flag`로 저장
+  - SCOPE §1 준수: 오염→이동 커플링 없음. `getContamination` 콜백은 라벨링용.
+- [x] **DB 마이그레이션 (2026-04-21 완료)** — `supabase/migrations/20260421000000_lumen_spatial_columns.sql`
+  - [x] `memories.terrain_shape` (enum: circular) + CHECK 제약
+  - [x] `memories.ghost_condensation_points` (JSONB, array 타입 CHECK) — A-2 결정(§9-1) 반영
+  - [x] `plays.spatial_trajectory` (JSONB)
+  - [x] `plays.unreturned_flag` (boolean, partial index)
 
 ### 작업 1 — 오프닝 흡수 연출 연결 [0.5 세션]
 - 입력 → 흡수 연출(`js/ui/Visualizer.js` `setWaveOverride` 기구 존재, 미연결) → AF 지형 진입
@@ -80,34 +84,37 @@
 - 출구: 들어온 문과 같은 위치에 고정 표시 (바깥 원 위)
 - 기존 미니맵 로직에 조건부 렌더 + 고정 점 추가
 
-### 작업 7 — 메모리 3개 SQL 직접 작성 + 큐레이션 [2 세션, 분할]
-- **접근 방식: SQL 직접 INSERT** (2026-04-21 결정). RECORD 흐름 사용 안 함. 이유: Lumen 관객은 RECORD 메뉴를 체험하지 않음(흡수됨). RECORD는 Lumen 심사 대상이 아니므로 이를 작가 저작 도구로 쓸 이유가 없다.
-- **선결: SQL 템플릿 1회 작성 + 연출 체크리스트** [0.5 세션 1회성 비용]
-  - `supabase/seeds/lumen_memory_template.sql` 신규
-  - `docs/lumen_memory_authoring_checklist-260421.md` 신규 — 연출 레버 전수 열거
-  - **원칙: 연출 가능 레버 전수 기입** (기본값 위임 금지). 아래 레버 전부 계산·명시:
-    - **memories**: `title`·`lang`·`completed_sentence`·`sensory_anchor`·`original_vector`·`original_reason_vector`·`memory_words`·`cont_depth` 초기값·`cont_divergence/convergence/heterogeneity` 초기값·`cont_stage_1/2/3`·`terrain_shape='circular'`
-    - **scenes**: `scene_order`·`text`·`scene_type`·`original_emotion`·`original_reason_vector`·`anchor_emotions`·`void_info`·`text_stage_1/2/3`(top-level 컬럼, pre-gen)·`meta.scene_code`·`meta.sound_url`·`meta.sound_volume`·`meta.sound_radius`·`meta.echo_words`·`meta.motif_tags`
-    - 제외(2026-04-21 결정): `vector_weight`(READ 경로 없음, 감정 강도는 `original_emotion`에 직접 반영), `meta.author_bridges`(표출 기능 미구현, Lumen 스코프에 추가 안 함)
-    - **choices**: `choice_order`·`text`·`emotion`·`intensity`
-    - **plays** (Record=First Play, 1개/장면): `user_emotion`=`original_emotion`·`alignment`=1.0
-  - 레거시 회피: `sound_map`/`cont_drift`/`cont_fixation`/`cont_stage` 채우지 말 것.
-  - 차원 일관성: `original_vector` 17-dim 또는 6-dim 중 하나로 고정. 섞지 말 것.
-- **기억 1개당 작성 시간**: 30~45분 (장면 3~5 + 필드 계산 + INSERT + admin에서 시각 확인).
-- 언어 분배 기본값: **2 ko + 1 en** (한국어 파일럿 + 영어 심사자 커버). 역도 가능 — 작성 착수 전 최종 확정.
-- **분할 실행**:
-  - Week 0 (4-21~22, 일본): **SQL 템플릿 + 메모리 2개 (1 ko + 1 en)** [1.3 세션]
-    - Sprint 1 코드가 실제 메모리 데이터로 테스트 가능
-    - "조용한 공간 + 인터넷"만 필요 — 코드 환경 불필요
-  - Sprint 2 (4-28~30): **잔여 메모리 1개 + 큐레이션** [0.7 세션]
-    - 응결점 좌표·임계값 (작업 12 Admin UI로 편집)
-- 품질 기준:
-  - 장면 3~5개
-  - PII 없음, 안전 트리거 단어 없음
-  - Lumen 심사자 3~5분 체험 분량
-  - 작가가 파일럿 n=5~7 반복 재생해도 버틸 감정 톤
-- 감정 클러스터링 방지: 3개의 `original_vector`·AF 좌표가 충분히 분산되도록 의식 (이본 시연의 근거).
-- **감수**: SQL로 쓰면 RECORD Phase A의 "감각에서 출발"하는 생성 과정이 결여됨. 장면 텍스트가 저작된 느낌이 될 수 있음 — 이건 수용함.
+### 작업 7 — 메모리 큐레이션 [0.3 세션, 테스터 + 시범]
+
+**2026-04-21 확정**: 접근 방식 3차 변경.
+- (1차) RECORD 흐름 → (2차) SQL 직접 INSERT → **(3차) Admin UI 저작 (작업 12-L 사용)**
+- 이유: 작가가 매체 안에서 시뮬 보며 창작하는 게 품질 최고. 워크시트/SQL 왕복은 과정이 바깥에서 돎.
+
+**편지(E-004) = 테스터 확정** (2026-04-21).
+- Sprint 1 코드 테스트용. 이미 fills 완료 ([supabase/seeds/lumen_mem_E-004_fills.sql](../supabase/seeds/lumen_mem_E-004_fills.sql))
+- Lumen 데모 제출용 스토리는 아님.
+
+**Lumen 데모 메모리 창작**:
+- 작가 스스로 작업 12-L 완성 후 **짬짬이** 작성 (Sprint 2 이후 일정에 속박되지 않음)
+- 3개 목표 유지 (이본 시연)
+- 언어 분배 기본값: 2 ko + 1 en
+- 감정 분산: AF 좌표 서로 다른 사분면
+
+**Sprint 2에 할당된 0.3 세션**:
+- Admin 저작기로 **시범 메모리 1개 작성** (기능 검증 + 워크플로 체감)
+- 응결점·시뮬 가시화 동작 확인
+- 실 창작은 이후 작가 페이스
+
+**품질 기준** (레퍼런스):
+- 장면 7~10 (공간에 핀 풍부하도록)
+- `text_stage_2`만 작성 (β 접근)
+- PII/안전 트리거 회피
+- 파일럿 n=5~7 반복 재생 견딜 감정 톤
+
+**관련 문서**:
+- [docs/lumen_memory_story_worksheet-260421.md](lumen_memory_story_worksheet-260421.md) — 워크시트 (Admin UI 실패 시 백업 경로)
+- [docs/lumen_memory_authoring_checklist-260421.md](lumen_memory_authoring_checklist-260421.md) — 레버 레퍼런스
+- [supabase/seeds/lumen_memory_template.sql](../supabase/seeds/lumen_memory_template.sql) — SQL 템플릿 (백업)
 
 ### 작업 2 — 귀환 구조 풀 [3.5 세션]
 - 2-A: 궤적 기록 (`_fpTrajectory.push`, 150ms 단위) + rewind 재생 [1]
@@ -125,12 +132,52 @@
 - 1~2분 데모 영상 (OBS 녹화, 간단 편집)
 - 짧은 프로젝트 설명 (Lumen 카테고리 맞춤)
 
-### 작업 12 — Admin 응결점 튠 UI [0.8 세션]
-- `admin.html` 내 탭 추가 or 기존 Canvas 탭에 subview
-- 기억 선택 → 원형 지형 SVG 위에 응결점 드래그 편집
-- 필드: `x`, `z`, `pollution_threshold`
-- 저장: `memories.ghost_condensation_points` JSON 업데이트
-- 범위 축소: 동심원 overlay·layer_radii·center_void 좌표는 V2 유지. 이 작업은 **응결점 CRUD + 임계값만**.
+### 작업 12 — Admin 메모리 저작기 (L 티어) [2.2 세션]
+
+**2026-04-21 확정**: 워크시트·SQL 직접 작성 → **Admin UI 통합 저작**으로 전환. 이유: 작가가 시뮬 돌려보며 감정 입력·궤적·패턴 실시간 확인하면서 창작. 피드백 루프 단축 → 메모리 품질 상승.
+
+**기존 인프라 확인** (2026-04-21 재조사):
+- `+ 새 메모리 추가` 버튼 + `addNewMemory()` 존재 ([admin.html:55](../admin.html#L55), [admin.js:234](../js/admin.js#L234))
+- 메타 입력(title·code·memory_words·completed_sentence·author_note) ✅
+- `original_vector` 6-dim 슬라이더 ✅ (17-dim 확장은 V2)
+- 씬 CRUD + scene_type + 본문 + text_stage_2 에디터 ✅
+- VOID 토글 4 + voidLevel + 잔향 단어 input + Original Emotion 매핑 ✅
+- admin-trajectory 페르소나 재생 ✅
+- 저장 로직 `saveMemory()` ✅
+
+→ **기존 폼에 섹션 추가**하는 방식이라 원래 3.0 세션 추정 과대. 재견적 2.2.
+
+#### 12-1. 메모리 수준 폼 확장 [0.4]
+기존 폼 ([admin.html:55~170](../admin.html#L55-L170))에 섹션 끼워넣기:
+- `sensory_anchor` 섹션 (modality 라디오 + content input + weight 슬라이더)
+- `original_reason_vector` (AF) picker — 삼각형(attribution) + 사각형(core_fear) SVG 클릭
+- 오염 초기 상태 섹션: `cont_depth` 슬라이더 + `cont_divergence/convergence/heterogeneity` 3 슬라이더 + `cont_stage_1/2/3` trilinear (or 3 슬라이더 + 합=1 validation)
+- `terrain_shape` 드롭다운 (현재 'circular'만)
+- [admin.js:282](../js/admin.js#L282) `loadMemory()` 확장, [admin.js:1848](../js/admin.js#L1848) `saveMemory()` 확장
+
+#### 12-2. 씬 수준 폼 확장 [0.2]
+- `original_reason_vector` 씬별 AF picker (작은 버전) — 현재 씬 수준엔 없음
+- 나머지(VOID/잔향/Original Emotion 매핑/text_stage_2)는 기존 UI 그대로
+
+#### 12-3. 응결점 편집 [0.4]
+- 원형 지형 SVG (R=56) overlay — 신규
+- `ghost_condensation_points` 드래그 편집 (추가/삭제 + threshold 슬라이더)
+- 씬 pin 자동 배치 (VAD 투영) 참조 표시
+- Canvas 탭 내 서브뷰 or 새 탭
+
+#### 12-4. 분기 시뮬·가시화 [1.0]
+- 가상 관객 감정 입력기 (6-dim 슬라이더 or 프리셋 페르소나 로드)
+- 매 씬마다 **alignment·level·shape·transition_pattern** 실시간 계산·표시
+- SceneNavigator 호출하여 **다음에 열릴 후보 씬** 하이라이트
+- 비교 모드: 가상 관객 2명 감정을 다르게 주입하여 궤적이 어떻게 갈라지는지 side-by-side
+- 기존 [admin-trajectory.js](../js/admin-trajectory.js) 페르소나 재생 로직 확장
+
+#### 12-5. 마감 [0.2]
+- 스타일 일관성 (기존 admin 패턴 따름)
+- 저장 안정성 (실수 방지 확인 다이얼로그)
+- 에러 처리 최소선
+
+**V2 이월 (L에 포함 안 됨)**: `original_vector` 17-dim 확장, 동심원 overlay·layer_radii 슬라이더·center_void 위치 지정·색상 테마 프리셋.
 
 ### 작업 13 — Play entry 감정진입점 motif 매칭 [0.5 세션]
 - 목적: motif_tags를 Play entry 매칭 신호로 활성화. 관객 입력 키워드가 특정 motif와 겹치면 해당 메모리 우선순위 ↑. motif_tags가 "죽은 작가 메모"에서 "감정진입 인덱스"로 재정의.
@@ -187,11 +234,11 @@ computeAfTerrainFields
 
 | 구간 | 기간 | 내용 | 세션 |
 |---|---|---|---|
-| Week 0 (일본) | 4-21~22 | 문서 · DB SQL · Record 2개 (ko+en) · 귀환 컴포넌트 정의 | 2.1 |
+| Week 0 (일본) | 4-21~22 | 문서 · DB SQL · 편지 fills · 귀환 컴포넌트 정의 | 1.3 (실제 1일에 ~완료) |
 | 귀국/시차 | 4-23 | 휴식 | — |
 | Sprint 1 | 4-24~26 | 작업 0 + 3 + 3b + 3c + 11 | 6.3 |
 | 통합일 | 4-27 | 본인 한 바퀴 + 버그 리스트 (코드 금지) | — |
-| Sprint 2 | 4-28~30 | 작업 1 + 4 + 7(잔여 1 + 큐레이션) + 12 + 13 | 4.5 |
+| Sprint 2 | 4-28~30 | 작업 1 + 4 + 7(시범) + 12-L + 13 | 5.5 |
 | 통합일 | 5-01 | 메모리 1개 풀 사이클 체험 (귀환 빼고) | — |
 | Sprint 3 | 5-02~05 | 작업 2 (귀환 풀) | 3.5 |
 | 통합일 | 5-06 | 귀환 포함 풀 사이클 체험 | — |
@@ -200,7 +247,7 @@ computeAfTerrainFields
 | Sprint 4 | 5-14~16 | 작업 8 + 9 | 2.5 |
 | 버퍼 | 5-17~19 | 파일럿 반영 + 최종 점검 + 제출 | — |
 
-**총 코드 세션**: 15.6 (원안 13.3 + 작업 12 0.8 + 작업 7 확장 1.0 + 작업 13 0.5)
+**총 코드 세션**: 15.3 (직전 16.1 − 작업 12-L 재견적 0.8 [3.0→2.2, 기존 admin 인프라 반영])
 **총 기간**: 28일 (4-22 ~ 5-19)
 
 ---

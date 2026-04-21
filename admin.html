@@ -178,6 +178,104 @@
                     </div>
                 </div>
 
+                <!-- 감각 앵커 (Lumen V1, 작업 12-1) -->
+                <div class="editor-section">
+                    <h3 class="editor-section-title">감각 앵커 (Phase A)</h3>
+                    <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
+                        기억 전체를 관통하는 단일 감각. 첫 30초 톤 결정.
+                    </p>
+                    <div class="editor-input-group">
+                        <label class="editor-label">양태</label>
+                        <div style="display:flex;gap:1rem;flex-wrap:wrap;font-size:0.9rem;">
+                            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="sensoryModality" value="" checked> 없음</label>
+                            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="sensoryModality" value="smell"> 냄새</label>
+                            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="sensoryModality" value="sound"> 소리</label>
+                            <label style="display:flex;align-items:center;gap:4px;"><input type="radio" name="sensoryModality" value="touch"> 촉감</label>
+                        </div>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">내용 (단어)</label>
+                        <input type="text" class="editor-input" id="sensoryContent" placeholder="예: 발소리, 소독약, 차가운 대리석">
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">강도 (0~1)</label>
+                        <input type="number" class="editor-input" id="sensoryWeight" min="0" max="1" step="0.05" value="0.7" style="width:90px;">
+                    </div>
+                </div>
+
+                <!-- AF 좌표 (Lumen V1, 작업 12-1) -->
+                <div class="editor-section">
+                    <h3 class="editor-section-title">AF 좌표 (귀인 × 핵심 공포)</h3>
+                    <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
+                        Strata 지형 배치 결정. 각 그룹 합 = 1 근사 (자동 정규화 가능).
+                    </p>
+                    <div class="editor-input-group">
+                        <label class="editor-label">Attribution (귀인) — 합 <span id="arAttribSum" style="color:var(--accent-memory);">0.00</span></label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">self</span><input type="number" id="ar_attr_self" min="0" max="1" step="0.05" style="width:70px;" class="editor-input af-attr"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">other</span><input type="number" id="ar_attr_other" min="0" max="1" step="0.05" style="width:70px;" class="editor-input af-attr"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">fate</span><input type="number" id="ar_attr_fate" min="0" max="1" step="0.05" style="width:70px;" class="editor-input af-attr"></div>
+                            <button type="button" class="table-btn" onclick="normalizeAttribution()" style="font-size:0.75rem;">합=1 정규화</button>
+                        </div>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">Core Fear (핵심 공포) — 합 <span id="arCoreFearSum" style="color:var(--accent-memory);">0.00</span></label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:90px;">abandonment</span><input type="number" id="ar_cf_abandonment" min="0" max="1" step="0.05" style="width:70px;" class="editor-input af-cf"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:70px;">rejection</span><input type="number" id="ar_cf_rejection" min="0" max="1" step="0.05" style="width:70px;" class="editor-input af-cf"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:90px;">powerless</span><input type="number" id="ar_cf_powerlessness" min="0" max="1" step="0.05" style="width:70px;" class="editor-input af-cf"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:40px;">loss</span><input type="number" id="ar_cf_loss" min="0" max="1" step="0.05" style="width:70px;" class="editor-input af-cf"></div>
+                            <button type="button" class="table-btn" onclick="normalizeCoreFear()" style="font-size:0.75rem;">합=1 정규화</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 오염 초기 상태 (Lumen V1, 작업 12-1) -->
+                <div class="editor-section">
+                    <h3 class="editor-section-title">오염 초기 상태</h3>
+                    <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
+                        관객 첫 진입 시 기억의 오염 상태. depth 높으면 이미 해석 누적된 느낌.
+                    </p>
+                    <div class="editor-input-group">
+                        <label class="editor-label">cont_depth: <span id="contDepthValue" style="color:var(--accent-memory);">0</span></label>
+                        <input type="range" id="contDepth" min="0" max="30" step="1" value="0" style="width:100%;" oninput="document.getElementById('contDepthValue').textContent=this.value">
+                        <small style="font-size:0.72rem;color:var(--text-muted);">0 = 신선 / 5~10 = 누적 / 15+ = 과숙</small>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">3축 (0~1)</label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:85px;">divergence</span><input type="number" id="cont_divergence_input" min="0" max="1" step="0.05" value="0" style="width:70px;" class="editor-input"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:90px;">convergence</span><input type="number" id="cont_convergence_input" min="0" max="1" step="0.05" value="0" style="width:70px;" class="editor-input"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:95px;">heterogeneity</span><input type="number" id="cont_heterogeneity_input" min="0" max="1" step="0.05" value="0" style="width:70px;" class="editor-input"></div>
+                        </div>
+                    </div>
+                    <div class="editor-input-group">
+                        <label class="editor-label">Stage 혼합 — 합 <span id="contStageSum" style="color:var(--accent-memory);">1.00</span></label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:60px;">stage_1</span><input type="number" id="cont_stage_1_input" min="0" max="1" step="0.01" value="0.33" style="width:70px;" class="editor-input cont-stage"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:60px;">stage_2</span><input type="number" id="cont_stage_2_input" min="0" max="1" step="0.01" value="0.33" style="width:70px;" class="editor-input cont-stage"></div>
+                            <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.78rem;color:#c4a882;min-width:60px;">stage_3</span><input type="number" id="cont_stage_3_input" min="0" max="1" step="0.01" value="0.34" style="width:70px;" class="editor-input cont-stage"></div>
+                            <button type="button" class="table-btn" onclick="normalizeContStage()" style="font-size:0.75rem;">합=1 정규화</button>
+                        </div>
+                        <small style="font-size:0.72rem;color:var(--text-muted);">biased / juxtaposed / hypercompletion 비율</small>
+                    </div>
+                </div>
+
+                <!-- 공간 설정 (Lumen V1, 작업 12-1) -->
+                <div class="editor-section">
+                    <h3 class="editor-section-title">공간 설정 (Lumen)</h3>
+                    <div class="editor-input-group">
+                        <label class="editor-label">지형 형태</label>
+                        <select id="terrainShape" class="editor-input" style="max-width:300px;">
+                            <option value="circular">circular (원형, R=56)</option>
+                        </select>
+                        <small style="font-size:0.72rem;color:var(--text-muted);">현재 circular만. V2에서 확장.</small>
+                    </div>
+                    <p style="font-size:.72rem;color:var(--text-muted);margin-top:0.5rem;">
+                        유령 응결점 편집은 별도 탭(작업 12-3)에서.
+                    </p>
+                </div>
+
                 <!-- 사운드 매핑 -->
                 <div class="editor-section">
                     <h3 class="editor-section-title">사운드 매핑</h3>

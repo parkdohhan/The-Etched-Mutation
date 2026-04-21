@@ -1917,6 +1917,9 @@ export {
     showConfessionHub,
     initDoor,
     handleDoorClick,
+    buildDoor,
+    DOOR_W,
+    DOOR_H,
 
     // Record Chat
     startBeginner,

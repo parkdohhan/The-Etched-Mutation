@@ -249,6 +249,32 @@ function addNewMemory() {
     document.getElementById('soundMapLow').value = '';
     document.getElementById('soundMapFixated').value = '';
     document.getElementById('scenesContainer').innerHTML = '';
+    // original_vector (6-dim) 리셋
+    ['fear','sadness','anger','joy','longing','guilt'].forEach(k => {
+        const el = document.getElementById('ov_' + k);
+        if (el) el.value = '';
+    });
+    // Lumen V1 (작업 12-1): 감각 앵커 / AF / 오염 초기 상태 / 공간 설정 리셋
+    const noneRadio = document.querySelector('input[name="sensoryModality"][value=""]');
+    if (noneRadio) noneRadio.checked = true;
+    const sc = document.getElementById('sensoryContent'); if (sc) sc.value = '';
+    const sw = document.getElementById('sensoryWeight'); if (sw) sw.value = 0.7;
+    ['self','other','fate'].forEach(k => {
+        const el = document.getElementById('ar_attr_' + k); if (el) el.value = '';
+    });
+    ['abandonment','rejection','powerlessness','loss'].forEach(k => {
+        const el = document.getElementById('ar_cf_' + k); if (el) el.value = '';
+    });
+    const cd = document.getElementById('contDepth'); if (cd) { cd.value = 0; const cdv = document.getElementById('contDepthValue'); if (cdv) cdv.textContent = '0'; }
+    ['divergence','convergence','heterogeneity'].forEach(k => {
+        const el = document.getElementById('cont_' + k + '_input'); if (el) el.value = 0;
+    });
+    const cs1 = document.getElementById('cont_stage_1_input'); if (cs1) cs1.value = 0.33;
+    const cs2 = document.getElementById('cont_stage_2_input'); if (cs2) cs2.value = 0.33;
+    const cs3 = document.getElementById('cont_stage_3_input'); if (cs3) cs3.value = 0.34;
+    const ts = document.getElementById('terrainShape'); if (ts) ts.value = 'circular';
+    updateAfSums();
+    updateContStageSum();
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
     switchTab('edit');
@@ -292,6 +318,50 @@ function editMemory(index) {
     });
     document.getElementById('authorNote').value = memory.author_note || '';
     document.getElementById('memoryStatus').value = memory.status || 'Fetus';
+
+    // Lumen V1 (작업 12-1): 감각 앵커 로드
+    const sa = memory.sensory_anchor;
+    if (sa && typeof sa === 'object' && !Array.isArray(sa)) {
+        const mod = sa.modality || '';
+        const modRadio = document.querySelector(`input[name="sensoryModality"][value="${mod}"]`);
+        if (modRadio) modRadio.checked = true;
+        const sc = document.getElementById('sensoryContent'); if (sc) sc.value = sa.content || '';
+        const sw = document.getElementById('sensoryWeight'); if (sw) sw.value = (sa.weight != null ? sa.weight : 0.7);
+    } else {
+        const noneRadio = document.querySelector('input[name="sensoryModality"][value=""]');
+        if (noneRadio) noneRadio.checked = true;
+        const sc = document.getElementById('sensoryContent'); if (sc) sc.value = (typeof sa === 'string' ? sa : '');
+        const sw = document.getElementById('sensoryWeight'); if (sw) sw.value = 0.7;
+    }
+
+    // AF 좌표 로드
+    const arv = memory.original_reason_vector || {};
+    const attr = arv.attribution || {};
+    ['self','other','fate'].forEach(k => {
+        const el = document.getElementById('ar_attr_' + k);
+        if (el) el.value = attr[k] != null ? attr[k] : '';
+    });
+    const cf = arv.core_fear || {};
+    ['abandonment','rejection','powerlessness','loss'].forEach(k => {
+        const el = document.getElementById('ar_cf_' + k);
+        if (el) el.value = cf[k] != null ? cf[k] : '';
+    });
+
+    // 오염 초기 상태 로드
+    const cd = document.getElementById('contDepth');
+    if (cd) {
+        cd.value = memory.cont_depth != null ? memory.cont_depth : 0;
+        const cdv = document.getElementById('contDepthValue'); if (cdv) cdv.textContent = cd.value;
+    }
+    const cdiv = document.getElementById('cont_divergence_input'); if (cdiv) cdiv.value = memory.cont_divergence != null ? memory.cont_divergence : 0;
+    const cconv = document.getElementById('cont_convergence_input'); if (cconv) cconv.value = memory.cont_convergence != null ? memory.cont_convergence : 0;
+    const chet = document.getElementById('cont_heterogeneity_input'); if (chet) chet.value = memory.cont_heterogeneity != null ? memory.cont_heterogeneity : 0;
+    const cs1 = document.getElementById('cont_stage_1_input'); if (cs1) cs1.value = memory.cont_stage_1 != null ? memory.cont_stage_1 : 0.33;
+    const cs2 = document.getElementById('cont_stage_2_input'); if (cs2) cs2.value = memory.cont_stage_2 != null ? memory.cont_stage_2 : 0.33;
+    const cs3 = document.getElementById('cont_stage_3_input'); if (cs3) cs3.value = memory.cont_stage_3 != null ? memory.cont_stage_3 : 0.34;
+    const ts = document.getElementById('terrainShape'); if (ts) ts.value = memory.terrain_shape || 'circular';
+    updateAfSums();
+    updateContStageSum();
  // sound mapping load
     var soundMap = memory.sound_map || {};
     document.getElementById('soundMapOpening').value = soundMap.opening || '';
@@ -1861,6 +1931,56 @@ async function saveMemory() {
     });
     const originalVector = _ovHasValue ? _ovObj : null;
     const authorNote = document.getElementById('authorNote').value.trim();
+
+    // Lumen V1 (작업 12-1): 감각 앵커 수집
+    const _modRadio = document.querySelector('input[name="sensoryModality"]:checked');
+    const _sensoryModality = _modRadio ? _modRadio.value : '';
+    const _sensoryContent = document.getElementById('sensoryContent')?.value.trim() || '';
+    const _sensoryWeight = parseFloat(document.getElementById('sensoryWeight')?.value);
+    let sensoryAnchor = null;
+    if (_sensoryModality && _sensoryContent) {
+        sensoryAnchor = {
+            modality: _sensoryModality,
+            content: _sensoryContent,
+            weight: isNaN(_sensoryWeight) ? 0.7 : Math.max(0, Math.min(1, _sensoryWeight))
+        };
+    }
+
+    // AF 좌표 수집
+    const _attr = {};
+    let _attrHas = false;
+    ['self','other','fate'].forEach(k => {
+        const v = parseFloat(document.getElementById('ar_attr_' + k)?.value);
+        if (!isNaN(v)) { _attr[k] = Math.max(0, Math.min(1, v)); _attrHas = true; }
+    });
+    const _cf = {};
+    let _cfHas = false;
+    ['abandonment','rejection','powerlessness','loss'].forEach(k => {
+        const v = parseFloat(document.getElementById('ar_cf_' + k)?.value);
+        if (!isNaN(v)) { _cf[k] = Math.max(0, Math.min(1, v)); _cfHas = true; }
+    });
+    const originalReasonVector = (_attrHas || _cfHas)
+        ? { attribution: _attrHas ? _attr : null, core_fear: _cfHas ? _cf : null }
+        : null;
+
+    // 오염 초기 상태 수집
+    const _cDepth = parseInt(document.getElementById('contDepth')?.value, 10);
+    const _cDiv = parseFloat(document.getElementById('cont_divergence_input')?.value);
+    const _cConv = parseFloat(document.getElementById('cont_convergence_input')?.value);
+    const _cHet = parseFloat(document.getElementById('cont_heterogeneity_input')?.value);
+    const _cS1 = parseFloat(document.getElementById('cont_stage_1_input')?.value);
+    const _cS2 = parseFloat(document.getElementById('cont_stage_2_input')?.value);
+    const _cS3 = parseFloat(document.getElementById('cont_stage_3_input')?.value);
+    const contDepthVal = isNaN(_cDepth) ? 0 : Math.max(0, _cDepth);
+    const contDivergenceVal = isNaN(_cDiv) ? 0 : Math.max(0, Math.min(1, _cDiv));
+    const contConvergenceVal = isNaN(_cConv) ? 0 : Math.max(0, Math.min(1, _cConv));
+    const contHeterogeneityVal = isNaN(_cHet) ? 0 : Math.max(0, Math.min(1, _cHet));
+    const contStage1Val = isNaN(_cS1) ? 0.33 : Math.max(0, Math.min(1, _cS1));
+    const contStage2Val = isNaN(_cS2) ? 0.33 : Math.max(0, Math.min(1, _cS2));
+    const contStage3Val = isNaN(_cS3) ? 0.34 : Math.max(0, Math.min(1, _cS3));
+
+    // 공간 설정
+    const terrainShapeVal = document.getElementById('terrainShape')?.value || 'circular';
  // sound mapping 수집
     var soundMap = {};
     var smOpening = document.getElementById('soundMapOpening')?.value?.trim();
@@ -1984,7 +2104,18 @@ async function saveMemory() {
             author_note: authorNote || null,
             status: status,
             scenes: scenesWithWaveData,
-            memoryWaveData: memoryWaveData
+            memoryWaveData: memoryWaveData,
+            // Lumen V1 (작업 12-1) 확장 필드
+            sensory_anchor: sensoryAnchor,
+            original_reason_vector: originalReasonVector,
+            cont_depth: contDepthVal,
+            cont_divergence: contDivergenceVal,
+            cont_convergence: contConvergenceVal,
+            cont_heterogeneity: contHeterogeneityVal,
+            cont_stage_1: contStage1Val,
+            cont_stage_2: contStage2Val,
+            cont_stage_3: contStage3Val,
+            terrain_shape: terrainShapeVal
         });
         
         console.log('=== Admin 에디터 개선 ===');
@@ -3533,6 +3664,83 @@ function toggleContamination(sceneIndex) {
 }
 
 window.toggleContamination = toggleContamination;
+
+// ─── Lumen V1 (작업 12-1) AF / 오염 초기 상태 헬퍼 ──────────────────
+function _afSum(prefix, keys) {
+    return keys.reduce((acc, k) => {
+        const v = parseFloat(document.getElementById(prefix + k)?.value);
+        return acc + (isNaN(v) ? 0 : v);
+    }, 0);
+}
+
+function updateAfSums() {
+    const aSum = _afSum('ar_attr_', ['self','other','fate']);
+    const cSum = _afSum('ar_cf_', ['abandonment','rejection','powerlessness','loss']);
+    const aEl = document.getElementById('arAttribSum');
+    const cEl = document.getElementById('arCoreFearSum');
+    if (aEl) { aEl.textContent = aSum.toFixed(2); aEl.style.color = Math.abs(aSum - 1) < 0.02 ? 'var(--accent-memory)' : '#c97a6a'; }
+    if (cEl) { cEl.textContent = cSum.toFixed(2); cEl.style.color = Math.abs(cSum - 1) < 0.02 ? 'var(--accent-memory)' : '#c97a6a'; }
+}
+
+function updateContStageSum() {
+    const s1 = parseFloat(document.getElementById('cont_stage_1_input')?.value) || 0;
+    const s2 = parseFloat(document.getElementById('cont_stage_2_input')?.value) || 0;
+    const s3 = parseFloat(document.getElementById('cont_stage_3_input')?.value) || 0;
+    const sum = s1 + s2 + s3;
+    const el = document.getElementById('contStageSum');
+    if (el) { el.textContent = sum.toFixed(2); el.style.color = Math.abs(sum - 1) < 0.02 ? 'var(--accent-memory)' : '#c97a6a'; }
+}
+
+function normalizeAttribution() {
+    _normalizeGroup(['ar_attr_self','ar_attr_other','ar_attr_fate']);
+    updateAfSums();
+}
+
+function normalizeCoreFear() {
+    _normalizeGroup(['ar_cf_abandonment','ar_cf_rejection','ar_cf_powerlessness','ar_cf_loss']);
+    updateAfSums();
+}
+
+function normalizeContStage() {
+    _normalizeGroup(['cont_stage_1_input','cont_stage_2_input','cont_stage_3_input']);
+    updateContStageSum();
+}
+
+function _normalizeGroup(ids) {
+    const vals = ids.map(id => {
+        const v = parseFloat(document.getElementById(id)?.value);
+        return isNaN(v) ? 0 : Math.max(0, v);
+    });
+    const sum = vals.reduce((a, b) => a + b, 0);
+    if (sum <= 0) return;
+    ids.forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (el) el.value = (vals[i] / sum).toFixed(2);
+    });
+}
+
+// AF/cont_stage input 이벤트 바인딩
+function _bindLumenFormListeners() {
+    document.querySelectorAll('.af-attr, .af-cf').forEach(el => {
+        el.addEventListener('input', updateAfSums);
+    });
+    document.querySelectorAll('.cont-stage').forEach(el => {
+        el.addEventListener('input', updateContStageSum);
+    });
+    updateAfSums();
+    updateContStageSum();
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _bindLumenFormListeners);
+} else {
+    _bindLumenFormListeners();
+}
+
+window.updateAfSums = updateAfSums;
+window.updateContStageSum = updateContStageSum;
+window.normalizeAttribution = normalizeAttribution;
+window.normalizeCoreFear = normalizeCoreFear;
+window.normalizeContStage = normalizeContStage;
 
 let adminStrataFullscreenBound = false;
 

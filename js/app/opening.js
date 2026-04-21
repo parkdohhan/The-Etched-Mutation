@@ -7,6 +7,8 @@
 
 import { NPC_DIALOGUES } from '../npc-dialogues.js';
 import { setLanguage } from '../lib/i18n.js';
+import { buildDoor } from './confession.js';
+import { _pickTopMemoryForLumen } from './archive.js';
 
 // === Module State ===
 let openingSkipped = false;
@@ -20,6 +22,10 @@ let fadeOutAnimationId = null;
 let fadeOutInterval = null;
 let crossfadeTimeUpdateHandler = null;
 let crossfadeEndedHandler = null;
+
+// Lumen 흡수 연출: animate loop이 참조하는 파동 속도·탈채도 상태.
+let _openingWaveSpeedMul = 1;
+let _openingWaveDesat = 0; // 0..1
 
 // ─────────────────────────────────────
 // === Text Utilities ===
@@ -191,81 +197,138 @@ async function _runV2Sequence() {
   }
 }
 
+// Lumen 오프닝: 파동 freeze + 탈채도. animate 루프가 참조하는 모듈 변수만 ease-out 갱신.
+function _collapseOpeningWave(durationMs = 1800) {
+  return new Promise((resolve) => {
+    const start = performance.now();
+    function tick() {
+      const el = performance.now() - start;
+      const p = Math.min(1, el / durationMs);
+      const eased = 1 - Math.pow(1 - p, 3);
+      _openingWaveSpeedMul = 1 - eased;
+      _openingWaveDesat = eased;
+      if (p < 1) requestAnimationFrame(tick);
+      else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// Lumen 오프닝: confession.js의 ASCII 문(buildDoor) 재사용.
+// phase 1(열림 1200ms) → 300ms 정적 → phase 2(빨려들어감 1600ms) → 블랙아웃.
+function _runLumenDoorSequence() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.id = 'lumenDoorOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:3000;background:#050505;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.7s ease;pointer-events:none;';
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'margin:0;font-family:"SFMono-Regular",Menlo,"Courier New",monospace;font-size:14px;line-height:1;color:rgba(196,168,130,0.9);white-space:pre;user-select:none;text-shadow:0 0 10px rgba(196,168,130,0.18);';
+    const g0 = buildDoor(0, 0);
+    pre.textContent = g0.map(r => r.join('')).join('\n');
+    overlay.appendChild(pre);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+
+    const OPEN_MS = 1200;
+    const SUCK_MS = 1600;
+    const STATIC_MS = 300;
+    const FADE_IN_MS = 700;
+
+    setTimeout(() => {
+      const openStart = performance.now();
+      function openTick() {
+        const el = performance.now() - openStart;
+        const pr = Math.min(el / OPEN_MS, 1);
+        const g = buildDoor(1, pr);
+        pre.textContent = g.map(r => r.join('')).join('\n');
+        if (pr < 1) { requestAnimationFrame(openTick); return; }
+
+        setTimeout(() => {
+          const suckStart = performance.now();
+          function suckTick() {
+            const el2 = performance.now() - suckStart;
+            const pr2 = Math.min(el2 / SUCK_MS, 1);
+            const g2 = buildDoor(2, pr2);
+            pre.textContent = g2.map(r => r.join('')).join('\n');
+            if (pr2 < 1) { requestAnimationFrame(suckTick); return; }
+            pre.textContent = '';
+            setTimeout(resolve, 350);
+          }
+          requestAnimationFrame(suckTick);
+        }, STATIC_MS);
+      }
+      requestAnimationFrame(openTick);
+    }, FADE_IN_MS);
+  });
+}
+
 async function _handleOpeningSubmit(emotion, text) {
   const inputPhase = document.getElementById('openingInputPhase');
   const dialogue = document.getElementById('openingDialogue');
   const D = V2_DIALOGUES[_openingLang] || V2_DIALOGUES.en;
 
-  // 입력 페이드아웃
+  // 1) 입력 페이드아웃
   if (inputPhase) {
     inputPhase.style.pointerEvents = 'none';
     inputPhase.style.opacity = '0';
   }
   await new Promise(r => setTimeout(r, 800));
 
-  // 최종 한 줄 타이핑
+  // 2) 전환 대사 타이핑
   await _typeLinesSequential(dialogue, [D.transition]);
-  await new Promise(r => setTimeout(r, 1400));
+  await new Promise(r => setTimeout(r, 1000));
   await _fadeOutDialogue(dialogue, 900);
 
-  // 180° 회전 후 문으로 전환 → archive.js 핑거 결과 재활용
+  // 3) lang · 선행 입력 저장
   try {
     sessionStorage.setItem('tem_lang', _openingLang);
     sessionStorage.setItem('tem_opening_prefilled', emotion ? `chip:${emotion}` : `text:${text || ''}`);
   } catch (_) {}
-  // i18n 캐시 재확인 (Start에서 했지만, 브라우저별 예외 대비 1회 더)
   try { setLanguage(_openingLang); } catch (_) {}
 
-  // openingScreen 180° rotateY + 페이드아웃. intro screen(메뉴)은 건너뜀.
-  const openingScreen = document.getElementById('openingScreen');
-  if (openingScreen) {
-    openingScreen.style.transition = 'transform 1.4s ease-in-out, opacity 1.4s ease-in-out';
-    openingScreen.style.transformOrigin = '50% 50%';
-    openingScreen.style.transform = 'rotateY(180deg)';
-    openingScreen.style.opacity = '0';
+  // 4) 메모리 로드 트리거 + 대기 (최대 8초 폴링)
+  if (typeof window.loadMemoriesFromSupabase === 'function') {
+    try { window.loadMemoriesFromSupabase(); } catch (_) {}
+  }
+  const waitStart = Date.now();
+  const MAX_WAIT = 8000;
+  while (Date.now() - waitStart < MAX_WAIT) {
+    const all = (window.appStore && window.appStore.getState && window.appStore.getState().allMemoriesData) || [];
+    if (all.length > 0) break;
+    await new Promise(r => setTimeout(r, 150));
   }
 
-  // 수동 정리: wave anim만 정지. BGM은 crossfade 루프 그대로 유지 (기억선택 단계까지 이어짐).
+  // 5) 파동 흡수 (freeze + 탈채도)
+  await _collapseOpeningWave(1800);
+
+  // 6) top-1 기억 선정
+  const memory = _pickTopMemoryForLumen(emotion, text, _openingLang);
+  if (!memory) {
+    console.warn('[opening:lumen] 매칭 가능한 기억이 없음 — 메인 메뉴로 폴백');
+    openingSkipped = true;
+    if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
+    finishOpeningSequence();
+    return;
+  }
+
+  // 7) ASCII 문 열림 + 빨려들어감
+  await _runLumenDoorSequence();
+
+  // 8) wave anim 정지 (overlay가 이미 전면 블랙이므로 시각 전환은 매끄러움)
   openingSkipped = true;
   if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
 
-  setTimeout(async () => {
-    if (openingScreen) {
-      openingScreen.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;z-index:-1!important;opacity:0!important';
-    }
-    // archive + finder 컨테이너 노출 + 메모리 로드
-    if (typeof window.enterPlayIntro === 'function') {
-      await window.enterPlayIntro();
-    }
-    // v2: finder 자체 대사 phase(실 + 화살표) 노출 플래시 방지 — 즉시 숨기고 result phase 띄움
-    const qPhase = document.getElementById('finderQuestionPhase');
-    if (qPhase) qPhase.style.display = 'none';
-    const rPhase = document.getElementById('finderResultPhase');
-    if (rPhase) { rPhase.style.display = 'block'; rPhase.style.opacity = '1'; }
-    // finder가 마운트한 실 캔버스 RAF 정리
-    const threadCv = document.getElementById('finderThreadCanvas');
-    if (threadCv && typeof threadCv._cleanup === 'function') threadCv._cleanup();
-
-    // 메모리 로드 완료 대기 (최대 8초 폴링, 최소 1500ms 시네마틱 호흡 유지)
-    // 기존 고정 1500ms 대기는 Supabase 응답이 늦을 때 matched=[] 반환 → 문 0개 렌더되던 버그 원인.
-    const waitStart = Date.now();
-    const MAX_WAIT = 8000;
-    const MIN_WAIT = 1500;
-    while (Date.now() - waitStart < MAX_WAIT) {
-      const all = (window.appStore && window.appStore.getState && window.appStore.getState().allMemoriesData) || [];
-      if (all.length > 0) break;
-      await new Promise(r => setTimeout(r, 150));
-    }
-    const elapsed = Date.now() - waitStart;
-    if (elapsed < MIN_WAIT) await new Promise(r => setTimeout(r, MIN_WAIT - elapsed));
-
-    // 매칭 트리거 → 문 렌더
-    if (emotion && typeof window._finderMatch === 'function') {
-      window._finderMatch(emotion, _openingLang);
-    } else if (text && typeof window._finderMatchByText === 'function') {
-      window._finderMatchByText(text, _openingLang);
-    }
-  }, 1400);
+  // 9) play-test로 직접 이동 → initFpPlay → rt.enterFirstPerson()
+  const isLocal = location.protocol === 'file:' ||
+    ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) ||
+    location.hostname.endsWith('.local');
+  const base = isLocal ? 'play-test.html' : '/play';
+  try {
+    sessionStorage.setItem('demoMemoryId', String(memory.id || ''));
+    sessionStorage.setItem('tem_archive_memory_id', String(memory.id || ''));
+    sessionStorage.setItem('tem_archive_lang', _openingLang);
+  } catch (_) {}
+  window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}`;
 }
 
 function _initOpeningLangGate() {
@@ -355,6 +418,12 @@ function startOpeningWaveAnimation(canvas) {
         ctx.fillStyle = 'rgba(10, 10, 12, 0.92)';
         ctx.fillRect(0, 0, width, height);
 
+        // Lumen 흡수 연출: 탈채도 filter를 파동 stroke에만 적용
+        if (_openingWaveDesat > 0) {
+            const satPct = Math.max(0, Math.round((1 - _openingWaveDesat) * 100));
+            ctx.filter = `saturate(${satPct}%)`;
+        }
+
         const centerY = height / 2;
 
         waves.forEach((wave) => {
@@ -407,7 +476,9 @@ function startOpeningWaveAnimation(canvas) {
             ctx.stroke();
         });
 
-        time += 0.5;
+        if (_openingWaveDesat > 0) ctx.filter = 'none';
+
+        time += 0.5 * _openingWaveSpeedMul;
         if (!openingSkipped) {
             openingWaveAnimationId = requestAnimationFrame(animate);
         }

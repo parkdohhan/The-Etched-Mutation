@@ -105,7 +105,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         throw new Error('Supabase client not initialized.');
     }
 
-    const { memoryId, code, title, description, memory_words, completed_sentence, original_vector, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions } = memoryPayload;
+    const { memoryId, code, title, description, memory_words, completed_sentence, original_vector, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions, original_reason_vector, cont_depth, cont_divergence, cont_convergence, cont_heterogeneity, cont_stage_1, cont_stage_2, cont_stage_3, terrain_shape } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
@@ -128,9 +128,18 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 layers: 0,
                 dilution: 100,
                 is_public: true,
-                ...(sensory_anchor ? { sensory_anchor } : {}),
+                ...(sensory_anchor !== undefined ? { sensory_anchor } : {}),
                 ...(body_response ? { body_response } : {}),
                 ...(self_questions ? { self_questions } : {}),
+                ...(original_reason_vector !== undefined ? { original_reason_vector } : {}),
+                ...(cont_depth !== undefined ? { cont_depth } : {}),
+                ...(cont_divergence !== undefined ? { cont_divergence } : {}),
+                ...(cont_convergence !== undefined ? { cont_convergence } : {}),
+                ...(cont_heterogeneity !== undefined ? { cont_heterogeneity } : {}),
+                ...(cont_stage_1 !== undefined ? { cont_stage_1 } : {}),
+                ...(cont_stage_2 !== undefined ? { cont_stage_2 } : {}),
+                ...(cont_stage_3 !== undefined ? { cont_stage_3 } : {}),
+                ...(terrain_shape ? { terrain_shape } : {}),
             })
             .eq('id', finalMemoryId)
             .select();
@@ -186,6 +195,16 @@ export async function saveMemoryGraph(client, memoryPayload) {
         if (sensory_anchor) insertPayload.sensory_anchor = sensory_anchor;
         if (body_response) insertPayload.body_response = body_response;
         if (self_questions) insertPayload.self_questions = self_questions;
+ // Lumen 확장 (2026-04-21)
+        if (original_reason_vector) insertPayload.original_reason_vector = original_reason_vector;
+        if (cont_depth !== undefined && cont_depth !== null) insertPayload.cont_depth = cont_depth;
+        if (cont_divergence !== undefined && cont_divergence !== null) insertPayload.cont_divergence = cont_divergence;
+        if (cont_convergence !== undefined && cont_convergence !== null) insertPayload.cont_convergence = cont_convergence;
+        if (cont_heterogeneity !== undefined && cont_heterogeneity !== null) insertPayload.cont_heterogeneity = cont_heterogeneity;
+        if (cont_stage_1 !== undefined && cont_stage_1 !== null) insertPayload.cont_stage_1 = cont_stage_1;
+        if (cont_stage_2 !== undefined && cont_stage_2 !== null) insertPayload.cont_stage_2 = cont_stage_2;
+        if (cont_stage_3 !== undefined && cont_stage_3 !== null) insertPayload.cont_stage_3 = cont_stage_3;
+        if (terrain_shape) insertPayload.terrain_shape = terrain_shape;
         const { data, error } = await client
             .from('memories')
             .insert(insertPayload)
