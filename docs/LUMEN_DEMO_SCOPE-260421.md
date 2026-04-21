@@ -272,5 +272,5 @@ computeAfTerrainFields
 - `docs/V2_backlog.md` — 연기 항목 전부 (md-date 훅이 `V2_backlog-260421.md`로 리네임함)
 - `CLAUDE.md` — Claude Code 세션 가드레일 (현재 `CLAUDE-260418.md`)
 - `prompt/critic.md` — critic v3 프롬프트. TEM 83점 B+ 판정 좌표계 기준점 (2026-04-20).
-- `docs/LUMEN_return_components.md` — 귀환 8개 컴포넌트 최소 작동 정의 (작성 예정, 5-01 전)
+- `docs/LUMEN_return_components-260421.md` — 귀환 8개 컴포넌트 최소 작동 정의 (작성 예정, 5-01 전)
 - `docs/pilot/*.md` — 파일럿 관찰 기록 템플릿 (작성 예정, 5-07 전)
