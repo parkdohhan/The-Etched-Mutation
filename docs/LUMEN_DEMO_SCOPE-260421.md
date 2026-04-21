@@ -80,22 +80,34 @@
 - 출구: 들어온 문과 같은 위치에 고정 표시 (바깥 원 위)
 - 기존 미니맵 로직에 조건부 렌더 + 고정 점 추가
 
-### 작업 7 — 메모리 3개 Record + 큐레이션 [2 세션, 분할]
-- **신규 Record 3개** (2026-04-21 결정). 기존 아카이브 재활용 안 함.
-- 언어 분배 기본값: **2 ko + 1 en** (한국어 파일럿 + 영어 심사자 커버). 역도 가능 — Record 착수 전 최종 확정.
+### 작업 7 — 메모리 3개 SQL 직접 작성 + 큐레이션 [2 세션, 분할]
+- **접근 방식: SQL 직접 INSERT** (2026-04-21 결정). RECORD 흐름 사용 안 함. 이유: Lumen 관객은 RECORD 메뉴를 체험하지 않음(흡수됨). RECORD는 Lumen 심사 대상이 아니므로 이를 작가 저작 도구로 쓸 이유가 없다.
+- **선결: SQL 템플릿 1회 작성 + 연출 체크리스트** [0.5 세션 1회성 비용]
+  - `supabase/seeds/lumen_memory_template.sql` 신규
+  - `docs/lumen_memory_authoring_checklist.md` 신규 — 연출 레버 전수 열거
+  - **원칙: 연출 가능 레버 전수 기입** (기본값 위임 금지). 아래 레버 전부 계산·명시:
+    - **memories**: `title`·`lang`·`completed_sentence`·`sensory_anchor`·`original_vector`·`original_reason_vector`·`memory_words`·`cont_depth` 초기값·`cont_divergence/convergence/heterogeneity` 초기값·`cont_stage_1/2/3`·`terrain_shape='circular'`
+    - **scenes**: `scene_order`·`text`·`scene_type`·`original_emotion`·`original_reason_vector`·`anchor_emotions`·`void_info`·`text_stage_1/2/3`(top-level 컬럼, pre-gen)·`meta.scene_code`·`meta.sound_url`·`meta.sound_volume`·`meta.sound_radius`·`meta.echo_words`·`meta.motif_tags`
+    - 제외(2026-04-21 결정): `vector_weight`(READ 경로 없음, 감정 강도는 `original_emotion`에 직접 반영), `meta.author_bridges`(표출 기능 미구현, Lumen 스코프에 추가 안 함)
+    - **choices**: `choice_order`·`text`·`emotion`·`intensity`
+    - **plays** (Record=First Play, 1개/장면): `user_emotion`=`original_emotion`·`alignment`=1.0
+  - 레거시 회피: `sound_map`/`cont_drift`/`cont_fixation`/`cont_stage` 채우지 말 것.
+  - 차원 일관성: `original_vector` 17-dim 또는 6-dim 중 하나로 고정. 섞지 말 것.
+- **기억 1개당 작성 시간**: 30~45분 (장면 3~5 + 필드 계산 + INSERT + admin에서 시각 확인).
+- 언어 분배 기본값: **2 ko + 1 en** (한국어 파일럿 + 영어 심사자 커버). 역도 가능 — 작성 착수 전 최종 확정.
 - **분할 실행**:
-  - Week 0 (4-21~22, 일본): **Record 2개 (1 ko + 1 en)** 먼저 녹음. [1.3 세션]
-    - 이유: Sprint 1 코드가 실제 메모리 데이터로 테스트 가능. Sprint 2 부담 감소.
-    - Record는 "조용한 공간 + 인터넷"만 필요 — 코드 환경 불필요.
-  - Sprint 2 (4-28~30): **잔여 Record 1개 + 큐레이션 전체** [0.7 세션]
-    - `terrain_shape = circular` SQL 업데이트
-    - `ghost_condensation_points` 좌표 + 임계값 (작업 12 Admin UI로 편집)
+  - Week 0 (4-21~22, 일본): **SQL 템플릿 + 메모리 2개 (1 ko + 1 en)** [1.3 세션]
+    - Sprint 1 코드가 실제 메모리 데이터로 테스트 가능
+    - "조용한 공간 + 인터넷"만 필요 — 코드 환경 불필요
+  - Sprint 2 (4-28~30): **잔여 메모리 1개 + 큐레이션** [0.7 세션]
+    - 응결점 좌표·임계값 (작업 12 Admin UI로 편집)
 - 품질 기준:
   - 장면 3~5개
-  - PII 없음, 안전 트리거 없음
+  - PII 없음, 안전 트리거 단어 없음
   - Lumen 심사자 3~5분 체험 분량
   - 작가가 파일럿 n=5~7 반복 재생해도 버틸 감정 톤
-- 감정 클러스터링 방지: 3개의 감정 앵커·AF 좌표가 충분히 분산되도록 의식 (이본 시연의 근거).
+- 감정 클러스터링 방지: 3개의 `original_vector`·AF 좌표가 충분히 분산되도록 의식 (이본 시연의 근거).
+- **감수**: SQL로 쓰면 RECORD Phase A의 "감각에서 출발"하는 생성 과정이 결여됨. 장면 텍스트가 저작된 느낌이 될 수 있음 — 이건 수용함.
 
 ### 작업 2 — 귀환 구조 풀 [3.5 세션]
 - 2-A: 궤적 기록 (`_fpTrajectory.push`, 150ms 단위) + rewind 재생 [1]
@@ -119,6 +131,13 @@
 - 필드: `x`, `z`, `pollution_threshold`
 - 저장: `memories.ghost_condensation_points` JSON 업데이트
 - 범위 축소: 동심원 overlay·layer_radii·center_void 좌표는 V2 유지. 이 작업은 **응결점 CRUD + 임계값만**.
+
+### 작업 13 — Play entry 감정진입점 motif 매칭 [0.5 세션]
+- 목적: motif_tags를 Play entry 매칭 신호로 활성화. 관객 입력 키워드가 특정 motif와 겹치면 해당 메모리 우선순위 ↑. motif_tags가 "죽은 작가 메모"에서 "감정진입 인덱스"로 재정의.
+- `supabase/functions/claude-scene` `play_entry_match` 프롬프트에 각 메모리의 `meta.motif_tags` 포함하여 전달
+- memories 쿼리 selector에 `meta->'motif_tags'` 포함
+- 유사도 공식: `cosine(emotion) + α × |motif ∩ userKeywords|` (α 초기값 0.15, 튜닝)
+- Sprint 2에 배치
 
 ### 작업 10 — 파일럿 n=5~7 [별도, 5-09~13]
 - 5월 초 대상자 확정, 5-09~13 실시
@@ -172,7 +191,7 @@ computeAfTerrainFields
 | 귀국/시차 | 4-23 | 휴식 | — |
 | Sprint 1 | 4-24~26 | 작업 0 + 3 + 3b + 3c + 11 | 6.3 |
 | 통합일 | 4-27 | 본인 한 바퀴 + 버그 리스트 (코드 금지) | — |
-| Sprint 2 | 4-28~30 | 작업 1 + 4 + 7(잔여 Record 1 + 큐레이션) + 12 | 4.0 |
+| Sprint 2 | 4-28~30 | 작업 1 + 4 + 7(잔여 1 + 큐레이션) + 12 + 13 | 4.5 |
 | 통합일 | 5-01 | 메모리 1개 풀 사이클 체험 (귀환 빼고) | — |
 | Sprint 3 | 5-02~05 | 작업 2 (귀환 풀) | 3.5 |
 | 통합일 | 5-06 | 귀환 포함 풀 사이클 체험 | — |
@@ -181,7 +200,7 @@ computeAfTerrainFields
 | Sprint 4 | 5-14~16 | 작업 8 + 9 | 2.5 |
 | 버퍼 | 5-17~19 | 파일럿 반영 + 최종 점검 + 제출 | — |
 
-**총 코드 세션**: 15.1 (원안 13.3 + 작업 12 0.8 + 작업 7 확장 1.0)
+**총 코드 세션**: 15.6 (원안 13.3 + 작업 12 0.8 + 작업 7 확장 1.0 + 작업 13 0.5)
 **총 기간**: 28일 (4-22 ~ 5-19)
 
 ---
