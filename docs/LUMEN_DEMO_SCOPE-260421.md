@@ -84,7 +84,7 @@
 - **접근 방식: SQL 직접 INSERT** (2026-04-21 결정). RECORD 흐름 사용 안 함. 이유: Lumen 관객은 RECORD 메뉴를 체험하지 않음(흡수됨). RECORD는 Lumen 심사 대상이 아니므로 이를 작가 저작 도구로 쓸 이유가 없다.
 - **선결: SQL 템플릿 1회 작성 + 연출 체크리스트** [0.5 세션 1회성 비용]
   - `supabase/seeds/lumen_memory_template.sql` 신규
-  - `docs/lumen_memory_authoring_checklist.md` 신규 — 연출 레버 전수 열거
+  - `docs/lumen_memory_authoring_checklist-260421.md` 신규 — 연출 레버 전수 열거
   - **원칙: 연출 가능 레버 전수 기입** (기본값 위임 금지). 아래 레버 전부 계산·명시:
     - **memories**: `title`·`lang`·`completed_sentence`·`sensory_anchor`·`original_vector`·`original_reason_vector`·`memory_words`·`cont_depth` 초기값·`cont_divergence/convergence/heterogeneity` 초기값·`cont_stage_1/2/3`·`terrain_shape='circular'`
     - **scenes**: `scene_order`·`text`·`scene_type`·`original_emotion`·`original_reason_vector`·`anchor_emotions`·`void_info`·`text_stage_1/2/3`(top-level 컬럼, pre-gen)·`meta.scene_code`·`meta.sound_url`·`meta.sound_volume`·`meta.sound_radius`·`meta.echo_words`·`meta.motif_tags`
