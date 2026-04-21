@@ -12,7 +12,7 @@
 핵심 구현은 `js/shared/tem_af_strata_terrain.js`에 공통 모듈로 분리되어 있고,
 `js/ui/strataView.js`는 데이터 로드 + HUD + 뷰 라이프사이클만 담당한다.
 
----
+--
 
 ## 파일 구조
 

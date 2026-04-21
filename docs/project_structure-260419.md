@@ -143,7 +143,7 @@ test/       # 기타 실험 테스트
 
 **시스템/엔진**
 - [TEM_시스템_매뉴얼-260410.md](TEM_시스템_매뉴얼-260410.md) — 전체 시스템
-- [TEM_PROJECT_MANUAL.md](TEM_PROJECT_MANUAL.md)
+- [TEM_PROJECT_MANUAL-260404.md](TEM_PROJECT_MANUAL-260404.md)
 - [별이엔진_V4-궤적기반_정렬도-260327.md](별이엔진_V4-궤적기반_정렬도-260327.md)
 - [SceneNavigator_설계_v1-260329.md](SceneNavigator_설계_v1-260329.md)
 - [play-test-지도_핀_접근규칙-260325.md](play-test-지도_핀_접근규칙-260325.md)
@@ -154,7 +154,7 @@ test/       # 기타 실험 테스트
 - [전이_규칙_구현_문서-260324.md](전이_규칙_구현_문서-260324.md)
 
 **지형/시각화**
-- [Strata 3d-260325.md](Strata%203d-260325.md) / [strata-3d-rendering-260325.md](strata-3d-rendering-260325.md)
+- [Strata 3d-260325.md](Strata%203d-260325.md) / [strata-3d-rendering-260401.md](strata-3d-rendering-260401.md)
 - [tem-af-coordinate-integration-260325.md](tem-af-coordinate-integration-260325.md)
 - [기억집단유전학_v0.4_지형설계-260405.md](기억집단유전학_v0.4_지형설계-260405.md)
 - [시각화_설계_v1-260412.md](시각화_설계_v1-260412.md)

@@ -8,8 +8,7 @@
 **스택:** Vanilla ES6, Supabase, Three.js, Web Audio API, Vite
 **브랜치 전략:** `main` (배포) / `feature/phase2-module-split` (현재 개발)
 
----
-
+--
 ## 목차
 
 1. [프로젝트 개요](#1-프로젝트-개요)

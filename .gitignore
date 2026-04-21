@@ -22,3 +22,4 @@ supabase/functions/*/supabase/
 
 # Mixamo FBX 에셋 (용량 큼, mixamo.com에서 재다운 가능)
 test/*.fbx
+docs/_pdf/

@@ -13,7 +13,7 @@ VAD 기반 지형 시각화에 더해 **AF(Attribution × Core Fear)** 좌표를
 
 ## 좌표 정의
 
-| 축 | 의미 |
+| 축 | 의미 
 |----|------|
 | **X** | 귀인: `self_blame(-1)` ← → `other_blame(0)` ← → `fate_blame(+1)` |
 | **Z** | 핵심 공포: `abandonment(-1)` … `loss(+1)` (중간 앵커: rejection, powerlessness) |
@@ -53,4 +53,4 @@ VAD 기반 지형 시각화에 더해 **AF(Attribution × Core Fear)** 좌표를
 
 ## 관련 문서
 
-- `docs/strata-3d-rendering-260325.md` — Strata 3D(AF 기반) 렌더링/동기화 정리
+- `docs/strata-3d-rendering-260401.md` — Strata 3D(AF 기반) 렌더링/동기화 정리

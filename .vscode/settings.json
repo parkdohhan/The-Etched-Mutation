@@ -1,3 +1,21 @@
 {
-    "liveServer.settings.port": 5503
+    "liveServer.settings.port": 5503,
+
+    "markdown-pdf.convertOnSave": true,
+    "markdown-pdf.convertOnSaveExclude": [
+        "CLAUDE*.md",
+        "README*.md",
+        ".claude/**/*.md"
+    ],
+    "markdown-pdf.type": ["pdf"],
+    "markdown-pdf.outputDirectory": "docs/_pdf",
+    "markdown-pdf.outputDirectoryRelativePathFile": false,
+    "markdown-pdf.format": "A4",
+    "markdown-pdf.margin.top": "1.5cm",
+    "markdown-pdf.margin.bottom": "1.5cm",
+    "markdown-pdf.margin.left": "1.6cm",
+    "markdown-pdf.margin.right": "1.6cm",
+    "markdown-pdf.displayHeaderFooter": false,
+    "markdown-pdf.printBackground": true,
+    "markdown-pdf.executablePath": ""
 }
