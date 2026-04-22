@@ -2,6 +2,8 @@
 // dagre + 바닐라 SVG + d3-zoom
 
 import { getSupabaseClient } from './lib/supabaseClient.js';
+import { byeoriEngine } from './core/ByeoriEngine.js';
+import { sceneNavigator } from './core/SceneNavigator.js';
 
 // ─── 감정 팔레트 (8 keys) ──────────────────────────────────
 const EMOTIONS = [
@@ -101,6 +103,8 @@ async function initTrajectoryViewer(memoryId) {
   bindToggles();
   renderGraph();
   loadPersonasForMemory();
+  resetSim();          // 메모리 전환 시 시뮬 상태 클리어
+  initSimPanel();      // 슬라이더·프리셋·버튼 바인딩 (idempotent)
 }
 
 // ─── 메모리 기본 설정 패널 (우측 하단) ─────────────────────
@@ -640,6 +644,369 @@ function updatePersonaPanel(persona, play) {
   }
 }
 
+// ─── 분기 시뮬 (작업 12-4) ────────────────────────────────
+// 가상 관객 감정을 주입해 ByeoriEngine + SceneNavigator 로 다음 씬 후보를 미리 본다.
+// 최대 2명(A/B) side-by-side 비교.
+const SIM_DIMS = ['fear', 'sadness', 'anger', 'joy', 'longing', 'guilt'];
+const SIM_DIM_LABELS = { fear:'공포', sadness:'슬픔', anger:'분노', joy:'기쁨', longing:'그리움', guilt:'죄책감' };
+const SIM_PRESETS = [
+  { key:'echo_seeker', label:'공명 추구 (그리움+슬픔)',   vec:{ longing:0.8, sadness:0.5, joy:0.2 } },
+  { key:'grief',       label:'애도 (슬픔+그리움)',         vec:{ sadness:0.8, longing:0.4, guilt:0.2 } },
+  { key:'anger_avoid', label:'분노 회피 (분노+공포)',       vec:{ anger:0.7, fear:0.4, sadness:0.2 } },
+  { key:'numb',        label:'무감 (모두 낮음)',            vec:{ fear:0.1, sadness:0.1, anger:0.1, joy:0.1, longing:0.1, guilt:0.1 } },
+  { key:'guilt',       label:'죄책 (죄책감+공포)',           vec:{ guilt:0.8, fear:0.4, sadness:0.3 } },
+  { key:'joyful',      label:'치유 지향 (기쁨+그리움)',      vec:{ joy:0.7, longing:0.4, sadness:0.1 } },
+];
+const SIM_COLORS = { A: '#c4a882', B: '#6aa383' };
+
+const simState = {
+  compareMode: false,
+  active: false,
+  runners: {
+    A: null,
+    B: null,
+  },
+};
+
+function _mkRunner(label) {
+  return {
+    label,
+    emotion: {},
+    currentIdx: 0,          // state.scenes 내 인덱스
+    visited: [],            // 이미 방문한 인덱스
+    userTraj: [],
+    origTraj: [],
+    sceneScores: [],
+    candidateIdx: null,     // navigator 가 제안한 다음 씬 (시각화용)
+    candidateIsFallback: false,
+    fallbackNarrative: null,
+    lastResult: null,       // { alignment, level, shape, transition_pattern, mismatch_type }
+    done: false,
+  };
+}
+
+function _sceneEmotionVec(scene) {
+  return scene?.original_emotion || scene?.originalVector || scene?.emotion_dist || scene?.emotion_vector || {};
+}
+function _sceneReason(scene) {
+  return scene?.original_reason_vector || scene?.originalReasonVector || {};
+}
+
+function _pickStartIdx(emotion) {
+  if (!state.scenes.length) return -1;
+  const entries = (state.memory?.meta && state.memory.meta.emotion_entries) || {};
+  if (entries && Object.keys(entries).length) {
+    // 가장 큰 차원을 진입점 감정으로 사용
+    const top = Object.entries(emotion || {}).sort((a,b) => (b[1]||0) - (a[1]||0))[0];
+    const topKey = top && top[1] > 0 ? top[0] : null;
+    const entryCode = topKey ? entries[topKey] : null;
+    if (entryCode) {
+      const idx = state.scenes.findIndex(s => (s.meta && s.meta.scene_code) === entryCode);
+      if (idx >= 0) return idx;
+    }
+  }
+  // fallback — 첫 씬
+  return 0;
+}
+
+function initSimPanel() {
+  // 프리셋 채우기
+  const preset = document.getElementById('tvSimPreset');
+  if (preset) {
+    preset.innerHTML = ['<option value="">— 프리셋 —</option>']
+      .concat(SIM_PRESETS.map(p => `<option value="${p.key}">${escapeHtml(p.label)}</option>`))
+      .join('');
+    preset.onchange = () => applyPreset(preset.value);
+  }
+
+  // A/B 슬라이더 생성
+  buildSimSliders('A', document.getElementById('tvSimSliders'));
+  buildSimSliders('B', document.getElementById('tvSimSlidersB'));
+
+  const compare = document.getElementById('tvSimCompareToggle');
+  if (compare) {
+    compare.checked = false;
+    compare.onchange = () => {
+      simState.compareMode = !!compare.checked;
+      const panelB = document.getElementById('tvSimSlidersB');
+      if (panelB) panelB.style.display = simState.compareMode ? '' : 'none';
+      if (simState.active) { resetSim(); }
+    };
+  }
+
+  const startBtn = document.getElementById('tvSimStartBtn');
+  const stepBtn  = document.getElementById('tvSimStepBtn');
+  const resetBtn = document.getElementById('tvSimResetBtn');
+  if (startBtn) startBtn.onclick = startSim;
+  if (stepBtn)  stepBtn.onclick  = stepSim;
+  if (resetBtn) resetBtn.onclick = resetSim;
+
+  const loadBtn = document.getElementById('tvSimLoadFromPersona');
+  if (loadBtn) loadBtn.onclick = loadFromSelectedPersona;
+
+  updateSimReadout();
+}
+
+function buildSimSliders(runnerKey, root) {
+  if (!root) return;
+  const html = SIM_DIMS.map(dim => `
+    <div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
+      <span style="min-width:44px;font-size:0.68rem;color:#7c7466;">${SIM_DIM_LABELS[dim]}</span>
+      <input type="range" data-sim-runner="${runnerKey}" data-sim-dim="${dim}" min="0" max="1" step="0.05" value="0" style="flex:1;height:14px;">
+      <span class="sim-val" data-sim-runner="${runnerKey}" data-sim-dim="${dim}" style="min-width:28px;text-align:right;font-size:0.66rem;color:${SIM_COLORS[runnerKey]};font-variant-numeric:tabular-nums;">0.00</span>
+    </div>
+  `).join('');
+  root.innerHTML = `<div style="font-size:0.62rem;color:#7c7466;margin-bottom:4px;letter-spacing:0.08em;">RUNNER ${runnerKey}</div>${html}`;
+  root.querySelectorAll('input[type=range]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const span = root.querySelector(`.sim-val[data-sim-runner="${runnerKey}"][data-sim-dim="${inp.dataset.simDim}"]`);
+      if (span) span.textContent = Number(inp.value).toFixed(2);
+    });
+  });
+}
+
+function getRunnerEmotion(runnerKey) {
+  const root = runnerKey === 'A' ? document.getElementById('tvSimSliders') : document.getElementById('tvSimSlidersB');
+  const vec = {};
+  if (!root) return vec;
+  root.querySelectorAll('input[type=range]').forEach(inp => {
+    const v = Number(inp.value);
+    if (v > 0) vec[inp.dataset.simDim] = v;
+  });
+  return vec;
+}
+
+function setRunnerEmotion(runnerKey, vec) {
+  const root = runnerKey === 'A' ? document.getElementById('tvSimSliders') : document.getElementById('tvSimSlidersB');
+  if (!root) return;
+  SIM_DIMS.forEach(dim => {
+    const inp = root.querySelector(`input[data-sim-runner="${runnerKey}"][data-sim-dim="${dim}"]`);
+    const span = root.querySelector(`.sim-val[data-sim-runner="${runnerKey}"][data-sim-dim="${dim}"]`);
+    const v = Number(vec && vec[dim] || 0);
+    if (inp)  inp.value = v;
+    if (span) span.textContent = v.toFixed(2);
+  });
+}
+
+function applyPreset(key) {
+  const p = SIM_PRESETS.find(x => x.key === key);
+  if (!p) return;
+  setRunnerEmotion('A', p.vec);
+}
+
+function loadFromSelectedPersona() {
+  const sel = document.getElementById('tvPersonaSelect');
+  const id = sel && sel.value;
+  if (!id) { alert('페르소나를 먼저 선택하세요.'); return; }
+  const persona = personaState.personas.find(p => p.persona_id === id);
+  if (!persona || !persona.plays.length) { alert('해당 페르소나에 plays 데이터 없음.'); return; }
+  const agg = {};
+  let n = 0;
+  persona.plays.forEach(pl => {
+    const ue = pl.user_emotion;
+    const parsed = typeof ue === 'string' ? (ue ? JSON.parse(ue) : {}) : (ue || {});
+    Object.entries(parsed).forEach(([k, v]) => { agg[k] = (agg[k] || 0) + Number(v || 0); });
+    n++;
+  });
+  Object.keys(agg).forEach(k => { agg[k] = agg[k] / Math.max(1, n); });
+  setRunnerEmotion('A', agg);
+}
+
+function startSim() {
+  if (!state.scenes.length) { alert('씬이 없습니다.'); return; }
+  simState.active = true;
+  const aEmo = getRunnerEmotion('A');
+  simState.runners.A = _mkRunner('A');
+  simState.runners.A.emotion = aEmo;
+  simState.runners.A.currentIdx = _pickStartIdx(aEmo);
+  simState.runners.A.visited = [simState.runners.A.currentIdx];
+
+  if (simState.compareMode) {
+    const bEmo = getRunnerEmotion('B');
+    simState.runners.B = _mkRunner('B');
+    simState.runners.B.emotion = bEmo;
+    simState.runners.B.currentIdx = _pickStartIdx(bEmo);
+    simState.runners.B.visited = [simState.runners.B.currentIdx];
+  } else {
+    simState.runners.B = null;
+  }
+
+  // 첫 씬에서 엔진 + 네비게이터 실행 → 후보 계산
+  computeRunnerStep(simState.runners.A);
+  if (simState.runners.B) computeRunnerStep(simState.runners.B);
+
+  const stepBtn = document.getElementById('tvSimStepBtn');
+  if (stepBtn) stepBtn.disabled = false;
+
+  redrawSimOverlay();
+  updateSimReadout();
+}
+
+function stepSim() {
+  if (!simState.active) { alert('먼저 시작 누르세요.'); return; }
+  ['A', 'B'].forEach(k => {
+    const r = simState.runners[k];
+    if (!r || r.done) return;
+    // 후보로 커밋
+    if (r.candidateIdx == null) { r.done = true; return; }
+    r.currentIdx = r.candidateIdx;
+    r.visited.push(r.currentIdx);
+    // 이전 씬 기준의 lastResult 의 궤적을 누적: engine 이 이미 [...userTraj, current] 계산했으니,
+    // 우리는 커밋된 current 를 userTraj 에 push
+    const prevScene = state.scenes[r.visited[r.visited.length - 2]];
+    if (prevScene) {
+      r.userTraj.push(r.emotion);
+      r.origTraj.push(_sceneEmotionVec(prevScene));
+      if (r.lastResult) r.sceneScores.push(r.lastResult.current_scene_score);
+    }
+    computeRunnerStep(r);
+  });
+  redrawSimOverlay();
+  updateSimReadout();
+}
+
+function computeRunnerStep(r) {
+  if (!r || r.currentIdx < 0 || r.currentIdx >= state.scenes.length) { r.done = true; return; }
+  const scene = state.scenes[r.currentIdx];
+  const origEmo = _sceneEmotionVec(scene);
+  const origReason = _sceneReason(scene);
+
+  const engineResult = byeoriEngine.calculateStep({
+    userVector: { base: r.emotion },
+    originalVector: { base: origEmo, reason_analysis: origReason },
+    userTrajectory: r.userTraj,
+    originalTrajectory: r.origTraj,
+    sceneScores: r.sceneScores,
+  }, {});
+  r.lastResult = engineResult;
+
+  const navResult = sceneNavigator.navigate({
+    scenes: state.scenes,
+    currentSceneIndex: r.currentIdx,
+    visitedScenes: r.visited,
+    transitionPattern: engineResult.transition_pattern,
+    userEmotion: r.emotion,
+    originalEmotion: origEmo,
+    playerState: { userEmotion: r.emotion, visitedScenes: r.visited },
+  });
+  if (navResult) {
+    r.candidateIdx = navResult.index;
+    r.candidateIsFallback = !!navResult.isFallback;
+    r.fallbackNarrative = navResult.fallbackNarrative || null;
+  } else {
+    r.candidateIdx = null;
+    r.candidateIsFallback = false;
+    r.fallbackNarrative = null;
+    r.done = true;
+  }
+}
+
+function resetSim() {
+  simState.active = false;
+  simState.runners.A = null;
+  simState.runners.B = null;
+  const stepBtn = document.getElementById('tvSimStepBtn');
+  if (stepBtn) stepBtn.disabled = true;
+  redrawSimOverlay();
+  updateSimReadout();
+}
+
+// 디버그 / smoke 용 — window 에 runners 상태 노출
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, '__tvSimDebug', {
+    get() { return simState.runners; },
+    configurable: true,
+  });
+}
+
+function updateSimReadout() {
+  const el = document.getElementById('tvSimReadout');
+  if (!el) return;
+  if (!simState.active) {
+    el.innerHTML = '<div style="color:#5c544a;font-size:0.7rem;padding:4px 0;">감정 슬라이더 → ▶ 시작</div>';
+    return;
+  }
+  el.innerHTML = ['A', 'B'].filter(k => simState.runners[k]).map(k => {
+    const r = simState.runners[k];
+    const color = SIM_COLORS[k];
+    const scene = state.scenes[r.currentIdx];
+    const code = scene?.meta?.scene_code || String(scene?.scene_order ?? '?');
+    const cand = (r.candidateIdx != null) ? state.scenes[r.candidateIdx] : null;
+    const candCode = cand ? (cand.meta?.scene_code || String(cand.scene_order)) : (r.done ? '종료' : '—');
+    const res = r.lastResult || {};
+    const dbg = res.debug || {};
+    const fmt = (x) => (x == null ? '—' : Number(x).toFixed(2));
+    const fbTag = r.candidateIsFallback ? ' <span style="color:#b85540;">(fallback)</span>' : '';
+    return `
+      <div style="border-left:3px solid ${color};padding:4px 8px;margin-bottom:5px;background:rgba(196,168,130,0.03);">
+        <div style="color:${color};font-size:0.72rem;margin-bottom:2px;">
+          <b>${k}</b> · 씬 <b>${escapeHtml(code)}</b> → <b>${escapeHtml(candCode)}</b>${fbTag}
+        </div>
+        <div style="color:#a09886;font-size:0.66rem;line-height:1.5;">
+          pattern: <b style="color:#e0d8c4;">${escapeHtml(res.transition_pattern || '—')}</b> ·
+          bucket ${escapeHtml(res.alignment_bucket || '—')}<br>
+          align ${fmt(res.alignment_score)} · level ${fmt(dbg.level)} · shape ${fmt(dbg.shape)}<br>
+          ${res.mismatch_type ? `mismatch: <span style="color:#c4a882;">${escapeHtml(res.mismatch_type)}</span>` : ''}
+          ${r.candidateIsFallback && r.fallbackNarrative ? `<br><i style="color:#7c7466;">${escapeHtml(r.fallbackNarrative)}</i>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function redrawSimOverlay() {
+  const svg = document.getElementById('tvSvg');
+  if (!svg) return;
+  // 기존 overlay 제거
+  const prev = svg.querySelector('#simOverlay');
+  if (prev) prev.remove();
+  if (!simState.active) return;
+
+  const zoomG = svg.querySelector('#zoomG');
+  if (!zoomG) return;
+  const layer = svgEl('g', { id: 'simOverlay', 'pointer-events': 'none' });
+
+  ['A', 'B'].forEach((k, runnerIdx) => {
+    const r = simState.runners[k];
+    if (!r) return;
+    const color = SIM_COLORS[k];
+    const offset = (runnerIdx - 0.5) * 8; // A 위, B 아래 살짝
+
+    // 방문 경로 라인
+    if (r.visited.length >= 2) {
+      const pts = r.visited.map(i => _sceneNodeCenter(state.scenes[i]?.id)).filter(Boolean);
+      if (pts.length >= 2) {
+        const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x + offset},${p.y + offset}`).join(' ');
+        layer.appendChild(svgEl('path', { d, stroke: color, 'stroke-width': 2, 'stroke-dasharray': '6,4', fill: 'none', opacity: 0.7 }));
+      }
+    }
+    // 현재 위치: 꽉 찬 링
+    const cur = _sceneNodeCenter(state.scenes[r.currentIdx]?.id);
+    if (cur) {
+      layer.appendChild(svgEl('circle', { cx: cur.x + offset, cy: cur.y + offset, r: 14, stroke: color, 'stroke-width': 3, fill: 'none', opacity: 0.95 }));
+    }
+    // 후보 위치: 점선 링
+    if (r.candidateIdx != null && r.candidateIdx !== r.currentIdx) {
+      const cand = _sceneNodeCenter(state.scenes[r.candidateIdx]?.id);
+      if (cand) {
+        layer.appendChild(svgEl('circle', { cx: cand.x + offset, cy: cand.y + offset, r: 18, stroke: color, 'stroke-width': 2, 'stroke-dasharray': '5,4', fill: 'none', opacity: 0.85 }));
+        // 연결 화살 (현재 → 후보)
+        if (cur) {
+          layer.appendChild(svgEl('line', { x1: cur.x + offset, y1: cur.y + offset, x2: cand.x + offset, y2: cand.y + offset, stroke: color, 'stroke-width': 1.5, 'stroke-dasharray': '3,3', opacity: 0.6 }));
+        }
+      }
+    }
+  });
+
+  zoomG.appendChild(layer);
+}
+
+function _sceneNodeCenter(sceneId) {
+  if (!sceneId || !_renderCtx) return null;
+  const n = _renderCtx.g.node(sceneId);
+  if (!n) return null;
+  return { x: n.x, y: n.y };
+}
+
 // ─── 그래프 ────────────────────────────────────────────────
 function renderGraph() {
   const svg = document.getElementById('tvSvg');
@@ -849,6 +1216,9 @@ function renderGraph() {
 
   // ── 노드 드래그 ──
   attachNodeDrag(svg, g);
+
+  // ── 시뮬 overlay 재적용 (그래프 재렌더 이후 좌표 기준으로 다시 그리기)
+  redrawSimOverlay();
 }
 
 let _zoomPanAttached = false;

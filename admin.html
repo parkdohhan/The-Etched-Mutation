@@ -440,6 +440,27 @@
                 </div>
                 <div id="tvPersonaInfo" style="font-size:0.7rem;color:#7c7466;margin-top:6px;line-height:1.5;"></div>
 
+                <div class="tv-section-label" title="가상 관객 감정을 주입해 씬 이동 경로를 실시간 시뮬합니다 (작업 12-4)">분기 시뮬 <span style="color:#5c544a;text-transform:none;letter-spacing:0;font-size:0.62rem;">· B runner 비교</span></div>
+                <div id="tvSimRoot" style="font-size:0.72rem;color:#c0b8a4;">
+                    <div style="display:flex;gap:6px;margin-bottom:6px;">
+                        <select id="tvSimPreset" style="flex:1;padding:4px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.2);color:#e0d8c4;font-family:inherit;font-size:0.72rem;border-radius:2px;">
+                            <option value="">— 프리셋 —</option>
+                        </select>
+                        <button class="tv-toggle" id="tvSimLoadFromPersona" style="padding:4px 8px;font-size:0.68rem;" title="페르소나 선택에서 평균 감정 불러오기">페르소나 ←</button>
+                    </div>
+                    <div id="tvSimSliders" data-runner="A" style="border:1px solid rgba(196,168,130,0.15);border-left:3px solid #c4a882;border-radius:3px;padding:6px 8px;margin-bottom:6px;"></div>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;color:#7c7466;margin-bottom:6px;cursor:pointer;">
+                        <input type="checkbox" id="tvSimCompareToggle"> 비교 모드 (B runner 활성)
+                    </label>
+                    <div id="tvSimSlidersB" data-runner="B" style="display:none;border:1px solid rgba(106,163,131,0.2);border-left:3px solid #6aa383;border-radius:3px;padding:6px 8px;margin-bottom:6px;"></div>
+                    <div class="tv-toggle-row" style="margin-top:4px;">
+                        <button class="tv-toggle" id="tvSimStartBtn" style="flex:1;padding:5px;font-size:0.7rem;">▶ 시작</button>
+                        <button class="tv-toggle" id="tvSimStepBtn" style="flex:1;padding:5px;font-size:0.7rem;" disabled>다음 →</button>
+                        <button class="tv-toggle" id="tvSimResetBtn" style="flex:1;padding:5px;font-size:0.7rem;">↺</button>
+                    </div>
+                    <div id="tvSimReadout" style="margin-top:6px;font-size:0.7rem;line-height:1.55;"></div>
+                </div>
+
                 <div class="tv-section-label">통계</div>
                 <div id="tvStats" class="tv-emo-meta" style="line-height: 1.6;"></div>
             </aside>

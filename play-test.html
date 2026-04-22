@@ -49,6 +49,8 @@
   <script src="js/ui/lumen_walk_effects.js"></script>
   <script src="js/ui/lumen_visual_effects.js"></script>
   <script src="js/ui/lumen_audio_space.js"></script>
+  <script src="js/ui/lumen_scene_ghosts.js"></script>
+  <script src="js/ui/lumen_rewind_playback.js"></script>
   <script src="js/ui/strataSection.js"></script>
   <script src="js/ui/floatingAnchor.js"></script>
   <style>
@@ -4585,6 +4587,40 @@
                 }
               });
             }
+            // 작업 4: 유령 응결 좌표에 잔상 텍스트 sprite 배치
+            // _initMinimap 이 나중에 _loadGhostPointsForCurrentMemory 를 또 호출하지만 idempotent.
+            try { _loadGhostPointsForCurrentMemory(); } catch (_) {}
+            if (window.LumenSceneGhosts && typeof window.LumenSceneGhosts.attach === 'function') {
+              window.LumenSceneGhosts.attach(rt, {
+                getGhostPoints: function () {
+                  try { return _fpGhostPoints || []; } catch (_) { return []; }
+                },
+                getEchoWords: function () {
+                  try {
+                    var scenes = (window._temGame && window._temGame.scenes) || [];
+                    var pool = [];
+                    for (var i = 0; i < scenes.length; i++) {
+                      var ew = scenes[i] && scenes[i].echo_words;
+                      if (Array.isArray(ew)) { for (var j = 0; j < ew.length; j++) pool.push(ew[j]); }
+                    }
+                    return pool;
+                  } catch (_) { return []; }
+                },
+                isSeenIndex: function (i) {
+                  try { return _fpSeenGhosts && _fpSeenGhosts.has(i); } catch (_) { return false; }
+                }
+              });
+            }
+            // 작업 2-A 후반: 궤적 rewind 재생 (void 진입 트리거, getTrajectory 활용, WASD/마우스 잠금)
+            // 작업 2-D (exit flow) 완성 전까지 자동 트리거 금지 — void 5.6유닛 안 들어가면 바로 발동해
+            // 입력 잠긴 채로 튕김. 테스트는 rt.__lumenRewind.forceStart() 로 수동 호출.
+            if (window.LumenRewindPlayback && typeof window.LumenRewindPlayback.attach === 'function') {
+              var _rw = window.LumenRewindPlayback.attach(rt, { playbackSpeed: 1.0, triggerEvent: null });
+              if (_rw) {
+                _rw.on('rewindStart', function (p) { console.log('[Lumen] rewind start', p); });
+                _rw.on('rewindEnd', function (p) { console.log('[Lumen] rewind end', p); });
+              }
+            }
           } catch (e) { console.warn('[Lumen] adapter attach failed', e); }
 
           // Wider FOV for play
@@ -5619,21 +5655,29 @@
       }
 
       // Draw pins
-      _fpScenePins.forEach(function (sp) {
-        var mp = _worldToMini(sp.wx, sp.wz);
-        _miniCtx.beginPath();
-        if (sp.visited) {
-          _miniCtx.fillStyle = 'rgba(100,100,100,0.5)';
-          _miniCtx.arc(mp.x, mp.y, 3, 0, Math.PI * 2);
-        } else if (sp.accessible) {
-          _miniCtx.fillStyle = 'rgba(106,159,216,0.8)';
-          _miniCtx.arc(mp.x, mp.y, 4, 0, Math.PI * 2);
-        } else {
-          _miniCtx.fillStyle = 'rgba(60,60,70,0.4)';
-          _miniCtx.arc(mp.x, mp.y, 2.5, 0, Math.PI * 2);
-        }
-        _miniCtx.fill();
-      });
+      // 작업 4 scope change (2026-04-22): Lumen 모드(circular terrain)에서는 씬 핀을 미니맵에서
+      // 가림 — "미리 아는 지도 부정" (update_lumen-260420.md §1.4). 유령 응결점(seen)과 출구만 남김.
+      var _lumenMode = (function () {
+        try { var g = (typeof game !== 'undefined') ? game : (window._temGame || null);
+              return !!(g && g.terrain_shape === 'circular'); } catch (_) { return false; }
+      })();
+      if (!_lumenMode) {
+        _fpScenePins.forEach(function (sp) {
+          var mp = _worldToMini(sp.wx, sp.wz);
+          _miniCtx.beginPath();
+          if (sp.visited) {
+            _miniCtx.fillStyle = 'rgba(100,100,100,0.5)';
+            _miniCtx.arc(mp.x, mp.y, 3, 0, Math.PI * 2);
+          } else if (sp.accessible) {
+            _miniCtx.fillStyle = 'rgba(106,159,216,0.8)';
+            _miniCtx.arc(mp.x, mp.y, 4, 0, Math.PI * 2);
+          } else {
+            _miniCtx.fillStyle = 'rgba(60,60,70,0.4)';
+            _miniCtx.arc(mp.x, mp.y, 2.5, 0, Math.PI * 2);
+          }
+          _miniCtx.fill();
+        });
+      }
 
       // 작업 11: 시선 교차로 마주친 유령만 누적 표시 (Lumen 응결점)
       _checkGhostGaze();

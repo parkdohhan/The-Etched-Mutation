@@ -14,6 +14,34 @@ let adminUser = null; // 현재 인증된 관리자
 let previewAudio = null; // 사운드 미리듣기용
 const sceneWaveAnimationMap = new Map(); // sceneIndex -> requestAnimationFrame id
 
+// 편집 dirty-flag — 저장 안 된 변경 사항 경고 (작업 12-5)
+let editorDirty = false;
+function markEditorDirty() { editorDirty = true; }
+function clearEditorDirty() { editorDirty = false; }
+window.markEditorDirty = markEditorDirty;
+// editorScreen 내부의 input/change 이벤트를 delegation 으로 감지
+document.addEventListener('DOMContentLoaded', () => {
+    const screen = document.getElementById('editorScreen');
+    if (!screen) return;
+    const dirtyHandler = (e) => {
+        // 화면이 활성 상태이고, dashboard/nav 외부 요소에서 발생할 때만 dirty 처리
+        if (!screen.classList.contains('active')) return;
+        const t = e.target;
+        if (!t || !t.tagName) return;
+        const tag = t.tagName.toUpperCase();
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') markEditorDirty();
+    };
+    screen.addEventListener('input', dirtyHandler, true);
+    screen.addEventListener('change', dirtyHandler, true);
+    // 페이지 이탈 경고 (새로고침/닫기)
+    window.addEventListener('beforeunload', (e) => {
+        if (screen.classList.contains('active') && editorDirty) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+});
+
 // Supabase Auth 기반 manage자 auth
 async function checkPassword() {
     const emailInput = document.getElementById('adminEmail');
@@ -280,6 +308,7 @@ function addNewMemory() {
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
     switchTab('edit');
+    setTimeout(clearEditorDirty, 0);
 }
 
 // memory edit
@@ -384,6 +413,8 @@ function editMemory(index) {
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
     switchTab('edit');
+    // 초기 DOM 세팅 이벤트가 dirty 를 트리거했을 수 있으므로 다음 tick 에서 clear
+    setTimeout(clearEditorDirty, 0);
 }
 
 // memory 시성 토글
@@ -2162,7 +2193,8 @@ async function saveMemory() {
         exportMemoriesJSON();
         
         console.log('[saveMemory] 전체 저장 완료');
-        
+
+        clearEditorDirty(); // 저장 성공 → dirty 해제 (cancelEdit confirm 회피)
         cancelEdit();
     } catch (error) {
         console.error('[saveMemory] 전체 Error occurred', error);
@@ -2349,6 +2381,10 @@ function saveMemoriesToStorage() {
 
 // 편집 취소
 function cancelEdit() {
+    if (editorDirty) {
+        if (!confirm('저장하지 않은 변경사항이 있습니다.\n정말 나가시겠습니까?')) return;
+    }
+    clearEditorDirty();
     document.getElementById('editorScreen').classList.remove('active');
     document.getElementById('adminDashboard').classList.add('active');
     currentMemoryIndex = null;

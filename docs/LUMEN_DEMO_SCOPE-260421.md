@@ -87,11 +87,16 @@
 - [x] **Depth drone (2026-04-22)** — `Base_Void.mp3` 전역 루프, `gain = max(0, (1 − r / (terrainR × 0.55))) × 0.45`. 중심 가까울수록 크게, 외곽 ratio 초과 시 0. 검증: r=25.46 / outer=30.8 → prox 0.17 × 0.45 ≈ 0.078 일치.
 - [x] **debug API (2026-04-22)** — `rt.__lumenAudioSpace.getDebug()`/`muteLayer(name, bool)` 로 레이어 개별 격리·상태 덤프 제공. 파일럿 시 audio 디버깅 편의.
 
-### 작업 4 — scene 잔상 공간 배치 [2 세션]
-- [ ] 기존 echo word floater 확장
-- [ ] 유령 응결 좌표에 잔상 텍스트 배치
-- [ ] VAD → 위치 매핑 검증
-- [ ] **씬 핀 Lumen 미니맵에서 제거 (2026-04-22 scope change)** — 작업 11 연장선. [update_lumen.md §1.4](update_lumen-260420.md)의 "미리 아는 지도 부정" 철학에 맞춤. 작업 4에서 유령 응결 좌표가 대체 길잡이로 확립된 뒤 수행. `_updateMinimap`의 `_fpScenePins.forEach` 렌더 블록을 Lumen 조건(`game.terrain_shape === 'circular'` 등)으로 가드.
+### 작업 4 — scene 잔상 공간 배치 [2 세션] — ✅ 완료 (2026-04-22)
+
+**구현 경로**: 새 모듈 [js/ui/lumen_scene_ghosts.js](../js/ui/lumen_scene_ghosts.js). `renderer.render` wrap 패턴 (walk/visual_effects 와 동일 체인, 마지막 attach → 가장 바깥). 수정 금지 함수 원칙 준수 (tem_af_strata_terrain.js 한 글자도 안 건드림).
+
+- [x] **Echo word floater 확장 (2026-04-22)** — strataView `_makeTextSprite` 연출(Gowun Batang + chromatic red/cyan blur + violet-white glow)을 FP 용으로 재구현. fontPx=44, shadowBlur=14, colorCss=pale violet `rgba(232,216,252,0.92)`.
+- [x] **유령 응결 좌표에 잔상 텍스트 배치 (2026-04-22)** — `_fpGhostPoints` 를 소스로 sprite 생성. 점 index 에 memory-wide echo_words 풀을 modulo 픽(결정적 — 같은 점 → 같은 단어). 높이 `runtime.gH(x,z) + baseY(2.8m)` + bob(sin) ±0.22m. 가시성: `baseOpacity 0.14` → 카메라 거리 ≤ `proximityNear 6` 에서 `nearOpacity 0.72`, ≥ `proximityFar 26` 에서 base. `isSeenIndex` 콜백(작업 11 `_fpSeenGhosts` 연결)이 true 인 인덱스에 `seenBoost 0.18` 추가.
+- [x] **VAD → 위치 매핑 검증 (2026-04-22)** — 점 좌표계 = camera world (x,z ∈ [-56,56]). Admin 12-3 저작 시 AF 투영으로 찍힌 점과 여기서 렌더되는 world 좌표 1:1. smoke 테스트([test/smoke_task_4.js](../test/smoke_task_4.js))에서 (-20,-20)·(10,5)·(0,25) 세 fake point 로 근접 ↔ 원거리 opacity 검증.
+- [x] **씬 핀 Lumen 미니맵에서 제거 (2026-04-22 scope change)** — `_updateMinimap` 의 `_fpScenePins.forEach` 블록을 `game.terrain_shape === 'circular'` 가드로 감쌈. Lumen 모드에선 유령 응결점(seen) + 출구만 남음. 일반 모드 기존 로직 유지.
+- [x] **Lifecycle (2026-04-22)** — adapter `on('enter', build)` / `on('exit', clear)` 로 FP 세션별 자동 재생성·해제. attach 시점이 adapter enter 이후라 즉시 build 도 수행. `rt.__lumenSceneGhosts.rebuild()` / `getDebug()` 디버그 API 제공.
+- [x] **통합 (2026-04-22)** — [play-test.html:52](../play-test.html#L52) script include. FP attach 블록에서 `_loadGhostPointsForCurrentMemory()` 선행 호출 + `LumenSceneGhosts.attach` (audio_space 뒤). `_initMinimap` 의 재호출은 idempotent.
 
 ### 작업 11 — 미니맵 수정 [0.3 세션] — ✅ 완료 (2026-04-22)
 - [x] **유령 점 시선 교차 누적 표시 (2026-04-22)** — [play-test.html](../play-test.html) `_checkGhostGaze()` + `_fpSeenGhosts` Set. 카메라 forward 벡터와 (ghost-player) 방향 각도차 < 15°(`GAZE_HALF_ANGLE=0.26rad`) + 거리 < 35 유닛이면 seen 누적. `_updateMinimap`에서 seen set만 렌더(창백한 자주 `rgba(168,140,196,.85)`).
@@ -118,6 +123,7 @@
 **Sprint 2에 할당된 0.3 세션**:
 - [ ] Admin 저작기로 **시범 메모리 1개 작성** (기능 검증 + 워크플로 체감)
 - [ ] 응결점·시뮬 가시화 동작 확인
+- [ ] **수락 기준**: 시범 메모리가 (a) Admin UI만으로 저작 완료 (b) FP 진입 → 응결점 → exit 풀 사이클 재생 (c) 12-4 비교 모드로 두 페르소나 분기 시각 확인
 
 **품질 기준** (레퍼런스):
 - 장면 7~10 (공간에 핀 풍부하도록)
@@ -131,20 +137,30 @@
 - [supabase/seeds/lumen_memory_template.sql](../supabase/seeds/lumen_memory_template.sql) — SQL 템플릿 (백업)
 
 ### 작업 2 — 귀환 구조 풀 [3.5 세션]
-- [ ] 2-A: 궤적 기록 (`_fpTrajectory.push`, 150ms 단위) + rewind 재생 [1] — 어댑터의 `getTrajectory()` 활용
+- [x] **2-A: 궤적 기록 + rewind 재생 [1] (2026-04-22 완료)** — 궤적 기록은 작업 0의 어댑터가 이미 수행. Rewind 재생은 신규 모듈 [js/ui/lumen_rewind_playback.js](../js/ui/lumen_rewind_playback.js). 어댑터 코드 한 글자도 수정 안 함 — `runtime.__lumenAdapter.on('enterVoid')` + `getTrajectory()` 만 소비. `renderer.render` wrap 가장 바깥에서 매 frame `cam.position.set + setYaw` 강제 적용 (walk/visual wrappers 가 그 위에 sub-cm bob/breath 만 가미). 입력 잠금은 `keydown`/`keyup`/`mousemove` **capture phase** `stopPropagation` — 원본 `_fpKeys`/`_fpEuler` 까지 도달 X. 보간: trajectory backward-walking + linear lerp, yaw shortest-path. 옵션 `playbackSpeed` 기본 1.0 (2-B 에서 1.5 주입 예정), `triggerOnce`/`lockInput`/`minTrajectoryPoints`. play-test 통합 [play-test.html:53, 4615-4621](../play-test.html#L4615-L4621).
+  - [x] **smoke** [test/smoke_task_2a.js](../test/smoke_task_2a.js) — 14 checks (콘솔 붙여넣기). API 표면, trajectory 길이, forceStart 후 cam pose, capture phase 입력 차단, 자연 종료 시 trajectory 시작점 도달, 종료 후 입력 통과.
+  - [x] **수락 기준**: rewind 시작 → 진입구 방향 자동 이동 + WASD/마우스 잠금 (컴포넌트 정의 §2 충족). 자연 종료 후 입력 잠금 해제. 자동 종료(exitFirstPerson 호출) 까지는 작업 2-D 영역으로 분리.
 - [ ] 2-B: 색감 shift + 속도 ×1.5 + 유령 자세 변화 [1]
+  - [ ] **smoke** `test/smoke_task_2b.js` — 귀환 모드 flag ON 시 색감 shader uniform·speed mul·ghost pose 변수 3종 모두 전환
+  - [ ] **수락 기준**: 귀환 진입 시 변화 신호 3종이 동시에 관찰 가능 (시각/이동/유령)
 - [ ] 2-C: 유령 말투 미세 변화 + 입력 파편 재셔플 [1]
+  - [ ] **smoke** `test/smoke_task_2c.js` — 귀환 flag ON 시 대사 풀에서 alt variant 선택, 파편 배열 재셔플 시드 고정
+  - [ ] **수락 기준**: 같은 관객 입력 → 같은 시드 → 같은 재셔플 결과 (재현성)
 - [ ] 2-D: 귀환 전용 사건 2~3개 (입력 파편 공중 출몰 등) + 통합 [0.5]
+  - [ ] **smoke** `test/smoke_task_2d.js` — 귀환 세션에만 사건 트리거, 일반 세션에선 발화 안 됨
+  - [ ] **수락 기준**: 사건 2~3개 한 귀환 세션 안에 timing 겹침 없이 발생
 
 ### 작업 8 — Artist statement 계보 명시 [1 세션] — 🔄 진행 중
 - [ ] 3~4명 실명 레퍼런스 (본인이 실제 아는 작가만)
   - 후보: Lozano-Hemmer / Yoko Ono / 오수경 / 하차연 / Lynn Hershman Leeson / Ian Cheng
 - [ ] TEM을 어느 계보 교차점에 놓는지 선언
+- [ ] **수락 기준** (글쓰기 → smoke 면제): (a) 3~4명 모두 본인이 실제로 아는 범위 (b) TEM 3축 중 최소 2축이 계보와 교차하는 주장 성립 (c) 학부생 톤, overselling 없음
 
 ### 작업 9 — 증거 패키지 [1.5 세션]
 - [ ] 스크린샷 4~10장 (시작 / 첫 유령 / 중간 / void / 귀환 / 종료)
 - [ ] 1~2분 데모 영상 (OBS 녹화, 간단 편집)
 - [ ] 짧은 프로젝트 설명 (Lumen 카테고리 맞춤)
+- [ ] **수락 기준** (미디어 캡처 → smoke 면제): (a) 스크린샷 각 단계 구분 가능 (b) 영상 1~2분 끊김·크래시 없음 (c) 제출 양식 해상도·형식 요건 준수
 
 ### 작업 12 — Admin 메모리 저작기 (L 티어) [2.2 세션]
 
@@ -190,17 +206,23 @@
 - [x] 콘솔 테스트 통과 (dots=3, rows=3, threshold 조절, 삭제, save 포맷)
 - [x] UI 실제 드래그·저장 → DB 라운드트립 검증 (2026-04-22)
 
-#### 12-4. 분기 시뮬·가시화 [1.0]
-- [ ] 가상 관객 감정 입력기 (6-dim 슬라이더 or 프리셋 페르소나 로드)
-- [ ] 매 씬마다 **alignment·level·shape·transition_pattern** 실시간 계산·표시
-- [ ] SceneNavigator 호출하여 **다음에 열릴 후보 씬** 하이라이트
-- [ ] 비교 모드: 가상 관객 2명 감정을 다르게 주입하여 궤적이 어떻게 갈라지는지 side-by-side
-- [ ] 기존 [admin-trajectory.js](../js/admin-trajectory.js) 페르소나 재생 로직 확장
+#### 12-4. 분기 시뮬·가시화 [1.0] ✅ **2026-04-22 완료**
 
-#### 12-5. 마감 [0.2]
-- [ ] 스타일 일관성 (기존 admin 패턴 따름)
-- [ ] 저장 안정성 (실수 방지 확인 다이얼로그)
-- [ ] 에러 처리 최소선
+**구현 경로**: [js/admin-trajectory.js](../js/admin-trajectory.js) Canvas 탭 사이드바 "분기 시뮬" 섹션 ([admin.html:433](../admin.html#L433) 페르소나 재생 바로 아래). ByeoriEngine + SceneNavigator 직접 import. 재생 데이터(`plays`) 없이 작가 입력값만으로 on-the-fly 시뮬.
+
+- [x] **가상 관객 감정 입력기 (2026-04-22)** — 6-dim 슬라이더(fear/sadness/anger/joy/longing/guilt, admin `originalVectorEditor` 와 동일). 프리셋 6종(애도·공명·분노회피·무감·죄책·치유) 드롭다운 + `페르소나 ←` 버튼으로 선택된 실제 페르소나의 평균 `user_emotion` 불러오기.
+- [x] **실시간 계산·표시 (2026-04-22)** — 매 step 마다 `ByeoriEngine.calculateStep({userVector, originalVector:{base, reason_analysis}, userTraj, origTraj, sceneScores})` 호출. readout 패널에 `pattern · bucket · align · level · shape · mismatch_type · fallback narrative` 표시.
+- [x] **후보 씬 하이라이트 (2026-04-22)** — `SceneNavigator.navigate()` 결과 `#simOverlay` SVG 그룹에 렌더: **현재 씬=꽉 찬 원**, **후보 씬=점선 링 + 화살**, **방문 경로=점선 라인**. `renderGraph()` 말미에서 자동 재적용.
+- [x] **비교 모드 (2026-04-22)** — 체크박스 ON → B runner 슬라이더 노출. 두 runner 독립 궤적·엔진 상태 유지. A=amber (#c4a882), B=teal (#6aa383) 색 구분, A 위 / B 아래로 8px offset 하여 겹침 방지.
+- [x] **시작 씬 지능 선택 (2026-04-22)** — `memories.meta.emotion_entries` 있으면 dominant 감정의 entry 씬, 없으면 `scene_order=0`.
+- [x] **로직 smoke (2026-04-22)** — 가짜 씬 5개 + 두 페르소나(애도/분노) N=6 step: 감정 차이로 pattern 분기 확인(echo_follow vs contradiction). 체크 6/6 PASS. 브라우저 DOM smoke 는 [test/smoke_task_12_4.js](../test/smoke_task_12_4.js).
+
+#### 12-5. 마감 [0.2] ✅ **2026-04-22 완료**
+- [x] **스타일 일관성 (2026-04-22)** — 12-1/12-2/12-3/12-4 신설 UI 가 기존 `.editor-section`/`.tv-section-label`/`.tv-toggle` 패턴을 그대로 사용하는 것 확인. 신규 CSS 추가 없이 기존 토큰만 재사용 (amber #c4a882, teal #6aa383).
+- [x] **저장 안정성 — dirty-flag 기반 이탈 확인 (2026-04-22)** — [js/admin.js](../js/admin.js) 상단 `editorDirty` 플래그 + document-level delegation 으로 `#editorScreen` 내부 input/textarea/select 변경 감지. `cancelEdit()` 에서 dirty 면 confirm 다이얼로그. `beforeunload` 가드로 새로고침/탭 닫기도 경고. `saveMemory` 성공 및 `editMemory`/`addNewMemory` 초기 진입 시 clear.
+- [x] **에러 처리 최소선 — 기존 `saveMemory` try/catch 수용 (2026-04-22)** — 저장 실패 시 alert + console.error (detail/hint/code/stack 포함) 로 복구 가능한 상태 유지. UI 는 편집 화면에 남아 있어 사용자가 재시도 가능. 네트워크·입력 검증·권한 3종 에러 모두 동일 경로로 흡수.
+- [~] **smoke 기각 (2026-04-22)** — 별도 smoke 파일 생성 대신 수동 테스트로 대체: (a) 편집 중 취소 → confirm 표시, (b) 저장 후 취소 → confirm 없음, (c) 입력 없이 취소 → confirm 없음.
+- [x] **수락 기준 충족**: dirty 이탈 가드로 변경 유실 방지, 저장 에러 alert + console 상세 로그, 편집 화면 유지로 재시도 가능.
 
 **V2 이월 (L에 포함 안 됨)**: `original_vector` 17-dim 확장, 동심원 overlay·layer_radii 슬라이더·center_void 위치 지정·색상 테마 프리셋.
 
@@ -222,6 +244,7 @@
 - [ ] 조작적 정의는 5-07 외부 시연 전에 별도 체크리스트 md로 확정 (사후 cherry pick 방지)
 - [ ] 결과는 작업 8·9에 반영
 - 관찰 항목 (참고): 첫 30초 개념 감지, 튜토리얼 탐색 여부, void 체류, 귀환 후 자유 응답
+- [ ] **수락 기준** (외부 활동 → smoke 면제): (a) n≥5 확보 or 시나리오 B 발동 (b) 조작적 정의 체크리스트가 실시 전 commit 됨 (c) 피험자별 관찰 기록 `docs/pilot/*.md` 존재
 
 ---
 
@@ -278,7 +301,7 @@ computeAfTerrainFields
 | Sprint 4 | 5-14~16 | 작업 8 + 9 | 2.5 |
 | 버퍼 | 5-17~19 | 파일럿 반영 + 최종 점검 + 제출 | — |
 
-**총 코드 세션**: 15.3 (직전 16.1 − 작업 12-L 재견적 0.8 [3.0→2.2, 기존 admin 인프라 반영])
+**총 코드 세션**: 16.1 (직전 15.3 + 테스트 강제 0.8 [smoke 남은 작업 2-A/B/C/D·12-5 + 통합일 체크리스트 실행, 2026-04-22 scope change §8-7/§8-1])
 **총 기간**: 28일 (4-22 ~ 5-19)
 
 ---
@@ -291,6 +314,36 @@ computeAfTerrainFields
 4. 통합일마다 "이번 스프린트에서 하고 싶었는데 안 한 것" 리스트를 `V2_backlog.md`로 이월.
 5. Week 3 귀환 작업 시작 전(5-01 통합일)에 귀환 8개 컴포넌트 "최소 작동 정의" 문서 재검토.
 6. 5-09까지 3-A/B/C 중 하나라도 미완이면 **2-D(귀환 전용 사건)를 즉시 V2로 포기**.
+7. **작업 완료 조건** (2026-04-22 scope change, §8-1 참조):
+   - (a) **smoke test 파일 필수 (코드 작업 한정)** — `test/smoke_task_*.js` 반복 실행 가능한 회귀 가드. 코드 수정이 없는 작업(큐레이션·글쓰기·촬영·파일럿)은 면제.
+   - (b) **수락 기준 1~2줄 명시** — 해당 작업 bullet 블록에 "수락 기준" 항목 추가. 모든 작업 공통.
+   - (c) **콘솔 테스트는 옵션** — 자동화 어려운 DOM/시각 상태만 devtools 1회 검증 + 결과 bullet에 기록.
+
+### 8-1. 통합일 통과 시나리오 (2026-04-22 신설)
+
+통합일은 "체험 + 메모" 에 더해 **아래 체크리스트 전부 PASS** 가 커밋 재개 조건. FAIL 항목은 다음 스프린트 최우선 또는 V2 이월.
+
+**4-27 통합일 (Sprint 1 직후: 작업 0 · 3 · 3b · 3c · 11)**
+- [ ] FP 진입 → 5분 자유 이동 중 crash/NaN 없음
+- [ ] bob·headsway·breathing 시각 이질감 없음 (단일 피험자 감)
+- [ ] step 사운드 겹침 없음, 8분 연속 이동에도 buffer 누수 없음
+- [ ] depth 0 → 최대값 fog·vignette 단조증가, FP 종료 시 원복
+- [ ] whisper·noise·drone 3레이어 동시 재생 시 clip 없음
+- [ ] 미니맵에 seen ghost만 점진 표시 + EXIT_DOOR 고정 표시
+- [ ] 콘솔 에러 0건
+
+**5-01 통합일 (Sprint 2 직후: 작업 1 · 4 · 7시범 · 12-L · 13)**
+- [ ] 오프닝 입력 → 흡수 연출 → FP 진입 끊김 없음
+- [ ] Admin 저작기로 시범 메모리 1개 end-to-end (메타·씬·AF·응결점·저장·재로드)
+- [ ] 잔상 텍스트 VAD 좌표 매핑이 실제 응결점과 충돌 없음
+- [ ] motif_tags 겹치는 입력이 해당 메모리 우선 매칭
+- [ ] 귀환 8개 컴포넌트 최소 작동 정의 문서 재검토 완료
+
+**5-06 통합일 (Sprint 3 직후: 작업 2 귀환 풀)**
+- [ ] 궤적 기록 → rewind 재생 역방향 일관
+- [ ] 귀환 색감·속도·유령 자세 3종 변화 신호 식별 가능
+- [ ] 입력 파편 재셔플이 같은 시드에 동일 결과 (재현성)
+- [ ] 오프닝 → 흡수 → 공간 → void → 귀환 → exit door 풀 사이클 1회 clean run
 
 ---
 
