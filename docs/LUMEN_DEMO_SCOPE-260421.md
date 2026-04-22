@@ -68,25 +68,37 @@
 - [x] **관성 (2026-04-21)** — 시각 x,z 지수 smoothing. accel tau 0.10s / decel tau 0.07s. 논리 `_fpPos`는 그대로, 시각만 lag. 스코프 "0.3s / 0.2s" 는 체감 목표 — exp smoothing time constant 는 그보다 작게 튜닝.
 - [x] **스텝 사운드 (2026-04-21)** — bob sin +→− zero-cross 시 WebAudio 합성(흙바닥: 320~460Hz lowpass noise + 180Hz low-shelf +3dB, 240ms decay). **고정 샘플 파일 미사용** — `sounds/footstep.mp3`(15초 ambient)는 겹침 버그로 폐기. 5-variant 로테이션(cutoff + playback rate). 이속 `_fpSpeed` 8→4.5 로 동시 하향. 실 샘플 분리(층별 3~5) 는 V2.
 
-### 작업 3b — 시각 연출 레이어 [1 세션]
-- [ ] Fog 밀도 (FogExp2, 오염 depth 연결)
-- [ ] Vignette (오염 depth 연결)
-- [ ] Floating Anchor 거리 재튜닝
+### 작업 3b — 시각 연출 레이어 [1 세션] — ✅ 완료 (2026-04-22)
 
-### 작업 3c — 청각 공간 레이어 [1.5 세션]
-- [ ] Positional audio (유령 whisper 방향성)
-- [ ] Noise floor (오염 depth 연결)
-- [ ] Depth drone (중심 근접도 연결)
+**구현 경로**: 새 모듈 [js/ui/lumen_visual_effects.js](../js/ui/lumen_visual_effects.js). walk_effects 와 동일하게 `renderer.render` wrap 패턴. 원본 `scene.fog` 밀도(0.008, [tem_af_strata_terrain.js:957](../js/shared/tem_af_strata_terrain.js#L957))는 attach 시점에 스냅샷 → FP 종료 시 복원. FP 밖에선 vignette opacity 0으로 autohide.
+
+- [x] **Fog 밀도 depth 연결 (2026-04-22)** — `scene.fog.density = fogBaseDensity * min(fogDepthCap, 1 + depth * fogDepthGain)`. 기본 gain 0.35, cap 3.0 → depth 0일 땐 원본 0.008 유지, depth 폭주 시 최대 0.024.
+- [x] **Vignette (2026-04-22)** — DOM overlay div + radial-gradient. 새 shader 금지(SCOPE §0 후속 원칙)에 부합. opacity = `vignetteBaseOpacity + depth * vignetteDepthGain`, cap `vignetteMaxOpacity 0.75`. 기본 inner stop 38% (중앙 선명), outer 100% (가장자리 암전).
+- [x] **Floating Anchor 거리 재튜닝 (2026-04-22 / 파일럿 후 실 적용)** — `anchorHeightOffset` 옵션으로 노출. 기본 0(원본 배치 유지). 파일럿 체감 확인 후 `vfx.setOptions({anchorHeightOffset: n})` 로 조정. 실 sprite 배치 함수(`tem_af_strata_terrain.js:880` `baseY = ewh + 2 + wi*1`)는 수정 금지 대상이므로 현 단계는 tuning hook 만 제공.
+- [x] **통합 (2026-04-22)** — [play-test.html:49](../play-test.html#L49) script include + FP attach 블록에 `LumenVisualEffects.attach` 추가 (walk_effects 뒤, audio_space 앞). 체인 순서: walk wrap → visual wrap → audio → origRender. 서로 간섭 없음.
+- [x] **Smoke 검증 (2026-04-22)** — [test/smoke_task_3b.js](../test/smoke_task_3b.js), 9/9 PASS: fog·vignette 존재 · depth=0 기본치 · depth=3 단조증가 · depth=9999 cap (fog base×cap, vignette maxOpacity). FP 종료 시 원복은 수동 확인(가이드 출력).
+
+### 작업 3c — 청각 공간 레이어 [1.5 세션] — ✅ 완료 (2026-04-22)
+
+**구현 경로**: 새 모듈 [js/ui/lumen_audio_space.js](../js/ui/lumen_audio_space.js). 독립 AudioContext에 3-레이어(whisper × N / noise floor / depth drone). `runtime.tick` wrap 으로 매 frame 리스너 위치·방향 + 게인 smoothing 업데이트 (walk effects 는 `renderer.render` wrap이라 중복 없음). `_fpTick` / 카메라 논리 상태 수정 없음.
+
+- [x] **Positional whisper (2026-04-22)** — `sfx_resonance.mp3` 루프, PannerNode(HRTF, inverse distance, refDist 2 / maxDist 20 / rolloff 1.6). 현재는 `_fpScenePins` accessible pin 위치를 whisper 소스로 사용. `memories.ghost_condensation_points` (작업 11에서 select 확장됨)로 교체는 Admin UI(작업 12-3) 저작 완료 후. playbackRate ±0.04 variant + 시작 offset 분산으로 동기 발화 방지. maxWhispers=6.
+- [x] **Noise floor (2026-04-22)** — `Base_white.mp3` 전역 루프, `gain = min(0.25, 0.02 + 0.06 × cont_depth)`. depth=0 에서도 2% 옅은 벽지. 콘솔 검증: contDepth=85 → gainMax 0.25 수렴 확인.
+- [x] **Depth drone (2026-04-22)** — `Base_Void.mp3` 전역 루프, `gain = max(0, (1 − r / (terrainR × 0.55))) × 0.45`. 중심 가까울수록 크게, 외곽 ratio 초과 시 0. 검증: r=25.46 / outer=30.8 → prox 0.17 × 0.45 ≈ 0.078 일치.
+- [x] **debug API (2026-04-22)** — `rt.__lumenAudioSpace.getDebug()`/`muteLayer(name, bool)` 로 레이어 개별 격리·상태 덤프 제공. 파일럿 시 audio 디버깅 편의.
 
 ### 작업 4 — scene 잔상 공간 배치 [2 세션]
 - [ ] 기존 echo word floater 확장
 - [ ] 유령 응결 좌표에 잔상 텍스트 배치
 - [ ] VAD → 위치 매핑 검증
+- [ ] **씬 핀 Lumen 미니맵에서 제거 (2026-04-22 scope change)** — 작업 11 연장선. [update_lumen.md §1.4](update_lumen-260420.md)의 "미리 아는 지도 부정" 철학에 맞춤. 작업 4에서 유령 응결 좌표가 대체 길잡이로 확립된 뒤 수행. `_updateMinimap`의 `_fpScenePins.forEach` 렌더 블록을 Lumen 조건(`game.terrain_shape === 'circular'` 등)으로 가드.
 
-### 작업 11 — 미니맵 수정 [0.3 세션]
-- [ ] 유령 점: 전체 응결 좌표 표시 → **시선 교차로 마주친 유령만** 점 누적 표시
-- [ ] 출구: 들어온 문과 같은 위치에 고정 표시 (바깥 원 위)
-- [ ] 기존 미니맵 로직에 조건부 렌더 + 고정 점 추가
+### 작업 11 — 미니맵 수정 [0.3 세션] — ✅ 완료 (2026-04-22)
+- [x] **유령 점 시선 교차 누적 표시 (2026-04-22)** — [play-test.html](../play-test.html) `_checkGhostGaze()` + `_fpSeenGhosts` Set. 카메라 forward 벡터와 (ghost-player) 방향 각도차 < 15°(`GAZE_HALF_ANGLE=0.26rad`) + 거리 < 35 유닛이면 seen 누적. `_updateMinimap`에서 seen set만 렌더(창백한 자주 `rgba(168,140,196,.85)`).
+- [x] **출구 고정 표시 (2026-04-22)** — 들어온 문 좌표 (22, 22) 상수화 `EXIT_DOOR_POS`. 미니맵에 골드 직사각형(`rgba(196,168,130,.9)` 8×12 + outline) 세션 내내 고정.
+- [x] **기존 미니맵 로직 유지 (2026-04-22)** — `_fpScenePins` 렌더·플레이어 삼각형·FOV cone 건드리지 않음. 추가 렌더만 삽입.
+  - **씬 핀 가림 처리는 작업 4로 이동** — 씬 핀이 "미리 보이는 지도" 인 점은 Lumen 발견 기반 철학과 충돌. 작업 4에서 유령 응결 좌표가 대체 길잡이로 확립된 뒤 씬 핀 렌더 블록 제거 (scope change 2026-04-22).
+- [x] **loadMemoryData 확장 (2026-04-22)** — memories select에 `ghost_condensation_points, terrain_shape` 추가, `game.ghost_condensation_points`로 저장. 좌표계는 camera world와 동일 가정(x,z ∈ [-56,56]).
 
 ### 작업 7 — 메모리 큐레이션 [0.3 세션, 테스터 + 시범]
 
@@ -160,15 +172,23 @@
 - [x] 버그 fix: `sound_map` 컬럼 drop된 상태 대응 (조건부 포함)
 - [x] **DB 라운드트립 smoke 검증 (2026-04-21)** — [test/smoke_task_12_1.js](../test/smoke_task_12_1.js), ALL 13 checks PASS + sound_map 잔존 참조 없음 확인
 
-#### 12-2. 씬 수준 폼 확장 [0.2]
-- [ ] `original_reason_vector` 씬별 AF picker (작은 버전) — 현재 씬 수준엔 없음
-- 나머지(VOID/잔향/Original Emotion 매핑/text_stage_2)는 기존 UI 그대로
+#### 12-2. 씬 수준 폼 확장 [0.2] ✅ **2026-04-22 완료**
+- [x] 씬별 AF picker — `renderSceneAfPicker(scene, sceneIndex)`, VOID 섹션 아래 자동 삽입. 3+4 input + 실시간 합계 + 비우면 originalReasonVector=null 복귀.
+- [x] 이벤트 위임 — `document.addEventListener('input', handleSceneAfInput, true)`. renderScenes 재호출해도 리바인딩 불필요.
+- [x] 저장·로드 경로 재사용 — [repo.js:61](../js/lib/repo.js#L61) (load) + [repo.js:263](../js/lib/repo.js#L263) (save) 이미 wired (camelCase `originalReasonVector` ↔ snake `original_reason_vector`).
+- [x] 디버그 getter — `window.currentScenes`로 모듈 스코프 let 접근 가능.
+- [x] 콘솔 테스트 통과 (AF 섹션 11/11, 합계 표시, null 복귀)
+- 나머지(VOID/잔향/Original Emotion 매핑/text_stage_2)는 기존 UI 그대로 유지
 
-#### 12-3. 응결점 편집 [0.4]
-- [ ] 원형 지형 SVG (R=56) overlay — 신규
-- [ ] `ghost_condensation_points` 드래그 편집 (추가/삭제 + threshold 슬라이더)
-- [ ] 씬 pin 자동 배치 (VAD 투영) 참조 표시
-- [ ] Canvas 탭 내 서브뷰 or 새 탭
+#### 12-3. 응결점 편집 [0.4] ✅ **2026-04-22 완료**
+- [x] 원형 지형 SVG (R=56) viewBox `-60 -60 120 120`, 외곽 원 + 중심 void(5.6) 점선 표시 + 십자 가이드
+- [x] `ghost_condensation_points` 편집: 빈 공간 클릭=추가 / 점 드래그=이동 / 리스트 ✕ 버튼=삭제 / 리스트 slider=threshold 조절
+- [x] 클램프 — void 경계 안쪽 클릭은 경계 밖으로 밀어냄, R=56 경계 밖은 안쪽으로 당김 (직접 `_ghostPoints.push`는 우회)
+- [x] 씬 pin 자동 배치 — `renderScenePinsRef()` 씬별 `originalReasonVector` → AF 좌표 투영 (attribution X축, core_fear Z축, 70% 반경 스케일). 값 없는 씬은 스킵
+- [x] 위치: 메모리 편집기 "공간 설정" 섹션 내부 (별도 탭 안 만듦, UX 단순화)
+- [x] 저장·로드 경로 — [repo.js:108](../js/lib/repo.js#L108) destructure + UPDATE/INSERT 조건부 spread. `listMemoriesWithScenesChoices` 반환 객체에 Lumen 필드 전수 포함 (이전 12-1이 로컬 캐시로만 작동하던 버그 수반 수정)
+- [x] 콘솔 테스트 통과 (dots=3, rows=3, threshold 조절, 삭제, save 포맷)
+- [x] UI 실제 드래그·저장 → DB 라운드트립 검증 (2026-04-22)
 
 #### 12-4. 분기 시뮬·가시화 [1.0]
 - [ ] 가상 관객 감정 입력기 (6-dim 슬라이더 or 프리셋 페르소나 로드)

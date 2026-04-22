@@ -275,6 +275,8 @@ function addNewMemory() {
     const ts = document.getElementById('terrainShape'); if (ts) ts.value = 'circular';
     updateAfSums();
     updateContStageSum();
+    // 작업 12-3: 응결점 초기화
+    if (typeof loadGhostPoints === 'function') loadGhostPoints(null);
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
     switchTab('edit');
@@ -362,6 +364,8 @@ function editMemory(index) {
     const ts = document.getElementById('terrainShape'); if (ts) ts.value = memory.terrain_shape || 'circular';
     updateAfSums();
     updateContStageSum();
+    // 작업 12-3: 응결점 로드
+    if (typeof loadGhostPoints === 'function') loadGhostPoints(memory);
  // sound mapping load
     var soundMap = memory.sound_map || {};
     document.getElementById('soundMapOpening').value = soundMap.opening || '';
@@ -547,6 +551,7 @@ function renderScenes() {
                 <button class="auto-detect-void-btn" data-scene-index="${sceneIndex}">자동 감지</button>
                 <p class="void-level-display" data-scene-index="${sceneIndex}">VOID Level: ${(scene.voidInfo && scene.voidInfo.voidLevel) ? scene.voidInfo.voidLevel.charAt(0).toUpperCase() + scene.voidInfo.voidLevel.slice(1) : 'Low'}</p>
             </div>
+            ${renderSceneAfPicker(scene, sceneIndex)}
             <div class="editor-section" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
                 <h3 class="editor-section-title" style="margin-bottom: 1rem;">Original Emotion 매핑</h3>
                 <div class="editor-input-group" style="margin-bottom: 1.5rem;">
@@ -1981,6 +1986,8 @@ async function saveMemory() {
 
     // 공간 설정
     const terrainShapeVal = document.getElementById('terrainShape')?.value || 'circular';
+    // 작업 12-3: 응결점 수집
+    const ghostCondensationPoints = (typeof getGhostPointsForSave === 'function') ? getGhostPointsForSave() : [];
  // sound mapping 수집
     var soundMap = {};
     var smOpening = document.getElementById('soundMapOpening')?.value?.trim();
@@ -2115,7 +2122,8 @@ async function saveMemory() {
             cont_stage_1: contStage1Val,
             cont_stage_2: contStage2Val,
             cont_stage_3: contStage3Val,
-            terrain_shape: terrainShapeVal
+            terrain_shape: terrainShapeVal,
+            ghost_condensation_points: ghostCondensationPoints
         });
         
         console.log('=== Admin 에디터 개선 ===');
@@ -3664,6 +3672,285 @@ function toggleContamination(sceneIndex) {
 }
 
 window.toggleContamination = toggleContamination;
+
+// ─── Lumen V1 (작업 12-2) 씬 수준 AF 렌더 ──────────────────
+function renderSceneAfPicker(scene, sceneIndex) {
+    const arv = scene.originalReasonVector || {};
+    const attr = arv.attribution || {};
+    const cf = arv.core_fear || {};
+    const aNum = (v) => (v != null && !isNaN(v) ? Number(v) : '');
+    const attrSum = ['self','other','fate'].reduce((a, k) => a + (parseFloat(attr[k]) || 0), 0);
+    const cfSum = ['abandonment','rejection','powerlessness','loss'].reduce((a, k) => a + (parseFloat(cf[k]) || 0), 0);
+    const sumColor = (s) => Math.abs(s - 1) < 0.02 ? 'var(--accent-memory)' : (s === 0 ? 'var(--text-muted)' : '#c97a6a');
+    const input = (key, group) => `<input type="number" class="editor-input scene-af-input" data-scene-index="${sceneIndex}" data-af-group="${group}" data-af-key="${key}" min="0" max="1" step="0.05" value="${aNum(group === 'attr' ? attr[key] : cf[key])}" style="width:60px;">`;
+    return `
+            <div class="scene-af-section" data-scene-index="${sceneIndex}" style="margin-top:1rem;padding:1rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
+                <h4 style="margin:0 0 0.4rem 0;font-size:0.9rem;">씬 AF 좌표 (선택)</h4>
+                <small style="display:block;color:var(--text-muted);margin-bottom:0.6rem;font-size:0.72rem;">비우면 메모리 수준 AF 상속. 씬별 미세 차이 있을 때만 입력.</small>
+                <div style="margin-bottom:0.5rem;">
+                    <label style="font-size:0.78rem;color:var(--text-muted);">Attribution · 합 <span class="scene-af-attr-sum" data-scene-index="${sceneIndex}" style="color:${sumColor(attrSum)};">${attrSum.toFixed(2)}</span></label>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                        <span style="font-size:0.75rem;color:#c4a882;align-self:center;">self</span>${input('self','attr')}
+                        <span style="font-size:0.75rem;color:#c4a882;align-self:center;">other</span>${input('other','attr')}
+                        <span style="font-size:0.75rem;color:#c4a882;align-self:center;">fate</span>${input('fate','attr')}
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:0.78rem;color:var(--text-muted);">Core Fear · 합 <span class="scene-af-cf-sum" data-scene-index="${sceneIndex}" style="color:${sumColor(cfSum)};">${cfSum.toFixed(2)}</span></label>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                        <span style="font-size:0.75rem;color:#c4a882;align-self:center;">abandon</span>${input('abandonment','cf')}
+                        <span style="font-size:0.75rem;color:#c4a882;align-self:center;">reject</span>${input('rejection','cf')}
+                        <span style="font-size:0.75rem;color:#c4a882;align-self:center;">power</span>${input('powerlessness','cf')}
+                        <span style="font-size:0.75rem;color:#c4a882;align-self:center;">loss</span>${input('loss','cf')}
+                    </div>
+                </div>
+            </div>`;
+}
+
+function updateSceneAfSum(sceneIndex) {
+    const attrKeys = ['self','other','fate'];
+    const cfKeys = ['abandonment','rejection','powerlessness','loss'];
+    const readGroup = (group, keys) => keys.reduce((a, k) => {
+        const el = document.querySelector(`.scene-af-input[data-scene-index="${sceneIndex}"][data-af-group="${group}"][data-af-key="${k}"]`);
+        const v = el ? parseFloat(el.value) : NaN;
+        return a + (isNaN(v) ? 0 : v);
+    }, 0);
+    const aSum = readGroup('attr', attrKeys);
+    const cSum = readGroup('cf', cfKeys);
+    const aEl = document.querySelector(`.scene-af-attr-sum[data-scene-index="${sceneIndex}"]`);
+    const cEl = document.querySelector(`.scene-af-cf-sum[data-scene-index="${sceneIndex}"]`);
+    const color = (s) => Math.abs(s - 1) < 0.02 ? 'var(--accent-memory)' : (s === 0 ? 'var(--text-muted)' : '#c97a6a');
+    if (aEl) { aEl.textContent = aSum.toFixed(2); aEl.style.color = color(aSum); }
+    if (cEl) { cEl.textContent = cSum.toFixed(2); cEl.style.color = color(cSum); }
+}
+
+function handleSceneAfInput(e) {
+    const el = e.target;
+    if (!el.classList.contains('scene-af-input')) return;
+    const sceneIndex = parseInt(el.dataset.sceneIndex, 10);
+    const group = el.dataset.afGroup;
+    const key = el.dataset.afKey;
+    const v = parseFloat(el.value);
+    if (!currentScenes[sceneIndex]) return;
+    if (!currentScenes[sceneIndex].originalReasonVector) {
+        currentScenes[sceneIndex].originalReasonVector = { attribution: null, core_fear: null };
+    }
+    const arv = currentScenes[sceneIndex].originalReasonVector;
+    const groupKey = (group === 'attr') ? 'attribution' : 'core_fear';
+    if (!arv[groupKey]) arv[groupKey] = {};
+    if (isNaN(v) || el.value === '') {
+        delete arv[groupKey][key];
+        if (Object.keys(arv[groupKey]).length === 0) arv[groupKey] = null;
+    } else {
+        arv[groupKey][key] = Math.max(0, Math.min(1, v));
+    }
+    // 비어 있으면 전체 원 상태로
+    if (!arv.attribution && !arv.core_fear) {
+        currentScenes[sceneIndex].originalReasonVector = null;
+    }
+    updateSceneAfSum(sceneIndex);
+}
+
+// 이벤트 위임 (renderScenes가 다시 렌더해도 리바인딩 안 해도 됨)
+document.addEventListener('input', handleSceneAfInput, true);
+
+window.renderSceneAfPicker = renderSceneAfPicker;
+window.updateSceneAfSum = updateSceneAfSum;
+// Debug: 모듈 스코프 let 변수를 콘솔에서 조회 가능하게
+Object.defineProperty(window, 'currentScenes', { configurable: true, get: () => currentScenes });
+
+// ─── Lumen V1 (작업 12-3) 유령 응결점 편집 ──────────────────
+const TERRAIN_R = 56;
+const VOID_R = 5.6; // 중심 void 반경 (어댑터 기본값 0.1R)
+let _ghostPoints = []; // [{x, z, pollution_threshold}]
+let _gpSelectedIdx = -1;
+let _gpDragIdx = -1;
+
+function _gpSvgToWorld(svgEl, evt) {
+    const pt = svgEl.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    const ctm = svgEl.getScreenCTM().inverse();
+    const p = pt.matrixTransform(ctm);
+    return { x: p.x, z: p.y };
+}
+
+function _gpClamp(x, z) {
+    const r = Math.sqrt(x * x + z * z);
+    if (r <= VOID_R + 1) {
+        // void 영역은 금지 → void 경계 바로 밖으로 밀어냄
+        const theta = Math.atan2(z, x);
+        return { x: (VOID_R + 1) * Math.cos(theta), z: (VOID_R + 1) * Math.sin(theta) };
+    }
+    if (r > TERRAIN_R - 1) {
+        const scale = (TERRAIN_R - 1) / r;
+        return { x: x * scale, z: z * scale };
+    }
+    return { x, z };
+}
+
+function renderGhostPoints() {
+    const group = document.getElementById('ghostPointsGroup');
+    const list = document.getElementById('ghostPointsList');
+    const countEl = document.getElementById('ghostPointsCount');
+    if (!group || !list) return;
+    if (countEl) countEl.textContent = _ghostPoints.length;
+
+    // SVG 점
+    group.innerHTML = _ghostPoints.map((p, i) => {
+        const selected = (i === _gpSelectedIdx);
+        const threshold = p.pollution_threshold != null ? p.pollution_threshold : 0.3;
+        const radius = 1.8 + threshold * 2.2; // threshold에 비례한 크기
+        const fill = selected ? 'rgba(196,168,130,.95)' : 'rgba(168,140,196,.75)';
+        const stroke = selected ? '#f4e0b5' : 'rgba(168,140,196,.95)';
+        return `<circle class="gp-dot" data-idx="${i}" cx="${p.x.toFixed(2)}" cy="${p.z.toFixed(2)}" r="${radius.toFixed(2)}" fill="${fill}" stroke="${stroke}" stroke-width="0.4" style="cursor:grab;"/>
+                <text x="${p.x.toFixed(2)}" y="${(p.z - radius - 1).toFixed(2)}" fill="rgba(196,168,130,.7)" font-size="2.4" text-anchor="middle" pointer-events="none">P${i}</text>`;
+    }).join('');
+
+    // 리스트
+    list.innerHTML = _ghostPoints.length === 0
+        ? '<div style="color:var(--text-muted);font-size:0.78rem;padding:0.6rem;border:1px dashed rgba(196,168,130,.2);border-radius:4px;">아직 응결점 없음. SVG 빈 곳 클릭.</div>'
+        : _ghostPoints.map((p, i) => {
+            const t = p.pollution_threshold != null ? p.pollution_threshold : 0.3;
+            const selected = (i === _gpSelectedIdx);
+            return `<div class="gp-row" data-idx="${i}" style="padding:0.5rem;margin-bottom:0.4rem;border:1px solid rgba(196,168,130,${selected ? '.5' : '.15'});border-radius:4px;background:${selected ? 'rgba(196,168,130,.08)' : 'transparent'};cursor:pointer;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                    <span style="color:var(--accent-memory);font-weight:bold;">P${i}</span>
+                    <span style="color:var(--text-muted);font-size:0.72rem;">(x=${p.x.toFixed(1)}, z=${p.z.toFixed(1)})</span>
+                    <button class="gp-del" data-idx="${i}" style="background:transparent;border:1px solid rgba(201,122,106,.4);color:#c97a6a;padding:2px 7px;border-radius:3px;cursor:pointer;font-size:0.75rem;">✕</button>
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <span style="font-size:0.72rem;color:#c4a882;">threshold</span>
+                    <input type="range" class="gp-threshold" data-idx="${i}" min="0" max="1" step="0.05" value="${t}" style="flex:1;">
+                    <span class="gp-threshold-display" data-idx="${i}" style="font-size:0.75rem;color:var(--accent-memory);min-width:32px;text-align:right;">${t.toFixed(2)}</span>
+                </div>
+            </div>`;
+        }).join('');
+}
+
+function renderScenePinsRef() {
+    // 씬별 original_reason_vector → AF 좌표 투영 (참조 표시)
+    const group = document.getElementById('scenePinsRefGroup');
+    if (!group) return;
+    const pins = [];
+    (currentScenes || []).forEach((s, i) => {
+        const arv = s.originalReasonVector || {};
+        const attr = arv.attribution || {};
+        const cf = arv.core_fear || {};
+        // X축: attribution (self=-1, other=0, fate=+1)
+        // Z축: core_fear (abandonment=-1, rejection=-0.33, powerlessness=+0.33, loss=+1)
+        const axX = -1 * (attr.self || 0) + 0 * (attr.other || 0) + 1 * (attr.fate || 0);
+        const axZ = -1 * (cf.abandonment || 0) + (-0.33) * (cf.rejection || 0) + 0.33 * (cf.powerlessness || 0) + 1 * (cf.loss || 0);
+        if (axX === 0 && axZ === 0) return; // 원점 = 값 없음, 스킵
+        pins.push({ x: axX * TERRAIN_R * 0.7, z: axZ * TERRAIN_R * 0.7, order: i });
+    });
+    group.innerHTML = pins.map(p => `<circle cx="${p.x.toFixed(2)}" cy="${p.z.toFixed(2)}" r="0.8" fill="rgba(196,168,130,.3)" stroke="rgba(196,168,130,.4)" stroke-width="0.2"/>
+        <text x="${p.x.toFixed(2)}" y="${(p.z - 1.2).toFixed(2)}" fill="rgba(196,168,130,.4)" font-size="1.6" text-anchor="middle">S${p.order}</text>`).join('');
+}
+
+function _bindGhostPointsHandlers() {
+    const svg = document.getElementById('ghostPointsSvg');
+    const list = document.getElementById('ghostPointsList');
+    if (!svg || !list) return;
+
+    svg.addEventListener('mousedown', (e) => {
+        const target = e.target;
+        if (target.classList && target.classList.contains('gp-dot')) {
+            _gpDragIdx = parseInt(target.dataset.idx, 10);
+            _gpSelectedIdx = _gpDragIdx;
+            target.style.cursor = 'grabbing';
+            renderGhostPoints();
+            e.preventDefault();
+            return;
+        }
+        // 빈 공간 클릭: 새 점 추가
+        const { x, z } = _gpSvgToWorld(svg, e);
+        const clamped = _gpClamp(x, z);
+        _ghostPoints.push({ x: +clamped.x.toFixed(2), z: +clamped.z.toFixed(2), pollution_threshold: 0.3 });
+        _gpSelectedIdx = _ghostPoints.length - 1;
+        renderGhostPoints();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (_gpDragIdx < 0) return;
+        const { x, z } = _gpSvgToWorld(svg, e);
+        const clamped = _gpClamp(x, z);
+        _ghostPoints[_gpDragIdx].x = +clamped.x.toFixed(2);
+        _ghostPoints[_gpDragIdx].z = +clamped.z.toFixed(2);
+        renderGhostPoints();
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (_gpDragIdx >= 0) _gpDragIdx = -1;
+    });
+
+    list.addEventListener('click', (e) => {
+        const delBtn = e.target.closest('.gp-del');
+        if (delBtn) {
+            const idx = parseInt(delBtn.dataset.idx, 10);
+            _ghostPoints.splice(idx, 1);
+            if (_gpSelectedIdx === idx) _gpSelectedIdx = -1;
+            else if (_gpSelectedIdx > idx) _gpSelectedIdx -= 1;
+            renderGhostPoints();
+            return;
+        }
+        const row = e.target.closest('.gp-row');
+        if (row) {
+            _gpSelectedIdx = parseInt(row.dataset.idx, 10);
+            renderGhostPoints();
+        }
+    });
+
+    list.addEventListener('input', (e) => {
+        if (!e.target.classList.contains('gp-threshold')) return;
+        const idx = parseInt(e.target.dataset.idx, 10);
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v) && _ghostPoints[idx]) {
+            _ghostPoints[idx].pollution_threshold = v;
+            const disp = document.querySelector(`.gp-threshold-display[data-idx="${idx}"]`);
+            if (disp) disp.textContent = v.toFixed(2);
+            // SVG 점 크기만 업데이트 (전체 리렌더 피함)
+            const dot = document.querySelector(`.gp-dot[data-idx="${idx}"]`);
+            if (dot) dot.setAttribute('r', (1.8 + v * 2.2).toFixed(2));
+        }
+    });
+}
+
+function loadGhostPoints(memory) {
+    const pts = memory && memory.ghost_condensation_points;
+    if (Array.isArray(pts)) {
+        _ghostPoints = pts.map(p => ({
+            x: Number(p.x) || 0,
+            z: Number(p.z) || 0,
+            pollution_threshold: p.pollution_threshold != null ? Number(p.pollution_threshold) : 0.3
+        }));
+    } else {
+        _ghostPoints = [];
+    }
+    _gpSelectedIdx = -1;
+    renderGhostPoints();
+    renderScenePinsRef();
+}
+
+function getGhostPointsForSave() {
+    return _ghostPoints.map(p => ({
+        x: Number(p.x.toFixed(2)),
+        z: Number(p.z.toFixed(2)),
+        pollution_threshold: Number((p.pollution_threshold != null ? p.pollution_threshold : 0.3).toFixed(2))
+    }));
+}
+
+// 바인딩 (DOMContentLoaded 대응)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _bindGhostPointsHandlers);
+} else {
+    _bindGhostPointsHandlers();
+}
+
+window.renderGhostPoints = renderGhostPoints;
+window.renderScenePinsRef = renderScenePinsRef;
+window.loadGhostPoints = loadGhostPoints;
+window.getGhostPointsForSave = getGhostPointsForSave;
+Object.defineProperty(window, '_ghostPoints', { configurable: true, get: () => _ghostPoints });
 
 // ─── Lumen V1 (작업 12-1) AF / 오염 초기 상태 헬퍼 ──────────────────
 function _afSum(prefix, keys) {

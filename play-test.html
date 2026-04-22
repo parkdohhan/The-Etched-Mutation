@@ -47,6 +47,8 @@
   <script src="js/shared/tem_af_strata_terrain.js"></script>
   <script src="js/ui/lumen_terrain_adapter.js"></script>
   <script src="js/ui/lumen_walk_effects.js"></script>
+  <script src="js/ui/lumen_visual_effects.js"></script>
+  <script src="js/ui/lumen_audio_space.js"></script>
   <script src="js/ui/strataSection.js"></script>
   <script src="js/ui/floatingAnchor.js"></script>
   <style>
@@ -3994,7 +3996,7 @@
         .eq('memory_id', memoryId)
         .order('created_at'),
       sb.from('memories')
-        .select('id, title, layers, cont_stage, cont_drift, cont_fixation, cont_depth, cont_last_mismatch')
+        .select('id, title, layers, cont_stage, cont_drift, cont_fixation, cont_depth, cont_last_mismatch, ghost_condensation_points, terrain_shape')
         .eq('id', memoryId),
     ]);
     if (scenesRes.error) throw scenesRes.error;
@@ -4007,6 +4009,10 @@
     if (memRow) {
       game.memoryTitle = memRow.title || game.memoryTitle || '';
       game.memoryLayers = memRow.layers || game.memoryLayers || 0;
+      // 작업 11: ghost_condensation_points (Lumen). 좌표계는 camera world([-56,56] 추정).
+      game.ghost_condensation_points = Array.isArray(memRow.ghost_condensation_points)
+        ? memRow.ghost_condensation_points : [];
+      game.terrain_shape = memRow.terrain_shape || 'circular';
     }
 
     if (!game.scenes.length && window._simulatedScenesMap && window._simulatedScenesMap[memoryId]) {
@@ -4558,6 +4564,27 @@
                 }
               });
             }
+            if (window.LumenVisualEffects && typeof window.LumenVisualEffects.attach === 'function') {
+              window.LumenVisualEffects.attach(rt, {
+                contaminationDepthProvider: function () {
+                  try { return (window._temGame && window._temGame.contState && window._temGame.contState.cont_depth) || 0; } catch (_) { return 0; }
+                }
+              });
+            }
+            if (window.LumenAudioSpace && typeof window.LumenAudioSpace.attach === 'function') {
+              window.LumenAudioSpace.attach(rt, {
+                contaminationDepthProvider: function () {
+                  try { return (window._temGame && window._temGame.contState && window._temGame.contState.cont_depth) || 0; } catch (_) { return 0; }
+                },
+                fallbackPinsProvider: function () {
+                  try {
+                    return (_fpScenePins || [])
+                      .filter(function (p) { return p && p.accessible; })
+                      .map(function (p) { return { x: p.wx, z: p.wz }; });
+                  } catch (_) { return []; }
+                }
+              });
+            }
           } catch (e) { console.warn('[Lumen] adapter attach failed', e); }
 
           // Wider FOV for play
@@ -4585,6 +4612,12 @@
           }
 
           _buildPlayScenePins();
+          // 씬 핀이 방금 생성됐으니 whisper panner 재구축 (attach 시점엔 _fpScenePins 비어있음)
+          try {
+            if (rt.__lumenAudioSpace && typeof rt.__lumenAudioSpace.rebuildWhispers === 'function') {
+              rt.__lumenAudioSpace.rebuildWhispers();
+            }
+          } catch (_) {}
           _startProximityLoop();
 
           // ─── Eye-opening effect (overlay already placed before strata load) ─
@@ -5411,8 +5444,54 @@
     var MINI_SIZE = 260;
     var SZ_TERRAIN = 46; // must match terrain SZ
 
+    // 작업 11: Lumen 유령 점·출구 고정 표시
+    var _fpGhostPoints = [];       // [{x, z, pollution_threshold}]
+    var _fpSeenGhosts = new Set(); // _fpGhostPoints 인덱스 누적 (시선 교차 완료)
+    var GAZE_HALF_ANGLE = 0.26;    // ~15° — FOV(45°)보다 좁아야 "의도적 응시"
+    var GAZE_MAX_DIST   = 35;      // 유닛
+    // 출구 = 들어온 문과 동일. play-test.html L4643 doorX/doorZ 와 일치해야 함.
+    var EXIT_DOOR_POS = { x: 22, z: 22 };
+
+    // 작업 11: 현 메모리의 ghost_condensation_points 로드 + seen set 리셋
+    function _loadGhostPointsForCurrentMemory() {
+      // game은 L1650 const. window._temGame로도 접근 가능 — 방어적으로 둘 다 시도.
+      var g = (typeof game !== 'undefined') ? game : (window._temGame || null);
+      var pts = (g && g.ghost_condensation_points) || [];
+      _fpGhostPoints = pts.filter(function (p) {
+        return p && typeof p.x === 'number' && typeof p.z === 'number';
+      });
+      _fpSeenGhosts = new Set();
+    }
+
+    // 작업 11: 시선 교차 검사. 카메라 forward와 (ghost-player) 방향 각도차 < 임계값이면 seen.
+    function _checkGhostGaze() {
+      if (!_fpGhostPoints.length) return;
+      var rt = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+      if (!rt || !rt.isFirstPerson || !rt.isFirstPerson()) return;
+      var cam = rt.getCamera && rt.getCamera();
+      if (!cam) return;
+      var px = cam.position.x, pz = cam.position.z;
+      var yaw = cam.rotation.y;
+      // _fpTick (tem_af_strata_terrain.js:1215)과 일치: forward = (-sin(yaw), -cos(yaw))
+      var fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+      for (var i = 0; i < _fpGhostPoints.length; i++) {
+        if (_fpSeenGhosts.has(i)) continue;
+        var g = _fpGhostPoints[i];
+        var dx = g.x - px, dz = g.z - pz;
+        var d = Math.sqrt(dx * dx + dz * dz);
+        if (d > GAZE_MAX_DIST || d < 0.01) continue;
+        var nx = dx / d, nz = dz / d;
+        var dot = fx * nx + fz * nz;
+        if (dot < 0) continue;   // 뒤쪽
+        var ang = Math.acos(Math.max(-1, Math.min(1, dot)));
+        if (ang < GAZE_HALF_ANGLE) _fpSeenGhosts.add(i);
+      }
+    }
+
     function _initMinimap() {
       if (_miniCanvas) return;
+      // 작업 11: 미니맵 attach 시점에 현 메모리 유령 좌표 로드
+      _loadGhostPointsForCurrentMemory();
       var parent = document.getElementById('strataView') || document.body;
 
       // Container
@@ -5555,6 +5634,34 @@
         }
         _miniCtx.fill();
       });
+
+      // 작업 11: 시선 교차로 마주친 유령만 누적 표시 (Lumen 응결점)
+      _checkGhostGaze();
+      if (_fpSeenGhosts.size > 0) {
+        _fpSeenGhosts.forEach(function (i) {
+          var g = _fpGhostPoints[i];
+          if (!g) return;
+          var mp = _worldToMini(g.x, g.z);
+          _miniCtx.beginPath();
+          _miniCtx.arc(mp.x, mp.y, 3.5, 0, Math.PI * 2);
+          _miniCtx.fillStyle = 'rgba(168, 140, 196, 0.85)';   // 창백한 자주 — 유령 톤
+          _miniCtx.fill();
+          _miniCtx.lineWidth = 0.8;
+          _miniCtx.strokeStyle = 'rgba(232, 216, 252, 0.5)';
+          _miniCtx.stroke();
+        });
+      }
+
+      // 작업 11: 출구 고정 표시 (들어온 문 위치, 세션 내내 표시)
+      var exitMp = _worldToMini(EXIT_DOOR_POS.x, EXIT_DOOR_POS.z);
+      _miniCtx.save();
+      _miniCtx.translate(exitMp.x, exitMp.y);
+      _miniCtx.fillStyle = 'rgba(196, 168, 130, 0.9)';
+      _miniCtx.fillRect(-4, -6, 8, 12);
+      _miniCtx.strokeStyle = 'rgba(232, 216, 180, 1)';
+      _miniCtx.lineWidth = 1.2;
+      _miniCtx.strokeRect(-4, -6, 8, 12);
+      _miniCtx.restore();
 
       // Draw player position as red triangle pointing in look direction
       var rt = window.TemAfStrataTerrain._lastRuntime;

@@ -261,7 +261,7 @@
                     </div>
                 </div>
 
-                <!-- 공간 설정 (Lumen V1, 작업 12-1) -->
+                <!-- 공간 설정 (Lumen V1, 작업 12-1·12-3) -->
                 <div class="editor-section">
                     <h3 class="editor-section-title">공간 설정 (Lumen)</h3>
                     <div class="editor-input-group">
@@ -271,9 +271,23 @@
                         </select>
                         <small style="font-size:0.72rem;color:var(--text-muted);">현재 circular만. V2에서 확장.</small>
                     </div>
-                    <p style="font-size:.72rem;color:var(--text-muted);margin-top:0.5rem;">
-                        유령 응결점 편집은 별도 탭(작업 12-3)에서.
-                    </p>
+                    <div class="editor-input-group">
+                        <label class="editor-label">유령 응결점 <span id="ghostPointsCount" style="color:var(--accent-memory);">0</span></label>
+                        <small style="display:block;font-size:0.72rem;color:var(--text-muted);margin-bottom:0.6rem;">
+                            원 내부 빈 곳 클릭 = 추가 · 점 드래그 = 이동 · 리스트에서 threshold 조정 / 삭제. 중심 void(점선 원) 안쪽은 배치 금지.
+                        </small>
+                        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+                            <svg id="ghostPointsSvg" width="360" height="360" viewBox="-60 -60 120 120" style="background:#0a0a0e;border:1px solid rgba(196,168,130,.3);border-radius:4px;cursor:crosshair;user-select:none;">
+                                <circle cx="0" cy="0" r="56" fill="none" stroke="rgba(196,168,130,.4)" stroke-width="0.4"/>
+                                <circle cx="0" cy="0" r="5.6" fill="rgba(168,140,196,.08)" stroke="rgba(168,140,196,.35)" stroke-dasharray="1,1" stroke-width="0.3"/>
+                                <line x1="-56" y1="0" x2="56" y2="0" stroke="rgba(196,168,130,.08)" stroke-width="0.2"/>
+                                <line x1="0" y1="-56" x2="0" y2="56" stroke="rgba(196,168,130,.08)" stroke-width="0.2"/>
+                                <g id="scenePinsRefGroup"></g>
+                                <g id="ghostPointsGroup"></g>
+                            </svg>
+                            <div id="ghostPointsList" style="flex:1;min-width:260px;max-width:360px;font-size:0.8rem;"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 사운드 매핑 -->

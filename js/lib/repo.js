@@ -83,7 +83,19 @@ export async function listMemoriesWithScenesChoices(client) {
             visible: memory.is_public !== undefined ? memory.is_public : true,
             sensory_anchor: memory.sensory_anchor || null,
             body_response: memory.body_response || null,
-            self_questions: memory.self_questions || null
+            self_questions: memory.self_questions || null,
+            original_vector: memory.original_vector || null,
+            // Lumen V1 (2026-04-21+)
+            original_reason_vector: memory.original_reason_vector || null,
+            cont_depth: memory.cont_depth != null ? memory.cont_depth : null,
+            cont_divergence: memory.cont_divergence != null ? memory.cont_divergence : null,
+            cont_convergence: memory.cont_convergence != null ? memory.cont_convergence : null,
+            cont_heterogeneity: memory.cont_heterogeneity != null ? memory.cont_heterogeneity : null,
+            cont_stage_1: memory.cont_stage_1 != null ? memory.cont_stage_1 : null,
+            cont_stage_2: memory.cont_stage_2 != null ? memory.cont_stage_2 : null,
+            cont_stage_3: memory.cont_stage_3 != null ? memory.cont_stage_3 : null,
+            terrain_shape: memory.terrain_shape || null,
+            ghost_condensation_points: Array.isArray(memory.ghost_condensation_points) ? memory.ghost_condensation_points : []
         };
     }));
 
@@ -105,7 +117,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         throw new Error('Supabase client not initialized.');
     }
 
-    const { memoryId, code, title, description, memory_words, completed_sentence, original_vector, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions, original_reason_vector, cont_depth, cont_divergence, cont_convergence, cont_heterogeneity, cont_stage_1, cont_stage_2, cont_stage_3, terrain_shape } = memoryPayload;
+    const { memoryId, code, title, description, memory_words, completed_sentence, original_vector, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions, original_reason_vector, cont_depth, cont_divergence, cont_convergence, cont_heterogeneity, cont_stage_1, cont_stage_2, cont_stage_3, terrain_shape, ghost_condensation_points } = memoryPayload;
 
     let finalMemoryId = memoryId;
 
@@ -140,6 +152,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 ...(cont_stage_2 !== undefined ? { cont_stage_2 } : {}),
                 ...(cont_stage_3 !== undefined ? { cont_stage_3 } : {}),
                 ...(terrain_shape ? { terrain_shape } : {}),
+                ...(ghost_condensation_points !== undefined ? { ghost_condensation_points } : {}),
             })
             .eq('id', finalMemoryId)
             .select();
@@ -205,6 +218,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
         if (cont_stage_2 !== undefined && cont_stage_2 !== null) insertPayload.cont_stage_2 = cont_stage_2;
         if (cont_stage_3 !== undefined && cont_stage_3 !== null) insertPayload.cont_stage_3 = cont_stage_3;
         if (terrain_shape) insertPayload.terrain_shape = terrain_shape;
+        if (ghost_condensation_points !== undefined) insertPayload.ghost_condensation_points = ghost_condensation_points;
         const { data, error } = await client
             .from('memories')
             .insert(insertPayload)
@@ -274,10 +288,23 @@ export async function saveMemoryGraph(client, memoryPayload) {
             .select()
             .single();
 
+        console.log(`[saveMemoryGraph] Scene ${i} INSERT 결과:`, { id: sceneData?.id, memory_id: sceneData?.memory_id, error: sceneError });
+
         if (sceneError) throw sceneError;
 
         if (!sceneData || !sceneData.id) {
             throw new Error(`No response data received after saving Scene ${i + 1}.`);
+        }
+
+        // FK 검증: 방금 INSERT한 scene이 실제로 DB에 있는지 재확인
+        const { data: verifyScene, error: verifyError } = await client
+            .from('scenes')
+            .select('id')
+            .eq('id', sceneData.id)
+            .maybeSingle();
+        if (verifyError || !verifyScene) {
+            console.error(`[saveMemoryGraph] Scene ${i} INSERT 응답은 있으나 DB 재조회 실패:`, { sceneData, verifyError });
+            throw new Error(`Scene ${i + 1} INSERT 응답 ID(${sceneData.id})가 DB에 없음. RLS 또는 쓰기 권한 문제.`);
         }
 
  // Wave data 업데 트 (scene.waveData 있으면 , 없으면 emotion_vector 업데 트)
