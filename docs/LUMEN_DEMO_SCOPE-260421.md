@@ -238,6 +238,17 @@
 - [x] **아키텍처 편차 기록 (2026-04-21)** — 원문은 `supabase/functions/claude-scene` `play_entry_match` 프롬프트 확장을 명시했으나, 실제 아키텍처는 100% 클라이언트측 매칭 ([archive.js:_finderMatchByText](../js/app/archive.js)). claude-scene에 `play_entry_match` 타입 부재. LLM 라운드트립은 오프닝 UX 지연을 낳아 회피 — 클라이언트 구현으로 대체. 유사도 공식(cosine + α×intersection)은 동일.
 - Sprint 2에 배치 → **Sprint 0 조기 완료** (작업 0 병행 중 자투리 0.5 세션 소화)
 
+### 작업 14 — 중심 void 표식 + 도달 체류 트리거 [0.5~1 세션] — 🔄 미착수 (2026-04-23 scope change)
+
+**발견**: 작업 2-A 통합 중 UX 결함 확인. adapter 의 `enterVoid` 는 기하학적 경계(r < 5.6) 로만 발화. 맵 중심에는 시각 표식이 없어 플레이어가 void 인식 불가능. 자동 트리거로 두면 탐험 중 우연히 스쳐도 rewind 발동. 현재 play-test 에서 `triggerEvent: null` 로 자동 트리거 꺼둔 상태라 귀환 플로우가 실질적으로 수동 호출(forceStart)에만 작동.
+
+**작업 내용**:
+- [ ] 신규 모듈 `js/ui/lumen_void_marker.js` — 중심 (0,0) 에 3D 시각 표식 배치 (느린 회전 원판 · 수직 빛 기둥 · 바닥 파동 중 1종 선정). 진입 거리에 따라 강화(opacity·scale·pulse).
+- [ ] 체류 타이머 — 5.6유닛 경계 진입 후 2~3초 누적 체류 시 rewind 트리거. 경계 밖 이탈 시 타이머 리셋. 스쳐 지나감 방지.
+- [ ] play-test.html 에서 `LumenRewindPlayback` 의 `triggerEvent` 를 void_marker 의 커스텀 이벤트로 재배선 (어댑터의 raw enterVoid 직접 구독 해제).
+- [ ] **smoke** `test/smoke_task_14.js` — 표식 scene 추가 확인 · 근접 시 opacity 증가 · 경계 2.5초 체류 시 rewind 시작 · 스쳐 지나감 (<1초) 시 rewind 미발동 · 경계 이탈 시 타이머 리셋.
+- [ ] **수락 기준**: (a) 맵 진입 직후 플레이어가 중심 위치를 시각적으로 식별 가능, (b) 중심 방향 이동 중 드론+표식 강화 체감, (c) 2.5초 체류 시 자동 rewind, (d) 단순 통과(스치기) 시 rewind 안 발동.
+
 ### 작업 10 — 파일럿 n=5~7 [별도, 5-09~13]
 - [ ] 5월 초 대상자 확정
 - [ ] 5-09~13 실시
@@ -301,7 +312,7 @@ computeAfTerrainFields
 | Sprint 4 | 5-14~16 | 작업 8 + 9 | 2.5 |
 | 버퍼 | 5-17~19 | 파일럿 반영 + 최종 점검 + 제출 | — |
 
-**총 코드 세션**: 16.1 (직전 15.3 + 테스트 강제 0.8 [smoke 남은 작업 2-A/B/C/D·12-5 + 통합일 체크리스트 실행, 2026-04-22 scope change §8-7/§8-1])
+**총 코드 세션**: 17.1 (직전 16.1 + 작업 14 [중심 void 표식, 2026-04-23 scope change — 2-A 통합 중 UX 결함 발견])
 **총 기간**: 28일 (4-22 ~ 5-19)
 
 ---

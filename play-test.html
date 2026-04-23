@@ -53,6 +53,7 @@
   <script src="js/ui/lumen_rewind_playback.js"></script>
   <script src="js/ui/lumen_return_mode.js"></script>
   <script src="js/ui/lumen_return_speech.js"></script>
+  <script src="js/ui/lumen_return_events.js"></script>
   <script src="js/ui/strataSection.js"></script>
   <script src="js/ui/floatingAnchor.js"></script>
   <style>
@@ -4633,6 +4634,22 @@
               window.LumenReturnSpeech.attach(rt, {
                 memoryIdProvider: function () {
                   try { return (window._temGame && window._temGame.memoryId) || ''; } catch (_) { return ''; }
+                }
+              });
+            }
+            // 작업 2-D: 귀환 전용 사건 3종 (fragment_rain / ghost_flash / echo_burst) + 착지 dim.
+            if (window.LumenReturnEvents && typeof window.LumenReturnEvents.attach === 'function') {
+              window.LumenReturnEvents.attach(rt, {
+                echoWordsProvider: function () {
+                  try {
+                    var scenes = (window._temGame && window._temGame.scenes) || [];
+                    var pool = [];
+                    for (var i = 0; i < scenes.length; i++) {
+                      var ew = scenes[i] && scenes[i].echo_words;
+                      if (Array.isArray(ew)) { for (var j = 0; j < ew.length; j++) pool.push(ew[j]); }
+                    }
+                    return pool;
+                  } catch (_) { return []; }
                 }
               });
             }
