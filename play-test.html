@@ -51,6 +51,8 @@
   <script src="js/ui/lumen_audio_space.js"></script>
   <script src="js/ui/lumen_scene_ghosts.js"></script>
   <script src="js/ui/lumen_rewind_playback.js"></script>
+  <script src="js/ui/lumen_return_mode.js"></script>
+  <script src="js/ui/lumen_return_speech.js"></script>
   <script src="js/ui/strataSection.js"></script>
   <script src="js/ui/floatingAnchor.js"></script>
   <style>
@@ -4620,6 +4622,19 @@
                 _rw.on('rewindStart', function (p) { console.log('[Lumen] rewind start', p); });
                 _rw.on('rewindEnd', function (p) { console.log('[Lumen] rewind end', p); });
               }
+            }
+            // 작업 2-B: 귀환 모드 — 색감 shift + 속도 ×1.5 + 유령 자세 변화. rewind 구독형.
+            //   rewind attach 이후에 붙여야 rt.__lumenRewind 감지 가능.
+            if (window.LumenReturnMode && typeof window.LumenReturnMode.attach === 'function') {
+              window.LumenReturnMode.attach(rt, { canvasId: 'strataCanvas' });
+            }
+            // 작업 2-C: 귀환 모드 — 유령 말투 변주 + 오프닝 입력 파편 재셔플 (결정적 seed).
+            if (window.LumenReturnSpeech && typeof window.LumenReturnSpeech.attach === 'function') {
+              window.LumenReturnSpeech.attach(rt, {
+                memoryIdProvider: function () {
+                  try { return (window._temGame && window._temGame.memoryId) || ''; } catch (_) { return ''; }
+                }
+              });
             }
           } catch (e) { console.warn('[Lumen] adapter attach failed', e); }
 
