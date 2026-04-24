@@ -1980,6 +1980,10 @@ async function saveMemory() {
             content: _sensoryContent,
             weight: isNaN(_sensoryWeight) ? 0.7 : Math.max(0, Math.min(1, _sensoryWeight))
         };
+    } else if (_sensoryContent && !_sensoryModality) {
+        // content 만 채우고 modality "없음" 이면 silent drop 되던 버그(e2e 2026-04-22 발견).
+        // 저장 동작은 현행 유지(정책: 감각 anchor 는 modality 옵트인). 경고만 노출 → 디버그 가시성.
+        console.warn('[admin] sensory_anchor: content 있으나 modality 미선택 → null 저장 (의도였으면 무시)');
     }
 
     // AF 좌표 수집

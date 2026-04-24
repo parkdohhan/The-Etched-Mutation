@@ -187,6 +187,8 @@
 - [x] [repo.js:108](../js/lib/repo.js#L108) `saveMemoryGraph` 페이로드 확장 (UPDATE/INSERT 양쪽 조건부 spread)
 - [x] 버그 fix: `sound_map` 컬럼 drop된 상태 대응 (조건부 포함)
 - [x] **DB 라운드트립 smoke 검증 (2026-04-21)** — [test/smoke_task_12_1.js](../test/smoke_task_12_1.js), ALL 13 checks PASS + sound_map 잔존 참조 없음 확인
+- [x] **Admin UI→DB E2E 검증 (2026-04-22)** — [test/e2e/admin_tests.mjs](../test/e2e/admin_tests.mjs), Playwright. **27/27 PASS** (확장). 새 메모리 생성 → 폼 전체 입력(메타·sensory·AF 3+4·cont 3축+3stage·terrain) → 씬 3개 추가 → 응결점 SVG 3개 클릭 추가 → 저장 → DB 라운드트립(ghost_condensation_points count=3 포함) 복원 검증. Auth 는 [setup_admin_auth.mjs](../test/e2e/setup_admin_auth.mjs) 로 1회 세션 저장 후 재사용.
+  - **silent-drop 버그 하나 발견·수정 (2026-04-22)**: `admin.js:1977` sensory_anchor 에서 content 만 채우고 modality "없음" 이면 null 저장 (경고 없이). 정책상 저장 동작은 유지하되 `console.warn` 추가로 디버그 가시성 확보. 의도된 사용 플로우는 modality 필수 선택.
 
 #### 12-2. 씬 수준 폼 확장 [0.2] ✅ **2026-04-22 완료**
 - [x] 씬별 AF picker — `renderSceneAfPicker(scene, sceneIndex)`, VOID 섹션 아래 자동 삽입. 3+4 input + 실시간 합계 + 비우면 originalReasonVector=null 복귀.

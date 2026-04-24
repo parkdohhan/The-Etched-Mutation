@@ -1,7 +1,7 @@
 /**
  * Lumen Return Speech
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260421.md §4 작업 2-C
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260423.md §4 작업 2-C
  *        + docs/LUMEN_return_components-260421.md §6, §7
  *
  * 귀환 모드(= rewind 활성) 동안 두 종류의 텍스트 이벤트를 스케줄:
