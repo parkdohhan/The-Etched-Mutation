@@ -1,7 +1,7 @@
 /**
  * Lumen Rewind Playback
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260423.md §4 작업 2-A 후반
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260424.md §4 작업 2-A 후반
  *        + docs/LUMEN_return_components-260421.md §2 (rewind 재생)
  *
  * 어댑터(`runtime.__lumenAdapter`)의 `on('enterVoid')` + `getTrajectory()` 만 사용.

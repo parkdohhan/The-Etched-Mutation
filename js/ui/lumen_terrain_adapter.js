@@ -1,7 +1,7 @@
 /**
  * Lumen Terrain Adapter
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260423.md §4 작업 0
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260424.md §4 작업 0
  *
  * 기존 TemAfStrataTerrain 런타임(js/shared/tem_af_strata_terrain.js)을 감싸는 어댑터.
  * - 원본 함수(enterFirstPerson, exitFirstPerson, _fpTick, gH, buildMemoryItems, computeAfTerrainFields)

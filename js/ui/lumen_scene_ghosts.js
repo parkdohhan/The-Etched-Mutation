@@ -1,7 +1,7 @@
 /**
  * Lumen Scene Ghosts
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260423.md §4 작업 4
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260424.md §4 작업 4
  *
  * 유령 응결 좌표(memories.ghost_condensation_points)에 "잔상 텍스트" sprite 를 배치.
  * 기존 echo word floater (js/ui/strataView.js:981~) 의 FP 버전.

@@ -1,7 +1,7 @@
 /**
  * Lumen Audio Space
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260423.md §4 작업 3c
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260424.md §4 작업 3c
  *
  * 1인칭 진입 시 3-레이어 공간 음향 합성:
  *   1. Positional whisper — 유령 위치마다 PannerNode(HRTF) + sfx_resonance 루프

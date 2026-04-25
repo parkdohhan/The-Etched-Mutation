@@ -1,7 +1,7 @@
 /**
  * Lumen Visual Effects
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260423.md §4 작업 3b
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260424.md §4 작업 3b
  *
  * 시각 연출 3종. 수정 금지 함수 원칙 준수 — runtime public API만 래핑.
  *

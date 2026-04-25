@@ -1,7 +1,7 @@
 /**
  * Lumen Return Mode
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260423.md §4 작업 2-B
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260424.md §4 작업 2-B
  *
  * 귀환 모드(= rewind 활성) 진입 시 3종 변화 신호를 동시에 전환. rewind 모듈·scene_ghosts 모듈
  * 원본 한 글자도 수정 안 함 — `rt.__lumenRewind.on('rewindStart' | 'rewindEnd')` 구독만.

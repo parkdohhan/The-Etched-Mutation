@@ -5,7 +5,7 @@
 **관련**:
 - 레퍼런스 (각 필드 의미): [lumen_memory_authoring_checklist-260421.md](lumen_memory_authoring_checklist-260421.md)
 - 실행 예시: 편지(E-004) 채움 — [supabase/seeds/lumen_mem_E-004_fills.sql](../supabase/seeds/lumen_mem_E-004_fills.sql)
-- SCOPE: [LUMEN_DEMO_SCOPE-260423.md §4 작업 7](LUMEN_DEMO_SCOPE-260423.md)
+- SCOPE: [LUMEN_DEMO_SCOPE-260424.md §4 작업 7](LUMEN_DEMO_SCOPE-260424.md)
 
 **사용법**: 이 파일을 `docs/stories/<code>_<short_title>.md`로 복사 → 빈칸 채움 → 값을 SQL로 옮겨 실행.
 
