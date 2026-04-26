@@ -110,9 +110,50 @@ async function initTrajectoryViewer(memoryId) {
   // 작업 15 — 위치 레이어 mount + 동기화 (idempotent)
   if (!state._stageMounted) {
     LumenAdminStageView.mount('tvStageRoot');
+    bindLayerResizer();
     state._stageMounted = true;
   }
   syncStageView();
+}
+
+// 작업 15 — 두 레이어 사이 분할 핸들 드래그. 비율은 localStorage 영속.
+function bindLayerResizer() {
+  const wrap = document.querySelector('#section-canvas .tv-canvas-wrap');
+  const top = document.getElementById('tvLayerTrajectory');
+  const handle = document.getElementById('tvLayerResizer');
+  if (!wrap || !top || !handle || handle._bound) return;
+  handle._bound = true;
+
+  const LS_KEY = 'tv_layer_split_pct'; // 상단 비율 (0.2 ~ 0.85)
+  const apply = (pct) => {
+    const p = Math.max(0.2, Math.min(0.85, pct));
+    top.style.flex = `0 0 ${(p * 100).toFixed(2)}%`;
+    try { localStorage.setItem(LS_KEY, String(p)); } catch (e) {}
+  };
+  // 초기 복원
+  try {
+    const saved = parseFloat(localStorage.getItem(LS_KEY));
+    if (Number.isFinite(saved)) apply(saved);
+  } catch (e) {}
+
+  let dragging = false;
+  handle.addEventListener('mousedown', (e) => {
+    dragging = true;
+    wrap.classList.add('tv-resizing');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = wrap.getBoundingClientRect();
+    const pct = (e.clientY - rect.top) / rect.height;
+    apply(pct);
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    wrap.classList.remove('tv-resizing');
+  });
+  handle.addEventListener('dblclick', () => apply(0.5));
 }
 
 // 작업 15 — 위치 레이어로 현 상태 push. scene/시뮬 변동 시점에 호출.

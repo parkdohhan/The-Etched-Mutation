@@ -467,7 +467,7 @@
 
             <main class="tv-canvas-wrap">
                 <!-- 상단: 궤적 레이어 (기존 SVG 노드 그래프) -->
-                <div class="tv-layer-trajectory" style="position:relative;height:55%;border-bottom:1px solid rgba(196,168,130,0.18);">
+                <div class="tv-layer-trajectory" id="tvLayerTrajectory" style="position:relative;flex:0 0 55%;min-height:120px;">
                     <svg id="tvSvg" xmlns="http://www.w3.org/2000/svg"></svg>
                     <div class="tv-status" id="tvStatus" style="position:absolute; top:10px; left:50%; transform:translateX(-50%);"></div>
                     <div class="tv-layer-tag" style="position:absolute;top:10px;left:14px;font-size:0.62rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.18em;background:rgba(10,10,15,0.7);padding:3px 8px;border:1px solid rgba(196,168,130,0.12);border-radius:2px;pointer-events:none;">궤적 · trajectory</div>
@@ -478,8 +478,12 @@
                         <div><span style="display:inline-block;width:9px;height:9px;border:2px solid #c4a882;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>감정 진입점</div>
                     </div>
                 </div>
+                <!-- 분할 조절 핸들 (드래그로 상/하 비율 변경, 더블클릭 50:50 리셋) -->
+                <div class="tv-layer-resizer" id="tvLayerResizer" title="드래그로 비율 조절 · 더블클릭 50:50" style="position:relative;flex:0 0 6px;cursor:row-resize;background:rgba(196,168,130,0.12);border-top:1px solid rgba(196,168,130,0.18);border-bottom:1px solid rgba(196,168,130,0.18);user-select:none;">
+                    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:36px;height:2px;background:rgba(196,168,130,0.45);border-radius:1px;pointer-events:none;"></div>
+                </div>
                 <!-- 하단: 위치 레이어 (작업 15 — strata 좌표계 탑다운 + 유령 위치 / 시뮬 동기화) -->
-                <div class="tv-layer-position" style="position:relative;height:45%;background:#0a0a10;">
+                <div class="tv-layer-position" id="tvLayerPosition" style="position:relative;flex:1 1 auto;min-height:120px;background:#0a0a10;">
                     <div id="tvStageRoot" style="position:absolute;inset:0;"></div>
                     <div class="tv-layer-tag" style="position:absolute;top:10px;left:14px;font-size:0.62rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.18em;background:rgba(10,10,15,0.7);padding:3px 8px;border:1px solid rgba(196,168,130,0.12);border-radius:2px;pointer-events:none;">위치 · stage</div>
                     <div id="tvStageStatus" style="position:absolute;top:10px;right:14px;font-size:0.68rem;color:#7c7466;background:rgba(10,10,15,0.7);padding:4px 8px;border-radius:2px;line-height:1.5;pointer-events:none;">로딩 중…</div>
@@ -518,6 +522,9 @@
         #section-canvas .tv-layer-trajectory svg { flex: 1 1 auto; min-height: 0; }
         #section-canvas .tv-layer-position { display: block; }
         #section-canvas .tv-layer-position #tvStageRoot svg { width: 100%; height: 100%; display: block; }
+        #section-canvas .tv-layer-resizer:hover { background: rgba(196,168,130,0.28); }
+        #section-canvas .tv-canvas-wrap.tv-resizing { cursor: row-resize; }
+        #section-canvas .tv-canvas-wrap.tv-resizing * { cursor: row-resize !important; user-select: none !important; }
         #section-canvas .tv-detail { background: rgba(15,15,22,0.9); border-left: 1px solid rgba(196,168,130,0.15); padding: 20px 16px; overflow-y: auto; }
         #section-canvas .tv-title { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: #c4a882; margin: 0 0 4px; letter-spacing: 0.04em; }
         #section-canvas .tv-subtitle { font-size: 0.75rem; color: #7c7466; margin: 0 0 18px; }
