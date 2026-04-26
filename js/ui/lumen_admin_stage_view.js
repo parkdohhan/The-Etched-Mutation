@@ -64,7 +64,17 @@ const TERRAIN_G = 80;
 const TERRAIN_SZ = 112;
 
 // ─── 좌표 변환 ─────────────────────────────────────────────
-// stage_position 비어 있으면 originalReasonVector 자동 투영 — admin.js renderScenePinsRef 와 동일 공식.
+// VAD 매핑 (admin-trajectory.js VAD_FULL 와 동일)
+const VAD_FULL = {
+  fear:{v:-0.9,a:0.9}, sadness:{v:-0.8,a:-0.4}, anger:{v:-0.7,a:0.8},
+  guilt:{v:-0.8,a:0.2}, shame:{v:-0.9,a:-0.2}, isolation:{v:-0.7,a:-0.5},
+  numbness:{v:-0.6,a:-0.8}, longing:{v:-0.3,a:0.2}, resentment:{v:-0.5,a:0.6},
+  resignation:{v:-0.4,a:-0.6}, joy:{v:0.9,a:0.6}, hope:{v:0.7,a:0.4},
+  relief:{v:0.6,a:-0.3}, gratitude:{v:0.8,a:-0.2}, love:{v:1.0,a:0.5},
+  peace:{v:0.8,a:-0.6}, confusion:{v:-0.4,a:0.3},
+};
+
+// 1차 fallback — originalReasonVector AF 투영 (admin.js renderScenePinsRef 와 동일)
 function autoProjectFromAF(scene) {
   const arv = scene.originalReasonVector || (scene.meta && scene.meta.original_reason_vector) || {};
   const attr = arv.attribution || {};
@@ -75,14 +85,46 @@ function autoProjectFromAF(scene) {
   return { x: axX * TERRAIN_R * 0.7, z: axZ * TERRAIN_R * 0.7 };
 }
 
-function getStagePosition(scene) {
+// 2차 fallback — original_emotion / emotion_dist 의 V·A 투영
+function autoProjectFromEmotion(scene) {
+  const emo = scene.originalEmotion || scene.original_emotion || scene.emotionDist || scene.emotion_dist;
+  if (!emo || typeof emo !== 'object') return null;
+  let V = 0, A = 0, w = 0;
+  for (const k in emo) {
+    const m = VAD_FULL[k];
+    if (!m) continue;
+    const wt = Number(emo[k] || 0);
+    if (wt <= 0) continue;
+    V += wt * m.v; A += wt * m.a; w += wt;
+  }
+  if (w <= 0) return null;
+  V = Math.max(-1, Math.min(1, V / w));
+  A = Math.max(-1, Math.min(1, A / w));
+  // V→x, +A(각성↑)→화면 위(=z 음수). admin VA picker 관행.
+  return { x: V * TERRAIN_R * 0.6, z: -A * TERRAIN_R * 0.6 };
+}
+
+// 3차 fallback (마지막 보장) — scene_order 기반 균등 원 분포. 빈 메모리에서도 모든 씬이 어딘가에 보임.
+function autoProjectFromOrder(scene, total) {
+  const order = scene.scene_order != null ? scene.scene_order : 0;
+  const N = Math.max(total || 1, 1);
+  const angle = (order / N) * Math.PI * 2 - Math.PI / 2; // 12시부터 시계방향
+  const r = TERRAIN_R * 0.55;
+  return { x: r * Math.cos(angle), z: r * Math.sin(angle) };
+}
+
+function getStagePosition(scene, total) {
   const sp = scene.meta && scene.meta.stage_position;
   if (sp && Number.isFinite(sp.x) && Number.isFinite(sp.z)) {
-    return { x: sp.x, z: sp.z, isManual: true };
+    return { x: sp.x, z: sp.z, source: 'manual' };
   }
-  const auto = autoProjectFromAF(scene);
-  if (auto) return { x: auto.x, z: auto.z, isManual: false };
-  return null;
+  const af = autoProjectFromAF(scene);
+  if (af) return { x: af.x, z: af.z, source: 'af' };
+  const em = autoProjectFromEmotion(scene);
+  if (em) return { x: em.x, z: em.z, source: 'emotion' };
+  // 마지막 단계 — 무조건 좌표 반환 (사용자가 어디든 보고 드래그로 옮길 수 있게)
+  const ord = autoProjectFromOrder(scene, total);
+  return { x: ord.x, z: ord.z, source: 'order' };
 }
 
 function clampToTerrain(x, z) {
@@ -195,8 +237,9 @@ function renderGhosts() {
 
   const simActive = state.sim.active;
 
+  const total = state.scenes.length;
   state.scenes.forEach((scene, i) => {
-    const pos = getStagePosition(scene);
+    const pos = getStagePosition(scene, total);
     if (!pos) return;
     const hi = _simHighlight(scene.id);
 
@@ -207,10 +250,12 @@ function renderGhosts() {
     const baseColor = '#c4a882';
     let strokeColor = baseColor;
     let fillColor = 'rgba(15,15,20,0.85)';
-    let strokeDash = pos.isManual ? null : '0.6,0.4';   // 자동=점선, 수동=실선
+    // source 별 시각 구분: manual=실선 / af=점선 / emotion=점선(좀 더 흐림) / order=균등 분포 표시(faintest)
+    const isManual = pos.source === 'manual';
+    let strokeDash = isManual ? null : (pos.source === 'order' ? '0.3,0.5' : '0.6,0.4');
     let strokeW = 0.3;
     let r = 1.6;
-    let opacity = 0.85;
+    let opacity = isManual ? 0.85 : (pos.source === 'order' ? 0.55 : 0.75);
 
     if (hi.role === 'current') {
       r = 2.4;
@@ -242,7 +287,7 @@ function renderGhosts() {
         cx: pos.x, cy: pos.z, r: r + 1.2, fill: 'none',
         stroke: strokeColor, 'stroke-width': 0.25, opacity: 0.5,
       }));
-    } else if (!pos.isManual) {
+    } else if (!isManual) {
       g.appendChild(svgEl('circle', {
         cx: pos.x, cy: pos.z, r: r + 0.8, fill: 'none',
         stroke: 'rgba(196,168,130,0.3)', 'stroke-width': 0.2, 'stroke-dasharray': '0.4,0.4',
@@ -299,7 +344,7 @@ function renderEdges() {
     // visited path
     const visitedPos = (r.visited || []).map(i => {
       const s = state.scenes[i];
-      return s ? getStagePosition(s) : null;
+      return s ? getStagePosition(s, state.scenes.length) : null;
     }).filter(Boolean);
     if (visitedPos.length >= 2) {
       const d = visitedPos.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.z.toFixed(2)}`).join(' ');
@@ -311,8 +356,8 @@ function renderEdges() {
       const cur = state.scenes[r.currentIdx];
       const cand = state.scenes[r.candidateIdx];
       if (cur && cand) {
-        const pc = getStagePosition(cur);
-        const pn = getStagePosition(cand);
+        const pc = getStagePosition(cur, state.scenes.length);
+        const pn = getStagePosition(cand, state.scenes.length);
         if (pc && pn) {
           const pattern = r.lastResult && r.lastResult.transition_pattern;
           const ec = PATTERN_COLOR[pattern] || color;
@@ -568,9 +613,12 @@ function _updateStatus() {
   const status = document.getElementById('tvStageStatus');
   if (!status) return;
   const total = state.scenes.length;
-  const placed = state.scenes.filter(s => getStagePosition(s)).length;
-  const manual = state.scenes.filter(s => s.meta && s.meta.stage_position).length;
-  status.textContent = `씬 ${placed}/${total} · 수동 ${manual} · 자동 ${placed - manual}`;
+  const counts = { manual: 0, af: 0, emotion: 0, order: 0 };
+  state.scenes.forEach(s => {
+    const p = getStagePosition(s, total);
+    if (p && counts[p.source] != null) counts[p.source]++;
+  });
+  status.textContent = `씬 ${total} · 수동 ${counts.manual} · AF ${counts.af} · 감정 ${counts.emotion} · 순서 ${counts.order}`;
 }
 
 function setMemoryId(memoryId) {
