@@ -1209,6 +1209,11 @@
       var _sceneOpen = document.getElementById('sceneMode');
       if (_sceneOpen && _sceneOpen.classList.contains('active')) {
         _fpLastTime = now;
+        // walk_effects는 매 프레임 camera.position.y가 논리 baseline으로 리셋된다고 가정한다.
+        // 씬 모드에서 position을 리셋하지 않으면 breath/bob 오프셋이 누적되어 자이로드롭 발생.
+        var _frozenH = gH(_fpPos.x, _fpPos.z);
+        if (_frozenH < -10) _frozenH = -10;
+        camera.position.set(_fpPos.x, _frozenH + _fpEyeHeight + _fpJumpHeight, _fpPos.z);
         camera.rotation.set(_fpEuler.pitch, _fpEuler.yaw, 0, 'YXZ');
         return;
       }
