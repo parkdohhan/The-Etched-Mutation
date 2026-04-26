@@ -79,10 +79,16 @@
 - [x] **수락 기준 충족**: (a) 드래그 = stage_position 만 수정, ARV/VA 불변 검증, (b) sim step → 상단 SVG overlay (기존 redrawSimOverlay) ↔ 하단 위치 레이어 (syncStageView) 동일 호출 sequence 로 동기화, (c) 6종 패턴 색 구분, (d) auto fallback 으로 ARV 만 있어도 ghost 등장, (e) v1 SVG 라 frame drop 무관.
 
 **구현 차이 (스코프 원안 vs 실제)**:
-- 원안 "3D top-down ortho strata mesh" → v1 은 **2D SVG (strata 좌표계 공유)**. 이유: 기존 `showStrataView` 가 fullscreen modal 단일 인스턴스 binding 이라 admin 패널 embed 는 refactor 비용 큼. v1 의 좌표계가 strata 와 동일 (x, z ∈ [-56, 56]) 이라 위치 의도는 그대로 보존되며, 3D heightfield 시각화는 실제 사용 후 필요 판단되면 v2 로 승격. 외곽 원·void·AF anchor 라벨로 좌표 직관 충분.
+- 원안 "3D top-down ortho strata mesh" → v1 은 **2D SVG (strata 좌표계 공유)** 로 시작 → **v2 (2026-04-26 당일 후속) 에서 실제 strata terrain mesh 통합 완료**.
 - 자동 fallback 좌표계: AF 투영 (attribution × core_fear) — admin.js 응결점 편집기와 동일 공식.
 
-**일정 영향**: §7 총 코드 세션 17.1 → 실제 ~1.5 세션 소화 → 18.6 으로 갱신. 14·2-D·7 전 완료.
+**v2 후속 (2026-04-26)** — admin Canvas 후반작업:
+- [x] **Canvas 레이어 분할 핸들** — 6px 베이지 띠 드래그 (20%~85% 클램프), 더블클릭 50:50, localStorage `tv_layer_split_pct` 영속. smoke 5/5 PASS ([test/e2e/smoke_layer_resizer.mjs](../test/e2e/smoke_layer_resizer.mjs))
+- [x] **Strata terrain mesh 직교 top-down 렌더** — [js/ui/lumen_admin_stage_view.js](../js/ui/lumen_admin_stage_view.js) `_initTerrainLayer` + `_loadTerrainForMemory`. THREE.js OrthographicCamera (0,200,0)→(0,0,0), up=(0,0,-1) 으로 SVG viewBox 와 frustum 정확 일치. PlaneGeometry(112, 112, 79, 79) + vertexColors, MeshLambertMaterial. `window.TemAfStrataTerrain.buildMemoryItems` + `computeAfTerrainFields(P, 0, {G:80, SZ:112})` 재사용 — strata canonical 함수 미수정. SVG (z:1) 위에, terrain canvas (z:0) 아래로 깔려 좌표 1:1 매핑. ResizeObserver 로 layer resizer 변동 자동 추종.
+- [x] **시뮬 자동 재생** — admin-trajectory.js `togglePlaySim` / `startAutoplay` / `pauseAutoplay`. ▶재생 토글 = 시작+autoplay / ⏸일시정지 / 종료 후 재클릭 = reset+restart. 속도 슬라이더 200~2500ms (#tvSimSpeed). 일시정지 상태에서 "다음 →" 수동 step 가능. 모든 runner done 시 자동 정지.
+- [x] **smoke** [test/e2e/smoke_task_15_v2.mjs](../test/e2e/smoke_task_15_v2.mjs) — terrain canvas mount + 위치 / mesh scene 추가 / 자동 step (visited 누적) / 일시정지 / 속도 슬라이더 / reset / 모듈 콘솔 에러 (supabase auth refresh 별개). 환경 token 만료 영향 받는 항목은 `setup_admin_auth` 재실행 후 재현 가능.
+
+**일정 영향**: §7 총 코드 세션 17.1 → v1 ~1.5 + v2 ~0.4 = 18.9.
 
 ### 작업 2-D — 귀환 전용 사건 2~3개 + 통합 [0.5 세션]
 
@@ -192,7 +198,7 @@ computeAfTerrainFields
 | Sprint 4 | 5-14~16 | 작업 8 + 9 | 2.5 |
 | 버퍼 | 5-17~19 | 파일럿 반영 + 최종 점검 + 제출 | — |
 
-**총 코드 세션**: 18.6 (직전 17.1 + 작업 15 [Admin 두 레이어 분리 + 시뮬 동기화, 2026-04-26 scope change → 당일 완료, ~1.5 세션 소화])
+**총 코드 세션**: 18.9 (직전 17.1 + 작업 15 [Admin 두 레이어 분리 + 시뮬 동기화 v1 ~1.5 + v2 strata mesh + 분할 핸들 + 자동 재생 ~0.4, 2026-04-26 scope change → 당일 완료])
 **총 기간**: 28일 (4-22 ~ 5-19)
 
 > 2026-04-25 시점 메모: Sprint 1·2·3 의 대부분이 4-21~23 에 압축 완료됨 (≈ 2주 선행). 남은 코드 ≈ 4.3~4.8 세션 (§4). 외부 시연·파일럿·8·9 의 계획 일자는 그대로 유지 (캡처/글쓰기는 코드 freeze 후가 정확).

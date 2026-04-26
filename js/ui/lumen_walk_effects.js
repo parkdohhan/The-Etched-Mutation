@@ -1,7 +1,7 @@
 /**
  * Lumen Walk Effects
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260425.md §4 작업 3
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260426.md §4 작업 3
  *
  * 1인칭 걸음 연출 5종. 수정 금지 함수(`_fpTick` 외) 원칙 준수:
  *   runtime.tick 을 wrap, _fpTick 실행 **후** camera.position / camera.rotation.y 에 시각 오프셋만 가산.

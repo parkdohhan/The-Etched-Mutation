@@ -46,7 +46,22 @@ const state = {
   scenes: [],            // 외부에서 setScenes 로 주입
   sim: { active: false, runners: { A: null, B: null }, compareMode: false },
   drag: { sceneId: null, moved: false },
+  // ── Terrain mesh layer (THREE.js, ortho top-down) — v2
+  terrain: {
+    canvas: null,
+    renderer: null,
+    scene3: null,
+    camera: null,
+    mesh: null,
+    memoryId: null,        // 마지막으로 로드한 memory id (idempotent guard)
+    loading: false,
+    rafId: null,
+  },
 };
+
+// terrain mesh 생성 격자 — admin 경량 (full play-test 의 절반)
+const TERRAIN_G = 80;
+const TERRAIN_SZ = 112;
 
 // ─── 좌표 변환 ─────────────────────────────────────────────
 // stage_position 비어 있으면 originalReasonVector 자동 투영 — admin.js renderScenePinsRef 와 동일 공식.
@@ -374,14 +389,165 @@ function bindDragHandlers() {
   });
 }
 
+// ─── Terrain mesh layer (THREE.js, ortho top-down) ──────────────
+// SVG viewBox 와 정확히 동일한 좌표 frustum. SVG 와 같은 inset:0 absolute 로 깔린 canvas.
+function _initTerrainLayer() {
+  if (!state.rootEl || state.terrain.canvas) return;
+  if (typeof THREE === 'undefined') {
+    console.warn('[StageView] THREE 미로딩 — terrain mesh 비활성');
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.id = 'tvStageTerrainCanvas';
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;z-index:0;';
+  state.rootEl.insertBefore(canvas, state.rootEl.firstChild); // SVG 보다 뒤에
+
+  // preserveDrawingBuffer: smoke 검증에서 canvas pixel 캡처 가능하게 (성능 영향은 admin 한정 무시 가능)
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x0a0a10, 1);
+
+  const scene3 = new THREE.Scene();
+  // 단조 색평면: 약한 hemisphere 라이트 + ambient (vertex color 가 주역이라 light 는 약하게)
+  scene3.add(new THREE.AmbientLight(0xffffff, 0.85));
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x202028, 0.4);
+  scene3.add(hemi);
+
+  // 직교 카메라 — frustum 은 _resizeTerrain 에서 설정
+  const cam = new THREE.OrthographicCamera(-60, 60, 60, -60, 0.1, 1000);
+  cam.position.set(0, 200, 0);
+  cam.up.set(0, 0, -1); // SVG 의 +y(아래) 가 world +z 와 일치하도록
+  cam.lookAt(0, 0, 0);
+
+  state.terrain.canvas = canvas;
+  state.terrain.renderer = renderer;
+  state.terrain.scene3 = scene3;
+  state.terrain.camera = cam;
+
+  _resizeTerrain();
+  window.addEventListener('resize', _resizeTerrain);
+  // Layer resizer 도 영향 — 부모 크기 변하면 재계산. ResizeObserver 가 가장 안전.
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => _resizeTerrain());
+    ro.observe(state.rootEl);
+    state.terrain._ro = ro;
+  }
+  _renderTerrainOnce();
+}
+
+function _resizeTerrain() {
+  const t = state.terrain;
+  if (!t.renderer || !t.camera || !state.rootEl) return;
+  const w = state.rootEl.clientWidth || 1;
+  const h = state.rootEl.clientHeight || 1;
+  t.renderer.setSize(w, h, false);
+  // SVG meet 처럼 — 짧은 축에 viewBox 를 fit, 긴 축은 여백
+  const half = (TERRAIN_R + VIEW_PAD); // = 60
+  const aspect = w / h;
+  if (aspect >= 1) {
+    t.camera.top = half; t.camera.bottom = -half;
+    t.camera.left = -half * aspect; t.camera.right = half * aspect;
+  } else {
+    t.camera.left = -half; t.camera.right = half;
+    t.camera.top = half / aspect; t.camera.bottom = -half / aspect;
+  }
+  t.camera.updateProjectionMatrix();
+  _renderTerrainOnce();
+}
+
+function _renderTerrainOnce() {
+  const t = state.terrain;
+  if (!t.renderer || !t.scene3 || !t.camera) return;
+  t.renderer.render(t.scene3, t.camera);
+}
+
+async function _fetchTerrainP(memoryId) {
+  // strataView 의 fetchStrataAfInput 와 동일 의도의 미니 버전.
+  // memories + scenes + plays 를 supabase 로 가져와 buildMemoryItems 호출.
+  const T = window.TemAfStrataTerrain;
+  if (!T || !T.buildMemoryItems) return null;
+  let sb;
+  try { sb = await getSupabaseClient(); } catch (e) { return null; }
+  if (!sb) return null;
+
+  const [memRes, scnRes, playRes] = await Promise.all([
+    sb.from('memories').select('*').eq('id', memoryId).maybeSingle(),
+    sb.from('scenes').select('*').eq('memory_id', memoryId).order('scene_order', { ascending: true }),
+    sb.from('plays').select('id, memory_id, scene_id, user_emotion, alignment, mismatch_type, created_at, user_id').eq('memory_id', memoryId),
+  ]);
+  const memRow = memRes && memRes.data;
+  if (!memRow) return null;
+  const sceneRows = (scnRes && scnRes.data) || [];
+  const plays = (playRes && playRes.data) || [];
+
+  const playsByMem = {}; playsByMem[memoryId] = plays;
+  const scenesByMem = {}; scenesByMem[memoryId] = sceneRows;
+  return T.buildMemoryItems([memRow], playsByMem, scenesByMem);
+}
+
+async function _loadTerrainForMemory(memoryId) {
+  const t = state.terrain;
+  if (!t.renderer || !memoryId) return;
+  if (t.memoryId === memoryId || t.loading) return;
+  t.loading = true;
+  try {
+    const T = window.TemAfStrataTerrain;
+    if (!T || !T.computeAfTerrainFields) { t.loading = false; return; }
+    const P = await _fetchTerrainP(memoryId);
+    if (!P || !P.length) { t.loading = false; return; }
+    const field = T.computeAfTerrainFields(P, 0, { G: TERRAIN_G, SZ: TERRAIN_SZ });
+    if (!field || !field.hts) { t.loading = false; return; }
+
+    // 기존 mesh 정리
+    if (t.mesh) {
+      t.scene3.remove(t.mesh);
+      if (t.mesh.geometry) t.mesh.geometry.dispose();
+      if (t.mesh.material) t.mesh.material.dispose();
+      t.mesh = null;
+    }
+
+    const geo = new THREE.PlaneGeometry(TERRAIN_SZ, TERRAIN_SZ, TERRAIN_G - 1, TERRAIN_G - 1);
+    geo.rotateX(-Math.PI / 2);
+    const pos = geo.attributes.position.array;
+    const colors = new Float32Array(pos.length);
+    for (let i = 0; i < TERRAIN_G * TERRAIN_G; i++) {
+      // PlaneGeometry rotateX 후 vertex 순서: i = iz * G + ix
+      pos[i * 3 + 1] = field.hts[i] * 0.18; // ortho top-down 이라 height 자체는 안 보이지만 미세 그림자용
+      colors[i * 3]     = field.cls[i * 3];
+      colors[i * 3 + 1] = field.cls[i * 3 + 1];
+      colors[i * 3 + 2] = field.cls[i * 3 + 2];
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.attributes.position.needsUpdate = true;
+    geo.computeVertexNormals();
+
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geo, mat);
+    t.scene3.add(mesh);
+    t.mesh = mesh;
+    t.memoryId = memoryId;
+    _renderTerrainOnce();
+    console.log('[StageView] terrain loaded for', memoryId);
+  } catch (e) {
+    console.warn('[StageView] terrain load failed', e);
+  } finally {
+    t.loading = false;
+  }
+}
+
 // ─── 외부 API ───────────────────────────────────────────────
 function mount(rootSelector) {
   const root = typeof rootSelector === 'string' ? document.getElementById(rootSelector) : rootSelector;
   if (!root) return null;
   state.rootEl = root;
   root.innerHTML = '';
+  // SVG 가 오버레이로 위에, terrain canvas 가 배경으로 아래에 — _initTerrainLayer 가 prepend.
   state.svg = buildSvgScaffold();
+  state.svg.style.position = 'absolute';
+  state.svg.style.inset = '0';
+  state.svg.style.zIndex = '1';
   root.appendChild(state.svg);
+  _initTerrainLayer();
   bindDragHandlers();
   return api;
 }
@@ -407,7 +573,27 @@ function _updateStatus() {
   status.textContent = `씬 ${placed}/${total} · 수동 ${manual} · 자동 ${placed - manual}`;
 }
 
-const api = { mount, setScenes, setSimState };
+function setMemoryId(memoryId) {
+  if (!memoryId) return;
+  // mount 후 호출 가능. terrain 레이어가 init 안 됐으면 일찍 리턴.
+  if (!state.terrain.canvas) _initTerrainLayer();
+  _loadTerrainForMemory(memoryId);
+}
+
+// 디버그 / smoke 용 — mesh 존재 / vertex 수 노출
+function _debugTerrain() {
+  const t = state.terrain;
+  return {
+    hasCanvas: !!t.canvas,
+    hasMesh: !!t.mesh,
+    meshChildren: t.scene3 ? t.scene3.children.length : 0,
+    meshVertexCount: t.mesh && t.mesh.geometry ? t.mesh.geometry.attributes.position.count : 0,
+    memoryId: t.memoryId,
+    canvasSize: t.canvas ? { w: t.canvas.width, h: t.canvas.height } : null,
+  };
+}
+
+const api = { mount, setScenes, setSimState, setMemoryId, _debugTerrain };
 
 // ─── 글로벌 노출 ────────────────────────────────────────────
 window.LumenAdminStageView = api;

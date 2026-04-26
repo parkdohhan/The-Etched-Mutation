@@ -1,7 +1,7 @@
 /**
  * Lumen Return Events
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260425.md §4 작업 2-D
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260426.md §4 작업 2-D
  *        + docs/LUMEN_return_components-260421.md §8
  *
  * rewind(= 귀환) 중에만 발화되는 전용 사건 3종. 일반 진입 세션엔 한 개도 발화 안 됨.

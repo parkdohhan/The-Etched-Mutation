@@ -113,6 +113,10 @@ async function initTrajectoryViewer(memoryId) {
     bindLayerResizer();
     state._stageMounted = true;
   }
+  // terrain mesh 는 메모리 단위로 로드 (idempotent — 같은 id 재호출 시 재로드 안 함)
+  if (state.memory && state.memory.id) {
+    LumenAdminStageView.setMemoryId(state.memory.id);
+  }
   syncStageView();
 }
 
@@ -728,6 +732,62 @@ const simState = {
   },
 };
 
+// 작업 15 v2 — 자동 재생 상태. timerId 가 null 이면 일시정지/정지.
+const autoplay = {
+  timerId: null,
+  intervalMs: 900,
+};
+
+function _allRunnersDone() {
+  const a = simState.runners.A;
+  const b = simState.runners.B;
+  const aDone = !a || a.done;
+  const bDone = !b || b.done;
+  return aDone && bDone;
+}
+
+function _autoTick() {
+  if (!simState.active || _allRunnersDone()) {
+    pauseAutoplay();
+    return;
+  }
+  stepSim();
+}
+
+function pauseAutoplay() {
+  if (autoplay.timerId) {
+    clearInterval(autoplay.timerId);
+    autoplay.timerId = null;
+  }
+  const btn = document.getElementById('tvSimStartBtn');
+  if (btn) btn.textContent = '▶ 재생';
+}
+
+function startAutoplay() {
+  if (autoplay.timerId) return;
+  autoplay.timerId = setInterval(_autoTick, autoplay.intervalMs);
+  const btn = document.getElementById('tvSimStartBtn');
+  if (btn) btn.textContent = '⏸ 일시정지';
+}
+
+// ▶ 버튼 토글: sim 미시작 → 시작 + autoplay 시작 / 재생 중 → 일시정지 / 일시정지 → autoplay 재시작 /
+//                 종료 상태(_allRunnersDone) → reset 후 재시작.
+function togglePlaySim() {
+  if (!simState.active) {
+    startSim();
+    startAutoplay();
+    return;
+  }
+  if (_allRunnersDone()) {
+    resetSim();
+    startSim();
+    startAutoplay();
+    return;
+  }
+  if (autoplay.timerId) pauseAutoplay();
+  else startAutoplay();
+}
+
 function _mkRunner(label) {
   return {
     label,
@@ -797,9 +857,23 @@ function initSimPanel() {
   const startBtn = document.getElementById('tvSimStartBtn');
   const stepBtn  = document.getElementById('tvSimStepBtn');
   const resetBtn = document.getElementById('tvSimResetBtn');
-  if (startBtn) startBtn.onclick = startSim;
-  if (stepBtn)  stepBtn.onclick  = stepSim;
-  if (resetBtn) resetBtn.onclick = resetSim;
+  if (startBtn) startBtn.onclick = togglePlaySim;
+  if (stepBtn)  stepBtn.onclick  = () => { pauseAutoplay(); stepSim(); };
+  if (resetBtn) resetBtn.onclick = () => { pauseAutoplay(); resetSim(); };
+
+  const speed = document.getElementById('tvSimSpeed');
+  const speedVal = document.getElementById('tvSimSpeedVal');
+  if (speed && speedVal) {
+    speed.oninput = () => {
+      autoplay.intervalMs = parseInt(speed.value, 10) || 900;
+      speedVal.textContent = autoplay.intervalMs + 'ms';
+      // 재생 중이면 새 간격 적용
+      if (autoplay.timerId) {
+        clearInterval(autoplay.timerId);
+        autoplay.timerId = setInterval(_autoTick, autoplay.intervalMs);
+      }
+    };
+  }
 
   const loadBtn = document.getElementById('tvSimLoadFromPersona');
   if (loadBtn) loadBtn.onclick = loadFromSelectedPersona;
@@ -969,6 +1043,13 @@ function resetSim() {
   simState.runners.B = null;
   const stepBtn = document.getElementById('tvSimStepBtn');
   if (stepBtn) stepBtn.disabled = true;
+  // autoplay 도 정리 (compareMode 토글 / 메모리 전환 경로에서 호출됨)
+  if (autoplay.timerId) {
+    clearInterval(autoplay.timerId);
+    autoplay.timerId = null;
+    const btn = document.getElementById('tvSimStartBtn');
+    if (btn) btn.textContent = '▶ 재생';
+  }
   redrawSimOverlay();
   updateSimReadout();
   syncStageView();
