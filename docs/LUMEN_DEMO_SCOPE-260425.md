@@ -4,7 +4,7 @@
 **안전 마감**: 2026-05-19 (buffer 4일)
 **작성**: 2026-04-21
 **기반 문서**: `docs/update_lumen-260420.md`, IMA 비평 판정 (2026-04-20, 83점 B+)
-**최근 갱신**: 2026-04-25 — 완료 작업 §13 으로 이동, §4 는 잔여만 유지
+**최근 갱신**: 2026-04-26 — 작업 15 (Admin 두 레이어 분리 + 시뮬 동기화) scope change 추가 + **당일 구현 완료** (smoke 11/11). v1 은 SVG 탑다운, 3D 터레인 렌더는 v2 로 이월. V2 의 "Canvas 지형 모드" 회수 후 완수.
 
 ---
 
@@ -44,13 +44,14 @@
 | 작업 | 세션 | 권장 시작 |
 |---|---|---|
 | 14 — 중심 void 표식 + 체류 트리거 | 0.5~1 | 즉시 (UX 결함) |
+| ~~15 — Admin 두 레이어 분리 + 시뮬 동기화~~ | ~~1.5~~ | ✅ 완료 2026-04-26 (§13 부록) |
 | 2-D — 귀환 전용 사건 + 통합 | 0.5 | 14 직후 |
 | 7 — 시범 메모리 1개 (Admin 저작) | 0.3 | 14·2-D 안정화 후 |
 | 10 — 파일럿 n=5~7 | 별도 | 5-09~13 |
 | 8 — Artist statement | 1.0 | 5-13 파일럿 종료 직후 |
 | 9 — 증거 패키지 (스크린샷·영상) | 1.5 | 5-14 코드 freeze 이후 |
 
-순서는 의존 관계 + 데드라인 기준. 8·9 는 코드 변경이 멈춰야 의미 있음 → 마지막.
+순서는 의존 관계 + 데드라인 기준. 8·9 는 코드 변경이 멈춰야 의미 있음 → 마지막. 7 은 15 의 신규 admin 도구가 실제 저작 워크플로 — 15 선행.
 
 ### 작업 14 — 중심 void 표식 + 도달 체류 트리거 [0.5~1 세션] — 🔄 미착수 (2026-04-23 scope change)
 
@@ -62,6 +63,26 @@
 - [ ] play-test.html 에서 `LumenRewindPlayback` 의 `triggerEvent` 를 void_marker 의 커스텀 이벤트로 재배선 (어댑터의 raw enterVoid 직접 구독 해제).
 - [ ] **smoke** `test/smoke_task_14.js` — 표식 scene 추가 확인 · 근접 시 opacity 증가 · 경계 2.5초 체류 시 rewind 시작 · 스쳐 지나감 (<1초) 시 rewind 미발동 · 경계 이탈 시 타이머 리셋.
 - [ ] **수락 기준**: (a) 맵 진입 직후 플레이어가 중심 위치를 시각적으로 식별 가능, (b) 중심 방향 이동 중 드론+표식 강화 체감, (c) 2.5초 체류 시 자동 rewind, (d) 단순 통과(스치기) 시 rewind 안 발동.
+
+### 작업 15 — Admin 궤적/위치 두 레이어 분리 + 시뮬 재생 동기화 [1.5~2 세션] — ✅ 완료 (2026-04-26)
+
+**발견 / 동기**: 현 admin canvas 의 2-D 지형도 노드 드래그가 VA 값(궤적 결정)과 시각 위치를 동시에 수정 ([js/admin.js:2932-2935](../js/admin.js#L2932-L2935)). 기억유전학 프레임에선 두 개념이 구분: (1) **궤적 레이어** = `original_reason_vector` / VA 로 결정되는 분기 가능성, (2) **위치 레이어** = 플레이어가 strata 위에서 보는 유령 좌표(연출). 한 레이어에서 둘을 동시에 만지면 분기 디버깅과 연출 의도가 서로 오염됨. 또한 12-4 시뮬 가시화는 노드 그래프만 — "이 궤적이면 플레이어가 어떤 유령을 어디서 보는가" 의 검증 부재.
+
+**구현 경로** (2026-04-26):
+- [x] **Canvas 영역 상하 분할** — [admin.html:468-505](../admin.html#L468-L505) `tv-canvas-wrap` 안에 `.tv-layer-trajectory` (55%) + `.tv-layer-position` (45%). 기존 SVG/legend 는 상단으로 이동. 하단은 신규 `#tvStageRoot` 컨테이너.
+- [x] **위치 레이어 데이터 모델** — `scenes.meta.stage_position = {x, z}` (DB 컬럼 신설 X). 비어 있으면 `originalReasonVector.attribution` × `core_fear` AF 투영 자동 fallback ([js/ui/lumen_admin_stage_view.js:50-65](../js/ui/lumen_admin_stage_view.js#L50-L65)) — admin.js `renderScenePinsRef` 와 동일 공식.
+- [x] **잠재 버그 동시 수정** — `saveMemoryGraph` insertData 가 `meta` 미포함이라 메모리 저장 시 모든 scene.meta(`pin_override`/`motif_tags`/`stage_position` 등) 가 날아가던 latent 버그 발견. [js/lib/repo.js:282-285](../js/lib/repo.js#L282-L285) 한 줄 추가 (`meta: scene.meta || null`) 로 보존.
+- [x] **위치 레이어 드래그** — SVG 탑다운 (3D 풀 모달 재사용은 v2 로 이월, v1 은 strata 좌표계만 공유). `clientToWorld` getScreenCTM 역변환 → `clampToTerrain` (R=56 외곽 + void 5.6 내부 차단). 드래그 시점에 scene.meta.stage_position 만 갱신. `originalReasonVector`·VA·`_diagAccessMatrix` 어떤 것도 수정 X. mouseup 시 `savePinOverride` 패턴으로 supabase update 직접 commit.
+- [x] **시각 구분** — 자동(stage_position null, AF 투영) = 점선 헤일로, 수동 = 실선.
+- [x] **시뮬 재생 동기화 (가시성 b + 패턴 색 ii)** — `runners[A/B].currentIdx`·`candidateIdx`·`visited` 를 [admin-trajectory.js syncStageView](../js/admin-trajectory.js#L119) 가 매 step 후 push. sim active 시 idle 씬 숨김. current=꽉 찬 강조 dot, candidate=transition_pattern 색 펄스 링, visited=dimmed. 패턴 색 6종: echo_follow #c4a882 / bridge #6aa383 / displacement #a88aa3 / contradiction #c97a6a / avoidance #7c7466 / fixation #9d8a4a.
+- [x] **smoke** [test/e2e/smoke_task_15.mjs](../test/e2e/smoke_task_15.mjs) — 11/11 PASS: (1) 상하 분할 레이어 존재, (2) SVG mount + AF anchor 4개 라벨, (3) status 라벨, (4) 수동 stage_position → ghost 2개 렌더, (5) sim sync current+candidate + pulse animate, (6) sim active 시 idle 씬 숨김, (7) candidate 패턴 색 (contradiction=#c97a6a) 적용, (8) stage_position 변경이 originalReasonVector 미수정, (9) DB 라운드트립 (meta.stage_position 보존), (10) 콘솔 에러 0.
+- [x] **수락 기준 충족**: (a) 드래그 = stage_position 만 수정, ARV/VA 불변 검증, (b) sim step → 상단 SVG overlay (기존 redrawSimOverlay) ↔ 하단 위치 레이어 (syncStageView) 동일 호출 sequence 로 동기화, (c) 6종 패턴 색 구분, (d) auto fallback 으로 ARV 만 있어도 ghost 등장, (e) v1 SVG 라 frame drop 무관.
+
+**구현 차이 (스코프 원안 vs 실제)**:
+- 원안 "3D top-down ortho strata mesh" → v1 은 **2D SVG (strata 좌표계 공유)**. 이유: 기존 `showStrataView` 가 fullscreen modal 단일 인스턴스 binding 이라 admin 패널 embed 는 refactor 비용 큼. v1 의 좌표계가 strata 와 동일 (x, z ∈ [-56, 56]) 이라 위치 의도는 그대로 보존되며, 3D heightfield 시각화는 실제 사용 후 필요 판단되면 v2 로 승격. 외곽 원·void·AF anchor 라벨로 좌표 직관 충분.
+- 자동 fallback 좌표계: AF 투영 (attribution × core_fear) — admin.js 응결점 편집기와 동일 공식.
+
+**일정 영향**: §7 총 코드 세션 17.1 → 실제 ~1.5 세션 소화 → 18.6 으로 갱신. 14·2-D·7 전 완료.
 
 ### 작업 2-D — 귀환 전용 사건 2~3개 + 통합 [0.5 세션]
 
@@ -124,7 +145,7 @@
 
 - TTS / 자기 목소리 유령 / plays.first_input_field*
 - 오염 3축 중 convergence, divergence (이동 제어 X)
-- Admin UI 확장 (Canvas 지형 모드, 운영 탭 필터 등)
+- Admin UI 확장 (운영 탭 필터 등 — Canvas 지형 모드는 작업 15 로 회수, 2026-04-26)
 - 화면 가장자리 왜곡 shader
 - Reverb (ConvolverNode)
 - 숨소리
@@ -171,7 +192,7 @@ computeAfTerrainFields
 | Sprint 4 | 5-14~16 | 작업 8 + 9 | 2.5 |
 | 버퍼 | 5-17~19 | 파일럿 반영 + 최종 점검 + 제출 | — |
 
-**총 코드 세션**: 17.1 (직전 16.1 + 작업 14 [중심 void 표식, 2026-04-23 scope change — 2-A 통합 중 UX 결함 발견])
+**총 코드 세션**: 18.6 (직전 17.1 + 작업 15 [Admin 두 레이어 분리 + 시뮬 동기화, 2026-04-26 scope change → 당일 완료, ~1.5 세션 소화])
 **총 기간**: 28일 (4-22 ~ 5-19)
 
 > 2026-04-25 시점 메모: Sprint 1·2·3 의 대부분이 4-21~23 에 압축 완료됨 (≈ 2주 선행). 남은 코드 ≈ 4.3~4.8 세션 (§4). 외부 시연·파일럿·8·9 의 계획 일자는 그대로 유지 (캡처/글쓰기는 코드 freeze 후가 정확).

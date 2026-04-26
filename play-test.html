@@ -10,6 +10,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Lumen 마네킨 유령 (장면핀 자리 ybot.fbx). 순서 의존 — lumen_scene_mannequins.js 보다 위. -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
   <!-- Lumen 오프닝 직진입: ?memory= 또는 sessionStorage에 id가 있으면 selectScreen flash 방지 + 검은 부팅 overlay -->
   <script>
   (function () {
@@ -50,6 +54,7 @@
   <script src="js/ui/lumen_visual_effects.js"></script>
   <script src="js/ui/lumen_audio_space.js"></script>
   <script src="js/ui/lumen_scene_ghosts.js"></script>
+  <script src="js/ui/lumen_scene_mannequins.js"></script>
   <script src="js/ui/lumen_rewind_playback.js"></script>
   <script src="js/ui/lumen_return_mode.js"></script>
   <script src="js/ui/lumen_return_speech.js"></script>
@@ -4614,6 +4619,13 @@
                 }
               });
             }
+            // 2026-04-26: 장면핀 자리에 ybot 마네킨 유령. ghost-mannequin-test 검증값 잠금.
+            //   _buildPlayScenePins 가 이 attach 직후 sync 로 실행되므로 명시적 rebuild 호출은 그 뒤(아래 whisper 옆).
+            if (window.LumenSceneMannequins && typeof window.LumenSceneMannequins.attach === 'function') {
+              window.LumenSceneMannequins.attach(rt, {
+                getScenePins: function () { return _fpScenePins; }
+              });
+            }
             // 작업 2-A 후반: 궤적 rewind 재생 (void 진입 트리거, getTrajectory 활용, WASD/마우스 잠금)
             // 작업 2-D (exit flow) 완성 전까지 자동 트리거 금지 — void 5.6유닛 안 들어가면 바로 발동해
             // 입력 잠긴 채로 튕김. 테스트는 rt.__lumenRewind.forceStart() 로 수동 호출.
@@ -4680,10 +4692,15 @@
           }
 
           _buildPlayScenePins();
-          // 씬 핀이 방금 생성됐으니 whisper panner 재구축 (attach 시점엔 _fpScenePins 비어있음)
+          // 씬 핀이 방금 생성됐으니 whisper panner + 마네킨 재구축 (attach 시점엔 _fpScenePins 비어있음)
           try {
             if (rt.__lumenAudioSpace && typeof rt.__lumenAudioSpace.rebuildWhispers === 'function') {
               rt.__lumenAudioSpace.rebuildWhispers();
+            }
+          } catch (_) {}
+          try {
+            if (rt.__lumenSceneMannequins && typeof rt.__lumenSceneMannequins.rebuild === 'function') {
+              rt.__lumenSceneMannequins.rebuild();
             }
           } catch (_) {}
           _startProximityLoop();

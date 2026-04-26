@@ -466,15 +466,32 @@
             </aside>
 
             <main class="tv-canvas-wrap">
-                <svg id="tvSvg" xmlns="http://www.w3.org/2000/svg"></svg>
-                <div class="tv-status" id="tvStatus" style="position:absolute; top:10px; left:50%; transform:translateX(-50%);"></div>
-                <div id="tvLegend" style="position:absolute;top:14px;right:14px;background:rgba(10,10,15,0.85);border:1px solid rgba(196,168,130,0.15);border-radius:4px;padding:10px 12px;font-size:0.72rem;color:#c0b8a4;backdrop-filter:blur(6px);line-height:1.7;pointer-events:none;">
-                    <div style="font-size:0.65rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">범례</div>
-                    <div><span style="display:inline-block;width:24px;border-top:1.2px solid rgba(196,168,130,0.5);vertical-align:middle;margin-right:6px;"></span>Choice (명시 분기)</div>
-                    <div><span style="display:inline-block;width:24px;border-top:1.2px dashed #6aa383;vertical-align:middle;margin-right:6px;"></span>Bridge (숨은 공명)</div>
-                    <div style="margin-top:6px;"><span style="display:inline-block;width:10px;height:10px;border:2px solid #c4a882;border-radius:50%;vertical-align:middle;margin-right:6px;"></span>감정 진입점</div>
-                    <div><span style="display:inline-block;width:12px;height:12px;background:#6a655a;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>🔗 작가 브릿지</div>
-                    <div><span style="display:inline-block;width:12px;height:12px;background:#4a7c9d;border-radius:2px;vertical-align:middle;margin-right:6px;"></span>🌊 궤적 브릿지</div>
+                <!-- 상단: 궤적 레이어 (기존 SVG 노드 그래프) -->
+                <div class="tv-layer-trajectory" style="position:relative;height:55%;border-bottom:1px solid rgba(196,168,130,0.18);">
+                    <svg id="tvSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+                    <div class="tv-status" id="tvStatus" style="position:absolute; top:10px; left:50%; transform:translateX(-50%);"></div>
+                    <div class="tv-layer-tag" style="position:absolute;top:10px;left:14px;font-size:0.62rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.18em;background:rgba(10,10,15,0.7);padding:3px 8px;border:1px solid rgba(196,168,130,0.12);border-radius:2px;pointer-events:none;">궤적 · trajectory</div>
+                    <div id="tvLegend" style="position:absolute;top:10px;right:14px;background:rgba(10,10,15,0.85);border:1px solid rgba(196,168,130,0.15);border-radius:4px;padding:8px 10px;font-size:0.68rem;color:#c0b8a4;backdrop-filter:blur(6px);line-height:1.6;pointer-events:none;">
+                        <div style="font-size:0.62rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">범례</div>
+                        <div><span style="display:inline-block;width:20px;border-top:1.2px solid rgba(196,168,130,0.5);vertical-align:middle;margin-right:5px;"></span>Choice</div>
+                        <div><span style="display:inline-block;width:20px;border-top:1.2px dashed #6aa383;vertical-align:middle;margin-right:5px;"></span>Bridge</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;border:2px solid #c4a882;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>감정 진입점</div>
+                    </div>
+                </div>
+                <!-- 하단: 위치 레이어 (작업 15 — strata 좌표계 탑다운 + 유령 위치 / 시뮬 동기화) -->
+                <div class="tv-layer-position" style="position:relative;height:45%;background:#0a0a10;">
+                    <div id="tvStageRoot" style="position:absolute;inset:0;"></div>
+                    <div class="tv-layer-tag" style="position:absolute;top:10px;left:14px;font-size:0.62rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.18em;background:rgba(10,10,15,0.7);padding:3px 8px;border:1px solid rgba(196,168,130,0.12);border-radius:2px;pointer-events:none;">위치 · stage</div>
+                    <div id="tvStageStatus" style="position:absolute;top:10px;right:14px;font-size:0.68rem;color:#7c7466;background:rgba(10,10,15,0.7);padding:4px 8px;border-radius:2px;line-height:1.5;pointer-events:none;">로딩 중…</div>
+                    <div id="tvStageLegend" style="position:absolute;bottom:10px;right:14px;background:rgba(10,10,15,0.85);border:1px solid rgba(196,168,130,0.15);border-radius:4px;padding:7px 10px;font-size:0.66rem;color:#c0b8a4;backdrop-filter:blur(6px);line-height:1.65;pointer-events:none;">
+                        <div style="font-size:0.6rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">패턴 색</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;background:#c4a882;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>echo_follow</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;background:#6aa383;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>bridge</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;background:#a88aa3;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>displacement</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;background:#c97a6a;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>contradiction</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;background:#7c7466;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>avoidance</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;background:#9d8a4a;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>fixation</div>
+                    </div>
                 </div>
             </main>
 
@@ -495,8 +512,12 @@
         /* 궤적 뷰어 스타일 */
         #section-canvas .tv-root { display: grid; grid-template-columns: 220px 1fr 320px; height: 100%; }
         #section-canvas .tv-sidebar { background: rgba(15,15,22,0.9); border-right: 1px solid rgba(196,168,130,0.15); padding: 20px 16px; overflow-y: auto; }
-        #section-canvas .tv-canvas-wrap { position: relative; overflow: hidden; background: #07070b; }
+        #section-canvas .tv-canvas-wrap { position: relative; overflow: hidden; background: #07070b; display: flex; flex-direction: column; }
         #section-canvas .tv-canvas-wrap svg { width: 100%; height: 100%; display: block; }
+        #section-canvas .tv-layer-trajectory { display: flex; flex-direction: column; }
+        #section-canvas .tv-layer-trajectory svg { flex: 1 1 auto; min-height: 0; }
+        #section-canvas .tv-layer-position { display: block; }
+        #section-canvas .tv-layer-position #tvStageRoot svg { width: 100%; height: 100%; display: block; }
         #section-canvas .tv-detail { background: rgba(15,15,22,0.9); border-left: 1px solid rgba(196,168,130,0.15); padding: 20px 16px; overflow-y: auto; }
         #section-canvas .tv-title { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: #c4a882; margin: 0 0 4px; letter-spacing: 0.04em; }
         #section-canvas .tv-subtitle { font-size: 0.75rem; color: #7c7466; margin: 0 0 18px; }

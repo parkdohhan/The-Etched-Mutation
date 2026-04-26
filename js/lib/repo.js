@@ -279,7 +279,10 @@ export async function saveMemoryGraph(client, memoryPayload) {
             text_stage_1: scene.text_stage_1 || null,
             text_stage_2: scene.text_stage_2 || null,
             text_stage_3: scene.text_stage_3 || null,
-            exclusions: scene.exclusions && Array.isArray(scene.exclusions) && scene.exclusions.length > 0 ? scene.exclusions : null
+            exclusions: scene.exclusions && Array.isArray(scene.exclusions) && scene.exclusions.length > 0 ? scene.exclusions : null,
+            // meta JSONB 보존: pin_override(궤적 레이어) / stage_position(위치 레이어, 작업 15) /
+            // motif_tags / scene_code / author_bridges 등이 saveMemoryGraph DELETE+INSERT 사이클에서 살아남도록.
+            meta: scene.meta || null
         };
 
         const { data: sceneData, error: sceneError } = await client

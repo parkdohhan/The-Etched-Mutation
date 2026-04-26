@@ -3,7 +3,7 @@
 SQL 직접 INSERT로 Lumen 데모용 기억을 만들 때 **연출 레버 누락 방지용 한 페이지**.
 메모리 1개 쓸 때마다 이걸 훑고, 각 레버의 값을 먼저 결정한 뒤 [supabase/seeds/lumen_memory_template.sql](../supabase/seeds/lumen_memory_template.sql)에 박는다.
 
-**SCOPE 참조**: [docs/LUMEN_DEMO_SCOPE-260424.md §4 작업 7](LUMEN_DEMO_SCOPE-260424.md).
+**SCOPE 참조**: [docs/LUMEN_DEMO_SCOPE-260425.md §4 작업 7](LUMEN_DEMO_SCOPE-260425.md).
 
 **작성 순서 권장**: 1 → 2 → 5 → 3 → 4 → 6 → 7 → 8. 서사 먼저, 감정 후, 공간 마지막.
 

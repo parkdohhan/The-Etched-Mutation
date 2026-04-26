@@ -4,6 +4,7 @@
 import { getSupabaseClient } from './lib/supabaseClient.js';
 import { byeoriEngine } from './core/ByeoriEngine.js';
 import { sceneNavigator } from './core/SceneNavigator.js';
+import LumenAdminStageView from './ui/lumen_admin_stage_view.js';
 
 // ─── 감정 팔레트 (8 keys) ──────────────────────────────────
 const EMOTIONS = [
@@ -105,6 +106,24 @@ async function initTrajectoryViewer(memoryId) {
   loadPersonasForMemory();
   resetSim();          // 메모리 전환 시 시뮬 상태 클리어
   initSimPanel();      // 슬라이더·프리셋·버튼 바인딩 (idempotent)
+
+  // 작업 15 — 위치 레이어 mount + 동기화 (idempotent)
+  if (!state._stageMounted) {
+    LumenAdminStageView.mount('tvStageRoot');
+    state._stageMounted = true;
+  }
+  syncStageView();
+}
+
+// 작업 15 — 위치 레이어로 현 상태 push. scene/시뮬 변동 시점에 호출.
+function syncStageView() {
+  if (!state._stageMounted) return;
+  LumenAdminStageView.setScenes(state.scenes);
+  LumenAdminStageView.setSimState({
+    active: simState.active,
+    runners: simState.runners,
+    compareMode: simState.compareMode,
+  });
 }
 
 // ─── 메모리 기본 설정 패널 (우측 하단) ─────────────────────
@@ -840,6 +859,7 @@ function startSim() {
 
   redrawSimOverlay();
   updateSimReadout();
+  syncStageView();
 }
 
 function stepSim() {
@@ -863,6 +883,7 @@ function stepSim() {
   });
   redrawSimOverlay();
   updateSimReadout();
+  syncStageView();
 }
 
 function computeRunnerStep(r) {
@@ -909,6 +930,7 @@ function resetSim() {
   if (stepBtn) stepBtn.disabled = true;
   redrawSimOverlay();
   updateSimReadout();
+  syncStageView();
 }
 
 // 디버그 / smoke 용 — window 에 runners 상태 노출
@@ -1219,6 +1241,8 @@ function renderGraph() {
 
   // ── 시뮬 overlay 재적용 (그래프 재렌더 이후 좌표 기준으로 다시 그리기)
   redrawSimOverlay();
+  // 작업 15 — 위치 레이어도 같은 scene 갱신을 받음
+  if (state._stageMounted) syncStageView();
 }
 
 let _zoomPanAttached = false;
