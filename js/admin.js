@@ -605,6 +605,19 @@ function renderScenes() {
                     </button>
                     <canvas class="scene-wave-canvas" id="sceneWaveCanvas-${sceneIndex}" width="400" height="80" style="width:100%; max-width:400px; height:80px; background: var(--bg-deep); border-radius:4px; border:1px solid rgba(196,168,130,.2);"></canvas>
                 </div>
+                <div class="scene-terrain-preview" data-scene-index="${sceneIndex}" style="margin-top: 1rem;">
+                    <label class="editor-label" style="display:block; margin-bottom: 0.5rem;">3D 자연 모양 (자동 mask · §14 Phase 1)</label>
+                    <button
+                        type="button"
+                        class="editor-btn preview-terrain-btn"
+                        data-scene-index="${sceneIndex}"
+                        onclick="toggleSceneTerrainPreview(${sceneIndex})"
+                        style="margin-bottom:0.6rem;padding:0.45rem 0.85rem;font-size:0.82rem;"
+                    >
+                        ${(scene.terrainPreviewEnabled ? '3D 모양 숨기기' : '3D 모양 보기')}
+                    </button>
+                    <div class="scene-terrain-mount" data-scene-index="${sceneIndex}" id="sceneTerrainMount-${sceneIndex}" style="${scene.terrainPreviewEnabled ? '' : 'display:none;'}"></div>
+                </div>
             </div>
             <div class="editor-section scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'}; margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
                 <h3 class="editor-section-title" style="margin-bottom: 1rem;">원본 이유 (정렬도 비교용)</h3>
@@ -679,7 +692,67 @@ visited_scene      { type:"visited_scene", sceneIndex:2 }
             clearSceneWaveCanvas(sceneIndex);
         }
     });
+
+    // 작업 §14 Phase 1: terrainPreviewEnabled 인 씬 자동 복원
+    currentScenes.forEach((scene, sceneIndex) => {
+        if (scene && scene.terrainPreviewEnabled) {
+            _mountSceneTerrainPreview(sceneIndex);
+        }
+    });
 }
+
+// ─── §14 Phase 1: 씬별 3D 자연 모양 미리보기 ────────────────────
+const _sceneTerrainApis = new Map();
+
+function _mountSceneTerrainPreview(sceneIndex) {
+    if (!window.LumenAdminSceneTerrainPreview) {
+        console.warn('[scene-terrain] LumenAdminSceneTerrainPreview 미로드');
+        return;
+    }
+    const scene = currentScenes[sceneIndex];
+    if (!scene) return;
+    const mount = document.getElementById('sceneTerrainMount-' + sceneIndex);
+    if (!mount) return;
+    // 기존 인스턴스 정리 (renderScenes 재호출 시 leak 방지)
+    const oldApi = _sceneTerrainApis.get(sceneIndex);
+    if (oldApi) { try { oldApi.dispose(); } catch (_) {} _sceneTerrainApis.delete(sceneIndex); }
+    mount.style.display = 'block';
+    const api = window.LumenAdminSceneTerrainPreview.attach(mount, scene, {
+        width: 480, height: 320,
+    });
+    if (api) _sceneTerrainApis.set(sceneIndex, api);
+}
+
+function _unmountSceneTerrainPreview(sceneIndex) {
+    const api = _sceneTerrainApis.get(sceneIndex);
+    if (api) { try { api.dispose(); } catch (_) {} _sceneTerrainApis.delete(sceneIndex); }
+    const mount = document.getElementById('sceneTerrainMount-' + sceneIndex);
+    if (mount) mount.style.display = 'none';
+}
+
+function _refreshSceneTerrainPreview(sceneIndex) {
+    const api = _sceneTerrainApis.get(sceneIndex);
+    if (!api) return;
+    const scene = currentScenes[sceneIndex];
+    if (!scene) return;
+    try { api.refresh(scene); } catch (e) { console.warn('[scene-terrain] refresh fail', e); }
+}
+
+function toggleSceneTerrainPreview(sceneIndex) {
+    const scene = currentScenes[sceneIndex];
+    if (!scene) return;
+    if (scene.terrainPreviewEnabled) {
+        scene.terrainPreviewEnabled = false;
+        _unmountSceneTerrainPreview(sceneIndex);
+    } else {
+        scene.terrainPreviewEnabled = true;
+        _mountSceneTerrainPreview(sceneIndex);
+    }
+    const btn = document.querySelector(`.preview-terrain-btn[data-scene-index="${sceneIndex}"]`);
+    if (btn) btn.textContent = scene.terrainPreviewEnabled ? '3D 모양 숨기기' : '3D 모양 보기';
+}
+window.toggleSceneTerrainPreview = toggleSceneTerrainPreview;
+window._refreshSceneTerrainPreview = _refreshSceneTerrainPreview;
 
 // 편집용: 장면 하나의 감정 벡터 (originalEmotion 기반, 0–100 정규화)
 function getSceneEmotionVectorForEditor(sceneIndex) {
@@ -1017,6 +1090,7 @@ function attachSceneListeners() {
                 };
             }
             currentScenes[sceneIndex].originalReasonVector.attribution = this.value;
+            if (typeof _refreshSceneTerrainPreview === 'function') _refreshSceneTerrainPreview(sceneIndex);
         });
     });
 
@@ -1031,6 +1105,7 @@ function attachSceneListeners() {
                 };
             }
             currentScenes[sceneIndex].originalReasonVector.core_fear = this.value;
+            if (typeof _refreshSceneTerrainPreview === 'function') _refreshSceneTerrainPreview(sceneIndex);
         });
     });
 
@@ -1045,6 +1120,7 @@ function attachSceneListeners() {
                 };
             }
             currentScenes[sceneIndex].originalReasonVector.is_void = this.checked;
+            if (typeof _refreshSceneTerrainPreview === 'function') _refreshSceneTerrainPreview(sceneIndex);
         });
     });
 
@@ -1271,11 +1347,13 @@ function updateOriginalEmotion(sceneIndex, emotionIndex) {
             
  // existing emotion delete
             delete currentScenes[sceneIndex].originalEmotion[oldEmotionKey];
-            
+
  // 새 emotion add
             currentScenes[sceneIndex].originalEmotion[newEmotionKey] = intensity;
         }
     }
+    // §14 Phase 1: 3D 모양 미리보기 활성된 씬은 라이브 갱신
+    if (typeof _refreshSceneTerrainPreview === 'function') _refreshSceneTerrainPreview(sceneIndex);
 }
 
 
