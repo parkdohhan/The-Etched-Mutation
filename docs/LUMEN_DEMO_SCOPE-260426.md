@@ -478,3 +478,93 @@ computeAfTerrainFields
   - 적용 경로: `_finderMatchByText`, `_pickTopMemoryForLumen` text branch. chip-only `_finderMatch`는 입력 텍스트 없음 → 적용 안 함.
 - [x] **아키텍처 편차 기록 (2026-04-21)** — 원문은 `supabase/functions/claude-scene` `play_entry_match` 프롬프트 확장을 명시했으나, 실제 아키텍처는 100% 클라이언트측 매칭 ([archive.js:_finderMatchByText](../js/app/archive.js)). claude-scene에 `play_entry_match` 타입 부재. LLM 라운드트립은 오프닝 UX 지연을 낳아 회피 — 클라이언트 구현으로 대체. 유사도 공식(cosine + α×intersection)은 동일.
 - Sprint 2에 배치 → **Sprint 0 조기 완료** (작업 0 병행 중 자투리 0.5 세션 소화)
+
+---
+
+## 14. Post-demo 비전 — 위상적 quilt (2026-04-27 발견, 박사 거리)
+
+§0 계약서 원칙에 따라 본 데모(5-19) **스코프 밖**. 별도 추적용 기록.
+데모 진행 중 본 §14 가 stretch 욕심으로 작용하지 않게 가드.
+
+**한 줄**: 작품의 공간 모델을 메트릭(거리 측정) → 위상(이웃 관계 + 자동 모양) 으로 재정식화. 박사 / MIT Media Lab 포트폴리오 framing 후보. 메모리 [Theoretical Framework] / [Platform Direction] / [Career Goal] 과 정합.
+
+### 14-1. 발견된 갭 (4-27 세션)
+
+1. **위치 vs 궤적 vs 응결점** — 셋이 다른 차원. 위치=공간(씬 단위 stage_position), 궤적=논리(시간/분기), 응결점=메모리 누적(메모리 단위 단어 풀). admin UI 한 캔버스에 셋이 섞여 디자인 헷갈림의 근원.
+2. **메트릭 vs 위상 갭** — 작가 직감("씬 1 둘러싼 영역에 3,4,7", "안의 상대성")은 위상수학적. 시스템 구현([SceneNavigator.js](../js/core/SceneNavigator.js) cosine similarity + BASE_RADIUS=0.35)은 메트릭. 두 모델 안 맞아 UI 결정 흔들림.
+3. **시뮬 단순화 약점** — 시뮬은 페르소나 1벡터 결정론 (`r.emotion` 매 step 고정, [admin-trajectory.js:953](../js/admin-trajectory.js#L953)). 작품 자체는 매 씬마다 user_emotion 갱신 비결정론 ([play-test.html:4080](../play-test.html#L4080) `game.userEmotionTrajectory`). 시뮬로 작품 흐름 디버깅 불완전.
+4. **사각형 캔버스의 인공성** — `computeAfTerrainFields` 가 SZ=112 정사각형 격자에 모든 점을 그림. 메트릭 자체는 자연 blob 인데 격자 mask 가 사각형으로 가둠.
+
+### 14-2. 위상적 quilt 비전
+
+**핵심 명제**: 씬 = 위상적 모양. 메모리 = 모양들의 quilt (CW complex). 매 회차 = 모양들의 동적 변형 (homotopy class 보존).
+
+- 작가 정함: 모양 + 경계 매칭 규칙 + 의미 (정적, 위상적)
+- 시스템 정함: 매 회차의 시각적 변형 (동적, 메트릭)
+- 둘이 분리되어 *작가 통제* 와 *변이 부산물* 이 양립 — [Platform Direction] "변이는 부산물" 과 정합
+
+작품 매핑 후보:
+- 씬 종류 ↔ 모양 (V자=분기, 도넛=회피, 원=fixation, 별=공명, …)
+- 관객 공명 ↔ 모양 변형 (부풀음/수축/회전)
+- transition_pattern ↔ 변형 종류 (echo_follow=호흡, contradiction=반전, …)
+- 인접 씬 ↔ 경계 매칭 (위상수학 attaching map)
+
+### 14-3. 자동 quilt (구현 단순화)
+
+작가가 모양을 *수동으로* 그리지 않아도, **메트릭이 자동 모양 생성**:
+
+- 현재: 정사각형 격자 + 모든 점 그림 → 사각형 모양
+- 변경 한 줄: `if (influence(x, z) > threshold) draw(...)` → 자연 blob
+- Voronoi 분할: 씬 = seed, 각 cell = 자동 영역 → quilt 자동 생성
+
+→ 수동 quilt 의 작가 부담 ↓ + 위상 비전의 핵심(사각형 벗기기, 자연 모양) 보존. **학부 한 주 거리** (Phase 1 후보).
+
+### 14-4. 인터페이스 분리
+
+위상 quilt 채택 = admin 도구가 둘로 갈라짐:
+
+| | 정적 위상 에디터 | 동적 검증 도구 |
+|---|---|---|
+| 작가 작업 | 모양 / 경계 / 의미 정의 | 시뮬 / plays 재생 / heatmap |
+| 동역학 | 안 보임 | 자동 재생 (next/back), 페르소나 plays 재생, 통계 |
+| 직접 조작 | 정적 quilt | next/back 만, 시뮬은 시스템 |
+
+→ 작가가 *모든 회차를 미리 보는* 욕심 포기 = 작품 정체성 (변이=부산물) 과 정합.
+
+### 14-5. 수학 분야 매핑 (포트폴리오 framing)
+
+| 작품 측면 | 수학 분야 |
+|---|---|
+| 모양 + quilt | CW complex |
+| 모양 변형 | Homotopy theory |
+| 경계 매칭 | Attaching map |
+| 동심원 / 깊이 / "안" 의 상대성 | Morse theory (gradient flow) |
+| 이본론 (관객마다 다른 의미) | **Sheaf theory** (같은 base, 다른 section) |
+| 회차 데이터 분석 | Persistent homology (TDA) |
+| 페르소나 클러스터 | Information geometry |
+
+가장 직접 매핑 = **이본론 ↔ sheaf theory**. 박사 지원서 framing 후보. 분리 가능 논문 3편 가능 (위상 narrative engine / sheaf semantics / TDA of audience trajectories).
+
+### 14-6. 단계화 (학부 → 박사)
+
+| Phase | 내용 | 분량 | 시점 |
+|---|---|---|---|
+| 1 | 자동 quilt mask — 사각형 벗기기 | 한 주 | 데모 후 즉시 가능 |
+| 2 | 동심원 ring overlay + positional audio (D 방향 드론) | 1-2주 | 학부 |
+| 3 | 이벤트 마커 6종 + 응결점 자동 짝짓기 | 한 학기 | 학부 졸논문 |
+| 4 | 수동 모양 + 경계 매칭 + admin 위상 에디터 | — | 박사 단계 |
+| 5 | TDA / sheaf 정식화 + 비교 실험 + 논문 | — | 박사 본격 |
+
+### 14-7. 데모와의 관계
+
+§14 비전은 본 데모(5-19) 작업 *아님*. 데모는 §4 진행 (작업 14 / 2-D / 7 / 8 / 9 / 10).
+다만 자동 quilt mask (Phase 1) 는 1-2일 spike 로 데모 중 시도 가능 — 단 그 욕심이 §4 진행을 침해하지 않을 때만.
+Phase 2+ 는 데모 후로 명확히 분리.
+
+### 14-8. 관련 메모리
+
+- [Theoretical Framework](C:/Users/user/.claude/projects/d--The-Etched-Mutation/memory/project_theoretical_framework.md) — 이본론 정의
+- [Platform Direction](C:/Users/user/.claude/projects/d--The-Etched-Mutation/memory/project_platform_direction.md) — "변이는 부산물"
+- [Career Goal](C:/Users/user/.claude/projects/d--The-Etched-Mutation/memory/project_career_goal.md) — MIT Media Lab
+- [Avoid Authorial-Control Framing](C:/Users/user/.claude/projects/d--The-Etched-Mutation/memory/feedback_avoid_authorial_control_framing.md) — 작가 통제는 정체성 X
+- [Lumen Topological Vision](C:/Users/user/.claude/projects/d--The-Etched-Mutation/memory/project_lumen_topological_vision.md) — 본 §14 동반 메모
