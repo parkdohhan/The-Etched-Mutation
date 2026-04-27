@@ -4952,17 +4952,27 @@
         var scene = scenes.find(function (s) { return s.id === pin.sceneId; });
         if (!scene) return;
 
-        var emo = pin.originalEmotion || scene.original_emotion;
-        if (!emo) return;
-        if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
+        // 작업 15 옵션 A: scene.meta.stage_position 이 있으면 admin 드래그 좌표를 그대로 씀.
+        // 없으면 기존 emotion 기반 자동 투영. 둘 다 없으면 핀 skip.
+        var sp = scene.meta && scene.meta.stage_position;
+        var hasSP = sp && Number.isFinite(sp.x) && Number.isFinite(sp.z);
 
-        var sA = T._eA(emo);
-        var sF = T._eF(emo);
-        var H2 = 23;
-        var memId = window._temGame.memoryId || '';
-        var off = T._hashWorldOffset(memId);
-        var wx = T._pX(sA) * H2 + off.ox;
-        var wz = T._pZ(sF) * H2 + off.oz;
+        var wx, wz;
+        if (hasSP) {
+          wx = sp.x;
+          wz = sp.z;
+        } else {
+          var emo = pin.originalEmotion || scene.original_emotion;
+          if (!emo) return;
+          if (typeof emo === 'string') { try { emo = JSON.parse(emo); } catch (_) { return; } }
+          var sA = T._eA(emo);
+          var sF = T._eF(emo);
+          var H2 = 23;
+          var memId = window._temGame.memoryId || '';
+          var off = T._hashWorldOffset(memId);
+          wx = T._pX(sA) * H2 + off.ox;
+          wz = T._pZ(sF) * H2 + off.oz;
+        }
         var wh = rt.gH(wx, wz);
 
         var isAccessible = accessible.has ? accessible.has(pin.id) : true;
