@@ -113,9 +113,20 @@
       // scene.original_emotion / originalEmotion 둘 다 지원 (admin currentScenes 는 camelCase)
       var emoSrc = sc.original_emotion || sc.originalEmotion || null;
       if (emoSrc && typeof emoSrc === 'object' && Object.keys(emoSrc).length === 0) emoSrc = null;
+      var emoSummary = emoSrc
+        ? Object.keys(emoSrc).map(function (k) { return k + ':' + emoSrc[k]; }).join(',')
+        : '(none)';
+      console.log('[scene-terrain-preview] build sceneId=' + (sc.id || '∅') + ' emo=' + emoSummary);
       if (!emoSrc) {
         statusLabel.textContent = '— originalEmotion 비어있음 —';
         return;
+      }
+      // dominant emotion 요약 (씬간 차이 즉시 확인용)
+      var domLabel = ''; var domVal = -Infinity;
+      for (var ek in emoSrc) {
+        if (typeof emoSrc[ek] === 'number' && emoSrc[ek] > domVal) {
+          domVal = emoSrc[ek]; domLabel = ek;
+        }
       }
 
       var fakeScenes = [{
@@ -195,7 +206,7 @@
         if (newIdx.length) {
           geo.setIndex(newIdx);
         }
-        statusLabel.textContent = 'face ' + keptFaces + '/' + totalFaces +
+        statusLabel.textContent = 'dom ' + (domLabel || '∅') + ' · face ' + keptFaces + '/' + totalFaces +
           ' · maxH ' + maxH.toFixed(2) +
           ' · 임계 ' + hThresh.toFixed(2) +
           ' · boost ×' + boost.toFixed(1);
@@ -208,7 +219,6 @@
       var mat = new THREE.MeshLambertMaterial({
         vertexColors: true,
         side: THREE.DoubleSide,
-        flatShading: false,
       });
       mesh = new THREE.Mesh(geo, mat);
       scene3.add(mesh);
