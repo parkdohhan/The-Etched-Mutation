@@ -5370,6 +5370,14 @@
               var oldPinIds = _fpScenePins.map(function (sp) { return sp.pin.id; });
               _fpScenePins = [];
               _buildPlayScenePins();
+              // 마네킨 rebuild — 새 핀 위치에 마네킨 재배치 + 새 핀 옥타헤드론 가림.
+              // hidePinsNow 만 부르면 마네킨이 옛 좌표에 머물러 새 핀과 위치 어긋나서 클릭 안 됨.
+              // audio whisper rebuild 는 BufferSource glitch 로 숨소리 튀어서 호출 안 함.
+              try {
+                if (rt.__lumenSceneMannequins && typeof rt.__lumenSceneMannequins.rebuild === 'function') {
+                  rt.__lumenSceneMannequins.rebuild();
+                }
+              } catch (_) {}
 
               // Find newly unlocked pins
               var newPins = _fpScenePins.filter(function (sp) {
@@ -5468,11 +5476,17 @@
               }
             }
 
-            // Check if all accessible scenes visited → end
+            // Check if all accessible scenes visited → end.
+            // sealBtn(line 4122)은 coreVisitCount>=3 또는 _exitDoorUsed 일 때만 동작.
+            // 그 조건이 안 차면 종료 분기를 안 탄다 — 그렇게 안 하면 strataView 가
+            // display:none 으로 가려지고 sealBtn 은 early-return 해서 검은화면만 남음.
+            // 미충족 시: 그냥 1인칭으로 두고 플레이어가 출구문으로 가게 한다.
             var allVisited = _fpScenePins.every(function (sp) {
               return !sp.accessible || sp.visited;
             });
-            if (allVisited && _fpScenePins.length > 0) {
+            var _sealReady = (window._temGame && window._temGame.coreVisitCount >= 3)
+              || (window._temGame && window._temGame._exitDoorUsed);
+            if (allVisited && _fpScenePins.length > 0 && _sealReady) {
               // Trigger seal/end via existing seal button
               _fpPlayActive = false; window._fpPlayActive = false;
               if (_crosshairEl) _crosshairEl.style.display = 'none';
