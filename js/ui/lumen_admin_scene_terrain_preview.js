@@ -3,18 +3,26 @@
  *
  * SCOPE: docs/LUMEN_DEMO_SCOPE-260426.md §14 Phase 1.
  *
- * 한 씬의 original_emotion 만으로 단독 지형을 만들어 perspective + orbit 으로 보여준다.
+ * 한 씬의 original_emotion 만으로 지형을 만들어 perspective + orbit 으로 보여준다.
  *
- * - canonical computeAfTerrainFields 는 씬 1개를 받아도 21개 anchor 위에 Gaussian 분산을 깔아서
- *   서로 다른 씬도 negative-valence 권역이면 거의 같은 모양이 나옴. 미리보기는 그게 아니라
- *   "이 씬만의 고유 모양"이 보여야 의미 있으니, 자체 single-scene field 함수를 가진다.
- * - 자체 field: 존재하는 감정마다 그 감정 anchor 위에 단일 Gaussian 봉우리를 직접 배치.
- *   봉우리 크기 ∝ intensity, 모양 = dominant emotion 의 EMO_NOISE, 색 = 감정 EC.
- * - canonical (tem_af_strata_terrain.js) 는 한 글자도 안 건드림.
+ * 알고리즘: canonical computeAfTerrainFields (memory-level) Pass 1/2/3 의 1:1 사본.
+ *   - 입력은 메모리 한 건의 씬 1개로 한정 (memory id 없으니 hashWorldOffset = 0).
+ *   - Pass 3 의 "사각형 채우기" 두 줄만 SKIP:
+ *       1) base terrain noise — `hts += (fb(0.025) - 0.4) × 2.0` (모든 셀에 노이즈 floor)
+ *       2) min-color floor — `cls = cls × 0.85 + av × 0.15 + 0.04` (모든 셀에 색 floor)
+ *     이걸 빼야 봉우리 영향 밖 셀이 0 으로 남고, auto-mask 가 사각형을 자연 윤곽으로 깎음.
+ *   - per-scene convergence terracing 은 play 데이터 없어 plate 전체 uniform terracing 으로 대체.
+ *   - mismatch staining / alignMean tempShift 도 SKIP (play mismatch_type 없음).
+ *
+ * canonical (tem_af_strata_terrain.js) 는 한 글자도 안 건드림. 정적 테이블 / 노이즈 / projectToVAD /
+ * computeVAWeights 는 사본을 가짐 (canonical 값 바뀌면 여기도 손으로 맞춰야 함).
+ *
+ * Admin 미리보기 전용 — play 쪽엔 영향 없음.
  *
  * 사용:
  *   const api = LumenAdminSceneTerrainPreview.attach(containerEl, scene, {
  *     width: 480, height: 320,
+ *     getCont: () => ({ drift, divergence, convergence, heterogeneity, dilution, driftDirV, driftDirA }),
  *   });
  *   api.refresh(updatedScene);
  *   api.dispose();
@@ -26,11 +34,10 @@
     width: 480,
     height: 320,
     G: 64,                  // 격자 해상도 (admin 미리보기용 경량)
-    SZ: 56,                 // 56유닛 정사각 박스
+    SZ: 112,                // canonical 과 동일 (memory plate 크기) — 씬 단독도 같은 스케일로 깔림
     threshold: 0.08,        // mask: maxH 의 8%
     minThreshold: 0.05,     // absolute lower bound
     colorBoost: 1.7,        // vertex color RGB 곱 (clamp to 1)
-    compression: 0.5,       // peak 위치 = anchor.v × H2 × compression — 봉우리를 plane 안쪽에 모음
     showAxes: false,
   };
 
@@ -51,6 +58,40 @@
     relief:[0.48,0.68,0.48], love:[0.7,0.4,0.5], gratitude:[0.65,0.58,0.4], peace:[0.45,0.58,0.52],
     confusion:[0.48,0.38,0.55],
   };
+  // canonical VA_ANCHORS 과 동일 구조 (v, a, color) — Pass 1 anchor 분산에 쓰임
+  var VA_ANCHORS_LOCAL = {};
+  (function () {
+    for (var ek in EC_LOCAL) {
+      var vad = VAD_LOCAL[ek];
+      if (!vad) continue;
+      VA_ANCHORS_LOCAL[ek] = { v: vad.v, a: vad.a, color: EC_LOCAL[ek] };
+    }
+  })();
+  // canonical projectToVAD / computeVAWeights 사본
+  function _projectToVAD(emoVec) {
+    var V = 0, A = 0, wSum = 0;
+    for (var k in emoVec) {
+      if (!Object.prototype.hasOwnProperty.call(emoVec, k)) continue;
+      var w = Number(emoVec[k] || 0);
+      var m = VAD_LOCAL[k];
+      if (!w || !m) continue;
+      V += w * m.v; A += w * m.a; wSum += w;
+    }
+    if (wSum <= 0) return { v: 0, a: 0 };
+    return { v: Math.max(-1, Math.min(1, V / wSum)), a: Math.max(-1, Math.min(1, A / wSum)) };
+  }
+  function _computeVAWeights(vad, anchors) {
+    var weights = {}; var totalW = 0;
+    for (var name in anchors) {
+      var anc = anchors[name];
+      var dv = vad.v - anc.v; var da = vad.a - anc.a;
+      var dist2 = dv * dv + da * da;
+      var w = Math.exp(-dist2 / 0.5);
+      if (w > 0.01) { weights[name] = w; totalW += w; }
+    }
+    if (totalW > 0) { for (var k in weights) weights[k] /= totalW; }
+    return weights;
+  }
   var EMO_NOISE_LOCAL = {
     fear:       { freq: 0.25, lac: 2.4, oct: 5, amp: 1.0 },
     anger:      { freq: 0.22, lac: 2.5, oct: 5, amp: 1.1 },
@@ -92,26 +133,22 @@
   }
 
   /**
-   * 씬 단독 모양 필드. canonical 21-anchor 분산 우회 + 메모리 cont 변형 적용.
+   * 씬 단독 모양 필드 — canonical computeAfTerrainFields Pass 1/2/3 1:1 사본.
    *
-   * cont 변형 매핑 (canonical Pass 1/2/3 의 single-scene 사본):
-   *  - drift           → 도메인 워핑 (좌표 비틀기, driftDir 방향)
-   *  - divergence      → 균열 (fissure) — 노이즈 임계 넘는 셀에서 height 차감
-   *  - convergence     → 계단화 (terracing) — uniform step 양자화 (preview 는 play 데이터 없으니 plate 전체 적용)
-   *  - heterogeneity   → 봉우리 표면 거칠기
-   *  - dilution(0~100) → 1) erosion 워핑 (저 dilution → 외형 변형)
-   *                    → 2) 색상 desaturation
-   *  - stage3 (0~1)    → hypercompletion: 모든 봉우리가 가중평균 위치로 lerp 수렴 (stage3=1 → 단일 dome)
+   * canonical 과의 차이:
+   *  1) 입력은 씬 1개 (memory wrapping 없음). 메모리 hashWorldOffset 도 0 으로 둔다.
+   *  2) play 데이터 없음 → per-scene convergence terracing 은 plate 전체 uniform terracing 으로 대체.
+   *  3) Pass 3 의 "사각형 채우기" 부분 두 개 SKIP:
+   *     - base terrain noise (`hts[idx] += (fb(0.025) - 0.4) × 2.0`)
+   *     - minimum color floor (`cls = cls × 0.85 + av × 0.15 + 0.04`)
+   *     이걸 빼야 봉우리 영향 밖 셀이 0 으로 남고, auto-mask 가 사각형을 자연 윤곽으로 깎을 수 있음.
+   *  4) mismatch staining / alignMean tempShift SKIP (play mismatch_type 데이터 없음).
    *
-   * @param {Object} emo {emotion: intensity} (0~1)
-   * @param {Object|null} voidInfo {sceneVoid?, emotionVoid?, reasonVoid?}
-   * @param {Object|null} cont {drift, divergence, convergence, heterogeneity, dilution(0~100), stage1, stage2, stage3, driftDirV, driftDirA}
-   * @param {{G:number, SZ:number, compression?:number}} opt
-   * @returns {{G,SZ,hts,cls,minH,maxH,domName,peaks}}
+   * 그 외 (drift 워핑 / 21-anchor 분산 / heterogeneity 거칠기 / dilution erosion / void crater /
+   * divergence fissures / dilution desaturation) 는 canonical 과 동일 식.
    */
   function _computeSingleSceneField(emo, voidInfo, cont, opt) {
     var G = opt.G, SZ = opt.SZ, H2 = SZ / 2;
-    var compression = opt.compression != null ? opt.compression : 0.5;
     var hts = new Float32Array(G * G);
     var cls = new Float32Array(G * G * 3);
 
@@ -123,46 +160,28 @@
     var dilutionRaw   = cont.dilution != null ? Number(cont.dilution) : 100;
     var dilNorm       = Math.max(0, Math.min(1, dilutionRaw / 100));
     var erosion       = 1 - dilNorm;
-    var stage3        = Math.max(0, Math.min(1, Number(cont.stage3) || 0));
     var driftDirV     = Number(cont.driftDirV) || 0.5;
     var driftDirA     = Number(cont.driftDirA) || 0.5;
     var ddLen         = Math.sqrt(driftDirV * driftDirV + driftDirA * driftDirA) || 1;
     driftDirV /= ddLen; driftDirA /= ddLen;
     var warpStrength  = drift * 8;
 
-    // intensity > 0.05 인 감정만 → 봉우리 한 개씩
-    var peaks = [];
-    var domName = ''; var domVal = -Infinity;
-    for (var k in emo) {
-      if (!Object.prototype.hasOwnProperty.call(emo, k)) continue;
-      var iv = Number(emo[k]) || 0;
-      if (iv < 0.05) continue;
-      var vad = VAD_LOCAL[k];
-      if (!vad) continue;
-      peaks.push({
-        name: k,
-        intensity: iv,
-        v: vad.v, a: vad.a,
-        color: EC_LOCAL[k] || [0.5, 0.5, 0.5],
-      });
-      if (iv > domVal) { domVal = iv; domName = k; }
+    // 씬 1개의 VA payload (canonical buildMemoryItems 의 sceneAF 항목 한 개에 해당)
+    var scVad = _projectToVAD(emo);
+    var scWeights = _computeVAWeights(scVad, VA_ANCHORS_LOCAL);
+    var totalE2 = 0; var domName = ''; var domVal = -Infinity;
+    for (var ek in emo) {
+      if (!Object.prototype.hasOwnProperty.call(emo, ek)) continue;
+      var ev = Number(emo[ek]) || 0;
+      totalE2 += ev * ev;
+      if (ev > domVal) { domVal = ev; domName = ek; }
     }
+    var eMag = Math.sqrt(totalE2);
     var np = EMO_NOISE_LOCAL[domName] || EMO_NOISE_DEFAULT_LOCAL;
 
-    // 가중평균 VAD (void crater + stage3 collapse 둘 다 필요)
-    var meanV = 0, meanA = 0, wSum = 0;
-    for (var pi = 0; pi < peaks.length; pi++) {
-      meanV += peaks[pi].v * peaks[pi].intensity;
-      meanA += peaks[pi].a * peaks[pi].intensity;
-      wSum += peaks[pi].intensity;
-    }
-    if (wSum > 0) { meanV /= wSum; meanA /= wSum; }
-
-    // stage3 hypercompletion: 봉우리 위치를 가중평균으로 lerp (1 이면 모두 한 점에 수렴 = 단일 dome)
-    for (var pp = 0; pp < peaks.length; pp++) {
-      peaks[pp].posV = peaks[pp].v * (1 - stage3) + meanV * stage3;
-      peaks[pp].posA = peaks[pp].a * (1 - stage3) + meanA * stage3;
-    }
+    // 씬 자기 VA 위치 — void crater 중심
+    var sceneWx = scVad.v * H2;
+    var sceneWz = scVad.a * H2;
 
     var voidScore = 0;
     if (voidInfo) {
@@ -171,7 +190,11 @@
       if (voidInfo.reasonVoid) voidScore += 0.34;
     }
 
-    // ─── Pass 1: 봉우리 + drift 워핑 + heterogeneity 거칠기 + dilution erosion + void crater ───
+    // 활성 anchor 수 (status 라벨용)
+    var activeAnchors = 0;
+    for (var an in scWeights) if (scWeights[an] > 0) activeAnchors++;
+
+    // ─── Pass 1: Bedrock — drift 워핑 + 21-anchor Gaussian 분산 + heterogeneity + void + erosion ───
     for (var iz = 0; iz < G; iz++) {
       for (var ix = 0; ix < G; ix++) {
         var idx = iz * G + ix;
@@ -179,62 +202,62 @@
         var gx = (ix / (G - 1) - 0.5) * SZ;
         var gz = (iz / (G - 1) - 0.5) * SZ;
 
-        // drift 도메인 워핑: 샘플 좌표 자체를 드리프트 방향으로 변위
-        var wx = gx, wz = gz;
-        if (warpStrength > 0.01) {
-          var warpN = _fb(gx * 0.04, gz * 0.04, 3);
-          wx = gx + warpN * warpStrength * driftDirV;
-          wz = gz + warpN * warpStrength * driftDirA;
-        }
+        // domain warping
+        var warpN = _fb(gx * 0.04, gz * 0.04, 3);
+        var wx = gx + warpN * warpStrength * driftDirV;
+        var wz = gz + warpN * warpStrength * driftDirA;
 
         var totalH = 0;
 
-        for (var p = 0; p < peaks.length; p++) {
-          var pk = peaks[p];
-          var px = pk.posV * H2 * compression;
-          var pz = pk.posA * H2 * compression;
-          var ddx = wx - px; var ddz = wz - pz;
+        // 21-anchor 분산 (canonical Pass 1 inner loop 와 동일)
+        for (var ancName in scWeights) {
+          var aw = scWeights[ancName];
+          if (!aw || !VA_ANCHORS_LOCAL[ancName]) continue;
+          var anc = VA_ANCHORS_LOCAL[ancName];
+          var ax = anc.v * H2; // canonical: + hashWorldOffset(m.id).ox — 우린 메모리 없으니 0
+          var az = anc.a * H2;
+          var ddx = wx - ax; var ddz = wz - az;
           var dist = Math.sqrt(ddx * ddx + ddz * ddz);
-          var radius = 4 + pk.intensity * 10;
+          var radius = 10 + aw * 22;
           if (dist >= radius * 1.8) continue;
+
           var sig = radius * 0.55;
-          var inf = Math.exp(-(dist * dist) / (2 * sig * sig));
-          var emoNoise = _fbCustom(wx * np.freq * 0.7 + p * 5, wz * np.freq * 0.7 + p * 3,
+          var inf = Math.exp(-(dist * dist) / (2 * sig * sig)) * aw;
+
+          // Emotion-specific noise (canonical: si=0 한 씬, ancName 길이로 시드 흔들기)
+          var emoNoise = _fbCustom(wx * np.freq * 0.7, wz * np.freq * 0.7,
                                     np.freq * 0.7, np.lac, np.oct, np.amp);
-          var dh = pk.intensity * 30 * inf * (0.4 + emoNoise * 0.6);
-          // heterogeneity: 봉우리 영향 범위 안에서만 표면 거칠기 추가
-          if (heterogeneity > 0.05) {
-            dh += heterogeneity * (_hs(wx * 0.25 + p, wz * 0.25) - 0.5) * 2.5 * inf;
-          }
+
+          var dh = eMag * 22 * inf * (0.4 + emoNoise * 0.6);
+          dh += heterogeneity * (_hs(wx * 0.25 + ancName.length, wz * 0.25) - 0.5) * 2.5 * inf;
           totalH += dh;
 
-          var cInf = inf * 0.6 * pk.intensity;
-          cls[ci]     += pk.color[0] * cInf;
-          cls[ci + 1] += pk.color[1] * cInf;
-          cls[ci + 2] += pk.color[2] * cInf;
+          var ec2 = anc.color || [0.5, 0.5, 0.5];
+          var cI = inf * 0.12;
+          cls[ci]     += ec2[0] * cI;
+          cls[ci + 1] += ec2[1] * cI;
+          cls[ci + 2] += ec2[2] * cI;
         }
 
-        // dilution erosion: 저 dilution → 전반적 외형 비틀기 노이즈 추가
+        // void crater at scene's own VA position (canonical: sc.wx/wz)
+        if (voidScore > 0.3) {
+          var vddx = wx - sceneWx; var vddz = wz - sceneWz;
+          var vdist = Math.sqrt(vddx * vddx + vddz * vddz);
+          var voidInf = Math.exp(-(vdist * vdist) / 128); // canonical vSig=8 → 2σ² = 128
+          totalH -= voidScore * 14 * voidInf;
+        }
+
+        // erosion (low dilution)
         if (erosion > 0.05) {
           var erN = _fb(wx * 0.06 + 100, wz * 0.06, 4);
           totalH += (erN - 0.4) * erosion * 6;
-        }
-
-        // void crater at intensity-weighted VAD mean
-        if (voidScore > 0.3 && peaks.length > 0) {
-          var vx = meanV * H2 * compression;
-          var vz = meanA * H2 * compression;
-          var vddx = wx - vx; var vddz = wz - vz;
-          var vdist = Math.sqrt(vddx * vddx + vddz * vddz);
-          var voidInf = Math.exp(-(vdist * vdist) / (2 * 49));
-          totalH -= voidScore * 18 * voidInf;
         }
 
         hts[idx] = totalH;
       }
     }
 
-    // ─── Pass 2: divergence 균열 + convergence 계단화 (canonical Pass 2 의 single-scene 사본) ───
+    // ─── Pass 2: divergence 균열 + convergence uniform terracing ───
     if (divergence > 0.05 || convergence > 0.05) {
       for (var iz2 = 0; iz2 < G; iz2++) {
         for (var ix2 = 0; ix2 < G; ix2++) {
@@ -250,7 +273,7 @@
               hts[idx2] -= fissDepth * divergence * 15;
             }
           }
-          // preview 는 play 데이터 없어 per-scene convergence 계산 불가 → plate 전체에 uniform terracing
+          // preview 는 play 데이터 없음 → plate 전체에 uniform terracing
           if (convergence > 0.05) {
             var steps = 3 + Math.round(convergence * 8);
             var h2 = hts[idx2];
@@ -260,7 +283,7 @@
       }
     }
 
-    // ─── Pass 3: dilution desaturation + clamp ───
+    // ─── Pass 3: SKIP base noise + min-color floor. Apply ONLY dilution desaturation + clamp.
     for (var ic = 0; ic < G * G; ic++) {
       var ci3 = ic * 3;
       if (dilNorm < 0.95) {
@@ -280,7 +303,10 @@
       if (hts[i] < minH) minH = hts[i];
       if (hts[i] > maxH) maxH = hts[i];
     }
-    return { G: G, SZ: SZ, hts: hts, cls: cls, minH: minH, maxH: maxH, domName: domName, peaks: peaks };
+    return {
+      G: G, SZ: SZ, hts: hts, cls: cls, minH: minH, maxH: maxH,
+      domName: domName, eMag: eMag, activeAnchors: activeAnchors, scVad: scVad,
+    };
   }
 
   function attach(container, scene, opts) {
@@ -369,7 +395,7 @@
         : (opts.cont || {});
 
       var field = _computeSingleSceneField(emoSrc, voidInfo, contNow, {
-        G: opts.G, SZ: opts.SZ, compression: opts.compression,
+        G: opts.G, SZ: opts.SZ,
       });
       if (!field || !field.hts) {
         statusLabel.textContent = '— 필드 비어있음 —';
@@ -385,7 +411,8 @@
         ' dil=' + (contNow.dilution != null ? Number(contNow.dilution).toFixed(0) : '100') +
         ' s3=' + (Number(contNow.stage3) || 0).toFixed(2);
       console.log('[scene-terrain-preview] build sceneId=' + (sc.id || '∅') +
-        ' emo=' + emoSummary + ' peaks=' + field.peaks.length +
+        ' emo=' + emoSummary + ' anchors=' + field.activeAnchors +
+        ' eMag=' + field.eMag.toFixed(3) +
         ' maxH=' + field.maxH.toFixed(3) + ' dom=' + domLabel +
         ' · ' + contSummary);
 
@@ -404,9 +431,10 @@
       var boost = opts.colorBoost;
 
       // height + color 적용 (color boost + clamp).
-      // peaks 가 이미 compression 으로 plane 안쪽에 모이고 Gaussian 으로 자연 falloff 라 vignette 불필요.
+      // canonical Pass 1 그대로 21-anchor 분산이라 plate 일부에는 height 가 깔리지만,
+      // base noise / min-color floor 를 Pass 3 에서 SKIP 했으니 봉우리 영향 밖은 0 → auto-mask 가 깎음.
       for (var i = 0; i < G * G; i++) {
-        pos[i * 3 + 1] = hts[i] * 0.8; // 수직 강조
+        pos[i * 3 + 1] = hts[i] * 0.6; // 수직 강조 (canonical 메모리 plate 와 비슷한 비율)
         var cr = cls[i * 3] * boost;
         var cg = cls[i * 3 + 1] * boost;
         var cb = cls[i * 3 + 2] * boost;
@@ -435,7 +463,7 @@
           geo.setIndex(newIdx);
         }
         statusLabel.textContent = 'dom ' + (domLabel || '∅') +
-          ' · peaks ' + field.peaks.length +
+          ' · anchors ' + field.activeAnchors +
           ' · face ' + keptFaces + '/' + totalFaces +
           ' · maxH ' + maxH.toFixed(2) +
           ' · 임계 ' + hThresh.toFixed(2);
@@ -509,5 +537,9 @@
     return api;
   }
 
-  global.LumenAdminSceneTerrainPreview = { attach: attach };
+  global.LumenAdminSceneTerrainPreview = {
+    attach: attach,
+    // 콘솔 테스트 / 검증용 — field 함수 직접 호출
+    compute: _computeSingleSceneField,
+  };
 })(typeof window !== 'undefined' ? window : this);
