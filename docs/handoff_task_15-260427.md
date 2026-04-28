@@ -9,7 +9,7 @@
 사용자 비전 (원문):
 > admin에서 두 가지 레이어로 기억을 통제. (1) 궤적 레이어 = 기존 2-D 노드형, 드래그가 분기에 영향. (2) 위치 레이어 = strata 지형 위에 유령들이 서있고, 시뮬 재생 시 궤적에 따라 나타나거나 사라짐. 위 노드는 활성 장면 하이라이트.
 
-작업 15 로 [docs/LUMEN_DEMO_SCOPE-260426.md](LUMEN_DEMO_SCOPE-260426.md) §4 에 추가 (당일 scope change). v1/v2/fallback 까지 진행. **player runtime 연결은 미완**.
+작업 15 로 [docs/LUMEN_DEMO_SCOPE-260427.md](LUMEN_DEMO_SCOPE-260427.md) §4 에 추가 (당일 scope change). v1/v2/fallback 까지 진행. **player runtime 연결은 미완**.
 
 ---
 

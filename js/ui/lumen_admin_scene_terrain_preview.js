@@ -1,7 +1,7 @@
 /**
  * Lumen Admin — 씬별 3D 자연 모양 미리보기
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260426.md §14 Phase 1.
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260427.md §14 Phase 1.
  *
  * 한 씬의 original_emotion 만으로 지형을 만들어 perspective + orbit 으로 보여준다.
  *
