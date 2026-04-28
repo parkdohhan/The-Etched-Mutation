@@ -704,6 +704,28 @@ visited_scene      { type:"visited_scene", sceneIndex:2 }
 // ─── §14 Phase 1: 씬별 3D 자연 모양 미리보기 ────────────────────
 const _sceneTerrainApis = new Map();
 
+// 메모리 cont 상태를 미리보기 입력 형식으로 모음. DOM 슬라이더(편집중) + 저장된 memory row(편집 불가 필드) 혼합.
+function _getPreviewCont() {
+    function _v(id) {
+        const el = document.getElementById(id);
+        const n = el ? parseFloat(el.value) : NaN;
+        return Number.isFinite(n) ? n : null;
+    }
+    const mem = (currentMemoryIndex != null && memories[currentMemoryIndex]) || null;
+    return {
+        drift:         mem ? Number(mem.cont_drift) || 0 : 0,
+        divergence:    _v('cont_divergence_input') ?? (mem ? Number(mem.cont_divergence) || 0 : 0),
+        convergence:   _v('cont_convergence_input') ?? (mem ? Number(mem.cont_convergence) || 0 : 0),
+        heterogeneity: _v('cont_heterogeneity_input') ?? (mem ? Number(mem.cont_heterogeneity) || 0 : 0),
+        dilution:      mem && mem.dilution != null ? Number(mem.dilution) : 100,
+        stage1:        _v('cont_stage_1_input') ?? (mem ? Number(mem.cont_stage_1) || 0 : 0),
+        stage2:        _v('cont_stage_2_input') ?? (mem ? Number(mem.cont_stage_2) || 0 : 0),
+        stage3:        _v('cont_stage_3_input') ?? (mem ? Number(mem.cont_stage_3) || 0 : 0),
+        driftDirV:     mem ? Number(mem.drift_dir_v) || 0.5 : 0.5,
+        driftDirA:     mem ? Number(mem.drift_dir_a) || 0.5 : 0.5,
+    };
+}
+
 function _mountSceneTerrainPreview(sceneIndex) {
     if (!window.LumenAdminSceneTerrainPreview) {
         console.warn('[scene-terrain] LumenAdminSceneTerrainPreview 미로드');
@@ -719,6 +741,8 @@ function _mountSceneTerrainPreview(sceneIndex) {
     mount.style.display = 'block';
     const api = window.LumenAdminSceneTerrainPreview.attach(mount, scene, {
         width: 480, height: 320,
+        // refresh 시점마다 최신 cont 가져가게 함수로 넘김 (값 캡처 X)
+        getCont: _getPreviewCont,
     });
     if (api) _sceneTerrainApis.set(sceneIndex, api);
 }
@@ -737,6 +761,16 @@ function _refreshSceneTerrainPreview(sceneIndex) {
     if (!scene) return;
     try { api.refresh(scene); } catch (e) { console.warn('[scene-terrain] refresh fail', e); }
 }
+
+// 메모리 cont 슬라이더 변경 시 활성 씬 미리보기 전부 갱신 (cont 가 메모리 단위라 모두 같이 흔들림)
+function _refreshAllSceneTerrainPreviews() {
+    _sceneTerrainApis.forEach((api, sceneIndex) => {
+        const scene = currentScenes[sceneIndex];
+        if (!scene) return;
+        try { api.refresh(scene); } catch (_) {}
+    });
+}
+window._refreshAllSceneTerrainPreviews = _refreshAllSceneTerrainPreviews;
 
 function toggleSceneTerrainPreview(sceneIndex) {
     const scene = currentScenes[sceneIndex];
@@ -1517,6 +1551,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('utterancesRefresh')?.addEventListener('click', loadUtterances);
     document.getElementById('utterancesFilterStatus')?.addEventListener('change', loadUtterances);
     document.getElementById('utterancesFilterLang')?.addEventListener('change', loadUtterances);
+
+    // §14: 메모리 cont 슬라이더 변경 → 활성 씬 미리보기 전부 갱신
+    const _contIds = [
+        'cont_divergence_input', 'cont_convergence_input', 'cont_heterogeneity_input',
+        'cont_stage_1_input', 'cont_stage_2_input', 'cont_stage_3_input',
+    ];
+    _contIds.forEach(id => {
+        document.getElementById(id)?.addEventListener('input', () => {
+            if (typeof _refreshAllSceneTerrainPreviews === 'function') _refreshAllSceneTerrainPreviews();
+        });
+    });
 });
 
 // 미리보기 렌더링
