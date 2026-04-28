@@ -25,3 +25,8 @@ test/*.fbx
 docs/_pdf/
 test/e2e/.auth/
 test/e2e/screenshots/
+test/screenshots/
+
+# 임시 diff/메모 파일
+tmp_*.txt
+tmp_*.md
