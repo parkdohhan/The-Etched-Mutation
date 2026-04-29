@@ -116,22 +116,7 @@ function bindOpeningEvents() {
         registerMemoryBtn.addEventListener('click', window.startMemoryRegistration);
     }
 
- // v2: 온보딩 완료 플래그 — 첫 플레이 끝나면 이후 방문부턴 오프닝 건너뛰고 메인 메뉴로 바로.
-    try {
-        const _onboarded = localStorage.getItem('tem_onboarded');
-        if (_onboarded === '1') {
-            const _openSc = document.getElementById('openingScreen');
-            if (_openSc) _openSc.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;z-index:-1!important;opacity:0!important';
-            const _introSc = document.getElementById('introScreen');
-            if (_introSc) {
-                _introSc.style.cssText = 'display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:2000!important';
-                _introSc.classList.add('visible');
-                _introSc.classList.remove('hidden');
-            }
-            window.hasZoomedIn = true;
-            window.openingSequenceStarted = true;
-        }
-    } catch (_) {}
+ // v2: 온보딩 완료 플래그 기반 오프닝 스킵은 데모 기간 동안 비활성화 — 매 진입마다 오프닝 강제 노출.
 
  // v2: 오프닝 클릭은 초기 웨이브·사운드 시작만 담당. "Press any key → 메뉴" 스킵 폐기.
     const openingScreenEl = document.getElementById('openingScreen');

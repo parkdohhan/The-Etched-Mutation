@@ -121,11 +121,12 @@ async function initApp() {
     // i18n: apply stored language + brightness before anything else renders
     initI18n();
 
+    // 데모 기간: 재방문 우회 비활성화 — skipOpening / demoMemoryId 있어도 무시하고 오프닝 강제 진입.
     var fromDemo = false;
     var demoMemoryId = null;
     try {
-        if (sessionStorage.getItem('skipOpening')) { sessionStorage.removeItem('skipOpening'); fromDemo = true; }
-        if (sessionStorage.getItem('demoMemoryId')) { demoMemoryId = sessionStorage.getItem('demoMemoryId'); sessionStorage.removeItem('demoMemoryId'); fromDemo = true; }
+        sessionStorage.removeItem('skipOpening');
+        sessionStorage.removeItem('demoMemoryId');
     } catch (_) {}
     var urlParams = new URLSearchParams(window.location.search || '');
     if (urlParams.get('strata') === '1' && urlParams.get('memory')) {

@@ -3143,14 +3143,61 @@
     const coreTextInput = document.getElementById('coreTextInput');
     const connectorSelect = document.getElementById('coreConnectorSelect');
 
+    // 오타 교정 결과 토스트 — undo 시 true 반환, 1800ms 후 자동 통과 시 false
+    const showTypoCorrectionToast = (originalText, correctedText) => new Promise((resolve) => {
+      const host = document.getElementById('emotionInputArea');
+      if (!host) { resolve(false); return; }
+      const toast = document.createElement('div');
+      toast.style.cssText = 'margin-bottom:10px;padding:10px 12px;background:rgba(196,168,130,0.08);' +
+        'border:1px solid rgba(196,168,130,0.25);border-radius:4px;color:#c4a882;font-size:13px;' +
+        'display:flex;align-items:center;justify-content:space-between;gap:10px;animation:fadeIn 0.25s ease-out;';
+      toast.innerHTML =
+        '<span style="opacity:0.85;">교정: <em style="font-style:italic;color:#d8c4a0;">' +
+        correctedText.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])) +
+        '</em></span>' +
+        '<button type="button" data-act="undo" style="background:none;border:1px solid rgba(196,168,130,0.4);' +
+        'color:#c4a882;padding:4px 10px;font-family:inherit;font-size:12px;cursor:pointer;border-radius:3px;flex-shrink:0;">' +
+        '원문대로 ↺</button>';
+      host.insertBefore(toast, host.firstChild);
+      let done = false;
+      const finish = (useOriginal) => {
+        if (done) return;
+        done = true;
+        toast.style.transition = 'opacity 0.3s';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 320);
+        resolve(useOriginal);
+      };
+      toast.querySelector('[data-act="undo"]').addEventListener('click', () => finish(true));
+      setTimeout(() => finish(false), 1800);
+    });
+
     const submitCoreInput = async () => {
-      const userText = (coreTextInput.value || '').trim();
-      if (!userText) return;
+      const originalUserText = (coreTextInput.value || '').trim();
+      if (!originalUserText) return;
       const connector = connectorSelect.value;
-      const fullText = connector ? `${connector} ${userText}` : userText;
 
       submitBtn.disabled = true;
       submitBtn.textContent = T.coreLoading;
+
+      // Step 1: 오타·띄어쓰기 교정 (Haiku 4.5). 실패 시 원문 사용.
+      let userText = originalUserText;
+      try {
+        const corrRes = await fetch(SUPABASE_URL + '/functions/v1/claude-scene', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+          body: JSON.stringify({ type: 'typo_correct', text: originalUserText }),
+        });
+        const corrData = await corrRes.json();
+        if (corrData?.corrected && corrData.changed) {
+          const useOriginal = await showTypoCorrectionToast(originalUserText, corrData.corrected);
+          userText = useOriginal ? originalUserText : corrData.corrected;
+        }
+      } catch (e) {
+        console.warn('typo_correct failed, using original:', e);
+      }
+
+      const fullText = connector ? `${connector} ${userText}` : userText;
       previewWaveFromCoreUserText(fullText);
 
       // Show merged text in scene area

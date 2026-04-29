@@ -388,14 +388,13 @@ function startOpeningWaveAnimation(canvas) {
     canvas.height = canvas.offsetHeight * 2;
     ctx.scale(2, 2);
 
-    canvas.addEventListener('mousemove', function (e) {
+    // 인식 영역: window 전체. 캔버스 좁은 영역으로 마우스 진입할 때 좌표가 -100→실값으로 점프 안 하도록.
+    // 작용 영역(아래 hoverPush)에서 거리 falloff로 자연스럽게 약해짐.
+    window.addEventListener('mousemove', function (e) {
         const rect = canvas.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
         openingMouseX = (e.clientX - rect.left) * (canvas.width / 2 / rect.width);
         openingMouseY = (e.clientY - rect.top) * (canvas.height / 2 / rect.height);
-    });
-    canvas.addEventListener('mouseleave', function () {
-        openingMouseX = -100;
-        openingMouseY = -100;
     });
 
     const width = canvas.width / 2;
@@ -443,26 +442,24 @@ function startOpeningWaveAnimation(canvas) {
 
                 let hoverPush = 0;
                 if (openingMouseX >= 0 && openingMouseY >= 0) {
+                    // (1) 진폭 부스트: 마우스 x 좌표 근방의 좁은 가로 띠(distX 350px)에만 적용.
+                    // dist(원형) 대신 distX(가로) → 마우스 위/아래 영역은 영향 안 받음.
                     const distX = Math.abs(x - openingMouseX);
-                    const distY = Math.abs(baseY - openingMouseY);
-                    const dist = Math.sqrt(distX * distX + distY * distY);
+                    const ampReach = 350;
+                    if (distX < ampReach) {
+                        const u = distX / ampReach;
+                        const sm = 1 - u * u * (3 - 2 * u);
+                        hoverPush += (baseY - centerY) * sm * 0.18;
+                    }
 
-                    const influenceRadius = 200;
-                    const normalizedDist = Math.min(dist / influenceRadius, 1);
-                    const influence = Math.pow(1 - normalizedDist, 3);
-
+                    // (2) ripple: 좁은 반경(300px), 마우스 = 점원, sin(kr - ωt) 동심원 파.
+                    const dx = x - openingMouseX;
+                    const dy = baseY - openingMouseY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const influence = Math.max(0, 1 - dist / 300);
                     if (influence > 0) {
-                        const pushDirection = openingMouseY - baseY;
-                        const xNormalized = Math.min(distX / influenceRadius, 1);
-                        const xInfluence = Math.pow(1 - xNormalized, 2);
-
-                        hoverPush = pushDirection * influence * xInfluence * 1.35;
-
-                        const amplitudeBoost = influence * 0.8;
-                        hoverPush += (baseY - centerY) * amplitudeBoost;
-
-                        const rippleEffect = Math.sin(distX * 0.05) * influence * 15;
-                        hoverPush += rippleEffect;
+                        const rippleAmp = (wave.amplitude / 80) * 60;
+                        hoverPush += Math.sin(dist * 0.02 - time * 0.064) * influence * rippleAmp;
                     }
                 }
 

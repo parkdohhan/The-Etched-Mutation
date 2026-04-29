@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Alignment Wave — play-test 원본 + 잔향 강화</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: #0a0a0c; color: #d8cdb6; font-family: -apple-system, "SF Pro", "Helvetica Neue", sans-serif; overflow: hidden; }
+  canvas#wave { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; }
+
+  #hud {
+    position: fixed; top: 16px; left: 16px;
+    width: 290px;
+    padding: 14px 16px;
+    background: rgba(12, 12, 18, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(196, 168, 130, 0.16);
+    border-radius: 8px;
+    z-index: 10;
+    font-size: 11px;
+    line-height: 1.55;
+  }
+  #hud h2 { font-size: 13px; font-weight: 500; color: #e6d9bd; margin-bottom: 6px; letter-spacing: 0.6px; }
+  #hud .hint { color: #8d8474; margin-bottom: 10px; font-size: 10.5px; }
+  #hud .hint b { color: #c4a882; font-weight: 500; }
+
+  .section-label { font-size: 9.5px; letter-spacing: 1px; color: #6e6552; text-transform: uppercase; margin: 10px 0 4px; }
+
+  .emo-grid { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .emo-btn {
+    padding: 4px 8px;
+    background: rgba(196,168,130,0.04);
+    border: 1px solid rgba(196,168,130,0.18);
+    color: #a59c87;
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: 0.3px;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    font-family: inherit;
+  }
+  .emo-btn:hover { background: rgba(196,168,130,0.13); color: #d8cdb6; }
+  .emo-btn.active { background: rgba(196,168,130,0.32); color: #fff; border-color: rgba(196,168,130,0.55); }
+
+  .row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+  .row label { flex: 0 0 90px; color: #a59c87; font-size: 10.5px; }
+  .row input[type="range"] { flex: 1; -webkit-appearance: none; appearance: none; height: 2px; background: rgba(196,168,130,0.22); outline: none; }
+  .row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 11px; height: 11px; border-radius: 50%; background: #c4a882; cursor: pointer; }
+  .row .val { flex: 0 0 38px; text-align: right; color: #c4a882; font-variant-numeric: tabular-nums; font-size: 10.5px; }
+
+  .toggle { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; color: #a59c87; font-size: 10.5px; cursor: pointer; user-select: none; }
+  .toggle input { accent-color: #c4a882; }
+
+  #fps { position: fixed; bottom: 8px; right: 12px; font-size: 10px; color: #5a5448; z-index: 10; }
+</style>
+</head>
+<body>
+  <canvas id="wave"></canvas>
+
+  <div id="hud">
+    <h2>Alignment Wave</h2>
+    <div class="hint">
+      play-test 원본 식 + 잔향 강화. 감정 토글로 보간 시작 → 옛 파동이 ghost로 사라짐.<br>
+      <b>마우스 누르고 있으면</b> 그 지점에 ripple
+    </div>
+
+    <div class="section-label">Narrator emotion</div>
+    <div class="emo-grid" id="narratorButtons"></div>
+
+    <div class="section-label">Experiencer emotion</div>
+    <div class="emo-grid" id="experiencerButtons"></div>
+
+    <div class="section-label">Echo / Trail</div>
+    <div class="row"><label>Trail length</label><input type="range" id="trail" min="0" max="80" value="40"><span class="val" id="trailV">40</span></div>
+    <div class="row"><label>Echo decay</label><input type="range" id="echo" min="3" max="30" value="6"><span class="val" id="echoV">0.06</span></div>
+    <div class="row"><label>Glow</label><input type="range" id="glow" min="0" max="40" value="14"><span class="val" id="glowV">14</span></div>
+    <div class="row"><label>Tx duration</label><input type="range" id="txDur" min="3" max="40" value="16"><span class="val" id="txDurV">1.6</span></div>
+
+    <label class="toggle"><input type="checkbox" id="dreamy" checked> Dreamy (lighter blend, 잔향 ↑)</label>
+  </div>
+
+  <div id="fps">—</div>
+
+<script>
+(() => {
+  // ===== 원본 이식: js/shared/math.js의 emotionVectorToWaveStyle =====
+  function emotionVectorToWaveStyle(emotionVector) {
+    if (!emotionVector) return { color: { r: 100, g: 140, b: 180 }, speed: 0.3, amplitude: 30, frequency: 0.008, chaos: 0.1 };
+    const values = Object.values(emotionVector);
+    const intensity = values.reduce((a, b) => a + b, 0) / Math.max(6, values.length);
+    const entries = Object.entries(emotionVector);
+    const dominant = entries.length ? entries.sort((a, b) => b[1] - a[1])[0] : ['sadness', 0];
+    const colors = {
+      fear:      { r: 100, g: 80,  b: 180 },
+      sadness:   { r: 80,  g: 100, b: 160 },
+      anger:     { r: 200, g: 80,  b: 80 },
+      joy:       { r: 200, g: 180, b: 100 },
+      longing:   { r: 80,  g: 180, b: 180 },
+      guilt:     { r: 150, g: 130, b: 100 },
+      shame:     { r: 140, g: 100, b: 120 },
+      numbness:  { r: 100, g: 100, b: 110 },
+      isolation: { r: 80,  g: 90,  b: 130 },
+    };
+    const baseColor = colors[dominant[0]] || colors.sadness;
+    return {
+      color: baseColor,
+      speed: 0.3 + intensity * 0.9,
+      amplitude: 30 + intensity * 50,
+      frequency: 0.008 + intensity * 0.012,
+      chaos: 0.1 + intensity * 0.7,
+    };
+  }
+
+  // ===== 원본 이식: Visualizer._lerpWaveStyle (easeInOutQuad) =====
+  function lerpWaveStyle(a, b, t) {
+    if (!a || !b) return b || a;
+    const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    return {
+      color: {
+        r: Math.round(a.color.r + (b.color.r - a.color.r) * e),
+        g: Math.round(a.color.g + (b.color.g - a.color.g) * e),
+        b: Math.round(a.color.b + (b.color.b - a.color.b) * e),
+      },
+      speed: a.speed + (b.speed - a.speed) * e,
+      amplitude: a.amplitude + (b.amplitude - a.amplitude) * e,
+      frequency: a.frequency + (b.frequency - a.frequency) * e,
+      chaos: a.chaos + (b.chaos - a.chaos) * e,
+    };
+  }
+
+  // ===== 원본 이식: Visualizer._ghostTremor =====
+  function ghostTremor(x, t, progress) {
+    const intensity = Math.pow(1 - progress, 2.5);
+    const tremAmp = intensity * 10;
+    return Math.sin(x * 0.06 + t * 8) * tremAmp
+         + Math.sin(x * 0.02 - t * 3.5) * tremAmp * 0.6;
+  }
+
+  // ===== 원본 이식: Visualizer.drawAlignmentWave 의 점 좌표 계산부 =====
+  // 그리는 부분은 trail에 path를 보존하기 위해 분리만 함. 식은 동일.
+  function computeAlignmentWavePoints(width, offsetY, t, waveStyle, mouseState, txProgress) {
+    const points = [];
+    const segments = 100;
+    for (let i = 0; i <= segments; i++) {
+      const x = (i / segments) * width;
+      const normalizedX = x / width;
+      let y = Math.sin(x * waveStyle.frequency + t * waveStyle.speed) * waveStyle.amplitude;
+      y += Math.sin(x * waveStyle.frequency * 2.3 + t * waveStyle.speed * 0.7) * (waveStyle.amplitude * 0.4);
+      y += Math.sin(x * waveStyle.frequency * 0.4 + t * waveStyle.speed * 0.3) * (waveStyle.amplitude * 0.6);
+
+      if (mouseState && mouseState.isDown) {
+        const dx = x - mouseState.x;
+        const dy = offsetY - mouseState.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const influence = Math.max(0, 1 - dist / 300);
+        y += Math.sin(dist * 0.02 - t * 2) * influence * 80;
+      }
+
+      if (txProgress >= 0 && txProgress < 1) {
+        y += ghostTremor(x, t, txProgress);
+      }
+
+      const edgeFade = Math.sin(normalizedX * Math.PI);
+      y *= edgeFade;
+      points.push({ x, y: offsetY + y });
+    }
+    return points;
+  }
+
+  function drawPath(ctx, points, color, opacity, lineWidth, glow) {
+    if (points.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},${opacity})`;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (glow > 0) {
+      ctx.shadowColor = `rgba(${color.r},${color.g},${color.b},0.55)`;
+      ctx.shadowBlur = glow;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // ===== 메인 =====
+  const canvas = document.getElementById('wave');
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let W = 0, H = 0;
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    W = w; H = h;
+  }
+  resize();
+  addEventListener('resize', resize);
+
+  const EMOTIONS = ['fear','sadness','anger','joy','longing','guilt','shame','numbness','isolation'];
+  function makeEmotionVector(key) {
+    const ev = { fear:0, sadness:0, anger:0, joy:0, longing:0, guilt:0, shame:0, numbness:0, isolation:0 };
+    if (key) ev[key] = 0.7;
+    return ev;
+  }
+
+  let narratorEmotion = 'sadness';
+  let experiencerEmotion = 'longing';
+  let narratorStyle = emotionVectorToWaveStyle(makeEmotionVector(narratorEmotion));
+  let experiencerStyle = emotionVectorToWaveStyle(makeEmotionVector(experiencerEmotion));
+
+  // 원본 startAlignmentWaveAnimation의 보간 로직
+  let waveTx = null;
+  let prevNarratorStyle = narratorStyle;
+  let prevExperiencerStyle = experiencerStyle;
+
+  function setEmotion(role, key) {
+    let fromN = prevNarratorStyle;
+    let fromE = prevExperiencerStyle;
+    if (waveTx && waveTx.progress < 1) {
+      fromN = lerpWaveStyle(waveTx.fromN, prevNarratorStyle, waveTx.progress);
+      fromE = lerpWaveStyle(waveTx.fromE, prevExperiencerStyle, waveTx.progress);
+    }
+    if (role === 'narrator') {
+      narratorEmotion = key;
+      narratorStyle = emotionVectorToWaveStyle(makeEmotionVector(key));
+    } else {
+      experiencerEmotion = key;
+      experiencerStyle = emotionVectorToWaveStyle(makeEmotionVector(key));
+    }
+    const isFast = waveTx && waveTx.progress < 0.3;
+    waveTx = { fromN, fromE, progress: 0, duration: isFast ? 0.5 : cfg.txDur };
+    prevNarratorStyle = narratorStyle;
+    prevExperiencerStyle = experiencerStyle;
+  }
+
+  function buildButtons(containerId, role) {
+    const container = document.getElementById(containerId);
+    EMOTIONS.forEach(key => {
+      const btn = document.createElement('button');
+      btn.className = 'emo-btn';
+      btn.textContent = key;
+      btn.dataset.key = key;
+      btn.addEventListener('click', () => {
+        setEmotion(role, key);
+        container.querySelectorAll('.emo-btn').forEach(b => b.classList.toggle('active', b.dataset.key === key));
+      });
+      container.appendChild(btn);
+    });
+    const initial = role === 'narrator' ? narratorEmotion : experiencerEmotion;
+    container.querySelectorAll('.emo-btn').forEach(b => b.classList.toggle('active', b.dataset.key === initial));
+  }
+  buildButtons('narratorButtons', 'narrator');
+  buildButtons('experiencerButtons', 'experiencer');
+
+  const cfg = { trail: 40, echo: 0.06, glow: 14, txDur: 1.6, dreamy: true };
+  const ranges = [
+    ['trail', v => v|0],
+    ['echo', v => +v / 100],
+    ['glow', v => +v],
+    ['txDur', v => +v / 10],
+  ];
+  const fmt = { echo: v => v.toFixed(2), txDur: v => v.toFixed(1) };
+  ranges.forEach(([id]) => {
+    const el = document.getElementById(id);
+    const valEl = document.getElementById(id + 'V');
+    const update = () => {
+      const conv = ranges.find(r => r[0] === id)[1];
+      cfg[id] = conv(el.value);
+      valEl.textContent = fmt[id] ? fmt[id](cfg[id]) : cfg[id];
+    };
+    el.addEventListener('input', update);
+    update();
+  });
+  document.getElementById('dreamy').addEventListener('change', e => { cfg.dreamy = e.target.checked; });
+
+  const mouse = { x: 0, y: 0, isDown: false };
+  canvas.addEventListener('pointermove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  canvas.addEventListener('pointerdown', e => { mouse.isDown = true; mouse.x = e.clientX; mouse.y = e.clientY; });
+  canvas.addEventListener('pointerup', () => { mouse.isDown = false; });
+  canvas.addEventListener('pointerleave', () => { mouse.isDown = false; });
+
+  // 잔향 trail buffer
+  const narratorTrail = [];
+  const experiencerTrail = [];
+
+  // 원본은 alignmentWaveTime += 0.016 (대략 60fps 가정). 그대로 따름.
+  let alignmentWaveTime = 0;
+  let last = performance.now();
+  let frames = 0, fpsT = last;
+  const fpsEl = document.getElementById('fps');
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    frames++;
+    if (now - fpsT > 500) {
+      fpsEl.textContent = Math.round(frames / ((now - fpsT) / 1000)) + ' fps';
+      frames = 0; fpsT = now;
+    }
+
+    alignmentWaveTime += 0.016;
+
+    // 잔향 강화: 매 프레임 매우 옅은 fillRect로 이전 프레임을 살짝만 지움
+    // → 이전 path들이 motion blur처럼 길게 남음. dreamy off면 살짝 진하게 해서 trail 짧음.
+    const echoAlpha = cfg.dreamy ? cfg.echo : Math.max(0.2, cfg.echo * 4);
+    ctx.fillStyle = `rgba(10, 10, 12, ${echoAlpha})`;
+    ctx.fillRect(0, 0, W, H);
+
+    // 보간 진행
+    let txProgress = -1, txFromN = null, txFromE = null;
+    if (waveTx) {
+      waveTx.progress = Math.min(1, waveTx.progress + dt / waveTx.duration);
+      txProgress = waveTx.progress;
+      txFromN = waveTx.fromN;
+      txFromE = waveTx.fromE;
+      if (waveTx.progress >= 1) waveTx = null;
+    }
+
+    const narratorY = H * 0.4;
+    const experiencerY = H * 0.7;
+    const t = alignmentWaveTime;
+    const mouseState = { isDown: mouse.isDown, x: mouse.x, y: mouse.y };
+
+    if (cfg.dreamy) ctx.globalCompositeOperation = 'lighter';
+
+    // ── 화자(narrator) ──
+    // 원본 startAlignmentWaveAnimation: 보간 중 옛 스타일을 유령 잔상(fade-out)로 그림
+    if (txProgress >= 0 && txProgress < 1 && txFromN) {
+      const ghostOpacity = 0.4 * Math.pow(1 - txProgress, 2);
+      const ghostPoints = computeAlignmentWavePoints(W, narratorY, t, txFromN, null, txProgress);
+      drawPath(ctx, ghostPoints, txFromN.color, ghostOpacity, 2, 0);
+    }
+    const activeN = (txProgress >= 0 && txFromN)
+      ? lerpWaveStyle(txFromN, narratorStyle, txProgress) : narratorStyle;
+    const mainOpacityN = txProgress >= 0 ? 0.3 + 0.4 * txProgress : 0.7;
+    const narratorPoints = computeAlignmentWavePoints(W, narratorY, t, activeN, mouseState, txProgress);
+    narratorTrail.push({ pts: narratorPoints, color: activeN.color });
+    while (narratorTrail.length > cfg.trail + 1) narratorTrail.shift();
+    drawTrail(narratorTrail, mainOpacityN);
+
+    // ── 체험자(experiencer) ──
+    if (txProgress >= 0 && txProgress < 1 && txFromE) {
+      const ghostOpacity = 0.4 * Math.pow(1 - txProgress, 2);
+      const ghostPoints = computeAlignmentWavePoints(W, experiencerY, t + 50, txFromE, null, txProgress);
+      drawPath(ctx, ghostPoints, txFromE.color, ghostOpacity, 2, 0);
+    }
+    const activeE = (txProgress >= 0 && txFromE)
+      ? lerpWaveStyle(txFromE, experiencerStyle, txProgress) : experiencerStyle;
+    const mainOpacityE = txProgress >= 0 ? 0.3 + 0.4 * txProgress : 0.7;
+    const experiencerPoints = computeAlignmentWavePoints(W, experiencerY, t + 50, activeE, mouseState, txProgress);
+    experiencerTrail.push({ pts: experiencerPoints, color: activeE.color });
+    while (experiencerTrail.length > cfg.trail + 1) experiencerTrail.shift();
+    drawTrail(experiencerTrail, mainOpacityE);
+
+    if (cfg.dreamy) ctx.globalCompositeOperation = 'source-over';
+
+    requestAnimationFrame(frame);
+  }
+
+  function drawTrail(buffer, mainOpacity) {
+    const n = buffer.length;
+    for (let ti = 0; ti < n; ti++) {
+      const isLatest = ti === n - 1;
+      const age = n > 1 ? ti / (n - 1) : 1;
+      const eased = age * age * age;
+      const opacity = isLatest ? mainOpacity : eased * 0.16;
+      const lw = isLatest ? 2 : 0.4 + eased * 1.4;
+      const item = buffer[ti];
+      drawPath(ctx, item.pts, item.color, opacity, lw, isLatest ? cfg.glow : 0);
+    }
+  }
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

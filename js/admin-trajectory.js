@@ -110,7 +110,7 @@ async function initTrajectoryViewer(memoryId) {
   // 작업 15 — 위치 레이어 mount + 동기화 (idempotent)
   if (!state._stageMounted) {
     LumenAdminStageView.mount('tvStageRoot');
-    bindLayerResizer();
+    bindLayerToggle();
     state._stageMounted = true;
   }
   // terrain mesh 는 메모리 단위로 로드 (idempotent — 같은 id 재호출 시 재로드 안 함)
@@ -120,44 +120,36 @@ async function initTrajectoryViewer(memoryId) {
   syncStageView();
 }
 
-// 작업 15 — 두 레이어 사이 분할 핸들 드래그. 비율은 localStorage 영속.
-function bindLayerResizer() {
-  const wrap = document.querySelector('#section-canvas .tv-canvas-wrap');
-  const top = document.getElementById('tvLayerTrajectory');
-  const handle = document.getElementById('tvLayerResizer');
-  if (!wrap || !top || !handle || handle._bound) return;
-  handle._bound = true;
+// 작업 15 (개정) — 상하분할 폐기. 상단 탭으로 trajectory/position 단독 전환.
+// 활성 레이어는 localStorage 영속, 디폴트 'trajectory'.
+function bindLayerToggle() {
+  const wrap = document.getElementById('tvCanvasWrap');
+  const tabs = document.getElementById('tvLayerTabs');
+  if (!wrap || !tabs || tabs._bound) return;
+  tabs._bound = true;
 
-  const LS_KEY = 'tv_layer_split_pct'; // 상단 비율 (0.2 ~ 0.85)
-  const apply = (pct) => {
-    const p = Math.max(0.2, Math.min(0.85, pct));
-    top.style.flex = `0 0 ${(p * 100).toFixed(2)}%`;
-    try { localStorage.setItem(LS_KEY, String(p)); } catch (e) {}
+  const LS_KEY = 'tv_active_layer'; // 'trajectory' | 'position'
+  const apply = (layer) => {
+    const v = layer === 'position' ? 'position' : 'trajectory';
+    wrap.setAttribute('data-active-layer', v);
+    tabs.querySelectorAll('.tv-layer-tab').forEach((b) => {
+      b.classList.toggle('is-active', b.dataset.layer === v);
+    });
+    try { localStorage.setItem(LS_KEY, v); } catch (e) {}
   };
   // 초기 복원
+  let initial = 'trajectory';
   try {
-    const saved = parseFloat(localStorage.getItem(LS_KEY));
-    if (Number.isFinite(saved)) apply(saved);
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved === 'trajectory' || saved === 'position') initial = saved;
   } catch (e) {}
+  apply(initial);
 
-  let dragging = false;
-  handle.addEventListener('mousedown', (e) => {
-    dragging = true;
-    wrap.classList.add('tv-resizing');
-    e.preventDefault();
+  tabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tv-layer-tab');
+    if (!btn) return;
+    apply(btn.dataset.layer);
   });
-  window.addEventListener('mousemove', (e) => {
-    if (!dragging) return;
-    const rect = wrap.getBoundingClientRect();
-    const pct = (e.clientY - rect.top) / rect.height;
-    apply(pct);
-  });
-  window.addEventListener('mouseup', () => {
-    if (!dragging) return;
-    dragging = false;
-    wrap.classList.remove('tv-resizing');
-  });
-  handle.addEventListener('dblclick', () => apply(0.5));
 }
 
 // 작업 15 — 위치 레이어로 현 상태 push. scene/시뮬 변동 시점에 호출.
@@ -568,23 +560,35 @@ function bindToggles() {
     });
   });
 
-  const playBtn = document.getElementById('tvPersonaPlayBtn');
-  const stopBtn = document.getElementById('tvPersonaStopBtn');
-  if (playBtn) playBtn.addEventListener('click', startPersonaPlayback);
-  if (stopBtn) stopBtn.addEventListener('click', stopPersonaPlayback);
+  const prevBtn = document.getElementById('tvPersonaPrevBtn');
+  const nextBtn = document.getElementById('tvPersonaNextBtn');
+  const personaSel = document.getElementById('tvPersonaSelect');
+  if (prevBtn) prevBtn.addEventListener('click', personaStepPrev);
+  if (nextBtn) nextBtn.addEventListener('click', personaStepNext);
+  if (personaSel) personaSel.addEventListener('change', onPersonaSelectChange);
 }
 
-// ─── 페르소나 재생 ────────────────────────────────────────
+// ─── 페르소나 수동 step ────────────────────────────────────
+// 자동재생 폐기 — 선택 시 첫 step 표시, ◀ 이전 / 다음 ▶ 으로 직접 진행.
 const personaState = {
   personas: [],      // [{ persona_id, persona_name, strata_label, plays: [...] }]
   plays: [],
-  timerId: null,
   currentIdx: 0,
+  orderedPlays: [],
+  currentPersona: null,
 };
 
 async function loadPersonasForMemory() {
   const sel = document.getElementById('tvPersonaSelect');
   if (!sel || !state.memory) return;
+  // 메모리 전환 시 step 상태 초기화
+  personaState.orderedPlays = [];
+  personaState.currentPersona = null;
+  personaState.currentIdx = 0;
+  clearSceneHighlight();
+  const infoEl = document.getElementById('tvPersonaInfo');
+  if (infoEl) infoEl.innerHTML = '';
+  updatePersonaStepButtons();
   sel.innerHTML = '<option value="">— 로딩 중 —</option>';
   try {
     const sb = await getSupabaseClient();
@@ -622,47 +626,76 @@ async function loadPersonasForMemory() {
   }
 }
 
-function startPersonaPlayback() {
-  stopPersonaPlayback();
+function onPersonaSelectChange() {
   const sel = document.getElementById('tvPersonaSelect');
   const id = sel && sel.value;
-  if (!id) { alert('페르소나를 선택하세요.'); return; }
+  if (!id) {
+    personaState.orderedPlays = [];
+    personaState.currentPersona = null;
+    personaState.currentIdx = 0;
+    clearSceneHighlight();
+    const infoEl = document.getElementById('tvPersonaInfo');
+    if (infoEl) infoEl.innerHTML = '';
+    updatePersonaStepButtons();
+    return;
+  }
   const persona = personaState.personas.find(p => p.persona_id === id);
-  if (!persona || !persona.plays.length) return;
-
-  // Order plays by the current scene order
+  if (!persona || !persona.plays.length) {
+    personaState.orderedPlays = [];
+    personaState.currentPersona = null;
+    personaState.currentIdx = 0;
+    updatePersonaStepButtons();
+    return;
+  }
+  // Order plays by scene order so step 진행이 궤적 순서를 따라감
   const sceneOrderMap = new Map();
   state.scenes.forEach((s, i) => sceneOrderMap.set(s.id, s.scene_order != null ? s.scene_order : i));
-  const orderedPlays = persona.plays.slice().sort((a, b) => {
+  personaState.orderedPlays = persona.plays.slice().sort((a, b) => {
     const oa = sceneOrderMap.get(a.scene_id); const ob = sceneOrderMap.get(b.scene_id);
     return (oa != null ? oa : 999) - (ob != null ? ob : 999);
   });
-
+  personaState.currentPersona = persona;
   personaState.currentIdx = 0;
-  document.getElementById('tvPersonaStopBtn').disabled = false;
-  document.getElementById('tvPersonaPlayBtn').disabled = true;
-
-  function step() {
-    if (personaState.currentIdx >= orderedPlays.length) {
-      stopPersonaPlayback();
-      return;
-    }
-    const play = orderedPlays[personaState.currentIdx];
-    highlightSceneNode(play.scene_id);
-    updatePersonaPanel(persona, play);
-    personaState.currentIdx++;
-    personaState.timerId = setTimeout(step, 1400);
-  }
-  step();
+  renderPersonaStep();
 }
 
-function stopPersonaPlayback() {
-  if (personaState.timerId) { clearTimeout(personaState.timerId); personaState.timerId = null; }
-  clearSceneHighlight();
-  const stopBtn = document.getElementById('tvPersonaStopBtn');
-  const playBtn = document.getElementById('tvPersonaPlayBtn');
-  if (stopBtn) stopBtn.disabled = true;
-  if (playBtn) playBtn.disabled = false;
+function renderPersonaStep() {
+  const plays = personaState.orderedPlays;
+  const persona = personaState.currentPersona;
+  if (!plays.length || !persona) {
+    clearSceneHighlight();
+    updatePersonaStepButtons();
+    return;
+  }
+  const idx = Math.max(0, Math.min(personaState.currentIdx, plays.length - 1));
+  personaState.currentIdx = idx;
+  const play = plays[idx];
+  highlightSceneNode(play.scene_id);
+  updatePersonaPanel(persona, play);
+  updatePersonaStepButtons();
+}
+
+function personaStepPrev() {
+  if (!personaState.orderedPlays.length) return;
+  if (personaState.currentIdx <= 0) return;
+  personaState.currentIdx--;
+  renderPersonaStep();
+}
+
+function personaStepNext() {
+  if (!personaState.orderedPlays.length) return;
+  if (personaState.currentIdx >= personaState.orderedPlays.length - 1) return;
+  personaState.currentIdx++;
+  renderPersonaStep();
+}
+
+function updatePersonaStepButtons() {
+  const prevBtn = document.getElementById('tvPersonaPrevBtn');
+  const nextBtn = document.getElementById('tvPersonaNextBtn');
+  const total = personaState.orderedPlays.length;
+  const idx = personaState.currentIdx;
+  if (prevBtn) prevBtn.disabled = !total || idx <= 0;
+  if (nextBtn) nextBtn.disabled = !total || idx >= total - 1;
 }
 
 function highlightSceneNode(sceneId) {
@@ -693,7 +726,9 @@ function updatePersonaPanel(persona, play) {
     .sort((a, b) => b[1] - a[1]).slice(0, 3)
     .map(([k, v]) => `${k}:${Number(v).toFixed(2)}`).join(' · ');
   if (infoEl) {
-    infoEl.innerHTML = `<b style="color:#c4a882;">${escapeHtml(persona.persona_name)}</b><br>씬 ${scene ? (scene.scene_order + 1) : '?'} · 정렬도 ${(play.alignment != null ? (play.alignment * 100).toFixed(0) + '%' : '—')}`;
+    const total = personaState.orderedPlays.length;
+    const stepLabel = total ? `step ${personaState.currentIdx + 1} / ${total}` : '';
+    infoEl.innerHTML = `<b style="color:#c4a882;">${escapeHtml(persona.persona_name)}</b> <span style="color:#7c7466;">· ${stepLabel}</span><br>씬 ${scene ? (scene.scene_order + 1) : '?'} · 정렬도 ${(play.alignment != null ? (play.alignment * 100).toFixed(0) + '%' : '—')}`;
   }
   if (detailEl) {
     detailEl.innerHTML = `

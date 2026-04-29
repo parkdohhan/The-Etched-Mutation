@@ -404,6 +404,68 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
       }
     }
 
+    // ---- 오타·띄어쓰기 교정 (Haiku 4.5, play-test 자유 입력 전용) ----
+    if (body.type === "typo_correct") {
+      const text = String(body.text || "").trim();
+      if (!text) {
+        return new Response(JSON.stringify({ corrected: "", changed: false }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const prompt = `다음 한국어 문장의 **명백한 오타와 띄어쓰기**만 교정해라.
+
+원문: """${text}"""
+
+규칙:
+- 의미를 바꾸거나 단어를 추가/삭제/풀어쓰기 하지 말 것
+- 인물 이름, 고유명사, 의도된 비표준어("머가", "넘 좋아" 같은 구어체 표현)는 그대로 둘 것
+- 자모 인접키 오타(예: "안ㄴ녕" → "안녕"), 받침 누락(예: "햇어" → "했어"), 어색한 띄어쓰기만 수정
+- 교정할 게 없으면 원문 그대로 출력
+- 설명·따옴표·접두사 없이 **교정된 문장 한 줄만** 출력`;
+
+      const systemPrompt = `한국어 오타 교정기. 원문의 톤·어휘·뉘앙스 유지. 교정문 한 줄만 출력.`;
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 256,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let corrected = String(data.content?.[0]?.text || "").trim();
+          // 따옴표·코드펜스 제거
+          corrected = corrected.replace(/^["'`]+|["'`]+$/g, "").replace(/^```[\s\S]*?\n|\n```$/g, "").trim();
+          // 모델이 여러 줄을 뱉으면 첫 줄만
+          if (corrected.includes("\n")) corrected = corrected.split("\n")[0].trim();
+          if (!corrected) corrected = text;
+          return new Response(
+            JSON.stringify({ corrected, changed: corrected !== text }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      } catch (e) {
+        console.error("typo_correct error:", e);
+      }
+
+      // 폴백: 원문 그대로
+      return new Response(
+        JSON.stringify({ corrected: text, changed: false }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // ---- Core 핀: 사용자 반응 → 감정 벡터 (play-test emotion_extract) ----
     if (body.type === "emotion_extract") {
       const userText = String(body.user_text || "").trim();
