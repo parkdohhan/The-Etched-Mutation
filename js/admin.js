@@ -2604,63 +2604,74 @@ let currentFilter = 'all';
 const fateLabels={'preserve':'보존','dilute':'자연 소멸','anonymous':'완전 익명'};
 const fateColors={'preserve':'#7a9a7a','dilute':'#c4a882','anonymous':'#7b8fa8'};
 
+// 동시 호출 시 race condition으로 allSessions에 같은 row가 두 번 push되어
+// 카드가 중복 렌더되는 버그 방지. 진행 중인 호출이 있으면 그 promise를 재사용.
+let _loadAllSessionsInFlight = null;
 async function loadAllSessions() {
-    allSessions = [];
+    if (_loadAllSessionsInFlight) return _loadAllSessionsInFlight;
+    _loadAllSessionsInFlight = (async () => {
+        try {
+            allSessions = [];
 
- // archive session load (existing memories)
-    const supabaseClient = getSupabaseClient();
-    const { data: archiveData } = await supabaseClient
-        .from('memories')
-        .select('*')
-        .order('created_at', { ascending: false });
+         // archive session load (existing memories)
+            const supabaseClient = getSupabaseClient();
+            const { data: archiveData } = await supabaseClient
+                .from('memories')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-    if (archiveData) {
-        // Count simulation plays per memory and merge into layers count
-        const memoryIds = archiveData.map(m => m.id).filter(Boolean);
-        const playCounts = {};
-        if (memoryIds.length > 0) {
-            const { data: playsData } = await supabaseClient
-                .from('plays')
-                .select('memory_id')
-                .in('memory_id', memoryIds);
-            if (playsData) {
-                playsData.forEach(p => {
-                    playCounts[p.memory_id] = (playCounts[p.memory_id] || 0) + 1;
+            if (archiveData) {
+                // Count simulation plays per memory and merge into layers count
+                const memoryIds = archiveData.map(m => m.id).filter(Boolean);
+                const playCounts = {};
+                if (memoryIds.length > 0) {
+                    const { data: playsData } = await supabaseClient
+                        .from('plays')
+                        .select('memory_id')
+                        .in('memory_id', memoryIds);
+                    if (playsData) {
+                        playsData.forEach(p => {
+                            playCounts[p.memory_id] = (playCounts[p.memory_id] || 0) + 1;
+                        });
+                    }
+                }
+                archiveData.forEach(m => {
+                    const baseLayers = m.layers || 0;
+                    const simCount = playCounts[m.id] || 0;
+                    allSessions.push({
+                        ...m,
+                        layers: baseLayers + simCount,
+                        type: 'archive',
+                        displayTitle: m.title || m.code
+                    });
                 });
             }
+
+         // live session load
+            const { data: liveData } = await supabaseClient
+                .from('live_sessions')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (liveData) {
+                liveData.forEach(s => {
+                    allSessions.push({
+                        ...s,
+                        type: 'live',
+                        displayTitle: s.session_code
+                    });
+                });
+            }
+
+         // 날짜순 정렬
+            allSessions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            renderSessions();
+        } finally {
+            _loadAllSessionsInFlight = null;
         }
-        archiveData.forEach(m => {
-            const baseLayers = m.layers || 0;
-            const simCount = playCounts[m.id] || 0;
-            allSessions.push({
-                ...m,
-                layers: baseLayers + simCount,
-                type: 'archive',
-                displayTitle: m.title || m.code
-            });
-        });
-    }
-    
- // live session load
-    const { data: liveData } = await supabaseClient
-        .from('live_sessions')
-        .select('*')
-        .order('created_at', { ascending: false });
-    
-    if (liveData) {
-        liveData.forEach(s => {
-            allSessions.push({
-                ...s,
-                type: 'live',
-                displayTitle: s.session_code
-            });
-        });
-    }
-    
- // 날짜순 정렬
-    allSessions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    renderSessions();
+    })();
+    return _loadAllSessionsInFlight;
 }
 
 function filterSessions(filter) {

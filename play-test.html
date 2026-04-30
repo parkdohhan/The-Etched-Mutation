@@ -502,8 +502,10 @@
   import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch, createEmptyState } from './js/core/ContaminationTracker.js';
   import { getMonologue } from './js/ui/contaminationMonologue.js';
   import { emotionVectorToWaveStyle as sharedEmotionVectorToWaveStyle } from './js/shared/math.js';
+  import { GHOST_PRESETS } from './js/shared/ghost_presets.js';
   // Non-module 스크립트(fpAmbientWave 등)에서 접근 가능하게 전역 노출
   window.sharedEmotionVectorToWaveStyle = sharedEmotionVectorToWaveStyle;
+  window.GHOST_PRESETS = GHOST_PRESETS;
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   // strataView.js가 Supabase client를 찾을 수 있도록 HUB 쪽 API를 흉내낸다.
   window.getSupabaseClient = function () { return sb; };

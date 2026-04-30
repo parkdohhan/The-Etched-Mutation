@@ -46,8 +46,59 @@
     autoRescale: true,                        // FBX(cm) → m 자동
     // 핀 가시성 — 마네킨이 자리 잡았으니 octahedron + 수직선 숨김
     // (visible=false 면 raycast 도 차단 — Lumen 은 ghost_condensation_points 로 길잡이 → 무방)
-    hidePinVisuals: true
+    hidePinVisuals: true,
+    // 2026-04-30: 인식·혼잣말·응시 (ghost awareness)
+    awareness: true,                          // false 면 monologue/gaze 비활성
+    // 거리: "옆에서 혼잣말 들릴 만큼" — 2.5m 안에서 또렷, 4.5m 넘으면 사라짐
+    monologueNear: 2.5,
+    monologueFar: 4.5,
+    monologueBaseOpacity: 0,                  // 기본 안 보임
+    monologueNearOpacity: 0.85,
+    // 머리 옆 (위가 아니라). headY = 머리 높이, sideOffset = 카메라 right 방향 거리
+    monologueHeadY: 1.65,                     // 마네킨 머리 ~1.7m → 살짝 아래
+    monologueSideOffset: 0.55,                // 카메라 시점 right 방향(어깨 옆)
+    monologueFontPx: 24,
+    monologueColorCss: 'rgba(232,216,252,0.92)', // ghost violet
+    monologueBobAmp: 0.06,
+    monologueBobFreq: 0.28,
+    // GHOST_PRESETS[ghostType].monologue_templates 에서 결정적 픽.
+    // pin.id+memoryId 시드 → 같은 유령은 같은 줄.
+    ghostTypeForPin: function (pin) { return 'core'; },
+    getPresets: function () {
+      return (typeof window !== 'undefined' && window.GHOST_PRESETS) || null;
+    },
+    getMemoryId: function () {
+      try { return (window._temGame && window._temGame.memoryId) || ''; } catch (_) { return ''; }
+    },
+    // 클릭 응시
+    gazeFollowSpeed: 0.045,                   // 매 프레임 LERP 비율 (1.5초 ≈ 0.045)
+    gazeMaxRayDist: 18                        // 클릭 raycast 최대 거리 (m)
   };
+
+  // ─── 결정적 PRNG: FNV-1a + mulberry32 (lumen_return_speech 와 동일) ───
+  function _hashString(s) {
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    }
+    return h >>> 0;
+  }
+  function _mulberry32(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // -π~π 안전한 각도 LERP
+  function _lerpAngle(cur, tgt, t) {
+    var d = tgt - cur;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    return cur + d * t;
+  }
 
   function attach(runtime, opts) {
     if (!runtime) { console.error('[lumen-scene-mannequins] runtime required'); return null; }
@@ -186,6 +237,68 @@
       return _loading;
     }
 
+    function _pickMonologueLine(pin) {
+      var presets = (typeof opts.getPresets === 'function') ? opts.getPresets() : null;
+      if (!presets) return null;
+      var ghostType = (typeof opts.ghostTypeForPin === 'function') ? (opts.ghostTypeForPin(pin) || 'core') : 'core';
+      var preset = presets[ghostType] || presets.core;
+      if (!preset || !preset.monologue_templates || !preset.monologue_templates.length) return null;
+      var memId = (typeof opts.getMemoryId === 'function') ? opts.getMemoryId() : '';
+      var pinId = (pin && pin.id) || (pin && pin.pin && pin.pin.id) || '';
+      var seed = 'mono|' + memId + '|' + pinId + '|' + ghostType;
+      var rng = _mulberry32(_hashString(seed));
+      return preset.monologue_templates[Math.floor(rng() * preset.monologue_templates.length)];
+    }
+
+    function _makeMonologueSprite(text) {
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+      var font = opts.monologueFontPx + 'px "Gowun Batang", "Noto Serif KR", serif';
+      ctx.font = font;
+      var pad = 28;
+      var wMeasure = ctx.measureText(text).width + pad * 2;
+      canvas.width = Math.min(1024, Math.max(256, Math.pow(2, Math.ceil(Math.log2(wMeasure)))));
+      canvas.height = 88;
+      ctx.font = font;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      var cx = canvas.width / 2, cy = canvas.height / 2;
+      // chromatic afterimage (lumen_scene_ghosts 와 동일 톤)
+      ctx.save();
+      ctx.filter = 'blur(4px)';
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = 'rgba(255,70,70,0.6)';
+      ctx.fillText(text, cx - 5, cy);
+      ctx.fillStyle = 'rgba(70,220,255,0.6)';
+      ctx.fillText(text, cx + 5, cy);
+      ctx.restore();
+      // 본문
+      ctx.save();
+      ctx.shadowColor = 'rgba(232,216,252,0.55)';
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = opts.monologueColorCss;
+      ctx.fillText(text, cx, cy);
+      ctx.restore();
+
+      var tex = new THREE.CanvasTexture(canvas);
+      tex.minFilter = THREE.LinearFilter;
+      var mat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        opacity: opts.monologueBaseOpacity,
+        fog: true,
+        depthWrite: false,
+        depthTest: true
+      });
+      var sp = new THREE.Sprite(mat);
+      // 짧은 거리(2~4m) 옆에서 보는 텍스트 — 너무 크면 압도. canvas 512×88 → ~1.8m × 0.31m world.
+      sp.scale.set(canvas.width / 280, canvas.height / 280, 1);
+      sp.userData._lumenMannequinMonologue = true;
+      sp._lumenTex = tex;
+      sp._lumenMat = mat;
+      return sp;
+    }
+
     function _spawnAt(pin, idx) {
       if (!_source) return null;
       var root = THREE.SkeletonUtils.clone(_source.scene);
@@ -196,6 +309,7 @@
       if (opts.faceCenter) {
         root.rotation.y = Math.atan2(-pin.wx, -pin.wz);
       }
+      root.userData._lumenGhostIdx = idx;        // 클릭 raycast 시 ghost 매핑
       scene.add(root);
 
       var mixer = new THREE.AnimationMixer(root);
@@ -211,7 +325,28 @@
         }
         a.play();
       }
-      return { root: root, mixer: mixer, pinIndex: idx };
+
+      // ─── awareness: monologue sprite + gaze 상태 ───
+      var monologueSprite = null;
+      var monologueLine = null;
+      if (opts.awareness) {
+        monologueLine = _pickMonologueLine(pin);
+        if (monologueLine) {
+          monologueSprite = _makeMonologueSprite(monologueLine);
+          monologueSprite.position.set(pin.wx, groundY + opts.monologueHeadY, pin.wz);
+          scene.add(monologueSprite);
+        }
+      }
+
+      return {
+        root: root, mixer: mixer, pinIndex: idx,
+        baseRotY: root.rotation.y,                // faceCenter 기본값 — 응시 LERP 의 시작점
+        seen: false,                              // 한 번 클릭되면 true 영구 유지
+        monologueSprite: monologueSprite,
+        monologueLine: monologueLine,
+        monologuePhase: idx * 1.37,
+        groundY: groundY
+      };
     }
 
     function _hidePinVisuals(pins) {
@@ -233,6 +368,11 @@
     function _clear() {
       _ghosts.forEach(function (g) {
         if (g.root && g.root.parent) g.root.parent.remove(g.root);
+        if (g.monologueSprite) {
+          if (g.monologueSprite.parent) g.monologueSprite.parent.remove(g.monologueSprite);
+          if (g.monologueSprite._lumenMat && g.monologueSprite._lumenMat.dispose) g.monologueSprite._lumenMat.dispose();
+          if (g.monologueSprite._lumenTex && g.monologueSprite._lumenTex.dispose) g.monologueSprite._lumenTex.dispose();
+        }
       });
       _ghosts.length = 0;
       // 핀은 다음 세션이 _buildPlayScenePins 로 재생성하므로 굳이 복원 안 함.
@@ -253,15 +393,108 @@
         opts.hidePinVisuals ? '(pins hidden)' : '(pins visible)');
     }
 
-    // renderer.render wrap — 가장 바깥. mixer 만 update.
+    // renderer.render wrap — 가장 바깥. mixer + awareness (proximity opacity + gaze LERP).
     var _origRender = renderer.render.bind(renderer);
+    var _t0 = performance.now();
+    var _camRight = new THREE.Vector3();      // 매 프레임 재사용 (alloc 절약)
     renderer.render = function (s, c) {
       var dt = _clock.getDelta();
-      for (var i = 0; i < _ghosts.length; i++) {
-        if (_ghosts[i].mixer) _ghosts[i].mixer.update(dt * opts.speed);
+      var fpActive = runtime.isFirstPerson && runtime.isFirstPerson();
+      var camPos = (c && c.position) ? c.position : null;
+      var nowSec = (performance.now() - _t0) / 1000;
+      var nearD = opts.monologueNear, farD = opts.monologueFar;
+      var rangeD = Math.max(0.01, farD - nearD);
+
+      // 카메라 right 벡터 — sprite 를 머리 "옆"으로 보내기 위해. (1,0,0)을 카메라 회전으로.
+      // y 컴포넌트 제거해서 지면과 평행한 옆방향으로 정규화 (위/아래 기울임 안 따라가게).
+      if (c && c.quaternion) {
+        _camRight.set(1, 0, 0).applyQuaternion(c.quaternion);
+        _camRight.y = 0;
+        var rl = _camRight.length();
+        if (rl > 0.0001) _camRight.multiplyScalar(1 / rl);
       }
+
+      for (var i = 0; i < _ghosts.length; i++) {
+        var g = _ghosts[i];
+        if (g.mixer) g.mixer.update(dt * opts.speed);
+
+        if (!opts.awareness || !camPos) continue;
+
+        var dx = g.root.position.x - camPos.x;
+        var dz = g.root.position.z - camPos.z;
+        var dist = Math.sqrt(dx * dx + dz * dz);
+
+        // Monologue sprite — proximity opacity + 머리 옆 (카메라 right) + 가벼운 bob
+        if (g.monologueSprite) {
+          if (fpActive) {
+            var tProx = 1 - Math.min(1, Math.max(0, (dist - nearD) / rangeD));
+            var op = opts.monologueBaseOpacity + (opts.monologueNearOpacity - opts.monologueBaseOpacity) * tProx;
+            var bob = Math.sin(nowSec * 2 * Math.PI * opts.monologueBobFreq + g.monologuePhase) * opts.monologueBobAmp;
+            var sx = g.root.position.x + _camRight.x * opts.monologueSideOffset;
+            var sz = g.root.position.z + _camRight.z * opts.monologueSideOffset;
+            g.monologueSprite.position.set(sx, g.groundY + opts.monologueHeadY + bob, sz);
+            g.monologueSprite._lumenMat.opacity = op;
+          } else {
+            g.monologueSprite._lumenMat.opacity = 0;
+          }
+        }
+
+        // Gaze — _seen 이면 매 프레임 카메라 방향으로 LERP. 한 번 본 유령은 계속 응시.
+        if (g.seen && fpActive) {
+          // ghost → cam 수평 방향. atan2(dx, dz) (root.rotation.y 컨벤션).
+          var tgtAngle = Math.atan2(camPos.x - g.root.position.x, camPos.z - g.root.position.z);
+          g.root.rotation.y = _lerpAngle(g.root.rotation.y, tgtAngle, opts.gazeFollowSpeed);
+        }
+      }
+
       _origRender(s, c);
     };
+
+    // ─── 클릭 → 응시 시작 (raycast: 카메라 정면 ray, crosshair 기준) ───
+    // 빠른 클릭만으로 _seen=true 영구 마킹. 핀 long-press 입장 흐름과 공존:
+    //   long-press 는 _fpNearPin(5m) 안에서만 발동, 클릭 응시는 거리 무관(<gazeMaxRayDist).
+    var _ghostRaycaster = null;
+    var _v3tmp = null;
+    function _onCanvasMouseDown(ev) {
+      if (!opts.awareness) return;
+      if (!runtime.isFirstPerson || !runtime.isFirstPerson()) return;
+      if (ev && ev.button !== 0) return;        // 좌클릭만
+      var cam = runtime.getCamera && runtime.getCamera();
+      if (!cam) return;
+      if (!_ghosts.length) return;
+
+      if (!_ghostRaycaster) _ghostRaycaster = new THREE.Raycaster();
+      if (!_v3tmp) _v3tmp = new THREE.Vector3();
+      _ghostRaycaster.set(cam.position, cam.getWorldDirection(_v3tmp));
+      _ghostRaycaster.far = opts.gazeMaxRayDist;
+
+      var roots = [];
+      for (var i = 0; i < _ghosts.length; i++) roots.push(_ghosts[i].root);
+      var hits = _ghostRaycaster.intersectObjects(roots, true);
+      if (!hits.length) return;
+
+      // hit object 의 부모 체인에서 _lumenGhostIdx 찾기
+      var idx = -1;
+      var node = hits[0].object;
+      while (node) {
+        if (node.userData && typeof node.userData._lumenGhostIdx === 'number') {
+          idx = node.userData._lumenGhostIdx; break;
+        }
+        node = node.parent;
+      }
+      if (idx < 0) return;
+      var hitGhost = null;
+      for (var k = 0; k < _ghosts.length; k++) {
+        if (_ghosts[k].pinIndex === idx) { hitGhost = _ghosts[k]; break; }
+      }
+      if (!hitGhost) return;
+      if (!hitGhost.seen) {
+        hitGhost.seen = true;
+        console.log('[lumen-scene-mannequins] ghost #' + idx + ' seen — gaze locked.');
+      }
+    }
+    var rendererDom = renderer && renderer.domElement;
+    if (rendererDom) rendererDom.addEventListener('mousedown', _onCanvasMouseDown);
 
     var adapter = runtime.__lumenAdapter;
     if (adapter && typeof adapter.on === 'function') {
@@ -311,8 +544,24 @@
           attached: _attached,
           clips: _source ? _source.animations.map(function (c) { return c.name; }) : [],
           mannequins: _ghosts.length,
-          opts: Object.assign({}, opts, { getScenePins: '<fn>' })
+          seenCount: _ghosts.filter(function (g) { return g.seen; }).length,
+          monologues: _ghosts.map(function (g) { return { idx: g.pinIndex, line: g.monologueLine, seen: g.seen }; }),
+          opts: Object.assign({}, opts, { getScenePins: '<fn>', getPresets: '<fn>', getMemoryId: '<fn>', ghostTypeForPin: '<fn>' })
         };
+      },
+      // 테스트/디자인 미팅 용: 강제 seen 토글
+      markSeen: function (idx) {
+        for (var i = 0; i < _ghosts.length; i++) {
+          if (_ghosts[i].pinIndex === idx) { _ghosts[i].seen = true; return true; }
+        }
+        return false;
+      },
+      clearSeen: function () {
+        _ghosts.forEach(function (g) {
+          g.seen = false;
+          // 즉시 baseRotY 로 되돌리지 않고 자연 LERP — 이건 향후 분기. 지금은 instant 복귀.
+          g.root.rotation.y = g.baseRotY;
+        });
       }
     };
     runtime.__lumenSceneMannequins = api;

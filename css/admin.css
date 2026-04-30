@@ -661,6 +661,8 @@ body::before {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
+    /* .session-checkbox(absolute, left:1rem, ~18px)가 첫 글자 가리는 것 방지 */
+    padding-left: 1.5rem;
 }
 .session-title {
     font-size: 1.1rem;
