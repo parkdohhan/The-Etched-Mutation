@@ -110,6 +110,13 @@ async function initTrajectoryViewer(memoryId) {
   // 작업 15 — 위치 레이어 mount + 동기화 (idempotent)
   if (!state._stageMounted) {
     LumenAdminStageView.mount('tvStageRoot');
+    // 핀 클릭(드래그 X) → 우측 씬 편집 패널 띄우기
+    if (typeof LumenAdminStageView.setSceneClickHandler === 'function') {
+      LumenAdminStageView.setSceneClickHandler((sceneId) => {
+        const sc = state.scenes.find(s => s.id === sceneId);
+        if (sc) selectScene(sc);
+      });
+    }
     bindLayerToggle();
     state._stageMounted = true;
   }
@@ -767,12 +774,7 @@ const simState = {
   },
 };
 
-// 작업 15 v2 — 자동 재생 상태. timerId 가 null 이면 일시정지/정지.
-const autoplay = {
-  timerId: null,
-  intervalMs: 900,
-};
-
+// 작업 X — step 컨트롤 (이전/다음/되돌리기). 자동 재생은 폐기.
 function _allRunnersDone() {
   const a = simState.runners.A;
   const b = simState.runners.B;
@@ -781,46 +783,41 @@ function _allRunnersDone() {
   return aDone && bDone;
 }
 
-function _autoTick() {
-  if (!simState.active || _allRunnersDone()) {
-    pauseAutoplay();
-    return;
-  }
-  stepSim();
+function _hasPrev(r) { return r && r.visited && r.visited.length > 1; }
+function _anyHasPrev() {
+  return _hasPrev(simState.runners.A) || _hasPrev(simState.runners.B);
 }
 
-function pauseAutoplay() {
-  if (autoplay.timerId) {
-    clearInterval(autoplay.timerId);
-    autoplay.timerId = null;
-  }
-  const btn = document.getElementById('tvSimStartBtn');
-  if (btn) btn.textContent = '▶ 재생';
+// 버튼 활성 상태 갱신 — sim 진행 상황에 맞춰 매번 호출.
+function _updateSimButtons() {
+  const prevBtn = document.getElementById('tvSimStartBtn');  // ◀ 이전
+  const stepBtn = document.getElementById('tvSimStepBtn');    // 다음 ▶
+  if (prevBtn) prevBtn.disabled = !simState.active || !_anyHasPrev();
+  // 다음 — sim 미시작 시 활성(시작 트리거), 시작 후엔 모든 runner done 일 때 비활성
+  if (stepBtn) stepBtn.disabled = simState.active && _allRunnersDone();
 }
 
-function startAutoplay() {
-  if (autoplay.timerId) return;
-  autoplay.timerId = setInterval(_autoTick, autoplay.intervalMs);
-  const btn = document.getElementById('tvSimStartBtn');
-  if (btn) btn.textContent = '⏸ 일시정지';
-}
-
-// ▶ 버튼 토글: sim 미시작 → 시작 + autoplay 시작 / 재생 중 → 일시정지 / 일시정지 → autoplay 재시작 /
-//                 종료 상태(_allRunnersDone) → reset 후 재시작.
-function togglePlaySim() {
-  if (!simState.active) {
-    startSim();
-    startAutoplay();
-    return;
-  }
-  if (_allRunnersDone()) {
-    resetSim();
-    startSim();
-    startAutoplay();
-    return;
-  }
-  if (autoplay.timerId) pauseAutoplay();
-  else startAutoplay();
+// 이전 step — visited 한 칸 pop, currentIdx 복원, 트래젝트리 pop, 후보 재계산
+function prevStepSim() {
+  if (!simState.active) return;
+  let moved = false;
+  ['A', 'B'].forEach(k => {
+    const r = simState.runners[k];
+    if (!_hasPrev(r)) return;
+    r.visited.pop();
+    r.currentIdx = r.visited[r.visited.length - 1];
+    if (r.userTraj.length)    r.userTraj.pop();
+    if (r.origTraj.length)    r.origTraj.pop();
+    if (r.sceneScores.length) r.sceneScores.pop();
+    r.done = false;
+    computeRunnerStep(r); // 후보 재계산
+    moved = true;
+  });
+  if (!moved) return;
+  redrawSimOverlay();
+  updateSimReadout();
+  syncStageView();
+  _updateSimButtons();
 }
 
 function _mkRunner(label) {
@@ -889,31 +886,18 @@ function initSimPanel() {
     };
   }
 
-  const startBtn = document.getElementById('tvSimStartBtn');
+  const prevBtn  = document.getElementById('tvSimStartBtn');  // ID 유지 (smoke 호환), 의미는 "◀ 이전"
   const stepBtn  = document.getElementById('tvSimStepBtn');
   const resetBtn = document.getElementById('tvSimResetBtn');
-  if (startBtn) startBtn.onclick = togglePlaySim;
-  if (stepBtn)  stepBtn.onclick  = () => { pauseAutoplay(); stepSim(); };
-  if (resetBtn) resetBtn.onclick = () => { pauseAutoplay(); resetSim(); };
-
-  const speed = document.getElementById('tvSimSpeed');
-  const speedVal = document.getElementById('tvSimSpeedVal');
-  if (speed && speedVal) {
-    speed.oninput = () => {
-      autoplay.intervalMs = parseInt(speed.value, 10) || 900;
-      speedVal.textContent = autoplay.intervalMs + 'ms';
-      // 재생 중이면 새 간격 적용
-      if (autoplay.timerId) {
-        clearInterval(autoplay.timerId);
-        autoplay.timerId = setInterval(_autoTick, autoplay.intervalMs);
-      }
-    };
-  }
+  if (prevBtn)  prevBtn.onclick  = prevStepSim;
+  if (stepBtn)  stepBtn.onclick  = () => { if (!simState.active) startSim(); else stepSim(); };
+  if (resetBtn) resetBtn.onclick = resetSim;
 
   const loadBtn = document.getElementById('tvSimLoadFromPersona');
   if (loadBtn) loadBtn.onclick = loadFromSelectedPersona;
 
   updateSimReadout();
+  _updateSimButtons();
 }
 
 function buildSimSliders(runnerKey, root) {
@@ -1004,12 +988,10 @@ function startSim() {
   computeRunnerStep(simState.runners.A);
   if (simState.runners.B) computeRunnerStep(simState.runners.B);
 
-  const stepBtn = document.getElementById('tvSimStepBtn');
-  if (stepBtn) stepBtn.disabled = false;
-
   redrawSimOverlay();
   updateSimReadout();
   syncStageView();
+  _updateSimButtons();
 }
 
 function stepSim() {
@@ -1034,6 +1016,7 @@ function stepSim() {
   redrawSimOverlay();
   updateSimReadout();
   syncStageView();
+  _updateSimButtons();
 }
 
 function computeRunnerStep(r) {
@@ -1076,18 +1059,10 @@ function resetSim() {
   simState.active = false;
   simState.runners.A = null;
   simState.runners.B = null;
-  const stepBtn = document.getElementById('tvSimStepBtn');
-  if (stepBtn) stepBtn.disabled = true;
-  // autoplay 도 정리 (compareMode 토글 / 메모리 전환 경로에서 호출됨)
-  if (autoplay.timerId) {
-    clearInterval(autoplay.timerId);
-    autoplay.timerId = null;
-    const btn = document.getElementById('tvSimStartBtn');
-    if (btn) btn.textContent = '▶ 재생';
-  }
   redrawSimOverlay();
   updateSimReadout();
   syncStageView();
+  _updateSimButtons();
 }
 
 // 디버그 / smoke 용 — window 에 runners 상태 노출
@@ -1102,7 +1077,7 @@ function updateSimReadout() {
   const el = document.getElementById('tvSimReadout');
   if (!el) return;
   if (!simState.active) {
-    el.innerHTML = '<div style="color:#5c544a;font-size:0.7rem;padding:4px 0;">감정 슬라이더 → ▶ 시작</div>';
+    el.innerHTML = '<div style="color:#5c544a;font-size:0.7rem;padding:4px 0;">감정 슬라이더 → 다음 ▶ 으로 시작</div>';
     return;
   }
   el.innerHTML = ['A', 'B'].filter(k => simState.runners[k]).map(k => {

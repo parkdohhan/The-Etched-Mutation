@@ -454,14 +454,9 @@
                     </label>
                     <div id="tvSimSlidersB" data-runner="B" style="display:none;border:1px solid rgba(106,163,131,0.2);border-left:3px solid #6aa383;border-radius:3px;padding:6px 8px;margin-bottom:6px;"></div>
                     <div class="tv-toggle-row" style="margin-top:4px;">
-                        <button class="tv-toggle" id="tvSimStartBtn" style="flex:1;padding:5px;font-size:0.7rem;" title="▶ 자동 재생 시작 / ⏸ 일시정지">▶ 재생</button>
-                        <button class="tv-toggle" id="tvSimStepBtn" style="flex:1;padding:5px;font-size:0.7rem;" disabled title="일시정지 상태에서 한 step 수동 진행">다음 →</button>
-                        <button class="tv-toggle" id="tvSimResetBtn" style="flex:1;padding:5px;font-size:0.7rem;">↺</button>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:0.66rem;color:#7c7466;">
-                        <span style="min-width:38px;">속도</span>
-                        <input type="range" id="tvSimSpeed" min="200" max="2500" step="100" value="900" style="flex:1;height:14px;" title="자동 step 간격 (ms)">
-                        <span id="tvSimSpeedVal" style="min-width:42px;text-align:right;font-variant-numeric:tabular-nums;color:#c4a882;">900ms</span>
+                        <button class="tv-toggle" id="tvSimStartBtn" style="flex:1;padding:5px;font-size:0.7rem;" disabled title="이전 step 으로 (visited 스택 한 칸 뒤로)">◀ 이전</button>
+                        <button class="tv-toggle" id="tvSimStepBtn" style="flex:1;padding:5px;font-size:0.7rem;" title="다음 step 진행 (sim 미시작 시 시작)">다음 ▶</button>
+                        <button class="tv-toggle" id="tvSimResetBtn" style="flex:1;padding:5px;font-size:0.7rem;" title="시뮬 초기화">되돌리기</button>
                     </div>
                     <div id="tvSimReadout" style="margin-top:6px;font-size:0.7rem;line-height:1.55;"></div>
                 </div>
