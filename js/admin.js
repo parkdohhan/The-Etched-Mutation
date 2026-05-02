@@ -4607,6 +4607,31 @@ window.seedParkSojungMemory = async function () {
             anchor_emotions: ['shame', 'isolation', 'longing'],
             echo_words: ['핏줄', '무뚝뚝', '달라붙다'],
             void_info: null,
+            meta: {
+                dialog_choices: {
+                    ghost_intro: '엄마에게 투정을 부리거나 매달리는 엄마의 모습이 그랬어... 무뚝뚝한 나는 그런 식으로 달라붙어본 적이 없었는데.',
+                    choices: [
+                        {
+                            label: '엄마는 왜 그랬을까?',
+                            type: 'causal',
+                            ghost_reply: '...글쎄. 늘 그랬으니까. 다른 모습은 본 적이 없었어.',
+                            free_dialog_open: '너는... 너의 엄마는 어땠어?',
+                        },
+                        {
+                            label: '그 모습이 어떻게 보였어?',
+                            type: 'sensory',
+                            ghost_reply: '...낯설었어. 같은 사람이 둘로 갈라진 것처럼.',
+                            free_dialog_open: '너도 그런 거리감을 본 적 있어?',
+                        },
+                        {
+                            label: '너는 왜 거리를 뒀어?',
+                            type: 'self',
+                            ghost_reply: '...무뚝뚝하다고 했지만, 사실은 어떻게 다가가야 할지 몰랐던 것 같아.',
+                            free_dialog_open: '너도 그렇게 거리를 둔 적 있었어?',
+                        },
+                    ],
+                },
+            },
         },
         {
             scene_order: 2,
