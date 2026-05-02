@@ -2568,7 +2568,8 @@
     }
     initAudio();
     playOnce(SFX.footstep);
-    setTimeout(() => { if (SFX.ambient && !SFX.ambient._broken) SFX.ambient.volume = 0.05; }, 800);
+    // 5-2: 본 플레이에서 SFX.ambient (ambient-opening.mp3) 끔 — lumen_audio_space 와 겹침 짜증
+    // setTimeout(() => { if (SFX.ambient && !SFX.ambient._broken) SFX.ambient.volume = 0.05; }, 800);
     if (pin.type === 'core') {
       enterSceneMode(pin);
     } else if (pin.type === 'bridge') {
@@ -2923,8 +2924,34 @@
   }
 
   // Phase 1 = 선형 진행 (5번 결정). 다음 scene_order 핀으로.
+  //
+  // 핀 모드(spatial trajectory): 현재 씬에 meta.trajectory_targets (씬 ID 목록) 정의돼
+  // 있으면, 그 후보 안에서만 다음 핀 선택 — 작가가 admin Canvas 핀 모드로 정의한
+  // 분기 토폴로지가 게임에 반영됨. 안 visited 한 후보 우선, 다 visited 면 사이클 허용.
+  // trajectory_targets 비어있거나 없으면 기존 선형 동작.
   function _advanceToNextSceneLinear(currentPin) {
     var cores = game.pins.filter(function (p) { return p.type === 'core' || p.type === 'bridge'; });
+
+    // ── 핀 모드 분기: 현재 씬의 trajectory_targets 안에서만 후보 추출 ──
+    var currentScene = game.scenes && game.scenes.find(function (s) { return s.id === currentPin.sceneId; });
+    var targets = currentScene && currentScene.meta && currentScene.meta.trajectory_targets;
+    if (Array.isArray(targets) && targets.length > 0) {
+      var targetSet = Object.create(null);
+      targets.forEach(function (tid) { targetSet[tid] = true; });
+      var candidatePins = cores.filter(function (p) { return targetSet[p.sceneId]; });
+      if (candidatePins.length > 0) {
+        var visited = game.visitedCore || {};
+        var unvisited = candidatePins.filter(function (p) { return !visited[p.sceneId]; });
+        var pool = unvisited.length > 0 ? unvisited : candidatePins; // 다 visited 면 사이클 허용
+        pool.sort(function (a, b) { return (a.sceneOrder || 0) - (b.sceneOrder || 0); });
+        console.log('[v21-phase1] spatial trajectory: 후보', candidatePins.length, '개 중', pool[0].sceneId, '선택 (unvisited:', unvisited.length, ')');
+        enterSceneMode(pool[0]);
+        return;
+      }
+      console.warn('[v21-phase1] trajectory_targets 정의돼 있지만 매칭 핀 없음 — 선형 fallback');
+    }
+
+    // ── 기본(선형) 동작: scene_order 인접 다음 핀 ──
     var sortedByOrder = cores.slice().sort(function (a, b) { return (a.sceneOrder || 0) - (b.sceneOrder || 0); });
     var idx = sortedByOrder.findIndex(function (p) { return p.id === currentPin.id; });
     if (idx >= 0 && idx + 1 < sortedByOrder.length) {
@@ -3869,7 +3896,8 @@
       e.stopPropagation();
       playOnce(SFX.footstep);
       fadeOut(SFX.void, 400, true);
-      fadeIn(SFX.ambient, 0.12, 1000);
+      // 5-2: 본 플레이에서 SFX.ambient 끔 (lumen_audio_space 와 겹침)
+      // fadeIn(SFX.ambient, 0.12, 1000);
       canvas.removeEventListener('click', onTerrainClick);
       game.postSubmitTerrainCleanup = null;
       stopTerrainAnimLoop();
@@ -4210,7 +4238,8 @@
     _mm2.classList.add('active');
     try {
       await loadMemoryData(id);
-      fadeIn(SFX.ambient, 0.12, 3000);
+      // 5-2: 본 플레이에서 SFX.ambient 끔 (lumen_audio_space 와 겹침)
+      // fadeIn(SFX.ambient, 0.12, 3000);
       startCursorLerp();
     } catch (e) {
       console.error(e);
@@ -4506,7 +4535,8 @@
           sessionStorage.removeItem('demoMemoryId');
         } catch (_) {}
         initAudio();
-        fadeIn(SFX.ambient, 0.12, 3000);
+        // 5-2: 본 플레이에서 SFX.ambient 끔 (lumen_audio_space 와 겹침)
+        // fadeIn(SFX.ambient, 0.12, 3000);
         startCursorLerp();
       } catch (e) {
         console.error(e);
