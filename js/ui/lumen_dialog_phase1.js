@@ -20,8 +20,8 @@
  *   - END_PHRASES 감지 → 자유대화 즉시 종료, urge 단계로
  *
  * Phase 1 정책:
+ *   - 자유대화 1턴 (5-2 결정 — 멀티턴 별로, 단일턴이 작품 톤에 더 맞음)
  *   - 자유대화 매 턴 독립 분석 (8번 동의)
- *   - 자유대화 max 3턴 (3번 동의)
  *   - 장면 잇기 emotion 분석 X, DB 누적 X (4번 결정)
  *   - 다음 씬 결정은 호출자 책임 (Phase 1 = scene_order +1 선형, 5번 결정)
  *
@@ -41,7 +41,7 @@
 
   var DEFAULTS = {
     overlayId: 'lumenDialogPhase1',
-    maxFreeDialogTurns: 3,
+    maxFreeDialogTurns: 1,    // 5-2: 멀티턴 폐기. 자유대화 1턴 + 장면 잇기 1턴 (둘 다 자유 텍스트, 다른 자리)
     pacingDelays: {
       afterIntroMs:   1000,
       afterChoiceMs:  900,
