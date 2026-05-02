@@ -724,7 +724,7 @@
     SFX.white = makeAudio('sounds/Base_white.mp3', true, 0);
     SFX.void = makeAudio('sounds/Base_Void.mp3', false, 0);
     SFX.rain = makeAudio('sounds/Rain_indoor.mp3', true, 0);
-    SFX.footstep = makeAudio('sounds/footstep.mp3', false, 0.4);
+    SFX.footstep = makeAudio('sounds/footstep_on_dirt.mp3', false, 0.4);
   }
 
   function playOnce(audio) {
@@ -4210,7 +4210,8 @@
     _mm2.classList.add('active');
     try {
       await loadMemoryData(id);
-      fadeIn(SFX.ambient, 0.12, 3000);
+      // 5-2: 본 플레이에서 SFX.ambient 끔 — lumen_audio_space 와 겹침 (3a49921 후속, startBtn 자리 누락분)
+      // fadeIn(SFX.ambient, 0.12, 3000);
       startCursorLerp();
     } catch (e) {
       console.error(e);
@@ -4506,7 +4507,8 @@
           sessionStorage.removeItem('demoMemoryId');
         } catch (_) {}
         initAudio();
-        fadeIn(SFX.ambient, 0.12, 3000);
+        // 5-2: 본 플레이에서 SFX.ambient 끔 — lumen_audio_space 와 겹침 (3a49921 후속, URL 진입 자리 누락분)
+        // fadeIn(SFX.ambient, 0.12, 3000);
         startCursorLerp();
       } catch (e) {
         console.error(e);

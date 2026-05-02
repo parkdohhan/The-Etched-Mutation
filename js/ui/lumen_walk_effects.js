@@ -12,10 +12,12 @@
  *   2. Headsway       — 보행 중 yaw ±1° sin
  *   3. Breathing      — 정지 시 y-축 1cm, 주기 3~4초 sin
  *   4. Inertia        — 시각 x,z가 논리 위치를 가속 0.3s / 감속 0.2s feel 로 따라감 (지수 smoothing)
- *   5. Step sound     — bob sin 양→음 zero-cross 시 footstep.mp3 재생, playbackRate 5-variant 로테이션
+ *   5. Step sound     — bob sin 양→음 zero-cross 시 footstep_on_dirt.mp3 (3 segment 자동 분할) 재생.
  *
- * 스텝 사운드 "오염 층별 3~5 샘플 로테이션": 현재 단일 샘플(sounds/footstep.mp3) 만 존재.
- *   playbackRate 0.92~1.08 5-variant + gain을 오염 depth 로 감쇠하여 층감 대체 (V2 에서 실 샘플 분리).
+ * 스텝 사운드: sounds/footstep_on_dirt.mp3 한 파일에 3개 발자국이 무음 사이로 들어있음.
+ *   AudioBuffer 로드 후 amplitude threshold 로 segment 경계 자동 detect → 매 스텝 1 segment 재생.
+ *   segment 3-rotation × playback rate 5-variant = 15 조합으로 반복 티 제거.
+ *   gain 은 오염 depth 로 감쇠 (층감).
  *
  * 사용:
  *   var fx = LumenWalkEffects.attach(runtime, {
@@ -38,10 +40,10 @@
     inertiaTauDecel: 0.07,
     moveSpeedThreshold: 0.3,
     contaminationDepthProvider: null,
-    // 스텝 합성: sounds/footstep.mp3는 15초짜리 ambient 라 샘플 재생 시 30개 겹침 버그.
-    // WebAudio로 thud(sine ramp) + click(filtered noise)를 매 스텝마다 단발 합성.
-    stepBaseGain: 0.5,
-    stepDepthAttenuation: 0.08,
+    // 스텝: sounds/footstep_on_dirt.mp3 한 샘플에 3개 발이 무음 사이로 들어있음.
+    // 로드 후 segment 자동 detect → BufferSource 재생 (segment 3-rotation × playback rate 5-variant).
+    stepBaseGain: 0.85,          // 기본 음량 (0.5 였을 땐 depth 감쇠 누적으로 cap 0.15 까지 떨어져 못 들림)
+    stepDepthAttenuation: 0.015, // depth 30 → -0.35 (cap), 30 시점 게인 = 0.50. depth 영향 살리되 들리는 영역 유지
     stepVariants: 5,             // 주파수 variant 개수 — 로테이션으로 층감
     enableAudio: true
   };
@@ -62,13 +64,73 @@
     var _swayPhase = 0;
     var _breathPhase = 0;
     var _prevBobSin = 0;
-    var _variantIdx = 0;
     var _tPrev = performance.now();
 
-    // WebAudio: 매 스텝마다 단발 합성 (thud + filtered noise click). 샘플 파일 없음 → 겹침 없음.
+    // WebAudio: footstep_on_dirt.mp3 (3 발 segment) 로드 후 segment 자동 분할 → 매 스텝 1개 BufferSource 재생.
     var _audioCtx = null;
     var _audioReady = false;
-    var _noiseBuf = null;
+    var _stepBuf = null;
+    var _segments = [];          // [{offset:sec, duration:sec}, ...]
+    var _segIdx = 0;
+
+    // 무음 detect — amplitude < threshold 가 minSilenceMs 이상 연속이면 segment 경계.
+    // 한 발자국 안 작은 spike 가 따로 잘리지 않도록 threshold/minSilence 보수적.
+    // 시작/끝 silence 자동 trim, 중간 무음으로 sample 분할, 너무 짧은 segment 필터.
+    function _detectSegments(buffer) {
+      var ch = buffer.getChannelData(0);
+      var sr = buffer.sampleRate;
+      var threshold = 0.04;                            // 작은 spike 무시
+      var minSilenceSamples = Math.floor(sr * 0.15);   // 150ms 무음 = 경계 (한 발 안 짧은 갭 무시)
+      var minSegmentDuration = 0.07;                   // 70ms 미만 segment 폐기 (decay tail 등)
+      var segs = [];
+      var inSound = false;
+      var segStart = 0;
+      var silenceCount = 0;
+      function _commit(segEnd) {
+        var dur = (segEnd - segStart) / sr;
+        if (dur >= minSegmentDuration) {
+          segs.push({ offset: segStart / sr, duration: dur });
+        }
+      }
+      for (var i = 0; i < ch.length; i++) {
+        var loud = Math.abs(ch[i]) > threshold;
+        if (loud) {
+          if (!inSound) { segStart = i; inSound = true; }
+          silenceCount = 0;
+        } else {
+          silenceCount++;
+          if (inSound && silenceCount >= minSilenceSamples) {
+            _commit(i - silenceCount);
+            inSound = false;
+          }
+        }
+      }
+      if (inSound) _commit(ch.length);
+      return segs;
+    }
+
+    // setInterval / RAF 안에서 만든 AudioContext 는 suspended 상태로 시작 (브라우저 user gesture 정책).
+    // 첫 user gesture (click / keydown / touch) 시 resume — _playStep 의 자체 resume() 은 그 후에 효과.
+    var _gestureBound = false;
+    function _bindResumeOnUserGesture() {
+      if (_gestureBound) return;
+      _gestureBound = true;
+      var resumed = false;
+      function _tryResume() {
+        if (resumed || !_audioCtx) return;
+        if (_audioCtx.state === 'running') { resumed = true; return; }
+        try {
+          var p = _audioCtx.resume();
+          if (p && p.then) p.then(function () {
+            resumed = true;
+            console.log('[lumen-walk] AudioContext resumed by user gesture, state:', _audioCtx.state);
+          });
+        } catch (_) {}
+      }
+      ['click', 'keydown', 'touchstart', 'pointerdown'].forEach(function (ev) {
+        window.addEventListener(ev, _tryResume, { passive: true });
+      });
+    }
 
     function _ensureAudio() {
       if (!opts.enableAudio || _audioReady) return;
@@ -77,65 +139,67 @@
         var Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
         _audioCtx = _audioCtx || new Ctx();
-        // 한 번 평평한 white noise buffer 생성 (300ms) — decay는 gain envelope으로 처리 (loop시 클릭 없음)
-        var dur = 0.3;
-        var sr = _audioCtx.sampleRate;
-        var len = Math.floor(sr * dur);
-        _noiseBuf = _audioCtx.createBuffer(1, len, sr);
-        var ch = _noiseBuf.getChannelData(0);
-        for (var i = 0; i < len; i++) {
-          ch[i] = Math.random() * 2 - 1;
-        }
-        _audioReady = true;
+        _bindResumeOnUserGesture();
+        // mp3 fetch + decode (비동기). 로드 전엔 _audioReady=false → _playStep silent skip.
+        fetch('sounds/footstep_on_dirt.mp3')
+          .then(function (r) { return r.arrayBuffer(); })
+          .then(function (ab) { return _audioCtx.decodeAudioData(ab); })
+          .then(function (buf) {
+            _stepBuf = buf;
+            _segments = _detectSegments(buf);
+            if (_segments.length === 0) {
+              console.warn('[lumen-walk] footstep segment detect 실패 — 전체 1 segment fallback');
+              _segments = [{ offset: 0, duration: buf.duration }];
+            }
+            console.log('[lumen-walk] footstep segments:', _segments.length, 'detected',
+              _segments.map(function (s) { return '[' + s.offset.toFixed(3) + 's +' + s.duration.toFixed(3) + 's]'; }).join(' '));
+            _audioReady = true;
+          })
+          .catch(function (err) {
+            console.warn('[lumen-walk] footstep mp3 로드 실패:', err);
+          });
       } catch (_) {}
     }
 
-    // 흙바닥 발소리 합성: 저역 중심 lowpass noise 한 레이어만.
-    //  - highpass grit 제거 (드럼 하이햇처럼 들림)
-    //  - lowpass cutoff 를 variant로 약간씩 흔들어 자연스러움
-    //  - 짧은 soft 어택 + 80ms decay
+    // 흙 발소리: detect 된 segment 중 1개 BufferSource 재생.
+    // bob sin 양→음 zero-cross 시 호출 — 재생 latency 거의 0 (Web Audio currentTime 직접).
+    // segment 3-rotation × playback rate 5-variant = 15 조합으로 반복 티 제거.
     function _playStep(depth) {
-      if (!_audioReady || !_audioCtx) return;
+      if (!_audioReady || !_audioCtx || !_stepBuf || _segments.length === 0) return;
       try {
-        if (_audioCtx.state === 'suspended') {
+        // 매 호출 resume — 일부 브라우저가 background 진입 시 suspend 함
+        if (_audioCtx.state !== 'running') {
           try { _audioCtx.resume(); } catch (_) {}
         }
         var now = _audioCtx.currentTime;
         var g = opts.stepBaseGain - Math.min(0.35, (depth || 0) * opts.stepDepthAttenuation);
-        g = Math.max(0.04, g);
+        g = Math.max(0.20, g);  // 절대 못 들림 방지 (이전 0.04 는 너무 낮음)
 
-        // variant: lowpass cutoff 로테이션 (~320~440 Hz). cutoff 흔들어 동일한 반복 티 제거.
-        var cutoffs = [380, 420, 340, 460, 400];
-        var cutoff = cutoffs[_variantIdx % opts.stepVariants];
-        _variantIdx++;
+        var seg = _segments[_segIdx % _segments.length];
+        var rates = [0.95, 1.02, 0.98, 1.05, 1.00];
+        var rate = rates[_segIdx % rates.length];
+        _segIdx++;
 
         var src = _audioCtx.createBufferSource();
-        src.buffer = _noiseBuf;
-        // 미세한 playback rate 변화로 같은 샘플 재활용 시 반복 티 추가 감소
-        var rates = [0.95, 1.02, 0.98, 1.05, 1.00];
-        src.playbackRate.value = rates[(_variantIdx + 2) % 5];
+        src.buffer = _stepBuf;
+        src.playbackRate.value = rate;
 
-        var lp = _audioCtx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.value = cutoff;
-        lp.Q.value = 0.4;
-
-        // 아주 낮은 쉘빙으로 바닥감 살짝 보강
-        var lowShelf = _audioCtx.createBiquadFilter();
-        lowShelf.type = 'lowshelf';
-        lowShelf.frequency.value = 180;
-        lowShelf.gain.value = 3;
-
+        // envelope — 단순화: 0 → g (5ms) → 0.001 (segment 끝)
+        // setValueAtTime hold 라인 제거 (자동화 체인 충돌 의심).
+        // playDur 최소 50ms 보장 (너무 짧으면 exp ramp 무효).
+        var playDur = Math.max(0.05, seg.duration / rate);
         var gain = _audioCtx.createGain();
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(g, now + 0.008);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+        gain.gain.linearRampToValueAtTime(g, now + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + playDur);
 
-        src.connect(lp).connect(lowShelf).connect(gain).connect(_audioCtx.destination);
-        src.start(now);
-        // 300ms buffer → 240ms 재생 (gain envelope이 감쇠 담당)
-        src.stop(now + 0.24);
-      } catch (_) {}
+        src.connect(gain).connect(_audioCtx.destination);
+        // start(when, offset, duration) — silence 영역 무관, segment 만 재생
+        src.start(now, seg.offset, seg.duration);
+        src.stop(now + playDur + 0.05);
+      } catch (e) {
+        console.warn('[lumen-walk] _playStep 실패:', e, 'state:', _audioCtx && _audioCtx.state);
+      }
     }
 
     function _contDepth() {
@@ -250,7 +314,7 @@
       _runtime: runtime,
       setOptions: function (patch) { Object.assign(opts, patch || {}); },
       getOptions: function () { return Object.assign({}, opts); },
-      isReady: function () { return _stepReady; }
+      isReady: function () { return _audioReady; }
     };
     runtime.__lumenWalkFx = api;
     return api;
