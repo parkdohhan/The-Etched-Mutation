@@ -59,6 +59,10 @@
   <script src="js/ui/lumen_return_mode.js"></script>
   <script src="js/ui/lumen_return_speech.js"></script>
   <script src="js/ui/lumen_return_events.js"></script>
+  <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
+  <script src="js/ui/lumen_ghost_response.js"></script>
+  <script src="js/ui/lumen_drift_visualizer.js"></script>
+  <script src="js/ui/lumen_dialog_phase1.js"></script>
   <script src="js/ui/strataSection.js"></script>
   <script src="js/ui/floatingAnchor.js"></script>
   <style>
@@ -2890,11 +2894,58 @@
   }
 
   window._temEnterSceneMode = enterSceneMode;
+  // V2.1 Phase 1 — Lumen circular memory dialog 컨트롤러
+  // 기존 enterSceneMode UI(sceneText·sceneNpc·emotionInputArea) 대체.
+  // overlay #lumenDialogPhase1 (z-index:240) 띄움. FP 카메라는 뒤에서 계속 작동.
+  function _enterLumenDialogPhase1(pin, scene) {
+    game.currentPinId = pin.id;
+    game.currentSceneIndex = pin.sceneIndex;
+    if (pin.type === 'core' || pin.type === 'bridge') {
+      if (!game.visitedCore) game.visitedCore = {};
+      game.visitedCore[pin.sceneId] = true;
+      game.coreVisitCount = (game.coreVisitCount || 0) + 1;
+    }
+
+    var supabase = (typeof window.getSupabaseClient === 'function') ? window.getSupabaseClient() : null;
+    var runtime  = window._fpRuntime || null;
+
+    return window.LumenDialogPhase1.start({
+      memoryId: game.memoryId,
+      sceneId: scene.id,
+      sceneData: scene,
+      runtime: runtime,
+      supabase: supabase,
+      onSceneEnd: function (result) {
+        console.log('[v21-phase1] scene end', result);
+        _advanceToNextSceneLinear(pin);
+      },
+    });
+  }
+
+  // Phase 1 = 선형 진행 (5번 결정). 다음 scene_order 핀으로.
+  function _advanceToNextSceneLinear(currentPin) {
+    var cores = game.pins.filter(function (p) { return p.type === 'core' || p.type === 'bridge'; });
+    var sortedByOrder = cores.slice().sort(function (a, b) { return (a.sceneOrder || 0) - (b.sceneOrder || 0); });
+    var idx = sortedByOrder.findIndex(function (p) { return p.id === currentPin.id; });
+    if (idx >= 0 && idx + 1 < sortedByOrder.length) {
+      enterSceneMode(sortedByOrder[idx + 1]);
+    } else {
+      // 마지막 씬 — V2-7 귀환 알림 + V3 메타 질문/제목/관찰자 자리
+      console.log('[v21-phase1] last scene — 작품 종료. V3 영역.');
+    }
+  }
+
   function enterSceneMode(pinOrId) {
     const pin = typeof pinOrId === 'string' ? game.pins.find(p => p.id === pinOrId) : pinOrId;
     if (!pin || (pin.type !== 'core' && pin.type !== 'bridge' && pin.type !== 'voidPin')) return;
     const scene = game.scenes.find(s => s.id === pin.sceneId);
     if (!scene) return;
+
+    // V2.1 Phase 1 가드: Lumen circular + dialog_choices 박힌 씬 + 모듈 로드 → multi-turn 컨트롤러
+    if (game.terrain_shape === 'circular' && scene.meta && scene.meta.dialog_choices && window.LumenDialogPhase1) {
+      return _enterLumenDialogPhase1(pin, scene);
+    }
+
     clearTimers();
     if (typeof window.destroyFloatingAnchor === 'function') window.destroyFloatingAnchor();
     if (game.postSubmitTerrainCleanup) game.postSubmitTerrainCleanup();
@@ -4609,6 +4660,8 @@
           // Lumen 어댑터 attach — terrain adapter(궤적/void) + walk effects(bob/sway/breath/inertia/step)
           // 둘 다 runtime.tick 을 wrap 하므로 enterFirstPerson 후 호출해도 idempotent.
           try {
+            // V2.1 Phase 1 — runtime 외부 노출 (dialog_phase1 drift_visualizer 위해)
+            window._fpRuntime = rt;
             if (window.LumenTerrainAdapter && typeof window.LumenTerrainAdapter.attach === 'function') {
               window.LumenTerrainAdapter.attach(rt, {
                 getContamination: function () {
