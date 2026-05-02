@@ -34,7 +34,9 @@ const state = {
 };
 
 // 핀 모드 기본값
-const SPATIAL_DEFAULT_RADIUS = 220; // 픽셀. 씬 영향권 원 반경 디폴트.
+// 100 = 노드 너비(160) 보다 약간 작아 인접 노드 1~2개만 자연스럽게 들어옴.
+// 이전 220 은 dagre 자동 레이아웃에서 모든 원이 다 겹쳐 화면 클러터.
+const SPATIAL_DEFAULT_RADIUS = 100;
 
 // ─── VAD projection (tem_af_strata_terrain.js와 동일) ──
 const VAD_FULL = {
@@ -1569,6 +1571,11 @@ async function savePinOverride(sceneId, nodeX, nodeY) {
 function selectScene(s) {
   state.selectedSceneId = s.id;
   renderDetail(s, state.detailTab || 'detail');
+  // 핀 모드: 선택 변경 시 edge/원 focus 갱신 (선택된 씬만 진하게)
+  if (state.spatialMode) {
+    redrawEdges();
+    redrawSpatialRadii();
+  }
 }
 
 function renderDetail(s, tab) {
@@ -2230,17 +2237,37 @@ function redrawEdges() {
   while (edgeLayer.firstChild) edgeLayer.removeChild(edgeLayer.firstChild);
 
   // ── choice edges (실선 cable) ──
+  // 핀 모드 + 선택된 씬 있으면 focus mode — selected 의 in/out edge 만 진하게,
+  // 나머지는 거의 안 보임. 핀 모드 아니거나 선택 없으면 균일.
+  const focusEdges = state.spatialMode && !!state.selectedSceneId;
   g.edges().forEach(e => {
     const n1 = g.node(e.v);
     const n2 = g.node(e.w);
     if (!n1 || !n2) return;
+
+    let stroke, strokeWidth;
+    if (focusEdges) {
+      const touchesSelected = e.v === state.selectedSceneId || e.w === state.selectedSceneId;
+      if (touchesSelected) {
+        stroke = '#c4a882';
+        strokeWidth = 2;
+      } else {
+        stroke = 'rgba(196,168,130,0.08)';
+        strokeWidth = 0.8;
+      }
+    } else {
+      stroke = 'rgba(196,168,130,0.35)';
+      strokeWidth = 1.5;
+    }
+
     edgeLayer.appendChild(svgEl('path', {
       class: 'choice-edge',
       'data-edge-from': e.v, 'data-edge-to': e.w,
       d: cableChoice(n1, n2),
       fill: 'none',
-      stroke: 'rgba(196,168,130,0.35)',
-      'stroke-width': 1.5,
+      stroke,
+      'stroke-width': strokeWidth,
+      'vector-effect': 'non-scaling-stroke',
     }));
   });
 
@@ -2319,27 +2346,50 @@ function redrawSpatialRadii() {
   }
   while (radiusLayer.firstChild) radiusLayer.removeChild(radiusLayer.firstChild);
 
+  // Focus + context: 선택된 씬 있으면 그 원만 진하게, 나머지는 거의 안 보임.
+  // 선택 없으면 모든 원 중간 농도 — "여기 핀 모드 활성화돼 있다" 만 알리는 정도.
+  const hasFocus = !!state.selectedSceneId;
   let drawn = 0;
   visibleScenes.forEach(s => {
     const n = g.node(s.id);
     if (!n) return;
     const r = (s.meta && Number(s.meta.trajectory_radius)) || SPATIAL_DEFAULT_RADIUS;
     const isSelected = state.selectedSceneId === s.id;
-    // 색·두께 강화 — 어두운 배경(#07070b)에서 명확히 보이게
+
+    let fill, stroke, strokeWidth, dash;
+    if (hasFocus) {
+      if (isSelected) {
+        fill = 'rgba(196,168,130,0.12)';
+        stroke = '#c4a882';
+        strokeWidth = 2.5;
+        dash = '6,4';
+      } else {
+        // 클러터 방지 — 거의 안 보임
+        fill = 'rgba(196,168,130,0.015)';
+        stroke = 'rgba(196,168,130,0.10)';
+        strokeWidth = 0.8;
+        dash = '3,5';
+      }
+    } else {
+      // 선택 없음 — 모든 원이 약하게
+      fill = 'rgba(196,168,130,0.025)';
+      stroke = 'rgba(196,168,130,0.30)';
+      strokeWidth = 1.2;
+      dash = '5,5';
+    }
+
     const circle = svgEl('circle', {
       cx: n.x, cy: n.y, r,
-      fill: isSelected ? 'rgba(196,168,130,0.10)' : 'rgba(196,168,130,0.04)',
-      stroke: isSelected ? '#c4a882' : 'rgba(196,168,130,0.7)',
-      'stroke-width': isSelected ? 2.5 : 1.5,
-      'stroke-dasharray': '6,4',
-      'vector-effect': 'non-scaling-stroke', // viewBox 줌과 무관하게 화면 픽셀 단위 두께
+      fill, stroke,
+      'stroke-width': strokeWidth,
+      'stroke-dasharray': dash,
+      'vector-effect': 'non-scaling-stroke',
       'data-radius-for': s.id,
       'pointer-events': 'none',
     });
     radiusLayer.appendChild(circle);
     drawn++;
   });
-  console.log(`[spatialPin] redrawSpatialRadii: ${drawn}개 원 그림. spatialMode=${state.spatialMode}`);
 }
 
 // 두 노드 간 중심 거리.

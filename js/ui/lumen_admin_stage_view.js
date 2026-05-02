@@ -140,7 +140,12 @@ const state = {
   rafId: null,
   resizeObserver: null,
   onSceneClick: null,          // 핀 클릭(드래그 X) 시 (sceneId) => void 호출
+  tooltipContainer: null,      // 시뮬 핀 텍스트 overlay 컨테이너 (rootEl 자식)
+  tooltips: new Map(),         // sceneId → div
 };
+
+// 툴팁 텍스트 길이 컷
+const SIM_TOOLTIP_MAX_CHARS = 80;
 
 // ─── THREE 라벨 sprite ────────────────────────────────────
 function _makeLabelSprite(text, color) {
@@ -531,6 +536,13 @@ function _initScene() {
 
   _bindPointerEvents();
 
+  // 툴팁 overlay (canvas 위에 absolute, pointer-events 차단)
+  const tipC = document.createElement('div');
+  tipC.id = 'tvStageTooltips';
+  tipC.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5;';
+  state.rootEl.appendChild(tipC);
+  state.tooltipContainer = tipC;
+
   // resize
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(() => _resize());
@@ -560,9 +572,120 @@ function _startRaf() {
     if (state.renderer && state.scene && state.camera) {
       state.renderer.render(state.scene, state.camera);
     }
+    _updateSimTooltips();
     state.rafId = requestAnimationFrame(tick);
   };
   state.rafId = requestAnimationFrame(tick);
+}
+
+// ─── 시뮬 툴팁 (current / candidate 핀에 장면 텍스트) ──────
+// raf tick 마다 — 시뮬 활성 시 해당 핀 위에 본문 일부 띄움.
+// 카메라 회전·줌 따라 자동 추적.
+const _ttVec = (typeof THREE !== 'undefined') ? new THREE.Vector3() : null;
+function _updateSimTooltips() {
+  if (!state.tooltipContainer || !state.camera || !state.canvas || !_ttVec) return;
+
+  // 어떤 씬에 표시할지: current + candidate (둘 다)
+  const visibleByScene = new Map();
+  if (state.sim.active) {
+    state.scenes.forEach(scene => {
+      const hi = _simHighlight(scene.id);
+      if (hi.role !== 'current' && hi.role !== 'candidate') return;
+      const raw = (scene.text || '').trim();
+      if (!raw) return;
+      const txt = raw.length > SIM_TOOLTIP_MAX_CHARS
+        ? raw.slice(0, SIM_TOOLTIP_MAX_CHARS) + '…'
+        : raw;
+      const code = (scene.meta && scene.meta.scene_code) || (scene.scene_order != null ? String(scene.scene_order) : '');
+      const colorHex = (hi.role === 'current')
+        ? (RUNNER_BASE_COLOR[hi.runnerKey] || BASE_PIN_COLOR)
+        : (PATTERN_COLOR[hi.pattern] || RUNNER_BASE_COLOR[hi.runnerKey] || BASE_PIN_COLOR);
+      visibleByScene.set(scene.id, {
+        text: txt, code, colorHex, role: hi.role, runnerKey: hi.runnerKey,
+      });
+    });
+  }
+
+  // 사라진 툴팁 정리
+  state.tooltips.forEach((div, sceneId) => {
+    if (!visibleByScene.has(sceneId)) {
+      div.remove();
+      state.tooltips.delete(sceneId);
+    }
+  });
+
+  // 위치 + 내용 갱신
+  const w = state.canvas.clientWidth;
+  const h = state.canvas.clientHeight;
+  visibleByScene.forEach((info, sceneId) => {
+    const pin = state.pinByScene.get(sceneId);
+    if (!pin || !pin.head) return;
+
+    // 핀 머리 world 좌표 → NDC → screen
+    pin.head.getWorldPosition(_ttVec);
+    _ttVec.project(state.camera);
+    // frustum 밖이면 숨김
+    const inFrustum = _ttVec.x >= -1.1 && _ttVec.x <= 1.1
+      && _ttVec.y >= -1.1 && _ttVec.y <= 1.1
+      && _ttVec.z >= -1 && _ttVec.z <= 1;
+
+    let div = state.tooltips.get(sceneId);
+    if (!div) {
+      div = document.createElement('div');
+      div.className = 'tv-stage-sim-tooltip';
+      div.style.cssText = [
+        'position:absolute',
+        'max-width:240px',
+        'padding:7px 10px',
+        'background:rgba(15,15,22,0.92)',
+        'border:1px solid rgba(196,168,130,0.4)',
+        'border-radius:3px',
+        'color:#e0d8c4',
+        'font-family:"Noto Serif KR",serif',
+        'font-size:0.74rem',
+        'line-height:1.5',
+        'backdrop-filter:blur(4px)',
+        'word-break:keep-all',
+        'pointer-events:none',
+        'transform:translate(-50%,-100%) translateY(-18px)',
+        'transition:opacity .12s',
+      ].join(';') + ';';
+      state.tooltipContainer.appendChild(div);
+      state.tooltips.set(sceneId, div);
+    }
+
+    if (!inFrustum) {
+      div.style.opacity = '0';
+      return;
+    }
+    div.style.opacity = '1';
+
+    const x = (_ttVec.x * 0.5 + 0.5) * w;
+    const y = (-_ttVec.y * 0.5 + 0.5) * h;
+    div.style.left = x + 'px';
+    div.style.top  = y + 'px';
+
+    // role-aware 색
+    const c = info.colorHex;
+    const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+    div.style.borderColor = `rgba(${r},${g},${b},0.65)`;
+
+    // 내용 (변경 시만 — DOM 갱신 비용 최소화)
+    const sigil = info.role === 'current' ? '◉' : '○';
+    const head = `<div style="font-family:'Cormorant Garamond',serif;font-size:0.72rem;color:rgb(${r},${g},${b});letter-spacing:0.06em;margin-bottom:3px;">${sigil} ${info.runnerKey || ''} · ${info.code || ''} · ${info.role}</div>`;
+    const body = `<div>${_escapeHtml(info.text)}</div>`;
+    const html = head + body;
+    if (div._lastHtml !== html) {
+      div.innerHTML = html;
+      div._lastHtml = html;
+    }
+  });
+}
+
+function _escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+  );
 }
 
 // ─── 드래그 (raycast) ────────────────────────────────────
