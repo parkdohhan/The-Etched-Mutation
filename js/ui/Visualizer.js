@@ -167,18 +167,46 @@ export class Visualizer {
             points.push({ x, y: offsetY + y });
         }
 
-        ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) {
-            ctx.lineTo(points[i].x, points[i].y);
-        }
-
         const color = this._waveOverride && this._waveOverride.colorOverride
             ? this._waveOverride.colorOverride : waveStyle.color;
-        ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},${opacity})`;
-        ctx.lineWidth = 2 * (this.lineWidthMultiplier || 1);
+        const mult = (this.lineWidthMultiplier || 1);
+
+        // Dual stroke 빛나는 실 — outer halo + inner core
+        // halo 가 너비 + shadowBlur 로 빛 번짐, core 가 얇은 밝은 선.
+        // transparentBackground 모드와 결합되면 trail 위에 누적되어 몽환적 잔상.
+
+        // path build (한 번만)
+        const buildPath = () => {
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, points[0].y);
+            for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        };
+
+        // 1) Outer halo — 흐릿한 빛 번짐 (선 자체보다 glow 가 본체)
+        buildPath();
+        ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},${opacity * 0.18})`;
+        ctx.lineWidth = 2.5 * mult;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
+        ctx.shadowColor = `rgba(${color.r},${color.g},${color.b},${Math.min(0.5, opacity * 0.55)})`;
+        ctx.shadowBlur = 8 * mult;
+        ctx.stroke();
+
+        // 2) Mid layer — 가는 본체
+        buildPath();
+        ctx.shadowBlur = 2 * mult;
+        ctx.strokeStyle = `rgba(${color.r},${color.g},${color.b},${opacity * 0.45})`;
+        ctx.lineWidth = 1.1 * mult;
+        ctx.stroke();
+
+        // 3) Inner core — 매우 얇은 밝은 심
+        buildPath();
+        ctx.shadowBlur = 0;
+        const cr = Math.min(255, color.r + 30);
+        const cg = Math.min(255, color.g + 30);
+        const cb = Math.min(255, color.b + 30);
+        ctx.strokeStyle = `rgba(${cr},${cg},${cb},${Math.min(0.95, opacity * 0.95)})`;
+        ctx.lineWidth = 0.5 * mult;
         ctx.stroke();
 
         // 투명 배경 모드: 파동 아래를 반투명 그라데이션으로 채움
@@ -295,9 +323,16 @@ export class Visualizer {
                 }
 
                 if (this.transparentBackground) {
-                    ctx.clearRect(0, 0, width, height);
+                    // Frame trail — destination-in 으로 이전 픽셀 alpha 만 약화.
+                    // 0.78 = 매 프레임 22% 흐려짐 → ~5프레임 뒤 거의 사라짐. 잔상 trail.
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'destination-in';
+                    ctx.fillStyle = 'rgba(0,0,0,0.78)';
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.restore();
                 } else {
-                    ctx.fillStyle = 'rgba(10,10,12,0.85)';
+                    // 어두운 배경 모드 — alpha 낮춰서 더 부드러운 trail (이전 0.85 → 0.55)
+                    ctx.fillStyle = 'rgba(10,10,12,0.55)';
                     ctx.fillRect(0, 0, width, height);
                 }
 
