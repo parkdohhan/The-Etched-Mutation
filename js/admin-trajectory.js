@@ -30,7 +30,11 @@ const state = {
   nodePositions: {}, // {sceneId: {x, y}} — 사용자가 드래그한 위치 오버라이드
   zoomScale: 1,      // 현재 줌 배율 (드래그 델타 변환용)
   terrainMode: false, // 감정 지형 모드 (VA 투영)
+  spatialMode: false, // 핀 모드 — meta.trajectory_targets 로 분기 정의 (런타임이 따름)
 };
+
+// 핀 모드 기본값
+const SPATIAL_DEFAULT_RADIUS = 220; // 픽셀. 씬 영향권 원 반경 디폴트.
 
 // ─── VAD projection (tem_af_strata_terrain.js와 동일) ──
 const VAD_FULL = {
@@ -549,6 +553,24 @@ function bindToggles() {
     // 모드 전환 시 드래그 저장 초기화 여부 물음 (노드가 튈 수 있으니)
     renderGraph();
   });
+  const spatBtn = document.getElementById('tvToggleSpatial');
+  if (spatBtn) {
+    try {
+      if (localStorage.getItem('tv_spatial_mode') === '1') {
+        state.spatialMode = true;
+        spatBtn.classList.add('active');
+      }
+    } catch (e) {}
+    spatBtn.addEventListener('click', (ev) => {
+      state.spatialMode = ev.target.classList.toggle('active');
+      try { localStorage.setItem('tv_spatial_mode', state.spatialMode ? '1' : '0'); } catch (e) {}
+      renderGraph();
+      // 디테일 패널 다시 그려서 핀 모드 전용 UI 토글
+      const sid = state.selectedSceneId;
+      const sc = sid && state.scenes.find(s => s.id === sid);
+      if (sc) renderDetail(sc, state.detailTab || 'detail');
+    });
+  }
   const addMemBtn = document.getElementById('tvAddMemoryBtn');
   if (addMemBtn) addMemBtn.addEventListener('click', openNewMemoryModal);
   const addSceneBtn = document.getElementById('tvAddSceneBtn');
@@ -1177,8 +1199,9 @@ function renderGraph() {
   // 어떤 씬을 그릴지 결정
   let visibleScenes;
   const linearMode = !hasEntries; // emotion_entries 없는 기억: 선형 전체 표시
-  if (linearMode) {
-    // 선형 모드: 전체 씬을 scene_order 순으로 표시
+  // 핀 모드는 분기 토폴로지를 보여주는 게 목적 → 감정 필터 무시하고 전체 씬 표시
+  if (linearMode || state.spatialMode) {
+    // 선형 모드 또는 핀 모드: 전체 씬을 표시
     visibleScenes = state.scenes;
   } else if (state.selectedEmotions.size === 0) {
     // emotion_entries 있지만 아무것도 선택 안 됨: 빈 캔버스
@@ -1225,13 +1248,28 @@ function renderGraph() {
     g.setNode(s.id, { width: 160, height: 80, scene: s });
   });
 
-  // choice edge: 같은 memory의 인접 scene_order로 연결 (TEM 선형 모델)
-  const orderToScene = {};
-  visibleScenes.forEach(s => orderToScene[s.scene_order] = s);
-  visibleScenes.forEach(s => {
-    const next = orderToScene[s.scene_order + 1];
-    if (next) g.setEdge(s.id, next.id, { type: 'choice' });
-  });
+  // choice edge:
+  //  - 핀 모드(spatialMode): scene.meta.trajectory_targets (씬 ID 목록) 으로 연결.
+  //    런타임 [SceneNavigator.js] 가 보는 데이터와 동일 → 시각화 = 게임 규칙.
+  //  - 기본(선형) 모드: 인접 scene_order 자동 연결 (TEM 선형 모델, 시각화 전용).
+  if (state.spatialMode) {
+    const idSet = new Set(visibleScenes.map(s => s.id));
+    visibleScenes.forEach(s => {
+      const targets = (s.meta && Array.isArray(s.meta.trajectory_targets)) ? s.meta.trajectory_targets : [];
+      targets.forEach(targetId => {
+        if (idSet.has(targetId) && targetId !== s.id) {
+          g.setEdge(s.id, targetId, { type: 'choice' });
+        }
+      });
+    });
+  } else {
+    const orderToScene = {};
+    visibleScenes.forEach(s => orderToScene[s.scene_order] = s);
+    visibleScenes.forEach(s => {
+      const next = orderToScene[s.scene_order + 1];
+      if (next) g.setEdge(s.id, next.id, { type: 'choice' });
+    });
+  }
 
   dagre.layout(g);
 
@@ -1259,12 +1297,20 @@ function renderGraph() {
   }
 
   // 사용자 저장 위치 오버라이드 (가장 우선)
+  // 핀 모드: scene.meta.trajectory_pin (DB 영속) > nodePositions (localStorage)
+  // 기본 모드: nodePositions 만 사용
   visibleScenes.forEach(s => {
-    const pos = state.nodePositions[s.id];
-    if (pos) {
-      const n = g.node(s.id);
-      if (n) { n.x = pos.x; n.y = pos.y; }
+    const n = g.node(s.id);
+    if (!n) return;
+    if (state.spatialMode) {
+      const pin = s.meta && s.meta.trajectory_pin;
+      if (pin && typeof pin.x === 'number' && typeof pin.y === 'number') {
+        n.x = pin.x; n.y = pin.y;
+        return;
+      }
     }
+    const pos = state.nodePositions[s.id];
+    if (pos) { n.x = pos.x; n.y = pos.y; }
   });
 
   const graphInfo = g.graph();
@@ -1281,15 +1327,23 @@ function renderGraph() {
     drawVaTerrain(zoomG);
   }
 
+  // 핀 모드: 영향권 원을 가장 뒤에 깔기 (edge·node 보다 아래)
+  let radiusLayer = null;
+  if (state.spatialMode) {
+    radiusLayer = svgEl('g', { id: 'spatialRadiusLayer' });
+    zoomG.appendChild(radiusLayer);
+  }
+
   // 모든 edge/overlay는 한 레이어에 — 노드보다 먼저 (뒤에 렌더)
   const edgeLayer = svgEl('g', { id: 'edgeLayer' });
   zoomG.appendChild(edgeLayer);
 
   // 재그리기 가능하도록 현재 그래프 컨텍스트 저장
-  _renderCtx = { g, visibleScenes, entries, codeToScene, edgeLayer };
+  _renderCtx = { g, visibleScenes, entries, codeToScene, edgeLayer, radiusLayer };
 
   // 최초 그리기
   redrawEdges();
+  if (state.spatialMode) redrawSpatialRadii();
 
   // ── 진입 감정 매핑 (씬 → 진입 감정, 있을 경우) ──
   const sceneEntryEmotion = {};
@@ -1472,6 +1526,13 @@ function attachNodeDrag(svg, g) {
         _nodeDrag.suppressClick = true;
         // 터레인 모드 드래그 → scene.meta.pin_override 에 VAD 좌표로 저장
         if (state.terrainMode) savePinOverride(d.sceneId, d.node.x, d.node.y);
+        // 핀 모드 드래그 → scene.meta.trajectory_pin + 자동 targets 갱신
+        if (state.spatialMode) {
+          saveSpatialPin(d.sceneId, d.node.x, d.node.y).then(() => {
+            // 다른 씬들도 이 씬을 자기 원 안에 포함시켰는지 재계산
+            return recomputeTargetsForOthers(d.sceneId);
+          });
+        }
       }
       d.group.style.cursor = 'grab';
       _nodeDrag.active = null;
@@ -1482,6 +1543,7 @@ function attachNodeDrag(svg, g) {
 function updateEdgesForNode(g, sceneId) {
   // 통합 레이어 전체 재그리기 — 노드 수가 적으니 충분히 빠름
   redrawEdges();
+  if (state.spatialMode) redrawSpatialRadii();
 }
 
 // 터레인 모드 드래그 시 호출 — VA 좌표(v, a)를 scene.meta.pin_override 에 저장.
@@ -1536,7 +1598,84 @@ function renderDetail(s, tab) {
   if (tab === 'detail') bindDetailFormEvents(s);
 }
 
+// 핀 모드 패널 이벤트 — 반경 변경 / 수동 add / 수동 del.
+// 변경 즉시 DB 저장하고 그래프 재렌더.
+function bindSpatialPanelEvents(s) {
+  const radiusInput = document.getElementById('spatialRadius');
+  const radiusVal = document.getElementById('spatialRadiusVal');
+  if (radiusInput) {
+    // 슬라이더 움직이는 동안에는 라벨만 갱신, 놓으면 저장
+    radiusInput.addEventListener('input', () => {
+      if (radiusVal) radiusVal.textContent = radiusInput.value;
+    });
+    radiusInput.addEventListener('change', async () => {
+      const newR = Number(radiusInput.value);
+      if (!s.meta) s.meta = {};
+      s.meta.trajectory_radius = newR;
+      // 새 반경 기준 자동 targets 재계산
+      try {
+        const sb = await getSupabaseClient();
+        const newTargets = _renderCtx ? computeAutoTargets(s, _renderCtx.visibleScenes, _renderCtx.g) : (s.meta.trajectory_targets || []);
+        const newMeta = Object.assign({}, s.meta, {
+          trajectory_radius: newR,
+          trajectory_targets: newTargets,
+        });
+        const { error } = await sb.from('scenes').update({ meta: newMeta }).eq('id', s.id);
+        if (error) { console.error('[spatialPin] radius save failed', error); return; }
+        s.meta = newMeta;
+        redrawSpatialRadii();
+        redrawEdges();
+        renderDetail(s, state.detailTab || 'detail');
+      } catch (e) { console.error(e); }
+    });
+  }
+
+  // 수동 추가
+  const addBtn = document.getElementById('spatialTargetAddBtn');
+  const addSel = document.getElementById('spatialTargetAddSel');
+  if (addBtn && addSel) {
+    addBtn.addEventListener('click', async () => {
+      const tid = addSel.value;
+      if (!tid) return;
+      if (!s.meta) s.meta = {};
+      const cur = Array.isArray(s.meta.trajectory_targets) ? s.meta.trajectory_targets.slice() : [];
+      if (cur.includes(tid)) return;
+      cur.push(tid);
+      try {
+        const sb = await getSupabaseClient();
+        const newMeta = Object.assign({}, s.meta, { trajectory_targets: cur });
+        const { error } = await sb.from('scenes').update({ meta: newMeta }).eq('id', s.id);
+        if (error) { console.error('[spatialPin] manual add failed', error); return; }
+        s.meta = newMeta;
+        redrawEdges();
+        renderDetail(s, state.detailTab || 'detail');
+      } catch (e) { console.error(e); }
+    });
+  }
+
+  // 수동 삭제
+  document.querySelectorAll('.spatialTargetDel').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const tid = btn.dataset.tid;
+      if (!tid || !s.meta) return;
+      const cur = Array.isArray(s.meta.trajectory_targets) ? s.meta.trajectory_targets.filter(t => t !== tid) : [];
+      try {
+        const sb = await getSupabaseClient();
+        const newMeta = Object.assign({}, s.meta, { trajectory_targets: cur });
+        const { error } = await sb.from('scenes').update({ meta: newMeta }).eq('id', s.id);
+        if (error) { console.error('[spatialPin] manual del failed', error); return; }
+        s.meta = newMeta;
+        redrawEdges();
+        renderDetail(s, state.detailTab || 'detail');
+      } catch (e) { console.error(e); }
+    });
+  });
+}
+
 function bindDetailFormEvents(s) {
+  // 핀 모드 패널 이벤트 (spatialMode 일 때만 DOM에 존재)
+  if (state.spatialMode) bindSpatialPanelEvents(s);
+
   // 저장 버튼
   const saveBtn = document.getElementById('sceneSaveBtn');
   if (saveBtn) saveBtn.addEventListener('click', () => saveScene(s));
@@ -1712,6 +1851,61 @@ async function saveScene(s) {
   }
 }
 
+// 핀 모드 패널 — 우측 디테일 상단에 표시.
+// 반경 슬라이더 (저장하면 자동 targets 재계산) + 현재 targets 목록 + 수동 추가/삭제.
+function renderSpatialPanel(s) {
+  const radius = (s.meta && Number(s.meta.trajectory_radius)) || SPATIAL_DEFAULT_RADIUS;
+  const targets = (s.meta && Array.isArray(s.meta.trajectory_targets)) ? s.meta.trajectory_targets : [];
+  const pin = s.meta && s.meta.trajectory_pin;
+  const idToScene = {};
+  state.scenes.forEach(sc => { idToScene[sc.id] = sc; });
+
+  const targetsHtml = targets.length === 0
+    ? '<div style="font-size:0.72rem;color:#5c544a;padding:6px 0;font-style:italic;line-height:1.5;">비어있음 — 게임은 이 씬 다음에 <b>안 본 씬 전부</b>를 후보로 봄 (기본 동작 fallback). 핀 기반 분기를 쓰려면 노드를 드래그해서 다른 씬을 원 안에 넣거나 아래에서 수동 추가.</div>'
+    : targets.map(tid => {
+        const sc = idToScene[tid];
+        const code = sc ? (sc.meta?.scene_code || `씬 ${sc.scene_order}`) : `(삭제됨 ${tid.slice(0,6)}…)`;
+        return `<div style="display:flex;align-items:center;gap:6px;padding:3px 6px;background:rgba(20,20,28,0.5);border:1px solid rgba(196,168,130,0.1);border-radius:2px;margin-bottom:3px;font-size:0.75rem;">
+          <span style="flex:1;color:#c0b8a4;">${escapeHtml(code)}</span>
+          <button class="spatialTargetDel" data-tid="${tid}" style="padding:2px 6px;font-size:0.65rem;background:transparent;border:1px solid rgba(184,85,64,0.3);color:#b85540;cursor:pointer;border-radius:2px;">✕</button>
+        </div>`;
+      }).join('');
+
+  // 수동 추가용 셀렉트 — 아직 targets에 없는 씬만
+  const addableScenes = state.scenes.filter(sc => sc.id !== s.id && !targets.includes(sc.id));
+  const addOptions = addableScenes.map(sc => {
+    const code = sc.meta?.scene_code || `씬 ${sc.scene_order}`;
+    return `<option value="${sc.id}">${escapeHtml(code)}</option>`;
+  }).join('');
+
+  return `
+    <div style="background:rgba(196,168,130,0.04);border:1px solid rgba(196,168,130,0.2);border-radius:3px;padding:10px 12px;margin-bottom:14px;">
+      <div style="font-size:0.7rem;color:#c4a882;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">📍 핀 모드 (이 씬에서 다음에 갈 수 있는 씬)</div>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:0.72rem;color:#7c7466;width:60px;">반경</span>
+        <input type="range" id="spatialRadius" min="60" max="600" step="10" value="${radius}" style="flex:1;" />
+        <span id="spatialRadiusVal" style="font-size:0.72rem;color:#c0b8a4;width:40px;text-align:right;">${radius}</span>
+      </div>
+      <div style="font-size:0.65rem;color:#5c544a;margin-bottom:10px;line-height:1.4;">
+        반경 안에 들어온 씬이 자동으로 아래 목록에 추가됨. ${pin ? `핀 위치: (${Math.round(pin.x)}, ${Math.round(pin.y)})` : '아직 위치 저장 안 됨 — 노드를 한 번 드래그하세요.'}
+      </div>
+
+      <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">다음 갈 수 있는 씬 (${targets.length})</div>
+      <div id="spatialTargetsList">${targetsHtml}</div>
+
+      ${addableScenes.length > 0 ? `
+      <div style="display:flex;gap:4px;margin-top:6px;">
+        <select id="spatialTargetAddSel" style="flex:1;padding:3px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-size:0.72rem;border-radius:2px;font-family:inherit;">
+          ${addOptions}
+        </select>
+        <button class="tv-toggle" id="spatialTargetAddBtn" style="padding:3px 10px;font-size:0.7rem;">+ 수동 추가</button>
+      </div>
+      ` : ''}
+    </div>
+  `;
+}
+
 function renderDetailTab(s) {
   const authorBridges = (s.meta && Array.isArray(s.meta.author_bridges)) ? s.meta.author_bridges : [];
   const trajBridges = state.trajectoryBridges.filter(b => b.scene_id === s.id);
@@ -1727,12 +1921,17 @@ function renderDetailTab(s) {
   const roleColor = isResidual ? '#6aa383' : '#c4a882';
   const hasVoid = s.void_info && s.void_info.sceneVoid;
 
+  // 핀 모드 패널 (spatialMode일 때만)
+  const spatialPanel = state.spatialMode ? renderSpatialPanel(s) : '';
+
   return `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:0.72rem;">
       <span style="color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;">역할</span>
       <span style="color:${roleColor};font-weight:500;">${roleLabel}</span>
       ${hasVoid ? '<span style="color:#8a7c6a;border:1px dotted #8a7c6a;padding:0 6px;border-radius:2px;font-size:0.68rem;">void</span>' : ''}
     </div>
+
+    ${spatialPanel}
 
     <label style="${labelStyle}margin-top:0;">본문</label>
     <textarea id="sceneText" rows="6" style="${inputStyle}resize:vertical;line-height:1.5;">${escapeHtml(s.text || '')}</textarea>
@@ -2108,6 +2307,116 @@ function redrawEdges() {
       fill: '#6aa383', 'font-size': 10, 'font-family': 'Noto Serif KR'
     }, `🔗 ${pair.motif}`));
   });
+}
+
+// ─── 핀 모드: 영향권 원 + 자동 trajectory_targets ───────────
+function redrawSpatialRadii() {
+  if (!_renderCtx) return;
+  const { g, visibleScenes, radiusLayer } = _renderCtx;
+  if (!radiusLayer) {
+    console.warn('[spatialPin] radiusLayer 없음 — renderGraph 시 spatialMode 가 false 였을 가능성');
+    return;
+  }
+  while (radiusLayer.firstChild) radiusLayer.removeChild(radiusLayer.firstChild);
+
+  let drawn = 0;
+  visibleScenes.forEach(s => {
+    const n = g.node(s.id);
+    if (!n) return;
+    const r = (s.meta && Number(s.meta.trajectory_radius)) || SPATIAL_DEFAULT_RADIUS;
+    const isSelected = state.selectedSceneId === s.id;
+    // 색·두께 강화 — 어두운 배경(#07070b)에서 명확히 보이게
+    const circle = svgEl('circle', {
+      cx: n.x, cy: n.y, r,
+      fill: isSelected ? 'rgba(196,168,130,0.10)' : 'rgba(196,168,130,0.04)',
+      stroke: isSelected ? '#c4a882' : 'rgba(196,168,130,0.7)',
+      'stroke-width': isSelected ? 2.5 : 1.5,
+      'stroke-dasharray': '6,4',
+      'vector-effect': 'non-scaling-stroke', // viewBox 줌과 무관하게 화면 픽셀 단위 두께
+      'data-radius-for': s.id,
+      'pointer-events': 'none',
+    });
+    radiusLayer.appendChild(circle);
+    drawn++;
+  });
+  console.log(`[spatialPin] redrawSpatialRadii: ${drawn}개 원 그림. spatialMode=${state.spatialMode}`);
+}
+
+// 두 노드 간 중심 거리.
+function nodeDistance(n1, n2) {
+  const dx = n1.x - n2.x, dy = n1.y - n2.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// scene.meta.trajectory_radius 안에 들어온 다른 씬들을 자동으로 targets 로 계산.
+// 반환: 새 targets 배열 (씬 ID 목록).
+function computeAutoTargets(scene, visibleScenes, g) {
+  const n = g.node(scene.id);
+  if (!n) return [];
+  const r = (scene.meta && Number(scene.meta.trajectory_radius)) || SPATIAL_DEFAULT_RADIUS;
+  const targets = [];
+  visibleScenes.forEach(other => {
+    if (other.id === scene.id) return;
+    const on = g.node(other.id);
+    if (!on) return;
+    if (nodeDistance(n, on) <= r) targets.push(other.id);
+  });
+  return targets;
+}
+
+// 핀 위치 + targets 자동 갱신을 DB 저장. 드래그 mouseup 시 호출.
+async function saveSpatialPin(sceneId, x, y) {
+  if (!_renderCtx) return;
+  try {
+    const sb = await getSupabaseClient();
+    const sc = state.scenes.find(s => s.id === sceneId);
+    if (!sc) return;
+    const newMeta = Object.assign({}, sc.meta || {}, {
+      trajectory_pin: { x, y },
+    });
+    // 자동 targets 갱신 — 이 씬을 기점으로 한 후보 집합
+    const autoTargets = computeAutoTargets(sc, _renderCtx.visibleScenes, _renderCtx.g);
+    newMeta.trajectory_targets = autoTargets;
+
+    const { error } = await sb.from('scenes').update({ meta: newMeta }).eq('id', sceneId);
+    if (error) { console.error('[spatialPin] save failed', error); return; }
+    sc.meta = newMeta;
+    console.log('[Admin] spatial pin + targets saved', sceneId, { x, y, targets: autoTargets.length });
+    // edge 다시 그리기 (이 씬이 가리키는 후보들 화살표)
+    redrawEdges();
+    redrawSpatialRadii();
+    // 우측 패널 갱신 (선택된 씬이면)
+    if (state.selectedSceneId === sceneId) {
+      renderDetail(sc, state.detailTab || 'detail');
+    }
+  } catch (e) {
+    console.error('[spatialPin] error', e);
+  }
+}
+
+// 다른 씬의 원 안에 들어왔는지에 따라, 그 씬들의 targets 도 갱신해야 함.
+// 즉 드래그된 씬이 다른 씬 A 의 영향권 안으로 들어가면 A 의 targets 에 추가됨.
+async function recomputeTargetsForOthers(movedSceneId) {
+  if (!_renderCtx) return;
+  const { visibleScenes, g } = _renderCtx;
+  const moved = state.scenes.find(s => s.id === movedSceneId);
+  if (!moved) return;
+  const sb = await getSupabaseClient();
+  for (const other of visibleScenes) {
+    if (other.id === movedSceneId) continue;
+    const newTargets = computeAutoTargets(other, visibleScenes, g);
+    const oldTargets = (other.meta && other.meta.trajectory_targets) || [];
+    // 변경 있으면만 저장
+    const changed = newTargets.length !== oldTargets.length ||
+      newTargets.some(t => !oldTargets.includes(t)) ||
+      oldTargets.some(t => !newTargets.includes(t));
+    if (!changed) continue;
+    const newMeta = Object.assign({}, other.meta || {}, { trajectory_targets: newTargets });
+    const { error } = await sb.from('scenes').update({ meta: newMeta }).eq('id', other.id);
+    if (error) { console.error('[spatialPin] cascade save failed', other.id, error); continue; }
+    other.meta = newMeta;
+  }
+  redrawEdges();
 }
 
 // ─── Cable 경로 (ComfyUI 대롱대롱) ──────────────────────────

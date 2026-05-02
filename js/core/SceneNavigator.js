@@ -49,9 +49,21 @@ export class SceneNavigator {
 
         const effectivePlayerState = playerState || { userEmotion, visitedScenes };
 
-        const beforeExclusion = scenes
+        // Spatial trajectory: if current scene declares an explicit candidate set
+        // (meta.trajectory_targets — array of scene IDs), restrict candidates to it.
+        // Empty/absent = legacy behavior (all unvisited scenes are candidates).
+        const currentScene = scenes[currentSceneIndex];
+        const targetIds = currentScene?.meta?.trajectory_targets;
+        const hasSpatial = Array.isArray(targetIds) && targetIds.length > 0;
+
+        const baseCandidates = scenes
             .map((_, i) => i)
             .filter(i => i !== currentSceneIndex && !visitedScenes.includes(i));
+
+        const beforeExclusion = hasSpatial
+            ? baseCandidates.filter(i => targetIds.includes(scenes[i]?.id))
+            : baseCandidates;
+
         const unvisited = beforeExclusion.filter(i => !isExcluded(scenes[i], effectivePlayerState));
 
         if (typeof window !== 'undefined' && window.__TEM_DEBUG_EXCLUSIONS__) {

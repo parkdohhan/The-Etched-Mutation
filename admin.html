@@ -422,6 +422,7 @@
                     <button class="tv-toggle" id="tvToggleAll">전체 표시</button>
                     <button class="tv-toggle" id="tvToggleBridges">모든 브릿지</button>
                     <button class="tv-toggle" id="tvToggleTerrain" title="감정 좌표 (V/A) 기반 배치">감정 지형 모드</button>
+                    <button class="tv-toggle" id="tvToggleSpatial" title="핀 모드 — 씬마다 원을 그리고, 원 안에 들어온 씬이 자동으로 '다음 갈 수 있는 씬'(meta.trajectory_targets)에 추가됨. 게임 분기가 이 데이터를 따라감.">핀 모드</button>
                     <button class="tv-toggle" id="tvResetLayout" title="드래그로 옮긴 위치 초기화">레이아웃 초기화</button>
                 </div>
 
@@ -540,7 +541,7 @@
         #section-canvas .tv-emo-meta { font-size: 0.7rem; color: #7c7466; }
         #section-canvas .tv-toggle-row { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
         #section-canvas .tv-toggle { padding: 4px 8px; font-size: 0.7rem; border: 1px solid rgba(196,168,130,0.2); background: transparent; color: #c4a882; cursor: pointer; border-radius: 2px; }
-        #section-canvas .tv-toggle.active { background: rgba(196,168,130,0.15); }
+        #section-canvas .tv-toggle.active { background: rgba(196,168,130,0.35); border-color: #c4a882; color: #1a1610; font-weight: 600; }
         #section-canvas .tv-status { padding: 12px; font-size: 0.75rem; color: #7c7466; text-align: center; }
         #section-canvas .tv-detail-empty { color: #5c544a; font-size: 0.85rem; padding: 40px 0; text-align: center; }
         #section-canvas .scene-node { cursor: pointer; }
