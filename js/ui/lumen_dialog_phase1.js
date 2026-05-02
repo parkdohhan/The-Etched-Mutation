@@ -259,20 +259,28 @@
   }
 
   // ─── claude-scene 호출 (emotion 추출) ───
-  // TODO V2-4: 실제 함수 시그니처 검증. 현 가정: invoke('claude-scene', { body:{ type, text } })
-  //            → { data: { emotion: {fear:0.3, ...} }, error }.
-  async function _analyzeEmotion(supabase, text) {
+  // claude-scene index.ts:226 — body { type:'emotion_analysis', emotion, reason, anchorEmotions }
+  //   → { generatedEmotion, analysis:{ base:{...}, detailed, intensity, confidence }, reason_analysis }
+  // Phase 1: 자유대화 텍스트 → body.emotion (통째). reason 분리 X. anchor_emotions 씬 배열 전달.
+  async function _analyzeEmotion(supabase, text, anchorEmotions) {
     if (!supabase || !text) return null;
     try {
       var resp = await supabase.functions.invoke('claude-scene', {
-        body: { type: 'emotion_analysis', text: text },
+        body: {
+          type: 'emotion_analysis',
+          emotion: text,
+          reason: '',
+          anchorEmotions: anchorEmotions || null,
+        },
       });
       if (resp && resp.error) {
         console.warn('[ldp] claude-scene error', resp.error);
         return null;
       }
       var data = resp && resp.data;
-      if (data && data.emotion && typeof data.emotion === 'object') return data.emotion;
+      if (data && data.analysis && data.analysis.base && typeof data.analysis.base === 'object') {
+        return data.analysis.base;
+      }
       return null;
     } catch (err) {
       console.warn('[ldp] claude-scene exception', err);
@@ -362,7 +370,7 @@
       if (_isEndPhrase(playerInput, DEFAULTS.endPhrases)) break;
 
       // emotion 분석 + alignment
-      var userEmo = await _analyzeEmotion(input.supabase, playerInput);
+      var userEmo = await _analyzeEmotion(input.supabase, playerInput, sceneData.anchor_emotions);
       var alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
       lastAlignment = alignment;
 
