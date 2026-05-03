@@ -3,42 +3,45 @@
  *
  * SCOPE: docs/LUMEN_DEMO_SCOPE-260427.md §4 작업 4
  *
- * 유령 응결 좌표(memories.ghost_condensation_points)에 "잔상 텍스트" sprite 를 배치.
- * 기존 echo word floater (js/ui/strataView.js:981~) 의 FP 버전.
+ * 유령 응결 좌표(memories.ghost_condensation_points)에 "잔상 텍스트" sprite 배치.
  *
- * - 좌표: 점의 (x, z) 를 월드 좌표로 그대로 사용. 높이는 runtime.gH(x,z) + baseY.
- * - 단어: memory 전역 echo_words 풀에서 점 index 로 결정적으로 픽(같은 점 → 같은 단어).
- * - 연출: strata 의 chromatic(red/cyan) + white glow 패턴 재사용 + 약한 bob.
- * - 가시성: 기본 매우 흐림(baseOpacity 0.15). 가까워질수록 진해짐. 응시로 "seen" 된
- *   인덱스는 추가 boost(옵션).
- *
- * 원본 함수 한 글자도 수정 안 함. renderer.render wrap 만 사용 (visual_effects 와 같은 체인).
+ * 게이팅 모델 (admin 사용설명서:277 의 의도 복원):
+ *   - 점별 활성 여부 = getPollutionAt(x, z) >= pollution_threshold
+ *   - pollutionAt 은 외부 책임 — "장면 응답"이 누적된 오염도(0~1).
+ *     단순 구현: plays.alignment 평균 역수.
+ *     공간 분포 구현(V3): admin 설계서대로 anchor (v, a) 가우시안 누적 + (x, z) sample.
  *
  * 사용:
  *   LumenSceneGhosts.attach(rt, {
- *     getGhostPoints: function () { return _fpGhostPoints; },
- *     getEchoWords:   function () { return (game.scenes||[]).flatMap(s => s.echo_words||[]); },
- *     isSeenIndex:    function (i) { return _fpSeenGhosts.has(i); }
+ *     getGhostPoints:  () => game.ghost_condensation_points,
+ *     getEchoWords:    () => echo_words_pool,
+ *     getPollutionAt:  (x, z) => 0~1,           // 응답 누적 오염도 sample
+ *     isSeenIndex:     (i) => _seen.has(i)      // optional gaze boost
  *   });
+ *
+ *   // 응답 추가 후 즉시 반영:
+ *   runtime.__lumenSceneGhosts.refresh();
  */
 (function (global) {
   'use strict';
 
   var DEFAULTS = {
-    getGhostPoints: null,      // () => [{x, z, pollution_threshold?}]
-    getEchoWords:   null,      // () => string[]  (memory-wide pool)
+    getGhostPoints:   null,    // () => [{x, z, pollution_threshold?}]
+    getEchoWords:     null,    // () => string[]  (memory-wide pool)
+    getPollutionAt:   null,    // (x, z) => 0~1   응답 누적 오염도 sample
     getTerrainHeight: null,    // (x, z) => y   (fallback: runtime.gH)
-    isSeenIndex: null,         // (i) => bool  (optional gaze boost)
-    baseY:        2.8,         // 지면 위 기본 높이
-    proximityNear: 6,          // 거리 이하면 최대 opacity
-    proximityFar:  26,         // 거리 이상이면 baseOpacity
-    baseOpacity:  0.14,
-    nearOpacity:  0.72,
-    seenBoost:    0.18,
-    bobAmp:       0.22,        // m
-    bobFreq:      0.32,        // Hz
-    colorCss:     'rgba(232,216,252,0.92)', // pale violet — 유령 톤
-    fontPx:       44
+    isSeenIndex:      null,    // (i) => bool   (optional gaze boost)
+    baseY:            2.8,
+    proximityNear:    6,
+    proximityFar:     26,
+    baseOpacity:      0.14,
+    nearOpacity:      0.72,
+    seenBoost:        0.18,
+    bobAmp:           0.22,
+    bobFreq:          0.32,
+    colorCss:         'rgba(232,216,252,0.92)',
+    fontPx:           44,
+    revealFadeSec:    1.6      // 발현 페이드인
   };
 
   function attach(runtime, opts) {
@@ -54,8 +57,18 @@
       return null;
     }
 
-    var _sprites = [];  // { sprite, idx, baseY, phase, word }
+    var _sprites = [];     // { sprite, idx, baseY, phase, word, threshold, active, revealedAt }
     var _builtAt = 0;
+
+    function _samplePollution(x, z) {
+      if (typeof opts.getPollutionAt !== 'function') return 0;
+      try {
+        var v = Number(opts.getPollutionAt(x, z));
+        if (!isFinite(v)) return 0;
+        if (v < 0) return 0; if (v > 1) return 1;
+        return v;
+      } catch (_) { return 0; }
+    }
 
     function _gH(x, z) {
       if (typeof opts.getTerrainHeight === 'function') {
@@ -159,7 +172,8 @@
         console.log('[lumen-scene-ghosts] build skipped — pts=' + pts.length + ' words=' + words.length);
         return 0;
       }
-      var added = 0;
+      var nowSec = performance.now() / 1000;
+      var added = 0, activeCount = 0;
       for (var i = 0; i < pts.length; i++) {
         var p = pts[i];
         if (!p || typeof p.x !== 'number' || typeof p.z !== 'number') continue;
@@ -168,31 +182,71 @@
         var y = _gH(p.x, p.z) + opts.baseY;
         var sprite = _makeTextSprite(word);
         sprite.position.set(p.x, y, p.z);
+        sprite._lumenMat.opacity = 0; // 게이팅 결과 따라 채워짐
         scene.add(sprite);
-        _sprites.push({ sprite: sprite, idx: i, baseY: y, phase: i * 1.37, word: word });
+        var thr = (typeof p.pollution_threshold === 'number') ? p.pollution_threshold : 0.3;
+        if (thr < 0) thr = 0; if (thr > 1) thr = 1;
+        var samp = _samplePollution(p.x, p.z);
+        var active = samp >= thr;
+        if (active) activeCount++;
+        _sprites.push({
+          sprite: sprite, idx: i, baseY: y, phase: i * 1.37, word: word,
+          threshold: thr, active: active,
+          revealedAt: active ? nowSec : 0
+        });
         added++;
       }
       _builtAt = performance.now();
-      console.log('[lumen-scene-ghosts] built sprites=' + added + ' / pts=' + pts.length + ' / words=' + words.length);
+      console.log('[lumen-scene-ghosts] built sprites=' + added + ' / pts=' + pts.length +
+                  ' / active=' + activeCount + ' / words=' + words.length);
       return added;
     }
 
-    // Render wrap — positions + opacity per frame
+    // 외부에서 응답 추가/변경 후 호출 — pollField 다시 빌드 + 점별 active 재평가.
+    // 새로 active 가 된 점은 revealedAt 갱신 → 페이드인 시작.
+    function refresh() {
+      if (!_sprites.length) return 0;
+      var nowSec = performance.now() / 1000;
+      var newlyRevealed = 0;
+      for (var i = 0; i < _sprites.length; i++) {
+        var rec = _sprites[i];
+        var samp = _samplePollution(rec.sprite.position.x, rec.sprite.position.z);
+        var nowActive = samp >= rec.threshold;
+        if (nowActive && !rec.active) {
+          rec.active = true;
+          rec.revealedAt = nowSec;
+          newlyRevealed++;
+        } else if (!nowActive && rec.active) {
+          // 보통 응답 누적이라 active → inactive 는 안 일어나지만 안전 처리
+          rec.active = false;
+        }
+      }
+      if (newlyRevealed > 0) {
+        console.log('[lumen-scene-ghosts] refresh — newly revealed=' + newlyRevealed);
+      }
+      return newlyRevealed;
+    }
+
+    // Render wrap — bob + active 게이팅 + 거리 opacity + 페이드인
     var _origRender = renderer.render.bind(renderer);
     renderer.render = function lumenSceneGhostsRender(sceneArg, cameraArg) {
       try {
         var fpActive = runtime.isFirstPerson && runtime.isFirstPerson();
         if (_sprites.length) {
           if (fpActive && cameraArg) {
-            var tSec = (performance.now() - _builtAt) / 1000;
+            var nowMs = performance.now();
+            var nowSec = nowMs / 1000;
+            var tSec = (nowMs - _builtAt) / 1000;
             var cam = cameraArg;
             var pNear = opts.proximityNear, pFar = opts.proximityFar;
             var pRange = Math.max(0.01, pFar - pNear);
+            var fadeSec = Math.max(0.01, opts.revealFadeSec);
             for (var i = 0; i < _sprites.length; i++) {
               var rec = _sprites[i];
               var sp = rec.sprite;
               var bob = Math.sin(tSec * 2 * Math.PI * opts.bobFreq + rec.phase) * opts.bobAmp;
               sp.position.y = rec.baseY + bob;
+              if (!rec.active) { sp._lumenMat.opacity = 0; continue; }
               var dx = sp.position.x - cam.position.x;
               var dz = sp.position.z - cam.position.z;
               var d = Math.sqrt(dx * dx + dz * dz);
@@ -202,7 +256,8 @@
                 try { if (opts.isSeenIndex(rec.idx)) op += opts.seenBoost; } catch (_) {}
               }
               if (op > 1) op = 1;
-              sp._lumenMat.opacity = op;
+              var fade = Math.min(1, (nowSec - rec.revealedAt) / fadeSec);
+              sp._lumenMat.opacity = op * fade;
             }
           } else {
             // FP 밖 — 전부 숨김 (sprite 는 유지, exit 이벤트가 clear)
@@ -214,7 +269,6 @@
     };
 
     // Lifecycle hook via adapter (enter: build / exit: clear).
-    // adapter 가 없거나 이미 FP 라면 즉시 build.
     var adapter = runtime.__lumenAdapter;
     if (adapter && typeof adapter.on === 'function') {
       adapter.on('enter', function () { build(); });
@@ -228,12 +282,21 @@
       build: build,
       clear: clear,
       rebuild: function () { return build(); },
+      refresh: refresh,
       setOptions: function (patch) { Object.assign(opts, patch || {}); },
       getOptions: function () { return Object.assign({}, opts); },
       getDebug: function () {
         return {
           sprites: _sprites.length,
-          samples: _sprites.slice(0, 3).map(function (r) { return { idx: r.idx, word: r.word, x: r.sprite.position.x, z: r.sprite.position.z }; }),
+          active: _sprites.filter(function (r) { return r.active; }).length,
+          samples: _sprites.slice(0, 5).map(function (r) {
+            return {
+              idx: r.idx, word: r.word, active: r.active, thr: r.threshold,
+              x: +r.sprite.position.x.toFixed(1),
+              z: +r.sprite.position.z.toFixed(1),
+              poll: +_samplePollution(r.sprite.position.x, r.sprite.position.z).toFixed(3)
+            };
+          }),
           words: _collectWords().slice(0, 10),
           builtAt: _builtAt
         };

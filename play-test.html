@@ -544,8 +544,8 @@
       stats: (align, count) => `Avg alignment: ${(align * 100).toFixed(1)}% · Core visits: ${count}`,
       mapStatus: (cores, pollution) => `Explored: ${cores} cores | Pollution: ${pollution}%`,
       exploreTerrain: 'Explore the terrain',
-      terrainHintAlign: () => 'tap terrain to return to the map',
-      analysisDone: 'Analysis complete. Tap the terrain above to return to the map.',
+      terrainHintAlign: () => 'tap the wave to return to the map',
+      analysisDone: 'Analysis complete. Tap the wave above to return to the map.',
       anotherMePost: {
         weak:   '…something shifted, but only slightly.',
         medium: 'The shape of it changed when you touched it.',
@@ -611,8 +611,8 @@
       stats: (align, count) => `평균 정렬도: ${(align * 100).toFixed(1)}% · 코어 방문 ${count}회`,
       mapStatus: (cores, pollution) => `탐색 코어: ${cores} · 오염도: ${pollution}%`,
       exploreTerrain: '지형 살펴보기',
-      terrainHintAlign: () => '지도로 돌아가려면 지형을 누르세요',
-      analysisDone: '분석이 끝났어. 이제 위의 지형을 눌러 다시 지도로 돌아가봐.',
+      terrainHintAlign: () => '지도로 돌아가려면 파동을 누르세요',
+      analysisDone: '분석이 끝났어. 이제 위의 파동을 눌러 다시 지도로 돌아가봐.',
       anotherMePost: {
         weak:   '…뭔가 조금 달라졌어.',
         medium: '네가 만지니까 모양이 바뀌었어.',
@@ -1669,6 +1669,7 @@
     memories: [],
     scenes: [],
     plays: [],
+    inFlightAlignments: [], // 이번 세션 응답 누적 (ghost refresh 즉시 반영용; plays.push 전에도 반영)
     anchors: buildAnchors(),
     caches: {},
     agg: null,
@@ -1838,6 +1839,17 @@
     console.log('[DEBUG] emotionPosition:', emotionPosition);
     console.log('[DEBUG] alignment:', alignment, 'bucket:', bucket, 'mismatch:', mismatch);
     console.log('[DEBUG] pattern:', pattern);
+
+    // ghost 게이팅 즉시 반영 — 이번 세션 응답을 plays.push 전에 in-flight 로 누적, refresh.
+    if (alignment != null && isFinite(Number(alignment))) {
+      game.inFlightAlignments.push(Number(alignment));
+      try {
+        var rt = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+        if (rt && rt.__lumenSceneGhosts && typeof rt.__lumenSceneGhosts.refresh === 'function') {
+          rt.__lumenSceneGhosts.refresh();
+        }
+      } catch (_) {}
+    }
     console.log('[DEBUG] pin positions:', game.pins.map(p => ({
       id: p.id,
       x: (p.mapX != null ? p.mapX : p.x / 100).toFixed(3),
@@ -2661,7 +2673,7 @@
     const narratorWaveStyle = window.currentNarratorWave;
     const experiencerWaveStyle = window.currentExperiencerWave;
 
-    // FP 모드: 하단 fpAmbientWave 캔버스에 A+B 렌더 (상단 waveTop은 숨김 유지)
+    // FP 모드: 하단 fpAmbientWave 캔버스에 narrator + experiencer 두 파동 렌더.
     const _fpActive = window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive();
     if (_fpActive && window._fpAmbientWave && window._fpAmbientWave.renderDual) {
       window._fpAmbientWave.renderDual(narratorWaveStyle, experiencerWaveStyle, align);
@@ -3234,20 +3246,40 @@
       submitBtn.textContent = T.coreLoading;
 
       // Step 1: 오타·띄어쓰기 교정 (Haiku 4.5). 실패 시 원문 사용.
-      let userText = originalUserText;
-      try {
-        const corrRes = await fetch(SUPABASE_URL + '/functions/v1/claude-scene', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
-          body: JSON.stringify({ type: 'typo_correct', text: originalUserText }),
-        });
-        const corrData = await corrRes.json();
-        if (corrData?.corrected && corrData.changed) {
-          const useOriginal = await showTypoCorrectionToast(originalUserText, corrData.corrected);
-          userText = useOriginal ? originalUserText : corrData.corrected;
+      // 두 가지 가드:
+      // (a) 입력 자체가 무의미한 키 mash → 모델 호출 안 하고 즉시 narrative fallback
+      //     의미 단위 인정 조건: 완성 한글 음절 1자+ OR (3자+ 라틴 + 모음 1자+).
+      //     "sdsd" 처럼 모음 없는 라틴 키 mash 도 gibberish 로 판정.
+      // (b) 모델이 메타 코멘트("해석할 수 없는 자모 조합입니다" 등) 를 뱉으면 → narrative fallback
+      const META_ERROR_RE = /해석할\s*수\s*없|확인해\s*주세요|원문을\s*다시|자모\s*조합|판독\s*불가|올바르지\s*않/;
+      const stripped = (originalUserText || '').replace(/\s/g, '');
+      const hasHangulSyllable = /[가-힣]/.test(stripped);
+      const hasMeaningfulLatin = /[a-zA-Z]{3,}/.test(stripped) && /[aeiouAEIOU]/.test(stripped);
+      const isInputGibberish = !stripped || (!hasHangulSyllable && !hasMeaningfulLatin);
+
+      let userText;
+      if (isInputGibberish) {
+        userText = '...';
+      } else {
+        userText = originalUserText;
+        try {
+          const corrRes = await fetch(SUPABASE_URL + '/functions/v1/claude-scene', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+            body: JSON.stringify({ type: 'typo_correct', text: originalUserText }),
+          });
+          const corrData = await corrRes.json();
+          if (corrData?.corrected && corrData.changed) {
+            if (META_ERROR_RE.test(corrData.corrected)) {
+              userText = '...';
+            } else {
+              const useOriginal = await showTypoCorrectionToast(originalUserText, corrData.corrected);
+              userText = useOriginal ? originalUserText : corrData.corrected;
+            }
+          }
+        } catch (e) {
+          console.warn('typo_correct failed, using original:', e);
         }
-      } catch (e) {
-        console.warn('typo_correct failed, using original:', e);
       }
 
       const fullText = connector ? `${connector} ${userText}` : userText;
@@ -3961,8 +3993,6 @@
         awWrap.style.pointerEvents = 'auto';
         awWrap.style.cursor = 'pointer';
         awWrap.style.zIndex = '2800';
-        // 부드러운 펄스 글로우
-        awWrap.style.boxShadow = '0 -4px 20px rgba(196,168,130,0.15)';
 
         function _onWaveClick() {
           awWrap.removeEventListener('click', _onWaveClick);
@@ -4720,6 +4750,26 @@
                 },
                 isSeenIndex: function (i) {
                   try { return _fpSeenGhosts && _fpSeenGhosts.has(i); } catch (_) { return false; }
+                },
+                // 응답 누적 오염도 — (plays.alignment + 이번 세션 in-flight) 평균 역수 (0~1).
+                // V3 에서 anchor (v,a) 가우시안 기반 공간 분포로 확장.
+                getPollutionAt: function (_x, _z) {
+                  try {
+                    var g = window._temGame || {};
+                    var plays = g.plays || [];
+                    var inflight = g.inFlightAlignments || [];
+                    var n = plays.length + inflight.length;
+                    if (!n) return 0;
+                    var s = 0;
+                    for (var i = 0; i < plays.length; i++) {
+                      var a = (plays[i].alignment != null) ? Number(plays[i].alignment) : 0.5;
+                      s += (1 - a);
+                    }
+                    for (var j = 0; j < inflight.length; j++) {
+                      s += (1 - inflight[j]);
+                    }
+                    return s / n;
+                  } catch (_) { return 0; }
                 }
               });
             }
