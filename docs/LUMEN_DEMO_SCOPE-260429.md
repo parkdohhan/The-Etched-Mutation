@@ -82,7 +82,7 @@ V2.1 코어가 위 세 명제의 *작동 메커니즘* 을 깔음 (§0-A 참조)
 |---|---|---|
 | **[x]** V2-1 DB 모델 — `ghost_variants` 테이블 (memory_id별 유령 drift 변주 + speciation 새 유령 풀) + `plays.dialog_turns`(JSONB 멀티턴 누적) (2026-05-03 완료) | 1 | 4-30 |
 | V2-2 admin 유령 변주 풀 도구 — drift 발화 변주 입력 + speciation 새 유령 시드 입력 (작업 12 메모리 저작기 확장) | 1.5 | 5-1 |
-| V2-3 대화 입력 UI (자유텍스트 멀티턴) + emotion 분석 파이프라인 (`claude-scene` 재활용) | 2 | 5-3 |
+| **[x]** V2-3 대화 입력 UI (자유텍스트 멀티턴) + emotion 분석 파이프라인 (`claude-scene` 재활용) (2026-05-03 코드 완료, 작가 손 검증 미완) | 2 | 5-3 |
 | V2-4 분기 트리거 시스템 — drift vs speciation 임계 (LLM 금지, 결정론적, **유령 단위**) | 1 | 5-5 |
 | V2-5 오염 카메라 연출 — drift 시 즉시 가시화 (작업 1 `buildDoor` 카메라 어휘 일반화 — cell 간 cut 아니라 *공간 안* 카메라/조명/지형 표면 연출) | 1 | 5-6 |
 | V2-6 drift 발화 시스템 — 같은 유령 발화 변주 출력 (작업 2-C `lumen_return_speech.js`(귀환 후 또다른 나 발화 모듈) 일반화) | 1 | 5-7 |
@@ -95,6 +95,8 @@ V2.1 코어가 위 세 명제의 *작동 메커니즘* 을 깔음 (§0-A 참조)
 **완료 기록:**
 - [x] **작업 0 매칭 엔진 prequel** (2026-05-03 완료) — `js/core/SeekerMatchEngine.js`(매칭 엔진 모듈), `test/smoke_v21_match_engine.test.js`(vitest 회귀 가드, 44 케이스), `test/smoke_v21_match_engine.html`(시각 디버그). V2-3·V2-4 의 공통 의존. **(b) 유령 변주 선택** 결정 + 가중치 5종 좌표계 + 점진 도입 정책 박힘. SCOPE 표 외 prequel.
 - [x] **V2-1 DB 모델** (2026-05-03 완료) — `supabase/migrations/20260503000000_v21_ghost_variants_and_dialog_turns.sql`. 운영 DB 적용 완료 (supabase MCP). schema 검증 통과: `ghost_variants` 15 컬럼 + RLS 4 정책 + CHECK 제약 7개 + 인덱스 6개, `plays.dialog_turns` jsonb 배열 컬럼. 명세 잠금 vitest 65 PASS (V2-1 enum 21 케이스 포함, 전체 회귀 342 PASS).
+- [x] **V2-3 멀티턴 fingerprint 파이프라인** (2026-05-03 코드 완료, 작가 손 검증 미완) — `js/core/SeekerFingerprint.js`(순수 로직 모듈) + `js/app/opening.js` 의 `_handleOpeningSubmit` 멀티턴 시퀀스 (3턴 고정, 빈 슬롯 다음 질문 픽, claude-scene emotion_extract 호출, EMA α=0.6 누적, 카테고리 마지막 턴 우선). 회차 끝 `pickTopMemory` + `pickGhostVariant` 호출 → `sessionStorage` 박음. vitest `test/smoke_v21_dialog_pipeline.test.js` 30 PASS (전체 회귀 372 PASS). 작가 손 검증 자리 = dev server 진입 → 오프닝 풀 사이클 1회.
+- [x] **V2-2 admin 콘솔 smoke** (2026-05-03 작성) — `test/smoke_v21_admin_ghost_variants.js` (DevTools 붙여넣기). 모듈 export + DOM 엘리먼트 + 섹션 위치 + 비활성 모드 검증.
 
 ### 콘텐츠 (5-3 ~ 5-10, 코드 동시 진행)
 

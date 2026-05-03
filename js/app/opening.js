@@ -9,6 +9,18 @@ import { NPC_DIALOGUES } from '../npc-dialogues.js';
 import { setLanguage } from '../lib/i18n.js';
 import { buildDoor } from './confession.js';
 import { _pickTopMemoryForLumen } from './archive.js';
+import { pickTopMemory, pickGhostVariant } from '../core/SeekerMatchEngine.js';
+import { getSupabaseClient } from '../lib/supabaseClient.js';
+import {
+  EMOTION_KEYS,
+  QUESTION_BANK,
+  CHIP_EMOTION_SEED,
+  TOTAL_TURNS,
+  initFingerprint as _initFingerprint,
+  mergeTurn as _mergeTurn,
+  extractMotifWords as _extractMotifWords,
+  pickNextQuestion as _pickNextQuestion,
+} from '../core/SeekerFingerprint.js';
 
 // === Module State ===
 let openingSkipped = false;
@@ -97,6 +109,56 @@ const V2_DIALOGUES = {
 };
 
 let _openingLang = 'en';
+
+// ─────────────────────────────────────
+// V2.1 V2-3 멀티턴 fingerprint 파이프라인
+// ─────────────────────────────────────
+// 순수 로직 (DOM·supabase 무관) 은 js/core/SeekerFingerprint.js 에 분리.
+// 본 모듈은 supabase·DOM 의존 wrapper 만 담당.
+
+// 텍스트 → claude-scene emotion_extract → turnResult.
+// 빈 텍스트면 LLM 호출 안 하고 빈 결과 반환 (네트워크 절약).
+async function _analyzeTurnText(rawText, sceneText) {
+  if (!rawText || !rawText.trim()) {
+    return { base: {}, reason_analysis: {}, _raw_text: '' };
+  }
+  const sb = getSupabaseClient();
+  if (!sb) {
+    console.warn('[opening:dialog] supabase client unavailable — skip analysis');
+    return { base: {}, reason_analysis: {}, _raw_text: rawText };
+  }
+  try {
+    const { data, error } = await sb.functions.invoke('claude-scene', {
+      body: { type: 'emotion_extract', user_text: rawText, scene_text: sceneText || '' },
+    });
+    if (error) throw error;
+    return {
+      base: (data && data.base) || {},
+      reason_analysis: (data && data.reason_analysis) || {},
+      _raw_text: rawText,
+    };
+  } catch (e) {
+    console.warn('[opening:dialog] emotion_extract failed:', e);
+    return { base: {}, reason_analysis: {}, _raw_text: rawText };
+  }
+}
+
+// 메모리의 ghost_variants 풀 로드 (V2-1 신규 테이블).
+async function _loadGhostVariantsForMemory(memoryId) {
+  if (!memoryId) return [];
+  const sb = getSupabaseClient();
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from('ghost_variants')
+    .select('*')
+    .eq('memory_id', memoryId)
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.warn('[opening:dialog] ghost_variants load failed:', error);
+    return [];
+  }
+  return data || [];
+}
 
 function _typeLinesSequential(element, lines, charDelay = 55, lineDelay = 900) {
   return new Promise(async (resolve) => {
@@ -262,27 +324,109 @@ function _runLumenDoorSequence() {
   });
 }
 
+// V2-3 헬퍼: NPC 질문 한 줄 타이핑.
+async function _showNpcQuestion(question) {
+  const dialogue = document.getElementById('openingDialogue');
+  if (!dialogue) return;
+  await _typeLinesSequential(dialogue, [question]);
+  await new Promise(r => setTimeout(r, 600));
+}
+
+// V2-3 헬퍼: 입력 필드 활성화 후 Enter / 제출 버튼 / 타임아웃 중 하나로 종료.
+// 빈 입력 + Enter = 빈 문자열 반환 (호출자가 턴 skip 결정).
+function _waitForUserInput(timeoutMs) {
+  const inputPhase = document.getElementById('openingInputPhase');
+  const input = document.getElementById('openingFinderInput');
+  const submitBtn = document.getElementById('openingFinderSubmitBtn');
+  if (!input) return Promise.resolve('');
+
+  input.value = '';
+  if (inputPhase) {
+    inputPhase.style.pointerEvents = 'auto';
+    inputPhase.style.opacity = '1';
+  }
+  setTimeout(() => { try { input.focus(); } catch (_) {} }, 200);
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      input.removeEventListener('keydown', onKeydown);
+      if (submitBtn) submitBtn.removeEventListener('click', onClick);
+      if (inputPhase) {
+        inputPhase.style.pointerEvents = 'none';
+        inputPhase.style.opacity = '0';
+      }
+      resolve(value);
+    };
+    const onKeydown = (e) => { if (e.key === 'Enter') finish((input.value || '').trim()); };
+    const onClick = () => finish((input.value || '').trim());
+    input.addEventListener('keydown', onKeydown);
+    if (submitBtn) submitBtn.addEventListener('click', onClick);
+    if (typeof timeoutMs === 'number' && timeoutMs > 0) {
+      setTimeout(() => finish(''), timeoutMs);
+    }
+  });
+}
+
 async function _handleOpeningSubmit(emotion, text) {
   const inputPhase = document.getElementById('openingInputPhase');
   const dialogue = document.getElementById('openingDialogue');
+  const input = document.getElementById('openingFinderInput');
+  const submitBtn = document.getElementById('openingFinderSubmitBtn');
   const D = V2_DIALOGUES[_openingLang] || V2_DIALOGUES.en;
 
-  // 1) 입력 페이드아웃
+  // 턴 1 트리거 핸들러 정리 (이후 _waitForUserInput 의 addEventListener 만 활성).
+  if (input) input.onkeydown = null;
+  if (submitBtn) submitBtn.onclick = null;
+
+  // 1) 턴 1 진행 동안 입력 페이드아웃
   if (inputPhase) {
     inputPhase.style.pointerEvents = 'none';
     inputPhase.style.opacity = '0';
   }
-  await new Promise(r => setTimeout(r, 800));
+  await new Promise(r => setTimeout(r, 600));
 
-  // 2) 전환 대사 타이핑
+  // ─── V2-3 멀티턴 fingerprint 누적 ───
+  const fp = _initFingerprint();
+
+  // 턴 1: 칩 또는 텍스트
+  const turn1Text = (text || '').trim();
+  if (emotion && CHIP_EMOTION_SEED[emotion]) {
+    fp._turnsRaw.push({ turn: 1, raw_text: `(chip:${emotion})`, ts: new Date().toISOString() });
+    _mergeTurn(fp, { base: CHIP_EMOTION_SEED[emotion], reason_analysis: {}, _raw_text: '' }, 1.0);
+  } else if (turn1Text) {
+    const turn1Result = await _analyzeTurnText(turn1Text, '');
+    fp._turnsRaw.push({ turn: 1, raw_text: turn1Text, ts: new Date().toISOString() });
+    _mergeTurn(fp, turn1Result);
+  }
+
+  // 턴 2 + 3: NPC 질문 → 입력 → 분석. 빈 입력은 그 턴 skip.
+  for (let turnNum = 2; turnNum <= TOTAL_TURNS; turnNum++) {
+    await _fadeOutDialogue(dialogue, 600);
+    const question = _pickNextQuestion(fp, _openingLang);
+    await _showNpcQuestion(question);
+    const turnText = await _waitForUserInput(60000);
+    if (turnText) {
+      const turnResult = await _analyzeTurnText(turnText, question);
+      fp._turnsRaw.push({ turn: turnNum, raw_text: turnText, ts: new Date().toISOString() });
+      _mergeTurn(fp, turnResult);
+    }
+  }
+
+  // 2) 전환 대사
+  await new Promise(r => setTimeout(r, 400));
+  await _fadeOutDialogue(dialogue, 700);
   await _typeLinesSequential(dialogue, [D.transition]);
   await new Promise(r => setTimeout(r, 1000));
   await _fadeOutDialogue(dialogue, 900);
 
-  // 3) lang · 선행 입력 저장
+  // 3) lang · 선행 입력 · fingerprint 저장
   try {
     sessionStorage.setItem('tem_lang', _openingLang);
     sessionStorage.setItem('tem_opening_prefilled', emotion ? `chip:${emotion}` : `text:${text || ''}`);
+    sessionStorage.setItem('tem_seeker_fp', JSON.stringify(fp));
   } catch (_) {}
   try { setLanguage(_openingLang); } catch (_) {}
 
@@ -301,8 +445,39 @@ async function _handleOpeningSubmit(emotion, text) {
   // 5) 파동 흡수 (freeze + 탈채도)
   await _collapseOpeningWave(1800);
 
-  // 6) top-1 기억 선정
-  const memory = _pickTopMemoryForLumen(emotion, text, _openingLang);
+  // 6) top-1 기억 + 유령 변주 매칭 (V2.1 SeekerMatchEngine)
+  const allMemories = (window.appStore && window.appStore.getState && window.appStore.getState().allMemoriesData) || [];
+  const preferKo = _openingLang === 'ko';
+  const langFiltered = allMemories.filter(m => {
+    const t = (m.title || '') + (m.completed_sentence || '');
+    return /[가-힣]/.test(t) === preferKo;
+  });
+
+  let memory = null;
+  let variant = null;
+  let memDelta = 0;
+  let variantDelta = 0;
+
+  const memMatch = pickTopMemory(fp, langFiltered);
+  if (memMatch && memMatch.memory) {
+    memory = memMatch.memory;
+    memDelta = memMatch.runnerUpDelta;
+    const variants = await _loadGhostVariantsForMemory(memory.id);
+    if (variants.length > 0) {
+      const vMatch = pickGhostVariant(fp, variants);
+      if (vMatch && vMatch.variant) {
+        variant = vMatch.variant;
+        variantDelta = vMatch.runnerUpDelta;
+      }
+    }
+  }
+
+  // V2-3 매칭 풀 비었거나 점수 0 → V1 fallback (키워드 + emotion vec).
+  if (!memory) {
+    console.warn('[opening:dialog] SeekerMatchEngine 매칭 실패 — V1 _pickTopMemoryForLumen fallback');
+    memory = _pickTopMemoryForLumen(emotion, text, _openingLang);
+  }
+
   if (!memory) {
     console.warn('[opening:lumen] 매칭 가능한 기억이 없음 — 메인 메뉴로 폴백');
     openingSkipped = true;
@@ -311,14 +486,22 @@ async function _handleOpeningSubmit(emotion, text) {
     return;
   }
 
+  try {
+    sessionStorage.setItem('tem_picked_memory_id', String(memory.id || ''));
+    sessionStorage.setItem('tem_picked_memory_delta', String(memDelta));
+    sessionStorage.setItem('tem_ghost_variant_id', variant ? String(variant.id) : '');
+    sessionStorage.setItem('tem_ghost_variant_delta', String(variantDelta));
+  } catch (_) {}
+  console.log('[opening:dialog] matched', { memoryId: memory.id, memDelta, variantId: variant?.id, variantDelta, fp });
+
   // 7) ASCII 문 열림 + 빨려들어감
   await _runLumenDoorSequence();
 
-  // 8) wave anim 정지 (overlay가 이미 전면 블랙이므로 시각 전환은 매끄러움)
+  // 8) wave anim 정지
   openingSkipped = true;
   if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
 
-  // 9) play-test로 직접 이동 → initFpPlay → rt.enterFirstPerson()
+  // 9) play-test 점프
   const isLocal = location.protocol === 'file:' ||
     ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) ||
     location.hostname.endsWith('.local');
