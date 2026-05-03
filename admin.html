@@ -116,6 +116,11 @@
     </div>
 
     <div class="editor-screen" id="editorScreen">
+        <!-- V2-2 부속 사용성 — 긴 폼 스크롤 시 화면 오른쪽 floating action panel -->
+        <div class="editor-floating-actions">
+            <button type="button" class="floating-save-btn" onclick="saveMemory()" title="저장 (현재 메모리 전체)">저장</button>
+            <button type="button" class="floating-back-btn" onclick="cancelEdit()" title="대시보드로 돌아가기">대시보드</button>
+        </div>
         <div class="container">
             <div class="editor-screen-bar">
                 <div class="editor-tabs">
@@ -591,6 +596,54 @@
         }
         .admin-nav .nav-tab:hover { color: #c4a882; background: rgba(196,168,130,0.06); }
         .admin-nav .nav-tab.active { color: #c4a882; background: rgba(196,168,130,0.1); }
+
+        /* V2-2 부속 사용성 — 긴 폼 스크롤 시 화면 오른쪽 floating action panel */
+        .editor-floating-actions {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            display: none;
+            flex-direction: column;
+            gap: 0.6rem;
+            z-index: 100;
+        }
+        #editorScreen.active .editor-floating-actions {
+            display: flex;
+        }
+        .editor-floating-actions button {
+            min-width: 130px;
+            padding: 0.7rem 1.1rem;
+            font-family: 'Noto Serif KR', serif;
+            font-size: 0.85rem;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s;
+            letter-spacing: 0.04em;
+        }
+        .editor-floating-actions button:hover {
+            transform: translateX(-2px);
+        }
+        .editor-floating-actions .floating-save-btn {
+            background: rgba(196,168,130,0.85);
+            color: #1a1610;
+            border: 1px solid rgba(196,168,130,0.85);
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .editor-floating-actions .floating-save-btn:hover {
+            background: #c4a882;
+        }
+        .editor-floating-actions .floating-back-btn {
+            background: rgba(15,15,22,0.95);
+            color: #c4a882;
+            border: 1px solid rgba(196,168,130,0.4);
+            backdrop-filter: blur(4px);
+        }
+        .editor-floating-actions .floating-back-btn:hover {
+            border-color: #c4a882;
+            background: rgba(196,168,130,0.08);
+        }
     </style>
 
     <script>
