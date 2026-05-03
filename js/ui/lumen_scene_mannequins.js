@@ -25,7 +25,21 @@
     getScenePins: null,                       // () => Array<{wx, wz, accessible, visited, ...}>
     fbxBaseUrl: '/test/ybot.fbx',
     // 2026-04-26: Standing Up 클립 제거(징그러움). ybot 내장 Take 001(차분한 standing) 만 사용.
-    fbxClipUrls: [],
+    // 2026-05-03: Sitting Idle / Standing Idle 추가 (mixamo). poseRandomize 로 핀별 결정적 픽 → 자세 다양화.
+    fbxClipUrls: [
+      '/test/Sitting Idle.fbx',
+      '/test/Standing Idle.fbx'
+    ],
+    // 마네킨마다 ybot 내장 + extras 중 결정적 RNG 로 다른 자세 픽. false 면 anims[0] 단일.
+    poseRandomize: true,
+    // ybot.fbx 자체 클립(Take 001 / mixamo.com)은 풀에서 제외 — extras 와 톤이 거의 같아 통계적으로
+    // sitting 비중이 묻힘. base 모델은 메시·스켈레톤 용도로만 쓰고, 자세는 fbxClipUrls 만으로 결정.
+    excludeBaseClips: true,
+    // 2026-05-03: sitting 클립일 때만 머리 본 위쪽 회전 — "앉아서 고개 들고 보는" 자세.
+    //   mixer.update 직후 head bone quaternion 에 multiply 로 덮어 클립 자세 + 고개 든 모양.
+    //   부호: +값 = 위 보기(고개 들기). 반대로 보이면 음수.
+    headTiltSittingDeg: 18,
+    headTiltStandingDeg: 0,
     // 비-accessible 핀까지 마네킨 세우면 1.8m 사람이 너무 많음 — 원래 가시 핀만.
     accessibleOnly: true,
     // 머티리얼
@@ -201,17 +215,27 @@
       });
     }
 
+    function _nameFromUrl(url) {
+      var base = (url || '').split('/').pop().split('?')[0].split('#')[0];
+      try { base = decodeURIComponent(base); } catch (_) {}
+      return base.replace(/\.(fbx|glb|gltf)$/i, '');
+    }
+
     function _loadSource() {
       if (_source) return Promise.resolve(_source);
       if (_loading) return _loading;
       _loading = _loadFbx(opts.fbxBaseUrl).then(function (base) {
+        // extras push 전 base 클립 개수 기록 — _spawnAt 의 excludeBaseClips 분기에서 base/extras 경계 식별
+        base._lumenBaseClipCount = (base.animations || []).length;
         if (!opts.fbxClipUrls || !opts.fbxClipUrls.length) return base;
         return Promise.all(opts.fbxClipUrls.map(_loadFbx)).then(function (extras) {
           extras.forEach(function (e, i) {
             if (e.animations && e.animations[0]) {
               var clip = e.animations[0];
-              clip.name = 'extra_' + i;
+              clip.name = _nameFromUrl(opts.fbxClipUrls[i]) || ('extra_' + i);
               base.animations.push(clip);
+            } else {
+              console.warn('[lumen-scene-mannequins] extras['+i+'] 클립 0개 —', opts.fbxClipUrls[i]);
             }
           });
           return base;
@@ -303,6 +327,11 @@
       if (!_source) return null;
       var root = THREE.SkeletonUtils.clone(_source.scene);
       _stripDetails(root);
+      // Mixamo 본 이름은 'mixamorigHead' 또는 'mixamorig:Head' — 'head'로 끝나는 첫 본만 (HeadTop_End 제외)
+      var headBone = null;
+      root.traverse(function (o) {
+        if (!headBone && o.isBone && /head$/i.test(o.name)) headBone = o;
+      });
 
       var groundY = (typeof runtime.gH === 'function') ? runtime.gH(pin.wx, pin.wz) : 0;
       root.position.set(pin.wx, groundY + opts.yOffset, pin.wz);
@@ -314,16 +343,36 @@
 
       var mixer = new THREE.AnimationMixer(root);
       var anims = _source.animations || [];
-      if (anims.length) {
-        // ybot.fbx 에 임베드된 첫 클립("mixamo.com" = idle 모션) 사용.
-        // extras 를 의도적으로 우선시키려면 opts.preferLastClip 켜기.
-        var clip = opts.preferLastClip ? anims[anims.length - 1] : anims[0];
+      // 풀 결정: excludeBaseClips 면 extras(앞쪽 baseN개 이후) 만, 아니면 전체.
+      var baseN = _source._lumenBaseClipCount || 0;
+      var pool;
+      if (opts.excludeBaseClips && anims.length > baseN) {
+        pool = anims.slice(baseN);
+      } else {
+        pool = anims;
+      }
+      var pickedClipName = null;
+      if (pool.length) {
+        // poseRandomize 면 핀별 결정적 RNG 로 다양화 — 같은 메모리·같은 핀은 항상 같은 자세.
+        var clipIdx;
+        if (opts.preferLastClip) {
+          clipIdx = pool.length - 1;
+        } else if (opts.poseRandomize && pool.length > 1) {
+          var poseMemId = (typeof opts.getMemoryId === 'function') ? opts.getMemoryId() : '';
+          var posePinId = (pin && pin.id) || ('idx' + idx);
+          var poseRng = _mulberry32(_hashString('pose|' + poseMemId + '|' + posePinId));
+          clipIdx = Math.floor(poseRng() * pool.length);
+        } else {
+          clipIdx = 0;
+        }
+        var clip = pool[clipIdx];
         var a = mixer.clipAction(clip);
         if (opts.desyncTime) {
           a.time = Math.random() * (clip.duration || 1);
           a.setEffectiveTimeScale(0.85 + Math.random() * 0.3);
         }
         a.play();
+        pickedClipName = clip.name || ('clip#' + clipIdx);
       }
 
       // ─── awareness: monologue sprite + gaze 상태 ───
@@ -345,7 +394,9 @@
         monologueSprite: monologueSprite,
         monologueLine: monologueLine,
         monologuePhase: idx * 1.37,
-        groundY: groundY
+        groundY: groundY,
+        pickedClipName: pickedClipName,           // 분포 진단용
+        headBone: headBone                        // headTilt 적용 대상
       };
     }
 
@@ -389,14 +440,22 @@
         if (g) _ghosts.push(g);
       });
       if (opts.hidePinVisuals) _hidePinVisuals(pins);
+      // 자세 분포 — sitting/standing 비중이 의도대로 나오는지 확인용
+      var poseDist = {};
+      _ghosts.forEach(function (g) {
+        var k = g.pickedClipName || '(none)';
+        poseDist[k] = (poseDist[k] || 0) + 1;
+      });
       console.log('[lumen-scene-mannequins] spawned:', _ghosts.length, '/', pins.length,
-        opts.hidePinVisuals ? '(pins hidden)' : '(pins visible)');
+        opts.hidePinVisuals ? '(pins hidden)' : '(pins visible)', '· poses:', poseDist);
     }
 
     // renderer.render wrap — 가장 바깥. mixer + awareness (proximity opacity + gaze LERP).
     var _origRender = renderer.render.bind(renderer);
     var _t0 = performance.now();
     var _camRight = new THREE.Vector3();      // 매 프레임 재사용 (alloc 절약)
+    var _headTiltAxisX = new THREE.Vector3(1, 0, 0);
+    var _headTiltQuatTmp = new THREE.Quaternion();
     renderer.render = function (s, c) {
       var dt = _clock.getDelta();
       var fpActive = runtime.isFirstPerson && runtime.isFirstPerson();
@@ -417,6 +476,23 @@
       for (var i = 0; i < _ghosts.length; i++) {
         var g = _ghosts[i];
         if (g.mixer) g.mixer.update(dt * opts.speed);
+
+        // mixer 갱신 직후 head bone 위쪽 회전 — sitting 클립일 때 "고개 들고 보기".
+        // mixer 가 매 프레임 head quat 을 클립 값으로 덮어쓰므로 이 multiply 도 매 프레임 필요(누적 X).
+        if (g.headBone) {
+          var tilt = 0;
+          if (g.pickedClipName && /sitting/i.test(g.pickedClipName)) {
+            tilt = opts.headTiltSittingDeg || 0;
+          } else {
+            tilt = opts.headTiltStandingDeg || 0;
+          }
+          if (tilt) {
+            // 부호: +값 = 위 보기. Mixamo head bone 은 +X 회전이 위 보기가 되도록 양수.
+            //   거꾸로 보이면 옵션을 음수로 입력.
+            _headTiltQuatTmp.setFromAxisAngle(_headTiltAxisX, tilt * Math.PI / 180);
+            g.headBone.quaternion.multiply(_headTiltQuatTmp);
+          }
+        }
 
         if (!opts.awareness || !camPos) continue;
 
@@ -546,6 +622,7 @@
           mannequins: _ghosts.length,
           seenCount: _ghosts.filter(function (g) { return g.seen; }).length,
           monologues: _ghosts.map(function (g) { return { idx: g.pinIndex, line: g.monologueLine, seen: g.seen }; }),
+          poses: _ghosts.map(function (g) { return { idx: g.pinIndex, clip: g.pickedClipName }; }),
           opts: Object.assign({}, opts, { getScenePins: '<fn>', getPresets: '<fn>', getMemoryId: '<fn>', ghostTypeForPin: '<fn>' })
         };
       },
