@@ -106,7 +106,7 @@
 - **accessiblePinIds**: 매 턴 궤적 엔진이 계산하는 접근 가능 씬 집합
 - **trajectory_bridge**: 공명 도달자의 궤적 자동 변환물
 
-*(기존 CLAUDE-260414.md 표를 논문 Table 1로 정리)*
+*(`CLAUDE.md` §4 용어 사전 표를 논문 Table 1로 정리)*
 
 ### 3.3 감정 궤적 기반 Scene Navigation
 - 참조: [docs/SceneNavigator_설계_v1-260329.md](../SceneNavigator_설계_v1-260329.md)

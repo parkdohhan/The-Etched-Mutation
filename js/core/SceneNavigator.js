@@ -1,7 +1,7 @@
 // js/core/SceneNavigator.js
 // Emotion-space geometry-based scene navigation.
 //
-// Core rule (from CLAUDE-260329.md):
+// Core rule (from CLAUDE.md §6.5 #1):
 //   Pattern changes GEOMETRY (center shift), not just radius.
 //   Each transition_pattern biases the search center differently.
 
