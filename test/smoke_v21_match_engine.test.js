@@ -348,6 +348,9 @@ describe('DEFAULT_WEIGHTS', () => {
   });
 });
 
+// V2-4 분기 트리거 (classifyBranch) 는 본 파일에서 분리 — js/core/GhostBranchTrigger.js +
+// test/smoke_v21_branch_trigger.test.js (decideBranch / buildSpeciationRow) 로 이전.
+
 // ─────────────────────────────────────────────
 // V2-1 마이그레이션 컬럼 명세 잠금
 // supabase/migrations/20260503000000_v21_ghost_variants_and_dialog_turns.sql

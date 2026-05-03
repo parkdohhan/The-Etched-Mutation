@@ -10,6 +10,7 @@ import { setLanguage } from '../lib/i18n.js';
 import { buildDoor } from './confession.js';
 import { _pickTopMemoryForLumen } from './archive.js';
 import { pickTopMemory, pickGhostVariant } from '../core/SeekerMatchEngine.js';
+import { decideBranch } from '../core/GhostBranchTrigger.js';
 import { getSupabaseClient } from '../lib/supabaseClient.js';
 import {
   EMOTION_KEYS,
@@ -457,12 +458,13 @@ async function _handleOpeningSubmit(emotion, text) {
   let variant = null;
   let memDelta = 0;
   let variantDelta = 0;
+  let variants = [];   // V2-4 decideBranch 풀 입력 (memory 못 찾으면 빈 배열 → empty_pool)
 
   const memMatch = pickTopMemory(fp, langFiltered);
   if (memMatch && memMatch.memory) {
     memory = memMatch.memory;
     memDelta = memMatch.runnerUpDelta;
-    const variants = await _loadGhostVariantsForMemory(memory.id);
+    variants = await _loadGhostVariantsForMemory(memory.id);
     if (variants.length > 0) {
       const vMatch = pickGhostVariant(fp, variants);
       if (vMatch && vMatch.variant) {
@@ -486,13 +488,30 @@ async function _handleOpeningSubmit(emotion, text) {
     return;
   }
 
+  // V2-4 분기 분류 — drift / speciation (LLM 금지, 결정론적, 유령 단위).
+  // INSERT 경로 (speciation 시 새 변주 시드 운영 DB 박기) 는 V2-4 후반 단계에서 추가.
+  // 현재는 분류만 + sessionStorage 기록 + 콘솔 로그.
+  const branch = decideBranch(fp, variants);
+
   try {
     sessionStorage.setItem('tem_picked_memory_id', String(memory.id || ''));
     sessionStorage.setItem('tem_picked_memory_delta', String(memDelta));
     sessionStorage.setItem('tem_ghost_variant_id', variant ? String(variant.id) : '');
     sessionStorage.setItem('tem_ghost_variant_delta', String(variantDelta));
+    sessionStorage.setItem('tem_branch_kind', branch.kind);
+    sessionStorage.setItem('tem_branch_reason', branch.reason);
+    sessionStorage.setItem('tem_branch_top_score', String(branch.topScore));
+    sessionStorage.setItem('tem_branch_runner_up_delta', String(branch.runnerUpDelta));
   } catch (_) {}
-  console.log('[opening:dialog] matched', { memoryId: memory.id, memDelta, variantId: variant?.id, variantDelta, fp });
+  console.log('[opening:dialog] matched', {
+    memoryId: memory.id,
+    memDelta,
+    variantId: variant?.id,
+    variantDelta,
+    branchKind: branch.kind,
+    branchReason: branch.reason,
+    fp,
+  });
 
   // 7) ASCII 문 열림 + 빨려들어감
   await _runLumenDoorSequence();
