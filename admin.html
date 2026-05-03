@@ -290,6 +290,16 @@
                     </div>
                 </div>
 
+                <!-- 유령 변주 풀 (V2.1 SCOPE §4 V2-2) -->
+                <div class="editor-section" id="ghostVariantsSection">
+                    <h3 class="editor-section-title">유령 변주 풀 <span style="color:var(--accent-memory);font-size:0.78rem;">(V2.1)</span></h3>
+                    <small id="ghostVariantsHint" style="display:block;font-size:0.72rem;color:var(--text-muted);margin-bottom:0.6rem;">
+                        같은 메모리 안의 유령 인격 카드. drift = 같은 유령 발화 변주. speciation = 다른 path 가 만든 새 유령 시드. SeekerMatchEngine 매칭 입력.
+                    </small>
+                    <div id="ghostVariantsList" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
+                    <button id="addGhostVariantBtn" type="button" style="margin-top:0.6rem;background:none;border:1px dashed rgba(196,168,130,.5);color:var(--accent-memory);padding:0.5rem 1rem;border-radius:3px;cursor:pointer;font-size:0.85rem;width:100%;">+ 유령 변주 추가</button>
+                </div>
+
                 <!-- 사운드 매핑 -->
                 <div class="editor-section">
                     <h3 class="editor-section-title">사운드 매핑</h3>
@@ -634,6 +644,7 @@
     <script src="js/ui/strataView.js"></script>
     <script src="js/ui/lumen_admin_scene_terrain_preview.js"></script>
     <script type="module" src="js/admin.js"></script>
+    <script type="module" src="js/admin/ghost_variants_editor.js"></script>
     <script type="module" src="js/admin-trajectory.js"></script>
     <script src="js/contamination.js"></script>
 

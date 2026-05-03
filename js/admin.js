@@ -305,6 +305,7 @@ function addNewMemory() {
     updateContStageSum();
     // 작업 12-3: 응결점 초기화
     if (typeof loadGhostPoints === 'function') loadGhostPoints(null);
+    if (typeof loadGhostVariants === 'function') loadGhostVariants(null);
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
     switchTab('edit');
@@ -395,6 +396,7 @@ function editMemory(index) {
     updateContStageSum();
     // 작업 12-3: 응결점 로드
     if (typeof loadGhostPoints === 'function') loadGhostPoints(memory);
+    if (typeof loadGhostVariants === 'function') loadGhostVariants(memory.id);
  // sound mapping load
     var soundMap = memory.sound_map || {};
     document.getElementById('soundMapOpening').value = soundMap.opening || '';

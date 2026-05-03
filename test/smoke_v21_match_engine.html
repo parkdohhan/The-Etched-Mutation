@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>V2.1 SeekerMatchEngine smoke</title>
+<style>
+  body { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; background:#0a0a0c; color:#c4a882; padding:20px; line-height:1.5; }
+  h2 { color:#e6c894; font-weight:normal; letter-spacing:1px; }
+  .pass { color:#6c9; }
+  .fail { color:#e76; font-weight:bold; }
+  .section { color:#888; margin-top:14px; display:block; }
+  pre#out { white-space:pre-wrap; margin:0; }
+  .summary { padding:14px 18px; border:1px solid rgba(196,168,130,0.35); margin-top:24px; font-size:1.1em; }
+  .summary.ok { border-color:#6c9; color:#6c9; }
+  .summary.bad { border-color:#e76; color:#e76; }
+  .hint { color:#666; font-size:0.9em; margin-top:8px; }
+</style>
+</head>
+<body>
+<h2>V2.1 SeekerMatchEngine smoke</h2>
+<div class="hint">실행: 본 파일을 직접 브라우저로 열거나 (file://), <code>python -m http.server</code> 등 정적 서버 후 열기. 모듈 import 가 file:// 에서 막히면 정적 서버 사용.</div>
+<pre id="out"></pre>
+<div class="summary" id="summary">실행 중...</div>
+
+<script type="module">
+  import {
+    DEFAULT_WEIGHTS,
+    emotionCosine,
+    motifOverlap,
+    scoreCard,
+    pickTopMemory,
+    pickGhostVariant,
+    memoryToCard,
+    ghostVariantToCard,
+  } from '../js/core/SeekerMatchEngine.js';
+
+  const out = document.getElementById('out');
+  const summary = document.getElementById('summary');
+  let pass = 0, fail = 0;
+  const failed = [];
+
+  function esc(s) { return String(s).replace(/[<>&]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c])); }
+  function ok(name, cond, detail) {
+    const cls = cond ? 'pass' : 'fail';
+    const mark = cond ? '✓' : '✗';
+    const tail = (!cond && detail) ? '\n    ' + esc(detail) : '';
+    out.innerHTML += `<span class="${cls}">${mark} ${esc(name)}${tail}</span>\n`;
+    if (cond) { console.log(mark, name); pass++; }
+    else { console.error(mark, name, detail || ''); fail++; failed.push(name); }
+  }
+  function section(label) {
+    out.innerHTML += `<span class="section">--- ${esc(label)} ---</span>\n`;
+  }
+  const approx = (a, b, eps = 0.001) => Math.abs(a - b) < eps;
+
+  // ============================================================
+  // 1. emotionCosine
+  // ============================================================
+  section('emotionCosine');
+  ok('동일 벡터 → 1', approx(emotionCosine({ sadness: 1 }, { sadness: 1 }), 1));
+  ok('직교 (sadness vs joy) → 0', approx(emotionCosine({ sadness: 1 }, { joy: 1 }), 0));
+  ok('정렬된 2D (sadness 0.8 longing 0.6) vs (sadness 0.7 longing 0.5) > 0.99',
+     emotionCosine({ sadness: 0.8, longing: 0.6 }, { sadness: 0.7, longing: 0.5 }) > 0.99);
+  ok('null seeker → 0', emotionCosine(null, { sadness: 1 }) === 0);
+  ok('빈 객체 → 0', emotionCosine({}, { sadness: 1 }) === 0);
+  ok('한쪽만 키 추가 (sadness 1) vs (sadness 1, joy 1) ≈ 1/sqrt(2)',
+     approx(emotionCosine({ sadness: 1 }, { sadness: 1, joy: 1 }), 1 / Math.sqrt(2)));
+  ok('대칭성 cosine(a,b) === cosine(b,a)',
+     approx(emotionCosine({ a: 0.7, b: 0.3 }, { a: 0.4, b: 0.9 }),
+            emotionCosine({ a: 0.4, b: 0.9 }, { a: 0.7, b: 0.3 })));
+
+  // ============================================================
+  // 2. motifOverlap
+  // ============================================================
+  section('motifOverlap');
+  ok('"엄마" tag in seeker words → hit (1/2)',
+     motifOverlap(['엄마', '겨울'], ['엄마', '문턱']) === 0.5);
+  ok('agglutinative — "엄마가" word substring 의 "엄마" tag → hit',
+     motifOverlap(['엄마가'], ['엄마']) === 1);
+  ok('빈 seeker words → 0', motifOverlap([], ['엄마']) === 0);
+  ok('빈 target tags → 0', motifOverlap(['엄마'], []) === 0);
+  ok('대소문자 무관', motifOverlap(['MOM'], ['mom']) === 1);
+  ok('빈 문자열 tag 안전', motifOverlap(['엄마'], ['']) === 0);
+
+  // ============================================================
+  // 3. scoreCard — 미나 시나리오
+  // ============================================================
+  section('scoreCard — Mina 시나리오');
+  const seekerMina = {
+    emotion_vec: { longing: 0.88, sadness: 0.72, guilt: 0.61 },
+    attribution: 'self_blame',
+    core_fear: 'abandonment',
+    modality: 'olfactory',
+    role: 'actor',
+    motif_words: ['엄마', '김치찌개', '잘했어야'],
+  };
+  const tMomLeft = {
+    emotion_vec: { longing: 0.85, sadness: 0.70, guilt: 0.55 },
+    attribution: 'self_blame', core_fear: 'abandonment', modality: 'olfactory',
+    motif_tags: ['엄마', '겨울', '문턱'],
+  };
+  const tAngerFriend = {
+    emotion_vec: { anger: 0.85, sadness: 0.30 },
+    attribution: 'other_blame', core_fear: 'rejection',
+    motif_tags: ['친구', '말다툼'],
+  };
+  const tGrandma = {
+    emotion_vec: { longing: 0.40, sadness: 0.20, joy: 0.30 },
+    attribution: null, core_fear: null, modality: 'olfactory',
+    motif_tags: ['할머니', '부엌', '김치찌개'],
+  };
+
+  const sMomLeft = scoreCard(seekerMina, tMomLeft);
+  const sAngerFriend = scoreCard(seekerMina, tAngerFriend);
+  const sGrandma = scoreCard(seekerMina, tGrandma);
+
+  ok('Mina × MomLeft 점수 > AngerFriend',
+     sMomLeft.score > sAngerFriend.score,
+     `MomLeft=${sMomLeft.score.toFixed(3)} AngerFriend=${sAngerFriend.score.toFixed(3)}`);
+  ok('Mina × MomLeft 점수 > Grandma',
+     sMomLeft.score > sGrandma.score,
+     `MomLeft=${sMomLeft.score.toFixed(3)} Grandma=${sGrandma.score.toFixed(3)}`);
+  ok('breakdown 5필드 모두 존재',
+     ['emotion','attribution','coreFear','motif','modality'].every(k => k in sMomLeft.breakdown));
+  ok('null seeker → 0', scoreCard(null, tMomLeft).score === 0);
+  ok('null target → 0', scoreCard(seekerMina, null).score === 0);
+
+  // ============================================================
+  // 4. 가중치 변경 — α 100배 → 감정 cosine 만 결정
+  // ============================================================
+  section('가중치 변경');
+  const wEmotionDominant = { ...DEFAULT_WEIGHTS, alpha: 100 };
+  const sDom = scoreCard(seekerMina, tMomLeft, wEmotionDominant);
+  ok('α=100 → 감정 cosine 부분이 점수 압도', sDom.score > 90);
+  const wMotifDominant = { alpha: 0, beta: 0, gamma: 0, delta: 100, epsilon: 0 };
+  const sMotif = scoreCard(seekerMina, tMomLeft, wMotifDominant);
+  ok('motif 만 100배 → motif overlap 비율 × 100 점수',
+     approx(sMotif.score, 100 * sMomLeft.breakdown.motif));
+  ok('모든 가중치 0 → 점수 0', scoreCard(seekerMina, tMomLeft, { alpha:0, beta:0, gamma:0, delta:0, epsilon:0 }).score === 0);
+
+  // ============================================================
+  // 5. categoricalMatch — unknown / none / null 처리
+  // ============================================================
+  section('categoricalMatch (간접 검증 via scoreCard)');
+  const sUnknownAttr = scoreCard(
+    { ...seekerMina, attribution: 'unknown' },
+    { ...tMomLeft, attribution: 'unknown' },
+  );
+  const sKnownAttr = scoreCard(seekerMina, tMomLeft);
+  ok('attribution=unknown 양쪽 → 보너스 0',
+     sKnownAttr.breakdown.attribution === 1 && sUnknownAttr.breakdown.attribution === 0);
+  const sNoneFear = scoreCard(
+    { ...seekerMina, core_fear: 'none' },
+    { ...tMomLeft, core_fear: 'none' },
+  );
+  ok('core_fear=none 양쪽 → 보너스 0', sNoneFear.breakdown.coreFear === 0);
+  const sNullAttr = scoreCard({ ...seekerMina, attribution: null }, tMomLeft);
+  ok('attribution null → 보너스 0', sNullAttr.breakdown.attribution === 0);
+
+  // ============================================================
+  // 6. pickTopMemory
+  // ============================================================
+  section('pickTopMemory');
+  const memories = [
+    { id: 'mom-left',     original_vector: tMomLeft.emotion_vec,     attribution: 'self_blame',  core_fear: 'abandonment', modality: 'olfactory', motif_tags: tMomLeft.motif_tags },
+    { id: 'anger-friend', original_vector: tAngerFriend.emotion_vec, attribution: 'other_blame', core_fear: 'rejection',                          motif_tags: tAngerFriend.motif_tags },
+    { id: 'grandma',      original_vector: tGrandma.emotion_vec,                                                            modality: 'olfactory', motif_tags: tGrandma.motif_tags },
+  ];
+  const top = pickTopMemory(seekerMina, memories);
+  ok('1등 = mom-left', top && top.memory.id === 'mom-left',
+     top ? `picked=${top.memory.id} score=${top.score.toFixed(3)} delta=${top.runnerUpDelta.toFixed(3)}` : 'null');
+  ok('runnerUpDelta > 0 (1등이 단독)', top && top.runnerUpDelta > 0);
+  ok('breakdown 보존', top && typeof top.breakdown.emotion === 'number');
+  ok('빈 풀 → null', pickTopMemory(seekerMina, []) === null);
+  ok('점수 모두 0 인 풀 → null',
+     pickTopMemory({ emotion_vec: {}, motif_words: [] }, [{ id: 'x', original_vector: {} }]) === null);
+
+  // 결정론
+  const top2 = pickTopMemory(seekerMina, memories);
+  ok('결정론 — 같은 입력 두 번 → 같은 결과',
+     top.memory.id === top2.memory.id && approx(top.score, top2.score));
+
+  // ============================================================
+  // 7. pickGhostVariant — V2.1 핵심 (b)
+  // ============================================================
+  section('pickGhostVariant — 같은 메모리 다른 유령');
+  const ghostVariants = [
+    { id: 'mom-blame',   emotion_vec: { anger: 0.4, longing: 0.3 },                      attribution: 'other_blame', core_fear: 'rejection',     motif_tags: ['엄마'] },
+    { id: 'self-blame',  emotion_vec: { guilt: 0.7, sadness: 0.6, longing: 0.5 },        attribution: 'self_blame',  core_fear: 'abandonment',   motif_tags: ['엄마', '잘했어야'] },
+    { id: 'fate-blank',  emotion_vec: { numbness: 0.6 },                                  attribution: 'fate_blame',  core_fear: 'none',          motif_tags: ['그냥'] },
+  ];
+  const variantMina = pickGhostVariant(seekerMina, ghostVariants);
+  ok('Mina (self_blame + abandonment) → self-blame 변주',
+     variantMina && variantMina.variant.id === 'self-blame',
+     variantMina ? `picked=${variantMina.variant.id} score=${variantMina.score.toFixed(3)} delta=${variantMina.runnerUpDelta.toFixed(3)}` : 'null');
+  ok('runnerUpDelta > 0', variantMina && variantMina.runnerUpDelta > 0);
+
+  // 다른 seeker — 수진 (other_blame, anger 우세)
+  const seekerSujin = {
+    emotion_vec: { anger: 0.85, sadness: 0.40, longing: 0.30 },
+    attribution: 'other_blame',
+    core_fear: 'rejection',
+    modality: 'visual',
+    role: 'actor',
+    motif_words: ['엄마', '미웠어'],
+  };
+  const variantSujin = pickGhostVariant(seekerSujin, ghostVariants);
+  ok('Sujin (other_blame + rejection) → mom-blame 변주 (Mina 와 다름)',
+     variantSujin && variantSujin.variant.id === 'mom-blame',
+     variantSujin ? `picked=${variantSujin.variant.id}` : 'null');
+  ok('두 seeker 가 같은 메모리 풀에서 다른 유령 선택 → V2.1 명제 시연',
+     variantMina.variant.id !== variantSujin.variant.id);
+
+  ok('빈 변주 풀 → null', pickGhostVariant(seekerMina, []) === null);
+
+  // ============================================================
+  // 8. memoryToCard 어댑터
+  // ============================================================
+  section('memoryToCard');
+  const card1 = memoryToCard({ original_vector: { sadness: 1 }, motif_tags: ['엄마'] });
+  ok('original_vector 우선', card1.emotion_vec.sadness === 1);
+  ok('motif_tags 보존', card1.motif_tags.includes('엄마'));
+  const card2 = memoryToCard({
+    scenes: [
+      { original_emotion: { sadness: 0.6 } },
+      { original_emotion: { sadness: 0.4, joy: 0.2 } },
+    ],
+  });
+  ok('scenes 평균 fallback — sadness 0.5',  approx(card2.emotion_vec.sadness, 0.5));
+  ok('scenes 평균 — joy 0.1 (count 2 로 나눔)', approx(card2.emotion_vec.joy, 0.1));
+  const card3 = memoryToCard({
+    scenes: [{ original_emotion: '{"fear":0.7}' }],  // string JSON 도 처리
+  });
+  ok('scenes 평균 — JSON string 파싱', approx(card3.emotion_vec.fear, 0.7));
+  ok('attribution 슬롯 없으면 null', memoryToCard({ original_vector: {} }).attribution === null);
+  ok('null memory 안전', memoryToCard(null).emotion_vec !== undefined);
+  // scene-level motif_tags
+  const card4 = memoryToCard({
+    motif_tags: ['엄마'],
+    scenes: [{ meta: { motif_tags: ['겨울'] } }, { motif_tags: ['문턱'] }],
+  });
+  ok('memory-level + scene-level motif_tags 합집합',
+     ['엄마', '겨울', '문턱'].every(t => card4.motif_tags.includes(t)));
+
+  // ============================================================
+  // 9. ghostVariantToCard 어댑터
+  // ============================================================
+  section('ghostVariantToCard');
+  const gCard = ghostVariantToCard({
+    emotion_vec: { sadness: 0.5 },
+    attribution: 'self_blame',
+    motif_tags: ['엄마'],
+  });
+  ok('emotion_vec 보존', gCard.emotion_vec.sadness === 0.5);
+  ok('attribution 보존', gCard.attribution === 'self_blame');
+  ok('없는 슬롯 null', gCard.core_fear === null);
+  ok('null variant 안전', ghostVariantToCard(null).emotion_vec !== undefined);
+  ok('motif_tags 비배열 → []', ghostVariantToCard({ motif_tags: 'not-array' }).motif_tags.length === 0);
+
+  // ============================================================
+  // 10. self-attach
+  // ============================================================
+  section('self-attach');
+  ok('window.SeekerMatchEngine 노출', !!window.SeekerMatchEngine);
+  ok('window.SeekerMatchEngine.scoreCard 함수',
+     typeof window.SeekerMatchEngine?.scoreCard === 'function');
+
+  // ============================================================
+  // 결과
+  // ============================================================
+  const total = pass + fail;
+  summary.textContent = `PASS: ${pass} / FAIL: ${fail} (총 ${total})`;
+  summary.classList.add(fail === 0 ? 'ok' : 'bad');
+  console.log('=== V2.1 SeekerMatchEngine smoke ===');
+  console.log(`PASS: ${pass} / FAIL: ${fail}`);
+  if (fail > 0) {
+    console.warn('Failed:');
+    failed.forEach(n => console.warn('  -', n));
+  }
+</script>
+</body>
+</html>

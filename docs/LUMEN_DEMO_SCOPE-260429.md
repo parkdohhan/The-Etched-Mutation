@@ -80,7 +80,7 @@ V2.1 코어가 위 세 명제의 *작동 메커니즘* 을 깔음 (§0-A 참조)
 
 | 작업 | 일수 | 권장 시작 |
 |---|---|---|
-| V2-1 DB 모델 — `ghost_variants` 테이블 (memory_id별 유령 drift 변주 + speciation 새 유령 풀) + `plays.dialog_turns`(JSONB 멀티턴 누적) | 1 | 4-30 |
+| **[x]** V2-1 DB 모델 — `ghost_variants` 테이블 (memory_id별 유령 drift 변주 + speciation 새 유령 풀) + `plays.dialog_turns`(JSONB 멀티턴 누적) (2026-05-03 완료) | 1 | 4-30 |
 | V2-2 admin 유령 변주 풀 도구 — drift 발화 변주 입력 + speciation 새 유령 시드 입력 (작업 12 메모리 저작기 확장) | 1.5 | 5-1 |
 | V2-3 대화 입력 UI (자유텍스트 멀티턴) + emotion 분석 파이프라인 (`claude-scene` 재활용) | 2 | 5-3 |
 | V2-4 분기 트리거 시스템 — drift vs speciation 임계 (LLM 금지, 결정론적, **유령 단위**) | 1 | 5-5 |
@@ -91,6 +91,10 @@ V2.1 코어가 위 세 명제의 *작동 메커니즘* 을 깔음 (§0-A 참조)
 | V2-9 통합·smoke 가드 (`test/smoke_v21_*.js`) | 2 | 5-9 |
 
 코드 합계 = 1+1.5+2+1+1+1+0.5+2 = **10일**.
+
+**완료 기록:**
+- [x] **작업 0 매칭 엔진 prequel** (2026-05-03 완료) — `js/core/SeekerMatchEngine.js`(매칭 엔진 모듈), `test/smoke_v21_match_engine.test.js`(vitest 회귀 가드, 44 케이스), `test/smoke_v21_match_engine.html`(시각 디버그). V2-3·V2-4 의 공통 의존. **(b) 유령 변주 선택** 결정 + 가중치 5종 좌표계 + 점진 도입 정책 박힘. SCOPE 표 외 prequel.
+- [x] **V2-1 DB 모델** (2026-05-03 완료) — `supabase/migrations/20260503000000_v21_ghost_variants_and_dialog_turns.sql`. 운영 DB 적용 완료 (supabase MCP). schema 검증 통과: `ghost_variants` 15 컬럼 + RLS 4 정책 + CHECK 제약 7개 + 인덱스 6개, `plays.dialog_turns` jsonb 배열 컬럼. 명세 잠금 vitest 65 PASS (V2-1 enum 21 케이스 포함, 전체 회귀 342 PASS).
 
 ### 콘텐츠 (5-3 ~ 5-10, 코드 동시 진행)
 
@@ -510,3 +514,53 @@ V2.1 작업 시 §15-3 A·B 항목 결정 필요. V2-5 (오염 카메라 연출)
 - [Lumen 통합 작품 형식 v2](../memory/project_lumen_unified_form_v2.md) — V2 통합 form 메모
 - §14 위상적 quilt — quilt 모델의 수학적 정식화 (페어링 모델은 콘텐츠/소셜 층, 둘이 직교).
 - §2 명제 "관객의 파편은 다음 관객의 유령으로 흘러간다" — V2 통합 form 이 메커니즘 부여.
+
+---
+
+## 16. 오염 자산 4 레이어 (V2.1 wiring 참조)
+
+V2.1 코어 체험 = 유령과의 대화에서 오염 누적이 즉시 가시화. 본 §16 은 *지금 코드베이스에 이미 있는 오염 자산*을 enumerate — V2-5 (카메라 연출) / V2-6 (drift 발화) / V2-10 (시드 콘텐츠) 작업이 본 §16 자산을 wire 하는 작업.
+
+### 16-1. 수치 오염 — `ContaminationTracker`(오염 추적기 클래스, [js/core/ContaminationTracker.js](../js/core/ContaminationTracker.js))
+
+**2축 (MVP, 세션 단위 EMA(지수이동평균)):**
+- `cont_drift`(기억이 얼마나 틀어졌나, 0~1) — `alignment`(별이 엔진 정렬도) + mismatch 조합
+- `cont_fixation`(기억이 얼마나 고착됐나, 0~1) — `fixation_level`(반복 강도) + `transition_pattern` 조합
+
+**3축 벡터 (오염벡터 v2, 분자생물학 메타포):**
+- `cont_divergence`(분자시계 포화 — 떠난 정도)
+- `cont_convergence`(면역 압박 수렴 — 모이는 정도)
+- `cont_heterogeneity`(준종 구름 폭 — 변이 분산. Welford 온라인 분산 알고리즘)
+
+**감정 방향 벡터:**
+- `drift_dir_v` / `_a` / `_d` (VAD — Valence·Arousal·Dominance, 정서가·각성·지배)
+
+### 16-2. 텍스트 오염 — 3 단계
+
+**Stage 1·2 (LLM 기반):** [supabase/functions/contaminate-text/](../supabase/functions/contaminate-text/)(엣지 함수) — Claude/Gemini 호출, VAD 방향 프롬프트로 20~40% 변형. 의미 오염.
+
+**Stage 3 (코드 생성, [js/contamination.js](../js/contamination.js)):**
+- `Glitch`(유니코드 블록 ░▒▓█) 35% 확률 대체
+- `Redact`(████ 검열) 단어 40% 확률 소거
+- `Dissolve`(글자 공백화) 55% 확률 소멸
+
+**씬 미리 박힌 변주, [supabase/migrations/20250105000000_add_contamination_stages_to_scenes.sql](../supabase/migrations/20250105000000_add_contamination_stages_to_scenes.sql):**
+- `text_stage_1`(편향적 기울어짐), `text_stage_2`(해석 병기), `text_stage_3`(과잉 완결)
+
+**매핑 룰, [js/app/contaminationPresenter.js](../js/app/contaminationPresenter.js):**
+- `biased_inclination`(편향) medium → stage 1, strong → stage 2
+- `hypercompletion`(과잉완결) medium → stage 2, strong → stage 3
+
+### 16-3. 시각 오염
+
+- [js/ui/lumen_walk_effects.js](../js/ui/lumen_walk_effects.js), [js/ui/lumen_visual_effects.js](../js/ui/lumen_visual_effects.js) — `cont_stage` / `cont_drift` / `cont_fixation` 받아서 카메라·조명·텍스처 왜곡
+- [js/ui/lumen_drift_visualizer.js](../js/ui/lumen_drift_visualizer.js) — 매 턴 변형 펄스 (V2.1 Phase 1, **단발** — V2-5 작업에서 *누적형* 으로 확장 필요)
+
+### 16-4. 청각/내적 오염 — `contaminationMonologue`(기억의 독백, [js/ui/contaminationMonologue.js](../js/ui/contaminationMonologue.js))
+
+기억 자신이 흔들리는 발화. 시스템 메시지 X. 확률 기반:
+- weak 20% / medium 45% / strong 70%
+
+### 16-5. 누적 트리거 시그널
+
+`alignment`(별이 엔진 출력), `emotion_mismatch`(사용자↔기억 감정 불일치), `attribution_mismatch`(귀인 불일치), `target_displacement`(대상 전치), `void_mismatch`(공백 불일치), `transition_pattern`(bridge / fixation / echo_follow / contradiction 등), `emotionHistory`(멀티턴 감정 누적) → EMA α=0.10 (최근 7세션 지배).
