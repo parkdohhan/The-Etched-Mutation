@@ -42,6 +42,8 @@ V2.1 코어 정의:
 
 기존 §0 계약 원칙은 V2.1 작업 범위에 그대로 적용 (스코프 밖 X, 새 아이디어 V3_backlog 이월, 커밋 "scope change" 태그).
 
+**V2.1.1 ego-state turn-taking 차용 (2026-05-04 scope change)** — V2.1 phase1 자유대화 단일턴(5-2 결정) 번복. ego-state therapy 의 turn-taking 메커니즘 *한 자리만* 차용 (임상 프레임/통합 목적/치유 어휘 거부). `maxFreeDialogTurns: 1 → 3`. 매 턴 alignment 단독 분석 + 응답 풀 pick. 근거: 단일턴은 "유령이 듣는 자리 0건" + 작품 명제 §2 마찰점 부재. 마감 5-19 영향 없음 (롤백 1시간). 전문: [docs/유령대화_egostate_차용-260504.md](유령대화_egostate_차용-260504.md). 세션 1 차용 코드 = [js/ui/lumen_dialog_phase1.js](../js/ui/lumen_dialog_phase1.js) **진행 중 (디버깅 자리)** (2026-05-04). 세션 2 V2-10 콘텐츠 가이드 = [docs/유령응답풀_가이드_v1-260504.md](유령응답풀_가이드_v1-260504.md) 완료 — **응답 풀 = ghost_variants 통합** (3결 자동 분류 resonance/vague/dissonance × N 변주 / 유령 정체성, 4 유령 프리셋 = 씬 핀 표시 차원). 핸드오프 표현 "12 슬롯 (4 유령 × HIGH/MID/LOW)" 은 코드 시그니처 (lumen_ghost_response.js) 와 안 맞아 가이드가 정정.
+
 V1 history (LUMEN 단일 공간 데모) = `LUMEN_DEMO_SCOPE-260427.md` 보존. **V2 풀판 history 별도 보존 X** (V2 09시 재계약과 V2.1 좁힘 같은 날·한 커밋에 처리).
 
 §14, §15 본문은 *이론적 근거* 로 남겨둠. §14 위상 quilt = **V3 영역**. §15 두 층 구조 = **V2.1 유령 단위 작동**. §14-7, §15-4 의 "데모와의 관계" 섹션은 V1 history 시점 기록이며 V2.1 에서는 본 §0-A 가 우선.
