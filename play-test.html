@@ -61,6 +61,8 @@
   <script src="js/ui/lumen_return_speech.js"></script>
   <script src="js/ui/lumen_return_events.js"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
+  <!-- V2.1.2 safety: ES module 로 safety.js 로드 → window.LumenSafety 노출 (SlotAbsorber 호출 자리) -->
+  <script type="module" src="js/safety.js"></script>
   <script src="js/ui/lumen_ghost_response.js"></script>
   <script src="js/core/SlotAbsorber.js"></script>
   <script src="js/ui/lumen_drift_visualizer.js"></script>

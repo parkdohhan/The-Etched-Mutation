@@ -135,4 +135,131 @@ export function getRandomDialogue(dialogues) {
   return dialogues[Math.floor(Math.random() * dialogues.length)];
 }
 
+// ────────────────────────────────────────────────────────────────────
+// V2.1.2 슬롯 흡수 안전 필터 (2026-05-05)
+// ────────────────────────────────────────────────────────────────────
+// 슬롯 흡수 자리 = 플레이어 입력이 ghost_variants 새 drift row 로 박혀
+// *다음 플레이어가 만남*. 즉 한 사람의 입력이 다른 사람이 보는 작품 자리.
+// 안 박으면: 욕설/외설 → 톤 깨짐, 인명 ("민수") → 어색, 인젝션 → 시스템 자리.
+//
+// 결정 (a) 고유명사 = 일반화 ('그 사람' 치환). 차단 X — 작품 흐름 보존.
+// 결정 (c) BLOCK_HIGH 어휘 = 흡수 앞단 통째 거부. 위기 응답은 별도 자리.
+// 결정 (d) 일반 호칭 (엄마/아빠/형/누나 등) = 화이트리스트, 일반화 X.
+
+// 일반 호칭 — 인명 일반화 자리에서 통과
+export const ABSORB_GENERIC_KIN = new Set([
+  '엄마', '아빠', '엄니', '아버지', '어머니', '아부지',
+  '할머니', '할아버지', '할매', '할배', '외할머니', '외할아버지',
+  '형', '누나', '언니', '오빠', '동생', '여동생', '남동생',
+  '아들', '딸', '아이', '아내', '남편', '남친', '여친',
+  '친구', '선생님', '선생', '아저씨', '아줌마',
+  '이모', '고모', '삼촌', '외삼촌', '큰아버지', '작은아버지', '큰엄마', '작은엄마',
+  '조카', '사촌',
+]);
+
+// 한국 흔한 성씨 (인명 1차 검출 자리)
+const ABSORB_KOREAN_SURNAMES = [
+  '김', '이', '박', '최', '정', '조', '강', '윤', '장', '임', '한', '오', '서', '신',
+  '권', '황', '안', '송', '류', '홍', '전', '고', '문', '양', '손', '배', '백', '허',
+  '유', '남', '심', '노', '곽', '성', '차', '주', '우', '구', '민', '진', '지', '엄',
+  '채', '원', '천', '방', '공', '함', '변', '염', '여', '추', '도',
+];
+
+// V2.1.2 흡수 BLOCK 어휘 — 욕설/외설/위기/혐오. SlotAbsorber 앞단 거부.
+// detectCrisis 의 BLOCK_HIGH 와 *겹치는 부분 + 흡수 자리 추가*.
+const ABSORB_BLOCK_WORDS = [
+  // 욕설 (한)
+  '시발', '씨발', '씨바', '시바', 'ㅅㅂ', '존나', 'ㅈㄴ', '병신', 'ㅂㅅ', '미친',
+  '개새끼', '개새', '새끼', '좆', '좇', '지랄', '꺼져', '닥쳐', '엿먹', '뒤져', '뒈져',
+  '망할', '쌍놈', '썅', '느금', '니애미', '느그애미', 'ㄴㄱㅁ',
+  // 외설 (한)
+  '섹스', '성교', '자위', '딸쳐', '야동', '음란', '발기',
+  // 위기 (BLOCK_HIGH 일부 + 흡수 자리 추가)
+  '자살', '죽고싶', '뒤지고싶', '자해', '베어', '베고', '뛰어내려', '목매',
+  '강간', '성폭행', '살인', '폭행',
+  // 영
+  'fuck', 'shit', 'bitch', 'asshole', 'cunt', 'dick', 'pussy',
+  'rape', 'kill myself', 'suicide',
+];
+
+// 프롬프트 인젝션 패턴
+const ABSORB_PROMPT_INJECTION_RX = /(ignore\s+(?:previous|all)|disregard\s+(?:previous|all)|<\s*\/?(?:system|user|assistant)\s*>|\[INST\]|\[\/INST\]|prompt\s*[:：]|system\s*[:：])/i;
+
+// 무의미 입력 — 자모만 (ㅋㅋㅋ / ㅎㅎ / ㅠㅠ 등)
+const ABSORB_KO_JAMO_ONLY_RX = /^[ㄱ-ㅎㅏ-ㅣ\s]+$/;
+
+// 같은 글자 4회+ 반복 (스팸 자리)
+const ABSORB_REPEAT_RX = /(.)\1{3,}/;
+
+// 한국 인명 패턴 — 흔한 성씨 + 한글 1~2자 (이름 자리)
+// lookahead 자리 = 조사/공백/구두점/끝 (한글 조사가 따라와도 매치). 한글 *명사 더* 따라오면 매치 X.
+// 일반 호칭 (ABSORB_GENERIC_KIN) 매치 시 통과.
+const ABSORB_KOREAN_NAME_RX = new RegExp(
+  '(?<![가-힣])(' + ABSORB_KOREAN_SURNAMES.join('|') + ')[가-힣]{1,2}?(?=[은는이가을를에서에게와과도만의랑한테께\\s.,!?]|$)',
+  'g'
+);
+
+// 영문 인명 패턴 — 대문자 시작 단어 2개 연속 (Firstname Lastname)
+const ABSORB_EN_NAME_RX = /\b[A-Z][a-z]{1,12}\s+[A-Z][a-z]{1,12}\b/g;
+
+/**
+ * V2.1.2 슬롯 흡수 안전 필터.
+ *
+ * @param {string} inputText — 플레이어 자유텍스트
+ * @returns {{ ok: boolean, reason?: string, sanitized?: string, original?: string }}
+ *   - ok: true → sanitized 사용 (인명 일반화 됐을 수 있음)
+ *   - ok: false → reason 코드 ('empty' / 'too_short' / 'too_long' / 'jamo_only' /
+ *                              'repeat_spam' / 'prompt_injection' / 'block_word')
+ */
+export function safetyForAbsorb(inputText) {
+  if (!inputText || typeof inputText !== 'string') {
+    return { ok: false, reason: 'empty' };
+  }
+  const text = inputText.trim();
+
+  // 길이 자리
+  if (text.length < 1) return { ok: false, reason: 'too_short' };
+  if (text.length > 100) return { ok: false, reason: 'too_long' };
+
+  // 자모만
+  if (ABSORB_KO_JAMO_ONLY_RX.test(text)) return { ok: false, reason: 'jamo_only' };
+
+  // 반복 스팸
+  if (ABSORB_REPEAT_RX.test(text)) return { ok: false, reason: 'repeat_spam' };
+
+  // 프롬프트 인젝션
+  if (ABSORB_PROMPT_INJECTION_RX.test(text)) {
+    return { ok: false, reason: 'prompt_injection' };
+  }
+
+  // BLOCK 어휘 (욕설/외설/위기)
+  const lowerText = text.toLowerCase();
+  for (const word of ABSORB_BLOCK_WORDS) {
+    if (lowerText.indexOf(word.toLowerCase()) !== -1) {
+      return { ok: false, reason: 'block_word', word };
+    }
+  }
+
+  // 인명 일반화 — 결정 (a)
+  let sanitized = text;
+  // 한글 인명 → "그 사람"
+  sanitized = sanitized.replace(ABSORB_KOREAN_NAME_RX, (match) => {
+    if (ABSORB_GENERIC_KIN.has(match)) return match; // 일반 호칭은 통과
+    return '그 사람';
+  });
+  // 영문 인명 → "그 사람"
+  sanitized = sanitized.replace(ABSORB_EN_NAME_RX, '그 사람');
+
+  return { ok: true, sanitized, original: text };
+}
+
+// IIFE 모듈에서 호출하기 위한 window 글로벌 노출 (SlotAbsorber.js 가 사용)
+if (typeof window !== 'undefined') {
+  window.LumenSafety = {
+    safetyForAbsorb,
+    detectCrisis,
+    ABSORB_GENERIC_KIN,
+  };
+}
+
 

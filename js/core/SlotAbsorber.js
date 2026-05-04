@@ -165,6 +165,11 @@
   /**
    * 흡수 시도. 성공 시 슬롯 채워진 응답 + 메타 반환.
    *
+   * V2.1.2 안전 자리 (2026-05-05):
+   *   - window.LumenSafety.safetyForAbsorb 호출 (ES module 로드 자산)
+   *   - 욕설/외설/위기/인젝션/길이/스팸 거부 + 인명 일반화 → sanitized 입력 사용
+   *   - LumenSafety 미로드 시 fallback (자체 BLOCK_NOUNS 만 — 약함)
+   *
    * @param {Object} input
    * @param {string} input.memoryId
    * @param {string} input.sceneId
@@ -182,7 +187,29 @@
     var pool = input.slotPool && input.slotPool[resonance];
     if (!pool || !pool.length) return null;
 
-    var extracted = extractNoun(input.playerInput);
+    // V2.1.2 안전 필터 — 결정 (b) SlotAbsorber 안 자기 책임 자리
+    var rawInput = input.playerInput;
+    var safeInput = rawInput;
+    var safety = global.LumenSafety && global.LumenSafety.safetyForAbsorb;
+    if (typeof safety === 'function') {
+      var result = safety(rawInput);
+      if (!result.ok) {
+        if (typeof console !== 'undefined' && console.log) {
+          console.log('[safety/absorb] blocked:', result.reason,
+            (result.word ? '("' + result.word + '")' : ''),
+            'input:', (rawInput || '').slice(0, 50));
+        }
+        return null;
+      }
+      safeInput = result.sanitized || rawInput;
+      if (safeInput !== rawInput && typeof console !== 'undefined' && console.log) {
+        console.log('[safety/absorb] sanitized:', safeInput.slice(0, 50));
+      }
+    } else if (typeof console !== 'undefined' && console.warn) {
+      console.warn('[safety/absorb] LumenSafety not loaded — fallback (BLOCK_NOUNS only)');
+    }
+
+    var extracted = extractNoun(safeInput);
     if (!extracted) return null;
 
     var seed = 'lsa|' + (input.memoryId || '') + '|' + (input.sceneId || '') + '|' + (input.turn || 0);
