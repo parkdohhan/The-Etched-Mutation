@@ -5135,12 +5135,12 @@
         var scene = scenes.find(function (s) { return s.id === pin.sceneId; });
         if (!scene) return;
 
-        // 2026-05-03: V2.1 Phase 1 진입 가드(_enterLumenDialogPhase1) 와 동기화 —
-        // circular 메모리에서 dialog_choices 없는 scene 은 chat 진입 자체가 막히므로
-        // 핀(octahedron + 수직선) 도, 마네킨도 만들지 않는다. "갈 곳 없는 길잡이" 방지.
+        // 2026-05-04: 가드 완화. dialog_choices 박힌 메모리가 0개라 위 룰이 *모든 메모리* 의
+        // 핀+마네킨을 0으로 차단하고 있었음 — 작품 자리 위반.
+        // chat 진입 차단은 _enterLumenDialogPhase1 자리에서 별도로 처리됨 (이중 가드 X).
+        // 핀과 마네킨은 살림 — 작가가 dialog_choices 박기 전까지 시각적 자리만 보존.
         if (game.terrain_shape === 'circular' && (!scene.meta || !scene.meta.dialog_choices)) {
-          console.log('[FP Play] pin skip — circular 인데 dialog_choices 없음. sceneId:', scene.id);
-          return;
+          console.log('[FP Play] dialog_choices 없음 — 핀·마네킨은 표시, chat 진입은 _enterLumenDialogPhase1 가드가 차단. sceneId:', scene.id);
         }
 
         // 작업 15 옵션 A: scene.meta.stage_position 이 있으면 admin 드래그 좌표를 그대로 씀.
