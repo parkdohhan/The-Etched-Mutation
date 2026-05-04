@@ -16,6 +16,7 @@
 //   11. dialog_phase1 _config.maxFreeDialogTurns === 3 (2026-05-04 ego-state turn-taking 차용)
 //   12. dialog_phase1 _utils.pickAuthored — string passthrough / array seeded / 빈 배열 / null
 //   13. dialog_phase1 _config.sceneCycleWarnMs 자리 박힘 (결정 (d) — 9분 임계 콘솔 경고)
+//   14. _utils.loadAndInjectGhostPools — fallback 5종 + 정상 분류 (2026-05-05)
 //
 // PASS 합계 / FAIL 합계 마지막에 출력.
 
@@ -177,11 +178,146 @@
       DP._config.sceneCycleWarnMs === 540000);
   }
 
-  // ─── 결과 ───
-  console.log('\n=== V2.1 Phase 1 smoke ===');
-  console.log('PASS:', pass, '/ FAIL:', fail);
-  if (fail) {
-    console.warn('Failed tests:');
-    failed.forEach(function (n) { console.warn('  -', n); });
+  // ─── 14. loadAndInjectGhostPools — fallback 5종 + 정상 분류 (2026-05-05) ───
+  // mock supabase chain: from(table).select(cols).eq(col,val).eq(col,val) → Promise<{data, error}>
+  // 5 fallback: missing_deps / select_failed / no_anchor (rows 0) / no_anchor (anchor.vec 빈) / too_few (변주<3)
+  // 정상: anchor 1 + 변주 4 → resonance/vague/dissonance 분류 + setOptions 호출
+  if (DP && DP._utils && typeof DP._utils.loadAndInjectGhostPools === 'function') {
+    var loadFn = DP._utils.loadAndInjectGhostPools;
+
+    function makeMockSupabase(rows, error) {
+      return {
+        from: function () {
+          return {
+            select: function () {
+              return {
+                eq: function () {
+                  return {
+                    eq: function () {
+                      return Promise.resolve({ data: rows, error: error || null });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        },
+      };
+    }
+    function makeMockGhosts() {
+      var lastSet = null;
+      var defaults = {
+        resonancePool: ['그래.'], vaguePool: ['글쎄.'], dissonancePool: ['아니야.'],
+      };
+      return {
+        setOptions: function (o) { lastSet = o; },
+        getOptions: function () { return JSON.parse(JSON.stringify(defaults)); },
+        _peek: function () { return lastSet; },
+      };
+    }
+
+    // 14a. missing_deps — supabase null
+    (async function () {
+      var g14a = makeMockGhosts();
+      var r = await loadFn(null, 'mem-1', g14a);
+      ok('14a loadAndInjectGhostPools — supabase null → missing_deps',
+        r.injected === false && r.reason === 'missing_deps');
+
+      // 14b. missing_deps — memoryId 빈
+      var g14b = makeMockGhosts();
+      var r14b = await loadFn(makeMockSupabase([]), '', g14b);
+      ok('14b — memoryId 빈 → missing_deps',
+        r14b.injected === false && r14b.reason === 'missing_deps');
+
+      // 14c. select_failed — error 발생
+      var g14c = makeMockGhosts();
+      var r14c = await loadFn(makeMockSupabase(null, { message: 'mock err' }), 'mem-c', g14c);
+      ok('14c — SELECT error → select_failed',
+        r14c.injected === false && r14c.reason === 'select_failed');
+      ok('14c — setOptions 호출 X (디폴트 유지)', g14c._peek() === null);
+
+      // 14d. no_anchor — rows 0
+      var g14d = makeMockGhosts();
+      var r14d = await loadFn(makeMockSupabase([]), 'mem-d', g14d);
+      ok('14d — rows 0 → no_anchor',
+        r14d.injected === false && r14d.reason === 'no_anchor');
+
+      // 14e. no_anchor — anchor.emotion_vec 빈
+      var g14e = makeMockGhosts();
+      var r14e = await loadFn(makeMockSupabase([
+        { id: 'a1', kind: 'drift', is_seed: true, parent_variant_id: null, utterance: 'x', emotion_vec: {} },
+      ]), 'mem-e', g14e);
+      ok('14e — anchor emotion_vec 빈 → no_anchor',
+        r14e.injected === false && r14e.reason === 'no_anchor');
+
+      // 14f. too_few — 변주 0 (anchor 만 있음, 분류 가능 변주 0)
+      var g14f = makeMockGhosts();
+      var r14f = await loadFn(makeMockSupabase([
+        { id: 'a1', kind: 'drift', is_seed: true, parent_variant_id: null, utterance: 'anchor', emotion_vec: { fear: 1 } },
+        { id: 'v1', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'v1', emotion_vec: { fear: 1 } },
+        { id: 'v2', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'v2', emotion_vec: { fear: 0.95 } },
+      ]), 'mem-f', g14f);
+      ok('14f — 분류 변주 2 < 3 → too_few',
+        r14f.injected === false && r14f.reason === 'too_few');
+
+      // 14g. 정상 — anchor 1 + 변주 4 (resonance 2 + vague 1 + dissonance 1)
+      var g14g = makeMockGhosts();
+      var r14g = await loadFn(makeMockSupabase([
+        // anchor: fear 1
+        { id: 'a1', kind: 'drift', is_seed: true, parent_variant_id: null, utterance: 'anchor', emotion_vec: { fear: 1 } },
+        // resonance: cosine ≥ 0.85 — 같은 축
+        { id: 'r1', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'r1', emotion_vec: { fear: 0.95 } },
+        { id: 'r2', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'r2', emotion_vec: { fear: 0.9 } },
+        // vague: 0.5 ~ 0.85 — fear+sadness 섞음 → cos ≈ 0.71
+        { id: 'v1', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'v1', emotion_vec: { fear: 0.5, sadness: 0.5 } },
+        // dissonance: < 0.5 — orthogonal joy
+        { id: 'd1', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'd1', emotion_vec: { joy: 1 } },
+      ]), 'mem-g-aaaaaaaa', g14g);
+      ok('14g — 정상 분류 → injected: true',
+        r14g.injected === true);
+      ok('14g — counts.resonance === 2', r14g.counts && r14g.counts.resonance === 2);
+      ok('14g — counts.vague === 1', r14g.counts && r14g.counts.vague === 1);
+      ok('14g — counts.dissonance === 1', r14g.counts && r14g.counts.dissonance === 1);
+      ok('14g — anchorId === a1', r14g.anchorId === 'a1');
+      // setOptions 호출 결과 풀 검증
+      var setOpts = g14g._peek();
+      ok('14g — setOptions resonancePool 2', setOpts && setOpts.resonancePool && setOpts.resonancePool.length === 2);
+      ok('14g — setOptions vaguePool 1',     setOpts && setOpts.vaguePool && setOpts.vaguePool.length === 1);
+      ok('14g — setOptions dissonancePool 1',setOpts && setOpts.dissonancePool && setOpts.dissonancePool.length === 1);
+      ok('14g — resonance utterance 포함', setOpts && setOpts.resonancePool.indexOf('r1') >= 0 && setOpts.resonancePool.indexOf('r2') >= 0);
+      ok('14g — dissonance utterance 포함', setOpts && setOpts.dissonancePool.indexOf('d1') >= 0);
+
+      // 14h. 빈 결 디폴트 fallback — anchor 1 + 변주 3 모두 resonance (vague/dissonance 풀 빔)
+      var g14h = makeMockGhosts();
+      var r14h = await loadFn(makeMockSupabase([
+        { id: 'a1', kind: 'drift', is_seed: true, parent_variant_id: null, utterance: 'anchor', emotion_vec: { fear: 1 } },
+        { id: 'r1', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'r1', emotion_vec: { fear: 0.95 } },
+        { id: 'r2', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'r2', emotion_vec: { fear: 0.9 } },
+        { id: 'r3', kind: 'drift', is_seed: false, parent_variant_id: null, utterance: 'r3', emotion_vec: { fear: 0.95 } },
+      ]), 'mem-h', g14h);
+      var setH = g14h._peek();
+      ok('14h — vague 빔 → 디폴트 fallback ([\'글쎄.\'])',
+        setH && setH.vaguePool && setH.vaguePool.length === 1 && setH.vaguePool[0] === '글쎄.');
+      ok('14h — dissonance 빔 → 디폴트 fallback ([\'아니야.\'])',
+        setH && setH.dissonancePool && setH.dissonancePool.length === 1 && setH.dissonancePool[0] === '아니야.');
+
+      // 결과 — 전체 비동기라 마지막에 출력
+      console.log('\n=== V2.1 Phase 1 smoke ===');
+      console.log('PASS:', pass, '/ FAIL:', fail);
+      if (fail) {
+        console.warn('Failed tests:');
+        failed.forEach(function (n) { console.warn('  -', n); });
+      }
+    })();
+  } else {
+    ok('DP._utils.loadAndInjectGhostPools 노출됨', false);
+    // 14 SKIP — 동기 결과 즉시 출력
+    console.log('\n=== V2.1 Phase 1 smoke ===');
+    console.log('PASS:', pass, '/ FAIL:', fail);
+    if (fail) {
+      console.warn('Failed tests:');
+      failed.forEach(function (n) { console.warn('  -', n); });
+    }
   }
+  // 결과 출력 — 14 분기 안에서 1회 (정상 비동기 끝 / SKIP 동기 즉시).
 })();

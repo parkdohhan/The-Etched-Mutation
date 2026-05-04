@@ -39,6 +39,14 @@
  *   - 실패 시 기존 pickResponse fallback (resonance/vague/dissonance 풀)
  *   전문: docs/슬롯흡수_차용-260505.md
  *
+ * V2.1.2 (2026-05-05) — 자동 분류 풀 주입:
+ *   - start() 진입 시 _loadAndInjectGhostPools(supabase, memoryId, ghosts) 호출
+ *   - ghost_variants drift 풀 → anchor (is_seed+root) emotion_vec 와 cosine sim →
+ *     0.85/0.5 임계로 resonance/vague/dissonance 자동 분류 → setOptions 주입
+ *   - speciation 시드는 풀 제외 (§15-1 후속 플레이어 자리)
+ *   - fallback (anchor 없음 / 변주<3) = 글로벌 디폴트 유지
+ *   가이드: docs/유령응답풀_가이드_v1-260504.md §2.2
+ *
  * 사용:
  *   var res = await LumenDialogPhase1.start({
  *     memoryId, sceneId, sceneData,
@@ -363,6 +371,102 @@
     }
   }
 
+  // ─── V2.1.2 anchor 기반 자동 분류 풀 주입 ─────────────────
+  // 가이드 §2.2 (docs/유령응답풀_가이드_v1-260504.md):
+  //   ghost_variants drift 풀 → anchor (is_seed=true, parent_variant_id=null) 식별 →
+  //   각 변주 emotion_vec 와 anchor emotion_vec cosine sim →
+  //   임계 0.85/0.5 → resonance/vague/dissonance 풀 자동 분류 →
+  //   LumenGhostResponse.setOptions 로 풀 주입.
+  //
+  // fallback (글로벌 디폴트 유지):
+  //   - supabase / memoryId / ghosts 누락
+  //   - SELECT 실패
+  //   - anchor 없음 또는 anchor.emotion_vec 비었음 (calibration 미완)
+  //   - 분류 가능 변주 < 3 (풀 빔)
+  //
+  // speciation 시드는 SELECT 단계에서 제외 (kind='drift' 만). V2.1 명제 §15-1 정합:
+  //   "speciation = 후속 플레이어가 만남". 첫 회차 풀에 안 들어감.
+  //
+  // 매 씬 호출. cache 없음 — 슬롯 흡수 background insert 가 *다음 씬*에서 노출되도록.
+  // 비용: 5씬 × ~50ms SELECT = 무시.
+  //
+  // 디폴트 풀 보존: lumen_ghost_response.js 모듈 로드 시점의 _opts 를 lazy capture.
+  //   이후 빈 결은 디폴트 fallback 으로 reset (메모리 간 stale 방지).
+  var _originalGhostDefaults = null;
+  async function _loadAndInjectGhostPools(supabase, memoryId, ghosts) {
+    if (!supabase || !memoryId || !ghosts || typeof ghosts.setOptions !== 'function') {
+      return { injected: false, reason: 'missing_deps' };
+    }
+    // lazy capture — 첫 호출 시 디폴트 보존 (이후 setOptions 가 stale 되어도 디폴트 회복 가능).
+    if (!_originalGhostDefaults && typeof ghosts.getOptions === 'function') {
+      _originalGhostDefaults = ghosts.getOptions();
+    }
+    try {
+      var resp = await supabase
+        .from('ghost_variants')
+        .select('id, kind, is_seed, parent_variant_id, utterance, emotion_vec')
+        .eq('memory_id', memoryId)
+        .eq('kind', 'drift'); // speciation 시드 제외 (§15-1 후속 플레이어 자리)
+      if (resp.error || !resp.data) {
+        console.warn('[ldp pool] ghost_variants SELECT 실패', resp.error);
+        return { injected: false, reason: 'select_failed' };
+      }
+      var rows = resp.data;
+      // anchor = is_seed=true + parent_variant_id=null
+      var anchor = null;
+      for (var ai = 0; ai < rows.length; ai++) {
+        if (rows[ai].is_seed === true && !rows[ai].parent_variant_id) {
+          anchor = rows[ai];
+          break;
+        }
+      }
+      if (!anchor || !anchor.emotion_vec || Object.keys(anchor.emotion_vec).length === 0) {
+        console.warn('[ldp pool] anchor 없음 또는 emotion_vec 비었음 — 글로벌 디폴트 유지');
+        return { injected: false, reason: 'no_anchor' };
+      }
+      // 분류 — anchor 자체 제외, 빈 utterance/emotion_vec 제외
+      var resonancePool = [];
+      var vaguePool = [];
+      var dissonancePool = [];
+      var debugRows = [];
+      for (var i = 0; i < rows.length; i++) {
+        var v = rows[i];
+        if (v.id === anchor.id) continue;
+        if (!v.utterance || !v.emotion_vec || Object.keys(v.emotion_vec).length === 0) continue;
+        var sim = _cosineSim(v.emotion_vec, anchor.emotion_vec);
+        var bucket;
+        if (sim >= 0.85) { resonancePool.push(v.utterance); bucket = 'resonance'; }
+        else if (sim >= 0.5) { vaguePool.push(v.utterance); bucket = 'vague'; }
+        else { dissonancePool.push(v.utterance); bucket = 'dissonance'; }
+        debugRows.push({ id: v.id.slice(0, 8), sim: sim.toFixed(3), bucket: bucket });
+      }
+      var total = resonancePool.length + vaguePool.length + dissonancePool.length;
+      if (total < 3) {
+        console.warn('[ldp pool] 분류 가능 변주 ' + total + ' < 3 — 글로벌 디폴트 유지');
+        return { injected: false, reason: 'too_few', total: total };
+      }
+      // 항상 3결 다 박음. 빈 결은 디폴트 fallback (메모리 간 stale 방지).
+      var dflt = _originalGhostDefaults || {};
+      ghosts.setOptions({
+        resonancePool: resonancePool.length > 0 ? resonancePool : (dflt.resonancePool || ['그래.']),
+        vaguePool: vaguePool.length > 0 ? vaguePool : (dflt.vaguePool || ['글쎄.']),
+        dissonancePool: dissonancePool.length > 0 ? dissonancePool : (dflt.dissonancePool || ['아니야.']),
+      });
+      console.log('[ldp pool] 자동 분류 풀 주입',
+        { memoryId: memoryId.slice(0, 8),
+          resonance: resonancePool.length, vague: vaguePool.length, dissonance: dissonancePool.length,
+          total: total, rows: debugRows });
+      return {
+        injected: true,
+        counts: { resonance: resonancePool.length, vague: vaguePool.length, dissonance: dissonancePool.length },
+        anchorId: anchor.id,
+      };
+    } catch (err) {
+      console.warn('[ldp pool] 예외', err);
+      return { injected: false, reason: 'exception' };
+    }
+  }
+
   // ─── claude-scene 호출 (emotion 추출) ───
   // claude-scene index.ts:226 — body { type:'emotion_analysis', emotion, reason, anchorEmotions }
   //   → { generatedEmotion, analysis:{ base:{...}, detailed, intensity, confidence }, reason_analysis }
@@ -429,6 +533,11 @@
     if (!driftVis && input.runtime && global.LumenDriftVisualizer) {
       driftVis = global.LumenDriftVisualizer.attach(input.runtime);
     }
+
+    // V2.1.2 자동 분류 풀 주입 (가이드 §2.2 — anchor cosine sim 0.85/0.5).
+    // fallback: anchor 없거나 변주 < 3 시 글로벌 디폴트 유지. await 박아야 setOptions
+    // 끝난 후 turn 1 의 pickResponse 호출 — race 회피.
+    await _loadAndInjectGhostPools(input.supabase, memoryId, ghosts);
 
     // 회차 시간 측정 — 9분(540s) 초과 시 콘솔 경고 (결정 (d) 2026-05-04).
     var sceneCycleStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -609,7 +718,8 @@
       cosineSim: _cosineSim,
       hasCrisis: _hasCrisis,
       isEndPhrase: _isEndPhrase,
-      pickAuthored: _pickAuthored,    // string-or-array seeded pick (2026-05-04)
+      pickAuthored: _pickAuthored,                      // string-or-array seeded pick (2026-05-04)
+      loadAndInjectGhostPools: _loadAndInjectGhostPools, // anchor 기반 자동 분류 풀 주입 (2026-05-05)
     },
     _config: {    // smoke 검증용 — 외부에서 default 읽기
       maxFreeDialogTurns: DEFAULTS.maxFreeDialogTurns,

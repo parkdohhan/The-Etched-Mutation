@@ -313,7 +313,11 @@ SCOPE 갱신 시 본 문서 링크 박음.
 
 1. [x] 본 문서 확정 ← **2026-05-04**
 2. [ ] SCOPE V2.1 §0-A 에 "V2.1.1 ego-state turn-taking 차용" 한 단락 + 본 문서 링크
-3. [ ] V2-10 콘텐츠 가이드 신규 — `docs/유령응답풀_가이드_v1-260504.md` (응답 풀 12 슬롯 구조) — 세션 2 자리
+3. [x] V2-10 콘텐츠 가이드 신규 — [docs/유령응답풀_가이드_v1-260504.md](유령응답풀_가이드_v1-260504.md) (2026-05-04 완료, 세션 2)
+   - 핸드오프 표현 "12 슬롯 (4 유령 × HIGH/MID/LOW)" 정정 = 코드 시그니처와 안 맞음
+   - 실제 차원 = *유령 정체성 (메모리당 N마리) × 3결 (resonance/vague/dissonance) × 변주 4~5*
+   - "4종 (Core/Contaminated/Echo/Bridge-deferred)" = 씬 핀 표시 + 변주 톤 hint 자리, 응답 풀 차원 X
+   - 결정 (a)~(d) = *콘텐츠 자리* 결정. §7.4 의 (a)~(d) (코드 자리) 와 *다른 자리* — 알파벳만 같음, 충돌 X
 4. [x] [lumen_dialog_phase1.js](../js/ui/lumen_dialog_phase1.js) `maxFreeDialogTurns: 3`, ghost_intro/choice_reply/free_dialog_open 풀 픽 시그니처 정리 (2026-05-04 완료, 세션 1 차용 코드 자리)
    - `maxFreeDialogTurns: 1 → 3` (DEFAULTS L48)
    - ghost_intro / choice_reply / free_dialog_open = string OR array. 배열이면 (memId|sceneId|slotKey) 시드로 deterministic pick. `_pickAuthored` 헬퍼 박음.
@@ -331,6 +335,15 @@ SCOPE 갱신 시 본 문서 링크 박음.
    - 검증 13: `_config.sceneCycleWarnMs === 540000`
    - [test/v21_phase1_test.html](../test/v21_phase1_test.html) 검증 자리 문구 갱신 (3턴 + sceneCycleMs + 콘솔 로그 자리)
 6. [ ] 회차 끝 decideBranch 자리 검증 — `js/app/opening.js:524` 에 박힘, phase1 끝나면 `onSceneEnd` 콜백 → play-test 씬 루프 → run 끝 outro 흐름 (본 수정이 영향 X). **검증 통과 (2026-05-04 세션 1).**
+
+7. [x] **setOptions 자동 분류 풀 주입** ([lumen_dialog_phase1.js](../js/ui/lumen_dialog_phase1.js)) — 2026-05-05 완료
+   - `_loadAndInjectGhostPools(supabase, memoryId, ghosts)` 헬퍼 신규
+   - start() 진입 시 await 호출 (drift visualizer attach 직후, race 회피)
+   - 로직: ghost_variants drift SELECT → anchor (is_seed+root) emotion_vec 와 cosine sim → 0.85/0.5 임계 → resonance/vague/dissonance 3결 분류 → `LumenGhostResponse.setOptions` 주입
+   - speciation 시드는 SELECT 단계 `kind='drift'` 로 제외 ([§15-1](LUMEN_DEMO_SCOPE-260429.md) 후속 플레이어 자리)
+   - fallback 5종 = 글로벌 디폴트 유지: missing_deps / select_failed / no_anchor / 변주<3 / exception
+   - lazy capture `_originalGhostDefaults` = 메모리 간 stale 방지 (빈 결 디폴트 fallback)
+   - 효과: 발자국 14 변주가 글로벌 디폴트 (5+6+7=18 어휘) 대신 진짜 유령 입에 들어감
 
 각 단계 완료 시 본 문서 §7 + SCOPE V2.1 §3 V2-10 자리 갱신.
 
