@@ -17,6 +17,7 @@
  */
 
 import { getSupabaseClient } from '../lib/supabaseClient.js';
+import { extractEmotionVec } from './emotion_extract_helper.js';
 
 // ─────────────────────────────────
 // 상수 — V2-1 CHECK 제약 enum 정합
@@ -43,12 +44,16 @@ let _container = null;
 let _addBtn = null;
 let _addBtnBound = false;
 
+// 카드 idx → { emotion_vec, extractor_version, raw_extracted } — 자동 추출 결과 보관
+const _extractedByIdx = new Map();
+
 // ─────────────────────────────────
 // 진입/종료
 // ─────────────────────────────────
 
 async function loadGhostVariants(memoryId) {
   _currentMemoryId = memoryId || null;
+  _extractedByIdx.clear();
   _ensureContainerRef();
   if (!_container) return;
   _setSectionDisabled(!memoryId, memoryId ? null : '메모리를 먼저 저장한 후 변주를 추가할 수 있습니다.');
@@ -79,6 +84,7 @@ async function loadGhostVariants(memoryId) {
 function unloadGhostVariants() {
   _currentMemoryId = null;
   _variants = [];
+  _extractedByIdx.clear();
   if (_container) _container.innerHTML = '';
 }
 
@@ -169,27 +175,47 @@ function _renderCard(variant, idx) {
     });
   });
 
-  card.querySelectorAll('.gv-emotion').forEach(input => {
-    input.addEventListener('input', (e) => {
-      const k = e.target.dataset.key;
-      const display = card.querySelector(`.gv-emotion-display[data-key="${k}"]`);
-      if (display) display.textContent = parseFloat(e.target.value).toFixed(2);
-    });
-  });
+  const extractBtn = card.querySelector('.gv-extract');
+  if (extractBtn) {
+    extractBtn.addEventListener('click', () => _onExtract(card, idx));
+  }
 
   card.querySelector('.gv-save').addEventListener('click', () => _onSave(card, idx));
   return card;
 }
 
+// 12축 막대그래프 HTML — 큰 값 위로 정렬, 0.5 이상 강조 색
+function _renderAxisBarsHTML(vec) {
+  const sorted = [...EMOTION_KEYS].sort((a, b) => (Number(vec[b]) || 0) - (Number(vec[a]) || 0));
+  return sorted.map(k => {
+    const v = Number(vec[k]) || 0;
+    const pct = Math.round(v * 100);
+    const isHigh = v >= 0.5;
+    const fillColor = isHigh
+      ? 'linear-gradient(90deg, rgba(196,130,130,.5), rgba(196,168,130,.7))'
+      : 'linear-gradient(90deg, rgba(196,168,130,.4), rgba(168,140,196,.6))';
+    return `
+      <div style="display:flex;align-items:center;margin:3px 0;gap:6px;">
+        <span style="width:78px;text-align:right;color:var(--accent-memory);font-size:0.72rem;">${k}</span>
+        <div style="flex:1;height:12px;background:rgba(0,0,0,.5);border:1px solid rgba(196,168,130,.2);">
+          <div style="height:100%;width:${pct}%;background:${fillColor};"></div>
+        </div>
+        <span style="width:42px;text-align:right;color:#c8c8d0;font-size:0.7rem;">${v.toFixed(2)}</span>
+      </div>
+    `;
+  }).join('');
+}
+
 function _renderCardBody(variant, idx) {
-  const e = variant.emotion_vec || {};
-  const emotionRows = EMOTION_KEYS.map(k => `
-    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.72rem;">
-      <span style="display:inline-block;width:80px;color:var(--text-muted);">${k}</span>
-      <input type="range" min="0" max="1" step="0.05" value="${e[k] != null ? e[k] : 0}" class="gv-emotion" data-key="${k}" style="flex:1;">
-      <span class="gv-emotion-display" data-key="${k}" style="display:inline-block;width:40px;text-align:right;color:var(--accent-memory);">${(e[k] != null ? e[k] : 0).toFixed(2)}</span>
-    </label>
-  `).join('');
+  // 기존 emotion_vec 가 있으면 (저장된 변주 로드) _extractedByIdx 에 채워둠.
+  // 작가가 자동 추출 안 다시 누르면 이 값 그대로 저장됨.
+  if (variant.emotion_vec && Object.keys(variant.emotion_vec).length > 0) {
+    _extractedByIdx.set(idx, {
+      emotion_vec: { ...variant.emotion_vec },
+      extractor_version: variant.extractor_version || '(기존 시드)',
+      raw_extracted: null,
+    });
+  }
 
   const dropdown = (cls, options, selected) => `
     <select class="${cls}" style="background:#0a0a0e;border:1px solid rgba(196,168,130,.3);color:var(--text-fg);padding:0.3rem;border-radius:3px;font-size:0.78rem;">
@@ -226,12 +252,18 @@ function _renderCardBody(variant, idx) {
       <label style="display:flex;align-items:center;gap:0.4rem;"><span style="width:80px;color:var(--text-muted);">역할</span>${dropdown('gv-role', ROLES, variant.role)}</label>
     </div>
 
-    <details style="border:1px dashed rgba(196,168,130,.2);padding:0.5rem;border-radius:3px;">
-      <summary style="cursor:pointer;font-size:0.78rem;color:var(--accent-memory);">감정 12축 슬라이더</summary>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.3rem 1rem;margin-top:0.5rem;">
-        ${emotionRows}
+    <div style="border:1px solid rgba(196,168,130,.25);padding:0.6rem;border-radius:3px;background:rgba(0,0,0,0.2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;">
+        <span style="font-size:0.78rem;color:var(--accent-memory);">감정 12축 (자동 추출, 읽기 전용)</span>
+        <button type="button" class="gv-extract" style="background:rgba(168,140,196,.2);border:1px solid #a88ac4;color:#e8d8fc;padding:0.3rem 0.9rem;border-radius:3px;cursor:pointer;font-size:0.78rem;">자동 추출</button>
       </div>
-    </details>
+      <div class="gv-axis-bars" style="font-family:monospace;font-size:0.78rem;">
+        ${_renderAxisBarsHTML(_extractedByIdx.get(idx)?.emotion_vec || variant.emotion_vec || {})}
+      </div>
+      <div class="gv-extractor-version" style="font-size:0.7rem;color:var(--text-muted);text-align:right;margin-top:0.4rem;">
+        ${_extractedByIdx.has(idx) ? 'extractor: ' + (_extractedByIdx.get(idx).extractor_version || '-') : '추출 전'}
+      </div>
+    </div>
 
     <label style="display:flex;flex-direction:column;gap:0.2rem;font-size:0.78rem;">
       <span style="color:var(--text-muted);">키워드 (쉼표 구분)</span>
@@ -267,7 +299,7 @@ function _toggleBody(body, btn) {
 
 function _onAddCard() {
   if (!_currentMemoryId) return;
-  _variants.push({
+  const newVariant = {
     kind: 'drift',
     parent_variant_id: null,
     emotion_vec: {},
@@ -279,8 +311,48 @@ function _onAddCard() {
     utterance: '',
     pose: null,
     is_seed: true,
-  });
-  _renderList();
+  };
+  _variants.push(newVariant);
+  // append-only: 기존 카드의 자동 추출 결과 보존 (전체 _renderList 호출 안 함)
+  if (_container) {
+    _container.appendChild(_renderCard(newVariant, _variants.length - 1));
+  }
+}
+
+async function _onExtract(card, idx) {
+  const utterance = (card.querySelector('.gv-utterance')?.value || '').trim();
+  if (!utterance) {
+    _setCardStatus(card, '발화 본문을 먼저 입력해주세요.', 'error');
+    return;
+  }
+
+  const _val = (sel) => card.querySelector(sel)?.value || null;
+  const metadata = {
+    attribution: _val('.gv-attribution'),
+    core_fear: _val('.gv-core_fear'),
+  };
+
+  const btn = card.querySelector('.gv-extract');
+  const barsEl = card.querySelector('.gv-axis-bars');
+  const versionEl = card.querySelector('.gv-extractor-version');
+  const prevBtnText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '추출 중...';
+  _setCardStatus(card, '자동 추출 중...', null);
+
+  try {
+    const result = await extractEmotionVec(utterance, metadata);
+    _extractedByIdx.set(idx, result);
+    barsEl.innerHTML = _renderAxisBarsHTML(result.emotion_vec);
+    versionEl.textContent = 'extractor: ' + result.extractor_version;
+    _setCardStatus(card, '추출 완료. 결과 검수 후 저장해주세요.', 'ok');
+  } catch (e) {
+    console.error('[ghost_variants_editor] extract failed:', e);
+    _setCardStatus(card, '추출 실패: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = prevBtnText;
+  }
 }
 
 async function _onSave(card, idx) {
@@ -292,11 +364,18 @@ async function _onSave(card, idx) {
   if (!sb) { _setCardStatus(card, 'Supabase client unavailable.', 'error'); return; }
   if (!_currentMemoryId) { _setCardStatus(card, '메모리 미저장 상태입니다.', 'error'); return; }
 
+  // 자동 추출 안 한 변주 = 저장 차단. 작가가 "자동 추출" 먼저 눌러야 함.
+  if (!data.emotion_vec || Object.keys(data.emotion_vec).length === 0) {
+    _setCardStatus(card, '자동 추출을 먼저 진행해주세요.', 'error');
+    return;
+  }
+
   const payload = {
     memory_id: _currentMemoryId,
     kind: data.kind,
     parent_variant_id: data.parent_variant_id,
     emotion_vec: data.emotion_vec,
+    extractor_version: data.extractor_version,
     attribution: data.attribution,
     core_fear: data.core_fear,
     modality: data.modality,
@@ -367,11 +446,10 @@ function _readCard(card) {
     return null;
   }
 
-  const emotion_vec = {};
-  card.querySelectorAll('.gv-emotion').forEach(input => {
-    const v = parseFloat(input.value);
-    if (!isNaN(v) && v > 0) emotion_vec[input.dataset.key] = Number(v.toFixed(2));
-  });
+  // emotion_vec = 자동 추출 결과 (작가 직접 입력 X). _extractedByIdx 에 보관됨.
+  const extracted = _extractedByIdx.get(idx);
+  const emotion_vec = extracted ? extracted.emotion_vec : {};
+  const extractor_version = extracted ? extracted.extractor_version : null;
 
   const motif_tags = (card.querySelector('.gv-motif')?.value || '')
     .split(',').map(s => s.trim()).filter(Boolean);
@@ -386,6 +464,7 @@ function _readCard(card) {
     kind,
     parent_variant_id,
     emotion_vec,
+    extractor_version,
     attribution: _val('.gv-attribution'),
     core_fear: _val('.gv-core_fear'),
     modality: _val('.gv-modality'),
@@ -399,6 +478,7 @@ function _readCard(card) {
 async function _onDelete(variant, idx) {
   if (!variant.id) {
     _variants.splice(idx, 1);
+    _extractedByIdx.clear();
     _renderList();
     return;
   }
@@ -410,6 +490,8 @@ async function _onDelete(variant, idx) {
     return;
   }
   _variants.splice(idx, 1);
+  // 삭제 후 idx 재배치 = _extractedByIdx 통째 비움 (저장된 변주는 _renderCardBody 가 emotion_vec 다시 채움)
+  _extractedByIdx.clear();
   _renderList();
 }
 

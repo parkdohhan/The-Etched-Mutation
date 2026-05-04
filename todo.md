@@ -686,11 +686,18 @@ S3 step 4 = "opening.js / play 진입 wiring + 회차 끝 시점 plays 행에 gh
     - [x] ghost_variants.extractor_version 컬럼 추가 (2026-05-04 — supabase/migrations/20260504010000_v21_ghost_variants_extractor_version.sql 적용)
     - [x] pre-flight calibration 도구 (2026-05-04 — test/emotion_calibration.html. 사용자 손 작업 대기)
     - [ ] **사용자 손 작업** — calibration 1~2시간 돌리기 (잘 아는 텍스트 5~10개 검수, 어긋난 자리 메모, 필요시 프롬프트 수정 + PROMPT_VERSION 올림)
-    - [ ] 메타데이터 가산점 룰 박기 (calibration 결과로 가산값 튜닝)
-    - [ ] admin 변주 풀 도구 본 작업 (utterance + 메타데이터 폼 + 자동 추출 + 12축 막대그래프 읽기 전용 표시)
+    - [x] 메타데이터 가산점 룰 (2026-05-04 — emotion_extract_helper.js 의 ATTRIBUTION_BOOST + CORE_FEAR_BOOST. attribution=self_blame → guilt+0.3 등 default 값. V2-12 튜닝 자리)
+    - [x] admin 변주 풀 도구 본 수정 (2026-05-04 — ghost_variants_editor.js 12 슬라이더 폐기 → "자동 추출" 버튼 + 12축 막대그래프 읽기 전용 + extractor_version 도장. 추출 전 저장 차단. 사용자 손 검증 대기)
 - [~] W2S4 — V2-7 return toast 컴포넌트 (2026-05-04 폐기 — SCOPE V2-7 [x] 이미 박힘 (lumen_run_outro.js 가 정문 자리). todo.md W2S4 핸드아웃 자체가 SCOPE 갱신 못 따라간 stale 자리. 본 세션이 박은 js/ui/return_toast.js + index.html script 태그 모두 되돌림.)
 - [ ] α1 — pickDriftUtterance + vitest
-- [ ] α2 — opening.js wiring + 폴백 문구 26개
+- [ ] α2 — opening.js wiring + 폴백 문구 26개 (자동 생성 자리만 2026-05-04 완료:)
+    - [x] buildSpeciationRow 에 extractor_version 추가 (GhostBranchTrigger.js)
+    - [x] SeekerFingerprint 에 extractor_version 슬롯 + mergeTurn 누적 (마지막 emotion_extract 응답)
+    - [x] opening.js _analyzeTurnText 가 prompt_version 을 turnResult 에 포함
+    - [x] insert-ghost-variant Edge function 신규 + 배포 (anon → service_role 우회, validation 포함)
+    - [x] opening.js wiring — speciation 시 buildSpeciationRow + Edge function 호출 + sessionStorage 기록 (사용자 손 검증 대기)
+    - [ ] 폴백 문구 26개 (한국어 13 + 영어 13) — 별도 자리, V2-12 튜닝 시점
+    - [ ] drift 잔향 toast trigger — 별도 자리, S1 결정 후
 
 체크 = `[x]` 로 변경. 부분 완료 시 sub-bullet 추가.
 

@@ -67,6 +67,7 @@ export function initFingerprint() {
     modality: null,
     role: null,
     motif_words: [],
+    extractor_version: null,  // 멀티턴 마지막 emotion_extract 응답의 prompt_version (speciation INSERT 시 도장)
     _turnsRaw: [],
     _askedSlots: [],
   };
@@ -99,6 +100,7 @@ export function mergeTurn(fp, turnResult, alpha) {
   if (r.core_fear && r.core_fear !== 'none') fp.core_fear = r.core_fear;
   if (r.role && r.role !== 'unknown') fp.role = r.role;
   if (turnResult.modality) fp.modality = turnResult.modality;
+  if (turnResult.prompt_version) fp.extractor_version = turnResult.prompt_version;
 
   const text = String(turnResult._raw_text || '');
   if (text) {

@@ -138,7 +138,7 @@ export function decideBranch(seeker, ghostVariants, thresholds = DEFAULT_THRESHO
  * @param {Object} args
  * @param {string} args.memoryId
  * @param {?string} args.parentVariantId
- * @param {Object} args.fingerprint        SeekerCard
+ * @param {Object} args.fingerprint        SeekerCard (extractor_version 포함 — 멀티턴 마지막 emotion_extract 응답)
  * @param {string} args.utterance          마지막 dialog turn raw_text 권장
  * @param {?string} [args.pose]
  * @param {?string} [args.createdBy]       admin 시연 시 user.id, anon 자동생성 시 null
@@ -158,6 +158,7 @@ export function buildSpeciationRow(args) {
     kind: 'speciation',
     parent_variant_id: a.parentVariantId || null,
     emotion_vec: (fp.emotion_vec && typeof fp.emotion_vec === 'object') ? fp.emotion_vec : {},
+    extractor_version: fp.extractor_version || null,
     attribution: fp.attribution || null,
     core_fear: fp.core_fear || null,
     modality: fp.modality || null,

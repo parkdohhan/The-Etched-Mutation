@@ -10,7 +10,7 @@ import { setLanguage } from '../lib/i18n.js';
 import { buildDoor } from './confession.js';
 import { _pickTopMemoryForLumen } from './archive.js';
 import { pickTopMemory, pickGhostVariant } from '../core/SeekerMatchEngine.js';
-import { decideBranch } from '../core/GhostBranchTrigger.js';
+import { decideBranch, buildSpeciationRow } from '../core/GhostBranchTrigger.js';
 import { getSupabaseClient } from '../lib/supabaseClient.js';
 import {
   EMOTION_KEYS,
@@ -163,6 +163,7 @@ async function _analyzeTurnText(rawText, sceneText) {
       base: (data && data.base) || {},
       reason_analysis: reason,
       modality: inferredModality,
+      prompt_version: (data && data.prompt_version) || null,
       _raw_text: rawText,
     };
   } catch (e) {
@@ -520,9 +521,49 @@ async function _handleOpeningSubmit(emotion, text) {
   }
 
   // V2-4 분기 분류 — drift / speciation (LLM 금지, 결정론적, 유령 단위).
-  // INSERT 경로 (speciation 시 새 변주 시드 운영 DB 박기) 는 V2-4 후반 단계에서 추가.
-  // 현재는 분류만 + sessionStorage 기록 + 콘솔 로그.
   const branch = decideBranch(fp, variants);
+
+  // V2-4 후반: speciation 시 ghost_variants 에 새 변주 자동 INSERT.
+  // anon 플레이어 → insert-ghost-variant Edge function (service_role 우회).
+  // 마지막 turn raw_text 를 utterance 로 사용.
+  let speciationVariantId = null;
+  if (branch.kind === 'speciation' && memory && memory.id) {
+    const lastTurn = (fp._turnsRaw && fp._turnsRaw.length > 0)
+      ? fp._turnsRaw[fp._turnsRaw.length - 1]
+      : null;
+    const lastUtterance = lastTurn ? String(lastTurn.raw_text || '').trim() : '';
+    if (lastUtterance) {
+      const row = buildSpeciationRow({
+        memoryId: memory.id,
+        parentVariantId: branch.topVariant?.id || null,
+        fingerprint: fp,
+        utterance: lastUtterance,
+      });
+      try {
+        const sb = getSupabaseClient();
+        if (sb) {
+          const { data: insertResult, error: insertErr } = await sb.functions.invoke(
+            'insert-ghost-variant', { body: row }
+          );
+          if (insertErr) {
+            console.warn('[opening:dialog] speciation INSERT failed:', insertErr);
+          } else if (insertResult && insertResult.variant) {
+            speciationVariantId = insertResult.variant.id;
+            console.log('[opening:dialog] speciation 새 유령 시드 생성:', {
+              id: speciationVariantId,
+              parent: row.parent_variant_id,
+              extractor: row.extractor_version,
+            });
+          }
+        }
+      } catch (e) {
+        // INSERT 실패해도 회차 진행 막지 X — 사용자 경험 보호.
+        console.warn('[opening:dialog] speciation INSERT exception:', e);
+      }
+    } else {
+      console.warn('[opening:dialog] speciation 인데 마지막 turn raw_text 없음 — INSERT 스킵');
+    }
+  }
 
   try {
     sessionStorage.setItem('tem_picked_memory_id', String(memory.id || ''));
@@ -533,6 +574,7 @@ async function _handleOpeningSubmit(emotion, text) {
     sessionStorage.setItem('tem_branch_reason', branch.reason);
     sessionStorage.setItem('tem_branch_top_score', String(branch.topScore));
     sessionStorage.setItem('tem_branch_runner_up_delta', String(branch.runnerUpDelta));
+    sessionStorage.setItem('tem_speciation_variant_id', speciationVariantId || '');
   } catch (_) {}
   console.log('[opening:dialog] matched', {
     memoryId: memory.id,
@@ -541,6 +583,7 @@ async function _handleOpeningSubmit(emotion, text) {
     variantDelta,
     branchKind: branch.kind,
     branchReason: branch.reason,
+    speciationVariantId,
     fp,
   });
 
