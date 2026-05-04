@@ -1139,10 +1139,13 @@
     var _fpSavedTarget = null;
 
     function _fpOnKeyDown(e) {
-      // Don't intercept keys when scene UI or ESC menu is open (allow typing)
+      // Don't intercept keys when scene UI / ESC menu / lumen dialog is open (allow typing)
       var _scO = document.getElementById('sceneMode');
       var _esO = document.getElementById('escMenu');
-      if ((_scO && _scO.classList.contains('active')) || (_esO && _esO.classList.contains('active'))) return;
+      var _ldp = document.getElementById('lumenDialogPhase1');  // V2.1 Phase 1 multi-turn dialog
+      if ((_scO && _scO.classList.contains('active')) ||
+          (_esO && _esO.classList.contains('active')) ||
+          _ldp) return;
       _fpKeys[e.code] = true;
       if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].indexOf(e.code) >= 0) e.preventDefault();
     }
@@ -1150,7 +1153,8 @@
     function _fpOnMouseMove(e) {
       if (!_fpActive) return;
       var _scM = document.getElementById('sceneMode');
-      if (_scM && _scM.classList.contains('active')) return;
+      var _ldpM = document.getElementById('lumenDialogPhase1');  // V2.1 Phase 1
+      if ((_scM && _scM.classList.contains('active')) || _ldpM) return;
       _fpEuler.yaw -= e.movementX * 0.002;
       _fpEuler.pitch -= e.movementY * 0.002;
       _fpEuler.pitch = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, _fpEuler.pitch));
@@ -1205,12 +1209,13 @@
       var now = performance.now();
       var dt = Math.min((now - _fpLastTime) / 1000, 0.1);
       _fpLastTime = now;
-      // Freeze movement while scene UI is open (terrain keeps rendering)
+      // Freeze movement while scene UI / lumen dialog (V2.1 Phase 1) is open. Terrain keeps rendering.
       var _sceneOpen = document.getElementById('sceneMode');
-      if (_sceneOpen && _sceneOpen.classList.contains('active')) {
+      var _ldpOpen = document.getElementById('lumenDialogPhase1');
+      if ((_sceneOpen && _sceneOpen.classList.contains('active')) || _ldpOpen) {
         _fpLastTime = now;
         // walk_effects는 매 프레임 camera.position.y가 논리 baseline으로 리셋된다고 가정한다.
-        // 씬 모드에서 position을 리셋하지 않으면 breath/bob 오프셋이 누적되어 자이로드롭 발생.
+        // 씬/대화 모드에서 position을 리셋하지 않으면 breath/bob 오프셋이 누적되어 자이로드롭 발생.
         var _frozenH = gH(_fpPos.x, _fpPos.z);
         if (_frozenH < -10) _frozenH = -10;
         camera.position.set(_fpPos.x, _frozenH + _fpEyeHeight + _fpJumpHeight, _fpPos.z);

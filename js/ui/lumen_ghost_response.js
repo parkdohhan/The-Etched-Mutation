@@ -72,6 +72,11 @@
       vague: '흐려지기 전에 한 줄?',
       dissonance: '너의 길에 한 줄 남겨.',
     },
+    // V2.1.2 슬롯 흡수 풀 — 비어 있으면 흡수 X. 메모리 진입 시 setOptions 로 주입.
+    // 각 변주 = { template: '...{대상}을(를)...', motifTags?: [...] }
+    // 실제 흡수는 LumenSlotAbsorber.tryAbsorb 가 담당. 본 모듈은 풀 보관 자리만.
+    resonanceSlotPool: [],
+    vagueSlotPool: [],
     // 임계 — math.js getBucket HIGH/MID/LOW 와 동일
     alignmentResonance: 0.55,
     alignmentVague: 0.35,
@@ -195,7 +200,17 @@
         urgeResonance: _opts.urgeResonance.length,
         urgeVague: _opts.urgeVague.length,
         urgeDissonance: _opts.urgeDissonance.length,
+        resonanceSlot: _opts.resonanceSlotPool.length,
+        vagueSlot: _opts.vagueSlotPool.length,
       },
+    };
+  }
+
+  // V2.1.2 슬롯 풀 접근자 — LumenDialogPhase1 가 LumenSlotAbsorber 에 주입할 때 사용.
+  function getSlotPool() {
+    return {
+      resonance: _opts.resonanceSlotPool || [],
+      vague: _opts.vagueSlotPool || [],
     };
   }
 
@@ -206,6 +221,7 @@
     pickResponse: pickResponse,
     pickUrge: pickUrge,
     pickSceneLinkPrompt: pickSceneLinkPrompt,
+    getSlotPool: getSlotPool,
     getDebug: getDebug,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

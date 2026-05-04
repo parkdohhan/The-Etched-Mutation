@@ -1,28 +1,31 @@
 // insert-ghost-variant — V2.1 §4 V2-4 후반: anon 플레이어가 ghost_variants 에 speciation row 자동 INSERT.
+// V2.1.2 (2026-05-05) 확장: drift 흡수 row 도 허용 — 슬롯 흡수 자생 변주.
 //
 // 배경:
 //   ghost_variants RLS 정책 = admin only INSERT (V2-1 마이그레이션).
-//   플레이어 회차 끝 speciation 발생 시 anon 권한으로는 INSERT 불가.
+//   플레이어 회차 끝 speciation / drift 흡수 발생 시 anon 권한으로는 INSERT 불가.
 //   본 Edge function 이 service_role key 로 우회.
 //
 // 호출 경로:
-//   opening.js _handleOpeningSubmit 회차 끝 → decideBranch → kind === 'speciation' →
-//   buildSpeciationRow → sb.functions.invoke('insert-ghost-variant', { body: row })
+//   - speciation: opening.js _handleOpeningSubmit 회차 끝 → decideBranch → kind === 'speciation' →
+//                 buildSpeciationRow → sb.functions.invoke('insert-ghost-variant', { body: row })
+//   - drift 흡수: lumen_dialog_phase1.js _backgroundInsertAbsorbed → SlotAbsorber 성공 시 비동기 호출
 //
 // 안전:
-//   - kind === 'speciation' 만 허용 (admin 시드 경로는 별도)
+//   - kind ∈ {'speciation', 'drift'} 만 허용 (admin 시드 경로는 별도)
 //   - is_seed === false 강제 (admin 시드와 구분)
 //   - memory_id 존재 검증
 //   - utterance 1~1000자 검증 (DB CHECK 와 정합)
 //   - parent_variant_id 가 같은 memory_id 안 변주인지 검증 (계보 무결성)
+//   - V2.1.2 drift 흡수 = 메모리당 흡수 변주 상한 30 (초과 시 거절)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/auth.ts";
 
-interface SpeciationRow {
+interface VariantRow {
   memory_id: string;
-  kind: 'speciation';
+  kind: 'speciation' | 'drift';
   parent_variant_id?: string | null;
   emotion_vec?: Record<string, number>;
   extractor_version?: string | null;
@@ -36,6 +39,8 @@ interface SpeciationRow {
   is_seed?: boolean;
   created_by?: string | null;
 }
+
+const ABSORB_DRIFT_CAP = 30;  // V2.1.2 — 메모리당 자생 drift 흡수 변주 상한
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
@@ -51,7 +56,7 @@ serve(async (req: Request) => {
     });
   }
 
-  let body: SpeciationRow;
+  let body: VariantRow;
   try {
     body = await req.json();
   } catch {
@@ -68,8 +73,8 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  if (body.kind !== 'speciation') {
-    return new Response(JSON.stringify({ error: "kind must be 'speciation' (admin 시드는 별도 경로)" }), {
+  if (body.kind !== 'speciation' && body.kind !== 'drift') {
+    return new Response(JSON.stringify({ error: "kind must be 'speciation' or 'drift' (admin 시드는 별도 경로)" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -114,10 +119,31 @@ serve(async (req: Request) => {
     // parent 가 없어도 (이미 삭제된 경우 등) 허용 — DB 의 ON DELETE SET NULL 동작.
   }
 
+  // ─── V2.1.2 drift 흡수 상한 (메모리당 자생 drift ≤ 30) ─────
+  if (body.kind === 'drift') {
+    const { count: absorbCount, error: countErr } = await sb
+      .from('ghost_variants')
+      .select('id', { count: 'exact', head: true })
+      .eq('memory_id', body.memory_id)
+      .eq('kind', 'drift')
+      .eq('is_seed', false);
+    if (countErr) {
+      console.warn("[insert-ghost-variant] absorb count error:", countErr);
+    } else if (typeof absorbCount === 'number' && absorbCount >= ABSORB_DRIFT_CAP) {
+      return new Response(JSON.stringify({
+        error: `drift absorb cap reached (${absorbCount}/${ABSORB_DRIFT_CAP}) for this memory`,
+        cap_reached: true,
+      }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   // ─── INSERT ───────────────────────────────────────────────
   const payload = {
     memory_id: body.memory_id,
-    kind: 'speciation' as const,
+    kind: body.kind,
     parent_variant_id: body.parent_variant_id || null,
     emotion_vec: body.emotion_vec || {},
     extractor_version: body.extractor_version || null,
@@ -146,7 +172,7 @@ serve(async (req: Request) => {
     });
   }
 
-  console.log("[insert-ghost-variant] speciation created:", {
+  console.log(`[insert-ghost-variant] ${body.kind} created:`, {
     id: data.id,
     memory_id: data.memory_id,
     parent_variant_id: data.parent_variant_id,

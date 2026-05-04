@@ -76,11 +76,12 @@
   <h2>검증 자리</h2>
   <p class="info">
     1. 선택지 1·2·3 클릭 → 유령 reply + 자유대화 첫 질문<br>
-    2. 자유대화 1턴 — 결에 따라 다른 풀에서 reply pick (5-2 결정 — 멀티턴 별로, 단일턴)<br>
+    2. 자유대화 <strong>3턴</strong> — 매 턴 결에 따라 다른 풀에서 reply pick (2026-05-04 ego-state turn-taking 차용, 5-2 단일턴 결정 번복)<br>
     3. dissonance 결 발화 시 <code>'____'</code> 자리에 입력 quoting 확인<br>
     4. <code>END_PHRASES</code> ("여기까지", "봉인" 등) 입력 시 자유대화 조기 종료<br>
     5. urge → scene_link prompt → 한 줄 입력 → 종료<br>
-    6. 결과 onSceneEnd 콜백 — alignment / resonance / scene_link_input
+    6. 결과 onSceneEnd 콜백 — alignment / resonance / scene_link_input / sceneCycleMs<br>
+    7. 콘솔 로그 <code>[phase1] turn N/3 ...</code> + <code>[phase1] scene cycle Xs</code> 한 줄 박힘
   </p>
 
   <button id="startBtn">씬 1 시작</button>

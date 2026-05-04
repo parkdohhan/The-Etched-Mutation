@@ -43,8 +43,21 @@
     }
   }
 
-  // ── 1. memories ─────────────────────────────────────
+  // ── 1. memories (V2.1.2: meta.absorption_slots 동시 박음) ─
   log('1/4 memories INSERT...');
+  const ABSORPTION_SLOTS = {
+    resonance: [
+      { template: '...그래. {대상:이/가} 거기 있었구나. 발자국 옆에.',     motifTags: ['발자국', '함께'] },
+      { template: '...{대상} 말이지. 슬리퍼 자국 옆에 그게 있었어.',         motifTags: ['슬리퍼', '함께'] },
+      { template: '...{대상:을/를} 봤구나. 나도 봤어. 그게 다행이었어.',     motifTags: ['함께', '다행'] },
+      { template: '...같은 자리에 너도 있었구나. {대상:이/가} 거기 있었어.', motifTags: ['함께', '소속'] },
+    ],
+    vague: [
+      { template: '...{대상}? 그랬을지도. 잘 기억이 안 나.',     motifTags: ['흔들림'] },
+      { template: '...{대상:이/가} 어디로 갔지. 자국이 안 보여.', motifTags: ['발자국', '흔들림'] },
+      { template: '...{대상} 말이지. ...글쎄. 그랬나.',          motifTags: ['흔들림'] },
+    ],
+  };
   const { data: mem, error: memErr } = await sb.from('memories').insert({
     title: '발자국',
     code: 'footprints',
@@ -53,6 +66,7 @@
     status: 'draft',
     is_public: true,
     lang: 'ko',
+    meta: { absorption_slots: ABSORPTION_SLOTS }, // V2.1.2 슬롯 흡수 풀
   }).select('id').single();
   if (memErr) return err('memories', memErr);
   const memoryId = mem.id;

@@ -13,6 +13,9 @@
 //   8. dialog_phase1 _utils.hasCrisis
 //   9. dialog_phase1 _utils.isEndPhrase
 //   10. drift_visualizer attach API 존재
+//   11. dialog_phase1 _config.maxFreeDialogTurns === 3 (2026-05-04 ego-state turn-taking 차용)
+//   12. dialog_phase1 _utils.pickAuthored — string passthrough / array seeded / 빈 배열 / null
+//   13. dialog_phase1 _config.sceneCycleWarnMs 자리 박힘 (결정 (d) — 9분 임계 콘솔 경고)
 //
 // PASS 합계 / FAIL 합계 마지막에 출력.
 
@@ -128,6 +131,50 @@
   // ─── 10. drift_visualizer API ───
   if (DV) {
     ok('LumenDriftVisualizer.attach is function', typeof DV.attach === 'function');
+  }
+
+  // ─── 11. maxFreeDialogTurns 3턴 박힘 (2026-05-04 ego-state 차용) ───
+  if (DP && DP._config) {
+    ok('maxFreeDialogTurns === 3 (ego-state turn-taking 차용)',
+      DP._config.maxFreeDialogTurns === 3);
+  } else {
+    ok('DP._config 노출됨', false);
+  }
+
+  // ─── 12. _pickAuthored string-or-array seeded pick ───
+  if (DP && DP._utils && typeof DP._utils.pickAuthored === 'function') {
+    var pa = DP._utils.pickAuthored;
+    // string passthrough
+    ok('pickAuthored — string 그대로', pa('한 줄', 'seed-1') === '한 줄');
+    ok('pickAuthored — 빈 string → null', pa('', 'seed-1') === null);
+    // null/undefined
+    ok('pickAuthored — null → null', pa(null, 'seed-1') === null);
+    ok('pickAuthored — undefined → null', pa(undefined, 'seed-1') === null);
+    // array seeded
+    var arr = ['가', '나', '다', '라', '마'];
+    var p1 = pa(arr, 'mA|s1');
+    var p2 = pa(arr, 'mA|s1');
+    ok('pickAuthored — 같은 시드 같은 픽', p1 === p2);
+    ok('pickAuthored — 픽 결과 풀에 속함', arr.indexOf(p1) >= 0);
+    var p3 = pa(arr, 'mA|s2');
+    ok('pickAuthored — 다른 시드 string 형식', typeof p3 === 'string' && p3.length > 0);
+    // 빈 배열 / 무효치 배열
+    ok('pickAuthored — 빈 배열 → null', pa([], 'seed-2') === null);
+    ok('pickAuthored — 무효치만 배열 → null', pa([null, '', undefined], 'seed-3') === null);
+    // 시드 분포 — 5종 풀에 8개 시드 박으면 유일치 ≥ 2 (시드 다양성 sanity)
+    var seen = {};
+    for (var i = 0; i < 8; i++) seen[pa(arr, 'sd-' + i)] = 1;
+    ok('pickAuthored — 시드 다양성 (8 시드 → 유일치 ≥ 2)', Object.keys(seen).length >= 2);
+  } else {
+    ok('DP._utils.pickAuthored 노출됨', false);
+  }
+
+  // ─── 13. sceneCycleWarnMs 임계 박힘 (결정 (d) 9분 콘솔 경고) ───
+  if (DP && DP._config) {
+    ok('sceneCycleWarnMs 박힘 (number)',
+      typeof DP._config.sceneCycleWarnMs === 'number' && DP._config.sceneCycleWarnMs > 0);
+    ok('sceneCycleWarnMs === 540000 (9분)',
+      DP._config.sceneCycleWarnMs === 540000);
   }
 
   // ─── 결과 ───

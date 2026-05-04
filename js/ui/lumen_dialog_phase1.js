@@ -20,19 +20,30 @@
  *   - END_PHRASES 감지 → 자유대화 즉시 종료, urge 단계로
  *
  * Phase 1 정책:
- *   - 자유대화 1턴 (5-2 결정 — 멀티턴 별로, 단일턴이 작품 톤에 더 맞음)
- *   - 자유대화 매 턴 독립 분석 (8번 동의)
+ *   - 자유대화 3턴 (2026-05-04 결정 번복 — docs/유령대화_egostate_차용-260504.md §6.1).
+ *     5-2 단일턴은 "유령이 안 듣는 자리 0건" 약점. 3턴 = ego-state turn-taking 차용 (메커니즘만, 임상 프레임 거부).
+ *   - 자유대화 매 턴 독립 alignment 분석 (8번 동의 — 결정 (a) 2026-05-04).
+ *     누적 fingerprint(SeekerFingerprint) 결합 X — 오프닝 자리 자산 의미와 섞이는 자리 회피.
  *   - 장면 잇기 emotion 분석 X, DB 누적 X (4번 결정)
  *   - 다음 씬 결정은 호출자 책임 (Phase 1 = scene_order +1 선형, 5번 결정)
+ *   - ghost_intro / choice_reply / free_dialog_open = string or array. 배열이면 seeded pick (memoryId+sceneId 시드).
+ *   - 풀 빔 fallback = 모듈 기본값 '...' (결정 (b)). 풀 채움은 V2-10 가이드 자리.
  *
  * TODO Phase 2: scene_link_input DB 누적 (plays.scene_link_input JSONB)
  * TODO V2-4: claude-scene 호출 형식 검증 — 현 가정 `{ type:'emotion_analysis', text }` →
  *           `{ emotion: {...} }`. 실제 함수 시그니처 다르면 _analyzeEmotion 만 수정.
  *
+ * V2.1.2 (2026-05-05) — 슬롯 흡수 통합:
+ *   - turn 응답 자리에 LumenSlotAbsorber.tryAbsorb 시도 (LumenGhostResponse.getSlotPool 사용)
+ *   - 흡수 성공 시 비동기 _backgroundInsertAbsorbed → ghost_variants 새 drift row 자생
+ *   - 실패 시 기존 pickResponse fallback (resonance/vague/dissonance 풀)
+ *   전문: docs/슬롯흡수_차용-260505.md
+ *
  * 사용:
  *   var res = await LumenDialogPhase1.start({
  *     memoryId, sceneId, sceneData,
  *     runtime, supabase,
+ *     anchorVariantId,        // V2.1.2 옵션 — 본 유령 id (parent_variant_id 자리). 없으면 null.
  *     onSceneEnd: ({ scene_link_input, alignment, resonance }) => { ... }
  *   });
  */
@@ -41,7 +52,8 @@
 
   var DEFAULTS = {
     overlayId: 'lumenDialogPhase1',
-    maxFreeDialogTurns: 1,    // 5-2: 멀티턴 폐기. 자유대화 1턴 + 장면 잇기 1턴 (둘 다 자유 텍스트, 다른 자리)
+    maxFreeDialogTurns: 3,    // 2026-05-04 ego-state turn-taking 차용 (5-2 단일턴 결정 번복). docs/유령대화_egostate_차용-260504.md
+    sceneCycleWarnMs: 540000, // 9분 초과 시 console.warn (결정 (d) 2026-05-04 — 작가 한 바퀴 임계)
     pacingDelays: {
       afterIntroMs:   1000,
       afterChoiceMs:  900,
@@ -97,6 +109,36 @@
   }
   function _sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
+  // FNV-1a + mulberry32 — lumen_ghost_response.js 와 동일 패턴. 콘텐츠 결정론.
+  function _hashString(s) {
+    var h = 2166136261 >>> 0;
+    for (var i = 0; i < s.length; i++) {
+      h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    }
+    return h >>> 0;
+  }
+  function _mulberry32(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  // ghost_intro / choice_reply / free_dialog_open 의 string-or-array 해소.
+  // 배열이면 (memId|sceneId|slotKey) 시드로 deterministic pick. 빈/유효치 X 면 null.
+  function _pickAuthored(value, seedKey) {
+    if (value == null) return null;
+    if (typeof value === 'string') return value || null;
+    if (Array.isArray(value)) {
+      var pool = value.filter(function (v) { return typeof v === 'string' && v.length > 0; });
+      if (!pool.length) return null;
+      var rng = _mulberry32(_hashString(String(seedKey || '')));
+      return pool[Math.floor(rng() * pool.length)];
+    }
+    return null;
+  }
+
   // ─── DOM ──────────────────────────────────
   function _buildOverlay(id) {
     var existing = document.getElementById(id);
@@ -104,27 +146,33 @@
 
     var ov = document.createElement('div');
     ov.id = id;
+    // 우측 절반 풀스크린 (하단까지). padding-bottom 300px 으로 파동(AW_HEIGHT=280) 자리 비움.
+    // 파동(z-index:2900)은 dialog overlay(2800) 위에 떠 있음.
     ov.style.cssText = [
-      'position:fixed', 'inset:0',
-      'display:flex', 'flex-direction:column', 'justify-content:flex-end',
-      'align-items:center',
-      'padding:24px',
-      'background:rgba(0,0,0,0.55)',
+      'position:fixed',
+      'top:0', 'right:0', 'bottom:0',
+      'width:50vw',
+      'display:flex', 'flex-direction:column', 'justify-content:flex-start',
+      'align-items:stretch',
+      'padding:56px 44px 300px 44px',
+      'background:rgba(0,0,0,0.5)',
       'backdrop-filter:blur(2px)',
-      'z-index:240',
+      'z-index:2800',
       'pointer-events:auto',
       'font-family:"Gowun Batang",serif',
       'color:rgba(232,216,252,0.92)',
+      'box-sizing:border-box',
+      'font-size:1.08rem',
     ].join(';');
 
     var msgs = document.createElement('div');
     msgs.id = id + '-messages';
-    msgs.style.cssText = 'width:min(620px,90vw);max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;margin-bottom:18px;';
+    msgs.style.cssText = 'width:100%;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:18px;margin-bottom:22px;';
     ov.appendChild(msgs);
 
     var inputArea = document.createElement('div');
     inputArea.id = id + '-input-area';
-    inputArea.style.cssText = 'width:min(620px,90vw);min-height:60px;';
+    inputArea.style.cssText = 'width:100%;min-height:64px;flex-shrink:0;';
     ov.appendChild(inputArea);
 
     document.body.appendChild(ov);
@@ -139,12 +187,12 @@
     var bubble = document.createElement('div');
     bubble.className = 'ldp-bubble ldp-' + (opts.who || 'ghost');
     bubble.style.cssText = [
-      'padding:12px 16px',
+      'padding:16px 20px',
       'background:' + (opts.who === 'player' ? 'rgba(196,168,130,0.12)' : 'rgba(168,140,196,0.08)'),
       'border-left:2px solid ' + (opts.who === 'player' ? 'rgba(196,168,130,0.6)' : 'rgba(168,140,196,0.6)'),
       'border-radius:2px',
-      'font-size:0.95rem',
-      'line-height:1.65',
+      'font-size:1.1rem',
+      'line-height:1.75',
       'opacity:0', 'transform:translateY(8px)',
       'transition:opacity 600ms ease, transform 600ms ease',
       'white-space:pre-wrap',
@@ -182,17 +230,18 @@
     var area = overlay.querySelector('[id$="-input-area"]');
     area.innerHTML = '';
     var box = document.createElement('div');
-    box.style.cssText = 'display:flex;flex-direction:column;gap:8px;align-items:center;';
+    box.style.cssText = 'display:flex;flex-direction:column;gap:8px;align-items:stretch;width:100%;';
     (choices || []).forEach(function (c, i) {
       var btn = document.createElement('button');
       btn.textContent = c.label;
       btn.style.cssText = [
-        'padding:10px 18px', 'min-width:280px', 'max-width:90vw',
+        'padding:14px 20px', 'width:100%', 'box-sizing:border-box',
         'background:rgba(196,168,130,0.06)',
         'border:1px solid rgba(196,168,130,0.32)',
         'color:rgba(232,216,252,0.86)',
-        'font-family:inherit', 'font-size:0.92rem',
+        'font-family:inherit', 'font-size:1.05rem',
         'cursor:pointer', 'border-radius:2px',
+        'text-align:left',
         'transition:background 200ms ease, border-color 200ms ease',
       ].join(';');
       btn.onmouseenter = function () {
@@ -223,11 +272,11 @@
     input.type = 'text';
     input.placeholder = opts.placeholder || '여기에 이야기해...';
     input.style.cssText = [
-      'flex:1', 'padding:10px 14px',
+      'flex:1', 'padding:14px 18px',
       'background:rgba(0,0,0,0.4)',
       'border:1px solid rgba(196,168,130,0.32)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'font-size:0.95rem',
+      'font-family:inherit', 'font-size:1.05rem',
       'outline:none', 'border-radius:2px',
     ].join(';');
     input.onfocus = function () { input.style.borderColor = 'rgba(196,168,130,0.7)'; };
@@ -236,11 +285,11 @@
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
     btn.style.cssText = [
-      'padding:10px 16px',
+      'padding:14px 20px',
       'background:rgba(196,168,130,0.18)',
       'border:1px solid rgba(196,168,130,0.45)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'cursor:pointer', 'border-radius:2px',
+      'font-family:inherit', 'font-size:1.05rem', 'cursor:pointer', 'border-radius:2px',
     ].join(';');
 
     function _go() {
@@ -256,6 +305,62 @@
     wrap.appendChild(btn);
     area.appendChild(wrap);
     setTimeout(function () { input.focus(); }, 50);
+  }
+
+  // ─── V2.1.2 슬롯 흡수 background insert ─────
+  // 흡수된 응답을 ghost_variants 새 drift row 로 박음. 응답 표시와 분리 (fire-and-forget).
+  // 실패해도 사용자 체감엔 영향 X. parent_variant_id = 본 유령 id (호출자가 anchorVariantId 로 넘김).
+  async function _backgroundInsertAbsorbed(supabase, payload) {
+    if (!supabase || !payload || !payload.memoryId || !payload.utterance) return;
+    try {
+      // 1) emotion_extract — 다음 플레이어 픽에 사용. 실패해도 insert 진행 (emotion_vec={}).
+      // claude-scene/index.ts emotion_extract 응답 = { base: {12축}, prompt_version, ... }
+      // 흡수 변주는 *플레이어 자생* 이라 attribution/core_fear 명확 X → metadata boost 생략 (raw 만 박음).
+      // 작가 시드 변주(extractEmotionVec helper)는 메타 boost 적용 — 결 차이 있으나 흡수 자리 정합.
+      var emotion_vec = {};
+      var extractor_version = 'absorb_v1_no_extract';
+      try {
+        var extResp = await supabase.functions.invoke('claude-scene', {
+          body: { type: 'emotion_extract', user_text: payload.utterance, scene_text: '' },
+        });
+        if (!extResp.error && extResp.data && extResp.data.base) {
+          emotion_vec = extResp.data.base;
+          extractor_version = (extResp.data.prompt_version || 'absorb_v1') + '+no_meta_boost';
+        }
+      } catch (extE) {
+        console.warn('[ldp absorb] emotion_extract exception', extE);
+      }
+
+      // 2) insert-ghost-variant edge function (V2.1.2 확장 = kind:'drift' 허용, is_seed=false 강제)
+      var insertResp = await supabase.functions.invoke('insert-ghost-variant', {
+        body: {
+          memory_id: payload.memoryId,
+          kind: 'drift',
+          is_seed: false,
+          parent_variant_id: payload.anchorVariantId || null,
+          utterance: payload.utterance,
+          emotion_vec: emotion_vec,
+          extractor_version: extractor_version,
+          motif_tags: payload.motifTags || [],
+          attribution: payload.attribution || null,
+          core_fear: payload.coreFear || null,
+          modality: payload.modality || null,
+          role: payload.role || null,
+        },
+      });
+      if (insertResp.error) {
+        console.warn('[ldp absorb] insert-ghost-variant failed', insertResp.error);
+        return null;
+      }
+      var newId = insertResp.data && insertResp.data.variant && insertResp.data.variant.id;
+      console.log('[ldp absorb] new drift row inserted:', newId,
+        '(memory=' + payload.memoryId.slice(0, 8) + ', utt="' +
+        payload.utterance.slice(0, 30) + '...")');
+      return newId;
+    } catch (err) {
+      console.warn('[ldp absorb] background insert exception', err);
+      return null;
+    }
   }
 
   // ─── claude-scene 호출 (emotion 추출) ───
@@ -299,6 +404,7 @@
    * @param {Object} [input.runtime]           tem_af_strata_terrain runtime, drift_visualizer 위해
    * @param {Object} [input.supabase]          Supabase client
    * @param {string} [input.mountId]
+   * @param {string} [input.anchorVariantId]   V2.1.2 — 본 유령 id (흡수 변주 parent_variant_id). 없으면 null.
    * @param {Function} [input.onSceneEnd]      ({scene_link_input, alignment, resonance}) => void
    * @returns {Promise<{scene_link_input:string, alignment:number, resonance:string}>}
    */
@@ -324,9 +430,25 @@
       driftVis = global.LumenDriftVisualizer.attach(input.runtime);
     }
 
-    // 1. ghost_intro
-    if (dlg.ghost_intro) {
-      _addMessage(overlay, dlg.ghost_intro, { who: 'ghost' });
+    // 회차 시간 측정 — 9분(540s) 초과 시 콘솔 경고 (결정 (d) 2026-05-04).
+    var sceneCycleStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+
+    // 0. scene_context — 풀 씬 본문 문장 단위 순차 토출 (V2.1.2 추가, 2026-05-05).
+    //    스즈미야 재구성 (비순차 견디게 다시 박은 풀 컨텍스트) 한 문장씩 유령 대사로.
+    //    이후 ghost_intro (짧은 회상 닻) 가 자연스럽게 이어짐.
+    if (dlg.scene_context && Array.isArray(dlg.scene_context)) {
+      for (var sc = 0; sc < dlg.scene_context.length; sc++) {
+        var line = dlg.scene_context[sc];
+        if (typeof line !== 'string' || !line.length) continue;
+        _addMessage(overlay, line, { who: 'ghost' });
+        await _sleep(1700); // 문장 간 호흡
+      }
+    }
+
+    // 1. ghost_intro — string or array 모두 지원. 배열이면 (memId|sceneId|intro) 시드로 deterministic pick.
+    var introText = _pickAuthored(dlg.ghost_intro, 'intro|' + memoryId + '|' + sceneId);
+    if (introText) {
+      _addMessage(overlay, introText, { who: 'ghost' });
       await _sleep(DEFAULTS.pacingDelays.afterIntroMs);
     }
 
@@ -337,24 +459,29 @@
     _addMessage(overlay, choice.label, { who: 'player' });
     await _sleep(300);
 
-    // 3. choice_reply
-    if (choice.ghost_reply) {
-      _addMessage(overlay, choice.ghost_reply, { who: 'ghost' });
+    // 3. choice_reply — string or array. 시드는 choice.label 까지 포함 (다른 choice → 다른 풀 자리).
+    var replyText = _pickAuthored(choice.ghost_reply, 'reply|' + memoryId + '|' + sceneId + '|' + (choice.label || ''));
+    if (replyText) {
+      _addMessage(overlay, replyText, { who: 'ghost' });
       await _sleep(DEFAULTS.pacingDelays.afterReplyMs);
     }
 
-    // 4. free_dialog 첫 질문
-    if (choice.free_dialog_open) {
-      _addMessage(overlay, choice.free_dialog_open, { who: 'ghost' });
+    // 4. free_dialog 첫 질문 — string or array.
+    var openText = _pickAuthored(choice.free_dialog_open, 'open|' + memoryId + '|' + sceneId + '|' + (choice.label || ''));
+    if (openText) {
+      _addMessage(overlay, openText, { who: 'ghost' });
       await _sleep(700);
     }
 
-    // 5. free_dialog turns (max N, END_PHRASES 시 조기 종료)
+    // 5. free_dialog turns — 1턴 → 3턴 (2026-05-04 ego-state turn-taking 차용).
+    //    매 턴 _analyzeEmotion 단독 호출 (결정 (a) — 누적 fingerprint X).
+    //    END_PHRASES 시 조기 종료. CRISIS 시 즉시 차단.
     var lastAlignment = 0.5;
     var lastResonance = 'vague';
     var origEmotion = sceneData.original_emotion || sceneData.originalEmotion || {};
+    var totalTurns = DEFAULTS.maxFreeDialogTurns;
 
-    for (var turn = 1; turn <= DEFAULTS.maxFreeDialogTurns; turn++) {
+    for (var turn = 1; turn <= totalTurns; turn++) {
       var playerInput = await new Promise(function (resolve) {
         _renderTextInput(overlay, { placeholder: '여기에 이야기해...' }, resolve);
       });
@@ -369,18 +496,54 @@
       // END_PHRASES 조기 종료 → urge 단계로
       if (_isEndPhrase(playerInput, DEFAULTS.endPhrases)) break;
 
-      // emotion 분석 + alignment
+      // emotion 분석 + alignment (매 턴 단독 — 결정 (a))
       var userEmo = await _analyzeEmotion(input.supabase, playerInput, sceneData.anchor_emotions);
       var alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
       lastAlignment = alignment;
 
-      // 반응 풀 pick
-      var resp = ghosts && typeof ghosts.pickResponse === 'function'
-        ? ghosts.pickResponse({
-            memoryId: memoryId, sceneId: sceneId, turn: turn,
-            alignment: alignment, playerInput: playerInput,
-          })
-        : { resonance: 'vague', reply: '...' };
+      // V2.1.2 슬롯 흡수 시도 — 성공 시 슬롯 응답 우선, background insert.
+      // 실패 시 기존 pickResponse fallback (resonance/vague 풀 또는 dissonance quoting).
+      var resp = null;
+      var absorbed = null;
+      var slotter = global.LumenSlotAbsorber;
+      if (slotter && typeof slotter.tryAbsorb === 'function' && ghosts && typeof ghosts.getSlotPool === 'function') {
+        absorbed = slotter.tryAbsorb({
+          memoryId: memoryId, sceneId: sceneId, turn: turn,
+          alignment: alignment, playerInput: playerInput,
+          slotPool: ghosts.getSlotPool(),
+        });
+      }
+      if (absorbed) {
+        resp = { resonance: absorbed.resonance, reply: absorbed.reply };
+        // background insert (fire-and-forget, await 안 함)
+        if (input.supabase && memoryId) {
+          _backgroundInsertAbsorbed(input.supabase, {
+            memoryId: memoryId,
+            utterance: absorbed.reply,
+            motifTags: absorbed.motifTags,
+            anchorVariantId: input.anchorVariantId || null,
+            attribution: sceneData.attribution || null,
+            coreFear: sceneData.core_fear || null,
+            modality: sceneData.modality || null,
+            role: sceneData.role || null,
+          });
+        }
+        console.log('[phase1] turn ' + turn + '/' + totalTurns +
+          ' ABSORBED slotValue="' + absorbed.slotValue + '"' +
+          ' resonance=' + absorbed.resonance);
+      } else {
+        // 반응 풀 pick — turn 인자가 시드에 들어가서 매 턴 다른 변주 (호명 자리는 V2-10 가이드 풀).
+        resp = ghosts && typeof ghosts.pickResponse === 'function'
+          ? ghosts.pickResponse({
+              memoryId: memoryId, sceneId: sceneId, turn: turn,
+              alignment: alignment, playerInput: playerInput,
+            })
+          : { resonance: 'vague', reply: '...' };
+        console.log('[phase1] turn ' + turn + '/' + totalTurns +
+          ' alignment=' + alignment.toFixed(3) +
+          ' resonance=' + resp.resonance +
+          ' reply="' + (resp.reply || '').slice(0, 30) + '..."');
+      }
       lastResonance = resp.resonance;
 
       // 변형 펄스
@@ -413,10 +576,21 @@
     // 8. transitioning — DOM cleanup
     cleanup({ mountId: overlay.id });
 
+    // 회차 시간 측정 — 9분 초과 시 console.warn (결정 (d)).
+    var sceneCycleEnd = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    var sceneCycleMs = sceneCycleEnd - sceneCycleStart;
+    if (sceneCycleMs > DEFAULTS.sceneCycleWarnMs) {
+      console.warn('[phase1] scene cycle ' + (sceneCycleMs / 1000).toFixed(1) + 's > 임계 ' +
+        (DEFAULTS.sceneCycleWarnMs / 1000) + 's — 작가 한 바퀴 페이스 점검 자리');
+    } else {
+      console.log('[phase1] scene cycle ' + (sceneCycleMs / 1000).toFixed(1) + 's (memId=' + memoryId + ' sceneId=' + sceneId + ')');
+    }
+
     var result = {
       scene_link_input: sceneLinkInput,
       alignment: lastAlignment,
       resonance: lastResonance,
+      sceneCycleMs: sceneCycleMs,
     };
     if (typeof input.onSceneEnd === 'function') input.onSceneEnd(result);
     return result;
@@ -435,6 +609,11 @@
       cosineSim: _cosineSim,
       hasCrisis: _hasCrisis,
       isEndPhrase: _isEndPhrase,
+      pickAuthored: _pickAuthored,    // string-or-array seeded pick (2026-05-04)
+    },
+    _config: {    // smoke 검증용 — 외부에서 default 읽기
+      maxFreeDialogTurns: DEFAULTS.maxFreeDialogTurns,
+      sceneCycleWarnMs: DEFAULTS.sceneCycleWarnMs,
     },
   };
 })(typeof window !== 'undefined' ? window : globalThis);

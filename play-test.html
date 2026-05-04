@@ -62,6 +62,7 @@
   <script src="js/ui/lumen_return_events.js"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
   <script src="js/ui/lumen_ghost_response.js"></script>
+  <script src="js/core/SlotAbsorber.js"></script>
   <script src="js/ui/lumen_drift_visualizer.js"></script>
   <script src="js/ui/lumen_dialog_phase1.js"></script>
   <script src="js/ui/strataSection.js"></script>
@@ -2907,9 +2908,10 @@
   }
 
   window._temEnterSceneMode = enterSceneMode;
+  window._temGame = game; // V2.1.2 검증용 — 콘솔에서 game.pins 접근 가능
   // V2.1 Phase 1 — Lumen circular memory dialog 컨트롤러
   // 기존 enterSceneMode UI(sceneText·sceneNpc·emotionInputArea) 대체.
-  // overlay #lumenDialogPhase1 (z-index:240) 띄움. FP 카메라는 뒤에서 계속 작동.
+  // overlay #lumenDialogPhase1 (z-index:2800, sceneMode 2700 위) 띄움. FP 카메라는 뒤에서 계속 작동.
   function _enterLumenDialogPhase1(pin, scene) {
     game.currentPinId = pin.id;
     game.currentSceneIndex = pin.sceneIndex;
@@ -2922,15 +2924,27 @@
     var supabase = (typeof window.getSupabaseClient === 'function') ? window.getSupabaseClient() : null;
     var runtime  = window._fpRuntime || null;
 
+    // V2.1.2 anchorVariantId — 본 유령 id 가 흡수 변주의 parent_variant_id 자리.
+    // sessionStorage 또는 game.* 에 V2-3 / V2-4 단계에서 박혀 있을 수 있음. 없으면 null (계보 추적 X, 작동 영향 없음).
+    var anchorVariantId = null;
+    try {
+      anchorVariantId = (game.anchorVariantId
+        || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem && sessionStorage.getItem('lumen_anchor_variant_id'))
+        || null);
+    } catch (e) { anchorVariantId = null; }
+
     return window.LumenDialogPhase1.start({
       memoryId: game.memoryId,
       sceneId: scene.id,
       sceneData: scene,
       runtime: runtime,
       supabase: supabase,
+      anchorVariantId: anchorVariantId,
       onSceneEnd: function (result) {
-        console.log('[v21-phase1] scene end', result);
-        _advanceToNextSceneLinear(pin);
+        // V2.1.2 (2026-05-05) — 자동 진행 폐기. 매 씬 끝 = 1인칭 지도 복귀, 자유 탐색.
+        // 플레이어가 다음 핀(다른 유령) 을 직접 골라서 long press 로 진입.
+        // §6.5 #5 "Player sees fog" 정합. dissonance 결은 자연스럽게 *유령 떠남* 자리.
+        console.log('[v21-phase1] scene end — return to free explore. resonance=' + result.resonance);
       },
     });
   }
@@ -4000,7 +4014,7 @@
           awWrap.style.pointerEvents = 'none';
           awWrap.style.cursor = '';
           awWrap.style.boxShadow = '';
-          awWrap.style.zIndex = '260';
+          awWrap.style.zIndex = '2900';
           // 원래 부모로 복귀
           if (_awOrigParent) _awOrigParent.appendChild(awWrap);
           // 기존 afterTerrainReturn 로직 호출
@@ -4137,7 +4151,7 @@
         .eq('memory_id', memoryId)
         .order('created_at'),
       sb.from('memories')
-        .select('id, title, layers, cont_stage, cont_drift, cont_fixation, cont_depth, cont_last_mismatch, ghost_condensation_points, terrain_shape')
+        .select('id, title, layers, cont_stage, cont_drift, cont_fixation, cont_depth, cont_last_mismatch, ghost_condensation_points, terrain_shape, meta')
         .eq('id', memoryId),
     ]);
     if (scenesRes.error) throw scenesRes.error;
@@ -4154,6 +4168,24 @@
       game.ghost_condensation_points = Array.isArray(memRow.ghost_condensation_points)
         ? memRow.ghost_condensation_points : [];
       game.terrain_shape = memRow.terrain_shape || 'circular';
+
+      // V2.1.2 슬롯 흡수 풀 주입 — memories.meta.absorption_slots → LumenGhostResponse
+      // 슬롯 풀 비어 있으면 흡수 X (안전 fallback). LumenSlotAbsorber.tryAbsorb 자동 null 리턴.
+      try {
+        var absSlots = memRow.meta && memRow.meta.absorption_slots;
+        if (window.LumenGhostResponse && typeof window.LumenGhostResponse.setOptions === 'function') {
+          window.LumenGhostResponse.setOptions({
+            resonanceSlotPool: (absSlots && Array.isArray(absSlots.resonance)) ? absSlots.resonance : [],
+            vagueSlotPool:    (absSlots && Array.isArray(absSlots.vague))    ? absSlots.vague    : [],
+          });
+          var counts = window.LumenGhostResponse.getDebug && window.LumenGhostResponse.getDebug().counts;
+          console.log('[v21.2 absorb] slot pools loaded for memory', memoryId.slice(0, 8) + '…',
+            'resonance=' + (counts ? counts.resonanceSlot : '?'),
+            'vague=' + (counts ? counts.vagueSlot : '?'));
+        }
+      } catch (e) {
+        console.warn('[v21.2 absorb] slot pool injection failed', e);
+      }
     }
 
     if (!game.scenes.length && window._simulatedScenesMap && window._simulatedScenesMap[memoryId]) {
@@ -5546,7 +5578,7 @@
             // Clean up ambient wave click state + body에서 strataView로 복귀
             var _awW = document.getElementById('fpAmbientWaveWrap');
             if (_awW) {
-              _awW.style.pointerEvents = 'none'; _awW.style.cursor = ''; _awW.style.boxShadow = ''; _awW.style.zIndex = '260';
+              _awW.style.pointerEvents = 'none'; _awW.style.cursor = ''; _awW.style.boxShadow = ''; _awW.style.zIndex = '2900';
               var _svParent = document.getElementById('strataView');
               if (_svParent && _awW.parentNode === document.body) _svParent.appendChild(_awW);
             }
@@ -6102,10 +6134,11 @@
 
     async function _initAmbientWave() {
       if (_awCanvas) return;
-      var parent = document.getElementById('strataView') || document.body;
+      // V2.1.2 — body 직접 박음 (stacking context 탈출). dialog overlay(2800) 위에 항상 떠 있게.
+      var parent = document.body;
       var wrap = document.createElement('div');
       wrap.id = 'fpAmbientWaveWrap';
-      wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:' + AW_HEIGHT + 'px;z-index:260;pointer-events:none;background:transparent;';
+      wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:' + AW_HEIGHT + 'px;z-index:2950;pointer-events:none;background:transparent;';
       _awCanvas = document.createElement('canvas');
       _awCanvas.id = 'fpAmbientWaveCanvas';
       _awCanvas.style.cssText = 'width:100%;height:100%;';
