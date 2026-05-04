@@ -685,7 +685,7 @@ S3 step 4 = "opening.js / play 진입 wiring + 회차 끝 시점 plays 행에 gh
     - [x] claude-scene emotion_extract 결정론 fix (2026-05-04 — temperature: 0 + PROMPT_VERSION "tem-emotion-v2.1.0" 응답에 박음. version 19→20 배포)
     - [x] ghost_variants.extractor_version 컬럼 추가 (2026-05-04 — supabase/migrations/20260504010000_v21_ghost_variants_extractor_version.sql 적용)
     - [x] pre-flight calibration 도구 (2026-05-04 — test/emotion_calibration.html. 사용자 손 작업 대기)
-    - [ ] **사용자 손 작업** — calibration 1~2시간 돌리기 (잘 아는 텍스트 5~10개 검수, 어긋난 자리 메모, 필요시 프롬프트 수정 + PROMPT_VERSION 올림)
+    - [x] **사용자 손 작업** — calibration 돌림 (2026-05-04 — "정확하게 뽑는다" 검증 OK. 어긋난 자리 없음. 프롬프트 v2.1.0 그대로 유지)
     - [x] 메타데이터 가산점 룰 (2026-05-04 — emotion_extract_helper.js 의 ATTRIBUTION_BOOST + CORE_FEAR_BOOST. attribution=self_blame → guilt+0.3 등 default 값. V2-12 튜닝 자리)
     - [x] admin 변주 풀 도구 본 수정 (2026-05-04 — ghost_variants_editor.js 12 슬라이더 폐기 → "자동 추출" 버튼 + 12축 막대그래프 읽기 전용 + extractor_version 도장. 추출 전 저장 차단. 사용자 손 검증 대기)
 - [~] W2S4 — V2-7 return toast 컴포넌트 (2026-05-04 폐기 — SCOPE V2-7 [x] 이미 박힘 (lumen_run_outro.js 가 정문 자리). todo.md W2S4 핸드아웃 자체가 SCOPE 갱신 못 따라간 stale 자리. 본 세션이 박은 js/ui/return_toast.js + index.html script 태그 모두 되돌림.)
@@ -700,6 +700,51 @@ S3 step 4 = "opening.js / play 진입 wiring + 회차 끝 시점 plays 행에 gh
     - [ ] drift 잔향 toast trigger — 별도 자리, S1 결정 후
 
 체크 = `[x]` 로 변경. 부분 완료 시 sub-bullet 추가.
+
+---
+
+# 2026-05-04 늦은 결정 — ego-state turn-taking 차용 (V2.1.1)
+
+문서: [docs/유령대화_egostate_차용-260504.md](docs/유령대화_egostate_차용-260504.md)
+
+5-2 사용자 본인 결정 (`maxFreeDialogTurns: 1`) 의 5-4 번복. 임상 ego-state therapy 의 turn-taking 구조 한 자리만 차용 (프레임 거부 — integration / 치유 / fixation 병리화 X).
+
+근거: 현재 1턴 구조의 약점 4종 — (가) 유령이 안 듣는다 / (나) 작가 ghostwriter 모드 / (다) drift 회차 안에서 가시화 X / (라) 작품 명제 §2 마찰점 X.
+
+본 세션 (5-4) 박은 자리들이 이 차용을 *진짜 작동* 시킴:
+- α2 자동 생성 wiring → 시나리오 C (두 번째 플레이어 → speciation → 세 번째 플레이어 만남)
+- emotion_extract 결정론 fix (temperature 0 + PROMPT_VERSION) → 매 턴 alignment 일관성
+- ghost_variants 통합 풀 활용 (응답 풀 = 변주 풀, 사용자 답 #3)
+
+## 사용자 답 5개 (의심 자리 해소)
+1. 톤 ("연결사 + 자기 문장") = 의식하고 진행. 톤 손실 최소화 룰을 가이드 (세션 2) 가 박음
+2. 분량 폭발 = "해봐야 안다". 1 씬 풀 사이클 시간 측정 (smoke 추가)
+3. 응답 풀 = 변주 풀 통합 = ghost_variants 그대로
+4. 일정 = 본 세션 큰 자리 박았으니 OK
+5. decideBranch 자리 = 매 턴 응답 픽 (LumenGhostResponse) ≠ 회차 끝 분기 결정 (GhostBranchTrigger). 둘이 분리. decideBranch 회차 끝 1회만.
+
+## 차용 후 작업 순서
+
+| # | 자리 | 시간 | 상태 |
+|---|---|---|---|
+| 1 | 차용 코드 — lumen_dialog_phase1.js 1턴→3턴 + 풀 픽 시그니처 + smoke. 세션 1 핸드아웃 박힘 (채팅) | 0.5~1일 | ⬜ |
+| 2 | V2-10 가이드 — docs/유령응답풀_가이드_v1-260504.md 신규. 응답 풀 12 슬롯 구조 + 톤 손실 최소화 룰. 세션 2 핸드아웃 박힘 (채팅) | 4시간 | ⬜ |
+| 3 | 작가 손 1 씬 시도 — 발자국 1 씬에 응답 풀 박고 풀 사이클 직접 돌림. 톤·분량 검증 | 1~2시간 | ⬜ |
+| 4 | 본격 콘텐츠 — dialog_choices + 응답 풀 변주 + echo_words 통합 (발자국 + 다른 메모리) | 1~3일 작가 손 | ⬜ |
+| 5 | status='alive' SQL — 5/13 파일럿 직전 | 5초 | ⬜ |
+
+1+2 = 다른 세션에서 병렬 (cold-start 핸드아웃 채팅에 박힘). 3 = 1+2 후 검증.
+
+## 본 세션 (5-4) 박은 발자국 메모리 디버깅 자리 (todo.md 외)
+- 응결점 임계값 0 (첫 자리만, 1인 테스트 데드락 회피)
+- play-test.html:5141 가드 완화 (시스템 전체 마네킨 0 fix)
+- 씬 텍스트 70~120자 압축 (E-004 패턴 정합)
+- scenes.meta.stage_position 6 핀 정육각형 SQL 박음
+
+## 정공법 자리 (V2-10 본격 콘텐츠 흡수)
+- dialog_choices 박힌 메모리 0개 = chat 진입 자체 불가 자리 = 5/13 파일럿 전 정공법 박혀야 함
+- echo_words 박힌 메모리 일부만 = 응결 잔상 sprite 작동 위해 박음
+- 둘 다 위 작업 4번에 흡수
 
 ---
 
