@@ -117,6 +117,27 @@ let _openingLang = 'en';
 // 순수 로직 (DOM·supabase 무관) 은 js/core/SeekerFingerprint.js 에 분리.
 // 본 모듈은 supabase·DOM 의존 wrapper 만 담당.
 
+// claude-scene 의 emotion_extract 응답에는 modality/role 이 없음 (스키마 누락).
+// edge fn 재배포 전까지 클라 측 키워드 휴리스틱으로 보강 — 첫 매칭 우선, 못 잡으면 null.
+// _askedSlots 추적과 합쳐 무한 반복은 무조건 차단.
+function _inferModality(text) {
+  if (!text) return null;
+  const t = String(text).toLowerCase();
+  if (/들렸|소리|음악|목소리|sound|voice|heard|noise/.test(t)) return 'auditory';
+  if (/냄새|향기|smell|scent|odor/.test(t)) return 'olfactory';
+  if (/표정|얼굴|눈빛|장면|보였|봤|face|saw|look|scene|sight/.test(t)) return 'visual';
+  if (/촉감|닿|손길|체온|몸|touch|felt|warm|cold|body/.test(t)) return 'somatic';
+  return null;
+}
+function _inferRole(text) {
+  if (!text) return null;
+  const t = String(text).toLowerCase();
+  if (/지켜봤|멀리서|바라봤|구경|watched|from afar|witnessed/.test(t)) return 'observer';
+  if (/당했|겪었|상처|harmed|hurt me|done to me/.test(t)) return 'victim';
+  if (/내가|나는|i was|i did|i went/.test(t)) return 'actor';
+  return null;
+}
+
 // 텍스트 → claude-scene emotion_extract → turnResult.
 // 빈 텍스트면 LLM 호출 안 하고 빈 결과 반환 (네트워크 절약).
 async function _analyzeTurnText(rawText, sceneText) {
@@ -133,14 +154,24 @@ async function _analyzeTurnText(rawText, sceneText) {
       body: { type: 'emotion_extract', user_text: rawText, scene_text: sceneText || '' },
     });
     if (error) throw error;
+    const reason = (data && data.reason_analysis) || {};
+    // 클라 휴리스틱으로 modality/role 보강. edge fn 이 직접 반환하면 그쪽 우선.
+    const inferredRole = _inferRole(rawText);
+    const inferredModality = (data && data.modality) || _inferModality(rawText);
+    if (inferredRole && !reason.role) reason.role = inferredRole;
     return {
       base: (data && data.base) || {},
-      reason_analysis: (data && data.reason_analysis) || {},
+      reason_analysis: reason,
+      modality: inferredModality,
       _raw_text: rawText,
     };
   } catch (e) {
     console.warn('[opening:dialog] emotion_extract failed:', e);
-    return { base: {}, reason_analysis: {}, _raw_text: rawText };
+    return {
+      base: {}, reason_analysis: {},
+      modality: _inferModality(rawText),
+      _raw_text: rawText,
+    };
   }
 }
 

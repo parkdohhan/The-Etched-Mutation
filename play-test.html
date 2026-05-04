@@ -56,6 +56,7 @@
   <script src="js/ui/lumen_scene_ghosts.js"></script>
   <script src="js/ui/lumen_scene_mannequins.js"></script>
   <script src="js/ui/lumen_rewind_playback.js"></script>
+  <script src="js/ui/lumen_run_outro.js"></script>
   <script src="js/ui/lumen_return_mode.js"></script>
   <script src="js/ui/lumen_return_speech.js"></script>
   <script src="js/ui/lumen_return_events.js"></script>
@@ -4354,6 +4355,33 @@
         continueBtn.className = 'action-btn';
         continueBtn.style.marginTop = '1.5rem';
         continueBtn.addEventListener('click', () => {
+          // V2.1 분기: revealScreen 페이드아웃 → LumenRunOutro 분기 텍스트 → 오프닝.
+          // rewind 는 sealBtn 직전 단계에서 이미 끝남 → 여기는 rewind: false.
+          let _v21BranchK = null;
+          try { _v21BranchK = sessionStorage.getItem('tem_branch_kind'); } catch (_) {}
+          if (_v21BranchK && window.LumenRunOutro && typeof window.LumenRunOutro.run === 'function') {
+            initAudio();
+            fadeOut(SFX.rain, 1500, true);
+            const revElV21 = document.getElementById('revealScreen');
+            if (revElV21) {
+              revElV21.style.transition = 'opacity 0.8s ease';
+              revElV21.style.opacity = '0';
+            }
+            setTimeout(() => {
+              if (revElV21) {
+                revElV21.classList.remove('active');
+                revElV21.style.opacity = '';
+                revElV21.style.transition = '';
+              }
+              window.LumenRunOutro.run({
+                rewind: false,
+                onComplete: () => { window.location.href = 'index.html'; }
+              });
+            }, 850);
+            return;
+          }
+
+          // V1 archive 흐름 (기존)
           initAudio();
           fadeOut(SFX.rain, 2000, true);
           setTimeout(() => {
@@ -5101,10 +5129,19 @@
       var visited = window._temGame && window._temGame.visitedCore ? window._temGame.visitedCore : {};
 
       // Map pins to 3D positions
+      var game = window._temGame || {};
       pins.forEach(function (pin) {
         if (pin.type !== 'core') return;
         var scene = scenes.find(function (s) { return s.id === pin.sceneId; });
         if (!scene) return;
+
+        // 2026-05-03: V2.1 Phase 1 진입 가드(_enterLumenDialogPhase1) 와 동기화 —
+        // circular 메모리에서 dialog_choices 없는 scene 은 chat 진입 자체가 막히므로
+        // 핀(octahedron + 수직선) 도, 마네킨도 만들지 않는다. "갈 곳 없는 길잡이" 방지.
+        if (game.terrain_shape === 'circular' && (!scene.meta || !scene.meta.dialog_choices)) {
+          console.log('[FP Play] pin skip — circular 인데 dialog_choices 없음. sceneId:', scene.id);
+          return;
+        }
 
         // 작업 15 옵션 A: scene.meta.stage_position 이 있으면 admin 드래그 좌표를 그대로 씀.
         // 없으면 기존 emotion 기반 자동 투영. 둘 다 없으면 핀 skip.
@@ -5397,12 +5434,35 @@
             canvas.style.transform = _canvasOrigTransform;
             if (!targetDoor) return;
 
-            // Exit: trigger seal flow
+            // Exit: V2.1 LumenRunOutro 우회 OR V1 seal flow
             var g = window._temGame;
             if (g) g._exitDoorUsed = true;
             var lang = (document.documentElement.lang || 'en').substring(0, 2);
             _fpPlayActive = false; window._fpPlayActive = false;
-            // Release pointer lock so cursor returns on reveal screen
+
+            // V2.1 분기: V1 reveal narrative bridge → Continue 핸들러에서 outro 분기 텍스트 chained.
+            // 2026-05-04 rewind cinematic 자리 안 맞아서 제거 (출구문 ≠ void 진입). LumenRewindPlayback 모듈 자체는 코드 보존, V3 재배치 자리.
+            var _v21Branch = null;
+            try { _v21Branch = sessionStorage.getItem('tem_branch_kind'); } catch (_) {}
+            if (_v21Branch && window.LumenRunOutro) {
+              var rt2v21 = window.TemAfStrataTerrain._lastRuntime;
+              if (document.pointerLockElement) {
+                try { document.exitPointerLock(); } catch (_) {}
+              }
+              if (_crosshairEl) _crosshairEl.style.display = 'none';
+              if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
+              _destroyAmbientWave();
+              if (rt2v21) rt2v21.exitFirstPerson();
+              var svv21 = document.getElementById('strataView');
+              if (svv21) svv21.style.display = 'none';
+              if (_fpProxEl) _fpProxEl.style.opacity = '0';
+              if (_fpHintEl) _fpHintEl.style.opacity = '0';
+              var sealBtnV21 = document.getElementById('sealBtn');
+              if (sealBtnV21) { sealBtnV21.disabled = false; sealBtnV21.click(); }
+              return;
+            }
+
+            // V1 archive flow
             if (document.pointerLockElement) {
               try { document.exitPointerLock(); } catch (_) {}
             }
@@ -5416,7 +5476,6 @@
             if (_fpProxEl) _fpProxEl.style.opacity = '0';
             if (_fpHintEl) _fpHintEl.style.opacity = '0';
 
-            // Trigger the existing seal/reveal flow
             var sealBtn = document.getElementById('sealBtn');
             if (sealBtn) {
               sealBtn.disabled = false;
@@ -5641,8 +5700,26 @@
             var _sealReady = (window._temGame && window._temGame.coreVisitCount >= 3)
               || (window._temGame && window._temGame._exitDoorUsed);
             if (allVisited && _fpScenePins.length > 0 && _sealReady) {
-              // Trigger seal/end via existing seal button
               _fpPlayActive = false; window._fpPlayActive = false;
+
+              // V2.1 분기: V1 reveal bridge → Continue 핸들러에서 outro chained. (2026-05-04 rewind 제거)
+              var _v21BranchAV = null;
+              try { _v21BranchAV = sessionStorage.getItem('tem_branch_kind'); } catch (_) {}
+              if (_v21BranchAV && window.LumenRunOutro) {
+                var rtv21AV = rt;
+                if (_crosshairEl) _crosshairEl.style.display = 'none';
+                if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
+                _destroyAmbientWave();
+                if (rtv21AV) rtv21AV.exitFirstPerson();
+                var svEndV21 = document.getElementById('strataView');
+                if (svEndV21) svEndV21.style.display = 'none';
+                var sealBtnAV = document.getElementById('sealBtn');
+                if (sealBtnAV && !sealBtnAV.disabled) sealBtnAV.click();
+                else if (sealBtnAV) { sealBtnAV.disabled = false; sealBtnAV.click(); }
+                return;
+              }
+
+              // V1 archive flow
               if (_crosshairEl) _crosshairEl.style.display = 'none';
               if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
               _destroyAmbientWave();

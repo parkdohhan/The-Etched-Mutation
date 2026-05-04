@@ -8,7 +8,9 @@ V2.1 작업 (4-29 ~ 5-19) 중 떠오르는 새 아이디어를 즉시 이월하�
 
 ## 4-29 ~ 5-19 이월 항목
 
-(작업 중 추가)
+- **(2026-05-04) `LumenRewindPlayback`(궤적 역재생 cinematic) 자리 재배치** — V2.1 회차 끝 (출구문) 자리에 박았더니 작가 첫 손 체감에서 "이거 뭐임" 반응 (출구문 ≠ 도달 자리, 의미 안 읽힘). 모듈 자체는 [js/ui/lumen_rewind_playback.js](../js/ui/lumen_rewind_playback.js) 에 코드 보존. V3에서 정합 자리 (예: void 진입, 깊이 도달 후, 메타 질문 직후) 다시 박을 후보. 원래 V1 작업 2-A 의도 = "*도달 후 여정 회고*" — 그 의미가 살아나는 자리에서만 부활.
+
+- **(2026-05-04) speciation 판정 시점 재설계 — trajectory 누적 기반** — Gemini critique 출처. 현재 `decideBranch`(분기 결정 함수, [js/core/GhostBranchTrigger.js](../js/core/GhostBranchTrigger.js))는 회차 *시작 직전* 오프닝 3턴 fingerprint 만으로 drift/speciation/none 결정. 이본론 정합 측면에서 *회차 끝* 에서 사용자가 공간을 어떻게 걸었는지(`getTrajectory` 누적 데이터)로 결정해야 "통과 중 흔적이 변형을 만든다" 명제와 정합. 단순 이전 X — 변주 선택은 시작에서 (drift 가시화용 필수), speciation 판정만 끝에서 trajectory 누적 기반으로 분리 필요. V2.1 손대면 코어 루프 깨짐 → V3 작업 자리.
 
 ---
 

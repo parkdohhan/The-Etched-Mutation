@@ -13,6 +13,10 @@
 // 별이엔진 V4는 변경하지 않는다. 이 모듈은 V4 출력의 소비자이다.
 
 import { projectEmotionToVAD } from '../shared/math.js';
+import { EMOTION_KEYS } from './SeekerFingerprint.js';
+
+// V2.1 12축 라벨 — SeekerFingerprint 의 EMOTION_KEYS 를 그대로 재사용 (단일 진실 자리).
+export { EMOTION_KEYS as EMOTION_AXES_12 };
 
 // ─── Constants (MVP v3 spec §5) ─────────────────────────────────
 
@@ -276,6 +280,56 @@ export function updateContamination(state, engineOutput) {
   next.cont_last_updated = new Date().toISOString();
 
   return next;
+}
+
+// ─── V2.1 12축 cumulative emotion_vec helpers ──────────────────
+// 회차 끝마다 1회 호출되는 자리. memories.cumulative_emotion_vec 컬럼 (W2S1 마이그레이션) 갱신용.
+// EMA α 는 cont_drift / cont_fixation 과 동일 (CONTAMINATION.EMA_ALPHA = 0.10) — 회차 끝 단위 일관.
+//
+// 매 턴 fingerprint 누적 자리는 SeekerFingerprint.mergeTurn (α=0.6 default) 가 이미 담당.
+// 본 자리는 그 *회차 끝 결과물* 을 더 긴 시간 척도(메모리 lifetime) 로 누적하는 자리.
+
+/**
+ * 회차 끝 fingerprint emotion_vec 를 메모리의 lifetime 누적 벡터에 EMA 로 합친다.
+ *
+ * @param {Object} cumulative - prior memories.cumulative_emotion_vec (12축 부분 객체, 또는 null)
+ * @param {Object} sessionEmotionVec - 회차 끝 fingerprint.emotion_vec
+ * @param {number} [alpha] - 기본 CONTAMINATION.EMA_ALPHA (=0.10)
+ * @returns {Object} 새 누적 12축 객체 (입력 mutate 안 함)
+ */
+export function updateCumulativeEmotionVec(cumulative, sessionEmotionVec, alpha) {
+  const α = (typeof alpha === 'number') ? alpha : CONTAMINATION.EMA_ALPHA;
+  const next = { ...(cumulative || {}) };
+  const src = sessionEmotionVec || {};
+  for (const k of EMOTION_KEYS) {
+    const prev = Number(next[k]) || 0;
+    const curr = Number(src[k]) || 0;
+    const merged = α * curr + (1 - α) * prev;
+    if (merged > 0.001) next[k] = Number(merged.toFixed(4));
+    else delete next[k];
+  }
+  return next;
+}
+
+/**
+ * 12축 변위 벡터 = current - baseline 축별 차이.
+ * α1 pickDriftUtterance(드리프트 변주 픽) 의 입력 자리.
+ * 통상 baseline = 회차 시작 fingerprint, current = 회차 끝 fingerprint (또는 cumulative).
+ *
+ * @param {Object} current - 12축 객체
+ * @param {Object} baseline - 12축 객체
+ * @returns {Object} 12축 변위 (음수 가능)
+ */
+export function computeDriftVector(current, baseline) {
+  const cur = current || {};
+  const base = baseline || {};
+  const drift = {};
+  for (const k of EMOTION_KEYS) {
+    const c = Number(cur[k]) || 0;
+    const b = Number(base[k]) || 0;
+    drift[k] = Number((c - b).toFixed(4));
+  }
+  return drift;
 }
 
 // ─── Batch replay (for simulated/historical plays) ──────────────

@@ -85,18 +85,24 @@ V2.1 코어가 위 세 명제의 *작동 메커니즘* 을 깔음 (§0-A 참조)
 | **[x]** V2-3 대화 입력 UI (자유텍스트 멀티턴) + emotion 분석 파이프라인 (`claude-scene` 재활용) (2026-05-03 코드 완료, 작가 손 검증 미완) | 2 | 5-3 |
 | **[x]** V2-4 분기 트리거 시스템 — drift vs speciation 임계 (LLM 금지, 결정론적, **유령 단위**) (2026-05-03 완료) | 1 | 5-5 |
 | V2-5 오염 카메라 연출 — drift 시 즉시 가시화 (작업 1 `buildDoor` 카메라 어휘 일반화 — cell 간 cut 아니라 *공간 안* 카메라/조명/지형 표면 연출) | 1 | 5-6 |
-| V2-6 drift 발화 시스템 — 같은 유령 발화 변주 출력 (작업 2-C `lumen_return_speech.js`(귀환 후 또다른 나 발화 모듈) 일반화) | 1 | 5-7 |
-| V2-7 귀환 텍스트 알림 — speciation 발생 시 "당신이 만든 새 유령이 이 메모리에 머물고 있다" (시각화 X, archive 화면 = V3) | 0.5 | 5-8 |
+| V2-6 drift 픽 시스템 — 12축 emotion_vec 2단계 픽 (글로벌 좁힘 → 회차 변위 softmax sampling, §9-5 참조) + 회차 끝 도장 (`plays.ghost_variant_id` + `final_drift_vector`) + 폴백 문구 26개. 작업 2-C `lumen_return_speech.js` 재활용. | 2 | 5-7 |
+| **[x]** V2-7 귀환 텍스트 알림 + 회차 끝 outro (2026-05-04 완료, 작가 손 검증 미완) — speciation/drift/none 분기별 한 줄씩 + LumenRewindPlayback `forceStart` wiring | 0.5 | 5-8 |
 | ~~V2-8 lifecycle 정책 (cell 폭발 방지)~~ | — | **V3 이월** (V2.1 단일 공간 → cell 폭발 자체 없음. 유령 변주 풀 폭발은 V2-4 임계 안에서 hardcode 흡수) |
 | V2-9 통합·smoke 가드 (`test/smoke_v21_*.js`) | 2 | 5-9 |
 
-코드 합계 = 1+1.5+2+1+1+1+0.5+2 = **10일**.
+코드 합계 = 1+1.5+2+1+1+2+0.5+2 = **11일** (V2-6 = 1→2일, 2026-05-04 §9-5 drift 픽 시스템 12축 확장 반영).
 
 **완료 기록:**
 - [x] **작업 0 매칭 엔진 prequel** (2026-05-03 완료) — `js/core/SeekerMatchEngine.js`(매칭 엔진 모듈), `test/smoke_v21_match_engine.test.js`(vitest 회귀 가드, 44 케이스), `test/smoke_v21_match_engine.html`(시각 디버그). V2-3·V2-4 의 공통 의존. **(b) 유령 변주 선택** 결정 + 가중치 5종 좌표계 + 점진 도입 정책 박힘. SCOPE 표 외 prequel.
 - [x] **V2-1 DB 모델** (2026-05-03 완료) — `supabase/migrations/20260503000000_v21_ghost_variants_and_dialog_turns.sql`. 운영 DB 적용 완료 (supabase MCP). schema 검증 통과: `ghost_variants` 15 컬럼 + RLS 4 정책 + CHECK 제약 7개 + 인덱스 6개, `plays.dialog_turns` jsonb 배열 컬럼. 명세 잠금 vitest 65 PASS (V2-1 enum 21 케이스 포함, 전체 회귀 342 PASS).
 - [x] **V2-3 멀티턴 fingerprint 파이프라인** (2026-05-03 코드 완료, 작가 손 검증 미완) — `js/core/SeekerFingerprint.js`(순수 로직 모듈) + `js/app/opening.js` 의 `_handleOpeningSubmit` 멀티턴 시퀀스 (3턴 고정, 빈 슬롯 다음 질문 픽, claude-scene emotion_extract 호출, EMA α=0.6 누적, 카테고리 마지막 턴 우선). 회차 끝 `pickTopMemory` + `pickGhostVariant` 호출 → `sessionStorage` 박음. vitest `test/smoke_v21_dialog_pipeline.test.js` 30 PASS (전체 회귀 372 PASS). 작가 손 검증 자리 = dev server 진입 → 오프닝 풀 사이클 1회.
 - [x] **V2-2 admin 콘솔 smoke** (2026-05-03 작성) — `test/smoke_v21_admin_ghost_variants.js` (DevTools 붙여넣기). 모듈 export + DOM 엘리먼트 + 섹션 위치 + 비활성 모드 검증.
+- [x] **V2-7 귀환 텍스트 알림 + 회차 끝 outro** (2026-05-04 완료, 작가 손 검증 미완) — `js/ui/lumen_run_outro.js`(`LumenRunOutro.run` 모듈, drift/speciation/none × ko/en 6 문장 템플릿 + rewind forceStart wiring + beforeText/onComplete 훅), `play-test.html` 세 자리 패치 (exit door long-press + all-visited handler + sealBtn Continue 핸들러), `test/smoke_v21_lumen_outro.js`(DevTools 콘솔 회귀 가드, 모듈 노출/OUTRO_TEXT 6 문장/skip/full cycle/invalid kind/lang fallback 검증). 문장은 GPT 안 그대로 박음 (2026-05-04 사용자 결정 = 틀만 박고 나중 수정). LumenRewindPlayback `forceStart` 호출 wiring 동시 흡수 — V1 `triggerEvent: null` 로 죽은 코드였던 자산 V2.1에서 살림.
+
+  **2026-05-04 revision** — 작가 첫 손 체감 후 두 차례 피드백: (1) "흔들림 → 검은 화면 직행이 무서움, 원래 장면화 (V1 revealScreen + AI 내러티브) 다시 끼워달라" → revealScreen bridge 추가. (2) "문 클릭하면 갑자기 뒷걸음질 쳐서 걸어가는 게 뭐임" → rewind cinematic 자리 안 맞아서 *제거* (출구문 ≠ void 진입). `LumenRewindPlayback` 모듈은 코드 보존, V3 재배치 자리 (V3 backlog 2026-05-04 한 줄). 최종 V2.1 회차 끝 시퀀스 = `[FP 1P 출구문 long-press] → [exitFP + UI cleanup] → [V1 sealBtn click → revealScreen 페이드인 + generate-reveal AI 내러티브 typing + Continue 버튼] → [Continue 시 V2.1 검출 → revealScreen 페이드아웃 + LumenRunOutro 분기 텍스트 (rewind: false) → index.html 오프닝]`. revealScreen 의 alignment 점수 / 트루엔딩 배지 / 원본보기 버튼은 V2.1 흐름에서 *발동 안 함* (revealStats `display:none;` 기본, demo URL 흐름이라 revealRestart 도 숨김) — 즉 V1 archive 의 *score-based* 어휘는 V2.1에 안 들어옴. 들어오는 건 *narrative-based* 호흡 자리 (memory sealed + AI 재구성 내러티브) 뿐.
+
+  작가 손 검증 자리 = play-test 진입 → 회차 끝 도달 → rewind cinematic + revealScreen 내러티브 + Continue + 분기 텍스트 + 오프닝 복귀 한 사이클 체감.
+
 - [x] **V2-4 분기 트리거** (2026-05-03 완료) — `js/core/GhostBranchTrigger.js` (`decideBranch` + `buildSpeciationRow`), `test/smoke_v21_branch_trigger.test.js` (vitest 회귀 가드, 22 케이스). `js/app/opening.js` wiring 교체 (`classifyBranch` → `decideBranch`). 임계 정규화 (drift_high 0.7 / speciation_low 0.4) + mid_band_conservative 보수 (V2-8 V3 이월 흡수 정책). 직접 정렬 채택 — `pickGhostVariant` score=0 시 null 리턴 우회, score=0 라도 topVariant 보존 (편지 핸드오프 (α)). 두 세션 동시 작업 중 다른 세션 (Opus 4.7) 의 `SeekerMatchEngine.classifyBranch` 임시 사양 revert (사용자 (A) 채택). INSERT 경로 (edge function `record-speciation`) = V2-4 후반 단계, 작가 손 검증 후. 회귀 vitest 394 PASS.
 
 ### 콘텐츠 (5-3 ~ 5-10, 코드 동시 진행)
@@ -260,6 +266,45 @@ V2.1 작업은 위 다섯 함수의 *외부* 에서만 작동:
 - 유지 항목: §15 두 층 구조는 *유령 단위* 로 V2.1 에서 작동 (drift = 같은 유령 변형, speciation = 새 유령 생성 + 후속 플레이어 β).
 - §2 명제 작동: "관객 파편이 다음 관객 유령으로 흘러간다" = 새 유령 데이터 누적 + 다음 플레이어 조우. *지형 분기 시연은 V3*.
 - V2 풀판 별도 history 보존 X (V2 09시 재계약과 V2.1 좁힘 같은 날·한 커밋).
+
+### 9-5. V2.1 drift 픽 시스템 = 12축 방향 벡터 — **2026-05-04 확정**
+
+drift 가 *방향성* (12축) 자리지 *강도* (스칼라) 자리 X. CLAUDE.md §6.5 #2 ("Contamination is DIRECTIONAL, not scalar") 정합. 부가 효과: 12축 좌표가 박사 단계 위상 마이그레이션 경로 (Lumen Topological Vision) 자동 확보.
+
+- **픽 알고리즘 = 2단계 (B)**:
+  1. 글로벌 좁힘 — `memories.cumulative_emotion_vec` (글로벌 누적 12축) 와 cosine 거리 가까운 변주 N개 활성 풀 좁힘 (default N=8)
+  2. 회차 픽 — 좁힌 풀 안에서 회차 변위 벡터 (회차 시작 fp 기준) 와 cosine 유사도 → softmax(temperature) 가중 확률 sampling (default temperature=0.5)
+- **베이스라인** = 회차 시작 fingerprint. 작가 정답/원본 X (`feedback_avoid_authorial_control_framing` 메모리 룰 정합).
+- **fallback (다)→(나)**:
+  - 우선 의미 필터 점진 풀기 (모티프 → 귀인만 → 무필터). 어떻게든 픽 시도
+  - 진짜 풀 빔 → 작가 폴백 문구 (한 13 + 영 13). 본 유령 silent fallback 절대 X (§6.5 #4 정합)
+- **도장** = 회차 끝 시 `plays.ghost_variant_id` + `plays.final_drift_vector` 박음. 사후 재현 = 도장 읽기 (sampling 재실행 X).
+- **폐기**: 0.2/0.5/0.8 양자화 라벨, 1차원 `intended_drift` 컬럼, argmax NN (deterministic 가장 가까운 1개 픽 — 색인 동작, 명제 충돌), `drift_residue` 시계열 audit 테이블 (V3 또는 박사 단계), 데모 결정성 모드 (작품 명제 위반).
+- **V2-12 위임** (5-11~5-12 본인 한 바퀴 후): softmax temperature, 활성 풀 N, 직전 변주 패널티 강도, `transition_pattern` 픽 입력 여부, 의미 필터 가중치, `cont_drift` α 캘리브레이션 (연출 강도 측면).
+- **신규 자산**:
+  - 마이그레이션 `supabase/migrations/20260504000000_v21_drift_pick_vectors.sql` (3 컬럼: `memories.cumulative_emotion_vec` jsonb / `plays.ghost_variant_id` uuid / `plays.final_drift_vector` jsonb)
+  - `ContaminationTracker` 12축 EMA 메서드 (`updateEmotionVec` / `getCumulativeEmotionVec` / `getDriftVector` / `resetEmotionVec`). 기존 `EMA_ALPHA` 재사용 (todo.md W1S1 audit 결과 입력)
+  - `pickDriftUtterance` (`js/core/DriftPicker.js`) + vitest 25 케이스
+  - `narrative_fallback_strings` (한 13 + 영 13, `js/content/narrative_fallback_strings.js`)
+- **보존 자산**:
+  - `pickGhostVariant` (1등 결정성 픽) — V2.1 매칭 진입 게이트로 그대로 유지
+  - `ghost_variants.emotion_vec` jsonb — 12축 가정 (W1S1 (e) 답에서 차원수 확인 후 부족 시 확장)
+  - `plays.dialog_turns` (멀티턴 누적) — 회차 시작 fp 추출 자리
+  - `drift_dir_v/_a/_d` (VAD 3축) — 시각/사운드 연출 자리. 변주 픽과 분리 유지.
+- **작업 자리**: todo.md α1 + α2 (코드 2일). V2-6 일수 1→2일 갱신 (§4 표).
+
+### 9-6. `classifyBranch` 누적 무시 → V2-12 위임 — **2026-05-04 결정**
+
+V2-4 `decideBranch` 가 이번 턴 점수 (`pickGhostVariant` 결과 정규화 score) 만 봄. 누적 (`cont_drift` / 12축 변위 norm) 안 봄. "한 사람이 N턴 안에 분기 트리거" 명시적 메커니즘이 코드에 없음.
+
+V2.1 결정: V2-12 (5-11~5-12 본인 한 바퀴 체감 후) 에 임계 깎기 또는 누적 입력 추가 결정. V2.1 본 코드 작업에 박지 않음.
+
+근거: 자연 분기 빈도 데이터 X. 사전 박기 명분 부족. 본인 한 바퀴 돌려서 *너무 적은지 / 너무 많은지* 체감 후 데이터 기반 결정.
+
+V2-12 추가 결정 항목:
+- 임계 깎기 vs 누적 입력 추가 vs 둘 다
+- 누적 입력 시 매트릭 (`cont_drift` 스칼라 / 12축 변위 norm / 둘 다)
+- 회차 안 N턴 임계 (예: 변위 norm > X → 자동 speciation)
 
 ---
 

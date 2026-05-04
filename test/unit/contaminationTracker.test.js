@@ -9,6 +9,9 @@ import {
   getPresentationState,
   getDominantEmotionLabel,
   getDominantMismatch,
+  updateCumulativeEmotionVec,
+  computeDriftVector,
+  EMOTION_AXES_12,
   CONTAMINATION,
 } from '../../js/core/ContaminationTracker.js';
 
@@ -482,5 +485,99 @@ describe('getDominantMismatch', () => {
 
   it('handles empty array', () => {
     expect(getDominantMismatch([])).toBe('none');
+  });
+});
+
+// ─── V2.1 12축 cumulative emotion_vec ─────────────────────────
+
+describe('EMOTION_AXES_12', () => {
+  it('exposes 12 axes matching SeekerFingerprint EMOTION_KEYS', () => {
+    expect(EMOTION_AXES_12).toHaveLength(12);
+    expect(EMOTION_AXES_12).toContain('fear');
+    expect(EMOTION_AXES_12).toContain('emptiness');
+    expect(EMOTION_AXES_12).toContain('relief');
+  });
+});
+
+describe('updateCumulativeEmotionVec', () => {
+  it('first session: cumulative starts empty → result ≈ α × sessionVec', () => {
+    const next = updateCumulativeEmotionVec({}, { sadness: 0.8, longing: 0.5 });
+    // α = 0.10
+    expect(next.sadness).toBeCloseTo(0.08, 3);
+    expect(next.longing).toBeCloseTo(0.05, 3);
+  });
+
+  it('null cumulative behaves as empty', () => {
+    const next = updateCumulativeEmotionVec(null, { fear: 1.0 });
+    expect(next.fear).toBeCloseTo(0.10, 3);
+  });
+
+  it('missing axis in input keeps cumulative for that axis decaying toward 0', () => {
+    const prior = { sadness: 0.5 };
+    // sessionVec has no sadness — sadness decays via α·0 + (1-α)·prev
+    const next = updateCumulativeEmotionVec(prior, { fear: 0.8 });
+    expect(next.sadness).toBeCloseTo(0.45, 3);
+    expect(next.fear).toBeCloseTo(0.08, 3);
+  });
+
+  it('many sessions of stable input converges toward that input', () => {
+    let cum = {};
+    for (let i = 0; i < 100; i++) {
+      cum = updateCumulativeEmotionVec(cum, { joy: 0.7 });
+    }
+    // After 100 sessions of joy=0.7 with α=0.10, cumulative should be very near 0.7
+    expect(cum.joy).toBeGreaterThan(0.69);
+    expect(cum.joy).toBeLessThanOrEqual(0.7);
+  });
+
+  it('respects custom alpha', () => {
+    const next = updateCumulativeEmotionVec({}, { anger: 0.5 }, 0.6);
+    expect(next.anger).toBeCloseTo(0.30, 3);
+  });
+
+  it('drops axes that decay below noise floor (0.001)', () => {
+    // Start with tiny value, push it down with empty input
+    let cum = { guilt: 0.0005 };
+    cum = updateCumulativeEmotionVec(cum, {});
+    expect(cum.guilt).toBeUndefined();
+  });
+
+  it('does not mutate input cumulative', () => {
+    const prior = { sadness: 0.5 };
+    updateCumulativeEmotionVec(prior, { sadness: 0.8 });
+    expect(prior.sadness).toBe(0.5);
+  });
+});
+
+describe('computeDriftVector', () => {
+  it('current > baseline → positive on those axes', () => {
+    const drift = computeDriftVector(
+      { sadness: 0.6, joy: 0.1 },
+      { sadness: 0.2, joy: 0.1 }
+    );
+    expect(drift.sadness).toBeCloseTo(0.4, 3);
+    expect(drift.joy).toBeCloseTo(0, 3);
+  });
+
+  it('current < baseline → negative drift', () => {
+    const drift = computeDriftVector(
+      { fear: 0.1 },
+      { fear: 0.7 }
+    );
+    expect(drift.fear).toBeCloseTo(-0.6, 3);
+  });
+
+  it('null inputs → all axes zero', () => {
+    const drift = computeDriftVector(null, null);
+    for (const k of EMOTION_AXES_12) {
+      expect(drift[k]).toBe(0);
+    }
+  });
+
+  it('returns vector with all 12 axes (missing → 0)', () => {
+    const drift = computeDriftVector({ sadness: 0.5 }, {});
+    expect(Object.keys(drift)).toHaveLength(12);
+    expect(drift.sadness).toBeCloseTo(0.5, 3);
+    expect(drift.fear).toBe(0);
   });
 });

@@ -82,6 +82,41 @@ function bindOpeningEvents() {
         openingSound.load();
     }
 
+    // 오프닝 mute 토글: localStorage에 상태 유지, 오프닝 화면이 사라지면 버튼도 같이 사라짐.
+    const openingMuteBtn = document.getElementById('openingMuteBtn');
+    const openingMuteIcon = document.getElementById('openingMuteIcon');
+    if (openingMuteBtn && openingSound) {
+        const ICON_ON = '<path d="M11 5 L6 9 H3 v6 h3 l5 4 z"/><path d="M15.5 9 a4 4 0 0 1 0 6"/><path d="M18.5 6.5 a8 8 0 0 1 0 11"/>';
+        const ICON_OFF = '<path d="M11 5 L6 9 H3 v6 h3 l5 4 z"/><line x1="16" y1="9" x2="22" y2="15"/><line x1="22" y1="9" x2="16" y2="15"/>';
+        function _applyOpeningMute(muted) {
+            openingSound.muted = muted;
+            if (openingMuteIcon) openingMuteIcon.innerHTML = muted ? ICON_OFF : ICON_ON;
+            openingMuteBtn.setAttribute('aria-label', muted ? 'Unmute opening sound' : 'Mute opening sound');
+            openingMuteBtn.title = muted ? 'Unmute opening sound' : 'Mute opening sound';
+            openingMuteBtn.style.color = muted ? 'rgba(220,180,140,0.75)' : 'rgba(240,216,180,0.95)';
+            openingMuteBtn.style.borderColor = muted ? 'rgba(220,196,160,0.45)' : 'rgba(220,196,160,0.7)';
+        }
+        let _initialMuted = false;
+        try { _initialMuted = localStorage.getItem('tem_opening_muted') === '1'; } catch (_) {}
+        _applyOpeningMute(_initialMuted);
+        openingMuteBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const next = !openingSound.muted;
+            _applyOpeningMute(next);
+            try { localStorage.setItem('tem_opening_muted', next ? '1' : '0'); } catch (_) {}
+        });
+        openingMuteBtn.addEventListener('mouseenter', function () {
+            openingMuteBtn.style.borderColor = 'rgba(240,216,180,0.95)';
+            openingMuteBtn.style.color = openingSound.muted ? 'rgba(240,216,180,0.95)' : 'rgba(255,232,200,1)';
+            openingMuteBtn.style.background = 'rgba(10,10,12,0.75)';
+        });
+        openingMuteBtn.addEventListener('mouseleave', function () {
+            openingMuteBtn.style.borderColor = openingSound.muted ? 'rgba(220,196,160,0.45)' : 'rgba(220,196,160,0.7)';
+            openingMuteBtn.style.color = openingSound.muted ? 'rgba(220,180,140,0.75)' : 'rgba(240,216,180,0.95)';
+            openingMuteBtn.style.background = 'rgba(10,10,12,0.55)';
+        });
+    }
+
     const openingScreen = document.getElementById('openingScreen');
     if (openingScreen) {
         if (oauthSkipOpening) {
@@ -124,7 +159,7 @@ function bindOpeningEvents() {
         openingScreenEl.addEventListener('click', function (e) {
             if (window.hasZoomedIn) return; // 두 번째 클릭부터는 v2 시퀀스가 Start 버튼으로 진행
             // 버튼 내부 클릭은 무시 (Start 버튼이 자기 핸들러 처리)
-            if (e.target && (e.target.closest('.opening-lang-btn') || e.target.closest('.opening-start-btn'))) return;
+            if (e.target && (e.target.closest('.opening-lang-btn') || e.target.closest('.opening-start-btn') || e.target.closest('.opening-mute-btn'))) return;
             window.hasZoomedIn = true;
             const waveContainer = document.getElementById('openingWaveContainer');
             if (waveContainer) {

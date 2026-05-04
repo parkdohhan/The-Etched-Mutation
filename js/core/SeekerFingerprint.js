@@ -68,6 +68,7 @@ export function initFingerprint() {
     role: null,
     motif_words: [],
     _turnsRaw: [],
+    _askedSlots: [],
   };
 }
 
@@ -114,12 +115,19 @@ export function extractMotifWords(text) {
   return matches.map(w => w.toLowerCase());
 }
 
-/** 빈 슬롯 우선순위로 다음 질문 픽. modality > role > attribution > core_fear > fallback. */
+/**
+ * 빈 슬롯 우선순위로 다음 질문 픽. modality > role > attribution > core_fear > fallback.
+ * 한 번 물은 슬롯은 답이 안 채워졌어도 다시 묻지 않음 (_askedSlots) — 무한 반복 방지.
+ */
 export function pickNextQuestion(fp, lang) {
   const bank = QUESTION_BANK[lang] || QUESTION_BANK.en;
-  if (!fp.modality) return bank.modality;
-  if (!fp.role) return bank.role;
-  if (!fp.attribution) return bank.attribution;
-  if (!fp.core_fear) return bank.core_fear;
+  if (!fp._askedSlots) fp._askedSlots = [];
+  const order = ['modality', 'role', 'attribution', 'core_fear'];
+  for (const slot of order) {
+    if (!fp[slot] && fp._askedSlots.indexOf(slot) < 0) {
+      fp._askedSlots.push(slot);
+      return bank[slot];
+    }
+  }
   return bank.fallback;
 }
