@@ -469,7 +469,12 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
     }
 
     // ---- Core 핀: 사용자 반응 → 감정 벡터 (play-test emotion_extract) ----
+    // 결정론 보장:
+    //   - temperature: 0 = 같은 입력에 항상 같은 출력
+    //   - PROMPT_VERSION 응답에 박음 = 프롬프트 손대면 버전 올림. ghost_variants.extractor_version 컬럼에 저장.
+    //   - 5/19 마감 후 프롬프트 수정 시 전량 재추출 후 같은 버전으로 덮어쓰기.
     if (body.type === "emotion_extract") {
+      const PROMPT_VERSION = "tem-emotion-v2.1.0";
       const userText = String(body.user_text || "").trim();
       const sceneText = String(body.scene_text || "").trim();
 
@@ -544,6 +549,7 @@ base 객체에는 위 모든 키를 포함하고 숫자만 넣어라.`;
           body: JSON.stringify({
             model: "claude-sonnet-4-20250514",
             max_tokens: 1024,
+            temperature: 0,
             system: systemPrompt,
             messages: [{ role: "user", content: prompt }],
           }),
@@ -578,6 +584,7 @@ base 객체에는 위 모든 키를 포함하고 숫자만 넣어라.`;
                 target: reason.target ?? "unknown",
                 is_void: Boolean(reason.is_void),
               },
+              prompt_version: PROMPT_VERSION,
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } },
           );
@@ -586,7 +593,7 @@ base 객체에는 위 모든 키를 포함하고 숫자만 넣어라.`;
         console.error("emotion_extract error:", e);
       }
 
-      // 폴백: 한글 슬픔 키워드 휴리스틱
+      // 폴백: 한글 슬픔 키워드 휴리스틱 (프롬프트 버전은 폴백임을 표시)
       const low = userText.toLowerCase();
       const koSad = /슬프|슬퍼|슬펐|우울|눈물|울었|비통|슬픔/;
       const fb: Record<string, number> = {};
@@ -604,6 +611,7 @@ base 객체에는 위 모든 키를 포함하고 숫자만 넣어라.`;
             target: "unknown",
             is_void: false,
           },
+          prompt_version: `${PROMPT_VERSION}-fallback`,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );

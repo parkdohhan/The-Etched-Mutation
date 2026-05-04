@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Emotion Extractor Calibration — pre-flight</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      background: #0a0a0f;
+      color: #c8c8d0;
+      font-family: 'Gowun Batang', serif;
+      padding: 24px;
+      max-width: 1080px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+    h1 { color: #c4a882; font-weight: normal; letter-spacing: 0.06em; }
+    h2 { color: #a88aa3; font-size: 1rem; margin-top: 28px; font-weight: normal; }
+    .info {
+      color: #8aa3a3;
+      font-size: 0.88rem;
+      padding: 14px 16px;
+      background: rgba(168, 140, 196, 0.06);
+      border-left: 2px solid rgba(168, 140, 196, 0.4);
+      margin: 18px 0;
+    }
+    .info code, .meta code {
+      background: rgba(196, 168, 130, 0.12);
+      padding: 2px 6px;
+      border-radius: 2px;
+      color: #c4a882;
+      font-family: monospace;
+      font-size: 0.85em;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.4);
+      color: #e8d8fc;
+      border: 1px solid rgba(196, 168, 130, 0.3);
+      font-family: inherit;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+      border-radius: 2px;
+      resize: vertical;
+    }
+    textarea { min-height: 80px; }
+    button {
+      padding: 10px 22px;
+      background: rgba(196, 168, 130, 0.18);
+      color: #e8d8fc;
+      border: 1px solid #c4a882;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      border-radius: 2px;
+      margin-right: 8px;
+      margin-top: 8px;
+    }
+    button:hover { background: rgba(196, 168, 130, 0.32); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.secondary {
+      background: transparent;
+      color: #8aa3a3;
+      border-color: rgba(138, 163, 163, 0.4);
+    }
+
+    .case {
+      margin: 24px 0;
+      padding: 18px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(196, 168, 130, 0.25);
+      border-radius: 3px;
+    }
+    .case .input-row { display: flex; gap: 12px; align-items: flex-start; }
+    .case .input-row textarea { flex: 1; }
+    .case .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 18px; }
+    .case .meta { font-size: 0.82rem; color: #8aa3a3; margin-top: 12px; }
+    .case .meta-line { margin: 4px 0; }
+
+    .axis-bars { font-family: monospace; font-size: 0.85rem; }
+    .axis-row { display: flex; align-items: center; margin: 4px 0; gap: 8px; }
+    .axis-name {
+      width: 90px;
+      text-align: right;
+      color: #c4a882;
+      font-size: 0.82rem;
+    }
+    .axis-bar {
+      flex: 1;
+      height: 14px;
+      background: rgba(0, 0, 0, 0.5);
+      position: relative;
+      border: 1px solid rgba(196, 168, 130, 0.2);
+    }
+    .axis-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, rgba(196, 168, 130, 0.4), rgba(168, 140, 196, 0.6));
+    }
+    .axis-bar-fill.high { background: linear-gradient(90deg, rgba(196, 130, 130, 0.5), rgba(196, 168, 130, 0.7)); }
+    .axis-value {
+      width: 48px;
+      font-size: 0.78rem;
+      color: #c8c8d0;
+      text-align: right;
+    }
+
+    .author-note { margin-top: 12px; }
+    .author-note label {
+      display: block;
+      font-size: 0.82rem;
+      color: #a88aa3;
+      margin-bottom: 6px;
+    }
+
+    .empty-msg { color: rgba(200, 200, 200, 0.4); font-size: 0.85rem; }
+    .loading { color: #c4a882; font-size: 0.85rem; }
+    .error { color: #c48282; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>Emotion Extractor Calibration</h1>
+
+  <div class="info">
+    <strong>목적:</strong> 60 변주 작성 시작 *전*, claude-scene 의 <code>emotion_extract</code> 가
+    당신 직관과 어디서 어긋나는지 1~2시간 안에 파악.<br>
+    <br>
+    <strong>방법:</strong> 잘 아는 텍스트 (자기 단편 발췌, 기존 메모리 시드, 일기 한 단락 등)
+    5~10개 입력 → "추출" 버튼 → 결과 12축 막대그래프 검수 → 메모 박기 (어긋난 자리).<br>
+    <br>
+    <strong>다음 자리:</strong> 어긋난 패턴 발견 → claude-scene 의 emotion_extract 프롬프트 수정 →
+    PROMPT_VERSION 올리고 (v2.1.0 → v2.1.1) 재배포 → 이 화면에서 재돌림.<br>
+    <br>
+    프롬프트 버전 = <code id="version-display">로딩…</code> (응답마다 박힘)
+  </div>
+
+  <button id="add-case-btn">+ 새 텍스트 추가</button>
+  <button id="export-btn" class="secondary">JSON export</button>
+
+  <div id="cases-container"></div>
+
+  <script type="module">
+    import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../js/lib/config.js';
+
+    const EMOTION_AXES = [
+      'fear', 'sadness', 'anger', 'joy', 'longing', 'guilt',
+      'shame', 'numbness', 'isolation', 'relief', 'confusion', 'emptiness',
+    ];
+
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const container = document.getElementById('cases-container');
+    let caseCount = 0;
+    let lastVersion = null;
+
+    function makeCaseEl(idx) {
+      const el = document.createElement('div');
+      el.className = 'case';
+      el.dataset.idx = idx;
+      el.innerHTML = `
+        <div class="input-row">
+          <textarea placeholder="텍스트 입력 (자기 단편 발췌, 메모리 시드, 일기 한 단락 등)"></textarea>
+          <div>
+            <button class="extract-btn">추출</button>
+            <button class="remove-btn secondary">삭제</button>
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <div class="meta-line meta"><strong>추출 결과 (12축)</strong></div>
+            <div class="axis-bars empty-msg">(추출 안 함)</div>
+          </div>
+          <div>
+            <div class="meta-line meta"><strong>작가 검수 메모</strong></div>
+            <div class="author-note">
+              <label>내가 읽은 감정 (자유 서술)</label>
+              <textarea class="my-reading" placeholder="예: longing 0.8, sadness 0.5 정도였는데..."></textarea>
+            </div>
+            <div class="author-note">
+              <label>어긋난 자리 / 의심 자리</label>
+              <textarea class="diff-note" placeholder="예: fear 가 0.7 박혔는데 내 글에 공포 단어 없음. 추출이 numbness 를 fear 로 잡은 듯."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <span class="meta-line">PROMPT_VERSION: <code class="version">-</code></span>
+          <span class="meta-line">추출 완료: <code class="ts">-</code></span>
+        </div>
+      `;
+
+      el.querySelector('.extract-btn').addEventListener('click', () => extractCase(el));
+      el.querySelector('.remove-btn').addEventListener('click', () => el.remove());
+      return el;
+    }
+
+    function addCase() {
+      caseCount += 1;
+      const el = makeCaseEl(caseCount);
+      container.appendChild(el);
+    }
+
+    function renderAxes(barsEl, base) {
+      barsEl.classList.remove('empty-msg');
+      barsEl.innerHTML = '';
+      // Sort by value descending so 작가 가 한눈에 dominant 축 봄
+      const sorted = [...EMOTION_AXES].sort((a, b) => (base[b] || 0) - (base[a] || 0));
+      for (const axis of sorted) {
+        const v = base[axis] || 0;
+        const pct = Math.round(v * 100);
+        const isHigh = v >= 0.5;
+        const row = document.createElement('div');
+        row.className = 'axis-row';
+        row.innerHTML = `
+          <span class="axis-name">${axis}</span>
+          <div class="axis-bar">
+            <div class="axis-bar-fill ${isHigh ? 'high' : ''}" style="width: ${pct}%"></div>
+          </div>
+          <span class="axis-value">${v.toFixed(2)}</span>
+        `;
+        barsEl.appendChild(row);
+      }
+    }
+
+    async function extractCase(el) {
+      const textarea = el.querySelector('.input-row textarea');
+      const text = textarea.value.trim();
+      if (!text) return;
+
+      const btn = el.querySelector('.extract-btn');
+      const barsEl = el.querySelector('.axis-bars');
+      btn.disabled = true;
+      barsEl.className = 'axis-bars loading';
+      barsEl.textContent = '추출 중...';
+
+      try {
+        const { data, error } = await sb.functions.invoke('claude-scene', {
+          body: { type: 'emotion_extract', user_text: text, scene_text: '' },
+        });
+        if (error) throw error;
+
+        const base = (data && data.base) || {};
+        renderAxes(barsEl, base);
+
+        const version = data?.prompt_version || '(미박힘)';
+        el.querySelector('.version').textContent = version;
+        el.querySelector('.ts').textContent = new Date().toISOString();
+
+        if (version && version !== lastVersion) {
+          lastVersion = version;
+          document.getElementById('version-display').textContent = version;
+        }
+      } catch (e) {
+        console.error('[calibration] extract failed:', e);
+        barsEl.className = 'axis-bars error';
+        barsEl.textContent = '추출 실패: ' + (e.message || e);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function exportAll() {
+      const cases = [];
+      container.querySelectorAll('.case').forEach((el, i) => {
+        const text = el.querySelector('.input-row textarea').value.trim();
+        if (!text) return;
+        const axisRows = el.querySelectorAll('.axis-row');
+        const base = {};
+        axisRows.forEach((row) => {
+          const name = row.querySelector('.axis-name').textContent.trim();
+          const value = parseFloat(row.querySelector('.axis-value').textContent.trim());
+          base[name] = value;
+        });
+        cases.push({
+          idx: i + 1,
+          text,
+          extracted: base,
+          version: el.querySelector('.version').textContent.trim(),
+          ts: el.querySelector('.ts').textContent.trim(),
+          my_reading: el.querySelector('.my-reading').value.trim(),
+          diff_note: el.querySelector('.diff-note').value.trim(),
+        });
+      });
+
+      const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), cases }, null, 2)],
+                            { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `emotion_calibration_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById('add-case-btn').addEventListener('click', addCase);
+    document.getElementById('export-btn').addEventListener('click', exportAll);
+
+    // 첫 케이스 1개 박고 시작
+    addCase();
+  </script>
+</body>
+</html>
