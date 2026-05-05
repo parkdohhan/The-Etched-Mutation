@@ -146,8 +146,9 @@ export function getRandomDialogue(dialogues) {
 // 결정 (c) BLOCK_HIGH 어휘 = 흡수 앞단 통째 거부. 위기 응답은 별도 자리.
 // 결정 (d) 일반 호칭 (엄마/아빠/형/누나 등) = 화이트리스트, 일반화 X.
 
-// 일반 호칭 — 인명 일반화 자리에서 통과
+// 일반 호칭 + 신체 부위 — 인명 일반화 자리에서 통과 (ABSORB_KOREAN_SURNAMES 와 글자 겹침)
 export const ABSORB_GENERIC_KIN = new Set([
+  // 호칭
   '엄마', '아빠', '엄니', '아버지', '어머니', '아부지',
   '할머니', '할아버지', '할매', '할배', '외할머니', '외할아버지',
   '형', '누나', '언니', '오빠', '동생', '여동생', '남동생',
@@ -155,6 +156,10 @@ export const ABSORB_GENERIC_KIN = new Set([
   '친구', '선생님', '선생', '아저씨', '아줌마',
   '이모', '고모', '삼촌', '외삼촌', '큰아버지', '작은아버지', '큰엄마', '작은엄마',
   '조카', '사촌',
+  // 신체 부위 (성씨와 글자 겹쳐 false positive 자리 — "손씨" vs "손")
+  '손', '발', '눈', '입', '귀', '코', '팔', '다리', '머리', '얼굴',
+  '목', '배', '등', '어깨', '무릎', '가슴', '허리', '엉덩이',
+  '손가락', '발가락', '손바닥', '발바닥',
 ]);
 
 // 한국 흔한 성씨 (인명 1차 검출 자리)
@@ -194,8 +199,9 @@ const ABSORB_REPEAT_RX = /(.)\1{3,}/;
 // 한국 인명 패턴 — 흔한 성씨 + 한글 1~2자 (이름 자리)
 // lookahead 자리 = 조사/공백/구두점/끝 (한글 조사가 따라와도 매치). 한글 *명사 더* 따라오면 매치 X.
 // 일반 호칭 (ABSORB_GENERIC_KIN) 매치 시 통과.
+// 정확 2자 이름 (성 1자 + 이름 2자 = 총 3자 인명). 1자 이름 false positive 자리 줄임.
 const ABSORB_KOREAN_NAME_RX = new RegExp(
-  '(?<![가-힣])(' + ABSORB_KOREAN_SURNAMES.join('|') + ')[가-힣]{1,2}?(?=[은는이가을를에서에게와과도만의랑한테께\\s.,!?]|$)',
+  '(?<![가-힣])(' + ABSORB_KOREAN_SURNAMES.join('|') + ')[가-힣]{2}(?=[은는이가을를에서에게와과도만의랑한테께\\s.,!?]|$)',
   'g'
 );
 
@@ -243,8 +249,12 @@ export function safetyForAbsorb(inputText) {
   // 인명 일반화 — 결정 (a)
   let sanitized = text;
   // 한글 인명 → "그 사람"
+  // ABSORB_GENERIC_KIN *접두* 매치 시 통과 (엄마/엄마손/엄마야, 아빠/아빠손 등)
   sanitized = sanitized.replace(ABSORB_KOREAN_NAME_RX, (match) => {
-    if (ABSORB_GENERIC_KIN.has(match)) return match; // 일반 호칭은 통과
+    if (ABSORB_GENERIC_KIN.has(match)) return match; // 정확 매치
+    for (const kin of ABSORB_GENERIC_KIN) {
+      if (match.startsWith(kin)) return match; // 접두 매치
+    }
     return '그 사람';
   });
   // 영문 인명 → "그 사람"

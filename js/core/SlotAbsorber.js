@@ -32,12 +32,14 @@
   'use strict';
 
   // ─── 한국어 어미 패턴 (명사구 추출) ─────────────────
-  // 그룹 1: 명사구 (한글 1~10자, 띄어쓰기 X). 그룹 2: 어미.
-  // 어미 = 을/를/이/가/은/는/에서/에/한테/께/께서/와/과/에게
-  var NOUN_RX = /([가-힣]{1,10})(을|를|이|가|은|는|에서|에게|한테|께서|께|와|과|에)/g;
+  // 그룹 1: 명사구 (옵션 "그 " 대명사 + 한글 1~3자). 그룹 2: 어미.
+  // "(?:그\s)?" = "그 사람" 같은 *대명사+명사* 패턴 (safety 인명 일반화 결과 자리)
+  // lookbehind `(?<![가-힣])` = *단어 시작*부터만 매치 (동사 활용형 "그랬던거같" 같은 자리 거부)
+  // 명사 길이 1~3자 = 한국어 명사 대부분. 4자+ 합성어 (마을회관, 공사장사람) 자리는 V2-12 보강.
+  var NOUN_RX = /(?<![가-힣])((?:그\s)?[가-힣]{1,3})(을|를|이|가|은|는|에서|에게|한테|께서|께|와|과|에)/g;
 
-  // 색·관형 형용사 + 명사 (간단 사전 기반)
-  var ADJ_RX = /(빨간|파란|노란|검은|하얀|초록|회색|갈색|분홍|보라)\s*([가-힣]{1,10})/g;
+  // 색·관형 형용사 + 명사. lookahead 자리 = 조사/공백/구두점/끝 (조사 같이 매치 X).
+  var ADJ_RX = /(빨간|파란|노란|검은|하얀|초록|회색|갈색|분홍|보라)\s*([가-힣]{1,10}?)(?=[은는이가을를에서에게와과도만의랑한테께\s.,!?]|$)/g;
 
   // ─── 블록 사전 ──────────────────────────────────
   // 인명은 일반 명사와 구분 어려워 MVP 에선 안전 룰: 자주 나오는 일반 명사 화이트리스트 X,
@@ -182,9 +184,19 @@
   function tryAbsorb(input) {
     input = input || {};
     var resonance = classifyResonance(input.alignment);
-    if (resonance === 'dissonance') return null;
+
+    // V2.1.2 결정 번복 (2026-05-05): NER 매치 시 dissonance 결도 흡수 시도.
+    // 근거: 짧은 입력 ("엄마를 기다렸어") = emotion vector 거의 0 = 거의 dissonance.
+    //   원래 §6.4 (resonance + vague 만 흡수) 이면 *대부분 흡수 X* = 동문서답 자리.
+    //   NER 매치 = 입력 흡수 의도 명확. alignment 무관 *항상 시도*.
+    //   결 의미는 풀 분류 자리에 남음 (dissonance → vague 풀 fallback).
+    if (resonance === 'dissonance') resonance = 'vague';
 
     var pool = input.slotPool && input.slotPool[resonance];
+    // vague 풀 비어있으면 resonance 풀 fallback
+    if ((!pool || !pool.length) && resonance === 'vague') {
+      pool = input.slotPool && input.slotPool.resonance;
+    }
     if (!pool || !pool.length) return null;
 
     // V2.1.2 안전 필터 — 결정 (b) SlotAbsorber 안 자기 책임 자리
@@ -242,8 +254,92 @@
     };
   }
 
+  /**
+   * V2.1.2 LLM 흡수 (2026-05-05 결정 번복) — Haiku 4.5 호출.
+   * absorb-slot edge function 호출 → 자연 흡수 응답 받음. 실패 시 휴리스틱 fallback.
+   *
+   * @param {Object} input
+   * @param {string} input.memoryId
+   * @param {string} input.sceneId
+   * @param {number} input.turn
+   * @param {number} input.alignment
+   * @param {string} input.playerInput
+   * @param {Object} input.slotPool
+   * @param {Object} input.supabase — supabase client (functions.invoke 자리)
+   * @param {string} [input.memoryTitle]
+   * @param {Array<string>} [input.motifs]
+   * @param {string} [input.sceneContext]
+   * @param {string} [input.ghostTone]
+   * @returns {Promise<Object|null>}
+   */
+  async function tryAbsorbAsync(input) {
+    input = input || {};
+
+    // 1) safety 필터 (휴리스틱 자리와 동일)
+    var rawInput = input.playerInput;
+    var safety = global.LumenSafety && global.LumenSafety.safetyForAbsorb;
+    if (typeof safety === 'function') {
+      var result = safety(rawInput);
+      if (!result.ok) {
+        if (typeof console !== 'undefined' && console.log) {
+          console.log('[safety/absorb] blocked:', result.reason,
+            (result.word ? '("' + result.word + '")' : ''),
+            'input:', (rawInput || '').slice(0, 50));
+        }
+        return null;
+      }
+      // sanitized 자리 — LLM 입력에도 적용 (인명 일반화 후 LLM 응답)
+      input = Object.assign({}, input, { playerInput: result.sanitized || rawInput });
+    }
+
+    // 2) LLM 호출 (Haiku 4.5)
+    var resonance = classifyResonance(input.alignment);
+    var supabase = input.supabase;
+    if (supabase && typeof supabase.functions === 'object' && typeof supabase.functions.invoke === 'function') {
+      try {
+        var resp = await supabase.functions.invoke('absorb-slot', {
+          body: {
+            playerInput: input.playerInput,
+            ghostTone: input.ghostTone || '"~었어" 체. 자기 회상.',
+            sceneContext: input.sceneContext || '',
+            resonance: resonance,
+            memoryTitle: input.memoryTitle || '',
+            motifs: input.motifs || [],
+          },
+        });
+        if (!resp.error && resp.data && resp.data.ok && resp.data.reply) {
+          if (typeof console !== 'undefined' && console.log) {
+            console.log('[absorb/llm] reply:', resp.data.reply.slice(0, 60));
+          }
+          return {
+            absorbed: true,
+            reply: resp.data.reply,
+            slotValue: '(llm)',
+            slotType: 'llm',
+            motifTags: input.motifs || [],
+            resonance: resonance,
+            template: '(llm)',
+            via: 'llm',
+          };
+        }
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[absorb/llm] no reply, fallback to heuristic. reason:',
+            (resp.data && resp.data.reason) || (resp.error && resp.error.message));
+        }
+      } catch (err) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[absorb/llm] exception, fallback:', err);
+        }
+      }
+    }
+
+    // 3) Fallback — 휴리스틱 (기존 tryAbsorb)
+    return tryAbsorb(input);
+  }
+
   global.LumenSlotAbsorber = {
     tryAbsorb: tryAbsorb,
+    tryAbsorbAsync: tryAbsorbAsync,  // V2.1.2 LLM 자리 (2026-05-05)
     extractNoun: extractNoun,
     fillTemplate: fillTemplate,
     classifyResonance: classifyResonance,

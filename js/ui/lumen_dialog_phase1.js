@@ -215,6 +215,44 @@
     return bubble;
   }
 
+  // V2.1.2 LLM 흡수 로딩 자리 — 응답 생성 ~500-1000ms 동안 빈 화면 X.
+  // 유령 bubble 톤 그대로 + 점 1→2→3→1 루프.
+  function _showLoadingBubble(overlay) {
+    var msgs = overlay.querySelector('[id$="-messages"]');
+    if (!msgs) return { stop: function () {} };
+    var bubble = document.createElement('div');
+    bubble.className = 'ldp-bubble ldp-ghost ldp-loading';
+    bubble.style.cssText = [
+      'padding:16px 20px',
+      'background:rgba(168,140,196,0.08)',
+      'border-left:2px solid rgba(168,140,196,0.6)',
+      'border-radius:2px',
+      'font-size:1.1rem',
+      'line-height:1.75',
+      'opacity:0',
+      'transition:opacity 300ms ease',
+      'color:rgba(232,216,252,0.55)',
+      'letter-spacing:0.15em',
+    ].join(';');
+    bubble.textContent = '.';
+    msgs.appendChild(bubble);
+    requestAnimationFrame(function () { bubble.style.opacity = '1'; });
+    msgs.scrollTo({ top: msgs.scrollHeight, behavior: 'smooth' });
+
+    var dots = 1;
+    var interval = setInterval(function () {
+      dots = (dots % 3) + 1;
+      bubble.textContent = '.'.repeat(dots);
+    }, 450);
+
+    return {
+      stop: function () {
+        clearInterval(interval);
+        if (bubble.parentNode) bubble.parentNode.removeChild(bubble);
+      },
+    };
+  }
+
   function _addSystemMeta(overlay, text) {
     // 시스템 어휘 (V3 메타 질문 패턴 시드) — 화면 가운데, 다른 톤
     var msgs = overlay.querySelector('[id$="-messages"]');
@@ -610,17 +648,41 @@
       var alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
       lastAlignment = alignment;
 
-      // V2.1.2 슬롯 흡수 시도 — 성공 시 슬롯 응답 우선, background insert.
+      // V2.1.2 슬롯 흡수 시도 — LLM (Haiku) 우선 → 휴리스틱 fallback.
       // 실패 시 기존 pickResponse fallback (resonance/vague 풀 또는 dissonance quoting).
       var resp = null;
       var absorbed = null;
       var slotter = global.LumenSlotAbsorber;
-      if (slotter && typeof slotter.tryAbsorb === 'function' && ghosts && typeof ghosts.getSlotPool === 'function') {
-        absorbed = slotter.tryAbsorb({
-          memoryId: memoryId, sceneId: sceneId, turn: turn,
-          alignment: alignment, playerInput: playerInput,
-          slotPool: ghosts.getSlotPool(),
-        });
+      // 응답 생성 중 로딩 인디케이터 (LLM ~500-1000ms 자리). LLM 호출 전 시작.
+      var loading = _showLoadingBubble(overlay);
+      try {
+        if (slotter && ghosts && typeof ghosts.getSlotPool === 'function') {
+          // 씬 context 자리 (LLM 톤 가이드)
+          var sceneCtxArr = (sceneData.meta && sceneData.meta.dialog_choices && sceneData.meta.dialog_choices.scene_context) || [];
+          var sceneCtxStr = sceneCtxArr.slice(0, 3).join(' ');  // 첫 3 문장만 (token 절약)
+          var motifs = (sceneData.meta && sceneData.meta.motif_tags) || [];
+
+          if (typeof slotter.tryAbsorbAsync === 'function') {
+            absorbed = await slotter.tryAbsorbAsync({
+              memoryId: memoryId, sceneId: sceneId, turn: turn,
+              alignment: alignment, playerInput: playerInput,
+              slotPool: ghosts.getSlotPool(),
+              supabase: input.supabase,
+              memoryTitle: sceneData.memoryTitle || '',
+              motifs: motifs,
+              sceneContext: sceneCtxStr,
+              ghostTone: '"~었어" 체. 자기 회상. 슬리퍼 신은 아이의 톤.',
+            });
+          } else if (typeof slotter.tryAbsorb === 'function') {
+            absorbed = slotter.tryAbsorb({
+              memoryId: memoryId, sceneId: sceneId, turn: turn,
+              alignment: alignment, playerInput: playerInput,
+              slotPool: ghosts.getSlotPool(),
+            });
+          }
+        }
+      } finally {
+        loading.stop();
       }
       if (absorbed) {
         resp = { resonance: absorbed.resonance, reply: absorbed.reply };
