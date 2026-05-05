@@ -625,6 +625,8 @@
     //    END_PHRASES 시 조기 종료. CRISIS 시 즉시 차단.
     var lastAlignment = 0.5;
     var lastResonance = 'vague';
+    var lastUserEmotion = null;       // V2.1.2 (5-05) — plays.user_emotion 박음 자리
+    var dialogTurns = [];              // V2.1.2 (5-05) — plays.dialog_turns 박음 자리
     var origEmotion = sceneData.original_emotion || sceneData.originalEmotion || {};
     var totalTurns = DEFAULTS.maxFreeDialogTurns;
 
@@ -647,6 +649,7 @@
       var userEmo = await _analyzeEmotion(input.supabase, playerInput, sceneData.anchor_emotions);
       var alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
       lastAlignment = alignment;
+      if (userEmo && Object.keys(userEmo).length) lastUserEmotion = userEmo;
 
       // V2.1.2 슬롯 흡수 시도 — LLM (Haiku) 우선 → 휴리스틱 fallback.
       // 실패 시 기존 pickResponse fallback (resonance/vague 풀 또는 dissonance quoting).
@@ -723,6 +726,19 @@
       }
 
       _addMessage(overlay, resp.reply, { who: 'ghost' });
+
+      // V2.1.2 dialog_turns 누적 (plays 박음 자리)
+      dialogTurns.push({
+        turn: turn,
+        raw_text: playerInput,
+        fingerprint: userEmo || {},
+        alignment: alignment,
+        resonance: resp.resonance || lastResonance,
+        ghost_reply: resp.reply || '',
+        absorbed: !!absorbed,
+        ts: new Date().toISOString(),
+      });
+
       await _sleep(DEFAULTS.pacingDelays.afterTurnMs);
     }
 
@@ -762,6 +778,9 @@
       alignment: lastAlignment,
       resonance: lastResonance,
       sceneCycleMs: sceneCycleMs,
+      // V2.1.2 (5-05) — plays insert 자리 (호출자 onSceneEnd 에서 사용)
+      lastUserEmotion: lastUserEmotion,
+      dialogTurns: dialogTurns,
     };
     if (typeof input.onSceneEnd === 'function') input.onSceneEnd(result);
     return result;

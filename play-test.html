@@ -2947,6 +2947,46 @@
         // 플레이어가 다음 핀(다른 유령) 을 직접 골라서 long press 로 진입.
         // §6.5 #5 "Player sees fog" 정합. dissonance 결은 자연스럽게 *유령 떠남* 자리.
         console.log('[v21-phase1] scene end — return to free explore. resonance=' + result.resonance);
+
+        // V2.1.2 (2026-05-05) — plays insert + game.traces push.
+        //   generate-reveal 은 game.traces 매핑한 visits 자리 본다. traces 비면 "안 플레이" fallback.
+        var hasUserEmo = result.lastUserEmotion && Object.keys(result.lastUserEmotion).length;
+        if (hasUserEmo) {
+          // resonance → bucket 매핑 (옛 engine 자리 정합)
+          var bucketMap = { resonance: 'HIGH', vague: 'MID', dissonance: 'LOW' };
+          var bucket = bucketMap[result.resonance] || 'MID';
+
+          // game.traces — generate-reveal 자리 visits 입력
+          if (!game.traces) game.traces = [];
+          game.traces.push({
+            pinType: pin.type,
+            sceneId: pin.sceneId || scene.id,
+            sceneText: scene.text || '',
+            userVector: { base: result.lastUserEmotion },
+            userEmotion: result.lastUserEmotion,
+            alignment: result.alignment,
+            bucket: bucket,
+            pattern: 'bridge',  // V2.1 Phase 1 = transition_pattern 미산출, default
+            mismatch: result.resonance,
+            sceneIndex: pin.sceneIndex,
+            sceneLinkInput: result.scene_link_input || '',  // V2.1.2 자리
+          });
+
+          // plays insert (generate-reveal 보조 자리 + 회차 outro)
+          insertPlay(
+            scene,
+            result.lastUserEmotion,
+            result.scene_link_input || '',
+            { alignment_score: result.alignment, mismatch_type: result.resonance },
+            false
+          ).then(function () {
+            console.log('[v21-phase1] plays inserted + traces.push (sceneId=' + scene.id.slice(0, 8) + '…)');
+          }).catch(function (e) {
+            console.warn('[v21-phase1] insertPlay fail', e);
+          });
+        } else {
+          console.warn('[v21-phase1] no user emotion — traces/plays insert skip');
+        }
       },
     });
   }
