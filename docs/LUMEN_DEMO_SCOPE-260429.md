@@ -16,6 +16,52 @@
 
 ---
 
+## 0-Z. 한눈 체크박스 (2026-05-05 갱신, 매일 갱신 자리)
+
+> **본인 매일 보는 자리.** 본문 §0-A ~ §17 = 결정 기록·근거·시나리오·이론 자료 (다음 작업자/박사 자료). 매일 작업 자리만 한눈에 보고 싶으면 본 §0-Z 만 펼침.
+
+### ✓ 박힌 자리 (시간 순)
+- [x] 작업 0 매칭 엔진 prequel (5-03) — `js/core/SeekerMatchEngine.js`, vitest 44 케이스
+- [x] V2-1 DB 모델 — `ghost_variants` 테이블 + `plays.dialog_turns` (5-03)
+- [x] V2-3 멀티턴 fingerprint 파이프라인 (5-03 코드, 작가 손 검증 미완)
+- [x] V2-4 분기 트리거 — `GhostBranchTrigger.decideBranch` (5-03)
+- [x] V2-7 귀환 outro — `LumenRunOutro` (5-04 완료, 작가 손 검증 미완)
+- [x] V2.1.1 ego-state turn-taking 차용 — `lumen_dialog_phase1.js` 멀티턴 3턴 (5-04)
+- [x] V2.1.2 (α) 자동 분류 풀 주입 — `_loadAndInjectGhostPools` (5-05)
+- [x] V2.1.2 (β) 슬롯 흡수 — `SlotAbsorber.js` + dialog_phase1 통합 + 발자국 슬롯 변주 7개 + safety 강화 (5-05 commit f021c32, ef2a5e5)
+- [x] V2.1.2 (γ) LLM 흡수 Haiku 4.5 — `absorb-slot` edge function, 휴리스틱 NER false positive 결정 번복 (5-05 commit 2c1fdc9)
+- [x] V2.1.2 (δ) 콘텐츠 fallback 하이브리드 — `generate-dialog-choices` edge function + 작가 손 우선 + Haiku 자동 + 균일 톤 안전망 (5-05 commit e4eb249)
+- [x] plays insert + game.traces push — generate-reveal 자리 visits 입력 (5-05 commit c0319f8)
+- [x] **작가 손 검증** (5-05) — 발자국 메모리 27 흡수 drift row 자생 박힘 확인 (β 메커니즘 작동). 흡수 응답 톤 자연 박힘. 다음 플레이어 시연 = 풀 픽 자동 박힘 자리.
+- [x] ABSORB_DRIFT_CAP 30 → 50 — `insert-ghost-variant/index.ts` + SCOPE + 차용 문서 갱신 (5-05). 작가 손 검증 27/30 임박 자리 사용자 결정 (C). **deploy 박을 자리**.
+
+### □ 박을 자리 (우선순위 순, 5-19 안전 마감)
+- [ ] V2-2 admin 유령 변주 풀 도구 — drift 변주 + speciation 시드 입력 UI (1.5일, 5-1 권장이었는데 **지연 중**)
+- [ ] V2-5 오염 카메라 연출 — drift 시 즉시 가시화 (1일, 5-6)
+- [ ] V2-6 drift 픽 시스템 — 12축 emotion_vec 2단계 픽 + `plays.ghost_variant_id`·`final_drift_vector` 도장 (2일, 5-7)
+- [ ] **V2-13 재진입 유도 시퀀스** (5-05 V2.1.3 신규) — outro 뒤 메모리 변화 힌트 + 재진입 시 흡수 cinematic 가시화 + localStorage 추적 (0.5~1일, 5-8)
+- [ ] V2-9 통합·smoke 가드 — `test/smoke_v21_*.js` (2일, 5-9)
+- [ ] V2-10 데모 메모리 1개 — 본문 + drift 변주 풀 10~15개 + speciation 시드 1~2개 (4일, V2-2 완료 후)
+- [ ] V2-12 디버깅·튜닝 — 분기 임계 + drift 강도 + 카메라 강도 (2일, 5-11 ~ 5-12)
+- [ ] 파일럿 n=5~7 외부 표본 (5-13 ~ 5-17)
+- [ ] 영상 1~2분 + 스크린샷 4~10장 + statement 계보 (5-17 ~ 5-19)
+- [ ] Lumen 제출 양식 작성 (마감 5-23, 안전 5-19)
+
+### 검증 자리 (§10, 11개)
+- [ ] admin 변주 풀 도구 작동
+- [ ] 멀티턴 → 분기 트리거 풀 사이클
+- [ ] drift 가시 변형 (어휘·발화 + 카메라 연출)
+- [ ] speciation 트리거 → `ghost_variants` 새 유령 누적
+- [ ] 후속 플레이어 새 유령 조우 (β 슬롯 흡수)
+- [ ] 귀환 텍스트 알림 작동
+- [ ] 파일럿 n=5~7
+- [ ] **두 명 다른 유령 풀 시연** (코어 명제)
+- [ ] **재진입 시 발화 변화 시연** (V2.1.3 트리오 — V2-6 + β + V2-13)
+- [ ] 영상 + 스크린샷 + statement
+- [ ] Lumen 제출 양식
+
+---
+
 ## 0-A. SCOPE V2 → V2.1 재계약 (2026-04-29)
 
 본 문서는 4-21 ~ 4-28 까지 LUMEN 단일 공간 데모를 정의하던 계약서였다. 4-29 같은 날 두 번 scope change.
@@ -48,11 +94,13 @@ V2.1 코어 정의:
 
 *(α) 자동 분류 풀 주입* — start() 진입 시 `ghost_variants` drift SELECT → anchor (is_seed+root) emotion_vec 와 cosine sim → 0.85/0.5 임계 → resonance/vague/dissonance 자동 분류 → `LumenGhostResponse.setOptions` 주입. speciation 시드 = SELECT 단계 `kind='drift'` 로 제외 (§15-1 후속 플레이어 자리). fallback 5종 (missing_deps / select_failed / no_anchor / 변주<3 / exception) = 글로벌 디폴트 유지. lazy capture `_originalGhostDefaults` = 메모리 간 stale 방지. 효과: 글로벌 디폴트 풀(18 어휘) → 메모리당 자동 분류 풀로 교체. [lumen_dialog_phase1.js](../js/ui/lumen_dialog_phase1.js) `_loadAndInjectGhostPools`. smoke 검증 14 (a~h) 박힘. 가이드: [docs/유령응답풀_가이드_v1-260504.md](유령응답풀_가이드_v1-260504.md). 코드 ~1시간 (5-05 완료).
 
-*(β) 슬롯 흡수 — 플레이어 자유텍스트 자생 변주* — V2.1.1 멀티턴에 *입력 내용 흡수* 자리 추가. 플레이어 자유텍스트 → 한국어 명사구 NER → 작가 박은 슬롯 변주 (`"...그래. 맞아. {대상}을(를) 기다렸어."`) 채움 → 유령이 받아침 → `ghost_variants` 새 drift row 자생 (`is_seed=false`, `parent_variant_id=본_유령`). 다음 플레이어 풀에 자동 들어감. 작품 명제 §2 ("관객 파편이 다음 관객 유령으로 흘러간다") 가장 강력한 형태. §10 성공 판정 8번째 (같은 메모리 두 명 다른 유령 풀) 시연 강화. 시나리오 D (자생 새 유령 0건) 위험 자동 감소. 기존 quoting 인프라 (`lumen_ghost_response.js _extractQuote/_applyQuote`) 확장. 안전 자리: safety.js 입력 필터 강화 (고유명사 일반화 + 트롤링) + alignment resonance/vague 결만 흡수 + 메모리당 흡수 변주 상한 30 + record-absorption edge function service_role 우회. 코드 ~9시간 (오늘 5-05). **1일 카운터 룰**: 오늘 자정 코어 흐름 (SlotAbsorber + dialog_phase1 통합 + 슬롯 변주 1개) 미완 시 시나리오 C (speciation 시드만) 폴백. 마감 5-19 영향: 1.2일 추가, 본인 페이스 1.67× 가정 안에서 들어감. 전문: [docs/슬롯흡수_차용-260505.md](슬롯흡수_차용-260505.md) (오늘 작업 끝 박을 자리).
+*(β) 슬롯 흡수 — 플레이어 자유텍스트 자생 변주* — V2.1.1 멀티턴에 *입력 내용 흡수* 자리 추가. 플레이어 자유텍스트 → 한국어 명사구 NER → 작가 박은 슬롯 변주 (`"...그래. 맞아. {대상}을(를) 기다렸어."`) 채움 → 유령이 받아침 → `ghost_variants` 새 drift row 자생 (`is_seed=false`, `parent_variant_id=본_유령`). 다음 플레이어 풀에 자동 들어감. 작품 명제 §2 ("관객 파편이 다음 관객 유령으로 흘러간다") 가장 강력한 형태. §10 성공 판정 8번째 (같은 메모리 두 명 다른 유령 풀) 시연 강화. 시나리오 D (자생 새 유령 0건) 위험 자동 감소. 기존 quoting 인프라 (`lumen_ghost_response.js _extractQuote/_applyQuote`) 확장. 안전 자리: safety.js 입력 필터 강화 (고유명사 일반화 + 트롤링) + alignment resonance/vague 결만 흡수 + 메모리당 흡수 변주 상한 50 (2026-05-05 30→50, 작가 손 검증 27 자생 박힘 + 5-19 데모 친구 7명·심사위원·영상 회차 누적 흡수 자리) + record-absorption edge function service_role 우회. 코드 ~9시간 (오늘 5-05). **1일 카운터 룰**: 오늘 자정 코어 흐름 (SlotAbsorber + dialog_phase1 통합 + 슬롯 변주 1개) 미완 시 시나리오 C (speciation 시드만) 폴백. 마감 5-19 영향: 1.2일 추가, 본인 페이스 1.67× 가정 안에서 들어감. 전문: [docs/슬롯흡수_차용-260505.md](슬롯흡수_차용-260505.md) (오늘 작업 끝 박을 자리).
 
-**V2.1.2 (δ) 콘텐츠 fallback — 발자국 외 메모리 V2.1 Phase 1 발동 (2026-05-05 완료)** — 발자국만 풀 dialog_choices + absorption_slots 박힘. 외 8 메모리 = with_choices=0 → 옛 sceneMode UI 발동. 본 fallback = 작가 손 콘텐츠 X 시 자동 생성. (1) `lumen_dialog_phase1.js` `start()` 진입 자리 = `_autoGenerateDialogChoices` (씬 본문 첫 5~6 문장 → scene_context + 균일 톤 choices 3개 + ghost_intro 빈 배열) + 부분 보강 (작가가 일부 슬롯만 박은 자리 보존). (2) `lumen_ghost_response.js` DEFAULTS = resonanceSlotPool 2 + vagueSlotPool 2 박음 + `resetSlotPools()` 노출 (메모리 간 stale 방지). (3) `play-test.html` gameplay 가드 = `scene.meta.dialog_choices` 검사 폐기 (scene.text 만 검사) + `loadMemoryData` absorption_slots 비어 있으면 `resetSlotPools()` 호출. (4) smoke 가드 = `test/smoke_v21_phase1.js` 15·16 케이스 추가 (splitSceneText / defaultChoices / autoGenerateDialogChoices / resetSlotPools). 작가 풀 박히면 자동 덮임 (V3 작가 손 메모리별 dialog_choices). 데모 5-19 작품 일관성 자리. 핸드아웃: [docs/세션핸드아웃_v21_콘텐츠_fallback-260505.md](세션핸드아웃_v21_콘텐츠_fallback-260505.md). 코드 ~30분~1h (5-05 완료).
+**V2.1.2 (δ) 콘텐츠 fallback — 하이브리드 정공법 (2026-05-05 완료)** — 발자국만 풀 dialog_choices + absorption_slots 박힘. 외 8 메모리 = with_choices=0 → 옛 sceneMode UI 발동. 사용자 결정 (5-05) = **하이브리드 정공법**: 작가 손 우선 + 비어 있으면 Haiku 4.5 자동 생성 + DB 캐시 + 균일 톤 안전망 3층. (1) **새 edge function `generate-dialog-choices`** (`supabase/functions/generate-dialog-choices/index.ts`) — Haiku 4.5 호출. 메모리 본문 6 씬 통째 입력 → `byScene` dialog_choices 풀 출력 → `memories.meta.dialog_choices_llm` 캐시 박음 (service_role UPDATE). 캐시 hit 자리 = LLM 호출 X (서버 처리). temperature=0 / max_tokens=4000 / timeout 15s. (2) `lumen_dialog_phase1.js` `start()` 진입 흐름 갱신 — 작가 손 (`sceneData.meta.dialog_choices`) 박혀 있으면 그대로 사용 (부분 박힘이어도 *의도 존중*, 보강 X — 결정 #3). 비어 있으면 `generate-dialog-choices` invoke. 호출 실패/ok:false 시 `_autoGenerateDialogChoices` 균일 톤 (안전망 #2 유지). (3) `lumen_ghost_response.js` DEFAULTS = resonanceSlotPool 2 + vagueSlotPool 2 박음 + `resetSlotPools()` 노출 (메모리 간 stale 방지, 안전망 유지 — 결정 #2). (4) `play-test.html` gameplay 가드 = `scene.meta.dialog_choices` 검사 폐기 (scene.text 만 검사 — 결정 (b) 항상 멀티턴) + `loadMemoryData` absorption_slots 비어 있으면 `resetSlotPools()` 호출. (5) smoke 가드 = `test/smoke_v21_phase1.js` 15·16 케이스 추가 (splitSceneText / defaultChoices / autoGenerateDialogChoices / resetSlotPools). 작가가 V2-2 admin에서 dialog_choices 박으면 = 작가 손 우선 (LLM 캐시 자동 무력화). 데모 5-19 작품 일관성 자리. 핸드아웃: [docs/세션핸드아웃_v21_콘텐츠_fallback-260505.md](세션핸드아웃_v21_콘텐츠_fallback-260505.md). 비용 ~$0.024 / 8 메모리, 지연 ~500-2000ms / 메모리 first 진입 (흡수 cinematic 도중 비동기). 코드 ~3.5h (5-05 완료, deploy 사용자 손).
 
 **V2.1.2 (γ) LLM 흡수 — Haiku 4.5 차용 (2026-05-05 결정 번복)** — V2.1.2 (β) §6.2 "LLM 호출 X" 결정 번복. 이유: 휴리스틱 NER (정규식) false positive 끝없음 (`엄마 손`/`그랬던거같`/`손이`/인명/외국명사 등 작가 손 검증에서 매번 새 케이스 박음). Haiku 4.5 호출 = 문맥 한 방. 비용 ~$0.0005/턴 = 100 회차 $0.90 무시. 지연 ~500-1000ms 허용. 새 edge function `absorb-slot` (verify_jwt=false, deno serve, temperature=0, max_tokens=120, timeout 5s). 입력: playerInput + ghostTone + sceneContext (첫 3 문장) + resonance 결 + memoryTitle + motifs. 출력: 자연 흡수 응답 또는 null fallback. SlotAbsorber.tryAbsorbAsync 우선 LLM, 실패 시 휴리스틱 fallback. safety.js 입력 검증 *후* LLM 호출 (트롤링 그대로 차단). dialog_phase1 turn 응답 자리 await 통합. 위험: 메모리 톤 깨짐 (system prompt 강제 + 예시 박음 완화), 응답 일관성 (temperature=0 완화). 마감 5-19 영향: 추가 ~1h.
+
+**V2.1.3 재진입 유도 시퀀스 (2026-05-05 scope change)** — V2-6 drift 픽 시스템 V3 이월 추천 *철회* + 신규 V2-13 자리 추가. 1회 회차 끝 → 메뉴 복귀 → "메모리가 어떻게 변했는지 힌트" → 자연스러운 재플레이 유도. (1) `LumenRunOutro` 분기 텍스트 *뒤* 메모리 변화 힌트 한 줄 ("당신의 잔향이 이 메모리에 남았다, 다시 들어가면 다른 결을 만날지도"). (2) 같은 메모리 재진입 시 `buildDoor` 흡수 cinematic 안 한 줄 가시화 ("이 메모리는 네 흔적이 박혀있어"). (3) 익명 세션 추적 = `localStorage.tem_lumen_visited_memories[]` (페이지 닫아도 유지, 로그인 사용자 자리는 V3). (4) 콘텐츠 = 힌트 텍스트 풀 (drift/speciation × ko/en × 1·2회차+ 단계). (5) smoke 가드 = `test/smoke_v21_re_entry.js` (DevTools 콘솔). 근거: Lumen 제출 = 영상 + 도큐 (라이브 체험 X). 영상 안에서 §15 명제 ("관객 파편이 다음 관객 유령으로 흘러간다") 시연하려면 한 회차 + 재진입 후 다른 회차 비교 컷 필요 — 한 작가 본인 손으로 만들 수 있음. 수상 후 심사위원 라이브 체험 시도 자연 재플레이 유도. 의존: V2-6 정교한 픽 + V2.1.2 (β) 슬롯 흡수 둘 다 박혀야 재진입 발화 *진짜로* 다름 (random 픽이면 같은 변주 또 뽑힐 위험). §10 검증 11번째 항목 ("재진입 발화 변화") = V2-6 + (β) + V2-13 트리오 작동 증거. 함정: 힌트 톤 = 작품 톤 유지 ("...남았다", "...머문다"), 게임 톤 ("다시 해보세요!") 금지. 마감 5-19 영향: 0.5~1일, 본인 페이스 1.67× buffer 안에서 압박하며 들어감. 코드 합계 11일 → 11.5~12일.
 
 V1 history (LUMEN 단일 공간 데모) = `LUMEN_DEMO_SCOPE-260427.md` 보존. **V2 풀판 history 별도 보존 X** (V2 09시 재계약과 V2.1 좁힘 같은 날·한 커밋에 처리).
 
@@ -100,9 +148,10 @@ V2.1 코어가 위 세 명제의 *작동 메커니즘* 을 깔음 (§0-A 참조)
 | V2-6 drift 픽 시스템 — 12축 emotion_vec 2단계 픽 (글로벌 좁힘 → 회차 변위 softmax sampling, §9-5 참조) + 회차 끝 도장 (`plays.ghost_variant_id` + `final_drift_vector`) + 폴백 문구 26개. 작업 2-C `lumen_return_speech.js` 재활용. | 2 | 5-7 |
 | **[x]** V2-7 귀환 텍스트 알림 + 회차 끝 outro (2026-05-04 완료, 작가 손 검증 미완) — speciation/drift/none 분기별 한 줄씩 + LumenRewindPlayback `forceStart` wiring | 0.5 | 5-8 |
 | ~~V2-8 lifecycle 정책 (cell 폭발 방지)~~ | — | **V3 이월** (V2.1 단일 공간 → cell 폭발 자체 없음. 유령 변주 풀 폭발은 V2-4 임계 안에서 hardcode 흡수) |
+| V2-13 재진입 유도 시퀀스 (2026-05-05 scope change V2.1.3) — (1) `LumenRunOutro` 분기 텍스트 *뒤* 메모리 변화 힌트 한 줄 ("당신의 잔향이 이 메모리에 남았다"). (2) 같은 메모리 재진입 시 `buildDoor` 흡수 cinematic 안 한 줄 가시화 ("이 메모리는 네 흔적이 박혀있어"). (3) 익명 세션 추적 = localStorage `tem_lumen_visited_memories[]`. (4) 콘텐츠 = 힌트 텍스트 풀 (drift/speciation × ko/en × 1·2회차+ 단계). (5) smoke 가드 = `test/smoke_v21_re_entry.js` (DevTools 콘솔). V2-6 픽 알고리즘 + V2.1.2 (β) 슬롯 흡수 트리오 시연 자리 — Lumen 영상 비교 컷·라이브 재플레이 유도. | 0.5~1 | 5-8 |
 | V2-9 통합·smoke 가드 (`test/smoke_v21_*.js`) | 2 | 5-9 |
 
-코드 합계 = 1+1.5+2+1+1+2+0.5+2 = **11일** (V2-6 = 1→2일, 2026-05-04 §9-5 drift 픽 시스템 12축 확장 반영).
+코드 합계 = 1+1.5+2+1+1+2+0.5+(0.5~1)+2 = **11.5~12일** (V2-6 = 1→2일 2026-05-04 §9-5 drift 픽 시스템 12축 확장 반영, V2-13 = 0.5~1일 2026-05-05 §0-A V2.1.3 재진입 유도 시퀀스 추가).
 
 **완료 기록:**
 - [x] **작업 0 매칭 엔진 prequel** (2026-05-03 완료) — `js/core/SeekerMatchEngine.js`(매칭 엔진 모듈), `test/smoke_v21_match_engine.test.js`(vitest 회귀 가드, 44 케이스), `test/smoke_v21_match_engine.html`(시각 디버그). V2-3·V2-4 의 공통 의존. **(b) 유령 변주 선택** 결정 + 가중치 5종 좌표계 + 점진 도입 정책 박힘. SCOPE 표 외 prequel.
@@ -332,10 +381,11 @@ V2-12 추가 결정 항목:
 - [ ] 귀환 텍스트 알림 작동 ("당신이 만든 새 유령이 이 메모리에 머물고 있다")
 - [ ] 파일럿 n=5~7 외부 표본 1회 (시나리오 B — scope change 2026-05-04). 친구 표본 한계 + 통계 신빙성 단축 statement 명시.
 - [ ] **같은 메모리 두 명이 다른 유령 풀 형성 시연** (이본 직접 증거 — 유령 단위)
+- [ ] **재진입 시 발화 변화 시연** (V2.1.3 — 같은 메모리 1회 → outro 힌트 → 2회 진입했을 때 *진짜로* 다른 발화 나옴). V2-6 픽 알고리즘 + V2.1.2 (β) 슬롯 흡수 + V2-13 재진입 힌트 트리오 작동 증거.
 - [ ] 영상 1~2분 + 스크린샷 4~10장 + statement 계보 명시
 - [ ] Lumen 제출 양식 작성
 
-위 10개 중 하나라도 미충족 시 §11 시나리오. 특히 *"두 명 다른 유령 풀"* 은 V2.1 코어 명제 — 미충족 시 시나리오 D 검토.
+위 11개 중 하나라도 미충족 시 §11 시나리오. 특히 *"두 명 다른 유령 풀"* 과 *"재진입 발화 변화"* 는 V2.1 코어 명제 — 미충족 시 시나리오 D 검토.
 
 ---
 

@@ -17,7 +17,7 @@
 //   - memory_id 존재 검증
 //   - utterance 1~1000자 검증 (DB CHECK 와 정합)
 //   - parent_variant_id 가 같은 memory_id 안 변주인지 검증 (계보 무결성)
-//   - V2.1.2 drift 흡수 = 메모리당 흡수 변주 상한 30 (초과 시 거절)
+//   - V2.1.2 drift 흡수 = 메모리당 흡수 변주 상한 50 (2026-05-05 30→50 갱신, 초과 시 거절)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -40,7 +40,7 @@ interface VariantRow {
   created_by?: string | null;
 }
 
-const ABSORB_DRIFT_CAP = 30;  // V2.1.2 — 메모리당 자생 drift 흡수 변주 상한
+const ABSORB_DRIFT_CAP = 50;  // V2.1.2 — 메모리당 자생 drift 흡수 변주 상한 (2026-05-05 30→50, 5-19 데모 친구 7명·심사위원·영상 회차 누적 흡수)
 
 serve(async (req: Request) => {
   const corsHeaders = getCorsHeaders(req);
@@ -119,7 +119,7 @@ serve(async (req: Request) => {
     // parent 가 없어도 (이미 삭제된 경우 등) 허용 — DB 의 ON DELETE SET NULL 동작.
   }
 
-  // ─── V2.1.2 drift 흡수 상한 (메모리당 자생 drift ≤ 30) ─────
+  // ─── V2.1.2 drift 흡수 상한 (메모리당 자생 drift ≤ 50) ─────
   if (body.kind === 'drift') {
     const { count: absorbCount, error: countErr } = await sb
       .from('ghost_variants')
