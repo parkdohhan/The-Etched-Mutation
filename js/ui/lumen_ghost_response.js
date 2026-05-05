@@ -72,11 +72,21 @@
       vague: '흐려지기 전에 한 줄?',
       dissonance: '너의 길에 한 줄 남겨.',
     },
-    // V2.1.2 슬롯 흡수 풀 — 비어 있으면 흡수 X. 메모리 진입 시 setOptions 로 주입.
-    // 각 변주 = { template: '...{대상}을(를)...', motifTags?: [...] }
+    // V2.1.2 슬롯 흡수 풀 — 메모리 진입 시 setOptions 로 작가 손 풀 주입. 풀 X 메모리는
+    // 본 글로벌 디폴트 사용 (resetSlotPools()). 각 변주 = { template, motifTags?: [...] }.
     // 실제 흡수는 LumenSlotAbsorber.tryAbsorb 가 담당. 본 모듈은 풀 보관 자리만.
-    resonanceSlotPool: [],
-    vagueSlotPool: [],
+    //
+    // V2.1.2 콘텐츠 fallback (2026-05-05) — 발자국 외 8 메모리 absorption_slots 비어 있음.
+    // 본 디폴트 박혀 있어 모든 메모리에서 슬롯 흡수 발동. 균일 톤. 작가 손 풀 주입 시 덮임.
+    // 핸드아웃: docs/세션핸드아웃_v21_콘텐츠_fallback-260505.md
+    resonanceSlotPool: [
+      { template: '그래. {대상:이/가} 거기 있었구나.', motifTags: [] },
+      { template: '{대상} 말이지. 그랬어.', motifTags: [] },
+    ],
+    vagueSlotPool: [
+      { template: '{대상}? 그랬을지도.', motifTags: [] },
+      { template: '...{대상}. 흐릿한데.', motifTags: [] },
+    ],
     // 임계 — math.js getBucket HIGH/MID/LOW 와 동일
     alignmentResonance: 0.55,
     alignmentVague: 0.35,
@@ -93,6 +103,13 @@
     return _opts;
   }
   function getOptions() { return JSON.parse(JSON.stringify(_opts)); }
+
+  // V2.1.2 (2026-05-05) — loadMemoryData 가 absorption_slots 비어 있을 때 호출.
+  // 메모리 간 stale 방지: 이전 메모리 setOptions 로 덮은 풀을 글로벌 디폴트로 회복.
+  function resetSlotPools() {
+    _opts.resonanceSlotPool = (DEFAULTS.resonanceSlotPool || []).slice();
+    _opts.vagueSlotPool = (DEFAULTS.vagueSlotPool || []).slice();
+  }
 
   // ─── PRNG (FNV-1a + mulberry32) — lumen_return_speech.js 와 동일 패턴 ───
   function _hashString(s) {
@@ -217,6 +234,7 @@
   global.LumenGhostResponse = {
     setOptions: setOptions,
     getOptions: getOptions,
+    resetSlotPools: resetSlotPools,  // V2.1.2 콘텐츠 fallback (2026-05-05)
     classifyResonance: classifyResonance,
     pickResponse: pickResponse,
     pickUrge: pickUrge,

@@ -3010,8 +3010,11 @@
     const scene = game.scenes.find(s => s.id === pin.sceneId);
     if (!scene) return;
 
-    // V2.1 Phase 1 가드: Lumen circular + dialog_choices 박힌 씬 + 모듈 로드 → multi-turn 컨트롤러
-    if (game.terrain_shape === 'circular' && scene.meta && scene.meta.dialog_choices && window.LumenDialogPhase1) {
+    // V2.1 Phase 1 가드: Lumen circular + scene.text + 모듈 로드 → multi-turn 컨트롤러.
+    // V2.1.2 (2026-05-05) — scene.meta.dialog_choices 검사 폐기. 작가 손 콘텐츠 X 시
+    // LumenDialogPhase1.start 안에서 fallback 자동 박음 (균일 톤 기본값).
+    // 핸드아웃: docs/세션핸드아웃_v21_콘텐츠_fallback-260505.md
+    if (game.terrain_shape === 'circular' && scene.text && window.LumenDialogPhase1) {
       return _enterLumenDialogPhase1(pin, scene);
     }
 
@@ -4212,16 +4215,27 @@
       game.terrain_shape = memRow.terrain_shape || 'circular';
 
       // V2.1.2 슬롯 흡수 풀 주입 — memories.meta.absorption_slots → LumenGhostResponse
-      // 슬롯 풀 비어 있으면 흡수 X (안전 fallback). LumenSlotAbsorber.tryAbsorb 자동 null 리턴.
+      // V2.1.2 콘텐츠 fallback (2026-05-05) — 작가 손 absorption_slots 없으면 글로벌 디폴트 회복.
+      //   resetSlotPools() 호출 = lumen_ghost_response.js DEFAULTS 풀 복원. 메모리 간 stale 방지.
+      // 핸드아웃: docs/세션핸드아웃_v21_콘텐츠_fallback-260505.md
       try {
         var absSlots = memRow.meta && memRow.meta.absorption_slots;
-        if (window.LumenGhostResponse && typeof window.LumenGhostResponse.setOptions === 'function') {
-          window.LumenGhostResponse.setOptions({
-            resonanceSlotPool: (absSlots && Array.isArray(absSlots.resonance)) ? absSlots.resonance : [],
-            vagueSlotPool:    (absSlots && Array.isArray(absSlots.vague))    ? absSlots.vague    : [],
-          });
+        var hasAuthorSlots = absSlots && (
+          (Array.isArray(absSlots.resonance) && absSlots.resonance.length) ||
+          (Array.isArray(absSlots.vague) && absSlots.vague.length)
+        );
+        if (window.LumenGhostResponse) {
+          if (hasAuthorSlots) {
+            window.LumenGhostResponse.setOptions({
+              resonanceSlotPool: Array.isArray(absSlots.resonance) ? absSlots.resonance : [],
+              vagueSlotPool:    Array.isArray(absSlots.vague)    ? absSlots.vague    : [],
+            });
+          } else if (typeof window.LumenGhostResponse.resetSlotPools === 'function') {
+            window.LumenGhostResponse.resetSlotPools();
+          }
           var counts = window.LumenGhostResponse.getDebug && window.LumenGhostResponse.getDebug().counts;
           console.log('[v21.2 absorb] slot pools loaded for memory', memoryId.slice(0, 8) + '…',
+            hasAuthorSlots ? '(author)' : '(default fallback)',
             'resonance=' + (counts ? counts.resonanceSlot : '?'),
             'vague=' + (counts ? counts.vagueSlot : '?'));
         }
