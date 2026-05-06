@@ -600,6 +600,13 @@
     var memoryId = input.memoryId || '';
     var sceneId  = input.sceneId  || sceneData.id || '';
 
+    // 2026-05-06: 결 히스테리시스 상태 초기화 (V2-5 보강 — 파동 부활).
+    // 회차 시작 시 결 잡힌 상태가 이전 씬에서 carry over 되지 않게.
+    if (typeof window !== 'undefined' && window.LumenGhostResponse
+        && typeof window.LumenGhostResponse.resetHysteresis === 'function') {
+      window.LumenGhostResponse.resetHysteresis();
+    }
+
     // V2.1.2 (δ) 하이브리드 자동 생성 (2026-05-05) — 사용자 결정.
     //   1. 작가 손 (sceneData.meta.dialog_choices) 박힘 → 그대로 사용. 부분 박힘이어도
     //      *의도 존중* → 보강 X (결정 #3).
@@ -795,9 +802,13 @@
       }
       lastResonance = resp.resonance;
 
-      // 변형 펄스
+      // 변형 펄스 — 카메라/유령(driftVis) + 파동(_fpAmbientWave) 동시 갱신 (4채널 정합)
       if (driftVis && typeof driftVis.pulse === 'function') {
         driftVis.pulse({ resonance: resp.resonance });
+      }
+      if (typeof window !== 'undefined' && window._fpAmbientWave
+          && typeof window._fpAmbientWave.pulseResonance === 'function') {
+        window._fpAmbientWave.pulseResonance(resp.resonance);
       }
 
       _addMessage(overlay, resp.reply, { who: 'ghost' });

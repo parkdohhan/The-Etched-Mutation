@@ -34,10 +34,11 @@
 - [x] plays insert + game.traces push — generate-reveal 자리 visits 입력 (5-05 commit c0319f8)
 - [x] **작가 손 검증** (5-05) — 발자국 메모리 27 흡수 drift row 자생 박힘 확인 (β 메커니즘 작동). 흡수 응답 톤 자연 박힘. 다음 플레이어 시연 = 풀 픽 자동 박힘 자리.
 - [x] ABSORB_DRIFT_CAP 30 → 50 — `insert-ghost-variant/index.ts` + SCOPE + 차용 문서 갱신 (5-05). 작가 손 검증 27/30 임박 자리 사용자 결정 (C). **deploy 박을 자리**.
+- [x] **V2-2 admin 유령 변주 풀 도구 작가 손 검증** (5-06) — admin.html 진입 → 발자국 메모리 편집 → 유령 변주 풀 섹션 풀 사이클 (카드 추가 + utterance + 자동 추출 + 메타 dropdown + 저장 → `ghost_variants` row 박힘) 정상 작동. 코드 자산은 5-03 박힌 `js/admin/ghost_variants_editor.js` (526줄) + admin.html `#ghostVariantsSection` 마크업 (line 299~306) + admin.js `loadGhostVariants(memoryId)` wiring (line 308·399).
 
 ### □ 박을 자리 (우선순위 순, 5-19 안전 마감)
-- [ ] V2-2 admin 유령 변주 풀 도구 — drift 변주 + speciation 시드 입력 UI (1.5일, 5-1 권장이었는데 **지연 중**)
 - [ ] V2-5 오염 카메라 연출 — drift 시 즉시 가시화 (1일, 5-6)
+  - [x] V2-5 보강 — 파동 부활 (2026-05-06 완료). proximity 동화 재가동(`play-test.html` `_awUpdateFromProximity` 100ms 폴 재박음) + 두 줄 파동 결마다 펄스(`_fpAmbientWave.pulseResonance` 신규 — `lumen_drift_visualizer` spec 차용) + dialog phase1 매 턴 호출(`lumen_dialog_phase1.js` L800 옆) + 결 분류 히스테리시스(`lumen_ghost_response.classifyResonance` buffer 0.04 + hold 250ms) + 회차 시작 시 `resetHysteresis()` + 히스테리시스 smoke 검증 추가(`test/smoke_v21_phase1.js` 섹션 2-B). 핸드아웃 `docs/세션핸드아웃_파동부활-260506.md`.
 - [ ] V2-6 drift 픽 시스템 — 12축 emotion_vec 2단계 픽 + `plays.ghost_variant_id`·`final_drift_vector` 도장 (2일, 5-7)
 - [ ] **V2-13 재진입 유도 시퀀스** (5-05 V2.1.3 신규) — outro 뒤 메모리 변화 힌트 + 재진입 시 흡수 cinematic 가시화 + localStorage 추적 (0.5~1일, 5-8)
 - [ ] V2-9 통합·smoke 가드 — `test/smoke_v21_*.js` (2일, 5-9)
@@ -48,7 +49,7 @@
 - [ ] Lumen 제출 양식 작성 (마감 5-23, 안전 5-19)
 
 ### 검증 자리 (§10, 11개)
-- [ ] admin 변주 풀 도구 작동
+- [x] admin 변주 풀 도구 작동 (5-06 작가 손 검증)
 - [ ] 멀티턴 → 분기 트리거 풀 사이클
 - [ ] drift 가시 변형 (어휘·발화 + 카메라 연출)
 - [ ] speciation 트리거 → `ghost_variants` 새 유령 누적
@@ -141,7 +142,7 @@ V2.1 코어가 위 세 명제의 *작동 메커니즘* 을 깔음 (§0-A 참조)
 | 작업 | 일수 | 권장 시작 |
 |---|---|---|
 | **[x]** V2-1 DB 모델 — `ghost_variants` 테이블 (memory_id별 유령 drift 변주 + speciation 새 유령 풀) + `plays.dialog_turns`(JSONB 멀티턴 누적) (2026-05-03 완료) | 1 | 4-30 |
-| V2-2 admin 유령 변주 풀 도구 — drift 발화 변주 입력 + speciation 새 유령 시드 입력 (작업 12 메모리 저작기 확장) | 1.5 | 5-1 |
+| **[x]** V2-2 admin 유령 변주 풀 도구 — drift 발화 변주 입력 + speciation 새 유령 시드 입력 (작업 12 메모리 저작기 확장) (2026-05-06 작가 손 검증 완료) | 1.5 | 5-1 |
 | **[x]** V2-3 대화 입력 UI (자유텍스트 멀티턴) + emotion 분석 파이프라인 (`claude-scene` 재활용) (2026-05-03 코드 완료, 작가 손 검증 미완) | 2 | 5-3 |
 | **[x]** V2-4 분기 트리거 시스템 — drift vs speciation 임계 (LLM 금지, 결정론적, **유령 단위**) (2026-05-03 완료) | 1 | 5-5 |
 | V2-5 오염 카메라 연출 — drift 시 즉시 가시화 (작업 1 `buildDoor` 카메라 어휘 일반화 — cell 간 cut 아니라 *공간 안* 카메라/조명/지형 표면 연출) | 1 | 5-6 |
@@ -158,6 +159,7 @@ V2.1 코어가 위 세 명제의 *작동 메커니즘* 을 깔음 (§0-A 참조)
 - [x] **V2-1 DB 모델** (2026-05-03 완료) — `supabase/migrations/20260503000000_v21_ghost_variants_and_dialog_turns.sql`. 운영 DB 적용 완료 (supabase MCP). schema 검증 통과: `ghost_variants` 15 컬럼 + RLS 4 정책 + CHECK 제약 7개 + 인덱스 6개, `plays.dialog_turns` jsonb 배열 컬럼. 명세 잠금 vitest 65 PASS (V2-1 enum 21 케이스 포함, 전체 회귀 342 PASS).
 - [x] **V2-3 멀티턴 fingerprint 파이프라인** (2026-05-03 코드 완료, 작가 손 검증 미완) — `js/core/SeekerFingerprint.js`(순수 로직 모듈) + `js/app/opening.js` 의 `_handleOpeningSubmit` 멀티턴 시퀀스 (3턴 고정, 빈 슬롯 다음 질문 픽, claude-scene emotion_extract 호출, EMA α=0.6 누적, 카테고리 마지막 턴 우선). 회차 끝 `pickTopMemory` + `pickGhostVariant` 호출 → `sessionStorage` 박음. vitest `test/smoke_v21_dialog_pipeline.test.js` 30 PASS (전체 회귀 372 PASS). 작가 손 검증 자리 = dev server 진입 → 오프닝 풀 사이클 1회.
 - [x] **V2-2 admin 콘솔 smoke** (2026-05-03 작성) — `test/smoke_v21_admin_ghost_variants.js` (DevTools 붙여넣기). 모듈 export + DOM 엘리먼트 + 섹션 위치 + 비활성 모드 검증.
+- [x] **V2-2 admin 유령 변주 풀 도구 작가 손 검증** (2026-05-06 완료) — admin.html 진입 → 발자국 메모리 편집 → 유령 변주 풀 섹션 풀 사이클 박힘 확인 (카드 추가 + utterance + 자동 추출 + 메타 dropdown + 저장 → `ghost_variants` row 박힘). 코드 자산 = `js/admin/ghost_variants_editor.js` (5-03 작성, 526줄, drift/speciation 라디오 + parent_variant_id 드롭다운 + 12축 자동 추출 막대그래프 + INSERT/UPDATE/DELETE 즉시 supabase 호출), `admin.html` `#ghostVariantsSection` 마크업 (line 299~306), `js/admin.js` `loadGhostVariants(memoryId)` wiring (line 308 신규 메모리 비활성, line 399 기존 메모리 로드). 다음 자리 = V2-10 콘텐츠 (발자국 외 메모리 작가 손 변주 풀 박을 자리).
 - [x] **V2-7 귀환 텍스트 알림 + 회차 끝 outro** (2026-05-04 완료, 작가 손 검증 미완) — `js/ui/lumen_run_outro.js`(`LumenRunOutro.run` 모듈, drift/speciation/none × ko/en 6 문장 템플릿 + rewind forceStart wiring + beforeText/onComplete 훅), `play-test.html` 세 자리 패치 (exit door long-press + all-visited handler + sealBtn Continue 핸들러), `test/smoke_v21_lumen_outro.js`(DevTools 콘솔 회귀 가드, 모듈 노출/OUTRO_TEXT 6 문장/skip/full cycle/invalid kind/lang fallback 검증). 문장은 GPT 안 그대로 박음 (2026-05-04 사용자 결정 = 틀만 박고 나중 수정). LumenRewindPlayback `forceStart` 호출 wiring 동시 흡수 — V1 `triggerEvent: null` 로 죽은 코드였던 자산 V2.1에서 살림.
 
   **2026-05-04 revision** — 작가 첫 손 체감 후 두 차례 피드백: (1) "흔들림 → 검은 화면 직행이 무서움, 원래 장면화 (V1 revealScreen + AI 내러티브) 다시 끼워달라" → revealScreen bridge 추가. (2) "문 클릭하면 갑자기 뒷걸음질 쳐서 걸어가는 게 뭐임" → rewind cinematic 자리 안 맞아서 *제거* (출구문 ≠ void 진입). `LumenRewindPlayback` 모듈은 코드 보존, V3 재배치 자리 (V3 backlog 2026-05-04 한 줄). 최종 V2.1 회차 끝 시퀀스 = `[FP 1P 출구문 long-press] → [exitFP + UI cleanup] → [V1 sealBtn click → revealScreen 페이드인 + generate-reveal AI 내러티브 typing + Continue 버튼] → [Continue 시 V2.1 검출 → revealScreen 페이드아웃 + LumenRunOutro 분기 텍스트 (rewind: false) → index.html 오프닝]`. revealScreen 의 alignment 점수 / 트루엔딩 배지 / 원본보기 버튼은 V2.1 흐름에서 *발동 안 함* (revealStats `display:none;` 기본, demo URL 흐름이라 revealRestart 도 숨김) — 즉 V1 archive 의 *score-based* 어휘는 V2.1에 안 들어옴. 들어오는 건 *narrative-based* 호흡 자리 (memory sealed + AI 재구성 내러티브) 뿐.

@@ -243,7 +243,20 @@ export class Visualizer {
     startAlignmentWaveAnimation(narratorCanvas, experiencerCanvas, data) {
         const { alignment, narratorEmotionVector, experiencerEmotionVector, narratorWaveStyle, experiencerWaveStyle, onUpdateAlignmentDisplay } = data;
 
-        // ── 전환 설정: 이전 스타일이 있으면 보간 ──
+        // 2026-05-06: 같은 캔버스에서 이미 돌고 있으면 *재시작 안 함*. 데이터만 갱신.
+        // animateWave 가 매 프레임 this._alignmentWaveData 읽음 → 매끄러운 갱신.
+        // 100ms proximity 폴링 같은 빈번한 재호출 자리에서 phase reset · 캔버스 클리어 ·
+        // transition 재설정으로 인한 opacity 깜빡임 방지.
+        if (this.alignmentWaveAnimationId
+            && this._alignmentWaveNarratorCanvas === narratorCanvas
+            && this._alignmentWaveExperiencerCanvas === experiencerCanvas) {
+            this._alignmentWaveData = data;
+            this._prevNarratorWaveStyle = narratorWaveStyle;
+            this._prevExperiencerWaveStyle = experiencerWaveStyle;
+            return;
+        }
+
+        // ── 전환 설정: 이전 스타일이 있으면 보간 (씬 진입/종료 등 *드문 호출* 자리에서만 동작) ──
         const hadPrev = this._prevNarratorWaveStyle || this._prevExperiencerWaveStyle;
         if (hadPrev) {
             // 전환 중 재호출: 현재 보간 중간값을 from으로 사용
@@ -265,12 +278,15 @@ export class Visualizer {
         }
         this._prevNarratorWaveStyle = narratorWaveStyle;
         this._prevExperiencerWaveStyle = experiencerWaveStyle;
+        this._alignmentWaveData = data;
 
         if (this.alignmentWaveAnimationId) {
             cancelAnimationFrame(this.alignmentWaveAnimationId);
         }
 
         this.alignmentWaveTime = 0;
+        this._alignmentWaveNarratorCanvas = narratorCanvas;
+        this._alignmentWaveExperiencerCanvas = experiencerCanvas;
         let narratorInitialized = false;
         let experiencerInitialized = false;
 
@@ -302,13 +318,21 @@ export class Visualizer {
         const animateWave = (canvas) => {
             if (!canvas) return;
             try {
+                // 매 프레임 활성 데이터 읽음 — startAlignmentWaveAnimation 재호출 시 갱신됨.
+                const active = this._alignmentWaveData || data;
+                const alignmentValue = active.alignment || 0;
+                const activeNarratorEV = active.narratorEmotionVector;
+                const activeExperiencerEV = active.experiencerEmotionVector;
+                const activeNarratorWS = active.narratorWaveStyle;
+                const activeExperiencerWS = active.experiencerWaveStyle;
+                const activeOnUpdate = active.onUpdateAlignmentDisplay;
+
                 const ctx = canvas.getContext('2d');
                 const width = canvas.width / 2;
                 const height = canvas.height / 2;
-                const alignmentValue = alignment || 0;
 
-                if (onUpdateAlignmentDisplay) {
-                    onUpdateAlignmentDisplay(alignmentValue);
+                if (activeOnUpdate) {
+                    activeOnUpdate(alignmentValue);
                 }
 
                 // ── 전환 보간 처리 ──
@@ -343,7 +367,7 @@ export class Visualizer {
                 };
 
                 // ── 화자(narrator) 파동 ──
-                if (narratorEmotionVector && narratorWaveStyle) {
+                if (activeNarratorEV && activeNarratorWS) {
                     const narratorY = height * 0.3;
 
                     // 유령 잔상 (전환 중): 이전 파동이 흐릿하게 사라짐
@@ -354,14 +378,14 @@ export class Visualizer {
 
                     // 메인 파동 (보간된 스타일)
                     const activeStyle = txProgress >= 0 && txFromN
-                        ? this._lerpWaveStyle(txFromN, narratorWaveStyle, txProgress)
-                        : narratorWaveStyle;
+                        ? this._lerpWaveStyle(txFromN, activeNarratorWS, txProgress)
+                        : activeNarratorWS;
                     const mainOpacity = txProgress >= 0 ? 0.3 + 0.4 * txProgress : 0.7;
                     this.drawAlignmentWave(canvas, narratorY, mainOpacity, 0, activeStyle, mouseState, txProgress);
                 }
 
                 // ── 체험자(experiencer) 파동 ──
-                if (experiencerEmotionVector && experiencerWaveStyle) {
+                if (activeExperiencerEV && activeExperiencerWS) {
                     const experiencerY = height * 0.7;
 
                     // 유령 잔상
@@ -372,8 +396,8 @@ export class Visualizer {
 
                     // 메인 파동
                     const activeStyle = txProgress >= 0 && txFromE
-                        ? this._lerpWaveStyle(txFromE, experiencerWaveStyle, txProgress)
-                        : experiencerWaveStyle;
+                        ? this._lerpWaveStyle(txFromE, activeExperiencerWS, txProgress)
+                        : activeExperiencerWS;
                     const mainOpacity = txProgress >= 0 ? 0.3 + 0.4 * txProgress : 0.7;
                     this.drawAlignmentWave(canvas, experiencerY, mainOpacity, 50, activeStyle, mouseState, txProgress);
                 }
@@ -416,6 +440,10 @@ export class Visualizer {
             cancelAnimationFrame(this.alignmentWaveAnimationId);
             this.alignmentWaveAnimationId = null;
         }
+        // 2026-05-06: 캔버스 추적 상태 클리어 — 다음 startAlignmentWaveAnimation 가 새 캔버스에 풀 init.
+        this._alignmentWaveNarratorCanvas = null;
+        this._alignmentWaveExperiencerCanvas = null;
+        this._alignmentWaveData = null;
     }
 
     /**

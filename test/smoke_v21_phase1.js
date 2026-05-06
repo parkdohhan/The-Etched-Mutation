@@ -38,13 +38,36 @@
   ok('LumenDialogPhase1 module loaded', !!DP);
 
   // ─── 2. classifyResonance 임계 ───
+  // 2026-05-06: 히스테리시스 박힘 (V2-5 보강 — 파동 부활). 순수 임계 검증을 위해 buffer/hold 잠시 0 으로 끔.
   if (GR) {
+    var _origOpts = GR.getOptions();
+    GR.setOptions({ hysteresisBuffer: 0, hysteresisHoldMs: 0 });
+    if (typeof GR.resetHysteresis === 'function') GR.resetHysteresis();
     ok('classifyResonance(0.7) === resonance',  GR.classifyResonance(0.7)  === 'resonance');
     ok('classifyResonance(0.55) === resonance', GR.classifyResonance(0.55) === 'resonance');
     ok('classifyResonance(0.50) === vague',     GR.classifyResonance(0.50) === 'vague');
     ok('classifyResonance(0.35) === vague',     GR.classifyResonance(0.35) === 'vague');
     ok('classifyResonance(0.30) === dissonance',GR.classifyResonance(0.30) === 'dissonance');
     ok('classifyResonance(0.0) === dissonance', GR.classifyResonance(0.0)  === 'dissonance');
+    // 복원
+    GR.setOptions({ hysteresisBuffer: _origOpts.hysteresisBuffer, hysteresisHoldMs: _origOpts.hysteresisHoldMs });
+    if (typeof GR.resetHysteresis === 'function') GR.resetHysteresis();
+  }
+
+  // ─── 2-B. 히스테리시스 동작 검증 (2026-05-06) ───
+  if (GR && typeof GR.resetHysteresis === 'function') {
+    GR.resetHysteresis();
+    GR.setOptions({ hysteresisBuffer: 0.04, hysteresisHoldMs: 0 }); // 시간 hold 만 끔, buffer 검증
+    ok('히스테리시스 — 0.55 진입 → resonance', GR.classifyResonance(0.55) === 'resonance');
+    ok('히스테리시스 — 0.52 buffer 안 (>=rExit 0.51) → resonance 유지', GR.classifyResonance(0.52) === 'resonance');
+    ok('히스테리시스 — 0.50 (<rExit 0.51) → vague 전환',                  GR.classifyResonance(0.50) === 'vague');
+    ok('히스테리시스 — 0.35 vague 유지',                                  GR.classifyResonance(0.35) === 'vague');
+    ok('히스테리시스 — 0.30 (<vEnter 0.35) → dissonance 전환',           GR.classifyResonance(0.30) === 'dissonance');
+    ok('히스테리시스 — 0.36 buffer 안 (<vExit 0.39) → dissonance 유지', GR.classifyResonance(0.36) === 'dissonance');
+    ok('히스테리시스 — 0.40 (>=vExit 0.39) → vague 전환',                GR.classifyResonance(0.40) === 'vague');
+    // 이후 섹션은 sequential 동기 호출이라 hold 가 transition 막음 → hold/buffer 끈 채로 유지
+    GR.setOptions({ hysteresisBuffer: 0, hysteresisHoldMs: 0 });
+    GR.resetHysteresis();
   }
 
   // ─── 3. pickResponse 결정론 ───

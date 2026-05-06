@@ -90,6 +90,10 @@
     // 임계 — math.js getBucket HIGH/MID/LOW 와 동일
     alignmentResonance: 0.55,
     alignmentVague: 0.35,
+    // 2026-05-06: 결마다 파동 펄스 깜빡임 방지 (V2-5 보강 — 파동 부활).
+    // 진입/이탈 분리 buffer + 결 잡힌 후 최소 holdMs 유지. V2-12 튜닝 대상.
+    hysteresisBuffer: 0.04,
+    hysteresisHoldMs: 250,
     // dissonance quoting
     quoteWordMin: 2,
     quoteWordMax: 5,
@@ -133,13 +137,70 @@
     return arr[Math.floor(rng() * arr.length)];
   }
 
-  // ─── 결 분류 ───
+  // ─── 결 분류 (히스테리시스 적용) ───
+  // 2026-05-06: 진입/이탈 buffer + 시간 hold 로 결 깜빡임 방지.
+  // alignment 0.54↔0.56 식으로 떨려도 결이 한번 잡히면 안정 유지.
+  // 시각/펄스 호출은 안정 결을 받음. resetHysteresis() 로 회차 시작 시 초기화.
+  //
+  // 비대칭 임계 — 결 유지 zone:
+  //   resonance 유지: a >= rExit (=alignmentResonance-buf)
+  //   dissonance 유지: a < vExit (=alignmentVague+buf)
+  // 결 이탈 시 다음 결 결정은 *진입 임계*(rEnter/vEnter)로 — 두 결이 *맞물리지* 않게.
+  var _resState = { kind: 'vague', since: -Infinity };
+
+  function _now() {
+    if (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') {
+      return performance.now();
+    }
+    return Date.now();
+  }
+
   function classifyResonance(alignment) {
     var a = Number(alignment);
-    if (!isFinite(a)) return 'vague';
-    if (a >= _opts.alignmentResonance) return 'resonance';
-    if (a >= _opts.alignmentVague) return 'vague';
-    return 'dissonance';
+    if (!isFinite(a)) return _resState.kind;
+
+    var buf = _opts.hysteresisBuffer || 0;
+    var hold = _opts.hysteresisHoldMs || 0;
+    var t = _now();
+
+    // 시간 바닥: 결 잡힌 후 holdMs 이내면 같은 결 유지
+    if (hold > 0 && (t - _resState.since) < hold) {
+      return _resState.kind;
+    }
+
+    // 진입/이탈 임계
+    var rEnter = _opts.alignmentResonance;          // 0.55
+    var rExit  = _opts.alignmentResonance - buf;    // 0.51
+    var vEnter = _opts.alignmentVague;              // 0.35
+    var vExit  = _opts.alignmentVague + buf;        // 0.39
+
+    var nextKind;
+    if (_resState.kind === 'resonance') {
+      // 공명 유지 zone: a >= rExit. 이탈 시 vEnter 로 vague/dissonance 갈림.
+      if (a >= rExit) nextKind = 'resonance';
+      else if (a < vEnter) nextKind = 'dissonance';
+      else nextKind = 'vague';
+    } else if (_resState.kind === 'dissonance') {
+      // 충돌 유지 zone: a < vExit. 이탈 시 rEnter 로 vague/resonance 갈림.
+      if (a < vExit) nextKind = 'dissonance';
+      else if (a >= rEnter) nextKind = 'resonance';
+      else nextKind = 'vague';
+    } else {
+      // vague — 일반 임계로 전환 시도
+      if (a >= rEnter) nextKind = 'resonance';
+      else if (a < vEnter) nextKind = 'dissonance';
+      else nextKind = 'vague';
+    }
+
+    if (nextKind !== _resState.kind) {
+      _resState.kind = nextKind;
+      _resState.since = t;
+    }
+    return _resState.kind;
+  }
+
+  function resetHysteresis() {
+    _resState = { kind: 'vague', since: -Infinity };
   }
 
   // ─── dissonance quoting ───
@@ -235,6 +296,7 @@
     setOptions: setOptions,
     getOptions: getOptions,
     resetSlotPools: resetSlotPools,  // V2.1.2 콘텐츠 fallback (2026-05-05)
+    resetHysteresis: resetHysteresis, // 2026-05-06: 회차 시작 시 결 상태 초기화 (V2-5 보강)
     classifyResonance: classifyResonance,
     pickResponse: pickResponse,
     pickUrge: pickUrge,

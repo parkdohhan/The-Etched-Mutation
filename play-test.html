@@ -6333,12 +6333,15 @@
     function _destroyAmbientWave() {
       if (_awViz) { _awViz.stopAlignmentWaveAnimation(); _awViz = null; }
       if (_awPollInterval) { clearInterval(_awPollInterval); _awPollInterval = null; }
+      if (_awPulseTimer) { clearTimeout(_awPulseTimer); _awPulseTimer = null; }
       var wrap = document.getElementById('fpAmbientWaveWrap');
       if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
       _awCanvas = null;
       _awCurrentNarrator = null;
       _awContamColor = null;
       _awContamAmount = 0;
+      _awPulseSavedFilter = null;
+      _awPulseTransitionSet = false;
     }
 
     // v2: 씬 진입 시 narrator 슬롯(0.3h)에만 씬 파동 얹고, experiencer 슬롯(0.7h)의 플레이어 파동은 그대로 지속.
@@ -6370,20 +6373,57 @@
       });
     }
 
+    // 2026-05-06: 결마다 파동 펄스 — lumen_drift_visualizer 카메라용 spec 그대로 차용.
+    // 카메라/유령/파동 4채널 정합 (V2-5 보강 — 파동 부활).
+    var _awPulseSpec = {
+      resonance:  { canvasFilter: 'saturate(1.05) brightness(1.02)',                 durationMs: 300  },
+      vague:      { canvasFilter: 'saturate(0.85) brightness(0.95)',                 durationMs: 700  },
+      dissonance: { canvasFilter: 'hue-rotate(15deg) saturate(0.75) brightness(0.92)', durationMs: 1200 },
+    };
+    var _awPulseSavedFilter = null;
+    var _awPulseTimer = null;
+    var _awPulseTransitionSet = false;
+
+    function _awPulseResonance(resonance) {
+      if (!_awCanvas) return;
+      var spec = _awPulseSpec[resonance] || _awPulseSpec.vague;
+
+      if (!_awPulseTransitionSet) {
+        _awCanvas.style.transition = 'filter 0.3s ease';
+        _awPulseTransitionSet = true;
+      }
+
+      // 진행 중인 펄스 있으면 즉시 복원 후 새 펄스 시작 (drift visualizer 패턴)
+      if (_awPulseTimer) {
+        clearTimeout(_awPulseTimer);
+        if (_awCanvas) _awCanvas.style.filter = _awPulseSavedFilter || '';
+        _awPulseTimer = null;
+      }
+
+      _awPulseSavedFilter = _awCanvas.style.filter || '';
+      _awCanvas.style.filter = spec.canvasFilter;
+      _awPulseTimer = setTimeout(function () {
+        if (_awCanvas) _awCanvas.style.filter = _awPulseSavedFilter || '';
+        _awPulseTimer = null;
+      }, spec.durationMs);
+    }
+
     window._fpAmbientWave = {
       applyContamination: _awApplyContamination,
       destroy: _destroyAmbientWave,
       renderDual: _awRenderDual,
       exitSceneMode: _awExitSceneMode,
+      pulseResonance: _awPulseResonance,
     };
 
-    // v2: proximity 기반 파동 갈아끼움 폐기. 플레이어 파동은 자기 입력만으로 변함.
-    // proximity 감지 자체는 다른 기능(hover, 접근성)에 필요할 수 있어 원본 루프는 유지.
+    // 2026-05-06: 파동 부활 — proximity 동화 재가동.
+    // 5-2 v2 결정 (proximity 폐기) 뒤집음. 걸어 다닐 때 가까운 유령(=장면핀) 색·속도로 아래 줄 파동 끌려감.
     var _origStartProx2 = _startProximityLoop;
     _startProximityLoop = function () {
       _origStartProx2();
       _initAmbientWave();
-      // _awPollInterval 제거 — 파동 업데이트는 _awRenderDual / _awExitSceneMode만 수행
+      if (_awPollInterval) clearInterval(_awPollInterval);
+      _awPollInterval = setInterval(_awUpdateFromProximity, 100);
     };
 
     window._fpPlay = {
