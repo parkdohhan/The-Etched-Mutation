@@ -56,6 +56,9 @@ function getCorsHeaders(req: Request): Record<string, string> {
 interface GenerateRequest {
   memoryId: string;
   sceneId?: string;  // 응답에 sceneId 자리 포함 (선택). 없으면 byScene 통째 반환.
+  oneScene?: boolean;  // V2.1.2 (δ-2, 2026-05-06): 그 씬 1개만 처리 — 응답 빠름 (~3-5초).
+                       // 클라이언트 자리 첫 씬 자리 진입 시 박음. 백그라운드 자리 통째 호출 자리는 별도.
+                       // oneScene=true 시 DB UPDATE 자리 X (백그라운드 자리에 맡김, race 회피).
 }
 
 interface SceneRow {
@@ -93,7 +96,7 @@ function buildSystemPrompt(memoryTitle: string, motifs: string[]): string {
      - label: 5~12자 짧은 질문/응답.
      - ghost_reply: 1~2 문장 응답 (배열).
      - free_dialog_open: 1~2 문장 자유대화 첫 질문 (배열).
-5. 톤 균일성: 같은 메모리 안 6 씬은 같은 화자(유령)의 결로 일관.
+5. 톤 균일성: 같은 메모리 안 모든 씬은 같은 화자(유령)의 결로 일관.
 6. 출력 = JSON 만. 마크다운/주석/설명 X.
 
 출력 JSON 형식:
@@ -115,7 +118,8 @@ function buildSystemPrompt(memoryTitle: string, motifs: string[]): string {
 
 function buildUserPrompt(scenes: SceneRow[]): string {
   const lines: string[] = [];
-  lines.push('아래 씬 본문 6개에 대해 byScene 풀을 생성하라. scene id 는 박힌 그대로 응답 키로 사용.');
+  const n = scenes.length;
+  lines.push('아래 씬 본문 ' + n + '개에 대해 byScene 풀을 생성하라. scene id 는 박힌 그대로 응답 키로 사용.');
   lines.push('');
   for (const s of scenes) {
     lines.push(`<scene id="${s.id}" order="${s.scene_order}">`);
@@ -223,14 +227,22 @@ serve(async (req: Request) => {
     });
   }
 
-  // 3. scenes SELECT (씬 6개 본문)
-  const scnSel = await admin
+  // 3. scenes SELECT
+  // oneScene=true 박혀 있으면 *그 씬 1개만* SELECT (응답 자리 빠름).
+  // 단 메모리 톤 자리 박는 자리 모티프 자리 (memMeta.motif_tags) 로 보강 자리.
+  const oneScene = body.oneScene === true && body.sceneId;
+  let scnQuery = admin
     .from('scenes')
     .select('id, scene_order, text')
-    .eq('memory_id', memoryId)
-    .order('scene_order', { ascending: true });
+    .eq('memory_id', memoryId);
+  if (oneScene) {
+    scnQuery = scnQuery.eq('id', body.sceneId as string);
+  } else {
+    scnQuery = scnQuery.order('scene_order', { ascending: true });
+  }
+  const scnSel = await scnQuery;
   if (scnSel.error || !scnSel.data || !scnSel.data.length) {
-    console.warn("[gen-dlg] scenes empty memId=" + memoryId.slice(0, 8));
+    console.warn("[gen-dlg] scenes empty memId=" + memoryId.slice(0, 8) + (oneScene ? " (oneScene)" : ""));
     return new Response(JSON.stringify({ error: "Scenes empty" }), {
       status: 404,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -253,8 +265,12 @@ serve(async (req: Request) => {
   const userPrompt = buildUserPrompt(scenes);
 
   // 5. Haiku 4.5 호출 (JSON 응답 강제)
+  // oneScene=true (씬 1개) → 짧은 응답 (max_tokens 1500, timeout 8초)
+  // 통째 (씬 N개) → 긴 응답 (max_tokens 8000, timeout 45초)
+  const maxTokens = oneScene ? 1500 : 8000;
+  const timeoutMs = oneScene ? 8000 : 45000;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -266,7 +282,7 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 4000,
+        max_tokens: maxTokens,
         temperature: 0,
         system: systemPrompt,
         messages: [
@@ -321,6 +337,8 @@ serve(async (req: Request) => {
     }
 
     // 6. memories UPDATE meta.dialog_choices_llm
+    // oneScene=true 박혀 있으면 DB UPDATE 자리 X — 백그라운드 자리 통째 호출 자리에 맡김.
+    // race condition 회피 자리 (두 호출 자리 동시에 같은 row 자리 UPDATE 자리 막음).
     const newMeta = {
       ...memMeta,
       dialog_choices_llm: {
@@ -330,15 +348,18 @@ serve(async (req: Request) => {
         model: data?.model || 'claude-haiku-4-5-20251001',
       },
     };
-    const upd = await admin
-      .from('memories')
-      .update({ meta: newMeta })
-      .eq('id', memoryId);
-    if (upd.error) {
-      console.warn("[gen-dlg] memories UPDATE fail:", upd.error);
-      // UPDATE 실패해도 응답은 박음 — 클라이언트가 이번 회차에서 사용 가능
+    if (!oneScene) {
+      const upd = await admin
+        .from('memories')
+        .update({ meta: newMeta })
+        .eq('id', memoryId);
+      if (upd.error) {
+        console.warn("[gen-dlg] memories UPDATE fail:", upd.error);
+      } else {
+        console.log("[gen-dlg] cached memId=" + memoryId.slice(0, 8) + " scenes=" + sceneIds.length);
+      }
     } else {
-      console.log("[gen-dlg] cached memId=" + memoryId.slice(0, 8) + " scenes=" + sceneIds.length);
+      console.log("[gen-dlg] oneScene 응답 memId=" + memoryId.slice(0, 8) + " sceneId=" + String(body.sceneId || '').slice(0, 8) + " (DB UPDATE skip)");
     }
 
     const sceneId = String(body.sceneId || '');
