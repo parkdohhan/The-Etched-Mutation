@@ -63,11 +63,13 @@
     maxFreeDialogTurns: 3,    // 2026-05-04 ego-state turn-taking 차용 (5-2 단일턴 결정 번복). docs/유령대화_egostate_차용-260504.md
     sceneCycleWarnMs: 540000, // 9분 초과 시 console.warn (결정 (d) 2026-05-04 — 작가 한 바퀴 임계)
     pacingDelays: {
-      afterIntroMs:   1000,
-      afterChoiceMs:  900,
-      afterReplyMs:   1100,
-      afterTurnMs:    1100,
-      afterUrgeMs:    900,
+      // 2026-05-06: 사용자 체감 텀 길어 절반 정도로 줄임 (V2-5 보강). V2-12 튜닝 대상.
+      afterIntroMs:    600,
+      afterChoiceMs:   500,
+      afterReplyMs:    600,
+      afterTurnMs:     600,
+      afterUrgeMs:     500,
+      sceneContextMs:  900, // 신규 — scene_context 라인 사이 (이전 하드코딩 1700)
     },
     // Record CRISIS_REACTIONS 키워드 (recordChat.js 패턴 재활용)
     crisisKeywords: [
@@ -116,6 +118,26 @@
     return dot / (Math.sqrt(na) * Math.sqrt(nb));
   }
   function _sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  // 2026-05-06: 짧은 긍정 토큰 — 맞장구 자리. 감정 분석 건너뛰고 직전 결 echo (V2-5 보강).
+  // "ㅇㅇ" 같은 입력이 cosine sim 빈 벡터로 충돌 분류되던 버그 fix. 풀은 안전하게 한국어
+  // 단음절·이음절 + 영문 짧은 긍정만. "그러게" 처럼 살짝 긴 자리는 길이 ≤4 으로 차단.
+  var SHORT_AFFIRMATIVES = [
+    'ㅇ', 'ㅇㅇ', 'ㅇㅇㅇ',
+    '응', '응응', '응ㅇ',
+    '어', '어어',
+    '네', '넹', '넵', '옙',
+    '맞', '맞아', '맞다', '맞네',
+    '그래', '그러게', '그치', '그렇지',
+    '오키', '오케이',
+    'ok', 'OK', 'okay', 'yes', 'yeah',
+  ];
+  function _isShortAffirmative(text) {
+    if (!text || typeof text !== 'string') return false;
+    var t = text.trim();
+    if (!t.length || t.length > 4) return false;
+    return SHORT_AFFIRMATIVES.indexOf(t) >= 0;
+  }
 
   // FNV-1a + mulberry32 — lumen_ghost_response.js 와 동일 패턴. 콘텐츠 결정론.
   function _hashString(s) {
@@ -346,6 +368,120 @@
       box.appendChild(btn);
     });
     area.appendChild(box);
+  }
+
+  // V2.1.2 (ε, 2026-05-06): 선택지 + 자유 입력 동시 박는 자리.
+  // 사용자 자리 *선택지 클릭* 또는 *자유 입력 박음* 둘 중 하나 자리.
+  // 첫 진입 자리 = 선택지 자리 가이드 자리. 매 턴 자리부터 = _renderTextInput 자리.
+  // onSubmit({ source: 'choice'|'free', text: string, choice?: object })
+  function _renderChoicesOrInput(overlay, choices, opts, onSubmit) {
+    opts = opts || {};
+    var area = overlay.querySelector('[id$="-input-area"]');
+    area.innerHTML = '';
+
+    var box = document.createElement('div');
+    box.style.cssText = 'display:flex;flex-direction:column;gap:8px;align-items:stretch;width:100%;';
+
+    // 선택지 자리 (있으면)
+    if (choices && choices.length) {
+      choices.forEach(function (c) {
+        var btn = document.createElement('button');
+        btn.textContent = c.label;
+        btn.style.cssText = [
+          'padding:14px 20px', 'width:100%', 'box-sizing:border-box',
+          'background:rgba(196,168,130,0.06)',
+          'border:1px solid rgba(196,168,130,0.32)',
+          'color:rgba(232,216,252,0.86)',
+          'font-family:inherit', 'font-size:1.05rem',
+          'cursor:pointer', 'border-radius:2px',
+          'text-align:left',
+          'transition:background 200ms ease, border-color 200ms ease',
+        ].join(';');
+        btn.onmouseenter = function () {
+          btn.style.background = 'rgba(196,168,130,0.16)';
+          btn.style.borderColor = 'rgba(196,168,130,0.6)';
+        };
+        btn.onmouseleave = function () {
+          btn.style.background = 'rgba(196,168,130,0.06)';
+          btn.style.borderColor = 'rgba(196,168,130,0.32)';
+        };
+        btn.onclick = function () {
+          area.innerHTML = '';
+          onSubmit({ source: 'choice', text: c.label, choice: c });
+        };
+        box.appendChild(btn);
+      });
+    }
+
+    // 자유 입력 자리 — 선택지 자리 아래
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:8px;width:100%;align-items:center;margin-top:' +
+      (choices && choices.length ? '8px' : '0') + ';';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = opts.placeholder || '...또는 자유롭게 박아';
+    input.style.cssText = [
+      'flex:1', 'padding:14px 18px',
+      'background:rgba(0,0,0,0.4)',
+      'border:1px solid rgba(196,168,130,0.32)',
+      'color:rgba(232,216,252,0.92)',
+      'font-family:inherit', 'font-size:1.05rem',
+      'outline:none', 'border-radius:2px',
+    ].join(';');
+    input.onfocus = function () { input.style.borderColor = 'rgba(196,168,130,0.7)'; };
+    input.onblur  = function () { input.style.borderColor = 'rgba(196,168,130,0.32)'; };
+
+    var btn = document.createElement('button');
+    btn.textContent = opts.submitLabel || '↵';
+    btn.style.cssText = [
+      'padding:14px 20px',
+      'background:rgba(196,168,130,0.18)',
+      'border:1px solid rgba(196,168,130,0.45)',
+      'color:rgba(232,216,252,0.92)',
+      'font-family:inherit', 'font-size:1.05rem', 'cursor:pointer', 'border-radius:2px',
+    ].join(';');
+
+    function _go() {
+      var v = (input.value || '').trim();
+      if (!v) return;
+      area.innerHTML = '';
+      onSubmit({ source: 'free', text: v });
+    }
+    btn.onclick = _go;
+    input.onkeydown = function (e) { if (e.key === 'Enter') _go(); };
+
+    wrap.appendChild(input);
+    wrap.appendChild(btn);
+    box.appendChild(wrap);
+
+    area.appendChild(box);
+    setTimeout(function () { input.focus(); }, 50);
+  }
+
+  // V2.1.2 (ε, 2026-05-06): dialog-turn edge function 호출 자리 — 학습된 유령 자유 대화.
+  // 시스템 프롬프트 자리에 씬 본문 자리 통째 자리 박음 (서버 자리). cache_control 자리 활성 자리.
+  async function _callDialogTurn(supabase, memoryId, sceneId, userInput, history) {
+    if (!supabase || !memoryId || !sceneId || !userInput) return null;
+    try {
+      var resp = await supabase.functions.invoke('dialog-turn', {
+        body: {
+          memoryId: memoryId,
+          sceneId: sceneId,
+          userInput: userInput,
+          history: history || [],
+        },
+      });
+      if (!resp.error && resp.data && resp.data.ok && resp.data.reply) {
+        return { reply: resp.data.reply, usage: resp.data.usage || null };
+      }
+      console.warn('[ldp] dialog-turn 실패. reason:',
+        (resp.data && resp.data.reason) ||
+        (resp.error && resp.error.message));
+      return null;
+    } catch (e) {
+      console.warn('[ldp] dialog-turn 예외', e);
+      return null;
+    }
   }
 
   function _renderTextInput(overlay, opts, onSubmit) {
@@ -607,6 +743,12 @@
       window.LumenGhostResponse.resetHysteresis();
     }
 
+    // 2026-05-06: overlay 를 LLM await *전*에 박음 (V2-5 보강).
+    // 자이로드롭 fix — _fpTick 의 freeze 조건이 'lumenDialogPhase1' element 존재 검사라,
+    // overlay 가 LLM 캐시 미스 시 1~3초 후 박히면 그 사이 walk_effects breath/bob 가
+    // 누적되어 카메라가 위아래로 진동. overlay 즉시 박아서 freeze 즉시 활성화.
+    var overlay = _buildOverlay(input.mountId || DEFAULTS.overlayId);
+
     // V2.1.2 (δ) 하이브리드 자동 생성 (2026-05-05) — 사용자 결정.
     //   1. 작가 손 (sceneData.meta.dialog_choices) 박힘 → 그대로 사용. 부분 박힘이어도
     //      *의도 존중* → 보강 X (결정 #3).
@@ -614,26 +756,52 @@
     //      서버가 캐시 hit 자리 처리 (memories.meta.dialog_choices_llm) → 1회 LLM,
     //      이후 플레이어는 캐시 사용. 작가 손 풀과 동일 위계.
     //   3. LLM 호출 실패/ok:false → _autoGenerateDialogChoices 균일 톤 (안전망 #2).
+    //
+    // V2.1.2 (δ-2, 2026-05-06) — 두 호출 자리 동시 (사용자 경험 자리 추가 보강):
+    //   (A) 첫 씬 자리 호출 (oneScene=true) — await ~3-5초. 그 씬 1개 자리 응답 자리만.
+    //   (B) 백그라운드 자리 호출 (sceneId X, fire-and-forget) — 메모리 통째 자리.
+    //       서버 자리 ~15-30초 자리 처리 + DB 캐시 자리 박음. 다음 씬 자리 진입 시 캐시 사용.
+    //   캐시 hit 자리 (두 번째 플레이어) = (A) 자리 즉시 응답 자리, (B) 자리도 캐시 hit 자리 빠름.
     // 핸드아웃: docs/세션핸드아웃_v21_콘텐츠_fallback-260505.md
     if (!dlg) {
       if (input.supabase && memoryId) {
+        // (B) 백그라운드 자리 — 메모리 통째 자리 호출 (await 안 함, fire-and-forget).
+        // 응답 자리 받으면 서버 자리에서 DB 캐시 자리 박음. 다음 씬 자리 진입 시 캐시 사용.
+        // 실패 자리 = 다음 씬 자리도 oneScene 자리 호출 자리. 안전망 자리 X.
+        input.supabase.functions.invoke('generate-dialog-choices', {
+          body: { memoryId: memoryId },  // sceneId 자리 X = 메모리 통째 호출
+        }).then(function (bgResp) {
+          if (bgResp && !bgResp.error && bgResp.data && bgResp.data.ok) {
+            console.log('[ldp] 백그라운드 LLM ' +
+              (bgResp.data.cached ? '캐시 hit' : '메모리 통째 신규 생성 + DB 캐시 박힘') +
+              ' memId=' + memoryId.slice(0, 8) + '…');
+          } else {
+            console.warn('[ldp] 백그라운드 LLM 실패. reason:',
+              (bgResp && bgResp.data && bgResp.data.reason) ||
+              (bgResp && bgResp.error && bgResp.error.message));
+          }
+        }).catch(function (bgErr) {
+          console.warn('[ldp] 백그라운드 LLM 예외', bgErr);
+        });
+
+        // (A) 첫 씬 자리 호출 — oneScene=true 박으면 서버 자리 그 씬 1개만 처리. 응답 ~3-5초.
         try {
           var llmResp = await input.supabase.functions.invoke('generate-dialog-choices', {
-            body: { memoryId: memoryId, sceneId: sceneId },
+            body: { memoryId: memoryId, sceneId: sceneId, oneScene: true },
           });
           if (!llmResp.error && llmResp.data && llmResp.data.ok && llmResp.data.dialog_choices) {
             dlg = llmResp.data.dialog_choices;
-            console.log('[ldp] LLM dialog_choices ' +
-              (llmResp.data.cached ? '캐시 hit' : '신규 생성') +
+            console.log('[ldp] LLM 첫 씬 자리 ' +
+              (llmResp.data.cached ? '캐시 hit' : 'oneScene 신규 생성') +
               ' memId=' + memoryId.slice(0, 8) + '… sceneId=' +
               String(sceneId || '').slice(0, 8) + '…');
           } else {
-            console.warn('[ldp] LLM dialog_choices 실패, 균일 톤 안전망. reason:',
+            console.warn('[ldp] LLM 첫 씬 자리 실패, 균일 톤 안전망. reason:',
               (llmResp.data && llmResp.data.reason) ||
               (llmResp.error && llmResp.error.message));
           }
         } catch (e) {
-          console.warn('[ldp] LLM dialog_choices 예외, 균일 톤 안전망', e);
+          console.warn('[ldp] LLM 첫 씬 자리 예외, 균일 톤 안전망', e);
         }
       }
       if (!dlg) {
@@ -645,7 +813,6 @@
       }
     }
 
-    var overlay = _buildOverlay(input.mountId || DEFAULTS.overlayId);
     var ghosts  = global.LumenGhostResponse || null;
 
     // drift visualizer attach (있으면)
@@ -662,166 +829,183 @@
     // 회차 시간 측정 — 9분(540s) 초과 시 콘솔 경고 (결정 (d) 2026-05-04).
     var sceneCycleStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 
-    // 0. scene_context — 풀 씬 본문 문장 단위 순차 토출 (V2.1.2 추가, 2026-05-05).
-    //    스즈미야 재구성 (비순차 견디게 다시 박은 풀 컨텍스트) 한 문장씩 유령 대사로.
-    //    이후 ghost_intro (짧은 회상 닻) 가 자연스럽게 이어짐.
+    // 0. scene_context — V2.1.2 (ε, 2026-05-06) 자리 짧게 자리 (5-6 → 2-3 문장).
+    //    유령 자리 첫 등장 자리 = 그 씬 자리 분위기 자리 *조금만* 자리. 사용자 비전 자리.
+    //    그 후 선택지 + 자유 입력 동시 자리 박힘.
     if (dlg.scene_context && Array.isArray(dlg.scene_context)) {
-      for (var sc = 0; sc < dlg.scene_context.length; sc++) {
-        var line = dlg.scene_context[sc];
+      var ctxLines = dlg.scene_context.slice(0, 3);  // 2-3 문장 자리만
+      for (var sc = 0; sc < ctxLines.length; sc++) {
+        var line = ctxLines[sc];
         if (typeof line !== 'string' || !line.length) continue;
         _addMessage(overlay, line, { who: 'ghost' });
-        await _sleep(1700); // 문장 간 호흡
+        await _sleep(DEFAULTS.pacingDelays.sceneContextMs);
       }
     }
 
-    // 1. ghost_intro — string or array 모두 지원. 배열이면 (memId|sceneId|intro) 시드로 deterministic pick.
+    // 1. ghost_intro — 보존 자리.
     var introText = _pickAuthored(dlg.ghost_intro, 'intro|' + memoryId + '|' + sceneId);
     if (introText) {
       _addMessage(overlay, introText, { who: 'ghost' });
       await _sleep(DEFAULTS.pacingDelays.afterIntroMs);
     }
 
-    // 2. choice_select
-    var choice = await new Promise(function (resolve) {
-      _renderChoices(overlay, dlg.choices || [], resolve);
-    });
-    _addMessage(overlay, choice.label, { who: 'player' });
-    await _sleep(300);
-
-    // 3. choice_reply — string or array. 시드는 choice.label 까지 포함 (다른 choice → 다른 풀 자리).
-    var replyText = _pickAuthored(choice.ghost_reply, 'reply|' + memoryId + '|' + sceneId + '|' + (choice.label || ''));
-    if (replyText) {
-      _addMessage(overlay, replyText, { who: 'ghost' });
-      await _sleep(DEFAULTS.pacingDelays.afterReplyMs);
-    }
-
-    // 4. free_dialog 첫 질문 — string or array.
-    var openText = _pickAuthored(choice.free_dialog_open, 'open|' + memoryId + '|' + sceneId + '|' + (choice.label || ''));
-    if (openText) {
-      _addMessage(overlay, openText, { who: 'ghost' });
-      await _sleep(700);
-    }
-
-    // 5. free_dialog turns — 1턴 → 3턴 (2026-05-04 ego-state turn-taking 차용).
-    //    매 턴 _analyzeEmotion 단독 호출 (결정 (a) — 누적 fingerprint X).
-    //    END_PHRASES 시 조기 종료. CRISIS 시 즉시 차단.
+    // 2. free_dialog turns — V2.1.2 (ε, 2026-05-06) 자리 학습된 유령 자리 자유 대화 자리.
+    //    - turn 1 = 선택지 + 자유 입력 동시 자리 (가이드 자리). 사용자 자리 *클릭* 또는 *자유 박음*.
+    //    - turn 2-3 = 자유 입력만.
+    //    - 응답 자리 = dialog-turn 자리 호출 (Haiku 자리, 씬 본문 자리 학습 + ghost_variants 자료).
+    //    - dialogHistory 자리 누적 자리 → 그 회차 자리 안 자리 자연 자리 흐름.
+    //    - 슬롯 흡수 자리 = 백그라운드 자리 호출 (§2 명제 자리, ghost_variants 자생 자리).
+    //    - dialog-turn 실패 시 = pickResponse 풀 픽 자리 안전망 자리.
+    //    choice_reply / free_dialog_open 자리 폐기 자리 (작가 박은 자리 시드 자리 ghost_variants 자리에 보존).
     var lastAlignment = 0.5;
     var lastResonance = 'vague';
-    var lastUserEmotion = null;       // V2.1.2 (5-05) — plays.user_emotion 박음 자리
-    var dialogTurns = [];              // V2.1.2 (5-05) — plays.dialog_turns 박음 자리
+    var lastUserEmotion = null;
+    var dialogTurns = [];
+    var dialogHistory = [];  // V2.1.2 (ε) — dialog-turn 자리 누적 자리
     var origEmotion = sceneData.original_emotion || sceneData.originalEmotion || {};
     var totalTurns = DEFAULTS.maxFreeDialogTurns;
 
     for (var turn = 1; turn <= totalTurns; turn++) {
-      var playerInput = await new Promise(function (resolve) {
-        _renderTextInput(overlay, { placeholder: '여기에 이야기해...' }, resolve);
-      });
+      // 입력 자리 받음 자리. turn 1 = 선택지 + 자유 동시. turn 2-3 = 자유.
+      var playerInput;
+      if (turn === 1) {
+        var firstInput = await new Promise(function (resolve) {
+          _renderChoicesOrInput(overlay, dlg.choices || [], { placeholder: '...또는 자유롭게 박아' }, resolve);
+        });
+        playerInput = firstInput.text;
+      } else {
+        playerInput = await new Promise(function (resolve) {
+          _renderTextInput(overlay, { placeholder: '여기에 이야기해...' }, resolve);
+        });
+      }
       _addMessage(overlay, playerInput, { who: 'player' });
 
-      // CRISIS 안전망
+      // CRISIS / END 안전망 (보존)
       if (_hasCrisis(playerInput, DEFAULTS.crisisKeywords)) {
         _addMessage(overlay, DEFAULTS.crisisReply, { who: 'ghost' });
         await _sleep(900);
         break;
       }
-      // END_PHRASES 조기 종료 → urge 단계로
       if (_isEndPhrase(playerInput, DEFAULTS.endPhrases)) break;
 
-      // emotion 분석 + alignment (매 턴 단독 — 결정 (a))
-      var userEmo = await _analyzeEmotion(input.supabase, playerInput, sceneData.anchor_emotions);
-      var alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
+      // emotion 분석 + alignment (보존 자리, drift visualizer 자리 결 자리 + plays 자리 박음 자리)
+      var userEmo, alignment;
+      if (_isShortAffirmative(playerInput)) {
+        userEmo = lastUserEmotion || origEmotion;
+        alignment = Math.max(lastAlignment, 0.7);
+        console.log('[phase1] turn ' + turn + ' SHORT_AFFIRMATIVE — alignment=' + alignment.toFixed(3));
+      } else {
+        userEmo = await _analyzeEmotion(input.supabase, playerInput, sceneData.anchor_emotions);
+        alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
+      }
       lastAlignment = alignment;
       if (userEmo && Object.keys(userEmo).length) lastUserEmotion = userEmo;
 
-      // V2.1.2 슬롯 흡수 시도 — LLM (Haiku) 우선 → 휴리스틱 fallback.
-      // 실패 시 기존 pickResponse fallback (resonance/vague 풀 또는 dissonance quoting).
-      var resp = null;
-      var absorbed = null;
-      var slotter = global.LumenSlotAbsorber;
-      // 응답 생성 중 로딩 인디케이터 (LLM ~500-1000ms 자리). LLM 호출 전 시작.
+      // 응답 자리 = dialog-turn 자리 (V2.1.2 ε). 실패 시 pickResponse 자리 안전망 자리.
       var loading = _showLoadingBubble(overlay);
+      var ghostReply = null;
+      var resonanceForViz = 'vague';
+      var via = 'unknown';
       try {
-        if (slotter && ghosts && typeof ghosts.getSlotPool === 'function') {
-          // 씬 context 자리 (LLM 톤 가이드)
-          var sceneCtxArr = (sceneData.meta && sceneData.meta.dialog_choices && sceneData.meta.dialog_choices.scene_context) || [];
-          var sceneCtxStr = sceneCtxArr.slice(0, 3).join(' ');  // 첫 3 문장만 (token 절약)
-          var motifs = (sceneData.meta && sceneData.meta.motif_tags) || [];
-
-          if (typeof slotter.tryAbsorbAsync === 'function') {
-            absorbed = await slotter.tryAbsorbAsync({
-              memoryId: memoryId, sceneId: sceneId, turn: turn,
-              alignment: alignment, playerInput: playerInput,
-              slotPool: ghosts.getSlotPool(),
-              supabase: input.supabase,
-              memoryTitle: sceneData.memoryTitle || '',
-              motifs: motifs,
-              sceneContext: sceneCtxStr,
-              ghostTone: '"~었어" 체. 자기 회상. 슬리퍼 신은 아이의 톤.',
-            });
-          } else if (typeof slotter.tryAbsorb === 'function') {
-            absorbed = slotter.tryAbsorb({
-              memoryId: memoryId, sceneId: sceneId, turn: turn,
-              alignment: alignment, playerInput: playerInput,
-              slotPool: ghosts.getSlotPool(),
-            });
-          }
+        var dlgResp = await _callDialogTurn(input.supabase, memoryId, sceneId, playerInput, dialogHistory);
+        if (dlgResp && dlgResp.reply) {
+          ghostReply = dlgResp.reply;
+          resonanceForViz = ghosts && typeof ghosts.classifyResonance === 'function'
+            ? ghosts.classifyResonance(alignment) : 'vague';
+          via = 'dialog_turn';
         }
+      } catch (dtErr) {
+        console.warn('[ldp] dialog-turn 예외', dtErr);
       } finally {
         loading.stop();
       }
-      if (absorbed) {
-        resp = { resonance: absorbed.resonance, reply: absorbed.reply };
-        // background insert (fire-and-forget, await 안 함)
-        if (input.supabase && memoryId) {
-          _backgroundInsertAbsorbed(input.supabase, {
-            memoryId: memoryId,
-            utterance: absorbed.reply,
-            motifTags: absorbed.motifTags,
-            anchorVariantId: input.anchorVariantId || null,
-            attribution: sceneData.attribution || null,
-            coreFear: sceneData.core_fear || null,
-            modality: sceneData.modality || null,
-            role: sceneData.role || null,
-          });
-        }
-        console.log('[phase1] turn ' + turn + '/' + totalTurns +
-          ' ABSORBED slotValue="' + absorbed.slotValue + '"' +
-          ' resonance=' + absorbed.resonance);
-      } else {
-        // 반응 풀 pick — turn 인자가 시드에 들어가서 매 턴 다른 변주 (호명 자리는 V2-10 가이드 풀).
-        resp = ghosts && typeof ghosts.pickResponse === 'function'
+      if (!ghostReply) {
+        // 안전망 자리 — 풀 픽 자리
+        var safetyResp = ghosts && typeof ghosts.pickResponse === 'function'
           ? ghosts.pickResponse({
               memoryId: memoryId, sceneId: sceneId, turn: turn,
               alignment: alignment, playerInput: playerInput,
             })
           : { resonance: 'vague', reply: '...' };
+        ghostReply = safetyResp.reply;
+        resonanceForViz = safetyResp.resonance;
+        via = 'pool_fallback';
+        console.warn('[phase1] turn ' + turn + ' dialog-turn 실패 → 풀 픽 안전망. resonance=' + resonanceForViz);
+      } else {
         console.log('[phase1] turn ' + turn + '/' + totalTurns +
-          ' alignment=' + alignment.toFixed(3) +
-          ' resonance=' + resp.resonance +
-          ' reply="' + (resp.reply || '').slice(0, 30) + '..."');
+          ' DIALOG_TURN alignment=' + alignment.toFixed(3) +
+          ' resonance=' + resonanceForViz +
+          ' reply="' + ghostReply.slice(0, 30) + '..."');
       }
-      lastResonance = resp.resonance;
+      lastResonance = resonanceForViz;
 
-      // 변형 펄스 — 카메라/유령(driftVis) + 파동(_fpAmbientWave) 동시 갱신 (4채널 정합)
+      // 슬롯 흡수 자리 — 백그라운드 자리 (§2 명제 자리 보존). 응답 자리 와 별도.
+      // 사용자 입력 자리 → ghost_variants 자생 자리 → 다음 플레이어 자리 자료 자리에 박힘.
+      var slotter = global.LumenSlotAbsorber;
+      if (slotter && ghosts && typeof ghosts.getSlotPool === 'function') {
+        (function (turnIdx, inputText, alignVal) {
+          (async function () {
+            try {
+              var sceneCtxArr = (sceneData.meta && sceneData.meta.dialog_choices && sceneData.meta.dialog_choices.scene_context) || [];
+              var sceneCtxStr = sceneCtxArr.slice(0, 3).join(' ');
+              var bgMotifs = (sceneData.meta && sceneData.meta.motif_tags) || [];
+              var bgAbs = null;
+              if (typeof slotter.tryAbsorbAsync === 'function') {
+                bgAbs = await slotter.tryAbsorbAsync({
+                  memoryId: memoryId, sceneId: sceneId, turn: turnIdx,
+                  alignment: alignVal, playerInput: inputText,
+                  slotPool: ghosts.getSlotPool(),
+                  supabase: input.supabase,
+                  memoryTitle: sceneData.memoryTitle || '',
+                  motifs: bgMotifs,
+                  sceneContext: sceneCtxStr,
+                  ghostTone: '"~었어" 체. 자기 회상.',
+                });
+              }
+              if (bgAbs && input.supabase && memoryId) {
+                _backgroundInsertAbsorbed(input.supabase, {
+                  memoryId: memoryId,
+                  utterance: bgAbs.reply,
+                  motifTags: bgAbs.motifTags,
+                  anchorVariantId: input.anchorVariantId || null,
+                  attribution: sceneData.attribution || null,
+                  coreFear: sceneData.core_fear || null,
+                  modality: sceneData.modality || null,
+                  role: sceneData.role || null,
+                });
+                console.log('[phase1] turn ' + turnIdx + ' BG 흡수 변주 자생 박힘 slot="' + bgAbs.slotValue + '"');
+              }
+            } catch (bgErr) {
+              console.warn('[phase1] BG 흡수 자리 예외', bgErr);
+            }
+          })();
+        })(turn, playerInput, alignment);
+      }
+
+      // 변형 펄스 자리 (보존)
       if (driftVis && typeof driftVis.pulse === 'function') {
-        driftVis.pulse({ resonance: resp.resonance });
+        driftVis.pulse({ resonance: resonanceForViz });
       }
       if (typeof window !== 'undefined' && window._fpAmbientWave
           && typeof window._fpAmbientWave.pulseResonance === 'function') {
-        window._fpAmbientWave.pulseResonance(resp.resonance);
+        window._fpAmbientWave.pulseResonance(resonanceForViz);
       }
 
-      _addMessage(overlay, resp.reply, { who: 'ghost' });
+      _addMessage(overlay, ghostReply, { who: 'ghost' });
 
-      // V2.1.2 dialog_turns 누적 (plays 박음 자리)
+      // dialogHistory 자리 누적 (다음 턴 자리 dialog-turn 자리 호출 자리에 박음)
+      dialogHistory.push({ role: 'user', content: playerInput });
+      dialogHistory.push({ role: 'assistant', content: ghostReply });
+
+      // plays 자리 박음 자리 (보존)
       dialogTurns.push({
         turn: turn,
         raw_text: playerInput,
         fingerprint: userEmo || {},
         alignment: alignment,
-        resonance: resp.resonance || lastResonance,
-        ghost_reply: resp.reply || '',
-        absorbed: !!absorbed,
+        resonance: resonanceForViz,
+        ghost_reply: ghostReply,
+        via: via,
         ts: new Date().toISOString(),
       });
 
