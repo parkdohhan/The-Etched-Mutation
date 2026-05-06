@@ -86,7 +86,7 @@
     ok('pickResponse — vague 분류 0.45', rV.resonance === 'vague');
   }
 
-  // ─── 4. dissonance quoting ───
+  // ─── 4. 입력 인용 (충돌 + 모호 결, 2026-05-06 모호 결까지 확장) ───
   if (GR) {
     var rD = GR.pickResponse({
       memoryId: 'mB', sceneId: 's1', turn: 1,
@@ -95,11 +95,34 @@
     });
     ok('pickResponse — dissonance 분류 0.20', rD.resonance === 'dissonance');
     // quoting 마커 처리 — `'____'` 자리에 quote 또는 '...' 삽입돼야
-    ok('pickResponse — `\'____\'` 마커 미잔존', rD.reply.indexOf("'____'") === -1);
+    ok('pickResponse — dissonance `\'____\'` 마커 미잔존', rD.reply.indexOf("'____'") === -1);
 
     // 빈 입력일 때도 안전
     var rDempty = GR.pickResponse({ memoryId: 'mC', sceneId: 's1', turn: 1, alignment: 0.20, playerInput: '' });
     ok('pickResponse — 빈 입력 안전', typeof rDempty.reply === 'string' && rDempty.reply.indexOf("'____'") === -1);
+
+    // 모호 결 인용 자리 — vaguePool 변주에 마커 박힌 자리 풀 픽 시 동일 치환 작동.
+    // 시드별로 마커 박힌 변주가 픽되도록 여러 (memoryId, sceneId, turn) 조합 시도.
+    var vagueMarkerHit = false;
+    var vagueQuoteHit = false;
+    for (var vi = 0; vi < 30; vi++) {
+      var rVQ = GR.pickResponse({
+        memoryId: 'mV' + vi, sceneId: 's' + vi, turn: vi,
+        alignment: 0.45,
+        playerInput: '할머니 손이 따뜻했어',
+      });
+      if (rVQ.resonance !== 'vague') continue;
+      // 마커 잔존 X (모든 픽이 통과해야 함)
+      if (rVQ.reply.indexOf("'____'") !== -1) { vagueMarkerHit = true; }
+      // 인용 어휘가 reply 에 박혔나 — 마커 박힌 변주 픽 시 입력 첫 단어들 들어감
+      if (rVQ.reply.indexOf('할머니') !== -1) { vagueQuoteHit = true; }
+    }
+    ok('pickResponse — vague `\'____\'` 마커 미잔존 (전 픽)', vagueMarkerHit === false);
+    ok('pickResponse — vague 인용 자리 발동 (시드 30 중 1+)', vagueQuoteHit === true);
+
+    // 모호 결 빈 입력 fallback — `'...'` 치환
+    var rVempty = GR.pickResponse({ memoryId: 'mVE', sceneId: 's1', turn: 1, alignment: 0.45, playerInput: '' });
+    ok('pickResponse — vague 빈 입력 안전', typeof rVempty.reply === 'string' && rVempty.reply.indexOf("'____'") === -1);
   }
 
   // ─── 5. pickUrge 결정론 ───

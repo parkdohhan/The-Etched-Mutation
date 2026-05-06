@@ -41,6 +41,8 @@
 ### □ 박을 자리 (우선순위 순, 5-19 안전 마감)
 - [ ] V2-5 오염 카메라 연출 — drift 시 즉시 가시화 (1일, 5-6)
   - [x] V2-5 보강 — 파동 부활 (2026-05-06 완료). proximity 동화 재가동(`play-test.html` `_awUpdateFromProximity` 100ms 폴 재박음) + 두 줄 파동 결마다 펄스(`_fpAmbientWave.pulseResonance` 신규 — `lumen_drift_visualizer` spec 차용) + dialog phase1 매 턴 호출(`lumen_dialog_phase1.js` L800 옆) + 결 분류 히스테리시스(`lumen_ghost_response.classifyResonance` buffer 0.04 + hold 250ms) + 회차 시작 시 `resetHysteresis()` + 히스테리시스 smoke 검증 추가(`test/smoke_v21_phase1.js` 섹션 2-B). 핸드아웃 `docs/세션핸드아웃_파동부활-260506.md`.
+  - [x] V2-5 보강+ — 파동 표시 lerp + 진입 텀 단축 (2026-05-06 완료). `Visualizer.js` 두 줄 파동 표시 스타일 프레임 단위 lerp(SMOOTH=0.08, ~150ms 안에 따라잡음) — proximity 100ms 갱신 사이 갑자기 결 바뀌는 자리 둔화. `play-test.html` `LONG_PRESS_MS` 1200→800.
+  - [x] V21/유령 응답 — 입력 인용 모호 결까지 확장 (2026-05-06 완료). 기존 `lumen_ghost_response.dissonancePool`만 박혔던 마커(`'____'`) `vaguePool`도 박음 (시드 2개 추가). `_applyQuote`는 결 무관 — 마커 박힌 변주는 어느 풀(공명/모호/충돌)에 박혀도 동일 동작. 공명 결은 부드러운 받아침이라 인용 어색해서 의도적 미박. smoke 가드 모호 결 인용 발동 + 빈 입력 안전 (`test/smoke_v21_phase1.js` 섹션 4 확장).
 - [ ] V2-6 drift 픽 시스템 — 12축 emotion_vec 2단계 픽 + `plays.ghost_variant_id`·`final_drift_vector` 도장 (2일, 5-7)
 - [ ] **V2-13 재진입 유도 시퀀스** (5-05 V2.1.3 신규) — outro 뒤 메모리 변화 힌트 + 재진입 시 흡수 cinematic 가시화 + localStorage 추적 (0.5~1일, 5-8)
 - [ ] V2-9 통합·smoke 가드 — `test/smoke_v21_*.js` (2일, 5-9)
