@@ -323,9 +323,29 @@ export class Visualizer {
                 const alignmentValue = active.alignment || 0;
                 const activeNarratorEV = active.narratorEmotionVector;
                 const activeExperiencerEV = active.experiencerEmotionVector;
-                const activeNarratorWS = active.narratorWaveStyle;
-                const activeExperiencerWS = active.experiencerWaveStyle;
+                const targetNarratorWS = active.narratorWaveStyle;
+                const targetExperiencerWS = active.experiencerWaveStyle;
                 const activeOnUpdate = active.onUpdateAlignmentDisplay;
+
+                // 2026-05-06: 프레임 단위 표시 스타일 lerp — 100ms proximity 갱신 사이 *부드럽게* 보간.
+                // 0.08 = 매 프레임 8% 타겟 쪽으로 이동 → ~150ms 안에 거의 따라잡음.
+                const SMOOTH = 0.08;
+                if (targetNarratorWS) {
+                    this._displayedNarratorWS = this._displayedNarratorWS
+                        ? this._lerpWaveStyle(this._displayedNarratorWS, targetNarratorWS, SMOOTH)
+                        : targetNarratorWS;
+                } else {
+                    this._displayedNarratorWS = null;
+                }
+                if (targetExperiencerWS) {
+                    this._displayedExperiencerWS = this._displayedExperiencerWS
+                        ? this._lerpWaveStyle(this._displayedExperiencerWS, targetExperiencerWS, SMOOTH)
+                        : targetExperiencerWS;
+                } else {
+                    this._displayedExperiencerWS = null;
+                }
+                const activeNarratorWS = this._displayedNarratorWS;
+                const activeExperiencerWS = this._displayedExperiencerWS;
 
                 const ctx = canvas.getContext('2d');
                 const width = canvas.width / 2;
@@ -440,10 +460,12 @@ export class Visualizer {
             cancelAnimationFrame(this.alignmentWaveAnimationId);
             this.alignmentWaveAnimationId = null;
         }
-        // 2026-05-06: 캔버스 추적 상태 클리어 — 다음 startAlignmentWaveAnimation 가 새 캔버스에 풀 init.
+        // 2026-05-06: 캔버스 추적 상태 + 프레임 lerp 표시 스타일 클리어.
         this._alignmentWaveNarratorCanvas = null;
         this._alignmentWaveExperiencerCanvas = null;
         this._alignmentWaveData = null;
+        this._displayedNarratorWS = null;
+        this._displayedExperiencerWS = null;
     }
 
     /**
