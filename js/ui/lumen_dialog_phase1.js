@@ -335,6 +335,64 @@
     return meta;
   }
 
+  // V2-5++ 흡수 메아리 자리 (자료 §11.2 자리 풀음).
+  // BG 흡수 INSERT 성공 직후 호출. ghost_variants drift row 자생 사실을
+  // 메모리 화자 톤의 한 줄 메아리로 가시화 — 시스템 메시지 톤 회피.
+  // turnIdx (1·2·3) 따라 변주: 한 결 → 두 번째 결 → 세 번째까지.
+  // 자료 §11.2 톤 후보 1번 (자국 결) — etch 어휘 정합. 톤 변경은 이 자리 텍스트 한 줄.
+  var _ABSORB_TRACE_LINES = {
+    ko: [
+      '네 자국이 한 결로 박혔다.',
+      '두 번째 결이 그 위에 겹쳐졌다.',
+      '세 번째까지 — 이 기억은 너를 받았다.',
+    ],
+    en: [
+      'Your trace etched a line.',
+      'A second line layered over it.',
+      'Three now — this memory has taken you in.',
+    ],
+  };
+  function _resolveTraceLang() {
+    try {
+      var s = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('tem_lang')) || '';
+      if (s === 'ko' || s === 'en') return s;
+      var l = (typeof localStorage !== 'undefined' && localStorage.getItem('tem_language')) || '';
+      if (l === 'ko' || l === 'en') return l;
+    } catch (_) {}
+    return 'ko';
+  }
+  function _addAbsorbTrace(overlay, turnIdx) {
+    if (!overlay || !overlay.parentNode) return null;
+    var msgs = overlay.querySelector('[id$="-messages"]');
+    if (!msgs) return null;
+    var lang = _resolveTraceLang();
+    var lines = _ABSORB_TRACE_LINES[lang] || _ABSORB_TRACE_LINES.ko;
+    var idx = Math.max(0, Math.min(lines.length - 1, (turnIdx | 0) - 1));
+    var trace = document.createElement('div');
+    trace.className = 'ldp-absorb-trace';
+    trace.style.cssText = [
+      'text-align:right',
+      'padding:6px 10px 0 0',
+      'margin-top:-4px',
+      'font-family:"Cormorant Garamond",serif',
+      'font-size:0.82rem',
+      'font-style:italic',
+      'color:rgba(220,196,160,0.62)',
+      'letter-spacing:0.04em',
+      'opacity:0',
+      'transform:translateY(4px)',
+      'transition:opacity 1200ms ease, transform 1200ms ease',
+    ].join(';');
+    trace.textContent = lines[idx];
+    msgs.appendChild(trace);
+    requestAnimationFrame(function () {
+      trace.style.opacity = '1';
+      trace.style.transform = 'translateY(0)';
+    });
+    msgs.scrollTo({ top: msgs.scrollHeight, behavior: 'smooth' });
+    return trace;
+  }
+
   function _renderChoices(overlay, choices, onPick) {
     var area = overlay.querySelector('[id$="-input-area"]');
     area.innerHTML = '';
@@ -702,8 +760,16 @@
         return null;
       }
       var data = resp && resp.data;
-      if (data && data.analysis && data.analysis.base && typeof data.analysis.base === 'object') {
-        return data.analysis.base;
+      // 2026-05-08: base 결이 string/array 박힌 자리 우회 (자료 §12.5c).
+      var base = data && data.analysis && data.analysis.base;
+      if (base != null) {
+        if (typeof base === 'string') {
+          try { base = JSON.parse(base); } catch (_) { base = null; }
+        }
+        if (Array.isArray(base)) base = null; // 인덱스 키 자리 박힘 회피
+        if (base && typeof base === 'object' && Object.keys(base).length > 0) {
+          return base;
+        }
       }
       return null;
     } catch (err) {
@@ -862,7 +928,21 @@
     var lastUserEmotion = null;
     var dialogTurns = [];
     var dialogHistory = [];  // V2.1.2 (ε) — dialog-turn 자리 누적 자리
-    var origEmotion = sceneData.original_emotion || sceneData.originalEmotion || {};
+    // 2026-05-08: 자료 §12.5c fix — sceneData.original_emotion 가 jsonb string
+    // 으로 박힌 자리 우회. play-test.html safeParseEmotion 박은 자리는 pin
+    // 전달 시점이라 phase1.js 직접 진입 시 raw string 박힘. defensive parse.
+    function _ensureObj(raw) {
+      if (raw == null) return {};
+      if (typeof raw === 'string') {
+        try { return JSON.parse(raw); } catch (_) { return {}; }
+      }
+      if (Array.isArray(raw)) {
+        // array of numbers → 인덱스 키 X. 기존 객체 결로는 안 박히니 비워서 fallback.
+        return {};
+      }
+      return raw;
+    }
+    var origEmotion = _ensureObj(sceneData.original_emotion || sceneData.originalEmotion);
     var totalTurns = DEFAULTS.maxFreeDialogTurns;
 
     for (var turn = 1; turn <= totalTurns; turn++) {
@@ -889,14 +969,35 @@
       if (_isEndPhrase(playerInput, DEFAULTS.endPhrases)) break;
 
       // emotion 분석 + alignment (보존 자리, drift visualizer 자리 결 자리 + plays 자리 박음 자리)
+      // 2026-05-08: alignment=0 고정 fix (자료 §11.1 자리).
+      // 진짜 자리 = sceneData.anchor_emotions=null 시 edge function 이 default 14축 으로
+      // LLM 호출 → 응답 키 vs origEmotion(12축) mismatch → cosine 0 박힘 자리.
+      // 해결: sceneData.anchor_emotions 비었으면 origEmotion 키 자체 를 anchorEmotions
+      // 로 넘김 → LLM 응답 키 = origEmotion 키 정합 → cosine sim 의미 있는 값.
       var userEmo, alignment;
       if (_isShortAffirmative(playerInput)) {
         userEmo = lastUserEmotion || origEmotion;
         alignment = Math.max(lastAlignment, 0.7);
         console.log('[phase1] turn ' + turn + ' SHORT_AFFIRMATIVE — alignment=' + alignment.toFixed(3));
       } else {
-        userEmo = await _analyzeEmotion(input.supabase, playerInput, sceneData.anchor_emotions);
+        var anchorKeys = (sceneData.anchor_emotions && sceneData.anchor_emotions.length)
+          ? sceneData.anchor_emotions
+          : (origEmotion && Object.keys(origEmotion).length ? Object.keys(origEmotion) : null);
+        userEmo = await _analyzeEmotion(input.supabase, playerInput, anchorKeys);
         alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
+        // alignment=0 박히면 진단 + lastAlignment fallback (plays 누적 결 보호).
+        if (alignment === 0) {
+          var origKeys = origEmotion ? Object.keys(origEmotion) : [];
+          var userKeys = userEmo ? Object.keys(userEmo) : [];
+          var origNorm = origKeys.reduce(function (s, k) { var v = Number(origEmotion[k]) || 0; return s + v * v; }, 0);
+          var userNorm = userKeys.reduce(function (s, k) { var v = Number(userEmo[k]) || 0; return s + v * v; }, 0);
+          console.warn('[phase1] turn ' + turn + ' alignment=0 진단 —' +
+            ' origNorm=' + origNorm.toFixed(3) + ' userNorm=' + userNorm.toFixed(3) +
+            ' origKeys=' + JSON.stringify(origKeys) +
+            ' userKeys=' + JSON.stringify(userKeys));
+          alignment = lastAlignment > 0 ? lastAlignment : 0.5;
+          console.warn('[phase1] turn ' + turn + ' alignment fallback → ' + alignment.toFixed(3));
+        }
       }
       lastAlignment = alignment;
       if (userEmo && Object.keys(userEmo).length) lastUserEmotion = userEmo;
@@ -974,6 +1075,9 @@
                   role: sceneData.role || null,
                 });
                 console.log('[phase1] turn ' + turnIdx + ' BG 흡수 변주 자생 박힘 slot="' + bgAbs.slotValue + '"');
+                // V2-5++ 흡수 메아리 자리 — 자료 §11.2 (INSERT 화면 신호).
+                // overlay 가 아직 살아있을 때만 박음 (마지막 턴 후 cleanup 됐으면 스킵).
+                try { _addAbsorbTrace(overlay, turnIdx); } catch (_) {}
               }
             } catch (bgErr) {
               console.warn('[phase1] BG 흡수 자리 예외', bgErr);

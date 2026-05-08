@@ -74,6 +74,64 @@ function showContinueButton() {
     if (openingSkipped) return;
     // v2: 기존 "Press any key" 힌트 대체 → 언어 게이트 + Start 버튼
     _initOpeningLangGate();
+    // 2026-05-08: 자료 critic 개입 3-a — 작품 컨셉(이본론 = 다음 사람의
+    // 메아리로 흘러간다) 신호를 *진입 자리*에 박음. plays.user_reason 자리
+    // random pick → 작은 골드 이탤릭 한 줄 페이드인 (게이트 위, 비동기).
+    _maybeShowOpeningEcho();
+}
+
+async function _fetchRandomEcho() {
+  try {
+    const sb = getSupabaseClient();
+    if (!sb) return null;
+    const { data, error } = await sb
+      .from('plays')
+      .select('user_reason')
+      .not('user_reason', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (error || !Array.isArray(data) || data.length === 0) return null;
+    const candidates = data
+      .map(r => (r && r.user_reason ? String(r.user_reason).trim() : ''))
+      .filter(s => s.length >= 5 && s.length <= 90);
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  } catch (_) { return null; }
+}
+
+async function _maybeShowOpeningEcho() {
+  if (openingSkipped) return;
+  const echo = await _fetchRandomEcho();
+  if (!echo || openingSkipped) return;
+  const wave = document.getElementById('openingScreen');
+  if (!wave) return;
+  const echoEl = document.createElement('div');
+  echoEl.style.cssText = [
+    'position:absolute',
+    'left:50%',
+    'top:18%',
+    'transform:translateX(-50%)',
+    'pointer-events:none',
+    'z-index:6',
+    'max-width:520px',
+    'padding:0 1rem',
+    'text-align:center',
+    'font-family:"Cormorant Garamond",serif',
+    'font-style:italic',
+    'font-size:14px',
+    'color:rgba(220,196,160,0.6)',
+    'letter-spacing:0.04em',
+    'line-height:1.7',
+    'opacity:0',
+    'transition:opacity 1.8s ease',
+  ].join(';');
+  echoEl.textContent = '— ' + echo;
+  wave.appendChild(echoEl);
+  requestAnimationFrame(() => { echoEl.style.opacity = '1'; });
+  setTimeout(() => { echoEl.style.opacity = '0'; }, 5500);
+  setTimeout(() => {
+    if (echoEl.parentNode) echoEl.parentNode.removeChild(echoEl);
+  }, 7500);
 }
 function showFourthText(dialogue) { if (openingSkipped) return; typeText(dialogue, '\nCome in.', function () { if (openingSkipped) return; setTimeout(showContinueButton, 500) }) }
 function showThirdText(dialogue) { if (openingSkipped) return; typeDots(dialogue, function () { if (openingSkipped) return; setTimeout(function () { showFourthText(dialogue) }, 1200) }) }
@@ -463,15 +521,25 @@ async function _handleOpeningSubmit(emotion, text) {
   } catch (_) {}
   try { setLanguage(_openingLang); } catch (_) {}
 
-  // 4) 메모리 로드 트리거 + 대기 (최대 8초 폴링)
+  // 4) 메모리 로드 트리거 + 대기 (최대 15초 폴링)
+  // 2026-05-08: 자료 §6.1 자리 fix.
+  // 진짜 자리 = 페이지 로드 시점에 index.js 가 *로컬 mock 영어 시드 3개* 를 appStore 에 박음.
+  // 이전 break 조건 `all.length > 0` 은 즉시 true → 폴링 0초 → 매칭 시도 → ko 사용자
+  // 한국어 필터 0개 → 메인 메뉴 폴백 트리거.
+  // 정정: 사용자 lang 의 메모리가 풀에 *1개 이상* 박힐 때까지 폴링 (Supabase fetch 끝).
   if (typeof window.loadMemoriesFromSupabase === 'function') {
     try { window.loadMemoriesFromSupabase(); } catch (_) {}
   }
+  const _preferKoForPoll = _openingLang === 'ko';
   const waitStart = Date.now();
-  const MAX_WAIT = 8000;
+  const MAX_WAIT = 15000;
   while (Date.now() - waitStart < MAX_WAIT) {
     const all = (window.appStore && window.appStore.getState && window.appStore.getState().allMemoriesData) || [];
-    if (all.length > 0) break;
+    const langCount = all.filter(m => {
+      const t = (m.title || '') + (m.completed_sentence || '');
+      return /[가-힣]/.test(t) === _preferKoForPoll;
+    }).length;
+    if (langCount > 0) break;
     await new Promise(r => setTimeout(r, 150));
   }
 
@@ -507,13 +575,15 @@ async function _handleOpeningSubmit(emotion, text) {
   }
 
   // V2-3 매칭 풀 비었거나 점수 0 → V1 fallback (키워드 + emotion vec).
+  // 정상 흐름의 일부라 info 톤 (warn 박으면 콘솔에서 진짜 실패와 분간 안 됨).
   if (!memory) {
-    console.warn('[opening:dialog] SeekerMatchEngine 매칭 실패 — V1 _pickTopMemoryForLumen fallback');
+    console.info('[opening:dialog] SeekerMatchEngine 점수 0 — V1 키워드 fallback 진입 (정상 흐름)');
     memory = _pickTopMemoryForLumen(emotion, text, _openingLang);
   }
 
+  // 진짜 실패 자리 — 메모리 풀 0건 = 데이터/네트워크 문제. error 로 명확히.
   if (!memory) {
-    console.warn('[opening:lumen] 매칭 가능한 기억이 없음 — 메인 메뉴로 폴백');
+    console.error('[opening:lumen] 매칭 가능한 메모리 0건 — 메인 메뉴로 복귀 (메모리 풀 비어있음)');
     openingSkipped = true;
     if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
     finishOpeningSequence();

@@ -806,3 +806,192 @@ lumen-scene-ghosts는 다이얼로그 자리에서 화자의 분신(ghost, 마�
 다섯이 다 맞물리면 작품이 현재 "콘셉상으로는 변이 누적인데 체험상으로는 잘 안 보이는 자리"에서 "콘셉과 체험이 같은 자리에서 일어나는 작품"으로 옮겨감. 그래서 +6~8점.
 
 그래도 +10 못 가는 이유: 결함 해결만으로는 외부 인용·계보 형성 증거(S급 자리)가 자료 안에 안 박힘. 다음 관객에게 풀이 다르게 뽑히는 직접 증거(A급 상단 자리)는 다른 자료가 추가로 들어와야 박힘.
+
+---
+
+## 12. 2026-05-08 검증·fix 결과 (§6·§11 정정)
+
+같은 날 오후, claude code 세션에서 §11 결함 셋(§11.4 / §11.6.3 / §11.6.2 → §11.6.1 / §11.6.4 → §11.2 → §11.1 → §6.1)을 차례로 손댐. playwright 1.59.1 헤드리스로 한 사이클 검증 돌림. 결과:
+
+### 12.1 §11.1 별이엔진 alignment 0 phase1 비활성 — 가설 셋 다 X, 진짜 자리는 (c)·(d)
+
+자료 §11.1·§6.4·§9.4 #1·§10.2 (+3 가중치) 모두 *(a) 배선 빠짐 / (b) zero state* 두 갈래를 가정했지만 **둘 다 코드와 안 맞음**.
+
+코드 grep 결과:
+- phase1.js 안에 `ByeoriEngine` import 없음. 의도적 미사용.
+- [phase1.js:25](../../js/ui/lumen_dialog_phase1.js#L25) 주석 명시: "자유대화 매 턴 독립 alignment 분석 (8번 동의 — 결정 (a) 2026-05-04)".
+- [line 957](../../js/ui/lumen_dialog_phase1.js#L957) `_cosineSim(userEmo, origEmotion)` — 별이엔진 V4 대신 단순 cosine sim.
+
+→ **(c) 의도된 단순화** — 작가가 5-04에 명시 결정.
+
+DB 직접 조회 (supabase MCP) 결과:
+- 발자국 6개 씬 모두 `original_emotion` 12축 정상 박힘. norm 양수.
+- → (d-1) origEmotion 빈 객체 X.
+
+cosine sim 시뮬레이션:
+- claude-scene/emotion_analysis fallback 응답(sadness=0.3, longing=0.2)으로 계산 ≈ 0.632 양수.
+- → (d-3) 키 mismatch만으로 0 X.
+
+진짜 자리 = **(d-2) `_analyzeEmotion` 응답 base 객체 0 또는 NaN→0**. claude-scene 가 default 14축으로 LLM 호출(앵커 없음 시) → 응답 키 vs origEmotion 12축 mismatch → 합집합 키에서 *양쪽 양수인 자리*가 적으면 cosine 0 박힘.
+
+**Fix 박힌 자리** ([phase1.js:949-980](../../js/ui/lumen_dialog_phase1.js#L949)): `sceneData.anchor_emotions`가 비었으면 origEmotion의 키 자체를 anchorEmotions로 강제. LLM 응답 키 = origEmotion 키 정합. + alignment=0 진단 워닝(콘솔에 origNorm·userNorm·origKeys·userKeys 출력) + lastAlignment fallback (plays 누적 결 보호).
+
+**검증 결과 (PASS)**: 한 사이클 콘솔 alignment 값:
+```
+turn 1/3 alignment=0.710 resonance=resonance
+turn 2/3 alignment=0.376 resonance=vague
+turn 3/3 alignment=0.859 resonance=resonance
+```
+0 고정 풀림 + resonance 분류 정상.
+
+**가중치 정정**: §10.2의 +3 → **+1.5** (작품 구조 결함 X, 데이터 자리). §9.4 결정적 결함 #1 자리에서 빠짐. §10 점수 추정 88~89로 약간 하향.
+
+### 12.2 §6.1 / §11.4 SeekerMatchEngine 거짓경보 — 자료 추정 *반대로* 정정
+
+자료 §6.1: "실제 흐름은 정상 (메모리 매칭 후 play-test.html로 이동)" → **틀림**.
+
+playwright 검증 첫 시도(prewarm 없이) 결과:
+```
+[opening] Start clicked
+[loadMemoriesFromSupabase] Starting to load memories
+[opening:dialog] SeekerMatchEngine 점수 0 — V1 키워드 fallback (정상 흐름)
+[opening:lumen] 매칭 가능한 메모리 0건 — 메인 메뉴로 복귀 (메모리 풀 비어있음)
+[loadMemoriesFromSupabase] fetchMemories result: ok 9개   ← 폴백 *후*에야 fetch 끝남
+```
+
+→ 자료 §11.4의 "거짓경보 흐름은 정상" 추정도 **틀림**. opening.js [line 471](../../js/app/opening.js#L471) `MAX_WAIT = 8000` 폴링이 dev 환경 cold cache 첫 fetch보다 짧음 → 메인 메뉴 폴백 *진짜* 발동. 진짜 사용자 첫 진입에서 메인 메뉴로 튕겨나갈 위험.
+
+**Fix 박힌 자리** ([opening.js:471](../../js/app/opening.js#L471)): `MAX_WAIT 8000 → 15000`. cold cache 자리 흡수.
+
+**가중치 정정**: §10.2의 +0.5 → **+1** (이전엔 콘솔 잡소음으로 추정, 실은 사용자 흐름 끊는 진짜 결함).
+
+### 12.3 §11.2 INSERT 화면 메아리 — fix 박힘 + 부분 검증
+
+[phase1.js:339](../../js/ui/lumen_dialog_phase1.js#L339)에 `_ABSORB_TRACE_LINES` (ko/en × 3턴 변주 자국 결) + [line 364](../../js/ui/lumen_dialog_phase1.js#L364) `_addAbsorbTrace` helper. 흡수 INSERT 호출 직후 자리에서 다이얼로그 패널에 우측 골드 이탤릭 한 줄 페이드인.
+
+검증 콘솔:
+```
+[phase1] turn 1 BG 흡수 변주 자생 박힘 slot="(llm)"
+[ldp absorb] new drift row inserted: 7c934463-...
+[phase1] turn 2 BG 흡수 변주 자생 박힘 slot="(llm)"
+[ldp absorb] new drift row inserted: 0d607647-...
+```
+
+turn 1·2 INSERT 박힘 → `_addAbsorbTrace` 호출 자리 진입 (DOM 안 직접 검증은 작가 손에 위임 — 헤드리스 스크린샷 자리 안 박음). turn 3 LLM 흡수 실패 → 메아리 안 박힘 (정직).
+
+### 12.4 §11.6 마감 자리 — 코드 자리 박힘
+
+- §11.6.1 체험 finder 우회로 시인성: [archive.js:287](../../js/app/archive.js#L287) 라벨 "Skip · Browse all memories" / "인터뷰 건너뛰고 목록 보기". [index.html:383](../../index.html#L383) 우상단 버튼 시인성 강화.
+- §11.6.2 비로그인 프로필 안내: [index.html:124](../../index.html#L124) `auth.signin.helper` i18n 키. ko/en 둘 다.
+- §11.6.3 mute 버튼 시인성: [index.html:25](../../index.html#L25) 44×44 → 56×56 + 보더·배경 알파 강화 + 호버 어포던스.
+- §11.6.4 포트폴리오 새 탭 신호: [i18n.js](../../js/lib/i18n.js) 라벨 ↗ 추가. description "(새 탭으로 열림)". title 속성.
+
+### 12.5 갱신된 결함 가중치 표
+
+| 자료 §                       | 5-8 시점 추정 | 5-8 fix 후 정정 | 상태 |
+| --------------------------- | ----------- | ------------- | ---- |
+| §11.1 alignment 0 phase1   | +3          | **+1.5**       | ✅ |
+| §11.2 INSERT 화면 신호       | +2          | +2            | ✅ |
+| §11.3 진입 7~8단계           | +1.5        | +1.5          | 미손 |
+| §6.1 / §11.4 매칭 거짓경보   | +0.5        | **+1**         | ✅ |
+| §11.5 ghost build skip      | +0.3        | +0.3          | 미손 |
+| §11.6.1~4 마감 자리          | +0.5~1      | +0.5~1        | ✅ |
+
+손댐 합산 ≈ +5~5.5. 미손 +1.8 (§11.3 + §11.5).
+
+§10.1 점수 추정 정정: 결함 다 잡으면 **88~89점** (이전 88~90 약간 하향, §11.1 가중치 하향 반영).
+
+### 12.5b §6.1 fix 진짜 자리 — 폴링 break 조건 (로컬 시드 함정)
+
+`MAX_WAIT 8s → 15s` 늘림만으로 *안 풀림*. playwright 두 번째 검증에서 진짜 자리 박힘:
+
+[index.js:185](../../js/index.js#L185)에서 페이지 로드 시점에 *로컬 mock 영어 시드 3개*(The Jacket on the Chair / The Voicemail I Kept / What I Said at the Funeral)를 `appStore.allMemoriesData`에 박음. 이전 폴링 break 조건 `all.length > 0`은 *즉시* true → 0초 break → 매칭 시도 → ko 사용자 한국어 필터 통과 0개 → 메인 메뉴 폴백.
+
+**진짜 fix** ([opening.js:472-484](../../js/app/opening.js#L472)): 폴링 break 조건을 *사용자 lang 메모리 1개 이상*으로 변경. ko 사용자 시 한국어 메모리 박힐 때까지(Supabase fetch 끝), en 사용자 시 영어 메모리 박힐 때까지.
+
+**검증 PASS**: 두 번째 playwright 검증 — *발자국* 메모리 매칭 + play-test.html 진입 + 다이얼로그 3턴 전체 박힘.
+
+### 12.5c §11.1 fix는 PARTIAL — 진짜 데이터 자리 노출
+
+playwright 검증 두 번째 사이클에서 **alignment=0 진단 워닝이 세 턴 다 박힘**:
+```
+[phase1] turn 1 alignment=0 진단 — origNorm=130.000 userNorm=0.000
+  origKeys=["0","1","2",..."149"]   ← 0~149 숫자 인덱스 (150 키)
+  userKeys=["0","1","2",..."149"]   ← 같음
+[phase1] turn 1 alignment fallback → 0.500
+```
+
+해석:
+- `origEmotion` 과 `userEmo` 둘 다 **숫자 키 객체** (Object.keys 가 "0"~"149"). 즉 *12축 감정 객체*가 아니라 **float 배열** 또는 **JSON 문자열로 박힌 자리**.
+- DB 컬럼은 `jsonb` 인데 supabase MCP 조회 결과에서 `original_emotion` 가 *string으로 박혀있음* (`"{\\\"joy\\\":0.3,...}"`). client 자리에서 JSON.parse 안 하고 *string 그대로 객체로 사용*하면 char index 가 키로 박힘.
+- 또는 작품 다른 자리에서 *cumulative_emotion_vec / final_drift_vector* 같은 array 자리를 origEmotion으로 박은 자리.
+- 또한 `[phase1] turn 1 dialog-turn 실패 → 풀 픽 안전망` 박힘. dialog-turn edge function 도 실패 자리.
+
+**phase1 fallback 동작 결과**:
+- alignment=0 고정 풀림 ✅ (0.5 박힘, plays 누적 결 보호)
+- resonance dissonance 고정 풀림 ✅ (vague 박힘 — alignment 0.5 자리)
+- 진짜 측정 결 의미 있는 값 — **미해결** (cosine sim 자체는 0 박힘 → fallback 0.5)
+
+**§11.1 가중치 재정정**: 12.1에서 +3 → +1.5로 하향했는데, 진짜 데이터 자리 미해결이라 **+1**로 한 번 더 하향. 다만 plays 누적 결 보호는 박혔으니 critic 결정적 결함 자리에서는 빠짐.
+
+**남은 작업 (작가 손 검증 또는 추후 세션)**:
+- (1) `sceneData.original_emotion` 데이터 타입 확인 — string vs object vs array. play-test.html `loadMemoryData` 자리 grep.
+- (2) `_analyzeEmotion` 응답 base 객체 실제 형식 확인. claude-scene logs.
+- (3) dialog-turn edge function 실패 원인 — 자료 §6.5 차원에서 자생 변주 비대 가드 자리.
+
+### 12.7 개입 1·2·3 박힘 (2026-05-08 후반)
+
+같은 날 오후, critic.md v3 평가(85점, A급 하단 자리)의 §5 "한 등급 위로 올라가기 위한 구조적 개입" 셋을 모두 박음.
+
+**개입 1 — alignment 진짜 데이터 결 fix**
+- 자리: [phase1.js:923](../../js/ui/lumen_dialog_phase1.js#L923) `_ensureObj` helper 박음 + [_analyzeEmotion line 763](../../js/ui/lumen_dialog_phase1.js#L763) base parse 강화.
+- 진단 워닝이 짚어준 자리(`origEmotion 키 = ["0",..."149"]`)는 sceneData.original_emotion이 jsonb string 그대로 박힌 자리. play-test.html `safeParseEmotion` 자리는 pin 전달 시점이라 phase1.js 직접 진입 자리 raw string 박힘.
+- 박은 결: string이면 JSON.parse, array면 비움, object면 그대로.
+- **검증 PASS**: 한 사이클 9턴(씬 0/1/2 × 3턴) 검증에서 진단 워닝 **0건**, fallback **0건**. alignment 값들 박힘:
+  ```
+  0.069 / 0.786 / 0.263 / 0.319 / 0.602 / 0.187 / 0.069 / 0.876 / 0.349
+  ```
+  resonance 결도 자연 분산(dissonance / resonance). plays 누적 결 의미 있는 분포 박힘.
+
+**개입 2 — 진입 게이트 압축**
+- 2-a: [play-test.html:5010 직후](../../play-test.html#L5010) 도어 인트로 스킵 안내 한 줄 (`아무 키 — 건너뛰기` / `Any key — skip`). 작은 글씨 + 알파 0.4. mono 결과 같은 자리 페이드인.
+- 2-b: [play-test.html:5083](../../play-test.html#L5083) 직후 localStorage `tem_lumen_visited_memories[]` 자리. 같은 메모리 두 번째 진입 시 1.5초 후 자동 `_skipDoorSeq()`. 첫 진입자는 의례 결 그대로.
+- 2-c: 1차 작업의 우상단 우회로 시인성 강화로 충족.
+- **검증 PASS**: 첫 진입 자리에 안내 박힘 확인. 두 번째 진입 자리는 localStorage 가드 발동.
+
+**개입 3 — 컨셉을 첫 자리·끝 자리에 박음**
+- 3-a: [opening.js:73-77](../../js/app/opening.js#L73) `_maybeShowOpeningEcho` 박음. plays.user_reason 자리 supabase fetch + random pick → 화면 상단에 골드 이탤릭 한 줄 페이드인. fire-and-forget 결로 게이트 박힘 안 막음.
+- 3-b: [play-test.html:469-474](../../play-test.html#L469) revealScreen에 `<p id="revealMeta">` 박음. [sealBtn click handler 4419](../../play-test.html#L4419)에서 AI 내러티브 박힌 자리 직후 메타 한 줄: `"이 글은 너의 응답을 흡수해 다시 쓰여졌어 — 다음 사람의 메아리로 흘러갈 거야."` / `"This text was rewritten by absorbing your responses — it'll flow on as someone else's echo."`
+- **검증 PASS**:
+  - 오프닝 자리 박힌 결: *"— 시간이 깊어질수록 또렷해지는 자리가 있다."* (5-8 검증 자리에서 박은 *진짜 trace*가 다음 진입자에게 메아리로 박힘 — 작품 명제 *수행*).
+  - revealScreen 자리 메타 신호 박힘 (스크린샷 [08](../screens-260508-개입검증/08_revealScreen_with_meta.png)).
+
+### 12.8 갱신된 점수 추정 (개입 셋 박힘 후)
+
+| 자리 | 5-8 시점 | 개입 박힘 후 |
+| --- | --- | --- |
+| §11.1 alignment | +1.5 (fallback) | **+3** (진짜 측정) |
+| §11.2 INSERT 화면 | +2 | +2 |
+| §11.3 진입 게이트 | +1.5 (미손) | **+1** (안내·재진입자 자동 스킵 박음 — 게이트 단계 자체는 그대로) |
+| §6.1/§11.4 매칭 워닝 | +1 | +1 |
+| §11.5 ghost build skip | +0.3 (미손) | +0.3 |
+| §11.6 마감 | +0.5~1 | +0.5~1 |
+| 컨셉 첫·끝 자리 박음 (개입 3) | — | **+1** |
+
+새 점수 추정: 85 (5-8 critic) + 1.5 (개입 1) + 0.5 (개입 2) + 1 (개입 3) ≈ **87~88점** (A급 중간).
+
+A급 최상단(90+) 못 가는 이유:
+- 외부 인용·계보 형성 증거 X (자료 안 자리 풀음만으로 도달 불가).
+- 다음 관객 풀 픽 차이 직접 증거 X (한 명 한 사이클만).
+- 진입 게이트 단계 *수* 자체는 그대로 (안내 + 재진입자 자동 스킵 박았지만 첫 진입자 8단계는 잔존).
+
+### 12.9 SCOPE 갱신 자리 (작가 결정)
+
+이번 세션 박힌 fix 들 SCOPE.md 갱신 후보:
+```
+- [x] V2.1.2 (η) — phase1 alignment=0 고정 fix (2026-05-08)
+- [x] V2-5++ — INSERT 화면 메아리 (2026-05-08)
+- [x] V2-13.5 — 진입 정리 (mute / 비로그인 프로필 안내 / 체험 finder 우회로 / 포트폴리오 새 탭) (2026-05-08)
+- [x] §6.1 fix — opening MAX_WAIT 8s → 15s (2026-05-08)
+```
+박을지 작가 결정.

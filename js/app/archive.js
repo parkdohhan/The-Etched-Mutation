@@ -284,7 +284,7 @@ async function _initMemoryFinder() {
 
   // Browse 버튼 미리 준비
   if (browseBtn) {
-    browseBtn.textContent = lang === 'en' ? 'Browse all' : '직접 찾아보기';
+    browseBtn.textContent = lang === 'en' ? 'Skip · Browse all memories' : '인터뷰 건너뛰고 목록 보기';
     browseBtn.onclick = () => {
       const finderEl = document.getElementById('memoryFinderContainer');
       if (finderEl) finderEl.style.display = 'none';

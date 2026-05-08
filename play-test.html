@@ -469,6 +469,7 @@
   <div id="revealScreen">
     <h2 id="revealTitle"></h2>
     <p id="revealBody"></p>
+    <p id="revealMeta" style="margin-top:1.4rem;color:rgba(196,168,130,0.55);font-style:italic;font-size:0.82rem;letter-spacing:0.04em;line-height:1.6;max-width:480px;"></p>
     <p id="revealStats" style="display:none;"></p>
     <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;"></button>
   </div>
@@ -4419,6 +4420,14 @@
         if (data.narrative) {
           document.getElementById('revealTitle').textContent = T.revealTitle;
           typeRevealText(document.getElementById('revealBody'), data.narrative);
+          // 2026-05-08: 자료 critic 개입 3-b — revealScreen 메타 신호.
+          // AI 내러티브가 *이본론(변이=재창조)* 자리에서 박힌 결을 한 줄로 가시화.
+          const _metaEl = document.getElementById('revealMeta');
+          if (_metaEl) {
+            _metaEl.textContent = LANG === 'ko'
+              ? '이 글은 너의 응답을 흡수해 다시 쓰여졌어 — 다음 사람의 메아리로 흘러갈 거야.'
+              : "This text was rewritten by absorbing your responses — it'll flow on as someone else's echo.";
+          }
         } else {
           document.getElementById('revealTitle').textContent = T.revealTitle;
           document.getElementById('revealBody').textContent = T.revealFallback;
@@ -5009,6 +5018,21 @@
           monoEl.style.cssText = 'position:fixed;bottom:35%;left:50%;transform:translateX(-50%);z-index:10001;pointer-events:none;color:#c4a882;font-size:15px;letter-spacing:3px;text-align:center;opacity:0;transition:opacity 1.2s;text-shadow:0 0 15px rgba(196,168,130,0.4);font-family:"Cormorant Garamond",serif;';
           document.body.appendChild(monoEl);
 
+          // 2026-05-08: 자료 §11.3 자리 — 도어 인트로 스킵 안내. 첫 진입자가
+          // 의례 결을 받되, 길게 느낄 자리에 *키 한 번이면 지나간다*는 신호 박음.
+          // mono1 박히는 자리(3.4s) 와 함께 하단에 작은 글씨 페이드인.
+          var skipHintEl = document.createElement('div');
+          skipHintEl.style.cssText = 'position:fixed;bottom:8%;left:50%;transform:translateX(-50%);z-index:10001;pointer-events:none;color:rgba(196,168,130,0.4);font-size:11px;letter-spacing:4px;text-align:center;opacity:0;transition:opacity 1.6s;font-family:"Cormorant Garamond",serif;';
+          skipHintEl.textContent = lang === 'ko' ? '아무 키 — 건너뛰기' : 'Any key — skip';
+          document.body.appendChild(skipHintEl);
+          setTimeout(function () { skipHintEl.style.opacity = '1'; }, 3400);
+          setTimeout(function () {
+            skipHintEl.style.opacity = '0';
+            setTimeout(function () {
+              if (skipHintEl.parentNode) skipHintEl.parentNode.removeChild(skipHintEl);
+            }, 1600);
+          }, 12500);
+
           setTimeout(function () {
             monoEl.textContent = mono1;
             monoEl.style.opacity = '1';
@@ -5076,6 +5100,27 @@
             if (_doorSeqDone) return;
             _doorSeqSkipped = true;
           }
+
+          // 2026-05-08: 자료 §11.3 자리 — 같은 메모리 재진입자는 도어 인트로 자동 스킵.
+          // localStorage 'tem_lumen_visited_memories' 자리에 진입 메모리 id 박음.
+          // 첫 진입자는 의례 결 그대로 받음. 두 번째부터 인트로 짧게.
+          try {
+            var _curMemId = (game && game.memoryId) || new URLSearchParams(location.search).get('memory') || '';
+            if (_curMemId) {
+              var _visitedRaw = localStorage.getItem('tem_lumen_visited_memories') || '[]';
+              var _visited = JSON.parse(_visitedRaw);
+              if (!Array.isArray(_visited)) _visited = [];
+              if (_visited.indexOf(_curMemId) >= 0) {
+                // 재진입자 — 도어 인트로 자동 스킵 (mono1 박힌 자리 짧게 후 종료)
+                setTimeout(function () { _skipDoorSeq(); }, 1500);
+              }
+              if (_visited.indexOf(_curMemId) < 0) {
+                _visited.push(_curMemId);
+                if (_visited.length > 100) _visited = _visited.slice(-100);
+                localStorage.setItem('tem_lumen_visited_memories', JSON.stringify(_visited));
+              }
+            }
+          } catch (_) {}
 
           // Start door sequence at 8.0s (after mono2 fades at 7.6s)
           setTimeout(function () {

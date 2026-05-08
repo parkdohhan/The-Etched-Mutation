@@ -22,8 +22,8 @@
         <div class="opening-wave-container" id="openingWaveContainer">
             <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
         </div>
-        <button type="button" id="openingMuteBtn" class="opening-mute-btn" aria-label="Mute opening sound" title="Mute opening sound" style="position:absolute;top:22px;right:22px;width:44px;height:44px;background:rgba(10,10,12,0.55);border:1.5px solid rgba(220,196,160,0.7);border-radius:50%;color:rgba(240,216,180,0.95);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:all 0.3s ease;z-index:10;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-shadow:0 0 12px rgba(0,0,0,0.45);">
-            <svg id="openingMuteIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 L6 9 H3 v6 h3 l5 4 z"/><path d="M15.5 9 a4 4 0 0 1 0 6"/><path d="M18.5 6.5 a8 8 0 0 1 0 11"/></svg>
+        <button type="button" id="openingMuteBtn" class="opening-mute-btn" aria-label="Mute opening sound" title="Mute opening sound" style="position:absolute;top:24px;right:24px;width:56px;height:56px;background:rgba(10,10,12,0.85);border:2px solid rgba(220,196,160,1);border-radius:50%;color:rgba(245,222,189,1);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:all 0.25s ease;z-index:10;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-shadow:0 0 18px rgba(0,0,0,0.55), 0 0 0 1px rgba(220,196,160,0.18);" onmouseover="this.style.background='rgba(28,22,16,0.92)';this.style.borderColor='rgba(245,222,189,1)';this.style.boxShadow='0 0 22px rgba(220,196,160,0.35), 0 0 0 1px rgba(220,196,160,0.35)'" onmouseout="this.style.background='rgba(10,10,12,0.85)';this.style.borderColor='rgba(220,196,160,1)';this.style.boxShadow='0 0 18px rgba(0,0,0,0.55), 0 0 0 1px rgba(220,196,160,0.18)'">
+            <svg id="openingMuteIcon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 L6 9 H3 v6 h3 l5 4 z"/><path d="M15.5 9 a4 4 0 0 1 0 6"/><path d="M18.5 6.5 a8 8 0 0 1 0 11"/></svg>
         </button>
         <div class="opening-dialogue" id="openingDialogue"></div>
         <!-- v2: 언어 선택 + Start (Press any key 대체) -->
@@ -87,8 +87,8 @@
                         <div class="menu-item inactive" data-menu-id="settings" data-action="openSettings">
                             <span class="menu-label" data-i18n="menu.settings">SETTINGS</span>
                         </div>
-                        <div class="menu-item inactive" data-menu-id="portfolio" data-action="openPortfolio">
-                            <span class="menu-label" data-i18n="menu.portfolio">MORE PORTFOLIO</span>
+                        <div class="menu-item inactive" data-menu-id="portfolio" data-action="openPortfolio" title="Opens in a new tab / 새 탭으로 열림">
+                            <span class="menu-label" data-i18n="menu.portfolio">MORE PORTFOLIO ↗</span>
                         </div>
                     </div>
                     <div class="main-description" id="mainMenuDescription">
@@ -122,6 +122,7 @@
     <div class="login-modal" id="loginModal">
         <div class="login-box">
             <h2 class="login-title">Sign In</h2>
+            <p class="login-helper" data-i18n="auth.signin.helper" style="margin:-4px 0 18px;color:rgba(196,168,130,0.78);font-family:'Cormorant Garamond',serif;font-size:14px;line-height:1.55;letter-spacing:0.4px;text-align:center;font-style:italic;">Signing in lets your traces stay with this memory. You can keep wandering without it.</p>
             <div class="social-login-buttons">
                 <button class="social-btn google" onclick="handleSocialLogin('google')">
                     <span class="social-btn-icon">🔍</span>
@@ -379,9 +380,9 @@
                     <div id="finderResultPhase" style="display:none;width:100%;height:100%;position:relative;"></div>
                 </div>
                 <!-- Browse button (always visible) -->
-                <button id="finderBrowseBtn" style="position:absolute;top:24px;right:24px;background:rgba(196,168,130,0.08);border:1px solid rgba(196,168,130,0.4);color:rgba(196,168,130,0.8);font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:2px;padding:10px 22px;cursor:pointer;transition:all 0.3s;z-index:10;"
-                    onmouseenter="this.style.background='rgba(196,168,130,0.15)';this.style.borderColor='rgba(196,168,130,0.7)';this.style.color='rgba(196,168,130,1)'"
-                    onmouseleave="this.style.background='rgba(196,168,130,0.08)';this.style.borderColor='rgba(196,168,130,0.4)';this.style.color='rgba(196,168,130,0.8)'"></button>
+                <button id="finderBrowseBtn" style="position:absolute;top:24px;right:24px;background:rgba(196,168,130,0.16);border:1.5px solid rgba(196,168,130,0.7);color:rgba(220,196,160,1);font-family:'Cormorant Garamond',serif;font-size:14px;letter-spacing:2px;padding:12px 26px;cursor:pointer;transition:all 0.3s;z-index:10;box-shadow:0 0 12px rgba(0,0,0,0.35);"
+                    onmouseenter="this.style.background='rgba(196,168,130,0.28)';this.style.borderColor='rgba(245,222,189,1)';this.style.color='rgba(245,222,189,1)';this.style.boxShadow='0 0 16px rgba(220,196,160,0.35)'"
+                    onmouseleave="this.style.background='rgba(196,168,130,0.16)';this.style.borderColor='rgba(196,168,130,0.7)';this.style.color='rgba(220,196,160,1)';this.style.boxShadow='0 0 12px rgba(0,0,0,0.35)'"></button>
             </div>
             <div id="archiveEntryContainer" class="archive-entry-screen" style="display:none;"></div>
             <footer class="footer archive-inline-footer visible" id="archiveInlineFooter" style="background:transparent;border-top:1px solid rgba(196,168,130,0.1);margin-top:4rem;">

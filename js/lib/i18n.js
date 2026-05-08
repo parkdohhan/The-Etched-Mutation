@@ -15,14 +15,17 @@ const STRINGS = {
         'menu.archive':    'ARCHIVE',
         'menu.record':     'RECORD',
         'menu.profile':    'PROFILE',
-        'menu.portfolio':  'MORE PORTFOLIO',
+        'menu.portfolio':  'MORE PORTFOLIO ↗',
         'menu.settings':   'SETTINGS',
 
         'menu.desc.play':      'Start a play session and traverse memory terrain.',
         'menu.desc.archive':   'Archive list view. Browse every memory and jump into play.',
         'menu.desc.record':    'Document new memories and leave traces of mutation.',
         'menu.desc.profile':   'Manage personal profile and synchronization settings.',
-        'menu.desc.portfolio': 'Explore the origin and architect of The Etched Mutation.',
+        'menu.desc.portfolio': 'Explore the origin and architect of The Etched Mutation. (Opens in a new tab)',
+
+        // ── Auth ──────────────────────────────────────────────────
+        'auth.signin.helper': 'Signing in lets your traces stay with this memory. You can keep wandering without it.',
 
         // ── Archive ───────────────────────────────────────────────
         'archive.title':        'Memory Archive',
@@ -137,14 +140,17 @@ const STRINGS = {
         'menu.archive':   '아카이브',
         'menu.record':    '기록',
         'menu.profile':   '프로필',
-        'menu.portfolio': '포트폴리오',
+        'menu.portfolio': '포트폴리오 ↗',
         'menu.settings':  '설정',
 
         'menu.desc.play':      '플레이 세션을 시작하고 기억의 지형을 탐색한다.',
         'menu.desc.archive':   '아카이브 목록. 모든 기억을 탐색하고 체험을 시작한다.',
         'menu.desc.record':    '새 기억을 기록하고 변이의 흔적을 남긴다.',
         'menu.desc.profile':   '프로필과 동기화 설정을 관리한다.',
-        'menu.desc.portfolio': 'The Etched Mutation의 기원과 제작자를 탐색한다.',
+        'menu.desc.portfolio': 'The Etched Mutation의 기원과 제작자를 탐색한다. (새 탭으로 열림)',
+
+        // ── Auth ──────────────────────────────────────────────────
+        'auth.signin.helper': '당신의 흔적을 이 기억에 잇기 위해서야. 로그인 안 해도 작품은 둘러볼 수 있어.',
 
         // ── Archive ───────────────────────────────────────────────
         'archive.title':         '기억 아카이브',
