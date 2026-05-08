@@ -1,0 +1,33 @@
+Total messages: 32 (Errors: 0, Warnings: 0)
+Returning 30 messages for level "info"
+
+[LOG] [Strata] AF terrain · debugStrata() @ http://localhost:5173/js/ui/strataView.js:1285
+[LOG] [Soundscape] 모듈 로드 완료 @ http://localhost:5173/js/audio/SoundscapeBeta.js:210
+[LOG] === TEM Geo Map Loaded === @ http://localhost:5173/js/shared/tem_geo_map.js:38
+[LOG] Anchors: 17 @ http://localhost:5173/js/shared/tem_geo_map.js:39
+[LOG] Extended Anchors: 4 @ http://localhost:5173/js/shared/tem_geo_map.js:40
+[LOG] VAD is visual only: true @ http://localhost:5173/js/shared/tem_geo_map.js:41
+[LOG] [VAD] ALL_ANCHOR_VAD 초기화 완료: 21 개 앵커 @ http://localhost:5173/js/shared/math.js:9
+[LOG] === Shared Modules Loaded === @ http://localhost:5173/js/index.js:94
+[LOG] API: function @ http://localhost:5173/js/index.js:95
+[LOG] Audio: function @ http://localhost:5173/js/index.js:96
+[LOG] Math: function @ http://localhost:5173/js/index.js:97
+[LOG] 🔧 디버깅 헬퍼 함수가 로드 complete. window.debug를 사용하세요. @ http://localhost:5173/js/index.js:855
+[LOG] 📖 사용법: @ http://localhost:5173/js/index.js:856
+[LOG]   - debug.goToArchive() - Go to archive @ http://localhost:5173/js/index.js:857
+[LOG]   - debug.showState() - 현재 Status 확인 @ http://localhost:5173/js/index.js:858
+[LOG]   - debug.listMemories() - Check memory list @ http://localhost:5173/js/index.js:859
+[LOG] [UIManager.renderMemoryCards] 호출됨 @ http://localhost:5173/js/ui/UIManager.js:122
+[LOG] [UIManager.renderMemoryCards] allMemoriesData: [Object, Object, Object] @ http://localhost:5173/js/ui/UIManager.js:123
+[LOG] [UIManager.renderMemoryCards] currentCategory: all @ http://localhost:5173/js/ui/UIManager.js:124
+[LOG] [UIManager.renderMemoryCards] currentSort: all @ http://localhost:5173/js/ui/UIManager.js:125
+[LOG] [UIManager.renderMemoryCards] 필터링 전 메모리 수: 3 @ http://localhost:5173/js/ui/UIManager.js:139
+[LOG] [UIManager.renderMemoryCards] 전체 카테고리 - 필터링 없음 @ http://localhost:5173/js/ui/UIManager.js:147
+[LOG] [Memory] Rendering card: The Jacket on the Chair status: undefined @ http://localhost:5173/js/ui/UIManager.js:188
+[LOG] [Memory] Rendering card: The Voicemail I Kept status: undefined @ http://localhost:5173/js/ui/UIManager.js:188
+[LOG] [Memory] Rendering card: What I Said at the Funeral status: undefined @ http://localhost:5173/js/ui/UIManager.js:188
+[VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:5173/:0
+[VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:5173/:0
+[VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:5173/:0
+[LOG] [Auth] 상태 변경: INITIAL_SESSION no user @ http://localhost:5173/js/lib/supabaseClient.js:57
+[LOG] 오프닝 사운드 로드 완료 @ http://localhost:5173/js/app/bindEvents.js:79
