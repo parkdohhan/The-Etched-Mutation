@@ -1,7 +1,7 @@
 /**
  * Lumen Drift Visualizer — V2.1 Phase 1
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260429.md §4 V2.1 Phase 1
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260506.md §4 V2.1 Phase 1
  *
  * 자유대화 매 턴 반응 결정 직후 변형 즉시 가시화. 결마다 다른 강도 펄스 → duration
  * 후 자동 복원. lumen_return_mode.js (작업 2-B) 어휘 재활용 — canvas filter + scene_ghosts

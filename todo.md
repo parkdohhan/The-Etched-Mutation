@@ -224,7 +224,7 @@ S2/S3 결정 이후 *변주 작성에 12축 emotion_vec 좌표* 박는 자리 �
 1. [`docs/lumen_memory_authoring_checklist-260421.md`](docs/lumen_memory_authoring_checklist-260421.md) — 작가 본 페이스 데이터 / 1 메모리 작성 시간 베이스라인
 2. [`docs/lumen_memory_story_worksheet-260421.md`](docs/lumen_memory_story_worksheet-260421.md) — 메모리 워크시트 구조
 3. [`docs/critic_input_LUMEN-260428.md`](docs/critic_input_LUMEN-260428.md) — V1 시점 출품 패키지 검토 자료
-4. [`docs/LUMEN_DEMO_SCOPE-260429.md`](docs/LUMEN_DEMO_SCOPE-260429.md) §10 V2.1 성공 판정 — 영상 1~2분 + 스크린샷 4~10장 + statement 계보 명시
+4. [`docs/LUMEN_DEMO_SCOPE-260506.md`](docs/LUMEN_DEMO_SCOPE-260506.md) §10 V2.1 성공 판정 — 영상 1~2분 + 스크린샷 4~10장 + statement 계보 명시
 5. `memories` 테이블 스키마 — `lang` 컬럼 / 본문 다국어 박힌 메모리 있는지 (Supabase MCP `list_tables` 또는 마이그레이션 검색)
 
 ### 웹 조사
@@ -285,7 +285,7 @@ S2/S3 가 drift 픽 시스템 = 12축 방향 벡터 + 2단계 (글로벌 좁힘 
 1. **W1S1 보고 결과** (채팅) — `EMA_ALPHA` 값, `ghost_variants.emotion_vec` 차원수
 2. [`supabase/migrations/20260503000000_v21_ghost_variants_and_dialog_turns.sql`](supabase/migrations/20260503000000_v21_ghost_variants_and_dialog_turns.sql) — 직전 V2.1 마이그레이션 패턴 (CHECK / 인덱스 / RLS) 참조
 3. [`supabase/migrations/20260330000000_add_contamination_v3_to_memories.sql`](supabase/migrations/20260330000000_add_contamination_v3_to_memories.sql) — `cont_*` 추가 마이그레이션 패턴
-4. [`docs/LUMEN_DEMO_SCOPE-260429.md`](docs/LUMEN_DEMO_SCOPE-260429.md) §16-1 4축 명세
+4. [`docs/LUMEN_DEMO_SCOPE-260506.md`](docs/LUMEN_DEMO_SCOPE-260506.md) §16-1 4축 명세
 
 ### 작업
 1. 신규 파일: [`supabase/migrations/20260504000000_v21_drift_pick_vectors.sql`](supabase/migrations/20260504000000_v21_drift_pick_vectors.sql)
@@ -587,7 +587,7 @@ S3 step 4 = "opening.js / play 진입 wiring + 회차 끝 시점 plays 행에 gh
 4. **α1 DriftPicker** — `pickDriftUtterance` API
 5. **W2S4 return_toast** — `showReturnToast` API
 6. **W1S3 design 문서** — 회차 끝 시퀀스 timeline (어디서 무엇 호출)
-7. [`memories`](docs/LUMEN_DEMO_SCOPE-260429.md) 테이블 — `cumulative_emotion_vec` 갱신 자리
+7. [`memories`](docs/LUMEN_DEMO_SCOPE-260506.md) 테이블 — `cumulative_emotion_vec` 갱신 자리
 
 ### 작업
 1. **opening.js 수정**:
@@ -786,7 +786,7 @@ V2.1.1 멀티턴에 *플레이어 입력 내용 흡수* 자리 추가. 자유텍
 1. 본 todo.md 의 "오늘 시점 결정 요약" 섹션 + 본 세션 핸드아웃 통째 읽기
 2. 메모리 [매트릭/엔진/감쇠 룰 — 기존 자산 grep 후에 제안](C:/Users/user/.claude/projects/d--The-Etched-Mutation/memory/feedback_reuse_existing_assets_first.md) 적용 — 새 함수 박기 전 grep 무조건
 3. CLAUDE.md (특히 §3 자주 틀리는 패턴 + §4 TEM 핵심 용어 사전 + §6.5 Critical Design Principles) 적용
-4. SCOPE.md ([`docs/LUMEN_DEMO_SCOPE-260429.md`](docs/LUMEN_DEMO_SCOPE-260429.md)) 의 본 세션 자리 확인 — 스코프 밖 작업 거절 룰
+4. SCOPE.md ([`docs/LUMEN_DEMO_SCOPE-260506.md`](docs/LUMEN_DEMO_SCOPE-260506.md)) 의 본 세션 자리 확인 — 스코프 밖 작업 거절 룰
 5. 작업 끝나면 본 todo.md "진행 상태" 체크박스 갱신 + 채팅에 보고
 
 작업 충돌 발생 시 (다른 세션이 같은 파일 수정 중) → 해당 세션 끝날 때까지 대기 + 메인 세션에 보고.

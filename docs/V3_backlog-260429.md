@@ -2,7 +2,7 @@
 
 V2.1 작업 (4-29 ~ 5-19) 중 떠오르는 새 아이디어를 즉시 이월하는 자리. 스코프 밖 욕구가 올 때 한 줄 적고 본 작업 복귀.
 
-§0 계약 — 본 backlog 항목은 V2.1 안에서 건드리지 않는다. 기존 V3 항목 (V2 풀판 좁힘으로 격하된 quilt/cell/지형분기 등) 은 `LUMEN_DEMO_SCOPE-260429.md` §5 참조.
+§0 계약 — 본 backlog 항목은 V2.1 안에서 건드리지 않는다. 기존 V3 항목 (V2 풀판 좁힘으로 격하된 quilt/cell/지형분기 등) 은 `LUMEN_DEMO_SCOPE-260506.md` §5 참조.
 
 ---
 
@@ -118,7 +118,7 @@ paper 매핑: *플레이어가 자기 sheaf section 에 이름을 부여함으�
 
 ### 관련 문서·메모리
 
-- `docs/LUMEN_DEMO_SCOPE-260429.md` — V2.1 SCOPE
+- `docs/LUMEN_DEMO_SCOPE-260506.md` — V2.1 SCOPE
 - `~/.claude/projects/d--The-Etched-Mutation/memory/project_lumen_unified_form_v2.md` — 다섯 비전 통합 (여섯번째 차원 추가 갱신 필요)
 - `~/.claude/projects/d--The-Etched-Mutation/memory/project_lumen_topological_vision.md` — §14 위상 quilt
 - `docs/paper/TEM_paper_draft_v0.1-260419.md` — paper 17D anchor 정합 검토 대상

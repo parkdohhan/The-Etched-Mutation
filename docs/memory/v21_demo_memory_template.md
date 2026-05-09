@@ -338,7 +338,7 @@
 
 ## 6. 참고 자료
 
-- [V2.1 SCOPE](../LUMEN_DEMO_SCOPE-260429.md) — V2-10 콘텐츠 작성 자리
+- [V2.1 SCOPE](../LUMEN_DEMO_SCOPE-260506.md) — V2-10 콘텐츠 작성 자리
 - [메모리 워크시트 V1](../lumen_memory_story_worksheet-260421.md) — V1 시점 워크시트 (참조)
 - [메모리 작성 체크리스트 V1](../lumen_memory_authoring_checklist-260421.md) — V1 시점 체크리스트
 - [ghost_variants_editor.js](../../js/admin/ghost_variants_editor.js) — admin 변주 풀 입력 카드 UI (필드 정합 자리)

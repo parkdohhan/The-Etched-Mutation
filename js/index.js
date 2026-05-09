@@ -430,7 +430,7 @@ function escapeHtml(text) { if (!text) return '—'; const div = document.create
 // ───── 3D Carousel Navigation ─────
 let carouselCurrentIndex = 0;
 const carouselItems = [
-    { action: 'enterPlayIntro', label: 'PLAY' },
+    { action: 'enterPlayIntro', label: 'ARCHIVE' },
     { action: 'showConfessionHub', label: 'RECORD' },
     { action: 'openMypage', label: 'PROFILE' },
     { action: 'openSettings', label: 'SETTINGS' },

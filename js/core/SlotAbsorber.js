@@ -1,7 +1,7 @@
 /**
  * Lumen Slot Absorber — V2.1.2 슬롯 흡수
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260429.md §0-A V2.1.2 (2026-05-05 scope change)
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260506.md §0-A V2.1.2 (2026-05-05 scope change)
  *
  * 역할:
  *   플레이어 자유텍스트 → 한국어 명사구 NER → 슬롯 변주 채움 → 흡수 응답.

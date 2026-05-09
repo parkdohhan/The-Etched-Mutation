@@ -3,7 +3,7 @@
 > 작성: 2026-05-04
 > 상태: 결정 초안. 5-2 사용자 본인 결정 (`maxFreeDialogTurns: 1`) 의 5-4 번복.
 > 관련 코드: [js/ui/lumen_dialog_phase1.js](../js/ui/lumen_dialog_phase1.js)
-> 관련 SCOPE: [docs/LUMEN_DEMO_SCOPE-260429.md](LUMEN_DEMO_SCOPE-260429.md) V2.1
+> 관련 SCOPE: [docs/LUMEN_DEMO_SCOPE-260506.md](LUMEN_DEMO_SCOPE-260506.md) V2.1
 > 관련 기존 자산: [docs/유령시스템_확정_v1-260418.md](유령시스템_확정_v1-260418.md)
 
 ---
@@ -340,7 +340,7 @@ SCOPE 갱신 시 본 문서 링크 박음.
    - `_loadAndInjectGhostPools(supabase, memoryId, ghosts)` 헬퍼 신규
    - start() 진입 시 await 호출 (drift visualizer attach 직후, race 회피)
    - 로직: ghost_variants drift SELECT → anchor (is_seed+root) emotion_vec 와 cosine sim → 0.85/0.5 임계 → resonance/vague/dissonance 3결 분류 → `LumenGhostResponse.setOptions` 주입
-   - speciation 시드는 SELECT 단계 `kind='drift'` 로 제외 ([§15-1](LUMEN_DEMO_SCOPE-260429.md) 후속 플레이어 자리)
+   - speciation 시드는 SELECT 단계 `kind='drift'` 로 제외 ([§15-1](LUMEN_DEMO_SCOPE-260506.md) 후속 플레이어 자리)
    - fallback 5종 = 글로벌 디폴트 유지: missing_deps / select_failed / no_anchor / 변주<3 / exception
    - lazy capture `_originalGhostDefaults` = 메모리 간 stale 방지 (빈 결 디폴트 fallback)
    - 효과: 발자국 14 변주가 글로벌 디폴트 (5+6+7=18 어휘) 대신 진짜 유령 입에 들어감
@@ -351,7 +351,7 @@ SCOPE 갱신 시 본 문서 링크 박음.
 
 ## 8. 관련 문서
 
-- [docs/LUMEN_DEMO_SCOPE-260429.md](LUMEN_DEMO_SCOPE-260429.md) — V2.1 SCOPE
+- [docs/LUMEN_DEMO_SCOPE-260506.md](LUMEN_DEMO_SCOPE-260506.md) — V2.1 SCOPE
 - [docs/유령시스템_확정_v1-260418.md](유령시스템_확정_v1-260418.md) — 유령 4종 화법 §4
 - [CLAUDE.md](../CLAUDE.md) §6.5 — 8 critical design principles (특히 #3 fixation, #6 Record=first Play)
 - [기억유전학_v0.3.md](기억유전학_v0.3.md) — destructive replication, biased mutation

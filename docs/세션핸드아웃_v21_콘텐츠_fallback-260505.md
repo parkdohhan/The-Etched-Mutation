@@ -27,7 +27,7 @@
 
 ## 읽을 파일 (순서)
 
-1. **`docs/LUMEN_DEMO_SCOPE-260429.md` §0-A V2.1.2 (line 47~52)** — 현재 SCOPE 자리. (α) 자동 분류 풀 + (β) 슬롯 흡수 + (γ) LLM 흡수 박힘.
+1. **`docs/LUMEN_DEMO_SCOPE-260506.md` §0-A V2.1.2 (line 47~52)** — 현재 SCOPE 자리. (α) 자동 분류 풀 + (β) 슬롯 흡수 + (γ) LLM 흡수 박힘.
 2. **`docs/슬롯흡수_차용-260505.md`** — V2.1.2 차용 결정 + 안전 + LLM 자리.
 3. **`js/ui/lumen_dialog_phase1.js`** 통째 — 본 세션 갱신 자리. 특히:
    - L347~ `start()` 진입 자리 + `_loadAndInjectGhostPools` 자리
@@ -186,7 +186,7 @@ V3 자리 = 메모리별 작가 손 dialog_choices (4d × 메모리). 본 세션
 
 ## 관련 자료
 
-- `docs/LUMEN_DEMO_SCOPE-260429.md` §0-A V2.1.2 (α/β/γ)
+- `docs/LUMEN_DEMO_SCOPE-260506.md` §0-A V2.1.2 (α/β/γ)
 - `docs/슬롯흡수_차용-260505.md`
 - `docs/유령응답풀_가이드_v1-260504.md`
 - `CLAUDE.md` §3.2 (TEM choice 정의), §6.5 #5 (Player sees fog)

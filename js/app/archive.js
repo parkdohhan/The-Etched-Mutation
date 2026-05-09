@@ -1168,23 +1168,41 @@ async function saveArchiveEmotionToPlays(userEmotionVector, userReason, scene, c
         console.error('saveArchiveEmotionToPlays error:', e);
     }
 }
-function selectMemory(index) { 
-        const state = appStore.getState(); 
+function selectMemory(index) {
+        const state = appStore.getState();
   const all = state.allMemoriesData || [];
   const memory = all[index];
   if (!memory || !memory.id) {
     console.warn('[Archive] memory not found for index:', index);
-            return; 
-        } 
+            return;
+        }
   const lang = getCurrentLanguage();
+
+  // V2-13 re-entry detection. localStorage row exists → second play.
+  let _isReplay = false;
+  try {
+    _isReplay = !!localStorage.getItem('tem_first_play:' + memory.id);
+  } catch (_) {}
+
   try {
     sessionStorage.setItem('demoMemoryId', String(memory.id));
     sessionStorage.setItem('tem_archive_memory_id', String(memory.id));
     sessionStorage.setItem('tem_archive_lang', lang);
+    if (_isReplay) sessionStorage.setItem('tem_replay', '1');
+    else sessionStorage.removeItem('tem_replay');
   } catch (_) {}
+
   const isLocal = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const base = isLocal ? 'play-test.html' : '/play';
-  window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
+  const url = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}${_isReplay ? '&replay=1' : ''}`;
+
+  if (_isReplay) {
+    const msg = (lang === 'ko') ? '뭔가 달라졌어.' : 'Something has shifted.';
+    try { showNpcDialogue(msg, 2200); } catch (_) {}
+    setTimeout(() => { window.location.href = url; }, 1800);
+    return;
+  }
+  window.location.href = url;
 }
 function showConsentSequence(memoryIndex) {}
 function showWordSentenceSequence(memoryIndex) {}

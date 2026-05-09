@@ -26,15 +26,14 @@
     fbxBaseUrl: '/test/ybot.fbx',
     // 2026-04-26: Standing Up 클립 제거(징그러움). ybot 내장 Take 001(차분한 standing) 만 사용.
     // 2026-05-03: Sitting Idle / Standing Idle 추가 (mixamo). poseRandomize 로 핀별 결정적 픽 → 자세 다양화.
-    fbxClipUrls: [
-      '/test/Sitting Idle.fbx',
-      '/test/Standing Idle.fbx'
-    ],
-    // 마네킨마다 ybot 내장 + extras 중 결정적 RNG 로 다른 자세 픽. false 면 anims[0] 단일.
+    // 2026-05-09: Sitting Idle / Standing Idle 파일 미박힘 — Promise.all reject 자리 발동
+    //   → 전체 마네킹 빌드 실패. 작가 손으로 mixamo 다운로드 박을 때까지 임시 fix:
+    //   extras 비우고 ybot 내장 Take 001 (차분한 standing) 단독 사용.
+    fbxClipUrls: [],
     poseRandomize: true,
-    // ybot.fbx 자체 클립(Take 001 / mixamo.com)은 풀에서 제외 — extras 와 톤이 거의 같아 통계적으로
-    // sitting 비중이 묻힘. base 모델은 메시·스켈레톤 용도로만 쓰고, 자세는 fbxClipUrls 만으로 결정.
-    excludeBaseClips: true,
+    // 2026-05-09: extras 비웠으므로 base 클립을 풀에 포함해야 자세 0개 회피.
+    //   mixamo extras 박힘 자리 복구 시 true 로 되돌림.
+    excludeBaseClips: false,
     // 2026-05-03: sitting 클립일 때만 머리 본 위쪽 회전 — "앉아서 고개 들고 보는" 자세.
     //   mixer.update 직후 head bone quaternion 에 multiply 로 덮어 클립 자세 + 고개 든 모양.
     //   부호: +값 = 위 보기(고개 들기). 반대로 보이면 음수.

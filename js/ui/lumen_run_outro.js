@@ -1,7 +1,7 @@
 /**
  * Lumen Run Outro — V2.1 회차 끝 미니멀 엔딩 (drift / speciation / none).
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260429.md §15-3 — speciation 귀환 후 텍스트 알림 한 줄.
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260506.md §15-3 — speciation 귀환 후 텍스트 알림 한 줄.
  *        2026-05-04 결정 (드리프트/none 도 한 줄씩 추가, GPT 안 출처. 본인 손 거치기).
  *
  * 호출 시점: play-test.html 1인칭 종료 직전 (sealBtn V1 흐름 우회).

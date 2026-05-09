@@ -1,7 +1,7 @@
 /**
  * Lumen Dialog Phase 1 — V2.1 멀티턴 컨트롤러
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260429.md §4 V2.1 Phase 1
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260506.md §4 V2.1 Phase 1
  *
  * 한 씬(=한 유령) 안 흐름:
  *   ghost_intro → choice_select → choice_reply

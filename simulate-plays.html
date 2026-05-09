@@ -45,8 +45,8 @@
                 <div class="label">시뮬레이션 횟수</div>
                 <input type="number" id="simCount" class="count-input" value="100" min="1" max="500">
             </div>
-            <button class="btn-run" id="startBtn" onclick="runSimulation()">시뮬레이션 시작</button>
-            <button class="btn-del" id="clearBtn" onclick="clearSimData()" style="display:none">시뮬 데이터 삭제 (user_id=null만)</button>
+            <button class="btn-run" id="startBtn">시뮬레이션 시작</button>
+            <button class="btn-del" id="clearBtn" style="display:none">시뮬 데이터 삭제 (user_id=null만)</button>
         </div>
         <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
         <div id="stats"></div>
@@ -267,7 +267,7 @@ async function loadMemories() {
 }
 
 async function onMemoryChange() {
-    const id = parseInt(this.value);
+    const id = this.value;
     if (!id) { selectedMemory = null; selectedScenes = []; return; }
     selectedMemory = allMemories.find(m => m.id === id);
 
@@ -446,6 +446,9 @@ function updateStats(R, mm, pm) {
         <div class="stat"><div class="stat-val" style="color:#666">${R.errors}</div><div class="stat-label">에러</div></div>
     `;
 }
+
+document.getElementById('startBtn').addEventListener('click', runSimulation);
+document.getElementById('clearBtn').addEventListener('click', clearSimData);
 
 loadMemories();
 </script>

@@ -1,7 +1,7 @@
 /**
  * Lumen Ghost Response — V2.1 Phase 1
  *
- * SCOPE: docs/LUMEN_DEMO_SCOPE-260429.md §4 V2.1 Phase 1
+ * SCOPE: docs/LUMEN_DEMO_SCOPE-260506.md §4 V2.1 Phase 1
  *
  * 자유대화 매 턴 반응 + 유령 권유 + 장면 잇기 prompt — 셋 모두 결정론적 pick.
  * alignment 임계 0.55/0.35 → 공명/흐릿/불일치 결 분류 (math.js getBucket 동일).

@@ -10,6 +10,7 @@ import { NPC_DIALOGUES } from '../npc-dialogues.js';
 import { showTrueEndingNoteUI } from './auth.js';
 import { getSupabaseClient } from '../lib/supabaseClient.js';
 import { getSoundscape } from '../audio/getSoundscape.js';
+import { hasFirstPlayData } from './userIdentity.js';
 
 // ─── Internal helpers ─────────────────────────────────────────────
 
@@ -70,6 +71,104 @@ async function showOriginalMemory(memoryId) {
     }
 }
 
+// ─── V2-13 re-entry handoff ───────────────────────────────────────
+
+function _collectFirstPlaySnapshot(state) {
+    const currentData = state.currentStoryData;
+    if (!currentData) return null;
+    const memoryId = currentData.id || (state.allMemoriesData?.[state.currentMemory]?.id);
+    if (!memoryId) return null;
+    const completedSentence = currentData.completed_sentence || '';
+    const sourceScenes = Array.isArray(currentData.scenes) ? currentData.scenes : [];
+    const recorded = (typeof window !== 'undefined' && window.archiveUserEmotions) || [];
+    const scenes = sourceScenes.map((scene, i) => {
+        const slot = recorded[i];
+        if (!slot || !slot.emotion) return null;
+        return {
+            sceneIndex: i,
+            sceneId: scene?.id || null,
+            sceneText: scene?.text || '',
+            userEmotion: slot.emotion,
+            userReason: slot.reason || '',
+        };
+    }).filter(Boolean);
+    return {
+        memoryId,
+        completedSentence,
+        scenes,
+    };
+}
+
+async function _maybeHandoffToReentryFlow(state, alignmentResult) {
+    if (state.currentMode !== 'archive') return false;
+    const snapshot = _collectFirstPlaySnapshot(state);
+    if (!snapshot || !snapshot.memoryId || snapshot.scenes.length === 0) return false;
+
+    stopBaseAnimations();
+    const liveContainerEl = document.getElementById('liveContainer');
+    if (liveContainerEl) { liveContainerEl.classList.remove('active'); liveContainerEl.style.display = 'none'; }
+    const archiveContainerEl = document.getElementById('archiveContainer');
+    if (archiveContainerEl) { archiveContainerEl.classList.remove('active'); archiveContainerEl.style.display = 'none'; }
+    const sceneViewerEl = document.getElementById('sceneViewer');
+    if (sceneViewerEl) { sceneViewerEl.classList.remove('active'); sceneViewerEl.style.display = 'none'; }
+    const endScreenEl = document.getElementById('endScreen');
+    if (endScreenEl) { endScreenEl.classList.remove('active'); endScreenEl.style.display = 'none'; }
+
+    const alignment = alignmentResult?.averageAlignment ?? state.currentAlignment ?? 0;
+    const bucket = state.currentBucket || null;
+    const transitionPattern = state.currentTransitionPattern || null;
+
+    const goHome = async () => {
+        try {
+            const opening = await import('./opening.js');
+            if (typeof opening.returnToOpening === 'function') {
+                opening.returnToOpening();
+                return;
+            }
+            if (typeof opening.showOpening === 'function') {
+                opening.showOpening();
+                return;
+            }
+        } catch (e) { /* fall through */ }
+        const introScreen = document.getElementById('introScreen');
+        if (introScreen) {
+            introScreen.classList.remove('hidden');
+            introScreen.style.cssText = '';
+        }
+    };
+
+    if (!hasFirstPlayData(snapshot.memoryId)) {
+        const { showFirstPlayScenification } = await import('./firstPlayScenification.js');
+        await showFirstPlayScenification({
+            memoryId: snapshot.memoryId,
+            completedSentence: snapshot.completedSentence,
+            scenes: snapshot.scenes,
+            alignment,
+            bucket,
+            transitionPattern,
+            onContinue: () => { goHome(); },
+        });
+        return true;
+    }
+
+    try {
+        const { showPlayReplayCompare } = await import('./playReplayCompare.js');
+        await showPlayReplayCompare({
+            memoryId: snapshot.memoryId,
+            completedSentence: snapshot.completedSentence,
+            secondScenes: snapshot.scenes,
+            secondAlignment: alignment,
+            secondBucket: bucket,
+            secondTransitionPattern: transitionPattern,
+            onContinue: () => { goHome(); },
+        });
+        return true;
+    } catch (e) {
+        console.warn('[Ending] playReplayCompare module not yet wired, falling back to legacy endScreen:', e?.message || e);
+        return false;
+    }
+}
+
 // ─── showEndScreen ────────────────────────────────────────────────
 
 export async function showEndScreen(alignmentResult, forceEndScreen = false) {
@@ -78,6 +177,16 @@ export async function showEndScreen(alignmentResult, forceEndScreen = false) {
 
     const state = appStore.getState();
     console.log('[Ending] showEndScreen called:', { alignmentResult, forceEndScreen, currentMode: state.currentMode });
+
+    // ─── V2-13 re-entry sequence branch ─────────────────────────────
+    // Archive mode only. First play → scenification + nickname input.
+    // Second play → wave compare (first vs second).
+    try {
+        const handed = await _maybeHandoffToReentryFlow(state, alignmentResult);
+        if (handed) return;
+    } catch (e) {
+        console.warn('[Ending] re-entry branch failed, falling through to legacy endScreen:', e);
+    }
 
     try {
         stopBaseAnimations();
