@@ -4451,12 +4451,10 @@
         continueBtn.textContent = T.revealContinue;
         continueBtn.className = 'action-btn';
         continueBtn.style.marginTop = '1.5rem';
-        continueBtn.addEventListener('click', () => {
-          // V2.1 분기: revealScreen 페이드아웃 → LumenRunOutro 분기 텍스트 → 오프닝.
-          // rewind 는 sealBtn 직전 단계에서 이미 끝남 → 여기는 rewind: false.
-          let _v21BranchK = null;
-          try { _v21BranchK = sessionStorage.getItem('tem_branch_kind'); } catch (_) {}
-          if (_v21BranchK && window.LumenRunOutro && typeof window.LumenRunOutro.run === 'function') {
+        continueBtn.addEventListener('click', async () => {
+          // V2-13 handoff — try first/second play branch BEFORE legacy flows.
+          // Runs unconditionally; falls through if data is missing.
+          const _runLegacyV21Outro = () => {
             initAudio();
             fadeOut(SFX.rain, 1500, true);
             const revElV21 = document.getElementById('revealScreen');
@@ -4470,11 +4468,98 @@
                 revElV21.style.opacity = '';
                 revElV21.style.transition = '';
               }
-              window.LumenRunOutro.run({
-                rewind: false,
-                onComplete: () => { window.location.href = 'index.html'; }
-              });
+              if (window.LumenRunOutro && typeof window.LumenRunOutro.run === 'function') {
+                window.LumenRunOutro.run({
+                  rewind: false,
+                  onComplete: () => { window.location.href = 'index.html'; }
+                });
+              } else {
+                window.location.href = 'index.html';
+              }
             }, 850);
+          };
+          let _v213Handed = false;
+          try {
+            const _g = (typeof game !== 'undefined' && game) || window._temGame || null;
+            const memoryId = _g && _g.memoryId;
+            const traces = (_g && Array.isArray(_g.traces)) ? _g.traces : [];
+            const traj = (_g && Array.isArray(_g.userEmotionTrajectory)) ? _g.userEmotionTrajectory : [];
+            const sourceScenes = (_g && Array.isArray(_g.scenes)) ? _g.scenes : [];
+            const completedSentence = (_g && (_g.completedSentence || _g.memoryCompletedSentence)) || '';
+
+            // Prefer game.traces — every visited scene pushes a rich record.
+            // Fall back to userEmotionTrajectory if traces are empty.
+            let scenes = traces
+              .map((t, i) => {
+                const vec = (t && (t.userEmotion || (t.userVector && t.userVector.base))) || null;
+                if (!vec) return null;
+                return {
+                  sceneIndex: typeof t.sceneIndex === 'number' ? t.sceneIndex : i,
+                  sceneId: t.sceneId || null,
+                  sceneText: t.sceneText || '',
+                  userEmotion: vec,
+                  userReason: t.sceneLinkInput || t.userReason || '',
+                };
+              })
+              .filter(Boolean);
+
+            if (scenes.length === 0 && traj.length > 0) {
+              scenes = traj.map((vec, i) => ({
+                sceneIndex: i,
+                sceneId: sourceScenes[i] && sourceScenes[i].id,
+                sceneText: sourceScenes[i] && sourceScenes[i].text,
+                userEmotion: (vec && (vec.base || vec.vector || vec)) || null,
+                userReason: '',
+              })).filter(s => s.userEmotion);
+            }
+
+            console.log('[V2-13] handoff probe:', {
+              memoryId,
+              tracesLength: traces.length,
+              trajLength: traj.length,
+              sourceScenesLength: sourceScenes.length,
+              filteredScenesLength: scenes.length,
+              hasFirst: !!(memoryId && localStorage.getItem('tem_first_play:' + memoryId))
+            });
+
+            if (memoryId && scenes.length > 0) {
+              const revElEarly = document.getElementById('revealScreen');
+              if (revElEarly) {
+                revElEarly.style.transition = 'opacity 0.6s ease';
+                revElEarly.style.opacity = '0';
+                setTimeout(() => { revElEarly.classList.remove('active'); revElEarly.style.opacity = ''; revElEarly.style.transition = ''; }, 650);
+              }
+              const hasFirst = !!localStorage.getItem('tem_first_play:' + memoryId);
+              if (!hasFirst) {
+                const mod = await import('./js/app/firstPlayScenification.js');
+                await mod.showFirstPlayScenification({
+                  memoryId,
+                  completedSentence,
+                  scenes,
+                  onContinue: _runLegacyV21Outro,
+                });
+                _v213Handed = true;
+              } else {
+                const mod = await import('./js/app/playReplayCompare.js');
+                await mod.showPlayReplayCompare({
+                  memoryId,
+                  completedSentence,
+                  secondScenes: scenes,
+                  onContinue: _runLegacyV21Outro,
+                });
+                _v213Handed = true;
+              }
+            }
+          } catch (e) {
+            console.warn('[V2-13] lumen handoff failed:', e);
+          }
+          if (_v213Handed) return;
+
+          // ─── Legacy flows (preserved) ─────────────────────────
+          let _v21BranchK = null;
+          try { _v21BranchK = sessionStorage.getItem('tem_branch_kind'); } catch (_) {}
+          if (_v21BranchK && window.LumenRunOutro && typeof window.LumenRunOutro.run === 'function') {
+            _runLegacyV21Outro();
             return;
           }
 
