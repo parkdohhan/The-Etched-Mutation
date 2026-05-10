@@ -4533,6 +4533,12 @@
                 revElEarly.style.opacity = '0';
                 setTimeout(() => { revElEarly.classList.remove('active'); revElEarly.style.opacity = ''; revElEarly.style.transition = ''; }, 650);
               }
+              // V2-13: skip legacy LumenRunOutro 분기 텍스트 — V2-13 시각 자리가 귀환 알림 자리 박음.
+              // 닉네임 입력(첫 회차) / Continue(두 번째 회차) 직후 audio fade + 메뉴 복귀.
+              const _toMenu = () => {
+                try { initAudio(); fadeOut(SFX.rain, 1200, true); } catch (_) {}
+                setTimeout(() => { window.location.href = 'index.html'; }, 600);
+              };
               const hasFirst = !!localStorage.getItem('tem_first_play:' + memoryId);
               if (!hasFirst) {
                 const mod = await import('./js/app/firstPlayScenification.js');
@@ -4540,7 +4546,7 @@
                   memoryId,
                   completedSentence,
                   scenes,
-                  onContinue: _runLegacyV21Outro,
+                  onContinue: _toMenu,
                 });
                 _v213Handed = true;
               } else {
@@ -4549,7 +4555,7 @@
                   memoryId,
                   completedSentence,
                   secondScenes: scenes,
-                  onContinue: _runLegacyV21Outro,
+                  onContinue: _toMenu,
                 });
                 _v213Handed = true;
               }
