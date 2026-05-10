@@ -4420,6 +4420,8 @@
         if (data.narrative) {
           document.getElementById('revealTitle').textContent = T.revealTitle;
           typeRevealText(document.getElementById('revealBody'), data.narrative);
+          // V2-13: hand the sealed narrative to firstPlayScenification / playReplayCompare.
+          game.completedSentence = data.narrative;
           // 2026-05-08: 자료 critic 개입 3-b — revealScreen 메타 신호.
           // AI 내러티브가 *이본론(변이=재창조)* 자리에서 박힌 결을 한 줄로 가시화.
           const _metaEl = document.getElementById('revealMeta');
@@ -4431,11 +4433,13 @@
         } else {
           document.getElementById('revealTitle').textContent = T.revealTitle;
           document.getElementById('revealBody').textContent = T.revealFallback;
+          game.completedSentence = T.revealFallback;
         }
       } catch (e) {
         console.error('Reveal error:', e);
         document.getElementById('revealTitle').textContent = T.revealTitle;
         document.getElementById('revealBody').textContent = T.revealFallback;
+        game.completedSentence = T.revealFallback;
       }
     }
     document.getElementById('revealStats').textContent = T.stats(avgAlign, game.coreVisitCount);

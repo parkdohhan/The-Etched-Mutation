@@ -44,10 +44,10 @@
   - [x] V2-5 보강+ — 파동 표시 lerp + 진입 텀 단축 (2026-05-06 완료). `Visualizer.js` 두 줄 파동 표시 스타일 프레임 단위 lerp(SMOOTH=0.08, ~150ms 안에 따라잡음) — proximity 100ms 갱신 사이 갑자기 결 바뀌는 자리 둔화. `play-test.html` `LONG_PRESS_MS` 1200→800.
   - [x] V21/유령 응답 — 입력 인용 모호 결까지 확장 (2026-05-06 완료). 기존 `lumen_ghost_response.dissonancePool`만 박혔던 마커(`'____'`) `vaguePool`도 박음 (시드 2개 추가). `_applyQuote`는 결 무관 — 마커 박힌 변주는 어느 풀(공명/모호/충돌)에 박혀도 동일 동작. 공명 결은 부드러운 받아침이라 인용 어색해서 의도적 미박. smoke 가드 모호 결 인용 발동 + 빈 입력 안전 (`test/smoke_v21_phase1.js` 섹션 4 확장).
 - [ ] V2-6 drift 픽 시스템 — 12축 emotion_vec 2단계 픽 + `plays.ghost_variant_id`·`final_drift_vector` 도장 (2일, 5-7)
-- [ ] **V2-13 재진입 유도 시퀀스** (5-05 V2.1.3 신규, 5-09 확장) — outro 뒤 장면화 + Continue + 닉네임 인라인 입력(localStorage `tem_user_name`) + 첫/두 번째 파동 비교 (`comparison.js` 핵심 함수 재용도화 → `js/app/playReplayCompare.js` 신설) + 메뉴 정리(PLAY 라벨 → ARCHIVE, 최상단) + ARCHIVE 메모리 클릭 시 툴팁(감각 설명 + 지형 PNG 미리보기) + 재진입 시 "뭔가 달라졌어" 멘트 + 흡수 cinematic 가시화 + localStorage 추적 (1.5~2일, 5-9 ~ 5-10)
+- [x] **V2-13 재진입 유도 시퀀스** (5-05 V2.1.3 신규, 5-09 확장, 5-10 박힘) — outro 뒤 장면화 + Continue + 닉네임 인라인 입력(localStorage `tem_user_name`) + 첫/두 번째 파동 비교 (`comparison.js` 핵심 함수 재용도화 → `js/app/playReplayCompare.js` 신설) + 메뉴 정리(PLAY 라벨 → ARCHIVE, 최상단) + ARCHIVE 메모리 클릭 시 툴팁(감각 설명 + 지형 PNG 미리보기) + 재진입 시 "뭔가 달라졌어" 멘트 + 흡수 cinematic 가시화 + localStorage 추적 (1.5~2일, 5-9 ~ 5-10)
   - [x] 시스템 자리 (2026-05-09 박음) — `js/app/userIdentity.js` (localStorage 닉네임/첫 플레이 헬퍼, 110줄) + `js/app/firstPlayScenification.js` (장면화 + Continue + 닉네임 인라인, 240줄) + `js/app/playReplayCompare.js` (첫/두번째 파동 비교, 230줄) + `js/app/endScreen.js` `_maybeHandoffToReentryFlow` 분기 hook (archive V1 흐름) + `js/app/archive.js` `selectMemory` 재진입 멘트 + 메뉴 PLAY → ARCHIVE 라벨 (`index.html`, `js/index.js`)
-  - [ ] **play-test.html (lumen) outro 자리 통합** — `LumenRunOutro.run` 호출 직전(line 4459)에 동일 분기 hook + lumen 멀티턴 user emotion fingerprint wiring (씬별 user emotion vector를 어디서 끌어올지 결정 필요)
-  - [ ] ARCHIVE 메모리 카드 툴팁 (감각적 설명 + 지형 PNG placeholder) — `js/app/archive.js` 메모리 카드 렌더 자리
+  - [x] **play-test.html (lumen) outro 자리 통합** (2026-05-10 완료) — `_v21BranchK` 죽은 게이트 제거 + `game.traces` 기반 wiring (commit b7142bd) + `game.completedSentence = data.narrative` 박음 (commit 다음, `play-test.html:4423` 박힘 — narrative ok / fallback / catch 3 자리). 검증: playwright 두 사이클 (5-10) — handoff probe `tracesLength: 3, filteredScenesLength: 3` 박힘 / `firstPlayScenification` 박힘 ("너의 이름을 알려줘" 입력 + saveFirstPlayData → localStorage row) / `playReplayCompare` 박힘 ("re-engraving" + 파동 3행). 스크린샷 6장 = `screens-260510-V2-13/`.
+  - [x] ARCHIVE 메모리 카드 툴팁 (2026-05-10 완료) — `js/ui/UIManager.js` 카드 렌더 자리 갈아끼움 (inline `onclick` 제거 + 두 단계 click handler) + `css/index.css` `.memory-card.expanded` + `.memory-card-tooltip` 박음. UX: 첫 클릭 = expand (감각 한 줄 + 지형 placeholder + 봉인 문장은 *플레이 박은 메모리만*) / 두 번째 클릭 = `selectMemory` / 다른 카드 클릭 = 자기 collapse / 외부 클릭 = 모두 collapse. 감각 fallback 우선순위: `meta.sensory_description` → `memory_words.slice(0,5).join(' · ')` → "감각이 박히지 않은 자리". lang resolve = `localStorage.tem_language`.
 - [ ] V2-9 통합·smoke 가드 — `test/smoke_v21_*.js` (2일, 5-9)
 - [ ] V2-10 데모 메모리 3개 (5-09 1개→3개 확장) — 본문(메인 1 + 다양성 2) + 메인 메모리 drift 변주 풀 10~15개 + speciation 시드 1~2개. 메인은 씬 2~3개로 짧게 (5분 데모에서 두 번째 플레이까지 시간 확보). (4일, V2-2 완료 후)
 - [ ] V2-12 디버깅·튜닝 — 분기 임계 + drift 강도 + 카메라 강도 (2일, 5-11 ~ 5-12)
@@ -70,6 +70,8 @@
 - [ ] 파일럿 n=5~7
 - [ ] **두 명 다른 유령 풀 시연** (코어 명제) — **본인 손 검증 불가, 파일럿 n=5~7에서만**
 - [ ] **재진입 시 발화 변화 시연** (V2.1.3 트리오 — V2-6 + β + V2-13) — V2-13 영상 컷 자리에서 본인 손 가능
+  - [x] V2-13 시스템 자리 작동 검증 (2026-05-10 playwright 두 사이클) — first/second play 분기 박힘, scenes·userEmotion·userName·completed_sentence 자료 박힘. 스크린샷 `screens-260510-V2-13/`.
+  - [ ] 영상 컷 본인 손 (5-17 ~ 5-19 자리)
 - [ ] 영상 + 스크린샷 + statement
 - [ ] Lumen 제출 양식
 

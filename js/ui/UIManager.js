@@ -173,23 +173,75 @@ export class UIManager {
             return;
         }
         
+        const escapeHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+        let lang = 'en';
+        try {
+            const stored = localStorage.getItem('tem_language');
+            if (stored === 'ko' || stored === 'en') lang = stored;
+        } catch (_) {}
+        const sensoryFallbackKo = '감각이 박히지 않은 자리';
+        const sensoryFallbackEn = 'Senses unstamped';
+        const previewLabelKo = '지형 미리보기';
+        const previewLabelEn = 'Terrain preview';
+        const sealedLabelKo = '봉인된 문장';
+        const sealedLabelEn = 'Sealed sentence';
+
         sortedMemories.forEach((memory, index) => {
             const originalIndex = allMemoriesData.findIndex(m => m.id === memory.id);
+            const cardIndex = originalIndex >= 0 ? originalIndex : index;
             const card = document.createElement('div');
             card.className = 'memory-card';
             card.setAttribute('data-code', memory.code || '');
             card.setAttribute('data-title', memory.title || '');
             card.setAttribute('data-layers', memory.layers || 0);
             card.setAttribute('data-recent', memory.recentRank || 0);
+            card.setAttribute('data-memory-index', String(cardIndex));
             const isLive = !!(memory.live_session_id || memory.is_live);
             card.setAttribute('data-category', isLive ? 'live' : 'archive');
-            card.setAttribute('onclick', `selectMemory(${originalIndex >= 0 ? originalIndex : index})`);
+
+            // V2-13 tooltip: sensory line + terrain preview placeholder + sealed sentence (only if played).
+            let sensoryLine = (memory.meta && memory.meta.sensory_description) || '';
+            if (!sensoryLine && Array.isArray(memory.memory_words) && memory.memory_words.length) {
+                sensoryLine = memory.memory_words.slice(0, 5).join(' · ');
+            }
+            if (!sensoryLine) sensoryLine = lang === 'ko' ? sensoryFallbackKo : sensoryFallbackEn;
+            const previewLabel = lang === 'ko' ? previewLabelKo : previewLabelEn;
+            let played = false;
+            try { played = !!localStorage.getItem('tem_first_play:' + memory.id); } catch (_) { played = false; }
+            const sealedHtml = (played && memory.completed_sentence)
+                ? `<div class="memory-card-sealed"><span class="memory-card-sealed-label">${lang === 'ko' ? sealedLabelKo : sealedLabelEn}</span><p>${escapeHtml(memory.completed_sentence)}</p></div>`
+                : '';
+            const tooltipHtml = `<div class="memory-card-tooltip">
+                <div class="memory-card-preview" aria-label="${previewLabel}"><span>${previewLabel}</span></div>
+                <p class="memory-card-sensory">${escapeHtml(sensoryLine)}</p>
+                ${sealedHtml}
+            </div>`;
+
             const categoryLabel = isLive ? '<span class="memory-category-badge live">Live</span>' : '';
             const statusBadge = '';
             console.log('[Memory] Rendering card:', memory.title, 'status:', memory.status);
-            card.innerHTML = `${categoryLabel}${statusBadge}<h3 class="memory-card-title">${memory.title || 'Untitled'}</h3><p class="memory-card-meta">Original: ${memory.code || '—'} · Interpretation layers: ${memory.layers || 0}</p><div class="memory-card-dilution"><span>Original</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution !== undefined ? memory.dilution : 100}%"></div></div><span>${memory.dilution !== undefined ? memory.dilution : 100}%</span></div>`;
+            card.innerHTML = `${categoryLabel}${statusBadge}<h3 class="memory-card-title">${escapeHtml(memory.title || 'Untitled')}</h3><p class="memory-card-meta">Original: ${escapeHtml(memory.code || '—')} · Interpretation layers: ${memory.layers || 0}</p><div class="memory-card-dilution"><span>Original</span><div class="dilution-bar"><div class="dilution-fill" style="width:${memory.dilution !== undefined ? memory.dilution : 100}%"></div></div><span>${memory.dilution !== undefined ? memory.dilution : 100}%</span></div>${tooltipHtml}`;
+
+            // V2-13: first click expands tooltip; second click on the same card enters.
+            card.addEventListener('click', (ev) => {
+                if (card.classList.contains('expanded')) {
+                    if (typeof window.selectMemory === 'function') window.selectMemory(cardIndex);
+                    return;
+                }
+                document.querySelectorAll('.memory-card.expanded').forEach(other => other.classList.remove('expanded'));
+                card.classList.add('expanded');
+            });
             list.appendChild(card);
         });
+
+        // Click outside any card collapses the open tooltip.
+        if (!list._v213CollapseHandler) {
+            list._v213CollapseHandler = (ev) => {
+                if (ev.target.closest('.memory-card')) return;
+                document.querySelectorAll('.memory-card.expanded').forEach(c => c.classList.remove('expanded'));
+            };
+            document.addEventListener('click', list._v213CollapseHandler);
+        }
         
         if (onFilterMemories) {
             onFilterMemories();
