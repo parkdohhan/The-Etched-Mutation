@@ -5302,6 +5302,9 @@
                 var _plC = document.getElementById('strataCanvas');
                 if (_plC) {
                   var _plLock = function () {
+                    // V2-13 fix: dialog overlay active → skip pointer lock to avoid
+                    // browser fullscreen/esc-hint flicker that causes screen oscillation.
+                    if (document.getElementById('lumenDialogPhase1')) return;
                     if (_fpPlayActive && !document.pointerLockElement) {
                       try { _plC.requestPointerLock(); } catch (_) {}
                     }
@@ -5771,18 +5774,25 @@
             // Re-acquire pointer lock immediately + fallback to click
             var _plCanvas = document.getElementById('strataCanvas');
             if (_plCanvas) {
-              // Try immediate re-lock (works if triggered from user gesture chain)
-              try { _plCanvas.requestPointerLock(); } catch (_) {}
-              // Fallback: click to re-lock if immediate fails
-              var _plClick = function () {
-                if (!document.pointerLockElement) {
-                  try { _plCanvas.requestPointerLock(); } catch (_) {}
-                }
-                _plCanvas.removeEventListener('click', _plClick);
-              };
-              setTimeout(function () {
-                if (!document.pointerLockElement) _plCanvas.addEventListener('click', _plClick);
-              }, 200);
+              var _dlgActive = !!document.getElementById('lumenDialogPhase1');
+              // V2-13 fix: skip pointer lock entirely while dialog overlay is up.
+              if (!_dlgActive) {
+                // Try immediate re-lock (works if triggered from user gesture chain)
+                try { _plCanvas.requestPointerLock(); } catch (_) {}
+                // Fallback: click to re-lock if immediate fails
+                var _plClick = function () {
+                  if (document.getElementById('lumenDialogPhase1')) return;
+                  if (!document.pointerLockElement) {
+                    try { _plCanvas.requestPointerLock(); } catch (_) {}
+                  }
+                  _plCanvas.removeEventListener('click', _plClick);
+                };
+                setTimeout(function () {
+                  if (!document.pointerLockElement && !document.getElementById('lumenDialogPhase1')) {
+                    _plCanvas.addEventListener('click', _plClick);
+                  }
+                }, 200);
+              }
             }
             var rt = window.TemAfStrataTerrain._lastRuntime;
             if (rt) {
