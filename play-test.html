@@ -4535,7 +4535,10 @@
               }
               // V2-13: skip legacy LumenRunOutro 분기 텍스트 — V2-13 시각 자리가 귀환 알림 자리 박음.
               // 닉네임 입력(첫 회차) / Continue(두 번째 회차) 직후 audio fade + 메뉴 복귀.
+              // 메뉴 복귀 자리에 opening 자리 한 번 skip 박음 — V2-13 박은 사용자가 다시 opening 인터뷰
+              // 보는 자리 어색하기 때문. bindEvents.js의 v213SkipOpening 가드가 sessionStorage 읽어 박음.
               const _toMenu = () => {
+                try { sessionStorage.setItem('tem_skip_opening_once', '1'); } catch (_) {}
                 try { initAudio(); fadeOut(SFX.rain, 1200, true); } catch (_) {}
                 setTimeout(() => { window.location.href = 'index.html'; }, 600);
               };

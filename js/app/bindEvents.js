@@ -66,6 +66,18 @@ function bindOpeningEvents() {
     // 여기서 다시 display:flex를 주면 오프닝이 덮어씌워지는 버그가 난다.
     const oauthSkipOpening = !!window.__oauthRedirectSkipOpening;
 
+    // V2-13: 닉네임 입력(첫 회차) 또는 Continue(두 번째 회차) 후 메뉴 복귀 자리.
+    // play-test.html `_toMenu`가 sessionStorage `tem_skip_opening_once` 박음.
+    // 그 자리 박혀있으면 opening 자리 한 번만 skip — 다음 진입은 디폴트 opening 그대로.
+    let v213SkipOpening = false;
+    try {
+        if (sessionStorage.getItem('tem_skip_opening_once') === '1') {
+            v213SkipOpening = true;
+            sessionStorage.removeItem('tem_skip_opening_once');
+        }
+    } catch (_) {}
+    const skipOpeningInit = oauthSkipOpening || v213SkipOpening;
+
  // 오프닝 sound 및 UI init
     const openingSound = document.getElementById('openingSound');
     if (openingSound) {
@@ -119,16 +131,27 @@ function bindOpeningEvents() {
 
     const openingScreen = document.getElementById('openingScreen');
     if (openingScreen) {
-        if (oauthSkipOpening) {
+        if (skipOpeningInit) {
             openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important';
             openingScreen.classList.add('hidden');
         } else {
             openingScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:3000 !important';
         }
     }
+    // V2-13: opening skip 자리 = introScreen(메뉴 자리) 직접 visible 박음 (oauth 자리 패턴 차용).
+    if (v213SkipOpening) {
+        const introScreen = document.getElementById('introScreen');
+        if (introScreen) {
+            introScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important';
+            introScreen.classList.add('visible');
+            introScreen.classList.remove('hidden');
+        }
+        // startOpeningSequence 안 가드(opening.js:838 `__oauthRedirectSkipOpening`) 도 한 번 박음.
+        window.__oauthRedirectSkipOpening = true;
+    }
 
     const waveContainer = document.getElementById('openingWaveContainer');
-    if (waveContainer && !oauthSkipOpening) {
+    if (waveContainer && !skipOpeningInit) {
         waveContainer.classList.add('visible');
         const canvas = document.getElementById('openingWaveCanvas');
  // startOpeningWaveAnimation index.js 서 window 노출됨
@@ -136,12 +159,12 @@ function bindOpeningEvents() {
             window.startOpeningWaveAnimation(canvas);
         }
     }
-    if (waveContainer && oauthSkipOpening) {
+    if (waveContainer && skipOpeningInit) {
         waveContainer.classList.remove('visible');
     }
 
     const hint = document.getElementById('openingStartHint');
-    if (hint && !oauthSkipOpening) {
+    if (hint && !skipOpeningInit) {
         hint.style.opacity = '1';
         hint.classList.add('visible');
     }
