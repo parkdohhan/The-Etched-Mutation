@@ -7,6 +7,7 @@
 
 import { NPC_DIALOGUES } from '../npc-dialogues.js';
 import { setLanguage } from '../lib/i18n.js';
+import { setUserName, getUserName } from './userIdentity.js';
 import { buildDoor } from './confession.js';
 import { _pickTopMemoryForLumen } from './archive.js';
 import { pickTopMemory, pickGhostVariant } from '../core/SeekerMatchEngine.js';
@@ -141,6 +142,9 @@ function showFirstTextPart2(dialogue) { if (openingSkipped) return; typeText(dia
 const V2_DIALOGUES = {
   ko: {
     intro: ['어떤 기억을 찾고있어?'],
+    namePrompt: '너가 찾는 기억은 누구의 것이지?',
+    namePlaceholder: '...이름을 박아',
+    replayIntro: '...다른걸 찾고있어?',
     transition: '...저기로 가봐.',
     placeholder: '단어 하나, 감정 하나...',
     chips: [
@@ -154,6 +158,9 @@ const V2_DIALOGUES = {
   },
   en: {
     intro: ['what are you looking for?'],
+    namePrompt: 'whose memory are you looking for?',
+    namePlaceholder: '...a name',
+    replayIntro: '...looking for something else?',
     transition: '...you can go there.',
     placeholder: 'A word, a feeling...',
     chips: [
@@ -272,6 +279,47 @@ function _typeLinesSequential(element, lines, charDelay = 55, lineDelay = 900) {
   });
 }
 
+// V2-13 (γ-full): opening 자리 닉네임 input 박음. dialogue 자리에 namePrompt 한 줄 박은
+// 후 input element 박음 → Enter 박으면 setUserName + resolve.
+function _promptNickname(dialogue, D) {
+  return new Promise((resolve) => {
+    dialogue.style.opacity = '';
+    dialogue.textContent = '';
+    typeText(dialogue, D.namePrompt, () => {
+      const wrap = document.createElement('div');
+      wrap.id = 'openingNamePromptWrap';
+      wrap.style.cssText = 'position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:0.6rem;opacity:0;transition:opacity 0.6s ease;pointer-events:auto;';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.maxLength = 32;
+      input.autocomplete = 'off';
+      input.placeholder = D.namePlaceholder;
+      input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid rgba(196,168,130,0.5);color:rgba(220,196,160,0.9);font-family:"Cormorant Garamond",serif;font-size:18px;text-align:center;outline:none;padding:0.4em 0.4em;width:240px;letter-spacing:0.05em;';
+      input.addEventListener('focus', () => { input.style.borderBottomColor = 'rgba(220,196,160,0.95)'; });
+      input.addEventListener('blur', () => { input.style.borderBottomColor = 'rgba(196,168,130,0.5)'; });
+      const onSubmit = () => {
+        const v = (input.value || '').trim();
+        if (!v) return;
+        setUserName(v);
+        wrap.style.opacity = '0';
+        setTimeout(() => {
+          if (wrap.parentNode) wrap.remove();
+          dialogue.textContent = '';
+          resolve();
+        }, 700);
+      };
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); onSubmit(); }
+      });
+      wrap.appendChild(input);
+      const openingScreen = document.getElementById('openingScreen');
+      (openingScreen || document.body).appendChild(wrap);
+      requestAnimationFrame(() => { wrap.style.opacity = '1'; });
+      setTimeout(() => input.focus(), 200);
+    });
+  });
+}
+
 function _fadeOutDialogue(element, duration = 800) {
   return new Promise((resolve) => {
     element.style.transition = `opacity ${duration}ms ease`;
@@ -303,9 +351,17 @@ async function _runV2Sequence() {
   await _fadeOutDialogue(dialogue, 1100);
   await new Promise(r => setTimeout(r, 900)); // 정적 여백
 
-  // v2 인트로 3단 대사 타이핑
-  await _typeLinesSequential(dialogue, D.intro);
-  await new Promise(r => setTimeout(r, 1200));
+  // V2-13 (γ-full): 첫 사용자 = 닉네임 박음 + 인트로. 두 번째 사용자 = 짧은 인사 박음.
+  const isReturning = !!getUserName();
+  if (isReturning) {
+    await _typeLinesSequential(dialogue, [D.replayIntro]);
+    await new Promise(r => setTimeout(r, 1500));
+  } else {
+    await _promptNickname(dialogue, D);
+    await new Promise(r => setTimeout(r, 600));
+    await _typeLinesSequential(dialogue, D.intro);
+    await new Promise(r => setTimeout(r, 1200));
+  }
 
   // 인트로 질문은 입력 단계와 함께 화면에 유지 (페이드아웃하지 않음)
 
@@ -549,10 +605,27 @@ async function _handleOpeningSubmit(emotion, text) {
   // 6) top-1 기억 + 유령 변주 매칭 (V2.1 SeekerMatchEngine)
   const allMemories = (window.appStore && window.appStore.getState && window.appStore.getState().allMemoriesData) || [];
   const preferKo = _openingLang === 'ko';
-  const langFiltered = allMemories.filter(m => {
+  let langFiltered = allMemories.filter(m => {
     const t = (m.title || '') + (m.completed_sentence || '');
     return /[가-힣]/.test(t) === preferKo;
   });
+  // V2-13 (γ-full): 박은 메모리 제외 — 처음 보는 메모리는 인터뷰 박혀야 만남.
+  // 풀 비면 (사용자가 다 박음) 디폴트 풀 박음 + console.info 박음 (재진입 자리 fallback).
+  try {
+    const playedIds = new Set(
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('tem_first_play:'))
+        .map(k => k.slice('tem_first_play:'.length))
+    );
+    if (playedIds.size > 0) {
+      const filtered = langFiltered.filter(m => !playedIds.has(m.id));
+      if (filtered.length > 0) {
+        langFiltered = filtered;
+      } else {
+        console.info('[opening:dialog] 모든 메모리 박음 — 디폴트 풀 박음 (재만남 자리)');
+      }
+    }
+  } catch (_) {}
 
   let memory = null;
   let variant = null;

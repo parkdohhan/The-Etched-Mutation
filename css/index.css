@@ -2167,6 +2167,30 @@ body::before {
   margin: 0;
 }
 
+/* V2-13 (γ-full): 박힌 메모리 카드 자리 — 작은 골드 결 점 + replay hint 한 줄 */
+.memory-card.played::after {
+  content: '';
+  position: absolute;
+  top: 0.85rem;
+  right: 0.95rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(196, 168, 130, 0.65);
+  box-shadow: 0 0 8px rgba(196, 168, 130, 0.45);
+  z-index: 2;
+}
+
+.memory-card-replay-hint {
+  margin: 0.8rem 0 0;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: rgba(196, 168, 130, 0.55);
+  text-align: center;
+}
+
 .scene-viewer {
   display: none;
   opacity: 0;

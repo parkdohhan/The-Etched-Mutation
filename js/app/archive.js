@@ -87,16 +87,15 @@ const FINDER_CHIPS = {
   ],
 };
 
-// v2 확정 대사 (docs/play_entry_redesign_v2-260419.md)
+// v2 확정 대사 (docs/play_entry_redesign_v2-260419.md).
+// V2-13 (γ-full, 5-10): PLAY 메뉴 자리 박힌 자리 — 닉네임 박힌 사용자 자리. *replay 톤*.
 const PLAY_ENTRY_DIALOGUES = {
   ko: [
-    '...너구나.',
-    '너가 그렇게 기억을 찾고싶어할줄은 몰랐네.',
+    '...다른걸 찾고있어?',
     '어떤 기억을 찾고있어?',
   ],
   en: [
-    'oh. you. again.',
-    "I didn't think you'd be searching this hard.",
+    '...looking for something else?',
     'what are you looking for?',
   ],
 };
@@ -282,14 +281,10 @@ async function _initMemoryFinder() {
     };
   }
 
-  // Browse 버튼 미리 준비
+  // V2-13 (γ-full, 5-10): finder 우회 자리 폐기. 처음 보는 메모리는 인터뷰 박혀야 만남.
+  // 작가 자리 *전체 풀* 자리는 admin URL 자리 박음.
   if (browseBtn) {
-    browseBtn.textContent = lang === 'en' ? 'Skip · Browse all memories' : '인터뷰 건너뛰고 목록 보기';
-    browseBtn.onclick = () => {
-      const finderEl = document.getElementById('memoryFinderContainer');
-      if (finderEl) finderEl.style.display = 'none';
-      enterArchive();
-    };
+    browseBtn.style.display = 'none';
   }
 
   // 1) 실 마운트 (페이드인 1.8s)
@@ -407,7 +402,8 @@ function _finderMatch(emotion, lang) {
   const all = appStore.getState().allMemoriesData || [];
   const preferKo = lang === 'ko';
   // v2: 하드 필터 — 선택 언어의 기억만 매칭 대상
-  const memories = all.filter(m => _isMemoryKorean(m) === preferKo);
+  let memories = all.filter(m => _isMemoryKorean(m) === preferKo);
+  memories = _excludePlayedMemories(memories);
   console.log('[_finderMatch] lang=', lang, 'preferKo=', preferKo, 'total=', all.length, 'filtered=', memories.length, 'titles=', memories.map(m => m.title));
   const scored = memories.map(m => {
     let score = 0;
@@ -441,13 +437,32 @@ function _isMemoryKorean(m) {
   return /[가-힣]/.test(text);
 }
 
+// V2-13 (γ-full): 매칭 풀 자리에 *박은 메모리 제외*. 풀 비면 (다 박음) 디폴트 풀 박음.
+function _excludePlayedMemories(memories) {
+  try {
+    const playedIds = new Set(
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('tem_first_play:'))
+        .map(k => k.slice('tem_first_play:'.length))
+    );
+    if (playedIds.size === 0) return memories;
+    const filtered = memories.filter(m => !playedIds.has(m.id));
+    if (filtered.length > 0) return filtered;
+    console.info('[archive:finder] 모든 메모리 박음 — 디폴트 풀 박음 (재만남 자리)');
+    return memories;
+  } catch (_) {
+    return memories;
+  }
+}
+
 function _finderMatchByText(query, lang) {
   _saveBaselineEmotion(_extractBaselineFromText(query));
   const all = appStore.getState().allMemoriesData || [];
   const lower = query.toLowerCase();
   // v2: 하드 필터 — 선택 언어(opening에서 전달)의 기억만. query의 한글 여부 무시.
   const preferKo = lang === 'ko';
-  const memories = all.filter(m => _isMemoryKorean(m) === preferKo);
+  let memories = all.filter(m => _isMemoryKorean(m) === preferKo);
+  memories = _excludePlayedMemories(memories);
 
   const emotionWords = {
     sadness: ['슬', '울', 'sad', 'cry', '아프', '힘들'],

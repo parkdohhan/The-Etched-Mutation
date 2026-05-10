@@ -430,7 +430,8 @@ function escapeHtml(text) { if (!text) return '—'; const div = document.create
 // ───── 3D Carousel Navigation ─────
 let carouselCurrentIndex = 0;
 const carouselItems = [
-    { action: 'enterPlayIntro', label: 'ARCHIVE' },
+    { action: 'enterPlayInterview', label: 'PLAY' },
+    { action: 'enterMyArchive', label: 'ARCHIVE' },
     { action: 'showConfessionHub', label: 'RECORD' },
     { action: 'openMypage', label: 'PROFILE' },
     { action: 'openSettings', label: 'SETTINGS' },
@@ -546,8 +547,17 @@ function activateCurrentCarouselItem() {
             }
             break;
         case 'enterPlayIntro':
+        case 'enterPlayInterview':
+            // V2-13 (γ-full): PLAY 메뉴 = finder 인터뷰 자리. enterPlayIntro 그대로 박음.
             if (typeof enterPlayIntro === 'function') {
                 enterPlayIntro();
+            }
+            break;
+        case 'enterMyArchive':
+            // V2-13 (γ-full): ARCHIVE 메뉴 = 내가 박은 메모리만. window.__archivePlayedOnly + enterArchive.
+            window.__archivePlayedOnly = true;
+            if (typeof enterArchive === 'function') {
+                enterArchive();
             }
             break;
         case 'showConfessionHub':
@@ -614,6 +624,12 @@ window.openAbout = openAbout;
 window.openConcept = openConcept;
 window.openMypage = openMypage;
 window.enterPlayIntro = enterPlayIntro;
+// V2-13 (γ-full): 메뉴 자리 click handler 박은 자리 = window 자리. 두 자리 박음.
+window.enterPlayInterview = function() { if (typeof enterPlayIntro === 'function') enterPlayIntro(); };
+window.enterMyArchive = function() {
+  window.__archivePlayedOnly = true;
+  if (typeof enterArchive === 'function') enterArchive();
+};
 // v2: 오프닝 시퀀스가 직접 매칭 호출
 window._finderMatch = _finderMatch;
 window._finderMatchByText = _finderMatchByText;

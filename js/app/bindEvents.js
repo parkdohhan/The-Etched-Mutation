@@ -66,14 +66,17 @@ function bindOpeningEvents() {
     // 여기서 다시 display:flex를 주면 오프닝이 덮어씌워지는 버그가 난다.
     const oauthSkipOpening = !!window.__oauthRedirectSkipOpening;
 
-    // V2-13: 닉네임 입력(첫 회차) 또는 Continue(두 번째 회차) 후 메뉴 복귀 자리.
-    // play-test.html `_toMenu`가 sessionStorage `tem_skip_opening_once` 박음.
-    // 그 자리 박혀있으면 opening 자리 한 번만 skip — 다음 진입은 디폴트 opening 그대로.
+    // V2-13 (γ-full): 닉네임 박힌 사용자(localStorage `tem_user_name`) = opening 자리 영구 skip.
+    // *바로 메뉴*가 박힌 자리. 첫 사용자(닉네임 X) 자리만 디폴트 opening 박음.
+    // sessionStorage `tem_skip_opening_once` 자리 = 옛 V2-13 자리(β) 호환 — 박힌 자리 즉시 remove.
     let v213SkipOpening = false;
     try {
         if (sessionStorage.getItem('tem_skip_opening_once') === '1') {
             v213SkipOpening = true;
             sessionStorage.removeItem('tem_skip_opening_once');
+        }
+        if (localStorage.getItem('tem_user_name')) {
+            v213SkipOpening = true;
         }
     } catch (_) {}
     const skipOpeningInit = oauthSkipOpening || v213SkipOpening;

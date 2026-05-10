@@ -166,10 +166,28 @@ export class UIManager {
         } else {
             sortedMemories = filteredMemories;
         }
-        
+
+        // V2-13 (γ-full): ARCHIVE 자리 = 내가 박은 메모리만. window.__archivePlayedOnly 박혀있으면
+        // localStorage `tem_first_play:<id>` 박힌 메모리만 박음. 디폴트 false (admin / 우회 자리).
+        const playedOnly = !!window.__archivePlayedOnly;
+        if (playedOnly) {
+            sortedMemories = sortedMemories.filter(m => {
+                try { return !!localStorage.getItem('tem_first_play:' + m.id); } catch (_) { return false; }
+            });
+        }
+
+        let _archiveLang = 'en';
+        try {
+            const _stored = localStorage.getItem('tem_language');
+            if (_stored === 'ko' || _stored === 'en') _archiveLang = _stored;
+        } catch (_) {}
+
         list.innerHTML = '';
         if (sortedMemories.length === 0) {
-            list.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">No memories found in this category.</div>';
+            const emptyMsg = playedOnly
+                ? (_archiveLang === 'ko' ? '아직 박은 기억이 없어. 새 기억을 찾아봐.' : 'No memories yet. Look for a new one.')
+                : (_archiveLang === 'ko' ? '이 결에 박힌 기억이 없어.' : 'No memories found in this category.');
+            list.innerHTML = `<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">${emptyMsg}</div>`;
             return;
         }
         
@@ -185,6 +203,8 @@ export class UIManager {
         const previewLabelEn = 'Terrain preview';
         const sealedLabelKo = '봉인된 문장';
         const sealedLabelEn = 'Sealed sentence';
+        const replayHintKo = '다시 들어가면 다른 결을 만날지도';
+        const replayHintEn = 'A new grain may meet you on the next visit';
 
         sortedMemories.forEach((memory, index) => {
             const originalIndex = allMemoriesData.findIndex(m => m.id === memory.id);
@@ -211,10 +231,15 @@ export class UIManager {
             const sealedHtml = (played && memory.completed_sentence)
                 ? `<div class="memory-card-sealed"><span class="memory-card-sealed-label">${lang === 'ko' ? sealedLabelKo : sealedLabelEn}</span><p>${escapeHtml(memory.completed_sentence)}</p></div>`
                 : '';
+            const replayHintHtml = played
+                ? `<p class="memory-card-replay-hint">${lang === 'ko' ? replayHintKo : replayHintEn}</p>`
+                : '';
+            if (played) card.classList.add('played');
             const tooltipHtml = `<div class="memory-card-tooltip">
                 <div class="memory-card-preview" aria-label="${previewLabel}"><span>${previewLabel}</span></div>
                 <p class="memory-card-sensory">${escapeHtml(sensoryLine)}</p>
                 ${sealedHtml}
+                ${replayHintHtml}
             </div>`;
 
             const categoryLabel = isLive ? '<span class="memory-category-badge live">Live</span>' : '';

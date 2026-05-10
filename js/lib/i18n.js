@@ -18,8 +18,8 @@ const STRINGS = {
         'menu.portfolio':  'MORE PORTFOLIO ↗',
         'menu.settings':   'SETTINGS',
 
-        'menu.desc.play':      'Start a play session and traverse memory terrain.',
-        'menu.desc.archive':   'Archive list view. Browse every memory and jump into play.',
+        'menu.desc.play':      'Look for another memory.',
+        'menu.desc.archive':   'The memories you have entered.',
         'menu.desc.record':    'Document new memories and leave traces of mutation.',
         'menu.desc.profile':   'Manage personal profile and synchronization settings.',
         'menu.desc.portfolio': 'Explore the origin and architect of The Etched Mutation. (Opens in a new tab)',
@@ -136,15 +136,15 @@ const STRINGS = {
 
     ko: {
         // ── Opening / Menu ────────────────────────────────────────
-        'menu.play':      '체험',
-        'menu.archive':   '아카이브',
+        'menu.play':      '다른 기억을 찾아서',
+        'menu.archive':   '내 기억',
         'menu.record':    '기록',
         'menu.profile':   '프로필',
         'menu.portfolio': '포트폴리오 ↗',
         'menu.settings':  '설정',
 
-        'menu.desc.play':      '플레이 세션을 시작하고 기억의 지형을 탐색한다.',
-        'menu.desc.archive':   '아카이브 목록. 모든 기억을 탐색하고 체험을 시작한다.',
+        'menu.desc.play':      '다른 기억을 찾아서 — 새 결을 만난다.',
+        'menu.desc.archive':   '내가 들어간 기억의 결.',
         'menu.desc.record':    '새 기억을 기록하고 변이의 흔적을 남긴다.',
         'menu.desc.profile':   '프로필과 동기화 설정을 관리한다.',
         'menu.desc.portfolio': 'The Etched Mutation의 기원과 제작자를 탐색한다. (새 탭으로 열림)',
