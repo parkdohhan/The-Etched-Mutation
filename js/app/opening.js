@@ -144,7 +144,7 @@ const V2_DIALOGUES = {
     intro: ['어떤 기억을 찾고있어?'],
     namePrompt: '너가 찾는 기억은 누구의 것이지?',
     namePlaceholder: '...이름을 박아',
-    replayIntro: '...다른걸 찾고있어?',
+    replayIntro: '...다른 걸 찾고있어?',
     transition: '...저기로 가봐.',
     placeholder: '단어 하나, 감정 하나...',
     chips: [
@@ -935,6 +935,84 @@ function handleOpeningKeydown(e) { if (!openingSkipped) { const tag = (e.target 
 
 function finishOpeningSequence() { const openingScreen = document.getElementById('openingScreen'); const introScreen = document.getElementById('introScreen'); if (openingScreen) { openingScreen.removeEventListener('click', skipOpening); openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important'; openingScreen.classList.add('hidden') } document.removeEventListener('keydown', handleOpeningKeydown); if (introScreen) { introScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important'; introScreen.classList.add('visible'); introScreen.classList.remove('hidden') } playNpcIntro() }
 
+// V2-13 (γ-full, 5-11): 메뉴 → "다른 기억을 찾아서" 진입 자리.
+// archive.js _initMemoryFinder (두 줄 멘트 + 6개 도어 늘어선 결과) 폐기 →
+// 오프닝 흐름 그대로 재호출 (한 줄 replayIntro + 멀티턴 인터뷰 + ASCII 도어 한 짝 → play-test 점프).
+// 작품 정체성 §6.5 #5 "Player sees fog" 정합 — 사용자 선택권 사라지고 시스템이 끌어당김.
+async function enterPlayReplaySequence() {
+    // 1) 다른 화면 자리 숨김
+    ['introScreen', 'archiveContainer', 'endScreen', 'modeSelection', 'liveContainer', 'sceneViewer'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('active', 'visible');
+            el.classList.add('hidden');
+            el.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;';
+        }
+    });
+
+    // 2) openingScreen 다시 보이게 박음
+    const openingScreen = document.getElementById('openingScreen');
+    if (openingScreen) {
+        openingScreen.classList.remove('hidden');
+        openingScreen.classList.add('visible');
+        openingScreen.style.cssText = 'display:block !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2500 !important;';
+    }
+
+    // 3) langGate 자리 숨김 (이미 언어 박혀 있는 사용자)
+    const langGate = document.getElementById('openingLangGate');
+    if (langGate) {
+        langGate.style.display = 'none';
+        langGate.style.opacity = '0';
+        langGate.style.pointerEvents = 'none';
+    }
+
+    // 4) opening dialogue / input 자리 초기화 (Hello/Come in 잔여 정리)
+    const dialogue = document.getElementById('openingDialogue');
+    if (dialogue) {
+        dialogue.textContent = '';
+        dialogue.style.removeProperty('opacity');
+        dialogue.style.removeProperty('transition');
+    }
+    const inputPhase = document.getElementById('openingInputPhase');
+    if (inputPhase) {
+        inputPhase.style.opacity = '0';
+        inputPhase.style.pointerEvents = 'none';
+    }
+    const finderInput = document.getElementById('openingFinderInput');
+    if (finderInput) {
+        finderInput.value = '';
+        finderInput.onkeydown = null;
+    }
+
+    // 5) wave canvas 재가동 (첫 오프닝에서 cancelAnimationFrame 박혔을 수 있음)
+    openingSkipped = false;
+    if (openingWaveAnimationId) {
+        cancelAnimationFrame(openingWaveAnimationId);
+        openingWaveAnimationId = null;
+    }
+    _openingWaveSpeedMul = 1;
+    _openingWaveDesat = 0;
+    const waveContainer = document.getElementById('openingWaveContainer');
+    if (waveContainer) {
+        waveContainer.style.transform = 'scale(5, 1)';
+        waveContainer.style.opacity = '1';
+        waveContainer.classList.add('visible');
+    }
+    const canvas = document.getElementById('openingWaveCanvas');
+    if (canvas) startOpeningWaveAnimation(canvas);
+
+    // 6) 현재 언어 박음
+    let curLang = 'en';
+    try {
+        const stored = localStorage.getItem('tem_language');
+        if (stored === 'ko' || stored === 'en') curLang = stored;
+    } catch (_) {}
+    _openingLang = curLang;
+
+    // 7) _runV2Sequence 호출 (replayIntro 분기 → 입력 → 멀티턴 → 도어 → play-test 점프)
+    await _runV2Sequence();
+}
+
 // ─────────────────────────────────────
 // === Exports ===
 // ─────────────────────────────────────
@@ -950,6 +1028,7 @@ export {
     startOpeningWaveAnimation,
     skipToIntro,
     handleOpeningKeydown,
+    enterPlayReplaySequence,
 
     // NPC
     playNpcIntro,

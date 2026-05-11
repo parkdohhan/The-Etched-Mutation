@@ -32,38 +32,32 @@ import { networkService } from '../services/NetworkService.js';
 import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
 import { computeArchiveWaveData } from '../shared/math.js';
+import { enterPlayReplaySequence } from './opening.js';
 
+// V2-13 (γ-full, 5-11): 메뉴 → "다른 기억을 찾아서" 자리.
+// 옛 자리 = _initMemoryFinder (memoryFinderContainer DOM + 두 줄 멘트 + 결과 도어 6개 늘어선 자리).
+// 새 자리 = 오프닝 시퀀스 그대로 재호출 (한 줄 replayIntro + 멀티턴 인터뷰 + ASCII 도어 한 짝 빨림 → play-test 점프).
+// archive.js 의 finder 자리 (_initMemoryFinder / _finderMatch / _showFinderResults) 는 코드 살려둠 — 롤백 자리.
 async function enterPlayIntro(opts) {
-  var fromDemo = opts && opts.fromDemo;
-  const introScreen = document.getElementById('introScreen');
-  const archiveContainer = document.getElementById('archiveContainer');
-  if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important'; }
-  ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none'; } });
-  if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
-
-  // Hide all sub-views
-  const entryEl = document.getElementById('archiveEntryContainer');
-  const memoryListEl = document.getElementById('memoryList');
-  const archiveControlsEl = document.getElementById('archiveControls');
-  const archiveHeaderEl = document.querySelector('.archive-header');
-  const finderEl = document.getElementById('memoryFinderContainer');
-  if (entryEl) entryEl.style.display = 'none';
-  if (memoryListEl) memoryListEl.style.display = 'none';
-  if (archiveControlsEl) archiveControlsEl.style.display = 'none';
-  if (archiveHeaderEl) archiveHeaderEl.style.display = 'none';
-  if (finderEl) finderEl.style.display = 'block';
-
+  // archiveContainer 활성화 X. archive 자체의 finder 자리 호출 X.
+  // 메모리 풀은 백그라운드에서 로드 (오프닝 _handleOpeningSubmit 폴링 자리에서 박힘).
+  if (typeof window.loadMemoriesFromSupabase === 'function') {
+    try { window.loadMemoriesFromSupabase(); } catch (_) {}
+  }
   appStore.setState({ currentMode: 'play' });
   stopArchiveWaveAnimation();
 
-  // Show UI immediately, load memories in background
-  _initMemoryFinder();
+  // archiveContainer 의 sub-views 자리 한 번 정리 (다른 자리에서 박혀 있을 수 있음)
+  const archiveContainer = document.getElementById('archiveContainer');
+  if (archiveContainer) {
+    archiveContainer.classList.remove('active');
+    archiveContainer.style.cssText = 'display:none !important;';
+  }
+  const finderEl = document.getElementById('memoryFinderContainer');
+  if (finderEl) finderEl.style.display = 'none';
 
-  const footer = document.querySelector('.footer');
-  if (footer) footer.classList.add('visible');
-
-  // Load memories after UI is visible (non-blocking)
-  loadMemoriesFromSupabase().catch(() => {});
+  // 오프닝 흐름 그대로 진입
+  await enterPlayReplaySequence();
 }
 
 // ─── Memory Finder: personalized memory matching sequence ─────────
@@ -91,7 +85,7 @@ const FINDER_CHIPS = {
 // V2-13 (γ-full, 5-10): PLAY 메뉴 자리 박힌 자리 — 닉네임 박힌 사용자 자리. *replay 톤*.
 const PLAY_ENTRY_DIALOGUES = {
   ko: [
-    '...다른걸 찾고있어?',
+    '...다른 걸 찾고있어?',
     '어떤 기억을 찾고있어?',
   ],
   en: [
