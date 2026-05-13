@@ -666,6 +666,8 @@
   // 디폴트 풀 보존: lumen_ghost_response.js 모듈 로드 시점의 _opts 를 lazy capture.
   //   이후 빈 결은 디폴트 fallback 으로 reset (메모리 간 stale 방지).
   var _originalGhostDefaults = null;
+  // V2-6: 회차당 1회 drift 변주 픽 캐시 — { _memoryId, utterance, ghost_variant_id }. 같은 회차 다른 씬은 캐시 재사용.
+  var _runDriftPick = null;
   async function _loadAndInjectGhostPools(supabase, memoryId, ghosts) {
     if (!supabase || !memoryId || !ghosts || typeof ghosts.setOptions !== 'function') {
       return { injected: false, reason: 'missing_deps' };
@@ -677,7 +679,7 @@
     try {
       var resp = await supabase
         .from('ghost_variants')
-        .select('id, kind, is_seed, parent_variant_id, utterance, emotion_vec')
+        .select('id, kind, is_seed, parent_variant_id, utterance, emotion_vec, motif_tags, attribution')  // V2-6: motif_tags/attribution 추가 (drift 픽 의미 필터)
         .eq('memory_id', memoryId)
         .eq('kind', 'drift'); // speciation 시드 제외 (§15-1 후속 플레이어 자리)
       if (resp.error || !resp.data) {
@@ -718,6 +720,57 @@
         console.warn('[ldp pool] 분류 가능 변주 ' + total + ' < 3 — 글로벌 디폴트 유지');
         return { injected: false, reason: 'too_few', total: total };
       }
+
+      // ─── V2-6: drift 변주 픽 → resonance 풀 맨 앞 주입 (회차당 1회 캐시, 즉시 가시) ───
+      var _driftUtter = null;
+      try {
+        if (_runDriftPick && _runDriftPick._memoryId === memoryId) {
+          _driftUtter = _runDriftPick.utterance;
+          if (typeof window !== 'undefined' && window._temGame && _runDriftPick.ghost_variant_id) {
+            window._temGame.driftStamp = { ghost_variant_id: _runDriftPick.ghost_variant_id, picked_at: 'run_start' };
+          }
+        } else if (typeof window !== 'undefined' && window.DriftPicker && typeof window.DriftPicker.pickDriftUtterance === 'function') {
+          var _cumVec = {};
+          try {
+            var cumResp = await supabase.from('memories').select('cumulative_emotion_vec').eq('id', memoryId).maybeSingle();
+            if (cumResp && cumResp.data && cumResp.data.cumulative_emotion_vec && typeof cumResp.data.cumulative_emotion_vec === 'object') _cumVec = cumResp.data.cumulative_emotion_vec;
+          } catch (_) {}
+          var _dv = _cumVec;
+          try {
+            var rawDv = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('tem_final_drift_vector') : null;
+            if (rawDv) { var pdv = JSON.parse(rawDv); if (pdv && typeof pdv === 'object' && Object.keys(pdv).length) _dv = pdv; }
+          } catch (_) {}
+          var _fp = { motif_words: [], attribution: null };
+          try {
+            var rawFp = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('tem_seeker_fp') : null;
+            if (rawFp) { var fpo = JSON.parse(rawFp); if (fpo && typeof fpo === 'object') _fp = { motif_words: fpo.motif_words || [], attribution: fpo.attribution || null }; }
+          } catch (_) {}
+          var _lastId = null;
+          try { _lastId = (typeof sessionStorage !== 'undefined') ? (sessionStorage.getItem('tem_last_variant_id') || null) : null; } catch (_) {}
+          var picked = window.DriftPicker.pickDriftUtterance({
+            cumulativeEmotionVec: _cumVec,
+            driftVector: _dv,
+            ghostVariants: rows,            // 이미 kind='drift' 만 SELECT
+            fingerprint: _fp,
+            lastVariantId: _lastId,
+          });
+          if (picked && picked.variant && picked.variant.utterance) {
+            _driftUtter = picked.variant.utterance;
+            _runDriftPick = { _memoryId: memoryId, utterance: _driftUtter, ghost_variant_id: picked.variant.id };
+            if (typeof window !== 'undefined' && window._temGame) window._temGame.driftStamp = { ghost_variant_id: picked.variant.id, picked_at: 'run_start' };
+            console.log('[V2-6] drift 픽:', picked.variant.id.slice(0, 8), '|', _driftUtter.slice(0, 24));
+          } else if (picked && picked.fallbackKind === 'narrative_silence') {
+            var _lang = (function () { try { return (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('tem_lang')) || 'ko'; } catch (_) { return 'ko'; } })();
+            var _fb = (typeof window !== 'undefined' && window.NarrativeFallback && window.NarrativeFallback.pickFallbackString) ? window.NarrativeFallback.pickFallbackString('vague', _lang) : '';
+            if (_fb) { _driftUtter = _fb; _runDriftPick = { _memoryId: memoryId, utterance: _fb, ghost_variant_id: null }; }
+            console.log('[V2-6] fallback narrative_silence');
+          }
+        }
+      } catch (errPick) { console.warn('[V2-6] drift pick 예외', errPick); }
+      if (_driftUtter) {
+        resonancePool = [_driftUtter].concat(resonancePool.filter(function (u) { return u !== _driftUtter; }));
+      }
+
       // 항상 3결 다 박음. 빈 결은 디폴트 fallback (메모리 간 stale 방지).
       var dflt = _originalGhostDefaults || {};
       ghosts.setOptions({

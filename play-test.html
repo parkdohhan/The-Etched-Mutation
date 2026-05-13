@@ -508,13 +508,17 @@
   <script type="module">
   /* ========== PLAY-TEST BUNDLE ========== */
   import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/lib/config.js';
-  import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch, createEmptyState } from './js/core/ContaminationTracker.js';
+  import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch, createEmptyState, computeDriftVector } from './js/core/ContaminationTracker.js';
   import { getMonologue } from './js/ui/contaminationMonologue.js';
   import { emotionVectorToWaveStyle as sharedEmotionVectorToWaveStyle } from './js/shared/math.js';
   import { GHOST_PRESETS } from './js/shared/ghost_presets.js';
+  // V2-6 drift 픽 — DriftPicker 는 self-attach (window.DriftPicker), 폴백 문구는 여기서 노출 (dialog_phase1.js non-module 이 사용)
+  import './js/core/DriftPicker.js';
+  import { pickFallbackString as _pickFallbackStringV26 } from './js/content/narrative_fallback_strings.js';
   // Non-module 스크립트(fpAmbientWave 등)에서 접근 가능하게 전역 노출
   window.sharedEmotionVectorToWaveStyle = sharedEmotionVectorToWaveStyle;
   window.GHOST_PRESETS = GHOST_PRESETS;
+  window.NarrativeFallback = { pickFallbackString: _pickFallbackStringV26 };
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   // strataView.js가 Supabase client를 찾을 수 있도록 HUB 쪽 API를 흉내낸다.
   window.getSupabaseClient = function () { return sb; };
@@ -1671,6 +1675,8 @@
   const ENABLED_LAYERS = ['surface', 'near', 'mid', 'deep', 'bedrock'];
   const game = window._temGame = {
     memoryId: null,
+    _runStartTime: new Date().toISOString(),   // V2-6: 회차 시작 시각 — 회차 끝 plays 도장 UPDATE 범위
+    driftStamp: null,                          // V2-6: { ghost_variant_id, picked_at } — dialog_phase1 회차 시작 픽이 박음
     memories: [],
     scenes: [],
     plays: [],
@@ -3805,6 +3811,7 @@
       wave_data: null,
       layer_id: 0,
       user_id: userId,
+      ghost_variant_id: (game.driftStamp && game.driftStamp.ghost_variant_id) || null,  // V2-6: 회차 시작 drift 픽 변주 (final_drift_vector 는 회차 끝 sealBtn 에서 UPDATE)
     };
     const { error } = await sb.from('plays').insert(row);
     if (error) LOG('plays insert error', error);
@@ -4368,6 +4375,32 @@
         '| dir:', game.contPresentation.dominant_emotion_label,
         '| vad:', game.contState.drift_dir_v.toFixed(2), game.contState.drift_dir_a.toFixed(2), game.contState.drift_dir_d.toFixed(2));
     }
+
+    // === V2-6: drift 픽 도장 + cumulative EMA 갱신 (회차 끝) ===
+    try {
+      const _traces = game.traces || [];
+      const _baselineVec = (_traces[0] && _traces[0].userEmotion) || {};
+      const _endVec = (_traces.length && _traces[_traces.length - 1].userEmotion) || _baselineVec;
+      const _driftVector = computeDriftVector(_endVec, _baselineVec);
+      const _gvId = (game.driftStamp && game.driftStamp.ghost_variant_id) || null;
+      if (game.memoryId) {
+        // 이번 회차 plays row 전부에 도장 (회차 시작 변주 + 회차 변위)
+        sb.from('plays').update({ ghost_variant_id: _gvId, final_drift_vector: _driftVector })
+          .eq('memory_id', game.memoryId).gte('created_at', game._runStartTime)
+          .then(r => { if (r && r.error) LOG('V2-6 drift stamp update error', r.error); });
+        // cumulative_emotion_vec EMA 갱신 (Edge function — RLS 우회, anon 호출)
+        if (_endVec && Object.keys(_endVec).length) {
+          sb.functions.invoke('record-drift-cumulative', { body: { memoryId: game.memoryId, sessionEmotionVec: _endVec } })
+            .then(r => LOG('V2-6 record-drift-cumulative', r && r.data))
+            .catch(e => LOG('V2-6 record-drift-cumulative fail', e));
+        }
+      }
+      try {
+        sessionStorage.setItem('tem_final_drift_vector', JSON.stringify(_driftVector));
+        sessionStorage.setItem('tem_last_variant_id', _gvId || '');
+      } catch (_) {}
+      LOG('V2-6 drift stamp:', { ghost_variant_id: _gvId, drift: _driftVector });
+    } catch (e) { LOG('V2-6 drift stamp exception', e); }
 
     initAudio();
     fadeOut(SFX.ambient, 1500, true);
