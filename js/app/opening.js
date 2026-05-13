@@ -935,6 +935,111 @@ function handleOpeningKeydown(e) { if (!openingSkipped) { const tag = (e.target 
 
 function finishOpeningSequence() { const openingScreen = document.getElementById('openingScreen'); const introScreen = document.getElementById('introScreen'); if (openingScreen) { openingScreen.removeEventListener('click', skipOpening); openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important'; openingScreen.classList.add('hidden') } document.removeEventListener('keydown', handleOpeningKeydown); if (introScreen) { introScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important'; introScreen.classList.add('visible'); introScreen.classList.remove('hidden') } playNpcIntro() }
 
+// V2-13 (γ-full, 5-13): PLAY 재진입 화면 전용 — 멘트 위쪽에 옛 finder식 진한 호박색 7겹 합성파.
+// 오프닝 기본 wave (openingWaveCanvas) 는 transform scale(5,1) 푸른 톤이라 viewport 에선 캔버스 가운데
+// 1/10 만 보여 거의 안 보임. PLAY 재진입엔 그 위에 작은 영역(높이 ~150px) 진한 합성파를 박음.
+// waves 배열·tick 로직은 archive.js _mountFinderThread 와 동일 — 톤 바꾸려면 두 자리 동기화.
+let _openingWarmThreadCanvas = null;
+function _mountOpeningWarmThread() {
+    if (_openingWarmThreadCanvas) {
+        if (_openingWarmThreadCanvas._cleanup) _openingWarmThreadCanvas._cleanup();
+        if (_openingWarmThreadCanvas.parentNode) _openingWarmThreadCanvas.remove();
+        _openingWarmThreadCanvas = null;
+    }
+    const openingScreen = document.getElementById('openingScreen');
+    if (!openingScreen) return null;
+
+    if (!document.getElementById('openingWarmThreadStyle')) {
+        const st = document.createElement('style');
+        st.id = 'openingWarmThreadStyle';
+        st.textContent = `
+          #openingWarmThreadCanvas {
+            position:absolute;
+            left:50%;
+            top:38%;
+            transform:translate(-50%, -50%);
+            width:min(820px, 88vw);
+            height:150px;
+            opacity:0;
+            transition:opacity 1.8s ease;
+            pointer-events:none;
+            z-index:3;
+          }
+        `;
+        document.head.appendChild(st);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.id = 'openingWarmThreadCanvas';
+    canvas.setAttribute('aria-hidden', 'true');
+    openingScreen.appendChild(canvas);
+
+    const DPR = window.devicePixelRatio || 1;
+    let width = 0, height = 0;
+    const ctx = canvas.getContext('2d');
+    function sizeCanvas() {
+        const w = canvas.offsetWidth || 600;
+        const h = canvas.offsetHeight || 150;
+        canvas.width = Math.round(w * DPR);
+        canvas.height = Math.round(h * DPR);
+        width = w; height = h;
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    sizeCanvas();
+
+    const maxAmp = height * 0.36;
+    const waves = [
+        { color: 'rgba(150,140,120,', baseOpacity: 0.09, speed: 0.010, amplitude: Math.min(54, maxAmp),        phase: 0.0, freq: 0.019, noiseScale: 0.8 },
+        { color: 'rgba(170,155,128,', baseOpacity: 0.13, speed: 0.014, amplitude: Math.min(46, maxAmp * 0.9),  phase: 0.8, freq: 0.024, noiseScale: 0.7 },
+        { color: 'rgba(185,168,138,', baseOpacity: 0.18, speed: 0.018, amplitude: Math.min(40, maxAmp * 0.82), phase: 1.5, freq: 0.029, noiseScale: 0.6 },
+        { color: 'rgba(200,180,150,', baseOpacity: 0.23, speed: 0.022, amplitude: Math.min(34, maxAmp * 0.72), phase: 2.3, freq: 0.034, noiseScale: 0.5 },
+        { color: 'rgba(215,192,158,', baseOpacity: 0.30, speed: 0.026, amplitude: Math.min(28, maxAmp * 0.6),  phase: 3.1, freq: 0.040, noiseScale: 0.4 },
+        { color: 'rgba(225,202,168,', baseOpacity: 0.38, speed: 0.030, amplitude: Math.min(22, maxAmp * 0.5),  phase: 3.9, freq: 0.045, noiseScale: 0.32 },
+        { color: 'rgba(240,218,180,', baseOpacity: 0.48, speed: 0.034, amplitude: Math.min(16, maxAmp * 0.4),  phase: 4.7, freq: 0.050, noiseScale: 0.25 },
+    ];
+
+    let t = 0;
+    let rafId = 0;
+    function tick() {
+        ctx.clearRect(0, 0, width, height);
+        const cy = height / 2;
+        for (let wi = 0; wi < waves.length; wi++) {
+            const w = waves[wi];
+            ctx.beginPath();
+            ctx.lineWidth = 1.1;
+            for (let x = 0; x < width; x++) {
+                const baseY = cy
+                    + Math.sin(x * w.freq + t * w.speed + w.phase) * w.amplitude
+                    + Math.sin(x * w.freq * 0.5 + t * w.speed * 0.6 + w.phase * 1.4) * (w.amplitude * 0.4)
+                    + Math.sin(x * w.freq * 2.3 + t * w.speed * 1.3) * (w.amplitude * 0.15)
+                    + Math.sin(x * w.freq * 0.3 + t * w.speed * 0.4 + w.phase * 2.1) * (w.amplitude * 0.25)
+                    + Math.sin(x * w.freq * 3.7 + t * w.speed * 1.8 + w.phase * 0.7) * (w.amplitude * 0.1);
+                const noise = Math.sin(x * 0.003 + t * 0.02) * Math.cos(x * 0.007 + t * 0.015) * w.noiseScale;
+                const y = baseY + w.amplitude * noise * 0.4;
+                const clamped = Math.max(2, Math.min(height - 2, y));
+                if (x === 0) ctx.moveTo(x, clamped);
+                else ctx.lineTo(x, clamped);
+            }
+            ctx.strokeStyle = w.color + w.baseOpacity + ')';
+            ctx.stroke();
+        }
+        t += 0.5;
+        rafId = requestAnimationFrame(tick);
+    }
+    tick();
+
+    const onResize = () => { sizeCanvas(); };
+    window.addEventListener('resize', onResize);
+    canvas._cleanup = () => {
+        if (rafId) cancelAnimationFrame(rafId);
+        window.removeEventListener('resize', onResize);
+    };
+
+    requestAnimationFrame(() => { canvas.style.opacity = '1'; });
+    _openingWarmThreadCanvas = canvas;
+    return canvas;
+}
+
 // V2-13 (γ-full, 5-11): 메뉴 → "다른 기억을 찾아서" 진입 자리.
 // archive.js _initMemoryFinder (두 줄 멘트 + 6개 도어 늘어선 결과) 폐기 →
 // 오프닝 흐름 그대로 재호출 (한 줄 replayIntro + 멀티턴 인터뷰 + ASCII 도어 한 짝 → play-test 점프).
@@ -984,8 +1089,9 @@ async function enterPlayReplaySequence() {
         finderInput.onkeydown = null;
     }
 
-    // 5) wave canvas 재가동 (첫 오프닝에서 cancelAnimationFrame 박혔을 수 있음)
-    openingSkipped = false;
+    // 5) wave 자리 — PLAY 재진입은 멘트 위쪽에 옛 finder식 진한 호박색 7겹 합성파를 박음.
+    //    오프닝 기본 wave (openingWaveCanvas, scale(5,1) 푸른 톤) 는 화면에서 거의 안 보임 → 숨김 + RAF 정지.
+    openingSkipped = true;
     if (openingWaveAnimationId) {
         cancelAnimationFrame(openingWaveAnimationId);
         openingWaveAnimationId = null;
@@ -994,12 +1100,10 @@ async function enterPlayReplaySequence() {
     _openingWaveDesat = 0;
     const waveContainer = document.getElementById('openingWaveContainer');
     if (waveContainer) {
-        waveContainer.style.transform = 'scale(5, 1)';
-        waveContainer.style.opacity = '1';
-        waveContainer.classList.add('visible');
+        waveContainer.style.opacity = '0';
+        waveContainer.style.display = 'none';
     }
-    const canvas = document.getElementById('openingWaveCanvas');
-    if (canvas) startOpeningWaveAnimation(canvas);
+    _mountOpeningWarmThread();
 
     // 6) 현재 언어 박음
     let curLang = 'en';
