@@ -261,15 +261,15 @@ describe('pickNextQuestion', () => {
   });
 
   it('lang 미지정 → en', () => {
-    const fp = initFingerprint();
-    expect(pickNextQuestion(fp, 'ja')).toBe(QUESTION_BANK.en.modality);
-    expect(pickNextQuestion(fp, undefined)).toBe(QUESTION_BANK.en.modality);
+    // pickNextQuestion 은 fp._askedSlots 를 mutate (한 번 물은 슬롯 skip — 무한 반복 방지).
+    // 따라서 각 호출은 새 fp 로 — 같은 fp 재사용 시 두 번째 호출은 다음 슬롯(role)을 픽함.
+    expect(pickNextQuestion(initFingerprint(), 'ja')).toBe(QUESTION_BANK.en.modality);
+    expect(pickNextQuestion(initFingerprint(), undefined)).toBe(QUESTION_BANK.en.modality);
   });
 
   it('ko / en 분기 정확', () => {
-    const fp = initFingerprint();
-    expect(pickNextQuestion(fp, 'ko')).toBe(QUESTION_BANK.ko.modality);
-    expect(pickNextQuestion(fp, 'en')).toBe(QUESTION_BANK.en.modality);
+    expect(pickNextQuestion(initFingerprint(), 'ko')).toBe(QUESTION_BANK.ko.modality);
+    expect(pickNextQuestion(initFingerprint(), 'en')).toBe(QUESTION_BANK.en.modality);
     expect(QUESTION_BANK.ko.modality).not.toBe(QUESTION_BANK.en.modality);
   });
 });
