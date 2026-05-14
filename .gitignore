@@ -30,3 +30,6 @@ test/screenshots/
 # 임시 diff/메모 파일
 tmp_*.txt
 tmp_*.md
+
+# Playwright MCP 콘솔 캐시
+.playwright-mcp/
