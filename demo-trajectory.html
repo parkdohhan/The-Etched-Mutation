@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEM · Trajectory Demo</title>
+    <link rel="icon" href="data:,">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            background: #07070b;
+            color: #e0d8c4;
+            font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* 상단 컨트롤 바 */
+        .demo-header {
+            position: fixed; top: 0; left: 0; right: 0;
+            height: 56px;
+            background: rgba(10, 10, 15, 0.85);
+            border-bottom: 1px solid rgba(196, 168, 130, 0.15);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center;
+            padding: 0 20px;
+            gap: 16px;
+            z-index: 100;
+        }
+        .demo-header .brand {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.1rem;
+            color: #c4a882;
+            letter-spacing: 0.04em;
+            font-style: italic;
+            min-width: 220px;
+        }
+        .demo-header .brand small {
+            color: #7c7466;
+            font-size: 0.7rem;
+            font-style: normal;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-left: 8px;
+        }
+        .demo-header .ctrl {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .demo-header label {
+            font-size: 0.7rem;
+            color: #7c7466;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        select, button {
+            background: rgba(20, 20, 28, 0.9);
+            border: 1px solid rgba(196, 168, 130, 0.25);
+            color: #e0d8c4;
+            font-family: inherit;
+            font-size: 0.8rem;
+            padding: 6px 10px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        select:hover, button:hover {
+            border-color: rgba(196, 168, 130, 0.5);
+            background: rgba(30, 30, 38, 0.9);
+        }
+        button.is-active {
+            background: rgba(196, 168, 130, 0.18);
+            border-color: #c4a882;
+            color: #f0e8d4;
+        }
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* 메인 무대 */
+        .demo-stage {
+            position: absolute;
+            top: 56px; left: 0; right: 0; bottom: 0;
+            background: #07070b;
+        }
+        #stageSvg {
+            width: 100%; height: 100%;
+            display: block;
+        }
+
+        /* 패턴 라벨 오버레이 (중앙 상단 큰 글씨) */
+        .pattern-overlay {
+            position: absolute;
+            top: 80px; left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 50;
+        }
+        .pattern-overlay .label {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.4rem;
+            font-style: italic;
+            letter-spacing: 0.04em;
+            color: #c4a882;
+            text-shadow: 0 0 24px rgba(196, 168, 130, 0.3);
+        }
+        .pattern-overlay .desc {
+            font-family: 'Noto Serif KR', serif;
+            font-size: 0.85rem;
+            color: #a09886;
+            margin-top: 6px;
+            letter-spacing: 0.05em;
+            max-width: 480px;
+        }
+        .pattern-overlay .pair {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1rem;
+            color: #6aa383;
+            margin-top: 4px;
+            letter-spacing: 0.05em;
+            font-style: italic;
+        }
+
+        /* 시뮬 readout (좌하단) */
+        .demo-readout {
+            position: absolute;
+            bottom: 24px; left: 24px;
+            background: rgba(10, 10, 15, 0.85);
+            border: 1px solid rgba(196, 168, 130, 0.18);
+            backdrop-filter: blur(8px);
+            padding: 14px 18px;
+            border-radius: 4px;
+            min-width: 280px;
+            max-width: 340px;
+            z-index: 50;
+            font-size: 0.75rem;
+            line-height: 1.7;
+        }
+        .demo-readout .runner-row {
+            border-left: 3px solid #c4a882;
+            padding: 4px 0 4px 10px;
+            margin-bottom: 8px;
+        }
+        .demo-readout .runner-row.b { border-left-color: #6aa383; }
+        .demo-readout .runner-label {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 0.95rem;
+            color: #c4a882;
+            margin-bottom: 2px;
+            font-style: italic;
+        }
+        .demo-readout .runner-row.b .runner-label { color: #6aa383; }
+        .demo-readout .stat-line {
+            color: #a09886;
+            font-size: 0.7rem;
+        }
+        .demo-readout .stat-line b { color: #e0d8c4; }
+
+        /* 범례 (우하단) */
+        .demo-legend {
+            position: absolute;
+            bottom: 24px; right: 24px;
+            background: rgba(10, 10, 15, 0.85);
+            border: 1px solid rgba(196, 168, 130, 0.18);
+            backdrop-filter: blur(8px);
+            padding: 10px 14px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            z-index: 50;
+        }
+        .demo-legend .leg-title {
+            font-size: 0.62rem;
+            color: #7c7466;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 6px;
+        }
+        .demo-legend .leg-row {
+            color: #c0b8a4;
+            line-height: 1.7;
+        }
+        .demo-legend .swatch {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        /* 빈 상태 */
+        .demo-empty {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #7c7466;
+            font-size: 0.9rem;
+            text-align: center;
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            letter-spacing: 0.05em;
+        }
+        .demo-empty .hint {
+            color: #5c544a;
+            font-size: 0.75rem;
+            margin-top: 12px;
+            font-style: normal;
+            letter-spacing: 0.08em;
+        }
+
+        /* 축 라벨 */
+        .axis-label {
+            fill: #4a4a52;
+            font-size: 10px;
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            letter-spacing: 0.08em;
+        }
+
+        /* 토스트 */
+        .demo-toast {
+            position: absolute;
+            top: 70px; right: 24px;
+            background: rgba(196, 168, 130, 0.92);
+            color: #1a1a20;
+            padding: 8px 14px;
+            border-radius: 3px;
+            font-size: 0.78rem;
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .demo-toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+    <header class="demo-header">
+        <div class="brand">
+            The Etched Mutation
+            <small>trajectory demo</small>
+        </div>
+
+        <div class="ctrl">
+            <label>메모리</label>
+            <select id="memorySelect">
+                <option value="">— 로딩 중 —</option>
+            </select>
+        </div>
+
+        <div class="ctrl">
+            <label>관객 A</label>
+            <select id="presetA">
+                <option value="echo_seeker">공명 추구</option>
+                <option value="grief">애도</option>
+                <option value="anger_avoid">분노 회피</option>
+                <option value="numb">무감</option>
+                <option value="guilt">죄책</option>
+                <option value="joyful">치유 지향</option>
+            </select>
+        </div>
+
+        <div class="ctrl">
+            <label>관객 B</label>
+            <select id="presetB">
+                <option value="grief">애도</option>
+                <option value="echo_seeker">공명 추구</option>
+                <option value="anger_avoid">분노 회피</option>
+                <option value="numb">무감</option>
+                <option value="guilt">죄책</option>
+                <option value="joyful">치유 지향</option>
+            </select>
+        </div>
+
+        <div class="ctrl" style="margin-left:auto;gap:6px;">
+            <button id="btnReset" title="처음부터">⟲ 처음</button>
+            <button id="btnStep" title="다음 step (수동)">▶ step</button>
+            <button id="btnAutoPlay" title="자동 재생 토글">▶▶ 자동 재생</button>
+            <select id="autoSpeed" title="자동 재생 간격">
+                <option value="2500">2.5s</option>
+                <option value="1800" selected>1.8s</option>
+                <option value="1200">1.2s</option>
+                <option value="800">0.8s</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="demo-stage">
+        <svg id="stageSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+        <div class="pattern-overlay" id="patternOverlay" style="display:none;">
+            <div class="label" id="patternLabel">—</div>
+            <div class="desc" id="patternDesc"></div>
+            <div class="pair" id="patternPair"></div>
+        </div>
+
+        <div class="demo-readout" id="demoReadout" style="display:none;">
+            <div class="runner-row" id="rowA">
+                <div class="runner-label">A · <span id="aPresetLabel">—</span></div>
+                <div class="stat-line" id="aStatLine">대기 중</div>
+            </div>
+            <div class="runner-row b" id="rowB">
+                <div class="runner-label">B · <span id="bPresetLabel">—</span></div>
+                <div class="stat-line" id="bStatLine">대기 중</div>
+            </div>
+        </div>
+
+        <div class="demo-legend">
+            <div class="leg-title">transition pattern</div>
+            <div class="leg-row"><span class="swatch" style="background:#c4a882"></span>echo_follow · 원본 따라감</div>
+            <div class="leg-row"><span class="swatch" style="background:#6aa383"></span>bridge · 균형</div>
+            <div class="leg-row"><span class="swatch" style="background:#a88aa3"></span>displacement · 귀인 이동</div>
+            <div class="leg-row"><span class="swatch" style="background:#c97a6a"></span>contradiction · 정반대</div>
+            <div class="leg-row"><span class="swatch" style="background:#7c7466"></span>avoidance · 회피</div>
+            <div class="leg-row"><span class="swatch" style="background:#9d8a4a"></span>fixation · 고착</div>
+        </div>
+
+        <div class="demo-empty" id="demoEmpty">
+            메모리를 선택하세요
+            <div class="hint">감정 좌표 평면 위에서 두 관객의 궤적이 어떻게 갈라지는지 보이는 화면</div>
+        </div>
+
+        <div class="demo-toast" id="demoToast"></div>
+    </main>
+
+    <script type="module" src="js/demo/trajectory-demo.js"></script>
+</body>
+</html>
