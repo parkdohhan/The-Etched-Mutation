@@ -17,6 +17,7 @@ const STYLE_ID = 'firstPlayScenificationStyle';
 
 let _animId = null;
 let _t = 0;
+let _audioRef = null;  // 현재 재생 중인 더빙 오디오 (cleanup용)
 
 function _injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -71,13 +72,30 @@ function _injectStyles() {
     padding: 0.9em 2.4em;
     font-size: 0.9rem; letter-spacing: 0.25em;
     cursor: pointer;
-    transition: all 0.4s ease;
+    transition: opacity 1.2s ease, border-color 0.4s ease, background 0.4s ease;
     text-transform: uppercase;
     font-family: inherit;
+    opacity: 1;
 }
 #${CONTAINER_ID} .fps-cta:hover {
     border-color: rgba(216, 216, 224, 0.9);
     background: rgba(216, 216, 224, 0.05);
+}
+#${CONTAINER_ID} .fps-cta.fps-cta-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+#${CONTAINER_ID} .fps-loading {
+    font-size: 1.4rem;
+    letter-spacing: 0.6em;
+    opacity: 0.45;
+    margin-bottom: 0;
+    transition: opacity 0.8s ease;
+    animation: fps-loading-pulse 1.6s ease-in-out infinite;
+}
+@keyframes fps-loading-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.65; }
 }
 #${CONTAINER_ID} .fps-name-prompt {
     display: flex; flex-direction: column; align-items: center;
@@ -184,6 +202,10 @@ function _startAnim(canvases) {
 
 function _removeContainer() {
     _stopAnim();
+    if (_audioRef) {
+        try { _audioRef.pause(); _audioRef.src = ''; } catch (e) { /* noop */ }
+        _audioRef = null;
+    }
     const el = document.getElementById(CONTAINER_ID);
     if (el) el.remove();
 }
@@ -196,6 +218,8 @@ function _removeContainer() {
  * @param {number} [args.alignment]
  * @param {string} [args.bucket]
  * @param {string} [args.transitionPattern]
+ * @param {Promise<{audioUrl: string, narrationText: string} | null>} [args.narrationPromise]
+ *        Optional. 있으면 음성 끝날 때까지 Continue 버튼 숨김. 없거나 null 응답이면 즉시 Continue 보임.
  * @param {() => void} [args.onContinue]   Called after nickname submit + save.
  */
 export async function showFirstPlayScenification(args) {
@@ -209,6 +233,7 @@ export async function showFirstPlayScenification(args) {
         alignment,
         bucket,
         transitionPattern,
+        narrationPromise,
         onContinue,
     } = args;
 
@@ -226,11 +251,18 @@ export async function showFirstPlayScenification(args) {
         </div>
     `).join('');
 
+    // narrationPromise 있으면 Continue 버튼 초기 숨김 + 로딩 dots 표시.
+    // 없으면 기존 동작(즉시 Continue 보임) 그대로.
+    const hasNarration = !!narrationPromise;
+    const ctaClass = hasNarration ? 'fps-cta fps-cta-hidden' : 'fps-cta';
+    const loadingHtml = hasNarration ? '<div class="fps-loading">···</div>' : '';
+
     container.innerHTML = `
         <div class="fps-title">your engraving</div>
         <div class="fps-sentence">${sentenceText.replace(/</g, '&lt;')}</div>
         <div class="fps-waves">${wavesHtml}</div>
-        <button class="fps-cta" data-fps-action="continue">Continue</button>
+        ${loadingHtml}
+        <button class="${ctaClass}" data-fps-action="continue">Continue</button>
     `;
     document.body.appendChild(container);
     requestAnimationFrame(() => container.classList.add('visible'));
@@ -240,6 +272,48 @@ export async function showFirstPlayScenification(args) {
         waveStyle: s.userEmotion ? emotionVectorToWaveStyle(s.userEmotion) : null,
     }));
     setTimeout(() => _startAnim(canvasItems), 250);
+
+    // ── 더빙 음성 처리 ───────────────────────────────────────────
+    if (hasNarration) {
+        const revealContinue = () => {
+            const loadingEl = container.querySelector('.fps-loading');
+            if (loadingEl) {
+                loadingEl.style.opacity = '0';
+                setTimeout(() => loadingEl.remove(), 800);
+            }
+            const ctaEl = container.querySelector('.fps-cta');
+            if (ctaEl) ctaEl.classList.remove('fps-cta-hidden');
+        };
+
+        narrationPromise.then((result) => {
+            if (!result || !result.audioUrl) {
+                console.log('[firstPlayScenification] 더빙 없음 (실패 또는 비활성) — Continue 즉시 활성');
+                revealContinue();
+                return;
+            }
+            const audio = new Audio(result.audioUrl);
+            audio.volume = 0.95;
+            audio.preload = 'auto';
+            _audioRef = audio;
+
+            const onEndedOrError = () => {
+                audio.removeEventListener('ended', onEndedOrError);
+                audio.removeEventListener('error', onEndedOrError);
+                revealContinue();
+            };
+            audio.addEventListener('ended', onEndedOrError);
+            audio.addEventListener('error', onEndedOrError);
+
+            audio.play().catch((e) => {
+                console.warn('[firstPlayScenification] audio.play() 실패:', e?.message || e);
+                // 브라우저 자동재생 차단 등 — Continue 즉시 활성해서 흐름 안 끊김
+                revealContinue();
+            });
+        }).catch((e) => {
+            console.warn('[firstPlayScenification] narrationPromise 거부:', e?.message || e);
+            revealContinue();
+        });
+    }
 
     function showNamePrompt() {
         const wavesEl = container.querySelector('.fps-waves');

@@ -138,6 +138,18 @@ async function _maybeHandoffToReentryFlow(state, alignmentResult) {
     };
 
     if (!hasFirstPlayData(snapshot.memoryId)) {
+        // 백그라운드로 더빙 음성 생성 시작 (await 안 함 — 사용자가 화면 진입하는 동안 병렬 진행).
+        // 실패해도 firstPlayScenification은 음성 없이 정상 동작 (graceful degradation).
+        const { generateLumenNarration } = await import('./lumenNarration.js');
+        const narrationPromise = generateLumenNarration({
+            memoryId: snapshot.memoryId,
+            completedSentence: snapshot.completedSentence,
+            scenes: snapshot.scenes,
+            alignment,
+            bucket,
+            transitionPattern,
+        });
+
         const { showFirstPlayScenification } = await import('./firstPlayScenification.js');
         await showFirstPlayScenification({
             memoryId: snapshot.memoryId,
@@ -146,6 +158,7 @@ async function _maybeHandoffToReentryFlow(state, alignmentResult) {
             alignment,
             bucket,
             transitionPattern,
+            narrationPromise,
             onContinue: () => { goHome(); },
         });
         return true;
