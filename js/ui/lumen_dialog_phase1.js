@@ -593,6 +593,13 @@
   // 실패해도 사용자 체감엔 영향 X. parent_variant_id = 본 유령 id (호출자가 anchorVariantId 로 넘김).
   async function _backgroundInsertAbsorbed(supabase, payload) {
     if (!supabase || !payload || !payload.memoryId || !payload.utterance) return;
+    // V2.1.2 (β) cap 도달 또는 일시 에러 캐시 — 같은 세션 안에서 재시도 X (콘솔 빨간 줄 회피).
+    // sessionStorage 라 회차 끝나면 자동 비워짐 → 새 회차에 다시 시도 가능 (혹시 admin 에서 풀 비웠을 수도).
+    // insert-ghost-variant 가 ABSORB_DRIFT_CAP=50 도달 시 429 반환 (의도된 가드, rate limit 아님).
+    var capKey = 'tem_absorb_cap_reached:' + payload.memoryId;
+    try {
+      if (sessionStorage.getItem(capKey) === '1') return null;
+    } catch (_) {}
     try {
       // 1) emotion_extract — 다음 플레이어 픽에 사용. 실패해도 insert 진행 (emotion_vec={}).
       // claude-scene/index.ts emotion_extract 응답 = { base: {12축}, prompt_version, ... }
@@ -630,7 +637,11 @@
         },
       });
       if (insertResp.error) {
-        console.warn('[ldp absorb] insert-ghost-variant failed', insertResp.error);
+        // 429 cap 도달 또는 일시 에러 — 캐시해서 같은 세션 안 재시도 X. info 톤 (빨간 줄 X).
+        var status = null;
+        try { status = insertResp.error.context && insertResp.error.context.status; } catch (_) {}
+        try { sessionStorage.setItem(capKey, '1'); } catch (_) {}
+        console.info('[ldp absorb] insert skipped (status=' + (status || '?') + ') — cached for session, won\'t retry this memory');
         return null;
       }
       var newId = insertResp.data && insertResp.data.variant && insertResp.data.variant.id;
