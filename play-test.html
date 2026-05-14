@@ -4577,11 +4577,29 @@
               };
               const hasFirst = !!localStorage.getItem('tem_first_play:' + memoryId);
               if (!hasFirst) {
+                // 백그라운드 더빙 생성 시작 (await 안 함 — 화면 진입과 병렬).
+                // 실패해도 firstPlayScenification은 음성 없이 정상 동작 (graceful degradation).
+                let narrationPromise = null;
+                try {
+                  const lumenMod = await import('./js/app/lumenNarration.js');
+                  narrationPromise = lumenMod.generateLumenNarration({
+                    memoryId,
+                    completedSentence,
+                    scenes,
+                    alignment: (_g && _g.alignmentResult && _g.alignmentResult.averageAlignment) || null,
+                    bucket: (_g && _g.currentBucket) || null,
+                    transitionPattern: (_g && _g.currentTransitionPattern) || null,
+                  });
+                } catch (e) {
+                  console.warn('[V2-13] lumen narration start failed:', e);
+                }
+
                 const mod = await import('./js/app/firstPlayScenification.js');
                 await mod.showFirstPlayScenification({
                   memoryId,
                   completedSentence,
                   scenes,
+                  narrationPromise,
                   onContinue: _toMenu,
                 });
                 _v213Handed = true;
