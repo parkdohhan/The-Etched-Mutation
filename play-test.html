@@ -6056,7 +6056,10 @@
     var _miniCtx = null;
     var _miniContourImg = null; // cached contour background
     var MINI_SIZE = 260;
-    var SZ_TERRAIN = 46; // must match terrain SZ
+    // 2026-05-15: 46 → 112. tem_af_strata_terrain.js 의 PlaneGeometry SZ 와 일치해야
+    //   미니맵이 지형 외곽까지 담음. 46 이었을 때 월드 ±23 바깥 영역(전체의 ~58%)이
+    //   가장자리에 짓눌려 잘려보였음.
+    var SZ_TERRAIN = 112; // must match terrain SZ
 
     // 작업 11: Lumen 유령 점·출구 고정 표시
     var _fpGhostPoints = [];       // [{x, z, pollution_threshold}]
