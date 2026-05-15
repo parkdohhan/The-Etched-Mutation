@@ -143,7 +143,7 @@ const V2_DIALOGUES = {
   ko: {
     intro: ['어떤 기억을 찾고있어?'],
     namePrompt: '너가 찾는 기억은 누구의 것이지?',
-    namePlaceholder: '...이름을 박아',
+    namePlaceholder: '...이름 하나',
     replayIntro: '...다른 걸 찾고있어?',
     transition: '...저기로 가봐.',
     placeholder: '단어 하나, 감정 하나...',
@@ -351,11 +351,13 @@ async function _runV2Sequence() {
   await _fadeOutDialogue(dialogue, 1100);
   await new Promise(r => setTimeout(r, 900)); // 정적 여백
 
-  // V2-13 (γ-full): 첫 사용자 = 닉네임 박음 + 인트로. 두 번째 사용자 = 짧은 인사 박음.
+  // Returning user gets the same intro prompt as first-time — V2-13's separate
+  // replayIntro branch retired (sound-first pivot, 2026-05-15). Nickname prompt
+  // still gated on fresh users only.
   const isReturning = !!getUserName();
   if (isReturning) {
-    await _typeLinesSequential(dialogue, [D.replayIntro]);
-    await new Promise(r => setTimeout(r, 1500));
+    await _typeLinesSequential(dialogue, D.intro);
+    await new Promise(r => setTimeout(r, 1200));
   } else {
     await _promptNickname(dialogue, D);
     await new Promise(r => setTimeout(r, 600));
@@ -1060,7 +1062,7 @@ async function enterPlayReplaySequence() {
     if (openingScreen) {
         openingScreen.classList.remove('hidden');
         openingScreen.classList.add('visible');
-        openingScreen.style.cssText = 'display:block !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2500 !important;';
+        openingScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2500 !important;';
     }
 
     // 3) langGate 자리 숨김 (이미 언어 박혀 있는 사용자)
@@ -1089,21 +1091,43 @@ async function enterPlayReplaySequence() {
         finderInput.onkeydown = null;
     }
 
-    // 5) wave 자리 — PLAY 재진입은 멘트 위쪽에 옛 finder식 진한 호박색 7겹 합성파를 박음.
-    //    오프닝 기본 wave (openingWaveCanvas, scale(5,1) 푸른 톤) 는 화면에서 거의 안 보임 → 숨김 + RAF 정지.
-    openingSkipped = true;
-    if (openingWaveAnimationId) {
-        cancelAnimationFrame(openingWaveAnimationId);
-        openingWaveAnimationId = null;
-    }
+    // 5) wave — sound-first pivot: keep first-entry visual (default white wave).
+    //    V2-13's warm amber thread + container hide retired so menu re-entry matches the opening tone.
+    //    Mirror startOpeningSequence's wave setup (transform scale + visible class) so the
+    //    container fills the viewport, and clear openingSkipped so the RAF loop can run.
+    openingSkipped = false;
     _openingWaveSpeedMul = 1;
     _openingWaveDesat = 0;
     const waveContainer = document.getElementById('openingWaveContainer');
     if (waveContainer) {
-        waveContainer.style.opacity = '0';
-        waveContainer.style.display = 'none';
+        waveContainer.style.display = '';
+        waveContainer.style.transform = 'scale(5, 1)';
+        waveContainer.style.opacity = '1';
+        waveContainer.classList.add('visible');
     }
-    _mountOpeningWarmThread();
+    // Wait two animation frames so layout/reflow settles after openingScreen + waveContainer
+    // were just re-shown — otherwise canvas.offsetWidth reads 0 and the wave canvas ends up
+    // sized 0×0 (one rAF alone is sometimes not enough on Safari).
+    const waveCanvas = document.getElementById('openingWaveCanvas');
+    if (waveCanvas && typeof startOpeningWaveAnimation === 'function') {
+        if (openingWaveAnimationId) {
+            cancelAnimationFrame(openingWaveAnimationId);
+            openingWaveAnimationId = null;
+        }
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (waveCanvas.offsetWidth > 0 && waveCanvas.offsetHeight > 0) {
+                    startOpeningWaveAnimation(waveCanvas);
+                } else {
+                    console.warn('[opening] wave canvas still 0-sized after 2 rAFs', {
+                        offsetWidth: waveCanvas.offsetWidth,
+                        offsetHeight: waveCanvas.offsetHeight,
+                        containerDisplay: waveCanvas.parentElement && getComputedStyle(waveCanvas.parentElement).display,
+                    });
+                }
+            });
+        });
+    }
 
     // 6) 현재 언어 박음
     let curLang = 'en';

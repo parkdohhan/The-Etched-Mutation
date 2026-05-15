@@ -94,7 +94,9 @@
       ctx.textBaseline = 'middle';
       var cx = canvas.width / 2, cy = canvas.height / 2;
 
-      // Chromatic red/cyan afterimage
+      // Option B (sound-first pivot): main body intentionally removed.
+      // Only chromatic red/cyan afterimage remains as contour residue —
+      // form is no longer the evaluation surface; spatial audio carries the signal.
       ctx.save();
       ctx.filter = 'blur(5px)';
       ctx.globalCompositeOperation = 'screen';
@@ -102,14 +104,6 @@
       ctx.fillText(text, cx - 7, cy);
       ctx.fillStyle = 'rgba(70,220,255,0.72)';
       ctx.fillText(text, cx + 7, cy);
-      ctx.restore();
-
-      // Main body with soft violet-white glow
-      ctx.save();
-      ctx.shadowColor = 'rgba(232,216,252,0.55)';
-      ctx.shadowBlur = 14;
-      ctx.fillStyle = opts.colorCss;
-      ctx.fillText(text, cx, cy);
       ctx.restore();
 
       var tex = new THREE.CanvasTexture(canvas);
