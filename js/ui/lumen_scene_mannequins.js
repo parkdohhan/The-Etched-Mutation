@@ -30,7 +30,10 @@
     //   → 전체 마네킹 빌드 실패. 작가 손으로 mixamo 다운로드 박을 때까지 임시 fix:
     //   extras 비우고 ybot 내장 Take 001 (차분한 standing) 단독 사용.
     fbxClipUrls: [],
-    poseRandomize: true,
+    // 2026-05-15: 자세 다양화 끔 — extras 미박힘 상태에서 RNG 분기가 첫 클립을 못 잡거나
+    //   풀 length=1 분기로 빠질 때 자세가 깨진 채로 보였음. base FBX 첫 클립(Take 001 standing)
+    //   하나로 통일. extras 복구 시 true 로 되돌릴 것.
+    poseRandomize: false,
     // 2026-05-09: extras 비웠으므로 base 클립을 풀에 포함해야 자세 0개 회피.
     //   mixamo extras 박힘 자리 복구 시 true 로 되돌림.
     excludeBaseClips: false,
