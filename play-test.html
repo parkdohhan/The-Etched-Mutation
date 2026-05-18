@@ -509,6 +509,7 @@
   /* ========== PLAY-TEST BUNDLE ========== */
   import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/lib/config.js';
   import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch, createEmptyState, computeDriftVector } from './js/core/ContaminationTracker.js';
+  import { calculateStep as engineCalculateStep } from './js/core/ByeoriEngine.js';
   import { getMonologue } from './js/ui/contaminationMonologue.js';
   import { emotionVectorToWaveStyle as sharedEmotionVectorToWaveStyle } from './js/shared/math.js';
   import { GHOST_PRESETS } from './js/shared/ghost_presets.js';
@@ -2045,23 +2046,6 @@
     return 'MID';
   }
 
-  function getMismatchType(userVector, originalVector) {
-    if (!userVector || !originalVector) return null;
-    const userReason = userVector.reason_analysis || {};
-    const origReason = originalVector.reason_analysis || {};
-    if (!!userReason.is_void !== !!origReason.is_void) return 'void_mismatch';
-    if (userReason.attribution && origReason.attribution && userReason.attribution !== origReason.attribution) {
-      return 'attribution_mismatch';
-    }
-    if (userReason.target && origReason.target && userReason.target !== origReason.target) {
-      const emotionSim = cosineSimilarity(userVector.base || userVector, originalVector.base || originalVector);
-      if (emotionSim >= 0.5) return 'target_displacement';
-    }
-    const emotionSimilarity = cosineSimilarity(userVector.base || userVector, originalVector.base || originalVector);
-    if (emotionSimilarity < 0.5) return 'emotion_mismatch';
-    return null;
-  }
-
   function getTransitionPattern(bucket, mismatchType, level, shape, userTraj) {
     if (bucket === 'FIXATED') return 'fixation';
     if (level >= 0.5 && shape < 0.3 && userTraj && userTraj.length >= 3) return 'displacement';
@@ -2079,53 +2063,15 @@
     return null;
   }
 
+  // 별이엔진 단일화 (2026-05-18): 인라인 복사본 폐기 → js/core/ByeoriEngine.js 단일 출처.
+  // 엔진 출력 중 affective_position 만 LUMEN 등고선 지형용 projectEmotionToVADContour 로
+  // 덮어쓴다 (엔진 원본은 projectEmotionToVAD 사용 — 3D 핀 좌표 산출 방식이 다름).
+  // 베이스라인 대조: docs/별이엔진_단일화_베이스라인-260518.md
   function byeoriCalculateStep(input, context) {
-    context = context || {};
-    const {
-      userVector, originalVector, anchorEmotions = null,
-      userTrajectory = null, originalTrajectory = null,
-      sceneScores = null
-    } = input;
-    const { previousBucket = null, emotionHistory = null } = context;
-    if (!userVector || !originalVector) {
-      return { affective_position: { v: 0, a: 0, d: 0 }, alignment_score: 0, alignment_bucket: 'LOW', transition_pattern: null, mismatch_type: null, current_scene_score: 0, debug: {} };
-    }
-    const currentSceneScore = calculateEmotionScore(userVector, originalVector, anchorEmotions);
-    const allSceneScores = sceneScores ? [...sceneScores, currentSceneScore] : [currentSceneScore];
-    const level = calculateLevelSimilarity(allSceneScores);
-    const userTraj = userTrajectory ? [...userTrajectory, userVector.base || userVector] : [userVector.base || userVector];
-    const origTraj = originalTrajectory ? [...originalTrajectory, originalVector.base || originalVector] : [originalVector.base || originalVector];
-    const shapeResult = calculateShapeSimilarity(userTraj, origTraj);
-    const userReason = userVector.reason_analysis || {};
-    const origReason = originalVector.reason_analysis || {};
-    const voidMod = (!!userReason.is_void && !origReason.is_void) ? 0.7 : 1.0;
-    const alignmentScore = calculateTrajectoryAlignment(level, shapeResult.clamped, voidMod);
-    const alignmentBucket = getBucket(alignmentScore, previousBucket, emotionHistory);
-    const mismatchType = getMismatchType(userVector, originalVector);
-    const baseVec = userVector.base || userVector;
-    const affectivePosition = projectEmotionToVADContour(baseVec);
-    const transitionPattern = getTransitionPattern(alignmentBucket, mismatchType, level, shapeResult.clamped, userTraj);
-    const debug = {
-      current_scene_score: currentSceneScore,
-      level,
-      shape_raw: shapeResult.raw,
-      shape: shapeResult.clamped,
-      shape_active: shapeResult.active,
-      void_mod: voidMod,
-      scenes_played: allSceneScores.length,
-      formula: `L${level.toFixed(2)} × S${shapeResult.clamped.toFixed(2)} × V${voidMod.toFixed(2)} = ${alignmentScore.toFixed(3)}`,
-      fixation_level: emotionHistory ? calculateFixationLevel(emotionHistory) : 0,
-      scene_scores: allSceneScores
-    };
-    return {
-      affective_position: affectivePosition,
-      alignment_score: alignmentScore,
-      alignment_bucket: alignmentBucket,
-      transition_pattern: transitionPattern,
-      mismatch_type: mismatchType,
-      current_scene_score: currentSceneScore,
-      debug,
-    };
+    const r = engineCalculateStep(input, context);
+    const uv = input && input.userVector;
+    r.affective_position = projectEmotionToVADContour((uv && uv.base) || uv);
+    return r;
   }
 
   function buildOriginalVectorFromScene(scene) {
