@@ -41,6 +41,11 @@ let crossfadeEndedHandler = null;
 let _openingWaveSpeedMul = 1;
 let _openingWaveDesat = 0; // 0..1
 
+// "어떤 기억을 찾고있어?" finder 화면 세션 카운터.
+// 메뉴 복귀(← 버튼) 시 +1 → 진행 중이던 _handleOpeningSubmit 흐름이
+// 자기 세션과 어긋남을 보고 파동 흡수·도어·play-test 점프를 중단.
+let _finderSessionSeq = 0;
+
 // ─────────────────────────────────────
 // === Text Utilities ===
 // ─────────────────────────────────────
@@ -520,6 +525,9 @@ function _waitForUserInput(timeoutMs) {
 }
 
 async function _handleOpeningSubmit(emotion, text) {
+  // 이 제출 흐름이 속한 finder 세션 — 메뉴 ← 버튼이 눌리면 _finderSessionSeq 가
+  // 증가해 아래 abort 체크에서 흐름이 끊긴다.
+  const mySession = _finderSessionSeq;
   const inputPhase = document.getElementById('openingInputPhase');
   const dialogue = document.getElementById('openingDialogue');
   const input = document.getElementById('openingFinderInput');
@@ -599,6 +607,12 @@ async function _handleOpeningSubmit(emotion, text) {
     }).length;
     if (langCount > 0) break;
     await new Promise(r => setTimeout(r, 150));
+  }
+
+  // 메뉴 ← 버튼이 눌렸으면 여기서 중단 — 이후 파동 흡수·ASCII 도어·play-test 점프 모두 skip.
+  if (_finderSessionSeq !== mySession) {
+    console.info('[opening:dialog] finder 세션 무효화(메뉴 복귀) — 시퀀스 중단');
+    return;
   }
 
   // 5) 파동 흡수 (freeze + 탈채도)
@@ -732,6 +746,12 @@ async function _handleOpeningSubmit(emotion, text) {
     fp,
   });
 
+  // 매칭 도중 메뉴 복귀를 눌렀다면 ASCII 도어 오버레이가 메뉴 위에 뜨지 않도록 중단.
+  if (_finderSessionSeq !== mySession) {
+    console.info('[opening:dialog] finder 세션 무효화(메뉴 복귀) — 도어 연출 취소');
+    return;
+  }
+
   // 7) ASCII 문 열림 + 빨려들어감
   await _runLumenDoorSequence();
 
@@ -749,6 +769,11 @@ async function _handleOpeningSubmit(emotion, text) {
     sessionStorage.setItem('tem_archive_memory_id', String(memory.id || ''));
     sessionStorage.setItem('tem_archive_lang', _openingLang);
   } catch (_) {}
+  // 도어 연출 도중 메뉴 복귀를 눌렀다면 페이지 강제 이동 금지.
+  if (_finderSessionSeq !== mySession) {
+    console.info('[opening:dialog] finder 세션 무효화(메뉴 복귀) — play-test 점프 취소');
+    return;
+  }
   window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}`;
 }
 
@@ -1042,6 +1067,59 @@ function _mountOpeningWarmThread() {
     return canvas;
 }
 
+// finder 화면(어떤 기억을 찾고있어?) 좌상단 ← 버튼 핸들러.
+// 메뉴(introScreen)에서 PLAY로 진입한 사용자가 인터뷰에 답하지 않고 메뉴로 되돌아갈 때.
+// 진행 중이던 _handleOpeningSubmit 비동기 흐름은 _finderSessionSeq 증가로 무효화된다.
+function _exitFinderToMenu() {
+    // in-flight 흐름 무효화 + 파동 RAF 정지.
+    _finderSessionSeq++;
+    openingSkipped = true;
+    if (openingWaveAnimationId) {
+        cancelAnimationFrame(openingWaveAnimationId);
+        openingWaveAnimationId = null;
+    }
+
+    // finder 입력/대사 자리 초기화 — 다음 재진입 시 깨끗한 상태.
+    const dialogue = document.getElementById('openingDialogue');
+    if (dialogue) {
+        dialogue.textContent = '';
+        dialogue.style.removeProperty('opacity');
+        dialogue.style.removeProperty('transition');
+    }
+    const inputPhase = document.getElementById('openingInputPhase');
+    if (inputPhase) {
+        inputPhase.style.opacity = '0';
+        inputPhase.style.pointerEvents = 'none';
+    }
+    const finderInput = document.getElementById('openingFinderInput');
+    if (finderInput) {
+        finderInput.value = '';
+        finderInput.onkeydown = null;
+    }
+    const backBtn = document.getElementById('openingBackBtn');
+    if (backBtn) backBtn.style.display = 'none';
+
+    // openingScreen 숨김.
+    const openingScreen = document.getElementById('openingScreen');
+    if (openingScreen) {
+        openingScreen.classList.add('hidden');
+        openingScreen.classList.remove('visible');
+        openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important;';
+    }
+
+    // 메뉴(introScreen) 복귀 — backToIntro 가 메뉴 노출 + 사운드/애니메이션 정리까지 담당.
+    if (typeof window.backToIntro === 'function') {
+        window.backToIntro();
+    } else {
+        const introScreen = document.getElementById('introScreen');
+        if (introScreen) {
+            introScreen.classList.remove('hidden');
+            introScreen.classList.add('visible');
+            introScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important;';
+        }
+    }
+}
+
 // V2-13 (γ-full, 5-11): 메뉴 → "다른 기억을 찾아서" 진입 자리.
 // archive.js _initMemoryFinder (두 줄 멘트 + 6개 도어 늘어선 결과) 폐기 →
 // 오프닝 흐름 그대로 재호출 (한 줄 replayIntro + 멀티턴 인터뷰 + ASCII 도어 한 짝 → play-test 점프).
@@ -1136,6 +1214,17 @@ async function enterPlayReplaySequence() {
         if (stored === 'ko' || stored === 'en') curLang = stored;
     } catch (_) {}
     _openingLang = curLang;
+
+    // 6b) 좌상단 ← 버튼 노출 + 클릭 핸들러 — 메뉴에서 진입한 사용자만 이 경로를 탄다.
+    //     onclick 으로 박아 재진입 시 핸들러 중복 등록 방지.
+    const backBtn = document.getElementById('openingBackBtn');
+    if (backBtn) {
+        backBtn.style.display = 'flex';
+        backBtn.onclick = (e) => {
+            if (e) e.stopPropagation();
+            _exitFinderToMenu();
+        };
+    }
 
     // 7) _runV2Sequence 호출 (replayIntro 분기 → 입력 → 멀티턴 → 도어 → play-test 점프)
     await _runV2Sequence();
