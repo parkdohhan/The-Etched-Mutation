@@ -122,3 +122,90 @@ paper 매핑: *플레이어가 자기 sheaf section 에 이름을 부여함으�
 - `~/.claude/projects/d--The-Etched-Mutation/memory/project_lumen_unified_form_v2.md` — 다섯 비전 통합 (여섯번째 차원 추가 갱신 필요)
 - `~/.claude/projects/d--The-Etched-Mutation/memory/project_lumen_topological_vision.md` — §14 위상 quilt
 - `docs/paper/TEM_paper_draft_v0.1-260419.md` — paper 17D anchor 정합 검토 대상
+
+---
+
+## 5-15 신규 — 잔상 유령 동적 mutation·생성 (지형 퀼트 작업과 묶음)
+
+### 발견
+
+5-15 phase 1 정리 중 등장. 사용자 머릿속에서 "잔상 = 메모리에 떠 있는 상호작용 불가 sprite, 소문을 입으로 옮기는 이본론 부산물". 코드는 이미 `ghost_condensation_points` + `lumen_scene_ghosts.js` 자리에서 *정적* 잔상 sprite 작동. Phase 1 (5-15) = 시각화 통합·admin UI 정리. **Phase 2/3 = 잔상이 *동적*으로 mutate·생성되는 자리**. quilt 작업할 때 같이 박음. 이유: quilt cell 간 attaching map 위에서 잔상이 cell 간 이동·혼합·새 cell 생성 트리거 같은 역할 → 잔상 동적 메커니즘 + quilt 위상 구조가 한 framing.
+
+### Phase 2.0 — 잔상 등장 게이팅 = 공간 오염 필드 (2026-05-16 결정)
+
+mutation/생성의 *전제*. 잔상이 언제 보이는지부터 정해야 그 위 변형이 의미를 가짐.
+
+**현재 상태 (미구현 — 작가가 코멘트로 "V3 확장" 미뤄둠):**
+- `play-test.html:5023` `getPollutionAt(_x, _z)` — 좌표 인자를 받지만 *버림*. 반환 = `plays.alignment` 평균 역수, **메모리 전체 단일 스칼라**.
+- 결과: 같은 `pollution_threshold` 잔상은 메모리 어디 있든 *전부 같이* 켜짐. 공간/장면 연관 0.
+
+**결정 (사용자 5-16):** 잔상 등장을 *공간 오염 필드*로. 작가가 잔상↔장면을 명시적으로 안 묶음 — 오염이 공간에 퍼지며 잔상이 자연 발생. 이본론 정합("오염은 퍼지며 변형, 통제 X").
+
+목표:
+- `getPollutionAt(x, z)` → 좌표별 값. plays 의 공간 분포를 가우시안 누적 — 각 play 를 (v, a) 또는 응답 좌표에 가우시안으로 박고 (x, z) 에서 sample.
+- 잔상 게이팅 = `getPollutionAt(잔상.x, 잔상.z) >= 잔상.pollution_threshold`.
+- 작가가 박는 건 잔상 좌표 + threshold (이미 5-16 admin UI 구현). 등장 여부는 플레이 누적이 공간적으로 결정.
+
+미명시 결정 변수:
+1. play 의 "위치" — plays 에 응답 좌표가 저장되나? scene 의 stage_position? 응답 감정 VAD 투영? plays 스키마 확인 필요.
+2. 가우시안 커널 폭(σ) — 오염이 한 점에서 얼마나 넓게 번지나.
+3. 시간 감쇠 — 옛 play 의 오염 기여가 시간에 따라 옅어지나.
+4. threshold 의미 재확인 — 공간 필드에서 0~1 정규화 기준.
+5. quilt cell 과의 관계 — cell 경계가 오염 필드를 자르나, 연속인가.
+
+**호환성:** 5-16 구현한 잔상 편집 UI(text + pollution_threshold 슬라이더)는 B 와 그대로 맞물림. 바뀌는 건 `getPollutionAt` 내부뿐.
+
+### Phase 2 — 잔상 mutation (사례 1)
+
+플레이어가 잔상 A 보고 → 장면 B 진입 → 장면 C 언락. 이 시점에 잔상 A가 *장면 C의 결*로 살짝 변형.
+
+미명시 결정 변수:
+1. "결"이 무엇인가 — keyword 일부 치환? echo_words 흡수? 감정 톤 (VAD shift)? 작가 톤 가드 어디까지?
+2. mutation 트리거 — 장면 언락 한 번에 즉시? n번 누적 후? alignment 임계 만족 시?
+3. mutation 적용 범위 — 모든 잔상? 가장 가까운 잔상만? 시선 교차한 잔상만?
+4. idempotency — 같은 경로 N회 통과 시 잔상이 N번 변형? 한 번 잠금? 시간 감쇠?
+5. 작가 보호 가드 — mutation 허용/금지 플래그? 변형 가능 키워드 화이트리스트?
+
+연동:
+- 별이엔진 `transition_pattern` (echo_follow / bridge / contradiction / displacement / avoidance / fixation) → 잔상 변형 방향 가이드
+- ContaminationTracker 3축 (divergence / convergence / heterogeneity) → 변형 강도 조절
+- 작품 철학 (§6.2 Biased Mutation + Mnemonic Recombination) 실시간 구현
+
+### Phase 3 — 새 잔상 자동 생성 (사례 2)
+
+플레이어가 DB에 없는 결의 답변 → 지형에 잔상 C 자동 생성. 잔상 A로 돌아가면 잔상 A도 그 새 결로 변형.
+
+미명시 결정 변수:
+1. "DB에 없는 결" 판정 룰 — LLM 호출 금지 (`feedback_no_llm_judgment`). 결정론적 기반: mismatch_type='unknown' + alignment_score < 임계 + 오염 3축 거리. 구체 임계값 미정.
+2. trajectory_bridges 테이블 재활용 (§7 이미 존재) — 자동 승인 흐름, source_run_id + source_completed_sentence 박힌 자리.
+3. 새 잔상의 공간 좌표 부여 — 답변 감정 벡터 VAD 투영? scene B 근처 jitter? quilt cell 내 자유 위치?
+4. 합병·감쇠·만료 — 한 메모리 잔상 수 폭발 방지. 만료 룰: 시간 / 도달 횟수 / pollution_threshold 기반?
+5. 잔상 C 생성 시 잔상 A 변형 — 모든 기존 잔상이 새 답변 결로 *연쇄 변형*? 또는 잔상 A만 (사용자 직전 경로)? 또는 잔상 C 좌표 부근만?
+
+연동:
+- `trajectory_bridges` 자동 승인 → 작가 검토 없이 잔상 sprite 풀에 흡수
+- `ghost_condensation_points` 동적 확장 → 메모리 진입 시점에 누적된 잔상 풀 로딩
+- 메모리 `project_ghost_disguise_mode.md` "기여도 큰 플레이어는 본인 아바타가 잔상으로 남아 다음 세대의 직전 전달자가 됨" — Phase 3 실현체
+
+### 무게
+
+작품 안에 *기억유전학 6작용 실시간 구현*이 박힘 → critic 좌표 (`project_tem_critic_anchor`) anchor 점수 큰 이동 가능. 박사 제안서·논문 트랙 A와 직접 묶이는 자리.
+
+### V3 작업 항목 (추정 추가)
+
+| 작업 | 추정 일수 | 비고 |
+|---|---|---|
+| V3-10b 잔상 등장 공간 오염 필드 (Phase 2.0) | 2~3 | getPollutionAt 좌표별 가우시안 + plays 위치 데이터 |
+| V3-11 잔상 mutation 알고리즘 (Phase 2) | 3~4 | "결" 정의 + 별이엔진 연동 + 작가 톤 가드 |
+| V3-12 잔상 자동 생성 (Phase 3) | 2~3 | trajectory_bridges 확장 + 결정론 판정 룰 + 좌표 부여 |
+| V3-13 잔상 합병·감쇠 정책 | 1~2 | 폭발 방지 |
+
+코드 추가 = **8~12일**. 본인 페이스 적용 = 13~20일 실 작업.
+
+### 관련 코드 자리 (Phase 1 끝난 후 들어가는 곳)
+
+- `js/ui/lumen_scene_ghosts.js` — 잔상 sprite 렌더링
+- `memories.ghost_condensation_points` — 잔상 풀 저장
+- `trajectory_bridges` 테이블 — 자동 생성 잔상 백엔드
+- `js/core/ByeoriEngine.*` — transition_pattern 출처 (잔상 변형 방향)
+- `js/core/ContaminationTracker.*` — 3축 (잔상 변형 강도)
