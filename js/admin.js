@@ -2146,8 +2146,9 @@ async function saveMemory() {
 
     // 공간 설정
     const terrainShapeVal = document.getElementById('terrainShape')?.value || 'circular';
-    // 작업 12-3: 응결점 수집
-    const ghostCondensationPoints = (typeof getGhostPointsForSave === 'function') ? getGhostPointsForSave() : [];
+    // 작업 12-3 응결점 수집 폐기 (2026-05-16) — 잔상 유령은 "위치 stage" 탭에서 즉시 독립 저장
+    //   (lumen_admin_stage_view.persistGhostPoints). saveMemory 가 ghost_condensation_points 를
+    //   건드리면 stage 탭에서 박은 잔상 유령이 빈 배열로 덮어써짐 → 저장 페이로드에서 제외.
  // sound mapping 수집
     var soundMap = {};
     var smOpening = document.getElementById('soundMapOpening')?.value?.trim();
@@ -2282,8 +2283,8 @@ async function saveMemory() {
             cont_stage_1: contStage1Val,
             cont_stage_2: contStage2Val,
             cont_stage_3: contStage3Val,
-            terrain_shape: terrainShapeVal,
-            ghost_condensation_points: ghostCondensationPoints
+            terrain_shape: terrainShapeVal
+            // ghost_condensation_points 제외 (2026-05-16) — "위치 stage" 탭이 독립 저장
         });
         
         console.log('=== Admin 에디터 개선 ===');

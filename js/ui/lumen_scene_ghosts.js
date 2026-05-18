@@ -162,8 +162,8 @@
         } catch (_) {}
       }
       var words = _collectWords();
-      if (!pts.length || !words.length) {
-        console.log('[lumen-scene-ghosts] build skipped — pts=' + pts.length + ' words=' + words.length);
+      if (!pts.length) {
+        console.log('[lumen-scene-ghosts] build skipped — pts=0');
         return 0;
       }
       var nowSec = performance.now() / 1000;
@@ -171,7 +171,10 @@
       for (var i = 0; i < pts.length; i++) {
         var p = pts[i];
         if (!p || typeof p.x !== 'number' || typeof p.z !== 'number') continue;
-        var word = words[i % words.length];
+        // 2026-05-16 — 잔상 고유 text 우선, 없으면 echo_words 풀 fallback
+        var word = (typeof p.text === 'string' && p.text.trim())
+          ? p.text.trim()
+          : (words.length ? words[i % words.length] : '');
         if (!word) continue;
         var y = _gH(p.x, p.z) + opts.baseY;
         var sprite = _makeTextSprite(word);

@@ -276,10 +276,12 @@
                         </select>
                         <small style="font-size:0.72rem;color:var(--text-muted);">현재 circular만. V2에서 확장.</small>
                     </div>
-                    <div class="editor-input-group">
-                        <label class="editor-label">유령 응결점 <span id="ghostPointsCount" style="color:var(--accent-memory);">0</span></label>
+                    <!-- 유령 응결점 SVG UI 폐기 (2026-05-16) — 잔상 유령은 궤적 큐레이터 "위치 stage" 탭에서
+                         3D 지형 위 회색 마커로 편집. 데이터 경로(memories.ghost_condensation_points)는 동일. -->
+                    <div class="editor-input-group" style="display:none;">
+                        <label class="editor-label">유령 응결점 (폐기 — 위치 stage 탭으로 이동) <span id="ghostPointsCount" style="color:var(--accent-memory);">0</span></label>
                         <small style="display:block;font-size:0.72rem;color:var(--text-muted);margin-bottom:0.6rem;">
-                            원 내부 빈 곳 클릭 = 추가 · 점 드래그 = 이동 · 리스트에서 threshold 조정 / 삭제. 중심 void(점선 원) 안쪽은 배치 금지.
+                            DEPRECATED 2026-05-16. 궤적 큐레이터 "위치 stage" 탭에서 편집하세요.
                         </small>
                         <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
                             <svg id="ghostPointsSvg" width="360" height="360" viewBox="-60 -60 120 120" style="background:#0a0a0e;border:1px solid rgba(196,168,130,.3);border-radius:4px;cursor:crosshair;user-select:none;">
@@ -425,8 +427,14 @@
                     <button class="tv-toggle" id="tvAddMemoryBtn" style="flex:1;padding:6px;font-size:0.72rem;">+ 새 기억</button>
                     <button class="tv-toggle" id="tvAddSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="원본(Anchor) 씬 추가">+ 원본 씬</button>
                 </div>
+                <!-- "+ 잔상 씬" 버튼 폐기 (2026-05-15 phase 1) — 잔상 = 유령 sprite (memories.ghost_condensation_points) 단일 경로로 통합.
+                     동적 잔상 mutation/생성은 V3_backlog-260509.md §5-15 (지형 퀼트 작업과 묶음). -->
+                <div style="display:none;gap:6px;margin-bottom:12px;">
+                    <button class="tv-toggle" id="tvAddBridgeSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(106,163,131,0.08);border-color:rgba(106,163,131,0.3);" title="DEPRECATED 2026-05-15. 잔상은 유령 sprite로 통합.">+ 잔상 씬 (폐기)</button>
+                </div>
+                <!-- 2026-05-16 — 잔상 유령 추가. "위치 stage" 탭에서 회색 마커로 떠서 드래그 편집. -->
                 <div style="display:flex;gap:6px;margin-bottom:12px;">
-                    <button class="tv-toggle" id="tvAddBridgeSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(106,163,131,0.08);border-color:rgba(106,163,131,0.3);" title="잔상(Residual / Bridge) 씬 추가 — scene_role='residual', scene_type='branch'">+ 잔상 씬</button>
+                    <button class="tv-toggle" id="tvAddGhostBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(200,200,208,0.1);border-color:rgba(200,200,208,0.35);" title="잔상 유령 추가 — memories.ghost_condensation_points. '위치 stage' 탭에서 밝은 회색 마커로 드래그.">+ 잔상 유령</button>
                 </div>
 
                 <div class="tv-section-label">감정 진입점</div>
@@ -503,7 +511,10 @@
                     <div id="tvStageRoot" style="position:absolute;inset:0;"></div>
                     <div id="tvStageStatus" style="position:absolute;top:10px;right:14px;font-size:0.68rem;color:#7c7466;background:rgba(10,10,15,0.7);padding:4px 8px;border-radius:2px;line-height:1.5;pointer-events:none;">로딩 중…</div>
                     <div id="tvStageLegend" style="position:absolute;bottom:10px;right:14px;background:rgba(10,10,15,0.85);border:1px solid rgba(196,168,130,0.15);border-radius:4px;padding:7px 10px;font-size:0.66rem;color:#c0b8a4;backdrop-filter:blur(6px);line-height:1.65;pointer-events:none;">
-                        <div style="font-size:0.6rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">패턴 색</div>
+                        <div style="font-size:0.6rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">유령</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;background:#6a9fd8;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>장면 유령</div>
+                        <div><span style="display:inline-block;width:9px;height:9px;background:#c8c8d0;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>잔상 유령</div>
+                        <div style="font-size:0.6rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin:6px 0 3px;">패턴 색 (시뮬)</div>
                         <div><span style="display:inline-block;width:9px;height:9px;background:#c4a882;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>echo_follow</div>
                         <div><span style="display:inline-block;width:9px;height:9px;background:#6aa383;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>bridge</div>
                         <div><span style="display:inline-block;width:9px;height:9px;background:#a88aa3;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>displacement</div>

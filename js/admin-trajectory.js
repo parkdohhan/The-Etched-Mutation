@@ -116,11 +116,17 @@ async function initTrajectoryViewer(memoryId) {
   // 작업 15 — 위치 레이어 mount + 동기화 (idempotent)
   if (!state._stageMounted) {
     LumenAdminStageView.mount('tvStageRoot');
-    // 핀 클릭(드래그 X) → 우측 씬 편집 패널 띄우기
+    // 장면 유령(핀) 클릭(드래그 X) → 우측 씬 편집 패널
     if (typeof LumenAdminStageView.setSceneClickHandler === 'function') {
       LumenAdminStageView.setSceneClickHandler((sceneId) => {
         const sc = state.scenes.find(s => s.id === sceneId);
         if (sc) selectScene(sc);
+      });
+    }
+    // 잔상 유령 마커 클릭(드래그 X) → 우측 잔상 편집 패널
+    if (typeof LumenAdminStageView.setGhostClickHandler === 'function') {
+      LumenAdminStageView.setGhostClickHandler((ghostIdx) => {
+        renderGhostDetail(ghostIdx);
       });
     }
     bindLayerToggle();
@@ -490,9 +496,7 @@ async function addNewScene() {
   return _insertScene({ role: 'anchor' });
 }
 
-async function addNewBridgeScene() {
-  return _insertScene({ role: 'residual' });
-}
+// addNewBridgeScene (scene_role='residual') 폐기 — 2026-05-16. 잔상은 잔상 유령으로 통합.
 
 async function _insertScene({ role }) {
   if (!state.memory) { alert('먼저 메모리를 선택하세요.'); return; }
@@ -577,8 +581,14 @@ function bindToggles() {
   if (addMemBtn) addMemBtn.addEventListener('click', openNewMemoryModal);
   const addSceneBtn = document.getElementById('tvAddSceneBtn');
   if (addSceneBtn) addSceneBtn.addEventListener('click', addNewScene);
-  const addBridgeSceneBtn = document.getElementById('tvAddBridgeSceneBtn');
-  if (addBridgeSceneBtn) addBridgeSceneBtn.addEventListener('click', addNewBridgeScene);
+  // 2026-05-16 — "+ 잔상 유령": 위치 stage 탭 회색 마커 추가. ("+ 잔상 씬" 폐기 대체)
+  const addGhostBtn = document.getElementById('tvAddGhostBtn');
+  if (addGhostBtn) addGhostBtn.addEventListener('click', () => {
+    if (!state.memory || !state.memory.id) { alert('기억이 선택되지 않았습니다.'); return; }
+    if (typeof LumenAdminStageView.addGhostPoint === 'function') {
+      LumenAdminStageView.addGhostPoint();
+    }
+  });
 
   const strataBtn = document.getElementById('tvStrataPreviewBtn');
   if (strataBtn) strataBtn.addEventListener('click', () => {
@@ -1603,6 +1613,63 @@ function renderDetail(s, tab) {
 
   // 편집 모드 이벤트 바인딩
   if (tab === 'detail') bindDetailFormEvents(s);
+}
+
+// 잔상 유령 편집 패널 — 씬 편집기와 같은 자리(#tvDetail), 잔상 전용 UI (2026-05-16).
+// 잔상 유령은 scene row 가 아니라 memories.ghost_condensation_points 의 한 점.
+// 편집 필드: text(잔상 텍스트) / pollution_threshold(등장 임계) / 삭제. 위치는 지형 드래그.
+function renderGhostDetail(ghostIdx) {
+  const container = document.getElementById('tvDetail');
+  if (!container) return;
+  const gp = (typeof LumenAdminStageView.getGhostPoint === 'function')
+    ? LumenAdminStageView.getGhostPoint(ghostIdx) : null;
+  if (!gp) {
+    container.innerHTML = '<div class="tv-detail-empty">잔상 유령을 찾을 수 없습니다.</div>';
+    return;
+  }
+  const thr = gp.pollution_threshold != null ? gp.pollution_threshold : 0;
+
+  container.innerHTML = `
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:#c8c8d0;margin-bottom:4px;">잔상 유령 P${ghostIdx}</div>
+    <div style="font-size:0.7rem;color:#7c7466;margin-bottom:16px;">좌표 (${gp.x.toFixed(1)}, ${gp.z.toFixed(1)}) · 위치는 지형에서 마커를 드래그</div>
+
+    <label style="display:block;font-size:0.75rem;color:#c4a882;margin-bottom:6px;">잔상 텍스트 <span style="color:#7c7466;">— 떠도는 소문 한 조각</span></label>
+    <textarea id="ghostTextInput" rows="3" placeholder="비워두면 메모리 echo_words 풀에서 빌려옴" style="width:100%;box-sizing:border-box;padding:8px;background:rgba(20,20,28,0.8);border:1px solid rgba(200,200,208,0.3);color:#e0d8c4;font-family:inherit;font-size:0.85rem;border-radius:3px;margin-bottom:16px;resize:vertical;">${escapeHtml(gp.text || '')}</textarea>
+
+    <label style="display:block;font-size:0.75rem;color:#c4a882;margin-bottom:4px;">등장 임계 (pollution_threshold)</label>
+    <div style="font-size:0.7rem;color:#7c7466;margin-bottom:8px;line-height:1.5;">메모리가 이만큼 오염돼야 이 잔상이 play 화면에 나타남. 0 = 처음부터.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:18px;">
+      <input type="range" id="ghostThrInput" min="0" max="1" step="0.05" value="${thr}" style="flex:1;">
+      <span id="ghostThrVal" style="font-size:0.8rem;color:#c8c8d0;min-width:34px;text-align:right;">${thr.toFixed(2)}</span>
+    </div>
+
+    <button id="ghostDeleteBtn" style="width:100%;padding:8px;background:rgba(201,122,106,0.12);border:1px solid rgba(201,122,106,0.4);color:#c97a6a;border-radius:4px;cursor:pointer;font-family:inherit;font-size:0.8rem;">이 잔상 유령 삭제</button>
+  `;
+
+  const textInput = document.getElementById('ghostTextInput');
+  if (textInput) {
+    textInput.addEventListener('change', () => {
+      LumenAdminStageView.updateGhostPoint(ghostIdx, { text: textInput.value });
+    });
+  }
+  const thrInput = document.getElementById('ghostThrInput');
+  const thrVal = document.getElementById('ghostThrVal');
+  if (thrInput) {
+    thrInput.addEventListener('input', () => {
+      if (thrVal) thrVal.textContent = Number(thrInput.value).toFixed(2);
+    });
+    thrInput.addEventListener('change', () => {
+      LumenAdminStageView.updateGhostPoint(ghostIdx, { pollution_threshold: Number(thrInput.value) });
+    });
+  }
+  const delBtn = document.getElementById('ghostDeleteBtn');
+  if (delBtn) {
+    delBtn.addEventListener('click', () => {
+      if (!confirm('이 잔상 유령을 삭제할까요?')) return;
+      LumenAdminStageView.removeGhostPoint(ghostIdx);
+      container.innerHTML = '<div class="tv-detail-empty">잔상 유령이 삭제되었습니다.</div>';
+    });
+  }
 }
 
 // 핀 모드 패널 이벤트 — 반경 변경 / 수동 add / 수동 del.

@@ -43,6 +43,13 @@ const PATTERN_COLOR = {
 const RUNNER_BASE_COLOR = { A: 0xc4a882, B: 0x6aa383 };
 const BASE_PIN_COLOR = 0xc4a882;
 
+// 2026-05-16 — 두 종류 유령을 같은 지형에 색으로 구분 (사용자 결정).
+//   장면 유령 = 파란 핀 (scenes.meta.stage_position)
+//   잔상 유령 = 밝은 회색 마커 (memories.ghost_condensation_points)
+const SCENE_PIN_COLOR = 0x6a9fd8;        // 파랑 — 장면 유령
+const RESIDUAL_GHOST_COLOR = 0xc8c8d0;   // 밝은 회색 — 잔상 유령
+const GHOST_MARKER_R = 1.3;              // 잔상 유령 마커 반경
+
 // ─── VAD 매핑 (v1 과 동일) ─────────────────────────────────
 const VAD_FULL = {
   fear:{v:-0.9,a:0.9}, sadness:{v:-0.8,a:-0.4}, anger:{v:-0.7,a:0.8},
@@ -128,18 +135,22 @@ const state = {
     memoryId: null,
     loading: false,
   },
-  pinsGroup: null,             // 모든 핀(shaft+head+label) 컨테이너
+  pinsGroup: null,             // 모든 핀(shaft+head+label) 컨테이너 — 장면 유령
+  ghostsGroup: null,           // 잔상 유령 마커 컨테이너 (2026-05-16)
   threadsGroup: null,          // scene_order 점선
   edgesGroup: null,            // 시뮬 visited / candidate 화살
   voidMarker: null,            // 중앙 void 표시 디스크
   outerRing: null,             // 외곽 R 표시 링
   pinByScene: new Map(),       // sceneId → { group, head, shaft, label, baseColor, pos }
   scenes: [],
+  ghostPoints: [],             // 잔상 유령 [{x, z, pollution_threshold}] — memories.ghost_condensation_points
+  ghostMarkers: [],            // 빌드된 잔상 유령 마커 메쉬 (ghostPoints 와 같은 인덱스)
   sim: { active: false, runners: { A: null, B: null }, compareMode: false },
-  drag: { sceneId: null, moved: false, pointerId: null },
+  drag: { sceneId: null, ghostIdx: -1, moved: false, pointerId: null },
   rafId: null,
   resizeObserver: null,
-  onSceneClick: null,          // 핀 클릭(드래그 X) 시 (sceneId) => void 호출
+  onSceneClick: null,          // 장면 유령(핀) 클릭(드래그 X) 시 (sceneId) => void 호출
+  onGhostClick: null,          // 잔상 유령 마커 클릭(드래그 X) 시 (ghostIdx) => void 호출
   tooltipContainer: null,      // 시뮬 핀 텍스트 overlay 컨테이너 (rootEl 자식)
   tooltips: new Map(),         // sceneId → div
 };
@@ -216,6 +227,69 @@ function _disposePin(pin) {
   }
 }
 
+// ─── 잔상 유령 마커 (2026-05-16) ──────────────────────────
+// 장면 유령(핀, 막대+머리)과 시각적으로 구분 — 막대 없이 떠 있는 회색 옥타헤드론.
+// "상호작용 불가, 떠도는 소문" 톤 → 부유감.
+function _buildGhostMarker() {
+  const group = new THREE.Group();
+  const geo = new THREE.OctahedronGeometry(GHOST_MARKER_R, 0);
+  const mat = new THREE.MeshStandardMaterial({
+    color: RESIDUAL_GHOST_COLOR, emissive: RESIDUAL_GHOST_COLOR,
+    emissiveIntensity: 0.35, roughness: 0.7, metalness: 0.05,
+    transparent: true, opacity: 0.82,
+  });
+  const body = new THREE.Mesh(geo, mat);
+  body.userData._ghostPart = 'body';
+  group.add(body);
+  // 바닥 그림자 디스크 — 지형 위 어느 위치인지 읽히게
+  const discGeo = new THREE.CircleGeometry(GHOST_MARKER_R * 1.5, 24);
+  discGeo.rotateX(-Math.PI / 2);
+  const discMat = new THREE.MeshBasicMaterial({
+    color: RESIDUAL_GHOST_COLOR, transparent: true, opacity: 0.18,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
+  const disc = new THREE.Mesh(discGeo, discMat);
+  disc.userData._ghostPart = 'disc';
+  group.add(disc);
+  return { group, body, disc };
+}
+
+function _disposeGhostMarker(m) {
+  if (!m) return;
+  if (m.body) { m.body.geometry.dispose(); m.body.material.dispose(); }
+  if (m.disc) { m.disc.geometry.dispose(); m.disc.material.dispose(); }
+}
+
+// state.ghostPoints → 마커 메쉬 동기화. ghostPoints 와 ghostMarkers 는 같은 인덱스.
+function renderGhostMarkers() {
+  if (!state.scene || !state.ghostsGroup) return;
+  const pts = state.ghostPoints;
+
+  // 개수 초과 마커 제거
+  while (state.ghostMarkers.length > pts.length) {
+    const m = state.ghostMarkers.pop();
+    state.ghostsGroup.remove(m.group);
+    _disposeGhostMarker(m);
+  }
+  // 부족분 생성
+  while (state.ghostMarkers.length < pts.length) {
+    const m = _buildGhostMarker();
+    state.ghostsGroup.add(m.group);
+    state.ghostMarkers.push(m);
+  }
+  // 위치 갱신
+  pts.forEach((p, i) => {
+    const m = state.ghostMarkers[i];
+    if (!m) return;
+    const wy = _terrainHeightAt(p.x, p.z);
+    m.group.position.set(p.x, wy, p.z);
+    // 마커 본체는 지형 위로 살짝 띄움 (부유감)
+    m.body.position.y = GHOST_MARKER_R + 1.2;
+    m.disc.position.y = 0.05;
+    m.group.userData._ghostIdx = i;
+  });
+}
+
 // ─── 시뮬 highlight 판정 (v1 _simHighlight 로직 동일) ─────
 function _simHighlight(sceneId) {
   if (!state.sim.active) return { role: 'idle' };
@@ -261,7 +335,7 @@ function renderPins() {
 
     let pin = state.pinByScene.get(scene.id);
     if (!pin) {
-      pin = _buildPin(code, BASE_PIN_COLOR);
+      pin = _buildPin(code, SCENE_PIN_COLOR);
       state.pinsGroup.add(pin.group);
       state.pinByScene.set(scene.id, pin);
     }
@@ -273,8 +347,8 @@ function renderPins() {
     pin.group.visible = visible;
     pin.pos = { x: pos.x, z: pos.z, source: pos.source };
 
-    // 색·스케일·투명도
-    let color = BASE_PIN_COLOR;
+    // 색·스케일·투명도 — idle 은 장면 유령 파랑, 시뮬 시에만 runner/pattern 색
+    let color = SCENE_PIN_COLOR;
     let opacity = pos.source === 'manual' ? 0.95 : (pos.source === 'order' ? 0.55 : 0.78);
     let scale = 1;
     if (hi.role === 'current') {
@@ -415,6 +489,7 @@ function renderEdges() {
 
 function render() {
   renderPins();
+  renderGhostMarkers();
   renderThreads();
   renderEdges();
   _updateStatus();
@@ -530,6 +605,10 @@ function _initScene() {
   state.pinsGroup = new THREE.Group();
   state.pinsGroup.name = 'tvStagePins';
   scene.add(state.pinsGroup);
+
+  state.ghostsGroup = new THREE.Group();
+  state.ghostsGroup.name = 'tvStageGhosts';
+  scene.add(state.ghostsGroup);
 
   state.raycaster = new THREE.Raycaster();
   state.mouseNDC = new THREE.Vector2();
@@ -721,14 +800,37 @@ function _pickTerrain(evt) {
   return hits[0].point.clone();
 }
 
+// 잔상 유령 마커 raycast → ghostPoints 인덱스 (없으면 -1)
+function _pickGhostMarker(evt) {
+  if (!state.raycaster || !state.ghostsGroup) return -1;
+  _setNDC(evt);
+  state.raycaster.setFromCamera(state.mouseNDC, state.camera);
+  const hits = state.raycaster.intersectObjects(state.ghostsGroup.children, true);
+  if (!hits.length) return -1;
+  let obj = hits[0].object;
+  while (obj && obj !== state.ghostsGroup) {
+    if (obj.userData && typeof obj.userData._ghostIdx === 'number') return obj.userData._ghostIdx;
+    obj = obj.parent;
+  }
+  return -1;
+}
+
 function _bindPointerEvents() {
   if (!state.canvas) return;
 
   state.canvas.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
+    // 장면 유령(핀) 먼저, 없으면 잔상 유령 마커
     const picked = _pickPin(e);
-    if (!picked) return;
-    state.drag.sceneId = picked.sceneId;
+    if (picked) {
+      state.drag.sceneId = picked.sceneId;
+      state.drag.ghostIdx = -1;
+    } else {
+      const gi = _pickGhostMarker(e);
+      if (gi < 0) return;
+      state.drag.sceneId = null;
+      state.drag.ghostIdx = gi;
+    }
     state.drag.moved = false;
     state.drag.pointerId = e.pointerId;
     if (state.controls) state.controls.enabled = false;
@@ -737,31 +839,55 @@ function _bindPointerEvents() {
   });
 
   state.canvas.addEventListener('pointermove', (e) => {
-    if (!state.drag.sceneId || e.pointerId !== state.drag.pointerId) return;
+    const dragging = (state.drag.sceneId != null) || (state.drag.ghostIdx >= 0);
+    if (!dragging || e.pointerId !== state.drag.pointerId) return;
     const hit = _pickTerrain(e);
     if (!hit) return;
     const c = clampToTerrain(hit.x, hit.z);
-    const sc = state.scenes.find(s => s.id === state.drag.sceneId);
-    if (!sc) return;
-    if (!sc.meta) sc.meta = {};
-    sc.meta.stage_position = { x: c.x, z: c.z };
+    if (state.drag.sceneId != null) {
+      // 장면 유령 — scenes.meta.stage_position
+      const sc = state.scenes.find(s => s.id === state.drag.sceneId);
+      if (!sc) return;
+      if (!sc.meta) sc.meta = {};
+      sc.meta.stage_position = { x: c.x, z: c.z };
+    } else {
+      // 잔상 유령 — state.ghostPoints[idx]
+      const gp = state.ghostPoints[state.drag.ghostIdx];
+      if (!gp) return;
+      gp.x = c.x;
+      gp.z = c.z;
+    }
     state.drag.moved = true;
-    // 즉시 반영 (full render — pin 위치 + thread 갱신)
+    // 즉시 반영 (full render — pin·ghost 위치 + thread 갱신)
     render();
   });
 
   const endDrag = (e) => {
-    if (!state.drag.sceneId) return;
+    const wasScene = state.drag.sceneId != null;
+    const wasGhost = state.drag.ghostIdx >= 0;
+    if (!wasScene && !wasGhost) return;
     if (e && e.pointerId !== state.drag.pointerId) return;
     const sceneId = state.drag.sceneId;
+    const ghostIdx = state.drag.ghostIdx;
     const moved = state.drag.moved;
     state.drag.sceneId = null;
+    state.drag.ghostIdx = -1;
     state.drag.moved = false;
     state.drag.pointerId = null;
     if (state.controls) state.controls.enabled = true;
     if (e && state.canvas.hasPointerCapture && state.canvas.hasPointerCapture(e.pointerId)) {
       try { state.canvas.releasePointerCapture(e.pointerId); } catch (_) {}
     }
+    if (wasGhost) {
+      // 잔상 유령 — 이동 시 저장, 클릭(미이동) 시 편집 패널 콜백
+      if (moved) {
+        persistGhostPoints();
+      } else if (typeof state.onGhostClick === 'function') {
+        try { state.onGhostClick(ghostIdx); } catch (err) { console.error('[StageView] onGhostClick error', err); }
+      }
+      return;
+    }
+    // 장면 유령 (핀)
     if (moved) {
       const sc = state.scenes.find(s => s.id === sceneId);
       if (sc && sc.meta && sc.meta.stage_position) {
@@ -791,6 +917,54 @@ async function persistStagePosition(sceneId, x, z) {
     console.log('[Admin/stage v2] saved', sceneId, newMeta.stage_position);
   } catch (e) {
     console.error('[stage_position] error', e);
+  }
+}
+
+// ─── 잔상 유령 저장·로드·추가 (2026-05-16) ────────────────
+// 잔상 유령 전체 배열을 memories.ghost_condensation_points 에 통째로 UPDATE.
+// (admin.js 의 옛 SVG UI 폐기 — 이 자리가 유일한 저장 경로)
+async function persistGhostPoints() {
+  const memoryId = state.terrain.memoryId;
+  if (!memoryId) { console.warn('[ghost_points] memoryId 없음 — 저장 스킵'); return; }
+  try {
+    const sb = await getSupabaseClient();
+    if (!sb) return;
+    const payload = state.ghostPoints.map(p => ({
+      x: +(+p.x).toFixed(3),
+      z: +(+p.z).toFixed(3),
+      pollution_threshold: +(p.pollution_threshold != null ? p.pollution_threshold : 0).toFixed(2),
+      text: typeof p.text === 'string' ? p.text : '',
+    }));
+    const { error } = await sb.from('memories')
+      .update({ ghost_condensation_points: payload }).eq('id', memoryId);
+    if (error) { console.error('[ghost_points] save failed', error); return; }
+    console.log('[Admin/stage v2] ghost points saved', memoryId, payload.length + '개');
+  } catch (e) {
+    console.error('[ghost_points] error', e);
+  }
+}
+
+// 현 메모리의 ghost_condensation_points → state.ghostPoints. 같은 메모리 재호출은 스킵.
+async function _loadGhostPoints(memoryId) {
+  if (!memoryId || state._ghostLoadedFor === memoryId) return;
+  try {
+    const sb = await getSupabaseClient();
+    if (!sb) return;
+    const { data, error } = await sb.from('memories')
+      .select('ghost_condensation_points').eq('id', memoryId).maybeSingle();
+    if (error) { console.error('[ghost_points] load failed', error); return; }
+    const pts = (data && Array.isArray(data.ghost_condensation_points)) ? data.ghost_condensation_points : [];
+    state.ghostPoints = pts.map(p => ({
+      x: Number(p.x) || 0,
+      z: Number(p.z) || 0,
+      pollution_threshold: p.pollution_threshold != null ? Number(p.pollution_threshold) : 0,
+      text: typeof p.text === 'string' ? p.text : '',
+    }));
+    state._ghostLoadedFor = memoryId;
+    render();
+    console.log('[StageView] ghost points loaded for', memoryId, state.ghostPoints.length + '개');
+  } catch (e) {
+    console.error('[ghost_points] error', e);
   }
 }
 
@@ -887,7 +1061,7 @@ function _updateStatus() {
     const p = getStagePosition(s, total);
     if (p && counts[p.source] != null) counts[p.source]++;
   });
-  status.textContent = `씬 ${total} · 수동 ${counts.manual} · AF ${counts.af} · 감정 ${counts.emotion} · 순서 ${counts.order}  ·  드래그=좌표 편집  ·  마우스=회전·줌`;
+  status.textContent = `장면 유령 ${total} · 수동 ${counts.manual} · AF ${counts.af} · 감정 ${counts.emotion} · 순서 ${counts.order}  ·  잔상 유령 ${state.ghostPoints.length}  ·  드래그=좌표 편집  ·  마우스=회전·줌`;
 }
 
 // ─── 외부 API ──────────────────────────────────────────────
@@ -914,10 +1088,67 @@ function setMemoryId(memoryId) {
   if (!memoryId) return;
   if (!state.canvas) _initScene();
   _loadTerrainForMemory(memoryId);
+  _loadGhostPoints(memoryId);
+}
+
+// ─── 잔상 유령 추가·삭제 외부 API (2026-05-16) ────────────
+// "+ 잔상 유령" 버튼 → addGhostPoint(). terrain 빈 자리에 하나 박고 즉시 저장.
+function addGhostPoint() {
+  if (!state.terrain.memoryId) { console.warn('[StageView] addGhostPoint — 메모리 미선택'); return; }
+  const n = state.ghostPoints.length;
+  // 황금각으로 흩뿌려 기존 점과 안 겹치게
+  const angle = (n * 2.39996) % (Math.PI * 2);
+  const r = VOID_R + 10 + (n % 4) * 8;
+  const c = clampToTerrain(r * Math.cos(angle), r * Math.sin(angle));
+  state.ghostPoints.push({ x: c.x, z: c.z, pollution_threshold: 0, text: '' });
+  render();
+  persistGhostPoints();
+  // 추가 직후 편집 패널 자동 오픈 — 작가가 바로 텍스트 박게
+  const newIdx = state.ghostPoints.length - 1;
+  if (typeof state.onGhostClick === 'function') {
+    try { state.onGhostClick(newIdx); } catch (err) { console.error('[StageView] onGhostClick error', err); }
+  }
+}
+
+function removeGhostPoint(idx) {
+  if (idx == null || idx < 0 || idx >= state.ghostPoints.length) return;
+  state.ghostPoints.splice(idx, 1);
+  render();
+  persistGhostPoints();
+}
+
+function getGhostPointCount() {
+  return state.ghostPoints.length;
+}
+
+// 잔상 유령 1개 현재 값 (편집 패널 렌더용) — 복사본 반환
+function getGhostPoint(idx) {
+  const gp = state.ghostPoints[idx];
+  if (!gp) return null;
+  return { idx: idx, x: gp.x, z: gp.z,
+    pollution_threshold: gp.pollution_threshold, text: gp.text || '' };
+}
+
+// 잔상 유령 1개 필드 갱신 (text / pollution_threshold) + 즉시 저장
+function updateGhostPoint(idx, patch) {
+  const gp = state.ghostPoints[idx];
+  if (!gp || !patch) return;
+  if (patch.text != null) gp.text = String(patch.text);
+  if (patch.pollution_threshold != null) {
+    let t = Number(patch.pollution_threshold);
+    if (!isFinite(t)) t = 0;
+    gp.pollution_threshold = Math.max(0, Math.min(1, t));
+  }
+  render();
+  persistGhostPoints();
 }
 
 function setSceneClickHandler(fn) {
   state.onSceneClick = (typeof fn === 'function') ? fn : null;
+}
+
+function setGhostClickHandler(fn) {
+  state.onGhostClick = (typeof fn === 'function') ? fn : null;
 }
 
 function _debugTerrain() {
@@ -933,7 +1164,11 @@ function _debugTerrain() {
   };
 }
 
-const api = { mount, setScenes, setSimState, setMemoryId, setSceneClickHandler, _debugTerrain };
+const api = {
+  mount, setScenes, setSimState, setMemoryId, setSceneClickHandler, _debugTerrain,
+  addGhostPoint, removeGhostPoint, getGhostPointCount,
+  setGhostClickHandler, getGhostPoint, updateGhostPoint,
+};
 
 // ─── 글로벌 노출 ───────────────────────────────────────────
 window.LumenAdminStageView = api;
