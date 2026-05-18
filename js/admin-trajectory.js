@@ -1717,6 +1717,64 @@ function bindDetailFormEvents(s) {
     previewSound(url, vol);
   });
 
+  // AI 음향 — 프롬프트 초안 (씬 본문 → Claude)
+  const soundDraftBtn = document.getElementById('sceneSoundDraftBtn');
+  if (soundDraftBtn) soundDraftBtn.addEventListener('click', async () => {
+    const statusEl = document.getElementById('sceneSoundGenStatus');
+    const promptEl = document.getElementById('sceneSoundPrompt');
+    const sceneText = (document.getElementById('sceneText')?.value || '').trim();
+    if (!sceneText) { alert('씬 본문을 먼저 채우세요.'); return; }
+    const motifs = (document.getElementById('sceneMotifs')?.value || '')
+      .split(',').map(x => x.trim()).filter(Boolean);
+    statusEl.textContent = '초안 받는 중…'; statusEl.style.color = '#7c7466';
+    try {
+      const sb = await getSupabaseClient();
+      const { data, error } = await sb.functions.invoke('generate-scene-sound', {
+        body: { mode: 'draft', sceneText, motifs }
+      });
+      if (error) throw error;
+      if (data && data.error) throw new Error(data.error);
+      promptEl.value = (data && data.prompt) || '';
+      statusEl.textContent = '✓ 초안 — 다듬고 [생성]';
+      statusEl.style.color = '#6aa383';
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = '❌ ' + (e.message || '초안 실패');
+      statusEl.style.color = '#b85540';
+    }
+  });
+
+  // AI 음향 — 생성 (프롬프트 → ElevenLabs → Storage)
+  const soundGenBtn = document.getElementById('sceneSoundGenBtn');
+  if (soundGenBtn) soundGenBtn.addEventListener('click', async () => {
+    const statusEl = document.getElementById('sceneSoundGenStatus');
+    const promptEl = document.getElementById('sceneSoundPrompt');
+    const prompt = (promptEl?.value || '').trim();
+    if (!prompt) { alert('사운드 프롬프트를 채우세요 ([초안] 버튼 또는 직접 입력).'); return; }
+    statusEl.textContent = '생성 중… (10~20초)'; statusEl.style.color = '#7c7466';
+    try {
+      const sb = await getSupabaseClient();
+      const { data, error } = await sb.functions.invoke('generate-scene-sound', {
+        body: { mode: 'generate', prompt, sceneId: s.id }
+      });
+      if (error) throw error;
+      if (data && data.error) throw new Error(data.error);
+      const url = data && data.soundUrl;
+      if (!url) throw new Error('soundUrl 없음');
+      // 결과 URL 을 custom URL 칸 + 드롭다운에 반영
+      const sel = document.getElementById('sceneSoundSelect');
+      const inp = document.getElementById('sceneSoundUrl');
+      if (sel) sel.value = '__custom__';
+      if (inp) { inp.value = url; inp.style.display = 'block'; }
+      statusEl.textContent = '✓ 생성됨 — ▶ 미리듣기로 확인 후 저장';
+      statusEl.style.color = '#6aa383';
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = '❌ ' + (e.message || '생성 실패');
+      statusEl.style.color = '#b85540';
+    }
+  });
+
   // 브릿지 추가
   const addBtn = document.getElementById('bridgeAddBtn');
   if (addBtn) addBtn.addEventListener('click', () => {
@@ -1788,6 +1846,7 @@ async function saveScene(s) {
     : (soundUrlInputEl?.value.trim() || '');
   const soundVolume = parseFloat(document.getElementById('sceneSoundVolume')?.value) || 1;
   const soundRadius = parseFloat(document.getElementById('sceneSoundRadius')?.value) || 15;
+  const soundPrompt = (document.getElementById('sceneSoundPrompt')?.value || '').trim();
 
   // 부정 제약 (DOM row에서 수거)
   const exclusions = collectExclusionsFromDOM();
@@ -1824,6 +1883,9 @@ async function saveScene(s) {
       delete newMeta.sound_volume;
       delete newMeta.sound_radius;
     }
+    // 사운드 프롬프트는 URL 유무와 무관하게 보존 — 나중에 재생성용
+    if (soundPrompt) newMeta.sound_prompt = soundPrompt;
+    else delete newMeta.sound_prompt;
     if (exclusions) {
       newMeta.exclusions = exclusions;
     } else {
@@ -1972,6 +2034,17 @@ function renderDetailTab(s) {
       <label style="font-size:0.7rem;color:#7c7466;">반경</label>
       <input type="number" id="sceneSoundRadius" min="1" max="100" step="1" value="${s.meta?.sound_radius ?? 15}" style="width:60px;padding:3px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.12);color:#e0d8c4;font-size:0.75rem;border-radius:2px;" title="이 반경 안에 플레이어가 오면 최대 볼륨" />
       <button class="tv-toggle" id="sceneSoundTestBtn" style="padding:3px 10px;font-size:0.7rem;">▶ 미리듣기</button>
+    </div>
+    <div style="margin-top:6px;padding:8px;background:rgba(196,168,130,0.04);border:1px solid rgba(196,168,130,0.12);border-radius:2px;">
+      <div style="font-size:0.66rem;color:#7c7466;margin-bottom:4px;line-height:1.4;">
+        AI 음향 생성 — 씬 본문에서 소리 프롬프트 초안을 받아 다듬은 뒤 생성. 결과는 위 URL 칸에 들어감.
+      </div>
+      <textarea id="sceneSoundPrompt" rows="2" placeholder="사운드 프롬프트 (영어) — [초안] 버튼으로 채우거나 직접 입력" style="${inputStyle}resize:vertical;font-size:0.72rem;">${escapeHtml(s.meta?.sound_prompt || '')}</textarea>
+      <div style="display:flex;gap:6px;margin-top:4px;align-items:center;">
+        <button class="tv-toggle" id="sceneSoundDraftBtn" style="padding:3px 10px;font-size:0.7rem;">✎ 초안</button>
+        <button class="tv-toggle" id="sceneSoundGenBtn" style="padding:3px 10px;font-size:0.7rem;">🎵 생성</button>
+        <span id="sceneSoundGenStatus" style="font-size:0.68rem;color:#7c7466;"></span>
+      </div>
     </div>
 
     <label style="${labelStyle}">이 씬이 뜨지 않을 조건</label>
