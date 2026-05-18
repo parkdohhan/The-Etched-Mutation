@@ -2624,7 +2624,7 @@ async function loadAllSessions() {
                 .order('created_at', { ascending: false });
 
             if (archiveData) {
-                // Count simulation plays per memory and merge into layers count
+                // Count plays per memory — this count IS the layer number shown.
                 const memoryIds = archiveData.map(m => m.id).filter(Boolean);
                 const playCounts = {};
                 if (memoryIds.length > 0) {
@@ -2639,11 +2639,14 @@ async function loadAllSessions() {
                     }
                 }
                 archiveData.forEach(m => {
-                    const baseLayers = m.layers || 0;
-                    const simCount = playCounts[m.id] || 0;
+                    // "레이어" = 이 기억으로 plays 테이블에 쌓인 행 개수 그대로.
+                    // 과거엔 m.layers(DB) + playCount 를 더했으나, m.layers 칸 자체가
+                    // 플레이 흐름·시뮬레이터에서 "플레이 횟수"로 덮어써지는 값이라
+                    // 합산하면 같은 횟수를 두 번 세는 이중 카운트가 됐다.
+                    const playRowCount = playCounts[m.id] || 0;
                     allSessions.push({
                         ...m,
-                        layers: baseLayers + simCount,
+                        layers: playRowCount,
                         type: 'archive',
                         displayTitle: m.title || m.code
                     });
