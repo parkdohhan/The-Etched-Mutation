@@ -33,3 +33,6 @@ tmp_*.md
 
 # Playwright MCP 콘솔 캐시
 .playwright-mcp/
+
+# 루트에 떨어진 임시 스크린샷 캡처
+/tem-*.png
