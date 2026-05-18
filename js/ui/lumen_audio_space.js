@@ -52,7 +52,16 @@
     ghostPointsProvider: null,
     fallbackPinsProvider: null,
     // Smoothing
-    gainLerp: 0.05
+    gainLerp: 0.05,
+    // Scene voices — 접근 가능 씬마다 그 씬의 sound_url 을 제 위치에 재생 (1인칭 길찾기)
+    sceneVoicesProvider: null,
+    sceneVoiceDefaultUrl: 'sounds/sfx_resonance.mp3',
+    sceneVoiceGain: 0.5,
+    sceneVoiceRefDistance: 2.5,
+    sceneVoiceMaxDistance: 22,
+    sceneVoiceRolloff: 1.2,
+    sceneVoiceFadeIn: 0.9,     // 초
+    sceneVoiceFadeOut: 0.7     // 초
   };
 
   function attach(runtime, opts) {
@@ -65,6 +74,10 @@
     var _whispers = [];     // [{panner, gain, src, x, z}]
     var _noise = null;      // {src, gain}
     var _drone = null;
+    var _sceneVoices = [];  // [{panner, gain, src, id}] — 접근 가능 씬별 위치음
+    var _voiceMaster = null;// GainNode — 1인칭 밖에서 씬 음성 전체 음소거
+    var _voiceBufCache = {};// url -> Promise<AudioBuffer> (씬마다 다른 파일 캐시)
+    var _voiceGen = 0;      // rebuild 경쟁 방지 세대 카운터
 
     // Three vectors for listener orientation (avoid GC churn)
     var _fwd = null, _up = null;
@@ -108,6 +121,10 @@
         try { dSrc.start(); } catch (_) {}
         _drone = { src: dSrc, gain: dGain };
       }
+      // Scene-voice 마스터 게인 — fp 진입 시 _tickFrame 이 1 로 끌어올림
+      _voiceMaster = ctx.createGain();
+      _voiceMaster.gain.value = 0;
+      _voiceMaster.connect(ctx.destination);
     }
 
     function _teardownWhispers() {
@@ -167,6 +184,89 @@
       });
     }
 
+    function _loadVoiceBuf(url) {
+      if (_voiceBufCache[url]) return _voiceBufCache[url];
+      var p = _loadBuf(url);
+      _voiceBufCache[url] = p;
+      p.catch(function () { delete _voiceBufCache[url]; }); // 실패는 캐시에 안 남김
+      return p;
+    }
+
+    function _teardownSceneVoices() {
+      var dead = _sceneVoices;
+      _sceneVoices = [];
+      dead.forEach(function (v) {
+        try {
+          var now = ctx.currentTime;
+          v.gain.gain.cancelScheduledValues(now);
+          v.gain.gain.setValueAtTime(v.gain.gain.value, now);
+          v.gain.gain.linearRampToValueAtTime(0, now + opts.sceneVoiceFadeOut);
+        } catch (_) {}
+        setTimeout(function () {
+          try { v.src.stop(); } catch (_) {}
+          try { v.src.disconnect(); } catch (_) {}
+          try { v.gain.disconnect(); } catch (_) {}
+          try { v.panner.disconnect(); } catch (_) {}
+        }, opts.sceneVoiceFadeOut * 1000 + 60);
+      });
+    }
+
+    // 접근 가능 씬마다 그 씬의 sound_url 을 제 위치에 looping 재생.
+    // 턴마다 호출 — 사라진 씬은 fade-out, 새 씬은 fade-in (whisper 같은 glitch 없음).
+    function _rebuildSceneVoices() {
+      if (!ctx || !_voiceMaster) return;
+      var gen = ++_voiceGen;
+      _teardownSceneVoices();
+
+      var pts = [];
+      if (typeof opts.sceneVoicesProvider === 'function') {
+        try { pts = opts.sceneVoicesProvider() || []; } catch (_) {}
+      }
+      if (!Array.isArray(pts)) pts = [];
+
+      pts.forEach(function (p, i) {
+        var authored = !!p.url;
+        var url = p.url || opts.sceneVoiceDefaultUrl;
+        _loadVoiceBuf(url).then(function (buf) {
+          // dispose/재호출이 await 사이에 끼어들었으면 폐기
+          if (gen !== _voiceGen || !buf || !ctx || !_voiceMaster) return;
+
+          var panner = ctx.createPanner();
+          panner.panningModel = 'HRTF';
+          panner.distanceModel = 'inverse';
+          panner.refDistance = opts.sceneVoiceRefDistance;
+          panner.maxDistance = (p.radius != null ? p.radius : opts.sceneVoiceMaxDistance);
+          panner.rolloffFactor = opts.sceneVoiceRolloff;
+          var px = p.x || 0, py = (p.y != null ? p.y : 1.2), pz = p.z || 0;
+          if (panner.positionX) {
+            panner.positionX.value = px;
+            panner.positionY.value = py;
+            panner.positionZ.value = pz;
+          } else if (panner.setPosition) {
+            panner.setPosition(px, py, pz);
+          }
+
+          var target = (p.volume != null ? p.volume : opts.sceneVoiceGain);
+          var gain = ctx.createGain();
+          var now = ctx.currentTime;
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(target, now + opts.sceneVoiceFadeIn); // fade-in
+
+          var src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.loop = true;
+          // 기본음은 여러 씬이 같은 파일 — 미세 피치차로 위상 겹침 완화.
+          // 작가가 박은 소리는 의도된 음정이라 건드리지 않음.
+          if (!authored) src.playbackRate.value = 0.97 + (i % 5) * 0.015;
+          src.connect(gain).connect(panner).connect(_voiceMaster);
+          var off = (i * 0.61) % Math.max(0.1, buf.duration - 0.1);
+          try { src.start(0, off); } catch (_) {}
+
+          _sceneVoices.push({ panner: panner, gain: gain, src: src, id: p.id });
+        }).catch(function () {});
+      });
+    }
+
     function _contDepth() {
       if (typeof opts.contaminationDepthProvider === 'function') {
         try { return Number(opts.contaminationDepthProvider()) || 0; } catch (_) { return 0; }
@@ -206,6 +306,7 @@
       if (!fpActive) {
         if (_noise) _noise.gain.gain.value += (0 - _noise.gain.gain.value) * opts.gainLerp;
         if (_drone) _drone.gain.gain.value += (0 - _drone.gain.gain.value) * opts.gainLerp;
+        if (_voiceMaster) _voiceMaster.gain.value += (0 - _voiceMaster.gain.value) * opts.gainLerp;
         return;
       }
 
@@ -228,6 +329,11 @@
         var prox = (r < outer) ? (1 - r / outer) : 0;
         var tD = prox * opts.droneMaxGain;
         _drone.gain.gain.value += (tD - _drone.gain.gain.value) * opts.gainLerp;
+      }
+
+      // Scene voices — 1인칭에서 켜짐 (마스터 게인으로 일괄 제어)
+      if (_voiceMaster && !_voiceMaster._muted) {
+        _voiceMaster.gain.value += (1 - _voiceMaster.gain.value) * opts.gainLerp;
       }
     }
 
@@ -255,6 +361,7 @@
         _droneBuf = bufs[2];
         _initAmbient();
         _rebuildWhispers();
+        _rebuildSceneVoices();
       }).catch(function (e) {
         console.warn('[lumen-audio] buffer load failed', e);
       });
@@ -262,6 +369,7 @@
 
     var api = {
       rebuildWhispers: _rebuildWhispers,
+      rebuildSceneVoices: _rebuildSceneVoices,
       setOptions: function (patch) { Object.assign(opts, patch || {}); },
       isReady: function () { return !!ctx; },
       _ctx: function () { return ctx; },
@@ -275,10 +383,12 @@
             drone: !!_droneBuf
           },
           whisperCount: _whispers.length,
+          sceneVoiceCount: _sceneVoices.length,
           whisperPositions: _whispers.map(function (w) { return { x: w.x, z: w.z }; }),
           whisperGain: _whispers[0] ? _whispers[0].gain.gain.value : 0,
           noiseGain: _noise ? _noise.gain.gain.value : 0,
           droneGain: _drone ? _drone.gain.gain.value : 0,
+          voiceMasterGain: _voiceMaster ? _voiceMaster.gain.value : 0,
           contDepth: _contDepth(),
           cam: cam ? { x: +cam.position.x.toFixed(2), z: +cam.position.z.toFixed(2), r: +Math.sqrt(cam.position.x * cam.position.x + cam.position.z * cam.position.z).toFixed(2) } : null,
           fpActive: !!(runtime.isFirstPerson && runtime.isFirstPerson())
@@ -294,6 +404,9 @@
         } else if (name === 'drone' && _drone) {
           _drone.gain.gain.setValueAtTime(mute ? 0 : _drone.gain.gain.value, ctx.currentTime);
           if (mute) _drone._muted = true; else _drone._muted = false;
+        } else if (name === 'voices' && _voiceMaster) {
+          _voiceMaster._muted = mute;
+          if (mute) _voiceMaster.gain.setValueAtTime(0, ctx.currentTime);
         }
       }
     };

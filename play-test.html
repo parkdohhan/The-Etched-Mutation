@@ -4976,11 +4976,22 @@
                 contaminationDepthProvider: function () {
                   try { return (window._temGame && window._temGame.contState && window._temGame.contState.cont_depth) || 0; } catch (_) { return 0; }
                 },
-                fallbackPinsProvider: function () {
+                // 접근 가능한 씬마다 그 씬의 소리를 제 위치에 — 1인칭에서 귀로 길찾기.
+                // 작가가 admin 에서 박은 scene.meta.sound_url 사용, 없으면 엔진 기본음.
+                sceneVoicesProvider: function () {
                   try {
                     return (_fpScenePins || [])
-                      .filter(function (p) { return p && p.accessible; })
-                      .map(function (p) { return { x: p.wx, z: p.wz }; });
+                      .filter(function (p) { return p && p.accessible && p.scene; })
+                      .map(function (p) {
+                        var m = (p.scene && p.scene.meta) || {};
+                        return {
+                          id: p.scene.id,
+                          x: p.wx, y: p._baseY, z: p.wz,
+                          url: m.sound_url || null,
+                          volume: (m.sound_volume != null ? m.sound_volume : null),
+                          radius: (m.sound_radius != null ? m.sound_radius : null)
+                        };
+                      });
                   } catch (_) { return []; }
                 }
               });
@@ -5106,6 +5117,9 @@
           try {
             if (rt.__lumenAudioSpace && typeof rt.__lumenAudioSpace.rebuildWhispers === 'function') {
               rt.__lumenAudioSpace.rebuildWhispers();
+            }
+            if (rt.__lumenAudioSpace && typeof rt.__lumenAudioSpace.rebuildSceneVoices === 'function') {
+              rt.__lumenAudioSpace.rebuildSceneVoices();
             }
           } catch (_) {}
           try {
@@ -5857,9 +5871,16 @@
               var oldPinIds = _fpScenePins.map(function (sp) { return sp.pin.id; });
               _fpScenePins = [];
               _buildPlayScenePins();
+              // 턴 전환 — 접근 가능 집합이 바뀌었으니 씬 음성 재배치.
+              // scene-voice 는 fade-in/out 처리돼서 whisper 같은 BufferSource glitch 없음.
+              // (whisper rebuild 는 여전히 호출 안 함 — fade 없어 숨소리 튐.)
+              try {
+                if (rt.__lumenAudioSpace && typeof rt.__lumenAudioSpace.rebuildSceneVoices === 'function') {
+                  rt.__lumenAudioSpace.rebuildSceneVoices();
+                }
+              } catch (_) {}
               // 마네킨 rebuild — 새 핀 위치에 마네킨 재배치 + 새 핀 옥타헤드론 가림.
               // hidePinsNow 만 부르면 마네킨이 옛 좌표에 머물러 새 핀과 위치 어긋나서 클릭 안 됨.
-              // audio whisper rebuild 는 BufferSource glitch 로 숨소리 튀어서 호출 안 함.
               try {
                 if (rt.__lumenSceneMannequins && typeof rt.__lumenSceneMannequins.rebuild === 'function') {
                   rt.__lumenSceneMannequins.rebuild();
