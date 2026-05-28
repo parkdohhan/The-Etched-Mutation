@@ -60,6 +60,7 @@
   <script src="js/ui/lumen_return_mode.js"></script>
   <script src="js/ui/lumen_return_speech.js"></script>
   <script src="js/ui/lumen_return_events.js"></script>
+  <script src="js/ui/lumen_footprints.js"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
   <!-- V2.1.2 safety: ES module 로 safety.js 로드 → window.LumenSafety 노출 (SlotAbsorber 호출 자리) -->
   <script type="module" src="js/safety.js"></script>
@@ -417,6 +418,7 @@
   </div>
   <div id="selectScreen">
     <h1 style="font-family:'Cormorant Garamond',serif;color:#e8e4df;font-size:2rem;font-weight:400;letter-spacing:0.05em;margin-bottom:2rem;">The Etched Mutation</h1>
+    <div style="margin-bottom:1rem;"><select id="langSelect" style="background:#111;color:#c4a882;border:1px solid rgba(196,168,130,0.3);padding:0.45rem 1rem;font-family:'Cormorant Garamond',serif;font-size:0.95rem;border-radius:4px;"><option value="en">English</option><option value="ko">한국어</option></select></div>
     <select id="memorySelect" style="background:#111;color:#e8e4df;border:1px solid rgba(196,168,130,0.3);padding:0.6rem 1.2rem;font-family:'Cormorant Garamond',serif;font-size:1rem;border-radius:4px;margin-bottom:1rem;min-width:250px;"></select>
     <button id="startBtn" type="button" style="background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:0.6rem 2rem;font-family:'Cormorant Garamond',serif;font-size:1rem;cursor:pointer;border-radius:4px;letter-spacing:0.05em;">Enter the memory</button>
   </div>
@@ -516,6 +518,9 @@
   // V2-6 drift 픽 — DriftPicker 는 self-attach (window.DriftPicker), 폴백 문구는 여기서 노출 (dialog_phase1.js non-module 이 사용)
   import './js/core/DriftPicker.js';
   import { pickFallbackString as _pickFallbackStringV26 } from './js/content/narrative_fallback_strings.js';
+  // Quilt 데모용 어댑터 — ?quiltDemo=1 일 때만 _enterLumenDialogPhase1 안에서 attach
+  import { QuiltDemoState } from './js/core/QuiltDemoState.js';
+  window.QuiltDemoState = QuiltDemoState; // non-module 영역(footprints, mock test)에서 사용
   // Non-module 스크립트(fpAmbientWave 등)에서 접근 가능하게 전역 노출
   window.sharedEmotionVectorToWaveStyle = sharedEmotionVectorToWaveStyle;
   window.GHOST_PRESETS = GHOST_PRESETS;
@@ -672,6 +677,22 @@
   (function () {
     var alignSub = document.getElementById('playAlignmentSub');
     if (alignSub) alignSub.textContent = LANG === 'ko' ? '각인(상) · 나의 응답(하)' : 'Engraving(top) · My response(bottom)';
+  })();
+
+  // 시작 화면 언어 선택 — 바꾸면 ?lang= 로 리로드 (LANG 은 const 라 라이브 변경 불가).
+  // 선택은 localStorage 에 저장돼 다음 진입에도 유지됨.
+  (function () {
+    var langSel = document.getElementById('langSelect');
+    if (!langSel) return;
+    langSel.value = LANG;
+    langSel.addEventListener('change', function () {
+      var next = langSel.value === 'ko' ? 'ko' : 'en';
+      if (next === LANG) return;
+      try { localStorage.setItem('tem_language', next); } catch (_) {}
+      var url = new URL(window.location.href);
+      url.searchParams.set('lang', next);
+      window.location.href = url.toString();
+    });
   })();
 
   function getEmotionsUi() {
@@ -2879,6 +2900,30 @@
     var supabase = (typeof window.getSupabaseClient === 'function') ? window.getSupabaseClient() : null;
     var runtime  = window._fpRuntime || null;
 
+    // ─── Quilt 데모 attach (?quiltDemo=1 일 때만) ───
+    // 어댑터는 runtime.__quiltDemo 에 매달림. memoryId 바뀌면 재생성.
+    // 데이터 소스: visited=game.traces[].sceneId / trajectory=runtime.__lumenAdapter / dialogTurns=onSceneEnd push
+    var quilt = null;
+    try {
+      if (runtime && new URLSearchParams(location.search).has('quiltDemo')) {
+        var existing = runtime.__quiltDemo;
+        if (!existing || existing.getSnapshot().memoryId !== game.memoryId) {
+          runtime.__quiltDemo = new QuiltDemoState({
+            memoryId: game.memoryId,
+            getVisited: function () {
+              return (game.traces || []).map(function (t) { return t.sceneId; });
+            },
+            getTrajectory: function () {
+              var ad = runtime.__lumenAdapter;
+              return (ad && typeof ad.getTrajectory === 'function') ? ad.getTrajectory() : [];
+            },
+          });
+          console.log('[quilt] adapter attached for memory=' + (game.memoryId || '').slice(0, 8) + '…');
+        }
+        quilt = runtime.__quiltDemo;
+      }
+    } catch (e) { console.warn('[quilt] attach fail', e); }
+
     // V2.1.2 anchorVariantId — 본 유령 id 가 흡수 변주의 parent_variant_id 자리.
     // sessionStorage 또는 game.* 에 V2-3 / V2-4 단계에서 박혀 있을 수 있음. 없으면 null (계보 추적 X, 작동 영향 없음).
     var anchorVariantId = null;
@@ -2900,6 +2945,19 @@
         // 플레이어가 다음 핀(다른 유령) 을 직접 골라서 long press 로 진입.
         // §6.5 #5 "Player sees fog" 정합. dissonance 결은 자연스럽게 *유령 떠남* 자리.
         console.log('[v21-phase1] scene end — return to free explore. resonance=' + result.resonance);
+
+        // Quilt 데모 record — 어댑터 있으면 한 turn 결과 누적
+        if (quilt) {
+          try {
+            quilt.recordDialogTurn({
+              sceneId: scene.id,
+              sceneOrder: pin.sceneOrder,
+              scene_link_input: result.scene_link_input,
+              alignment: result.alignment,
+              resonance: result.resonance,
+            });
+          } catch (e) { console.warn('[quilt] record fail', e); }
+        }
 
         // V2.1.2 (2026-05-05) — plays insert + game.traces push.
         //   generate-reveal 은 game.traces 매핑한 visits 자리 본다. traces 비면 "안 플레이" fallback.
@@ -4908,6 +4966,30 @@
                 contaminationDepthProvider: function () {
                   try { return (window._temGame && window._temGame.contState && window._temGame.contState.cont_depth) || 0; } catch (_) { return 0; }
                 }
+              });
+            }
+            // Quilt 발자국 (깃발 켰을 때만). quilt 어댑터는 dialog 첫 진입 시 만들어지므로 lazy provider.
+            if (window.LumenFootprints && typeof window.LumenFootprints.attach === 'function'
+                && new URLSearchParams(location.search).has('quiltDemo')) {
+              window.LumenFootprints.attach(rt, {
+                quilt: function () { return rt.__quiltDemo; },
+                getAccessibleCount: function () {
+                  var g = window._temGame;
+                  if (!g || !g.accessiblePinIds) return -1; // 아직 초기화 X → 트리거 안 함
+                  return g.accessiblePinIds.size;
+                },
+                onDoorReached: function () {
+                  console.log('[quilt] door reached — fade out + close');
+                  try {
+                    document.body.style.transition = 'opacity 2.5s';
+                    document.body.style.opacity = '0';
+                    setTimeout(function () {
+                      var btn = document.getElementById('strataCloseBtn');
+                      if (btn) btn.click();
+                      document.body.style.opacity = '1';
+                    }, 2500);
+                  } catch (e) { console.warn('[quilt] door fade err', e); }
+                },
               });
             }
             if (window.LumenVisualEffects && typeof window.LumenVisualEffects.attach === 'function') {
