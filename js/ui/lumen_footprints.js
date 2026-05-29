@@ -22,11 +22,12 @@
 
   var DEFAULTS = {
     strideDistance: 0.85,        // 신장 절반 (1.7m / 2)
-    footWidth: 0.10,             // 발 모양 가로 10cm
-    footLength: 0.22,            // 발 모양 세로 22cm
-    footSideOffset: 0.12,        // 진행 방향 직각 좌우 offset (왼/오른발 거리/2)
-    footprintOpacity: 0.75,
-    groundY: 0.02,               // z-fighting 회피용 살짝 위
+    footWidth: 0.30,             // 가로 30cm — 큰 사람 발 크기
+    footLength: 0.75,            // 세로 75cm — 시각 강조 위해 실 발(28cm)의 ~2.7배
+    footSideOffset: 0.18,        // 좌우 발 간격 36cm
+    footprintOpacity: 1.0,
+    eyeHeight: 1.6,              // 1인칭 카메라(머리)에서 발까지 빼는 값. strata 카메라가 지면 + 1.6m 자리라고 가정.
+    groundY: 0.04,               // 발 위로 살짝 띄움 (z-fighting 회피, depthTest=false 와 짝)
     exploreFadeMs: 3000,
     returnInitialCount: 7,
     returnAppearIntervalMs: 700,
@@ -34,38 +35,11 @@
     quilt: null,                 // 필수 (함수)
     getAccessibleCount: null,
     onDoorReached: null,
+    texturePath: 'img/footprint.png', // 사용자 발자국 이미지 (한 장, 좌발은 가로 mirror)
   };
 
-  // ─── 발자국 texture (한 번만 생성, 좌/우 두 장) ───
-  function _makeFootCanvas(side /* 'L'|'R' */) {
-    var c = document.createElement('canvas');
-    c.width = 64; c.height = 128;
-    var ctx = c.getContext('2d');
-    ctx.clearRect(0, 0, 64, 128);
-    ctx.fillStyle = 'rgba(0,0,0,0.85)';
-    // 발바닥 (큰 타원)
-    ctx.beginPath();
-    ctx.ellipse(32, 76, 14, 32, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // 발가락 자리 살짝 잘록 (어두운 그림자 효과)
-    ctx.fillStyle = 'rgba(0,0,0,0.85)';
-    // 5개 발가락 (작은 점) — 방향(side)에 따라 엄지 위치 좌/우
-    var thumbSide = (side === 'L') ? -1 : 1; // 왼발은 엄지 안쪽(오른쪽), 오른발 반대
-    var toes = [
-      { dx: thumbSide * 9,  dy: 36, r: 5 }, // 엄지
-      { dx: thumbSide * 4,  dy: 30, r: 3 },
-      { dx: 0,              dy: 28, r: 3 },
-      { dx: -thumbSide * 4, dy: 30, r: 3 },
-      { dx: -thumbSide * 8, dy: 32, r: 3 },
-    ];
-    for (var i = 0; i < toes.length; i++) {
-      var t = toes[i];
-      ctx.beginPath();
-      ctx.ellipse(32 + t.dx, 76 - t.dy, t.r, t.r * 1.3, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    return c;
-  }
+  // 발자국 texture는 사용자가 그린 PNG (img/footprint.png) 로드.
+  // 좌발은 mesh.scale.x = -1 로 가로 mirror 처리 → texture 한 장만 필요.
 
   function attach(runtime, opts) {
     if (!runtime) { console.error('[lumen-footprints] runtime required'); return null; }
@@ -86,19 +60,65 @@
     var scene = runtime.getScene && runtime.getScene();
     if (!scene) { console.error('[lumen-footprints] runtime.getScene returned null'); return null; }
 
-    // ─── 모양 — 발 texture 두 장 (L, R) + plane geometry 공유 ───
-    var texL = new THREE.CanvasTexture(_makeFootCanvas('L'));
-    var texR = new THREE.CanvasTexture(_makeFootCanvas('R'));
-    texL.needsUpdate = true; texR.needsUpdate = true;
+    // ─── 모양 — 사용자 발자국 시트 (4쌍=8칸) 비동기 로드 → 좌/우 4개씩 array ───
+    var FP_PAIRS = 4;                 // 가로 4쌍
+    var FP_TINT = '#888';             // 발자국 회색 톤 (검정 원본 → source-in 으로 회색화)
+    var texturesL = [];               // 좌발 4개 변주 (CanvasTexture)
+    var texturesR = [];               // 오른발 4개 변주
+    var _texReady = false;
+    (function _loadSheet() {
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        var cellW = img.width / (FP_PAIRS * 2);  // 8칸 균등 분할
+        var cellH = img.height;
+        for (var i = 0; i < FP_PAIRS * 2; i++) {
+          var c = document.createElement('canvas');
+          c.width = cellW; c.height = cellH;
+          var cx = c.getContext('2d');
+          // 1) 원본 칸 그리기
+          cx.drawImage(img, i * cellW, 0, cellW, cellH, 0, 0, cellW, cellH);
+          // 2) 회색 톤으로 갈음 — 발자국 alpha 영역만 남기고 회색으로 fill
+          cx.globalCompositeOperation = 'source-in';
+          cx.fillStyle = FP_TINT;
+          cx.fillRect(0, 0, cellW, cellH);
+          cx.globalCompositeOperation = 'source-over';
+          var tex = new THREE.CanvasTexture(c);
+          tex.needsUpdate = true;
+          // 회전 +π 박은 자리에서 좌우 거울 발생 → 시트의 한 쌍 왼쪽(짝수칸)이 사실 오른발로 박혀야 맞음.
+          // 짝수 칸(0,2,4,6) → 오른발, 홀수 칸(1,3,5,7) → 왼발
+          if (i % 2 === 0) texturesR.push(tex);
+          else texturesL.push(tex);
+        }
+        _texReady = true;
+        console.log('[lumen-footprints] sheet loaded — L=' + texturesL.length + ', R=' + texturesR.length);
+      };
+      img.onerror = function () {
+        console.error('[lumen-footprints] failed to load ' + opts.texturePath);
+      };
+      img.src = opts.texturePath;
+    })();
+
     var geometry = new THREE.PlaneGeometry(opts.footWidth, opts.footLength);
     geometry.rotateX(-Math.PI / 2); // 지면 평평
 
+    function _pickTexture(side) {
+      var set = (side === 'L') ? texturesL : texturesR;
+      if (!set.length) return null; // 시트 아직 로드 전
+      return set[Math.floor(Math.random() * set.length)];
+    }
+
     function _makeMaterial(side) {
+      // depthTest=false: 굴곡 지형이 발자국 평면을 먹어버리는 걸 방지 (항상 위에 그려짐)
+      // depthWrite=false: 뒤따라오는 투명 오브젝트와 깊이 충돌 안 함
+      // DoubleSide: 1인칭 카메라가 발자국 plane 어느 쪽에서 보든 보이게
       return new THREE.MeshBasicMaterial({
-        map: (side === 'L') ? texL : texR,
+        map: _pickTexture(side),
         transparent: true,
         opacity: opts.footprintOpacity,
         depthWrite: false,
+        depthTest: false,
+        side: THREE.DoubleSide,
       });
     }
 
@@ -110,7 +130,25 @@
     var _doorTriggered = false;
     var _footSide = 'L';         // 다음 박을 발 (시작은 왼발)
 
-    function _stampAt(x, z, yaw, permanent) {
+    // [TEMP 2026-05-29] 가시 진단 패널 — 화면 좌상단에 모듈 상태 실시간 표시.
+    // 평가 끝나면 이 블록과 _step 끝의 갱신 자리 둘 다 제거.
+    var _debugPanel = null;
+    try {
+      if (typeof document !== 'undefined' && document.body) {
+        _debugPanel = document.createElement('div');
+        _debugPanel.id = 'fp-debug-panel';
+        _debugPanel.style.cssText = 'position:fixed;top:8px;left:8px;z-index:99999;'
+          + 'background:rgba(0,0,0,0.82);color:#fff;font:11px/1.4 monospace;'
+          + 'padding:6px 10px;border:1px solid #ff5555;pointer-events:none;'
+          + 'min-width:240px;border-radius:3px';
+        _debugPanel.textContent = '[FP] attached, waiting for first tick';
+        document.body.appendChild(_debugPanel);
+      }
+    } catch (e) { console.warn('[lumen-footprints] debug panel fail', e); }
+
+    // y 파라미터: 박는 자리의 절대 높이. null/undefined 면 opts.groundY (절대값) 사용.
+    // 1인칭 굴곡 지형 위에선 호출처에서 cam.position.y - 눈높이 + opts.groundY 를 던진다.
+    function _stampAt(x, z, yaw, permanent, y) {
       var side = _footSide;
       var mat = _makeMaterial(side);
       var mesh = new THREE.Mesh(geometry, mat);
@@ -120,9 +158,16 @@
       var sideAngle = yaw + Math.PI / 2;
       var ox = Math.sin(sideAngle) * off;
       var oz = Math.cos(sideAngle) * off;
-      mesh.position.set(x + ox, opts.groundY, z + oz);
+      var yy = (typeof y === 'number') ? y : opts.groundY;
+      mesh.position.set(x + ox, yy, z + oz);
       // PlaneGeometry는 xy 평면 기본, rotateX(-π/2)로 xz로 눕힘. yaw로 진행 방향 회전.
-      mesh.rotation.y = yaw;
+      // +π — 텍스처는 발끝이 위쪽(y=0)인데, rotateX 후 그게 +z 방향. yaw=0 일 때 카메라가 -z 향함.
+      // 그래서 발끝이 진행 방향과 정반대 → π 더해서 뒤집음.
+      mesh.rotation.y = yaw + Math.PI;
+      // depthTest=false 와 짝 — 다른 투명 오브젝트보다 늦게 그려져 항상 보임.
+      mesh.renderOrder = 999;
+      // [TEMP 2026-05-29] frustum culling 우회 — 작은 plane 이 카메라 시야 가장자리에서 잘려나가는 걸 방지
+      mesh.frustumCulled = false;
       scene.add(mesh);
       _activeStamps.push({
         mesh: mesh, material: mat,
@@ -156,10 +201,14 @@
       var reversed = picked.slice().reverse();
       // 초기 N개 즉시 출현
       var initial = Math.min(opts.returnInitialCount, reversed.length);
+      // 초기 출현 자리의 발 높이 — 현재 카메라 발 기준 (큐의 점에 y 있으면 거기 우선)
+      var cam = runtime.getCamera && runtime.getCamera();
+      var camFootY = cam ? (cam.position.y - opts.eyeHeight + opts.groundY) : opts.groundY;
       // return 모드 발자국은 좌우 toggle 유지 (탐색 중과 같은 양식)
       for (var k = 0; k < initial; k++) {
         var p = reversed.shift();
-        _stampAt(p.x, p.z, p.yaw || 0, true);
+        var py = (typeof p.y === 'number') ? (p.y + opts.groundY) : camFootY;
+        _stampAt(p.x, p.z, p.yaw || 0, true, py);
       }
       _returnQueue = reversed;
       _returnLastAppearAt = performance.now();
@@ -201,25 +250,29 @@
         }
       }
 
+      // 발 높이 = 카메라(머리) y - 눈높이 + 살짝 위. 굴곡 위 걸을 때마다 매번 다름.
+      var footY = cam.position.y - opts.eyeHeight + opts.groundY;
+
       // 발자국 박기
       if (mode === 'explore') {
         if (!_lastStampPos) {
           // 첫 발자국 — 시작점에 즉시 박음 (출발 자리 표시)
-          _stampAt(cam.position.x, cam.position.z, yaw, false);
+          _stampAt(cam.position.x, cam.position.z, yaw, false, footY);
           _lastStampPos = { x: cam.position.x, z: cam.position.z };
         } else {
           var dx = cam.position.x - _lastStampPos.x;
           var dz = cam.position.z - _lastStampPos.z;
           if (Math.sqrt(dx * dx + dz * dz) >= opts.strideDistance) {
-            _stampAt(cam.position.x, cam.position.z, yaw, false);
+            _stampAt(cam.position.x, cam.position.z, yaw, false, footY);
             _lastStampPos = { x: cam.position.x, z: cam.position.z };
           }
         }
       } else if (mode === 'return') {
-        // 시간 기반 출현
+        // 시간 기반 출현 — 큐의 점에 y가 있으면 그 자리, 없으면 현재 발 높이
         if (_returnQueue && _returnQueue.length > 0 && (now - _returnLastAppearAt) >= opts.returnAppearIntervalMs) {
           var p = _returnQueue.shift();
-          _stampAt(p.x, p.z, p.yaw || 0, true);
+          var py = (typeof p.y === 'number') ? (p.y + opts.groundY) : footY;
+          _stampAt(p.x, p.z, p.yaw || 0, true, py);
           _returnLastAppearAt = now;
         }
         // 문 도달 검사 (큐 비고 시작점 근접)
@@ -239,6 +292,22 @@
             }
           }
         }
+      }
+
+      // [TEMP 2026-05-29] 디버그 패널 갱신 — 평가 끝나면 제거
+      if (_debugPanel) {
+        var q = getQuilt();
+        var camPos = cam ? ('(' + cam.position.x.toFixed(1) + ', ' + cam.position.y.toFixed(2) + ', ' + cam.position.z.toFixed(1) + ')') : '?';
+        var lastFp = _activeStamps.length ? _activeStamps[_activeStamps.length - 1].mesh.position : null;
+        var lastPos = lastFp ? ('(' + lastFp.x.toFixed(1) + ', ' + lastFp.y.toFixed(2) + ', ' + lastFp.z.toFixed(1) + ')') : '-';
+        _debugPanel.innerHTML =
+          '[FP] mode=' + (q ? q.getSnapshot().mode : 'no-quilt')
+          + ' fp=' + (runtime.isFirstPerson && runtime.isFirstPerson() ? 'on' : 'off')
+          + ' active=' + _activeStamps.length
+          + ' queue=' + (_returnQueue ? _returnQueue.length : '-')
+          + '<br>cam=' + camPos
+          + '<br>lastFp=' + lastPos
+          + ' pins=' + (function () { try { return getAccessibleCount(); } catch (_) { return '?'; } })();
       }
 
       // fade-out (explore 비영구 발자국만)
@@ -263,7 +332,13 @@
       });
       _activeStamps = [];
       geometry.dispose();
-      texL.dispose(); texR.dispose();
+      texturesL.forEach(function (t) { t.dispose(); });
+      texturesR.forEach(function (t) { t.dispose(); });
+      texturesL = []; texturesR = [];
+      // [TEMP 2026-05-29] 디버그 패널 정리
+      if (_debugPanel && _debugPanel.parentNode) {
+        _debugPanel.parentNode.removeChild(_debugPanel);
+      }
       delete runtime.__lumenFootprints;
     }
 

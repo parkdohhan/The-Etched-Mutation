@@ -2900,12 +2900,13 @@
     var supabase = (typeof window.getSupabaseClient === 'function') ? window.getSupabaseClient() : null;
     var runtime  = window._fpRuntime || null;
 
-    // ─── Quilt 데모 attach (?quiltDemo=1 일 때만) ───
+    // ─── Quilt 데모 attach ───
+    // [TEMP 2026-05-29] 평가 위해 ?quiltDemo=1 가드 임시 우회. 평가 끝나면 깃발 검사 복구.
     // 어댑터는 runtime.__quiltDemo 에 매달림. memoryId 바뀌면 재생성.
     // 데이터 소스: visited=game.traces[].sceneId / trajectory=runtime.__lumenAdapter / dialogTurns=onSceneEnd push
     var quilt = null;
     try {
-      if (runtime && new URLSearchParams(location.search).has('quiltDemo')) {
+      if (runtime) {
         var existing = runtime.__quiltDemo;
         if (!existing || existing.getSnapshot().memoryId !== game.memoryId) {
           runtime.__quiltDemo = new QuiltDemoState({
@@ -4968,9 +4969,27 @@
                 }
               });
             }
-            // Quilt 발자국 (깃발 켰을 때만). quilt 어댑터는 dialog 첫 진입 시 만들어지므로 lazy provider.
-            if (window.LumenFootprints && typeof window.LumenFootprints.attach === 'function'
-                && new URLSearchParams(location.search).has('quiltDemo')) {
+            // Quilt 발자국. [TEMP 2026-05-29] 평가 위해 ?quiltDemo=1 가드 임시 우회. 평가 끝나면 복구.
+            // [TEMP 2026-05-29] quilt 어댑터 fallback — dialog phase1 진입 못한 경우라도
+            // strata 1인칭 진입 시점에 빈 어댑터를 즉시 만들어둠. 그래야 footprints._step 의
+            // getQuilt() 가 null 반환 안 함.
+            if (!rt.__quiltDemo && window.QuiltDemoState) {
+              try {
+                rt.__quiltDemo = new window.QuiltDemoState({
+                  memoryId: (window._temGame && window._temGame.memoryId) || null,
+                  getVisited: function () {
+                    var g = window._temGame;
+                    return (g && g.traces) ? g.traces.map(function (t) { return t.sceneId; }) : [];
+                  },
+                  getTrajectory: function () {
+                    var ad = rt.__lumenAdapter;
+                    return (ad && typeof ad.getTrajectory === 'function') ? ad.getTrajectory() : [];
+                  },
+                });
+                console.log('[quilt] fallback adapter attached at strata entry');
+              } catch (e) { console.warn('[quilt] fallback fail', e); }
+            }
+            if (window.LumenFootprints && typeof window.LumenFootprints.attach === 'function') {
               window.LumenFootprints.attach(rt, {
                 quilt: function () { return rt.__quiltDemo; },
                 getAccessibleCount: function () {
