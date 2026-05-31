@@ -99,7 +99,25 @@
         transparent: true,
         opacity: opts.footprintOpacity,
         depthWrite: false,
+        side: THREE.DoubleSide,        // 위/아래 어느 쪽에서 봐도 보이게 (backface cull 방지)
+        polygonOffset: true,           // 지형 표면과 z-fighting/가림 방지 — 카메라 쪽으로 살짝 당김
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
       });
+    }
+
+    // 지형 표면 높이 — 형제 모듈(scene_ghosts/_gH, mannequins)과 같은 runtime.gH 사용.
+    // gH 가 봉우리/구덩이로 출렁이므로 발자국 Y 를 지면에 스냅해야 묻히거나 뜨지 않는다.
+    function _groundY(x, z) {
+      if (typeof runtime.gH === 'function') {
+        try {
+          var gy = Number(runtime.gH(x, z));
+          if (!isFinite(gy)) gy = 0;
+          if (gy < -10) gy = -10;       // terrain 1인칭 카메라와 동일 clamp (tem_af_strata_terrain)
+          return gy;
+        } catch (_) { return 0; }
+      }
+      return 0;
     }
 
     // ─── 상태 ───
@@ -109,6 +127,7 @@
     var _returnLastAppearAt = 0;
     var _doorTriggered = false;
     var _footSide = 'L';         // 다음 박을 발 (시작은 왼발)
+    var _prevMode = 'explore';   // 세션 재진입(return/done→explore) 감지용
 
     function _stampAt(x, z, yaw, permanent) {
       var side = _footSide;
@@ -120,9 +139,12 @@
       var sideAngle = yaw + Math.PI / 2;
       var ox = Math.sin(sideAngle) * off;
       var oz = Math.cos(sideAngle) * off;
-      mesh.position.set(x + ox, opts.groundY, z + oz);
+      // Y 를 지형 표면에 스냅 (+groundY 오프셋으로 살짝 위) — 상수 고정 시 봉우리에 묻히고 골짜기엔 떴음
+      var py = _groundY(x + ox, z + oz) + opts.groundY;
+      mesh.position.set(x + ox, py, z + oz);
       // PlaneGeometry는 xy 평면 기본, rotateX(-π/2)로 xz로 눕힘. yaw로 진행 방향 회전.
       mesh.rotation.y = yaw;
+      mesh.renderOrder = 2;            // 지형(0) 위에 그려 가림 최소화
       scene.add(mesh);
       _activeStamps.push({
         mesh: mesh, material: mat,
@@ -188,6 +210,13 @@
       var now = performance.now();
       var mode = quilt.getSnapshot().mode;
       var yaw = (runtime.getYaw && runtime.getYaw()) || 0;
+
+      // 세션 재진입 감지 — 이전이 return/done 인데 지금 explore 면 새 세션 → 상태/발자국 정리
+      // (데모를 닫지 않고 메모리 바꿔 재진입하면 quilt 인스턴스는 새로 생기지만 footprints 는 살아남음)
+      if (mode === 'explore' && (_prevMode === 'return' || _prevMode === 'done')) {
+        _resetState();
+      }
+      _prevMode = mode;
 
       // explore 중 accessiblePinIds 0 검사 → 자동 startReturn + return queue 초기화
       if (mode === 'explore') {
@@ -256,6 +285,21 @@
       }
     }
 
+    // 세션 상태 + 화면 발자국 초기화 (인스턴스/리소스는 유지 — dispose 와 다름)
+    function _resetState() {
+      _activeStamps.forEach(function (s) {
+        scene.remove(s.mesh);
+        s.material.dispose();
+      });
+      _activeStamps = [];
+      _lastStampPos = null;
+      _returnQueue = null;
+      _returnLastAppearAt = 0;
+      _doorTriggered = false;
+      _footSide = 'L';
+      console.log('[lumen-footprints] state reset (재진입)');
+    }
+
     function dispose() {
       _activeStamps.forEach(function (s) {
         scene.remove(s.mesh);
@@ -269,6 +313,7 @@
 
     var api = {
       dispose: dispose,
+      reset: _resetState,
       getActiveCount: function () { return _activeStamps.length; },
       getReturnRemaining: function () { return _returnQueue ? _returnQueue.length : -1; },
       _thinTrajectory: _thinTrajectory,    // 단위 테스트용

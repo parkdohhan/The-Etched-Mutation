@@ -37,6 +37,8 @@ async function main() {
       getCamera: () => cam,
       getYaw: () => 0,
       isFirstPerson: () => true,
+      // 지형 높이 — 형제 모듈과 같은 gH. x 에 비례해 출렁이게 해서 Y 스냅 검증.
+      gH: (x, z) => Math.sin(x) * 5,
       tick: function () { tickCount++; },
       __lumenAdapter: {
         getTrajectory: () => [
@@ -89,6 +91,15 @@ async function main() {
     // scene mesh 추가 확인
     out.steps.push({ name: 'scene mesh 증가', value: scene.children.length - sceneBefore });
 
+    // Y 스냅 검증 — 마지막 발자국 mesh 의 y 가 gH(x)=sin(x)*5 에 근접해야 함 (상수 0.02 아님)
+    const lastMesh = scene.children[scene.children.length - 1];
+    const expectedGy = Math.sin(lastMesh.position.x) * 5;
+    out.steps.push({ name: '마지막 발자국 x', value: +lastMesh.position.x.toFixed(2) });
+    out.steps.push({ name: '마지막 발자국 y (지형스냅)', value: +lastMesh.position.y.toFixed(2) });
+    out.steps.push({ name: '기대 지형높이 gH(x)', value: +expectedGy.toFixed(2) });
+    out.steps.push({ name: 'y가 지형에 스냅됨(상수0.02 아님)', value: Math.abs(lastMesh.position.y - expectedGy) < 0.2 });
+    out.steps.push({ name: 'DoubleSide+polygonOffset', value: !!(lastMesh.material.polygonOffset && lastMesh.material.side === window.THREE.DoubleSide) });
+
     // 강제 return — 역순 발자국 즉시 출현
     const okForce = fp._forceReturn();
     out.steps.push({ name: '_forceReturn', value: okForce });
@@ -119,8 +130,10 @@ async function main() {
     { name: '0.3m 이동 시 그대로 1개', pass: result.steps[3]?.value === 1 },
     { name: '1m 이동 시 2개로 증가', pass: result.steps[4]?.value === 2 },
     { name: '2m 이동 시 3개로 증가', pass: result.steps[5]?.value === 3 },
-    { name: 'return mode 전환', pass: result.steps[8]?.value === 'return' },
-    { name: 'return 시 발자국 추가 (3 + initial)', pass: result.steps[9]?.value > 3 },
+    { name: 'y가 지형에 스냅됨', pass: result.steps.find(s => s.name === 'y가 지형에 스냅됨(상수0.02 아님)')?.value === true },
+    { name: 'DoubleSide+polygonOffset 적용', pass: result.steps.find(s => s.name === 'DoubleSide+polygonOffset')?.value === true },
+    { name: 'return mode 전환', pass: result.steps.find(s => s.name === 'return mode')?.value === 'return' },
+    { name: 'return 시 발자국 추가', pass: result.steps.find(s => s.name === 'return 후 active (initial 7개 즉시)')?.value > 3 },
   ];
   console.log('\n=== Checks ===');
   let failed = 0;
