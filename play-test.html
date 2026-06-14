@@ -438,10 +438,6 @@
 
   <div id="sceneMode">
     <div class="wave-top" id="waveTop">
-      <div class="play-alignment-header">
-        <span class="play-alignment-label">Alignment</span>
-        <span class="play-alignment-pct" id="playAlignmentPct">00%</span>
-      </div>
       <div class="play-alignment-sub" id="playAlignmentSub">Engraving(top) · My response(bottom)</div>
       <div class="alignment-wave-container">
         <canvas class="alignment-wave-canvas" id="alignmentWaveCanvas"></canvas>
@@ -2665,10 +2661,8 @@
       experiencerEmotionVector: resolvedPlayerVec,
       narratorWaveStyle,
       experiencerWaveStyle,
-      onUpdateAlignmentDisplay: function (a) {
-        const el = document.getElementById('playAlignmentPct');
-        if (el) el.textContent = String(Math.round((a || 0) * 100)).padStart(2, '0') + '%';
-      },
+      // Alignment percentage display removed — fog principle (#5): player feels the wave, not a score.
+      onUpdateAlignmentDisplay: function () { /* no-op: score readout intentionally hidden from player */ },
     });
   }
 
