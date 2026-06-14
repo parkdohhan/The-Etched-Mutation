@@ -613,6 +613,11 @@
     var sD = []; var P = [];
     var terrainMemFilter = null;
     var hts; var cls; var pos;
+    // ─── Per-scene plate registry (ADDITIVE — only populated when buildTerrain({perScenePlates:true})). ──
+    // 비어 있으면(_plates.length===0) gH 는 기존 단일-메쉬 경로(_gHBase)로만 동작한다. 롤백 = 이 배열을 안 채우면 끝.
+    // 각 항목: { sceneId, group(THREE.Group), worldAABB:{minX,maxX,minZ,maxZ}, G_k, SZ_k, hts_k(Float32Array), pos_k, posY, sclX, sclZ, sclY }
+    var _plates = [];
+    var _perScenePlatesFlag = false; // runtime toggle; default false = 기존 단일-메쉬 경로만.
     var time = 0;
     var parts; var pVl; var oP1; var oP2; var pc2 = 800;
 
@@ -640,17 +645,66 @@
         });
         seedGrp = null;
       }
+      _disposePlates();
     }
 
-    function gH(wx, wz) {
-      if (!pos) return 0;
-      var gx = ((wx / SZ) + 0.5) * (G - 1); var gz = ((wz / SZ) + 0.5) * (G - 1);
-      var ix = Math.min(G - 2, Math.max(0, Math.floor(gx))); var iz = Math.min(G - 2, Math.max(0, Math.floor(gz)));
+    // ─── Plate teardown — same seedGrp dispose pattern, ADDITIVE. ─────────
+    function _disposePlates() {
+      if (!_plates || !_plates.length) { _plates = []; return; }
+      for (var pi = 0; pi < _plates.length; pi++) {
+        var grp = _plates[pi].group;
+        if (!grp) continue;
+        if (scene3) scene3.remove(grp);
+        grp.traverse(function (obj) {
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(function (mm) { mm.dispose(); });
+            else obj.material.dispose();
+          }
+        });
+      }
+      _plates = [];
+    }
+
+    // ─── Shared bilinear height sampler ────────────────────────────────
+    // posArr = packed XYZ vertex array (PlaneGeometry.attributes.position.array, Y = height).
+    // (lx,lz) = LOCAL plane-space coords in [-SZk/2, +SZk/2]. 기존 단일-메쉬 gH 의 정확한 식 그대로.
+    function _sampleHeight(posArr, gRes, szLocal, lx, lz) {
+      var gx = ((lx / szLocal) + 0.5) * (gRes - 1); var gz = ((lz / szLocal) + 0.5) * (gRes - 1);
+      var ix = Math.min(gRes - 2, Math.max(0, Math.floor(gx))); var iz = Math.min(gRes - 2, Math.max(0, Math.floor(gz)));
       var fx = gx - ix; var fz = gz - iz;
-      return pos[(iz * G + ix) * 3 + 1] * (1 - fx) * (1 - fz)
-        + pos[(iz * G + ix + 1) * 3 + 1] * fx * (1 - fz)
-        + pos[((iz + 1) * G + ix) * 3 + 1] * (1 - fx) * fz
-        + pos[((iz + 1) * G + ix + 1) * 3 + 1] * fx * fz;
+      return posArr[(iz * gRes + ix) * 3 + 1] * (1 - fx) * (1 - fz)
+        + posArr[(iz * gRes + ix + 1) * 3 + 1] * fx * (1 - fz)
+        + posArr[((iz + 1) * gRes + ix) * 3 + 1] * (1 - fx) * fz
+        + posArr[((iz + 1) * gRes + ix + 1) * 3 + 1] * fx * fz;
+    }
+
+    // Existing single-mesh path — UNCHANGED behavior (was the body of gH). Used as fallback + when no plates.
+    function _gHBase(wx, wz) {
+      if (!pos) return 0;
+      return _sampleHeight(pos, G, SZ, wx, wz);
+    }
+
+    // plate-aware dispatcher. 2-arg signature unchanged (호출처 0줄 수정).
+    // _plates 비어 있으면 기존 단일-메쉬 경로(_gHBase)로 그대로 떨어진다.
+    function gH(wx, wz) {
+      if (_plates && _plates.length) {
+        // Find the plate whose worldAABB contains (wx,wz).
+        for (var pi = 0; pi < _plates.length; pi++) {
+          var pl = _plates[pi];
+          var ab = pl.worldAABB;
+          if (wx >= ab.minX && wx <= ab.maxX && wz >= ab.minZ && wz <= ab.maxZ) {
+            // Inverse transform world→local: undo position, then undo scale.
+            var lx = (wx - pl.posX) / (pl.sclX || 1);
+            var lz = (wz - pl.posZ) / (pl.sclZ || 1);
+            var localY = _sampleHeight(pl.pos_k, pl.G_k, pl.SZ_k, lx, lz);
+            return localY * (pl.sclY || 1) + pl.posY;
+          }
+        }
+        // Not over any plate → base noise floor (gaps between plates).
+        return _gHBase(wx, wz);
+      }
+      return _gHBase(wx, wz);
     }
 
     // ─── 3D anchor sprite factory ─────────────────────────────────
@@ -703,7 +757,104 @@
       return sprite;
     }
 
-    function buildTerrain(filterIdx) {
+    // ───────────────────────────────────────────────────────────────────
+    // ADDITIVE: per-scene plate construction.
+    // 각 장면 → 자기 PlaneGeometry(작은 격자) + 그 장면 emotion field(기존 노이즈 식 재활용,
+    // 모양 distinctness 불필요 — 객체가 정체성 짐) → THREE.Group(scale/position 설정 가능).
+    // 등록부 _plates 에 { sceneId, group, worldAABB, G_k, SZ_k, pos_k, posX/Z/Y, sclX/Z/Y } 적재.
+    // 단일-메쉬 경로는 건드리지 않는다 — 이 함수가 안 불리면 _plates 는 빈 채로 남는다.
+    // ───────────────────────────────────────────────────────────────────
+    function _buildPlateLocalField(sc, Gk, SZk) {
+      // Local plane: scene sits at local origin (0,0); field = emotion bump + noise, centered.
+      var hts_k = new Float32Array(Gk * Gk);
+      var np = EMO_NOISE[sc.domEmo] || EMO_NOISE_DEFAULT;
+      var eMag = sc.eMag || 0.5;
+      var voidScore = sc.voidScore || 0;
+      var H2k = SZk / 2;
+      for (var iz = 0; iz < Gk; iz++) {
+        for (var ix = 0; ix < Gk; ix++) {
+          var idx = iz * Gk + ix;
+          var lx = (ix / (Gk - 1) - 0.5) * SZk;
+          var lz = (iz / (Gk - 1) - 0.5) * SZk;
+          var dist = Math.sqrt(lx * lx + lz * lz);
+          var radius = H2k;
+          var sig = radius * 0.55;
+          var inf = Math.exp(-(dist * dist) / (2 * sig * sig));
+          var emoNoise = fbCustom(lx * np.freq * 0.7, lz * np.freq * 0.7, np.freq * 0.7, np.lac, np.oct, np.amp);
+          var h = eMag * 22 * inf * (0.4 + emoNoise * 0.6);
+          // base texture even at edges (matches Pass 3 idea)
+          h += (fb(ix * 0.05, iz * 0.05, 4) - 0.4) * 1.2;
+          if (voidScore > 0.3) {
+            var vSig = SZk * 0.12;
+            var voidInf = Math.exp(-(dist * dist) / (2 * vSig * vSig));
+            h -= voidScore * 14 * voidInf;
+          }
+          hts_k[idx] = h;
+        }
+      }
+      return hts_k;
+    }
+
+    function _buildScenePlates(filterIdx) {
+      _disposePlates();
+      var memList = filterIdx == null
+        ? P.map(function (mm, i) { return { m: mm, i: i }; })
+        : (P[filterIdx] ? [{ m: P[filterIdx], i: filterIdx }] : []);
+
+      var Gk = 32;      // per-plate grid resolution (cheap; scenes are small)
+      var SZk = 24;     // per-plate local world size before scaling
+
+      memList.forEach(function (sg) {
+        var m = sg.m;
+        var scenes = m.sceneAF || [];
+        scenes.forEach(function (sc) {
+          var hts_k = _buildPlateLocalField(sc, Gk, SZk);
+          // Normalize to a modest local Y range, like single-mesh does (±10).
+          var mn = Infinity, mx = -Infinity;
+          for (var q = 0; q < hts_k.length; q++) { if (hts_k[q] < mn) mn = hts_k[q]; if (hts_k[q] > mx) mx = hts_k[q]; }
+          var rg = (mx - mn) || 1;
+
+          var geo = new THREE.PlaneGeometry(SZk, SZk, Gk - 1, Gk - 1); geo.rotateX(-Math.PI / 2);
+          var pos_k = geo.attributes.position.array;
+          for (var j = 0; j < Gk * Gk; j++) {
+            pos_k[j * 3 + 1] = ((hts_k[j] - mn) / rg - 0.5) * 20;
+          }
+          geo.computeVertexNormals();
+          var ec = EC[sc.domEmo] || [0.5, 0.5, 0.5];
+          var mat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(ec[0], ec[1], ec[2]),
+            roughness: 0.82, metalness: 0.06, side: THREE.DoubleSide,
+          });
+          var mesh = new THREE.Mesh(geo, mat);
+          var group = new THREE.Group();
+          group.add(mesh);
+
+          // Placement: plate centered at the scene's world VA position.
+          var posX = sc.wx, posZ = sc.wz, posY = 0;
+          var sclX = 1, sclZ = 1, sclY = 1; // identity scale; caller may override later via plate registry.
+          group.position.set(posX, posY, posZ);
+          group.scale.set(sclX, sclY, sclZ);
+
+          var halfX = (SZk / 2) * sclX;
+          var halfZ = (SZk / 2) * sclZ;
+          _plates.push({
+            sceneId: sc.id,
+            group: group,
+            worldAABB: { minX: posX - halfX, maxX: posX + halfX, minZ: posZ - halfZ, maxZ: posZ + halfZ },
+            G_k: Gk, SZ_k: SZk, hts_k: hts_k, pos_k: pos_k,
+            posX: posX, posZ: posZ, posY: posY,
+            sclX: sclX, sclZ: sclZ, sclY: sclY,
+          });
+          if (scene3) scene3.add(group);
+        });
+      });
+    }
+
+    function buildTerrain(filterIdx, buildOpts) {
+      // Accept buildTerrain(idx) OR buildTerrain({...}) OR buildTerrain(idx, {...}).
+      if (filterIdx != null && typeof filterIdx === 'object') { buildOpts = filterIdx; filterIdx = (buildOpts.filterIdx != null ? buildOpts.filterIdx : null); }
+      buildOpts = buildOpts || {};
+      var usePlates = !!buildOpts.perScenePlates || !!_perScenePlatesFlag;
       terrainMemFilter = filterIdx;
       disposeTerrainLayer();
       var field = computeAfTerrainFields(P, filterIdx, { G: G, SZ: SZ });
@@ -935,6 +1086,28 @@
         }
       });
       scene3.add(seedGrp);
+
+      // ADDITIVE: build per-scene plates only when explicitly opted in.
+      // gH 가 _plates 를 보고 자동으로 plate-aware 로 전환됨 (호출처 수정 0).
+      if (usePlates) {
+        try {
+          _buildScenePlates(filterIdx);
+          // Q2: plate 가 실제로 만들어졌을 때만 단일-메쉬(terrain + terrainWire)를 숨겨
+          // 이중표면(단일메쉬 + plate 동시 렌더)을 막는다. 메쉬는 그대로 두고 visible 만 끔
+          // → gH/디스포즈 등 단일-메쉬 참조 코드는 손대지 않음.
+          if (_plates && _plates.length > 0) {
+            if (terrain) terrain.visible = false;
+            if (terrainWire) terrainWire.visible = false;
+          }
+        }
+        catch (e) {
+          _disposePlates();
+          // 실패 시 fallback: 단일-메쉬가 계속 보이도록 visible 복구.
+          if (terrain) terrain.visible = true;
+          if (terrainWire) terrainWire.visible = true;
+          if (global.console) console.warn('[strata] perScenePlates build failed, fell back to single-mesh gH:', e);
+        }
+      }
 
       var totalPlays = 0;
       for (var pi = 0; pi < P.length; pi++) totalPlays += P[pi].pc;
@@ -1314,6 +1487,10 @@
       getControls: function () { return controls; },
       getSeedData: getSeedData,
       gH: gH,
+      // ADDITIVE per-scene plate controls (default off). 켜면 다음 buildTerrain 부터 plate 경로.
+      setPerScenePlates: function (v) { _perScenePlatesFlag = !!v; },
+      getPerScenePlates: function () { return _perScenePlatesFlag; },
+      getPlates: function () { return _plates; },
       focusCameraOnSeed: focusCameraOnSeed,
       dispose: dispose,
       enterFirstPerson: enterFirstPerson,

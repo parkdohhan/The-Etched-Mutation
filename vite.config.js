@@ -28,7 +28,7 @@ export default defineConfig({
   },
 
   test: {
-    include: ['test/unit/**/*.test.js', 'test/smoke_v21_*.test.js'],
+    include: ['test/unit/**/*.test.js', 'test/smoke_*.test.js'],
     exclude: ['test/unit/byeori_v2_scoring.test.js', 'test/unit/byeori_v3_scoring.test.js'],
     environment: 'node',
   },
