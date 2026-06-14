@@ -535,6 +535,12 @@
     var PROXIMITY_DIST = 6;
     var LONG_PRESS_MS = 800;
 
+    // 재진입 idempotency — closeStrataView 없이 재호출되면 이전 핸들이 고아가 되므로 먼저 정리.
+    // (admin 다중 미리보기에서 setInterval/리스너 누적 방지)
+    if (cvs._proxInterval) { clearInterval(cvs._proxInterval); cvs._proxInterval = null; }
+    if (cvs._proxMouseDown) { cvs.removeEventListener('mousedown', cvs._proxMouseDown); cvs._proxMouseDown = null; }
+    if (cvs._proxMouseUp) { cvs.removeEventListener('mouseup', cvs._proxMouseUp); cvs._proxMouseUp = null; }
+
     // Check proximity every frame — works in both orbit and first-person
     var _proxInterval = setInterval(function () {
       if (!runtime) return;
@@ -1129,6 +1135,8 @@
           }
           _faAnimId = requestAnimationFrame(_faAnimate);
         }
+        // 재진입 idempotency — 이전 RAF 루프가 살아있으면 먼저 취소 (close 없이 재호출 시 누적 방지)
+        if (canvas._faAnimId) { cancelAnimationFrame(canvas._faAnimId); canvas._faAnimId = null; }
         _faAnimate();
         // Store cleanup ref
         canvas._faAnimId = _faAnimId;

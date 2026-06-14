@@ -244,6 +244,16 @@
       }
 
       // ── Drift 카메라 미세 진동 (§H8) — 마지막에 (walk_effects 가 이후 rotation.y 가산) ──
+      // 씬/대화 오버레이가 떠 있으면 _fpTick 이 카메라를 freeze 한다(walk_effects 와 동일 조건).
+      // 이때 shake 를 계속 얹으면 읽는 동안 화면이 떨리므로 멈추고 위상 리셋.
+      var _ovScene = (typeof document !== 'undefined') ? document.getElementById('sceneMode') : null;
+      var _ovOpen = (_ovScene && _ovScene.classList.contains('active')) ||
+                    (typeof document !== 'undefined' && document.getElementById('lumenDialogPhase1'));
+      if (_ovOpen) {
+        _shakePhase = 0;
+        _shakeTPrev = _now();
+        return;
+      }
       _applyDriftShake(cam, depth);
     }
 

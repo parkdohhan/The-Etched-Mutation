@@ -110,7 +110,7 @@
     }
 
     function _makeMaterial(side) {
-      // depthTest=false: 굴곡 지형이 발자국 평면을 먹어버리는 걸 방지 (항상 위에 그려짐)
+      // polygonOffset: 발자국을 카메라 쪽으로 살짝 당겨 굴곡 지형 표면에 밀착 (z-fighting/가림 방지)
       // depthWrite=false: 뒤따라오는 투명 오브젝트와 깊이 충돌 안 함
       // DoubleSide: 1인칭 카메라가 발자국 plane 어느 쪽에서 보든 보이게
       return new THREE.MeshBasicMaterial({
@@ -118,9 +118,25 @@
         transparent: true,
         opacity: opts.footprintOpacity,
         depthWrite: false,
-        depthTest: false,
-        side: THREE.DoubleSide,
+        side: THREE.DoubleSide,        // 위/아래 어느 쪽에서 봐도 보이게 (backface cull 방지)
+        polygonOffset: true,           // 지형 표면과 z-fighting/가림 방지 — 카메라 쪽으로 살짝 당김
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
       });
+    }
+
+    // 지형 표면 높이 — 형제 모듈(scene_ghosts/_gH, mannequins)과 같은 runtime.gH 사용.
+    // gH 가 봉우리/구덩이로 출렁이므로 발자국 Y 를 지면에 스냅해야 묻히거나 뜨지 않는다.
+    function _groundY(x, z) {
+      if (typeof runtime.gH === 'function') {
+        try {
+          var gy = Number(runtime.gH(x, z));
+          if (!isFinite(gy)) gy = 0;
+          if (gy < -10) gy = -10;       // terrain 1인칭 카메라와 동일 clamp (tem_af_strata_terrain)
+          return gy;
+        } catch (_) { return 0; }
+      }
+      return 0;
     }
 
     // ─── 상태 ───
@@ -130,6 +146,7 @@
     var _returnLastAppearAt = 0;
     var _doorTriggered = false;
     var _footSide = 'L';         // 다음 박을 발 (시작은 왼발)
+    var _prevMode = 'explore';   // 세션 재진입(return/done→explore) 감지용
 
     // [TEMP 2026-05-29] 가시 진단 패널 — 화면 좌상단에 모듈 상태 실시간 표시.
     // 평가 끝나면 이 블록과 _step 끝의 갱신 자리 둘 다 제거.
@@ -169,15 +186,18 @@
         fx = moveDir.x * lead;
         fz = moveDir.z * lead;
       }
-      var yy = (typeof y === 'number') ? y : opts.groundY;
-      mesh.position.set(x + ox + fx, yy, z + oz + fz);
+      // 좌우 offset + 전후 디딤을 반영한 최종 착지 좌표
+      var sx = x + ox + fx;
+      var sz = z + oz + fz;
+      // Y 를 지형 표면에 스냅 (+groundY 오프셋으로 살짝 위) — 상수 고정 시 봉우리에 묻히고 골짜기엔 떴음 (6b802c8 버그수정)
+      var py = _groundY(sx, sz) + opts.groundY;
+      mesh.position.set(sx, py, sz);
       // PlaneGeometry(xy평면) → rotateX(-π/2) 후 텍스처 발끝(+y)이 local -z 로 눕는다.
       // rotation.y = yaw 이면 local -z 가 월드 forward(몸이 보는 방향)를 향함 = 발끝이 몸 정면.
       // 뒷걸음질 시 발끝은 몸 정면(가던 방향 반대) → 뒤꿈치가 플레이어 쪽으로 온다.
       // (이전엔 +π 가 붙어 발끝이 정반대=카메라 쪽을 향하는 버그였음. 2026-06-13 수정)
       mesh.rotation.y = yaw;
-      // depthTest=false 와 짝 — 다른 투명 오브젝트보다 늦게 그려져 항상 보임.
-      mesh.renderOrder = 999;
+      mesh.renderOrder = 2;            // 지형(0) 위에 그려 가림 최소화 (polygonOffset 와 짝)
       // [TEMP 2026-05-29] frustum culling 우회 — 작은 plane 이 카메라 시야 가장자리에서 잘려나가는 걸 방지
       mesh.frustumCulled = false;
       scene.add(mesh);
@@ -249,6 +269,13 @@
       var now = performance.now();
       var mode = quilt.getSnapshot().mode;
       var yaw = (runtime.getYaw && runtime.getYaw()) || 0;
+
+      // 세션 재진입 감지 — 이전이 return/done 인데 지금 explore 면 새 세션 → 상태/발자국 정리
+      // (데모를 닫지 않고 메모리 바꿔 재진입하면 quilt 인스턴스는 새로 생기지만 footprints 는 살아남음)
+      if (mode === 'explore' && (_prevMode === 'return' || _prevMode === 'done')) {
+        _resetState();
+      }
+      _prevMode = mode;
 
       // explore 중 accessiblePinIds 0 검사 → 자동 startReturn + return queue 초기화
       if (mode === 'explore') {
@@ -340,6 +367,21 @@
       }
     }
 
+    // 세션 상태 + 화면 발자국 초기화 (인스턴스/리소스는 유지 — dispose 와 다름)
+    function _resetState() {
+      _activeStamps.forEach(function (s) {
+        scene.remove(s.mesh);
+        s.material.dispose();
+      });
+      _activeStamps = [];
+      _lastStampPos = null;
+      _returnQueue = null;
+      _returnLastAppearAt = 0;
+      _doorTriggered = false;
+      _footSide = 'L';
+      console.log('[lumen-footprints] state reset (재진입)');
+    }
+
     function dispose() {
       _activeStamps.forEach(function (s) {
         scene.remove(s.mesh);
@@ -359,6 +401,7 @@
 
     var api = {
       dispose: dispose,
+      reset: _resetState,
       getActiveCount: function () { return _activeStamps.length; },
       getReturnRemaining: function () { return _returnQueue ? _returnQueue.length : -1; },
       _thinTrajectory: _thinTrajectory,    // 단위 테스트용
