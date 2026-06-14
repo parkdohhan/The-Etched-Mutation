@@ -716,6 +716,76 @@
   var _originalGhostDefaults = null;
   // V2-6: 회차당 1회 drift 변주 픽 캐시 — { _memoryId, utterance, ghost_variant_id }. 같은 회차 다른 씬은 캐시 재사용.
   var _runDriftPick = null;
+
+  // ─── T3 (전이·층층이=나) 모듈 상태 ──────────────────────────────────
+  // docs/통합빌드계획_전이+지형quilt_병렬세션-260614.md §S1·T3.
+  // 물든 유령에 *다시* 말 걸수록 더 오래된 층이 떠오름(구멍2=나). T1(drift_lines) 이 층을 고르고,
+  // 여기서는 "유령별 재대화 횟수(layerIndex)" 만 세고 layers 를 공급한다. T1·QuiltDemoState 내부는 안 만짐.
+  //
+  // _retalkCounts: sceneId(=이 흐름에서 유령 정체) → 그 유령에 말 건 누적 횟수. 첫 대화=0(층0=현재 사람),
+  //   재대화마다 ++ (층1,2,… = 풀의 더 오래된 변주). 세션 메모리(새로고침 시 초기화).
+  // _loadedGhostRows: 직전 _loadAndInjectGhostPools 가 SELECT 한 ghost_variants 풀 캐시.
+  //   { memoryId, rows }. 새 DB 호출 없이 그걸 정렬해 layers 로 재활용(약속 §1-4).
+  var _retalkCounts = {};
+  var _loadedGhostRows = null;
+  var _retalkActiveMemoryId = null;
+
+  // 캐시된 풀 → T1 이 받는 layers 배열. 약속: created_at 내림차순(최신→오래된).
+  //   anchor(is_seed=true, parent 없음) 와 빈 utterance 제외. created_at 없으면(시드 coeval / 목 데이터)
+  //   삽입순 tie-break (§1-2 한계2 — 데모는 "층이 바뀐다"까지). T1 은 [0]=최신 층으로 읽는다.
+  function _buildDriftLayers(rows) {
+    if (!Array.isArray(rows)) return [];
+    var pool = [];
+    for (var i = 0; i < rows.length; i++) {
+      var v = rows[i];
+      if (!v) continue;
+      if (v.is_seed === true && !v.parent_variant_id) continue;  // anchor 제외
+      if (typeof v.utterance !== 'string' || v.utterance.trim().length === 0) continue;
+      pool.push({ utterance: v.utterance, created_at: v.created_at || null, _seq: i });
+    }
+    pool.sort(function (a, b) {
+      var ta = a.created_at ? Date.parse(a.created_at) : NaN;
+      var tb = b.created_at ? Date.parse(b.created_at) : NaN;
+      var va = isNaN(ta) ? null : ta;
+      var vb = isNaN(tb) ? null : tb;
+      if (va !== null && vb !== null && va !== vb) return vb - va;  // 최신 → 오래된
+      return a._seq - b._seq;  // created_at 동일/부재 → 삽입순(공짜 나이순)
+    });
+    return pool;
+  }
+
+  // 물든 유령의 재대화 오프닝 라인 한 줄. 안 물들거나 재료 없으면 null(=기존 동작 유지).
+  //   runtime.__quiltDemo.getGhostDrift(sceneId) 로 물듦 여부 읽고(읽기만), window.DriftLines 로 층 선택.
+  //   호출 후 그 유령 retalkCount++ (다음 재대화는 더 오래된 층).
+  function _pickRedialogOpening(runtime, memoryId, sceneId) {
+    try {
+      if (!runtime || !sceneId) return null;
+      var quilt = runtime.__quiltDemo;
+      if (!quilt || typeof quilt.getGhostDrift !== 'function') return null;
+      var drift = quilt.getGhostDrift(sceneId);
+      if (!drift) return null;  // 안 물듦 → 기존 동작
+      if (typeof window === 'undefined' || !window.DriftLines
+          || typeof window.DriftLines.pickDriftedLine !== 'function') return null;  // T1 없음 안전 가드
+
+      var layers = (_loadedGhostRows && _loadedGhostRows.memoryId === memoryId)
+        ? _buildDriftLayers(_loadedGhostRows.rows)
+        : [];
+      var retalkCount = _retalkCounts[sceneId] || 0;
+      var line = window.DriftLines.pickDriftedLine({
+        drift: drift,
+        layers: layers,
+        mode: 'redialog',
+        layerIndex: retalkCount,
+      });
+      // 다음 재대화는 더 오래된 층. (null=원본 복귀여도 한 번 말 건 것이므로 카운트는 올린다.)
+      _retalkCounts[sceneId] = retalkCount + 1;
+      return (typeof line === 'string' && line.length > 0) ? line : null;
+    } catch (err) {
+      console.warn('[ldp redialog] 예외 — 기존 오프닝 유지', err);
+      return null;
+    }
+  }
+
   async function _loadAndInjectGhostPools(supabase, memoryId, ghosts) {
     if (!supabase || !memoryId || !ghosts || typeof ghosts.setOptions !== 'function') {
       return { injected: false, reason: 'missing_deps' };
@@ -727,7 +797,7 @@
     try {
       var resp = await supabase
         .from('ghost_variants')
-        .select('id, kind, is_seed, parent_variant_id, utterance, emotion_vec, motif_tags, attribution')  // V2-6: motif_tags/attribution 추가 (drift 픽 의미 필터)
+        .select('id, kind, is_seed, parent_variant_id, utterance, emotion_vec, motif_tags, attribution, created_at')  // V2-6: motif_tags/attribution / T3: created_at(층 나이순 정렬용)
         .eq('memory_id', memoryId)
         .eq('kind', 'drift'); // speciation 시드 제외 (§15-1 후속 플레이어 자리)
       if (resp.error || !resp.data) {
@@ -735,6 +805,8 @@
         return { injected: false, reason: 'select_failed' };
       }
       var rows = resp.data;
+      // T3 재활용: 같은 풀을 재대화 층(layers)으로 쓴다(새 DB 호출 X). 분류 로직·반환값은 안 건드림.
+      _loadedGhostRows = { memoryId: memoryId, rows: rows };
       // anchor = is_seed=true + parent_variant_id=null
       var anchor = null;
       for (var ai = 0; ai < rows.length; ai++) {
@@ -903,6 +975,14 @@
     var memoryId = input.memoryId || '';
     var sceneId  = input.sceneId  || sceneData.id || '';
 
+    // T3: 다른 기억으로 갈아타면 유령별 재대화 카운트(층 진행)·풀 캐시 초기화 (stale 방지).
+    //   같은 기억 안에서는 유지 → 같은 물든 유령에 다시 말 걸수록 더 오래된 층.
+    if (_retalkActiveMemoryId !== memoryId) {
+      _retalkCounts = {};
+      _loadedGhostRows = null;
+      _retalkActiveMemoryId = memoryId;
+    }
+
     // 2026-05-06: 결 히스테리시스 상태 초기화 (V2-5 보강 — 파동 부활).
     // 회차 시작 시 결 잡힌 상태가 이전 씬에서 carry over 되지 않게.
     if (typeof window !== 'undefined' && window.LumenGhostResponse
@@ -1017,7 +1097,12 @@
     }
 
     // 1. ghost_intro — 보존 자리.
-    var introText = _pickAuthored(dlg.ghost_intro, 'intro|' + memoryId + '|' + sceneId);
+    //    T3 (전이·층층이=나): 이 유령이 물들었으면 첫 라인을 "변형된 대사"로 교체.
+    //      재대화 반복할수록 더 오래된 층(layerIndex=retalkCount). 안 물들거나 재료 없으면 기존 동작.
+    var introText = _pickRedialogOpening(input.runtime, memoryId, sceneId);
+    if (!introText) {
+      introText = _pickAuthored(dlg.ghost_intro, 'intro|' + memoryId + '|' + sceneId);
+    }
     if (introText) {
       _addMessage(overlay, introText, { who: 'ghost' });
       await _sleep(DEFAULTS.pacingDelays.afterIntroMs);
@@ -1286,6 +1371,8 @@
       splitSceneText: _splitSceneText,                  // V2.1.2 콘텐츠 fallback (2026-05-05)
       defaultChoices: _defaultChoices,
       autoGenerateDialogChoices: _autoGenerateDialogChoices,
+      buildDriftLayers: _buildDriftLayers,              // T3 — 풀 → created_at 내림차순 layers (2026-06-14)
+      pickRedialogOpening: _pickRedialogOpening,        // T3 — 물든 유령 재대화 오프닝(층층이=나) (2026-06-14)
     },
     _config: {    // smoke 검증용 — 외부에서 default 읽기
       maxFreeDialogTurns: DEFAULTS.maxFreeDialogTurns,

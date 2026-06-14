@@ -88,7 +88,17 @@
     },
     // 클릭 응시
     gazeFollowSpeed: 0.045,                   // 매 프레임 LERP 비율 (1.5초 ≈ 0.045)
-    gazeMaxRayDist: 18                        // 클릭 raycast 최대 거리 (m)
+    gazeMaxRayDist: 18,                       // 클릭 raycast 최대 거리 (m)
+    // 2026-06-14: 자세 기욺 (S1·T4) — 그 핀 장면이 within-run 으로 물들면(getGhostDrift)
+    //   마네킨이 옆으로 살짝 기운다. 강도(strength=1−alignment) 클수록 더 기욺. 안 물들면 0.
+    //   회전축 = root.rotation.z (옆 기울임). 응시 LERP 가 쓰는 root.rotation.y(헤딩) 과 독립.
+    //   값 0.18rad ≈ 10° = lumen_return_mode 의 spriteRotation 차용(약속된 톤).
+    driftLean: true,                          // false 면 자세 기욺 비활성
+    driftLeanFactor: 0.18,                    // rad. 최종 lean = strength × 이 값
+    driftLeanLerp: 0.08,                      // 매 프레임 기욺 LERP (갑자기 안 꺾이게). 0=즉시
+    // 그 핀이 물들었는지 묻는 콜백. W(play-test.html)가 runtime.__quiltDemo.getGhostDrift 를 넘김.
+    //   기대 반환: { strength, input, firedAt } | null  (T0 계약). 없으면 기욺 항상 0.
+    getGhostDrift: null                       // (pin) => { strength } | null
   };
 
   // ─── 결정적 PRNG: FNV-1a + mulberry32 (lumen_return_speech 와 동일) ───
@@ -263,6 +273,16 @@
       return _loading;
     }
 
+    // T4: 그 핀 장면이 within-run 으로 물들었으면 strength(0..1) 반환, 아니면 0.
+    //   getGhostDrift 미설정/예외/null 이면 안전하게 0 (= 안 기욺).
+    function _driftStrengthFor(pin) {
+      if (!opts.driftLean || typeof opts.getGhostDrift !== 'function') return 0;
+      var d = null;
+      try { d = opts.getGhostDrift(pin); } catch (_) { return 0; }
+      if (!d || typeof d.strength !== 'number') return 0;
+      return Math.max(0, Math.min(1, d.strength));
+    }
+
     function _pickMonologueLine(pin) {
       var presets = (typeof opts.getPresets === 'function') ? opts.getPresets() : null;
       if (!presets) return null;
@@ -391,6 +411,7 @@
 
       return {
         root: root, mixer: mixer, pinIndex: idx,
+        pin: pin,                                 // T4: getGhostDrift(pin) 조회용 (sceneId 등 포함)
         baseRotY: root.rotation.y,                // faceCenter 기본값 — 응시 LERP 의 시작점
         seen: false,                              // 한 번 클릭되면 true 영구 유지
         monologueSprite: monologueSprite,
@@ -398,7 +419,8 @@
         monologuePhase: idx * 1.37,
         groundY: groundY,
         pickedClipName: pickedClipName,           // 분포 진단용
-        headBone: headBone                        // headTilt 적용 대상
+        headBone: headBone,                       // headTilt 적용 대상
+        leanCur: 0                                // T4: 현재 옆 기욺(rad) — 매 프레임 목표값으로 LERP
       };
     }
 
@@ -478,6 +500,20 @@
       for (var i = 0; i < _ghosts.length; i++) {
         var g = _ghosts[i];
         if (g.mixer) g.mixer.update(dt * opts.speed);
+
+        // ─── T4: 자세 기욺 — 물든 핀이면 옆으로 strength 비례로 기운다 ───
+        // 목표 기욺 = strength × driftLeanFactor (안 물들면 0). 갑자기 안 꺾이게 매 프레임 LERP.
+        // root.rotation.z(옆 기울임) 에만 씀 → 응시 LERP 의 root.rotation.y(헤딩) 과 충돌 X.
+        if (opts.driftLean) {
+          var leanTgt = _driftStrengthFor(g.pin) * (opts.driftLeanFactor || 0);
+          var ll = opts.driftLeanLerp;
+          if (ll > 0 && ll < 1) {
+            g.leanCur += (leanTgt - g.leanCur) * ll;     // 부드럽게 다가감
+          } else {
+            g.leanCur = leanTgt;                          // 0 이면 즉시
+          }
+          g.root.rotation.z = g.leanCur;
+        }
 
         // mixer 갱신 직후 head bone 위쪽 회전 — sitting 클립일 때 "고개 들고 보기".
         // mixer 가 매 프레임 head quat 을 클립 값으로 덮어쓰므로 이 multiply 도 매 프레임 필요(누적 X).
@@ -625,7 +661,10 @@
           seenCount: _ghosts.filter(function (g) { return g.seen; }).length,
           monologues: _ghosts.map(function (g) { return { idx: g.pinIndex, line: g.monologueLine, seen: g.seen }; }),
           poses: _ghosts.map(function (g) { return { idx: g.pinIndex, clip: g.pickedClipName }; }),
-          opts: Object.assign({}, opts, { getScenePins: '<fn>', getPresets: '<fn>', getMemoryId: '<fn>', ghostTypeForPin: '<fn>' })
+          leans: _ghosts.map(function (g) {
+            return { idx: g.pinIndex, strength: _driftStrengthFor(g.pin), leanRad: g.leanCur };
+          }),
+          opts: Object.assign({}, opts, { getScenePins: '<fn>', getPresets: '<fn>', getMemoryId: '<fn>', ghostTypeForPin: '<fn>', getGhostDrift: '<fn>' })
         };
       },
       // 테스트/디자인 미팅 용: 강제 seen 토글

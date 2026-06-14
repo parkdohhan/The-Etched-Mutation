@@ -517,6 +517,7 @@
   // Quilt 데모용 어댑터 — ?quiltDemo=1 일 때만 _enterLumenDialogPhase1 안에서 attach
   import { QuiltDemoState } from './js/core/QuiltDemoState.js';
   window.QuiltDemoState = QuiltDemoState; // non-module 영역(footprints, mock test)에서 사용
+  import './js/core/drift_lines.js'; // S1·T1 전이 브레인 — window.DriftLines 세팅(T2 murmur · T3 redialog 가 씀)
   // Non-module 스크립트(fpAmbientWave 등)에서 접근 가능하게 전역 노출
   window.sharedEmotionVectorToWaveStyle = sharedEmotionVectorToWaveStyle;
   window.GHOST_PRESETS = GHOST_PRESETS;
@@ -5045,6 +5046,24 @@
                 getGhostPoints: function () {
                   try { return _fpGhostPoints || []; } catch (_) { return []; }
                 },
+                // S1·T2 배선 — 유령점 → 가장 가까운 장면핀의 sceneId → within-run 물듦 조회.
+                // ghost_condensation_points 엔 sceneId 가 없으므로 좌표 최근접 매칭(설계상 W 분담).
+                getGhostDriftFor: function (point, idx) {
+                  try {
+                    var qd = rt.__quiltDemo;
+                    if (!qd || !point) return null;
+                    var best = null, bestD = Infinity;
+                    for (var i = 0; i < _fpScenePins.length; i++) {
+                      var sp = _fpScenePins[i];
+                      var dx = sp.wx - point.x, dz = sp.wz - point.z;
+                      var dd = dx * dx + dz * dz;
+                      if (dd < bestD) { bestD = dd; best = sp; }
+                    }
+                    if (!best) return null;
+                    var sid = (best.scene && best.scene.id) || (best.pin && best.pin.sceneId);
+                    return sid ? qd.getGhostDrift(sid) : null;
+                  } catch (_) { return null; }
+                },
                 getEchoWords: function () {
                   try {
                     var scenes = (window._temGame && window._temGame.scenes) || [];
@@ -5085,7 +5104,16 @@
             //   _buildPlayScenePins 가 이 attach 직후 sync 로 실행되므로 명시적 rebuild 호출은 그 뒤(아래 whisper 옆).
             if (window.LumenSceneMannequins && typeof window.LumenSceneMannequins.attach === 'function') {
               window.LumenSceneMannequins.attach(rt, {
-                getScenePins: function () { return _fpScenePins; }
+                getScenePins: function () { return _fpScenePins; },
+                // S1·T4 배선 — 그 핀 장면이 within-run 으로 물들면 마네킨 기욺. p = _fpScenePins 원소.
+                getGhostDrift: function (p) {
+                  try {
+                    var qd = rt.__quiltDemo;
+                    if (!qd || !p) return null;
+                    var sid = (p.scene && p.scene.id) || (p.pin && p.pin.sceneId);
+                    return sid ? qd.getGhostDrift(sid) : null;
+                  } catch (_) { return null; }
+                }
               });
             }
             // 작업 2-A 후반: 궤적 rewind 재생 (void 진입 트리거, getTrajectory 활용, WASD/마우스 잠금)
