@@ -226,6 +226,19 @@
         return;
       }
 
+      // 씬/대화 오버레이가 떠 있으면 _fpTick 이 freeze 상태로 카메라를 논리 위치에 고정한다
+      // (tem_af_strata_terrain.js _fpTick 1215~1224). 이때 효과를 계속 얹으면 _fpTick reset 과
+      // 어긋나는 프레임에서 breath/bob y 오프셋이 누적 → 카메라가 위아래로 진동(자이로드롭).
+      // _fpTick 과 동일 조건으로 freeze — 읽는 동안 카메라 완전 정지.
+      var _sceneOpen = document.getElementById('sceneMode');
+      if ((_sceneOpen && _sceneOpen.classList.contains('active')) ||
+          document.getElementById('lumenDialogPhase1')) {
+        _hasInit = false;
+        _bobPhase = 0;
+        _prevBobSin = 0;
+        return;
+      }
+
       var now = performance.now();
       var dt = Math.max(0.001, Math.min(0.1, (now - _tPrev) / 1000));
       _tPrev = now;

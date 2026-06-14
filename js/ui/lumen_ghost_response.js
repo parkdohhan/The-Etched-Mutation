@@ -31,53 +31,88 @@
   'use strict';
 
   var DEFAULTS = {
-    resonancePool: [
-      '그래, 그렇단 말이지.',
-      '맞아. 너도 그랬구나.',
-      '분명 그랬지.',
-      '...그래. 그게 그거였어.',
-      '너도 같은 자리에 서 있었구나.',
-    ],
-    vaguePool: [
-      '그랬었나... 확신이 안 서.',
-      '...글쎄. 그랬을 수도.',
-      '그게 그런 거였나.',
-      '...어쩌면.',
-      '...너의 말이 흔들리네.',
-      '침묵도 대답이 될 수 있어.',
-      // 2026-05-06: 모호 결 입력 인용 시드 — `'____'` 마커는 _applyQuote 에서 입력 일부로 치환.
-      // 작가 손으로 변주 추가 시 본 두 줄을 형식 참조 (모양·결 톤·인용 자리).
-      "'____'라... 그게 그랬던가, 잘 모르겠어.",
-      "'____'... 흐릿하게 떠오르긴 하는데.",
-    ],
-    dissonancePool: [
-      "'____'라고? ... 내 기억과는 다른데.",
-      '잠깐. 그건 그게 아니야.',
-      '그랬을 리가 없는데.',
-      '넌 그렇게 봤구나. 난 다르게 봤어.',
-      '...아니야. 내가 기억하는 건 그게 아니야.',
-      '그게 정말 그랬을까. 확실해?',
-      '...너는 그렇게 기억하고 있는 거야?',
-    ],
-    urgeResonance: [
-      '더 따라가봐. 그 다음으로.',
-      '더 깊이 가보자.',
-      '여기서 다음 자리로.',
-    ],
-    urgeVague: [
-      '여기 더 머물래?',
-      '잠깐, 천천히 가자.',
-      '조금 더 풀어볼까.',
-    ],
-    urgeDissonance: [
-      '다른 길로 가볼래?',
-      '그럼 다른 자리에서 다시 만나자.',
-      '...너의 자리로 가야겠다.',
-    ],
+    resonancePool: {
+      ko: [
+        '그래, 그렇단 말이지.',
+        '맞아. 너도 그랬구나.',
+        '분명 그랬지.',
+        '...그래. 그게 그거였어.',
+        '너도 같은 자리에 서 있었구나.',
+      ],
+      en: [
+        'So — that is what it was.',
+        'Yes. You knew it too.',
+        'It was so, surely.',
+        '...yes. It came to the same thing.',
+        'You stood in the same place.',
+      ],
+    },
+    vaguePool: {
+      ko: [
+        '그랬었나... 확신이 안 서.',
+        '...글쎄. 그랬을 수도.',
+        '그게 그런 거였나.',
+        '...어쩌면.',
+        '...너의 말이 흔들리네.',
+        '침묵도 대답이 될 수 있어.',
+        // `'____'` 마커는 _applyQuote 에서 입력 일부로 치환 (모호·충돌 결만).
+        "'____'라... 그게 그랬던가, 잘 모르겠어.",
+        "'____'... 흐릿하게 떠오르긴 하는데.",
+      ],
+      en: [
+        'Was it so... I am not certain.',
+        '...well. It may have been.',
+        'Was it that kind of thing.',
+        '...perhaps.',
+        '...your words waver.',
+        'Silence can be an answer too.',
+        "'____', was it... I do not quite know if it was so.",
+        "'____'... it surfaces, but faintly.",
+      ],
+    },
+    dissonancePool: {
+      ko: [
+        "'____'라고? ... 내 기억과는 다른데.",
+        '잠깐. 그건 그게 아니야.',
+        '그랬을 리가 없는데.',
+        '넌 그렇게 봤구나. 난 다르게 봤어.',
+        '...아니야. 내가 기억하는 건 그게 아니야.',
+        '그게 정말 그랬을까. 확실해?',
+        '...너는 그렇게 기억하고 있는 거야?',
+      ],
+      en: [
+        "'____'? ... that is not how I remember it.",
+        'Wait. That is not what it was.',
+        'It could not have been so.',
+        'You saw it that way. I saw it otherwise.',
+        '...no. What I remember is not that.',
+        'Was it really so. Are you certain?',
+        '...is that how you remember it?',
+      ],
+    },
+    urgeResonance: {
+      ko: ['더 따라가봐. 그 다음으로.', '더 깊이 가보자.', '여기서 다음 자리로.'],
+      en: ['Follow it further. To the next.', 'Let us go deeper.', 'From here, to the next place.'],
+    },
+    urgeVague: {
+      ko: ['여기 더 머물래?', '잠깐, 천천히 가자.', '조금 더 풀어볼까.'],
+      en: ['Stay here a little longer?', 'Wait — let us go slowly.', 'Shall we unfold it a little more.'],
+    },
+    urgeDissonance: {
+      ko: ['다른 길로 가볼래?', '그럼 다른 자리에서 다시 만나자.', '...너의 자리로 가야겠다.'],
+      en: ['Take another way?', 'Then let us meet again elsewhere.', '...I should go to your place.'],
+    },
     sceneLinkPrompt: {
-      resonance: '이 자리에 남길 한 마디?',
-      vague: '흐려지기 전에 한 줄?',
-      dissonance: '너의 길에 한 줄 남겨.',
+      ko: {
+        resonance: '이 자리에 남길 한 마디?',
+        vague: '흐려지기 전에 한 줄?',
+        dissonance: '너의 길에 한 줄 남겨.',
+      },
+      en: {
+        resonance: 'A word to leave in this place?',
+        vague: 'One line, before it blurs?',
+        dissonance: 'Leave one line on your way.',
+      },
     },
     // V2.1.2 슬롯 흡수 풀 — 메모리 진입 시 setOptions 로 작가 손 풀 주입. 풀 X 메모리는
     // 본 글로벌 디폴트 사용 (resetSlotPools()). 각 변주 = { template, motifTags?: [...] }.
@@ -86,14 +121,26 @@
     // V2.1.2 콘텐츠 fallback (2026-05-05) — 발자국 외 8 메모리 absorption_slots 비어 있음.
     // 본 디폴트 박혀 있어 모든 메모리에서 슬롯 흡수 발동. 균일 톤. 작가 손 풀 주입 시 덮임.
     // 핸드아웃: docs/세션핸드아웃_v21_콘텐츠_fallback-260505.md
-    resonanceSlotPool: [
-      { template: '그래. {대상:이/가} 거기 있었구나.', motifTags: [] },
-      { template: '{대상} 말이지. 그랬어.', motifTags: [] },
-    ],
-    vagueSlotPool: [
-      { template: '{대상}? 그랬을지도.', motifTags: [] },
-      { template: '...{대상}. 흐릿한데.', motifTags: [] },
-    ],
+    resonanceSlotPool: {
+      ko: [
+        { template: '그래. {대상:이/가} 거기 있었구나.', motifTags: [] },
+        { template: '{대상} 말이지. 그랬어.', motifTags: [] },
+      ],
+      en: [
+        { template: 'Yes. {대상} was there.', motifTags: [] },
+        { template: '{대상}, then. It was so.', motifTags: [] },
+      ],
+    },
+    vagueSlotPool: {
+      ko: [
+        { template: '{대상}? 그랬을지도.', motifTags: [] },
+        { template: '...{대상}. 흐릿한데.', motifTags: [] },
+      ],
+      en: [
+        { template: '{대상}? It may have been.', motifTags: [] },
+        { template: '...{대상}. It is faint.', motifTags: [] },
+      ],
+    },
     // 임계 — math.js getBucket HIGH/MID/LOW 와 동일
     alignmentResonance: 0.55,
     alignmentVague: 0.35,
@@ -109,6 +156,18 @@
 
   var _opts = Object.assign({}, DEFAULTS);
 
+  // 현재 플레이 언어 — play-test.html 이 document.documentElement.lang 에 LANG 박음.
+  function _lang() {
+    try { return (document.documentElement.lang || 'en').slice(0, 2) === 'ko' ? 'ko' : 'en'; }
+    catch (_) { return 'en'; }
+  }
+  // 풀 해소 — {ko,en} 객체면 현재 언어 배열, flat 배열이면(주입된 ghost_variants) 그대로 통과.
+  function _resolvePool(p) {
+    if (Array.isArray(p)) return p;
+    if (p && typeof p === 'object') return p[_lang()] || p.en || p.ko || [];
+    return [];
+  }
+
   function setOptions(o) {
     Object.assign(_opts, o || {});
     return _opts;
@@ -118,8 +177,8 @@
   // V2.1.2 (2026-05-05) — loadMemoryData 가 absorption_slots 비어 있을 때 호출.
   // 메모리 간 stale 방지: 이전 메모리 setOptions 로 덮은 풀을 글로벌 디폴트로 회복.
   function resetSlotPools() {
-    _opts.resonanceSlotPool = (DEFAULTS.resonanceSlotPool || []).slice();
-    _opts.vagueSlotPool = (DEFAULTS.vagueSlotPool || []).slice();
+    _opts.resonanceSlotPool = DEFAULTS.resonanceSlotPool;
+    _opts.vagueSlotPool = DEFAULTS.vagueSlotPool;
   }
 
   // ─── PRNG (FNV-1a + mulberry32) — lumen_return_speech.js 와 동일 패턴 ───
@@ -237,10 +296,10 @@
   function pickResponse(input) {
     input = input || {};
     var resonance = classifyResonance(input.alignment);
-    var pool =
+    var pool = _resolvePool(
       resonance === 'resonance' ? _opts.resonancePool :
       resonance === 'vague'      ? _opts.vaguePool :
-                                   _opts.dissonancePool;
+                                   _opts.dissonancePool);
     var seed = 'lgr|' + (input.memoryId || '') + '|' + (input.sceneId || '') + '|' + (input.turn || 0);
     var picked = _seededPick(pool, seed);
     var reply = _applyQuote(picked, input.playerInput);
@@ -255,10 +314,10 @@
   function pickUrge(input) {
     input = input || {};
     var resonance = classifyResonance(input.alignment);
-    var pool =
+    var pool = _resolvePool(
       resonance === 'resonance' ? _opts.urgeResonance :
       resonance === 'vague'      ? _opts.urgeVague :
-                                   _opts.urgeDissonance;
+                                   _opts.urgeDissonance);
     var seed = 'lgu|' + (input.memoryId || '') + '|' + (input.sceneId || '');
     var picked = _seededPick(pool, seed);
     return { resonance: resonance, urge: picked };
@@ -271,7 +330,9 @@
    */
   function pickSceneLinkPrompt(alignment) {
     var resonance = classifyResonance(alignment);
-    return _opts.sceneLinkPrompt[resonance] || _opts.sceneLinkPrompt.vague;
+    var slp = _opts.sceneLinkPrompt || {};
+    var map = (slp.ko || slp.en) ? (slp[_lang()] || slp.en || slp.ko || {}) : slp;
+    return map[resonance] || map.vague || '';
   }
 
   // ─── debug ───
@@ -279,14 +340,14 @@
     return {
       opts: getOptions(),
       counts: {
-        resonance: _opts.resonancePool.length,
-        vague: _opts.vaguePool.length,
-        dissonance: _opts.dissonancePool.length,
-        urgeResonance: _opts.urgeResonance.length,
-        urgeVague: _opts.urgeVague.length,
-        urgeDissonance: _opts.urgeDissonance.length,
-        resonanceSlot: _opts.resonanceSlotPool.length,
-        vagueSlot: _opts.vagueSlotPool.length,
+        resonance: _resolvePool(_opts.resonancePool).length,
+        vague: _resolvePool(_opts.vaguePool).length,
+        dissonance: _resolvePool(_opts.dissonancePool).length,
+        urgeResonance: _resolvePool(_opts.urgeResonance).length,
+        urgeVague: _resolvePool(_opts.urgeVague).length,
+        urgeDissonance: _resolvePool(_opts.urgeDissonance).length,
+        resonanceSlot: _resolvePool(_opts.resonanceSlotPool).length,
+        vagueSlot: _resolvePool(_opts.vagueSlotPool).length,
       },
     };
   }
@@ -294,8 +355,8 @@
   // V2.1.2 슬롯 풀 접근자 — LumenDialogPhase1 가 LumenSlotAbsorber 에 주입할 때 사용.
   function getSlotPool() {
     return {
-      resonance: _opts.resonanceSlotPool || [],
-      vague: _opts.vagueSlotPool || [],
+      resonance: _resolvePool(_opts.resonanceSlotPool),
+      vague: _resolvePool(_opts.vagueSlotPool),
     };
   }
 

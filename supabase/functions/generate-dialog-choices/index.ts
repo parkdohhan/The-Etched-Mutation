@@ -56,6 +56,7 @@ function getCorsHeaders(req: Request): Record<string, string> {
 interface GenerateRequest {
   memoryId: string;
   sceneId?: string;  // 응답에 sceneId 자리 포함 (선택). 없으면 byScene 통째 반환.
+  lang?: 'ko' | 'en';  // 생성 언어. 캐시도 언어별로 구분.
   oneScene?: boolean;  // V2.1.2 (δ-2, 2026-05-06): 그 씬 1개만 처리 — 응답 빠름 (~3-5초).
                        // 클라이언트 자리 첫 씬 자리 진입 시 박음. 백그라운드 자리 통째 호출 자리는 별도.
                        // oneScene=true 시 DB UPDATE 자리 X (백그라운드 자리에 맡김, race 회피).
@@ -81,8 +82,40 @@ interface SceneDialogChoices {
 
 const PROMPT_VERSION = 'gen_dialog_v1_haiku45_2026_05_05';
 
-function buildSystemPrompt(memoryTitle: string, motifs: string[]): string {
-  const motifsLine = motifs.length ? motifs.join(', ') : '(없음)';
+function buildSystemPrompt(memoryTitle: string, motifs: string[], lang: 'ko' | 'en'): string {
+  const motifsLine = motifs.length ? motifs.join(', ') : (lang === 'en' ? '(none)' : '(없음)');
+  if (lang === 'en') {
+    return `You are an assistant to the content author of the TEM (The Etched Mutation) memory "${memoryTitle}". Generate the *ghost multi-turn dialogue pool* that a player entering this memory will meet.
+
+Rules:
+1. Tone = first person, past tense. Quiet self-recollection. Short. No analysis, advice, evaluation, or judgment.
+2. Use only sentences / motifs / emotions drawn directly from the memory text. No new information.
+3. Memory motifs: ${motifsLine}.
+4. For each scene, produce:
+   - scene_context: the first 5-6 sentences of the scene text. A breathing space. Quoting the text directly is fine.
+   - ghost_intro: 0-1 sentences (usually an empty array []). A short recollection anchor.
+   - choices: exactly 3. Each choice:
+     - label: a short question or response, 3-8 words.
+     - ghost_reply: a 1-2 sentence reply (array).
+     - free_dialog_open: a 1-2 sentence opening question for free dialogue (array).
+5. Tone consistency: every scene in one memory speaks in the voice of the same ghost.
+6. Output = JSON only. No markdown, comments, or explanation. Write all content in English.
+
+Output JSON format:
+{
+  "byScene": {
+    "<scene-uuid-1>": {
+      "scene_context": ["Sentence 1.", "Sentence 2."],
+      "ghost_intro": [],
+      "choices": [
+        { "label": "...", "ghost_reply": ["..."], "free_dialog_open": ["..."] },
+        { "label": "...", "ghost_reply": ["..."], "free_dialog_open": ["..."] },
+        { "label": "...", "ghost_reply": ["..."], "free_dialog_open": ["..."] }
+      ]
+    }
+  }
+}`;
+  }
   return `당신은 TEM(The Etched Mutation) 메모리 콘텐츠 작가의 보조. "${memoryTitle}" 메모리에 들어간 플레이어가 마주칠 *유령 멀티턴 대화 풀* 을 생성한다.
 
 규칙:
@@ -116,18 +149,20 @@ function buildSystemPrompt(memoryTitle: string, motifs: string[]): string {
 }`;
 }
 
-function buildUserPrompt(scenes: SceneRow[]): string {
+function buildUserPrompt(scenes: SceneRow[], lang: 'ko' | 'en'): string {
   const lines: string[] = [];
   const n = scenes.length;
-  lines.push('아래 씬 본문 ' + n + '개에 대해 byScene 풀을 생성하라. scene id 는 박힌 그대로 응답 키로 사용.');
+  lines.push(lang === 'en'
+    ? 'Generate the byScene pool for the ' + n + ' scene texts below. Use each scene id exactly as given as the response key.'
+    : '아래 씬 본문 ' + n + '개에 대해 byScene 풀을 생성하라. scene id 는 박힌 그대로 응답 키로 사용.');
   lines.push('');
   for (const s of scenes) {
     lines.push(`<scene id="${s.id}" order="${s.scene_order}">`);
-    lines.push(s.text || '(본문 비어 있음)');
+    lines.push(s.text || (lang === 'en' ? '(scene text empty)' : '(본문 비어 있음)'));
     lines.push('</scene>');
     lines.push('');
   }
-  lines.push('JSON 응답:');
+  lines.push(lang === 'en' ? 'JSON response:' : 'JSON 응답:');
   return lines.join('\n');
 }
 
@@ -178,6 +213,7 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+  const lang: 'ko' | 'en' = body.lang === 'en' ? 'en' : 'ko';
 
   // service_role 자리 — RLS 우회 (memories UPDATE 박는 자리)
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -209,8 +245,10 @@ serve(async (req: Request) => {
   const motifs: string[] = Array.isArray(memMeta.motif_tags) ? memMeta.motif_tags : [];
 
   // 2. 캐시 hit 자리 — meta.dialog_choices_llm 박혀 있으면 LLM 호출 X
+  // 캐시는 언어별로 구분 — cache.lang 이 요청 언어와 다르면 miss 처리 (재생성).
+  // lang 필드 없는 옛 캐시는 cache.lang===undefined → 항상 miss → 자동 무효화.
   const cache = memMeta.dialog_choices_llm;
-  if (cache && cache.byScene && typeof cache.byScene === 'object' && Object.keys(cache.byScene).length > 0) {
+  if (cache && cache.lang === lang && cache.byScene && typeof cache.byScene === 'object' && Object.keys(cache.byScene).length > 0) {
     const sceneId = String(body.sceneId || '');
     const dlg = sceneId ? cache.byScene[sceneId] : null;
     console.log("[gen-dlg] cache hit memId=" + memoryId.slice(0, 8));
@@ -261,8 +299,8 @@ serve(async (req: Request) => {
     });
   }
 
-  const systemPrompt = buildSystemPrompt(memTitle, motifs);
-  const userPrompt = buildUserPrompt(scenes);
+  const systemPrompt = buildSystemPrompt(memTitle, motifs, lang);
+  const userPrompt = buildUserPrompt(scenes, lang);
 
   // 5. Haiku 4.5 호출 (JSON 응답 강제)
   // oneScene=true (씬 1개) → 짧은 응답 (max_tokens 1500, timeout 8초)
@@ -343,6 +381,7 @@ serve(async (req: Request) => {
       ...memMeta,
       dialog_choices_llm: {
         byScene: parsed.byScene,
+        lang: lang,
         generated_at: new Date().toISOString(),
         prompt_version: PROMPT_VERSION,
         model: data?.model || 'claude-haiku-4-5-20251001',

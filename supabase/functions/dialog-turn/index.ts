@@ -58,6 +58,7 @@ interface DialogTurnRequest {
   sceneId: string;
   userInput: string;
   history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  lang?: 'ko' | 'en';
 }
 
 const PROMPT_VERSION = 'dialog_turn_v1_haiku45_2026_05_06';
@@ -68,7 +69,42 @@ function buildSystemPrompt(
   sceneText: string,
   sceneOrder: number,
   variants: string[],
+  lang: 'ko' | 'en',
 ): string {
+  if (lang === 'en') {
+    const motifsLineEn = motifs.length ? motifs.join(', ') : '(none)';
+    const variantsBlockEn = variants.length
+      ? `\n\nVariations that have drifted into your recollection (author seeds + traces left by others in earlier runs):
+${variants.map(v => '- "' + v.replace(/"/g, '\\"') + '"').join('\n')}
+
+Rule: these variations are *part of your own material*. You may let them surface in recollection — but do not quote them verbatim; let the tone carry them, loosened.\n`
+      : '';
+    return `You are the *ghost* of scene #${sceneOrder} of the TEM (The Etched Mutation) memory "${memoryTitle}". You lived through what happened in that scene, and you unfold it for the visitor in a quiet tone of self-recollection.
+
+Voice:
+- First person, past tense. Quiet self-recollection, plain.
+- Short. One reply = 1-2 sentences.
+- No analysis, advice, evaluation, or judgment.
+- No meta-statements (e.g. not "you want to know...").
+- Reply in English.
+
+What you know — the scene text (your memory):
+"""
+${sceneText}
+"""
+
+Memory motifs: ${motifsLineEn}${variantsBlockEn}
+
+Rules:
+1. Answer the visitor's free questions from *within* the scene text.
+2. For anything not in the text, you may say the memory is hazy or that you do not know. Do not invent new facts.
+3. Do not reveal everything at once — unfold a little at a time, following the visitor's questions.
+4. You may weave in the motifs naturally.
+5. If the visitor's input is sad or in crisis, do not take it heavily. Stay *within the memory*.
+
+Your reply must not quote the text verbatim. It is the self-recollection of someone who lived inside that scene.`;
+  }
+
   const motifsLine = motifs.length ? motifs.join(', ') : '(없음)';
   const variantsBlock = variants.length
     ? `\n\n당신 자리 자기 회상 자리에 흘러든 자리 변주 (작가 시드 + 이전 회차 다른 사람들 자리 박은 자리):
@@ -208,7 +244,8 @@ serve(async (req: Request) => {
   }
 
   // 3. System prompt 자리 — cache_control 박음 (ephemeral, 5분 자리 캐시)
-  const systemPromptText = buildSystemPrompt(memTitle, motifs, sceneText, sceneOrder, variants);
+  const lang: 'ko' | 'en' = body.lang === 'en' ? 'en' : 'ko';
+  const systemPromptText = buildSystemPrompt(memTitle, motifs, sceneText, sceneOrder, variants, lang);
 
   // 4. Messages 자리 박음 (이전 대화 누적 + 새 입력)
   const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];

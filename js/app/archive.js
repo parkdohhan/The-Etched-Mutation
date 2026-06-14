@@ -1555,9 +1555,10 @@ function renderArchiveFreeInput(scene) {
         if (typeof updateWaveBucket === 'function') {
           const entries = Object.entries(ev).sort((a, b) => (b[1] || 0) - (a[1] || 0));
           const topKey = entries.length ? entries[0][0] : '';
+          // FIXATED는 엔진의 다중-턴 누적 신호(fixLevel>=0.85)로만 띄운다(원칙 #3).
+          // 타이핑 미리보기는 단일 단어 기반이라 HIGH/MID/LOW만 그린다.
           if (topKey === 'anger' || topKey === 'fear') updateWaveBucket('LOW');
-          else if (topKey === 'numbness' || topKey === 'isolation') updateWaveBucket('FIXATED');
-          else if (topKey === 'sadness' || topKey === 'longing' || topKey === 'guilt') updateWaveBucket('MID');
+          else if (topKey === 'sadness' || topKey === 'longing' || topKey === 'guilt' || topKey === 'numbness' || topKey === 'isolation') updateWaveBucket('MID');
           else updateWaveBucket('HIGH');
         }
         window._archiveLiveVector = result;
@@ -1774,7 +1775,7 @@ function applyEngineResult(engineResult, userEmotionVector) {
     if (updatedHistory.length > 10) {
         updatedHistory.shift();
     }
-    const currentData = storyData || appStore.getState().currentStoryData;
+    const currentData = appStore.getState().currentStoryData;
     const currentSceneIndex = currentState.currentScene || 0;
     const currentScene = currentData?.scenes?.[currentSceneIndex] || null;
     const originalEmotion = currentScene?.originalEmotion || currentScene?.original_emotion || {};
@@ -1797,6 +1798,13 @@ function applyEngineResult(engineResult, userEmotionVector) {
         lastTransitionPattern: engineResult.transition_pattern || null,
         lastEngineResult: engineResult,
     });
+
+ // wave bucket을 엔진 판정으로 확정 (single source of truth).
+ // 타이핑 중에는 감정 단어 룩업이 라이브 미리보기를 그리지만,
+ // 제출 시점에 NPC/사운드와 동일한 엔진 bucket으로 교정한다.
+    if (typeof updateWaveBucket === 'function') {
+        updateWaveBucket(newBucket);
+    }
 
  // window.archiveSceneAlignments save (하위 호환성 maintain)
     if (!window.archiveSceneAlignments) {
