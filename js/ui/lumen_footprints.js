@@ -85,10 +85,11 @@
           cx.globalCompositeOperation = 'source-over';
           var tex = new THREE.CanvasTexture(c);
           tex.needsUpdate = true;
-          // 회전 +π 박은 자리에서 좌우 거울 발생 → 시트의 한 쌍 왼쪽(짝수칸)이 사실 오른발로 박혀야 맞음.
-          // 짝수 칸(0,2,4,6) → 오른발, 홀수 칸(1,3,5,7) → 왼발
-          if (i % 2 === 0) texturesR.push(tex);
-          else texturesL.push(tex);
+          // 시트의 각 쌍 = [왼발, 오른발]. 8칸으로 나누면 짝수칸(0,2,4,6)=왼발, 홀수칸(1,3,5,7)=오른발.
+          // (이전엔 rotation.y 의 +π 가 텍스처를 좌우 거울시켜 분류를 뒤집어야 했으나,
+          //  +π 제거(2026-06-13)로 거울이 사라져 시트 그대로 직접 매핑한다.)
+          if (i % 2 === 0) texturesL.push(tex);
+          else texturesR.push(tex);
         }
         _texReady = true;
         console.log('[lumen-footprints] sheet loaded — L=' + texturesL.length + ', R=' + texturesR.length);
@@ -148,22 +149,33 @@
 
     // y 파라미터: 박는 자리의 절대 높이. null/undefined 면 opts.groundY (절대값) 사용.
     // 1인칭 굴곡 지형 위에선 호출처에서 cam.position.y - 눈높이 + opts.groundY 를 던진다.
-    function _stampAt(x, z, yaw, permanent, y) {
+    // moveDir: {x,z} 정규화 이동 방향. 정지/첫 발자국이면 null.
+    function _stampAt(x, z, yaw, permanent, y, moveDir) {
       var side = _footSide;
       var mat = _makeMaterial(side);
       var mesh = new THREE.Mesh(geometry, mat);
-      // 진행 방향 직각 좌우 offset (왼발 -, 오른발 +)
+      // 발끝(yaw)에 대한 직각 좌우 offset (왼발 -, 오른발 +)
       var sideSign = (side === 'L') ? -1 : 1;
       var off = opts.footSideOffset * sideSign;
       var sideAngle = yaw + Math.PI / 2;
       var ox = Math.sin(sideAngle) * off;
       var oz = Math.cos(sideAngle) * off;
+      // 전후 디딤 offset — 실제 사람은 디딤발이 '가는 방향'으로 보폭 절반 나가 착지한다.
+      // 뒷걸음질이면 moveDir 이 몸 뒤를 가리키므로 발자국이 몸 뒤에 디뎌져 직진과 구분된다.
+      // 발끝(rotation.y)은 건드리지 않음 → 뒤로 가도 발끝은 몸 보는 쪽(앞) 유지 (실제 사람).
+      var fx = 0, fz = 0;
+      if (moveDir) {
+        var lead = opts.strideDistance * 0.5;
+        fx = moveDir.x * lead;
+        fz = moveDir.z * lead;
+      }
       var yy = (typeof y === 'number') ? y : opts.groundY;
-      mesh.position.set(x + ox, yy, z + oz);
-      // PlaneGeometry는 xy 평면 기본, rotateX(-π/2)로 xz로 눕힘. yaw로 진행 방향 회전.
-      // +π — 텍스처는 발끝이 위쪽(y=0)인데, rotateX 후 그게 +z 방향. yaw=0 일 때 카메라가 -z 향함.
-      // 그래서 발끝이 진행 방향과 정반대 → π 더해서 뒤집음.
-      mesh.rotation.y = yaw + Math.PI;
+      mesh.position.set(x + ox + fx, yy, z + oz + fz);
+      // PlaneGeometry(xy평면) → rotateX(-π/2) 후 텍스처 발끝(+y)이 local -z 로 눕는다.
+      // rotation.y = yaw 이면 local -z 가 월드 forward(몸이 보는 방향)를 향함 = 발끝이 몸 정면.
+      // 뒷걸음질 시 발끝은 몸 정면(가던 방향 반대) → 뒤꿈치가 플레이어 쪽으로 온다.
+      // (이전엔 +π 가 붙어 발끝이 정반대=카메라 쪽을 향하는 버그였음. 2026-06-13 수정)
+      mesh.rotation.y = yaw;
       // depthTest=false 와 짝 — 다른 투명 오브젝트보다 늦게 그려져 항상 보임.
       mesh.renderOrder = 999;
       // [TEMP 2026-05-29] frustum culling 우회 — 작은 plane 이 카메라 시야 가장자리에서 잘려나가는 걸 방지
@@ -256,14 +268,17 @@
       // 발자국 박기
       if (mode === 'explore') {
         if (!_lastStampPos) {
-          // 첫 발자국 — 시작점에 즉시 박음 (출발 자리 표시)
-          _stampAt(cam.position.x, cam.position.z, yaw, false, footY);
+          // 첫 발자국 — 시작점에 즉시 박음 (정지 상태 → 전후 offset 없음)
+          _stampAt(cam.position.x, cam.position.z, yaw, false, footY, null);
           _lastStampPos = { x: cam.position.x, z: cam.position.z };
         } else {
           var dx = cam.position.x - _lastStampPos.x;
           var dz = cam.position.z - _lastStampPos.z;
-          if (Math.sqrt(dx * dx + dz * dz) >= opts.strideDistance) {
-            _stampAt(cam.position.x, cam.position.z, yaw, false, footY);
+          var dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist >= opts.strideDistance) {
+            // 직전 발자국 → 현재 위치 방향 = 실제 걸어간 방향 (앞/뒤/옆 모두)
+            var moveDir = { x: dx / dist, z: dz / dist };
+            _stampAt(cam.position.x, cam.position.z, yaw, false, footY, moveDir);
             _lastStampPos = { x: cam.position.x, z: cam.position.z };
           }
         }

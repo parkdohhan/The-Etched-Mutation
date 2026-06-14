@@ -477,7 +477,7 @@
       (choices && choices.length ? '8px' : '0') + ';';
     var input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = opts.placeholder || '...또는 자유롭게 박아';
+    input.placeholder = opts.placeholder || '...또는 자유롭게 적어주세요';
     input.style.cssText = [
       'flex:1', 'padding:14px 18px',
       'background:rgba(0,0,0,0.4)',
@@ -1014,7 +1014,7 @@
       var playerInput;
       if (turn === 1) {
         var firstInput = await new Promise(function (resolve) {
-          _renderChoicesOrInput(overlay, dlg.choices || [], { placeholder: '...또는 자유롭게 박아' }, resolve);
+          _renderChoicesOrInput(overlay, dlg.choices || [], { placeholder: '...또는 자유롭게 적어주세요' }, resolve);
         });
         playerInput = firstInput.text;
       } else {
