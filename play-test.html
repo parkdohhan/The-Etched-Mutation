@@ -5150,22 +5150,35 @@
                 getGhostPoints: function () {
                   try { return _fpGhostPoints || []; } catch (_) { return []; }
                 },
-                // S1·T2 배선 — 유령점 → 가장 가까운 장면핀의 sceneId → within-run 물듦 조회.
-                // ghost_condensation_points 엔 sceneId 가 없으므로 좌표 최근접 매칭(설계상 W 분담).
+                // S1·T2 배선 — 응결점(ghost_condensation_points)엔 sceneId 가 없어 장면핀으로 되짚는다.
+                // 2026-06-15 fix — 미스라우팅 제거(2단계, 예전 정상 동작은 보존):
+                //   ① 이 응결점의 "임자 핀"(=최근접 핀)이 물들었으면 거리 무관 그 물듦 반환 — 1:1 정상 짝.
+                //   ② 임자가 안 물들었을 때만, 연관 반경 안의 *가장 가까운 물든 핀* 을 대신 집는다.
+                //   예전엔 ①만 있어 임자가 안 물들면 옆 장면이 물들어도 혼잣말이 영영 안 떴다(마네킨만 기욺=증상2).
+                //   ②는 멀리 한 장면만 물들어도 온 맵 단어가 웅성대지 않게 반경으로 묶는다.
+                //   임계(0.55)·오염 결은 안 건드림 — 매핑만 고침.
                 getGhostDriftFor: function (point, idx) {
                   try {
                     var qd = rt.__quiltDemo;
                     if (!qd || !point) return null;
-                    var best = null, bestD = Infinity;
+                    var DRIFT_ASSOC_DIST = 16;   // ② 응결점↔물든 핀 연관 반경(월드 유닛, 튜닝 자리)
+                    var ownerSid = null, ownerD = Infinity;        // ① 최근접(임자) 핀
+                    var driftedDrift = null, driftedD = Infinity;  // ② 최근접 물든 핀
                     for (var i = 0; i < _fpScenePins.length; i++) {
                       var sp = _fpScenePins[i];
+                      var sid = (sp.scene && sp.scene.id) || (sp.pin && sp.pin.sceneId);
+                      if (!sid) continue;
                       var dx = sp.wx - point.x, dz = sp.wz - point.z;
                       var dd = dx * dx + dz * dz;
-                      if (dd < bestD) { bestD = dd; best = sp; }
+                      if (dd < ownerD) { ownerD = dd; ownerSid = sid; }
+                      var drift = qd.getGhostDrift(sid);
+                      if (drift && dd < driftedD) { driftedD = dd; driftedDrift = drift; }
                     }
-                    if (!best) return null;
-                    var sid = (best.scene && best.scene.id) || (best.pin && best.pin.sceneId);
-                    return sid ? qd.getGhostDrift(sid) : null;
+                    // ① 임자 핀이 물들었으면 그대로 (예전 동작 보존)
+                    var ownerDrift = ownerSid ? qd.getGhostDrift(ownerSid) : null;
+                    if (ownerDrift) return ownerDrift;
+                    // ② 임자는 안 물듦 → 반경 안 가장 가까운 물든 핀으로 보정
+                    return (driftedDrift && driftedD <= DRIFT_ASSOC_DIST * DRIFT_ASSOC_DIST) ? driftedDrift : null;
                   } catch (_) { return null; }
                 },
                 getEchoWords: function () {
