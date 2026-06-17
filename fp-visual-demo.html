@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1인칭 비주얼 천장 데모 — 웹에서 어디까지 예뻐지나</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a10;color:#889;font-family:'Courier New',monospace;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+
+#intro{position:fixed;top:14px;left:16px;z-index:10;max-width:360px;pointer-events:none}
+#intro .t{font-size:13px;letter-spacing:2px;color:#c4a882}
+#intro .s{font-size:9px;letter-spacing:1px;color:#667;margin-top:4px;line-height:1.6}
+
+#state{position:fixed;top:14px;right:16px;z-index:10;background:rgba(14,14,22,.82);
+  border:1px solid rgba(80,80,110,.3);padding:10px 14px;font-size:11px;line-height:1.8;min-width:180px}
+#state .k{color:#778}
+#state .on{color:#8ac86a}
+#state .off{color:#a86a6a}
+
+#ctrl{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:rgba(14,14,22,.82);border:1px solid rgba(80,80,110,.3);padding:10px 16px;max-width:96vw}
+#ctrl button{background:rgba(26,26,38,.9);border:1px solid rgba(90,90,120,.4);color:#aab;
+  padding:8px 14px;font-size:12px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace}
+#ctrl button:hover{border-color:rgba(160,140,110,.6);color:#e0c8a0}
+#ctrl button.big{border-color:rgba(120,160,110,.5);color:#9c8}
+#ctrl .hint{font-size:9px;color:#667;letter-spacing:1px;margin-left:6px}
+#ctrl .sep{width:1px;height:30px;background:rgba(90,90,120,.3);margin:0 4px}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="intro">
+  <div class="t">1인칭 비주얼 천장 데모</div>
+  <div class="s"><strong>기본기 ON/OFF</strong>로 같은 화면을 비교한다. 빠진 기본기(색감 보정·환경 조명)를
+  깔았을 때 웹에서 어디까지 예뻐지는지 본다. <strong>1인칭 들어가기</strong> 후 화면을 클릭하면
+  눈높이로 지형 안에 선다 — WASD 이동, 마우스 시점, ESC 나가기.</div>
+</div>
+
+<div id="state">
+  <div><span class="k">기본기</span> <span id="st-basics" class="off">OFF</span></div>
+  <div><span class="k">시점</span> <span id="st-view">부감</span></div>
+</div>
+
+<div id="ctrl">
+  <button type="button" id="toggle" class="big">기본기 ON</button>
+  <div class="sep"></div>
+  <button type="button" id="enter">1인칭 들어가기</button>
+  <button type="button" id="exit">나가기</button>
+  <span class="hint">1인칭 진입 후 화면 클릭 · WASD · 마우스 · ESC</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/shared/tem_af_strata_terrain.js"></script>
+<script type="module" src="js/fp-visual-demo-page.js"></script>
+</body>
+</html>
