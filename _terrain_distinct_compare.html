@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>지형 구별 비교 — 모양 vs 물건</title>
+<style>
+  html,body{margin:0;background:#0c0d10;color:#cdd2da;font-family:"Malgun Gothic","맑은 고딕",system-ui,sans-serif;}
+  #wrap{padding:18px 22px 30px;}
+  h1{font-size:17px;font-weight:600;margin:0 0 2px;color:#e7ecf3;}
+  .sub{font-size:12px;color:#7f8794;margin:0 0 14px;line-height:1.5;}
+  canvas{background:#0c0d10;display:block;}
+  .legend{font-size:11px;color:#8b93a0;margin-top:12px;line-height:1.7;}
+  .legend b{color:#b9c0cc;font-weight:600;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>같은 감정군 장면이 지금 얼마나 갈리나 — 모양 손보기 vs 물건 얹기</h1>
+  <p class="sub">위에서 빛을 비춘 땅 음영. 능선은 밝고 골은 어둡다. 셀마다 높이는 따로 정규화 — <b>절대 높낮이가 아니라 "생김새"만</b> 비교한다.</p>
+  <canvas id="cv" width="1140" height="700"></canvas>
+  <div class="legend" id="lg"></div>
+</div>
+<script>
+'use strict';
+// ───────────────────────────────────────────────────────────────────────────
+// 검증된 Pass-1 bedrock 수학 — _terrain_distinct_fixes.js 에서 그대로 포팅.
+// 생성기 본체(js/shared/tem_af_strata_terrain.js)는 건드리지 않는다.
+// ───────────────────────────────────────────────────────────────────────────
+var EC = {
+  fear:[0.4,0.28,0.7], sadness:[0.25,0.38,0.65], anger:[0.8,0.25,0.22], guilt:[0.6,0.48,0.35],
+  longing:[0.28,0.62,0.65], numbness:[0.32,0.32,0.38], shame:[0.58,0.35,0.48], isolation:[0.14,0.14,0.24],
+  joy:[0.82,0.72,0.38], resentment:[0.6,0.2,0.15], resignation:[0.4,0.38,0.35], hope:[0.55,0.65,0.45],
+  relief:[0.48,0.68,0.48], love:[0.7,0.4,0.5], gratitude:[0.65,0.58,0.4], peace:[0.45,0.58,0.52], confusion:[0.48,0.38,0.55],
+};
+var VAD_FULL = {
+  fear:{v:-0.9,a:0.9,d:-0.8}, sadness:{v:-0.8,a:-0.4,d:-0.7}, anger:{v:-0.7,a:0.8,d:0.3},
+  guilt:{v:-0.8,a:0.2,d:-0.6}, shame:{v:-0.9,a:-0.2,d:-0.9}, isolation:{v:-0.7,a:-0.5,d:-0.6},
+  numbness:{v:-0.6,a:-0.8,d:-0.4}, longing:{v:-0.3,a:0.2,d:-0.2}, resentment:{v:-0.5,a:0.6,d:0.1},
+  resignation:{v:-0.4,a:-0.6,d:-0.5}, joy:{v:0.9,a:0.6,d:0.5}, hope:{v:0.7,a:0.4,d:0.6},
+  relief:{v:0.6,a:-0.3,d:0.4}, gratitude:{v:0.8,a:-0.2,d:0.7}, love:{v:1.0,a:0.5,d:0.6},
+  peace:{v:0.8,a:-0.6,d:0.7}, confusion:{v:-0.4,a:0.3,d:-0.5},
+};
+var VA_ANCHORS = {};
+for (var ek in EC){ var vd=VAD_FULL[ek]; if(!vd)continue; VA_ANCHORS[ek]={v:vd.v,a:vd.a}; }
+
+var EMO_NOISE_BASE = {
+  fear:{freq:0.25,lac:2.4,oct:5,amp:1.0}, anger:{freq:0.22,lac:2.5,oct:5,amp:1.1},
+  resentment:{freq:0.20,lac:2.3,oct:4,amp:0.9}, sadness:{freq:0.08,lac:2.0,oct:4,amp:0.7},
+  numbness:{freq:0.06,lac:1.8,oct:3,amp:0.5}, resignation:{freq:0.07,lac:1.9,oct:3,amp:0.6},
+  isolation:{freq:0.09,lac:2.0,oct:4,amp:0.65}, joy:{freq:0.12,lac:2.0,oct:4,amp:0.8},
+  hope:{freq:0.11,lac:2.0,oct:4,amp:0.75}, love:{freq:0.10,lac:1.9,oct:4,amp:0.85},
+  relief:{freq:0.10,lac:2.0,oct:3,amp:0.7}, gratitude:{freq:0.11,lac:2.0,oct:3,amp:0.7},
+  peace:{freq:0.09,lac:1.8,oct:3,amp:0.65}, guilt:{freq:0.15,lac:2.6,oct:5,amp:0.8},
+  shame:{freq:0.16,lac:2.7,oct:5,amp:0.75}, confusion:{freq:0.18,lac:2.8,oct:5,amp:0.7},
+  longing:{freq:0.13,lac:2.2,oct:4,amp:0.8},
+};
+var EMO_NOISE_DEFAULT = {freq:0.12,lac:2.0,oct:4,amp:0.7};
+// FIX(A): 같은 군 형제들의 거칠기 파장을 벌림
+var EMO_NOISE_SPREAD = JSON.parse(JSON.stringify(EMO_NOISE_BASE));
+EMO_NOISE_SPREAD.fear={freq:0.34,lac:2.8,oct:6,amp:1.0}; EMO_NOISE_SPREAD.anger={freq:0.26,lac:2.5,oct:5,amp:1.1};
+EMO_NOISE_SPREAD.resentment={freq:0.18,lac:2.2,oct:4,amp:0.9};
+EMO_NOISE_SPREAD.guilt={freq:0.12,lac:2.4,oct:4,amp:0.8}; EMO_NOISE_SPREAD.shame={freq:0.20,lac:2.7,oct:5,amp:0.75};
+EMO_NOISE_SPREAD.confusion={freq:0.24,lac:2.8,oct:6,amp:0.7};
+EMO_NOISE_SPREAD.numbness={freq:0.04,lac:1.8,oct:3,amp:0.5}; EMO_NOISE_SPREAD.resignation={freq:0.07,lac:1.9,oct:3,amp:0.6};
+EMO_NOISE_SPREAD.sadness={freq:0.11,lac:2.0,oct:4,amp:0.7}; EMO_NOISE_SPREAD.isolation={freq:0.16,lac:2.2,oct:4,amp:0.65};
+
+function hs(x,y){ var n=Math.sin(x*127.1+y*311.7)*43758.5453; return n-Math.floor(n); }
+function sN(x,y){
+  var ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
+  var sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
+  return hs(ix,iy)*(1-sx)*(1-sy)+hs(ix+1,iy)*sx*(1-sy)+hs(ix,iy+1)*(1-sx)*sy+hs(ix+1,iy+1)*sx*sy;
+}
+function fbCustom(x,y,freq,lac,oct,amp){ var v=0,a=amp*0.5,f=freq; for(var i=0;i<oct;i++){ v+=a*sN(x*f,y*f); a*=0.5; f*=lac; } return v; }
+function projectToVAD(emo){
+  var V=0,A=0,w=0;
+  for(var k in emo){ var ww=Number(emo[k]||0),m=VAD_FULL[k]; if(!ww||!m)continue; V+=ww*m.v; A+=ww*m.a; w+=ww; }
+  if(w<=0)return{v:0,a:0}; return{v:Math.max(-1,Math.min(1,V/w)),a:Math.max(-1,Math.min(1,A/w))};
+}
+function computeVAWeights(vad){
+  var wt={},tot=0;
+  for(var n in VA_ANCHORS){ var an=VA_ANCHORS[n],dv=vad.v-an.v,da=vad.a-an.a,d2=dv*dv+da*da,w=Math.exp(-d2/0.5); if(w>0.01){wt[n]=w;tot+=w;} }
+  if(tot>0)for(var k in wt)wt[k]/=tot; return wt;
+}
+function hashWorldOffset(id){
+  var h=5381,s=String(id); for(var i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i); h=Math.abs(h);
+  var ang=(h%628)/100,mag=1.4+(h%700)/180; return{ox:Math.cos(ang)*mag,oz:Math.sin(ang*1.07)*mag};
+}
+function computeMag(emo){ var e=0; for(var k in emo)if(typeof emo[k]==='number')e+=emo[k]*emo[k]; return Math.sqrt(e); }
+function computeDom(emo){ var dk='',dv=0; for(var k in emo)if(emo[k]>dv){dv=emo[k];dk=k;} return dk; }
+// FIX(B): 감정 벡터 전체 형상을 seed 로
+function hashEmoVec(emo){
+  var keys=Object.keys(emo).filter(function(k){return typeof emo[k]==='number'&&emo[k]!==0;}).sort();
+  var s=''; for(var i=0;i<keys.length;i++)s+=keys[i]+':'+Math.round(emo[keys[i]]*1000)+'|';
+  var h=5381; for(var j=0;j<s.length;j++)h=((h<<5)+h)^s.charCodeAt(j); h=Math.abs(h);
+  return{sx:(h%997)/7.3,sz:(Math.floor(h/997)%997)/6.1};
+}
+// FIX(C): 능선 접기
+function ridgedFold(n,r){ var ridged=1-Math.abs(2*n-1); return n*(1-r)+ridged*r; }
+
+function sceneHeightfield(emo,memId,fix){
+  var G=64,window=60,H2=56,off2=hashWorldOffset(memId);
+  var scVad=projectToVAD(emo),scW=computeVAWeights(scVad),domEmo=computeDom(emo),eMag=computeMag(emo);
+  var table=fix.spread?EMO_NOISE_SPREAD:EMO_NOISE_BASE, np=table[domEmo]||EMO_NOISE_DEFAULT;
+  var seed=fix.fullHash?hashEmoVec(emo):{sx:0,sz:0};
+  var cx=scVad.v*H2+off2.ox, cz=scVad.a*H2+off2.oz;
+  var hts=new Float64Array(G*G);
+  for(var iz=0;iz<G;iz++)for(var ix=0;ix<G;ix++){
+    var wx=cx+(ix/(G-1)-0.5)*window, wz=cz+(iz/(G-1)-0.5)*window, totalH=0;
+    for(var an in scW){
+      var aw=scW[an]; if(!aw||!VA_ANCHORS[an])continue;
+      var A=VA_ANCHORS[an], ax=A.v*H2+off2.ox, az=A.a*H2+off2.oz, ddx=wx-ax, ddz=wz-az, dist=Math.sqrt(ddx*ddx+ddz*ddz);
+      var radius=10+aw*22; if(dist>=radius*1.8)continue;
+      var sig=radius*0.55, inf=Math.exp(-(dist*dist)/(2*sig*sig))*aw;
+      var nx=wx*np.freq*0.7+seed.sx, nz=wz*np.freq*0.7+seed.sz;
+      var emoNoise=fbCustom(nx,nz,np.freq*0.7,np.lac,np.oct,np.amp);
+      if(fix.ridged>0)emoNoise=ridgedFold(emoNoise,fix.ridged);
+      totalH+=eMag*22*inf*(0.4+emoNoise*0.6);
+    }
+    hts[iz*G+ix]=totalH;
+  }
+  return{hts:hts,G:G};
+}
+
+// ─── 실제 DB 벡터 (sad_numb 4 + 참고 fear 1) ──
+var SCENES = [
+  {col:'무감각 A', mem:'7a700000', emo:{fear:0.15,anger:0.05,guilt:0.05,shame:0.1,longing:0.15,sadness:0.3,numbness:0.7,isolation:0.5}},
+  {col:'무감각 B', mem:'c4888189', emo:{fear:0.15,numbness:0.65,isolation:0.4}},
+  {col:'슬픔 A',   mem:'d9fd25f0', emo:{guilt:0.45,longing:0.35,sadness:0.6,numbness:0.28}},
+  {col:'슬픔 B',   mem:'1dde3a8a', emo:{sadness:0.6,longing:0.5,isolation:0.4}},
+  {col:'(참고)공포', mem:'1dde3a8a2', emo:{fear:0.7,sadness:0.2,isolation:0.4}},
+];
+var ROWS = [
+  {label:'지금 매트릭',         sub:'현재 계산 그대로',                 fix:{spread:false,fullHash:false,ridged:0},   marker:false},
+  {label:'손본 매트릭(예시)',   sub:'감정 전체형상+능선+노이즈 정리',   fix:{spread:true, fullHash:true, ridged:0.7}, marker:false},
+  {label:'땅 비슷+물건 다름',   sub:'윗줄과 같은 땅, 표식만 다르게',     fix:{spread:false,fullHash:false,ridged:0},   marker:true},
+];
+
+// ─── 렌더 ──
+var MARK_COLORS = ['#e85d5d','#5db4e8','#7fd06b','#e0c14a','#c178e0'];
+var MARK_SHAPES = ['circle','triangle','square','diamond','star'];
+
+function sampleH(nh,G,fx,fy){
+  fx=Math.max(0,Math.min(G-1,fx)); fy=Math.max(0,Math.min(G-1,fy));
+  var x0=Math.floor(fx),y0=Math.floor(fy),x1=Math.min(G-1,x0+1),y1=Math.min(G-1,y0+1),tx=fx-x0,ty=fy-y0;
+  var a=nh[y0*G+x0],b=nh[y0*G+x1],c=nh[y1*G+x0],d=nh[y1*G+x1];
+  return (a*(1-tx)+b*tx)*(1-ty)+(c*(1-tx)+d*tx)*ty;
+}
+function drawCell(ctx,ox,oy,size,hts,G){
+  var mn=Infinity,mx=-Infinity,i;
+  for(i=0;i<hts.length;i++){ if(hts[i]<mn)mn=hts[i]; if(hts[i]>mx)mx=hts[i]; }
+  var rg=(mx-mn)||1, nh=new Float64Array(hts.length);
+  for(i=0;i<hts.length;i++)nh[i]=(hts[i]-mn)/rg;
+  var img=ctx.createImageData(size,size), data=img.data;
+  var Lx=-0.45,Ly=-0.62,Lz=0.64, Ll=Math.sqrt(Lx*Lx+Ly*Ly+Lz*Lz); Lx/=Ll;Ly/=Ll;Lz/=Ll;
+  var zs=9.0;
+  for(var py=0;py<size;py++)for(var px=0;px<size;px++){
+    var gx=px/size*(G-1), gy=py/size*(G-1);
+    var h=sampleH(nh,G,gx,gy);
+    var hL=sampleH(nh,G,gx-1,gy), hR=sampleH(nh,G,gx+1,gy), hD=sampleH(nh,G,gx,gy-1), hU=sampleH(nh,G,gx,gy+1);
+    var nx=(hL-hR)*zs, ny=(hD-hU)*zs, nz=1.0, nl=Math.sqrt(nx*nx+ny*ny+nz*nz); nx/=nl;ny/=nl;nz/=nl;
+    var diff=Math.max(0,nx*Lx+ny*Ly+nz*Lz), shade=0.33+diff*0.95;
+    var r=(64+(206-64)*h)*shade, g=(76+(198-76)*h)*shade, b=(96+(176-96)*h)*shade;
+    var o=(py*size+px)*4;
+    data[o]=Math.min(255,r); data[o+1]=Math.min(255,g); data[o+2]=Math.min(255,b); data[o+3]=255;
+  }
+  ctx.putImageData(img,ox,oy);
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.strokeRect(ox+0.5,oy+0.5,size-1,size-1);
+}
+function drawMarker(ctx,ox,oy,size,idx){
+  var cx=ox+size*0.5, cy=oy+size*0.52, R=size*0.16, col=MARK_COLORS[idx%5], sh=MARK_SHAPES[idx%5];
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.55)'; ctx.shadowBlur=10; ctx.shadowOffsetY=4;
+  ctx.fillStyle=col; ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=2;
+  ctx.beginPath();
+  if(sh==='circle'){ ctx.arc(cx,cy,R,0,7); }
+  else if(sh==='triangle'){ ctx.moveTo(cx,cy-R); ctx.lineTo(cx+R*0.92,cy+R*0.8); ctx.lineTo(cx-R*0.92,cy+R*0.8); ctx.closePath(); }
+  else if(sh==='square'){ ctx.rect(cx-R*0.85,cy-R*0.85,R*1.7,R*1.7); }
+  else if(sh==='diamond'){ ctx.moveTo(cx,cy-R); ctx.lineTo(cx+R,cy); ctx.lineTo(cx,cy+R); ctx.lineTo(cx-R,cy); ctx.closePath(); }
+  else { for(var k=0;k<5;k++){ var a=-Math.PI/2+k*2*Math.PI/5, a2=a+Math.PI/5; ctx[k?'lineTo':'moveTo'](cx+Math.cos(a)*R,cy+Math.sin(a)*R); ctx.lineTo(cx+Math.cos(a2)*R*0.45,cy+Math.sin(a2)*R*0.45);} ctx.closePath(); }
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+window.onload=function(){
+  var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+  var ML=132, MT=84, CELL=176, GAP=14;
+  ctx.fillStyle='#0c0d10'; ctx.fillRect(0,0,cv.width,cv.height);
+  // 열 라벨
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(var c=0;c<SCENES.length;c++){
+    var x=ML+c*(CELL+GAP)+CELL/2;
+    ctx.fillStyle = c===4 ? '#6f7682' : '#c3cad6';
+    ctx.font='600 13px "Malgun Gothic"';
+    ctx.fillText(SCENES[c].col, x, MT-46);
+    ctx.fillStyle='#5a616d'; ctx.font='11px "Malgun Gothic"';
+    ctx.fillText(c===4?'다른 군':'슬픔·무감각 군', x, MT-28);
+  }
+  // 행
+  for(var r=0;r<ROWS.length;r++){
+    var y=MT+r*(CELL+GAP);
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillStyle='#dbe1ea'; ctx.font='600 13px "Malgun Gothic"';
+    ctx.fillText(ROWS[r].label, ML-16, y+CELL/2-9);
+    ctx.fillStyle='#6b727e'; ctx.font='11px "Malgun Gothic"';
+    wrapRight(ctx, ROWS[r].sub, ML-16, y+CELL/2+11, 118);
+    for(var c2=0;c2<SCENES.length;c2++){
+      var x2=ML+c2*(CELL+GAP);
+      var field=sceneHeightfield(SCENES[c2].emo, SCENES[c2].mem, ROWS[r].fix);
+      drawCell(ctx, x2, y, CELL, field.hts, field.G);
+      if(ROWS[r].marker) drawMarker(ctx, x2, y, CELL, c2);
+    }
+  }
+  // 참고열 구분선
+  var sx=ML+4*(CELL+GAP)-GAP/2;
+  ctx.strokeStyle='rgba(255,255,255,0.12)'; ctx.setLineDash([4,5]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(sx, MT-58); ctx.lineTo(sx, MT+3*(CELL+GAP)-GAP); ctx.stroke(); ctx.setLineDash([]);
+
+  document.getElementById('lg').innerHTML =
+    '<b>읽는 법</b> — 왼쪽 네 칸은 모두 슬픔·무감각 군. 한 줄 안에서 네 칸이 <b>서로 다르게 생겼으면</b> 갈리는 것, <b>비슷하면</b> 안 갈리는 것. '+
+    '오른쪽 점선 너머 공포 칸과는 어느 줄이든 확실히 달라야 정상.<br>'+
+    '<b>윗줄</b>이 다 비슷하면 = 지금 매트릭은 같은 군을 구별 못 함. <b>가운뎃줄</b>이 갈리면 = 모양만으로 해결 가능(길A). '+
+    '<b>아랫줄</b>은 땅은 그대로 두고 표식(물건)으로만 가른 모습(길B).';
+};
+function wrapRight(ctx,text,x,y,maxw){
+  var words=text.split(' '),line='',lines=[];
+  for(var i=0;i<words.length;i++){ var t=line?line+' '+words[i]:words[i]; if(ctx.measureText(t).width>maxw&&line){lines.push(line);line=words[i];}else line=t; }
+  if(line)lines.push(line);
+  for(var j=0;j<lines.length;j++)ctx.fillText(lines[j],x,y+j*14);
+}
+</script>
+</body>
+</html>

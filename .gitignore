@@ -36,3 +36,11 @@ tmp_*.md
 
 # 루트에 떨어진 임시 스크린샷 캡처
 /tem-*.png
+
+# 외주(GANA) 클라이언트 자산 — TEM 레포에 포함 금지
+gana-*.jpeg
+gana-*.jpg
+gana-*.png
+
+# 세션 발화 로그 (사적 대화, 공개 금지)
+_session_user_utterances/
