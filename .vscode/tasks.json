@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "TEM 열기",
+      "type": "shell",
+      "command": "node",
+      "args": ["tools/serve.cjs", "${input:temPage}"],
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "temPage",
+      "type": "pickString",
+      "description": "어느 화면을 열까요?",
+      "options": [
+        { "label": "메인 (index)", "value": "index.html" },
+        { "label": "플레이테스트", "value": "play-test.html" },
+        { "label": "관리자 (admin)", "value": "admin.html" },
+        { "label": "quilt-sim", "value": "quilt-sim.html" },
+        { "label": "fp 비주얼 데모", "value": "fp-visual-demo.html" }
+      ],
+      "default": "index.html"
+    }
+  ]
+}
