@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>퀼트 시뮬레이터 — 지형 순차 생성 검증</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a10;color:#889;font-family:'Courier New',monospace;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+
+/* 좌상단 설명 */
+#intro{position:fixed;top:14px;left:16px;z-index:10;max-width:330px;pointer-events:none}
+#intro .t{font-size:13px;letter-spacing:2px;color:#c4a882}
+#intro .s{font-size:9px;letter-spacing:1px;color:#667;margin-top:4px;line-height:1.6}
+
+/* 우측 숫자판 */
+#hud{position:fixed;top:14px;right:16px;z-index:10;background:rgba(14,14,22,.82);
+  border:1px solid rgba(80,80,110,.3);padding:12px 14px;font-size:11px;line-height:1.7;
+  min-width:210px;color:#99a}
+#hud .h{font-size:9px;letter-spacing:2px;color:#667;margin:8px 0 3px;border-bottom:1px solid rgba(80,80,110,.2);padding-bottom:2px}
+#hud .h:first-child{margin-top:0}
+#hud .row{display:flex;justify-content:space-between;gap:14px}
+#hud .k{color:#778}
+#hud .v{color:#c4a882}
+#hud .now{color:#e0c8a0;font-size:12px}
+
+/* 하단 조작판 */
+#ctrl{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:rgba(14,14,22,.82);border:1px solid rgba(80,80,110,.3);padding:10px 14px;max-width:96vw}
+#ctrl button{background:rgba(26,26,38,.9);border:1px solid rgba(90,90,120,.4);color:#aab;
+  padding:7px 12px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace}
+#ctrl button:hover{border-color:rgba(160,140,110,.6);color:#e0c8a0}
+#ctrl button.reset{border-color:rgba(140,80,80,.4);color:#c88}
+#ctrl button.fit{border-color:rgba(80,110,140,.4);color:#8ac}
+#ctrl .sld{display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 6px}
+#ctrl .sld label{font-size:8px;letter-spacing:1px;color:#667}
+#ctrl .sld .sval{font-size:11px;color:#c4a882}
+#ctrl input[type=range]{width:110px}
+#ctrl .sep{width:1px;height:30px;background:rgba(90,90,120,.3);margin:0 4px}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="intro">
+  <div class="t">퀼트 시뮬레이터</div>
+  <div class="s">가짜 장면 5개로 지형이 <strong>전이마다 조금씩</strong> 가까워지고·멀어지고·커지는지 본다.
+  버튼을 여러 번 눌러야 변화가 쌓인다. 마우스 드래그=회전, 휠=확대/축소.</div>
+</div>
+
+<div id="hud">
+  <div class="h">현재</div>
+  <div class="row"><span class="k">위치</span><span class="v now" id="hud-now">장면 1</span></div>
+  <div class="row"><span class="k">마지막 전이</span><span class="v" id="hud-last">—</span></div>
+  <div class="h">장면 사이 거리</div>
+  <div id="hud-dist"></div>
+  <div class="h">장면 크기</div>
+  <div id="hud-scale"></div>
+  <div class="h">사이 생김새</div>
+  <div id="hud-seam"></div>
+</div>
+
+<div id="ctrl">
+  <button type="button" data-pat="echo_follow">따라감</button>
+  <button type="button" data-pat="bridge">이음</button>
+  <button type="button" data-pat="contradiction">거스름</button>
+  <button type="button" data-pat="displacement">옮김</button>
+  <button type="button" data-pat="avoidance">피함</button>
+  <button type="button" data-pat="fixation">붙박임</button>
+  <div class="sep"></div>
+  <div class="sld">
+    <label>공명 세기</label>
+    <input id="align" type="range" min="0" max="1" step="0.05" value="0.8">
+    <span class="sval" id="align-val">0.80</span>
+  </div>
+  <div class="sep"></div>
+  <button type="button" class="fit" id="fit">카메라 맞춤</button>
+  <button type="button" class="reset" id="reset">리셋</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/shared/tem_af_strata_terrain.js"></script>
+<script type="module" src="js/quilt-sim-page.js"></script>
+</body>
+</html>
