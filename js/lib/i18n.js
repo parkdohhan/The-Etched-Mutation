@@ -93,6 +93,7 @@ const STRINGS = {
         'settings.language.en': 'English',
         'settings.language.ko': '한국어',
         'settings.brightness':  'Brightness',
+        'settings.volume':      'Volume',
         'settings.close':       'Close',
 
         // ── NPC / inner voice ─────────────────────────────────────
@@ -218,6 +219,7 @@ const STRINGS = {
         'settings.language.en': 'English',
         'settings.language.ko': '한국어',
         'settings.brightness':  '밝기',
+        'settings.volume':      '소리',
         'settings.close':       '닫기',
 
         // ── NPC / inner voice ─────────────────────────────────────

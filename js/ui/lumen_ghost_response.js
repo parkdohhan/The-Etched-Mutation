@@ -105,12 +105,12 @@
     sceneLinkPrompt: {
       ko: {
         resonance: '이 자리에 남길 한 마디?',
-        vague: '흐려지기 전에 한 줄?',
+        vague: '',
         dissonance: '너의 길에 한 줄 남겨.',
       },
       en: {
         resonance: 'A word to leave in this place?',
-        vague: 'One line, before it blurs?',
+        vague: '',
         dissonance: 'Leave one line on your way.',
       },
     },

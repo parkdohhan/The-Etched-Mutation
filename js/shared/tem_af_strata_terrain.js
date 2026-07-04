@@ -325,6 +325,22 @@
   }
 
   function computeAfTerrainFields(P, filterIdx, opt) {
+    // ── ADDITIVE §9 replay-terrain provider (default OFF) ──
+    // docs/생성형_지형모델_v2-260619.md §9. flag: localStorage.tem_replay_terrain='1' or ?replay_terrain=1
+    // Rollback: delete this block (provider lives in js/shared/tem_replay_terrain.js).
+    var _RT = global.TemReplayTerrain;
+    if (_RT && _RT.isEnabled && _RT.isEnabled()) {
+      try {
+        var _rf = _RT.computeFields(P, filterIdx, opt, {
+          VA_ANCHORS: VA_ANCHORS,
+          VAD_FULL: VAD_FULL,
+          hashWorldOffset: hashWorldOffset,
+        });
+        if (_rf) return _rf;
+      } catch (_rtErr) {
+        console.warn('[strata] replay terrain provider failed — falling back to original', _rtErr);
+      }
+    }
     opt = opt || {};
     var G = opt.G != null ? opt.G : 160;
     var SZ = opt.SZ != null ? opt.SZ : 112;

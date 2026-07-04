@@ -18,6 +18,89 @@
     <link rel="stylesheet" href="css/main-menu.css">
 </head>
 <body>
+<script>
+// ── 마스터 음량 (전역 소리 크기) ─────────────────────────
+// 이 페이지의 소리는 두 갈래로 난다:
+//   (1) HTMLAudioElement (new Audio + .volume)  — 배경음악 등
+//   (2) Web Audio API (AudioContext → GainNode) — 공간음·1인칭 음성
+// 두 갈래의 공통 길목을 각각 가로채, 어떤 소리든 재생 시 마스터 배수를 곱한다.
+(function () {
+    'use strict';
+    var VOL_KEY = 'tem_volume';
+    var master = parseFloat(localStorage.getItem(VOL_KEY));
+    if (isNaN(master)) master = 1;
+    master = Math.max(0, Math.min(1, master));
+
+    function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+    // (1) HTMLMediaElement.volume 가로채기 — new Audio 계열 전부
+    var mediaTracked = [];
+    var origSet = null;
+    try {
+        var proto = HTMLMediaElement.prototype;
+        var d = Object.getOwnPropertyDescriptor(proto, 'volume');
+        if (d && d.set) {
+            origSet = d.set;
+            var origGet = d.get;
+            Object.defineProperty(proto, 'volume', {
+                configurable: true,
+                get: function () {
+                    return this._temReqVol != null ? this._temReqVol : origGet.call(this);
+                },
+                set: function (v) {
+                    v = (typeof v === 'number' && isFinite(v)) ? v : 0;
+                    this._temReqVol = v;
+                    if (mediaTracked.indexOf(this) === -1) mediaTracked.push(this);
+                    origSet.call(this, clamp01(v * master));
+                }
+            });
+        }
+    } catch (e) {}
+
+    // (2) AudioContext.destination 가로채기 — 목적지 앞에 마스터 GainNode 삽입
+    var gainTracked = [];
+    function patchAudioContext(AC) {
+        if (!AC) return;
+        try {
+            var cproto = AC.prototype;
+            var dd = Object.getOwnPropertyDescriptor(cproto, 'destination');
+            if (!dd || !dd.get) return;
+            Object.defineProperty(cproto, 'destination', {
+                configurable: true,
+                get: function () {
+                    var realDest = dd.get.call(this);
+                    if (!this._temMasterGain) {
+                        var g = this.createGain(); // createGain 은 destination 미참조 → 무한재귀 없음
+                        g.gain.value = master;
+                        g.connect(realDest);
+                        this._temMasterGain = g;
+                        gainTracked.push(g);
+                    }
+                    return this._temMasterGain;
+                }
+            });
+        } catch (e) {}
+    }
+    patchAudioContext(window.AudioContext);
+    patchAudioContext(window.webkitAudioContext);
+
+    window._temSetMasterVolume = function (m) {
+        master = clamp01(parseFloat(m));
+        if (isNaN(master)) master = 1;
+        try { localStorage.setItem(VOL_KEY, String(master)); } catch (e) {}
+        // 이미 재생 중인 일반 오디오: 논리 볼륨 × 새 master 로 재반영
+        if (origSet) {
+            mediaTracked.forEach(function (el) {
+                var req = el._temReqVol != null ? el._temReqVol : 1;
+                try { origSet.call(el, clamp01(req * master)); } catch (e) {}
+            });
+        }
+        // 이미 살아있는 Web Audio 마스터 게인: 값만 갱신
+        gainTracked.forEach(function (g) { try { g.gain.value = master; } catch (e) {} });
+    };
+    window._temGetMasterVolume = function () { return master; };
+})();
+</script>
 <div class="opening-screen" id="openingScreen">
         <div class="opening-wave-container" id="openingWaveContainer">
             <canvas class="opening-wave-canvas" id="openingWaveCanvas"></canvas>
@@ -468,6 +551,12 @@
                 <input type="range" class="settings-brightness-slider" id="settingsBrightness"
                     min="0.5" max="1.5" step="0.05" value="1.0"
                     oninput="window.setAppBrightness(this.value)">
+            </div>
+            <div class="settings-section">
+                <label class="settings-label" data-i18n="settings.volume">Volume</label>
+                <input type="range" class="settings-brightness-slider" id="settingsVolume"
+                    min="0" max="1" step="0.05" value="1.0"
+                    oninput="window.setAppVolume(this.value)">
             </div>
             <button class="settings-close-btn" onclick="window.closeSettings()" data-i18n="settings.close">Close</button>
         </div>

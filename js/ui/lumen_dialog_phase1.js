@@ -1320,7 +1320,8 @@
     var prompt = ghosts && typeof ghosts.pickSceneLinkPrompt === 'function'
       ? ghosts.pickSceneLinkPrompt(lastAlignment)
       : _t('sceneLinkPromptFallback');
-    _addSystemMeta(overlay, prompt);
+    // 프롬프트 어휘가 비어 있으면(예: vague 결) 빈 메타 줄을 만들지 않는다 — 입력창만 노출.
+    if (prompt && String(prompt).trim()) _addSystemMeta(overlay, prompt);
     var sceneLinkInput = await new Promise(function (resolve) {
       _renderTextInput(overlay, { placeholder: _t('sceneLinkPlaceholder') }, resolve);
     });

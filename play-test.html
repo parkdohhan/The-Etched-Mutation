@@ -48,6 +48,8 @@
   </script>
   <script src="/data/memories.js"></script>
   <script src="js/contamination.js"></script>
+  <script src="js/shared/tem_replay_terrain.js?v=0.6"></script>
+  <script src="js/ui/lumen_replay_fog.js?v=0.6"></script>
   <script src="js/shared/tem_af_strata_terrain.js"></script>
   <script src="js/ui/lumen_terrain_adapter.js"></script>
   <script src="js/ui/lumen_walk_effects.js"></script>
@@ -398,6 +400,52 @@
   </style>
 </head>
 <body>
+  <script>
+  // ── 마스터 음량 (전역 소리 크기) ─────────────────
+  // 모든 오디오가 거치는 HTMLMediaElement.volume 을 가로채서
+  // 실제 볼륨 = (코드가 요청한 볼륨) × (마스터 배수) 로 만든다.
+  // 이렇게 하면 SFX.ambient / SFX.void / 씬 사운드 등 어떤 소리든
+  // 개별 코드를 건드리지 않고 한 손잡이로 전부 조절된다.
+  (function () {
+    'use strict';
+    var proto = HTMLMediaElement.prototype;
+    var desc = Object.getOwnPropertyDescriptor(proto, 'volume');
+    if (!desc || !desc.set) return; // 방어: 지원 안 하는 환경이면 조용히 패스
+    var origSet = desc.set, origGet = desc.get;
+    var tracked = []; // master 변경 시 재적용할 요소 목록
+
+    var master = parseFloat(sessionStorage.getItem('tem_volume'));
+    if (isNaN(master)) master = 1;
+    master = Math.max(0, Math.min(1, master));
+
+    function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+    Object.defineProperty(proto, 'volume', {
+      configurable: true,
+      get: function () {
+        // 코드가 세팅한 "논리 볼륨"을 그대로 돌려준다 (페이드 계산이 master 에 이중 영향받지 않도록)
+        return this._temReqVol != null ? this._temReqVol : origGet.call(this);
+      },
+      set: function (v) {
+        v = (typeof v === 'number' && isFinite(v)) ? v : 0;
+        this._temReqVol = v;
+        if (tracked.indexOf(this) === -1) tracked.push(this);
+        origSet.call(this, clamp01(v * master));
+      }
+    });
+
+    window._temSetMasterVolume = function (m) {
+      master = clamp01(parseFloat(m));
+      if (isNaN(master)) master = 1;
+      try { sessionStorage.setItem('tem_volume', master); } catch (e) {}
+      tracked.forEach(function (el) {
+        var req = el._temReqVol != null ? el._temReqVol : 1;
+        origSet.call(el, clamp01(req * master));
+      });
+    };
+    window._temGetMasterVolume = function () { return master; };
+  })();
+  </script>
   <!-- ESC 메뉴 -->
   <div id="escMenu">
     <div class="esc-panel">
@@ -410,6 +458,11 @@
         <span class="esc-label" id="escBrightLabel">Brightness</span>
         <input type="range" class="esc-slider" id="escBrightSlider" min="0.5" max="1.5" step="0.05" value="1">
         <span class="esc-slider-val" id="escBrightVal">100%</span>
+      </div>
+      <div class="esc-row">
+        <span class="esc-label" id="escVolLabel">Volume</span>
+        <input type="range" class="esc-slider" id="escVolSlider" min="0" max="1" step="0.05" value="1">
+        <span class="esc-slider-val" id="escVolVal">100%</span>
       </div>
       <button type="button" class="esc-exit" id="escExitBtn">Exit</button>
       <br>
@@ -3796,6 +3849,26 @@
   }
 
   async function insertPlay(scene, vec, reasonLabel, result, isVoid) {
+    // ── ADDITIVE §9 재생 지형 박자 기록 (flag 기본 OFF — js/shared/tem_replay_terrain.js) ──
+    // 두 제출 경로(processEmotionResult / finishScene)가 모두 이 함수를 지나므로 여기 한 곳만 훅.
+    if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled()) {
+      try {
+        window.TemReplayTerrain.beat(game.memoryId, {
+          sceneId: scene.id,
+          sceneEmo: safeParseEmotion(scene.original_emotion),
+          userEmo: vec || null,
+          isVoid: !!isVoid,
+        });
+        // 젖은 땅 (§9.9): strata 3D가 떠 있으면 즉시 다시 굽기 — 과거 조각이 물리대로 변한다
+        var _rtWet = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+        var _svWet = document.getElementById('strataView');
+        if (_rtWet && _svWet && _svWet.style.display !== 'none') {
+          _rtWet.buildTerrain(null);
+          // 안개 한 겹 걷힘 (§9.9) — 방금 구워진 땅이 드러난다
+          if (_rtWet.__lumenReplayFog) _rtWet.__lumenReplayFog.reveal();
+        }
+      } catch (eWet) { console.warn('[replay-terrain] beat 기록 실패 (무해, 원본 경로 유지)', eWet); }
+    }
     let userId = null;
     try {
       const { data: { user } } = await sb.auth.getUser();
@@ -4880,6 +4953,11 @@
 
     function initFpPlay(memoryId) {
       if (!memoryId || !window.showStrataView || !window.TemAfStrataTerrain) return false;
+      // ── ADDITIVE §9 퀼트: 체험 시작 선언 — 땅은 공허에서 출발, 조각은 대화가 끝날 때 태어난다 ──
+      if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled() &&
+          typeof window.TemReplayTerrain.beginRun === 'function') {
+        try { window.TemReplayTerrain.beginRun(memoryId); } catch (_) {}
+      }
       _fpPlayActive = true;
       window._fpPlayActive = true;
       _fpIntroSeqDone = false;
@@ -5012,6 +5090,32 @@
                   try { return (window._temGame && window._temGame.contState && window._temGame.contState.cont_depth) || 0; } catch (_) { return 0; }
                 }
               });
+            }
+            // ── ADDITIVE §9.9 안개 해제 (replay terrain flag ON일 때만) ──
+            // 시작은 완전한 무(순검정, 유령 실루엣만), 장면 완료마다 한 겹씩 걷힘.
+            if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled() &&
+                window.LumenReplayFog && typeof window.LumenReplayFog.attach === 'function') {
+              try {
+                window.LumenReplayFog.attach(rt, {
+                  getBeats: function () {
+                    try { return window.TemReplayTerrain.getRun().beats.length; } catch (_) { return 0; }
+                  }
+                });
+              } catch (eFog) { console.warn('[replay-fog] attach 실패 (무해)', eFog); }
+              // §9.9 "아무것도 없음" 연출: 첫 박자 전에는 HUD(미니맵·파동 띠·디버그)도 없다.
+              (function _hideHudUntilFirstBeat() {
+                var beats = 0;
+                try { beats = window.TemReplayTerrain.getRun().beats.length; } catch (_) {}
+                var show = beats > 0;
+                ['fpMinimap', 'fpAmbientWaveCanvas', 'fp-debug-panel'].forEach(function (id) {
+                  var el = document.getElementById(id);
+                  if (!el) return;
+                  el.style.transition = 'opacity 1.5s';
+                  el.style.opacity = show ? '' : '0';
+                  el.style.pointerEvents = show ? '' : 'none';
+                });
+                if (!show && window._fpPlayActive !== false) setTimeout(_hideHudUntilFirstBeat, 400);
+              })();
             }
             if (window.LumenAudioSpace && typeof window.LumenAudioSpace.attach === 'function') {
               window.LumenAudioSpace.attach(rt, {
@@ -5498,8 +5602,18 @@
         var sp = scene.meta && scene.meta.stage_position;
         var hasSP = sp && Number.isFinite(sp.x) && Number.isFinite(sp.z);
 
+        // ── ADDITIVE §9 퀼트: replay terrain ON이면 핀·유령은 자기 조각 위에 선다 ──
+        var _qp = null;
+        if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled() &&
+            typeof window.TemReplayTerrain.getPiecePos === 'function') {
+          try { _qp = window.TemReplayTerrain.getPiecePos(window._temGame.memoryId, pin.sceneId); } catch (_) {}
+        }
+
         var wx, wz;
-        if (hasSP) {
+        if (_qp) {
+          wx = _qp.x;
+          wz = _qp.z;
+        } else if (hasSP) {
           wx = sp.x;
           wz = sp.z;
         } else {
@@ -5955,6 +6069,21 @@
                   rt.__lumenSceneMannequins.rebuild();
                 }
               } catch (_) {}
+              // ── ADDITIVE §9 퀼트: 이번에 열린 장면의 판을 맨땅으로 솟게 하고, 안개 한 겹 걷힘.
+              // 막다른 곳(접근 가능 0)이면 안개를 전부 걷어 지나온 길(발자국)을 드러낸다.
+              try {
+                if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled()) {
+                  var _accSceneIds = (_fpScenePins || [])
+                    .filter(function (sp) { return sp && sp.accessible && sp.scene; })
+                    .map(function (sp) { return sp.scene.id; });
+                  window.TemReplayTerrain.setAccessibleScenes(window._temGame.memoryId, _accSceneIds);
+                  rt.buildTerrain(null);
+                  if (rt.__lumenReplayFog) {
+                    if (_accSceneIds.length === 0) rt.__lumenReplayFog.liftAll();
+                    else rt.__lumenReplayFog.reveal();
+                  }
+                }
+              } catch (_) {}
 
               // Find newly unlocked pins
               var newPins = _fpScenePins.filter(function (sp) {
@@ -6103,8 +6232,13 @@
 
     // Hook into game start: wait for loadMemoryData to populate game.scenes,
     // then intercept mapMode and switch to 3D first-person
-    // Mobile detection — fall back to contour map
-    var _isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    // Mobile detection — fall back to contour map.
+    // 터치 지원만으로 판정하면 터치스크린·터치패드 데스크탑(Windows 노트북 등)이
+    // 모바일로 오탐돼 1인칭 모드가 통째로 스킵된다(→ 검은 화면). user agent 가
+    // 명백한 모바일이거나, 터치 지원 + 좁은 화면(<768px)일 때만 모바일로 본다.
+    var _hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    var _isMobile = /Mobi|Android|iPhone|iPod/i.test(navigator.userAgent)
+      || (_hasTouch && window.innerWidth < 768);
     if (_isMobile) {
       console.log('[FP Adapter] Mobile detected, skipping first-person mode');
       // Restore mapMode visibility for mobile (no FP takeover)
@@ -6723,6 +6857,9 @@
     var brightSlider = document.getElementById('escBrightSlider');
     var brightVal = document.getElementById('escBrightVal');
     var brightLabel = document.getElementById('escBrightLabel');
+    var volSlider = document.getElementById('escVolSlider');
+    var volVal = document.getElementById('escVolVal');
+    var volLabel = document.getElementById('escVolLabel');
     var exitBtn = document.getElementById('escExitBtn');
     var resumeBtn = document.getElementById('escResumeBtn');
     var isOpen = false;
@@ -6737,6 +6874,7 @@
       langBtn.textContent = ko ? 'English' : '한국어';
       langLabel.textContent = ko ? '언어' : 'Language';
       brightLabel.textContent = ko ? '밝기' : 'Brightness';
+      volLabel.textContent = ko ? '소리' : 'Volume';
       exitBtn.textContent = ko ? '나가기' : 'Exit';
       resumeBtn.textContent = ko ? 'ESC로 돌아가기' : 'press ESC to resume';
     }
@@ -6789,6 +6927,16 @@
       sessionStorage.setItem('tem_brightness', v);
     });
     brightVal.textContent = Math.round(parseFloat(brightSlider.value) * 100) + '%';
+
+    // 소리 크기 조절 (마스터 음량 — 모든 오디오에 곱해짐)
+    var savedVol = window._temGetMasterVolume ? window._temGetMasterVolume() : 1;
+    volSlider.value = savedVol;
+    volVal.textContent = Math.round(savedVol * 100) + '%';
+    volSlider.addEventListener('input', function () {
+      var v = parseFloat(volSlider.value);
+      volVal.textContent = Math.round(v * 100) + '%';
+      if (window._temSetMasterVolume) window._temSetMasterVolume(v);
+    });
 
     // 나가기
     exitBtn.addEventListener('click', function () {

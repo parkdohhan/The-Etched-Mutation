@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>재생 굽기 시뮬레이터 — §9 궤적의 지형화</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a10;color:#889;font-family:'Courier New',monospace;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+
+/* 좌상단 설명 */
+#intro{position:fixed;top:14px;left:16px;z-index:10;max-width:340px;pointer-events:none}
+#intro .t{font-size:13px;letter-spacing:2px;color:#c4a882}
+#intro .s{font-size:9px;letter-spacing:1px;color:#667;margin-top:4px;line-height:1.6}
+
+/* 우측 숫자판 */
+#hud{position:fixed;top:14px;right:16px;z-index:10;background:rgba(14,14,22,.82);
+  border:1px solid rgba(80,80,110,.3);padding:12px 14px;font-size:11px;line-height:1.7;
+  min-width:250px;max-width:320px;color:#99a}
+#hud .h{font-size:9px;letter-spacing:2px;color:#667;margin:8px 0 3px;border-bottom:1px solid rgba(80,80,110,.2);padding-bottom:2px}
+#hud .h:first-child{margin-top:0}
+#hud .row{display:flex;justify-content:space-between;gap:14px}
+#hud .k{color:#778}
+#hud .v{color:#c4a882}
+#hud .now{color:#e0c8a0;font-size:12px}
+#hud .small{font-size:10px;color:#889;line-height:1.5;word-break:keep-all}
+
+/* 하단 조작판 */
+#ctrl{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:rgba(14,14,22,.82);border:1px solid rgba(80,80,110,.3);padding:10px 14px;max-width:96vw}
+#ctrl button{background:rgba(26,26,38,.9);border:1px solid rgba(90,90,120,.4);color:#aab;
+  padding:7px 12px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace}
+#ctrl button:hover{border-color:rgba(160,140,110,.6);color:#e0c8a0}
+#ctrl button.warn{border-color:rgba(140,110,70,.5);color:#c8a86a}
+#ctrl button.reset{border-color:rgba(140,80,80,.4);color:#c88}
+#ctrl select{background:rgba(26,26,38,.9);border:1px solid rgba(90,90,120,.4);color:#aab;
+  padding:7px 8px;font-size:11px;font-family:'Courier New',monospace}
+#ctrl .sld{display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 6px}
+#ctrl .sld label{font-size:8px;letter-spacing:1px;color:#667}
+#ctrl .sld .sval{font-size:11px;color:#c4a882}
+#ctrl input[type=range]{width:100px}
+#ctrl .sep{width:1px;height:30px;background:rgba(90,90,120,.3);margin:0 4px}
+#ctrl .cb{display:flex;align-items:center;gap:4px;font-size:9px;color:#889}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="intro">
+  <div class="t">재생 굽기 시뮬레이터</div>
+  <div class="s">§9 모델 검증 — 여정을 박자별로 다시 틀며 굽는다.
+  박자마다 감정 분포(17축, 안 뭉갬)가 자기 로브를 <strong>융기</strong>시키고,
+  박자 사이 이동이 <strong>물</strong>이 되어 경로를 따라 깎는다.
+  <strong>[셔플 리트머스]</strong> = 같은 장면 순서만 섞어 굽기 → 땅이 달라져야 궤적이 지형화된 것.
+  <strong>[릴레이]</strong> = 다음 사람이 이 땅을 물려받아 그 위에 또 체험.
+  ◀ ▶ 로 형성 과정을 박자별로 볼 수 있다. 드래그=회전, 휠=확대.</div>
+</div>
+
+<div id="hud">
+  <div class="h">현재</div>
+  <div class="row"><span class="k">세대</span><span class="v" id="hud-gen">1세대</span></div>
+  <div class="row"><span class="k">보는 중</span><span class="v" id="hud-view">—</span></div>
+  <div class="row"><span class="k">박자</span><span class="v now" id="hud-step">—</span></div>
+  <div class="h">여정 (이번 굽기 순서)</div>
+  <div id="hud-journey"></div>
+  <div class="h">질량 검증 (§9.6)</div>
+  <div class="row"><span class="k">흙 부피</span><span class="v" id="hud-mass">—</span></div>
+  <div class="row"><span class="k">침식 드리프트</span><span class="v" id="hud-err">—</span></div>
+  <div class="h">셔플 리트머스</div>
+  <div class="small" id="hud-shuffle">—</div>
+</div>
+
+<div id="ctrl">
+  <select id="preset"></select>
+  <button type="button" id="btn-bake">전체 굽기</button>
+  <button type="button" id="btn-prev">◀</button>
+  <button type="button" id="btn-next">▶</button>
+  <div class="sep"></div>
+  <button type="button" class="warn" id="btn-shuffle">셔플 리트머스</button>
+  <button type="button" class="warn" id="btn-relay">릴레이 +1세대</button>
+  <div class="sep"></div>
+  <div class="sld">
+    <label>물 세기</label>
+    <input id="sl-water" type="range" min="0.2" max="2.5" step="0.05" value="1">
+    <span class="sval" id="sl-water-val">1.00</span>
+  </div>
+  <div class="sld">
+    <label>물방울 배율</label>
+    <input id="sl-drops" type="range" min="0.2" max="3" step="0.1" value="1">
+    <span class="sval" id="sl-drops-val">1.00</span>
+  </div>
+  <div class="sld">
+    <label>융기 높이</label>
+    <input id="sl-uplift" type="range" min="0.4" max="2" step="0.05" value="1">
+    <span class="sval" id="sl-uplift-val">1.00</span>
+  </div>
+  <div class="sep"></div>
+  <label class="cb"><input type="checkbox" id="cb-path" checked> 여정</label>
+  <label class="cb"><input type="checkbox" id="cb-lobes" checked> 감정 자리</label>
+  <div class="sep"></div>
+  <button type="button" id="btn-seed">씨앗 바꿈</button>
+  <button type="button" class="reset" id="btn-reset">리셋</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/terrain-replay-sim-page.js"></script>
+</body>
+</html>

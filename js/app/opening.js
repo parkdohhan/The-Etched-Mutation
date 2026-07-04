@@ -86,6 +86,22 @@ function showContinueButton() {
     _maybeShowOpeningEcho();
 }
 
+// 메아리로 띄울 가치가 있는 '의미 있는' 입력인지 휴리스틱 검사.
+// 자판 난타(ㅇㄴㄴㄹㄴㅇ)·같은 글자 도배(ㅋㅋㅋㅋ)·기호 범벅을 걸러
+// 시적인 오프닝 화면에 쓰레기 문구가 뜨지 않도록 한다.
+function _isMeaningfulEcho(s) {
+  if (!s) return false;
+  // 완성형 한글 음절(가-힣) + 영문 = 실제 '말'에 해당하는 글자
+  const real = (s.match(/[가-힣a-zA-Z]/g) || []).length;
+  if (real < 3) return false;                 // 의미 글자가 거의 없음 = 기호/숫자 범벅
+  // 단독 한글 자모(ㄱ-ㅣ) = 조합 안 된 자판 난타 신호
+  const jamo = (s.match(/[㄰-㆏]/g) || []).length;
+  if (jamo >= real) return false;             // 난타 자모가 실제 글자만큼 많으면 탈락
+  // 같은 글자 4회 이상 연속 도배(ㅋㅋㅋㅋ, ㅏㅏㅏㅏ, aaaa)
+  if (/(.)\1{3,}/.test(s)) return false;
+  return true;
+}
+
 async function _fetchRandomEcho() {
   try {
     const sb = getSupabaseClient();
@@ -99,7 +115,7 @@ async function _fetchRandomEcho() {
     if (error || !Array.isArray(data) || data.length === 0) return null;
     const candidates = data
       .map(r => (r && r.user_reason ? String(r.user_reason).trim() : ''))
-      .filter(s => s.length >= 5 && s.length <= 90);
+      .filter(s => s.length >= 5 && s.length <= 90 && _isMeaningfulEcho(s));
     if (candidates.length === 0) return null;
     return candidates[Math.floor(Math.random() * candidates.length)];
   } catch (_) { return null; }

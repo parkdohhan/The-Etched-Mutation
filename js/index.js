@@ -587,6 +587,11 @@ function openSettings() {
     // Sync brightness slider to stored value
     const slider = document.getElementById('settingsBrightness');
     if (slider) slider.value = getBrightness();
+    // Sync volume slider to stored master volume
+    const volSlider = document.getElementById('settingsVolume');
+    if (volSlider && typeof window._temGetMasterVolume === 'function') {
+        volSlider.value = window._temGetMasterVolume();
+    }
     // Mark active language button
     const lang = getCurrentLanguage();
     modal.querySelectorAll('.settings-lang-btn').forEach(btn => {
@@ -614,11 +619,18 @@ function setAppBrightness(value) {
     setBrightness(value);
 }
 
+function setAppVolume(value) {
+    if (typeof window._temSetMasterVolume === 'function') {
+        window._temSetMasterVolume(value);
+    }
+}
+
 // global 스코프 function 노출 (onclick property 서 위해)
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.setAppLanguage = setAppLanguage;
 window.setAppBrightness = setAppBrightness;
+window.setAppVolume = setAppVolume;
 window.openPortfolio = openPortfolio;
 window.openAbout = openAbout;
 window.openConcept = openConcept;
