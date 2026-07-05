@@ -1,0 +1,272 @@
+[
+  {
+    "persona_id": "p01",
+    "strata_label": "high_N_low_A",
+    "strata_desc": "분노 투사 — 타인/운명 원망이 강함",
+    "source": {
+      "case_id": "74486",
+      "country": "USA",
+      "age": 22,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 81.7,
+      "E": 60.7,
+      "O": 76,
+      "A": 30,
+      "C": 66.7
+    }
+  },
+  {
+    "persona_id": "p02",
+    "strata_label": "high_N_high_A",
+    "strata_desc": "죄책감 과잉 — 모든 책임을 자기에게로",
+    "source": {
+      "case_id": "148109",
+      "country": "USA",
+      "age": 23,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 76.3,
+      "E": 53,
+      "O": 65.7,
+      "A": 75,
+      "C": 72
+    }
+  },
+  {
+    "persona_id": "p03",
+    "strata_label": "low_N_low_E",
+    "strata_desc": "정서 안정+내향 — 해리/거리두기 경향",
+    "source": {
+      "case_id": "234071",
+      "country": "Czech Repu",
+      "age": 19,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 34.7,
+      "E": 32.3,
+      "O": 72,
+      "A": 46.7,
+      "C": 83.7
+    }
+  },
+  {
+    "persona_id": "p04",
+    "strata_label": "high_O_high_N",
+    "strata_desc": "개방성+신경증 — 상징/영적 해석 경향",
+    "source": {
+      "case_id": "77212",
+      "country": "USA",
+      "age": 16,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 78.7,
+      "E": 66.3,
+      "O": 85.3,
+      "A": 60.7,
+      "C": 53.3
+    }
+  },
+  {
+    "persona_id": "p05",
+    "strata_label": "low_O_high_C",
+    "strata_desc": "개방성↓ 성실성↑ — 분석적 관찰자",
+    "source": {
+      "case_id": "190295",
+      "country": "USA",
+      "age": 39,
+      "sex": "male"
+    },
+    "scores": {
+      "N": 25,
+      "E": 45.3,
+      "O": 30,
+      "A": 44.7,
+      "C": 96.7
+    }
+  },
+  {
+    "persona_id": "p06",
+    "strata_label": "high_E_high_A",
+    "strata_desc": "외향+친화 — 공감적 경청자",
+    "source": {
+      "case_id": "72192",
+      "country": "USA",
+      "age": 40,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 59.3,
+      "E": 77.7,
+      "O": 81.7,
+      "A": 79.7,
+      "C": 78.3
+    }
+  },
+  {
+    "persona_id": "p07",
+    "strata_label": "high_O_high_A_high_N",
+    "strata_desc": "개방+친화+신경증 — 공감 과부하형",
+    "source": {
+      "case_id": "321388",
+      "country": "USA",
+      "age": 30,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 75.7,
+      "E": 42.3,
+      "O": 75.3,
+      "A": 76.7,
+      "C": 62.3
+    }
+  },
+  {
+    "persona_id": "p08",
+    "strata_label": "low_A_low_C",
+    "strata_desc": "친화성↓ 성실성↓ — 냉소적 해체자",
+    "source": {
+      "case_id": "140175",
+      "country": "Afghanista",
+      "age": 70,
+      "sex": "male"
+    },
+    "scores": {
+      "N": 86.3,
+      "E": 39.7,
+      "O": 41.7,
+      "A": 25,
+      "C": 29.3
+    }
+  },
+  {
+    "persona_id": "p09",
+    "strata_label": "high_C_high_N",
+    "strata_desc": "성실성+신경증 — 통제 욕구 과잉",
+    "source": {
+      "case_id": "168347",
+      "country": "USA",
+      "age": 27,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 74,
+      "E": 59,
+      "O": 94.3,
+      "A": 80.7,
+      "C": 81.7
+    }
+  },
+  {
+    "persona_id": "p10",
+    "strata_label": "high_O_low_N",
+    "strata_desc": "개방+안정 — 수용적 탐구자",
+    "source": {
+      "case_id": "108662",
+      "country": "Canada",
+      "age": 19,
+      "sex": "male"
+    },
+    "scores": {
+      "N": 30,
+      "E": 74.7,
+      "O": 84.3,
+      "A": 75.7,
+      "C": 76
+    }
+  },
+  {
+    "persona_id": "p11",
+    "strata_label": "low_E_high_O",
+    "strata_desc": "내향+개방 — 내면 몽상가",
+    "source": {
+      "case_id": "70943",
+      "country": "USA",
+      "age": 59,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 82,
+      "E": 27.3,
+      "O": 77.7,
+      "A": 85.7,
+      "C": 42.3
+    }
+  },
+  {
+    "persona_id": "p12",
+    "strata_label": "high_N_low_C",
+    "strata_desc": "신경증↑ 성실성↓ — 혼란 속 표류형",
+    "source": {
+      "case_id": "256122",
+      "country": "USA",
+      "age": 20,
+      "sex": "female"
+    },
+    "scores": {
+      "N": 75.3,
+      "E": 59,
+      "O": 49.7,
+      "A": 40.7,
+      "C": 20.7
+    }
+  },
+  {
+    "persona_id": "p13",
+    "strata_label": "mid_all",
+    "strata_desc": "평균 프로필 — 대조군 1",
+    "source": {
+      "case_id": "307668",
+      "country": "USA",
+      "age": 16,
+      "sex": "male"
+    },
+    "scores": {
+      "N": 56,
+      "E": 65.3,
+      "O": 57.7,
+      "A": 54.7,
+      "C": 67
+    }
+  },
+  {
+    "persona_id": "p14",
+    "strata_label": "mid_all_2",
+    "strata_desc": "평균 프로필 — 대조군 2 (다른 연령/성별)",
+    "source": {
+      "case_id": "159031",
+      "country": "USA",
+      "age": 22,
+      "sex": "male"
+    },
+    "scores": {
+      "N": 58,
+      "E": 57,
+      "O": 74,
+      "A": 85.7,
+      "C": 55.3
+    }
+  },
+  {
+    "persona_id": "p15",
+    "strata_label": "extreme_low_N_high_E_A",
+    "strata_desc": "매우 낙관적 — 그늘 이해 못 하는 경우",
+    "source": {
+      "case_id": "107990",
+      "country": "USA",
+      "age": 29,
+      "sex": "male"
+    },
+    "scores": {
+      "N": 20,
+      "E": 90.3,
+      "O": 83.7,
+      "A": 85.3,
+      "C": 97.7
+    }
+  }
+]

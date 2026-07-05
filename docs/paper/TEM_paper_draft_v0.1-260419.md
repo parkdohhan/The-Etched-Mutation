@@ -67,13 +67,21 @@ Janet Murray(1997), Marie-Laure Ryan(2001), Espen Aarseth(1997)의 이론적 작
 
 공통적으로, **감정이 서사 상태의 일차 차원(first-class dimension)으로 다뤄지지 않는다.** 체험자의 감정은 기록되지 않거나 기록되더라도 플롯 변수로 환원되며, 씬 접근은 플롯 조건식에 따라 결정된다. 본 논문은 감정 벡터를 씬의 일차 속성으로 두고, 체험자의 현재 감정 상태를 **접근 가능 씬 집합의 직접 결정 인자**로 사용한다(§3.3).
 
-### 2.4 체험자 흔적의 다음 체험자로의 전달
+### 2.4 분기 없는 서사 접근: 드라마 매니지먼트 계보
+
+"작가가 명시적 분기 그래프를 그리지 않아도 시스템이 다음 서사 단위를 선택한다"는 발상 자체는 새롭지 않다. Façade(Mateas & Stern, 2003, 2005)는 서사를 조각(beat) 단위로 구성하고, 드라마 매니저(drama manager)가 작가가 명시한 미학적 목표 — Aristotelian 긴장 곡선 — 를 향해 다음 beat를 실시간으로 선택한다. 이 계보는 탐색 기반 드라마 매니지먼트(Weyhrauch, 1997)로 형식화되었고, PaSSAGE(Thue et al., 2007)는 여기에 **플레이어 모델링**을 더해 체험자를 유형(Robin's Laws 5종)으로 분류하고 그 유형에 맞는 서사 이벤트를 제공한다. 이들은 오늘날 경험 관리(experience management; Riedl & Bulitko, 2013)라는 우산 아래 묶인다. TEM은 이 계보와 **분기 그래프 없이 다음 단위를 선택한다**는 성질을 공유한다.
+
+그러나 세 지점에서 갈라지며, 이 차이가 본 논문의 기여를 규정한다. 첫째, **목적 함수의 방향이 반대다.** 드라마 매니저는 목표 궤적 — 작가의 긴장 곡선(Façade) 또는 체험자의 선호 플레이 양식(PaSSAGE) — 을 향해 최적화하며, 체험자의 이탈을 되돌려야 할 오차로 취급한다. TEM은 어떤 목표 궤적으로도 조향하지 않는다. 작가의 감정 궤적은 **최적화 대상이 아니라 측정 기준선**이며, 거기서의 발산 그 자체가 렌더링되는 내용물이다(§4.2 오염 벡터). 이탈을 교정하는 기계와 이탈을 작품으로 삼는 기계는 서로 다른 종류다. 둘째, **잠재 플레이어 모델이 없다.** PaSSAGE가 체험자를 유형으로 분류해 콘텐츠를 맞추는 것과 달리, 별이엔진은 체험자 감정 시퀀스와 작가 시퀀스의 기하적 관계(정렬도·오염)를 매 턴 계산할 뿐 분류도 추천도 하지 않는다("엔진은 판단하지 않는다. 관찰하고 보고할 뿐"; §4). 셋째, **선택이 이루어지는 공간이 다르다.** 드라마 매니저는 플롯·이벤트 공간에서 다음 단위를 고르지만, TEM의 접근 가능 씬 집합은 감정 다양체(affective manifold) 위의 이웃이며, 그 이웃의 **중심이 전이 패턴에 따라 이동**한다(§3.3) — 플롯상 유효한 다음 이벤트의 집합이 아니다.
+
+가장 검증 가능한 차이는 **데이터 구조 수준의 분기 소멸**이다. beat 기반 드라마 매니저조차 beat에 선·후행 조건(precondition/postcondition)을 부여하므로 내부에는 부분적 플롯 그래프가 남는다. TEM의 `choice`에는 `next_scene_id` 열이 **존재하지 않으며**(§3.2), 가지치기할 플롯 그래프 자체가 없다. 분기를 숨긴 것이 아니라 스키마에서 소멸시킨 것이며, 이는 은유가 아니라 데이터 모델로 확인된다.
+
+### 2.5 체험자 흔적의 다음 체험자로의 전달
 
 체험자의 흔적이 다음 체험자에게 전해지는 메커니즘의 기존 형태는 세 부류로 나눌 수 있다. 첫째, FromSoftware의 *Soulsborne* 시리즈 메시지 시스템은 공간 위치에 플레이어 메시지를 익명으로 남기는 형태이다(Burford, 2015). 둘째, Hypothesis(hypothes.is)는 웹 페이지에 다수 독자의 주석을 중첩한다. 셋째, Genius.com은 가사에 해석을 중첩하되 **인기도 기반**으로 정렬한다.
 
 TEM의 궤적 브릿지(trajectory bridge; §3.5)는 첫 번째에 가장 가까우나 결정적 차이가 있다. Soulsborne 메시지는 **공간 좌표** 에 붙지만, 궤적 브릿지는 **감정 축**에 붙는다. 또한 Genius의 인기도 정렬을 명시적으로 거부한다 — 궤적 브릿지의 노출 조건은 체험자 감정 상태와의 **정렬도**이지 누적 좋아요가 아니다.
 
-### 2.5 본 논문의 위치
+### 2.6 본 논문의 위치
 
 | 선행 연구 | 기여 | TEM과의 관계 |
 |---|---|---|
@@ -81,6 +89,7 @@ TEM의 궤적 브릿지(trajectory bridge; §3.5)는 첫 번째에 가장 가까
 | Butler(2011, 2017) TIES / CompTIES(2017) | 감정 동적 패턴 사후 분석 | 별이엔진이 실시간 인터랙티브로 확장 |
 | Reagan et al.(2016) | 서사 감정 arc 형태 6종 | 작품 간 → 체험자 간 비교로 확장 |
 | Twine, Ink, Articy | 플롯 분기 저작 | 분기 없이 감정 궤적으로 접근 결정 |
+| Façade(Mateas & Stern, 2005), PaSSAGE(Thue et al., 2007) | 분기 그래프 없는 서사 선택(드라마 매니지먼트) | 발산을 최적화 대상 → 렌더링 내용물로 전환, 플레이어 모델·플롯 그래프 없음 |
 | Soulsborne, Hypothesis | 독자 흔적 중첩 | 공간→감정 축, 인기도→정렬도 기반으로 전이 |
 
 ---
@@ -322,7 +331,7 @@ FIXATED  iff Fixation ≥ 0.65
 
 ## References
 
-*(2026-04-03 통합 초안의 참고문헌 목록에서, 본 논문 스코프에 해당하는 항목만 유지. 추가로 상호작용 서사 / Soulsborne 관련 보강 필요. — 다음 작업.)*
+*(2026-04-03 통합 초안의 참고문헌 목록에서, 본 논문 스코프에 해당하는 항목만 유지. 2026-07-05 드라마 매니지먼트 계보(§2.4) 보강 완료. Butler CompTIES / StoryAssembler 출처 확인은 남음.)*
 
 - Aarseth, E. (1997). *Cybertext: Perspectives on Ergodic Literature*. JHU Press.
 - Anderson, C., Keltner, D., & John, O. P. (2003). Emotional convergence between people over time. *Journal of Personality and Social Psychology*, 84(5), 1054–1068.
@@ -341,19 +350,23 @@ FIXATED  iff Fixation ≥ 0.65
 - Levine, L. J. (1997). Reconstructing memory for emotions. *JEP: General*, 126(2), 165–177.
 - Loftus, E. F. (2005). Planting misinformation in the human mind. *Learning & Memory*, 12(4), 361–366.
 - Loftus, E. F., & Palmer, J. C. (1974). Reconstruction of automobile destruction. *JVLVB*, 13(5), 585–589.
+- Mateas, M., & Stern, A. (2005). Structuring content in the Façade interactive drama architecture. *AIIDE 2005*, 93–98.
 - Murray, J. H. (1997). *Hamlet on the Holodeck*. MIT Press.
 - Nader, K., Schafe, G. E., & Le Doux, J. E. (2000). Fear memories require protein synthesis in the amygdala for reconsolidation. *Nature*, 406, 722–726.
 - Pasupathi, M. (2001). The social construction of the personal past. *Psychological Bulletin*, 127(5), 651–672.
 - Patihis, L., & Loftus, E. F. (2016). Crashing memory 2.0. *Applied Cognitive Psychology*, 30(1).
 - Reagan, A. J., Mitchell, L., Kiley, D., Danforth, C. M., & Dodds, P. S. (2016). The emotional arcs of stories are dominated by six basic shapes. *EPJ Data Science*, 5(1).
+- Riedl, M. O., & Bulitko, V. (2013). Interactive narrative: An intelligent systems approach. *AI Magazine*, 34(1), 67–77.
 - Roediger, H. L., & McDermott, K. B. (1995). Creating false memories. *JEP:LMC*, 21(4), 803–814.
 - Russell, J. A., & Mehrabian, A. (1977). Evidence for a three-factor theory of emotions. *Journal of Research in Personality*, 11(3), 273–294.
 - Ryan, M.-L. (2001). *Narrative as Virtual Reality*. JHU Press.
 - Schooler, J. W., & Engstler-Schooler, T. Y. (1990). Verbal overshadowing of visual memories. *Cognitive Psychology*, 22(1), 36–71.
 - Short, E. (2018). StoryAssembler. *[출처 확인 필요]*.
+- Thue, D., Bulitko, V., Spetch, M., & Wasylishen, E. (2007). Interactive storytelling: A player modelling approach (PaSSAGE). *AIIDE 2007*, 43–48.
 - Tversky, B., & Marsh, E. J. (2000). Biased retellings. *Cognitive Psychology*, 40(1), 1–38.
 - Warriner, A. B., Kuperman, V., & Brysbaert, M. (2013). Norms of valence, arousal, and dominance for 13,915 English lemmas. *Behavior Research Methods*, 45(4), 1191–1207.
 - Watson, D., Clark, L. A., & Tellegen, A. (1988). Development and validation of brief measures of positive and negative affect: The PANAS scales. *JPSP*, 54(6), 1063–1070.
+- Weyhrauch, P. (1997). *Guiding Interactive Drama*. PhD thesis, Carnegie Mellon University.
 
 ---
 

@@ -1,0 +1,516 @@
+{
+  "generated": "2026-07-05",
+  "memory": "MM23L",
+  "n_plays": 193,
+  "n_personas": 15,
+  "note": "objective = cosine(user_emotion, original_emotion); self = LLM self-reported alignment (circular, comparison only)",
+  "v1_distribution": {
+    "objective": {
+      "mean": 0.809,
+      "std": 0.149,
+      "min": 0.254,
+      "max": 0.986
+    },
+    "self_report": {
+      "mean": 0.639,
+      "std": 0.098,
+      "min": 0.42,
+      "max": 0.82
+    },
+    "mismatch_rate": 0.974,
+    "mismatch_distribution": {
+      "emotion_mismatch": 2,
+      "target_displacement": 159,
+      "attribution_mismatch": 27,
+      "null": 5
+    },
+    "self_report_top_values": [
+      {
+        "value": "0.72",
+        "n": 65,
+        "pct": 0.337
+      },
+      {
+        "value": "0.62",
+        "n": 49,
+        "pct": 0.254
+      },
+      {
+        "value": "0.52",
+        "n": 23,
+        "pct": 0.119
+      },
+      {
+        "value": "0.42",
+        "n": 12,
+        "pct": 0.062
+      },
+      {
+        "value": "0.61",
+        "n": 11,
+        "pct": 0.057
+      },
+      {
+        "value": "0.58",
+        "n": 10,
+        "pct": 0.052
+      },
+      {
+        "value": "0.71",
+        "n": 8,
+        "pct": 0.041
+      },
+      {
+        "value": "0.82",
+        "n": 6,
+        "pct": 0.031
+      },
+      {
+        "value": "0.48",
+        "n": 3,
+        "pct": 0.016
+      },
+      {
+        "value": "0.81",
+        "n": 3,
+        "pct": 0.016
+      }
+    ]
+  },
+  "persona_stats": [
+    {
+      "persona_id": "p01",
+      "strata": "high_N_low_A",
+      "n": 11,
+      "bigfive": {
+        "N": 81.7,
+        "E": 60.7,
+        "O": 76,
+        "A": 30,
+        "C": 66.7
+      },
+      "obj_mean": 0.807,
+      "obj_std": 0.123,
+      "self_mean": 0.59,
+      "gap_self_minus_obj": -0.217,
+      "mismatch_rate": 0.909,
+      "rate_target_displacement": 0.727,
+      "rate_attribution": 0.091,
+      "rate_emotion": 0.091,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p02",
+      "strata": "high_N_high_A",
+      "n": 11,
+      "bigfive": {
+        "N": 76.3,
+        "E": 53,
+        "O": 65.7,
+        "A": 75,
+        "C": 72
+      },
+      "obj_mean": 0.846,
+      "obj_std": 0.079,
+      "self_mean": 0.721,
+      "gap_self_minus_obj": -0.125,
+      "mismatch_rate": 0.818,
+      "rate_target_displacement": 0.727,
+      "rate_attribution": 0.091,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p03",
+      "strata": "low_N_low_E",
+      "n": 16,
+      "bigfive": {
+        "N": 34.7,
+        "E": 32.3,
+        "O": 72,
+        "A": 46.7,
+        "C": 83.7
+      },
+      "obj_mean": 0.727,
+      "obj_std": 0.186,
+      "self_mean": 0.661,
+      "gap_self_minus_obj": -0.066,
+      "mismatch_rate": 0.938,
+      "rate_target_displacement": 0.75,
+      "rate_attribution": 0.125,
+      "rate_emotion": 0.063,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p04",
+      "strata": "high_O_high_N",
+      "n": 13,
+      "bigfive": {
+        "N": 78.7,
+        "E": 66.3,
+        "O": 85.3,
+        "A": 60.7,
+        "C": 53.3
+      },
+      "obj_mean": 0.863,
+      "obj_std": 0.065,
+      "self_mean": 0.676,
+      "gap_self_minus_obj": -0.186,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 0.769,
+      "rate_attribution": 0.231,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p05",
+      "strata": "low_O_high_C",
+      "n": 13,
+      "bigfive": {
+        "N": 25,
+        "E": 45.3,
+        "O": 30,
+        "A": 44.7,
+        "C": 96.7
+      },
+      "obj_mean": 0.714,
+      "obj_std": 0.228,
+      "self_mean": 0.565,
+      "gap_self_minus_obj": -0.149,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 0.923,
+      "rate_attribution": 0.077,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p06",
+      "strata": "high_E_high_A",
+      "n": 20,
+      "bigfive": {
+        "N": 59.3,
+        "E": 77.7,
+        "O": 81.7,
+        "A": 79.7,
+        "C": 78.3
+      },
+      "obj_mean": 0.876,
+      "obj_std": 0.104,
+      "self_mean": 0.698,
+      "gap_self_minus_obj": -0.178,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 0.85,
+      "rate_attribution": 0.15,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p07",
+      "strata": "high_O_high_A_high_N",
+      "n": 9,
+      "bigfive": {
+        "N": 75.7,
+        "E": 42.3,
+        "O": 75.3,
+        "A": 76.7,
+        "C": 62.3
+      },
+      "obj_mean": 0.775,
+      "obj_std": 0.208,
+      "self_mean": 0.664,
+      "gap_self_minus_obj": -0.11,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 0.889,
+      "rate_attribution": 0.111,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p08",
+      "strata": "low_A_low_C",
+      "n": 9,
+      "bigfive": {
+        "N": 86.3,
+        "E": 39.7,
+        "O": 41.7,
+        "A": 25,
+        "C": 29.3
+      },
+      "obj_mean": 0.638,
+      "obj_std": 0.15,
+      "self_mean": 0.511,
+      "gap_self_minus_obj": -0.126,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 1,
+      "rate_attribution": 0,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p09",
+      "strata": "high_C_high_N",
+      "n": 8,
+      "bigfive": {
+        "N": 74,
+        "E": 59,
+        "O": 94.3,
+        "A": 80.7,
+        "C": 81.7
+      },
+      "obj_mean": 0.917,
+      "obj_std": 0.054,
+      "self_mean": 0.719,
+      "gap_self_minus_obj": -0.198,
+      "mismatch_rate": 0.875,
+      "rate_target_displacement": 0.5,
+      "rate_attribution": 0.375,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p10",
+      "strata": "high_O_low_N",
+      "n": 14,
+      "bigfive": {
+        "N": 30,
+        "E": 74.7,
+        "O": 84.3,
+        "A": 75.7,
+        "C": 76
+      },
+      "obj_mean": 0.761,
+      "obj_std": 0.11,
+      "self_mean": 0.554,
+      "gap_self_minus_obj": -0.207,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 0.929,
+      "rate_attribution": 0.071,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p11",
+      "strata": "low_E_high_O",
+      "n": 8,
+      "bigfive": {
+        "N": 82,
+        "E": 27.3,
+        "O": 77.7,
+        "A": 85.7,
+        "C": 42.3
+      },
+      "obj_mean": 0.789,
+      "obj_std": 0.162,
+      "self_mean": 0.644,
+      "gap_self_minus_obj": -0.146,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 1,
+      "rate_attribution": 0,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p12",
+      "strata": "high_N_low_C",
+      "n": 15,
+      "bigfive": {
+        "N": 75.3,
+        "E": 59,
+        "O": 49.7,
+        "A": 40.7,
+        "C": 20.7
+      },
+      "obj_mean": 0.814,
+      "obj_std": 0.112,
+      "self_mean": 0.565,
+      "gap_self_minus_obj": -0.249,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 0.6,
+      "rate_attribution": 0.4,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p13",
+      "strata": "mid_all",
+      "n": 17,
+      "bigfive": {
+        "N": 56,
+        "E": 65.3,
+        "O": 57.7,
+        "A": 54.7,
+        "C": 67
+      },
+      "obj_mean": 0.85,
+      "obj_std": 0.089,
+      "self_mean": 0.626,
+      "gap_self_minus_obj": -0.224,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 0.882,
+      "rate_attribution": 0.118,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p14",
+      "strata": "mid_all_2",
+      "n": 13,
+      "bigfive": {
+        "N": 58,
+        "E": 57,
+        "O": 74,
+        "A": 85.7,
+        "C": 55.3
+      },
+      "obj_mean": 0.854,
+      "obj_std": 0.073,
+      "self_mean": 0.709,
+      "gap_self_minus_obj": -0.145,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 0.769,
+      "rate_attribution": 0.231,
+      "rate_emotion": 0,
+      "rate_void": 0
+    },
+    {
+      "persona_id": "p15",
+      "strata": "extreme_low_N_high_E_A",
+      "n": 16,
+      "bigfive": {
+        "N": 20,
+        "E": 90.3,
+        "O": 83.7,
+        "A": 85.3,
+        "C": 97.7
+      },
+      "obj_mean": 0.84,
+      "obj_std": 0.138,
+      "self_mean": 0.662,
+      "gap_self_minus_obj": -0.178,
+      "mismatch_rate": 1,
+      "rate_target_displacement": 1,
+      "rate_attribution": 0,
+      "rate_emotion": 0,
+      "rate_void": 0
+    }
+  ],
+  "bigfive_correlations": {
+    "N": {
+      "obj_mean": 0.131,
+      "obj_std": -0.314,
+      "mismatch_rate": -0.255,
+      "rate_target_displacement": -0.317,
+      "rate_attribution": 0.255,
+      "gap_self_minus_obj": -0.087
+    },
+    "E": {
+      "obj_mean": 0.549,
+      "obj_std": -0.515,
+      "mismatch_rate": 0.108,
+      "rate_target_displacement": -0.039,
+      "rate_attribution": 0.137,
+      "gap_self_minus_obj": -0.623
+    },
+    "O": {
+      "obj_mean": 0.634,
+      "obj_std": -0.471,
+      "mismatch_rate": -0.204,
+      "rate_target_displacement": -0.227,
+      "rate_attribution": 0.156,
+      "gap_self_minus_obj": -0.092
+    },
+    "A": {
+      "obj_mean": 0.59,
+      "obj_std": -0.274,
+      "mismatch_rate": -0.019,
+      "rate_target_displacement": 0.068,
+      "rate_attribution": 0.02,
+      "gap_self_minus_obj": 0.085
+    },
+    "C": {
+      "obj_mean": 0.192,
+      "obj_std": 0.159,
+      "mismatch_rate": -0.244,
+      "rate_target_displacement": 0.076,
+      "rate_attribution": -0.238,
+      "gap_self_minus_obj": 0.171
+    }
+  },
+  "ranking_by_obj": [
+    {
+      "persona_id": "p09",
+      "strata": "high_C_high_N",
+      "obj_mean": 0.917
+    },
+    {
+      "persona_id": "p06",
+      "strata": "high_E_high_A",
+      "obj_mean": 0.876
+    },
+    {
+      "persona_id": "p04",
+      "strata": "high_O_high_N",
+      "obj_mean": 0.863
+    },
+    {
+      "persona_id": "p14",
+      "strata": "mid_all_2",
+      "obj_mean": 0.854
+    },
+    {
+      "persona_id": "p13",
+      "strata": "mid_all",
+      "obj_mean": 0.85
+    },
+    {
+      "persona_id": "p02",
+      "strata": "high_N_high_A",
+      "obj_mean": 0.846
+    },
+    {
+      "persona_id": "p15",
+      "strata": "extreme_low_N_high_E_A",
+      "obj_mean": 0.84
+    },
+    {
+      "persona_id": "p12",
+      "strata": "high_N_low_C",
+      "obj_mean": 0.814
+    },
+    {
+      "persona_id": "p01",
+      "strata": "high_N_low_A",
+      "obj_mean": 0.807
+    },
+    {
+      "persona_id": "p11",
+      "strata": "low_E_high_O",
+      "obj_mean": 0.789
+    },
+    {
+      "persona_id": "p07",
+      "strata": "high_O_high_A_high_N",
+      "obj_mean": 0.775
+    },
+    {
+      "persona_id": "p10",
+      "strata": "high_O_low_N",
+      "obj_mean": 0.761
+    },
+    {
+      "persona_id": "p03",
+      "strata": "low_N_low_E",
+      "obj_mean": 0.727
+    },
+    {
+      "persona_id": "p05",
+      "strata": "low_O_high_C",
+      "obj_mean": 0.714
+    },
+    {
+      "persona_id": "p08",
+      "strata": "low_A_low_C",
+      "obj_mean": 0.638
+    }
+  ]
+}
