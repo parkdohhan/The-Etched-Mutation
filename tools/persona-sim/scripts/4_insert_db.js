@@ -85,6 +85,5 @@ for (let i = 0; i < rows.length; i += BATCH) {
 console.log();
 
 // Verification
-const { data: stats } = await supabase.rpc('exec_sql', {}).catch(() => ({ data: null }));
 const { count } = await supabase.from('plays').select('*', { count: 'exact', head: true }).eq('memory_id', MEM_ID);
 console.log(`[4/insert] ✓ ${count} plays now in DB for memory ${MEM_ID}`);

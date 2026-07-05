@@ -64,13 +64,16 @@ const template = fs.readFileSync(TEMPLATE_PATH, 'utf8');
 
 // Fetch scenes
 console.log('[3/sim] Fetching scenes...');
-const { data: scenes, error } = await supabase
+const { data: allScenes, error } = await supabase
   .from('scenes')
   .select('id, scene_order, text, original_emotion')
   .eq('memory_id', MEM_ID)
   .order('scene_order');
 if (error) { console.error('[3/sim] scenes fetch error:', error); process.exit(1); }
-console.log(`[3/sim] ${scenes.length} scenes loaded`);
+// SKIP_SCENE_ORDERS=10,12 — exclude placeholder/stub scenes from simulation
+const skipOrders = new Set((process.env.SKIP_SCENE_ORDERS || '').split(',').filter(Boolean).map(Number));
+const scenes = allScenes.filter(s => !skipOrders.has(s.scene_order));
+console.log(`[3/sim] ${scenes.length} scenes loaded${skipOrders.size ? ` (skipped orders: ${[...skipOrders].join(',')})` : ''}`);
 
 function formatEvents(arr) { return arr.map((e, i) => `${i + 1}. ${e}`).join('\n'); }
 function formatHabits(arr) { return arr.map(h => `- ${h}`).join('\n'); }
