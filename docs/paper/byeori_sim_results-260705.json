@@ -1,0 +1,389 @@
+{
+  "seed": 20260705,
+  "engine": "js/core/ByeoriEngine.js (V4, imported directly)",
+  "runs": 10500,
+  "runsPerArchetype": 1500,
+  "scenesPerRun": "3–8 (uniform)",
+  "overall": {
+    "n": 10500,
+    "mean": 0.258,
+    "meanLevel": 0.512,
+    "meanShape": 0.342,
+    "p5": 0,
+    "p25": 0,
+    "median": 0.091,
+    "p75": 0.458,
+    "p95": 0.875,
+    "buckets": {
+      "LOW": 31.9,
+      "FIXATED": 29.2,
+      "HIGH": 24.7,
+      "MID": 14.2
+    },
+    "finalPatterns": {
+      "fixation": 29.2,
+      "contradiction": 24.9,
+      "echo_follow": 24.7,
+      "bridge": 17.7,
+      "displacement": 2.7,
+      "avoidance": 0.9
+    }
+  },
+  "byArchetype": {
+    "resonant": {
+      "n": 1500,
+      "mean": 0.849,
+      "meanLevel": 0.964,
+      "meanShape": 0.88,
+      "p5": 0.749,
+      "p25": 0.822,
+      "median": 0.858,
+      "p75": 0.887,
+      "p95": 0.923,
+      "buckets": {
+        "HIGH": 93.7,
+        "FIXATED": 6.3
+      },
+      "finalPatterns": {
+        "echo_follow": 93.7,
+        "fixation": 6.3
+      }
+    },
+    "partial": {
+      "n": 1500,
+      "mean": 0.439,
+      "meanLevel": 0.715,
+      "meanShape": 0.612,
+      "p5": 0.266,
+      "p25": 0.373,
+      "median": 0.442,
+      "p75": 0.508,
+      "p95": 0.6,
+      "buckets": {
+        "HIGH": 45.5,
+        "MID": 37.7,
+        "FIXATED": 16.7,
+        "LOW": 0.1
+      },
+      "finalPatterns": {
+        "echo_follow": 45.5,
+        "bridge": 36.6,
+        "fixation": 16.7,
+        "displacement": 1.2
+      }
+    },
+    "divergent": {
+      "n": 1500,
+      "mean": 0.374,
+      "meanLevel": 0.736,
+      "meanShape": 0.503,
+      "p5": 0.065,
+      "p25": 0.286,
+      "median": 0.39,
+      "p75": 0.479,
+      "p95": 0.597,
+      "buckets": {
+        "MID": 46.4,
+        "HIGH": 33.5,
+        "FIXATED": 15.7,
+        "LOW": 4.4
+      },
+      "finalPatterns": {
+        "bridge": 41.4,
+        "echo_follow": 33.5,
+        "fixation": 15.7,
+        "displacement": 9.4
+      }
+    },
+    "contradiction": {
+      "n": 1500,
+      "mean": 0.015,
+      "meanLevel": 0.297,
+      "meanShape": 0.038,
+      "p5": 0,
+      "p25": 0,
+      "median": 0,
+      "p75": 0.013,
+      "p95": 0.08,
+      "buckets": {
+        "LOW": 91.6,
+        "FIXATED": 5.5,
+        "MID": 2.9
+      },
+      "finalPatterns": {
+        "contradiction": 69,
+        "bridge": 21,
+        "fixation": 5.5,
+        "displacement": 4.5
+      }
+    },
+    "random": {
+      "n": 1500,
+      "mean": 0.016,
+      "meanLevel": 0.229,
+      "meanShape": 0.054,
+      "p5": 0,
+      "p25": 0,
+      "median": 0.001,
+      "p75": 0.021,
+      "p95": 0.074,
+      "buckets": {
+        "LOW": 98.1,
+        "MID": 1.9
+      },
+      "finalPatterns": {
+        "contradiction": 86.3,
+        "bridge": 13.4,
+        "displacement": 0.3
+      }
+    },
+    "avoidant": {
+      "n": 1500,
+      "mean": 0.099,
+      "meanLevel": 0.438,
+      "meanShape": 0.257,
+      "p5": 0.002,
+      "p25": 0.051,
+      "median": 0.087,
+      "p75": 0.132,
+      "p95": 0.233,
+      "buckets": {
+        "FIXATED": 77.1,
+        "LOW": 13.4,
+        "MID": 9.5,
+        "HIGH": 0.1
+      },
+      "finalPatterns": {
+        "fixation": 77.1,
+        "bridge": 9.4,
+        "avoidance": 6.3,
+        "contradiction": 4.3,
+        "displacement": 2.8,
+        "echo_follow": 0.1
+      }
+    },
+    "fixated": {
+      "n": 1500,
+      "mean": 0.012,
+      "meanLevel": 0.201,
+      "meanShape": 0.052,
+      "p5": 0,
+      "p25": 0,
+      "median": 0,
+      "p75": 0.013,
+      "p95": 0.055,
+      "buckets": {
+        "FIXATED": 83.2,
+        "LOW": 15.9,
+        "MID": 0.9
+      },
+      "finalPatterns": {
+        "fixation": 83.2,
+        "contradiction": 14.3,
+        "bridge": 1.9,
+        "displacement": 0.6
+      }
+    }
+  },
+  "patternDetection": {
+    "fixated → fixation": 83.2,
+    "divergent → displacement": 35.7,
+    "avoidant → avoidance": 30.4,
+    "contradiction → contradiction": 93.9,
+    "resonant → echo_follow": 100
+  },
+  "patternFiringRates": {
+    "resonant": {
+      "echo_follow": 100,
+      "bridge": 0.1,
+      "contradiction": 0,
+      "displacement": 0,
+      "avoidance": 0,
+      "fixation": 17.6
+    },
+    "partial": {
+      "echo_follow": 99.9,
+      "bridge": 46,
+      "contradiction": 0,
+      "displacement": 4.9,
+      "avoidance": 0,
+      "fixation": 34.3
+    },
+    "divergent": {
+      "echo_follow": 100,
+      "bridge": 47.9,
+      "contradiction": 0,
+      "displacement": 35.7,
+      "avoidance": 0,
+      "fixation": 33.4
+    },
+    "contradiction": {
+      "echo_follow": 11.2,
+      "bridge": 71.7,
+      "contradiction": 93.9,
+      "displacement": 8.2,
+      "avoidance": 0,
+      "fixation": 18
+    },
+    "random": {
+      "echo_follow": 12.1,
+      "bridge": 72.7,
+      "contradiction": 97.9,
+      "displacement": 1.4,
+      "avoidance": 0,
+      "fixation": 0
+    },
+    "avoidant": {
+      "echo_follow": 24.7,
+      "bridge": 92.4,
+      "contradiction": 19.3,
+      "displacement": 13.9,
+      "avoidance": 30.4,
+      "fixation": 81.1
+    },
+    "fixated": {
+      "echo_follow": 10.7,
+      "bridge": 36.1,
+      "contradiction": 90.2,
+      "displacement": 5.7,
+      "avoidance": 0,
+      "fixation": 83.2
+    }
+  },
+  "baselines": {
+    "V1_scene_cosine_mean": {
+      "resonant": {
+        "mean": 0.964,
+        "median": 0.965,
+        "highPct": 100
+      },
+      "partial": {
+        "mean": 0.715,
+        "median": 0.711,
+        "highPct": 99.9
+      },
+      "divergent": {
+        "mean": 0.736,
+        "median": 0.735,
+        "highPct": 100
+      },
+      "contradiction": {
+        "mean": 0.297,
+        "median": 0.282,
+        "highPct": 5.4
+      },
+      "random": {
+        "mean": 0.229,
+        "median": 0.225,
+        "highPct": 0.6
+      },
+      "avoidant": {
+        "mean": 0.438,
+        "median": 0.423,
+        "highPct": 25.7
+      },
+      "fixated": {
+        "mean": 0.201,
+        "median": 0.171,
+        "highPct": 3.3
+      }
+    },
+    "V2_affective_VAD": {
+      "resonant": {
+        "mean": 0.896,
+        "median": 0.899,
+        "highPct": 100
+      },
+      "partial": {
+        "mean": 0.752,
+        "median": 0.759,
+        "highPct": 99.9
+      },
+      "divergent": {
+        "mean": 0.675,
+        "median": 0.679,
+        "highPct": 99.5
+      },
+      "contradiction": {
+        "mean": 0.536,
+        "median": 0.538,
+        "highPct": 64.5
+      },
+      "random": {
+        "mean": 0.557,
+        "median": 0.556,
+        "highPct": 78.1
+      },
+      "avoidant": {
+        "mean": 0.664,
+        "median": 0.677,
+        "highPct": 93.3
+      },
+      "fixated": {
+        "mean": 0.524,
+        "median": 0.522,
+        "highPct": 56.7
+      }
+    },
+    "V4_alignment": {
+      "resonant": {
+        "mean": 0.849,
+        "median": 0.858,
+        "highPct": 99.9
+      },
+      "partial": {
+        "mean": 0.439,
+        "median": 0.442,
+        "highPct": 28
+      },
+      "divergent": {
+        "mean": 0.374,
+        "median": 0.39,
+        "highPct": 19.7
+      },
+      "contradiction": {
+        "mean": 0.015,
+        "median": 0,
+        "highPct": 0
+      },
+      "random": {
+        "mean": 0.016,
+        "median": 0.001,
+        "highPct": 0
+      },
+      "avoidant": {
+        "mean": 0.099,
+        "median": 0.087,
+        "highPct": 0.1
+      },
+      "fixated": {
+        "mean": 0.012,
+        "median": 0,
+        "highPct": 0
+      }
+    }
+  },
+  "auc": {
+    "V1_scene_cosine_mean": {
+      "resonant vs random": 1,
+      "resonant vs divergent": 1,
+      "partial vs random": 1,
+      "divergent vs partial": 0.605,
+      "contradiction vs random": 0.675
+    },
+    "V2_affective_VAD": {
+      "resonant vs random": 1,
+      "resonant vs divergent": 1,
+      "partial vs random": 0.96,
+      "divergent vs partial": 0.21,
+      "contradiction vs random": 0.442
+    },
+    "V4_alignment": {
+      "resonant vs random": 1,
+      "resonant vs divergent": 0.999,
+      "partial vs random": 1,
+      "divergent vs partial": 0.376,
+      "contradiction vs random": 0.43
+    }
+  }
+}
