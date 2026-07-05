@@ -16,7 +16,8 @@
     "user_reason": "찬물에 몸 던진다는 게—되돌리려는 건지, 느끼려는 건지, 아니면 그냥 멈추려는 건지 모르겠어. 이 사람이 뭘 돌아오게 하고 싶은 건지 아직 모르는데 왜 이렇게 무서운 거야.",
     "alignment": 0.62,
     "mismatch_type": "emotion_mismatch",
-    "created_at": "2026-04-07T11:09:23.738Z"
+    "created_at": "2026-04-07T11:09:23.738Z",
+    "objective": 0.813115628181742
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -35,7 +36,8 @@
     "user_reason": "현관문이 쾅 닫히는 장면인데, 자꾸 우리 집 원룸 현관이 떠올랐다. 새벽에 혼자 들어올 때 그 소리.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-07T11:01:56.987Z"
+    "created_at": "2026-04-07T11:01:56.987Z",
+    "objective": 0.901805603588958
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -55,7 +57,8 @@
     "user_reason": "핏줄이 아니어서라고 결론 내리는 게 차라리 편했겠다 싶다. 나는 핏줄인데도 그렇게 못 했으니까. 엄마한테 달라붙어본 게 언제가 마지막이었는지 기억도 안 난다.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-09T01:19:32.306Z"
+    "created_at": "2026-04-09T01:19:32.306Z",
+    "objective": 0.5982540107424271
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -74,7 +77,8 @@
     "user_reason": "굳은살이라는 말에서 멈췄다. 나는 엄마 발을 한 번도 만져본 적이 없는데, 만져볼 생각을 해본 적도 없는데—죽고 나서야 처음 만지는 게 더 나은 건지 살아있을 때 끝내 안 만지는 게 더 나쁜 건지 모르겠다.",
     "alignment": 0.48,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-09T22:12:13.387Z"
+    "created_at": "2026-04-09T22:12:13.387Z",
+    "objective": 0.7662610281769212
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -94,7 +98,8 @@
     "user_reason": "짜사이 식감이 다르다는 게—그게 다인데 왜 이렇게 목이 막히지. 엄마가 해준 것과 달랐을 때, 그게 돌아왔다는 증거가 된다는 게, 나는 엄마 목소리 듣기 싫어서 전화를 안 거는데 나도 사실 그 식감을 알아채고 싶은 거 아닌가.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-10T04:03:29.946Z"
+    "created_at": "2026-04-10T04:03:29.946Z",
+    "objective": 0.6219146064997813
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -113,7 +118,8 @@
     "user_reason": "미안했어요, 라는 말이 계속 머릿속에서 돈다. 나는 엄마한테 그 말 한 번도 제대로 못 했는데. 목 안쪽이 좀 뻣뻣해.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-10T14:18:57.476Z"
+    "created_at": "2026-04-10T14:18:57.476Z",
+    "objective": 0.9123127558443507
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -132,7 +138,8 @@
     "user_reason": "두 번째 읽는데도 이 문장에서 멈추게 된다. 근데 나는 지금 이 사람 엄마가 아니라 내 아버지 정밀검사 결과 기다리던 그 2주가 먼저 떠오르고 있어. 결과 괜찮아지니까 연락 끊었던 거, 나.",
     "alignment": 0.52,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-10T00:25:14.739Z"
+    "created_at": "2026-04-10T00:25:14.739Z",
+    "objective": 0.986122325731025
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -151,7 +158,8 @@
     "user_reason": "문이 쾅 닫히는 그 순간, 왜인지 혼자 원룸 현관 앞에 서 있는 내가 떠올랐다. 들어가도 아무도 없는데 그래도 잠깐 망설이게 되는 그 느낌.",
     "alignment": 0.72,
     "mismatch_type": null,
-    "created_at": "2026-04-10T05:53:22.732Z"
+    "created_at": "2026-04-10T05:53:22.732Z",
+    "objective": 0.9724686079767744
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -170,7 +178,8 @@
     "user_reason": "찬물. 나도 작년에 한번 그랬는데, 울 수가 없어서 그냥 샤워기 틀어놓고 욕실 바닥에 앉아 있었던 적. 돌아와, 라는 말이 자꾸 걸린다—나는 누구한테 그 말 해본 적이 있나.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-10T13:28:16.843Z"
+    "created_at": "2026-04-10T13:28:16.843Z",
+    "objective": 0.7972535403164854
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -190,7 +199,8 @@
     "user_reason": "엄마가 내가 좋아하는 거 알긴 했을까. 안다고 생각했는데 막상 기억을 더듬어보면 엄마가 내 걸 제대로 알고 있다는 확신이 없어.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-11T11:03:41.441Z"
+    "created_at": "2026-04-11T11:03:41.441Z",
+    "objective": 0.735542471426856
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -210,7 +220,8 @@
     "user_reason": "핏줄이 아니어서가 아니라, 핏줄인데도 그러지 못했다는 게 더 창피한 거 아닌가. 나는 엄마한테 매달려본 적이 있긴 한가, 생각하다가 없는 것 같아서 좀 멍해졌다.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-12T08:59:05.391Z"
+    "created_at": "2026-04-12T08:59:05.391Z",
+    "objective": 0.7686071989592157
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -229,7 +240,8 @@
     "user_reason": "차가운 물에 몸을 던진다는 게, 뭔가를 되돌리려는 마지막 몸부림 같아서 읽다가 손이 멈췄다. 돌아와, 라는 말이 너무 작게 써 있는데 왜 이렇게 크게 들리지.",
     "alignment": 0.78,
     "mismatch_type": null,
-    "created_at": "2026-04-10T17:43:25.169Z"
+    "created_at": "2026-04-10T17:43:25.169Z",
+    "objective": 0.942616121326223
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -248,7 +260,8 @@
     "user_reason": "엄마가 평소에 안 하던 걸 갑자기 해줬을 때... 그게 더 이상한 거잖아. 우리 엄마도 가끔 그랬는데, 뭔가 미안한 일이 있을 때만 밥을 더 차려줬었거든.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-11T19:40:46.318Z"
+    "created_at": "2026-04-11T19:40:46.318Z",
+    "objective": 0.8642010381522545
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -267,7 +280,8 @@
     "user_reason": "핏줄이 아니어서가 아닐 텐데. 나도 엄마한테 그렇게 달라붙어본 적 없는데, 나는 핏줄이 맞잖아. 그게 더 이상한 거 아닌가.",
     "alignment": 0.71,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-13T00:04:10.534Z"
+    "created_at": "2026-04-13T00:04:10.534Z",
+    "objective": 0.7977031247458908
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -286,7 +300,8 @@
     "user_reason": "짜사이 식감이 다른데도 알아챈다는 거, 그게 얼마나 오래 기다린 거야. 할머니가 요즘 국 간을 못 맞추는데, 나는 그걸 알아채면서도 아무 말 못 하고 있어.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-11T19:48:29.935Z"
+    "created_at": "2026-04-11T19:48:29.935Z",
+    "objective": 0.6824577068440758
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -305,7 +320,8 @@
     "user_reason": "좋은 소식을 말 못 하는 게 나쁜 소식보다 더 무거울 때가 있다는 걸 나는 알아. 엄마한테 할머니 많이 힘드시다고 제대로 말한 적이 없는데, 그것도 이것처럼 배려인지 겁인지 모르겠어.",
     "alignment": 0.82,
     "mismatch_type": null,
-    "created_at": "2026-04-13T04:31:02.446Z"
+    "created_at": "2026-04-13T04:31:02.446Z",
+    "objective": 0.792259068484546
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -325,7 +341,8 @@
     "user_reason": "갑자기 할머니 생각났다. 응급실 복도에서 자판기 커피 들고 손 떨던 그날. 엄마가 트럭에 치여 죽었다는 문장이 너무 짧아서 오히려 숨이 막혔다—이렇게 끝날 수도 있구나, 이렇게 갑자기.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-12T13:11:48.348Z"
+    "created_at": "2026-04-12T13:11:48.348Z",
+    "objective": 0.8114619484471217
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -344,7 +361,8 @@
     "user_reason": "미안했어요, 라는 말이 자꾸 할머니 목소리로 들린다. 아니, 내 목소리로. 응급실 복도에서 내가 끝내 못 했던 말이 이거였는데.",
     "alignment": 0.82,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-13T04:09:49.004Z"
+    "created_at": "2026-04-13T04:09:49.004Z",
+    "objective": 0.9534192593842067
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -364,7 +382,8 @@
     "user_reason": "읽다가 멈췄다. 갑자기 할머니 응급실 생각이 났는데, 그날 자판기 앞에서 손 떨리던 거. 이 문장이 짧아서 더 무섭다. 이렇게 갑자기 끝나버리는 거.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-11T10:12:02.706Z"
+    "created_at": "2026-04-11T10:12:02.706Z",
+    "objective": 0.8904390190547758
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -384,7 +403,8 @@
     "user_reason": "말 못 한 게 상대방을 아프게 할까봐 숨긴 건데, 그 배려가 얼마나 고독했을까. 근데 나는 지금 이 사람보다 그 엄마가 계속 눈에 밟힌다—아무것도 모른 채로 살았을 그 엄마.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-14T02:11:40.089Z"
+    "created_at": "2026-04-14T02:11:40.089Z",
+    "objective": 0.7880308729750591
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -403,7 +423,8 @@
     "user_reason": "찬물. 돌아와. 이 두 단어가 자꾸 겹쳐서 읽힌다. 할머니 응급실 복도에서 자판기 커피 종이컵이 떨릴 때, 나도 속으로 그 말 하고 있었던 것 같아. 돌아와.",
     "alignment": 0.78,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-12T20:36:17.298Z"
+    "created_at": "2026-04-12T20:36:17.298Z",
+    "objective": 0.942616121326223
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -423,7 +444,8 @@
     "user_reason": "입이 열리지 않는다는 게 제일 무섭다. 꿈에서도 못 막고, 깨어나서도 못 말하는 거잖아. 할머니가 떠오른다, 자꾸.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-13T23:06:57.920Z"
+    "created_at": "2026-04-13T23:06:57.920Z",
+    "objective": 0.8416254115301731
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -442,7 +464,8 @@
     "user_reason": "너무 짧은 문장인데 왜 이렇게 오래 멈추게 되지. '한 달 뒤'라는 말이—그 한 달 동안 이 사람은 뭘 했을까, 뭘 말했거나 말 못 했을까.",
     "alignment": 0.72,
     "mismatch_type": null,
-    "created_at": "2026-04-13T21:23:15.102Z"
+    "created_at": "2026-04-13T21:23:15.102Z",
+    "objective": 0.8220257084476781
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -462,7 +485,8 @@
     "user_reason": "만져본 적 없는 촉감—그 말이 계속 걸린다. 나는 엄마 손이 어떤 느낌인지 모른다. 발도, 손도.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-14T02:20:53.961Z"
+    "created_at": "2026-04-14T02:20:53.961Z",
+    "objective": 0.8499046787510721
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -481,7 +505,8 @@
     "user_reason": "문이 닫히는 순간이 자꾸 걸린다. 누군가 거기 있다는 걸 알면서도 들어가지 못하는 건지, 들어가려는 순간 닫혀버리는 건지—어느 쪽이든 나는 그 어둠보다 문 닫히는 소리가 더 무섭다는 게 이상하게 느껴지지 않는다.",
     "alignment": 0.62,
     "mismatch_type": "emotion_mismatch",
-    "created_at": "2026-04-15T14:25:03.850Z"
+    "created_at": "2026-04-15T14:25:03.850Z",
+    "objective": 0.8384375273633764
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -500,7 +525,8 @@
     "user_reason": "짜사이라는 단어가 걸렸다. 평소엔 안 하던 걸 해준 사람—그 어긋남이 이상한데 왜 이상한지 말 못 하는 느낌, 그게 나한테도 있었던 것 같아서.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-13T05:03:09.267Z"
+    "created_at": "2026-04-13T05:03:09.267Z",
+    "objective": 0.7692338911025562
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -520,7 +546,8 @@
     "user_reason": "미안했어요, 그 말이 계속 맴도는데— 나도 그 말 한 번을 못 했다. 아버지한테도, 할머니한테도.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-15T08:46:23.353Z"
+    "created_at": "2026-04-15T08:46:23.353Z",
+    "objective": 0.8748843392184729
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -540,7 +567,8 @@
     "user_reason": "짜사이 식감이 다르다는 것 하나로 그걸 알아챈다는 게—나는 엄마 음식 맛이 어떤지 기억이 없는데, 없다는 것도 이제는 별로 아프지 않은 척하게 됐는데.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-14T08:33:07.873Z"
+    "created_at": "2026-04-14T08:33:07.873Z",
+    "objective": 0.706242010770938
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -559,7 +587,8 @@
     "user_reason": "굳은살이라는 단어에서 멈췄다. 두 번째 읽으니까 더 선명한데—엄마 발이 아니라 아빠 발이 떠오른다. 아빠 발도 뒤꿈치가 그랬었는데, 나는 한 번도 만져본 적이 없다.",
     "alignment": 0.71,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-14T07:33:16.148Z"
+    "created_at": "2026-04-14T07:33:16.148Z",
+    "objective": 0.8261251710032431
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -579,7 +608,8 @@
     "user_reason": "말하지 못한 것, 그 이유가 상대를 다치게 하지 않으려는 거였다는 거—두 번 읽으니까 그게 더 또렷하게 보인다. 근데 나는 지금 화자보다 엄마 쪽을 더 생각하고 있는 것 같다. 평생 기다렸을 사람.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-14T22:24:05.734Z"
+    "created_at": "2026-04-14T22:24:05.734Z",
+    "objective": 0.7379464771301137
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -598,7 +628,8 @@
     "user_reason": "핏줄이 아니어서라는 결론, 나는 반대로 핏줄인데도 달라붙지 않았던 쪽이라서 같은 질문이 다른 방향으로 꽂힌다. 내가 엄마한테 매달리지 않았던 건 뭐 때문이었을까.",
     "alignment": 0.52,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-15T17:43:55.298Z"
+    "created_at": "2026-04-15T17:43:55.298Z",
+    "objective": 0.28545258875710794
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -617,7 +648,8 @@
     "user_reason": "문이 쳐닫히는 게, 기다리다 포기한 것 같아서. 처음 읽었을 때는 그냥 어둠이었는데, 이번엔 현관 앞에서 안 들어가고 서 있는 사람이 자꾸 아버지 얼굴이랑 겹친다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-15T04:20:39.226Z"
+    "created_at": "2026-04-15T04:20:39.226Z",
+    "objective": 0.8634076713000337
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -636,7 +668,8 @@
     "user_reason": "짜사이 한 그릇에 이렇게 많은 게 걸려 있다는 게... 엄마가 집에서 해줬던 음식이 뭔지 나는 기억도 잘 안 나는데, 근데 그게 틀린 거라는 걸 알아챘을 때의 그 이상한 감각, 그건 알 것 같다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-16T07:37:24.475Z"
+    "created_at": "2026-04-16T07:37:24.475Z",
+    "objective": 0.7692338911025562
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -655,7 +688,8 @@
     "user_reason": "식감이 다르다는 것으로 안다는 게—그 문장을 세 번째 읽는데 이번엔 아버지 생각이 났다. 아버지가 해주던 미역국 맛이 할머니 것과 달랐을 텐데, 아버지는 그걸 알면서도 끝까지 비슷하게 흉내 냈겠지.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-16T01:23:48.424Z"
+    "created_at": "2026-04-16T01:23:48.424Z",
+    "objective": 0.6040568648867186
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -674,7 +708,8 @@
     "user_reason": "세 번째 읽는데도 이 부분에서 손가락 끝이 이상해진다. 나는 엄마 발을 만져본 적이 없으니까—만진다면 어떤 감촉일까, 그 생각이 먼저 온다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-17T05:55:01.739Z"
+    "created_at": "2026-04-17T05:55:01.739Z",
+    "objective": 0.8261251710032431
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -694,7 +729,8 @@
     "user_reason": "미안했어요, 라는 말만 나왔다는 거—나도 그랬다. 아빠한테도, 할머니한테도, 정작 그 순간엔 그 말조차 못 했는데. 화자 얘기 읽다가 자꾸 현관 앞에 서 있던 아버지 얼굴이 겹친다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-17T07:41:43.380Z"
+    "created_at": "2026-04-17T07:41:43.380Z",
+    "objective": 0.8748843392184729
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -713,7 +749,8 @@
     "user_reason": "세 번째인데도 이 부분에서 자꾸 아버지 얼굴이 떠오른다. 화자는 엄마한테 말 못 한 거고, 나는 아버지한테 따지지 못한 건데—근데 그 '못 한다'는 감각이 너무 비슷해서.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-16T02:28:04.163Z"
+    "created_at": "2026-04-16T02:28:04.163Z",
+    "objective": 0.7249917890849147
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -732,7 +769,8 @@
     "user_reason": "나는 핏줄이어서도 그러지 못했는데. 달라붙은 적이 없다는 게, 혈연이 없어서가 아니라 그냥 그 사람이 그런 사람이라서일 수도 있지 않을까—근데 세 번째 읽으면서도 이 문장에서 자꾸 멈추게 되는 건, 나도 같은 결론에 도달한 적이 있어서인 것 같다.",
     "alignment": 0.48,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-18T18:51:38.753Z"
+    "created_at": "2026-04-18T18:51:38.753Z",
+    "objective": 0.25417011327687694
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -751,7 +789,8 @@
     "user_reason": "차갑다, 돌아와—이 두 단어가 가슴에 박혀서 넘어가질 않아. 근데 나는 자꾸 응급실 차가운 복도가 떠오르고, 엄마가 아니라 외할머니 손이 생각난다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-19T00:48:03.275Z"
+    "created_at": "2026-04-19T00:48:03.275Z",
+    "objective": 0.8914981104083151
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -770,7 +809,8 @@
     "user_reason": "너무 짧게 쓰여 있어서 오히려 더 무겁다. 우리 외할머니 응급실에서 엄마 등 두드리던 그 밤이 갑자기 생각났고, 그다음에 엄마 생각이 났다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-18T11:02:55.949Z"
+    "created_at": "2026-04-18T11:02:55.949Z",
+    "objective": 0.8890413438919633
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -789,7 +829,8 @@
     "user_reason": "안 된다고 소리치고 싶은데 입이 안 열리는 거, 나 알아. 근데 나는 엄마가 다시 태어나도 나를 사랑한다는 말보다... 내가 엄마한테 한 번도 제대로 말 못 한 게 먼저 떠오른다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-19T12:35:52.078Z"
+    "created_at": "2026-04-19T12:35:52.078Z",
+    "objective": 0.9486918540787616
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -808,7 +849,8 @@
     "user_reason": "나도 엄마한테 못 꺼낸 말들이 있는데. 말을 안 하는 게 배려인지 아니면 그냥 나 혼자 도망치는 건지, 그게 계속 헷갈린다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-17T17:22:38.115Z"
+    "created_at": "2026-04-17T17:22:38.115Z",
+    "objective": 0.7741362848505953
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -827,7 +869,8 @@
     "user_reason": "나도 엄마한테 그렇게 매달려본 적이 없는데, 근데 나는 핏줄이 맞잖아. 그러면 왜 나도 못 했지.",
     "alignment": 0.62,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-19T05:40:12.970Z"
+    "created_at": "2026-04-19T05:40:12.970Z",
+    "objective": 0.7730014702410658
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -846,7 +889,8 @@
     "user_reason": "돌아와, 라는 말이 자꾸 걸린다. 이 사람은 다른 누군가한테 하는 말인데 나는 왜 아빠 생각이 나는 건지. 찬물에 몸을 던지는 게 뭔가 멈추려는 것 같기도 하고, 아니면 반대로 확인하려는 것 같기도 해서.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-20T01:43:54.843Z"
+    "created_at": "2026-04-20T01:43:54.843Z",
+    "objective": 0.7994856907560807
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -865,7 +909,8 @@
     "user_reason": "문 닫히는 소리. 또 그 소리다. 아빠 슬리퍼가 없어졌는지 확인하러 나가지 못했던 그날 밤이랑 똑같아서, 이 장면이 그 사람 이야기인지 내 이야기인지 순간 헷갈렸다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-18T22:13:09.676Z"
+    "created_at": "2026-04-18T22:13:09.676Z",
+    "objective": 0.8732726046411893
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -884,7 +929,8 @@
     "user_reason": "외할머니 응급실에서 손 잡았을 때 느낌이 갑자기 올라왔다. 할머니 손도 이런 느낌이었는데, 굳은살이 많고 거칠어서 그때 나 왜 그냥 잡고만 있었지, 아무 말도 못 했지.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-19T14:51:03.271Z"
+    "created_at": "2026-04-19T14:51:03.271Z",
+    "objective": 0.9219077995253583
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -903,7 +949,8 @@
     "user_reason": "나는 핏줄이 맞는데도 그렇게 못 했는데. 핏줄이 아니어서가 아니라 그냥 그게 안 되는 사람이 있는 거 아닌가. 엄마한테 투정 부리는 게 어떤 건지 나도 잘 모르겠다.",
     "alignment": 0.62,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-19T01:22:59.758Z"
+    "created_at": "2026-04-19T01:22:59.758Z",
+    "objective": 0.7977031247458908
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -923,7 +970,8 @@
     "user_reason": "세 번째 읽는데도 이 장면에서 멈춰버린다. 엄마 발이 자꾸 떠올라. 굳은살, 갈라진 뒤꿈치— 엄마 발이 딱 그렇거든. 만져본 적 없는데 만져본 것처럼 느껴져서 무서워.",
     "alignment": 0.71,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-20T13:31:11.990Z"
+    "created_at": "2026-04-20T13:31:11.990Z",
+    "objective": 0.9319572755970607
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -942,7 +990,8 @@
     "user_reason": "나는 핏줄이 맞는데도 엄마한테 그렇게 매달려본 적이 없는 것 같아서. 핏줄이 아니어서가 아니라, 그냥 나 원래 그런 사람인 건지, 아니면 언젠가부터 그러면 안 되겠다고 생각한 건지 모르겠다.",
     "alignment": 0.61,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-21T00:45:16.364Z"
+    "created_at": "2026-04-21T00:45:16.364Z",
+    "objective": 0.7820618870057753
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -961,7 +1010,8 @@
     "user_reason": "찬물에 몸을 던진다는 게, 돌아와라고 부르는 게— 엄마가 외할머니 응급실에서 울던 날 생각난다. 나도 그때 속으로 계속 돌아와, 돌아와 했던 것 같은데, 입 밖으로는 한 번도 못 꺼냈다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-20T23:48:21.355Z"
+    "created_at": "2026-04-20T23:48:21.355Z",
+    "objective": 0.8824825913054264
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -980,7 +1030,8 @@
     "user_reason": "안 된다고 소리치는 입이 열리지 않는다는 거, 나도 알아. 근데 나는 이 장면에서 엄마 목소리가 아니라 내가 엄마한테 못 한 말들이 먼저 떠올랐어. 다시 태어나도 사랑한다는 말이 무서운 이유가, 그 말이 지금 여기선 끝까지 닿지 못한다는 뜻이기도 하니까.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-21T04:27:38.481Z"
+    "created_at": "2026-04-21T04:27:38.481Z",
+    "objective": 0.9486918540787616
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -999,7 +1050,8 @@
     "user_reason": "복도에 서 있는 게 누군지 모르겠는데, 이상하게 어머니 생각이 난다. 새벽에 현관 불 안 켜고 서 계시던 그 모습.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-19T22:08:36.693Z"
+    "created_at": "2026-04-19T22:08:36.693Z",
+    "objective": 0.8943961684311535
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1018,7 +1070,8 @@
     "user_reason": "엄마 손 생각났다. 굳은살. 새벽에 김치 담글 때 외삼촌 집 부엌 불빛 아래서 그 손을 봤는데, 나는 한 번도 잡아본 적이 없다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-20T00:24:00.366Z"
+    "created_at": "2026-04-20T00:24:00.366Z",
+    "objective": 0.9439299697958466
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1037,7 +1090,8 @@
     "user_reason": "입이 열리지 않는다는 게... 나도 그랬다. 어머니한테 해야 할 말이 있었는데 사흘 내내 의식이 없었고, 결국 한 마디도 못 했다. 다시 태어나도 사랑한다는 말이 왜 두려운 건지는 이해가 되는데, 나는 그 두려움보다 그냥 한 번이라도 대답을 들었으면 하는 마음이 먼저 올라온다.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-20T18:40:18.048Z"
+    "created_at": "2026-04-20T18:40:18.048Z",
+    "objective": 0.36818676962406355
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1056,7 +1110,8 @@
     "user_reason": "무슨 상황인지 잘 모르겠는데, '돌아와'라는 말이 자꾸 걸린다. 병실 의자에 앉아 아무 말도 안 하던 아버지 얼굴이 왜 지금 떠오르는 건지.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-22T17:05:06.300Z"
+    "created_at": "2026-04-22T17:05:06.300Z",
+    "objective": 0.631590467003969
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1075,7 +1130,8 @@
     "user_reason": "엄마한테 못 한 말이 있었는데. 나도 때를 놓친 게 있어서 그런지 이 사람 마음이 뭔지는 알 것 같은데, 자꾸 내 쪽 얘기가 먼저 올라온다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-22T03:09:27.302Z"
+    "created_at": "2026-04-22T03:09:27.302Z",
+    "objective": 0.7674213798361966
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1094,7 +1150,8 @@
     "user_reason": "찬물. 돌아와. 그 말이 걸린다. 누구한테 하는 말인지 알 것 같으면서도, 나는 자꾸 엄마 생각이 난다. 사흘 동안 의식 없이 누워 있던 엄마한테 내가 그 말 한 번이라도 했었나.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-20T22:06:57.568Z"
+    "created_at": "2026-04-20T22:06:57.568Z",
+    "objective": 0.890439019054776
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1114,7 +1171,8 @@
     "user_reason": "말 못 한다는 게 이렇게 무거운 거지. 근데 나는 반대였다—엄마한테 말해야 할 때 말 못 한 게 아니라, 마지막에 들어야 할 말을 끝내 못 들은 거였으니까.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-21T05:37:23.778Z"
+    "created_at": "2026-04-21T05:37:23.778Z",
+    "objective": 0.7030047555134387
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1133,7 +1191,8 @@
     "user_reason": "핏줄 때문인지 아닌지보다, 나는 그냥 원래 그런 사람이었다—엄마한테도 그렇게 못 했고, 마지막에도 그렇게 못 했는데, 그게 지금도 걸린다.",
     "alignment": 0.52,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-24T00:29:17.939Z"
+    "created_at": "2026-04-24T00:29:17.939Z",
+    "objective": 0.3527811580208692
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1152,7 +1211,8 @@
     "user_reason": "어머니 발을 만져본 적이 없다는 게 지금 와서 걸린다. 병원에서 사흘 동안 옆에 있었는데, 왜 손 한번 제대로 잡아보지 않았을까.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-23T13:17:38.516Z"
+    "created_at": "2026-04-23T13:17:38.516Z",
+    "objective": 0.9005285559919676
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1171,7 +1231,8 @@
     "user_reason": "세 번째 읽으니까 이제 문장이 눈에 안 들어오고 엄마 얼굴이 먼저 들어온다. 트럭이라는 단어가 걸렸다—우리 엄마는 뇌출혈이었는데, 그래도 나는 옆에 사흘 있었는데, 이 사람 엄마는 한 달 전에 뭔 말을 마지막으로 했을까.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-23T16:02:34.388Z"
+    "created_at": "2026-04-23T16:02:34.388Z",
+    "objective": 0.9487209016852292
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1190,7 +1251,8 @@
     "user_reason": "엄마가 집에서 절대 안 하던 걸 해줬을 때가 있었나 생각해봤는데... 장례 끝나고 집에 돌아왔을 때 그 압력밥솥, 엄마가 그걸 매일 썼을 텐데 나는 한 번도 대단하게 생각한 적이 없었다.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-22T06:56:11.519Z"
+    "created_at": "2026-04-22T06:56:11.519Z",
+    "objective": 0.67700320038633
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1209,7 +1271,8 @@
     "user_reason": "문이 닫히는 순간, 어머니 생각이 났다. 병실 복도에서 기다리던 그때, 나는 문 밖에 있었고 어머니는 이미 저쪽에 있었는데.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-23T16:28:11.547Z"
+    "created_at": "2026-04-23T16:28:11.547Z",
+    "objective": 0.9078269779051859
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1228,7 +1291,8 @@
     "user_reason": "핏줄이 아니어서가 아니라, 나도 핏줄이면서 그렇게 못 했는데. 엄마한테 매달려본 게 언제였는지 기억이 안 난다.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-24T07:20:12.529Z"
+    "created_at": "2026-04-24T07:20:12.529Z",
+    "objective": 0.3022586092476838
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1247,7 +1311,8 @@
     "user_reason": "한 달 뒤. 트럭에. 이 짧은 문장이 왜 이렇게 숨을 막히게 하는지—마지막으로 무슨 밥을 먹었을까, 라는 생각이 먼저 들었다.",
     "alignment": 0.72,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-25T05:52:50.103Z"
+    "created_at": "2026-04-25T05:52:50.103Z",
+    "objective": 0.9347999742059904
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1266,7 +1331,8 @@
     "user_reason": "욕실 찬물... 나도 그렇게 하는데. 근데 나는 혼자 울려고 켜는데, 이 사람은 무언가를 불러오려고 켜고 있어. 돌아와, 라는 말이— 나는 누구한테 그 말을 못 했을까.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-23T17:08:13.088Z"
+    "created_at": "2026-04-23T17:08:13.088Z",
+    "objective": 0.942616121326223
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1285,7 +1351,8 @@
     "user_reason": "말하지 못했던 것들이 관계를 얼마나 조용히 바꿔버리는지—나도 알아. 유산 소식을 시어머니께 전화로 전해야 했을 때, 그 전에 얼마나 오래 번호를 눌렀다 껐다 했는지. 그런데 이 사람은 반대쪽 무게를 들고 있었구나, 기쁜 소식을 숨겨야 했던.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-24T23:11:41.269Z"
+    "created_at": "2026-04-24T23:11:41.269Z",
+    "objective": 0.9118453429727793
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1304,7 +1371,8 @@
     "user_reason": "짜사이 식감이 다르다는 그 한 줄에서 숨이 잠깐 막혔다. 엄마가 담가주던 깍두기 생각이 났는데, 지금 요양병원에 계신 엄마는 이제 그 손맛을 다시 낼 수 없을 것 같아서.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-24T17:06:52.983Z"
+    "created_at": "2026-04-24T17:06:52.983Z",
+    "objective": 0.6824577068440758
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1323,7 +1391,8 @@
     "user_reason": "마지막으로 엄마가 뭘 드셨는지 생각해본 적이 없는데... 요양병원 밥이 맛이 없다고 하셨던 것만 기억나. 짜사이라는 단어가 왜 이렇게 마음에 걸리지.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-25T09:13:05.375Z"
+    "created_at": "2026-04-25T09:13:05.375Z",
+    "objective": 0.8642010381522545
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1342,7 +1411,8 @@
     "user_reason": "엄마 목소리가 떠올랐다. 요양병원 침대에 누워서 나를 알아볼 때 나를 부르는 그 목소리. 다시 태어나도 사랑한다는 말이 왜 무서운 건지 나는 알 것 같아—그 사랑이 너무 무거워서, 다음 생에서도 짊어져야 한다는 게 두려운 거지.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-26T23:46:09.417Z"
+    "created_at": "2026-04-26T23:46:09.417Z",
+    "objective": 0.8052691184765666
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1361,7 +1431,8 @@
     "user_reason": "미안했어요, 그 말이 눈에서 안 떠나진다. 근데 나는 지금 화자보다 그 말을 받지 못한 사람 쪽이 더 무겁게 느껴져. 닿지 못한 말이 얼마나 오래 사람을 붙드는지, 나는 알 것 같아서.",
     "alignment": 0.72,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-25T12:29:36.363Z"
+    "created_at": "2026-04-25T12:29:36.363Z",
+    "objective": 0.9418392683795405
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1380,7 +1451,8 @@
     "user_reason": "미안했어요, 그 말이 계속 맴돈다. 두 번 읽으니까 이번엔 화자가 아니라 내가 병원 안 간 그 일주일이 먼저 떠오른다. 나도 그때 현관 앞에서 멈췄었는데.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-25T17:21:18.594Z"
+    "created_at": "2026-04-25T17:21:18.594Z",
+    "objective": 0.9418392683795405
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1399,7 +1471,8 @@
     "user_reason": "차가운 물— 나도 그랬는데. 울고 싶을 때 샤워기 틀어놓는 것. 근데 이건 나랑 반대다, 이 사람은 차가운 물에 뛰어들었고 나는 뜨거운 물에 숨었는데. 아버지 손톱 생각이 났다. 차갑다는 감각이 쓰여있는 순간 내 몸이 먼저 알아봤다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-26T18:25:05.332Z"
+    "created_at": "2026-04-26T18:25:05.332Z",
+    "objective": 0.896206830674278
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1418,7 +1491,8 @@
     "user_reason": "짜사이 식감이 다르다는 말에서 손이 멈췄다. 엄마가 해준 것과 다르다—그 '다르다'는 감각이 엄마를 증명하는 방식. 파주 병실에서 엄마가 미음을 드실 때 내가 옆에 있었다면, 그 맛이 달랐을까.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-26T15:58:14.890Z"
+    "created_at": "2026-04-26T15:58:14.890Z",
+    "objective": 0.5877814931778457
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1438,7 +1512,8 @@
     "user_reason": "아버지 손톱이 떠올랐다. 보랏빛이었는데, 이번엔 발바닥이네. 굳은살이라는 말에서 손이 멈췄어—우리 엄마 발도 그럴 텐데, 나는 한 번도 만져본 적이 없다는 게.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-27T07:26:33.042Z"
+    "created_at": "2026-04-27T07:26:33.042Z",
+    "objective": 0.9427483254950324
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1457,7 +1532,8 @@
     "user_reason": "문장이 너무 짧아서 오히려 멈췄다. 한 달 뒤. 트럭. 죽었습니다. 엄마가 요양병원에 입원하시던 그 첫 주가 다시 떠올랐는데, 나는 그때 왜 안 갔을까.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-27T12:27:18.777Z"
+    "created_at": "2026-04-27T12:27:18.777Z",
+    "objective": 0.9347999742059904
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1476,7 +1552,8 @@
     "user_reason": "엄마가 마지막으로 해줬던 음식이 뭐였더라, 뇌졸중 오시기 전날 저녁에 내가 뭘 먹었는지도 기억이 안 나는데. 짜사이를 집에서 꺼내든다는 게, 그게 왜 이렇게 마음에 걸리지.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-26T08:58:19.282Z"
+    "created_at": "2026-04-26T08:58:19.282Z",
+    "objective": 0.8486432553203013
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1495,7 +1572,8 @@
     "user_reason": "짜사이 식감이 다르다는 그 한 줄에서 엄마 생각이 났다. 엄마 깍두기 맛이 지금 내가 담그는 것이랑 절대 같지 않은데, 요양병원 가면 엄마가 그 맛을 또 기억하고 있을까.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-26T12:33:44.472Z"
+    "created_at": "2026-04-26T12:33:44.472Z",
+    "objective": 0.6824577068440758
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1514,7 +1592,8 @@
     "user_reason": "엄마가 뇌졸중 오기 전에 나한테 가끔 그랬는데—내가 좋아하지도 않는 걸 '네가 제일 좋아하는 거'라고 해서 그냥 고개 끄덕이던 때가 있었다. 그때는 그냥 넘겼는데, 그게 이미 신호였던 건 아니었을까.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-28T09:38:01.423Z"
+    "created_at": "2026-04-28T09:38:01.423Z",
+    "objective": 0.8924133096001623
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1533,7 +1612,8 @@
     "user_reason": "나도 저렇게 했는데, 찬물이 아니라 샤워기 물을 뜨겁게 틀어놓고. 돌아와, 라는 말이 자꾸 엄마한테 향한다. 지금 파주에 누워 계신 엄마한테.",
     "alignment": 0.71,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-27T00:14:18.153Z"
+    "created_at": "2026-04-27T00:14:18.153Z",
+    "objective": 0.9283030782692087
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1552,7 +1632,8 @@
     "user_reason": "엄마가 요양병원에서 저런 말을 꿈에서라도 하신다면 나도 입이 열리지 않을 것 같다. 안 된다고, 다시 태어나서 또 나 때문에 고생하시면 안 된다고—근데 그 말이 왜 이렇게 무서운 거지, 사랑한다는 말인데.",
     "alignment": 0.81,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-27T00:32:34.588Z"
+    "created_at": "2026-04-27T00:32:34.588Z",
+    "objective": 0.9668689806755646
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1571,7 +1652,8 @@
     "user_reason": "세 번째 읽는데 이 문장이 이번엔 다르게 온다. 처음엔 그냥 충격이었는데, 지금은 '한 달 뒤'라는 그 한 달이 보인다. 그 사람이 그 한 달 동안 뭔가를 못 말하고 살았을 텐데, 그게 나한테 자꾸 걸린다.",
     "alignment": 0.61,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-28T19:22:18.324Z"
+    "created_at": "2026-04-28T19:22:18.324Z",
+    "objective": 0.9494635032131432
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1590,7 +1672,8 @@
     "user_reason": "시어머니께 임신 소식 전하고 이틀 만에 유산 소식 전화해야 했던 그 목소리가 떠오르는데, 이건 방향이 반대인데도 똑같이 아프다. 말해서 상처가 되는 것과 말 못 해서 혼자 짊어지는 것, 결국 같은 무게인 것 같아.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-28T23:16:30.630Z"
+    "created_at": "2026-04-28T23:16:30.630Z",
+    "objective": 0.9173144128495159
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1609,7 +1692,8 @@
     "user_reason": "세 번째 읽는데 이번엔 화자가 아니라 내가 보인다. 대리석 바닥에 드러누운 사람이 나인 것처럼—어머니 입원하시고 그 첫 주에 가지 않았을 때, 나도 속으로 미안했어요, 미안했어요, 그 말만 돌아다녔는데, 아무한테도 못 했고, 지금도 못 하고 있잖아.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-28T00:01:41.510Z"
+    "created_at": "2026-04-28T00:01:41.510Z",
+    "objective": 0.9534192593842067
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1628,7 +1712,8 @@
     "user_reason": "미안했어요, 라는 말이 자꾸 내 목소리로 들린다. 엄마한테 '괜찮아?'라고 한 번도 제대로 못 물어본 채 또 한 주가 지나갔는데.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-28T11:51:31.882Z"
+    "created_at": "2026-04-28T11:51:31.882Z",
+    "objective": 0.9534192593842067
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1647,7 +1732,8 @@
     "user_reason": "나도 엄마한테 말 못 하고 있는 게 있는데. 괜찮냐고 제대로 물어본 적이 없잖아, 암 진단받고 나서 한 번도.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-28T05:57:22.038Z"
+    "created_at": "2026-04-28T05:57:22.038Z",
+    "objective": 0.9118453429727793
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1666,7 +1752,8 @@
     "user_reason": "핏줄이 아니어서, 라는 말에서 손이 멈췄다. 나는 핏줄인데도 그런 식으로 엄마한테 달라붙어본 적이 없는데. 어떻게 해야 그게 자연스러운 사람이 되는 걸까.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-30T02:41:49.817Z"
+    "created_at": "2026-04-30T02:41:49.817Z",
+    "objective": 0.4239040320676811
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1685,7 +1772,8 @@
     "user_reason": "짜사이 식감이 다르다는 말에서 멈췄다. 엄마가 해준 것과 다르다는 걸 혀가 먼저 안다는 게—우리 엄마 된장찌개 간이 요즘 달라진 것 같은데 내가 그걸 제대로 느껴본 적이 있나 싶어서.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-01T09:31:15.694Z"
+    "created_at": "2026-05-01T09:31:15.694Z",
+    "objective": 0.6919723216606892
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1705,7 +1793,8 @@
     "user_reason": "엄마 손 생각났다. 외할머니 장례식에서 엄마가 그 손을 주무르던 거. 근데 지금 엄마 발은 내가 한 번도 만져본 적이 없는데—살아있는 동안에도.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-29T02:56:59.104Z"
+    "created_at": "2026-04-29T02:56:59.104Z",
+    "objective": 0.9491772753284816
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1724,7 +1813,8 @@
     "user_reason": "찬물에 몸을 던진다는 게 그냥 읽히질 않아. 엄마 수술 날 아침에 내가 새벽에 찬 수도물로 세수했던 거 생각났다. 정신 차리려고. 돌아와, 라는 말이 자꾸 걸린다—나는 그 말을 엄마한테 아직 못 했다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-30T06:37:46.049Z"
+    "created_at": "2026-04-30T06:37:46.049Z",
+    "objective": 0.8914981104083151
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1743,7 +1833,8 @@
     "user_reason": "핏줄이 아니어서가 아니라, 그냥 그렇게 못하는 사람이 있는 거잖아. 나도 엄마한테 매달려본 적이 없는데, 그게 핏줄 문제가 아니라 그냥 나라서—근데 지금은 그 말이 좀 찔린다.",
     "alignment": 0.52,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-04-29T15:27:47.989Z"
+    "created_at": "2026-04-29T15:27:47.989Z",
+    "objective": 0.40998891337560467
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1762,7 +1853,8 @@
     "user_reason": "이 사람은 엄마를 배려한 거고 나는... 나는 그냥 무서워서 말을 못 하는 거잖아. 엄마한테 '괜찮아?' 한 마디가 왜 이렇게 무거운지.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-30T10:21:11.571Z"
+    "created_at": "2026-04-30T10:21:11.571Z",
+    "objective": 0.792259068484546
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1782,7 +1874,8 @@
     "user_reason": "안 된다는 게 뭔지 알 것 같아서 무서워. 나도 엄마가 그런 말 하면 못 들을 것 같은데—아직 그 말 못 했잖아, 나.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-04-30T08:37:56.299Z"
+    "created_at": "2026-04-30T08:37:56.299Z",
+    "objective": 0.9498660245602264
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1801,7 +1894,8 @@
     "user_reason": "미안했어요, 미안했어요— 나는 그 말을 끝내 못 했다. 전화기 화면이 켜졌다 꺼지는 걸 보면서 가만히 있었던 그 밤이 또 떠오른다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-01T06:53:33.416Z"
+    "created_at": "2026-05-01T06:53:33.416Z",
+    "objective": 0.7626563542142937
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1820,7 +1914,8 @@
     "user_reason": "차가운 물 얘기가 나오자마자 그 병원 복도가 먼저 떠올랐다. 아내가 안에서 울고 있을 때 나는 밖에서 차가운 벽에 등 기대고 있었는데, 그게 왜 지금 나오는 건지.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-01T22:21:00.767Z"
+    "created_at": "2026-05-01T22:21:00.767Z",
+    "objective": 0.5026235881656086
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1839,7 +1934,8 @@
     "user_reason": "불임인 엄마한테 못 말한다는 거, 그 마음은 알 것 같은데... 근데 나는 자꾸 다른 생각이 난다. 나는 어머니한테 뭘 못 말했나, 뭘 말했어야 했나.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-01T06:11:37.275Z"
+    "created_at": "2026-05-01T06:11:37.275Z",
+    "objective": 0.6539670908958972
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1858,7 +1954,8 @@
     "user_reason": "복도에 서 있는 사람... 어머니 요양원 전화 오던 날 밤, 나도 그렇게 어둠 속에 서 있었다. 들어가지도 못하고 나오지도 못하고.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-01T11:28:03.875Z"
+    "created_at": "2026-05-01T11:28:03.875Z",
+    "objective": 0.4625936336302337
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1877,7 +1974,8 @@
     "user_reason": "트럭에 치여. 그렇게 가는 거지 뭐. 근데 왜 갑자기 요양원 전화 생각이 나. 받았어야 했는데.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-03T08:31:12.980Z"
+    "created_at": "2026-05-03T08:31:12.980Z",
+    "objective": 0.9455802006281798
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1896,7 +1994,8 @@
     "user_reason": "미안했어요, 미안했어요— 그 말이 자꾸 걸린다. 나는 그 말을 못 했는데. 전화 울릴 때 그냥 보고 있었는데, 나는 아무 말도 못 했는데.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-02T19:24:01.269Z"
+    "created_at": "2026-05-02T19:24:01.269Z",
+    "objective": 0.7259018311196288
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1916,7 +2015,8 @@
     "user_reason": "굳은살. 갈라진 뒤꿈치. 나는 우리 어머니 발을 만져본 적이 없다. 장례식장에서도 손을 잡지 못했다. 이 사람은 만졌는데.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-03T11:53:14.614Z"
+    "created_at": "2026-05-03T11:53:14.614Z",
+    "objective": 0.5715476066494082
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1935,7 +2035,8 @@
     "user_reason": "복도에 서 있는 게 나야. 문 앞에서 전화 울릴 때 받지 않고 그냥 서 있던 그 밤이랑 똑같아. 문이 닫히는 건 내가 닫은 거지.",
     "alignment": 0.48,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-03T17:34:20.480Z"
+    "created_at": "2026-05-03T17:34:20.480Z",
+    "objective": 0.4625936336302337
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1955,7 +2056,8 @@
     "user_reason": "짜사이 식감이 다르다는 걸 알아챈다는 게... 나는 어머니가 뭘 해줬는지 이제 기억이 안 난다. 입맛도 기억 못 하는 놈이 뭘 그리워한다고.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-02T08:44:32.679Z"
+    "created_at": "2026-05-02T08:44:32.679Z",
+    "objective": 0.6506488872358832
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1974,7 +2076,8 @@
     "user_reason": "외할머니 손이 생각났다. 종이처럼 마르고 차가웠던, 그 감촉이 지금도 손바닥에 남아 있는 것 같은—굳은살이라는 단어에서 멈춰버렸다. 살아온 흔적이 발가락 끝에 새겨진다는 게.",
     "alignment": 0.82,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-04T06:00:01.068Z"
+    "created_at": "2026-05-04T06:00:01.068Z",
+    "objective": 0.9416396422437748
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -1993,7 +2096,8 @@
     "user_reason": "문이 쳐닫히는 그 소리가, 어떤 말이 끝나버리는 소리 같아서 멈칫했다. 복도에 서 있는 게 나라는 걸 알면서도 들어가야 하는지 모르겠는 그 찰나—그게 너무 익숙해.",
     "alignment": 0.82,
     "mismatch_type": null,
-    "created_at": "2026-05-05T13:08:45.446Z"
+    "created_at": "2026-05-05T13:08:45.446Z",
+    "objective": 0.9679014091391386
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2012,7 +2116,8 @@
     "user_reason": "미안했어요, 그 말이 계속 걸린다. 나도 그 말을 오래 품고 있다가 결국 새벽에 문자로 보냈는데—이 사람은 그 자리에서 말했구나. 대리석 바닥이 차가웠을 것 같다는 생각이 자꾸 난다.",
     "alignment": 0.81,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-05T02:15:55.845Z"
+    "created_at": "2026-05-05T02:15:55.845Z",
+    "objective": 0.9534192593842067
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2031,7 +2136,8 @@
     "user_reason": "엄마한테 말 못 했던 거, 나도 안다. 엄마가 아플 때 '괜찮아질 거야' 한마디를 못 하고 논문부터 찾았던 그 밤이 갑자기 겹쳐 보인다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-04T02:37:37.498Z"
+    "created_at": "2026-05-04T02:37:37.498Z",
+    "objective": 0.8819487743507209
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2051,7 +2157,8 @@
     "user_reason": "두 번째 읽는데 이번엔 다르게 걸린다. 처음엔 그 사람이 엄마 목소리를 무서워하는 게 이상하다고 생각했는데, 지금은 알 것 같아. 사랑한다는 말이 무서운 게 아니라, 그 사랑이 또 다시 반복된다는 것—빠져나올 수 없다는 것—이 무서운 거잖아. 나도 그 전화 끊고 나서 한참 멍했던 거 생각났다.",
     "alignment": 0.72,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-05T13:04:12.351Z"
+    "created_at": "2026-05-05T13:04:12.351Z",
+    "objective": 0.9637057179116616
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2070,7 +2177,8 @@
     "user_reason": "두 번째 읽는데 이번엔 엄마 얼굴이 먼저 떠오른다. 나는 엄마가 아플 때 정보부터 찾았고, 이 사람은 기쁜 소식을 숨겼는데, 결국 같은 거 아닐까—상대를 아끼는 마음이 말을 막는 것.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-04T11:17:22.289Z"
+    "created_at": "2026-05-04T11:17:22.289Z",
+    "objective": 0.7946468401491408
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2089,7 +2197,8 @@
     "user_reason": "두 번째 읽는데도 이 문장에서 멈춰진다. 처음엔 그냥 충격이었는데 이번엔... 한 달이라는 게 자꾸 걸린다. 그 한 달 동안 무슨 말을 하지 못했을까, 하고 싶었는데 못 한 말이 있었을까.",
     "alignment": 0.62,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-06T01:12:13.540Z"
+    "created_at": "2026-05-06T01:12:13.540Z",
+    "objective": 0.9277942655434497
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2108,7 +2217,8 @@
     "user_reason": "외할머니 손이 생각났다. 그 차갑고 마른 손이. 이 사람은 엄마 발을 만지고 있는데 나는 자꾸 내 손 안의 그 감촉으로 돌아가고 있어.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-05T13:46:18.739Z"
+    "created_at": "2026-05-05T13:46:18.739Z",
+    "objective": 0.9059440281050057
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2127,7 +2237,8 @@
     "user_reason": "엄마가 집에서 뭘 해줬는지 기억이 잘 안 난다. 뭘 좋아했는지도 알고 있었겠지, 그때는.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-05T06:01:27.343Z"
+    "created_at": "2026-05-05T06:01:27.343Z",
+    "objective": 0.7692338911025562
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2146,7 +2257,8 @@
     "user_reason": "핏줄이 아니어서인가, 라는 말이 걸린다. 나는 반대로 핏줄이 아닌 할머니한테 제일 많이 달라붙었는데. 근데 달라붙는 게 핏줄 때문인지 아닌지 생각해본 적 없었던 것 같기도 하고.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-05T07:55:57.651Z"
+    "created_at": "2026-05-05T07:55:57.651Z",
+    "objective": 0.44883956336578007
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2165,7 +2277,8 @@
     "user_reason": "잠깐 멈췄다. 트럭에 치여. 너무 갑작스럽게 쓰여 있어서 한 줄인데 무게가 이상하게 무거운데, 근데 지금 머릿속에 떠오르는 건 이 사람 엄마가 아니라 할머니 손이다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-05T06:43:44.390Z"
+    "created_at": "2026-05-05T06:43:44.390Z",
+    "objective": 0.890809387184532
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2185,7 +2298,8 @@
     "user_reason": "짜사이 식감이 다르다는 걸로 알아챈다는 게… 나는 그런 걸 알아챌 수 있었을까. 할머니가 해준 된장찌개랑 엄마가 해준 거랑 달랐던 것 같은데, 이제 엄마 맛이 기억 안 난다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-06T20:25:02.058Z"
+    "created_at": "2026-05-06T20:25:02.058Z",
+    "objective": 0.7347080497499309
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2204,7 +2318,8 @@
     "user_reason": "다시 태어나도 사랑한다는 말, 왜 이게 무섭게 들리지. 그 말 한 번도 못 받아봤는데 받았다 해도 저렇게 거부했을 것 같다는 게, 그게 더 무서운 건지.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-05T14:21:16.641Z"
+    "created_at": "2026-05-05T14:21:16.641Z",
+    "objective": 0.7084089179050927
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2223,7 +2338,8 @@
     "user_reason": "핏줄이 아니어서라는 말이 자꾸 걸린다. 나는 반대로 할머니한테는 자연스럽게 달라붙었는데, 정작 엄마한테는 못 그랬던 게 핏줄 때문이 아니라 그냥 무서웠던 거 아닐까.",
     "alignment": 0.58,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-07T00:18:00.722Z"
+    "created_at": "2026-05-07T00:18:00.722Z",
+    "objective": 0.7730014702410658
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2242,7 +2358,8 @@
     "user_reason": "짜사이 식감이 다르다는 거, 그게 핵심인데. 근데 나는 자꾸 우리 할머니 된장국 생각이 나. 처음 읽었을 때보다 더 선명하게, 엄마가 아니라 할머니가 해준 맛이 떠올랐다.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-08T07:37:58.872Z"
+    "created_at": "2026-05-08T07:37:58.872Z",
+    "objective": 0.7201537330160517
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2261,7 +2378,8 @@
     "user_reason": "엄마가 집에서 뭘 잘 만들어줬는지 솔직히 잘 기억이 안 난다. 근데 이 장면에서 '이상하다'고 느끼는 그 감각은 알 것 같아. 뭔가 맞지 않는데 맞추려고 고개를 끄덕이는 그거.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-06T22:19:46.561Z"
+    "created_at": "2026-05-06T22:19:46.561Z",
+    "objective": 0.7692338911025562
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2281,7 +2399,8 @@
     "user_reason": "할머니 손 잡았을 때 그 느낌이 올라온다. 차갑고 얇았는데, 그때 나는 그 손을 놓지 않으려고 꽉 쥐고 있었거든. 이 사람은 엄마 발을 만지는데 나는 왜 할머니가 생각나는 건지.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-08T07:45:02.416Z"
+    "created_at": "2026-05-08T07:45:02.416Z",
+    "objective": 0.8256739603067208
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2300,7 +2419,8 @@
     "user_reason": "미안했어요, 미안했어요— 세 번째 읽는데도 이 부분에서 멈추게 된다. 근데 지금 내가 떠올리는 건 화자가 아니라 엄마 목소리야. 엄마가 '엄마가 잘못한 거야'라고 했을 때 나는 왜 아무 말도 못 했지.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-07T22:42:01.374Z"
+    "created_at": "2026-05-07T22:42:01.374Z",
+    "objective": 0.9080798366410101
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2319,7 +2439,8 @@
     "user_reason": "핏줄이 아니어서라는 결론... 나는 반대로 핏줄인데도 그렇게 못 했던 거잖아. 이 사람이 느끼는 거랑 방향이 다른데 어딘가에서 겹친다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-07T23:28:32.924Z"
+    "created_at": "2026-05-07T23:28:32.924Z",
+    "objective": 0.7888196671207354
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2339,7 +2460,8 @@
     "user_reason": "짜사이 식감이 다르다는 말에서 멈췄다. 화자는 엄마가 돌아왔다는 걸 냄새도 소리도 아니고 맛의 차이로 아는 건데, 그게 이상하게 할머니 된장찌개 생각이 났다. 할머니 손맛이 요즘 전 같지 않은 거, 나는 못 본 척하고 있었던 것 같다.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-09T12:08:16.608Z"
+    "created_at": "2026-05-09T12:08:16.608Z",
+    "objective": 0.7347080497499309
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2359,7 +2481,8 @@
     "user_reason": "근데 나는 그 말이 무서운 게 아니라 그냥... 그 말을 못 듣는 게 무서운 건데. 꿈에서라도 들었다는 게 부러운 건지 아닌지 모르겠다.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-08T04:37:41.493Z"
+    "created_at": "2026-05-08T04:37:41.493Z",
+    "objective": 0.6895932263817584
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2378,7 +2501,8 @@
     "user_reason": "세 번째 읽는데도 이 문장에서 멈추게 된다. 근데 지금 머릿속에 떠오르는 건 화자 엄마가 아니라 할머니 손이야. 구급차 안에서 그 차갑던 손.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-08T16:11:26.728Z"
+    "created_at": "2026-05-08T16:11:26.728Z",
+    "objective": 0.890809387184532
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2397,7 +2521,8 @@
     "user_reason": "엄마가 해주던 음식 생각났다. 엄마도 집에서 특별한 반찬 같은 건 잘 안 만들었는데, 그래도 내가 좋아한다고 하면 어떻게든 구해다 주려고 했지. 이 사람 엄마는 왜 그걸 만들었을까, 뭔가 무리를 했던 거 아닐까.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-08T13:59:34.630Z"
+    "created_at": "2026-05-08T13:59:34.630Z",
+    "objective": 0.7693218186208295
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2416,7 +2541,8 @@
     "user_reason": "복도에 서 있는 게 나인 것 같은데, 그 문 안에 엄마가 있는 것 같아서. 바람이 문을 닫아버리는 게 꼭 그날 전화 끊긴 것처럼 느껴져서 가슴이 조여든다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-08T17:43:04.834Z"
+    "created_at": "2026-05-08T17:43:04.834Z",
+    "objective": 0.7907990314904573
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2435,7 +2561,8 @@
     "user_reason": "핏줄이 아니어서, 라는 말에 걸렸다. 나는 핏줄이었는데도 엄마한테 그렇게 매달려본 적이 없었던 것 같아서.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-08T20:44:49.272Z"
+    "created_at": "2026-05-08T20:44:49.272Z",
+    "objective": 0.9149421868610134
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2455,7 +2582,8 @@
     "user_reason": "내 손바닥이 저려온다. 이건 영안실이 아니라 열네 살 그 방이다, 엄마 발이 그렇게 차가웠는데 나는 왜 그 감촉을 이제야 다시 느끼고 있나.",
     "alignment": 0.81,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-10T13:19:26.097Z"
+    "created_at": "2026-05-10T13:19:26.097Z",
+    "objective": 0.9648015848692038
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2474,7 +2602,8 @@
     "user_reason": "핏줄이 아니어서라는 말이 두 번 읽어도 마음에 걸린다. 나는 핏줄이었는데도 엄마한테 그렇게 달라붙어본 적이 없었어. 그게 오히려 더 이상한 거 아닌가.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-11T19:55:15.000Z"
+    "created_at": "2026-05-11T19:55:15.000Z",
+    "objective": 0.4303766834249439
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2494,7 +2623,8 @@
     "user_reason": "짜사이 식감이 다르다는 그 한 줄에서 멈춰버렸어. 나도 그랬는데, 엄마 깍두기 담그는 손맛을 아무도 못 따라 해서 한동안 깍두기를 아예 안 먹었었지. 두 번째 읽으니까 이제 화자가 아니라 내가 보여.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-10T23:36:17.270Z"
+    "created_at": "2026-05-10T23:36:17.270Z",
+    "objective": 0.702764221499934
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2514,7 +2644,8 @@
     "user_reason": "두 번 읽는데도 손바닥이 또 저려온다. 근데 지금 떠오르는 건 영안실이 아니라, 엄마가 살아 계실 때 그 차갑고 부은 발이야. 그때 내가 주물러드렸던 그 감촉.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-11T07:59:19.373Z"
+    "created_at": "2026-05-11T07:59:19.373Z",
+    "objective": 0.9524849688921502
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2533,7 +2664,8 @@
     "user_reason": "두 번째 읽는데도 이 대목이 제일 먼저 걸린다. 나는 거꾸로였지, 말하고 싶어도 말할 수 없었는데—이 사람은 말하지 않기로 선택했고. 근데 그 마음은 같아. 기쁜 걸 숨겨야 하는 것도, 슬픈 걸 숨겨야 하는 것도 결국 혼자 짊어지는 건 똑같잖아.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-10T00:29:18.435Z"
+    "created_at": "2026-05-10T00:29:18.435Z",
+    "objective": 0.7897533084041845
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2553,7 +2685,8 @@
     "user_reason": "안 된다고 소리치고 싶은데 입이 안 열린다는 게—그게 왜 이렇게 내 얘기 같지. 근데 나는 무서운 게 엄마가 다시 사랑해줄 거라는 게 아니라, 나는 그때도 그다음에도 계속 입을 안 열었다는 거잖아.",
     "alignment": 0.52,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-10T15:41:14.005Z"
+    "created_at": "2026-05-10T15:41:14.005Z",
+    "objective": 0.870174052217406
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2572,7 +2705,8 @@
     "user_reason": "말 못 한다는 게 이해가 돼. 근데 나는 배려라는 게 맞는지 모르겠어—그냥 무서워서 입 다문 게 더 큰 거 아니었을까, 나처럼.",
     "alignment": 0.62,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-12T05:19:46.653Z"
+    "created_at": "2026-05-12T05:19:46.653Z",
+    "objective": 0.8536115928354944
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2591,7 +2725,8 @@
     "user_reason": "복도에 서 있는 게 나인 것 같은데, 그 문이 닫히는 순간이 중2 겨울 방문 닫던 그때랑 겹쳐서 좀 멈췄다. 누가 안에 있는 거지, 아니면 아무도 없는 건가.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-13T09:10:54.939Z"
+    "created_at": "2026-05-13T09:10:54.939Z",
+    "objective": 0.9679014091391386
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2610,7 +2745,8 @@
     "user_reason": "외할머니 장례식 때 엄마 등에 손을 올려야 했는데 못 올렸던 거, 그 감각이 갑자기 손바닥에 다시 와 있어. 화자는 만졌는데 나는 끝내 못 만졌다.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-13T14:49:00.940Z"
+    "created_at": "2026-05-13T14:49:00.940Z",
+    "objective": 0.7633121512537138
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2630,7 +2766,8 @@
     "user_reason": "핏줄이 아니어서가 아니라, 핏줄이면서도 그렇게 못 하는 사람도 있는데. 나는 친딸인데도 엄마한테 매달려본 적이 언제였더라.",
     "alignment": 0.62,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-13T06:15:51.143Z"
+    "created_at": "2026-05-13T06:15:51.143Z",
+    "objective": 0.9170605214488301
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2649,7 +2786,8 @@
     "user_reason": "엄마가 갑자기 평소에 안 하던 걸 해줬을 때 그 어색함... 근데 나는 그 장면에서 엄마 얼굴이 아니라 짜사이 냄새가 먼저 떠올랐고, 그게 왜인지 모르겠어서 더 답답하다.",
     "alignment": 0.55,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-12T11:09:53.831Z"
+    "created_at": "2026-05-12T11:09:53.831Z",
+    "objective": 0.7488028723414422
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2668,7 +2806,8 @@
     "user_reason": "이거 두 번째 읽는데 이번엔 화자보다 엄마 쪽이 더 눈에 걸린다. 말하지 않기로 했다는 그 결정—나도 그런 거 있잖아, 말하면 더 상처가 될 것 같아서 그냥 입 다물어버리는 거. 근데 그게 배려인지 회피인지 나도 잘 모르겠어.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-13T19:31:28.806Z"
+    "created_at": "2026-05-13T19:31:28.806Z",
+    "objective": 0.8536115928354944
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2687,7 +2826,8 @@
     "user_reason": "미안했어요, 미안했어요— 그 말이 입 밖으로 나왔다는 게 부러운 건지 이상한 건지 모르겠다. 나는 현관 앞에서 어머니가 무너질 때 문을 닫았는데, 이 사람은 바닥에 드러누워서라도 그 말을 했잖아.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-14T13:15:37.840Z"
+    "created_at": "2026-05-14T13:15:37.840Z",
+    "objective": 0.9503223022379407
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2706,7 +2846,8 @@
     "user_reason": "현관문 하면 자꾸 그날이 생각난다. 아빠 짐가방이 나가고 문 닫히던 소리. 복도에 서 있는 게 나인지 엄마인지 모르겠는데 어느 쪽이든 좀 무섭다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-13T07:34:16.080Z"
+    "created_at": "2026-05-13T07:34:16.080Z",
+    "objective": 0.8541114664687838
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2726,7 +2867,8 @@
     "user_reason": "핏줄이 아니어서라고 결론 내리는데, 나는 핏줄인데도 그게 안 됐잖아. 아빠 짐 싸던 날도, 외할머니 관 앞에서도. 그러면 나는 뭐야.",
     "alignment": 0.42,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-13T14:12:03.576Z"
+    "created_at": "2026-05-13T14:12:03.576Z",
+    "objective": 0.5400000000000001
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2745,7 +2887,8 @@
     "user_reason": "한 달 뒤. 한 달 동안 뭔가를 말할 수 있었는데 못 한 거잖아. 그게 자꾸 걸린다. 트럭이 아니라 그 한 달이.",
     "alignment": 0.62,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-12T10:31:50.052Z"
+    "created_at": "2026-05-12T10:31:50.052Z",
+    "objective": 0.9274682097024138
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2764,7 +2907,8 @@
     "user_reason": "돌아와, 라는 말이 눈에 박혔다. 근데 나는 지금 화자 생각을 하고 있는 게 아니라 외할머니 장례식장 화장실 생각을 하고 있어. 차가운 물에 몸 던지는 거랑 손이 올라가지 않는 거랑 뭐가 달라.",
     "alignment": 0.42,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-15T01:27:08.444Z"
+    "created_at": "2026-05-15T01:27:08.444Z",
+    "objective": 0.7351298878242918
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2784,7 +2928,8 @@
     "user_reason": "핏줄이 아니어서라고 결론 내리는 거, 나는 반대 방향으로 생각하는데. 나는 핏줄인데도 못 달라붙었거든. 피가 이어져 있다고 해서 자동으로 뭔가 되는 게 아니라는 걸 아는데, 그게 더 부끄러운 거 같아서.",
     "alignment": 0.42,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-13T03:43:57.498Z"
+    "created_at": "2026-05-13T03:43:57.498Z",
+    "objective": 0.6753666942290092
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2803,7 +2948,8 @@
     "user_reason": "복도에 서 있는 사람이 나인데, 문이 혼자 닫혀버리는 거잖아. 어디로도 못 들어가고 그냥 거기 서 있는 느낌, 나 저거 알아. 근데 이상하게 엄마 생각이 나. 외할머니 장례 끝나고 어머니 혼자 차에 타던 뒷모습.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-13T12:36:46.029Z"
+    "created_at": "2026-05-13T12:36:46.029Z",
+    "objective": 0.8208180552269378
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2822,7 +2968,8 @@
     "user_reason": "우리 엄마도 내가 좋아하는 거 기억은 하는데, 근데 그게 진짜 내가 좋아하는 건지 엄마가 믿고 싶은 건지 가끔 헷갈릴 때가 있어. 이 장면이 왠지 그 느낌이랑 겹친다.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-14T17:15:08.090Z"
+    "created_at": "2026-05-14T17:15:08.090Z",
+    "objective": 0.7385489458759963
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2842,7 +2989,8 @@
     "user_reason": "손에 박혔다는 말이 자꾸 걸린다. 굳은살, 갈라진 틈. 할머니 발이 딱 그렇게 생겼는데. 만져본 적 없는 촉감이라는 게—나는 만져봤는데도 이상하게 그게 지금 안 떠오른다.",
     "alignment": 0.71,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-14T08:06:59.324Z"
+    "created_at": "2026-05-14T08:06:59.324Z",
+    "objective": 0.9132787008234353
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2861,7 +3009,8 @@
     "user_reason": "찬물. 그 새벽 복도 형광등이 생각난다. 할머니 실려가던 날 내 손이 얼마나 차가웠는지. 돌아와, 라는 말이 입 안에서만 맴돌고 소리가 안 됐던 것도.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-13T23:49:11.269Z"
+    "created_at": "2026-05-13T23:49:11.269Z",
+    "objective": 0.9283030782692087
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2881,7 +3030,8 @@
     "user_reason": "식감이 다르다는 그 한 줄이 왜 이렇게 걸리냐. 할머니가 해주는 깍두기, 나도 다른 데서 먹으면 뭔가 빠진 것 같은 느낌 알아. 근데 엄마가 '돌아와 있다는 것을 알아챈다'는 게... 나는 그런 날이 올 수 있을까, 아직도 그런 생각을 하고 있는 게 좀 싫다.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-16T09:29:15.675Z"
+    "created_at": "2026-05-16T09:29:15.675Z",
+    "objective": 0.8557013856720191
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2900,7 +3050,8 @@
     "user_reason": "한 달 뒤라는 말이 걸린다. 한 달 동안 뭘 했을까, 그 사람은. 그냥 살았겠지. 나도 지금 그냥 살고 있는데—할머니 생각난다. 갑자기.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-16T05:43:31.965Z"
+    "created_at": "2026-05-16T05:43:31.965Z",
+    "objective": 0.7264150943396228
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2919,7 +3070,8 @@
     "user_reason": "현관문 앞에 서 있는 장면인데, 자꾸 그날 아침이 겹쳐. 할머니가 구급차에 실려가던 날 복도에 혼자 남겨진 거랑, 엄마 신발이 사라진 현관이랑.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-15T09:16:33.429Z"
+    "created_at": "2026-05-15T09:16:33.429Z",
+    "objective": 0.9529531248281097
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2938,7 +3090,8 @@
     "user_reason": "짜사이 냄새가 먼저 떠올랐다. 중국집 특유의 그 시큼한 냄새. 할머니는 내가 좋아하는 거 진짜로 알고 있었는데, 이 사람 엄마는 착각하고 있는 거잖아. 그게 더 슬프다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-16T23:05:35.047Z"
+    "created_at": "2026-05-16T23:05:35.047Z",
+    "objective": 0.7488028723414423
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2958,7 +3111,8 @@
     "user_reason": "짜사이 냄새 같은 게 있잖아, 식탁에서 나는 거. 할머니 국 끓이는 냄새랑 엄마가 마지막에 쓸어내리던 손이랑 겹쳐서 읽혀서 한 번 멈췄다. 돌아와 있다는 걸 알아챈다는 게—그게 제일 힘든 부분인 것 같은데, 나는 그걸 아직 모르니까.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-17T11:21:48.792Z"
+    "created_at": "2026-05-17T11:21:48.792Z",
+    "objective": 0.7632771383149984
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2977,7 +3131,8 @@
     "user_reason": "한 달 뒤. 그 '한 달'이라는 말이 이상하게 걸린다. 할머니가 지금 얼마나 버텨주실 수 있는지, 자꾸 그 숫자로 생각이 흘러간다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-16T21:24:07.777Z"
+    "created_at": "2026-05-16T21:24:07.777Z",
+    "objective": 0.9495245828594086
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -2996,7 +3151,8 @@
     "user_reason": "차가운 물에 몸 던지는 거, 왜인지 알 것 같은데— 할머니가 실려가던 새벽에 나 세면대 틀어놓고 그냥 손 담갔었거든. 뜨겁지도 차갑지도 않은 물에. 돌아와, 라는 말이 자꾸 걸린다.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-16T18:33:47.194Z"
+    "created_at": "2026-05-16T18:33:47.194Z",
+    "objective": 0.9201130420354945
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3015,7 +3171,8 @@
     "user_reason": "나도 그 생각 해봤어. 핏줄 아니어서 그런 거냐고. 근데 난 그 반대야—할머니한테는 매달린 적 있는데 진짜 엄마한테는 한 번도 못 했어. 그러면 핏줄이 문제가 아닌 거잖아.",
     "alignment": 0.62,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-17T16:20:34.860Z"
+    "created_at": "2026-05-17T16:20:34.860Z",
+    "objective": 0.7730014702410658
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3034,7 +3191,8 @@
     "user_reason": "손에 박혔다는 표현에서 멈췄다. 굳은살, 갈라진 틈—할머니 발도 그렇다. 한 번도 만져본 적 없는데 왜 아는 것 같지.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-16T11:14:30.366Z"
+    "created_at": "2026-05-16T11:14:30.366Z",
+    "objective": 0.913925913815182
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3053,7 +3211,8 @@
     "user_reason": "짜사이라는 단어에서 눈이 멈췄다. 우리 할머니도 내가 어릴 때 뭘 제일 좋아하는지 항상 정확히 알았는데, 근데 이 사람 엄마는 틀렸잖아. 아는 척 하는 거랑 진짜 아는 거랑은 다른 거라는 걸, 세 번 읽으니까 이제 좀 더 아프게 들어온다.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-17T14:33:33.428Z"
+    "created_at": "2026-05-17T14:33:33.428Z",
+    "objective": 0.7318040653635677
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3072,7 +3231,8 @@
     "user_reason": "짜사이. 근데 나는 짜사이 하면 할머니가 먼저 떠오른다, 이상하게. 엄마가 뭘 제일 좋아하는지 이제 거의 기억이 안 나.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-18T15:42:35.936Z"
+    "created_at": "2026-05-18T15:42:35.936Z",
+    "objective": 0.67700320038633
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3091,7 +3251,8 @@
     "user_reason": "찬물. 할머니가 쓰러지던 날 새벽에 나도 세면대에 찬물 틀어놓고 손 담갔었는데. 돌아와, 라는 말이 자꾸 다른 사람 목소리로 들린다.",
     "alignment": 0.61,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-19T15:49:46.905Z"
+    "created_at": "2026-05-19T15:49:46.905Z",
+    "objective": 0.9283030782692087
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3110,7 +3271,8 @@
     "user_reason": "미안했어요, 미안했어요— 이 말을 나는 한 번도 해본 적이 없는데. 해야 하는 건지도 모르겠는데. 엄마한테? 아니면 할머니한테? 누구한테 해야 하는 건데.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-18T23:51:36.520Z"
+    "created_at": "2026-05-18T23:51:36.520Z",
+    "objective": 0.9148194285729763
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3129,7 +3291,8 @@
     "user_reason": "현관문. 계속 현관문이 나온다. 네 번째인데도 이 장면에서 손이 멈춘다. 이건 그 사람 기억인데 왜 자꾸 우리 집 현관이 보이지. 신발 정리하고 있던 내가.",
     "alignment": 0.71,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-18T03:36:26.909Z"
+    "created_at": "2026-05-18T03:36:26.909Z",
+    "objective": 0.8633894334426464
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3149,7 +3312,8 @@
     "user_reason": "나는 핏줄이 아니어서가 아니라고 생각하는데... 할머니한테는 달라붙은 적 없어도 그게 사랑이 없어서는 아니었으니까. 근데 왜 나는 그냥 그 '달라붙지 못한 것'이 지금도 이렇게 걸리지.",
     "alignment": 0.62,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-17T20:59:22.681Z"
+    "created_at": "2026-05-17T20:59:22.681Z",
+    "objective": 0.8914682939193886
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3168,7 +3332,8 @@
     "user_reason": "읽다가 손을 멈췄다. 한 달 뒤라는 말이—그 한 달 동안 이 사람은 뭘 하고 있었을까, 엄마가 살아 있는 줄 알면서 연락을 안 했을까, 아니면 하고 싶었는데 못 했을까. 민규한테 보내지 못한 메시지 창이 생각났다.",
     "alignment": 0.72,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-18T17:22:47.227Z"
+    "created_at": "2026-05-18T17:22:47.227Z",
+    "objective": 0.9110268992986885
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3187,7 +3352,8 @@
     "user_reason": "미안했어요, 그 말밖에 나오지 않았다는 게— 나도 한 번도 못 했는데. 왜 나를 두고 갔어, 그 말을. 현관문을 열어놨다는 게 자꾸 마음에 걸린다.",
     "alignment": 0.82,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-20T12:12:40.560Z"
+    "created_at": "2026-05-20T12:12:40.560Z",
+    "objective": 0.9534192593842067
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3206,7 +3372,8 @@
     "user_reason": "말하지 못한 거잖아. 전하지 못한 거. 근데 이상하게 이 사람 엄마가 아니라 내가 엄마한테 한 번도 못 한 말들이 자꾸 겹쳐 보인다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-19T12:55:10.505Z"
+    "created_at": "2026-05-19T12:55:10.505Z",
+    "objective": 0.792259068484546
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3225,7 +3392,8 @@
     "user_reason": "나도 그런 생각 해봤다. 내가 엄마한테 왜 그렇게 못 매달렸지—핏줄이 아니어서가 아니라, 그냥 그러면 안 될 것 같았으니까. 근데 그 둘이 사실 같은 말인 건지 아직도 모르겠다.",
     "alignment": 0.72,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-21T01:37:14.114Z"
+    "created_at": "2026-05-21T01:37:14.114Z",
+    "objective": 0.7998551193313261
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3244,7 +3412,8 @@
     "user_reason": "안 된다고 소리치는 게 뭔지 알 것 같아서 목이 막혔다. 근데 나는 엄마한테 그것도 못 했는데, 꿈에서라도 소리칠 수 있으면 차라리 낫지 않나 싶어서.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-19T23:22:18.938Z"
+    "created_at": "2026-05-19T23:22:18.938Z",
+    "objective": 0.8730606600948054
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3264,7 +3433,8 @@
     "user_reason": "식감이 다르다는 것만으로 그걸 알아챈다는 게—나는 할머니가 끓여주는 된장찌개 맛을 아마 평생 잊지 못할 것 같다는 생각이 갑자기 들었다. 지금 여기 없는 사람 얘기인데 왜 나는 아직 여기 있는 사람 걱정을 하고 있지.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-20T18:08:31.501Z"
+    "created_at": "2026-05-20T18:08:31.501Z",
+    "objective": 0.8327331171776732
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3283,7 +3453,8 @@
     "user_reason": "현관문 소리. 자꾸 할머니 생각이 난다. 요즘 새벽에 할머니가 화장실 가는 소리에 눈이 떠지는데, 그때마다 나도 모르게 숨을 참는다.",
     "alignment": 0.82,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-20T20:09:41.483Z"
+    "created_at": "2026-05-20T20:09:41.483Z",
+    "objective": 0.9529531248281097
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3302,7 +3473,8 @@
     "user_reason": "다시 태어나도 똑같이 사랑한다는 말—근데 왜 나는 그 말이 위로가 아니라 더 무서운지. 엄마가 나한테 그 말 해줬으면 좋겠다는 마음이랑, 절대 듣고 싶지 않다는 마음이 동시에 올라온다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-20T10:20:08.057Z"
+    "created_at": "2026-05-20T10:20:08.057Z",
+    "objective": 0.8736410247623128
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3321,7 +3493,8 @@
     "user_reason": "찬물에 몸을 던진다는 게—돌아와, 라는 그 두 글자가 자꾸 걸린다. 나는 그 말을 한 번도 소리 내서 못 했는데.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-20T00:06:25.027Z"
+    "created_at": "2026-05-20T00:06:25.027Z",
+    "objective": 0.8684334907146422
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3340,7 +3513,8 @@
     "user_reason": "두 번째 읽는데도 이 문장에서 멈추게 된다. 근데 이번엔 엄마가 죽은 게 아니라—그 한 달 동안 뭘 했는지가 자꾸 걸린다. 한 달 뒤라는 게. 그 사이에 뭔가 말할 수 있었을 텐데.",
     "alignment": 0.72,
     "mismatch_type": "attribution_mismatch",
-    "created_at": "2026-05-22T11:42:05.405Z"
+    "created_at": "2026-05-22T11:42:05.405Z",
+    "objective": 0.9487209016852292
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3360,7 +3534,8 @@
     "user_reason": "짜사이 식감이 다르다는 것만으로 알아챈다는 게—나는 할머니가 해준 미역국 간이 병원 다녀온 뒤로 조금 달라졌을 때 그냥 맛있다고만 했는데. 눈치채고도 아무 말 안 했던 게 지금 갑자기 걸린다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-21T13:17:37.654Z"
+    "created_at": "2026-05-21T13:17:37.654Z",
+    "objective": 0.7276149660576429
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3379,7 +3554,8 @@
     "user_reason": "엄마가 내가 뭘 제일 좋아하는지 알긴 알까, 한 번도 그런 말 들어본 적이 없는 것 같아서. 근데 이 사람은 그 말이 이상하다고 느끼면서도 고개를 끄덕였다는 게—나도 그랬을 것 같다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-21T02:56:11.418Z"
+    "created_at": "2026-05-21T02:56:11.418Z",
+    "objective": 0.7385489458759963
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3399,7 +3575,8 @@
     "user_reason": "민규 형 손 잡았을 때 생각났다. 차갑다는 게 이런 건지도 모르고 그냥 서 있었는데—이번에 읽으니까 그 차가움이 뭔지 이제 조금 알 것 같아서 오히려 더 읽기 힘들다.",
     "alignment": 0.58,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-23T11:59:59.474Z"
+    "created_at": "2026-05-23T11:59:59.474Z",
+    "objective": 0.8305043468682536
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3418,7 +3595,8 @@
     "user_reason": "식감이 다른데도 그게 엄마라는 걸 아는 그 순간... 통영 집에서 엄마가 해주던 멸치볶음 생각이 났다. 우리 애도 나중에 내가 해주는 음식 맛을 기억할까.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-21T15:23:41.077Z"
+    "created_at": "2026-05-21T15:23:41.077Z",
+    "objective": 0.6194152191181725
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3437,7 +3615,8 @@
     "user_reason": "복도에 서 있는 누군가... 왜인지 형 생각이 난다. 방파제에서 기다리던 그 시간, 문 너머에 형이 있을 것 같았던 그 느낌이랑 비슷하다.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-23T21:37:04.491Z"
+    "created_at": "2026-05-23T21:37:04.491Z",
+    "objective": 0.9328648208367949
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3456,7 +3635,8 @@
     "user_reason": "안 된다고, 그것만은 안 된다는 말이 왜 이렇게 가슴에 박히냐... 근데 나는 지금 화자 엄마가 아니라 뱃속 애 생각이 나고 있어. 얘한테 이런 말 해줄 수 있을까, 나중에.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-23T10:26:42.052Z"
+    "created_at": "2026-05-23T10:26:42.052Z",
+    "objective": 0.8685431488567652
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3475,7 +3655,8 @@
     "user_reason": "현관문을 열어놓고 바닥에 누웠다는 게... 나도 모르게 임신 얘기를 아직 못 한 사람 생각이 났다. 좋은 소식을 전하지 못한 채로 이별하는 게 얼마나 무거운 건지.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-24T15:31:11.950Z"
+    "created_at": "2026-05-24T15:31:11.950Z",
+    "objective": 0.9222730332327376
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3494,7 +3675,8 @@
     "user_reason": "양막 안에서 웅크리고 있다는 말에 순간 우리 애 생각이 났다. 지금 아내 뱃속에서도 저러고 있겠지 싶어서.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-23T02:34:02.307Z"
+    "created_at": "2026-05-23T02:34:02.307Z",
+    "objective": 0.890439019054776
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3513,7 +3695,8 @@
     "user_reason": "짜사이 식감 하나로 그걸 아는 거잖아. 나도 통영 가면 어머니 된장찌개 냄새 맡는 순간 아, 왔다 싶거든. 근데 지금 자꾸 뱃속에 있는 애 생각이 나. 얘는 나 없이도 나를 어떻게 알아볼까.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-24T04:43:31.460Z"
+    "created_at": "2026-05-24T04:43:31.460Z",
+    "objective": 0.599036578314939
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3532,7 +3715,8 @@
     "user_reason": "임신 소식을 아직 못 전한 채 이렇게 됐다는 게... 한 달 사이에 트럭에. 두 번째 읽는데도 이 한 문장이 너무 짧아서 오히려 더 무겁다. 뱃속 애 생각이 갑자기 났는데, 그게 지금 내가 할 생각은 아닌 것 같아서 멈췄다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-23T18:03:00.770Z"
+    "created_at": "2026-05-23T18:03:00.770Z",
+    "objective": 0.9277942655434497
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3552,7 +3736,8 @@
     "user_reason": "엄마 등에 손 얹었을 때 그 떨림이 손바닥에 다시 올라온다. 두 번째 읽는데도 이 부분에서 멈추게 되네. 근데 나는 지금 화자 엄마 발이 아니라 우리 엄마 발 생각을 하고 있어.",
     "alignment": 0.71,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-25T12:06:28.331Z"
+    "created_at": "2026-05-25T12:06:28.331Z",
+    "objective": 0.9434563530497265
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3571,7 +3756,8 @@
     "user_reason": "입이 안 열린다는 거, 그게 더 무섭다. 꿈속에서도 말을 못 막는 거잖아. 근데 자꾸 아직 태어나지도 않은 우리 애 얼굴이 겹쳐서, 그 생각은 하면 안 될 것 같아서 억지로 딴 데로 눈 돌리고 있어.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-25T15:07:38.529Z"
+    "created_at": "2026-05-25T15:07:38.529Z",
+    "objective": 0.9535093264623185
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3590,7 +3776,8 @@
     "user_reason": "찬물에 몸을 던진다는 게 머릿속에서 자꾸 우리 애 얼굴이랑 겹쳐. 아직 얼굴도 모르는데, 양막 안에서 웅크리고 있다는 표현이... 지금 우리 애도 그렇게 있겠지.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-24T15:03:24.833Z"
+    "created_at": "2026-05-24T15:03:24.833Z",
+    "objective": 0.8914981104083151
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3609,7 +3796,8 @@
     "user_reason": "미안했어요, 그 말이 계속 머릿속에서 돌아. 근데 자꾸 내 쪽 이야기가 끼어드네. 아직 말 못 한 것들, 뱃속 아이한테도, 아내한테도.",
     "alignment": 0.72,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-25T19:26:54.507Z"
+    "created_at": "2026-05-25T19:26:54.507Z",
+    "objective": 0.8953651232231701
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3629,7 +3817,8 @@
     "user_reason": "세 번째 읽는데 처음보다 더 찌르는 건... 나도 아직 통영 부모님한테 아내 임신 소식 전할 때 어떤 표정 지어야 할지 몰라서 전화 끊고 멍했던 거 생각나서인 것 같다. 좋은 소식이 누군가한테는 칼이 된다는 게, 알면서도 매번 새로 아프다.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-25T16:39:54.798Z"
+    "created_at": "2026-05-25T16:39:54.798Z",
+    "objective": 0.8427939819094696
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3648,7 +3837,8 @@
     "user_reason": "핏줄이 아니어서인가, 라는 말이 걸린다. 나는 핏줄 맞는데도 엄마한테 그렇게 달라붙어본 적이 없거든. 그게 나한테도 쓸모없는 결론인 건지, 아니면 그냥 나라는 사람이 원래 그런 건지.",
     "alignment": 0.52,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-25T02:32:31.474Z"
+    "created_at": "2026-05-25T02:32:31.474Z",
+    "objective": 0.47933061112121234
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3667,7 +3857,8 @@
     "user_reason": "복도에 서 있는 게 나인지, 아니면 내가 기다리는 사람인지 모르겠다. 어둠 속에서 문이 쾅 닫히는 느낌이 자꾸 아내 쪽으로 가서 멈춰.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-27T06:49:55.955Z"
+    "created_at": "2026-05-27T06:49:55.955Z",
+    "objective": 0.8943961684311538
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3686,7 +3877,8 @@
     "user_reason": "짜사이... 엄마가 집에서 해준 적 없는 음식을 해줬다는 게, 뭔가 평소와 다른 날이었다는 뜻인데. 우리 어머니도 통영에서 생선 손질하던 손으로 갑자기 서울 음식 만들어주겠다고 했을 때 그랬었는데—뭔가 중요한 걸 앞두고 있을 때 어머니들은 익숙한 것 말고 특별한 걸 해주려 하더라고.",
     "alignment": 0.62,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-26T03:06:27.803Z"
+    "created_at": "2026-05-26T03:06:27.803Z",
+    "objective": 0.8386693086446145
   },
   {
     "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
@@ -3706,6 +3898,7 @@
     "user_reason": "우리 어머니 발을 내가 만진 적이 있던가. 영안실이 아니라, 살아 있는 어머니의 발을 그냥 손으로 잡아본 적이 한 번이라도 있었나.",
     "alignment": 0.71,
     "mismatch_type": "target_displacement",
-    "created_at": "2026-05-25T09:39:44.694Z"
+    "created_at": "2026-05-25T09:39:44.694Z",
+    "objective": 0.9434563530497265
   }
 ]

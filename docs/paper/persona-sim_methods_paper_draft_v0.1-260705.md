@@ -215,11 +215,15 @@ Supabase plays 테이블
 | alignment 범위 | 0.05–0.95 | 0.254–0.986 | 하한 미도달 |
 | mismatch 비율 | ≥ 50% | 97.4% | 충족(과잉) |
 
-핵심 발견: **LLM 독자는 과공명(over-resonance)한다.** 인간 독자에게 기대한 스펙트럼(공명 못 하는 꼬리 포함) 대비, 시뮬레이션 독자 15명 전원이 평균 0.64 이상으로 떠 있고 낮은 꼬리(< 0.25)가 없다. 이는 도구의 실패 보고가 아니라 도구의 **측정된 한계 규정**이다: LLM 시뮬 독자는 상대 비교(페르소나 간 순위·상관)에는 유효하되, 절대 분포(인간 스펙트럼 재현)에는 천장 편향이 있다.
+핵심 발견: **LLM 독자는 과공명(over-resonance)한다**(그림 1). 인간 독자에게 기대한 스펙트럼(공명 못 하는 꼬리 포함) 대비, 시뮬레이션 독자 15명 전원이 평균 0.64 이상으로 떠 있고 낮은 꼬리(< 0.25)가 없다.
+
+![그림 1](figures/fig1_strip_obj_alignment-260705.svg) 이는 도구의 실패 보고가 아니라 도구의 **측정된 한계 규정**이다: LLM 시뮬 독자는 상대 비교(페르소나 간 순위·상관)에는 유효하되, 절대 분포(인간 스펙트럼 재현)에는 천장 편향이 있다. 이 천장 편향은 우리 우연의 산물이 아니라 문헌과 일치한다 — LLM 페르소나 생성이 **바람직한 특질(특히 고친화성)** 쪽으로 응답 분포를 좁힌다는 관찰이 축적되어 있다(§2.3). 성격 축을 실제 분포로 표집해도 그 편향이 **읽기 반응 단계에서 되살아난다**는 것이 본 결과의 함의다: 표집은 성격의 다양성은 복원하지만, 감정 반응 생성의 상향 편향까지 제거하지는 못한다.
 
 ### 5.2 자기보고 정렬도의 양자화 — 연속 측정도구로 부적격 확인
 
-자기보고 점수는 세 값(0.72 / 0.62 / 0.52)에 전체의 **71.0%**가 몰렸고(각 33.7 / 25.4 / 11.9%), 실효 범위가 0.42–0.82로 잘렸다. 답안지를 보며 자기 채점하는 구조(§3.4)의 순환성 우려가 실측으로 확인된 것. 직접 계산과의 격차(self − objective)는 전 페르소나에서 음수 — LLM은 자기 공명을 체계적으로 **과소** 보고한다. 결론: LLM 자기보고 점수는 연속 측정도구로 쓸 수 없으며, 정렬도는 감정 분포에서 직접 계산해야 한다. 이 결론 자체가 유사 파이프라인 설계자들에게 주는 실무 경고다.
+자기보고 점수는 세 값(0.72 / 0.62 / 0.52)에 전체의 **71.0%**가 몰렸고(각 33.7 / 25.4 / 11.9%), 실효 범위가 0.42–0.82로 잘렸다(그림 2).
+
+![그림 2](figures/fig2_selfreport_quantization-260705.svg) 답안지를 보며 자기 채점하는 구조(§3.4)의 순환성 우려가 실측으로 확인된 것. 직접 계산과의 격차(self − objective)는 전 페르소나에서 음수 — LLM은 자기 공명을 체계적으로 **과소** 보고한다. 결론: LLM 자기보고 점수는 연속 측정도구로 쓸 수 없으며, 정렬도는 감정 분포에서 직접 계산해야 한다. 이 결론 자체가 유사 파이프라인 설계자들에게 주는 실무 경고다.
 
 ### 5.3 H1–H4 판정 (Pearson r, n=15 페르소나; |r|≥0.51 ≈ p<.05)
 
@@ -288,20 +292,42 @@ p08(냉소적 해체자, 유일하게 낮은 꼬리를 만든 사례)의 장면�
 - A. 15개 층 필터 정의 전문(`1_sample.js` STRATA)
 - B. persona / play 프롬프트 템플릿 전문
 - C. 검증 notebook (분포·상관·산포도)
-- D. p08 냉소적 해체자 10장면 트레이스 전문
+- D. p08 냉소적 해체자 트레이스 — **아래 작성됨**
+
+## Appendix D. p08 질적 트레이스 — 성격→전기→반응 사슬의 일관성
+
+p08(low_A_low_C; 실측 N=86.3, A=25.0, C=29.3)은 층 설계에서 "냉소적 해체자"로 겨냥되었고, 직접 계산 정렬도 최하위(0.638)로 분포의 낮은 꼬리를 만든 유일한 페르소나다. 이 트레이스는 그 꼬리가 **잡음이 아니라 심리적으로 일관된 산물**임을 보인다.
+
+**전기 (Opus 생성, 성격 딱지 없음).** 박종수, 71세. 열두 살에 아버지가 떠나 이모 집 밥상 모서리에서 "가족이 아닌 사람의 자리"를 익혔다. 아내의 유산 앞에서 위로 대신 우유를 사다 놓았고, 그것이 이혼 사유의 문장이 되었다. 2019년 어머니의 요양원 임종 전화를 **알면서도 받지 않았다.** 생성된 읽기 렌즈는 이렇게 예측했다: *"먼저 거리감을 확보하려 한다 … 하지만 신체적 감각이 구체적으로 묘사되면 방어가 무너진다. '사과하지 못한 것'에 대한 죄책감에는 어머니의 임종 전화 기억이 포개진다. 초자연적 위로(환생)는 믿지 않는다."*
+
+**플레이 발췌 (9판 중 5판; 감정은 상위 2개만 표기).**
+
+| 방문·씬 | 감정 | 내면 독백 (Sonnet 생성) |
+|---|---|---|
+| v1 s3 (트럭 사고) | numbness .45 / guilt .30 | "그렇게 가는 거지 뭐. 근데 왜 갑자기 요양원 전화 생각이 나. 받았어야 했는데." |
+| v1 s5 (미안했어요) | guilt .45 / numbness .25 | "나는 그 말을 끝내 못 했다. 전화기 화면이 켜졌다 꺼지는 걸 보면서 가만히 있었던 그 밤." |
+| v2 s4 (영안실 발) | guilt .35 / numbness .25 | "굳은살. 갈라진 뒤꿈치. 나는 우리 어머니 발을 만져본 적이 없다. 이 사람은 만졌는데." |
+| v2 s8 (짜사이) | longing .35 / guilt .28 | "나는 어머니가 뭘 해줬는지 이제 기억이 안 난다. 입맛도 기억 못 하는 놈이 뭘 그리워한다고." |
+| v2 s9 (복도의 형체) | numbness .35 / guilt .30 | "복도에 서 있는 게 나야. … 문이 닫히는 건 내가 닫은 거지." |
+
+**분석 3점.**
+
+1. **사슬의 일관성.** 표집 점수(고N·저A) → 전기(임종 전화 회피, 우유) → 씬 반응(무감각 우선, 죄책감 침투, 매 씬 자기 어머니 소환)이 한 줄로 이어진다. 어느 단계에도 "신경증적"이라는 딱지 없이, 구체 사건만으로 이 일관성이 전달되었다.
+2. **읽기 렌즈의 예측이 데이터에서 검증됨.** 초반 거리두기("그렇게 가는 거지 뭐")가 신체 감각 씬(s4 발가락)에서 무너지는 패턴, 환생 씬(s8)에서 공명 대신 자기 기억 상실로 미끄러지는 반응 — 전기 생성 시점의 예측과 플레이 시점의 행동이 맞아떨어진다(서로 다른 모델이 생성했음에도).
+3. **§5.4에 대한 반대 증거 겸 보완.** p08의 target_displacement 9/9는 범주 붕괴가 아니라 **서사적으로 정당한** displacement다(모든 씬이 그의 어머니를 소환). 즉 82% 과점은 "라벨 편향"과 "이 작품이 실제로 displacement를 유도함"의 혼합이며, 분리하려면 주제가 다른 작품에서의 교차 실험이 필요하다(§6.4).
 
 ---
 
-## References (초안 — 서지 확정 필요)
+## References (2026-07-05 웹 검증 완료 — 서지 확정)
 
-- Argyle, L. P., et al. (2023). Out of one, many: Using language models to simulate human samples. *Political Analysis*, 31(3).
-- Aher, G., Arriaga, R. I., & Kalai, A. T. (2023). Using large language models to simulate multiple humans and replicate human subject studies. *ICML*.
-- Costa, P. T., & McCrae, R. R. (1992). *NEO PI-R professional manual*. PAR.
-- Goldberg, L. R., et al. (2006). The IPIP and the future of public-domain personality measures. *Journal of Research in Personality*, 40(1).
-- Park, J. S., et al. (2022). Social Simulacra: Creating populated prototypes for social computing systems. *UIST*.
-- Park, J. S., et al. (2023). Generative agents: Interactive simulacra of human behavior. *UIST*.
-- *(mode collapse / persona diversity / LLM stereotyping 문헌 — 보강 필요)*
-- *(automoto/big-five-data 데이터셋 인용 형식 확정 필요)*
+- Argyle, L. P., Busby, E. C., Fulda, N., Gubler, J. R., Rytting, C., & Wingate, D. (2023). Out of one, many: Using language models to simulate human samples. *Political Analysis*, 31(3), 337–351.
+- Aher, G. V., Arriaga, R. I., & Kalai, A. T. (2023). Using large language models to simulate multiple humans and replicate human subject studies. *Proceedings of the 40th International Conference on Machine Learning (ICML)*, PMLR 202, 337–371.
+- Costa, P. T., & McCrae, R. R. (1992). *NEO PI-R professional manual*. Psychological Assessment Resources.
+- Goldberg, L. R., Johnson, J. A., Eber, H. W., et al. (2006). The International Personality Item Pool and the future of public-domain personality measures. *Journal of Research in Personality*, 40(1), 84–96.
+- Park, J. S., Popowski, L., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2022). Social Simulacra: Creating populated prototypes for social computing systems. *UIST '22*.
+- Park, J. S., O'Brien, J., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023). Generative agents: Interactive simulacra of human behavior. *UIST '23*, 1–22.
+- *(mode collapse / desirable-trait 편향 문헌: LLM 페르소나 생성이 명시적 다양성 지시에도 WEIRD·고친화성 하위집단으로 수렴한다는 최근 관찰 — arXiv 2602.03545, 2505.07850 등. 인용 확정 시 대표 1–2편 선별.)*
+- *(automoto/big-five-data — IPIP-NEO-300, N=307,313. GitHub 데이터셋 인용 형식 확정 필요.)*
 
 ---
 
@@ -309,7 +335,8 @@ p08(냉소적 해체자, 유일하게 낮은 꼬리를 만든 사례)의 장면�
 
 1. ~~§5 실측 채우기~~ **완료** (2026-07-05 재생성 193 plays, `5_analyze.mjs`).
 2. ~~상관 분석~~ **완료** (H2 지지 / H1·H3 기각 / H4 절반 — §5.3).
-3. **appendix D — p08 질적 트레이스** 작성.
-4. **§2 서지 확정** — LLM 시뮬 계보 인용 재검증(deep-research 1회).
-5. **영역(그림)** — 페르소나별 obj 분포 스트립 플롯 1장 + 자기보고 양자화 히스토그램 1장.
-6. **arXiv 선공개** → **ICIDS 2026 Late-Breaking Works 투고 (마감 2026-09-14, 통보 10-02)**. 예비선: CHI 2027 LBW.
+3. ~~appendix D — p08 질적 트레이스~~ **완료** (부록 D).
+4. ~~§2 서지 확정~~ **완료** (2026-07-05 웹 검증; 핵심 6건 확정, mode-collapse·데이터셋 인용만 최종 선별 남음).
+5. ~~그림 2장~~ **완료** (그림 1 스트립 플롯, 그림 2 양자화 히스토그램; `figures/`).
+6. **남은 것**: (a) 영문 번역(투고본), (b) mode-collapse 인용 1–2편 최종 선별, (c) 데이터셋 인용 형식.
+7. **arXiv 선공개** → **ICIDS 2026 Late-Breaking Works 투고 (마감 2026-09-14, 통보 10-02)**. 예비선: CHI 2027 LBW.
