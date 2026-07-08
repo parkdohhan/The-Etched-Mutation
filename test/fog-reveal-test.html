@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공간 안개 해제 테스트 — B안 검증 (per-region fog reveal)</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #0a0a10; color: #cfc8bc; font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; overflow: hidden; }
+  #three-container { position: fixed; inset: 0; }
+  #ui {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    background: rgba(10, 10, 18, 0.82); border: 1px solid rgba(196, 168, 130, 0.18);
+    border-radius: 4px; padding: 14px 16px; max-width: 320px; backdrop-filter: blur(4px);
+  }
+  #ui h1 { font-size: 14px; margin: 0 0 6px; color: #e0d6c4; letter-spacing: 0.04em; }
+  #ui p { font-size: 11.5px; line-height: 1.55; margin: 0 0 10px; color: #9a948a; }
+  #ui button {
+    background: #1c2436; color: #cfd8e8; border: 1px solid rgba(120, 150, 200, 0.35);
+    border-radius: 3px; padding: 7px 14px; font-size: 12.5px; cursor: pointer; margin-right: 6px;
+  }
+  #ui button:hover { background: #263250; }
+  #ui button:disabled { opacity: 0.35; cursor: default; }
+  #status { font-size: 11.5px; color: #7fa8d8; margin-top: 10px; }
+  #note {
+    position: fixed; bottom: 14px; left: 16px; z-index: 10; font-size: 10.5px; color: #6a6458;
+    background: rgba(10, 10, 18, 0.7); padding: 8px 12px; border-radius: 3px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div id="ui">
+  <h1>공간 안개 해제 — B안 검증</h1>
+  <p>지형은 본 게임과 같은 재질 + 같은 셰이더 패치(암석 질감) 위에 <b>지점별 안개 마스크</b>를 추가한 것. 열린 기억 주변만 안개가 물러나고, <b>그 지역의 유령 1기</b>가 나타난다. 걷힌 유령은 클릭해 진입 가능, 안개 속은 잠김. 드래그 회전 · 스크롤 줌.</p>
+  <button id="btn-reveal">다음 기억 해제</button>
+  <button id="btn-reset">처음부터</button>
+  <div id="status"></div>
+</div>
+<div id="note">
+  검증 포인트: ① 열린 지점 주변만 맑아지는가 ② 가장자리가 뭉게뭉게 일렁이는가<br>
+  ③ 해제가 3초 완화 곡선으로 밀려나는가 ④ 기존 암석 셰이더 패치와 충돌 없는가<br>
+  ⑤ 한 지역당 유령 1기 — 걷힌 유령만 클릭 진입, 안개 속 클릭은 거절되는가
+</div>
+<div id="three-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function () {
+  'use strict';
+  if (typeof THREE === 'undefined') {
+    document.getElementById('status').textContent = 'Three.js 로드 실패 — 인터넷 연결 확인';
+    return;
+  }
+
+  // ─── Constants (mirrors tem_af_strata_terrain.js palette/values) ───
+  var SZ = 120, G = 128;
+  var CLEAR_COLOR = 0x12121a;
+  var FOG_CLEAR_DENSITY = 0.006;      // tem_af_strata_terrain default
+  var FOG_HEAVY_DENSITY = 0.055;      // unrevealed region — near-opaque wall
+  var FOG_SKY = 0x555f6e;             // 뭉게 안개 색 — 어두운 팔레트 위의 회청빛 안개 (하늘하양은 과노출이라 톤다운)
+  var REVEAL_RADIUS = 20;
+  var REVEAL_ANIM_MS = 3000;          // lumen_replay_fog animMs와 동일
+  var CORRIDOR_W = 7;                 // 회랑(길) 반폭 — 직전 기억에서 새 기억까지 안개가 갈라지는 폭
+  var CORRIDOR_MS = 1600;             // 길이 파이는 시간 (이후 지역 원이 피어남)
+  var CIRCLE_DELAY = 1400;            // 길 끝에 닿기 직전 지역 해제 시작
+  var MAX_REVEAL = 16;                // shader uniform array size (지역 6 + 회랑 5 여유)
+
+  var EC = {
+    calm:    [0.35, 0.85, 0.72],
+    sadness: [0.35, 0.50, 0.85],
+    longing: [0.85, 0.54, 0.85],
+    fear:    [0.48, 0.35, 0.85],
+    anger:   [0.85, 0.35, 0.35],
+    joy:     [0.91, 0.77, 0.42]
+  };
+
+  // Scene pins — unlock order. First one revealed at start.
+  var PINS = [
+    { x:  -2, z:   8, emo: 'calm',    label: '첫 기억' },
+    { x: -30, z:  -6, emo: 'sadness', label: '두 번째' },
+    { x: -12, z: -36, emo: 'fear',    label: '세 번째' },
+    { x:  24, z: -24, emo: 'anger',   label: '네 번째' },
+    { x:  40, z:  10, emo: 'joy',     label: '다섯 번째' },
+    { x:  12, z:  40, emo: 'longing', label: '여섯 번째' }
+  ];
+
+  // ─── JS-side value noise (terrain heights + pin ground snap) ───
+  function hash2(x, y) {
+    var s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  }
+  function noise2(x, y) {
+    var ix = Math.floor(x), iy = Math.floor(y);
+    var fx = x - ix, fy = y - iy;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    var a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1);
+    return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+  }
+  function fbm2(x, y) {
+    var v = 0, a = 0.5;
+    for (var i = 0; i < 4; i++) { v += a * noise2(x, y); x *= 2.1; y *= 2.1; a *= 0.5; }
+    return v;
+  }
+  function heightAt(wx, wz) {
+    var h = fbm2(wx * 0.035 + 7.3, wz * 0.035 + 2.1) * 14 - 5;
+    h += fbm2(wx * 0.11, wz * 0.11) * 3.5;
+    return h;
+  }
+
+  // ─── Renderer / scene / camera ───
+  var container = document.getElementById('three-container');
+  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(CLEAR_COLOR);
+  container.appendChild(renderer.domElement);
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(CLEAR_COLOR);
+  // Scene fog kept at CLEAR density — sprites(fog:true)용. Terrain fog는 셰이더가 담당.
+  scene.fog = new THREE.FogExp2(CLEAR_COLOR, FOG_CLEAR_DENSITY);
+
+  var camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+  camera.position.set(0, 46, 72);
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 0, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.maxPolarAngle = Math.PI * 0.49;
+
+  scene.add(new THREE.AmbientLight(0x404050, 0.7));
+  var dl = new THREE.DirectionalLight(0x8090b0, 0.55);
+  dl.position.set(30, 60, 20); scene.add(dl);
+
+  // Backdrop plane (mirrors real file)
+  var bp = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ color: 0x050509, roughness: 1 }));
+  bp.rotation.x = -Math.PI / 2; bp.position.y = -12; scene.add(bp);
+
+  // ─── Terrain geometry: heights + emotion-tinted vertex colors ───
+  var geo = new THREE.PlaneGeometry(SZ, SZ, G - 1, G - 1);
+  geo.rotateX(-Math.PI / 2);
+  var pos = geo.attributes.position.array;
+  var colA = new Float32Array(pos.length);
+  for (var j = 0; j < G * G; j++) {
+    var wx = pos[j * 3], wz = pos[j * 3 + 2];
+    var h = heightAt(wx, wz);
+    pos[j * 3 + 1] = h;
+    // base: dark slate, lighter with height
+    var t = Math.min(1, Math.max(0, (h + 8) / 18));
+    var r = 0.10 + t * 0.14, g = 0.10 + t * 0.13, b = 0.14 + t * 0.15;
+    // emotion tint near each pin
+    for (var pi = 0; pi < PINS.length; pi++) {
+      var dx = wx - PINS[pi].x, dz = wz - PINS[pi].z;
+      var d = Math.sqrt(dx * dx + dz * dz);
+      var k = Math.max(0, 1 - d / 15) * 0.45;
+      if (k > 0) {
+        var ec = EC[PINS[pi].emo];
+        r += (ec[0] * 0.5 - r) * k; g += (ec[1] * 0.5 - g) * k; b += (ec[2] * 0.5 - b) * k;
+      }
+    }
+    colA[j * 3] = r; colA[j * 3 + 1] = g; colA[j * 3 + 2] = b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colA, 3));
+  geo.computeVertexNormals();
+
+  // ─── Material: same base as real terrain ───
+  var terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.06, side: THREE.DoubleSide });
+
+  // Reveal uniforms — shared with JS animation loop
+  // _revealSeg[i] = (ax, az, bx, bz) 선분. 점 해제는 a==b. _revealR[i] = 반경/반폭.
+  var revealSegU = [];
+  for (var ri = 0; ri < MAX_REVEAL; ri++) revealSegU.push(new THREE.Vector4(0, 0, 0, 0));
+  var revealRU = [];
+  for (var ri2 = 0; ri2 < MAX_REVEAL; ri2++) revealRU.push(0);
+  var terrainUniforms = null;
+
+  terrainMat.onBeforeCompile = function (shader) {
+    // (1) 기존 실제 패치와 같은 자리: noise 함수 + uniform 선언 주입
+    shader.uniforms._revealSeg = { value: revealSegU };
+    shader.uniforms._revealR = { value: revealRU };
+    shader.uniforms._revealCount = { value: 0 };
+    shader.uniforms._time = { value: 0 };
+    shader.uniforms._fogHeavyD = { value: FOG_HEAVY_DENSITY };
+    shader.uniforms._fogSky = { value: new THREE.Color(FOG_SKY) };
+    terrainUniforms = shader.uniforms;
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'void main() {',
+      [
+        'varying vec3 vWPos;',
+        'uniform vec4 _revealSeg[' + MAX_REVEAL + '];',
+        'uniform float _revealR[' + MAX_REVEAL + '];',
+        'uniform int _revealCount;',
+        'uniform float _time;',
+        'uniform float _fogHeavyD;',
+        'uniform vec3 _fogSky;',
+        'float _h31(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}',
+        'float _n31(vec3 p){',
+        '  vec3 i=floor(p),f=fract(p);',
+        '  f=f*f*(3.0-2.0*f);',
+        '  return mix(mix(mix(_h31(i),_h31(i+vec3(1,0,0)),f.x),',
+        '    mix(_h31(i+vec3(0,1,0)),_h31(i+vec3(1,1,0)),f.x),f.y),',
+        '    mix(mix(_h31(i+vec3(0,0,1)),_h31(i+vec3(1,0,1)),f.x),',
+        '    mix(_h31(i+vec3(0,1,1)),_h31(i+vec3(1,1,1)),f.x),f.y),f.z);',
+        '}',
+        'float _fbm3(vec3 p){',
+        '  float v=0.0,a=0.5;',
+        '  for(int i=0;i<4;i++){v+=a*_n31(p);p*=2.1;a*=0.5;}',
+        '  return v;',
+        '}',
+        'void main() {',
+      ].join('\n')
+    );
+
+    // (2) 기존 실제 패치와 같은 anchor: 암석 질감 (충돌 없음 증명용 — 실제 파일의 grain/crevice 재현)
+    shader.fragmentShader = shader.fragmentShader.replace(
+      'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+      [
+        'vec3 _wp = vWPos;',
+        'float _grain = _fbm3(_wp * 8.0) * 0.12 - 0.06;',
+        'float _slope = 1.0 - abs(dot(normal, vec3(0.0, 1.0, 0.0)));',
+        'float _crevice = _slope * _slope * 0.15;',
+        'outgoingLight += _grain;',
+        'outgoingLight -= _crevice;',
+        'outgoingLight = max(outgoingLight, vec3(0.02));',
+        'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+      ].join('\n')
+    );
+
+    // (3) ★ B안 핵심: fog_fragment를 지점별 마스크 fog로 교체
+    //     reveal 지점 반경 안 = clear fog, 밖 = heavy fog(하늘하양 벽).
+    //     가장자리는 fbm noise로 일렁임(뭉게뭉게).
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <fog_fragment>',
+      [
+        '#ifdef USE_FOG',
+        '  float _rv = 0.0;',
+        '  float _edgeN = _fbm3(vec3(vWPos.x * 0.22, _time * 0.18, vWPos.z * 0.22)) - 0.5;',
+        '  for (int i = 0; i < ' + MAX_REVEAL + '; i++) {',
+        '    if (i >= _revealCount) break;',
+        '    float _rr = _revealR[i];',
+        '    if (_rr < 0.01) continue;',
+        '    vec4 _sg = _revealSeg[i];',
+        '    vec2 _pa = vWPos.xz - _sg.xy;',
+        '    vec2 _ba = _sg.zw - _sg.xy;',
+        '    float _bb = dot(_ba, _ba);',
+        '    float _hh = _bb > 1e-6 ? clamp(dot(_pa, _ba) / _bb, 0.0, 1.0) : 0.0;',
+        '    float _d = length(_pa - _ba * _hh);',
+        '    _d += _edgeN * min(7.0, _rr * 0.5);',   // 가장자리 일렁임 — 좁은 회랑은 약하게
+        '    _rv = max(_rv, 1.0 - smoothstep(_rr * 0.55, _rr, _d));',
+        '  }',
+        '  float _dCam = length(vWPos - cameraPosition);',
+        '  float _fogC = 1.0 - exp(-fogDensity * fogDensity * _dCam * _dCam);',
+        '  float _fogH = 1.0 - exp(-_fogHeavyD * _fogHeavyD * _dCam * _dCam);',
+        '  float _ff = mix(_fogH, _fogC, _rv);',
+        '  // 뭉게 표면 질감: 두 겹의 fbm 구름 무늬가 서로 다른 속도로 표류 + 큰 덩어리 명암',
+        '  float _mw = _fbm3(vec3(vWPos.x * 0.045 + _time * 0.06, _time * 0.025, vWPos.z * 0.045));',
+        '  float _mw2 = _fbm3(vec3(vWPos.x * 0.14 - _time * 0.09, 3.7, vWPos.z * 0.14 + _time * 0.05));',
+        '  float _mott = 0.55 + _mw * 0.75 + _mw2 * 0.28;',
+        '  vec3 _fogTex = _fogSky * _mott;',
+        '  vec3 _fCol = mix(_fogTex, fogColor, _rv);',
+        '  gl_FragColor.rgb = mix(gl_FragColor.rgb, _fCol, clamp(_ff, 0.0, 1.0));',
+        '#endif',
+      ].join('\n')
+    );
+
+    // Vertex: world position varying (실제 패치와 동일)
+    shader.vertexShader = shader.vertexShader.replace(
+      'void main() {',
+      'varying vec3 vWPos;\nvoid main() {'
+    );
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <fog_vertex>',
+      '#include <fog_vertex>\nvWPos = (modelMatrix * vec4(position, 1.0)).xyz;'
+    );
+  };
+
+  var terrain = new THREE.Mesh(geo, terrainMat);
+  scene.add(terrain);
+  // NOTE: 실제 파일의 wireframe overlay는 생략 — 커스텀 fog 패치가 없는 재질이라
+  // 안개를 무시하고 비쳐서 테스트 판독을 방해함. 이식 시 wireframe에도 같은 패치 필요.
+
+  // ─── Ghosts: 한 지역당 1기 — 실루엣 + 후광 sprite + ground ring + point light ───
+  function makeGhostTexture(rgb) {
+    var cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+    var cx = cv.getContext('2d');
+    var cs = 'rgba(' + Math.round(rgb[0] * 255) + ',' + Math.round(rgb[1] * 255) + ',' + Math.round(rgb[2] * 255);
+    // 후광
+    var grd = cx.createRadialGradient(64, 56, 6, 64, 56, 60);
+    grd.addColorStop(0, cs + ',0.50)');
+    grd.addColorStop(1, cs + ',0)');
+    cx.fillStyle = grd; cx.fillRect(0, 0, 128, 128);
+    // 실루엣: 둥근 머리 + 아래로 갈수록 흩어지는 옷자락
+    cx.fillStyle = cs + ',0.88)';
+    cx.beginPath();
+    cx.arc(64, 48, 20, Math.PI, 0);              // head
+    cx.lineTo(84, 92);
+    cx.quadraticCurveTo(78, 84, 72, 94);         // 옷자락 물결
+    cx.quadraticCurveTo(66, 86, 60, 95);
+    cx.quadraticCurveTo(54, 85, 48, 93);
+    cx.lineTo(44, 92);
+    cx.closePath();
+    cx.fill();
+    return new THREE.CanvasTexture(cv);
+  }
+
+  var pinObjs = PINS.map(function (p) {
+    var h = heightAt(p.x, p.z);
+    var ec = EC[p.emo];
+    var mat = new THREE.SpriteMaterial({ map: makeGhostTexture(ec), transparent: true, depthWrite: false, fog: true, opacity: 0 });
+    var spr = new THREE.Sprite(mat);
+    spr.position.set(p.x, h + 3.2, p.z);
+    spr.scale.set(5.0, 5.0, 1);
+    scene.add(spr);
+
+    var ringMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(ec[0], ec[1], ec[2]), transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+    var ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.0, 40), ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(p.x, h + 0.25, p.z);
+    scene.add(ring);
+
+    var light = new THREE.PointLight(new THREE.Color(ec[0], ec[1], ec[2]), 0, 15, 2);
+    light.position.set(p.x, h + 2, p.z);
+    scene.add(light);
+
+    return { def: p, sprite: spr, ring: ring, light: light, h: h };
+  });
+
+  // ─── Reveal state + animation (easeInOut, replay fog와 동일 곡선) ───
+  // circle = 지역 해제 (a==b, 반경이 자람) / corridor = 길 — b 끝점이 a에서 목적지로 전진하며 안개를 가른다
+  var reveals = [];     // { ax, az, bx, bz, target, kind, t0, instant }
+  var nextIdx = 0;
+  var statusEl = document.getElementById('status');
+  var btnReveal = document.getElementById('btn-reveal');
+
+  function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+  // 시각(now) 기준 실제 적용값: 회랑은 끝점 전진, 원은 반경 성장
+  function effective(rp, now) {
+    if (rp.instant) return { bx: rp.bx, bz: rp.bz, r: rp.target };
+    var e = now - rp.t0;
+    if (e <= 0) return { bx: rp.ax, bz: rp.az, r: 0 };
+    if (rp.kind === 'corridor') {
+      var p = easeInOut(Math.min(1, e / CORRIDOR_MS));
+      return {
+        bx: rp.ax + (rp.bx - rp.ax) * p,
+        bz: rp.az + (rp.bz - rp.az) * p,
+        r: rp.target * Math.min(1, p * 2.5)   // 폭은 초반에 빨리 차오름
+      };
+    }
+    return { bx: rp.bx, bz: rp.bz, r: rp.target * easeInOut(Math.min(1, e / REVEAL_ANIM_MS)) };
+  }
+
+  function addCircle(pin, t0, instant) {
+    reveals.push({ ax: pin.x, az: pin.z, bx: pin.x, bz: pin.z, target: REVEAL_RADIUS, kind: 'circle', t0: t0, instant: !!instant });
+  }
+  function addCorridor(from, to, t0, instant) {
+    reveals.push({ ax: from.x, az: from.z, bx: to.x, bz: to.z, target: CORRIDOR_W, kind: 'corridor', t0: t0, instant: !!instant });
+  }
+  function updateStatus() {
+    statusEl.textContent = '해제된 기억 ' + nextIdx + ' / ' + PINS.length +
+      (nextIdx >= PINS.length ? ' — 전부 걷힘' : ' — 다음: ' + PINS[nextIdx].label);
+    btnReveal.disabled = nextIdx >= PINS.length;
+  }
+  function revealNext(instant) {
+    if (nextIdx >= PINS.length) return;
+    var pin = PINS[nextIdx];
+    var now = performance.now();
+    if (nextIdx === 0) {
+      addCircle(pin, now, instant);
+      console.log('[fog-reveal] 해제:', pin.label, instant ? '(즉시)' : '');
+    } else {
+      // 직전 기억에서 새 기억으로 길이 먼저 파이고, 길 끝에서 지역이 피어난다
+      addCorridor(PINS[nextIdx - 1], pin, now, instant);
+      addCircle(pin, instant ? now : now + CIRCLE_DELAY, instant);
+      console.log('[fog-reveal] 해제:', PINS[nextIdx - 1].label, '→', pin.label,
+        instant ? '(즉시)' : '(길 ' + CORRIDOR_MS + 'ms 후 지역 개화)');
+    }
+    nextIdx++;
+    updateStatus();
+  }
+  function resetAll() {
+    reveals.length = 0;
+    nextIdx = 0;
+    revealNext(true);   // 시작 지점은 항상 열려 있음
+  }
+  btnReveal.addEventListener('click', function () { revealNext(false); });
+  document.getElementById('btn-reset').addEventListener('click', resetAll);
+  resetAll();
+
+  // JS-side reveal factor (핀 sprite/ring/light 페이드 + 클릭 판정 — 셰이더와 같은 식, noise 제외)
+  function revealAt(x, z) {
+    var now = performance.now();
+    var rv = 0;
+    for (var i = 0; i < reveals.length; i++) {
+      var rp = reveals[i];
+      var ef = effective(rp, now);
+      if (ef.r < 0.01) continue;
+      var pax = x - rp.ax, paz = z - rp.az;
+      var bax = ef.bx - rp.ax, baz = ef.bz - rp.az;
+      var bb = bax * bax + baz * baz;
+      var h = bb > 1e-6 ? Math.max(0, Math.min(1, (pax * bax + paz * baz) / bb)) : 0;
+      var dx = pax - bax * h, dz = paz - baz * h;
+      var d = Math.sqrt(dx * dx + dz * dz);
+      var e = (d - ef.r * 0.55) / (ef.r * 0.45);
+      rv = Math.max(rv, 1 - Math.min(1, Math.max(0, e)));
+    }
+    return rv;
+  }
+
+  // ─── 클릭 = unlock 판정 — 시각과 상호작용이 같은 revealAt()을 공유 ───
+  // 걷힌 유령(reveal >= 0.5)만 진입 가능. 안개 속은 서사적 거절 (설계 원칙 4).
+  var toastEl = document.createElement('div');
+  toastEl.style.cssText = 'position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:20;' +
+    'background:rgba(12,14,22,0.88);border:1px solid rgba(196,168,130,0.25);border-radius:4px;' +
+    'padding:10px 22px;font-size:13.5px;color:#d8d0c0;opacity:0;transition:opacity 0.5s;pointer-events:none;';
+  document.body.appendChild(toastEl);
+  var _toastTimer = 0;
+  function toast(msg, ok) {
+    toastEl.textContent = msg;
+    toastEl.style.color = ok ? '#a8e0c8' : '#b0a898';
+    toastEl.style.opacity = '1';
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(function () { toastEl.style.opacity = '0'; }, 2200);
+  }
+
+  var raycaster = new THREE.Raycaster();
+  var _mouseNdc = new THREE.Vector2();
+  var _downPos = null;
+  renderer.domElement.addEventListener('pointerdown', function (e) { _downPos = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointerup', function (e) {
+    if (!_downPos) return;
+    var dx = e.clientX - _downPos[0], dy = e.clientY - _downPos[1];
+    _downPos = null;
+    if (dx * dx + dy * dy > 25) return; // drag(회전) — 클릭 아님
+    _mouseNdc.x = (e.clientX / window.innerWidth) * 2 - 1;
+    _mouseNdc.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(_mouseNdc, camera);
+
+    var hits = raycaster.intersectObjects(pinObjs.map(function (po) { return po.sprite; }));
+    for (var hi = 0; hi < hits.length; hi++) {
+      var po = null;
+      for (var pj = 0; pj < pinObjs.length; pj++) if (pinObjs[pj].sprite === hits[hi].object) po = pinObjs[pj];
+      if (po && revealAt(po.def.x, po.def.z) >= 0.5) {
+        toast('기억 진입 — ' + po.def.label, true);
+        console.log('[fog-reveal] 진입 허용:', po.def.label);
+        return;
+      }
+    }
+    var th = raycaster.intersectObject(terrain);
+    if (th.length) {
+      var pt = th[0].point;
+      if (revealAt(pt.x, pt.z) < 0.3) {
+        toast('안개가 짙어 아직 닿을 수 없다', false);
+        console.log('[fog-reveal] 진입 거부 — 안개 잠금 (' + pt.x.toFixed(1) + ', ' + pt.z.toFixed(1) + ')');
+      } else {
+        toast('빈 땅 — 이곳에 머무는 유령은 없다', false);
+      }
+    }
+  });
+
+  // 검증 스크립트용 내부 접근 (프로덕션 이식 대상 아님)
+  window.__fogTest = {
+    pins: pinObjs, camera: camera, revealAt: revealAt,
+    pinScreen: function (i) {
+      var v = pinObjs[i].sprite.position.clone().project(camera);
+      return { x: (v.x + 1) / 2 * window.innerWidth, y: (1 - v.y) / 2 * window.innerHeight };
+    }
+  };
+
+  // ─── Frame loop ───
+  function frame() {
+    requestAnimationFrame(frame);
+    var now = performance.now();
+    var t = now / 1000;
+
+    // shader uniforms — 회랑 전진/원 성장은 effective()가 계산
+    if (terrainUniforms) {
+      for (var u = 0; u < MAX_REVEAL; u++) {
+        if (u < reveals.length) {
+          var ef = effective(reveals[u], now);
+          revealSegU[u].set(reveals[u].ax, reveals[u].az, ef.bx, ef.bz);
+          revealRU[u] = ef.r;
+        } else {
+          revealSegU[u].set(0, 0, 0, 0);
+          revealRU[u] = 0;
+        }
+      }
+      terrainUniforms._revealCount.value = reveals.length;
+      terrainUniforms._time.value = t;
+      // 뭉게 숨쉬기 — replay fog와 동일한 두 사인파
+      terrainUniforms._fogHeavyD.value = FOG_HEAVY_DENSITY * (1 + 0.10 * Math.sin(t * 0.37) + 0.06 * Math.sin(t * 1.31 + 2.2));
+    }
+
+    // pins fade with local reveal
+    for (var pi = 0; pi < pinObjs.length; pi++) {
+      var po = pinObjs[pi];
+      var rv = revealAt(po.def.x, po.def.z);
+      po.sprite.material.opacity = rv * (0.75 + 0.15 * Math.sin(t * 2.0 + pi));
+      po.ring.material.opacity = rv * 0.55;
+      po.ring.scale.setScalar(1 + 0.08 * Math.sin(t * 1.6 + pi * 1.7));
+      po.light.intensity = rv * 0.35;
+    }
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  frame();
+
+  window.addEventListener('resize', function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+</script>
+</body>
+</html>
