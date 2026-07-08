@@ -3105,9 +3105,13 @@
         _dir.y = 0;
         if (_dir.lengthSq() < 1e-4) _dir.set(0, 0, 1);
         _dir.normalize();
-        var _tgtPos = _head.clone().add(_dir.multiplyScalar(1.15));
-        _tgtPos.y = _head.y + 0.03;
-        var _lookM = new window.THREE.Matrix4().lookAt(_tgtPos, _head, new window.THREE.Vector3(0, 1, 0));
+        var _tgtPos = _head.clone().add(_dir.multiplyScalar(0.75));
+        _tgtPos.y = _head.y + 0.01;
+        // 시선을 머리보다 약간 아래(가슴)로 — 얼굴이 화면 위쪽 1/3에 오고,
+        // 하단 자막·선택지와 안 겹친다 (영화 구도).
+        var _lookTarget = _head.clone();
+        _lookTarget.y -= 0.28;
+        var _lookM = new window.THREE.Matrix4().lookAt(_tgtPos, _lookTarget, new window.THREE.Vector3(0, 1, 0));
         var _tgtQuat = new window.THREE.Quaternion().setFromRotationMatrix(_lookM);
         // render wrap 이 매 프레임 이 자세로 덮어씀 — _fpTick 의 freeze 리셋을 이김.
         window._temDialogCam = { pos: _camSaved.pos.clone(), quat: _camSaved.quat.clone() };

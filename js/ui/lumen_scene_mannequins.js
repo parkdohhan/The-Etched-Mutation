@@ -387,7 +387,7 @@
       sp.renderOrder = 999;
       // 머리(~0.24m) 스케일에 맞춘 작은 글자 — canvas 256×64 → ~0.15m×0.038m world.
       // 얼굴 폭 안에 여러 단어가 겹치지 않고 들어가는 크기.
-      sp.scale.set(canvas.width / 1700, canvas.height / 1700, 1);
+      sp.scale.set(canvas.width / 1500, canvas.height / 1500, 1);
       sp._lumenTex = tex;
       sp._lumenMat = mat;
       return sp;
@@ -446,7 +446,7 @@
         toCamX = ddx / dl; toCamZ = ddz / dl;
       }
 
-      var targetBase = (_dlg.listening ? 0.85 : 0.26) * _dlg.opacityMul;
+      var targetBase = (_dlg.listening ? 0.92 : 0.26) * _dlg.opacityMul;
       var alive = 0;
       for (var i = 0; i < _dlg.sprites.length; i++) {
         var w = _dlg.sprites[i];
@@ -842,6 +842,8 @@
           return { ok: false, headWorld: null };
         }
         _dlg = { ghost: g, sprites: [], listening: true, opacityMul: 0.85, jitter: 0, dying: false };
+        // 대화가 시작되면 유령이 몸을 돌려 카메라를 마주본다 — 기존 응시(gaze) LERP 재사용.
+        g.seen = true;
         var ws = Array.isArray(words) ? words : [];
         for (var i = 0; i < ws.length && i < 6; i++) {
           var w = String(ws[i] || '').trim();
