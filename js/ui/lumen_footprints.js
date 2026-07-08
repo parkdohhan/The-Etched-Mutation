@@ -148,11 +148,14 @@
     var _footSide = 'L';         // 다음 박을 발 (시작은 왼발)
     var _prevMode = 'explore';   // 세션 재진입(return/done→explore) 감지용
 
-    // [TEMP 2026-05-29] 가시 진단 패널 — 화면 좌상단에 모듈 상태 실시간 표시.
-    // 평가 끝나면 이 블록과 _step 끝의 갱신 자리 둘 다 제거.
+    // 진단 패널 — 화면 좌상단에 모듈 상태 실시간 표시. 관객용 화면에 노출되지 않도록
+    // 2026-07-08부터 URL 플래그(?debug=1)가 있을 때만 생성한다. 패널이 null 이면 하단의
+    // 갱신 블록(if (_debugPanel))도 자동으로 건너뛴다. 개발 시 ?debug=1 로 복구.
     var _debugPanel = null;
+    var _fpDebugOn = false;
+    try { _fpDebugOn = typeof location !== 'undefined' && /[?&]debug=1\b/.test(location.search); } catch (_) {}
     try {
-      if (typeof document !== 'undefined' && document.body) {
+      if (_fpDebugOn && typeof document !== 'undefined' && document.body) {
         _debugPanel = document.createElement('div');
         _debugPanel.id = 'fp-debug-panel';
         _debugPanel.style.cssText = 'position:fixed;top:8px;left:8px;z-index:99999;'

@@ -1,0 +1,853 @@
+:           
+-- The Etched Mutation     --
+Mnemonic Genetics: A Computational Framework for Measuring and Rendering Memory Transformation Through Emotional Trajectory Alignment
+ (Dohhan Park) Working Draft v0.2 -- 2026-04-10
+
+Abstract    .    (degradation)   , , , , ,  6    .       (Central Dogma)        6    --  (Mnemonic Genetics) --  ,  ( HIV-1)         .          (Byeori Engine) V4,        SceneNavigator,           (Contamination Vector) ,     Strata  ,       (Afterimage)  ,        The Etched Mutation(TEM)     .
+:  ,  , , , , ,  ,  
+Contents
+
+I 
+
+4
+
+1 
+
+4
+
+1.1   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+
+1.2    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+
+1.3    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+
+2  
+
+5
+
+2.1   : Bartlett (1932) . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+2.2     . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+2.3     . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+2.4     . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+
+1
+
+3  (Mnemonic Genetics)
+
+6
+
+3.1  :    . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3.2 6   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3.2.1 Op 1.   (Destructive Replication) . . . . . . . . . . . . . . . . . . . 6
+
+3.2.2 Op 2.   (Biased Mutation) . . . . . . . . . . . . . . . . . . . . . . . 6
+
+3.2.3 Op 3.   (Intentional Selection) . . . . . . . . . . . . . . . . . . . . 6
+
+3.2.4 Op 4.   (Ruleless Translation) . . . . . . . . . . . . . . . . . . . . . 7
+
+3.2.5 Op 5.   (Aberrant Repair) . . . . . . . . . . . . . . . . . . . . . . . . 7
+
+3.2.6 Op 6.   (Mnemonic Recombination) . . . . . . . . . . . . . . . . . 7
+
+3.3 6    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+
+3.4    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+
+3.5   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+
+II  
+
+10
+
+4  V4:   
+
+10
+
+4.1   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+
+4.2  : Butler  TIES  . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+
+4.3   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+
+4.4     . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+
+4.5 V1  V4   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+4.6   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+4.7   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+
+5 SceneNavigator:   
+
+13
+
+5.1   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+5.2    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+5.3 :      . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+III  
+
+14
+
+6  
+
+14
+
+6.1  :    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+
+6.2 3  + depth . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+
+6.3   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+
+6.4 Stage Mixing:      . . . . . . . . . . . . . . . . . . . . . 16
+
+6.5    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+
+6.6 NPC   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+
+6.7   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+
+7 Strata :   
+
+17
+
+7.1 : Attribution × Core Fear  . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+
+7.2 17    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+
+2
+
+7.3     . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18 7.4 1   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+
+IV  
+
+18
+
+8 The Etched Mutation:  
+
+18
+
+8.1   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+
+8.2   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+
+8.3    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+
+8.4 :    . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+
+8.5  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+
+9 Record:   
+
+19
+
+9.1 Phase A --  (60­90 ) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+
+9.2 Phase B --  (3­7 ) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+
+9.3 Phase C --  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+
+10 Play:   
+
+20
+
+11  :  
+
+21
+
+11.1   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+
+11.2   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+
+11.3  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+
+11.4  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+
+12 Floating Anchor:   
+
+21
+
+12.1 Clarity  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+
+12.2   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+
+13 
+
+22
+
+V  
+
+22
+
+14  
+
+22
+
+14.1 3   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+
+14.2 N     . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+
+14.3 : "  " . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+
+15 
+
+23
+
+15.1  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+
+15.2  . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+
+15.3   . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+
+3
+
+Part I
+
+1 
+1.1  
+1897 ,  " "     ()      [1].       ,     --        --   .
+121  , Pastuzyn et al.(2018)     Arc   (Ty3/gypsy)  Gag  ,     (virus-like capsid)      mRNA     [2]. Arc knockout     [3].             ,  ""     .
+      .    ,    .      ,      --   "" --   .
+1.2   
+      .   (reconsolidation)            [4, 5],   (misinformation effect)        [6, 7],     (source monitoring error)       [8].
+       .         ,      ,        .
+,         . Butler(2011, 2017)  TIES         [9, 10], CompTIES   coupled oscillator  .  CompTIES       ,             .
+1.3   
+    :             ,          ?
+         . ,  :  (Mnemonic Genetics).     ,   6        . ,  :  (Byeori Engine) V4.          (emotional trajectory)       
+4
+
+. ,   : SceneNavigator   .      
+  ,      ·      .
+,  : Strata  .      3D  ,       (cryptomnesia)   .
+,  : The Etched Mutation.       "  "       .
+2  
+2.1   : Bartlett (1932)
+Bartlett    "Remembering"         (reconstruction)    [11]. " "              --   ,   .
+Bartlett      ,     . "  "   ,    ,    ,     .
+2.2    
+Nader et al.(2000)            [4]. Loftus & Palmer(1974)            [6]. Roediger & McDermott(1995)  DRM            [12].
+     ,   .    Op 1( ),   Op 2+5(  +  ),   Op 6( )   .
+2.3    
+Dawkins(1976)    " (meme)"   [13],  ··        [14]. Boyd & Richerson(1985)            [15],           .
+     --     --     ,    .
+2.4    
+   VAD  [16], PANAS[17],    [18]   . Butler(2011, 2017)  TIES  [9, 10]       
+5
+
+  .      (shape)       [19]      .  V4  TIES         .
+3  (Mnemonic Genetics)
+3.1  :   
+    . DNA       ,    DNA .    --    (consciousness)        (dependent replicator) . ""    :             .  Dawkins(1976)     " "   .
+3.2 6  
+    -- , , ,  --     6     .     ,  ""  .
+3.2.1 Op 1.   (Destructive Replication)
+DNA   (semi-conservative)  --    .    (retrieval)        (reconsolidation)  [4]. Bridge & Paller(2012)           [20].      .
+: R(M ) = M ,  M = M    M     . TEM        :  ""   .   (Record)     "   (telling trajectory)"  ,        --    -- .
+3.2.2 Op 2.   (Biased Mutation)
+  (random)   .    (non-random) . Bower(1981)      [21], Levine(1997)          [22]. Tversky & Marsh(2000)         [23].
+    (e),   (c),   (s)   : M = f (e, c, s).    (isomorphism)  --    .
+3.2.3 Op 3.   (Intentional Selection)
+    .     . Pasupathi(2001)            
+6
+
+[24]. Hirst & Echterhoff(2012)  "     (SS-RIF)"   [25].    (censorship),  (mythologization),  (curation) .
+3.2.4 Op 4.   (Ruleless Translation)
+       .       . Schooler & Engstler-Schooler(1990)    (verbal overshadowing)   [26] --         .    ·   : T (Ma, t, c) = Mb + (t, c).
+TEM  Record     .        Op 4  ,   " "     .
+3.2.5 Op 5.   (Aberrant Repair)
+DNA    ,        ""   [27, 28].    ""       . Loftus(1997)            [29]. Patihis & Loftus(2016)       ""      [30].
+       --  (hypermnesia) .     . TEM      "  (hypercompletion)"   :   ,      " "   .
+3.2.6 Op 6.   (Mnemonic Recombination)
+       .             . Johnson et al.(1993)      [8], Roediger & McDermott(1995)  DRM  [12], Goff & Roediger(1998)     [31]   .
+Recombine(Ma, Mb, breakpoint) = Mc,  Mc = Ma, Mc = Mb. TEM     (Afterimage)  .        , "  ,  "        (cryptomnesia) .
+3.3 6   
+6     . Intra-engram (Op 1­5):      . TEM   
+(Contamination Vector)  .           ··  .
+Inter-engram (Op 6):          . TEM      .
+7
+
+ (Molecular Genetics)
+X  
+
+1. 
+
+DNA ( )
+
+2. 
+
+3. 
+
+5. 
+
+RNA ()
+
+4. 
+
+Protein ( )
+
+Mutated DNA
+
+ (Mnemonic Genetics)
+ ( )
+
+1. 
+
+  ( )
+
+1.  ()
+
+  ( )
+
+4.  
+
+/ ( )
+
+6. 
+
+3.  
+
+5.  
+
+  ( )
+
+ 
+
+Figure 1:   6   .   '  (Reverse Transcription)'            .
+
+8
+
+3.4   
+6    ,   HIV-1    .   6   ,            [2].
+
+HIV-1  (Lifecycle)
+
+   (Memory Cycle)
+
+1.    
+
+Destabilization
+
+1.  ( )
+
+2. Provirus  (Host DNA ) Overwrite / Integration 2.   (Op 1. )
+
+3. APOBEC3G 
+
+External direction
+
+3.   (Op 2)
+
+4.   (  )
+
+Curation / Evasion
+
+4.   (Op 3)
+
+5. Template Switching ()
+
+Cross-template
+
+5.   (Op 6)
+
+Figure 2:  (HIV-1)        .
+
+   
+ 
+   
+
+HIV-1  Provirus 
+APOBEC3G    [32]   Template switching
+
+ 
+  + /                
+
+  
+
+ 
+
+Table 1:    ( )
+
+  (Op 4)    (Op 5)  HIV-1     .       .
+    (structural analogy)     [33]. Gentner(1983)     ,           .
+
+9
+
+3.5  
+6     ,          . TEM  Strata       .
+
+
+          
+
+ 
+          
+
+TEM  
+ play               play  Record = First Play   
+
+Table 2:  
+
+Part II
+ 
+4  V4:   
+4.1  
+ (Byeori Engine)    :
+A   . B     . A  B     ?
+ ""  0­1   (alignment score)      .     :    (   ),      (     ).
+4.2  : Butler  TIES 
+Butler(2011, 2017)  TIES       ,        [9, 10].  :    (dynamics)    (level)      .
+   V4   .    " "   (level)  "  "(shape)   ,         .
+4.3  
+shape_raw = (scenes_played >= 3) ? cosine(flatten(delta_user), flatten(delta_original)) : 1.0
+10
+
+shape level void_mod
+
+= max(0, shape_raw) = mean(scene_scores) = (user_void && !original_void) ? 0.7 : 1.0
+
+alignment = level * shape * void_mod
+
+scene_score               (0­1) .  17    (fear, sadness, anger, guilt, shame, isolation, numbness, moral_pain, helplessness, despair, joy, hope, relief, gratitude, love, peace, comfort)  , VAD   Warriner et al.(2013)  13,915       [18].
+level     scene_score . "   "   .
+shape    (delta)     .  B   [3, 1, 4]  ,  A   B    .     --    (   )   ,  (canonical)       .
+ 3    shape = 1.0  : delta   2   ,   3    .    shape   (1.0)  , level     .
+void_mod      (VOID)      ×0.7  .   VOID    --  "" . TEM       .
+Algorithm 1  V4      .   TEM   1:1  ,    (17D  ),      , delta   (flatten)   ,  bucket        .   (fixation detection)       3     (pairwise)    ,     V4   .
+  (, P )     . alignment score     (  ??)  divergence·convergence·heterogeneity  , transition pattern P  SceneNavigator( 5)    ,    NPC    Floating Anchor  clarity  .     --   ,        --  TEM   .
+
+4.4    
+V4       .   (V3)    (E × 0.4 + R × 0.4 + A × 0.2) .    :   (E = 0)       (R = 1), alignment  0.54  . "     "  ,     .
+                 . level = 0   shape        alignment = 0 . "   "     . , V3      .     .
+
+11
+
+Algorithm 1:  V4 --    (Byeori Engine V4: Trajectory-Based Alignment)
+
+Input: u1, . . . , un:     (17D,  ) o1, . . . , on:     (   ) voidu, voido:   VOID  Bprev:   bucket Output:   [0, 1]: alignment score, P : transition pattern
+
+// Step 1:    (Scene Score)
+
+1 for i  1 to n(do
+
+)
+
+2 si  max 0, cos(ui, oi)
+
+3 end
+
+// 17D  
+
+// Step 2:   (Level)
+
+1 n
+
+4  n
+
+si
+
+i=1
+
+// Step 3:    (Shape)
+
+5 if n < 3 then
+
+6   1.0
+
+7 else
+
+8 for i  2 to n do
+
+9
+
+ui-1  ui - ui-1
+
+10
+
+oi-1  oi - oi-1
+
+11 end
+
+(
+
+)
+
+12 raw  cos flatten(u), flatten(o)
+
+13   max(0, raw)
+
+14 end
+
+//    
+
+// Step 4: VOID  15 if voidu = true and voido = false then 16   0.7 17 else 18   1.0 19 end
+
+// Step 5(:   ) 20   clamp  ×  × , 0, 1
+
+// Step 6:   (Fixation Detection)
+
+21 if n  3 then
+
+22 R  last 3 vectors of {ui}
+
+23 f  mean pairwise cos(R)
+
+24 if f  0.85 then
+
+25
+
+B  FIXATED
+
+26 end
+
+27 end
+
+// Step 7: Bucket  ( )
+
+28 if B = FIXATED then
+
+29 if Bprev = HIGH and   0.40 then
+
+30
+
+B  HIGH
+
+31 else if Bprev = LOW and   0.15 then
+
+32
+
+B  LOW
+
+33 else if   0.50 then
+
+34
+
+B  HIGH
+
+35 else if  < 0.10 then
+
+36
+
+B  LOW
+
+12
+
+37 else
+
+38
+
+B  MID
+
+4.5 V1  V4  
+V4           . "    "        .  1      , " "     , "  "      .       .
+
+
+V1 V2 V3 V4
+
+
+cos(user, original) embedding(0.65) + VAD(0.35) E(0.4) + R(0.4) + A(0.2) level × shape × void_mod
+
+ 
+" ,  "        AI  ,   ,      ( )  
+
+Table 3:   
+
+4.6  
+alignment  ,   6     .      , SceneNavigator    .
+
+
+echo_follow bridge contradiction displacement avoidance fixation
+
+ 
+alignment  0.7 alignment 0.4­0.7   + shape < 0.3 level  0.5 AND shape < 0.3 alignment < 0.4 AND  void  > 0.85 +   +  
+
+ 
+Op 1.   ()   Op 2.   Op 4.   Op 3.   () Op 5.   ( )
+
+Table 4:    
+ (fixation)   :      . "fixationCounts  2  "   .    --     0.85  ,   ,    --    .
+
+4.7  
+TEM    17     , VAD 3D(Valence × Arousal × Dominance)  .   6  ({fear, sadness, anger, joy, longing, guilt}) , 17    .      --  17        ,  6       .
+
+5 SceneNavigator:   
+ "  "  , SceneNavigator  "   "  .   :          .
+
+13
+
+5.1  
+   ,     .    (center)   (radius)      .
+center = blend(originalEmotion , userEmotion , patternConfig[pattern]) radius = patternConfig[pattern].radius candidates = rankByPattern(accessibleScenes , pattern, context)
+center    .            .
+5.2   
+echo_follow ( ):   70%,   30% .  0.42.       .     ,       .
+bridge ( ): 50/50  .  0.62().    .        ,      .
+contradiction ():  30% +    (-0.5) +  20%.  0.36().       .      ,       .
+displacement ():      .  0.48. " ,   "   --  , " "  " "    --  .
+avoidance (): void/ .  0.55.      .     ,    .
+fixation ():    .  0.28( ).      .     ,   .
+5.3 :     
+  0        : "    "  "   ".       .
+Part III
+ 
+6  
+6.1  :   
+    (truth model)      (control signal model) .       ,       
+14
+
+    .    ""   --      .
+ ( )    ,   ( )        .  RT-qPCR()    ()    ,   .
+
+6.2 3  + depth
+       .  HIV-1  (phylodynamics)     .
+depth ( ):   .     .        Muller's Ratchet[34]   .        .
+divergence (): 0­1.     . HIV  root-to-tip divergence  . Op 1( )  Op 2( )   .
+convergence (): 0­1.     . HIV    (convergent evolution)  .   "  "   "     " ,  Op 5( ) --  " " --  .
+heterogeneity (): 0­1.    . HIV  intra-patient diversity()   . Eigen & Schuster(1977)    [35]  ,           (cloud of mutants)  . heterogeneity       "  "    .
+
+6.3  
+      .     --               .
+depth += 1 decay = 1 / (1 + depth * 0.05)
+
+decay  HIV      --       ,    .
+divergence :
+delta_div = (1 - shape) * (1 - level) divergence = min(divergence + delta_div * decay, 1.0)
+
+shape   ( ) level   ( )  divergence  .       "    "   .
+convergence :
+
+if depth >= 3:
+
+if fixation_level >= 0.85:
+
+delta_conv = alignment * 0.4
+
+//
+
+else if shape >= 0.7 and level >= 0.7:
+
+
+
+
+
+15
+
+delta_conv = alignment * 0.15
+
+//    
+
+else if alignment >= 0.5:
+
+delta_conv = alignment * 0.03
+
+//    
+
+convergence = min(convergence + delta_conv * decay, 1.0)
+
+depth  3  convergence   .   shape   (  3)   --       .       Stage 3( )    .
+heterogeneity  (Welford  ):
+d1 = alignment - mean mean += d1 / depth d2 = alignment - mean m2 += d1 * d2 if depth >= 2:
+variance = m2 / (depth - 1) heterogeneity = min(variance * 4.0, 1.0)
+
+Welford(1962)     [36]  .   alignment       .       ( ),       ( ).
+
+6.4 Stage Mixing:     
+3     " "    .
+raw_1 = divergence * (1 - convergence) raw_2 = heterogeneity * min(depth / 5, 1.0) raw_3 = convergence * (1 - heterogeneity) total = raw_1 + raw_2 + raw_3
+
+stage_1 = raw_1 / total stage_2 = raw_2 / total stage_3 = raw_3 / total
+
+//        //     //    
+
+Stage 1 --   (biased inclination): divergence   convergence   .    " "  .     .
+Stage 2 --   (juxtaposed interpretations): heterogeneity   depth   .   " "  .   ,   ""    .
+Stage 3 --   (hypercompletion): convergence   heterogeneity   .   " "  .   ,      " "  .
+Stage 1  Stage 3   (anti-correlated)               .
+
+16
+
+6.5   
+    .    --  ·        .         ,   ""   .
+Stage 1 ( ):   "·"  .     .      .
+Stage 3 ( ):      .  (35%) --       .  (40%) --    .  (55%) --    .        .
+6.6 NPC  
+  , "  "  NPC    .     ×  ×   (weak/medium/strong)  .    : weak 20%, medium 45%, strong 70%.
+: Stage 1 + anger + weak  "...  ." / Stage 3 + strong  "   .  ." / void_mismatch + strong  " .     ."
+    . "    " . TEM     --   --     .
+6.7  
+heterogeneity  0.5  depth  5 , 6  Op 6()      .    ,     .        3     .
+7 Strata :   
+7.1 : Attribution × Core Fear 
+Strata    3D  . 2D     . X  --   (Attribution): self_blame(-1)  other_blame(0)  fate_blame(+1). " 
+"  "  "  "  ". Z  --   (Core Fear): abandonment(-1)  rejection(-0.33)  powerlessness(+0.33)
+ loss(+1). ""  ""  ""  "". Y  --  :      .  play   
+ ( )  ,  play    " (strata)"  .
+7.2 17   
+         Strata  . E2A (Emotion to Attribution):   self/other/fate    .  
+, shame  {self: 0.75, other: 0.15, fate: 0.1} --     .
+17
+
+E2F (Emotion to Fear):   abandonment/rejection/powerlessness/loss     .
+EC (Emotion Color):   RGB .   ,   (vertex)  .
+
+7.3    
+     (fitness landscape Wright, 1932[37])      .
+
+Strata
+play     play    
+
+ 
+        
+
+ 
+                
+
+Table 5: Strata    
+
+  : Eigen      (error threshold)   --      .   ,           "   (mnemonic error catastrophe)"    .  TEM     .
+
+7.4 1  
+ Strata      . 1   (Pointer Lock + WASD)     ,      .
+
+Part IV
+ 
+8 The Etched Mutation:  
+8.1  
+TEM     .     ,       .    / / .  .  . .
+8.2  
+   TEM     . 1.  ""   . Record   telling_trajectory  . 2.    .   .
+18
+
+3.         . (/Cryptomnesia) 4.     .      . 5.  (VOID)   .   .
+  : , , ,  . ·· .  .  .    .
+8.3   
+  (Curator): Record --   .       .
+ (Player): Play --    .    ,    Strata  .
+ (Admin):     . ,  .
+8.4 :   
+   ,      (backflow)  .   ( V4):     , alignment·pattern·fixation
+ .   .   ( ):    3  (divergence/convergence/heterogeneity)
+ , Stage   .   .   ():  ,   (, blur,  ),   (
+)      .
+8.5 
+ ·        .   PRNG  ,      .   ""   --         --  .
+9 Record:   
+Record    :  (Staging)   (Resonance)   (Sedimentation).      --   .
+9.1 Phase A --  (60­90 )
+ .     : " .    ."   3   .  (rain_heavy/dust/hospital/grass/nothing) -- 
+    .  (rain/silence/crowd/wind/nothing) --     .  (cold_air/sweat/someones_hand/hard_floor/nothing) --   .
+19
+
+   ,     .       (opacity  0.3)  . AI  "  ,  ?"     Phase B  .
+ ,  . "    "      .
+9.2 Phase B --  (3­7 )
+Phase A      AI("  ")  . AI  Claude   3­7      : /, , , , .       ·   .
+   . Layer 1(0ms)     , "  "     . Layer 2(1­3 )  Claude    . AI       .  ""         1    .
+9.3 Phase C -- 
+     .     .     : "       ."      ( 11)  .
+Record    5   . PII(  ) -- , , , URL,  ,   --     .
+Record = First Play :   ,    alignment = 1.0  play      .       ,  Op 1( )   --      .
+10 Play:   
+     .  :
+1.       (Stage 1/2/3 ). 2. NPC     (1.5  ). 3.    . 4.   (Floating Anchor)  clarity    .
+    alignment  , SceneNavigator    .     ,   .   3.8  , 50%   .
+20
+
+11  :  
+11.1  
+"        ."    (cryptomnesia)  .   Record     Play        .
+11.2  
+1.   .      .
+2.  . 50% ,   2 .
+3.    .   ,  .  .
+4.   .
+5.  . "...  "    1­2 .
+6.   .    +   .
+11.3 
+    (×3),    (×2), /   (×1),    (+4),   (×0.3)   .  5   1   .      .
+ 30% /  70% :   +4  ,             .  "   ?"     .
+11.4 
+  0.8     fade in    (95ms/char)    reveal   4.2   fade out.   10    .   (Nanum Myeongjo),  .
+12 Floating Anchor:   
+12.1 Clarity 
+      (clarity, 0­1)        .
+ clarity    (log scale, cap 0.3   ), heterogeneity( ), convergence(  --  )  .
+    clarity  : echo_follow(-0.06,  ), bridge(0,  ), contradiction(+0.10, ), displacement(+0.04), avoidance(+0.08), fixation(-0.04,  ). echo_follow           , contradiction       .
+21
+
+12.2  
+clarity        : text(), ascii(ASCII ), photo( ).   text/ascii ,   photo  .
+  DVD    , clarity    + blur +   .
+13 
+ 5   (  , , , , )   .      : Stage 1( )   15%    1.2   , Stage 3( )      10%   .
+  :   ,     , // .
+Part V
+ 
+14  
+14.1 3  
+TEM   --   --  ,   .    .
+· BLOCK_HIGH:    +    . , , ,  . · BLOCK_MID:   +   . "", " " . · MONITOR_ONLY:  + . "", " ", "" .  TEM
+    .
+14.2 N    
+    . ""( )  " "( )     .    -- n    BLOCK  .   3    .
+14.3 : "  "
+          .  : "...,   ." / "  ,  ."  : ",      ."  : "    ."
+22
+
+15 
+15.1 
+      ( 6 ),     (  V4),      (SceneNavigator),     (  ),    (Strata ),   (),       (TEM)    .
+15.2 
+·   .  V4  shape_similarity                      .         V4       alignment = level × void_mod   .
+·    . DECAY_RATE(0.05), HETERO_SCALE(4.0), FIXATION_CONV_WEIGHT(0.4)    .
+·   . Op 6       .
+· SceneNavigator  .     (currentScene + 1)  .
+·   .   6D    17D .      .
+·   .        ,   "  "   " "    [33].
+15.3  
+·    :   play  ,   Strata            . HIV  Zanini et al.(2015)             [38].   TEM    ,   ,       .
+· -  :       .     -  --    (BLOSUM   [39] vs   ), / ,     [40],     --   .        (universal transformation dynamics)      .
+·   :      3  : narrator("   ")  object("  ")  absent("    ").     (cytopathic effect)  .
+23
+
+References
+[1] Leo Tolstoy. What Is Art? Moscow, 1897.   ? [2] Elissa D. Pastuzyn, Cameron E. Day, Ravi B. Bhatt, et al. The neuronal gene Arc encodes a re-
+purposed retrotransposon Gag protein that mediates intercellular RNA transfer. Cell, 172(1-2): 275­288, 2018. [3] Niels Plath, Ora Ohana, Björn Dammermann, et al. Arc/Arg3.1 is essential for the consolidation of synaptic plasticity and memories. Neuron, 52(3):437­444, 2006. [4] Karim Nader, Glenn E. Schafe, and Joseph E. LeDoux. Fear memories require protein synthesis in the amygdala for reconsolidation after retrieval. Nature, 406(6797):722­726, 2000. [5] Karim Nader. Memory traces unbound. Trends in Neurosciences, 26(2):65­72, 2003. [6] Elizabeth F. Loftus and John C. Palmer. Reconstruction of automobile destruction: An example of the interaction between language and memory. Journal of Verbal Learning and Verbal Behavior, 13(5):585­589, 1974. [7] Elizabeth F. Loftus. Planting misinformation in the human mind: A 30-year investigation of the malleability of memory. Learning & Memory, 12(4):361­366, 2005. [8] Marcia K. Johnson, Shahin Hashtroudi, and D. Stephen Lindsay. Source monitoring. Psychological Bulletin, 114(1):3­28, 1993. [9] Emily A. Butler. Temporal interpersonal emotion systems: The "ties" that form relationships. Personality and Social Psychology Review, 15(4):367­393, 2011. [10] Emily A. Butler. Emotions are temporal interpersonal systems. Current Opinion in Psychology, 17: 129­134, 2017. [11] Frederic C. Bartlett. Remembering: A Study in Experimental and Social Psychology. Cambridge University Press, 1932. [12] Henry L. Roediger and Kathleen B. McDermott. Creating false memories: Remembering words not presented in lists. Journal of Experimental Psychology: Learning, Memory, and Cognition, 21 (4):803­814, 1995. [13] Richard Dawkins. The Selfish Gene. Oxford University Press, 1976. [14] Robert Aunger. The Electric Meme: A New Theory of How We Think. Free Press, 2002. [15] Robert Boyd and Peter J. Richerson. Culture and the Evolutionary Process. University of Chicago Press, 1985. [16] James A. Russell and Albert Mehrabian. Evidence for a three-factor theory of emotions. Journal of Research in Personality, 11(3):273­294, 1977.
+24
+
+[17] David Watson, Lee Anna Clark, and Auke Tellegen. Development and validation of brief measures of positive and negative affect: The PANAS scales. Journal of Personality and Social Psychology, 54(6):1063­1070, 1988.
+[18] Amy Beth Warriner, Victor Kuperman, and Marc Brysbaert. Norms of valence, arousal, and dominance for 13,915 English lemmas. Behavior Research Methods, 45(4):1191­1207, 2013.
+[19] Andrew J. Reagan, Lewis Mitchell, Dilan Kiley, Christopher M. Danforth, and Peter Sheridan Dodds. The emotional arcs of stories are dominated by six basic shapes. EPJ Data Science, 5 (1):31, 2016.
+[20] Donna J. Bridge and Ken A. Paller. Neural correlates of reactivation and retrieval-induced distortion. Journal of Neuroscience, 32(35):12144­12151, 2012.
+[21] Gordon H. Bower. Mood and memory. American Psychologist, 36(2):129­148, 1981.
+[22] Linda J. Levine. Reconstructing memory for emotions. Journal of Experimental Psychology: General, 126(2):165­177, 1997.
+[23] Barbara Tversky and Elizabeth J. Marsh. Biased retellings of events yield biased memories. Cognitive Psychology, 40(1):1­38, 2000.
+[24] Monisha Pasupathi. The social construction of the personal past and its implications for adult development. Psychological Bulletin, 127(5):651­672, 2001.
+[25] William Hirst and Gerald Echterhoff. Remembering in conversations: The social sharing and reshaping of memories. Annual Review of Psychology, 63:55­79, 2012.
+[26] Jonathan W. Schooler and Tonya Y. Engstler-Schooler. Verbal overshadowing of visual memories: Some things are better left unsaid. Cognitive Psychology, 22(1):36­71, 1990.
+[27] Julian E. Sale. Translesion DNA synthesis and mutagenesis in eukaryotes. Cold Spring Harbor Perspectives in Biology, 5(3):a012708, 2013.
+[28] Michael R. Lieber. The mechanism of double-strand DNA break repair by the nonhomologous DNA end-joining pathway. Annual Review of Biochemistry, 79:181­211, 2010.
+[29] Elizabeth F. Loftus. Creating false memories. Scientific American, 277(3):70­75, 1997.
+[30] Lawrence Patihis and Elizabeth F. Loftus. Crashing memories 2.0: False memories in adults for an upsetting childhood event. Applied Cognitive Psychology, 30(1):41­50, 2016.
+[31] Leslie M. Goff and Henry L. Roediger. Imagination inflation for action events: Repeated imaginings lead to illusory recollections. Memory & Cognition, 26(1):20­33, 1998.
+[32] Reuben S. Harris and Jaquelin P. Dudley. APOBECs and virus restriction. Virology, 479­480: 131­145, 2015.
+[33] Dedre Gentner. Structure-mapping: A theoretical framework for analogy. Cognitive Science, 7(2): 155­170, 1983.
+25
+
+[34] Hermann J. Muller. The relation of recombination to mutational advance. Mutation Research, 1(1): 2­9, 1964.
+[35] Manfred Eigen and Peter Schuster. The hypercycle: a principle of natural self-organization. Naturwissenschaften, 64(11):541­565, 1977.
+[36] B. P. Welford. Note on a method for calculating corrected sums of squares and products. Technometrics, 4(3):419­420, 1962.
+[37] Sewall Wright. The roles of mutation, inbreeding, crossbreeding, and selection in evolution. In Proceedings of the Sixth International Congress of Genetics, volume 1, pages 356­366, 1932.
+[38] Fabio Zanini, Valerie Brober, Rafael Thesing, et al. Population genomics of intrapatient HIV-1 evolution. eLife, 4:e11282, 2015.
+[39] Steven Henikoff and Jorja G. Henikoff. Amino acid substitution matrices from protein blocks. Proceedings of the National Academy of Sciences, 89(22):10915­10919, 1992.
+[40] Andrew Rambaut, David Posada, Keith A. Crandall, and Edward C. Holmes. The causes and consequences of HIV evolution. Nature Reviews Genetics, 5(1):52­61, 2004.
+26
+
+

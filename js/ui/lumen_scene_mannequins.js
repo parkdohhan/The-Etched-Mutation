@@ -345,6 +345,148 @@
       return sp;
     }
 
+    // ─── 260708 대화 집중 — 유령 얼굴 속 글자 ─────────────────────────
+    // docs/유령대화_얼굴자막_연출_v1-260708.md (v2). 대화 진입 시 그 마네킹의 머리
+    // 주변·내부를 모티프/공명 단어 스프라이트가 천천히 떠다닌다. 마네킹 머티리얼이
+    // xray(additive·depthWrite off)라 글자가 머리 "속"에 겹쳐 보이는 게 의도.
+    // 카메라는 여기서 안 건드림 (모듈 원칙) — 줌인은 play-test 쪽 트윈.
+    var _dlg = null;   // { ghost, sprites:[], listening, opacityMul, jitter, dying }
+    var _dlgHeadTmp = null;
+
+    function _makeFaceWordSprite(text) {
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d');
+      var font = '34px "Gowun Batang", "Noto Serif KR", serif';
+      ctx.font = font;
+      var pad = 22;
+      var wMeasure = ctx.measureText(text).width + pad * 2;
+      canvas.width = Math.min(512, Math.max(128, Math.pow(2, Math.ceil(Math.log2(wMeasure)))));
+      canvas.height = 64;
+      ctx.font = font;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      var cx = canvas.width / 2, cy = canvas.height / 2;
+      ctx.save();
+      ctx.shadowColor = 'rgba(232,216,252,0.5)';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = 'rgba(238,228,252,0.92)';
+      ctx.fillText(text, cx, cy);
+      ctx.restore();
+
+      var tex = new THREE.CanvasTexture(canvas);
+      tex.minFilter = THREE.LinearFilter;
+      var mat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0,
+        fog: false,
+        depthWrite: false,
+        depthTest: false     // 줌인 시 머리 메시에 안 가리게 — "속에서 떠다니는" 감각
+      });
+      var sp = new THREE.Sprite(mat);
+      sp.renderOrder = 999;
+      // 머리(~0.24m) 스케일에 맞춘 작은 글자 — canvas 256×64 → ~0.15m×0.038m world.
+      // 얼굴 폭 안에 여러 단어가 겹치지 않고 들어가는 크기.
+      sp.scale.set(canvas.width / 1700, canvas.height / 1700, 1);
+      sp._lumenTex = tex;
+      sp._lumenMat = mat;
+      return sp;
+    }
+
+    function _findGhostBySceneId(sceneId) {
+      if (!sceneId) return null;
+      for (var i = 0; i < _ghosts.length; i++) {
+        var p = _ghosts[i].pin || {};
+        var sid = (p.scene && p.scene.id) || (p.pin && p.pin.sceneId) || p.sceneId || null;
+        if (sid === sceneId) return _ghosts[i];
+      }
+      return null;
+    }
+
+    function _ghostHeadWorld(g, target) {
+      if (!g) return null;
+      var v = target || new THREE.Vector3();
+      if (g.headBone) {
+        g.headBone.getWorldPosition(v);
+      } else {
+        v.set(g.root.position.x, (g.groundY || 0) + 1.62, g.root.position.z);
+      }
+      return v;
+    }
+
+    function _dlgSpawnWord(word, isAbsorbed) {
+      if (!_dlg || !word) return;
+      if (_dlg.sprites.length >= 8) return; // 과밀 방지
+      var rng = _mulberry32(_hashString('faceword|' + word + '|' + _dlg.sprites.length));
+      var sp = _makeFaceWordSprite(word);
+      scene.add(sp);
+      _dlg.sprites.push({
+        sp: sp,
+        phase: rng() * Math.PI * 2,
+        rx: 0.02 + rng() * 0.05,          // 수평 궤도 반경 — 머리 반경(~0.11m) *안쪽*
+        ry: 0.025 + rng() * 0.035,        // 수직 흔들림 폭 — 얼굴 높이 안
+        speed: 0.1 + rng() * 0.08,        // 궤도 속도 (아주 느리게)
+        flashUntil: isAbsorbed ? (performance.now() + 1400) : 0,  // 흡수 단어 등장 플래시
+        dying: false
+      });
+    }
+
+    function _dlgUpdate(cam, nowSec) {
+      if (!_dlg) return;
+      var g = _dlg.ghost;
+      if (!g || !g.root || !g.root.parent) { _dlgDisposeAll(); return; }
+      if (!_dlgHeadTmp) _dlgHeadTmp = new THREE.Vector3();
+      var head = _ghostHeadWorld(g, _dlgHeadTmp);
+
+      // 카메라 → 머리 방향 (글자를 얼굴 앞쪽으로 살짝 당겨 "들여다보면 보이는" 결)
+      var toCamX = 0, toCamZ = 0;
+      if (cam && cam.position) {
+        var ddx = cam.position.x - head.x, ddz = cam.position.z - head.z;
+        var dl = Math.sqrt(ddx * ddx + ddz * ddz) || 1;
+        toCamX = ddx / dl; toCamZ = ddz / dl;
+      }
+
+      var targetBase = (_dlg.listening ? 0.85 : 0.26) * _dlg.opacityMul;
+      var alive = 0;
+      for (var i = 0; i < _dlg.sprites.length; i++) {
+        var w = _dlg.sprites[i];
+        if (!w.sp) continue;
+        var a = nowSec * w.speed * Math.PI * 2 + w.phase;
+        var jx = _dlg.jitter ? (Math.random() - 0.5) * _dlg.jitter : 0;
+        var jy = _dlg.jitter ? (Math.random() - 0.5) * _dlg.jitter : 0;
+        // 얼굴 "안": 머리 중심 반경 안에서 부유 + 카메라 쪽 0.1m 당김 (얼굴 면 근처).
+        w.sp.position.set(
+          head.x + Math.cos(a) * w.rx + toCamX * 0.1 + jx,
+          head.y + Math.sin(nowSec * 0.55 + w.phase * 1.7) * w.ry + jy,
+          head.z + Math.sin(a) * w.rx + toCamZ * 0.1
+        );
+        var tgt = w.dying ? 0 : targetBase;
+        if (w.flashUntil && performance.now() < w.flashUntil) tgt = Math.min(1, targetBase * 1.5 + 0.15);
+        var cur = w.sp._lumenMat.opacity;
+        w.sp._lumenMat.opacity = cur + (tgt - cur) * 0.07;
+        if (w.dying && w.sp._lumenMat.opacity < 0.02) {
+          _dlgDisposeSprite(w);
+        } else {
+          alive++;
+        }
+      }
+      if (_dlg.dying && alive === 0) _dlg = null;
+    }
+
+    function _dlgDisposeSprite(w) {
+      if (!w.sp) return;
+      if (w.sp.parent) w.sp.parent.remove(w.sp);
+      if (w.sp._lumenMat && w.sp._lumenMat.dispose) w.sp._lumenMat.dispose();
+      if (w.sp._lumenTex && w.sp._lumenTex.dispose) w.sp._lumenTex.dispose();
+      w.sp = null;
+    }
+
+    function _dlgDisposeAll() {
+      if (!_dlg) return;
+      for (var i = 0; i < _dlg.sprites.length; i++) _dlgDisposeSprite(_dlg.sprites[i]);
+      _dlg = null;
+    }
+
     function _spawnAt(pin, idx) {
       if (!_source) return null;
       var root = THREE.SkeletonUtils.clone(_source.scene);
@@ -441,6 +583,7 @@
     }
 
     function _clear() {
+      _dlgDisposeAll();  // 260708: 유령 사라지면 얼굴 글자도 즉시 정리
       _ghosts.forEach(function (g) {
         if (g.root && g.root.parent) g.root.parent.remove(g.root);
         if (g.monologueSprite) {
@@ -543,6 +686,8 @@
           if (fpActive) {
             var tProx = 1 - Math.min(1, Math.max(0, (dist - nearD) / rangeD));
             var op = opts.monologueBaseOpacity + (opts.monologueNearOpacity - opts.monologueBaseOpacity) * tProx;
+            // 260708: 대화 집중 중인 유령은 혼잣말 대신 얼굴 속 글자 + 하단 자막이 말한다.
+            if (_dlg && _dlg.ghost === g) op = 0;
             var bob = Math.sin(nowSec * 2 * Math.PI * opts.monologueBobFreq + g.monologuePhase) * opts.monologueBobAmp;
             var sx = g.root.position.x + _camRight.x * opts.monologueSideOffset;
             var sz = g.root.position.z + _camRight.z * opts.monologueSideOffset;
@@ -559,6 +704,11 @@
           var tgtAngle = Math.atan2(camPos.x - g.root.position.x, camPos.z - g.root.position.z);
           g.root.rotation.y = _lerpAngle(g.root.rotation.y, tgtAngle, opts.gazeFollowSpeed);
         }
+      }
+
+      // 260708: 대화 집중 얼굴 글자 갱신 (머리 본 추적 + 궤도 부유 + 페이드)
+      if (_dlg) {
+        try { _dlgUpdate(c, nowSec); } catch (_) {}
       }
 
       _origRender(s, c);
@@ -680,6 +830,50 @@
           // 즉시 baseRotY 로 되돌리지 않고 자연 LERP — 이건 향후 분기. 지금은 instant 복귀.
           g.root.rotation.y = g.baseRotY;
         });
+      },
+
+      // ─── 260708 대화 집중 API (docs/유령대화_얼굴자막_연출_v1-260708.md v2) ───
+      // play-test 가 대화 진입 시 호출. 반환 headWorld 는 카메라 줌인 목표.
+      dialogFocus: function (sceneId, words) {
+        _dlgDisposeAll();
+        var g = _findGhostBySceneId(sceneId);
+        if (!g) {
+          console.warn('[lumen-scene-mannequins] dialogFocus — sceneId 매칭 유령 없음:', sceneId);
+          return { ok: false, headWorld: null };
+        }
+        _dlg = { ghost: g, sprites: [], listening: true, opacityMul: 0.85, jitter: 0, dying: false };
+        var ws = Array.isArray(words) ? words : [];
+        for (var i = 0; i < ws.length && i < 6; i++) {
+          var w = String(ws[i] || '').trim();
+          if (w) _dlgSpawnWord(w, false);
+        }
+        var head = _ghostHeadWorld(g, new THREE.Vector3());
+        return {
+          ok: true,
+          headWorld: head.clone(),
+          getHeadWorld: function () { return _ghostHeadWorld(g, new THREE.Vector3()); }
+        };
+      },
+      // 자막 나가는 동안(false) 가라앉고, 플레이어 차례(true)에 일렁임.
+      dialogActivity: function (listening) {
+        if (_dlg) _dlg.listening = !!listening;
+      },
+      // 매 턴 결 → 글자 선명도/떨림. resonance=또렷 / vague=옅음 / dissonance=흐리고 떨림.
+      dialogMood: function (alignment, resonance) {
+        if (!_dlg) return;
+        _dlg.opacityMul = resonance === 'resonance' ? 1.0 : resonance === 'dissonance' ? 0.5 : 0.8;
+        _dlg.jitter = resonance === 'dissonance' ? 0.012 : 0;
+      },
+      // 흡수된 플레이어 단어가 얼굴 속으로 들어옴 (등장 플래시).
+      dialogAbsorb: function (word) {
+        var w = String(word || '').trim();
+        if (_dlg && w) _dlgSpawnWord(w, true);
+      },
+      // 대화 종료 — 글자 페이드아웃 후 자체 정리.
+      dialogEnd: function () {
+        if (!_dlg) return;
+        _dlg.dying = true;
+        for (var i = 0; i < _dlg.sprites.length; i++) _dlg.sprites[i].dying = true;
       }
     };
     runtime.__lumenSceneMannequins = api;

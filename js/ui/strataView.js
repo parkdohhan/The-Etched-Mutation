@@ -64,6 +64,11 @@
       clearColor: 0x12121a,
       fogColor: 0x12121a,
       fogDensity: 0.006,
+      // 하늘을 플레이어의 현재 감정 파동색으로 실시간 물들이기
+      skyEmotionColorGetter: function () {
+        var w = g.currentExperiencerWave;
+        return w && w.color ? w.color : null;
+      },
     });
     terrainRuntime.init();
     applyRendererBrightness();

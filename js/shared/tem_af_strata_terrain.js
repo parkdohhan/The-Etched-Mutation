@@ -1220,14 +1220,33 @@
 
     var _baseFogColor = new THREE.Color(opts.fogColor != null ? opts.fogColor : 0x12121a);
     var _baseClearColor = new THREE.Color(opts.clearColor != null ? opts.clearColor : 0x12121a);
+    // Emotion sky tint: sky drifts toward the player's current emotion color.
+    // Host supplies opts.skyEmotionColorGetter → {r,g,b} in 0-255 (e.g. current wave color).
+    var _skyEmoTarget = _baseFogColor.clone();
+    var _skyEmoCur = _baseFogColor.clone();
 
     function _tickSeedGrp() {
       if (!seedGrp) return;
 
+      // ─── Emotion sky: drift the base sky toward the player's current emotion color ──
+      // Temper it toward the gloomy base so the sky stays atmospheric, then smooth over frames.
+      var _fogBase = _baseFogColor;
+      if (opts.skyEmotionColorGetter) {
+        var _erc = opts.skyEmotionColorGetter();
+        if (_erc && _erc.r != null) {
+          _skyEmoTarget.setRGB(_erc.r / 255, _erc.g / 255, _erc.b / 255);
+          _skyEmoTarget.lerp(_baseFogColor, 0.32); // keep it sky-like, not neon
+        } else {
+          _skyEmoTarget.copy(_baseFogColor);
+        }
+        _skyEmoCur.lerp(_skyEmoTarget, 0.04); // real-time but gentle drift
+        _fogBase = _skyEmoCur;
+      }
+
       // ─── Fog color: stage-based tint + proximity emotion tint ──
       if (camera && scene3.fog && P.length > 0) {
         var cont = P[0].cont || {};
-        var stageFogCol = _baseFogColor.clone();
+        var stageFogCol = _fogBase.clone();
         // Stage tints the base fog color
         if (cont.stage === 'biased_inclination') stageFogCol.offsetHSL(0.05, 0.05, 0.02); // warm shift
         else if (cont.stage === 'hypercompletion') stageFogCol.offsetHSL(-0.08, 0.03, -0.02); // cold shift

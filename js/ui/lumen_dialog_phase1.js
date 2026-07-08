@@ -240,6 +240,152 @@
     };
   }
 
+  // ─── 얼굴+자막 연출 (260708) ─────────────────
+  // docs/유령대화_얼굴자막_연출_v1-260708.md
+  // 채팅 버블 스크롤 폐지 → 빈 얼굴 윤곽 + 자막 한 줄 + "다 듣고 대답".
+  // 흐름 로직(멀티턴/흡수/풀)은 불변 — 표시층만 이 블록이 담당.
+
+  // 자막 큐 — 유령/플레이어 라인이 순서대로 한 줄씩 자막 자리를 교체.
+  // 입력 렌더러는 _subtitleIdle() 대기 후에만 나타남 ("듣기" 강제 게이트).
+  var _sub = { chain: Promise.resolve(), skip: null };
+  var _canSkipLines = false; // 첫 조우 스킵 불가, 재조우부터 탭 스킵 (start() 에서 세팅)
+
+  function _subtitleZone(overlay) { return overlay.querySelector('[id$="-subtitle"]'); }
+  function _metaZone(overlay) { return overlay.querySelector('[id$="-meta"]'); }
+  function _subtitleIdle() { return _sub.chain; }
+
+  function _playLine(overlay, text, who) {
+    return new Promise(function (resolve) {
+      var zone = _subtitleZone(overlay);
+      if (!zone || !overlay.parentNode) { resolve(); return; }
+
+      if (who === 'ghost') _setFaceActivity(overlay, false); // 말할 땐 얼굴 속 고요
+
+      zone.innerHTML = '';
+      var line = document.createElement('div');
+      line.className = 'ldp-line ldp-' + who;
+      // 260708 v2.1: 영화 자막 스타일 — 텍스트 폭에 맞는 검투명 띠 박스, 가운데 정렬.
+      // 박스는 글자 폭만큼만 (inline-block + width:auto), 존이 flex-center 라 자동 중앙.
+      line.style.cssText = who === 'player'
+        ? [
+            'display:inline-block', 'width:auto', 'max-width:100%',
+            'text-align:center',
+            'font-size:1.08rem', 'line-height:1.7',
+            'color:rgba(210,184,146,0.92)',
+            'letter-spacing:0.02em',
+            'padding:8px 22px',
+            'background:rgba(0,0,0,0.42)',
+            'border-radius:4px',
+            'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
+            'white-space:pre-wrap',
+            'opacity:0', 'transition:opacity 240ms ease',
+          ].join(';')
+        : [
+            'display:inline-block', 'width:auto', 'max-width:100%',
+            'text-align:center',
+            'font-size:1.45rem', 'line-height:1.75',
+            'color:rgba(240,232,254,0.97)',
+            'letter-spacing:0.01em',
+            'padding:12px 30px',
+            'background:rgba(0,0,0,0.52)',
+            'border-radius:4px',
+            'box-shadow:0 0 26px rgba(0,0,0,0.35)',
+            'text-shadow:0 0 22px rgba(168,140,196,0.25)',
+            'white-space:pre-wrap',
+            'opacity:0', 'transition:opacity 240ms ease',
+          ].join(';');
+      requestAnimationFrame(function () { line.style.opacity = '1'; });
+      zone.appendChild(line);
+
+      // 단어 단위 페이드 캐스케이드 (타자기 X — 안개 응결 결).
+      var tokens = String(text == null ? '' : text).split(/(\s+)/);
+      var words = tokens.filter(function (t) { return t.trim().length; });
+      var stepMs = who === 'player' ? 40 : 90;
+      if (words.length * stepMs > 2700) stepMs = Math.max(24, Math.floor(2700 / words.length));
+      var fadeMs = 480;
+      var holdMs = who === 'player' ? 260 : 420;
+      var spans = [];
+      var wi = 0;
+      for (var ti = 0; ti < tokens.length; ti++) {
+        var token = tokens[ti];
+        if (!token.trim().length) {
+          line.appendChild(document.createTextNode(token));
+          continue;
+        }
+        var span = document.createElement('span');
+        span.textContent = token;
+        span.style.opacity = '0';
+        span.style.transition = 'opacity ' + fadeMs + 'ms ease ' + (wi * stepMs) + 'ms';
+        line.appendChild(span);
+        spans.push(span);
+        wi++;
+      }
+      requestAnimationFrame(function () {
+        for (var si = 0; si < spans.length; si++) spans[si].style.opacity = '1';
+      });
+
+      var totalMs = words.length * stepMs + fadeMs + holdMs;
+      var done = false;
+      var timer = null;
+      function _finish() {
+        if (done) return;
+        done = true;
+        if (timer) clearTimeout(timer);
+        if (_sub.skip === skipFn) _sub.skip = null;
+        resolve();
+      }
+      function skipFn() {
+        for (var si = 0; si < spans.length; si++) {
+          spans[si].style.transition = 'none';
+          spans[si].style.opacity = '1';
+        }
+        _finish();
+      }
+      _sub.skip = skipFn;
+      timer = setTimeout(_finish, totalMs);
+    });
+  }
+
+  function _enqueueLine(overlay, text, who) {
+    _sub.chain = _sub.chain
+      .then(function () { return _playLine(overlay, text, who); })
+      .catch(function () {});
+    return _sub.chain;
+  }
+
+  // ─── 유령 얼굴 FX 디스패처 (260708 v2) ─────────
+  // v1 의 2D 얼굴 오버레이 폐기 — 유령의 몸은 지형에 이미 서 있는 3D 마네킹
+  // (lumen_scene_mannequins.js). 이 모듈은 텍스트 표시만 하고, 얼굴 속 글자·기분
+  // 변화는 play-test 가 window.LumenGhostFaceFX 로 주입한 어댑터에 위임한다.
+  // 어댑터 없으면 전부 무해한 no-op (테스트 하네스 등).
+  function _faceFx() {
+    return (typeof window !== 'undefined' && window.LumenGhostFaceFX) || null;
+  }
+
+  // 자막 나가는 동안 얼굴 속 글자 가라앉음 / 플레이어 차례에 일렁임.
+  function _setFaceActivity(overlay, listening) {
+    var fx = _faceFx();
+    if (fx && typeof fx.activity === 'function') {
+      try { fx.activity(!!listening); } catch (_) {}
+    }
+  }
+
+  // 매 턴 결 → 얼굴 속 글자 선명도/일렁임.
+  function _updateFaceMood(alignment, resonance) {
+    var fx = _faceFx();
+    if (fx && typeof fx.mood === 'function') {
+      try { fx.mood(alignment, resonance); } catch (_) {}
+    }
+  }
+
+  // 흡수 성공 → 플레이어의 단어가 유령 얼굴 속으로 들어가 떠다님.
+  function _addFaceFragment(word) {
+    var fx = _faceFx();
+    if (fx && typeof fx.absorb === 'function') {
+      try { fx.absorb(String(word || '').trim()); } catch (_) {}
+    }
+  }
+
   // ─── DOM ──────────────────────────────────
   function _buildOverlay(id) {
     // 대화 오버레이가 뜨면 씬 본문 패널(#sceneMode, z-index 2700)을 숨긴다.
@@ -253,122 +399,105 @@
 
     var ov = document.createElement('div');
     ov.id = id;
-    // 우측 절반 풀스크린 (하단까지). padding-bottom 300px 으로 파동(AW_HEIGHT=280) 자리 비움.
-    // 파동(z-index:2900)은 dialog overlay(2800) 위에 떠 있음.
+    // 260708 v2: 검은 반투명 박스 폐기 — 배경/블러 없이 화면 전체를 덮는 투명 레이어.
+    // 자막은 하단 중앙(마네킹 아래), 하단 300px 은 파동(AW_HEIGHT=280) 자리로 비움.
+    // pointer-events 는 오버레이 자체엔 없음 — 자막(스킵 탭)/입력만 받는다.
     ov.style.cssText = [
       'position:fixed',
-      'top:0', 'right:0', 'bottom:0',
-      'width:50vw',
-      'display:flex', 'flex-direction:column', 'justify-content:flex-start',
-      'align-items:stretch',
-      'padding:56px 44px 300px 44px',
-      'background:rgba(0,0,0,0.5)',
-      'backdrop-filter:blur(2px)',
+      'top:0', 'left:0', 'right:0', 'bottom:0',
+      'display:flex', 'flex-direction:column', 'justify-content:flex-end',
+      'align-items:center',
+      'padding:0 24px 300px 24px',
+      'background:transparent',
       'z-index:2800',
-      'pointer-events:auto',
+      'pointer-events:none',
       'font-family:"Gowun Batang",serif',
       'color:rgba(232,216,252,0.92)',
       'box-sizing:border-box',
       'font-size:1.08rem',
     ].join(';');
 
-    var msgs = document.createElement('div');
-    msgs.id = id + '-messages';
-    msgs.style.cssText = 'width:100%;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:18px;margin-bottom:22px;';
-    ov.appendChild(msgs);
+    var sub = document.createElement('div');
+    sub.id = id + '-subtitle';
+    sub.style.cssText = 'width:min(760px,94vw);flex-shrink:0;min-height:4.6em;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:default;pointer-events:auto;';
+    sub.onclick = function () {
+      // 재조우부터만 탭 스킵 (설계 §2-3)
+      if (_canSkipLines && typeof _sub.skip === 'function') _sub.skip();
+    };
+    ov.appendChild(sub);
+
+    var metaZone = document.createElement('div');
+    metaZone.id = id + '-meta';
+    metaZone.style.cssText = 'width:min(760px,94vw);flex-shrink:0;min-height:2em;text-align:center;margin-top:2px;pointer-events:none;';
+    ov.appendChild(metaZone);
 
     var inputArea = document.createElement('div');
     inputArea.id = id + '-input-area';
-    inputArea.style.cssText = 'width:100%;min-height:64px;flex-shrink:0;';
+    inputArea.style.cssText = 'width:min(680px,92vw);min-height:64px;flex-shrink:0;margin-top:10px;pointer-events:auto;';
     ov.appendChild(inputArea);
 
     document.body.appendChild(ov);
     return ov;
   }
 
+  // 260708: 버블 누적 대신 자막 큐로 위임. 시그니처/호출 자리 불변.
   function _addMessage(overlay, text, opts) {
     opts = opts || {};
-    var msgs = overlay.querySelector('[id$="-messages"]');
-    if (!msgs) return null;
-
-    var bubble = document.createElement('div');
-    bubble.className = 'ldp-bubble ldp-' + (opts.who || 'ghost');
-    bubble.style.cssText = [
-      'padding:16px 20px',
-      'background:' + (opts.who === 'player' ? 'rgba(196,168,130,0.12)' : 'rgba(168,140,196,0.08)'),
-      'border-left:2px solid ' + (opts.who === 'player' ? 'rgba(196,168,130,0.6)' : 'rgba(168,140,196,0.6)'),
-      'border-radius:2px',
-      'font-size:1.1rem',
-      'line-height:1.75',
-      'opacity:0', 'transform:translateY(8px)',
-      'transition:opacity 600ms ease, transform 600ms ease',
-      'white-space:pre-wrap',
-    ].join(';');
-    bubble.textContent = text;
-    msgs.appendChild(bubble);
-    requestAnimationFrame(function () {
-      bubble.style.opacity = '1';
-      bubble.style.transform = 'translateY(0)';
-    });
-    msgs.scrollTo({ top: msgs.scrollHeight, behavior: 'smooth' });
-    return bubble;
+    return _enqueueLine(overlay, text, opts.who || 'ghost');
   }
 
   // V2.1.2 LLM 흡수 로딩 자리 — 응답 생성 ~500-1000ms 동안 빈 화면 X.
-  // 유령 bubble 톤 그대로 + 점 1→2→3→1 루프.
+  // 260708: 메타 존의 점 1→2→3→1 루프 (자막 자리는 플레이어 라인이 유지).
   function _showLoadingBubble(overlay) {
-    var msgs = overlay.querySelector('[id$="-messages"]');
-    if (!msgs) return { stop: function () {} };
-    var bubble = document.createElement('div');
-    bubble.className = 'ldp-bubble ldp-ghost ldp-loading';
-    bubble.style.cssText = [
-      'padding:16px 20px',
-      'background:rgba(168,140,196,0.08)',
-      'border-left:2px solid rgba(168,140,196,0.6)',
-      'border-radius:2px',
-      'font-size:1.1rem',
-      'line-height:1.75',
+    var zone = _metaZone(overlay);
+    if (!zone) return { stop: function () {} };
+    var el = document.createElement('div');
+    el.className = 'ldp-loading';
+    el.style.cssText = [
+      'font-size:1rem',
+      'color:rgba(232,216,252,0.5)',
+      'letter-spacing:0.3em',
       'opacity:0',
       'transition:opacity 300ms ease',
-      'color:rgba(232,216,252,0.55)',
-      'letter-spacing:0.15em',
     ].join(';');
-    bubble.textContent = '.';
-    msgs.appendChild(bubble);
-    requestAnimationFrame(function () { bubble.style.opacity = '1'; });
-    msgs.scrollTo({ top: msgs.scrollHeight, behavior: 'smooth' });
+    el.textContent = '.';
+    zone.appendChild(el);
+    requestAnimationFrame(function () { el.style.opacity = '1'; });
 
     var dots = 1;
     var interval = setInterval(function () {
       dots = (dots % 3) + 1;
-      bubble.textContent = '.'.repeat(dots);
+      el.textContent = '.'.repeat(dots);
     }, 450);
 
     return {
       stop: function () {
         clearInterval(interval);
-        if (bubble.parentNode) bubble.parentNode.removeChild(bubble);
+        if (el.parentNode) el.parentNode.removeChild(el);
       },
     };
   }
 
   function _addSystemMeta(overlay, text) {
-    // 시스템 어휘 (V3 메타 질문 패턴 시드) — 화면 가운데, 다른 톤
-    var msgs = overlay.querySelector('[id$="-messages"]');
-    var meta = document.createElement('div');
-    meta.style.cssText = [
-      'text-align:center',
-      'padding:18px 8px',
-      'font-size:0.9rem',
-      'color:rgba(196,168,130,0.78)',
-      'letter-spacing:0.05em',
-      'opacity:0', 'transition:opacity 700ms ease',
-    ].join(';');
-    meta.textContent = text;
-    msgs.appendChild(meta);
-    requestAnimationFrame(function () { meta.style.opacity = '1'; });
-    msgs.scrollTo({ top: msgs.scrollHeight, behavior: 'smooth' });
-    return meta;
+    // 시스템 어휘 (V3 메타 질문 패턴 시드) — 260708: 자막 큐 뒤에 메타 존 페이드.
+    _sub.chain = _sub.chain.then(function () {
+      var zone = _metaZone(overlay);
+      if (!zone || !overlay.parentNode) return;
+      var meta = document.createElement('div');
+      meta.className = 'ldp-system-meta';
+      meta.style.cssText = [
+        'text-align:center',
+        'padding:10px 8px 0 8px',
+        'font-size:0.9rem',
+        'color:rgba(196,168,130,0.78)',
+        'letter-spacing:0.05em',
+        'opacity:0', 'transition:opacity 700ms ease',
+      ].join(';');
+      meta.textContent = text;
+      zone.appendChild(meta);
+      requestAnimationFrame(function () { meta.style.opacity = '1'; });
+    }).catch(function () {});
+    return null;
   }
 
   // V2-5++ 흡수 메아리 자리 (자료 §11.2 자리 풀음).
@@ -399,17 +528,17 @@
   }
   function _addAbsorbTrace(overlay, turnIdx) {
     if (!overlay || !overlay.parentNode) return null;
-    var msgs = overlay.querySelector('[id$="-messages"]');
-    if (!msgs) return null;
+    // 260708: 메타 존에 잠깐 떴다 스스로 사라짐 (비동기 도착이라 자막 큐에 안 태움).
+    var zone = _metaZone(overlay);
+    if (!zone) return null;
     var lang = _resolveTraceLang();
     var lines = _ABSORB_TRACE_LINES[lang] || _ABSORB_TRACE_LINES.ko;
     var idx = Math.max(0, Math.min(lines.length - 1, (turnIdx | 0) - 1));
     var trace = document.createElement('div');
     trace.className = 'ldp-absorb-trace';
     trace.style.cssText = [
-      'text-align:right',
-      'padding:6px 10px 0 0',
-      'margin-top:-4px',
+      'text-align:center',
+      'padding:6px 0 0 0',
       'font-family:"Cormorant Garamond",serif',
       'font-size:0.82rem',
       'font-style:italic',
@@ -420,12 +549,13 @@
       'transition:opacity 1200ms ease, transform 1200ms ease',
     ].join(';');
     trace.textContent = lines[idx];
-    msgs.appendChild(trace);
+    zone.appendChild(trace);
     requestAnimationFrame(function () {
       trace.style.opacity = '1';
       trace.style.transform = 'translateY(0)';
     });
-    msgs.scrollTo({ top: msgs.scrollHeight, behavior: 'smooth' });
+    setTimeout(function () { trace.style.opacity = '0'; }, 4200);
+    setTimeout(function () { if (trace.parentNode) trace.parentNode.removeChild(trace); }, 5600);
     return trace;
   }
 
@@ -438,22 +568,24 @@
       var btn = document.createElement('button');
       btn.textContent = c.label;
       btn.style.cssText = [
-        'padding:14px 20px', 'width:100%', 'box-sizing:border-box',
-        'background:rgba(196,168,130,0.06)',
-        'border:1px solid rgba(196,168,130,0.32)',
-        'color:rgba(232,216,252,0.86)',
-        'font-family:inherit', 'font-size:1.05rem',
-        'cursor:pointer', 'border-radius:2px',
-        'text-align:left',
+        'padding:11px 18px', 'width:100%', 'box-sizing:border-box',
+        'background:rgba(0,0,0,0.34)',
+        'border:none',
+        'border-bottom:1px solid rgba(196,168,130,0.26)',
+        'color:rgba(232,216,252,0.9)',
+        'font-family:inherit', 'font-size:1.08rem',
+        'cursor:pointer', 'border-radius:0',
+        'text-align:center',
+        'text-shadow:0 1px 9px rgba(0,0,0,0.9)',
         'transition:background 200ms ease, border-color 200ms ease',
       ].join(';');
       btn.onmouseenter = function () {
-        btn.style.background = 'rgba(196,168,130,0.16)';
-        btn.style.borderColor = 'rgba(196,168,130,0.6)';
+        btn.style.background = 'rgba(30,24,14,0.55)';
+        btn.style.borderBottomColor = 'rgba(196,168,130,0.6)';
       };
       btn.onmouseleave = function () {
-        btn.style.background = 'rgba(196,168,130,0.06)';
-        btn.style.borderColor = 'rgba(196,168,130,0.32)';
+        btn.style.background = 'rgba(0,0,0,0.34)';
+        btn.style.borderBottomColor = 'rgba(196,168,130,0.26)';
       };
       btn.onclick = function () {
         area.innerHTML = '';
@@ -461,7 +593,15 @@
       };
       box.appendChild(btn);
     });
-    area.appendChild(box);
+    // 260708: 자막 다 끝나야 등장 ("듣기" 게이트)
+    box.style.opacity = '0';
+    box.style.transition = 'opacity 400ms ease';
+    _subtitleIdle().then(function () {
+      if (!area.isConnected) return;
+      area.appendChild(box);
+      _setFaceActivity(overlay, true);
+      requestAnimationFrame(function () { box.style.opacity = '1'; });
+    });
   }
 
   // V2.1.2 (ε, 2026-05-06): 선택지 + 자유 입력 동시 박는 자리.
@@ -515,24 +655,28 @@
     input.type = 'text';
     input.placeholder = opts.placeholder || _inputPlaceholder();
     input.style.cssText = [
-      'flex:1', 'padding:14px 18px',
-      'background:rgba(0,0,0,0.4)',
-      'border:1px solid rgba(196,168,130,0.32)',
+      'flex:1', 'padding:12px 14px',
+      'background:rgba(0,0,0,0.38)',
+      'border:none',
+      'border-bottom:1px solid rgba(196,168,130,0.32)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'font-size:1.05rem',
-      'outline:none', 'border-radius:2px',
+      'font-family:inherit', 'font-size:1.08rem',
+      'text-align:center',
+      'outline:none', 'border-radius:0',
+      'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
     ].join(';');
-    input.onfocus = function () { input.style.borderColor = 'rgba(196,168,130,0.7)'; };
-    input.onblur  = function () { input.style.borderColor = 'rgba(196,168,130,0.32)'; };
+    input.onfocus = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.7)'; };
+    input.onblur  = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.32)'; };
 
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
     btn.style.cssText = [
-      'padding:14px 20px',
-      'background:rgba(196,168,130,0.18)',
-      'border:1px solid rgba(196,168,130,0.45)',
+      'padding:12px 18px',
+      'background:transparent',
+      'border:none',
+      'border-bottom:1px solid rgba(196,168,130,0.45)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'font-size:1.05rem', 'cursor:pointer', 'border-radius:2px',
+      'font-family:inherit', 'font-size:1.02rem', 'cursor:pointer', 'border-radius:0',
     ].join(';');
 
     function _go() {
@@ -548,8 +692,16 @@
     wrap.appendChild(btn);
     box.appendChild(wrap);
 
-    area.appendChild(box);
-    setTimeout(function () { input.focus(); }, 50);
+    // 260708: 자막 다 끝나야 등장 ("듣기" 게이트)
+    box.style.opacity = '0';
+    box.style.transition = 'opacity 400ms ease';
+    _subtitleIdle().then(function () {
+      if (!area.isConnected) return;
+      area.appendChild(box);
+      _setFaceActivity(overlay, true);
+      requestAnimationFrame(function () { box.style.opacity = '1'; });
+      setTimeout(function () { input.focus(); }, 80);
+    });
   }
 
   // V2.1.2 (ε, 2026-05-06): dialog-turn edge function 호출 자리 — 학습된 유령 자유 대화.
@@ -590,24 +742,28 @@
     input.type = 'text';
     input.placeholder = opts.placeholder || _t('freeInputPlaceholder');
     input.style.cssText = [
-      'flex:1', 'padding:14px 18px',
-      'background:rgba(0,0,0,0.4)',
-      'border:1px solid rgba(196,168,130,0.32)',
+      'flex:1', 'padding:12px 14px',
+      'background:rgba(0,0,0,0.38)',
+      'border:none',
+      'border-bottom:1px solid rgba(196,168,130,0.32)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'font-size:1.05rem',
-      'outline:none', 'border-radius:2px',
+      'font-family:inherit', 'font-size:1.08rem',
+      'text-align:center',
+      'outline:none', 'border-radius:0',
+      'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
     ].join(';');
-    input.onfocus = function () { input.style.borderColor = 'rgba(196,168,130,0.7)'; };
-    input.onblur  = function () { input.style.borderColor = 'rgba(196,168,130,0.32)'; };
+    input.onfocus = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.7)'; };
+    input.onblur  = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.32)'; };
 
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
     btn.style.cssText = [
-      'padding:14px 20px',
-      'background:rgba(196,168,130,0.18)',
-      'border:1px solid rgba(196,168,130,0.45)',
+      'padding:12px 18px',
+      'background:transparent',
+      'border:none',
+      'border-bottom:1px solid rgba(196,168,130,0.45)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'font-size:1.05rem', 'cursor:pointer', 'border-radius:2px',
+      'font-family:inherit', 'font-size:1.02rem', 'cursor:pointer', 'border-radius:0',
     ].join(';');
 
     function _go() {
@@ -619,10 +775,18 @@
     btn.onclick = _go;
     input.onkeydown = function (e) { if (e.key === 'Enter') _go(); };
 
+    // 260708: 자막 다 끝나야 등장 ("듣기" 게이트)
     wrap.appendChild(input);
     wrap.appendChild(btn);
-    area.appendChild(wrap);
-    setTimeout(function () { input.focus(); }, 50);
+    wrap.style.opacity = '0';
+    wrap.style.transition = 'opacity 400ms ease';
+    _subtitleIdle().then(function () {
+      if (!area.isConnected) return;
+      area.appendChild(wrap);
+      _setFaceActivity(overlay, true);
+      requestAnimationFrame(function () { wrap.style.opacity = '1'; });
+      setTimeout(function () { input.focus(); }, 80);
+    });
   }
 
   // ─── V2.1.2 슬롯 흡수 background insert ─────
@@ -996,6 +1160,17 @@
     // 누적되어 카메라가 위아래로 진동. overlay 즉시 박아서 freeze 즉시 활성화.
     var overlay = _buildOverlay(input.mountId || DEFAULTS.overlayId);
 
+    // 260708 얼굴+자막 — 첫 조우 스킵 불가 / 재조우 탭 스킵 (설계 §2-3).
+    // 얼굴(3D 마네킹 줌·글자)은 play-test 가 window.LumenGhostFaceFX 로 처리.
+    _canSkipLines = false;
+    try {
+      var _seenKey = 'ldp_seen:' + memoryId + '|' + sceneId;
+      _canSkipLines = sessionStorage.getItem(_seenKey) === '1';
+      sessionStorage.setItem(_seenKey, '1');
+    } catch (_) {}
+    _sub.chain = Promise.resolve();
+    _sub.skip = null;
+
     // V2.1.2 (δ) 하이브리드: 작가 손 / LLM / 균일 톤 fallback (2026-05-05).
     // (ζ, 2026-05-24) 병렬화 — LLM 은 즉시 kick off 만, scene_context 는 LLM 안 기다리고
     // 본문 split 으로 *즉시* 렌더. 사용자 체감 = 길게 클릭하자마자 유령 대사 나옴.
@@ -1233,6 +1408,9 @@
       }
       lastResonance = resonanceForViz;
 
+      // 260708: 턴 결 → 얼굴 파편 선명도/흐림 + 윤곽 펄스 (설계 §4)
+      try { _updateFaceMood(alignment, resonanceForViz); } catch (_) {}
+
       // 슬롯 흡수 자리 — 백그라운드 자리 (§2 명제 자리 보존). 응답 자리 와 별도.
       // 사용자 입력 자리 → ghost_variants 자생 자리 → 다음 플레이어 자리 자료 자리에 박힘.
       var slotter = global.LumenSlotAbsorber;
@@ -1271,6 +1449,8 @@
                 // V2-5++ 흡수 메아리 자리 — 자료 §11.2 (INSERT 화면 신호).
                 // overlay 가 아직 살아있을 때만 박음 (마지막 턴 후 cleanup 됐으면 스킵).
                 try { _addAbsorbTrace(overlay, turnIdx); } catch (_) {}
+                // 260708: 흡수된 단어가 얼굴 안으로 들어가 떠다님 (설계 §4 파편 소스 ③)
+                try { _addFaceFragment(bgAbs.slotValue); } catch (_) {}
               }
             } catch (bgErr) {
               console.warn('[phase1] BG 흡수 자리 예외', bgErr);
@@ -1356,6 +1536,9 @@
 
   function cleanup(opts) {
     opts = opts || {};
+    // 260708: 자막 큐 리셋 (다음 씬 잔류 방지)
+    _sub.chain = Promise.resolve();
+    _sub.skip = null;
     var ov = document.getElementById(opts.mountId || DEFAULTS.overlayId);
     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
   }

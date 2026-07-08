@@ -2640,6 +2640,29 @@
     return sharedEmotionVectorToWaveStyle(emotionVector || {});
   }
 
+  /** 감정 혼합색: 지배 감정 하나가 아니라 전체 벡터를 가중 평균 → 미묘한 변화도 색에 연속 반영 */
+  function blendWaveColorFromVector(vec) {
+    if (!vec || typeof vec !== 'object') return null;
+    let r = 0, g = 0, b = 0, sum = 0;
+    Object.keys(vec).forEach(function (k) {
+      const c = PT_EMOTION_COLORS[k];
+      if (!c) return;
+      const w = Math.max(0, Number(vec[k]) || 0);
+      if (w <= 0) return;
+      r += c[0] * w; g += c[1] * w; b += c[2] * w; sum += w;
+    });
+    if (sum <= 0) return null;
+    return { r: Math.round(r / sum), g: Math.round(g / sum), b: Math.round(b / sum) };
+  }
+
+  /** play-test 파동 스타일 = 공유 엔진 스타일(속도·진폭 등) + 혼합색 오버라이드 */
+  function playTestWaveStyleFor(vec) {
+    const s = sharedEmotionVectorToWaveStyle(vec || {});
+    const c = blendWaveColorFromVector(vec || {});
+    if (c) s.color = c;
+    return s;
+  }
+
   /** 체험자 파동: 입력 전 작은 진폭·나풀 회색 */
   function idleExperiencerWaveStyle() {
     return {
@@ -2666,15 +2689,22 @@
   async function startPlayTestAlignmentWaves(originalVec, userVec, alignmentScore, waveOpts) {
     waveOpts = waveOpts || {};
     const userIdle = waveOpts.userIdle === true;
+    const live = waveOpts.live === true; // 실시간 갱신: 캔버스 복제/재시작 없이 색·형태만 부드럽게 교체
     const viz = await ensurePlayTestAlignVisualizer();
-    viz.stopAlignmentWaveAnimation();
     const oldCanvas = document.getElementById('alignmentWaveCanvas');
     if (!oldCanvas) return;
-    const parent = oldCanvas.parentElement;
-    const canvas = oldCanvas.cloneNode(false);
-    canvas.className = oldCanvas.className;
-    canvas.id = 'alignmentWaveCanvas';
-    parent.replaceChild(canvas, oldCanvas);
+    let canvas;
+    if (live) {
+      // 같은 캔버스 재사용 → Visualizer 빠른 경로(데이터만 갱신, 매 프레임 목표색으로 lerp)
+      canvas = oldCanvas;
+    } else {
+      viz.stopAlignmentWaveAnimation();
+      const parent = oldCanvas.parentElement;
+      canvas = oldCanvas.cloneNode(false);
+      canvas.className = oldCanvas.className;
+      canvas.id = 'alignmentWaveCanvas';
+      parent.replaceChild(canvas, oldCanvas);
+    }
     const orig = normalizeOriginalEmotionForWave(originalVec || {});
     const user = (userVec && typeof userVec === 'object') ? userVec : {};
     const align = alignmentScore != null ? Number(alignmentScore) : 0;
@@ -2683,7 +2713,7 @@
     const hasUserInput = !userIdle && Object.keys(user).length > 0;
     if (hasUserInput) {
       window._lastPlayerEmotionVector = user;
-      window._lastPlayerWaveStyle = sharedEmotionVectorToWaveStyle(user);
+      window._lastPlayerWaveStyle = playTestWaveStyleFor(user);
     }
     const resolvedPlayerVec = hasUserInput
       ? user
@@ -2695,7 +2725,7 @@
     // live B 로직 parity — 전역 상태 반영 (화자 A = 씬 원본, 체험자 B = 플레이어)
     window.narratorEmotionVector = orig;
     window.experiencerEmotionVector = resolvedPlayerVec;
-    window.currentNarratorWave = sharedEmotionVectorToWaveStyle(orig);
+    window.currentNarratorWave = playTestWaveStyleFor(orig);
     window.currentExperiencerWave = resolvedPlayerStyle;
 
     const narratorWaveStyle = window.currentNarratorWave;
@@ -2856,28 +2886,51 @@
   function previewWaveFromCoreUserText(text) {
     if (!text || typeof text !== 'string') return false;
     const t = text;
-    if (/슬프|슬퍼|슬펐|우울|눈물|울었|비통|슬픔|서글|애처/.test(t)) {
-      transitionWavePostSubmit(PT_EMOTION_COLORS.sadness, 'MID', { sadness: 0.92, longing: 0.34 });
-      return true;
-    }
-    if (/무섭|무서|두려|공포|불안|조마|오싹|겁/.test(t)) {
-      transitionWavePostSubmit(PT_EMOTION_COLORS.fear, 'MID', { fear: 0.9, confusion: 0.28 });
-      return true;
-    }
-    if (/화나|분노|열받|짜증|격분|빡|욕나와/.test(t)) {
+    // 분노 — "화가났다/화났다/화가 났다/화나다/빡쳐/열받아" 등. '났'은 '나'와 별개 음절이라 따로 잡음.
+    if (/화가?\s*[나난났날]|화가?\s*치|분노|성\s*[나난났]|성질|열\s*받|짜증|격분|빡치|빡쳐|빡침|욱해|욱했|미치겠|돌아버|열불|어이없|어처구니|억울|분해|분하/.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.anger, 'MID', { anger: 0.94, fear: 0.16 });
       return true;
     }
-    if (/그립|그리워|보고\s*싶/.test(t)) {
+    // 슬픔
+    if (/슬프|슬퍼|슬펐|슬픔|우울|눈물|울었|울고|비통|서글|애처|참담|먹먹|서러/.test(t)) {
+      transitionWavePostSubmit(PT_EMOTION_COLORS.sadness, 'MID', { sadness: 0.92, longing: 0.34 });
+      return true;
+    }
+    // 두려움
+    if (/무섭|무서|두렵|두려|공포|불안|조마|오싹|겁나|겁이|겁났|떨려|떨렸|초조/.test(t)) {
+      transitionWavePostSubmit(PT_EMOTION_COLORS.fear, 'MID', { fear: 0.9, confusion: 0.28 });
+      return true;
+    }
+    // 기쁨
+    if (/기뻐|기쁘|기뻤|기쁨|행복|즐거|즐겁|신나|신났|설레|설렜|벅차|후련|홀가분/.test(t)) {
+      transitionWavePostSubmit(PT_EMOTION_COLORS.joy, 'MID', { joy: 0.9, relief: 0.3 });
+      return true;
+    }
+    // 그리움
+    if (/그립|그리워|그리웠|보고\s*싶|사무치|아른거/.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.longing, 'MID', { longing: 0.88, sadness: 0.42 });
       return true;
     }
-    if (/미안|죄책|내\s*탓/.test(t)) {
+    // 죄책
+    if (/미안|죄책|죄스|내\s*탓|자책|후회막심|부끄/.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.guilt, 'MID', { guilt: 0.9, sadness: 0.26 });
       return true;
     }
-    if (/\bsad\b|sorrow|grief|depressed|unhappy/i.test(t)) {
+    // English fallbacks
+    if (/\bangry\b|\bmad\b|furious|\brage\b|pissed|irritat/i.test(t)) {
+      transitionWavePostSubmit(PT_EMOTION_COLORS.anger, 'MID', { anger: 0.94, fear: 0.16 });
+      return true;
+    }
+    if (/\bsad\b|sorrow|grief|depressed|unhappy|crying|tears/i.test(t)) {
       transitionWavePostSubmit(PT_EMOTION_COLORS.sadness, 'MID', { sadness: 0.9, longing: 0.22 });
+      return true;
+    }
+    if (/afraid|scared|\bfear\b|anxious|nervous|terrified/i.test(t)) {
+      transitionWavePostSubmit(PT_EMOTION_COLORS.fear, 'MID', { fear: 0.9, confusion: 0.28 });
+      return true;
+    }
+    if (/happy|\bjoy\b|glad|excited|delighted/i.test(t)) {
+      transitionWavePostSubmit(PT_EMOTION_COLORS.joy, 'MID', { joy: 0.9, relief: 0.3 });
       return true;
     }
     return false;
@@ -2933,6 +2986,45 @@
 
   window._temEnterSceneMode = enterSceneMode;
   window._temGame = game; // V2.1.2 검증용 — 콘솔에서 game.pins 접근 가능
+
+  // 260708: 대화 카메라 줌 — _fpTick 이 freeze 중에도 카메라를 논리 위치로 매 프레임
+  // 리셋한다 (tem_af_strata_terrain.js _fpTick freeze 분기 — 자이로드롭 방지 리셋).
+  // 그래서 카메라에 직접 쓰면 다음 프레임에 되돌아감. 해결: renderer.render 직전에
+  // 대화용 자세를 덮어쓰는 래퍼 (lumen_scene_mannequins 와 같은 render wrap 패턴 —
+  // 지형 모듈은 한 글자도 안 건드림). window._temDialogCam={pos,quat} 있으면 그 자세로 렌더.
+  function _ensureDialogCamOverride(runtime) {
+    if (window.__temDlgCamInstalled) return true;
+    var renderer = runtime && runtime.getRenderer && runtime.getRenderer();
+    if (!renderer || typeof renderer.render !== 'function') return false;
+    var orig = renderer.render.bind(renderer);
+    renderer.render = function (s, c) {
+      var d = window._temDialogCam;
+      if (d && c && c.position) {
+        c.position.copy(d.pos);
+        c.quaternion.copy(d.quat);
+      }
+      orig(s, c);
+    };
+    window.__temDlgCamInstalled = true;
+    return true;
+  }
+
+  // easeInOut 트윈 — window._temDialogCam 자세를 목표로 보간. token.dead=true 로 즉시 중단.
+  function _runCamTween(fromPos, fromQuat, toPos, toQuat, durMs, token, onDone) {
+    var t0 = performance.now();
+    (function step() {
+      if (!token || token.dead) return;
+      var d = window._temDialogCam;
+      if (!d) return;
+      var k = Math.min(1, (performance.now() - t0) / durMs);
+      var e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      d.pos.lerpVectors(fromPos, toPos, e);
+      d.quat.copy(fromQuat).slerp(toQuat, e);
+      if (k < 1) requestAnimationFrame(step);
+      else if (typeof onDone === 'function') onDone();
+    })();
+  }
+
   // V2.1 Phase 1 — Lumen circular memory dialog 컨트롤러
   // 기존 enterSceneMode UI(sceneText·sceneNpc·emotionInputArea) 대체.
   // overlay #lumenDialogPhase1 (z-index:2800, sceneMode 2700 위) 띄움. FP 카메라는 뒤에서 계속 작동.
@@ -2982,7 +3074,80 @@
         || null);
     } catch (e) { anchorVariantId = null; }
 
-    return window.LumenDialogPhase1.start({
+    // ─── 260708 얼굴 연출 — 카메라 줌인 + 마네킹 얼굴 속 글자 ───
+    // docs/유령대화_얼굴자막_연출_v1-260708.md (v2). 대화 동안 카메라가 그 유령의
+    // 머리 앞 ~1.15m 로 다가가고(줌인), 얼굴 속을 모티프/공명 단어가 떠다닌다.
+    // 자막·입력은 하단 중앙 (대화 모듈 v2), 결/흡수 신호는 LumenGhostFaceFX 로 전달.
+    var _ghostCam = (runtime && runtime.getCamera) ? runtime.getCamera() : null;
+    var _mq = runtime && runtime.__lumenSceneMannequins;
+    var _faceFocus = null;
+    var _camSaved = null;
+    var _camTween = { dead: false };
+    try {
+      if (_mq && typeof _mq.dialogFocus === 'function') {
+        var _fwMeta = scene.meta || {};
+        var _fwRaw = []
+          .concat(Array.isArray(_fwMeta.motif_tags) ? _fwMeta.motif_tags : [])
+          .concat(Array.isArray(scene.echo_words) ? scene.echo_words : [])
+          .concat(Array.isArray(_fwMeta.echo_words) ? _fwMeta.echo_words : []);
+        var _fwSeen = {};
+        var _fwWords = [];
+        for (var _fi = 0; _fi < _fwRaw.length && _fwWords.length < 5; _fi++) {
+          var _fw = String(_fwRaw[_fi] || '').trim();
+          if (_fw && !_fwSeen[_fw]) { _fwSeen[_fw] = 1; _fwWords.push(_fw); }
+        }
+        _faceFocus = _mq.dialogFocus(scene.id, _fwWords);
+      }
+      if (_faceFocus && _faceFocus.ok && _ghostCam && window.THREE && _ensureDialogCamOverride(runtime)) {
+        _camSaved = { pos: _ghostCam.position.clone(), quat: _ghostCam.quaternion.clone() };
+        var _head = _faceFocus.headWorld;
+        var _dir = _ghostCam.position.clone().sub(_head);
+        _dir.y = 0;
+        if (_dir.lengthSq() < 1e-4) _dir.set(0, 0, 1);
+        _dir.normalize();
+        var _tgtPos = _head.clone().add(_dir.multiplyScalar(1.15));
+        _tgtPos.y = _head.y + 0.03;
+        var _lookM = new window.THREE.Matrix4().lookAt(_tgtPos, _head, new window.THREE.Vector3(0, 1, 0));
+        var _tgtQuat = new window.THREE.Quaternion().setFromRotationMatrix(_lookM);
+        // render wrap 이 매 프레임 이 자세로 덮어씀 — _fpTick 의 freeze 리셋을 이김.
+        window._temDialogCam = { pos: _camSaved.pos.clone(), quat: _camSaved.quat.clone() };
+        _runCamTween(_camSaved.pos, _camSaved.quat, _tgtPos, _tgtQuat, 1200, _camTween);
+        console.log('[v21-phase1] cam zoom-in → ghost head (sceneId=' + String(scene.id).slice(0, 8) + '…)');
+      } else {
+        // 어느 조각이 빠졌는지 정확히 남김 — 줌 안 될 때 콘솔에서 바로 원인 확인.
+        console.warn('[v21-phase1] cam zoom skip —',
+          !_mq ? 'runtime.__lumenSceneMannequins 없음'
+          : (!_mq.dialogFocus ? 'dialogFocus API 없음 (lumen_scene_mannequins.js 캐시?)'
+          : (!_faceFocus || !_faceFocus.ok ? '마네킹 매칭 실패 sceneId=' + String(scene.id).slice(0, 8) + '…'
+          : (!_ghostCam ? 'runtime.getCamera 없음'
+          : (!window.THREE ? 'window.THREE 없음' : 'renderer 래핑 실패')))));
+      }
+      if (_mq) {
+        window.LumenGhostFaceFX = {
+          mood: function (a, r) { try { _mq.dialogMood(a, r); } catch (_) {} },
+          absorb: function (w) { try { _mq.dialogAbsorb(w); } catch (_) {} },
+          activity: function (l) { try { _mq.dialogActivity(l); } catch (_) {} },
+        };
+      }
+    } catch (_fxErr) { console.warn('[v21-phase1] face focus 실패', _fxErr); }
+
+    function _releaseFaceFocus() {
+      try { _camTween.dead = true; } catch (_) {}
+      try { if (_mq && _mq.dialogEnd) _mq.dialogEnd(); } catch (_) {}
+      try { window.LumenGhostFaceFX = null; } catch (_) {}
+      try {
+        var _d = window._temDialogCam;
+        if (_camSaved && _d) {
+          // 현재 줌 자세 → 원위치로 복귀 트윈, 끝나면 override 해제 (FP 재개)
+          _runCamTween(_d.pos.clone(), _d.quat.clone(), _camSaved.pos, _camSaved.quat, 800,
+            { dead: false }, function () { window._temDialogCam = null; });
+        } else {
+          window._temDialogCam = null;
+        }
+      } catch (_) { window._temDialogCam = null; }
+    }
+
+    var _dlgPromise = window.LumenDialogPhase1.start({
       memoryId: game.memoryId,
       sceneId: scene.id,
       sceneData: scene,
@@ -3049,6 +3214,9 @@
         }
       },
     });
+    // 260708: 대화 끝나면 (정상/예외 모두) 카메라 복귀 + 얼굴 글자 페이드아웃
+    _dlgPromise.then(function () { _releaseFaceFocus(); }, function () { _releaseFaceFocus(); });
+    return _dlgPromise;
   }
 
   // Phase 1 = 선형 진행 (5번 결정). 다음 scene_order 핀으로.
@@ -3624,16 +3792,17 @@
     const reasons = document.getElementById('reasonArea');
     if (!chips || !sliders) return;
     const bump = function () {
-      if (!game.playTestWaveUserIdle) return;
-      game.playTestWaveUserIdle = false;
-      const pin = game.currentPinId ? game.pins.find(function (p) { return p.id === game.currentPinId; }) : null;
       const sc = game.scenes[game.currentSceneIndex];
       if (!sc) return;
+      const pin = game.currentPinId ? game.pins.find(function (p) { return p.id === game.currentPinId; }) : null;
       const orig = normalizeOriginalEmotionForWave((pin && pin.originalEmotion) ? pin.originalEmotion : safeParseEmotion(sc.original_emotion));
       let user = {};
       try { user = collectUserEmotionVector(); } catch (_) {}
       const align = (game.lastResult && typeof game.lastResult.alignment_score === 'number') ? game.lastResult.alignment_score : 0;
-      void startPlayTestAlignmentWaves(orig, user, align, { userIdle: false });
+      // 첫 입력: idle→감정 전환(부드러운 보간) 정식 draw. 이후 모든 입력: 실시간 live 갱신.
+      const firstTouch = game.playTestWaveUserIdle;
+      game.playTestWaveUserIdle = false;
+      void startPlayTestAlignmentWaves(orig, user, align, { userIdle: false, live: !firstTouch });
     };
     chips.addEventListener('click', bump);
     sliders.addEventListener('input', bump);
@@ -4400,6 +4569,34 @@
     });
   }
 
+  // 2026-07-08: 터치 우선 기기(휴대폰·태블릿) 판정 — FP 1인칭(방향키+포인터록)이 불가하므로
+  // 2D 지도로 라우팅해야 하는 기기. iPadOS 사파리는 데스크톱 Mac UA 로 위장하므로
+  // (MacIntel + maxTouchPoints>1) 와 coarse 포인터로 보강해 'iPad → 데스크톱 오판 → 검은 화면'을 막는다.
+  function _temIsMobileDevice() {
+    var hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+    var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    return /Mobi|Android|iPhone|iPod|iPad/i.test(navigator.userAgent)
+      || iPadOS
+      || (hasTouch && coarse)
+      || (hasTouch && window.innerWidth < 768);
+  }
+  // 260708 fix: 이 함수는 module 스코프라 뒤쪽 일반 <script> 블록에서 안 보임 — 전역 공유.
+  window._temIsMobileDevice = _temIsMobileDevice;
+
+  // 모바일은 1인칭 FP를 스킵(→ mapMode 2D 지도 유지)하는데, 진입 핸들러가 FP 전환용으로
+  // 걸어둔 visibility:hidden 을 되돌리는 자리가 없어 지도가 통째로 가려졌다(진입 시 검은 화면).
+  // 두 진입 경로(startBtn·URL 딥링크)에서 loadMemoryData 직후 호출해 복구.
+  function _temShowMapIfMobile() {
+    if (!_temIsMobileDevice()) return false;
+    var mm = document.getElementById('mapMode');
+    if (mm) {
+      mm.style.visibility = '';
+      try { if (typeof renderContourCanvas === 'function') renderContourCanvas(); } catch (_) {}
+    }
+    return true;
+  }
+
   document.getElementById('startBtn').addEventListener('click', async () => {
     const id = document.getElementById('memorySelect').value;
     if (!id) return;
@@ -4410,6 +4607,7 @@
     _mm2.classList.add('active');
     try {
       await loadMemoryData(id);
+      _temShowMapIfMobile();
       // 5-2: 본 플레이에서 SFX.ambient 끔 — lumen_audio_space 와 겹침 (3a49921 후속, startBtn 자리 누락분)
       // fadeIn(SFX.ambient, 0.12, 3000);
       startCursorLerp();
@@ -4861,6 +5059,7 @@
       _mm.classList.add('active');
       try {
         await loadMemoryData(urlMemoryId);
+        _temShowMapIfMobile();
         try {
           sessionStorage.removeItem('tem_archive_memory_id');
           sessionStorage.removeItem('demoMemoryId');
@@ -6245,13 +6444,24 @@
 
     // Hook into game start: wait for loadMemoryData to populate game.scenes,
     // then intercept mapMode and switch to 3D first-person
-    // Mobile detection — fall back to contour map.
-    // 터치 지원만으로 판정하면 터치스크린·터치패드 데스크탑(Windows 노트북 등)이
-    // 모바일로 오탐돼 1인칭 모드가 통째로 스킵된다(→ 검은 화면). user agent 가
-    // 명백한 모바일이거나, 터치 지원 + 좁은 화면(<768px)일 때만 모바일로 본다.
-    var _hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    var _isMobile = /Mobi|Android|iPhone|iPod/i.test(navigator.userAgent)
-      || (_hasTouch && window.innerWidth < 768);
+    // Mobile detection — fall back to contour map. 단일 소스(_temIsMobileDevice)를 공유해
+    // FP 스킵 판정과 지도 visibility 복구(_temShowMapIfMobile)가 항상 동일한 기기 집합에 걸린다.
+    // 터치+coarse 포인터와 iPadOS(데스크톱 Mac UA 위장)까지 포함 — 터치패드 데스크탑(fine 포인터)은
+    // 제외되어 여전히 1인칭 모드를 받는다.
+    // 260708 fix: 이 블록(일반 스크립트)은 module 블록보다 먼저 실행됨 — module 안
+    // _temIsMobileDevice 직접 참조 시 ReferenceError 로 아래 FP 초기화 전체가 죽음
+    // (fresh load 검은 화면). 전역 공유본이 있으면 쓰고, 없으면 동일 판정식 폴백.
+    var _isMobile = (typeof window._temIsMobileDevice === 'function')
+      ? window._temIsMobileDevice()
+      : (function () {
+          var hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+          var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+          var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+          return /Mobi|Android|iPhone|iPod|iPad/i.test(navigator.userAgent)
+            || iPadOS
+            || (hasTouch && coarse)
+            || (hasTouch && window.innerWidth < 768);
+        })();
     if (_isMobile) {
       console.log('[FP Adapter] Mobile detected, skipping first-person mode');
       // Restore mapMode visibility for mobile (no FP takeover)
