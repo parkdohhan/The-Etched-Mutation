@@ -444,6 +444,10 @@
         var ddx = cam.position.x - head.x, ddz = cam.position.z - head.z;
         var dl = Math.sqrt(ddx * ddx + ddz * ddz) || 1;
         toCamX = ddx / dl; toCamZ = ddz / dl;
+        // 260709: 대화 중엔 유령이 반드시 카메라를 마주보게 몸을 돌린다.
+        // gaze(seen·fpActive 조건부)와 별개의 보장 회전 — 등 보이는 채 대화 방지.
+        var faceA = Math.atan2(cam.position.x - g.root.position.x, cam.position.z - g.root.position.z);
+        g.root.rotation.y = _lerpAngle(g.root.rotation.y, faceA, 0.06);
       }
 
       var targetBase = (_dlg.listening ? 0.92 : 0.26) * _dlg.opacityMul;

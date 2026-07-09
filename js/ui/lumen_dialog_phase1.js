@@ -247,8 +247,17 @@
 
   // 자막 큐 — 유령/플레이어 라인이 순서대로 한 줄씩 자막 자리를 교체.
   // 입력 렌더러는 _subtitleIdle() 대기 후에만 나타남 ("듣기" 강제 게이트).
-  var _sub = { chain: Promise.resolve(), skip: null };
-  var _canSkipLines = false; // 첫 조우 스킵 불가, 재조우부터 탭 스킵 (start() 에서 세팅)
+  // 260709: RPG식 수동 넘김 — 유령 대사는 자동으로 안 넘어간다. 클릭/Space/Enter 로
+  // (출력 중이면) 즉시 완성 → (완성 후면) 다음 줄. 첫조우 스킵불가 규칙은 이걸로 대체·폐기.
+  var _sub = { chain: Promise.resolve(), advance: null };
+
+  function _ensureLdpStyle() {
+    if (document.getElementById('ldp-style')) return;
+    var st = document.createElement('style');
+    st.id = 'ldp-style';
+    st.textContent = '@keyframes ldpBlink { 0%,100% { opacity:0.12; } 50% { opacity:0.85; } }';
+    document.head.appendChild(st);
+  }
 
   function _subtitleZone(overlay) { return overlay.querySelector('[id$="-subtitle"]'); }
   function _metaZone(overlay) { return overlay.querySelector('[id$="-meta"]'); }
@@ -324,25 +333,44 @@
         for (var si = 0; si < spans.length; si++) spans[si].style.opacity = '1';
       });
 
-      var totalMs = words.length * stepMs + fadeMs + holdMs;
+      var revealMs = words.length * stepMs + fadeMs;
       var done = false;
+      var revealed = false;
       var timer = null;
       function _finish() {
         if (done) return;
         done = true;
         if (timer) clearTimeout(timer);
-        if (_sub.skip === skipFn) _sub.skip = null;
+        if (_sub.advance === advanceFn) _sub.advance = null;
         resolve();
       }
-      function skipFn() {
+      function _completeReveal() {
+        if (revealed) return;
+        revealed = true;
         for (var si = 0; si < spans.length; si++) {
           spans[si].style.transition = 'none';
           spans[si].style.opacity = '1';
         }
+        if (who === 'ghost') {
+          // RPG 넘김 대기 표식 — 줄 끝 깜빡이는 ▾
+          var ind = document.createElement('span');
+          ind.textContent = ' ▾';
+          ind.style.cssText = 'animation:ldpBlink 1.1s ease-in-out infinite;font-size:0.8em;';
+          line.appendChild(ind);
+        }
+      }
+      // 260709 RPG식: 넘김 입력 1회 = 출력 즉시 완성, 2회 = 다음으로.
+      function advanceFn() {
+        if (!revealed) { _completeReveal(); return; }
         _finish();
       }
-      _sub.skip = skipFn;
-      timer = setTimeout(_finish, totalMs);
+      if (who === 'ghost') {
+        _sub.advance = advanceFn;
+        timer = setTimeout(_completeReveal, revealMs); // 캐스케이드 끝나면 ▾ 로 대기 — 진행은 수동
+      } else {
+        // 플레이어 발화는 본인이 쓴 말 — 짧게 보여주고 자동 진행
+        timer = setTimeout(_finish, revealMs + holdMs);
+      }
     });
   }
 
@@ -397,11 +425,14 @@
     var existing = document.getElementById(id);
     if (existing) return existing;
 
+    _ensureLdpStyle();
+
     var ov = document.createElement('div');
     ov.id = id;
     // 260708 v2: 검은 반투명 박스 폐기 — 배경/블러 없이 화면 전체를 덮는 투명 레이어.
     // 자막은 하단 중앙(마네킹 아래), 하단 300px 은 파동(AW_HEIGHT=280) 자리로 비움.
-    // pointer-events 는 오버레이 자체엔 없음 — 자막(스킵 탭)/입력만 받는다.
+    // 260709: RPG식 수동 넘김 — 화면 어디를 눌러도 넘어가도록 오버레이가 클릭을 받는다
+    // (대화 중 FP 이동은 어차피 freeze). 입력 영역 안의 클릭은 넘김으로 안 침.
     ov.style.cssText = [
       'position:fixed',
       'top:0', 'left:0', 'right:0', 'bottom:0',
@@ -410,20 +441,30 @@
       'padding:0 24px 300px 24px',
       'background:transparent',
       'z-index:2800',
-      'pointer-events:none',
+      'pointer-events:auto',
+      'cursor:default',
       'font-family:"Gowun Batang",serif',
       'color:rgba(232,216,252,0.92)',
       'box-sizing:border-box',
       'font-size:1.08rem',
     ].join(';');
+    ov.onclick = function (ev) {
+      var t = ev.target;
+      if (t && t.closest && t.closest('[id$="-input-area"]')) return;
+      if (typeof _sub.advance === 'function') _sub.advance();
+    };
+    // 키보드 넘김 (Space/Enter) — 입력창 포커스 중엔 무시
+    ov._ldpKeyHandler = function (ev) {
+      if (ev.code !== 'Space' && ev.key !== 'Enter') return;
+      var ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+      if (typeof _sub.advance === 'function') { ev.preventDefault(); _sub.advance(); }
+    };
+    document.addEventListener('keydown', ov._ldpKeyHandler);
 
     var sub = document.createElement('div');
     sub.id = id + '-subtitle';
-    sub.style.cssText = 'width:min(760px,94vw);flex-shrink:0;min-height:4.6em;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:default;pointer-events:auto;';
-    sub.onclick = function () {
-      // 재조우부터만 탭 스킵 (설계 §2-3)
-      if (_canSkipLines && typeof _sub.skip === 'function') _sub.skip();
-    };
+    sub.style.cssText = 'width:min(760px,94vw);flex-shrink:0;min-height:4.6em;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:default;';
     ov.appendChild(sub);
 
     var metaZone = document.createElement('div');
@@ -1160,16 +1201,10 @@
     // 누적되어 카메라가 위아래로 진동. overlay 즉시 박아서 freeze 즉시 활성화.
     var overlay = _buildOverlay(input.mountId || DEFAULTS.overlayId);
 
-    // 260708 얼굴+자막 — 첫 조우 스킵 불가 / 재조우 탭 스킵 (설계 §2-3).
+    // 260709: RPG식 수동 넘김 (첫조우 스킵불가 규칙 폐기 — 넘김이 곧 읽기 페이스).
     // 얼굴(3D 마네킹 줌·글자)은 play-test 가 window.LumenGhostFaceFX 로 처리.
-    _canSkipLines = false;
-    try {
-      var _seenKey = 'ldp_seen:' + memoryId + '|' + sceneId;
-      _canSkipLines = sessionStorage.getItem(_seenKey) === '1';
-      sessionStorage.setItem(_seenKey, '1');
-    } catch (_) {}
     _sub.chain = Promise.resolve();
-    _sub.skip = null;
+    _sub.advance = null;
 
     // V2.1.2 (δ) 하이브리드: 작가 손 / LLM / 균일 톤 fallback (2026-05-05).
     // (ζ, 2026-05-24) 병렬화 — LLM 은 즉시 kick off 만, scene_context 는 LLM 안 기다리고
@@ -1317,8 +1352,9 @@
       // 입력 자리 받음 자리. turn 1 = 선택지 + 자유 동시. turn 2-3 = 자유.
       var playerInput;
       if (turn === 1) {
+        // 260709 선택지 폐기 (사용자 결정) — 자유 입력만. dlg.choices 데이터는 유지(미표시).
         var firstInput = await new Promise(function (resolve) {
-          _renderChoicesOrInput(overlay, dlg.choices || [], { placeholder: _inputPlaceholder() }, resolve);
+          _renderChoicesOrInput(overlay, [], { placeholder: _inputPlaceholder() }, resolve);
         });
         playerInput = firstInput.text;
       } else {
@@ -1536,11 +1572,14 @@
 
   function cleanup(opts) {
     opts = opts || {};
-    // 260708: 자막 큐 리셋 (다음 씬 잔류 방지)
+    // 260708: 자막 큐 리셋 (다음 씬 잔류 방지) + 260709: 넘김 키 리스너 해제
     _sub.chain = Promise.resolve();
-    _sub.skip = null;
+    _sub.advance = null;
     var ov = document.getElementById(opts.mountId || DEFAULTS.overlayId);
-    if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    if (ov) {
+      if (ov._ldpKeyHandler) document.removeEventListener('keydown', ov._ldpKeyHandler);
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+    }
   }
 
   global.LumenDialogPhase1 = {
