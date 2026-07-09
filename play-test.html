@@ -50,13 +50,14 @@
   <script src="js/contamination.js"></script>
   <script src="js/shared/tem_replay_terrain.js?v=0.6"></script>
   <script src="js/ui/lumen_replay_fog.js?v=0.6"></script>
-  <script src="js/shared/tem_af_strata_terrain.js"></script>
+  <script src="js/ui/lumen_spatial_fog.js?v=0.3"></script>
+  <script src="js/shared/tem_af_strata_terrain.js?v=0.3"></script>
   <script src="js/ui/lumen_terrain_adapter.js"></script>
   <script src="js/ui/lumen_walk_effects.js"></script>
   <script src="js/ui/lumen_visual_effects.js"></script>
   <script src="js/ui/lumen_audio_space.js"></script>
   <script src="js/ui/lumen_scene_ghosts.js"></script>
-  <script src="js/ui/lumen_scene_mannequins.js"></script>
+  <script src="js/ui/lumen_scene_mannequins.js?v=0.2"></script>
   <script src="js/ui/lumen_rewind_playback.js"></script>
   <script src="js/ui/lumen_run_outro.js"></script>
   <script src="js/ui/lumen_return_mode.js"></script>
@@ -2727,6 +2728,8 @@
     window.experiencerEmotionVector = resolvedPlayerVec;
     window.currentNarratorWave = playTestWaveStyleFor(orig);
     window.currentExperiencerWave = resolvedPlayerStyle;
+    // 하늘은 확정 감정만 따라간다 — 실시간 슬라이더 프리뷰(live)엔 반응 X, 제출/확정 시에만 서서히.
+    if (!live && hasUserInput) window.skyEmotionColor = resolvedPlayerStyle;
 
     const narratorWaveStyle = window.currentNarratorWave;
     const experiencerWaveStyle = window.currentExperiencerWave;
@@ -5294,6 +5297,58 @@
                 }
               });
             }
+            // ── ADDITIVE 공간 안개 B안 (flag: ?spatial_fog=1) ──
+            // 1단계 셰이더 마스크 + 3단계 유령 게이팅 + 2단계 unlock 연결(입장 시드는
+            // 아래, 턴 연결은 newPins 계산부). 콘솔 디버그:
+            //   window._temSpatialFog.openAt(x,z,r) / .liftAll() / .revealAt(x,z)
+            if (window.LumenSpatialFog && window.LumenSpatialFog.isEnabled() &&
+                typeof window.LumenSpatialFog.attach === 'function') {
+              try {
+                window._temSpatialFog = window.LumenSpatialFog.attach(rt);
+                // 3단계: 유령(마네킨)·혼잣말 sprite 를 안개에 게이팅 —
+                // 안개 속 유령은 진짜로 안 보이고, 개화하면서 서서히 드러난다.
+                if (window._temSpatialFog && window._temSpatialFog.setGateProvider) {
+                  window._temSpatialFog.setGateProvider(function () {
+                    var out = [];
+                    try {
+                      var mm = rt.__lumenSceneMannequins;
+                      var gs = (mm && mm.ghosts) ? mm.ghosts() : [];
+                      for (var gi = 0; gi < gs.length; gi++) {
+                        var g = gs[gi];
+                        if (!g || !g.root) continue;
+                        out.push({ x: g.root.position.x, z: g.root.position.z, object: g.root });
+                        // 혼잣말 sprite 는 scene 직속 + opacity 를 마네킨 모듈이 매 프레임 씀 → visible 만
+                        if (g.monologueSprite) out.push({ x: g.root.position.x, z: g.root.position.z, object: g.monologueSprite, fade: false });
+                      }
+                    } catch (_) {}
+                    return out;
+                  });
+                }
+                // 2단계 입장 시드: 스폰 주변 걷힘 + 접근 핀 방향 회랑, 도착 시 개화.
+                // 핀 빌드(_buildPlayScenePins)가 이 블록 이후에 돌므로 짧게 폴링.
+                (function _sfWaitPins(tries) {
+                  var sf = window._temSpatialFog;
+                  if (!sf) return;
+                  if (!_fpScenePins || !_fpScenePins.length) {
+                    if (tries < 25) setTimeout(function () { _sfWaitPins(tries + 1); }, 200);
+                    return;
+                  }
+                  sf.clear();
+                  var cam0 = rt.getCamera();
+                  var sx = cam0.position.x, sz = cam0.position.z;
+                  sf.seed(sx, sz, 14);
+                  var carved = 0;
+                  _fpScenePins.forEach(function (sp) {
+                    if (sp.visited) { sf.seed(sp.wx, sp.wz); return; }  // 가 본 곳은 걷힌 채로
+                    if (!sp.accessible) return;
+                    sf.carve(sx, sz, sp.wx, sp.wz);
+                    sf.openOnArrive(sp.wx, sp.wz);
+                    carved++;
+                  });
+                  console.log('[spatial-fog] 입장 시드 — 스폰 + 회랑 ' + carved + '줄기 (도착 시 개화)');
+                })(0);
+              } catch (eSf) { console.warn('[spatial-fog] attach 실패 (무해)', eSf); }
+            }
             // ── ADDITIVE §9.9 안개 해제 (replay terrain flag ON일 때만) ──
             // 시작은 완전한 무(순검정, 유령 실루엣만), 장면 완료마다 한 겹씩 걷힘.
             if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled() &&
@@ -6310,8 +6365,23 @@
               var g = window._temGame;
               var pattern = (g && g.lastResult && g.lastResult.transition_pattern) || 'bridge';
 
+              // ── ADDITIVE 공간 안개 B안 2단계: 새로 열린 핀으로 회랑 + 도착 개화 ──
+              // 막다른 곳(남은 접근 핀 0)이면 안개 전부 걷기 — 지나온 길이 드러난다 (원칙 4).
+              if (window._temSpatialFog) {
+                try {
+                  var _sfFrom = _lastFpPos || { x: 0, z: 0 };
+                  newPins.forEach(function (np) {
+                    window._temSpatialFog.carve(_sfFrom.x, _sfFrom.z, np.wx, np.wz);
+                    window._temSpatialFog.openOnArrive(np.wx, np.wz);
+                  });
+                  var _sfLeft = _fpScenePins.some(function (sp) { return sp.accessible && !sp.visited; });
+                  if (!_sfLeft) window._temSpatialFog.liftAll();
+                } catch (_) {}
+              }
+
               // ─── 3D trace line to new pins ─────────────────────
-              if (newPins.length > 0 && scene3 && _lastFpPos) {
+              // 공간 안개 ON이면 회랑이 길잡이 역할 — 안개를 뚫는 빛줄기는 생략
+              if (newPins.length > 0 && scene3 && _lastFpPos && !window._temSpatialFog) {
                 var lineColor = {
                   echo_follow: 0xc4a882, bridge: 0xc4a882,
                   contradiction: 0xc85050, displacement: 0xa078c8,
@@ -6695,6 +6765,8 @@
       })();
       if (!_lumenMode) {
         _fpScenePins.forEach(function (sp) {
+          // 공간 안개 ON: 안개 속 핀은 미니맵에도 안 찍는다 (원칙 5 — 플레이어는 안개를 본다)
+          if (window._temSpatialFog && window._temSpatialFog.revealAt(sp.wx, sp.wz) < 0.5) return;
           var mp = _worldToMini(sp.wx, sp.wz);
           _miniCtx.beginPath();
           if (sp.visited) {
@@ -6878,84 +6950,33 @@
         });
       }
       _awCurrentNarrator = finalStyle;
+      // 근접 폴링(100ms)은 주변 감정 = ambient(narrator) 슬롯만 갱신한다.
+      // 플레이어 감정 파동(experiencer 슬롯)은 window.currentExperiencerWave로 유지 —
+      // 안 그러면 텍스트/슬라이더로 넣은 입력색이 매 폴링마다 null로 지워진다(분노색이 안 바뀌던 원인).
       _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
         alignment: 0,
         narratorEmotionVector: { _ambient: 1 },
-        experiencerEmotionVector: null,
+        experiencerEmotionVector: window.experiencerEmotionVector || null,
         narratorWaveStyle: finalStyle,
-        experiencerWaveStyle: null,
+        experiencerWaveStyle: window.currentExperiencerWave || null,
         onUpdateAlignmentDisplay: function () {},
       });
     }
 
-    // 거리 기반 파동 업데이트
+    // 파동 렌더 — 유일한 렌더 지점 (100ms 폴링이 호출).
+    //  · 걷기(_awSceneMode=false): 파동 하나 = 플레이어 감정만. 주변 핀 상시 원본 파동 폐기(이본론·§5).
+    //  · 대화(_awSceneMode=true): 두 파동 = 지금 말 거는 유령(_awSceneNarrator) + 플레이어.
+    // experiencer(플레이어) 슬롯은 항상 window.currentExperiencerWave로 실시간 유지 → 입력색 즉시 반영.
     function _awUpdateFromProximity() {
-      if (!_fpPlayActive || !_awViz) return;
-      var rt = window.TemAfStrataTerrain._lastRuntime;
-      if (!rt) return;
-      var cam = rt.getCamera();
-      if (!cam) return;
-
-      // 가장 가까운 핀 찾기
-      var closest = null, closestDist = Infinity;
-      _fpScenePins.forEach(function (sp) {
-        if (!sp.accessible) return;
-        var dx = cam.position.x - sp.wx;
-        var dz = cam.position.z - sp.wz;
-        var dist = Math.sqrt(dx * dx + dz * dz);
-        if (dist < closestDist) { closestDist = dist; closest = sp; }
+      if (!_fpPlayActive || !_awViz || !_awCanvas) return;
+      _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
+        alignment: 0,
+        narratorEmotionVector: _awSceneMode ? (window.narratorEmotionVector || { _scene: 1 }) : null,
+        experiencerEmotionVector: window.experiencerEmotionVector || { _player: 1 },
+        narratorWaveStyle: _awSceneMode ? _awSceneNarrator : null,
+        experiencerWaveStyle: window.currentExperiencerWave || Object.assign({}, _awIdleStyle),
+        onUpdateAlignmentDisplay: function () {},
       });
-
-      // 두 번째 가까운 핀
-      var second = null, secondDist = Infinity;
-      if (closest) {
-        _fpScenePins.forEach(function (sp) {
-          if (sp === closest || !sp.accessible) return;
-          var dx = cam.position.x - sp.wx;
-          var dz = cam.position.z - sp.wz;
-          var dist = Math.sqrt(dx * dx + dz * dz);
-          if (dist < secondDist) { secondDist = dist; second = sp; }
-        });
-      }
-
-      if (!closest || closestDist > AW_FADE_DIST * 2) {
-        _awApplyStyle(_awIdleStyle);
-        return;
-      }
-
-      // 원본 감정 가져오기
-      var emo1 = closest.pin.originalEmotion || {};
-      if (typeof emo1 === 'string') { try { emo1 = JSON.parse(emo1); } catch (_) { emo1 = {}; } }
-
-      // 방문한 핀이면 오염된 감정 블렌드
-      if (closest.pin.emotion_data && closest.pin.emotion_data.base) {
-        var origE = emo1, userE = closest.pin.emotion_data.base;
-        var contam = 0.3;
-        var blended = {};
-        var allK = Object.keys(origE).concat(Object.keys(userE));
-        allK.forEach(function (k) {
-          if (blended[k] !== undefined) return;
-          blended[k] = (Number(origE[k]) || 0) * (1 - contam) + (Number(userE[k]) || 0) * contam;
-        });
-        emo1 = blended;
-      }
-
-      var style1 = _awEmotionToWaveStyle(emo1);
-      var t1 = Math.max(0, Math.min(1, 1 - closestDist / AW_FADE_DIST));
-
-      var finalStyle;
-      if (second && secondDist < AW_FADE_DIST * 1.5) {
-        var emo2 = second.pin.originalEmotion || {};
-        if (typeof emo2 === 'string') { try { emo2 = JSON.parse(emo2); } catch (_) { emo2 = {}; } }
-        var style2 = _awEmotionToWaveStyle(emo2);
-        var t2 = Math.max(0, Math.min(1, 1 - secondDist / (AW_FADE_DIST * 1.5)));
-        var totalT = t1 + t2 || 1;
-        finalStyle = _awLerpStyle(style1, style2, t2 / totalT);
-      } else {
-        finalStyle = _awLerpStyle(_awIdleStyle, style1, t1);
-      }
-
-      _awApplyStyle(finalStyle);
     }
 
     // 오염 색상 상태
@@ -6987,30 +7008,28 @@
     // v2: 씬 진입 시 narrator 슬롯(0.3h)에만 씬 파동 얹고, experiencer 슬롯(0.7h)의 플레이어 파동은 그대로 지속.
     // 씬 종료 시 narrator만 비우고 플레이어 파동 유지 → 처음부터 끝까지 이어짐.
     var _awSceneMode = false;
+    var _awSceneNarrator = null; // 대화 중인 유령(원본)의 파동 스타일 — scene mode에서만 두 번째 파동으로 뜸
+    // 씬/대화 진입 — 두 번째 파동(유령·원본) 얹음. 렌더는 단일 경로(_awUpdateFromProximity)로.
     function _awRenderDual(narratorStyle, experiencerStyle, alignment) {
       if (!_awViz || !_awCanvas) return;
       _awSceneMode = true;
-      _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
-        alignment: alignment || 0,
-        narratorEmotionVector: window.narratorEmotionVector || { _scene: 1 },
-        experiencerEmotionVector: window.experiencerEmotionVector || { _player: 1 },
-        narratorWaveStyle: narratorStyle,
-        experiencerWaveStyle: experiencerStyle,
-        onUpdateAlignmentDisplay: function () {},
-      });
+      _awSceneNarrator = narratorStyle;
+      _awUpdateFromProximity();
+    }
+    // 유령 대화 진입 — 두 번째 파동 = "지금 말 거는 그 유령"의 감정 (주변 핀 아님).
+    function _awEnterSceneWave(ghostEmoVec) {
+      if (!_awViz || !_awCanvas) return;
+      _awSceneMode = true;
+      _awSceneNarrator = _awEmotionToWaveStyle(ghostEmoVec || {});
+      window.narratorEmotionVector = (ghostEmoVec && typeof ghostEmoVec === 'object' && Object.keys(ghostEmoVec).length)
+        ? ghostEmoVec : { _scene: 1 };
+      _awUpdateFromProximity();
     }
     function _awExitSceneMode() {
       _awSceneMode = false;
-      if (!_awViz || !_awCanvas) return;
-      // 씬 나감: narrator 슬롯 비움. 플레이어 파동은 최근 상태로 계속 흐름.
-      _awViz.startAlignmentWaveAnimation(_awCanvas, null, {
-        alignment: 0,
-        narratorEmotionVector: null,
-        experiencerEmotionVector: window.experiencerEmotionVector || { _idle: 1 },
-        narratorWaveStyle: null,
-        experiencerWaveStyle: window.currentExperiencerWave || Object.assign({}, _awIdleStyle),
-        onUpdateAlignmentDisplay: function () {},
-      });
+      _awSceneNarrator = null;
+      // 대화 나감: 다시 파동 하나(플레이어)로. 플레이어 파동은 최근 상태로 계속 흐름.
+      _awUpdateFromProximity();
     }
 
     // 2026-05-06: 결마다 파동 펄스 — lumen_drift_visualizer 카메라용 spec 그대로 차용.
@@ -7052,12 +7071,13 @@
       applyContamination: _awApplyContamination,
       destroy: _destroyAmbientWave,
       renderDual: _awRenderDual,
+      enterSceneWave: _awEnterSceneWave,
       exitSceneMode: _awExitSceneMode,
       pulseResonance: _awPulseResonance,
     };
 
-    // 2026-05-06: 파동 부활 — proximity 동화 재가동.
-    // 5-2 v2 결정 (proximity 폐기) 뒤집음. 걸어 다닐 때 가까운 유령(=장면핀) 색·속도로 아래 줄 파동 끌려감.
+    // 260709: 파동 렌더 폴링(100ms). 걷기=플레이어 파동 하나, 대화=유령+플레이어 두 파동.
+    // (구: proximity로 주변 핀 감정을 상시 원본 파동으로 끌어옴 → 이본론·§5 위배로 폐기. 원본 파동은 대화 중에만.)
     var _origStartProx2 = _startProximityLoop;
     _startProximityLoop = function () {
       _origStartProx2();

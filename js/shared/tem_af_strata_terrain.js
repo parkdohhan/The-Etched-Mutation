@@ -811,6 +811,112 @@
       return hts_k;
     }
 
+    // ── ADDITIVE 공간 안개 B안 (spatial fog reveal) — default OFF ─────────
+    // test/fog-reveal-test.html 검증분 이식. "걷힌 자리 목록"(원·회랑)은
+    // js/ui/lumen_spatial_fog.js 가 관리·애니메이션하고, 여기서는 지형 재질에
+    // "목록 밖 = 짙은 안개" 셰이더 규칙만 얹는다. uniform 객체는 전역 공유 —
+    // 지형이 턴마다 재구축돼도 새 재질이 같은 객체를 다시 바인딩하므로
+    // 모듈 쪽 재등록이 필요 없다. _sfOn=0 이면 기존 fog 경로 그대로.
+    // Rollback: 이 블록 + _sfPatchShader 호출 2곳(terrainMat/plates) 삭제.
+    var _SF_MAX = 24;
+    var _sf = global.__temSpatialFogUniforms;
+    if (!_sf) {
+      _sf = global.__temSpatialFogUniforms = {
+        MAX: _SF_MAX,
+        uOn: { value: 0 },
+        uCount: { value: 0 },
+        uTime: { value: 0 },
+        uHeavyD: { value: 0.055 },
+        uSky: { value: new THREE.Color(0x555f6e) },
+        uSeg: { value: [] },              // vec4[]: ax, az, bx, bz (a==b → circle)
+        uRad: { value: new Float32Array(_SF_MAX) },
+      };
+      for (var _si = 0; _si < _SF_MAX; _si++) _sf.uSeg.value.push(new THREE.Vector4(0, 0, 0, 0));
+    }
+    function _sfPatchShader(shader) {
+      shader.uniforms._sfOn = _sf.uOn;
+      shader.uniforms._sfCount = _sf.uCount;
+      shader.uniforms._sfTime = _sf.uTime;
+      shader.uniforms._sfHeavyD = _sf.uHeavyD;
+      shader.uniforms._sfSky = _sf.uSky;
+      shader.uniforms._sfSeg = _sf.uSeg;
+      shader.uniforms._sfRad = _sf.uRad;
+
+      var decl = [
+        'uniform float _sfOn;',
+        'uniform int _sfCount;',
+        'uniform float _sfTime;',
+        'uniform float _sfHeavyD;',
+        'uniform vec3 _sfSky;',
+        'uniform vec4 _sfSeg[' + _SF_MAX + '];',
+        'uniform float _sfRad[' + _SF_MAX + '];',
+        'float _sfH31(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}',
+        'float _sfN31(vec3 p){',
+        '  vec3 i=floor(p),f=fract(p);',
+        '  f=f*f*(3.0-2.0*f);',
+        '  return mix(mix(mix(_sfH31(i),_sfH31(i+vec3(1,0,0)),f.x),',
+        '    mix(_sfH31(i+vec3(0,1,0)),_sfH31(i+vec3(1,1,0)),f.x),f.y),',
+        '    mix(mix(_sfH31(i+vec3(0,0,1)),_sfH31(i+vec3(1,0,1)),f.x),',
+        '    mix(_sfH31(i+vec3(0,1,1)),_sfH31(i+vec3(1,1,1)),f.x),f.y),f.z);',
+        '}',
+        'float _sfFbm3(vec3 p){',
+        '  float v=0.0,a=0.5;',
+        '  for(int i=0;i<4;i++){v+=a*_sfN31(p);p*=2.1;a*=0.5;}',
+        '  return v;',
+        '}',
+      ];
+      // terrainMat 은 기존 패치가 vWPos 를 이미 선언 — plates 등 맨 재질만 추가.
+      if (shader.fragmentShader.indexOf('varying vec3 vWPos') === -1) {
+        decl.unshift('varying vec3 vWPos;');
+      }
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'void main() {',
+        decl.join('\n') + '\nvoid main() {'
+      );
+      // Replace fog with per-spot mask: inside revealed circle/corridor → normal
+      // exp2 fog, outside → heavy fog wall. Edge wobbles with fbm (뭉게뭉게).
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <fog_fragment>',
+        [
+          '#if defined( USE_FOG ) && defined( FOG_EXP2 )',
+          'if (_sfOn > 0.5) {',
+          '  float _sfRv = 0.0;',
+          '  for (int i = 0; i < ' + _SF_MAX + '; i++) {',
+          '    if (i >= _sfCount) break;',
+          '    float _sfR = _sfRad[i];',
+          '    if (_sfR < 0.01) continue;',
+          '    vec2 _sfPa = vWPos.xz - _sfSeg[i].xy;',
+          '    vec2 _sfBa = _sfSeg[i].zw - _sfSeg[i].xy;',
+          '    float _sfHh = clamp(dot(_sfPa, _sfBa) / max(dot(_sfBa, _sfBa), 1e-6), 0.0, 1.0);',
+          '    float _sfD = length(_sfPa - _sfBa * _sfHh);',
+          '    _sfD += (_sfFbm3(vec3(vWPos.x * 0.22, _sfTime * 0.18, vWPos.z * 0.22)) - 0.5) * min(7.0, _sfR * 0.5);',
+          '    _sfRv = max(_sfRv, 1.0 - smoothstep(_sfR * 0.55, _sfR, _sfD));',
+          '  }',
+          '  float _sfDc = length(vWPos - cameraPosition);',
+          '  float _sfFogC = 1.0 - exp(-fogDensity * fogDensity * _sfDc * _sfDc);',
+          '  float _sfFogH = 1.0 - exp(-_sfHeavyD * _sfHeavyD * _sfDc * _sfDc);',
+          '  float _sfFf = mix(_sfFogH, _sfFogC, _sfRv);',
+          '  gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(_sfSky, fogColor, _sfRv), clamp(_sfFf, 0.0, 1.0));',
+          '} else {',
+          '#include <fog_fragment>',
+          '}',
+          '#else',
+          '#include <fog_fragment>',
+          '#endif',
+        ].join('\n')
+      );
+      if (shader.vertexShader.indexOf('varying vec3 vWPos') === -1) {
+        shader.vertexShader = shader.vertexShader.replace(
+          'void main() {',
+          'varying vec3 vWPos;\nvoid main() {'
+        );
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <fog_vertex>',
+          '#include <fog_vertex>\nvWPos = (modelMatrix * vec4(position, 1.0)).xyz;'
+        );
+      }
+    }
+
     function _buildScenePlates(filterIdx) {
       _disposePlates();
       var memList = filterIdx == null
@@ -841,6 +947,7 @@
             color: new THREE.Color(ec[0], ec[1], ec[2]),
             roughness: 0.82, metalness: 0.06, side: THREE.DoubleSide,
           });
+          mat.onBeforeCompile = _sfPatchShader; // ADDITIVE 공간 안개 B안 (uniform 게이트, 기본 무동작)
           var mesh = new THREE.Mesh(geo, mat);
           var group = new THREE.Group();
           group.add(mesh);
@@ -965,6 +1072,9 @@
           '#include <fog_vertex>',
           '#include <fog_vertex>\nvWPos = (modelMatrix * vec4(position, 1.0)).xyz;'
         );
+
+        // ── ADDITIVE 공간 안개 B안: 지점별 fog 마스크 (기본 OFF, uniform 게이트) ──
+        _sfPatchShader(shader);
       };
 
       terrain = new THREE.Mesh(geo, terrainMat);
@@ -1239,7 +1349,7 @@
         } else {
           _skyEmoTarget.copy(_baseFogColor);
         }
-        _skyEmoCur.lerp(_skyEmoTarget, 0.04); // real-time but gentle drift
+        _skyEmoCur.lerp(_skyEmoTarget, 0.02); // slow, deliberate drift (~2s) — sky follows analyzed emotion, not instant input
         _fogBase = _skyEmoCur;
       }
 
@@ -1440,8 +1550,15 @@
       var len = Math.sqrt(mx * mx + mz * mz);
       if (len > 0) { mx /= len; mz /= len; }
 
-      _fpPos.x += mx * _fpSpeed * dt;
-      _fpPos.z += mz * _fpSpeed * dt;
+      var _nx = _fpPos.x + mx * _fpSpeed * dt;
+      var _nz = _fpPos.z + mz * _fpSpeed * dt;
+      // ── ADDITIVE 공간 안개 B안: 소프트 이동 차단 (모듈이 등록한 hook, 기본 무동작) ──
+      var _sfC = global.__temSpatialFogConstrain;
+      if (_sfC) {
+        try { var _sfR = _sfC(_fpPos.x, _fpPos.z, _nx, _nz); if (_sfR) { _nx = _sfR.x; _nz = _sfR.z; } } catch (_) {}
+      }
+      _fpPos.x = _nx;
+      _fpPos.z = _nz;
 
       var half = SZ / 2 + 3;
       _fpPos.x = Math.max(-half, Math.min(half, _fpPos.x));

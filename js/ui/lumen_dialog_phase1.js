@@ -804,7 +804,7 @@
     ].join(';');
     input.onfocus = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.7)'; };
     input.onblur  = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.32)'; };
-    // 타이핑 즉시 감정색 프리뷰 → 하단 파동·하늘 실시간 반영
+    // 타이핑 즉시 감정색 프리뷰 → 하단 파동만 실시간 반영 (하늘은 분석 후에만 물듦)
     input.oninput = function () { _previewWaveColorFromText(input.value || ''); };
 
     var btn = document.createElement('button');
@@ -898,13 +898,17 @@
     } catch (_) {}
   }
 
-  // API가 뽑은 정확한 감정(userEmo)을 하단 파동색에 반영 — 제출 후 갱신.
+  // API가 뽑은 정확한 감정(userEmo)을 파동 + 하늘에 반영 — 제출·분석 후 갱신.
+  // 하늘(skyEmotionColor)은 오직 여기서만 갱신 → 키워드 즉시 프리뷰엔 하늘이 안 움직이고
+  // 분석 결과가 나온 뒤에야 서서히 물든다(파동은 프리뷰로 즉시 반응, 하늘은 확정 후).
   function _applyWaveColorFromEmotion(emo) {
     if (typeof window === 'undefined' || typeof window.sharedEmotionVectorToWaveStyle !== 'function') return;
     if (!emo || typeof emo !== 'object' || !Object.keys(emo).length) return;
     try {
+      var style = window.sharedEmotionVectorToWaveStyle(emo);
       window.experiencerEmotionVector = emo;
-      window.currentExperiencerWave = window.sharedEmotionVectorToWaveStyle(emo);
+      window.currentExperiencerWave = style;   // 파동
+      window.skyEmotionColor = style;          // 하늘 (분석 확정 감정만)
     } catch (_) {}
   }
 
@@ -931,7 +935,7 @@
     ].join(';');
     input.onfocus = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.7)'; };
     input.onblur  = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.32)'; };
-    // 타이핑 즉시 감정색 프리뷰 → 하단 파동·하늘 실시간 반영
+    // 타이핑 즉시 감정색 프리뷰 → 하단 파동만 실시간 반영 (하늘은 분석 후에만 물듦)
     input.oninput = function () { _previewWaveColorFromText(input.value || ''); };
 
     var btn = document.createElement('button');

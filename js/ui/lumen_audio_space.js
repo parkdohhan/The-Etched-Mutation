@@ -55,7 +55,7 @@
     gainLerp: 0.05,
     // Scene voices — 접근 가능 씬마다 그 씬의 sound_url 을 제 위치에 재생 (1인칭 길찾기)
     sceneVoicesProvider: null,
-    sceneVoiceDefaultUrl: 'sounds/sfx_resonance.mp3',
+    sceneVoiceDefaultUrl: null,   // 폐기(260709) — 폴백 없음. sound_url 없는 씬은 무음. (구: sfx_resonance)
     sceneVoiceGain: 0.5,
     sceneVoiceRefDistance: 2.5,
     sceneVoiceMaxDistance: 22,
@@ -225,8 +225,10 @@
       if (!Array.isArray(pts)) pts = [];
 
       pts.forEach(function (p, i) {
-        var authored = !!p.url;
-        var url = p.url || opts.sceneVoiceDefaultUrl;
+        // 폴백 제거 (사용자 결정 260709) — 작가가 sound_url 박은 씬만 소리. 안 박은 씬은 무음.
+        // 이전: url 없으면 sceneVoiceDefaultUrl(sfx_resonance)로 폴백 → 모든 기억에서 같은 '숨소리'.
+        var url = p.url;
+        if (!url) return;
         _loadVoiceBuf(url).then(function (buf) {
           // dispose/재호출이 await 사이에 끼어들었으면 폐기
           if (gen !== _voiceGen || !buf || !ctx || !_voiceMaster) return;
@@ -255,9 +257,6 @@
           var src = ctx.createBufferSource();
           src.buffer = buf;
           src.loop = true;
-          // 기본음은 여러 씬이 같은 파일 — 미세 피치차로 위상 겹침 완화.
-          // 작가가 박은 소리는 의도된 음정이라 건드리지 않음.
-          if (!authored) src.playbackRate.value = 0.97 + (i % 5) * 0.015;
           src.connect(gain).connect(panner).connect(_voiceMaster);
           var off = (i * 0.61) % Math.max(0.1, buf.duration - 0.1);
           try { src.start(0, off); } catch (_) {}

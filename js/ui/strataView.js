@@ -64,9 +64,11 @@
       clearColor: 0x12121a,
       fogColor: 0x12121a,
       fogDensity: 0.006,
-      // 하늘을 플레이어의 현재 감정 파동색으로 실시간 물들이기
+      // 하늘 색: 파동(currentExperiencerWave)과 분리 — 텍스트 분석(API)으로 확정된
+      // 감정(skyEmotionColor)만 읽는다. 키워드 즉시 프리뷰엔 하늘이 반응하지 않고,
+      // 분석 결과가 나온 뒤에야 서서히 물든다.
       skyEmotionColorGetter: function () {
-        var w = g.currentExperiencerWave;
+        var w = g.skyEmotionColor;
         return w && w.color ? w.color : null;
       },
     });
