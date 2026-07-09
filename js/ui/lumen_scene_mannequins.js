@@ -65,6 +65,10 @@
     hidePinVisuals: true,
     // 2026-04-30: 인식·혼잣말·응시 (ghost awareness)
     awareness: true,                          // false 면 monologue/gaze 비활성
+    // 260709: 마네킹 옆 혼잣말 스프라이트 별도 게이트. 기본 끔 —
+    //   ghost_presets.monologue_templates 가 하드코딩이라 기억과 무관하게 떠서 (사용자 결정).
+    //   gaze(응시)는 awareness 로 살아있음.
+    monologue: false,
     // 거리: "옆에서 혼잣말 들릴 만큼" — 2.5m 안에서 또렷, 4.5m 넘으면 사라짐
     monologueNear: 2.5,
     monologueFar: 4.5,
@@ -544,9 +548,11 @@
       }
 
       // ─── awareness: monologue sprite + gaze 상태 ───
+      // 260709: monologue(마네킹 옆 혼잣말 스프라이트) 끔 — ghost_presets 하드코딩 문구가
+      //   그 기억과 무관하게 떠서 (사용자 결정). gaze(응시)는 awareness 로 유지.
       var monologueSprite = null;
       var monologueLine = null;
-      if (opts.awareness) {
+      if (opts.awareness && opts.monologue) {
         monologueLine = _pickMonologueLine(pin);
         if (monologueLine) {
           monologueSprite = _makeMonologueSprite(monologueLine);
@@ -797,6 +803,8 @@
         }
       },
       clear: _clear,
+      // ADDITIVE 공간 안개 게이팅용: [{ root, monologueSprite, pin, ... }] 그대로 노출 (읽기 전용으로 쓸 것)
+      ghosts: function () { return _ghosts.slice(); },
       setOptions: function (o) {
         var prevHide = opts.hidePinVisuals;
         Object.assign(opts, o || {});
