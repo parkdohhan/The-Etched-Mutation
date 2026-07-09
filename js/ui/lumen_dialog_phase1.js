@@ -1525,24 +1525,18 @@
       await _sleep(DEFAULTS.pacingDelays.afterTurnMs);
     }
 
-    // 6. urge
+    // 6. urge — 유령의 작별 한마디. 플레이어가 넘기면 바로 종료.
     var urgeRes = ghosts && typeof ghosts.pickUrge === 'function'
       ? ghosts.pickUrge({ memoryId: memoryId, sceneId: sceneId, alignment: lastAlignment })
       : { resonance: lastResonance, urge: '...' };
     _addMessage(overlay, urgeRes.urge, { who: 'ghost' });
-    await _sleep(DEFAULTS.pacingDelays.afterUrgeMs);
 
-    // 7. scene_link prompt + 입력
-    var prompt = ghosts && typeof ghosts.pickSceneLinkPrompt === 'function'
-      ? ghosts.pickSceneLinkPrompt(lastAlignment)
-      : _t('sceneLinkPromptFallback');
-    // 프롬프트 어휘가 비어 있으면(예: vague 결) 빈 메타 줄을 만들지 않는다 — 입력창만 노출.
-    if (prompt && String(prompt).trim()) _addSystemMeta(overlay, prompt);
-    var sceneLinkInput = await new Promise(function (resolve) {
-      _renderTextInput(overlay, { placeholder: _t('sceneLinkPlaceholder') }, resolve);
-    });
-    _addMessage(overlay, sceneLinkInput, { who: 'player' });
-    await _sleep(700);
+    // 7. scene_link "한 줄 남기기" — 260709 전면 삭제 (사용자 결정).
+    //    onSceneEnd 계약 유지를 위해 scene_link_input 은 빈 문자열 고정
+    //    (play-test 의 traces/plays/quilt 는 '' 허용 — `|| ''` 가드 확인됨).
+    //    복원 시: pickSceneLinkPrompt + _renderTextInput 자리, 커밋 3bc3868 이전 참조.
+    var sceneLinkInput = '';
+    await _subtitleIdle(); // urge 라인을 플레이어가 넘길 때까지 대기 (RPG 넘김)
 
     // 8. transitioning — DOM cleanup
     cleanup({ mountId: overlay.id });
