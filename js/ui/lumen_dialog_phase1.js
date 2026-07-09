@@ -255,6 +255,8 @@
     ghostTrueName: '',   // 작가 지정 진짜 이름 (scenes.meta.ghost_name) — 공명 시 드러남
     nameRevealed: false, // 이번 대화에서 드러났는가
     justRevealed: false, // 방금 드러남 → 다음 유령 라인에서 이름표 글로우
+    skipMode: 'ff',      // 'ff'=대사 빨리감기 / 'exit'=입력 차례 — 누르면 대화 나가기
+    exit: null,          // 입력 대기 중 나가기 resolver (턴 루프가 등록)
   };
 
   function _ensureLdpStyle() {
@@ -306,6 +308,10 @@
       textEl.style.color = who === 'player' ? 'rgba(214,188,150,0.92)' : 'rgba(240,232,254,0.96)';
       textEl.innerHTML = '';
       if (indEl) indEl.style.display = 'none';
+      // 대사 재생 중엔 스킵 버튼 = 빨리감기 모드
+      var skipEl = zone.querySelector('.ldp-skip');
+      if (skipEl) { skipEl.textContent = 'SKIP ▸'; }
+      _sub.skipMode = 'ff';
       var line = textEl; // 아래 캐스케이드 코드의 타깃
 
       // 단어 단위 페이드 캐스케이드 (타자기 X — 안개 응결 결).
@@ -518,6 +524,11 @@
     };
     skipBtn.onclick = function (ev) {
       ev.stopPropagation(); // 오버레이 넘김 클릭과 중복 방지
+      // 260709: 입력 차례('나가기 ▸')면 대화 종료, 대사 중('SKIP ▸')이면 빨리감기.
+      if (_sub.skipMode === 'exit') {
+        if (typeof _sub.exit === 'function') _sub.exit();
+        return;
+      }
       _sub.ff = true;
       if (typeof _sub.advance === 'function') { _sub.advance(); }
       if (typeof _sub.advance === 'function') { _sub.advance(); }
@@ -721,6 +732,9 @@
     _subtitleIdle().then(function () {
       if (!area.isConnected) return;
       _sub.ff = false; // SKIP 빨리감기는 입력 차례가 오면 해제
+      _sub.skipMode = 'exit'; // 입력 차례 — 스킵 버튼이 '나가기'가 됨
+      var _skipEl = overlay.querySelector('.ldp-skip');
+      if (_skipEl) _skipEl.textContent = _dialogLang() === 'ko' ? '나가기 ▸' : 'LEAVE ▸';
       area.appendChild(box);
       _setFaceActivity(overlay, true);
       requestAnimationFrame(function () { box.style.opacity = '1'; });
@@ -823,6 +837,9 @@
     _subtitleIdle().then(function () {
       if (!area.isConnected) return;
       _sub.ff = false; // SKIP 빨리감기는 입력 차례가 오면 해제
+      _sub.skipMode = 'exit'; // 입력 차례 — 스킵 버튼이 '나가기'가 됨
+      var _skipEl = overlay.querySelector('.ldp-skip');
+      if (_skipEl) _skipEl.textContent = _dialogLang() === 'ko' ? '나가기 ▸' : 'LEAVE ▸';
       area.appendChild(box);
       _setFaceActivity(overlay, true);
       requestAnimationFrame(function () { box.style.opacity = '1'; });
@@ -945,6 +962,9 @@
     _subtitleIdle().then(function () {
       if (!area.isConnected) return;
       _sub.ff = false; // SKIP 빨리감기는 입력 차례가 오면 해제
+      _sub.skipMode = 'exit'; // 입력 차례 — 스킵 버튼이 '나가기'가 됨
+      var _skipEl = overlay.querySelector('.ldp-skip');
+      if (_skipEl) _skipEl.textContent = _dialogLang() === 'ko' ? '나가기 ▸' : 'LEAVE ▸';
       area.appendChild(wrap);
       _setFaceActivity(overlay, true);
       requestAnimationFrame(function () { wrap.style.opacity = '1'; });
@@ -1490,22 +1510,44 @@
     var origEmotion = _ensureObj(sceneData.original_emotion || sceneData.originalEmotion);
     var totalTurns = DEFAULTS.maxFreeDialogTurns;
 
+    // 260709: 대화 시작 = 두 번째 파동(이 유령의 원본 감정) 등장. 걸을 땐 하나, 대화 땐 유령+플레이어.
+    // 대상은 "가장 가까운 핀"이 아니라 지금 말 거는 이 유령(sceneData.original_emotion).
+    try {
+      if (typeof window !== 'undefined' && window._fpAmbientWave
+          && typeof window._fpAmbientWave.enterSceneWave === 'function') {
+        window._fpAmbientWave.enterSceneWave(origEmotion);
+      }
+    } catch (_) {}
+
     // 260709: 병렬 로딩한 응답 풀 수확 — 인트로 읽는 동안 대부분 완료됨 (race 회피 유지).
     await _poolsPromise;
 
     for (var turn = 1; turn <= totalTurns; turn++) {
       // 입력 자리 받음 자리. turn 1 = 선택지 + 자유 동시. turn 2-3 = 자유.
       var playerInput;
+      var _left = false;  // 260709 '나가기 ▸' 로 대화를 뜬 경우
       if (turn === 1) {
         // 260709 선택지 폐기 (사용자 결정) — 자유 입력만. dlg.choices 데이터는 유지(미표시).
         var firstInput = await new Promise(function (resolve) {
+          _sub.exit = function () { resolve(null); }; // '나가기 ▸' 클릭 → 대화 종료
           _renderChoicesOrInput(overlay, [], { placeholder: _inputPlaceholder() }, resolve);
         });
-        playerInput = firstInput.text;
+        _sub.exit = null;
+        if (firstInput === null) { _left = true; } else { playerInput = firstInput.text; }
       } else {
         playerInput = await new Promise(function (resolve) {
+          _sub.exit = function () { resolve(null); }; // '나가기 ▸' 클릭 → 대화 종료
           _renderTextInput(overlay, { placeholder: _t('freeInputPlaceholder') }, resolve);
         });
+        _sub.exit = null;
+        if (playerInput === null) { _left = true; }
+      }
+      // 나가기: 입력창 치우고 턴 루프 종료 → urge(작별 한마디)로. scene_link 은 이미 폐기됨.
+      if (_left) {
+        var _ia = overlay.querySelector('[id$="-input-area"]');
+        if (_ia) _ia.innerHTML = '';
+        console.log('[phase1] 나가기 ▸ — turn ' + turn + ' 에서 대화 종료');
+        break;
       }
       _addMessage(overlay, playerInput, { who: 'player' });
 
@@ -1722,6 +1764,13 @@
 
   function cleanup(opts) {
     opts = opts || {};
+    // 260709: 대화 종료 = 두 번째 파동(유령) 내리고 다시 파동 하나(플레이어)로.
+    try {
+      if (typeof window !== 'undefined' && window._fpAmbientWave
+          && typeof window._fpAmbientWave.exitSceneMode === 'function') {
+        window._fpAmbientWave.exitSceneMode();
+      }
+    } catch (_) {}
     // 260708: 자막 큐 리셋 (다음 씬 잔류 방지) + 260709: 넘김 키 리스너 해제
     _sub.chain = Promise.resolve();
     _sub.advance = null;
