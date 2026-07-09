@@ -249,7 +249,13 @@
   // 입력 렌더러는 _subtitleIdle() 대기 후에만 나타남 ("듣기" 강제 게이트).
   // 260709: RPG식 수동 넘김 — 유령 대사는 자동으로 안 넘어간다. 클릭/Space/Enter 로
   // (출력 중이면) 즉시 완성 → (완성 후면) 다음 줄. 첫조우 스킵불가 규칙은 이걸로 대체·폐기.
-  var _sub = { chain: Promise.resolve(), advance: null, ff: false, ghostLabel: '' };
+  var _sub = {
+    chain: Promise.resolve(), advance: null, ff: false,
+    ghostLabel: '',      // 이름표 현재 표시값 (기본 '유령')
+    ghostTrueName: '',   // 작가 지정 진짜 이름 (scenes.meta.ghost_name) — 공명 시 드러남
+    nameRevealed: false, // 이번 대화에서 드러났는가
+    justRevealed: false, // 방금 드러남 → 다음 유령 라인에서 이름표 글로우
+  };
 
   function _ensureLdpStyle() {
     if (document.getElementById('ldp-style')) return;
@@ -282,8 +288,20 @@
       if (nameTag) {
         nameTag.textContent = who === 'player'
           ? (_dialogLang() === 'ko' ? '나' : 'me')
-          : (_sub.ghostLabel || (_dialogLang() === 'ko' ? '잔상' : 'afterimage'));
+          : (_sub.ghostLabel || (_dialogLang() === 'ko' ? '유령' : 'ghost'));
         nameTag.style.color = who === 'player' ? 'rgba(214,188,150,0.95)' : 'rgba(224,210,250,0.95)';
+        // 260709 D안: 공명으로 이름이 방금 드러난 첫 유령 라인 — 이름표가 잠깐 빛남.
+        if (who === 'ghost' && _sub.justRevealed) {
+          _sub.justRevealed = false;
+          nameTag.style.transition = 'text-shadow 500ms ease, border-color 500ms ease';
+          nameTag.style.textShadow = '0 0 16px rgba(224,210,250,0.95)';
+          nameTag.style.borderColor = 'rgba(224,210,250,0.85)';
+          setTimeout(function () {
+            nameTag.style.transition = 'text-shadow 1800ms ease, border-color 1800ms ease';
+            nameTag.style.textShadow = 'none';
+            nameTag.style.borderColor = 'rgba(196,168,130,0.5)';
+          }, 1900);
+        }
       }
       textEl.style.color = who === 'player' ? 'rgba(214,188,150,0.92)' : 'rgba(240,232,254,0.96)';
       textEl.innerHTML = '';
@@ -1310,18 +1328,21 @@
     _sub.chain = Promise.resolve();
     _sub.advance = null;
     _sub.ff = false;
-    // 이름표 — 작가 지정(scenes.meta.ghost_name) 최우선, 없으면 프리셋 라벨 폴백.
-    // 260709: 프리셋 라벨("○○한 잔상") 톤 교체 예정 — 후보 검토 중 (사용자 결정 대기).
-    _sub.ghostLabel = '';
+    // 이름표 (260709 사용자 결정 D안): 기본 '유령'. 작가가 scenes.meta.ghost_name 을
+    // 지정해뒀으면 그 이름은 숨어 있다가 — 대화에서 공명(resonance) 결이 나오는 순간
+    // 드러난다. 한 번 드러난 이름은 같은 세션 안에서 유지 (sessionStorage).
+    _sub.ghostLabel = _dialogLang() === 'ko' ? '유령' : 'ghost';
+    _sub.ghostTrueName = '';
+    _sub.nameRevealed = false;
+    _sub.justRevealed = false;
     try {
-      _sub.ghostLabel = (meta && typeof meta.ghost_name === 'string' && meta.ghost_name.trim()) || '';
-      if (!_sub.ghostLabel) {
-        var _lp = (typeof window !== 'undefined' && window.GHOST_PRESETS) || null;
-        var _lv = sceneData.void_info;
-        if (typeof _lv === 'string') { try { _lv = JSON.parse(_lv); } catch (_) { _lv = null; } }
-        var _lk = (_lv && _lv.sceneVoid) ? 'voidPin'
-          : sceneData.scene_role === 'residual' ? 'bridge' : 'core';
-        _sub.ghostLabel = (_lp && _lp[_lk] && _lp[_lk].label) || '';
+      _sub.ghostTrueName = (meta && typeof meta.ghost_name === 'string' && meta.ghost_name.trim()) || '';
+      if (_sub.ghostTrueName) {
+        var _nk = 'ldp_name:' + memoryId + '|' + sceneId;
+        if (sessionStorage.getItem(_nk) === '1') {
+          _sub.ghostLabel = _sub.ghostTrueName;
+          _sub.nameRevealed = true;
+        }
       }
     } catch (_) {}
 
@@ -1569,6 +1590,15 @@
           ' reply="' + ghostReply.slice(0, 30) + '..."');
       }
       lastResonance = resonanceForViz;
+
+      // 260709 D안: 공명이 일어난 순간 유령의 진짜 이름이 드러난다 (작가 지정 있을 때만).
+      if (resonanceForViz === 'resonance' && _sub.ghostTrueName && !_sub.nameRevealed) {
+        _sub.nameRevealed = true;
+        _sub.justRevealed = true;
+        _sub.ghostLabel = _sub.ghostTrueName;
+        try { sessionStorage.setItem('ldp_name:' + memoryId + '|' + sceneId, '1'); } catch (_) {}
+        console.log('[phase1] 공명 — 유령 이름 드러남: ' + _sub.ghostTrueName);
+      }
 
       // 260708: 턴 결 → 얼굴 파편 선명도/흐림 + 윤곽 펄스 (설계 §4)
       try { _updateFaceMood(alignment, resonanceForViz); } catch (_) {}
