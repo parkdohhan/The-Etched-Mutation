@@ -249,7 +249,7 @@
   // 입력 렌더러는 _subtitleIdle() 대기 후에만 나타남 ("듣기" 강제 게이트).
   // 260709: RPG식 수동 넘김 — 유령 대사는 자동으로 안 넘어간다. 클릭/Space/Enter 로
   // (출력 중이면) 즉시 완성 → (완성 후면) 다음 줄. 첫조우 스킵불가 규칙은 이걸로 대체·폐기.
-  var _sub = { chain: Promise.resolve(), advance: null };
+  var _sub = { chain: Promise.resolve(), advance: null, ff: false, ghostLabel: '' };
 
   function _ensureLdpStyle() {
     if (document.getElementById('ldp-style')) return;
@@ -270,41 +270,25 @@
 
       if (who === 'ghost') _setFaceActivity(overlay, false); // 말할 땐 얼굴 속 고요
 
-      zone.innerHTML = '';
-      var line = document.createElement('div');
-      line.className = 'ldp-line ldp-' + who;
-      // 260708 v2.1: 영화 자막 스타일 — 텍스트 폭에 맞는 검투명 띠 박스, 가운데 정렬.
-      // 박스는 글자 폭만큼만 (inline-block + width:auto), 존이 flex-center 라 자동 중앙.
-      line.style.cssText = who === 'player'
-        ? [
-            'display:inline-block', 'width:auto', 'max-width:100%',
-            'text-align:center',
-            'font-size:1.08rem', 'line-height:1.7',
-            'color:rgba(210,184,146,0.92)',
-            'letter-spacing:0.02em',
-            'padding:8px 22px',
-            'background:rgba(0,0,0,0.42)',
-            'border-radius:4px',
-            'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
-            'white-space:pre-wrap',
-            'opacity:0', 'transition:opacity 240ms ease',
-          ].join(';')
-        : [
-            'display:inline-block', 'width:auto', 'max-width:100%',
-            'text-align:center',
-            'font-size:1.45rem', 'line-height:1.75',
-            'color:rgba(240,232,254,0.97)',
-            'letter-spacing:0.01em',
-            'padding:12px 30px',
-            'background:rgba(0,0,0,0.52)',
-            'border-radius:4px',
-            'box-shadow:0 0 26px rgba(0,0,0,0.35)',
-            'text-shadow:0 0 22px rgba(168,140,196,0.25)',
-            'white-space:pre-wrap',
-            'opacity:0', 'transition:opacity 240ms ease',
-          ].join(';');
-      requestAnimationFrame(function () { line.style.opacity = '1'; });
-      zone.appendChild(line);
+      // 260709 v2.2: RPG 대화창 — 또렷한 테두리 박스 + 좌상단 이름표 (사용자 레퍼런스, 초상화 X).
+      // 박스/이름표/텍스트/▾/SKIP 은 _buildOverlay 가 만든 고정 요소 — 여기선 내용만 교체.
+      var box = zone.querySelector('.ldp-box');
+      var nameTag = zone.querySelector('.ldp-nametag');
+      var textEl = zone.querySelector('.ldp-text');
+      var indEl = zone.querySelector('.ldp-ind');
+      if (!box || !textEl) { resolve(); return; }
+
+      box.style.opacity = '1';
+      if (nameTag) {
+        nameTag.textContent = who === 'player'
+          ? (_dialogLang() === 'ko' ? '나' : 'me')
+          : (_sub.ghostLabel || (_dialogLang() === 'ko' ? '잔상' : 'afterimage'));
+        nameTag.style.color = who === 'player' ? 'rgba(214,188,150,0.95)' : 'rgba(224,210,250,0.95)';
+      }
+      textEl.style.color = who === 'player' ? 'rgba(214,188,150,0.92)' : 'rgba(240,232,254,0.96)';
+      textEl.innerHTML = '';
+      if (indEl) indEl.style.display = 'none';
+      var line = textEl; // 아래 캐스케이드 코드의 타깃
 
       // 단어 단위 페이드 캐스케이드 (타자기 X — 안개 응결 결).
       var tokens = String(text == null ? '' : text).split(/(\s+)/);
@@ -351,20 +335,18 @@
           spans[si].style.transition = 'none';
           spans[si].style.opacity = '1';
         }
-        if (who === 'ghost') {
-          // RPG 넘김 대기 표식 — 줄 끝 깜빡이는 ▾
-          var ind = document.createElement('span');
-          ind.textContent = ' ▾';
-          ind.style.cssText = 'animation:ldpBlink 1.1s ease-in-out infinite;font-size:0.8em;';
-          line.appendChild(ind);
-        }
+        if (who === 'ghost' && indEl && !_sub.ff) indEl.style.display = '';
       }
       // 260709 RPG식: 넘김 입력 1회 = 출력 즉시 완성, 2회 = 다음으로.
       function advanceFn() {
         if (!revealed) { _completeReveal(); return; }
         _finish();
       }
-      if (who === 'ghost') {
+      if (_sub.ff) {
+        // SKIP 빨리감기 — 남은 대사를 즉시 완성하고 바로 다음으로.
+        _completeReveal();
+        timer = setTimeout(_finish, 90);
+      } else if (who === 'ghost') {
         _sub.advance = advanceFn;
         timer = setTimeout(_completeReveal, revealMs); // 캐스케이드 끝나면 ▾ 로 대기 — 진행은 수동
       } else {
@@ -462,19 +444,100 @@
     };
     document.addEventListener('keydown', ov._ldpKeyHandler);
 
+    // 260709 v2.2: RPG 대화창 박스 — 또렷한 테두리 + 좌상단 이름표 + 우상단 SKIP + 우하단 ▾.
     var sub = document.createElement('div');
     sub.id = id + '-subtitle';
-    sub.style.cssText = 'width:min(760px,94vw);flex-shrink:0;min-height:4.6em;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:default;';
+    sub.style.cssText = 'width:min(820px,94vw);flex-shrink:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;cursor:default;';
+
+    var box = document.createElement('div');
+    box.className = 'ldp-box';
+    box.style.cssText = [
+      'position:relative', 'width:100%', 'box-sizing:border-box',
+      'background:rgba(8,6,14,0.85)',
+      'border:1.5px solid rgba(196,168,130,0.5)',
+      'border-radius:6px',
+      'padding:20px 26px 24px 26px',
+      'min-height:5.4em',
+      'box-shadow:0 4px 34px rgba(0,0,0,0.55)',
+      'opacity:0', 'transition:opacity 400ms ease',
+    ].join(';');
+
+    var nameTag = document.createElement('div');
+    nameTag.className = 'ldp-nametag';
+    nameTag.style.cssText = [
+      'position:absolute', 'top:-0.95em', 'left:16px',
+      'padding:3px 16px',
+      'background:rgba(8,6,14,0.95)',
+      'border:1.5px solid rgba(196,168,130,0.5)',
+      'border-radius:4px',
+      'font-size:0.92rem', 'letter-spacing:0.08em',
+      'color:rgba(224,210,250,0.95)',
+    ].join(';');
+    box.appendChild(nameTag);
+
+    // SKIP — 남은 대사 전부 빨리감기 (입력창 나올 때 자동 해제)
+    var skipBtn = document.createElement('button');
+    skipBtn.className = 'ldp-skip';
+    skipBtn.textContent = 'SKIP ▸';
+    skipBtn.style.cssText = [
+      'position:absolute', 'top:-0.95em', 'right:16px',
+      'padding:3px 14px',
+      'background:rgba(8,6,14,0.95)',
+      'border:1.5px solid rgba(196,168,130,0.4)',
+      'border-radius:4px',
+      'font-family:inherit', 'font-size:0.8rem', 'letter-spacing:0.12em',
+      'color:rgba(196,168,130,0.8)',
+      'cursor:pointer',
+      'transition:color 200ms ease, border-color 200ms ease',
+    ].join(';');
+    skipBtn.onmouseenter = function () {
+      skipBtn.style.color = 'rgba(232,216,252,0.95)';
+      skipBtn.style.borderColor = 'rgba(196,168,130,0.8)';
+    };
+    skipBtn.onmouseleave = function () {
+      skipBtn.style.color = 'rgba(196,168,130,0.8)';
+      skipBtn.style.borderColor = 'rgba(196,168,130,0.4)';
+    };
+    skipBtn.onclick = function (ev) {
+      ev.stopPropagation(); // 오버레이 넘김 클릭과 중복 방지
+      _sub.ff = true;
+      if (typeof _sub.advance === 'function') { _sub.advance(); }
+      if (typeof _sub.advance === 'function') { _sub.advance(); }
+    };
+    box.appendChild(skipBtn);
+
+    var textEl = document.createElement('div');
+    textEl.className = 'ldp-text';
+    textEl.style.cssText = [
+      'font-size:1.3rem', 'line-height:1.85',
+      'letter-spacing:0.01em',
+      'white-space:pre-wrap',
+      'text-shadow:0 0 18px rgba(168,140,196,0.18)',
+    ].join(';');
+    box.appendChild(textEl);
+
+    var ind = document.createElement('div');
+    ind.className = 'ldp-ind';
+    ind.textContent = '▾';
+    ind.style.cssText = [
+      'position:absolute', 'right:16px', 'bottom:8px',
+      'font-size:0.95rem', 'color:rgba(196,168,130,0.9)',
+      'animation:ldpBlink 1.1s ease-in-out infinite',
+      'display:none',
+    ].join(';');
+    box.appendChild(ind);
+
+    sub.appendChild(box);
     ov.appendChild(sub);
 
     var metaZone = document.createElement('div');
     metaZone.id = id + '-meta';
-    metaZone.style.cssText = 'width:min(760px,94vw);flex-shrink:0;min-height:2em;text-align:center;margin-top:2px;pointer-events:none;';
+    metaZone.style.cssText = 'width:min(820px,94vw);flex-shrink:0;min-height:2em;text-align:center;margin-top:2px;pointer-events:none;';
     ov.appendChild(metaZone);
 
     var inputArea = document.createElement('div');
     inputArea.id = id + '-input-area';
-    inputArea.style.cssText = 'width:min(680px,92vw);min-height:64px;flex-shrink:0;margin-top:10px;pointer-events:auto;';
+    inputArea.style.cssText = 'width:min(820px,94vw);min-height:64px;flex-shrink:0;margin-top:10px;pointer-events:auto;';
     ov.appendChild(inputArea);
 
     document.body.appendChild(ov);
@@ -639,6 +702,7 @@
     box.style.transition = 'opacity 400ms ease';
     _subtitleIdle().then(function () {
       if (!area.isConnected) return;
+      _sub.ff = false; // SKIP 빨리감기는 입력 차례가 오면 해제
       area.appendChild(box);
       _setFaceActivity(overlay, true);
       requestAnimationFrame(function () { box.style.opacity = '1'; });
@@ -708,6 +772,8 @@
     ].join(';');
     input.onfocus = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.7)'; };
     input.onblur  = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.32)'; };
+    // 타이핑 즉시 감정색 프리뷰 → 하단 파동·하늘 실시간 반영
+    input.oninput = function () { _previewWaveColorFromText(input.value || ''); };
 
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
@@ -738,6 +804,7 @@
     box.style.transition = 'opacity 400ms ease';
     _subtitleIdle().then(function () {
       if (!area.isConnected) return;
+      _sub.ff = false; // SKIP 빨리감기는 입력 차례가 오면 해제
       area.appendChild(box);
       _setFaceActivity(overlay, true);
       requestAnimationFrame(function () { box.style.opacity = '1'; });
@@ -772,6 +839,40 @@
     }
   }
 
+  // 실시간 감정 파동색 프리뷰 — 대화 입력 텍스트의 키워드로 즉석 감정 추정 → 하단 파동색(currentExperiencerWave) 갱신.
+  // 정확한 감정은 제출 후 _analyzeEmotion(API)가 뽑지만 그건 느리고 색을 안 먹인다. 이건 타이핑 즉시 반응용.
+  function _previewWaveColorFromText(text) {
+    if (typeof window === 'undefined' || typeof window.sharedEmotionVectorToWaveStyle !== 'function') return;
+    var t = (text || '');
+    if (!t) return;
+    var vec = null;
+    if (/화가?\s*[나난났날]|화가?\s*치|분노|성\s*[나난났]|성질|열\s*받|짜증|격분|빡치|빡쳐|빡침|욱해|욱했|미치겠|돌아버|열불|억울|분해|분하/.test(t)) vec = { anger: 0.94, fear: 0.16 };
+    else if (/슬프|슬퍼|슬펐|슬픔|우울|눈물|울었|울고|비통|서글|애처|참담|먹먹|서러/.test(t)) vec = { sadness: 0.92, longing: 0.34 };
+    else if (/무섭|무서|두렵|두려|공포|불안|조마|오싹|겁나|겁이|겁났|떨려|떨렸|초조/.test(t)) vec = { fear: 0.9, confusion: 0.28 };
+    else if (/기뻐|기쁘|기뻤|기쁨|행복|즐거|즐겁|신나|신났|설레|설렜|벅차|후련|홀가분/.test(t)) vec = { joy: 0.9, relief: 0.3 };
+    else if (/그립|그리워|그리웠|보고\s*싶|사무치|아른거/.test(t)) vec = { longing: 0.88, sadness: 0.42 };
+    else if (/미안|죄책|죄스|내\s*탓|자책|부끄/.test(t)) vec = { guilt: 0.9, sadness: 0.26 };
+    else if (/\bangry\b|\bmad\b|furious|\brage\b|pissed/i.test(t)) vec = { anger: 0.94, fear: 0.16 };
+    else if (/\bsad\b|sorrow|grief|depressed|unhappy|crying/i.test(t)) vec = { sadness: 0.9, longing: 0.22 };
+    else if (/afraid|scared|\bfear\b|anxious|nervous/i.test(t)) vec = { fear: 0.9, confusion: 0.28 };
+    else if (/happy|\bjoy\b|glad|excited/i.test(t)) vec = { joy: 0.9, relief: 0.3 };
+    if (!vec) return;
+    try {
+      window.experiencerEmotionVector = vec;
+      window.currentExperiencerWave = window.sharedEmotionVectorToWaveStyle(vec);
+    } catch (_) {}
+  }
+
+  // API가 뽑은 정확한 감정(userEmo)을 하단 파동색에 반영 — 제출 후 갱신.
+  function _applyWaveColorFromEmotion(emo) {
+    if (typeof window === 'undefined' || typeof window.sharedEmotionVectorToWaveStyle !== 'function') return;
+    if (!emo || typeof emo !== 'object' || !Object.keys(emo).length) return;
+    try {
+      window.experiencerEmotionVector = emo;
+      window.currentExperiencerWave = window.sharedEmotionVectorToWaveStyle(emo);
+    } catch (_) {}
+  }
+
   function _renderTextInput(overlay, opts, onSubmit) {
     opts = opts || {};
     var area = overlay.querySelector('[id$="-input-area"]');
@@ -795,6 +896,8 @@
     ].join(';');
     input.onfocus = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.7)'; };
     input.onblur  = function () { input.style.borderBottomColor = 'rgba(196,168,130,0.32)'; };
+    // 타이핑 즉시 감정색 프리뷰 → 하단 파동·하늘 실시간 반영
+    input.oninput = function () { _previewWaveColorFromText(input.value || ''); };
 
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
@@ -823,6 +926,7 @@
     wrap.style.transition = 'opacity 400ms ease';
     _subtitleIdle().then(function () {
       if (!area.isConnected) return;
+      _sub.ff = false; // SKIP 빨리감기는 입력 차례가 오면 해제
       area.appendChild(wrap);
       _setFaceActivity(overlay, true);
       requestAnimationFrame(function () { wrap.style.opacity = '1'; });
@@ -1205,6 +1309,17 @@
     // 얼굴(3D 마네킹 줌·글자)은 play-test 가 window.LumenGhostFaceFX 로 처리.
     _sub.chain = Promise.resolve();
     _sub.advance = null;
+    _sub.ff = false;
+    // 이름표 — 유령 프리셋 라벨 (core=또렷한 잔상 / bridge=확신에 찬 잔상 / voidPin) 폴백 '잔상'.
+    _sub.ghostLabel = '';
+    try {
+      var _lp = (typeof window !== 'undefined' && window.GHOST_PRESETS) || null;
+      var _lv = sceneData.void_info;
+      if (typeof _lv === 'string') { try { _lv = JSON.parse(_lv); } catch (_) { _lv = null; } }
+      var _lk = (_lv && _lv.sceneVoid) ? 'voidPin'
+        : sceneData.scene_role === 'residual' ? 'bridge' : 'core';
+      _sub.ghostLabel = (_lp && _lp[_lk] && _lp[_lk].label) || '';
+    } catch (_) {}
 
     // V2.1.2 (δ) 하이브리드: 작가 손 / LLM / 균일 톤 fallback (2026-05-05).
     // (ζ, 2026-05-24) 병렬화 — LLM 은 즉시 kick off 만, scene_context 는 LLM 안 기다리고
@@ -1405,6 +1520,8 @@
       }
       lastAlignment = alignment;
       if (userEmo && Object.keys(userEmo).length) lastUserEmotion = userEmo;
+      // API가 뽑은 정확한 감정으로 하단 파동색 갱신 (키워드 프리뷰보다 정확) — 실패 시 프리뷰색 유지
+      _applyWaveColorFromEmotion(userEmo);
 
       // 응답 자리 = dialog-turn 자리 (V2.1.2 ε). 실패 시 pickResponse 자리 안전망 자리.
       var loading = _showLoadingBubble(overlay);
