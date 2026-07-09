@@ -1310,15 +1310,19 @@
     _sub.chain = Promise.resolve();
     _sub.advance = null;
     _sub.ff = false;
-    // 이름표 — 유령 프리셋 라벨 (core=또렷한 잔상 / bridge=확신에 찬 잔상 / voidPin) 폴백 '잔상'.
+    // 이름표 — 작가 지정(scenes.meta.ghost_name) 최우선, 없으면 프리셋 라벨 폴백.
+    // 260709: 프리셋 라벨("○○한 잔상") 톤 교체 예정 — 후보 검토 중 (사용자 결정 대기).
     _sub.ghostLabel = '';
     try {
-      var _lp = (typeof window !== 'undefined' && window.GHOST_PRESETS) || null;
-      var _lv = sceneData.void_info;
-      if (typeof _lv === 'string') { try { _lv = JSON.parse(_lv); } catch (_) { _lv = null; } }
-      var _lk = (_lv && _lv.sceneVoid) ? 'voidPin'
-        : sceneData.scene_role === 'residual' ? 'bridge' : 'core';
-      _sub.ghostLabel = (_lp && _lp[_lk] && _lp[_lk].label) || '';
+      _sub.ghostLabel = (meta && typeof meta.ghost_name === 'string' && meta.ghost_name.trim()) || '';
+      if (!_sub.ghostLabel) {
+        var _lp = (typeof window !== 'undefined' && window.GHOST_PRESETS) || null;
+        var _lv = sceneData.void_info;
+        if (typeof _lv === 'string') { try { _lv = JSON.parse(_lv); } catch (_) { _lv = null; } }
+        var _lk = (_lv && _lv.sceneVoid) ? 'voidPin'
+          : sceneData.scene_role === 'residual' ? 'bridge' : 'core';
+        _sub.ghostLabel = (_lp && _lp[_lk] && _lp[_lk].label) || '';
+      }
     } catch (_) {}
 
     // V2.1.2 (δ) 하이브리드: 작가 손 / LLM / 균일 톤 fallback (2026-05-05).
@@ -1401,9 +1405,11 @@
     }
 
     // V2.1.2 자동 분류 풀 주입 (가이드 §2.2 — anchor cosine sim 0.85/0.5).
-    // fallback: anchor 없거나 변주 < 3 시 글로벌 디폴트 유지. await 박아야 setOptions
-    // 끝난 후 turn 1 의 pickResponse 호출 — race 회피.
-    await _loadAndInjectGhostPools(input.supabase, memoryId, ghosts);
+    // fallback: anchor 없거나 변주 < 3 시 글로벌 디폴트 유지.
+    // 260709: await 를 여기서 안 함 — DB 왕복이 첫 대사를 막아서 "진입하자마자
+    // 유령이 말 거는" 체감이 죽음. 병렬 kick off 하고 턴 루프 직전에 await
+    // (pickResponse 는 턴 응답에서만 필요 — 그동안 플레이어는 인트로를 넘기며 읽는 중).
+    var _poolsPromise = _loadAndInjectGhostPools(input.supabase, memoryId, ghosts);
 
     // 회차 시간 측정 — 9분(540s) 초과 시 콘솔 경고 (결정 (d) 2026-05-04).
     var sceneCycleStart = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -1462,6 +1468,9 @@
     }
     var origEmotion = _ensureObj(sceneData.original_emotion || sceneData.originalEmotion);
     var totalTurns = DEFAULTS.maxFreeDialogTurns;
+
+    // 260709: 병렬 로딩한 응답 풀 수확 — 인트로 읽는 동안 대부분 완료됨 (race 회피 유지).
+    await _poolsPromise;
 
     for (var turn = 1; turn <= totalTurns; turn++) {
       // 입력 자리 받음 자리. turn 1 = 선택지 + 자유 동시. turn 2-3 = 자유.
