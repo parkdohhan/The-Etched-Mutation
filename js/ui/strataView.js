@@ -61,15 +61,15 @@
       return;
     }
     terrainRuntime = g.TemAfStrataTerrain.createStrataTerrain(THREE, canvas, {
-      clearColor: 0x12121a,
-      fogColor: 0x12121a,
+      clearColor: 0x18203a,
+      fogColor: 0x18203a,
       fogDensity: 0.006,
-      // 하늘 색: 파동(currentExperiencerWave)과 분리 — 텍스트 분석(API)으로 확정된
-      // 감정(skyEmotionColor)만 읽는다. 키워드 즉시 프리뷰엔 하늘이 반응하지 않고,
-      // 분석 결과가 나온 뒤에야 서서히 물든다.
-      skyEmotionColorGetter: function () {
-        var w = g.skyEmotionColor;
-        return w && w.color ? w.color : null;
+      // 하늘 = 개인의 영역. 빈 남색 하늘로 시작해서, 텍스트 분석으로 확정된 감정이
+      // 얼룩으로 쌓인다(교체 X). 기억 단위로 리셋 — 다음 플레이어에게 안 넘어감.
+      skyBaseColor: 0x18203a,      // 빈 하늘 = 남색
+      skyStainIntensity: 0.5,      // 얼룩 강도 (올리면 진하게, 내리면 은은하게)
+      skyStainsGetter: function () {
+        return (g.TemSkyStains && g.TemSkyStains.list()) || [];
       },
     });
     terrainRuntime.init();
