@@ -899,16 +899,19 @@
   }
 
   // API가 뽑은 정확한 감정(userEmo)을 파동 + 하늘에 반영 — 제출·분석 후 갱신.
-  // 하늘(skyEmotionColor)은 오직 여기서만 갱신 → 키워드 즉시 프리뷰엔 하늘이 안 움직이고
-  // 분석 결과가 나온 뒤에야 서서히 물든다(파동은 프리뷰로 즉시 반응, 하늘은 확정 후).
+  // 하늘 얼룩은 오직 여기서만 쌓인다 → 키워드 즉시 프리뷰엔 하늘이 안 움직이고,
+  // 분석이 끝난 뒤에야 그 감정색이 하늘에 '얼룩'으로 서서히 번진다.
+  // 교체가 아니라 누적 — 1회차에 화내고 2회차에 슬퍼지면 붉은 얼룩과 푸른 얼룩이 같이 남는다.
   function _applyWaveColorFromEmotion(emo) {
     if (typeof window === 'undefined' || typeof window.sharedEmotionVectorToWaveStyle !== 'function') return;
     if (!emo || typeof emo !== 'object' || !Object.keys(emo).length) return;
     try {
       var style = window.sharedEmotionVectorToWaveStyle(emo);
       window.experiencerEmotionVector = emo;
-      window.currentExperiencerWave = style;   // 파동
-      window.skyEmotionColor = style;          // 하늘 (분석 확정 감정만)
+      window.currentExperiencerWave = style;                 // 파동 (즉시)
+      if (window.TemSkyStains && style.color) {
+        window.TemSkyStains.add(style.color);                // 하늘 얼룩 (누적)
+      }
     } catch (_) {}
   }
 
@@ -1554,6 +1557,14 @@
         break;
       }
       _addMessage(overlay, playerInput, { who: 'player' });
+
+      // 260709 되새김 앵커 — 플레이어가 이 장면의 사물/모티프를 입에 담으면
+      // "되새겨진 기억"으로 전체화면에 떠오른다 (같은 단어 반복 시 단계 상승 → 붕괴).
+      // 대화를 나가 지형을 걸어도 회차 내내 남는다. docs/되새김_앵커_설계-260709.md
+      if (typeof window !== 'undefined' && window.LumenRecalledAnchors
+          && typeof window.LumenRecalledAnchors.check === 'function') {
+        try { window.LumenRecalledAnchors.check(playerInput, sceneData); } catch (_) {}
+      }
 
       // CRISIS / END 안전망 (보존)
       if (_hasCrisis(playerInput, DEFAULTS.crisisKeywords)) {

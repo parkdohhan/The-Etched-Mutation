@@ -50,7 +50,8 @@
   <script src="js/contamination.js"></script>
   <script src="js/shared/tem_replay_terrain.js?v=0.6"></script>
   <script src="js/ui/lumen_replay_fog.js?v=0.6"></script>
-  <script src="js/ui/lumen_spatial_fog.js?v=0.3"></script>
+  <script src="js/ui/lumen_spatial_fog.js?v=0.7"></script>
+  <script src="js/shared/tem_sky_stains.js?v=0.1"></script>
   <script src="js/shared/tem_af_strata_terrain.js?v=0.3"></script>
   <script src="js/ui/lumen_terrain_adapter.js"></script>
   <script src="js/ui/lumen_walk_effects.js"></script>
@@ -73,6 +74,7 @@
   <script src="js/ui/lumen_dialog_phase1.js"></script>
   <script src="js/ui/strataSection.js"></script>
   <script src="js/ui/floatingAnchor.js"></script>
+  <script src="js/ui/lumen_recalled_anchors.js"></script>
   <style>
     :root {
       --bg-deep: #0a0a0c;
@@ -2728,8 +2730,10 @@
     window.experiencerEmotionVector = resolvedPlayerVec;
     window.currentNarratorWave = playTestWaveStyleFor(orig);
     window.currentExperiencerWave = resolvedPlayerStyle;
-    // 하늘은 확정 감정만 따라간다 — 실시간 슬라이더 프리뷰(live)엔 반응 X, 제출/확정 시에만 서서히.
-    if (!live && hasUserInput) window.skyEmotionColor = resolvedPlayerStyle;
+    // 하늘 = 개인의 영역. 확정된 감정만 '얼룩'으로 쌓인다 (교체 X, 실시간 프리뷰엔 반응 X).
+    if (!live && hasUserInput && window.TemSkyStains && resolvedPlayerStyle && resolvedPlayerStyle.color) {
+      window.TemSkyStains.add(resolvedPlayerStyle.color);
+    }
 
     const narratorWaveStyle = window.currentNarratorWave;
     const experiencerWaveStyle = window.currentExperiencerWave;
@@ -3088,18 +3092,10 @@
     var _camTween = { dead: false };
     try {
       if (_mq && typeof _mq.dialogFocus === 'function') {
-        var _fwMeta = scene.meta || {};
-        var _fwRaw = []
-          .concat(Array.isArray(_fwMeta.motif_tags) ? _fwMeta.motif_tags : [])
-          .concat(Array.isArray(scene.echo_words) ? scene.echo_words : [])
-          .concat(Array.isArray(_fwMeta.echo_words) ? _fwMeta.echo_words : []);
-        var _fwSeen = {};
-        var _fwWords = [];
-        for (var _fi = 0; _fi < _fwRaw.length && _fwWords.length < 5; _fi++) {
-          var _fw = String(_fwRaw[_fi] || '').trim();
-          if (_fw && !_fwSeen[_fw]) { _fwSeen[_fw] = 1; _fwWords.push(_fw); }
-        }
-        _faceFocus = _mq.dialogFocus(scene.id, _fwWords);
+        // 260709: 얼굴 속 "무작위 모티프 글자"는 폐기 (사용자 결정 — 막 띄우는 게 아니라
+        //   되새김만 띄운다). dialogFocus 는 카메라 줌 타깃(머리 위치)만 쓰려고 빈 배열로 호출.
+        //   되새겨진 단어는 LumenRecalledAnchors 가 전체화면에 띄운다.
+        _faceFocus = _mq.dialogFocus(scene.id, []);
       }
       if (_faceFocus && _faceFocus.ok && _ghostCam && window.THREE && _ensureDialogCamOverride(runtime)) {
         _camSaved = { pos: _ghostCam.position.clone(), quat: _ghostCam.quaternion.clone() };
@@ -3129,13 +3125,10 @@
           : (!_ghostCam ? 'runtime.getCamera 없음'
           : (!window.THREE ? 'window.THREE 없음' : 'renderer 래핑 실패')))));
       }
-      if (_mq) {
-        window.LumenGhostFaceFX = {
-          mood: function (a, r) { try { _mq.dialogMood(a, r); } catch (_) {} },
-          absorb: function (w) { try { _mq.dialogAbsorb(w); } catch (_) {} },
-          activity: function (l) { try { _mq.dialogActivity(l); } catch (_) {} },
-        };
-      }
+      // 260709: 얼굴 속 글자 폐기 → FaceFX 는 no-op. 되새김(LumenRecalledAnchors)이
+      //   플레이어가 실제로 말한 되새김 단어만 전체화면에 띄운다. mood/absorb/activity 는
+      //   얼굴 글자가 없으니 무의미 — 배선만 유지하고 아무것도 안 함 (얼굴 파편 재도입 시 복구 자리).
+      window.LumenGhostFaceFX = null;
     } catch (_fxErr) { console.warn('[v21-phase1] face focus 실패', _fxErr); }
 
     function _releaseFaceFocus() {
@@ -4438,6 +4431,9 @@
 
   async function loadMemoryData(memoryId) {
     game.memoryId = memoryId;
+    // 하늘 = 개인의 영역. 기억 단위로 빈 남색 하늘부터 다시 시작 —
+    // 앞 기억(또는 앞 플레이어)의 얼룩을 물려받지 않는다.
+    if (window.TemSkyStains) window.TemSkyStains.reset(memoryId);
     if (window.memoriesData) {
       const found = window.memoriesData.find(function(m) { return m.id === memoryId; });
       if (found) {
@@ -4662,10 +4658,14 @@
       const _driftVector = computeDriftVector(_endVec, _baselineVec);
       const _gvId = (game.driftStamp && game.driftStamp.ghost_variant_id) || null;
       if (game.memoryId) {
-        // 이번 회차 plays row 전부에 도장 (회차 시작 변주 + 회차 변위)
-        sb.from('plays').update({ ghost_variant_id: _gvId, final_drift_vector: _driftVector })
+        // 이번 회차 plays row 전부에 도장 (회차 시작 변주 + 회차 변위 + 이 판의 하늘)
+        // sky_stains = "나는 이 기억을 어떤 감정으로 읽었는가" 자료. 개인 영역이라 릴레이 X.
+        const _skyStains = (window.TemSkyStains && window.TemSkyStains.serialize()) || null;
+        const _stamp = { ghost_variant_id: _gvId, final_drift_vector: _driftVector };
+        if (_skyStains) _stamp.sky_stains = _skyStains;
+        sb.from('plays').update(_stamp)
           .eq('memory_id', game.memoryId).gte('created_at', game._runStartTime)
-          .then(r => { if (r && r.error) LOG('V2-6 drift stamp update error', r.error); });
+          .then(r => { if (r && r.error) LOG('V2-6 drift/sky stamp update error', r.error); });
         // cumulative_emotion_vec EMA 갱신 (Edge function — RLS 우회, anon 호출)
         if (_endVec && Object.keys(_endVec).length) {
           sb.functions.invoke('record-drift-cumulative', { body: { memoryId: game.memoryId, sessionEmotionVec: _endVec } })

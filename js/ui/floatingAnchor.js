@@ -351,6 +351,8 @@ function destroyFloatingAnchor() {
   currentFloatingAnchors = [];
 }
 
+// 260709: 되새김 앵커(lumen_recalled_anchors)가 클래스를 직접 인스턴스화 — 전역 clarity/리스트와 분리.
+window.FloatingAnchor = FloatingAnchor;
 window.startFloatingAnchor = startFloatingAnchor;
 window.updateFloatingAnchorAlignment = updateFloatingAnchorAlignment;
 window.initClarity = initClarity;
