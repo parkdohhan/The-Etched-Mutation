@@ -6187,6 +6187,7 @@
               if (_crosshairEl) _crosshairEl.style.display = 'none';
               if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
               _destroyAmbientWave();
+              if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} } // 260709 되새김 정리 (회차 종료)
               if (rt2v21) rt2v21.exitFirstPerson();
               var svv21 = document.getElementById('strataView');
               if (svv21) svv21.style.display = 'none';
@@ -6204,6 +6205,7 @@
             if (_crosshairEl) _crosshairEl.style.display = 'none';
             if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
             _destroyAmbientWave();
+              if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} } // 260709 되새김 정리 (회차 종료)
             var rt2 = window.TemAfStrataTerrain._lastRuntime;
             if (rt2) rt2.exitFirstPerson();
             var sv = document.getElementById('strataView');
@@ -6489,6 +6491,7 @@
                 if (_crosshairEl) _crosshairEl.style.display = 'none';
                 if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
                 _destroyAmbientWave();
+              if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} } // 260709 되새김 정리 (회차 종료)
                 if (rtv21AV) rtv21AV.exitFirstPerson();
                 var svEndV21 = document.getElementById('strataView');
                 if (svEndV21) svEndV21.style.display = 'none';
@@ -6502,6 +6505,7 @@
               if (_crosshairEl) _crosshairEl.style.display = 'none';
               if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
               _destroyAmbientWave();
+              if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} } // 260709 되새김 정리 (회차 종료)
               if (rt) rt.exitFirstPerson();
               var svEnd = document.getElementById('strataView');
               if (svEnd) svEnd.style.display = 'none';
