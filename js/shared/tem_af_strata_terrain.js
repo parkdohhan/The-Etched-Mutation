@@ -826,7 +826,10 @@
         uOn: { value: 0 },
         uCount: { value: 0 },
         uTime: { value: 0 },
-        uHeavyD: { value: 0.055 },
+        // 안개 벽의 세기 (0 = 없음, 1 = 안 열린 곳은 완전히 가려짐).
+        // 260712: 예전 uHeavyD(거리 기반 밀도)를 폐기. 거리 안개로는 코앞의 안 열린 땅이
+        //   그대로 보여서 "벽"으로 안 읽혔다 (사용자 지적).
+        uWall: { value: 0.985 },
         uSky: { value: new THREE.Color(0x555f6e) },
         uSeg: { value: [] },              // vec4[]: ax, az, bx, bz (a==b → circle)
         uRad: { value: new Float32Array(_SF_MAX) },
@@ -837,7 +840,7 @@
       shader.uniforms._sfOn = _sf.uOn;
       shader.uniforms._sfCount = _sf.uCount;
       shader.uniforms._sfTime = _sf.uTime;
-      shader.uniforms._sfHeavyD = _sf.uHeavyD;
+      shader.uniforms._sfWall = _sf.uWall;
       shader.uniforms._sfSky = _sf.uSky;
       shader.uniforms._sfSeg = _sf.uSeg;
       shader.uniforms._sfRad = _sf.uRad;
@@ -846,7 +849,7 @@
         'uniform float _sfOn;',
         'uniform int _sfCount;',
         'uniform float _sfTime;',
-        'uniform float _sfHeavyD;',
+        'uniform float _sfWall;',
         'uniform vec3 _sfSky;',
         'uniform vec4 _sfSeg[' + _SF_MAX + '];',
         'uniform float _sfRad[' + _SF_MAX + '];',
@@ -873,8 +876,12 @@
         'void main() {',
         decl.join('\n') + '\nvoid main() {'
       );
-      // Replace fog with per-spot mask: inside revealed circle/corridor → normal
-      // exp2 fog, outside → heavy fog wall. Edge wobbles with fbm (뭉게뭉게).
+      // ── 안개 = 벽 (260712 사용자 요구: "안개가 벽처럼 못 보는 영역을 확실히 가리게") ──
+      // 폐기된 모델: 안 열린 곳도 "멀수록 뿌옇게"(거리 기반 heavy fog).
+      //   → 코앞의 안 열린 땅은 거의 안 뿌예서 그냥 다 보였다. 벽으로 안 읽힘.
+      // 지금 모델: 안 열린 조각은 **거리와 무관하게** 안개색으로 통째로 덮는다.
+      //   열린 곳은 원래 거리 안개 그대로. 경계는 fbm 으로 일렁이고, 벽 안쪽도
+      //   느린 fbm 결이 돌아 평면 매트가 아니라 안개 덩어리로 보인다.
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <fog_fragment>',
         [
@@ -889,14 +896,18 @@
           '    vec2 _sfBa = _sfSeg[i].zw - _sfSeg[i].xy;',
           '    float _sfHh = clamp(dot(_sfPa, _sfBa) / max(dot(_sfBa, _sfBa), 1e-6), 0.0, 1.0);',
           '    float _sfD = length(_sfPa - _sfBa * _sfHh);',
-          '    _sfD += (_sfFbm3(vec3(vWPos.x * 0.22, _sfTime * 0.18, vWPos.z * 0.22)) - 0.5) * min(7.0, _sfR * 0.5);',
+          // 경계 일렁임 — 이동 차단 벽(JS revealAt)과 크게 어긋나지 않게 진폭 절제
+          '    _sfD += (_sfFbm3(vec3(vWPos.x * 0.22, _sfTime * 0.18, vWPos.z * 0.22)) - 0.5) * min(4.0, _sfR * 0.35);',
           '    _sfRv = max(_sfRv, 1.0 - smoothstep(_sfR * 0.55, _sfR, _sfD));',
           '  }',
+          '  float _sfW = (1.0 - _sfRv) * _sfWall;',                       // 0 = 열림, 1 = 벽
           '  float _sfDc = length(vWPos - cameraPosition);',
-          '  float _sfFogC = 1.0 - exp(-fogDensity * fogDensity * _sfDc * _sfDc);',
-          '  float _sfFogH = 1.0 - exp(-_sfHeavyD * _sfHeavyD * _sfDc * _sfDc);',
-          '  float _sfFf = mix(_sfFogH, _sfFogC, _sfRv);',
-          '  gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(_sfSky, fogColor, _sfRv), clamp(_sfFf, 0.0, 1.0));',
+          '  float _sfFogC = 1.0 - exp(-fogDensity * fogDensity * _sfDc * _sfDc);',  // 열린 곳의 원래 거리 안개
+          '  float _sfFf = clamp(_sfFogC + _sfW * (1.0 - _sfFogC), 0.0, 1.0);',
+          // 벽 속 결 — 완전한 평면 회색이 되지 않게 아주 느린 fbm 으로 명암을 준다
+          '  float _sfGrain = (_sfFbm3(vec3(vWPos.x * 0.05, _sfTime * 0.04, vWPos.z * 0.05)) - 0.5) * 0.16;',
+          '  vec3 _sfCol = mix(fogColor, _sfSky * (1.0 + _sfGrain), _sfW);',
+          '  gl_FragColor.rgb = mix(gl_FragColor.rgb, _sfCol, _sfFf);',
           '} else {',
           '#include <fog_fragment>',
           '}',
@@ -1248,12 +1259,122 @@
       return { w: w, h: h };
     }
 
+    // ── 하늘 감정 얼룩 돔 (Sky Emotion Stains) ─────────────────────
+    // 하늘 = 개인의 영역 (지형=릴레이·누적, 하늘=이 한 판의 것).
+    // 빈 남색 하늘로 시작 → 텍스트 분석으로 확정된 감정이 '얼룩'으로 쌓임 (교체 X).
+    // 색을 평균내면 턴이 쌓일수록 진흙색으로 수렴하므로, fbm 노이즈로 얼룩마다
+    // 하늘의 다른 구역을 물들여 각 감정이 제 색을 유지한 채 공존하게 한다.
+    // 얼룩 목록은 host 가 opts.skyStainsGetter 로 공급 (js/shared/tem_sky_stains.js).
+    // Rollback: _buildSkyDome() / _tickSkyDome() 호출 2곳 삭제 → 단색 하늘로 복귀.
+    var SKY_MAX = 8;
+    var _skyDome = null;
+    var _skyUni = null;
+    var _skyWCur = new Float32Array(SKY_MAX); // 목표 무게로 매 프레임 lerp → 얼룩이 서서히 번짐
+
+    function _buildSkyDome() {
+      var cols = [];
+      for (var ci = 0; ci < SKY_MAX; ci++) cols.push(new THREE.Color(0, 0, 0));
+      _skyUni = {
+        uBase: { value: new THREE.Color(opts.skyBaseColor != null ? opts.skyBaseColor : 0x18203a) },
+        uCol: { value: cols },
+        uW: { value: new Float32Array(SKY_MAX) },
+        uCount: { value: 0 },
+        uTime: { value: 0 },
+        uIntensity: { value: opts.skyStainIntensity != null ? opts.skyStainIntensity : 0.5 },
+      };
+      var mat = new THREE.ShaderMaterial({
+        uniforms: _skyUni,
+        side: THREE.BackSide,
+        depthWrite: false,
+        fog: false,
+        vertexShader: [
+          'varying vec3 vDir;',
+          'void main() {',
+          '  vDir = normalize(position);',
+          '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+          '}',
+        ].join('\n'),
+        fragmentShader: [
+          'uniform vec3 uBase;',
+          'uniform vec3 uCol[' + SKY_MAX + '];',
+          'uniform float uW[' + SKY_MAX + '];',
+          'uniform int uCount;',
+          'uniform float uTime;',
+          'uniform float uIntensity;',
+          'varying vec3 vDir;',
+          'float _skH(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}',
+          'float _skN(vec3 p){',
+          '  vec3 i=floor(p),f=fract(p);',
+          '  f=f*f*(3.0-2.0*f);',
+          '  return mix(mix(mix(_skH(i),_skH(i+vec3(1,0,0)),f.x),',
+          '    mix(_skH(i+vec3(0,1,0)),_skH(i+vec3(1,1,0)),f.x),f.y),',
+          '    mix(mix(_skH(i+vec3(0,0,1)),_skH(i+vec3(1,0,1)),f.x),',
+          '    mix(_skH(i+vec3(0,1,1)),_skH(i+vec3(1,1,1)),f.x),f.y),f.z);',
+          '}',
+          'float _skFbm(vec3 p){',
+          '  float v=0.0,a=0.5;',
+          '  for(int i=0;i<5;i++){v+=a*_skN(p);p*=2.05;a*=0.5;}',
+          '  return v;',
+          '}',
+          'void main() {',
+          '  vec3 d = normalize(vDir);',
+          '  vec3 col = uBase;',
+          '  for (int i = 0; i < ' + SKY_MAX + '; i++) {',
+          '    if (i >= uCount) break;',
+          '    float w = uW[i];',
+          '    if (w < 0.01) continue;',
+          '    float fi = float(i);',
+          // 얼룩마다 다른 시드 → 하늘의 다른 구역에 번진다
+          '    vec3 p = d * 1.9 + vec3(fi * 13.7, fi * 7.3, fi * 21.1) + vec3(0.0, uTime * 0.006, 0.0);',
+          '    float n = _skFbm(p);',
+          // 임계 넘는 구역만 물듦 → 얼룩덜룩 (전면 도포 X)
+          '    float m = smoothstep(0.42, 0.78, n) * w;',
+          '    col = mix(col, uCol[i], clamp(m * uIntensity, 0.0, 1.0));',
+          '  }',
+          // 지평선 쪽을 살짝 밝게 → 안개와 자연스럽게 이어짐
+          '  float h = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);',
+          '  col = mix(col * 1.10, col * 0.90, h);',
+          '  gl_FragColor = vec4(col, 1.0);',
+          '}',
+        ].join('\n'),
+      });
+      _skyDome = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 24), mat);
+      _skyDome.renderOrder = -1;
+      _skyDome.frustumCulled = false;
+      scene3.add(_skyDome);
+    }
+
+    // 하늘은 항상 카메라를 감싼다. 얼룩 무게는 목표로 천천히 lerp → 새 감정이 서서히 번짐.
+    function _tickSkyDome() {
+      if (!_skyDome || !_skyUni) return;
+      if (camera) _skyDome.position.copy(camera.position);
+      _skyUni.uTime.value = time;
+
+      var stains = [];
+      if (typeof opts.skyStainsGetter === 'function') {
+        try { stains = opts.skyStainsGetter() || []; } catch (_) { stains = []; }
+      }
+      var n = Math.min(SKY_MAX, stains.length);
+      for (var i = 0; i < SKY_MAX; i++) {
+        var target = 0;
+        if (i < n) {
+          var s = stains[i];
+          _skyUni.uCol.value[i].setRGB(s.r / 255, s.g / 255, s.b / 255);
+          target = Math.max(0, Math.min(1, s.w));
+        }
+        _skyWCur[i] += (target - _skyWCur[i]) * 0.02; // ~2초에 걸쳐 번짐
+        _skyUni.uW.value[i] = _skyWCur[i];
+      }
+      _skyUni.uCount.value = n;
+    }
+
     function init() {
       if (!canvas || !THREE) return null;
       var vp0 = getViewportSize();
       scene3 = new THREE.Scene();
       scene3.background = new THREE.Color(opts.clearColor != null ? opts.clearColor : 0x12121a);
       scene3.fog = new THREE.FogExp2(opts.fogColor != null ? opts.fogColor : 0x12121a, opts.fogDensity != null ? opts.fogDensity : 0.008);
+      _buildSkyDome();
 
       camera = new THREE.PerspectiveCamera(50, vp0.w / vp0.h, 0.1, 500);
       camera.position.set(50, 35, 60);
@@ -1323,6 +1444,7 @@
         oP1.position.set(Math.sin(time * 0.6) * 35, 8 + Math.sin(time * 0.3) * 4, Math.cos(time * 0.4) * 35);
         oP2.position.set(Math.cos(time * 0.5) * 28, 10, Math.sin(time * 0.7) * 28);
       }
+      _tickSkyDome();
       _tickSeedGrp();
       _tickParticles();
       if (renderer && scene3 && camera) renderer.render(scene3, camera);
@@ -1330,26 +1452,33 @@
 
     var _baseFogColor = new THREE.Color(opts.fogColor != null ? opts.fogColor : 0x12121a);
     var _baseClearColor = new THREE.Color(opts.clearColor != null ? opts.clearColor : 0x12121a);
-    // Emotion sky tint: sky drifts toward the player's current emotion color.
-    // Host supplies opts.skyEmotionColorGetter → {r,g,b} in 0-255 (e.g. current wave color).
+    // 안개/지평선이 하늘 얼룩들의 '평균색'을 따라가기 위한 보간 버퍼.
+    // (하늘 자체의 얼룩덜룩은 _tickSkyDome + 셰이더 담당. 얼룩 목록 = opts.skyStainsGetter)
     var _skyEmoTarget = _baseFogColor.clone();
     var _skyEmoCur = _baseFogColor.clone();
 
     function _tickSeedGrp() {
       if (!seedGrp) return;
 
-      // ─── Emotion sky: drift the base sky toward the player's current emotion color ──
-      // Temper it toward the gloomy base so the sky stays atmospheric, then smooth over frames.
+      // ─── 안개/지평선: 하늘 얼룩들의 '평균색' 쪽으로 은은하게 물듦 ──
+      // 하늘 자체의 얼룩덜룩은 _tickSkyDome + 셰이더가 담당. 여기선 지평선이 하늘과
+      // 이어지도록 안개색만 맞춘다. 극단적인 색 방지를 위해 base(남색) 쪽으로 세게 당김.
       var _fogBase = _baseFogColor;
-      if (opts.skyEmotionColorGetter) {
-        var _erc = opts.skyEmotionColorGetter();
-        if (_erc && _erc.r != null) {
-          _skyEmoTarget.setRGB(_erc.r / 255, _erc.g / 255, _erc.b / 255);
-          _skyEmoTarget.lerp(_baseFogColor, 0.32); // keep it sky-like, not neon
-        } else {
-          _skyEmoTarget.copy(_baseFogColor);
+      if (typeof opts.skyStainsGetter === 'function') {
+        var _st = [];
+        try { _st = opts.skyStainsGetter() || []; } catch (_) { _st = []; }
+        var _ar = 0, _ag = 0, _ab = 0, _asum = 0;
+        for (var _k = 0; _k < _st.length; _k++) {
+          var _s2 = _st[_k];
+          _ar += _s2.r * _s2.w; _ag += _s2.g * _s2.w; _ab += _s2.b * _s2.w; _asum += _s2.w;
         }
-        _skyEmoCur.lerp(_skyEmoTarget, 0.02); // slow, deliberate drift (~2s) — sky follows analyzed emotion, not instant input
+        if (_asum > 0) {
+          _skyEmoTarget.setRGB(_ar / _asum / 255, _ag / _asum / 255, _ab / _asum / 255);
+          _skyEmoTarget.lerp(_baseFogColor, 0.62); // 은은하게 — 형광펜 아니라 물감 번짐
+        } else {
+          _skyEmoTarget.copy(_baseFogColor); // 빈 하늘 = 남색
+        }
+        _skyEmoCur.lerp(_skyEmoTarget, 0.02); // ~2초에 걸쳐 서서히
         _fogBase = _skyEmoCur;
       }
 
@@ -1589,6 +1718,7 @@
           oP1.position.set(Math.sin(time * 0.6) * 35, 8 + Math.sin(time * 0.3) * 4, Math.cos(time * 0.4) * 35);
           oP2.position.set(Math.cos(time * 0.5) * 28, 10, Math.sin(time * 0.7) * 28);
         }
+        _tickSkyDome();
         _tickSeedGrp();
         _tickParticles();
         if (renderer && scene3 && camera) renderer.render(scene3, camera);

@@ -64,12 +64,16 @@
     corridorRadius: 5,    // 회랑 반폭
     regionMs: 3000,       // 지역 개화 시간
     corridorMs: 1600,     // 회랑 파임 시간 (이후 지역 개화 시작)
-    heavyDensity: 0.055,  // 안 열린 곳의 안개 밀도 (벽 수준)
     liftMs: 3000,         // liftAll 소요 시간
-    wobbleAmp: 0.10,      // 뭉게 숨쉬기 (replay fog 와 동일한 두 사인파)
-    wobbleAmp2: 0.06,
     bloomTriggerDist: 7,  // openOnArrive: 플레이어가 이 거리 안에 오면 지역 개화
-    moveSlowBelow: 0.35,  // 걷힘 정도가 이 아래인 곳부터 걸음이 느려짐 (0 = 정지)
+    // ── 안개 벽 (260712 사용자 요구: "벽처럼 못 보는 영역을 확실히 가리게") ──
+    wallStrength: 0.985,  // 안 열린 곳이 가려지는 정도. 1 = 완전히 안 보임. 거리 무관.
+    wallBreathe: 0.012,   // 벽 세기의 아주 옅은 숨쉬기
+    moveBlockBelow: 0.15, // 걷힘이 이 아래인 자리로는 못 간다 (벽). 벽면 슬라이드는 허용.
+    // ── 하늘 돔 ──
+    // 260712: 눈앞을 가리는 볼륨 안개 판 7겹은 삭제("디지털 풍화처럼 보인다"). 돔만 남김.
+    airFog: true,         // false 면 하늘 돔도 끔 (지형 안개 벽만)
+    skyBlendMax: 0.92,    // 지평선이 안개색으로 녹는 최대 정도 (머리 위 감정 하늘은 보존)
   };
 
   function _now() {
@@ -100,7 +104,61 @@
     var _overflowWarned = false;
 
     U.uOn.value = 1;
-    U.uHeavyD.value = opts.heavyDensity;
+    U.uWall.value = opts.wallStrength;
+
+    // ── 하늘 돔 ──
+    // 260712: "눈앞을 가리는 볼륨 안개 판" 7겹은 **삭제**됨. 사용자 판정 —
+    //   "안개가 아니라 디지털 풍화처럼 생겼다". 안개의 역할은 눈앞을 뿌옇게 하는 게 아니라
+    //   **못 가는 영역을 벽처럼 확실히 가리는 것**(지형 셰이더의 _sfWall 이 담당).
+    //   여기 남는 건 하늘 돔 하나 — 지평선을 안개색으로 녹여 벽이 하늘까지 이어져 보이게 한다.
+    //   (돔이 없으면 안개 벽 위로 검은 하늘이 칼같이 잘려 벽이 "땅에 칠한 물감"이 된다.)
+    var THREE = global.THREE;
+    var _skyDome = null, _skyDomeMat = null;
+    var _skyC = null, _origBgHex = null, _origFogHex = null;
+    // try/catch — 하늘 돔이 터져도 지형 벽(본체)은 살아야 한다.
+    if (opts.airFog && THREE) try {
+      _skyC = new THREE.Color(U.uSky.value.getHex());
+      if (scene.background && scene.background.isColor) _origBgHex = scene.background.getHex();
+      if (scene.fog && scene.fog.color) _origFogHex = scene.fog.color.getHex();
+
+      // 하늘 돔 — 지평선은 안개색, 머리 위는 원래 하늘(감정색). 진짜 안개의 수직 그라데이션.
+      // 배경색을 통째로 물들이면 밤하늘·별이 죽는다 (260712 검증).
+      _skyDomeMat = new THREE.ShaderMaterial({
+        uniforms: {
+          uZenith: { value: new THREE.Color(_origBgHex != null ? _origBgHex : 0x12121a) },
+          uHorizon: { value: _skyC.clone() },
+          uAmt: { value: 0 },
+        },
+        vertexShader: [
+          'varying vec3 vDir;',
+          'void main() {',
+          '  vDir = normalize(position);',
+          '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+          '}',
+        ].join('\n'),
+        fragmentShader: [
+          'uniform vec3 uZenith;',
+          'uniform vec3 uHorizon;',
+          'uniform float uAmt;',
+          'varying vec3 vDir;',
+          'void main() {',
+          '  float t = smoothstep(-0.03, 0.40, vDir.y);',   // 지평선 0 → 위 1
+          '  vec3 fogged = mix(uHorizon, uZenith, t);',
+          '  gl_FragColor = vec4(mix(uZenith, fogged, uAmt), 1.0);',
+          '}',
+        ].join('\n'),
+        side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
+      });
+      _skyDome = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 16), _skyDomeMat);
+      _skyDome.renderOrder = -10000;   // 배경 대신 맨 먼저 화면을 채운다
+      _skyDome.frustumCulled = false;
+      scene.add(_skyDome);
+
+      console.log('[spatial-fog] 하늘 돔 ON — 지평선이 안개색으로 녹는다 (눈앞 볼륨 판은 260712 삭제)');
+    } catch (eAir) {
+      console.warn('[spatial-fog] 하늘 돔 실패 — 지형 안개 벽만 동작 (무해)', eAir);
+      if (_skyDome) { scene.remove(_skyDome); _skyDome = null; _skyDomeMat = null; }
+    }
 
     // 시각(now) 기준 실제 적용값 — 회랑은 끝점 전진, 원은 반경 성장
     function _effective(rp, now) {
@@ -160,25 +218,42 @@
         var h = Math.min(1, Math.max(0, (pax * bax + paz * baz) / dd));
         var dx = pax - bax * h, dz = paz - baz * h;
         var d = Math.sqrt(dx * dx + dz * dz);
-        var e = (d - ef.r * 0.55) / (ef.r * 0.45);
-        rv = Math.max(rv, 1 - Math.min(1, Math.max(0, e)));
+        var e = Math.min(1, Math.max(0, (d - ef.r * 0.55) / (ef.r * 0.45)));
+        // 셰이더와 같은 smoothstep 곡선 — 보이는 안개 경계와 막히는 벽이 어긋나지 않게.
+        rv = Math.max(rv, 1 - e * e * (3 - 2 * e));
       }
       return Math.max(rv, _lift);
     }
 
-    // ── 소프트 이동 차단: 안개 경계에서 몇 걸음 헤치다 멈춘다 ─────────
+    // ── 안개 벽: 이동 차단 (260712 — "안개로 다가갔을 때 못 가게") ─────
     // tem_af_strata_terrain 의 _fpTick 이 global.__temSpatialFogConstrain 을
     // 매 걸음 호출 (없으면 무동작). null 반환 = 자유 이동.
-    // 갇힘 방지: 더 맑은 쪽으로 가는 걸음은 항상 통과시킨다.
+    //
+    // 예전(소프트 감속)은 벽으로 안 읽혔다 — 느려질 뿐 계속 들어가졌음.
+    // 지금: 걷힘이 blockBelow 아래인 자리로는 **못 간다**. 대신 벽에 끼이지 않게
+    //   (1) 벽면을 따라 미끄러지고(슬라이드)  (2) 더 맑은 쪽 걸음은 언제나 통과.
+    var _wallEps = 0.7;   // 걷힘 기울기 측정 간격
     function constrainMove(fx, fz, tx, tz) {
       if (_lift >= 1) return null;
-      var SLOW = opts.moveSlowBelow;
+      var BLOCK = opts.moveBlockBelow;
       var rvTo = revealAt(tx, tz);
-      if (rvTo >= SLOW) return null;
+      if (rvTo >= BLOCK) return null;                       // 열린 자리 — 자유
       var rvFrom = revealAt(fx, fz);
-      var k = Math.max(0, rvTo / SLOW);           // 0(정지) .. 1(자유)
-      if (rvTo >= rvFrom - 1e-6) k = Math.max(k, 0.6);
-      return { x: fx + (tx - fx) * k, z: fz + (tz - fz) * k };
+      if (rvTo > rvFrom + 1e-4) return null;                // 맑은 쪽으로 = 항상 허용 (갇힘 방지)
+
+      // 걷힘의 기울기 = 맑은 쪽을 가리키는 방향 = 벽의 법선
+      var nx = revealAt(fx + _wallEps, fz) - revealAt(fx - _wallEps, fz);
+      var nz = revealAt(fx, fz + _wallEps) - revealAt(fx, fz - _wallEps);
+      var nl = Math.sqrt(nx * nx + nz * nz);
+      var mx = tx - fx, mz = tz - fz;
+      if (nl < 1e-5) return { x: fx, z: fz };               // 기울기 없음(벽 한복판) — 정지
+
+      nx /= nl; nz /= nl;
+      var into = mx * nx + mz * nz;                          // <0 이면 벽 쪽으로 밀고 있음
+      if (into < 0) { mx -= nx * into; mz -= nz * into; }    // 벽 성분 제거 → 벽면 따라 미끄러짐
+      var sx = fx + mx, sz = fz + mz;
+      if (revealAt(sx, sz) < BLOCK * 0.75) return { x: fx, z: fz };  // 미끄러져도 벽 속 — 정지
+      return { x: sx, z: sz };
     }
     global.__temSpatialFogConstrain = constrainMove;
 
@@ -258,11 +333,10 @@
         _lift = Math.min(1, (now - _liftT0) / opts.liftMs);
         if (_lift >= 1) { _lifting = false; console.log('[spatial-fog] 안개 전부 걷힘'); }
       }
-      // heavy 밀도 = 숨쉬기, lift 진행 시 현재 clear 밀도(오염 모듈레이션 포함)로 수렴
-      var breathe = 1 + opts.wobbleAmp * Math.sin(t * 0.37) + opts.wobbleAmp2 * Math.sin(t * 1.31 + 2.2);
-      var clearD = (scene.fog && typeof scene.fog.density === 'number') ? scene.fog.density : 0.006;
+      // 안개 벽의 세기 — 아주 옅게 숨쉬고, liftAll 진행 시 0 으로 사라진다.
       var eased = _ease(_lift);
-      U.uHeavyD.value = (opts.heavyDensity * breathe) * (1 - eased) + clearD * eased;
+      var breathe = 1 + opts.wallBreathe * Math.sin(t * 0.37) + opts.wallBreathe * 0.6 * Math.sin(t * 1.31 + 2.2);
+      U.uWall.value = Math.max(0, Math.min(1, opts.wallStrength * breathe)) * (1 - eased);
 
       // 도착 개화 검사 — FP 카메라 위치 = 플레이어 위치
       if (_pending.length) {
@@ -276,6 +350,37 @@
               openAt(pd.x, pd.z, pd.r);
               console.log('[spatial-fog] 도착 개화 — (' + Math.round(pd.x) + ',' + Math.round(pd.z) + ')');
             }
+          }
+        }
+      }
+
+      // ── 하늘 돔 갱신 ──
+      // distFog = 내 주위 "멀리"가 얼마나 안개인가 (링 샘플). 걷힌 자리에 서서 안개 벽을
+      // 바라볼 때도 지평선은 뿌예야 하므로, 카메라가 선 자리만 봐서는 안 된다.
+      if (_skyDomeMat) {
+        var camA = runtime.getCamera && runtime.getCamera();
+        if (camA) {
+          var camFog = (1 - revealAt(camA.position.x, camA.position.z)) * (1 - eased);
+          var distFog = 0;
+          for (var rq = 0; rq < 8; rq++) {                   // 8방위 × 2거리 = 16점 (비용 미미)
+            var ang = rq * Math.PI / 4;
+            var cA = Math.cos(ang), sA = Math.sin(ang);
+            distFog += 1 - revealAt(camA.position.x + cA * 34, camA.position.z + sA * 34);
+            distFog += 1 - revealAt(camA.position.x + cA * 64, camA.position.z + sA * 64);
+          }
+          distFog = (distFog / 16) * (1 - eased);
+
+          // 지평선만 안개색으로 녹이고 머리 위 감정 하늘은 살린다.
+          // zenith 는 _tickSeedGrp(감정 하늘)이 매 프레임 쓴 scene.background 를 그대로 따라감.
+          var kSky = Math.max(distFog, camFog) * opts.skyBlendMax;
+          _skyDome.position.copy(camA.position);
+          if (scene.background && scene.background.isColor) _skyDomeMat.uniforms.uZenith.value.copy(scene.background);
+          _skyDomeMat.uniforms.uAmt.value = kSky;
+
+          // scene.fog(스프라이트·유령용 거리 안개) 색도 같이 — 안 그러면 유령만 딴 색으로 뜬다.
+          // _tickSeedGrp 이 먼저 쓰므로 제자리 lerp (누적 X, 감정색 보존).
+          if (_skyC && scene.fog && scene.fog.color && kSky > 0.002) {
+            scene.fog.color.lerp(_skyC, kSky);
           }
         }
       }
@@ -305,6 +410,8 @@
       isLifted: function () { return _lift >= 1; },
       setGateProvider: function (fn) { _gateProvider = (typeof fn === 'function') ? fn : null; },
       clear: function () { _reveals.length = 0; _pending.length = 0; _lift = 0; _lifting = false; _overflowWarned = false; U.uCount.value = 0; },
+      setOptions: function (o) { Object.assign(opts, o || {}); },
+      getOptions: function () { return Object.assign({}, opts); },
       detach: function () {
         _detached = true;
         U.uOn.value = 0;
@@ -312,6 +419,16 @@
         _gateRestore();
         _gateProvider = null;
         if (global.__temSpatialFogConstrain === constrainMove) global.__temSpatialFogConstrain = null;
+        U.uWall.value = 0;
+        // 하늘 돔 제거 + 하늘·안개색 원복
+        if (_skyDome) {
+          scene.remove(_skyDome);
+          if (_skyDome.geometry) _skyDome.geometry.dispose();
+          if (_skyDomeMat) _skyDomeMat.dispose();
+          _skyDome = null; _skyDomeMat = null;
+        }
+        if (scene.background && scene.background.isColor && _origBgHex != null) scene.background.setHex(_origBgHex);
+        if (scene.fog && scene.fog.color && _origFogHex != null) scene.fog.color.setHex(_origFogHex);
         runtime.__lumenSpatialFog = null;
       },
     };
