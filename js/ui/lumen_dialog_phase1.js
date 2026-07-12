@@ -254,7 +254,7 @@
     ghostLabel: '',      // 이름표 현재 표시값 (기본 '유령')
     ghostTrueName: '',   // 작가 지정 진짜 이름 (scenes.meta.ghost_name) — 공명 시 드러남
     nameRevealed: false, // 이번 대화에서 드러났는가
-    justRevealed: false, // 방금 드러남 → 다음 유령 라인에서 이름표 글로우
+    justRevealed: false, // 방금 드러남 → 다음 유령 라인 시작 전 이름 의식 (_playNameReveal)
     skipMode: 'ff',      // 'ff'=대사 빨리감기 / 'exit'=입력 차례 — 누르면 대화 나가기
     exit: null,          // 입력 대기 중 나가기 resolver (턴 루프가 등록)
   };
@@ -287,22 +287,18 @@
       if (!box || !textEl) { resolve(); return; }
 
       box.style.opacity = '1';
+      var ceremony = null; // 이름 드러남 의식 핸들 { delayMs, snap } — 없으면 null
       if (nameTag) {
         nameTag.textContent = who === 'player'
           ? (_dialogLang() === 'ko' ? '나' : 'me')
           : (_sub.ghostLabel || (_dialogLang() === 'ko' ? '유령' : 'ghost'));
         nameTag.style.color = who === 'player' ? 'rgba(214,188,150,0.95)' : 'rgba(224,210,250,0.95)';
-        // 260709 D안: 공명으로 이름이 방금 드러난 첫 유령 라인 — 이름표가 잠깐 빛남.
+        // 260712: 공명으로 이름이 방금 드러난 유령 라인 — 대사가 나오기 전에 이름표가
+        // '유령' → 진짜 이름으로 바뀌는 짧은 의식을 먼저 겪는다 (_playNameReveal).
+        // 대사 캐스케이드는 의식이 끝난 뒤 시작 (아래 nameDelayMs). SKIP 빨리감기 중엔 생략.
         if (who === 'ghost' && _sub.justRevealed) {
           _sub.justRevealed = false;
-          nameTag.style.transition = 'text-shadow 500ms ease, border-color 500ms ease';
-          nameTag.style.textShadow = '0 0 16px rgba(224,210,250,0.95)';
-          nameTag.style.borderColor = 'rgba(224,210,250,0.85)';
-          setTimeout(function () {
-            nameTag.style.transition = 'text-shadow 1800ms ease, border-color 1800ms ease';
-            nameTag.style.textShadow = 'none';
-            nameTag.style.borderColor = 'rgba(196,168,130,0.5)';
-          }, 1900);
+          if (!_sub.ff) ceremony = _playNameReveal(nameTag);
         }
       }
       textEl.style.color = who === 'player' ? 'rgba(214,188,150,0.92)' : 'rgba(240,232,254,0.96)';
@@ -315,6 +311,9 @@
       var line = textEl; // 아래 캐스케이드 코드의 타깃
 
       // 단어 단위 페이드 캐스케이드 (타자기 X — 안개 응결 결).
+      // 이름 의식 중이면 캐스케이드 전체가 의식 뒤로 밀림 — 박스가 잠깐 비어 있어
+      // 시선이 이름표의 변화로 간다.
+      var nameDelayMs = ceremony ? ceremony.delayMs : 0;
       var tokens = String(text == null ? '' : text).split(/(\s+)/);
       var words = tokens.filter(function (t) { return t.trim().length; });
       var stepMs = who === 'player' ? 40 : 90;
@@ -332,7 +331,7 @@
         var span = document.createElement('span');
         span.textContent = token;
         span.style.opacity = '0';
-        span.style.transition = 'opacity ' + fadeMs + 'ms ease ' + (wi * stepMs) + 'ms';
+        span.style.transition = 'opacity ' + fadeMs + 'ms ease ' + (nameDelayMs + wi * stepMs) + 'ms';
         line.appendChild(span);
         spans.push(span);
         wi++;
@@ -341,7 +340,7 @@
         for (var si = 0; si < spans.length; si++) spans[si].style.opacity = '1';
       });
 
-      var revealMs = words.length * stepMs + fadeMs;
+      var revealMs = nameDelayMs + words.length * stepMs + fadeMs;
       var done = false;
       var revealed = false;
       var timer = null;
@@ -355,6 +354,7 @@
       function _completeReveal() {
         if (revealed) return;
         revealed = true;
+        if (ceremony) ceremony.snap(); // 넘김 = 이름 의식도 최종 상태로 스냅
         for (var si = 0; si < spans.length; si++) {
           spans[si].style.transition = 'none';
           spans[si].style.opacity = '1';
@@ -378,6 +378,77 @@
         timer = setTimeout(_finish, revealMs + holdMs);
       }
     });
+  }
+
+  // ─── 260712 공명 이름 의식 ─────────────────────────
+  // 공명으로 이름이 방금 드러난 유령 라인: 대사보다 먼저 이름표가 사건을 겪는다.
+  // Phase A(650ms) 옛 표기 '유령'이 흐려지며 자간이 벌어져 흩어짐
+  // Phase B(750ms) 진짜 이름이 같은 자리에서 응결(자간 조임+선명)  + 이름표 글로우 인
+  // Phase C        글로우가 1.8s 에 걸쳐 잦아듦 (대사 캐스케이드와 겹쳐도 무해)
+  // 대사 본문과 같은 "안개 응결" 시각 언어. 반환 { delayMs, snap } —
+  // delayMs 만큼 캐스케이드가 밀리고, snap() 은 넘김 입력 시 최종 상태로 즉시 정리.
+  function _playNameReveal(nameTag) {
+    var defaultLabel = _dialogLang() === 'ko' ? '유령' : 'ghost';
+    var trueName = _sub.ghostLabel; // 이 시점엔 이미 진짜 이름
+    var A_MS = 650, B_MS = 750, SETTLE_AT = 2600, SETTLE_MS = 1800;
+    var timers = [];
+    var snapped = false;
+
+    nameTag.textContent = '';
+    nameTag.style.transition = 'none';
+    nameTag.style.textShadow = 'none';
+    nameTag.style.borderColor = 'rgba(196,168,130,0.5)';
+    var oldSpan = document.createElement('span');
+    oldSpan.textContent = defaultLabel;
+    oldSpan.style.cssText = 'display:inline-block;opacity:1;filter:blur(0px);letter-spacing:0.08em;'
+      + 'transition:opacity ' + A_MS + 'ms ease, filter ' + A_MS + 'ms ease, letter-spacing ' + A_MS + 'ms ease;';
+    nameTag.appendChild(oldSpan);
+
+    requestAnimationFrame(function () {
+      if (snapped) return;
+      oldSpan.style.opacity = '0';
+      oldSpan.style.filter = 'blur(5px)';
+      oldSpan.style.letterSpacing = '0.5em';
+    });
+
+    timers.push(setTimeout(function () {
+      if (snapped) return;
+      nameTag.textContent = '';
+      var newSpan = document.createElement('span');
+      newSpan.textContent = trueName;
+      newSpan.style.cssText = 'display:inline-block;opacity:0;filter:blur(6px);letter-spacing:0.35em;'
+        + 'transition:opacity ' + B_MS + 'ms ease, filter ' + B_MS + 'ms ease, letter-spacing ' + B_MS + 'ms ease;';
+      nameTag.appendChild(newSpan);
+      nameTag.style.transition = 'text-shadow ' + B_MS + 'ms ease, border-color ' + B_MS + 'ms ease';
+      requestAnimationFrame(function () {
+        if (snapped) return;
+        newSpan.style.opacity = '1';
+        newSpan.style.filter = 'blur(0px)';
+        newSpan.style.letterSpacing = '0.08em';
+        nameTag.style.textShadow = '0 0 16px rgba(224,210,250,0.95)';
+        nameTag.style.borderColor = 'rgba(224,210,250,0.85)';
+      });
+    }, A_MS));
+
+    timers.push(setTimeout(function () {
+      if (snapped) return;
+      nameTag.style.transition = 'text-shadow ' + SETTLE_MS + 'ms ease, border-color ' + SETTLE_MS + 'ms ease';
+      nameTag.style.textShadow = 'none';
+      nameTag.style.borderColor = 'rgba(196,168,130,0.5)';
+    }, SETTLE_AT));
+
+    return {
+      delayMs: A_MS + B_MS,
+      snap: function () {
+        if (snapped) return;
+        snapped = true;
+        for (var i = 0; i < timers.length; i++) clearTimeout(timers[i]);
+        nameTag.textContent = trueName;
+        nameTag.style.transition = 'text-shadow 1200ms ease, border-color 1200ms ease';
+        nameTag.style.textShadow = 'none';
+        nameTag.style.borderColor = 'rgba(196,168,130,0.5)';
+      },
+    };
   }
 
   function _enqueueLine(overlay, text, who) {
