@@ -384,6 +384,26 @@ export function replayFromPlays(plays) {
 // ─── Presentation helpers (read-only, no re-computation) ────────
 
 /**
+ * Canonicalize a stored cont_stage value.
+ *
+ * 2026-07-09: rows written by admin/seed carry the short form 'inclination',
+ * while the engine and every downstream consumer compare against
+ * 'biased_inclination'. The mismatch silently zeroed `intensity`, forcing band
+ * to 'weak', which in turn made applyStageText() fall through and render the
+ * pristine author text — the authored text_stage_* variants never reached the
+ * reader. Normalizing here (the single gate every entry point passes through)
+ * repairs all consumers at once and tolerates either spelling from the DB.
+ *
+ * @param {string} stage - raw cont_stage from DB/state
+ * @returns {string} canonical stage: 'stable' | 'biased_inclination' | 'hypercompletion'
+ */
+export function normalizeStage(stage) {
+  if (stage === 'inclination' || stage === 'biased_inclination') return 'biased_inclination';
+  if (stage === 'hypercompletion') return 'hypercompletion';
+  return 'stable';
+}
+
+/**
  * Get the intensity band for the current dominant stage.
  * Per Presentation spec §3:
  *   weak:   0.00 ~ 0.33
@@ -394,7 +414,7 @@ export function replayFromPlays(plays) {
  * @returns {{ stage: string, intensity: number, band: string, drift_direction: Object, dominant_emotion_label: string }}
  */
 export function getPresentationState(state) {
-  const stage = state.cont_stage || 'stable';
+  const stage = normalizeStage(state.cont_stage);
   let intensity = 0;
 
   if (stage === 'biased_inclination') {
