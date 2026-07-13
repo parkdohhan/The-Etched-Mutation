@@ -216,16 +216,35 @@
       for (var k = 0; k < pins.length; k++) {
         var p = pins[k];
         var sMeta = (p.scene && p.scene.meta) || {};
-        // 사물 단어: 작가 선별(object_tags) 우선, 없으면 motif_tags 폴백 (Record 기억 대비)
-        var words = Array.isArray(sMeta.object_tags) && sMeta.object_tags.length
-          ? sMeta.object_tags : (Array.isArray(sMeta.motif_tags) ? sMeta.motif_tags : []);
+        // 사물 단어 소스 (260713 fix): object_tags 키가 **존재하면** 그것만 쓴다.
+        //   빈 배열 = "이 씬엔 세울 사물이 없다"는 명시적 의사표시 (Record AI 가 그렇게 반환).
+        //   예전 코드는 length 로 판정해서 빈 배열이면 motif_tags 로 폴백 → "손끝·먼지" 같은
+        //   비사물이 지형에 서는 버그. motif_tags 폴백은 object_tags 자체가 없는
+        //   레거시 기억에서만.
+        var words;
+        if (Array.isArray(sMeta.object_tags)) {
+          words = sMeta.object_tags;
+        } else if (Array.isArray(sMeta.motif_tags)) {
+          words = sMeta.motif_tags;
+        } else {
+          words = [];
+        }
         words = words.slice(0, opts.maxPerScene);
         if (!words.length) continue;
 
         // 이 씬의 길목 선분: 내 핀 → 다음 핀 (마지막 씬은 이전 핀 방향)
         var q = pins[k + 1] || pins[k - 1] || p;
         var dx = q.wx - p.wx, dz = q.wz - p.wz;
-        var len = Math.sqrt(dx * dx + dz * dz) || 1;
+        var len = Math.sqrt(dx * dx + dz * dz);
+        // 260713 fix: 핀이 겹치거나(감정 벡터 없는 기억 등) 선분이 0에 가까우면
+        //   방향이 정의되지 않아 그 기억의 사물이 전부 한 점에 포개졌다.
+        //   씬 인덱스 기반 결정적 방사 배치로 대체 (핀 주변에 흩뿌림).
+        if (len < 0.5) {
+          var ang0 = (k * 2.39996) % (Math.PI * 2);   // 황금각 — 씬마다 고르게 벌어짐
+          dx = Math.cos(ang0) * 8;
+          dz = Math.sin(ang0) * 8;
+          len = 8;
+        }
         var ux = dx / len, uz = dz / len;             // 선분 방향
         var px = -uz, pz = ux;                        // 수직 방향
 
