@@ -826,4 +826,3 @@ function handleSealRequest() {
 // ===== Exports =====
 export function getConversationHistory() { return conversationHistory; }
 export function getVoidCount() { return voidCount; }
-export function getCompletedScenes() { return completedScenes; }

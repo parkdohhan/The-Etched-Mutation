@@ -264,6 +264,8 @@ serve(async (req: Request) => {
     userPrompt = buildBiasedPrompt(text, state, lang);
   }
 
+  // Stage별 temperature 차등(과완결=저변주)은 설계 의도 — sonnet-5는 temperature를 거부(400)하므로
+  // 이 함수만 temperature를 지원하는 sonnet-4-6 사용 (2026-07-13, sonnet-4 은퇴 대응).
   const temperature = state.cont_stage === "hypercompletion" ? 0.2
     : isJuxtaposition ? 0.35
     : 0.4;
@@ -277,7 +279,7 @@ serve(async (req: Request) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1024,
         temperature,
         system: systemPrompt,

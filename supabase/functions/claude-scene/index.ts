@@ -57,7 +57,7 @@ JSON만 출력:
             "anthropic-version": "2023-06-01"
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-5", thinking: { type: "disabled" },
             max_tokens: 512,
             system: systemPrompt,
             messages: [{ role: "user", content: prompt }]
@@ -120,7 +120,7 @@ JSON만 출력:
             "anthropic-version": "2023-06-01"
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-5", thinking: { type: "disabled" },
             max_tokens: 512,
             system: systemPrompt,
             messages: [{ role: "user", content: prompt }]
@@ -188,7 +188,7 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
             "anthropic-version": "2023-06-01"
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-5", thinking: { type: "disabled" },
             max_tokens: 512,
             system: systemPrompt,
             messages: [{ role: "user", content: prompt }]
@@ -304,7 +304,7 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
           "anthropic-version": "2023-06-01"
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-5", thinking: { type: "disabled" },
           max_tokens: 1024,
           system: systemPrompt,
           messages: [{ role: "user", content: prompt }]
@@ -470,9 +470,9 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
 
     // ---- Core 핀: 사용자 반응 → 감정 벡터 (play-test emotion_extract) ----
     // 결정론 보장:
-    //   - temperature: 0 = 같은 입력에 항상 같은 출력
     //   - PROMPT_VERSION 응답에 박음 = 프롬프트 손대면 버전 올림. ghost_variants.extractor_version 컬럼에 저장.
     //   - 5/19 마감 후 프롬프트 수정 시 전량 재추출 후 같은 버전으로 덮어쓰기.
+    //   - (2026-07-05) sonnet-4 은퇴로 sonnet-5 전환. temperature 파라미터는 sonnet-5가 거부(400)해 제거.
     if (body.type === "emotion_extract") {
       const PROMPT_VERSION = "tem-emotion-v2.1.0";
       const userText = String(body.user_text || "").trim();
@@ -547,9 +547,8 @@ base 객체에는 위 모든 키를 포함하고 숫자만 넣어라.`;
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-5", thinking: { type: "disabled" },
             max_tokens: 1024,
-            temperature: 0,
             system: systemPrompt,
             messages: [{ role: "user", content: prompt }],
           }),
@@ -635,7 +634,7 @@ base 객체에는 위 모든 키를 포함하고 숫자만 넣어라.`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-5", thinking: { type: "disabled" },
         max_tokens: 300,
         system: `너는 '기억 변환 장치'이다. 화자가 입력한 문장을 바탕으로, 체험자에게 보여줄 장면을 생성한다.
 
