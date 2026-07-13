@@ -50,7 +50,7 @@
   <script src="js/contamination.js"></script>
   <script src="js/shared/tem_replay_terrain.js?v=0.6"></script>
   <script src="js/ui/lumen_replay_fog.js?v=0.6"></script>
-  <script src="js/ui/lumen_spatial_fog.js?v=0.9"></script>
+  <script src="js/ui/lumen_spatial_fog.js?v=1.0"></script>
   <script src="js/shared/tem_sky_stains.js?v=0.1"></script>
   <script src="js/shared/tem_af_strata_terrain.js?v=0.4"></script>
   <script src="js/ui/lumen_terrain_adapter.js"></script>
@@ -2196,22 +2196,40 @@
     };
   }
 
+  // 붕괴 단계를 여는 depth 문턱. 몇 사람의 손을 거쳤을 때 판본이 무너지는가.
+  // 전시 관람 규모(수십 명)에서 원본 → 단어 빠짐 → 문장 파편화 → 키워드 붕괴가
+  // 실제로 진행되도록 잡았다. 값을 올리면 붕괴가 느려지고, 내리면 빨라진다.
+  const DEPTH_STAGE_2 = 5;   // 5명째부터 문장이 파편화된다
+  const DEPTH_STAGE_3 = 15;  // 15명째부터 키워드만 남는다
+
   function applyStageText(originalText, scene, pres) {
-    const { stage, intensity, band } = pres;
+    // 붕괴의 '정도'는 depth — 몇 사람의 손을 거쳤는가 — 가 정한다.
+    //
+    // 왜 오염 축(EMA)이 아니라 depth 인가: cont_drift/cont_fixation 은 지수이동평균이라
+    // "최근 독자들이 얼마나 어긋났는가"의 평균으로 수렴한다. 실측(tools 시뮬, 프로덕션 엔진
+    // 직접 구동)에서 drift 는 약 0.48 에 평평해지고 band 는 'strong'(0.67)에 끝내 닿지 않아,
+    // 관객이 120명 와도 text_stage_2·text_stage_3 이 한 번도 표시되지 않았다. 즉 축의 평균값은
+    // "얼마나 여러 손을 거쳤는가"를 재는 양이 아니다.
+    //
+    // 기억유전학의 depth 는 Muller's Ratchet — 단조 증가하며 되돌릴 수 없는 통과 횟수이고,
+    // Op 1(파괴적 복제)은 회상이 충실했는지와 무관하게 원본을 덮어쓴다. 그러므로 붕괴의
+    // 정도는 depth 가, 붕괴의 '결'(편향이냐 과완결이냐)은 오염 축이 맡는 것이 이론과 맞는다.
+    // 엔진은 건드리지 않는다 — 여기는 렌더링(연출 제어) 레이어다.
+    const depth = (game.contState && game.contState.cont_depth) || 0;
+
+    // 최초 목격자. 아무도 지나가지 않은 기억의 원본을 볼 수 있는 유일한 사람이다.
+    // 이 사람의 플레이가 이 기억의 첫 번째 오염이 된다.
+    if (depth <= 0) return originalText;
+
+    if (depth >= DEPTH_STAGE_3 && scene.text_stage_3) return scene.text_stage_3;
+    if (depth >= DEPTH_STAGE_2 && scene.text_stage_2) return scene.text_stage_2;
+    if (scene.text_stage_1) return scene.text_stage_1;
+
+    // 붕괴 판본이 집필되지 않은 씬 — 아래 클라이언트 폴백(단어 교란)으로 내려간다.
+    // 폴백은 작가가 쓴 판본에 비해 초라하므로, 상영작의 모든 씬에 text_stage_* 를 채우는 것이
+    // 우선 작업이다. (2026-07-09 기준 발자국 0/6, 엘리베이터 3/4 미집필)
+    const { stage, intensity } = pres;
     if (stage === 'stable' || intensity < 0.01) return originalText;
-
-    // 첫 씬은 무조건 깨끗하게 — 유저에게 원문 기준선을 만들어줌
-    if (game.coreVisitCount <= 0) return originalText;
-
-    // Pre-generated stage text: DB text_stage_1/2/3 mapped to contamination state
-    if (stage === 'biased_inclination') {
-      if (band === 'strong' && scene.text_stage_2) return scene.text_stage_2;
-      if (band !== 'weak'  && scene.text_stage_1) return scene.text_stage_1;
-    }
-    if (stage === 'hypercompletion') {
-      if (band === 'strong' && scene.text_stage_3) return scene.text_stage_3;
-      if (band !== 'weak'  && scene.text_stage_2) return scene.text_stage_2;
-    }
 
     // Client-side fallback effects (until anchor-based semantic mutation is built)
     // Seeded RNG ensures determinism per QA spec §6
@@ -4416,16 +4434,32 @@
     tick();
   }
 
+  // 2026-07-09: 데모 상영작 — 이 목록에 있는 기억만 관객에게 노출한다.
+  // DB에서 지우지 않는 이유: 노출에서 빠진 기억들도 씬과 플레이 기록(총 125건)을 갖고 있고,
+  // 그 기록은 아직 확보하지 못한 사람 데이터의 유일한 축적분이다. 과거 E-004 「편지」를
+  // DB에서 제거했다가 플레이 100건이 영구 유실되어 논문 표본이 293 → 193으로 깎인 전례가 있다.
+  // 상영작을 바꾸려면 이 배열만 고치면 되고, 되돌리는 데 데이터 복구가 필요 없다.
+  const DEMO_MEMORY_IDS = [
+    'c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0', // 당신에게   (depth 30, 붕괴 텍스트 10/11)
+    '1dde3a8a-14c5-4d6f-ac64-b5540b0e2ac7', // 엘리베이터에서 (depth 8,  붕괴 텍스트 3/4)
+    '1f586f9b-adad-4443-9289-f3a2529f10ed', // 발자국     (depth 0,  붕괴 텍스트 0/6 — 집필 필요)
+  ];
+
   async function loadMemories() {
     const { data, error } = await sb.from('memories').select('id, title').order('id');
     if (error) throw error;
-    game.memories = data || [];
+    const all = data || [];
+    // 상영작만, 그리고 DEMO_MEMORY_IDS 에 적힌 순서대로.
+    const demo = DEMO_MEMORY_IDS
+      .map(id => all.find(m => m.id === id))
+      .filter(Boolean);
+    game.memories = demo.length ? demo : all;  // 상영작이 하나도 안 잡히면 전체로 폴백
     const sel = document.getElementById('memorySelect');
     sel.innerHTML = '';
     game.memories.forEach(m => {
       const op = document.createElement('option');
       op.value = m.id;
-      op.textContent = (m.title || '(untitled)') + ' · ' + String(m.id).slice(0, 8) + '…';
+      op.textContent = m.title || '(untitled)';
       sel.appendChild(op);
     });
   }
@@ -4509,20 +4543,53 @@
       game.plays = window._simulatedPlaysMap[memoryId];
     }
     // === Contamination (MVP v3 + EMA) ===
-    // Priority: URL override > DB cont_* > replayFromPlays
+    // Priority: URL override(개발용) > 상영작이면 관객 플레이 재생 > DB cont_* > 전체 재생
     const _urlP = new URLSearchParams(location.search);
     const urlStage = _urlP.get('cont_stage');
-    const dbStage = urlStage || memRow?.cont_stage;
-    if (dbStage && dbStage !== 'stable') {
+    const _isDemoMemory = DEMO_MEMORY_IDS.includes(memoryId);
+
+    // 상영작의 오염은 "전시장에서 실제로 지나간 관객"만으로 쌓는다.
+    //
+    // 2026-07-09 확인: 이 작품을 겪은 사람은 지금까지 0명이다(plays 를 persona_id 로 갈라
+    // 세어보면 서로 다른 사용자 1명 = 작가 본인뿐). DB 의 cont_depth 8/30 은 아무도 물려준
+    // 적 없는 값이고, 페르소나 193판은 AI 독자다. 그것들을 "앞사람의 흔적"으로 보여주면
+    // 이 작품이 주장하는 변형이 실재가 아니라 연출이 되어, 전제를 스스로 배신한다.
+    //
+    // 그래서 상영작은 depth 0(관객이 최초 목격자)에서 출발하고, 이후 관객의 플레이가
+    // 다음 관객이 읽을 판본을 실제로 무너뜨린다. 릴레이가 전시장에서 사건으로 일어난다.
+    // 과거 플레이는 지우지 않는다 — 페르소나 193판은 논문 표본이고, 삭제는 E-004 를
+    // 영구히 잃은 전례가 있다. 세지 않을 뿐 보존한다.
+    const DEMO_EPOCH = new Date('2026-07-09T00:00:00Z');
+    const _isVisitorPlay = (p) =>
+      !p.persona_id && p.created_at && new Date(p.created_at) >= DEMO_EPOCH;
+
+    if (urlStage) {
       const base = createEmptyState();
       game.contState = Object.assign(base, {
-        cont_drift: parseFloat(_urlP.get('cont_drift')) || memRow?.cont_drift || 0,
-        cont_fixation: parseFloat(_urlP.get('cont_fixation')) || memRow?.cont_fixation || 0,
-        cont_stage: dbStage,
-        cont_depth: parseInt(_urlP.get('cont_depth'), 10) || memRow?.cont_depth || 0,
-        cont_last_mismatch: _urlP.get('cont_last_mismatch') || memRow?.cont_last_mismatch || 'none',
+        cont_drift: parseFloat(_urlP.get('cont_drift')) || 0,
+        cont_fixation: parseFloat(_urlP.get('cont_fixation')) || 0,
+        cont_stage: urlStage,
+        cont_depth: parseInt(_urlP.get('cont_depth'), 10) || 0,
+        cont_last_mismatch: _urlP.get('cont_last_mismatch') || 'none',
       });
-      LOG('contamination: using override (cont_stage=' + dbStage + ')');
+      LOG('contamination: URL override (cont_stage=' + urlStage + ')');
+    } else if (_isDemoMemory) {
+      const _visitorPlays = game.plays
+        .filter(_isVisitorPlay)
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      game.contState = replayFromPlays(_visitorPlays);
+      LOG('contamination: 상영작 — 관객 플레이 ' + _visitorPlays.length + '건 재생 (전체 '
+        + game.plays.length + '건 중), depth=' + game.contState.cont_depth);
+    } else if (memRow?.cont_stage && memRow.cont_stage !== 'stable') {
+      const base = createEmptyState();
+      game.contState = Object.assign(base, {
+        cont_drift: memRow.cont_drift || 0,
+        cont_fixation: memRow.cont_fixation || 0,
+        cont_stage: memRow.cont_stage,
+        cont_depth: memRow.cont_depth || 0,
+        cont_last_mismatch: memRow.cont_last_mismatch || 'none',
+      });
+      LOG('contamination: DB override (cont_stage=' + memRow.cont_stage + ')');
     } else {
       let _allPlays = game.plays.slice();
       if (window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) {
@@ -5298,7 +5365,7 @@
                 }
               });
             }
-            // ── ADDITIVE 공간 안개 B안 (flag: ?spatial_fog=1) ──
+            // ── 공간 안개 B안 (260713 기본 ON — 디버그 opt-out: ?spatial_fog=0) ──
             // 1단계 셰이더 마스크 + 3단계 유령 게이팅 + 2단계 unlock 연결(입장 시드는
             // 아래, 턴 연결은 newPins 계산부). 콘솔 디버그:
             //   window._temSpatialFog.openAt(x,z,r) / .liftAll() / .revealAt(x,z)

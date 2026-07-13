@@ -1,7 +1,8 @@
 /**
  * Lumen Spatial Fog — 공간 안개 해제 B안 (지점별 마스크 + 회랑)
  *
- * ADDITIVE & FLAG-GATED. flag: ?spatial_fog=1 또는 localStorage.tem_spatial_fog='1'
+ * 기본 ON (260713 — 깃발 뒤에 숨은 핵심 연출 해방). 끄기는 디버그 전용:
+ * ?spatial_fog=0 또는 localStorage.tem_spatial_fog='0'.
  * test/fog-reveal-test.html 검증분 이식.
  *
  * 역할 분담:
@@ -33,24 +34,26 @@
 
   var FLAG_KEY = 'tem_spatial_fog';
 
-  // ───────────────────────── flag (tem_replay_terrain.js 와 동일 방식) ──
+  // ───────────────────────── flag ──────────────────────────────────────
+  // 260713: 기본 ON. 안개=벽은 작품의 지각 조건이라 관객 설정에 기대면 안 됨.
+  // 끄기는 디버그 전용 opt-out (?spatial_fog=0 / localStorage '0').
   var _enabled = null;
   function isEnabled() {
     if (_enabled != null) return _enabled;
     var q = '';
     try { q = (global.location && global.location.search) || ''; } catch (_) {}
-    var on = null;
-    if (/[?&]spatial_fog=1/.test(q)) on = true;
-    else if (/[?&]spatial_fog=0/.test(q)) on = false;
-    if (on != null) {
-      try { global.localStorage.setItem(FLAG_KEY, on ? '1' : '0'); } catch (_) {}
+    var off = null;
+    if (/[?&]spatial_fog=0/.test(q)) off = true;
+    else if (/[?&]spatial_fog=1/.test(q)) off = false;
+    if (off != null) {
+      try { global.localStorage.setItem(FLAG_KEY, off ? '0' : '1'); } catch (_) {}
     } else {
-      try { on = global.localStorage && global.localStorage.getItem(FLAG_KEY) === '1'; }
-      catch (_) { on = false; }
+      try { off = global.localStorage && global.localStorage.getItem(FLAG_KEY) === '0'; }
+      catch (_) { off = false; }
     }
-    _enabled = !!on;
-    if (_enabled) {
-      console.log('[spatial-fog] ON — 공간 안개 B안 활성. 끄기: LumenSpatialFog.setEnabled(false) 또는 ?spatial_fog=0');
+    _enabled = !off;
+    if (!_enabled) {
+      console.log('[spatial-fog] OFF (디버그 opt-out) — 켜기: ?spatial_fog=1 또는 LumenSpatialFog.setEnabled(true)');
     }
     return _enabled;
   }
