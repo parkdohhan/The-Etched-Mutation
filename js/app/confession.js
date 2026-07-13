@@ -937,6 +937,12 @@ async function saveConfessionToDB() {
                 text_stage_1: scene.text_stage_1 || null,
                 text_stage_2: scene.text_stage_2 || null,
                 text_stage_3: scene.text_stage_3 || null,
+                // 260713: Record 태그 추출 — 씬 생성 AI가 반환한 모티프/사물을 meta로.
+                // 사물 지형 조형(lumen_scene_objects)·되새김(lumen_recalled_anchors)의 연료.
+                // repo.js saveMemoryGraph 가 meta 를 그대로 INSERT (기존 패스스루).
+                meta: (Array.isArray(scene.motifs) && scene.motifs.length) || (Array.isArray(scene.objects) && scene.objects.length)
+                    ? { motif_tags: scene.motifs || [], object_tags: scene.objects || [] }
+                    : null,
             }))
         });
 
@@ -1309,6 +1315,10 @@ async function saveRecordMemory(conversationData, sceneData, lang, userTitle, sh
             original_emotion: s.originalVector?.base || null,
             original_reason_vector: s.originalVector?.reason_analysis || null,
             vector_weight: s.vectorWeight || 0,
+            // 260713: Record 태그 추출 — 사물 지형 조형·되새김의 연료 (없으면 null 무해)
+            meta: (Array.isArray(s.motifs) && s.motifs.length) || (Array.isArray(s.objects) && s.objects.length)
+                ? { motif_tags: s.motifs || [], object_tags: s.objects || [] }
+                : null,
         }));
 
         const { error: sceneError } = await supabase

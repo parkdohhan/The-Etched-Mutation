@@ -178,6 +178,12 @@ ${isCompound ? `\n⚠ This person felt compound emotions (${primary} + ${seconda
 - Sensory-focused. Not "I was sad" but "My hands shook."
 - Each scene reads independently but connects.
 
+## Motif / Object Extraction (260713 — terrain object & recall systems)
+
+For each scene, also return two arrays:
+- "motifs": 2-4 concrete nouns that actually appear in THAT scene's text (places, objects, materials. No emotion words or abstractions)
+- "objects": subset of motifs — only tangible physical objects, 0-2 (no people, places, weather. Empty array if none)
+
 ## Output Format
 
 Follow this JSON format exactly. Output only JSON.
@@ -185,9 +191,9 @@ Follow this JSON format exactly. Output only JSON.
 \`\`\`json
 {
   "scenes": [
-    { "order": 1, "sceneType": "normal", "text": "Scene 1 text", "emotionCue": "1-2 word emotion hint" },
-    { "order": 2, "sceneType": "branch", "text": "Scene 2 text", "emotionCue": "..." },
-    { "order": N, "sceneType": "ending", "text": "Last scene text", "emotionCue": "..." }
+    { "order": 1, "sceneType": "normal", "text": "Scene 1 text", "emotionCue": "1-2 word emotion hint", "motifs": ["concrete noun", "..."], "objects": ["tangible only"] },
+    { "order": 2, "sceneType": "branch", "text": "Scene 2 text", "emotionCue": "...", "motifs": ["..."], "objects": ["..."] },
+    { "order": N, "sceneType": "ending", "text": "Last scene text", "emotionCue": "...", "motifs": ["..."], "objects": ["..."] }
   ]
 }
 \`\`\`
@@ -229,6 +235,12 @@ ${isCompound ? `\n⚠ 이 화자는 복합 감정(${primary} + ${secondary})을 
 - 감각 묘사 중심. "슬펐다" 대신 "손이 떨렸다."
 - 각 장면은 독립적으로 읽혀야 하지만, 연결되어야 함.
 
+## 모티프·사물 추출 (260713 — 지형 사물 조형·되새김 시스템 입력)
+
+각 장면에 두 배열을 함께 반환하세요:
+- "motifs": 그 장면 텍스트에 실제로 등장하는 구체 명사 2~4개 (장소·사물·물질. 감정 단어·추상어 금지)
+- "objects": motifs 중 손에 잡히는 물리적 사물만 0~2개 (인물·장소·날씨 제외. 없으면 빈 배열)
+
 ## 출력 형식
 
 아래 JSON 형식을 정확히 따르세요. JSON만 출력하세요.
@@ -236,9 +248,9 @@ ${isCompound ? `\n⚠ 이 화자는 복합 감정(${primary} + ${secondary})을 
 \`\`\`json
 {
   "scenes": [
-    { "order": 1, "sceneType": "normal", "text": "장면 1 텍스트", "emotionCue": "감정 힌트 1~2단어" },
-    { "order": 2, "sceneType": "branch", "text": "장면 2 텍스트", "emotionCue": "..." },
-    { "order": N, "sceneType": "ending", "text": "마지막 장면 텍스트", "emotionCue": "..." }
+    { "order": 1, "sceneType": "normal", "text": "장면 1 텍스트", "emotionCue": "감정 힌트 1~2단어", "motifs": ["구체 명사", "..."], "objects": ["사물만"] },
+    { "order": 2, "sceneType": "branch", "text": "장면 2 텍스트", "emotionCue": "...", "motifs": ["..."], "objects": ["..."] },
+    { "order": N, "sceneType": "ending", "text": "마지막 장면 텍스트", "emotionCue": "...", "motifs": ["..."], "objects": ["..."] }
   ]
 }
 \`\`\`
@@ -289,7 +301,7 @@ serve(async (req) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-5", thinking: { type: "disabled" },
         max_tokens: 2000,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -344,6 +356,9 @@ serve(async (req) => {
         sceneType,
         text: scene.text,
         emotionCue: scene.emotionCue || '',
+        // 260713: 모티프/사물 통과 — 사물 지형 조형·되새김 연료 (저장부에서 meta 로)
+        motifs: Array.isArray(scene.motifs) ? scene.motifs : [],
+        objects: Array.isArray(scene.objects) ? scene.objects : [],
         originalVector: vectorWeight > 0 ? {
           base: Object.fromEntries(
             Object.entries(originalVector.base).map(([k, v]) => [k, (v as number) * vectorWeight])
