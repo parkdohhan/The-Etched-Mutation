@@ -88,6 +88,84 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; background: #0a0a0e; color: var(--text-primary); font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; overflow: hidden; }
     #selectScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0e; }
+
+    /* ─── 260713 진입 의례 (서가) ────────────────────────────────────
+       개발자 선택 UI(드롭다운 + Enter the memory)를 폐기하고 작품의 언어로.
+       기억 카드에 '몇 번 읽혔는가'(cont_depth)를 새겨, 첫 화면에서 오염 개념이
+       설명 없이 서게 한다 — 이미 서른 명을 거친 기억과 아무도 안 읽은 기억. */
+    #selectScreen { gap: 0; padding: 6vh 24px; position: relative; }
+    #landingHead { text-align: center; margin-bottom: clamp(2.4rem, 6vh, 4rem); }
+    #landingTitle {
+      font-family: 'Cormorant Garamond', serif; color: #e8e4df;
+      font-size: clamp(1.9rem, 4vw, 2.7rem); font-weight: 400; letter-spacing: 0.14em;
+      margin: 0 0 1.1rem 0;
+      text-shadow: 0 0 26px rgba(196,168,130,0.14);
+      opacity: 0; animation: landIn 1600ms ease 200ms forwards;
+    }
+    #landingQuestion {
+      font-size: clamp(0.92rem, 1.5vw, 1.05rem); line-height: 1.9;
+      color: rgba(196,168,130,0.62); letter-spacing: 0.06em; margin: 0;
+      opacity: 0; animation: landIn 1600ms ease 900ms forwards;
+    }
+    #landingShelf {
+      display: flex; flex-direction: column; gap: 2px;
+      width: min(560px, 92vw);
+      border-top: 1px solid rgba(196,168,130,0.16);
+      opacity: 0; animation: landIn 1600ms ease 1500ms forwards;
+    }
+    .shelf-card {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 1.4rem;
+      padding: 1.15rem 1.2rem;
+      border-bottom: 1px solid rgba(196,168,130,0.16);
+      background: transparent; cursor: pointer;
+      transition: background 420ms ease, padding-left 420ms ease;
+    }
+    .shelf-card:hover { background: rgba(196,168,130,0.05); padding-left: 1.8rem; }
+    .shelf-card.chosen { background: rgba(196,168,130,0.09); padding-left: 1.8rem; }
+    .shelf-card.chosen .shelf-title { color: #f0e8d8; text-shadow: 0 0 18px rgba(196,168,130,0.4); }
+    .shelf-title {
+      font-size: clamp(1.05rem, 1.9vw, 1.24rem); color: rgba(232,228,223,0.88);
+      letter-spacing: 0.04em; transition: color 420ms ease, text-shadow 420ms ease;
+    }
+    .shelf-depth {
+      font-size: 0.82rem; color: rgba(196,168,130,0.5); letter-spacing: 0.08em;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    #landingEnter {
+      margin-top: clamp(2rem, 5vh, 3.2rem); min-height: 2.6em;
+      display: flex; align-items: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 900ms ease;
+    }
+    #landingEnter.ready { opacity: 1; pointer-events: auto; }
+    #landingEnterText {
+      font-size: clamp(1rem, 1.7vw, 1.14rem); color: rgba(196,168,130,0.86);
+      letter-spacing: 0.12em; cursor: pointer;
+      padding: 0.5rem 0.2rem;
+      border-bottom: 1px solid rgba(196,168,130,0.28);
+      transition: color 420ms ease, border-color 420ms ease, letter-spacing 700ms ease, text-shadow 420ms ease;
+    }
+    #landingEnterText:hover {
+      color: #f0e8d8; border-color: rgba(196,168,130,0.7);
+      letter-spacing: 0.2em; text-shadow: 0 0 20px rgba(196,168,130,0.5);
+    }
+    #langToggle {
+      position: absolute; top: 2.2rem; right: 2.4rem;
+      background: transparent; border: none; cursor: pointer;
+      font-family: inherit; font-size: 0.82rem; letter-spacing: 0.1em;
+      color: rgba(196,168,130,0.38);
+      transition: color 420ms ease;
+      opacity: 0; animation: landIn 1600ms ease 2100ms forwards;
+    }
+    #langToggle:hover { color: rgba(232,228,223,0.85); }
+    /* 진입 암전 — 선택이 끝나면 세계가 닫히고, 지형이 준비되면 다시 열린다 */
+    #landingVeil {
+      position: fixed; inset: 0; z-index: 9997; background: #050505;
+      opacity: 0; pointer-events: none; transition: opacity 1200ms ease;
+    }
+    #landingVeil.closing { opacity: 1; }
+    @keyframes landIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
     #mapMode {
       position: fixed; inset: 0; background: #0a0a0e; display: none; flex-direction: column; z-index: 50;
     }
@@ -473,12 +551,25 @@
       <button type="button" class="esc-resume" id="escResumeBtn">press ESC to resume</button>
     </div>
   </div>
+  <!-- 260713 진입 의례 — 개발자 선택 UI 폐기. 서가(아카이브) 은유.
+       #memorySelect / #startBtn 은 숨긴 채 존치 (기존 loadMemories·click 핸들러 불변).
+       카드가 값을 그 둘에 대신 써 준다. -->
   <div id="selectScreen">
-    <h1 style="font-family:'Cormorant Garamond',serif;color:#e8e4df;font-size:2rem;font-weight:400;letter-spacing:0.05em;margin-bottom:2rem;">The Etched Mutation</h1>
-    <div style="margin-bottom:1rem;"><select id="langSelect" style="background:#111;color:#c4a882;border:1px solid rgba(196,168,130,0.3);padding:0.45rem 1rem;font-family:'Cormorant Garamond',serif;font-size:0.95rem;border-radius:4px;"><option value="en">English</option><option value="ko">한국어</option></select></div>
-    <select id="memorySelect" style="background:#111;color:#e8e4df;border:1px solid rgba(196,168,130,0.3);padding:0.6rem 1.2rem;font-family:'Cormorant Garamond',serif;font-size:1rem;border-radius:4px;margin-bottom:1rem;min-width:250px;"></select>
-    <button id="startBtn" type="button" style="background:transparent;border:1px solid rgba(196,168,130,0.3);color:#c4a882;padding:0.6rem 2rem;font-family:'Cormorant Garamond',serif;font-size:1rem;cursor:pointer;border-radius:4px;letter-spacing:0.05em;">Enter the memory</button>
+    <button id="langToggle" type="button"></button>
+
+    <div id="landingHead">
+      <h1 id="landingTitle">The Etched Mutation</h1>
+      <p id="landingQuestion"></p>
+    </div>
+
+    <div id="landingShelf"></div>
+
+    <div id="landingEnter"><span id="landingEnterText"></span></div>
+
+    <select id="memorySelect" style="display:none;"></select>
+    <button id="startBtn" type="button" style="display:none;">Enter the memory</button>
   </div>
+  <div id="landingVeil"></div>
 
   <div id="mapMode">
     <div class="map-canvas-area" id="mapCanvasArea">
@@ -733,20 +824,42 @@
     if (alignSub) alignSub.textContent = LANG === 'ko' ? '각인(상) · 나의 응답(하)' : 'Engraving(top) · My response(bottom)';
   })();
 
-  // 시작 화면 언어 선택 — 바꾸면 ?lang= 로 리로드 (LANG 은 const 라 라이브 변경 불가).
+  // 260713 진입 의례 문구. 랜딩은 I18N 블록보다 먼저 읽히는 자리라 여기 따로 둔다.
+  const LANDING = {
+    en: {
+      question: 'Where is your intaglio etched?',
+      enter: 'Enter this memory',
+      depthNone: 'not yet read',
+      depth: function (n) { return 'read ' + n + (n === 1 ? ' time' : ' times'); },
+      lang: '한국어',
+    },
+    ko: {
+      question: '당신의 음각은 어디에 새겨져 있는가?',
+      enter: '이 기억으로 들어간다',
+      depthNone: '아직 아무도 읽지 않았다',
+      depth: function (n) { return n + '번 읽혔다'; },
+      lang: 'English',
+    },
+  };
+  const LT = LANDING[LANG];
+
+  // 언어 토글 — 바꾸면 ?lang= 로 리로드 (LANG 은 const 라 라이브 변경 불가).
   // 선택은 localStorage 에 저장돼 다음 진입에도 유지됨.
   (function () {
-    var langSel = document.getElementById('langSelect');
-    if (!langSel) return;
-    langSel.value = LANG;
-    langSel.addEventListener('change', function () {
-      var next = langSel.value === 'ko' ? 'ko' : 'en';
-      if (next === LANG) return;
+    var btn = document.getElementById('langToggle');
+    if (!btn) return;
+    btn.textContent = LT.lang;
+    btn.addEventListener('click', function () {
+      var next = LANG === 'ko' ? 'en' : 'ko';
       try { localStorage.setItem('tem_language', next); } catch (_) {}
       var url = new URL(window.location.href);
       url.searchParams.set('lang', next);
       window.location.href = url.toString();
     });
+    var q = document.getElementById('landingQuestion');
+    if (q) q.textContent = LT.question;
+    var e = document.getElementById('landingEnterText');
+    if (e) e.textContent = LT.enter;
   })();
 
   function getEmotionsUi() {
@@ -1804,6 +1917,7 @@
     visitOrder: [],
     _prevAccessiblePinIds: null,
     _unlockAnimInfo: null,
+    _closeAnimInfo: null,   // 이번 감정 입력으로 닫혀버린 핀 — 렌더러가 "꺼지는" 연출에 쓴다
   };
 
   const TRACE_STYLES = {
@@ -4151,6 +4265,24 @@
     }
     game._unlockAnimInfo = _newPinIds.size > 0 ? { newPinIds: _newPinIds, pattern: _pattern } : null;
     console.log('[UNLOCK] pattern:', _pattern, 'prev:', Array.from(game._prevAccessiblePinIds), 'new:', Array.from(game.accessiblePinIds || []), 'diff:', Array.from(_newPinIds), 'animInfo:', game._unlockAnimInfo);
+
+    // 차집합: 방금 닫힌 핀 — 직전엔 갈 수 있었는데 이번 감정 입력으로 닫혔고, 끝내 가보지 못한 곳.
+    //
+    // 열리는 핀만 계산하던 자리다(위 _newPinIds). 그러나 이 작품에서 사건은 열림이 아니라 닫힘이다:
+    // 체험자는 아무것도 "선택"하지 않았는데 자신이 느낀 감정이 길 하나를 지워버린다. 방문한 핀은
+    // 제외한다 — 이미 읽은 장면이 목록에서 빠지는 것은 상실이 아니라 완료이기 때문이다.
+    // 렌더러는 이 집합을 소비해 그 핀이 "꺼지는 것"을 보여준다(3D: 발광/불투명도 감쇠, 2D 지도: 소멸).
+    const _closedPinIds = new Set();
+    game._prevAccessiblePinIds.forEach(id => {
+      const stillOpen = game.accessiblePinIds && game.accessiblePinIds.has(id);
+      if (stillOpen) return;
+      const p = game.pins.find(pp => pp.id === id);
+      if (!p || p.id === game.currentPinId) return;      // 방금 들어간 그 핀은 상실이 아니다
+      if (p.sceneId && game.visitedCore[p.sceneId]) return; // 이미 읽은 장면도 아니다
+      _closedPinIds.add(id);
+    });
+    game._closeAnimInfo = _closedPinIds.size > 0 ? { closedPinIds: _closedPinIds, pattern: _pattern } : null;
+    console.log('[CLOSE] 감정이 닫은 길:', Array.from(_closedPinIds));
     // trace lines 추가 (origin → 새 핀)
     const _originPin = game.currentPinId ? game.pins.find(p => p.id === game.currentPinId) : null;
     if (_originPin && _newPinIds.size > 0 && _pattern !== 'fixation') {
@@ -4445,6 +4577,23 @@
     '1f586f9b-adad-4443-9289-f3a2529f10ed', // 발자국     (depth 0,  붕괴 텍스트 0/6 — 집필 필요)
   ];
 
+  // 상영작이 몇 사람을 거쳤는가 — 유일한 판정 자리.
+  //
+  // 2026-07-09 결정 (loadMemoryData 오염 계산부와 같은 규칙): 상영작의 깊이는
+  // "전시장에서 실제로 지나간 관객"만으로 센다. DB 의 memories.cont_depth (8/30) 는
+  // 아무도 물려준 적 없는 값이고, persona_id 가 붙은 판은 AI 독자다. 그것들을
+  // 앞사람의 흔적으로 내보이면 이 작품이 주장하는 변형이 실재가 아니라 연출이 된다.
+  //
+  // 260713: 서가 카드도 이 규칙을 쓴다. 카드가 memories.cont_depth 를 읽고 진입 문장이
+  // 관객 플레이를 세면, 관객은 "아직 아무도 읽지 않았다" 다음 3초 만에 "6번 전해졌습니다"
+  // 를 보게 된다 — 실제로 그렇게 어긋났다. 두 자리가 같은 함수를 통과하게 묶는다.
+  const DEMO_EPOCH = new Date('2026-07-09T00:00:00Z');
+  const isVisitorPlay = (p) =>
+    !p.persona_id && p.created_at && new Date(p.created_at) >= DEMO_EPOCH;
+  // 한 기억의 깊이 = 그 기억을 통과한 판의 수. 상영작은 관객 판만, 나머지는 전부.
+  const countDepth = (memoryId, plays) => (plays || [])
+    .filter(p => DEMO_MEMORY_IDS.includes(memoryId) ? isVisitorPlay(p) : true).length;
+
   async function loadMemories() {
     const { data, error } = await sb.from('memories').select('id, title').order('id');
     if (error) throw error;
@@ -4454,6 +4603,21 @@
       .map(id => all.find(m => m.id === id))
       .filter(Boolean);
     game.memories = demo.length ? demo : all;  // 상영작이 하나도 안 잡히면 전체로 폴백
+
+    // 서가 카드에 새길 깊이 — 진입 문장과 같은 자료(plays)에서 같은 규칙으로 센다.
+    // 실패해도 서가는 뜬다 (깊이 줄만 비고, 진입은 막지 않는다).
+    const ids = game.memories.map(m => m.id);
+    try {
+      const { data: rows } = await sb.from('plays')
+        .select('memory_id, created_at, persona_id').in('memory_id', ids);
+      const byMem = {};
+      (rows || []).forEach(p => { (byMem[p.memory_id] = byMem[p.memory_id] || []).push(p); });
+      game.memories.forEach(m => { m._depth = countDepth(m.id, byMem[m.id]); });
+    } catch (e) {
+      console.warn('[landing] 깊이 집계 실패 — 서가는 깊이 없이 표시', e);
+    }
+
+    // 숨은 select — 기존 startBtn 핸들러가 읽는 자리. 카드가 대신 값을 써 준다.
     const sel = document.getElementById('memorySelect');
     sel.innerHTML = '';
     game.memories.forEach(m => {
@@ -4461,6 +4625,43 @@
       op.value = m.id;
       op.textContent = m.title || '(untitled)';
       sel.appendChild(op);
+    });
+    sel.value = '';  // 아무것도 안 고른 상태로 시작 — 선택은 관객의 행위여야 한다
+
+    _renderShelf();
+  }
+
+  // 서가 렌더 — 기억 한 판이 카드 한 줄. 클릭하면 숨은 select 에 값이 박히고
+  // 진입 문장이 떠오른다. (드롭다운 + 'Enter the memory' 버튼 폐기, 260713)
+  function _renderShelf() {
+    const shelf = document.getElementById('landingShelf');
+    const enter = document.getElementById('landingEnter');
+    if (!shelf) return;
+    shelf.innerHTML = '';
+
+    game.memories.forEach(m => {
+      const card = document.createElement('div');
+      card.className = 'shelf-card';
+      card.dataset.memoryId = m.id;
+
+      const title = document.createElement('span');
+      title.className = 'shelf-title';
+      title.textContent = m.title || '(untitled)';
+
+      const depth = document.createElement('span');
+      depth.className = 'shelf-depth';
+      const n = Number(m._depth) || 0;   // 진입 문장과 같은 규칙 (countDepth)
+      depth.textContent = n > 0 ? LT.depth(n) : LT.depthNone;
+
+      card.appendChild(title);
+      card.appendChild(depth);
+      card.addEventListener('click', function () {
+        shelf.querySelectorAll('.shelf-card').forEach(c => c.classList.remove('chosen'));
+        card.classList.add('chosen');
+        document.getElementById('memorySelect').value = m.id;
+        if (enter) enter.classList.add('ready');
+      });
+      shelf.appendChild(card);
     });
   }
 
@@ -4559,9 +4760,10 @@
     // 다음 관객이 읽을 판본을 실제로 무너뜨린다. 릴레이가 전시장에서 사건으로 일어난다.
     // 과거 플레이는 지우지 않는다 — 페르소나 193판은 논문 표본이고, 삭제는 E-004 를
     // 영구히 잃은 전례가 있다. 세지 않을 뿐 보존한다.
-    const DEMO_EPOCH = new Date('2026-07-09T00:00:00Z');
-    const _isVisitorPlay = (p) =>
-      !p.persona_id && p.created_at && new Date(p.created_at) >= DEMO_EPOCH;
+    //
+    // 260713: 판정 규칙(DEMO_EPOCH / isVisitorPlay)은 위 서가 카드와 공유한다.
+    // 여기에 사본을 두면 두 자리가 다른 숫자를 말하게 된다 (실제로 그랬다).
+    const _isVisitorPlay = isVisitorPlay;
 
     if (urlStage) {
       const base = createEmptyState();
@@ -4632,6 +4834,46 @@
     updateMapStatus();
     updateSealButton();
     LOG('loaded scenes', game.scenes.length, 'plays', game.plays.length, 'pollution', pollution);
+    _showLineageLine();
+  }
+
+  // 진입 문장 — 이 기억이 몇 사람의 손을 거쳤는지 읽는 사람에게 알린다.
+  //
+  // 숫자는 지어내지 않는다. game.contState.cont_depth 는 실제로 이 기억을 통과한 관객 수이며
+  // (상영작은 전시 이후의 관객 플레이만 재생한다), 아무도 지나가지 않았으면 0이다. 0을 감추고
+  // 그럴듯한 수를 적어 넣는 순간 이 작품이 주장하는 변형은 실재가 아니라 연출이 되고, 전제를
+  // 스스로 배신한다. 0 은 감출 값이 아니라 가장 강한 값이다 — 원본을 볼 수 있는 유일한 사람.
+  function _showLineageLine() {
+    const depth = (game.contState && game.contState.cont_depth) || 0;
+    const ko = LANG === 'ko';
+    const line = depth <= 0
+      ? (ko ? ['당신이 이 기억의 첫 번째 목격자입니다.', '당신 다음부터, 이것은 더 이상 원본이 아닙니다.']
+            : ['You are the first witness to this memory.', 'After you, it is no longer the original.'])
+      : (ko ? ['이 기억은 ' + depth + '번 전해졌습니다.', '당신이 읽는 것은 원본이 아닙니다.']
+            : ['This memory has been passed on ' + depth + ' times.', 'What you are reading is not the original.']);
+
+    const el = document.createElement('div');
+    el.id = 'lineageLine';
+    // z-index 10001 — 도어 인트로의 검은 덮개(lidTop/lidBot, z-index 10000)보다 위에 둔다.
+    // 묻히지 않게 하려는 것이면서 동시에 연출이다: 화면이 아직 검은 동안 이 문장을 읽고,
+    // 그다음에 세계가 열린다. 모바일(2D 지도, 덮개 없음)에서는 지도 위에 겹쳐 뜬다.
+    el.style.cssText = 'position:fixed;inset:0;display:flex;flex-direction:column;'
+      + 'align-items:center;justify-content:center;gap:0.7rem;z-index:10001;pointer-events:none;'
+      + 'background:rgba(0,0,0,0.55);opacity:0;transition:opacity 1.6s ease;'
+      + "font-family:'Cormorant Garamond',serif;text-align:center;padding:2rem;";
+    line.forEach((txt, i) => {
+      const p = document.createElement('div');
+      p.textContent = txt;
+      p.style.cssText = 'color:' + (i === 0 ? 'rgba(232,228,220,0.92)' : 'rgba(196,168,130,0.75)')
+        + ';font-size:' + (i === 0 ? '1.25rem' : '1.0rem') + ';letter-spacing:0.06em;line-height:1.9;';
+      el.appendChild(p);
+    });
+    document.body.appendChild(el);
+    requestAnimationFrame(() => { el.style.opacity = '1'; });
+    setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 1800);
+    }, 4200);
   }
 
   function bindMapResize() {
@@ -4687,6 +4929,44 @@
       alert('Failed to load: ' + (e.message || e));
     }
   });
+
+  // 260713 진입 의례 — 서가에서 기억을 고르고 이 문장을 누르면 세계가 한 번 닫힌다.
+  // 암전(1.2s) 뒤 지형이 로드되고, 지형이 실제로 그려지면 장막이 걷힌다.
+  //
+  // _fpPlayActive 만으로 걷으면 안 된다: 그 플래그가 켜지는 시점에 3D 캔버스는 아직
+  // 기본 크기(300x150)라, 장막이 먼저 걷히면 지형이 찌그러진 띠로 한 번 스친다.
+  // 캔버스가 화면 크기를 갖춘 뒤 두 프레임 더 기다렸다 걷는다.
+  // 로드가 길어져도 15초에는 무조건 걷어 관객이 검은 화면에 갇히지 않게 한다.
+  (function () {
+    var enterText = document.getElementById('landingEnterText');
+    var veil = document.getElementById('landingVeil');
+    if (!enterText || !veil) return;
+
+    function _terrainPainted() {
+      if (!window._fpPlayActive) return false;
+      var sv = document.getElementById('strataView');
+      var cv = sv && sv.querySelector('canvas');
+      return !!(cv && cv.width > 300 && cv.height > 150);
+    }
+
+    enterText.addEventListener('click', function () {
+      if (!document.getElementById('memorySelect').value) return;
+      var enter = document.getElementById('landingEnter');
+      if (enter) enter.classList.remove('ready');   // 두 번 눌림 방지
+      veil.classList.add('closing');
+      setTimeout(function () {
+        document.getElementById('startBtn').click();
+        var t0 = Date.now();
+        var iv = setInterval(function () {
+          var ready = _terrainPainted();
+          if (!ready && Date.now() - t0 <= 15000) return;
+          clearInterval(iv);
+          // 캔버스 크기가 잡힌 직후 한 프레임은 아직 옛 화면 — 잠깐 두고 걷는다.
+          setTimeout(function () { veil.classList.remove('closing'); }, ready ? 450 : 0);
+        }, 120);
+      }, 1250);
+    });
+  })();
   document.getElementById('sealBtn').addEventListener('click', async () => {
     if (game.sealed) return;
     if (game.coreVisitCount < 3 && !game._exitDoorUsed) return;
