@@ -37,6 +37,14 @@
     // 길목 배치 (설계 §2.5)
     segT: [0.35, 0.65],          // 사슬 선분 위 위치 범위
     perpMin: 1.0, perpMax: 3.0,  // 선분에서 수직 이탈 (마네킹·동선과 겹침 방지)
+    // 2단계 — 되새김 동기 (설계 §3.2): 입에 담을수록 또렷, 3회+ 붕괴
+    recallSync: true,
+    recallPollMs: 1000,          // 되새김 내부 dimTimer 와 같은 저비용 폴링
+    stageFloor: [0, 0.30, 0.48], // stage 1·2 의 최소 밝기 (멀리서도 "밝아진" 게 보이게)
+    stageGlow: [0, 0.35, 0.75],  // stage 1·2 의 발광(emissive) 강도
+    collapseKeepRatio: 0.55,     // 붕괴 시 잔해로 남는 블록 비율 ("무너진 기억"도 기억)
+    collapseMs: 1400,
+    collapsedDim: 0.55,          // 잔해 밝기 배율
   };
 
   // ─── 결정적 PRNG (lumen_recalled_anchors / mannequins 와 동일 문법) ───
@@ -98,6 +106,7 @@
       var lig = 0.52 + r() * 0.16;
       var col = new THREE.Color().setHSL(hue, sat, lig);
       var accum = 0;                                 // 세로 응집형 스택
+      var blocks = [];
       for (var i = 0; i < n; i++) {
         var w = 0.07 + r() * 0.26;
         var h = 0.05 + r() * 0.22;
@@ -118,9 +127,10 @@
         accum += h * (0.55 + r() * 0.4);              // 살짝 겹치며 쌓임
         group.add(m);
         mats.push(mat);
+        blocks.push({ mesh: m, mat: mat, h: h });
         if (accum > 1.25) break;
       }
-      return { group: group, mats: mats };
+      return { group: group, mats: mats, blocks: blocks };
     }
 
     // ─── 라벨: 단어(크게) + 원문 문장(작게, 줄바꿈) 캔버스 스프라이트 ───
@@ -242,9 +252,11 @@
           scene3.add(label.sprite);
 
           _objects.push({
-            group: cluster.group, mats: cluster.mats,
+            group: cluster.group, mats: cluster.mats, blocks: cluster.blocks,
             label: label.sprite, labelMat: label.mat,
             cx: cx, cz: cz, word: word,
+            stage: 0, glowBoost: 1, everSynced: false,
+            collapsing: null, collapsed: false,
           });
           placed++;
         }
@@ -252,20 +264,118 @@
       console.log('[lumen-scene-objects] placed:', placed, '/ scenes:', pins.length);
     }
 
-    // ─── render wrap: 거리 페이드 + 근접 라벨 (카메라 안 건드림) ───
+    // ─── 2단계: 되새김 stage → 발광/붕괴 (설계 §3.2, 곡선은 260709 확정본) ───
+    function _applyStageGlow(o) {
+      var g = Math.min(2, Math.max(0, o.stage));
+      var k = opts.stageGlow[g] || 0;
+      for (var m = 0; m < o.blocks.length; m++) {
+        var mat = o.blocks[m].mat;
+        if (mat.emissive) mat.emissive.copy(mat.color).multiplyScalar(k * 0.45);
+      }
+      o.glowBoost = 1 + k * 0.6;
+    }
+
+    // 붕괴: 블록 일부 소멸 + 나머지 흩어져 잔해로. instant=true 면 애니 없이 완성형
+    // (턴 전환 rebuild 직후 이미 stage 3 인 사물 — "무너진 채 발견").
+    function _startCollapse(o, instant) {
+      var r = _rng('collapse|' + o.word);
+      var parts = [];
+      for (var i = 0; i < o.blocks.length; i++) {
+        var b = o.blocks[i];
+        var keep = r() < opts.collapseKeepRatio;
+        var ang = r() * Math.PI * 2;
+        var d = 0.35 + r() * 0.95;
+        parts.push({
+          b: b, keep: keep,
+          from: b.mesh.position.clone(),
+          to: new THREE.Vector3(Math.cos(ang) * d, b.h / 2, Math.sin(ang) * d),
+          rotFrom: b.mesh.rotation.y,
+          rotTo: b.mesh.rotation.y + (r() * 2 - 1) * 1.8,
+        });
+        if (!keep) b.mat._dying = true;
+      }
+      if (instant) {
+        for (var j = 0; j < parts.length; j++) {
+          var p = parts[j];
+          if (p.keep) {
+            p.b.mesh.position.copy(p.to);
+            p.b.mesh.rotation.y = p.rotTo;
+          } else {
+            p.b.mesh.visible = false;
+          }
+        }
+        o.collapsed = true;
+        o.glowBoost = 1;
+        _applyStageGlow(o);
+        return;
+      }
+      o.collapsing = { t0: performance.now(), parts: parts };
+    }
+
+    function _advanceCollapse(o) {
+      var col = o.collapsing;
+      var k = Math.min(1, (performance.now() - col.t0) / opts.collapseMs);
+      var e = 1 - Math.pow(1 - k, 3);  // easeOutCubic — 무너져 내림
+      for (var i = 0; i < col.parts.length; i++) {
+        var p = col.parts[i];
+        p.b.mesh.position.lerpVectors(p.from, p.to, e);
+        p.b.mesh.rotation.y = p.rotFrom + (p.rotTo - p.rotFrom) * e;
+      }
+      if (k >= 1) {
+        for (var j = 0; j < col.parts.length; j++) {
+          if (!col.parts[j].keep) col.parts[j].b.mesh.visible = false;
+        }
+        o.collapsing = null;
+        o.collapsed = true;
+        o.glowBoost = 1;
+        _applyStageGlow(o);
+      }
+    }
+
+    function _pollRecall() {
+      if (!opts.recallSync || !_objects.length) return;
+      var RA = global.LumenRecalledAnchors;
+      if (!RA || typeof RA.getState !== 'function') return;
+      var st;
+      try { st = RA.getState(); } catch (_) { return; }
+      var words = (st && st.words) || {};
+      for (var i = 0; i < _objects.length; i++) {
+        var o = _objects[i];
+        var s = words[o.word] | 0;
+        if (s === o.stage) { o.everSynced = true; continue; }
+        var fresh = !o.everSynced;   // rebuild 직후 첫 동기 — 애니 없이 상태만
+        o.stage = s;
+        o.everSynced = true;
+        if (s >= 3 && !o.collapsed && !o.collapsing) {
+          _startCollapse(o, fresh);
+        } else if (s < 3) {
+          _applyStageGlow(o);        // 붕괴는 안 되돌림 (잔해는 잔해로)
+        }
+      }
+    }
+    setInterval(_pollRecall, opts.recallPollMs);
+
+    // ─── render wrap: 거리 페이드 + 근접 라벨 + 붕괴 진행 (카메라 안 건드림) ───
     var _origRender = renderer.render.bind(renderer);
     var fadeRange = Math.max(0.01, opts.fadeFar - opts.fadeNear);
     renderer.render = function (s, c) {
       if (_objects.length && c && c.position) {
         for (var i = 0; i < _objects.length; i++) {
           var o = _objects[i];
+          if (o.collapsing) _advanceCollapse(o);
           var ddx = o.cx - c.position.x, ddz = o.cz - c.position.z;
           var dist = Math.sqrt(ddx * ddx + ddz * ddz);
           var tt = 1 - Math.min(1, Math.max(0, (dist - opts.fadeNear) / fadeRange));
           var op = opts.baseOpacity + (opts.nearOpacity - opts.baseOpacity) * tt;
-          for (var m = 0; m < o.mats.length; m++) {
-            var cur = o.mats[m].opacity;
-            o.mats[m].opacity = cur + (op - cur) * 0.08;   // 부드럽게
+          // 되새김 stage: 최소 밝기 바닥 + 발광 배율. 잔해는 어둡게.
+          var floor = opts.stageFloor[Math.min(2, o.stage)] || 0;
+          op = Math.max(op, floor) * (o.glowBoost || 1);
+          if (o.collapsed) op *= opts.collapsedDim;
+          if (op > 0.96) op = 0.96;
+          for (var m = 0; m < o.blocks.length; m++) {
+            var mat = o.blocks[m].mat;
+            var tgt = mat._dying ? 0 : op;
+            mat.opacity = mat.opacity + (tgt - mat.opacity) * 0.08;   // 부드럽게
           }
           var lt = dist <= opts.labelNear
             ? (1 - dist / opts.labelNear) * 0.5 + 0.5      // 근접할수록 또렷
@@ -289,7 +399,10 @@
       clear: _clear,
       getDebug: function () {
         return _objects.map(function (o) {
-          return { word: o.word, x: +o.cx.toFixed(1), z: +o.cz.toFixed(1) };
+          return {
+            word: o.word, x: +o.cx.toFixed(1), z: +o.cz.toFixed(1),
+            stage: o.stage, collapsed: o.collapsed, collapsing: !!o.collapsing,
+          };
         });
       },
     };
