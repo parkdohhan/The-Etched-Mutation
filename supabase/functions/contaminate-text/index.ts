@@ -58,6 +58,16 @@ Rules:
 - Output ONLY the transformed text, nothing else`;
 }
 
+// ─── R3-2 입력 상한 (2026-07-14) ──────────────────────────────────
+// verify_jwt=false 공개 엔드포인트 → 호출 1건 = Anthropic 크레딧. 익명 관객 플로우는
+// 살려야 하므로 차단 대신 입력을 좁힌다. 실사용 씬 텍스트는 길어야 수백 자.
+const MAX_BODY_BYTES = 8192;
+const MAX_TEXT_CHARS = 2000;
+// 이 함수가 프롬프트 분기를 가진 stage 만 허용. 'inclination' 은 레거시 표기(f2bce54 normalizeStage 대상),
+// 'stable' 은 무해 통과(호출부가 보내지 않지만 막으면 깨질 여지).
+const ALLOWED_STAGES = ["biased_inclination", "inclination", "hypercompletion", "juxtaposition", "stable"];
+const ALLOWED_BANDS = ["weak", "medium", "strong"];
+
 // ─── Stage-specific prompts ──────────────────────────────────────
 
 interface ContaminationState {
@@ -216,9 +226,21 @@ serve(async (req: Request) => {
     );
   }
 
+  // ─── R3-2 (L3-01 🔴): 무인증 크레딧 소모 방어 ───────────────────
+  // verify_jwt=false + 검사 0 이라 완전 공개 엔드포인트였다 → 호출 1건 = Anthropic 크레딧.
+  // 완전 차단은 익명 관객 플로우(archive.js / contaminationPresenter 백그라운드 생성)를
+  // 죽이므로 금지. 대신 입력 크기·형식을 좁혀 대량 호출의 단가와 표면을 줄인다.
+  const rawBody = await req.text();
+  if (rawBody.length > MAX_BODY_BYTES) {
+    return new Response(
+      JSON.stringify({ error: "body too large" }),
+      { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   let body: any;
   try {
-    body = await req.json();
+    body = JSON.parse(rawBody);
   } catch {
     return new Response(
       JSON.stringify({ error: "Invalid JSON body" }),
@@ -230,6 +252,28 @@ serve(async (req: Request) => {
   if (!text) {
     return new Response(
       JSON.stringify({ error: "text is required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  if (text.length > MAX_TEXT_CHARS) {
+    return new Response(
+      JSON.stringify({ error: `text too long (max ${MAX_TEXT_CHARS} chars)` }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // stage 화이트리스트 — 사전에 없는 stage 는 프롬프트 분기를 못 타므로 거부
+  const reqStage = body.contamination?.cont_stage;
+  if (reqStage !== undefined && !ALLOWED_STAGES.includes(String(reqStage))) {
+    return new Response(
+      JSON.stringify({ error: `unknown cont_stage: ${reqStage}` }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  const reqBand = body.contamination?.band;
+  if (reqBand !== undefined && !ALLOWED_BANDS.includes(String(reqBand))) {
+    return new Response(
+      JSON.stringify({ error: `unknown band: ${reqBand}` }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

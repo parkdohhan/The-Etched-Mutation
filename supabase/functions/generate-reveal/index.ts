@@ -1,6 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getCorsHeaders } from "../_shared/auth.ts";
 
+// ─── R3-2 입력 상한 (2026-07-14, L3-01 🔴) ────────────────────────
+// verify_jwt=false 공개 엔드포인트 → 호출 1건 = Anthropic 크레딧 소모.
+// 익명 관객이 회차 끝 reveal 을 받는 경로라 차단은 금지. 입력 크기만 좁힌다.
+// 실사용: 회차 방문 3~11개 × 씬 텍스트 150자 슬라이스 → 수 KB.
+const MAX_BODY_BYTES = 32768;
+const MAX_VISITS = 40;
+const MAX_TITLE_CHARS = 200;
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
@@ -8,7 +16,22 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    if (rawBody.length > MAX_BODY_BYTES) {
+      return new Response(JSON.stringify({ error: "body too large" }), {
+        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    let body: any;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY");
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "API 키 미설정" }), {
@@ -16,13 +39,18 @@ serve(async (req) => {
       });
     }
 
-    const visits = body.visits || [];
-    const memoryTitle = body.memory_title || "무제";
-    const emotionTrajectory = body.emotion_trajectory || [];
+    const visits = Array.isArray(body.visits) ? body.visits : [];
+    const memoryTitle = String(body.memory_title || "무제").slice(0, MAX_TITLE_CHARS);
+    const emotionTrajectory = Array.isArray(body.emotion_trajectory) ? body.emotion_trajectory : [];
     const lang = body.lang === "en" ? "en" : "ko";
 
     if (visits.length === 0) {
       return new Response(JSON.stringify({ error: "방문 데이터 없음" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    if (visits.length > MAX_VISITS) {
+      return new Response(JSON.stringify({ error: `too many visits (max ${MAX_VISITS})` }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
