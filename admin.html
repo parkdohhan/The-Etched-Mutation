@@ -301,57 +301,15 @@
                 <div class="editor-section" id="ghostVariantsSection">
                     <h3 class="editor-section-title">유령 변주 풀 <span style="color:var(--accent-memory);font-size:0.78rem;">(V2.1)</span></h3>
                     <small id="ghostVariantsHint" style="display:block;font-size:0.72rem;color:var(--text-muted);margin-bottom:0.6rem;">
-                        같은 메모리 안의 유령 인격 카드. drift = 같은 유령 발화 변주. speciation = 다른 path 가 만든 새 유령 시드. SeekerMatchEngine 매칭 입력.
+                        같은 메모리 안의 유령 인격 카드. drift = 같은 유령 발화 변주. speciation = 다른 path 가 만든 새 유령 시드. SeekerMatchEngine 매칭 입력.<br>
+                        <b style="color:var(--accent-memory);">본 발화(is_seed)는 기억당 1개</b> — 유령 대화가 is_seed=true(부모 없음)인 카드를 첫 대사(anchor)로 잡는다. 나머지 카드는 체크를 꺼둘 것.
                     </small>
                     <div id="ghostVariantsList" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
                     <button id="addGhostVariantBtn" type="button" style="margin-top:0.6rem;background:none;border:1px dashed rgba(196,168,130,.5);color:var(--accent-memory);padding:0.5rem 1rem;border-radius:3px;cursor:pointer;font-size:0.85rem;width:100%;">+ 유령 변주 추가</button>
                 </div>
 
-                <!-- 사운드 매핑 -->
-                <div class="editor-section">
-                    <h3 class="editor-section-title">사운드 매핑</h3>
-                    <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
-                        기본 사운드는 비워두세요. URL은 sounds/ 폴더 경로 또는 외부 URL 가능.
-                    </p>
-                    <div class="editor-field-group">
-                        <div class="editor-field">
-                            <label class="editor-label">오프닝 (인트로)</label>
-                            <div style="display:flex;gap:.5rem;align-items:center">
-                                <input type="text" class="editor-input" id="soundMapOpening" placeholder="sounds/ambient-opening.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapOpening')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
-                            </div>
-                        </div>
-                        <div class="editor-field">
-                            <label class="editor-label">HIGH (높은 정렬)</label>
-                            <div style="display:flex;gap:.5rem;align-items:center">
-                                <input type="text" class="editor-input" id="soundMapHigh" placeholder="sounds/Rain_indoor.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapHigh')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
-                            </div>
-                        </div>
-                        <div class="editor-field">
-                            <label class="editor-label">MID (중간)</label>
-                            <div style="display:flex;gap:.5rem;align-items:center">
-                                <input type="text" class="editor-input" id="soundMapMid" placeholder="sounds/Base_white.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapMid')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
-                            </div>
-                        </div>
-                        <div class="editor-field">
-                            <label class="editor-label">LOW (낮은 정렬)</label>
-                            <div style="display:flex;gap:.5rem;align-items:center">
-                                <input type="text" class="editor-input" id="soundMapLow" placeholder="sounds/Base_Void.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapLow')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
-                            </div>
-                        </div>
-                        <div class="editor-field">
-                            <label class="editor-label">FIXATED (루프)</label>
-                            <div style="display:flex;gap:.5rem;align-items:center">
-                                <input type="text" class="editor-input" id="soundMapFixated" placeholder="sounds/Base_Void.mp3">
-                                <button class="preview-sound-btn" onclick="previewSound('soundMapFixated')" title="미리듣기" style="background:none;border:1px solid var(--accent-memory);color:var(--accent-memory);padding:.3rem .6rem;border-radius:3px;cursor:pointer;font-size:.75rem;white-space:nowrap">▶ 재생</button>
-                            </div>
-                        </div>
-                        <button onclick="stopPreviewSound()" style="background:none;border:1px solid var(--text-muted);color:var(--text-muted);padding:.3rem .8rem;border-radius:3px;cursor:pointer;font-size:.75rem;margin-top:.5rem">■ 정지</button>
-                    </div>
-                </div>
+                <!-- R1-7 (2026-07-14): 사운드 매핑 5칸 UI 제거 — memories.sound_map 은 레거시(죽은 컬럼).
+                     씬별 공간음향은 Canvas(궤적 큐레이터)의 사운드 필드(meta.sound_url)를 사용. -->
 
                 <div class="editor-section">
                     <h3 class="editor-section-title">씬 편집기</h3>

@@ -44,6 +44,7 @@ export async function listMemoriesWithScenesChoices(client) {
                 id: scene.id,
                 text: scene.text || '',
                 sceneType: scene.scene_type || 'normal',
+                scene_role: scene.scene_role || null,
                 echoWords: Array.isArray(scene.echo_words) ? scene.echo_words : (scene.echo_words ? JSON.parse(scene.echo_words) : []),
                 emotionDist: scene.emotion_dist || {},
                 voidInfo: scene.void_info || null,
@@ -120,6 +121,7 @@ export async function saveMemoryGraph(client, memoryPayload) {
     const { memoryId, code, title, description, memory_words, completed_sentence, original_vector, author_note, status, source, scenes, memoryWaveData, curator_id, sound_map, sensory_anchor, body_response, self_questions, original_reason_vector, cont_depth, cont_divergence, cont_convergence, cont_heterogeneity, cont_stage_1, cont_stage_2, cont_stage_3, terrain_shape, ghost_condensation_points } = memoryPayload;
 
     let finalMemoryId = memoryId;
+    let existingSceneIds = new Set(); // R1-1: diff 저장용 — 신규 생성이면 빈 집합
 
  // memory save 또 업데 트
     if (finalMemoryId) {
@@ -134,11 +136,11 @@ export async function saveMemoryGraph(client, memoryPayload) {
                 completed_sentence: completed_sentence || null,
                 original_vector: original_vector || null,
                 author_note: author_note || null,
-                status: status || 'Fetus',
-                source: source || 'beginner',
-                layers: 0,
-                dilution: 100,
-                is_public: true,
+                // R1-4 (2026-07-14): layers/dilution/is_public 강제 리셋 제거 — 작가가 저장할 때마다
+                // 공개 상태·희석값이 초기화되던 경로. UPDATE 에서는 기존 값 보존 (키 자체를 안 보냄).
+                // status/source 도 값이 안 왔으면 기존 값을 덮지 않는다 (|| 폴백이 기존 값을 덮던 버그).
+                ...(status ? { status } : {}),
+                ...(source ? { source } : {}),
                 ...(sound_map ? { sound_map } : {}),
                 ...(sensory_anchor !== undefined ? { sensory_anchor } : {}),
                 ...(body_response ? { body_response } : {}),
@@ -159,7 +161,10 @@ export async function saveMemoryGraph(client, memoryPayload) {
 
         if (error) throw error;
 
- // existing scenes choices delete
+ // R1-1 (2026-07-14): 파괴 저장 제거. 예전에는 여기서 기존 scenes 를 전부 DELETE 후
+ // 새 UUID 로 INSERT 했다 — plays.scene_id FK 가 ON DELETE CASCADE 라 저장할 때마다
+ // 그 기억의 플레이 기록이 통째로 증발했다. 이제 기존 씬 id 를 수집해 diff 저장:
+ // id 있는 씬 = UPDATE, id 없는 씬 = INSERT, 목록에서 사라진 씬만 DELETE.
         const { data: existingScenes, error: scenesSelectError } = await client
             .from('scenes')
             .select('id')
@@ -167,19 +172,25 @@ export async function saveMemoryGraph(client, memoryPayload) {
 
         if (scenesSelectError) throw scenesSelectError;
 
-        if (existingScenes && existingScenes.length > 0) {
-            const sceneIds = existingScenes.map(s => s.id);
+        existingSceneIds = new Set((existingScenes || []).map(s => s.id));
+
+        const keptIds = new Set(
+            scenes.filter(s => s.id && existingSceneIds.has(s.id)).map(s => s.id)
+        );
+        const removedIds = [...existingSceneIds].filter(id => !keptIds.has(id));
+
+        if (removedIds.length > 0) {
             const { error: choicesDeleteError } = await client
                 .from('choices')
                 .delete()
-                .in('scene_id', sceneIds);
+                .in('scene_id', removedIds);
 
             if (choicesDeleteError) throw choicesDeleteError;
 
             const { error: scenesDeleteError } = await client
                 .from('scenes')
                 .delete()
-                .eq('memory_id', finalMemoryId);
+                .in('id', removedIds);
 
             if (scenesDeleteError) throw scenesDeleteError;
         }
@@ -234,41 +245,47 @@ export async function saveMemoryGraph(client, memoryPayload) {
         finalMemoryId = data.id;
     }
 
- // Scenes save
+ // Scenes save — R1-1: id 있는 씬 = UPDATE (plays FK 보존), id 없는 씬 = INSERT
     for (let i = 0; i < scenes.length; i++) {
         const scene = scenes[i];
+        const isUpdate = !!(scene.id && existingSceneIds.has(scene.id));
+        const hasChoices = !!(scene.choices && scene.choices.length > 0);
 
- // emotionDist calculate (admin.js 동일 직)
-        const emotionDist = {
-            fear: 0, sadness: 0, guilt: 0, anger: 0,
-            longing: 0, isolation: 0, numbness: 0, moralPain: 0
-        };
+ // emotionDist calculate (admin.js 동일 직) — R1-3: choices 있을 때만 계산.
+ // choices 0개 씬의 emotion_dist/emotion_vector 를 0벡터로 덮어쓰던 버그 제거.
+        let emotionDistObj = null;
+        if (hasChoices) {
+            const emotionDist = {
+                fear: 0, sadness: 0, guilt: 0, anger: 0,
+                longing: 0, isolation: 0, numbness: 0, moralPain: 0
+            };
 
-        if (scene.choices && scene.choices.length > 0) {
             scene.choices.forEach(choice => {
                 const intensity = (choice.intensity || 5) / 10;
                 if (emotionDist.hasOwnProperty(choice.emotion)) {
                     emotionDist[choice.emotion] += intensity;
                 }
             });
-        }
 
-        const total = Object.values(emotionDist).reduce((sum, val) => sum + val, 0);
-        if (total > 0) {
-            Object.keys(emotionDist).forEach(key => {
-                emotionDist[key] = Math.round((emotionDist[key] / total) * 100);
-            });
+            const total = Object.values(emotionDist).reduce((sum, val) => sum + val, 0);
+            if (total > 0) {
+                Object.keys(emotionDist).forEach(key => {
+                    emotionDist[key] = Math.round((emotionDist[key] / total) * 100);
+                });
+            }
+            emotionDistObj = emotionDist;
+        } else if (!isUpdate && scene.emotionDist && Object.keys(scene.emotionDist).length > 0) {
+ // 신규 INSERT 인데 choices 없음 — 들고 온 emotionDist(Record/로드값)가 있으면 그대로 사용
+            emotionDistObj = scene.emotionDist;
         }
 
         const echoWords = scene.echoWords || [];
-        const emotionDistObj = emotionDist;
 
-        const insertData = {
+        const scenePayload = {
             memory_id: finalMemoryId,
             scene_order: i,
             text: scene.text || '',
             echo_words: echoWords,
-            emotion_dist: emotionDistObj,
             scene_type: scene.sceneType || 'normal',
             void_info: scene.voidInfo || null,
             original_choice: scene.originalChoice !== undefined ? scene.originalChoice : null,
@@ -281,71 +298,93 @@ export async function saveMemoryGraph(client, memoryPayload) {
             text_stage_3: scene.text_stage_3 || null,
             exclusions: scene.exclusions && Array.isArray(scene.exclusions) && scene.exclusions.length > 0 ? scene.exclusions : null,
             // meta JSONB 보존: pin_override(궤적 레이어) / stage_position(위치 레이어, 작업 15) /
-            // motif_tags / scene_code / author_bridges 등이 saveMemoryGraph DELETE+INSERT 사이클에서 살아남도록.
+            // motif_tags / scene_code / author_bridges 등이 저장 사이클에서 살아남도록.
             meta: scene.meta || null
         };
 
-        const { data: sceneData, error: sceneError } = await client
-            .from('scenes')
-            .insert(insertData)
-            .select()
-            .single();
-
-        console.log(`[saveMemoryGraph] Scene ${i} INSERT 결과:`, { id: sceneData?.id, memory_id: sceneData?.memory_id, error: sceneError });
-
-        if (sceneError) throw sceneError;
-
-        if (!sceneData || !sceneData.id) {
-            throw new Error(`No response data received after saving Scene ${i + 1}.`);
+ // R1-2: scene_role — 값을 들고 온 경우에만 포함 (다른 호출자가 null 로 덮지 않게)
+        if (scene.scene_role !== undefined) {
+            scenePayload.scene_role = scene.scene_role;
         }
 
-        // FK 검증: 방금 INSERT한 scene이 실제로 DB에 있는지 재확인
-        const { data: verifyScene, error: verifyError } = await client
-            .from('scenes')
-            .select('id')
-            .eq('id', sceneData.id)
-            .maybeSingle();
-        if (verifyError || !verifyScene) {
-            console.error(`[saveMemoryGraph] Scene ${i} INSERT 응답은 있으나 DB 재조회 실패:`, { sceneData, verifyError });
-            throw new Error(`Scene ${i + 1} INSERT 응답 ID(${sceneData.id})가 DB에 없음. RLS 또는 쓰기 권한 문제.`);
+ // R1-3: emotion_dist 는 계산된 경우에만 포함. UPDATE + choices 0개 = 키 자체를 안 보냄 (기존 값 보존)
+        if (emotionDistObj) {
+            scenePayload.emotion_dist = emotionDistObj;
         }
 
- // Wave data 업데 트 (scene.waveData 있으면 , 없으면 emotion_vector 업데 트)
-        if (scene.waveData) {
-            const { error: waveUpdateError } = await client
+        let sceneId;
+        if (isUpdate) {
+            const { data: updatedRows, error: sceneError } = await client
                 .from('scenes')
-                .update({
-                    emotion_vector: emotionDistObj,
-                    wave_data: scene.waveData
-                })
-                .eq('id', sceneData.id);
+                .update(scenePayload)
+                .eq('id', scene.id)
+                .select();
 
- // wave_data Update failed ignore (선택적)
-            if (waveUpdateError) {
-                console.warn(`Scene ${i + 1} Wave 데이터 Update failed (무시됨):`, waveUpdateError);
+            if (sceneError) throw sceneError;
+            if (!updatedRows || updatedRows.length === 0) {
+                throw new Error(`Scene ${i + 1} UPDATE 가 0행을 갱신함 (id=${scene.id}). RLS 또는 쓰기 권한 문제.`);
             }
+            sceneId = scene.id;
         } else {
- // waveData 없으면 emotion_vector 업데 트
+            const { data: sceneData, error: sceneError } = await client
+                .from('scenes')
+                .insert(scenePayload)
+                .select()
+                .single();
+
+            console.log(`[saveMemoryGraph] Scene ${i} INSERT 결과:`, { id: sceneData?.id, memory_id: sceneData?.memory_id, error: sceneError });
+
+            if (sceneError) throw sceneError;
+
+            if (!sceneData || !sceneData.id) {
+                throw new Error(`No response data received after saving Scene ${i + 1}.`);
+            }
+
+            // FK 검증: 방금 INSERT한 scene이 실제로 DB에 있는지 재확인
+            const { data: verifyScene, error: verifyError } = await client
+                .from('scenes')
+                .select('id')
+                .eq('id', sceneData.id)
+                .maybeSingle();
+            if (verifyError || !verifyScene) {
+                console.error(`[saveMemoryGraph] Scene ${i} INSERT 응답은 있으나 DB 재조회 실패:`, { sceneData, verifyError });
+                throw new Error(`Scene ${i + 1} INSERT 응답 ID(${sceneData.id})가 DB에 없음. RLS 또는 쓰기 권한 문제.`);
+            }
+            sceneId = sceneData.id;
+        }
+
+ // Wave/emotion_vector 업데 트 (실패 무시 — 기존 관용 유지). R1-3: 계산된 경우에만.
+        const tolerantUpdate = {};
+        if (emotionDistObj) tolerantUpdate.emotion_vector = emotionDistObj;
+        if (scene.waveData) tolerantUpdate.wave_data = scene.waveData;
+        if (Object.keys(tolerantUpdate).length > 0) {
             const { error: waveUpdateError } = await client
                 .from('scenes')
-                .update({
-                    emotion_vector: emotionDistObj
-                })
-                .eq('id', sceneData.id);
+                .update(tolerantUpdate)
+                .eq('id', sceneId);
 
             if (waveUpdateError) {
-                console.warn(`Scene ${i + 1} emotion_vector Update failed (무시됨):`, waveUpdateError);
+                console.warn(`Scene ${i + 1} emotion_vector/wave_data Update failed (무시됨):`, waveUpdateError);
             }
         }
 
- // Choices save
-        if (scene.choices && scene.choices.length > 0) {
+ // Choices save — 씬별 교체 (UPDATE 씬은 기존 choices 삭제 후 재삽입)
+        if (isUpdate) {
+            const { error: choicesClearError } = await client
+                .from('choices')
+                .delete()
+                .eq('scene_id', sceneId);
+
+            if (choicesClearError) throw choicesClearError;
+        }
+
+        if (hasChoices) {
             for (let j = 0; j < scene.choices.length; j++) {
                 const choice = scene.choices[j];
                 const { error: choiceError } = await client
                     .from('choices')
                     .insert({
-                        scene_id: sceneData.id,
+                        scene_id: sceneId,
                         choice_order: j,
                         text: choice.text || '',
                         emotion: choice.emotion || 'fear',

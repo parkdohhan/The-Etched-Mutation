@@ -11,7 +11,6 @@ let previewCurrentScene = 0;
 let previewWaveAnimationId = null;
 let currentLayers = []; // Archive 레이어 추적
 let adminUser = null; // 현재 인증된 관리자
-let previewAudio = null; // 사운드 미리듣기용
 const sceneWaveAnimationMap = new Map(); // sceneIndex -> requestAnimationFrame id
 
 // 편집 dirty-flag — 저장 안 된 변경 사항 경고 (작업 12-5)
@@ -271,11 +270,7 @@ function addNewMemory() {
     document.getElementById('completedSentence').value = '';
     document.getElementById('authorNote').value = '';
     document.getElementById('memoryStatus').value = 'Fetus';
-    document.getElementById('soundMapOpening').value = '';
-    document.getElementById('soundMapHigh').value = '';
-    document.getElementById('soundMapMid').value = '';
-    document.getElementById('soundMapLow').value = '';
-    document.getElementById('soundMapFixated').value = '';
+    // R1-7: sound_map 5칸 UI 제거됨 — 리셋 코드도 함께 정리
     document.getElementById('scenesContainer').innerHTML = '';
     // original_vector (6-dim) 리셋
     ['fear','sadness','anger','joy','longing','guilt'].forEach(k => {
@@ -397,13 +392,7 @@ function editMemory(index) {
     // 작업 12-3: 응결점 로드
     if (typeof loadGhostPoints === 'function') loadGhostPoints(memory);
     if (typeof loadGhostVariants === 'function') loadGhostVariants(memory.id);
- // sound mapping load
-    var soundMap = memory.sound_map || {};
-    document.getElementById('soundMapOpening').value = soundMap.opening || '';
-    document.getElementById('soundMapHigh').value = soundMap.HIGH || '';
-    document.getElementById('soundMapMid').value = soundMap.MID || '';
-    document.getElementById('soundMapLow').value = soundMap.LOW || '';
-    document.getElementById('soundMapFixated').value = soundMap.FIXATED || '';
+ // R1-7: sound_map 5칸 UI 제거됨 — 로드 코드도 함께 정리 (DB 값은 보존, UI만 없음)
     currentScenes = memory.scenes ? JSON.parse(JSON.stringify(memory.scenes)) : [];
     // Clear previous diagnostics
     var _diagEl = document.getElementById('sceneNavDiagResult');
@@ -486,6 +475,7 @@ function addScene() {
         currentScenes.push({
         text: '',
         sceneType: 'normal',
+        scene_role: null,
         echoWords: [],
         originalReason: '',
         originalEmotion: null,
@@ -513,6 +503,11 @@ function renderScenes() {
                         <option value="normal" ${(scene.sceneType || 'normal') === 'normal' ? 'selected' : ''}>일반</option>
                         <option value="branch" ${scene.sceneType === 'branch' ? 'selected' : ''}>분기</option>
                         <option value="ending" ${scene.sceneType === 'ending' ? 'selected' : ''}>엔딩</option>
+                    </select>
+                    <select class="editor-input scene-role-select" data-scene-index="${sceneIndex}" title="씬 역할 — anchor(원본) / residual(잔상·브릿지)" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.9rem;">
+                        <option value="" ${!scene.scene_role ? 'selected' : ''}>역할 없음</option>
+                        <option value="anchor" ${scene.scene_role === 'anchor' ? 'selected' : ''}>anchor (원본)</option>
+                        <option value="residual" ${scene.scene_role === 'residual' ? 'selected' : ''}>residual (잔상)</option>
                     </select>
                 </div>
                 <div class="scene-controls">
@@ -1083,6 +1078,14 @@ function attachSceneListeners() {
             const value = this.value.trim();
  // 콤마 구분하여 array convert
             currentScenes[sceneIndex].echoWords = value ? value.split(',').map(w => w.trim()).filter(w => w) : [];
+        });
+    });
+
+ // scene 역할 (R1-2: anchor/residual/null — DB scene_role 왕복)
+    document.querySelectorAll('.scene-role-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            currentScenes[sceneIndex].scene_role = this.value || null;
         });
     });
 
@@ -2149,18 +2152,9 @@ async function saveMemory() {
     // 작업 12-3 응결점 수집 폐기 (2026-05-16) — 잔상 유령은 "위치 stage" 탭에서 즉시 독립 저장
     //   (lumen_admin_stage_view.persistGhostPoints). saveMemory 가 ghost_condensation_points 를
     //   건드리면 stage 탭에서 박은 잔상 유령이 빈 배열로 덮어써짐 → 저장 페이로드에서 제외.
- // sound mapping 수집
-    var soundMap = {};
-    var smOpening = document.getElementById('soundMapOpening')?.value?.trim();
-    var smHigh = document.getElementById('soundMapHigh')?.value?.trim();
-    var smMid = document.getElementById('soundMapMid')?.value?.trim();
-    var smLow = document.getElementById('soundMapLow')?.value?.trim();
-    var smFixated = document.getElementById('soundMapFixated')?.value?.trim();
-    if (smOpening) soundMap.opening = smOpening;
-    if (smHigh) soundMap.HIGH = smHigh;
-    if (smMid) soundMap.MID = smMid;
-    if (smLow) soundMap.LOW = smLow;
-    if (smFixated) soundMap.FIXATED = smFixated;
+ // R1-7 (2026-07-14): sound_map 수집 폐기 — 레거시 5칸 UI 제거 (admin.html §사운드 매핑).
+ // 씬별 공간음향은 Canvas(admin-trajectory) meta.sound_url 로 대체됨. 저장 페이로드에서
+ // sound_map 을 안 보내면 repo.js 가 기존 DB 값을 보존한다.
 
     if (!title || !code) {
         alert('제목과 코드를 입력해주세요');
@@ -2265,7 +2259,6 @@ async function saveMemory() {
             code: code,
             title: title,
             description: description || null,
-            sound_map: Object.keys(soundMap).length > 0 ? soundMap : null,
             memory_words: memoryWords || null,
             completed_sentence: completedSentence || null,
             original_vector: originalVector,
@@ -2318,10 +2311,10 @@ async function saveMemory() {
 
         saveMemoriesToStorage(); // 백업용
         renderMemoriesTable();
-        
- // JSON 다운load
-        exportMemoriesJSON();
-        
+
+ // R1-7 (2026-07-14): 저장 시 exportMemoriesJSON() 자동 호출 제거 —
+ // 저장할 때마다 파일 다운로드 + 클립보드 덮어쓰기가 일어나던 동작.
+ // 내보내기는 window.exportMemoriesJSON() 수동 호출로만.
         console.log('[saveMemory] 전체 저장 완료');
 
         clearEditorDirty(); // 저장 성공 → dirty 해제 (cancelEdit confirm 회피)
@@ -3743,30 +3736,8 @@ window.adminLogout = adminLogout;
 window.logout = logout;
 window.addNewMemory = addNewMemory;
 
-// sound 미리듣기 function
-function previewSound(inputId) {
-    stopPreviewSound();
-    var input = document.getElementById(inputId);
-    if (!input || !input.value.trim()) {
-        alert('URL을 입력하세요');
-        return;
-    }
-    previewAudio = new Audio(input.value.trim());
-    previewAudio.volume = 0.4;
-    previewAudio.loop = true;
-    previewAudio.play().catch(function(e) { alert('재생 실패: ' + e.message); });
-}
-
-function stopPreviewSound() {
-    if (previewAudio) {
-        previewAudio.pause();
-        previewAudio.currentTime = 0;
-        previewAudio = null;
-    }
-}
-
-window.previewSound = previewSound;
-window.stopPreviewSound = stopPreviewSound;
+// R1-7: sound_map 5칸 UI 제거로 previewSound/stopPreviewSound (admin.js판) 참조 0 → 삭제.
+// 씬별 미리듣기는 admin-trajectory.js 의 자체 previewSound(url, volume) 가 담당 (별개 함수).
 // 씬의 original_emotion에서 평균 감정벡터를 자동 유도
 function autoFillOriginalVector() {
     if (!currentScenes || currentScenes.length === 0) {
@@ -4934,6 +4905,13 @@ window.seedParkSojungMemory = async function () {
 // ─── Nuke a memory + all related data, then re-seed ──────────
 window.nukeThenReseed = async function (memoryId) {
     if (!memoryId) { console.error('[Nuke] memoryId required'); return; }
+    // R1-7 (2026-07-14): confirm 2단 가드 — 기억+플레이 기록 전체 삭제라 오타 한 번에 실기억이 날아감
+    if (!confirm(`[Nuke] memory ${memoryId} 의 plays/scenes/memory 를 전부 삭제하고 재시드합니다. 계속할까요?`)) {
+        console.warn('[Nuke] 취소됨 (1단)'); return;
+    }
+    if (!confirm('[Nuke] 마지막 확인 — 이 작업은 되돌릴 수 없습니다. 정말 삭제할까요?')) {
+        console.warn('[Nuke] 취소됨 (2단)'); return;
+    }
     const client = await getSupabaseClient();
     if (!client) { console.error('[Nuke] No Supabase client'); return; }
 

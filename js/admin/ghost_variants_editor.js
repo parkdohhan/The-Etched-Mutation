@@ -237,6 +237,12 @@ function _renderCardBody(variant, idx) {
       <label><input type="radio" name="kind-${idx}" value="speciation"${variant.kind === 'speciation' ? ' checked' : ''}> speciation (새 유령 시드)</label>
     </div>
 
+    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;" title="유령 대화가 is_seed=true(부모 없음)인 카드를 첫 대사(anchor)로 잡음 — 기억당 1개만 켤 것">
+      <input type="checkbox" class="gv-is-seed"${variant.is_seed !== false ? ' checked' : ''}>
+      <span style="color:var(--accent-memory);">본 발화 (is_seed)</span>
+      <span style="color:var(--text-muted);font-size:0.7rem;">— 기억당 1개. 켜진 카드가 유령의 첫 대사(anchor)가 됨</span>
+    </label>
+
     <div class="gv-parent-row" style="display:${variant.kind === 'speciation' ? 'flex' : 'none'};gap:0.4rem;align-items:center;font-size:0.78rem;">
       <span style="width:80px;color:var(--text-muted);">부모 변주</span>
       <select class="gv-parent" style="background:#0a0a0e;border:1px solid rgba(196,168,130,.3);color:var(--text-fg);padding:0.3rem;border-radius:3px;font-size:0.78rem;flex:1;">
@@ -310,7 +316,8 @@ function _onAddCard() {
     motif_tags: [],
     utterance: '',
     pose: null,
-    is_seed: true,
+    // R1-6: 이미 seed 카드가 있으면 새 카드는 기본 꺼짐 ("본 발화는 기억당 1개")
+    is_seed: !_variants.some(v => v.is_seed === true),
   };
   _variants.push(newVariant);
   // append-only: 기존 카드의 자동 추출 결과 보존 (전체 _renderList 호출 안 함)
@@ -383,7 +390,7 @@ async function _onSave(card, idx) {
     motif_tags: data.motif_tags,
     utterance: data.utterance,
     pose: data.pose,
-    is_seed: true,
+    is_seed: data.is_seed, // R1-6: 하드코딩 true → 카드 토글 값
   };
 
   _setCardStatus(card, '저장 중...', null);
@@ -472,6 +479,8 @@ function _readCard(card) {
     motif_tags,
     utterance,
     pose,
+    // R1-6: is_seed 토글 — 예전엔 저장 시 무조건 true 하드코딩이라 모든 변주가 seed 가 됐음
+    is_seed: !!card.querySelector('.gv-is-seed')?.checked,
   };
 }
 

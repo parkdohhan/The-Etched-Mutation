@@ -5,6 +5,7 @@ import { getSupabaseClient } from './lib/supabaseClient.js';
 import { byeoriEngine } from './core/ByeoriEngine.js';
 import { sceneNavigator } from './core/SceneNavigator.js';
 import LumenAdminStageView from './ui/lumen_admin_stage_view.js';
+import { DEFAULT_EMOTION_ANCHORS } from './shared/math.js';
 
 // ─── 감정 팔레트 (8 keys) ──────────────────────────────────
 const EMOTIONS = [
@@ -1963,7 +1964,9 @@ async function saveScene(s) {
       text,
       emotion_dist: emo,
       emotion_vector: emo,
-      original_emotion: JSON.stringify(emo),
+      // R1-5: jsonb 컬럼에 JSON.stringify 로 문자열을 넣던 버그 — 객체 그대로 저장.
+      // (문자열로 들어가면 소비자마다 typeof 검사 + JSON.parse 이중화가 강제됨)
+      original_emotion: emo,
       meta: newMeta,
     }).eq('id', s.id);
     if (error) throw error;
@@ -2051,7 +2054,11 @@ function renderDetailTab(s) {
   // 편집 폼
   const inputStyle = `width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;`;
   const labelStyle = `font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;display:block;margin-top:14px;`;
-  const EMO_KEYS = ['fear','sadness','anger','guilt','shame','longing','numbness','isolation'];
+  // R1-5 (2026-07-14): 8축 하드코딩 → 17축 (엔진 판단 축과 동일 목록). 8축만 그리면
+  // saveScene 이 화면에 없는 축을 조용히 잘라먹었다 (아래 emo 수집이 입력칸 기준이라).
+  // 씬에 이미 있는 비표준 축(longing 등 레거시)은 뒤에 붙여 편집 가능하게 유지.
+  const EMO_KEYS = [...DEFAULT_EMOTION_ANCHORS];
+  Object.keys(emo || {}).forEach(k => { if (!EMO_KEYS.includes(k)) EMO_KEYS.push(k); });
   const isResidual = s.scene_role === 'residual';
   const roleLabel = isResidual ? '잔상 (Residual / Bridge)' : '원본 (Anchor)';
   const roleColor = isResidual ? '#6aa383' : '#c4a882';
