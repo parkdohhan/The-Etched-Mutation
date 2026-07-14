@@ -41,11 +41,7 @@ import {
     showSessionDetail, closeSessionDetail,
     checkSession,
 } from './app/auth.js';
-import {
-    startMemoryRegistration,
-    handleRegistrationInput,
-    showReviewPhase, confirmScene, finishRegistration,
-} from './app/registration.js';
+// registration.js retired (R5-3) — its screen and entry button were both absent from the shell.
 import {
     handleCrisis, checkSafetyBeforeSubmit, showSafetyResources,
     startFlow, startConfession, endConfession,
@@ -106,7 +102,6 @@ window.handleOpeningKeydown = handleOpeningKeydown;
 window.skipToIntro = skipToIntro;
 window.setupLoopWithCrossfade = setupLoopWithCrossfade;
 window.fadeInSound = fadeInSound;
-window.startMemoryRegistration = startMemoryRegistration;
 
 // Keep supabaseClient and storyData as module-level vars (managed outside store)
 let supabaseClient;

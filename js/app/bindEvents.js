@@ -47,10 +47,8 @@ export function bindEvents(deps) {
  // ========== 8. 3D Carousel 벤트 ==========
     bindCarouselEvents();
 
- // ========== 9. memory 등록 벤트 ==========
-    bindMemoryRegistrationEvents();
-
- // ========== 10. The Confession 벤트 ==========
+ // ========== 9. The Confession 벤트 ==========
+ // (구 memory 등록 바인딩은 R5-3 에서 제거 — 등록 화면과 진입 버튼 모두 셸에 없음)
     bindConfessionEvents();
 
  // ========== 11. comparison screen 벤트 ==========
@@ -172,10 +170,8 @@ function bindOpeningEvents() {
         hint.classList.add('visible');
     }
 
-    const registerMemoryBtn = document.getElementById('registerMemoryBtn');
-    if (registerMemoryBtn && window.startMemoryRegistration) {
-        registerMemoryBtn.addEventListener('click', window.startMemoryRegistration);
-    }
+ // (registerMemoryBtn → startMemoryRegistration 바인딩은 R5-3 에서 제거.
+ //  해당 버튼도, 등록 화면도 셸에 존재하지 않았다.)
 
  // v2: 온보딩 완료 플래그 기반 오프닝 스킵은 데모 기간 동안 비활성화 — 매 진입마다 오프닝 강제 노출.
 
@@ -321,145 +317,6 @@ function bindCarouselEvents() {
 }
 
 // ========== memory 등록 벤트 ==========
-function bindMemoryRegistrationEvents() {
-    document.addEventListener('DOMContentLoaded', function () {
-        const registrationScreen = document.getElementById('memory-registration-screen');
-        if (!registrationScreen) return;
-
-        const sendBtn = document.getElementById('registrationSendBtn');
-        const textInput = document.getElementById('registrationTextInput');
-        const voiceBtn = document.getElementById('registrationVoiceBtn');
-        const finishBtn = document.querySelector('.finish-registration-btn');
-        const closeBtn = document.querySelector('.close-registration-btn');
-        const reviewConfirmBtn = document.getElementById('reviewConfirmBtn');
-        const reviewBackBtn = document.getElementById('reviewBackBtn');
-        const addChoiceBtn = document.getElementById('addChoiceBtn');
-
-        if (sendBtn && textInput) {
-            sendBtn.addEventListener('click', () => {
-                const input = textInput.value.trim();
-                if (input && window.handleRegistrationInput) {
-                    window.handleRegistrationInput(input);
-                    textInput.value = '';
-                }
-            });
-
-            textInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendBtn.click();
-                }
-            });
-        }
-
-        if (voiceBtn) {
-            let isRecording = false;
-            let recognition = null;
-
-            voiceBtn.addEventListener('click', async () => {
-                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                    showNotification('This browser does not support speech recognition');
-                    return;
-                }
-
-                if (isRecording) {
-                    if (recognition) {
-                        recognition.stop();
-                        recognition = null;
-                    }
-                    isRecording = false;
-                    voiceBtn.textContent = '🎤';
-                    return;
-                }
-
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechRecognition();
-                recognition.lang = 'ko-KR';
-                recognition.continuous = false;
-                recognition.interimResults = true;
-
-                recognition.onresult = (event) => {
-                    let finalText = '';
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        if (event.results[i].isFinal) {
-                            finalText += event.results[i][0].transcript;
-                        }
-                    }
-                    if (finalText && textInput) {
-                        textInput.value = finalText.trim();
-                    }
-                };
-
-                recognition.onend = () => {
-                    isRecording = false;
-                    voiceBtn.textContent = '🎤';
-                    if (recognition) recognition = null;
-                };
-
-                recognition.onerror = (event) => {
-                    console.error('음성 인식 오류:', event.error);
-                    isRecording = false;
-                    voiceBtn.textContent = '🎤';
-                    if (event.error === 'not-allowed') {
-                        showNotification('Microphone permission is required');
-                    }
-                };
-
-                try {
-                    recognition.start();
-                    isRecording = true;
-                    voiceBtn.textContent = '⏹';
-                } catch (e) {
-                    console.error('음성 인식 시작 실패:', e);
-                    showNotification('Could not start speech recognition');
-                }
-            });
-        }
-
-        if (finishBtn && window.finishRegistration) {
-            finishBtn.addEventListener('click', window.finishRegistration);
-        }
-
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                if (confirm('Cancel memory registration? Unsaved content will be lost.') && window.closeRegistrationScreen) {
-                    window.closeRegistrationScreen();
-                }
-            });
-        }
-
-        if (reviewConfirmBtn && window.confirmScene) {
-            reviewConfirmBtn.addEventListener('click', window.confirmScene);
-        }
-
-        if (reviewBackBtn) {
-            reviewBackBtn.addEventListener('click', () => {
-                if (window.memoryRegistrationState) {
-                    window.memoryRegistrationState.phase = 'collecting';
-                }
-                const conversationEl = document.getElementById('registration-conversation');
-                const reviewEl = document.getElementById('registration-review');
-                if (reviewEl) reviewEl.classList.add('hidden');
-                if (conversationEl) conversationEl.classList.remove('hidden');
-            });
-        }
-
-        if (addChoiceBtn) {
-            addChoiceBtn.addEventListener('click', () => {
-                const choicesContainer = document.getElementById('reviewChoices');
-                if (choicesContainer) {
-                    const choiceInput = document.createElement('input');
-                    choiceInput.type = 'text';
-                    choiceInput.placeholder = 'Enter choice text';
-                    choiceInput.className = 'choice-input';
-                    choicesContainer.appendChild(choiceInput);
-                    choiceInput.focus();
-                }
-            });
-        }
-    });
-}
-
 // ========== The Confession 벤트 ==========
 function bindConfessionEvents() {
  // memory 등록 button → The Confession start
