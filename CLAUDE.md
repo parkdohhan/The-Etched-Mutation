@@ -111,7 +111,7 @@
 | **이본론** | TEM 철학: 변이 = 재창조, 오염 ≠ 열화 | |
 | **strata** | 3D 지형 뷰. 씬 pin이 VAD 좌표로 배치됨 | |
 | **Canvas** | admin의 궤적 큐레이터 통합 뷰 (2026-04-12부터) | |
-| **pin_override** | 작가가 드래그로 큐레이션한 핀 위치 (감정값과 별개) | |
+| **pin_override** | ⚠️ 죽은 레버 (R1 2026-07-14 정정) — admin 드래그가 `meta.pin_override` 로 저장은 하지만 플레이/지형 쪽 **소비자 없음**. 실제 핀 위치 반영 경로는 `meta.stage_position` (위치 stage 탭) | pin_override 를 읽는 신규 코드 금지 — stage_position 을 쓸 것 |
 
 ---
 
