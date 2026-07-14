@@ -4,8 +4,22 @@
 // 두 가지 호출 모드:
 //   Legacy (admin): { text, stage: 1|2|3, direction, fixation }
 //   V2 (play):      { text, contamination: { cont_stage, cont_drift, cont_fixation, drift_dir_v/a/d, band } }
+//
+// ─── R6-2 (2026-07-14): 선택적 서버 저장 persist ────────────────────────────
+// play-test 의 백그라운드 생성기는 익명 관객 세션에서 돈다. scenes RLS 는 admin/curator 만
+// UPDATE 를 허용하므로 익명 클라이언트가 결과를 저장할 수 없다 — 실측: 익명 PATCH 는
+// **HTTP 200 인데 0행**(에러조차 없는 조용한 차단. R3-N1 이 지적한 침묵 실패와 같은 패턴).
+// 그래서 body.persist = { sceneId, memoryId } 가 오면 생성 직후 서버가 service_role 로 직접 쓴다.
+//
+// 저장 방어 4겹:
+//   ① sceneId·memoryId UUID 형식
+//   ② scene 이 실제로 그 memory 소속인지 (남의 씬에 쓰기 차단)
+//   ③ 그 기억에 최근 180분 내 plays 행 존재 (플레이 없이 텍스트만 밀어넣는 호출 차단)
+//   ④ **이미 값이 있으면 덮어쓰기 금지** — 작가가 집필한 판본을 AI 생성물이 덮는 것을 막는다
+// juxtaposition 모드는 persist 를 거부한다 (아래 KNOWN BUG 주석 참조).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/auth.ts";
 
 // ─── Language detection ──────────────────────────────────────────
@@ -67,6 +81,85 @@ const MAX_TEXT_CHARS = 2000;
 // 'stable' 은 무해 통과(호출부가 보내지 않지만 막으면 깨질 여지).
 const ALLOWED_STAGES = ["biased_inclination", "inclination", "hypercompletion", "juxtaposition", "stable"];
 const ALLOWED_BANDS = ["weak", "medium", "strong"];
+
+// ─── R6-2 저장 상수 ───────────────────────────────────────────────
+const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RECENT_PLAY_WINDOW_MIN = 180;   // record-drift-cumulative / record-contamination 과 동일 창
+const PERSISTABLE_KEYS = ["text_stage_1", "text_stage_2", "text_stage_3"];
+
+/**
+ * 생성된 판본을 scenes 에 저장한다 (service_role — RLS 우회).
+ * 실패해도 생성 결과는 반환한다 (저장은 다음 관객용 연료지 이번 회차 화면이 아니다).
+ *
+ * @returns 저장 결과 요약 — 호출부가 응답에 실어 보낸다 (조용한 실패 금지)
+ */
+async function persistStageText(
+  persist: { sceneId?: unknown; memoryId?: unknown },
+  key: string,
+  value: string,
+): Promise<{ ok: boolean; reason?: string; key?: string }> {
+  const sceneId = String(persist.sceneId ?? "");
+  const memoryId = String(persist.memoryId ?? "");
+
+  // ①
+  if (!UUID_RX.test(sceneId)) return { ok: false, reason: "persist.sceneId must be a uuid" };
+  if (!UUID_RX.test(memoryId)) return { ok: false, reason: "persist.memoryId must be a uuid" };
+  if (!PERSISTABLE_KEYS.includes(key)) return { ok: false, reason: `not persistable: ${key}` };
+  if (!value) return { ok: false, reason: "empty generation" };
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error("[contaminate-text] persist: service config missing");
+    return { ok: false, reason: "service config missing" };
+  }
+  const sb = createClient(supabaseUrl, serviceRoleKey);
+
+  // ② scene 이 그 memory 소속인가 + ④ 이미 값이 있는가
+  const { data: scene, error: selErr } = await sb
+    .from("scenes")
+    .select(`id, memory_id, ${key}`)
+    .eq("id", sceneId)
+    .maybeSingle();
+
+  if (selErr) return { ok: false, reason: selErr.message };
+  if (!scene) return { ok: false, reason: "scene not found" };
+  if (scene.memory_id !== memoryId) {
+    console.warn(`[contaminate-text] persist rejected: scene ${sceneId} not in memory ${memoryId}`);
+    return { ok: false, reason: "scene does not belong to memory" };
+  }
+  // ④ 덮어쓰기 금지 — 작가 판본이 AI 생성물에 지워지는 일은 없어야 한다.
+  if ((scene as Record<string, unknown>)[key]) {
+    return { ok: false, reason: `${key} already exists — not overwritten` };
+  }
+
+  // ③ 진짜 플레이한 기억인가
+  const since = new Date(Date.now() - RECENT_PLAY_WINDOW_MIN * 60 * 1000).toISOString();
+  const { count: recentPlays, error: playErr } = await sb
+    .from("plays")
+    .select("id", { count: "exact", head: true })
+    .eq("memory_id", memoryId)
+    .gte("created_at", since);
+
+  if (playErr) return { ok: false, reason: playErr.message };
+  if (!recentPlays || recentPlays === 0) {
+    console.warn(`[contaminate-text] persist rejected: no recent play for memory ${memoryId}`);
+    return { ok: false, reason: "no recent play for this memory" };
+  }
+
+  const { error: updErr } = await sb
+    .from("scenes")
+    .update({ [key]: value })
+    .eq("id", sceneId);
+
+  if (updErr) {
+    console.error("[contaminate-text] persist update failed:", updErr);
+    return { ok: false, reason: updErr.message };
+  }
+
+  console.log(`[contaminate-text] persisted ${key} for scene ${sceneId} (memory ${memoryId})`);
+  return { ok: true, key };
+}
 
 // ─── Stage-specific prompts ──────────────────────────────────────
 
@@ -344,7 +437,12 @@ serve(async (req: Request) => {
     const raw = data?.content?.[0]?.text?.trim() || "";
 
     if (isJuxtaposition) {
-      // Parse JSON response for two variants
+      // KNOWN BUG (R6 발견, 이번 라운드 범위 밖 — 보고서에 기록):
+      //   아래 text_stage_2 에는 파싱된 변이본이 아니라 **모델의 원 출력(raw)** 이 들어간다.
+      //   juxtaposition 프롬프트는 {"variant_biased": …, "variant_hyper": …} JSON 을 요구하므로
+      //   text_stage_2 = JSON 문자열 통째 = 독자 화면에 중괄호가 그대로 찍힌다.
+      //   admin 레거시 호출(stage: 2 → legacyToV2 → juxtaposition)만 이 경로를 탄다.
+      //   그래서 persist 는 이 경로에서 **거부**한다 — 서버가 DB 에 JSON 쓰레기를 굽지 않도록.
       try {
         const match = raw.match(/\{[\s\S]*\}/);
         const parsed = match ? JSON.parse(match[0]) : null;
@@ -353,6 +451,7 @@ serve(async (req: Request) => {
             text_stage_1: parsed?.variant_biased || raw,
             text_stage_2: raw,
             text_stage_3: parsed?.variant_hyper || raw,
+            ...(body.persist ? { persisted: { ok: false, reason: "juxtaposition mode is not persistable" } } : {}),
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -367,8 +466,18 @@ serve(async (req: Request) => {
 
     // Single stage response
     const responseKey = state.cont_stage === "hypercompletion" ? "text_stage_3" : "text_stage_1";
+
+    // R6-2: 익명 클라이언트는 scenes 를 못 쓴다(RLS 0행). 요청이 있으면 서버가 대신 쓴다.
+    let persisted: { ok: boolean; reason?: string; key?: string } | undefined;
+    if (body.persist && typeof body.persist === "object") {
+      persisted = await persistStageText(body.persist, responseKey, raw);
+      if (!persisted.ok) {
+        console.warn("[contaminate-text] persist skipped:", persisted.reason);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ [responseKey]: raw }),
+      JSON.stringify({ [responseKey]: raw, ...(persisted ? { persisted } : {}) }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

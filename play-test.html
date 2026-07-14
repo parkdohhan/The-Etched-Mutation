@@ -5068,6 +5068,113 @@
     };
   }
 
+  // ── R6-2: 오염 텍스트 자동 생성 (다음 관객이 읽을 붕괴 판본) ──────────────
+  //
+  // 원본: js/app/archive.js 의 _generateStageTextsInBackground. R5-5 로 호출부(씬 플레이 구역)가
+  // 사라져 고아가 됐지만, 이것이 text_stage_1/2/3 을 만드는 **유일한 구현**이라 R5 가 지우지 않고
+  // 남겨뒀다. 그 코드가 죽은 구역에 있었다는 사실이 곧 "5개 기억의 오염 텍스트가 전부 비어 있다"
+  // (L3-11)의 원인이다 — 생성기가 실행될 일이 아예 없었다.
+  //
+  // 이식하며 **딱 한 자리**를 바꿨다: 트리거 게이트.
+  //
+  //   원본:  if (pres.stage === 'stable' || pres.intensity < 0.01) return;
+  //
+  // 원본은 index 셸의 독자(contaminationPresenter.applyContaminationToText)가 stage+band 로
+  // 판본을 고르는 세계에서 옳았다. 그러나 play-test 의 독자(applyStageText, 위 2324줄)는
+  // **depth** 로 고른다 — depth≥1 오염 시작, ≥5 문장 파편화, ≥15 키워드 붕괴. 그 자리 주석이
+  // 이유를 이미 적어뒀다: EMA 축은 0.48 근처에 평평해져 band 가 'strong' 에 끝내 닿지 않는다.
+  //
+  // 실측(2026-07-14): 발자국은 관객 판 8건이라 depth 8 인데 cont_stage 는 여전히 'stable' 이다.
+  // 원본 게이트를 그대로 두면 **한 글자도 생성되지 않는다.** 그래서 게이트를 독자가 실제로 쓰는
+  // 조건(depth ≥ 1)에 맞춘다. 나머지 — 프롬프트 인자, 이미 있는 판본 덮어쓰기 금지, 백그라운드
+  // 실행, 씬 순회 — 는 원본 그대로다 (검증된 규칙, 재발명 금지).
+  const STAGE_TEXT_MAX_PER_RUN = 3;   // 회차당 생성 상한 — 크레딧 폭주 방지
+
+  async function _generateStageTextsInBackground(memoryId, contState) {
+    try {
+      const depth = (contState && contState.cont_depth) || 0;
+      // depth 0 이면 applyStageText 가 원문을 그대로 돌려준다(최초 목격자). 만들 이유가 없다.
+      if (depth < 1) { LOG('[StageText] depth 0 — 생성 안 함 (최초 목격자)'); return; }
+
+      const pres = getPresentationState(contState);
+      // contaminate-text 가 어떤 키를 돌려줄지는 cont_stage 가 정한다 (함수 계약):
+      //   hypercompletion → text_stage_3, 그 외 → text_stage_1.
+      // pres.stage 는 이미 정본화된 값이라 레거시 'inclination' 표기도 안전하게 접힌다.
+      const expectedKey = (pres.stage === 'hypercompletion') ? 'text_stage_3' : 'text_stage_1';
+
+      const { data: scenes, error: sceneErr } = await sb
+        .from('scenes')
+        .select('id, scene_order, text, text_stage_1, text_stage_2, text_stage_3')
+        .eq('memory_id', memoryId)
+        .order('scene_order');
+
+      if (sceneErr) { console.error('[StageText] 씬 조회 실패 —', sceneErr.message); return; }
+      if (!scenes || !scenes.length) return;
+
+      // 이미 그 판본이 있는 씬은 건너뛴다 — 작가가 집필한 판본을 AI 생성물로 덮지 않는다.
+      // (서버도 같은 규칙으로 한 번 더 막는다. 클라이언트만 믿지 않는다.)
+      const targets = scenes
+        .filter(s => s.text && !s[expectedKey])
+        .slice(0, STAGE_TEXT_MAX_PER_RUN);
+
+      if (!targets.length) {
+        LOG('[StageText] 채울 씬 없음 — ' + expectedKey + ' 가 이미 다 있다');
+        return;
+      }
+
+      LOG('[StageText] 생성 시작 — ' + targets.length + '씬 × ' + expectedKey
+        + ' (depth=' + depth + ', stage=' + pres.stage + '/' + pres.band + ')');
+
+      for (const scene of targets) {
+        try {
+          const res = await fetch(SUPABASE_URL + '/functions/v1/contaminate-text', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+              text: scene.text,
+              // 프롬프트 인자 — archive.js 원본과 동일한 자리, 동일한 값.
+              contamination: {
+                cont_stage: contState.cont_stage,
+                cont_drift: contState.cont_drift,
+                cont_fixation: contState.cont_fixation,
+                drift_dir_v: contState.drift_dir_v,
+                drift_dir_a: contState.drift_dir_a,
+                drift_dir_d: contState.drift_dir_d,
+                band: pres.band,
+              },
+              // 익명 관객은 scenes 를 못 쓴다 — 실측: PATCH 가 HTTP 200 인데 0행이다
+              // (에러조차 안 난다. 조용한 차단). 그래서 서버가 생성 직후 직접 쓴다.
+              persist: { sceneId: scene.id, memoryId: memoryId },
+            }),
+          });
+
+          if (!res.ok) {
+            console.error('[StageText] 생성 실패 — 씬', scene.scene_order, '| HTTP', res.status);
+            continue;
+          }
+
+          const data = await res.json();
+          const p = data.persisted;
+          if (p && p.ok) {
+            LOG('[StageText] 씬 ' + scene.scene_order + ' → ' + p.key + ' 집필됨');
+          } else {
+            console.error('[StageText] 씬 ' + scene.scene_order + ' 저장 안 됨 —',
+              (p && p.reason) || '(서버가 저장 결과를 안 돌려줬다)');
+          }
+        } catch (e) {
+          console.error('[StageText] 씬', scene.scene_order, '생성 예외 —', e && e.message);
+        }
+      }
+      LOG('[StageText] 생성 완료 — memory ' + memoryId);
+    } catch (e) {
+      console.error('[StageText] 생성기 예외 —', e && e.message);
+    }
+  }
+
   document.getElementById('sealBtn').addEventListener('click', async () => {
     if (game.sealed) return;
     if (game.coreVisitCount < 3 && !game._exitDoorUsed) return;
@@ -5089,48 +5196,52 @@
         '| dir:', game.contPresentation.dominant_emotion_label,
         '| vad:', game.contState.drift_dir_v.toFixed(2), game.contState.drift_dir_a.toFixed(2), game.contState.drift_dir_d.toFixed(2));
 
-      // === 오염 상태 영속화 (R2-3b) ===
+      // === 오염 상태 영속화 (R2-3b → R6-1) ===
       // 여태 이 계산 결과는 브라우저 변수에만 있다가 창을 닫으면 사라졌다. 다음 관객은
       // plays 행에서 근사 재계산(replayFromPlays)만 받았고, Welford/EMA 내부 상태는 매번 유실됐다.
       // 명세(contamination_mvp_spec_v3 §14-7)가 미완료로 남겨둔 자리다.
-      // RLS 로 anon 이 남의 기억을 UPDATE 못 할 수 있다 — 그러면 0행이 돌아온다.
-      // 조용히 넘기지 않고 콘솔에 크게 남긴다 (조용한 실패가 이번 점검의 주제였다).
+      //
+      // R2 가 여기서 memories 를 직접 UPDATE 하려다 **401 RLS 차단**을 확인했다 (R2-3b 실측).
+      // memories 는 admin/curator 만 쓸 수 있고 익명 관객은 영원히 못 쓴다 — 정책을 여는 대신
+      // service_role 로 쓰는 창구(record-contamination)를 세우고 그 창구에서 검문한다 (R6-1).
+      //
+      // 상태를 통째로 보낸다. Welford(_cont_align_mean/m2)와 lifetime 누적을 빼고 보내면
+      // 다음 회차가 그 내부 상태를 잃고 근사부터 다시 시작한다 — 저장하는 의미가 없어진다.
       if (game.memoryId) {
         const _cs = game.contState;
-        const _contRow = {
-          cont_depth: _cs.cont_depth,
-          cont_drift: _cs.cont_drift,
-          cont_fixation: _cs.cont_fixation,
-          cont_stage: _cs.cont_stage,
-          cont_divergence: _cs.cont_divergence,
-          cont_convergence: _cs.cont_convergence,
-          cont_heterogeneity: _cs.cont_heterogeneity,
-          cont_stage_1: _cs.cont_stage_1,
-          cont_stage_2: _cs.cont_stage_2,
-          cont_stage_3: _cs.cont_stage_3,
-          _cont_align_mean: _cs._cont_align_mean,
-          _cont_align_m2: _cs._cont_align_m2,
-          cont_last_alignment: _cs.cont_last_alignment,
-          cont_last_pattern: _cs.cont_last_pattern,
-          cont_last_mismatch: _cs.cont_last_mismatch,
-          cont_last_updated: _cs.cont_last_updated,
-        };
-        sb.from('memories').update(_contRow).eq('id', game.memoryId).select('id')
-          .then(function (res) {
-            const n = (res && res.data && res.data.length) || 0;
-            if (res && res.error) {
-              console.error('[contamination] memories UPDATE 실패 —', res.error.message,
-                '| 오염이 저장되지 않았다. RLS 확인 필요 (R3/지휘).');
-            } else if (n === 0) {
-              console.error('[contamination] memories UPDATE 0행 — RLS 차단으로 보인다.',
-                'depth=' + _cs.cont_depth, '| 오염이 저장되지 않았다. R3/지휘 협의 필요.');
-            } else {
-              LOG('contamination persisted: depth=' + _cs.cont_depth,
-                '| stage=' + _cs.cont_stage, '| drift=' + _cs.cont_drift.toFixed(3));
+        sb.functions.invoke('record-contamination', {
+          body: { memoryId: game.memoryId, contState: _cs },
+        }).then(async function (res) {
+          if (res && res.error) {
+            // 조용한 실패 금지 — 사유를 본문에서 뽑아 크게 남긴다.
+            let detail = res.error.message || String(res.error);
+            try {
+              const j = await res.error.context.json();
+              if (j && j.error) detail += ' — ' + j.error;
+            } catch (_) {}
+            console.error('[contamination] 저장 실패 —', detail,
+              '| depth=' + _cs.cont_depth, '| 오염이 저장되지 않았다.');
+            return;
+          }
+          const d = (res && res.data) || {};
+          if (d.ok) {
+            LOG('contamination persisted: depth=' + d.cont_depth,
+              '| 컬럼 ' + d.written + '개',
+              '| stage=' + _cs.cont_stage, '| drift=' + _cs.cont_drift.toFixed(3));
+            if (d.rejected && d.rejected.length) {
+              console.warn('[contamination] 범위 밖이라 버려진 컬럼:', d.rejected);
             }
-          }, function (e) {
-            console.error('[contamination] memories UPDATE 예외 —', e);
-          });
+          } else {
+            console.error('[contamination] 저장 거부 —', d.error || '(사유 없음)',
+              '| 오염이 저장되지 않았다.');
+          }
+        }, function (e) {
+          console.error('[contamination] 저장 예외 —', e);
+        });
+
+        // R6-2: 다음 관객이 읽을 붕괴 판본을 배후에서 집필한다.
+        // 이번 회차 화면에는 안 쓰인다 — 다음 사람용 연료다 (원본 설계와 동일).
+        _generateStageTextsInBackground(game.memoryId, _cs);
       }
     }
 
