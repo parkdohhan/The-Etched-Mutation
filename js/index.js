@@ -68,11 +68,8 @@ import {
     startArchiveWaveAnimation, stopArchiveWaveAnimation,
     renderArchiveWaveData, renderDefaultGrayLine,
     saveArchiveEmotionToPlays,
-    selectMemory, backToList, initProgressDots, goToScene,
-    renderScene, renderEchoLayer, renderChoices, renderArchiveFreeInput,
-    makeChoice, proceedToNextScene,
-    collectEmotionInput, runEngineStep, applyEngineResult,
-    updateUIAfterSubmit, persistAfterSubmit, proceedToNextSceneOrEnd,
+    selectMemory, backToList,
+    // (scene-play imports removed with the archive.js scene-play region — R5-5)
 } from './app/archive.js';
 
 // ─── Live mode: lazy loading ─────────────────────────────────────
