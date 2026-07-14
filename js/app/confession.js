@@ -16,7 +16,14 @@ import { getCurrentLanguage, t } from '../lib/i18n.js';
 import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from '../safety.js';
 import { emotionVectorToWaveStyle } from '../shared/math.js';
 import { visualizer } from '../ui/Visualizer.js';
-import { resetLiveState, switchGeneratedTab, startVoiceWaveLiveAnimation } from './live.js';
+
+// live.js (3,080 LOC) is only reachable from the Ritual flow. A static import pulled it
+// into the first-load chain for every visitor; load it on demand instead.
+let _liveModule = null;
+async function _loadLive() {
+    if (!_liveModule) _liveModule = await import('./live.js');
+    return _liveModule;
+}
 
 let supabaseClient = null;
 
@@ -1686,6 +1693,8 @@ async function startRitualFlow() {
  // 모든 screen hide
     hideAllScreens();
 
+    const live = await _loadLive();
+
  // Live narrator screen display (소켓 없 )
     try {
         // storyData now accessed via window.currentStoryData
@@ -1697,7 +1706,7 @@ async function startRitualFlow() {
             currentAlignment: 0,
             pendingSceneText: ''
         });
-        resetLiveState();
+        live.resetLiveState();
 
  // UI initialization
         const sceneContent = document.querySelector('#generatedSceneContent .generated-text');
@@ -1732,7 +1741,7 @@ async function startRitualFlow() {
         const sceneTextEl = document.querySelector('#generatedSceneContent .generated-text');
         if (sceneTextEl) sceneTextEl.style.display = 'block';
 
-        switchGeneratedTab('scene');
+        live.switchGeneratedTab('scene');
 
  // Live Container display
         const liveContainerEl = document.getElementById('liveContainer');
@@ -1784,7 +1793,7 @@ async function startRitualFlow() {
             }
         });
         setTimeout(() => {
-            startVoiceWaveLiveAnimation();
+            live.startVoiceWaveLiveAnimation();
         }, 300);
 
         const footer = document.querySelector('.footer');
@@ -1812,7 +1821,8 @@ async function saveRitualScene(sceneData) {
     }
 
  // next scene 위 initialization
-    resetLiveState();
+    const live = await _loadLive();
+    live.resetLiveState();
     appStore.setState({ pendingSceneText: '' });
 
     const sceneContent = document.querySelector('#generatedSceneContent .generated-text');
