@@ -13,7 +13,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="css/index.css">
-    <link rel="stylesheet" href="css/expInterview.css?v=3">
     <!-- confessionV3.css removed — styles now in css/index.css -->
     <link rel="stylesheet" href="css/main-menu.css">
 </head>
@@ -711,7 +710,9 @@
     <script src="js/ui/floatingAnchor.js"></script>
     <script src="js/audio/SoundscapeBeta.js"></script>
     <script src="js/contamination.js"></script>
-    <script src="js/expInterview.js"></script>
+    <!-- expInterview.js removed (R5-2, 2026-07-14) — the scene-play DOM it mounted into
+         (#sceneViewer / .scene-main / .scene-content) no longer exists in this shell.
+         Scene play lives in play-test.html. -->
     <!-- confessionV3.js removed — replaced by js/app/recordChat.js (ES module, loaded from index.js) -->
     <script type="module" src="js/index.js"></script>
 </body>

@@ -1606,19 +1606,9 @@ function makeChoice(choiceIndex) {
             showNotification(t('notify.scene.data.error')); 
             return; 
         } 
-        const scene = currentData.scenes[updatedState.currentScene]; 
-        const sceneType = scene.sceneType || scene.scene_type || 'normal'; 
-        
- // expInterview.js load됐으면 모든 scene 서 칩 인터view 
-        console.log('[makeChoice] startExpInterview check:', typeof startExpInterview);
-        if (typeof startExpInterview === 'function') {
-            console.log('[makeChoice] startExpInterview called');
-            startExpInterview(scene);
-        } else {
- // expInterview 없으면 바 next scene으 
-            proceedToNextScene();
-        }
-    } catch (e) { 
+        // expInterview retired (R5-2) — its mount points left this shell long ago.
+        proceedToNextScene();
+    } catch (e) {
         console.error('makeChoice error:', e); 
         showNotification(t('notify.error')); 
     } 
