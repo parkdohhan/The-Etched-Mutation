@@ -12,7 +12,7 @@
 //
 // 별이엔진 V4는 변경하지 않는다. 이 모듈은 V4 출력의 소비자이다.
 
-import { projectEmotionToVAD } from '../shared/math.js';
+import { projectEmotionToVAD, calculateFixationLevel } from '../shared/math.js';
 import { EMOTION_KEYS } from './SeekerFingerprint.js';
 
 // V2.1 12축 라벨 — SeekerFingerprint 의 EMOTION_KEYS 를 그대로 재사용 (단일 진실 자리).
@@ -43,6 +43,9 @@ export const CONTAMINATION = {
     attribution_mismatch: 0.7,
     target_displacement: 0.6,
     void_mismatch: 0.8,
+    // 'vague' — 대화 경로(V2.1 phase1)의 흐릿한 응답. 어긋남이 확정되진 않았으나 공명도 아니다.
+    // dissonance/resonance 는 기존 키로 접히지만 vague 는 대응 키가 없어 신설한다.
+    vague: 0.5,
     none: 0.0,
   },
 
@@ -86,6 +89,32 @@ function clamp01(v) {
 function normalizeAlignmentBonus(alignment) {
   if (alignment <= 0.55) return 0;
   return Math.min((alignment - 0.55) / 0.45, 1);
+}
+
+/**
+ * Canonicalize a mismatch label.
+ *
+ * 2026-07-14: two vocabularies write to the same field. The engine path stores
+ * `emotion_mismatch` and friends; the V2.1 dialogue path stores its own words —
+ * `resonance` / `vague` / `dissonance` (play-test.html, onSceneEnd → insertPlay).
+ * MISMATCH_BONUS only knew the engine words, so every dialogue-driven play scored
+ * a bonus of 0 and drift never accumulated from the path players actually walk.
+ * Folding both vocabularies here — the single gate updateContamination passes
+ * through — repairs the chain without touching either writer.
+ *
+ * Follows the normalizeStage precedent (f2bce54).
+ *
+ * @param {string} mismatch - raw mismatch label from either vocabulary
+ * @returns {string} canonical key present in CONTAMINATION.MISMATCH_BONUS
+ */
+export function normalizeMismatch(mismatch) {
+  if (mismatch === 'dissonance') return 'emotion_mismatch';
+  if (mismatch === 'resonance') return 'none';
+  if (mismatch === 'vague') return 'vague';
+  if (mismatch && Object.prototype.hasOwnProperty.call(CONTAMINATION.MISMATCH_BONUS, mismatch)) {
+    return mismatch;
+  }
+  return 'none';
 }
 
 // ─── Empty state factory ────────────────────────────────────────
@@ -173,8 +202,10 @@ export function updateContamination(state, engineOutput) {
   next.cont_depth += 1;
 
   // 2. Compute signals (MVP v3 spec §6)
+  // Both writer vocabularies (engine / V2.1 dialogue) fold to canon here — see normalizeMismatch.
+  const mismatchCanon = normalizeMismatch(mismatch_type);
   const effectiveShape = shape_active ? shape : 1.0;
-  const mismatchBonus = CONTAMINATION.MISMATCH_BONUS[mismatch_type] ?? 0;
+  const mismatchBonus = CONTAMINATION.MISMATCH_BONUS[mismatchCanon] ?? 0;
   const patternBonus = CONTAMINATION.PATTERN_BONUS[transition_pattern] ?? 0;
 
   const driftSignal =
@@ -276,7 +307,7 @@ export function updateContamination(state, engineOutput) {
   next.cont_last_level = level;
   next.cont_last_shape = effectiveShape;
   next.cont_last_pattern = transition_pattern;
-  next.cont_last_mismatch = mismatch_type;
+  next.cont_last_mismatch = mismatchCanon;
   next.cont_last_updated = new Date().toISOString();
 
   return next;
@@ -342,13 +373,20 @@ export function computeDriftVector(current, baseline) {
  *   level ≈ sqrt(alignment)
  *   shape ≈ sqrt(alignment)
  *   shape_active = true after 2+ plays
- *   fixation_level = 0 (not available in play records)
+ *
+ * fixation_level is NOT approximated — it is measured. Play rows carry `user_emotion`,
+ * and fixation is by definition "the same emotion, again" (V4 §5: recent vectors' pairwise
+ * cosine ≥ 0.85). Hardcoding it to 0 (as this function did until 2026-07-14) capped
+ * fixSignal at 0.45 — below the 0.65 hypercompletion threshold — which made Stage 3
+ * arithmetically unreachable on the only path real plays take. See L5-05.
  *
  * @param {Array} plays - array of { alignment, mismatch_type, transition_pattern?, user_emotion? }
  * @returns {Object} final contamination state
  */
 export function replayFromPlays(plays) {
   let state = createEmptyState();
+  // Running window of emotion vectors — calculateFixationLevel reads the last 3.
+  const emotionHistory = [];
 
   for (let i = 0; i < plays.length; i++) {
     const p = plays[i];
@@ -362,6 +400,7 @@ export function replayFromPlays(plays) {
       uV = vad.v || 0;
       uA = vad.a || 0;
       uD = vad.d || 0;
+      emotionHistory.push(p.user_emotion);
     }
 
     state = updateContamination(state, {
@@ -371,7 +410,7 @@ export function replayFromPlays(plays) {
       shape_active: i >= 2,
       transition_pattern: p.transition_pattern || 'bridge',
       mismatch_type: p.mismatch_type || 'none',
-      fixation_level: 0,
+      fixation_level: calculateFixationLevel(emotionHistory),
       user_valence: uV,
       user_arousal: uA,
       user_dominance: uD,
@@ -477,12 +516,15 @@ export function getDominantMismatch(plays) {
     attribution_mismatch: 0,
     target_displacement: 0,
     void_mismatch: 0,
+    vague: 0,
   };
 
   for (const p of plays) {
-    if (p.mismatch_type && counts[p.mismatch_type] !== undefined) {
-      counts[p.mismatch_type]++;
-    }
+    // Dialogue rows carry resonance/vague/dissonance. Fold first — otherwise every
+    // dialogue-driven play falls through the lookup and the answer is always 'none'.
+    // ('resonance' folds to 'none', which is correctly absent from counts = not a mismatch.)
+    const key = normalizeMismatch(p.mismatch_type);
+    if (counts[key] !== undefined) counts[key]++;
   }
 
   const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);

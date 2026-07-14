@@ -11,6 +11,7 @@ import {
   getDominantMismatch,
   updateCumulativeEmotionVec,
   computeDriftVector,
+  normalizeMismatch,
   EMOTION_AXES_12,
   CONTAMINATION,
 } from '../../js/core/ContaminationTracker.js';
@@ -579,5 +580,126 @@ describe('computeDriftVector', () => {
     expect(Object.keys(drift)).toHaveLength(12);
     expect(drift.sadness).toBeCloseTo(0.5, 3);
     expect(drift.fear).toBe(0);
+  });
+});
+
+// ─── R2-2: 대화 어휘 ↔ 엔진 어휘 접기 ──────────────────────────
+// 대화 경로(V2.1 phase1)는 mismatch 자리에 resonance/vague/dissonance 를 쓴다.
+// MISMATCH_BONUS 는 엔진 어휘만 알아서, 대화로 쌓인 판은 전부 보너스 0 이었다.
+
+describe('normalizeMismatch — 두 어휘 접기 (R2-2)', () => {
+  it('dissonance → emotion_mismatch', () => {
+    expect(normalizeMismatch('dissonance')).toBe('emotion_mismatch');
+  });
+
+  it('resonance → none (어긋남 아님)', () => {
+    expect(normalizeMismatch('resonance')).toBe('none');
+  });
+
+  it('vague → vague (신설 키)', () => {
+    expect(normalizeMismatch('vague')).toBe('vague');
+  });
+
+  it('엔진 어휘는 그대로 통과', () => {
+    expect(normalizeMismatch('emotion_mismatch')).toBe('emotion_mismatch');
+    expect(normalizeMismatch('void_mismatch')).toBe('void_mismatch');
+  });
+
+  it('모르는 값 · 빈 값 → none', () => {
+    expect(normalizeMismatch('made_up')).toBe('none');
+    expect(normalizeMismatch(undefined)).toBe('none');
+    expect(normalizeMismatch(null)).toBe('none');
+  });
+
+  it('vague 는 mismatchBonus > 0 — drift 를 실제로 민다', () => {
+    const base = { alignment: 0.5, level: 0.5, shape: 1, shape_active: false };
+    const withVague = updateContamination(createEmptyState(), { ...base, mismatch_type: 'vague' });
+    const withNone = updateContamination(createEmptyState(), { ...base, mismatch_type: 'none' });
+
+    expect(CONTAMINATION.MISMATCH_BONUS.vague).toBeGreaterThan(0);
+    expect(withVague.cont_drift).toBeGreaterThan(withNone.cont_drift);
+  });
+
+  it('dissonance 는 emotion_mismatch 와 같은 drift 를 낸다', () => {
+    const base = { alignment: 0.3, level: 0.3, shape: 1, shape_active: false };
+    const viaDialog = updateContamination(createEmptyState(), { ...base, mismatch_type: 'dissonance' });
+    const viaEngine = updateContamination(createEmptyState(), { ...base, mismatch_type: 'emotion_mismatch' });
+
+    expect(viaDialog.cont_drift).toBeCloseTo(viaEngine.cont_drift, 10);
+    expect(viaDialog.cont_last_mismatch).toBe('emotion_mismatch');  // 정본으로 저장
+  });
+
+  it('getDominantMismatch 가 대화 어휘를 센다', () => {
+    const plays = [
+      { mismatch_type: 'dissonance' },
+      { mismatch_type: 'dissonance' },
+      { mismatch_type: 'resonance' },
+    ];
+    expect(getDominantMismatch(plays)).toBe('emotion_mismatch');
+  });
+});
+
+// ─── R2-4: replayFromPlays 가 fixation 을 실측한다 ──────────────
+// fixation_level=0 하드코딩 탓에 fixSignal 상한이 0.45 였고,
+// hypercompletion 문턱(0.65)에 산술적으로 닿을 수 없었다 (L5-05).
+
+describe('replayFromPlays — fixation 실측 (R2-4)', () => {
+  const sameEmotion = { sadness: 0.8, guilt: 0.3 };
+
+  it('같은 감정이 반복되면 fixation 이 쌓인다', () => {
+    const plays = Array.from({ length: 10 }, () => ({
+      alignment: 0.9,
+      mismatch_type: 'none',
+      transition_pattern: 'fixation',
+      user_emotion: { ...sameEmotion },
+    }));
+
+    const state = replayFromPlays(plays);
+    expect(state.cont_fixation).toBeGreaterThan(0);
+  });
+
+  it('같은 감정 반복이면 hypercompletion 문턱(0.65)을 넘을 수 있다', () => {
+    // 옛 동작(fixation_level=0 고정)에서는 상한이 0.45 라 이 단언이 절대 통과할 수 없었다.
+    const plays = Array.from({ length: 60 }, () => ({
+      alignment: 0.95,
+      mismatch_type: 'none',
+      transition_pattern: 'fixation',
+      user_emotion: { ...sameEmotion },
+    }));
+
+    const state = replayFromPlays(plays);
+    const threshold = CONTAMINATION.STAGE_THRESHOLDS.HYPERCOMPLETION_FIXATION;
+
+    expect(state.cont_fixation).toBeGreaterThan(threshold);
+    expect(state.cont_stage).toBe('hypercompletion');
+  });
+
+  it('감정이 매번 달라지면 fixation 이 낮게 남는다', () => {
+    const varied = [
+      { sadness: 0.9 }, { anger: 0.9 }, { joy: 0.9 },
+      { fear: 0.9 }, { peace: 0.9 }, { guilt: 0.9 },
+    ];
+    const plays = varied.map(e => ({
+      alignment: 0.5,
+      mismatch_type: 'none',
+      user_emotion: e,
+    }));
+
+    const state = replayFromPlays(plays);
+    const same = replayFromPlays(
+      Array.from({ length: 6 }, () => ({ alignment: 0.5, mismatch_type: 'none', user_emotion: { ...sameEmotion } }))
+    );
+
+    expect(state.cont_fixation).toBeLessThan(same.cont_fixation);
+  });
+
+  it('user_emotion 없는 판이 섞여도 터지지 않는다', () => {
+    const plays = [
+      { alignment: 0.5, mismatch_type: 'none' },
+      { alignment: 0.6, mismatch_type: 'none', user_emotion: { ...sameEmotion } },
+      { alignment: 0.7, mismatch_type: 'none' },
+    ];
+    expect(() => replayFromPlays(plays)).not.toThrow();
+    expect(replayFromPlays(plays).cont_depth).toBe(3);
   });
 });

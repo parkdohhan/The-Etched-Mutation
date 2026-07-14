@@ -103,8 +103,26 @@
     dimTimer: null,
   };
 
+  // 대화창이 떠 있으면 옅게 — 자막을 가리지 않도록. (커플링 없이 DOM 존재만 본다)
+  // 대화창 열림/닫힘은 자주 안 바뀌므로 400ms 폴링으로 충분 (rAF 낭비 회피).
+  //
+  // 레이어 생성에서 떼어냈다 (R2-7). 옛 구조는 타이머를 레이어 만들 때만 켰으므로,
+  // clear() 에서 끄면 _ensureLayer 가 조기 반환(레이어 생존)해 다시는 안 켜졌다.
+  function _ensureDimTimer() {
+    if (_state.dimTimer) return;
+    _state.dimTimer = setInterval(function () {
+      if (!_state.layer || !_state.layer.parentNode) return;
+      var dlgUp = !!document.getElementById('lumenDialogPhase1');
+      var want = dlgUp ? DEFAULTS.dialogDimOpacity : DEFAULTS.exploreOpacity;
+      if (_state.layer._lraOpacity !== want) {
+        _state.layer._lraOpacity = want;
+        _state.layer.style.opacity = String(want);
+      }
+    }, 400);
+  }
+
   function _ensureLayer() {
-    if (_state.layer && _state.layer.parentNode) return _state.layer;
+    if (_state.layer && _state.layer.parentNode) { _ensureDimTimer(); return _state.layer; }
     if (typeof document === 'undefined') return null;
 
     // 스타일 — css/index.css 없는 페이지에서도 자립. .lra-layer 스코프.
@@ -138,19 +156,7 @@
     document.body.appendChild(layer);
     _state.layer = layer;
 
-    // 대화창이 떠 있으면 옅게 — 자막을 가리지 않도록. (커플링 없이 DOM 존재만 본다)
-    // 대화창 열림/닫힘은 자주 안 바뀌므로 400ms 폴링으로 충분 (rAF 낭비 회피).
-    if (!_state.dimTimer) {
-      _state.dimTimer = setInterval(function () {
-        if (!_state.layer || !_state.layer.parentNode) return;
-        var dlgUp = !!document.getElementById('lumenDialogPhase1');
-        var want = dlgUp ? DEFAULTS.dialogDimOpacity : DEFAULTS.exploreOpacity;
-        if (_state.layer._lraOpacity !== want) {
-          _state.layer._lraOpacity = want;
-          _state.layer.style.opacity = String(want);
-        }
-      }, 400);
-    }
+    _ensureDimTimer();
     return layer;
   }
 
@@ -268,6 +274,9 @@
     _state.words = {};
     _state.seq = 0;
     _state.memoryId = null;
+    // 회차/기억 전환 — 띄울 단어가 없으니 감광 폴링도 멈춘다 (R2-7).
+    // 다음 단어가 뜰 때 _ensureLayer → _ensureDimTimer 가 다시 켠다 (레이어가 살아 있어도).
+    if (_state.dimTimer) { clearInterval(_state.dimTimer); _state.dimTimer = null; }
   }
 
   function destroy() {

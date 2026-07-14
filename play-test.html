@@ -47,35 +47,31 @@
   })();
   </script>
   <script src="/data/memories.js"></script>
-  <script src="js/contamination.js"></script>
-  <script src="js/shared/tem_replay_terrain.js?v=0.6"></script>
-  <script src="js/ui/lumen_replay_fog.js?v=0.6"></script>
-  <script src="js/ui/lumen_spatial_fog.js?v=1.0"></script>
-  <script src="js/shared/tem_sky_stains.js?v=0.1"></script>
-  <script src="js/shared/tem_af_strata_terrain.js?v=0.4"></script>
-  <script src="js/ui/lumen_terrain_adapter.js"></script>
-  <script src="js/ui/lumen_walk_effects.js"></script>
-  <script src="js/ui/lumen_visual_effects.js"></script>
-  <script src="js/ui/lumen_audio_space.js"></script>
-  <script src="js/ui/lumen_scene_ghosts.js"></script>
-  <script src="js/ui/lumen_scene_mannequins.js?v=0.2"></script>
-  <script src="js/ui/lumen_scene_objects.js?v=0.1"></script><!-- 260712 사물 조형 1단계 -->
-  <script src="js/ui/lumen_rewind_playback.js"></script>
-  <script src="js/ui/lumen_run_outro.js"></script>
-  <script src="js/ui/lumen_return_mode.js"></script>
-  <script src="js/ui/lumen_return_speech.js"></script>
-  <script src="js/ui/lumen_return_events.js"></script>
-  <script src="js/ui/lumen_footprints.js"></script>
+  <script src="js/contamination.js?v=260714"></script>
+  <script src="js/shared/tem_replay_terrain.js?v=260714"></script>
+  <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
+  <script src="js/ui/lumen_spatial_fog.js?v=260714"></script>
+  <script src="js/shared/tem_sky_stains.js?v=260714"></script>
+  <script src="js/shared/tem_af_strata_terrain.js?v=260714"></script>
+  <script src="js/ui/lumen_terrain_adapter.js?v=260714"></script>
+  <script src="js/ui/lumen_walk_effects.js?v=260714"></script>
+  <script src="js/ui/lumen_visual_effects.js?v=260714"></script>
+  <script src="js/ui/lumen_audio_space.js?v=260714"></script>
+  <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
+  <script src="js/ui/lumen_scene_mannequins.js?v=260714"></script>
+  <script src="js/ui/lumen_scene_objects.js?v=260714"></script><!-- 260712 사물 조형 1단계 -->
+  <script src="js/ui/lumen_run_outro.js?v=260714"></script>
+  <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
   <!-- V2.1.2 safety: ES module 로 safety.js 로드 → window.LumenSafety 노출 (SlotAbsorber 호출 자리) -->
   <script type="module" src="js/safety.js"></script>
-  <script src="js/ui/lumen_ghost_response.js"></script>
-  <script src="js/core/SlotAbsorber.js"></script>
-  <script src="js/ui/lumen_drift_visualizer.js"></script>
-  <script src="js/ui/lumen_dialog_phase1.js"></script>
-  <script src="js/ui/strataSection.js"></script>
-  <script src="js/ui/floatingAnchor.js"></script>
-  <script src="js/ui/lumen_recalled_anchors.js"></script>
+  <script src="js/ui/lumen_ghost_response.js?v=260714"></script>
+  <script src="js/core/SlotAbsorber.js?v=260714"></script>
+  <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
+  <script src="js/ui/lumen_dialog_phase1.js?v=260714"></script>
+  <script src="js/ui/strataSection.js?v=260714"></script>
+  <script src="js/ui/floatingAnchor.js?v=260714"></script>
+  <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
   <style>
     :root {
       --bg-deep: #0a0a0c;
@@ -657,7 +653,11 @@
   import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch, createEmptyState, computeDriftVector } from './js/core/ContaminationTracker.js';
   import { calculateStep as engineCalculateStep } from './js/core/ByeoriEngine.js';
   import { getMonologue } from './js/ui/contaminationMonologue.js';
-  import { emotionVectorToWaveStyle as sharedEmotionVectorToWaveStyle } from './js/shared/math.js';
+  // calculateFixationLevel 은 이 파일이 이미 인라인 사본을 갖고 있다(2202줄) — import 하면
+  // 이름 충돌로 모듈 전체가 SyntaxError 로 죽는다. 사본이 math.js 와 동일하므로 그대로 쓴다.
+  // (사본 갈라짐 위험은 보고서 후속 항목 — 별이엔진_단일화_베이스라인 §후속과 같은 자리)
+  import { emotionVectorToWaveStyle as sharedEmotionVectorToWaveStyle,
+           projectEmotionToVAD } from './js/shared/math.js';
   import { GHOST_PRESETS } from './js/shared/ghost_presets.js';
   // V2-6 drift 픽 — DriftPicker 는 self-attach (window.DriftPicker), 폴백 문구는 여기서 노출 (dialog_phase1.js non-module 이 사용)
   import './js/core/DriftPicker.js';
@@ -2316,7 +2316,13 @@
   const DEPTH_STAGE_2 = 5;   // 5명째부터 문장이 파편화된다
   const DEPTH_STAGE_3 = 15;  // 15명째부터 키워드만 남는다
 
-  function applyStageText(originalText, scene, pres) {
+  // opts.plain — 태그 없는 평문으로 돌려준다.
+  //   기본(고전 씬 UI)은 <span class="cont-word"> 로 감싼 HTML 을 innerHTML 에 꽂는다.
+  //   대화 UI(lumen_dialog_phase1)는 본문을 textContent 로 한 글자씩 타이핑하므로,
+  //   같은 문자열을 넣으면 태그가 날것으로 찍힌다. 침식 문자(·)·글리치·에코는 평문이라
+  //   껍데기만 벗기면 그대로 쓸 수 있다. RNG 호출 순서가 같아 두 모드의 오염 자리는 동일하다.
+  function applyStageText(originalText, scene, pres, opts) {
+    const plain = !!(opts && opts.plain);
     // 붕괴의 '정도'는 depth — 몇 사람의 손을 거쳤는가 — 가 정한다.
     //
     // 왜 오염 축(EMA)이 아니라 depth 인가: cont_drift/cont_fixation 은 지수이동평균이라
@@ -2345,6 +2351,11 @@
     const { stage, intensity } = pres;
     if (stage === 'stable' || intensity < 0.01) return originalText;
 
+    // band 는 getPresentationState 가 내주지만, pres 를 직접 조립해 넘기는 호출자도 있어
+    // 없으면 intensity 에서 도출한다. 선언이 없으면 아래 폴백에서 ReferenceError 로 씬 진입이 죽는다.
+    const band = pres.band
+      || (intensity >= 0.67 ? 'strong' : intensity >= 0.34 ? 'medium' : 'weak');
+
     // Client-side fallback effects (until anchor-based semantic mutation is built)
     // Seeded RNG ensures determinism per QA spec §6
     const rng = _seedFromText(originalText + stage + band);
@@ -2365,29 +2376,32 @@
     for (let i = 0; i < words.length; i++) {
       const w = words[i];
       if (/^\s+$/.test(w)) { out += w; continue; }
-      if (rng() >= prob) { out += _escHtml(w); continue; }
+      if (rng() >= prob) { out += plain ? w : _escHtml(w); continue; }
 
       hasContamination = true;
       if (stage === 'biased_inclination') {
         const fadeStart = isKo
           ? Math.max(1, Math.floor(w.length * 0.5))
           : Math.max(1, Math.floor(w.length * 0.6));
-        let result = _escHtml(w.slice(0, fadeStart));
+        let result = plain ? w.slice(0, fadeStart) : _escHtml(w.slice(0, fadeStart));
         for (let c = fadeStart; c < w.length; c++) {
-          result += rng() < 0.5 ? '·' : _escHtml(w[c]);
+          result += rng() < 0.5 ? '·' : (plain ? w[c] : _escHtml(w[c]));
         }
-        out += '<span class="cont-word cont-erosion" title="' + _escAttr(w) + '">' + result + '</span>';
+        out += plain ? result
+          : '<span class="cont-word cont-erosion" title="' + _escAttr(w) + '">' + result + '</span>';
       } else if (stage === 'hypercompletion') {
         if (rng() < 0.3 && w.length > 1) {
-          out += '<span class="cont-word cont-echo" title="' + _escAttr(w) + '">' + _escHtml(w) + _escHtml(w) + '</span>';
+          out += plain ? (w + w)
+            : '<span class="cont-word cont-echo" title="' + _escAttr(w) + '">' + _escHtml(w) + _escHtml(w) + '</span>';
         } else {
           let result = '';
           for (let c = 0; c < w.length; c++) {
             result += rng() < 0.4
               ? GLITCH_CHARS[Math.floor(rng() * GLITCH_CHARS.length)]
-              : _escHtml(w[c]);
+              : (plain ? w[c] : _escHtml(w[c]));
           }
-          out += '<span class="cont-word cont-glitch" title="' + _escAttr(w) + '">' + result + '</span>';
+          out += plain ? result
+            : '<span class="cont-word cont-glitch" title="' + _escAttr(w) + '">' + result + '</span>';
         }
       }
     }
@@ -3314,6 +3328,14 @@
           var bucketMap = { resonance: 'HIGH', vague: 'MID', dissonance: 'LOW' };
           var bucket = bucketMap[result.resonance] || 'MID';
 
+          // 봉인 때 오염을 갱신할 세션 집계. 이 경로는 엔진을 안 거치므로 game.lastResult 가
+          // 비고, 그 탓에 봉인 블록이 통째로 스킵돼 오염이 한 번도 쌓이지 않았다 (R2-3).
+          var _ds = game.dialogSession
+            || (game.dialogSession = { alignments: [], mismatches: [], emotions: [] });
+          if (typeof result.alignment === 'number') _ds.alignments.push(result.alignment);
+          if (result.resonance) _ds.mismatches.push(result.resonance);
+          _ds.emotions.push(result.lastUserEmotion);
+
           // game.traces — generate-reveal 자리 visits 입력
           if (!game.traces) game.traces = [];
           game.traces.push({
@@ -3376,7 +3398,22 @@
     // LumenDialogPhase1.start 안에서 fallback 자동 박음 (균일 톤 기본값).
     // 핸드아웃: docs/세션핸드아웃_v21_콘텐츠_fallback-260505.md
     if (game.terrain_shape === 'circular' && scene.text && window.LumenDialogPhase1) {
-      return _enterLumenDialogPhase1(pin, scene);
+      // 오염 판본을 여기서 입힌다 (R2-5).
+      //
+      // 여태 이 자리가 비어 있었다. 고전 씬 UI 는 applyStageText 를 거치는데(아래 renderScene),
+      // 상영 경로인 대화 UI 는 scene 을 날것 그대로 넘겼다. 그래서 작가가 집필한
+      // text_stage_1/2/3 이 DB 에 있어도 독자에게 단 한 번도 도달한 적이 없다.
+      //
+      // 대화 UI 의 본문 출처는 sceneData.text 하나뿐이라, 오염된 사본을 넘기는 것으로 충분하다
+      // (lumen_dialog_phase1.js 무수정). textContent 렌더러라 평문으로 받는다.
+      const _pres = game.contPresentation || { stage: 'stable', intensity: 0, band: 'weak' };
+      const _contText = applyStageText(scene.text, scene, _pres, { plain: true });
+      const _sceneForDialog = (_contText === scene.text) ? scene : { ...scene, text: _contText };
+      if (_contText !== scene.text) {
+        LOG('contamination text applied (dialog): depth=' + ((game.contState && game.contState.cont_depth) || 0)
+          + ' | stage=' + _pres.stage + ' | scene=' + String(scene.id).slice(0, 8) + '…');
+      }
+      return _enterLumenDialogPhase1(pin, _sceneForDialog);
     }
 
     clearTimers();
@@ -4824,6 +4861,9 @@
     game.sceneScores = [];
     game.accessiblePinIds = null;
     game.lastUserEmotion = null;
+    // 대화 경로(V2.1 phase1)는 엔진을 안 거쳐 game.lastResult 를 남기지 않는다.
+    // 봉인 때 오염을 갱신하려면 씬별 결과를 여기에 직접 쌓아야 한다 (R2-3).
+    game.dialogSession = { alignments: [], mismatches: [], emotions: [] };
     game.playTestWaveUserIdle = true;
     const pollution = buildTerrainFromData();
     buildPins();
@@ -4967,17 +5007,15 @@
       }, 1250);
     });
   })();
-  document.getElementById('sealBtn').addEventListener('click', async () => {
-    if (game.sealed) return;
-    if (game.coreVisitCount < 3 && !game._exitDoorUsed) return;
-    game.sealed = true;
+  // 봉인 시 오염 갱신에 넣을 V4 형태 출력 한 벌.
+  // 엔진 경로가 결과를 남겼으면 그것을 쓰고, 아니면 대화 경로 집계를 V4 형태로 환산한다.
+  // 둘 다 비면 null — 감정을 한 번도 안 낸 회차이므로 오염도 쌓이지 않는 것이 맞다.
+  function buildSessionEngineOutput() {
+    const _vad = game.emotionCursor || { v: 0, a: 0, d: 0 };
 
-    // === Session-end contamination update (MVP v3) ===
-    // Construct session engine output from last V4 result + traces
-    if (game.lastResult && game.contState) {
+    if (game.lastResult) {
       const dbg = game.lastResult.debug || {};
-      const _vad = game.emotionCursor || { v: 0, a: 0, d: 0 };
-      const sessionEngineOutput = {
+      return {
         alignment: game.lastResult.alignment_score || 0,
         level: dbg.level || 0,
         shape: dbg.shape || 1,
@@ -4989,6 +5027,60 @@
         user_arousal: _vad.a || 0,
         user_dominance: _vad.d || 0,
       };
+    }
+
+    const ds = game.dialogSession;
+    if (!ds || !ds.alignments.length) return null;
+
+    // level = 씬별 정합도의 평균. 정의 그대로다 (V4 §2: level = mean(scene_scores)).
+    const level = ds.alignments.reduce((a, b) => a + b, 0) / ds.alignments.length;
+
+    // shape 는 대화 경로가 궤적 델타를 산출하지 않아 **측정되지 않았다**.
+    // 0 으로 채우면 "궤적이 정반대"라는 거짓말이 되므로, shape_active=false 로 미측정임을
+    // 선언한다 — Tracker 가 effectiveShape=1.0 으로 중립화해 shape 항이 오염을 밀지 않는다.
+    // (대화 경로의 궤적 산출 = transition_pattern 복원은 이번 라운드 범위 밖. 보고서 후속 항목.)
+    const emotions = ds.emotions.filter(Boolean);
+    let fixation = 0;
+    try { fixation = calculateFixationLevel(emotions); } catch (_) {}
+
+    // 세션의 지배적 어긋남. getDominantMismatch 가 대화 어휘를 정본으로 접는다 (R2-2).
+    const mismatch = getDominantMismatch(ds.mismatches.map(m => ({ mismatch_type: m })));
+
+    // 드리프트 방향 — 대화 경로는 emotionCursor 를 안 굴리므로 마지막 감정벡터를 VAD 로 투영한다
+    // (replayFromPlays 가 과거 판에 쓰는 것과 같은 함수 = 같은 좌표계).
+    let dv = _vad;
+    const lastEmo = emotions.length ? emotions[emotions.length - 1] : null;
+    if (!game.emotionCursor && lastEmo) {
+      try { dv = projectEmotionToVAD(lastEmo) || _vad; } catch (_) {}
+    }
+
+    return {
+      alignment: level,          // shape 미측정·void 없음 → alignment = level × 1.0 × 1.0
+      level: level,
+      shape: 1,
+      shape_active: false,
+      transition_pattern: 'bridge',
+      mismatch_type: mismatch,
+      fixation_level: fixation,
+      user_valence: dv.v || 0,
+      user_arousal: dv.a || 0,
+      user_dominance: dv.d || 0,
+    };
+  }
+
+  document.getElementById('sealBtn').addEventListener('click', async () => {
+    if (game.sealed) return;
+    if (game.coreVisitCount < 3 && !game._exitDoorUsed) return;
+    game.sealed = true;
+
+    // === Session-end contamination update (MVP v3) ===
+    // 두 플레이 경로가 서로 다른 자취를 남긴다:
+    //   · 엔진 경로(고전 감정 제출) → game.lastResult 에 V4 출력이 통째로 담긴다
+    //   · 대화 경로(V2.1 phase1)   → 엔진을 안 거친다. game.lastResult 가 끝내 null 이라
+    //                                이 블록이 통째로 스킵됐고, 오염이 한 번도 갱신되지 않았다.
+    // 이제 둘 다 받는다 (R2-3).
+    const sessionEngineOutput = buildSessionEngineOutput();
+    if (sessionEngineOutput && game.contState) {
       game.contState = updateContamination(game.contState, sessionEngineOutput);
       game.contPresentation = getPresentationState(game.contState);
       LOG('seal contamination:', game.contPresentation.stage, '|', game.contPresentation.band,
@@ -4996,6 +5088,50 @@
         '| fix:', game.contState.cont_fixation.toFixed(3),
         '| dir:', game.contPresentation.dominant_emotion_label,
         '| vad:', game.contState.drift_dir_v.toFixed(2), game.contState.drift_dir_a.toFixed(2), game.contState.drift_dir_d.toFixed(2));
+
+      // === 오염 상태 영속화 (R2-3b) ===
+      // 여태 이 계산 결과는 브라우저 변수에만 있다가 창을 닫으면 사라졌다. 다음 관객은
+      // plays 행에서 근사 재계산(replayFromPlays)만 받았고, Welford/EMA 내부 상태는 매번 유실됐다.
+      // 명세(contamination_mvp_spec_v3 §14-7)가 미완료로 남겨둔 자리다.
+      // RLS 로 anon 이 남의 기억을 UPDATE 못 할 수 있다 — 그러면 0행이 돌아온다.
+      // 조용히 넘기지 않고 콘솔에 크게 남긴다 (조용한 실패가 이번 점검의 주제였다).
+      if (game.memoryId) {
+        const _cs = game.contState;
+        const _contRow = {
+          cont_depth: _cs.cont_depth,
+          cont_drift: _cs.cont_drift,
+          cont_fixation: _cs.cont_fixation,
+          cont_stage: _cs.cont_stage,
+          cont_divergence: _cs.cont_divergence,
+          cont_convergence: _cs.cont_convergence,
+          cont_heterogeneity: _cs.cont_heterogeneity,
+          cont_stage_1: _cs.cont_stage_1,
+          cont_stage_2: _cs.cont_stage_2,
+          cont_stage_3: _cs.cont_stage_3,
+          _cont_align_mean: _cs._cont_align_mean,
+          _cont_align_m2: _cs._cont_align_m2,
+          cont_last_alignment: _cs.cont_last_alignment,
+          cont_last_pattern: _cs.cont_last_pattern,
+          cont_last_mismatch: _cs.cont_last_mismatch,
+          cont_last_updated: _cs.cont_last_updated,
+        };
+        sb.from('memories').update(_contRow).eq('id', game.memoryId).select('id')
+          .then(function (res) {
+            const n = (res && res.data && res.data.length) || 0;
+            if (res && res.error) {
+              console.error('[contamination] memories UPDATE 실패 —', res.error.message,
+                '| 오염이 저장되지 않았다. RLS 확인 필요 (R3/지휘).');
+            } else if (n === 0) {
+              console.error('[contamination] memories UPDATE 0행 — RLS 차단으로 보인다.',
+                'depth=' + _cs.cont_depth, '| 오염이 저장되지 않았다. R3/지휘 협의 필요.');
+            } else {
+              LOG('contamination persisted: depth=' + _cs.cont_depth,
+                '| stage=' + _cs.cont_stage, '| drift=' + _cs.cont_drift.toFixed(3));
+            }
+          }, function (e) {
+            console.error('[contamination] memories UPDATE 예외 —', e);
+          });
+      }
     }
 
     // === V2-6: drift 픽 도장 + cumulative EMA 갱신 (회차 끝) ===
@@ -5437,7 +5573,7 @@
   })();
 
   </script>
-  <script src="js/ui/strataView.js"></script>
+  <script src="js/ui/strataView.js?v=260714"></script>
   <script>
   // ─── 1인칭 지형 탐색 어댑터 (등고선 지도 대체) ─────────────
   (function () {
@@ -5845,45 +5981,11 @@
                 getScenePins: function () { return _fpScenePins; }
               });
             }
-            // 작업 2-A 후반: 궤적 rewind 재생 (void 진입 트리거, getTrajectory 활용, WASD/마우스 잠금)
-            // 작업 2-D (exit flow) 완성 전까지 자동 트리거 금지 — void 5.6유닛 안 들어가면 바로 발동해
-            // 입력 잠긴 채로 튕김. 테스트는 rt.__lumenRewind.forceStart() 로 수동 호출.
-            if (window.LumenRewindPlayback && typeof window.LumenRewindPlayback.attach === 'function') {
-              var _rw = window.LumenRewindPlayback.attach(rt, { playbackSpeed: 1.0, triggerEvent: null });
-              if (_rw) {
-                _rw.on('rewindStart', function (p) { console.log('[Lumen] rewind start', p); });
-                _rw.on('rewindEnd', function (p) { console.log('[Lumen] rewind end', p); });
-              }
-            }
-            // 작업 2-B: 귀환 모드 — 색감 shift + 속도 ×1.5 + 유령 자세 변화. rewind 구독형.
-            //   rewind attach 이후에 붙여야 rt.__lumenRewind 감지 가능.
-            if (window.LumenReturnMode && typeof window.LumenReturnMode.attach === 'function') {
-              window.LumenReturnMode.attach(rt, { canvasId: 'strataCanvas' });
-            }
-            // 작업 2-C: 귀환 모드 — 유령 말투 변주 + 오프닝 입력 파편 재셔플 (결정적 seed).
-            if (window.LumenReturnSpeech && typeof window.LumenReturnSpeech.attach === 'function') {
-              window.LumenReturnSpeech.attach(rt, {
-                memoryIdProvider: function () {
-                  try { return (window._temGame && window._temGame.memoryId) || ''; } catch (_) { return ''; }
-                }
-              });
-            }
-            // 작업 2-D: 귀환 전용 사건 3종 (fragment_rain / ghost_flash / echo_burst) + 착지 dim.
-            if (window.LumenReturnEvents && typeof window.LumenReturnEvents.attach === 'function') {
-              window.LumenReturnEvents.attach(rt, {
-                echoWordsProvider: function () {
-                  try {
-                    var scenes = (window._temGame && window._temGame.scenes) || [];
-                    var pool = [];
-                    for (var i = 0; i < scenes.length; i++) {
-                      var ew = scenes[i] && scenes[i].echo_words;
-                      if (Array.isArray(ew)) { for (var j = 0; j < ew.length; j++) pool.push(ew[j]); }
-                    }
-                    return pool;
-                  } catch (_) { return []; }
-                }
-              });
-            }
+            // rewind / return_mode / return_speech / return_events (작업 2-A~2-D) 배선 제거 — R2-8.
+            // 귀환은 "퇴장 사건"이 아니라 접촉+시간으로 굴러가는 과정으로 재정의됐다
+            // (docs/귀환_시스템_정합성_재정의-260613.md). 네 모듈은 옛 사건 모델의 잔존물이라
+            // 로드만 되고 아무것도 트리거하지 않는 죽은 배선이었다.
+            // 파일은 지우지 않는다 (폐기 결정 260613 — git 이력·V3 재배치 자리 보존).
           } catch (e) { console.warn('[Lumen] adapter attach failed', e); }
 
           // Wider FOV for play
@@ -6543,6 +6645,7 @@
               if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
               _destroyAmbientWave();
               if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} } // 260709 되새김 정리 (회차 종료)
+              if (window.LumenSceneObjects) { try { window.LumenSceneObjects.clear(); } catch (_) {} }   // 260714 사물 정리 + 폴링 정지 (R2-7)
               if (window._fpRuntime && window._fpRuntime.__lumenSceneObjects) { try { window._fpRuntime.__lumenSceneObjects.clear(); } catch (_) {} } // 260712 사물 조형 정리
               if (rt2v21) rt2v21.exitFirstPerson();
               var svv21 = document.getElementById('strataView');
@@ -6562,6 +6665,7 @@
             if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
             _destroyAmbientWave();
               if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} } // 260709 되새김 정리 (회차 종료)
+              if (window.LumenSceneObjects) { try { window.LumenSceneObjects.clear(); } catch (_) {} }   // 260714 사물 정리 + 폴링 정지 (R2-7)
               if (window._fpRuntime && window._fpRuntime.__lumenSceneObjects) { try { window._fpRuntime.__lumenSceneObjects.clear(); } catch (_) {} } // 260712 사물 조형 정리
             var rt2 = window.TemAfStrataTerrain._lastRuntime;
             if (rt2) rt2.exitFirstPerson();
@@ -6850,6 +6954,7 @@
                 if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
                 _destroyAmbientWave();
               if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} } // 260709 되새김 정리 (회차 종료)
+              if (window.LumenSceneObjects) { try { window.LumenSceneObjects.clear(); } catch (_) {} }   // 260714 사물 정리 + 폴링 정지 (R2-7)
               if (window._fpRuntime && window._fpRuntime.__lumenSceneObjects) { try { window._fpRuntime.__lumenSceneObjects.clear(); } catch (_) {} } // 260712 사물 조형 정리
                 if (rtv21AV) rtv21AV.exitFirstPerson();
                 var svEndV21 = document.getElementById('strataView');
@@ -6865,6 +6970,7 @@
               if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
               _destroyAmbientWave();
               if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} } // 260709 되새김 정리 (회차 종료)
+              if (window.LumenSceneObjects) { try { window.LumenSceneObjects.clear(); } catch (_) {} }   // 260714 사물 정리 + 폴링 정지 (R2-7)
               if (window._fpRuntime && window._fpRuntime.__lumenSceneObjects) { try { window._fpRuntime.__lumenSceneObjects.clear(); } catch (_) {} } // 260712 사물 조형 정리
               if (rt) rt.exitFirstPerson();
               var svEnd = document.getElementById('strataView');

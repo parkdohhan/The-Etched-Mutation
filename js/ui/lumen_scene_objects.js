@@ -185,6 +185,7 @@
     }
 
     function _clear() {
+      _stopPoll();
       _objects.forEach(function (o) {
         if (o.group && o.group.parent) o.group.parent.remove(o.group);
         o.group.traverse(function (m) {
@@ -200,7 +201,8 @@
 
     // ─── 배치: scene_order 사슬 길목 (§2.5) — 접근성 무관, 결정적 고정 좌표 ───
     function _rebuild() {
-      _clear();
+      _clear();      // 폴링도 함께 멈춘다
+      _startPoll();  // 이 회차분을 다시 켠다 (안 켜면 rebuild 후 되새김 동기가 죽는다)
       if (typeof opts.getScenePins !== 'function') return;
       var pins = (opts.getScenePins() || []).filter(function (p) {
         return p && typeof p.wx === 'number' && typeof p.wz === 'number' && p.scene;
@@ -372,7 +374,16 @@
         }
       }
     }
-    setInterval(_pollRecall, opts.recallPollMs);
+    // 폴링 핸들 보관 (R2-7). 여태 핸들 없이 setInterval 만 걸어서, 회차마다 attach 될 때
+    // 옛 interval 이 살아남아 겹겹이 쌓였고 회차가 끝나도 영영 돌았다.
+    var _pollId = null;
+    function _startPoll() {
+      if (_pollId == null) _pollId = setInterval(_pollRecall, opts.recallPollMs);
+    }
+    function _stopPoll() {
+      if (_pollId != null) { clearInterval(_pollId); _pollId = null; }
+    }
+    _startPoll();
 
     // ─── render wrap: 거리 페이드 + 근접 라벨 + 붕괴 진행 (카메라 안 건드림) ───
     var _origRender = renderer.render.bind(renderer);
@@ -426,8 +437,19 @@
       },
     };
     runtime.__lumenSceneObjects = api;
+    _active = api;
     return api;
   }
 
-  global.LumenSceneObjects = { attach: attach };
+  // 마지막으로 attach 된 인스턴스 (회차당 하나).
+  var _active = null;
+
+  global.LumenSceneObjects = {
+    attach: attach,
+    // 회차 종료 정리 지점이 부르는 자리. 여태 전역에 clear 가 없어서
+    // window.LumenSceneObjects.clear() 는 TypeError 였고 try/catch 에 조용히 삼켜졌다 (R2-7).
+    clear: function () {
+      if (_active && typeof _active.clear === 'function') _active.clear();
+    },
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
