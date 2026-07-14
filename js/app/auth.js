@@ -76,7 +76,10 @@ function updateUserStats(type, value = 1) { const state = appStore.getState(); i
 // === Mypage Data Loading / Rendering ===
 // ─────────────────────────────────────
 
-async function loadMypageDataFromDB() { const state = appStore.getState(); if (!state.currentUser?.id) { renderSessionHistoryEmpty(); renderMyMemoriesEmpty(); return } try { const [sessionsResult, memoriesResult, statsResult] = await Promise.all([loadSessionHistoryFromDB(), loadMyMemoriesFromDB(), loadUserStatsFromDB()]); renderSessionHistoryList(sessionsResult); renderMyMemoriesList(memoriesResult); updateMypageStats(statsResult); await renderReceivedNotes() } catch (e) { console.error('loadMypageDataFromDB error:', e); renderSessionHistoryEmpty(); renderMyMemoriesEmpty() } }
+// R5-7: the session-history query was dropped from this fan-out. #sessionHistoryList does not
+// exist in the shell, so its result was fetched over the network and then thrown away.
+// loadSessionHistoryFromDB / renderSessionHistoryList are kept for whenever the DOM returns.
+async function loadMypageDataFromDB() { const state = appStore.getState(); if (!state.currentUser?.id) { renderMyMemoriesEmpty(); return } try { const [memoriesResult, statsResult] = await Promise.all([loadMyMemoriesFromDB(), loadUserStatsFromDB()]); renderMyMemoriesList(memoriesResult); updateMypageStats(statsResult); await renderReceivedNotes() } catch (e) { console.error('loadMypageDataFromDB error:', e); renderMyMemoriesEmpty() } }
 async function loadSessionHistoryFromDB() { const state = appStore.getState(); if (!state.currentUser?.id) return []; try { const result = await networkService.getUserSessionHistory(state.currentUser.id, 50); if (!result.ok) return []; return result.data || [] } catch (e) { console.error('loadSessionHistoryFromDB error:', e); return [] } }
 async function loadMyMemoriesFromDB() {
     const state = appStore.getState();
