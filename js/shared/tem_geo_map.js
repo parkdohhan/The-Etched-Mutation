@@ -35,9 +35,3 @@ export const TEM_ANCHOR_VAD_EXTENDED = {
 // 안전장치: VAD 시각화 only
 export const TEM_VAD_IS_VISUAL_ONLY = true;
 
-// 콘솔 그
-console.log('=== TEM Geo Map Loaded ===');
-console.log('Anchors:', Object.keys(TEM_ANCHOR_VAD).length);
-console.log('Extended Anchors:', Object.keys(TEM_ANCHOR_VAD_EXTENDED).length);
-console.log('VAD is visual only:', TEM_VAD_IS_VISUAL_ONLY);
-

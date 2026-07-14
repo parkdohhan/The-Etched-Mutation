@@ -28,8 +28,9 @@ export default defineConfig({
   },
 
   test: {
+    // 2026-07-14 R4-3: 폐기된 V2/V3 스코어링 화석 삭제 → exclude 불필요.
+    // 현행 V4 스코어링 테스트는 test/unit/byeori_v4_scoring.test.js 로 편입됨.
     include: ['test/unit/**/*.test.js', 'test/smoke_*.test.js'],
-    exclude: ['test/unit/byeori_v2_scoring.test.js', 'test/unit/byeori_v3_scoring.test.js'],
     environment: 'node',
   },
 });

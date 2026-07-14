@@ -209,6 +209,20 @@ describe('flattenDeltas', () => {
     const keys = ['fear', 'sadness'];
     expect(flattenDeltas(deltas, keys)).toEqual([0.5, 0]);
   });
+
+  // R4-1: 기본 키셋은 판단 정본 17축(DEFAULT_EMOTION_ANCHORS)이어야 한다.
+  // level(17축)과 shape(flattenDeltas)가 같은 좌표계에서 곱해지도록 —
+  // 이전의 22축 하드코딩(grief/tenderness 유령 키 포함)으로 회귀하지 않게 고정.
+  it('defaults to the 17-axis DEFAULT_EMOTION_ANCHORS keyset', () => {
+    const flat = flattenDeltas([{}]);
+    expect(flat.length).toBe(DEFAULT_EMOTION_ANCHORS.length);
+    expect(DEFAULT_EMOTION_ANCHORS.length).toBe(17);
+  });
+
+  it('does not include phantom keys grief/tenderness in the default keyset', () => {
+    expect(DEFAULT_EMOTION_ANCHORS).not.toContain('grief');
+    expect(DEFAULT_EMOTION_ANCHORS).not.toContain('tenderness');
+  });
 });
 
 // ─── calculateShapeSimilarity ──────────────────────────────────

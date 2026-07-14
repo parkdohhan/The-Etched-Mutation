@@ -1,7 +1,10 @@
-import { test } from 'node:test';
-import assert from 'node:assert';
-import { ByeoriEngine } from '../js/core/ByeoriEngine.js';
-import { getBucket } from '../js/shared/math.js';
+// test/unit/byeori_v4_scoring.test.js
+// 별이엔진 V4(궤적 기반 정렬도) 현행 스코어링 회귀 테스트.
+// 2026-07-14 R4-3: 루트 tests/byeori_v4_scoring.test.js 에서 이동.
+// node:test → vitest 로 전환(vite.config include 패턴에 잡히도록).
+import { test, assert } from 'vitest';
+import { ByeoriEngine } from '../../js/core/ByeoriEngine.js';
+import { getBucket } from '../../js/shared/math.js';
 
 const engine = new ByeoriEngine();
 

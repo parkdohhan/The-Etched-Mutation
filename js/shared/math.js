@@ -7,7 +7,6 @@ import { TEM_ANCHOR_VAD, TEM_ANCHOR_VAD_EXTENDED } from './tem_geo_map.js';
 let ALL_ANCHOR_VAD;
 try {
   ALL_ANCHOR_VAD = { ...TEM_ANCHOR_VAD, ...TEM_ANCHOR_VAD_EXTENDED };
-  console.log('[VAD] ALL_ANCHOR_VAD 초기화 완료:', Object.keys(ALL_ANCHOR_VAD).length, '개 앵커');
 } catch (e) {
   console.error('[VAD] ALL_ANCHOR_VAD 초기화 실패:', e);
   console.error('[VAD] TEM_ANCHOR_VAD:', typeof TEM_ANCHOR_VAD);
@@ -23,11 +22,6 @@ export const DEFAULT_EMOTION_ANCHORS = [
   'isolation', 'numbness', 'moral_pain', 'helplessness', 'despair',
  // positive/recovery
   'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort'
-];
-
-// 확장 anchor (복합/중립)
-const EXTENDED_EMOTION_ANCHORS = [
-  'longing', 'nostalgia', 'acceptance', 'confusion'
 ];
 
 // 글-영문 mapping
@@ -250,13 +244,15 @@ export function subtractVectors(vecA, vecB) {
 
 /**
  * delta 궤적 배열을 1D 배열로 펼치기
+ *
+ * 기본 키셋은 판단 정본 17축(DEFAULT_EMOTION_ANCHORS)을 재사용한다.
+ * level(cosineSimilarity)과 shape(flattenDeltas) 가 같은 좌표계에서 곱해지도록 —
+ * 별이엔진 V4 §9.1 "곱셈 결합의 축 간 보상 차단" 전제(두 항이 같은 공간)를 만족시킨다.
+ * (2026-07-14 R4-1: 이전엔 22축 하드코딩이라 grief/tenderness 유령 키가 섞이고
+ *  longing/confusion/emptiness 는 shape 에만 있어 두 항의 좌표계가 어긋나 있었다.)
  */
 export function flattenDeltas(deltas, emotionKeys = null) {
-  const keys = emotionKeys || [
-    'fear','sadness','anger','guilt','shame','longing','numbness','isolation','moral_pain',
-    'joy','hope','relief','gratitude','love','peace','comfort','despair','helplessness',
-    'grief','tenderness','confusion','emptiness'
-  ];
+  const keys = emotionKeys || DEFAULT_EMOTION_ANCHORS;
   const arr = [];
   for (const d of deltas) {
     for (const k of keys) arr.push(d[k] || 0);

@@ -617,12 +617,12 @@ exports[`Pipeline Regression — golden fixtures > bridge: moderate alignment �
   },
   {
     "engine": {
-      "alignment": 0.154188,
+      "alignment": 0.155196,
       "bucket": "MID",
       "level": 0.258735,
       "mismatch": null,
       "pattern": "bridge",
-      "shape": 0.595928,
+      "shape": 0.599824,
       "shape_active": true,
       "void_mod": 1,
     },
@@ -739,12 +739,12 @@ exports[`Pipeline Regression — golden fixtures > displacement: same emotions b
   },
   {
     "engine": {
-      "alignment": 0.330776,
+      "alignment": 0.330811,
       "bucket": "MID",
       "level": 0.331807,
       "mismatch": null,
       "pattern": "bridge",
-      "shape": 0.996893,
+      "shape": 0.996999,
       "shape_active": true,
       "void_mod": 1,
     },
@@ -792,12 +792,12 @@ exports[`Pipeline Regression — golden fixtures > echo_follow: near-identical e
   },
   {
     "engine": {
-      "alignment": 0.331261,
+      "alignment": 0.331545,
       "bucket": "MID",
       "level": 0.332146,
       "mismatch": null,
       "pattern": "bridge",
-      "shape": 0.997334,
+      "shape": 0.99819,
       "shape_active": true,
       "void_mod": 1,
     },
@@ -808,12 +808,12 @@ exports[`Pipeline Regression — golden fixtures > echo_follow: near-identical e
   },
   {
     "engine": {
-      "alignment": 0.24705,
+      "alignment": 0.247198,
       "bucket": "MID",
       "level": 0.248113,
       "mismatch": null,
       "pattern": "bridge",
-      "shape": 0.995714,
+      "shape": 0.99631,
       "shape_active": true,
       "void_mod": 1,
     },
