@@ -1,6 +1,6 @@
 import { appStore } from './appStore.js';
 import { showNotification, showNpcDialogue } from '../ui/notify.js';
-import { showEndScreen } from './endScreen.js';
+// showEndScreen import removed (R5-5) — its callers lived in the scene-play region.
 import { getSoundscape } from '../audio/getSoundscape.js';
 /**
  * Archive Module — memory list, filtering/sorting, scene rendering,
@@ -12,7 +12,7 @@ import { getSoundscape } from '../audio/getSoundscape.js';
 
 import { getSupabaseClient, waitForSupabaseClient, getAccessToken } from '../lib/supabaseClient.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
-import { NPC_DIALOGUES, getRandomDialogue } from '../npc-dialogues.js';
+// npc-dialogues import removed (R5-5) — only the scene-play region used it.
 import { t, getCurrentLanguage } from '../lib/i18n.js';
 import {
     fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus
@@ -23,9 +23,9 @@ import {
     getDominantEmotion, normalizeAnchor, projectEmotionToVAD,
     emotionVectorToWaveStyle
 } from '../shared/math.js';
-import { ByeoriEngine, byeoriEngine } from '../core/ByeoriEngine.js';
-import { sceneNavigator } from '../core/SceneNavigator.js';
-import { updateContamination, createEmptyState, getPresentationState } from '../core/ContaminationTracker.js';
+// ByeoriEngine / SceneNavigator imports removed (R5-5) — the engine step ran in the
+// scene-play region; play-test.html drives the engine now.
+import { updateContamination, getPresentationState } from '../core/ContaminationTracker.js';
 // contaminationPresenter import removed (R5-5) — its only consumer was renderScene(),
 // which lived in the scene-play region deleted below. The module itself is left on disk:
 // contamination is R2's active lane, and this is the shell's reference implementation of
