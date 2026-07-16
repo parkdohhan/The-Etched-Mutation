@@ -1,0 +1,188 @@
+{
+  "meta": {
+    "input": "D:\\The Etched Mutation\\tools\\persona-sim\\data\\MM23L_plays.json",
+    "resamples": 1000,
+    "seed": 12345,
+    "generated": "2026-07-16"
+  },
+  "selfValidation": {
+    "world1": {
+      "rho": 0.000030219780378448104,
+      "edges": 28,
+      "pass": true
+    },
+    "world2": {
+      "rho": 0.9997809376390576,
+      "edges": 14,
+      "cycles": 1,
+      "exhibitHits": 1,
+      "ringFound": true,
+      "pass": true
+    }
+  },
+  "premises": {
+    "rows": 193,
+    "runs": 39,
+    "scenes": 10,
+    "axes": 12,
+    "axisList": [
+      "confusion",
+      "fear",
+      "guilt",
+      "hope",
+      "isolation",
+      "longing",
+      "love",
+      "numbness",
+      "peace",
+      "resignation",
+      "sadness",
+      "shame"
+    ],
+    "minScenes": 4,
+    "maxScenes": 7,
+    "dup": 0,
+    "ok": true
+  },
+  "verdict": "WEAK-GO",
+  "results": {
+    "A17": {
+      "rho": 0.17637317211086456,
+      "tau": 0.16414627622946554,
+      "consistent": 300,
+      "totalEdges": 599,
+      "exhibitA": 0,
+      "null": {
+        "N1": {
+          "p": 1,
+          "nullMean": 0.35069820865574747,
+          "nullMax": 0.38311404490135637,
+          "nullP95": 0.36801985356709555
+        },
+        "N2": {
+          "p": 0,
+          "nullMean": 0.12353088847628463,
+          "nullMax": 0.15563352183179582,
+          "nullP95": 0.13772175212188006
+        }
+      },
+      "verdict": {
+        "v": "WEAK-GO",
+        "cond1": true,
+        "cond2": false
+      }
+    },
+    "A9": {
+      "rho": 0.18703490443681892,
+      "tau": 0.13808210118138653,
+      "consistent": 300,
+      "totalEdges": 599,
+      "exhibitA": 0,
+      "null": {
+        "N1": {
+          "p": 1,
+          "nullMean": 0.3802836728704849,
+          "nullMax": 0.41691546303545723,
+          "nullP95": 0.39939033358298553
+        },
+        "N2": {
+          "p": 0,
+          "nullMean": 0.12982296024734336,
+          "nullMax": 0.16537583512949866,
+          "nullP95": 0.14524675661049627
+        }
+      },
+      "verdict": {
+        "v": "WEAK-GO",
+        "cond1": true,
+        "cond2": false
+      }
+    },
+    "sensitivity": {
+      "A17": {
+        "m2": {
+          "P25": {
+            "rho": 0.1764,
+            "tau": 0.1231,
+            "consistent": 150,
+            "total": 599
+          },
+          "P50": {
+            "rho": 0.1764,
+            "tau": 0.1641,
+            "consistent": 300,
+            "total": 599
+          },
+          "P75": {
+            "rho": 0.1764,
+            "tau": 0.2021,
+            "consistent": 449,
+            "total": 599
+          }
+        },
+        "m3": {
+          "P25": {
+            "rho": 0.1134,
+            "tau": 0.1383,
+            "consistent": 86,
+            "total": 342
+          },
+          "P50": {
+            "rho": 0.1134,
+            "tau": 0.1734,
+            "consistent": 171,
+            "total": 342
+          },
+          "P75": {
+            "rho": 0.1134,
+            "tau": 0.2088,
+            "consistent": 256,
+            "total": 342
+          }
+        }
+      },
+      "A9": {
+        "m2": {
+          "P25": {
+            "rho": 0.187,
+            "tau": 0.1031,
+            "consistent": 150,
+            "total": 599
+          },
+          "P50": {
+            "rho": 0.187,
+            "tau": 0.1381,
+            "consistent": 300,
+            "total": 599
+          },
+          "P75": {
+            "rho": 0.187,
+            "tau": 0.1853,
+            "consistent": 449,
+            "total": 599
+          }
+        },
+        "m3": {
+          "P25": {
+            "rho": 0.1213,
+            "tau": 0.113,
+            "consistent": 86,
+            "total": 342
+          },
+          "P50": {
+            "rho": 0.1213,
+            "tau": 0.1462,
+            "consistent": 171,
+            "total": 342
+          },
+          "P75": {
+            "rho": 0.1213,
+            "tau": 0.1944,
+            "consistent": 256,
+            "total": 342
+          }
+        }
+      }
+    }
+  }
+}
