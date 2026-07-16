@@ -228,7 +228,7 @@ export async function showEndScreen(alignmentResult, forceEndScreen = false) {
         document.getElementById('finalAlignment').textContent = 'Emotional Structure Alignment: ' + finalAlignment.toFixed(2);
 
         if (isTrueEnding) {
-            console.log('[Ending] 트루엔딩 표시');
+            console.log('[Ending] 접촉 엔딩 표시');
             const trueBadge = document.getElementById('trueEndingBadge');
             const normalBadge = document.getElementById('normalEndingBadge');
             const subtitle = document.getElementById('endSubtitle');
@@ -236,7 +236,7 @@ export async function showEndScreen(alignmentResult, forceEndScreen = false) {
             if (normalBadge) normalBadge.classList.remove('active');
             if (subtitle) subtitle.style.display = 'none';
             document.getElementById('endTitle').textContent = 'Touching the Engraving';
-            document.getElementById('finalMessage').innerHTML = '<strong>You reached the true ending.</strong><br><br>Your emotional structure nearly overlapped with theirs.<br>This alignment will be deeply etched into the original strata.';
+            document.getElementById('finalMessage').innerHTML = '<strong>For a moment, your trajectory and theirs overlapped.</strong><br><br>Not a victory — a rare contact.<br>This variant settles as a thin layer in the strata.';
 
             const freshState = appStore.getState();
             const memoryId = currentData?.id || freshState.allMemoriesData?.[freshState.currentMemory]?.id;
@@ -262,7 +262,7 @@ export async function showEndScreen(alignmentResult, forceEndScreen = false) {
                         }
                     }
                 } catch (e) {
-                    console.error('트루엔딩 쪽지 UI 로드 error:', e);
+                    console.error('접촉 엔딩 쪽지 UI 로드 error:', e);
                 }
             }
         } else {
@@ -285,7 +285,7 @@ export async function showEndScreen(alignmentResult, forceEndScreen = false) {
             if (s.currentMode === 'live') {
                 showNpcDialogue(NPC_DIALOGUES.live.memoryTransition, 6000);
             } else {
-                showNpcDialogue(NPC_DIALOGUES.archive.trueEnding, 6000);
+                showNpcDialogue(NPC_DIALOGUES.archive.endingSettled, 6000);
             }
         }, 2000);
 

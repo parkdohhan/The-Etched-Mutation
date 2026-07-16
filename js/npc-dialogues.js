@@ -109,7 +109,7 @@ const NPC_DIALOGUES = {
     alignmentMid: "The shape isn't clear yet.",
     alignmentLow: "You feel it differently.",
     alignmentFixated: "You keep returning to the same place.",
-    trueEnding: "Somewhere in the strata of this memory, your choice and its reason have settled as a thin layer.",
+    endingSettled: "Somewhere in the strata of this memory, your choice and its reason have settled as a thin layer.",
     normalEnding: "This memory will now pass from Live to Archive. Along with your interpretation."
   },
 
