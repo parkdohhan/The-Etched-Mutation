@@ -321,11 +321,8 @@ export function shuffleScenes(runs, rng) {
   });
 }
 
-// ── 영모형 N2: 전역절편+보정 합성 (§11.7) — 주 대조군 ───────────
-// σ̃_p(s) = f(s) + h_p + ε.  f=씬별 평균, h_p=회차별 평균 오프셋, ε=iid(관측 잔차 분산).
-// 잔차 분산은 축별로 맞춤(관측 구조 보존). 결정: run.mjs 보고서에 명기.
-export function synthGlobalSection(runs, D, rng) {
-  // f(s) = 씬별 평균
+// 전역절편 f(씬별 평균)·회차 오프셋 h_p·관측 잔차 풀·축별 std 계산 (N2/N3 공용).
+export function computeFH(runs, D) {
   const sceneSum = new Map(), sceneCnt = new Map();
   for (const r of runs) for (const [s, v] of r.dom) {
     if (!sceneSum.has(s)) { sceneSum.set(s, zeros(D)); sceneCnt.set(s, 0); }
@@ -334,27 +331,31 @@ export function synthGlobalSection(runs, D, rng) {
   }
   const f = new Map();
   for (const [s, sum] of sceneSum) f.set(s, vscale(sum, 1 / sceneCnt.get(s)));
-  // h_p = mean_s (σ_p(s) − f(s))
   const hp = runs.map((r) => {
     let acc = zeros(D), cnt = 0;
     for (const [s, v] of r.dom) { acc = vadd(acc, vsub(v, f.get(s))); cnt++; }
     return vscale(acc, 1 / cnt);
   });
-  // 관측 잔차 res_p(s)=σ−f−h_p, 축별 분산
-  const resAcc = zeros(D); let resCnt = 0;
-  const sq = zeros(D);
+  // 관측 잔차 res_p(s)=σ−f−h_p (벡터 풀 + 축별 std)
+  const pool = [];
+  const resAcc = zeros(D), sq = zeros(D);
   for (let i = 0; i < runs.length; i++) for (const [s, v] of runs[i].dom) {
     const res = vsub(vsub(v, f.get(s)), hp[i]);
+    pool.push(res);
     for (let k = 0; k < D; k++) { resAcc[k] += res[k]; sq[k] += res[k] * res[k]; }
-    resCnt++;
   }
   const std = zeros(D);
   for (let k = 0; k < D; k++) {
-    const mean = resAcc[k] / resCnt;
-    const varr = Math.max(0, sq[k] / resCnt - mean * mean);
-    std[k] = Math.sqrt(varr);
+    const mean = resAcc[k] / pool.length;
+    std[k] = Math.sqrt(Math.max(0, sq[k] / pool.length - mean * mean));
   }
-  // 합성
+  return { f, hp, pool, std };
+}
+
+// ── 영모형 N2: 전역절편+보정 합성 (§11.7) — 주 대조군 ───────────
+// σ̃_p(s) = f(s) + h_p + ε.  ε=iid, 축별(v1.1 명세 승격) 관측 잔차 분산.  뒤틀림 0 인 세계.
+export function synthGlobalSection(runs, D, rng, fh = null) {
+  const { f, hp, std } = fh || computeFH(runs, D);
   return runs.map((r, i) => {
     const dom = new Map();
     for (const [s] of r.dom) {
@@ -364,6 +365,48 @@ export function synthGlobalSection(runs, D, rng) {
     }
     return { ...r, dom };
   });
+}
+
+// ── 영모형 N3: 잔차 부트스트랩 (§11.7 v1.1, 선택) ────────────────
+// σ̃_p(s) = f(s) + h_p + (관측 잔차 벡터 풀에서 통째 복원추출).
+// 합=1 제약이 만드는 축 간 상관을 보존(N2 의 iid 가정과 대비).
+export function bootstrapResiduals(runs, D, rng, fh = null) {
+  const { f, hp, pool } = fh || computeFH(runs, D);
+  const N = pool.length;
+  return runs.map((r, i) => {
+    const dom = new Map();
+    for (const [s] of r.dom) {
+      const base = vadd(f.get(s), hp[i]);
+      const res = pool[Math.floor(rng() * N)]; // 잔차 벡터 통째 재표집
+      dom.set(s, vadd(base, res));
+    }
+    return { ...r, dom };
+  });
+}
+
+// 고리별 ‖W‖ 계산 (Exhibit A 임계 유도용). 반환: length → [‖W‖...] 누적에 push.
+export function collectCycleW(cycles, edges, D, pool) {
+  for (const c of cycles) {
+    const { Wnorm } = cycleTwist(c, edges, D);
+    const len = c.edgeSeq.length;
+    if (!pool.has(len)) pool.set(len, []);
+    pool.get(len).push(Wnorm);
+  }
+}
+
+// Exhibit A (§11.6 v1.1): 모든 변 정합(≤τ) AND ‖W‖ > T(|C|).  Tmap: length → 임계.
+export function exhibitAThreshold(cycles, edges, D, tau, Tmap) {
+  const hits = [];
+  for (const c of cycles) {
+    const consistent = c.edgeSeq.every(({ edgeIndex }) => edges[edgeIndex].r <= tau);
+    if (!consistent) continue;
+    const len = c.edgeSeq.length;
+    const T = Tmap.get(len);
+    if (T == null) continue; // 해당 길이 대조군 표본 없음 (이론상 불가 — 위상 고정)
+    const { Wnorm, noise } = cycleTwist(c, edges, D);
+    if (Wnorm > T) hits.push({ cycle: c, Wnorm, noise, T, len });
+  }
+  return hits;
 }
 
 // ── 영모형 p-값 (§11.7) ─────────────────────────────────────────

@@ -1,0 +1,207 @@
+{
+  "meta": {
+    "input": "D:\\The Etched Mutation\\tools\\persona-sim\\data\\MM23L_plays.json",
+    "resamples": 1000,
+    "seed": 12345,
+    "generated": "2026-07-16",
+    "spec": "§11 v1.1"
+  },
+  "selfValidation": {
+    "world1": {
+      "rho": 0.000030219780378448104,
+      "edges": 28,
+      "pass": true
+    },
+    "world2": {
+      "rho": 0.9997809376390576,
+      "edges": 14,
+      "cycles": 1,
+      "exhibitHits": 1,
+      "ringFound": true,
+      "ringLen": 5,
+      "T": 1.3093849382945972,
+      "pass": true
+    }
+  },
+  "premises": {
+    "rows": 193,
+    "runs": 39,
+    "scenes": 10,
+    "axes": 12,
+    "axisList": [
+      "confusion",
+      "fear",
+      "guilt",
+      "hope",
+      "isolation",
+      "longing",
+      "love",
+      "numbness",
+      "peace",
+      "resignation",
+      "sadness",
+      "shame"
+    ],
+    "minScenes": 4,
+    "maxScenes": 7,
+    "dup": 0,
+    "ok": true
+  },
+  "dataAxes": [
+    "confusion",
+    "fear",
+    "guilt",
+    "hope",
+    "isolation",
+    "longing",
+    "love",
+    "numbness",
+    "peace",
+    "resignation",
+    "sadness",
+    "shame"
+  ],
+  "a9Overlap": [
+    "fear",
+    "sadness",
+    "guilt",
+    "shame",
+    "numbness",
+    "isolation"
+  ],
+  "verdict": "WEAK-GO",
+  "results": {
+    "A12": {
+      "rho": 0.18369338867715843,
+      "tau": 0.1838912722235615,
+      "consistent": 300,
+      "totalEdges": 599,
+      "exhibitA": 0,
+      "bestFrac": 0.9959495277466592,
+      "n1p": 1,
+      "n2p": 0,
+      "n3p": 0,
+      "verdict": {
+        "v": "WEAK-GO",
+        "condP": true,
+        "condEx": false
+      }
+    },
+    "A17": {
+      "rho": 0.17637317211086456,
+      "exhibitA": 1,
+      "n2p": 0,
+      "n3p": 0,
+      "verdict": {
+        "v": "GO",
+        "condP": true,
+        "condEx": true
+      }
+    },
+    "A9": {
+      "rho": 0.18703490443681892,
+      "exhibitA": 1,
+      "n2p": 0,
+      "n3p": 0,
+      "verdict": {
+        "v": "GO",
+        "condP": true,
+        "condEx": true
+      },
+      "dataOverlap": [
+        "fear",
+        "sadness",
+        "guilt",
+        "shame",
+        "numbness",
+        "isolation"
+      ]
+    },
+    "sensitivity": {
+      "A12": {
+        "m2": {
+          "P25": {
+            "rho": 0.1837,
+            "tau": 0.1436,
+            "consistent": 150,
+            "total": 599
+          },
+          "P50": {
+            "rho": 0.1837,
+            "tau": 0.1839,
+            "consistent": 300,
+            "total": 599
+          },
+          "P75": {
+            "rho": 0.1837,
+            "tau": 0.2241,
+            "consistent": 449,
+            "total": 599
+          }
+        },
+        "m3": {
+          "P25": {
+            "rho": 0.1156,
+            "tau": 0.161,
+            "consistent": 86,
+            "total": 342
+          },
+          "P50": {
+            "rho": 0.1156,
+            "tau": 0.1958,
+            "consistent": 171,
+            "total": 342
+          },
+          "P75": {
+            "rho": 0.1156,
+            "tau": 0.2297,
+            "consistent": 258,
+            "total": 342
+          }
+        }
+      },
+      "A17": {
+        "m2": {
+          "P25": {
+            "rho": 0.1764,
+            "tau": 0.1231,
+            "consistent": 150,
+            "total": 599
+          },
+          "P50": {
+            "rho": 0.1764,
+            "tau": 0.1641,
+            "consistent": 300,
+            "total": 599
+          },
+          "P75": {
+            "rho": 0.1764,
+            "tau": 0.2021,
+            "consistent": 449,
+            "total": 599
+          }
+        },
+        "m3": {
+          "P25": {
+            "rho": 0.1134,
+            "tau": 0.1383,
+            "consistent": 86,
+            "total": 342
+          },
+          "P50": {
+            "rho": 0.1134,
+            "tau": 0.1734,
+            "consistent": 171,
+            "total": 342
+          },
+          "P75": {
+            "rho": 0.1134,
+            "tau": 0.2088,
+            "consistent": 256,
+            "total": 342
+          }
+        }
+      }
+    }
+  }
+}
