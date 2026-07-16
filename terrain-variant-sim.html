@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이본 지층 시뮬레이터 — 작가 바닥 + 관객 침식 (W1)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a10;color:#889;font-family:'Courier New',monospace;overflow:hidden}
+canvas#c{display:block;width:100vw;height:100vh}
+
+#intro{position:fixed;top:14px;left:16px;z-index:10;max-width:330px;pointer-events:none}
+#intro .t{font-size:13px;letter-spacing:2px;color:#c4a882}
+#intro .s{font-size:9px;letter-spacing:1px;color:#667;margin-top:4px;line-height:1.6}
+
+#hud{position:fixed;top:14px;right:16px;z-index:10;background:rgba(14,14,22,.85);
+  border:1px solid rgba(80,80,110,.3);padding:12px 14px;font-size:11px;line-height:1.7;
+  min-width:255px;max-width:320px;color:#99a}
+#hud .h{font-size:9px;letter-spacing:2px;color:#667;margin:8px 0 3px;border-bottom:1px solid rgba(80,80,110,.2);padding-bottom:2px}
+#hud .h:first-child{margin-top:0}
+#hud .row{display:flex;justify-content:space-between;gap:14px}
+#hud .k{color:#778}
+#hud .v{color:#c4a882}
+#hud .now{color:#e0c8a0;font-size:12px}
+
+#graphwrap{position:fixed;bottom:64px;left:16px;z-index:10;background:rgba(14,14,22,.7);
+  border:1px solid rgba(80,80,110,.3);padding:6px}
+#graph{display:block;width:360px;height:230px}
+
+#ctrl{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:rgba(14,14,22,.85);border:1px solid rgba(80,80,110,.3);padding:9px 12px;max-width:96vw}
+#ctrl button{background:rgba(26,26,38,.9);border:1px solid rgba(90,90,120,.4);color:#aab;
+  padding:7px 11px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace}
+#ctrl button:hover{border-color:rgba(160,140,110,.6);color:#e0c8a0}
+#ctrl button.go{border-color:rgba(140,120,70,.6);color:#e0c8a0}
+#ctrl button.warn{border-color:rgba(140,110,70,.5);color:#c8a86a}
+#ctrl select{background:rgba(26,26,38,.9);border:1px solid rgba(90,90,120,.4);color:#aab;
+  padding:7px 8px;font-size:11px;font-family:'Courier New',monospace}
+#ctrl .sld{display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 5px}
+#ctrl .sld label{font-size:8px;letter-spacing:1px;color:#667}
+#ctrl .sld .sval{font-size:11px;color:#c4a882}
+#ctrl input[type=range]{width:80px}
+#ctrl .sep{width:1px;height:30px;background:rgba(90,90,120,.3);margin:0 4px}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="intro">
+  <div class="t">이본 지층 시뮬레이터</div>
+  <div class="s">작가 바닥(제0판) = 씬이 자기 <strong>stage_position</strong> 자리에 솟은 <strong>연속 대륙</strong>.
+  관객이 지나가면 발자국이 남듯 땅이 깎인다 — <strong>강화</strong>(밟힌 길 응집)·<strong>망각</strong>(잔주름 소멸)·<strong>재응고</strong>(절벽 무너짐).
+  <strong>위상 자</strong>가 봉우리·분지 개수로 "형태 없는 진흙탕"으로 못 가게 감시.
+  하단 그래프 = 리트머스 5종. 드래그=회전, 휠=확대.</div>
+</div>
+
+<div id="hud">
+  <div class="h">현재</div>
+  <div class="row"><span class="k">상태</span><span class="v now" id="hud-now">—</span></div>
+  <div class="row"><span class="k">기억</span><span class="v" id="hud-mem">—</span></div>
+  <div class="row"><span class="k">세대</span><span class="v" id="hud-gen">—</span></div>
+  <div class="h">위상 자 (§4)</div>
+  <div class="row"><span class="k">features</span><span class="v" id="hud-feat">—</span></div>
+  <div class="row"><span class="k">features 밴드</span><span class="v" id="hud-band">—</span></div>
+  <div class="row"><span class="k">relief (p95−p5)</span><span class="v" id="hud-relief">—</span></div>
+  <div class="row"><span class="k">roughness</span><span class="v" id="hud-rough">—</span></div>
+  <div class="row"><span class="k">mass (흙 총량)</span><span class="v" id="hud-mass">—</span></div>
+  <div class="h">검증</div>
+  <div class="row"><span class="k">질량 로그 이상</span><span class="v" id="hud-anom">—</span></div>
+  <div class="row"><span class="k">스냅샷 크기</span><span class="v" id="hud-snap">—</span></div>
+  <div class="row"><span class="k">손잡이</span><span class="v" id="hud-handles">—</span></div>
+</div>
+
+<div id="graphwrap"><canvas id="graph" width="360" height="230"></canvas></div>
+
+<div id="ctrl">
+  <select id="mem"></select>
+  <select id="gres"></select>
+  <button type="button" id="btn-base">바닥 굽기</button>
+  <button type="button" class="go" id="btn-500">관객 500명</button>
+  <button type="button" class="go" id="btn-all">500 + 셔플</button>
+  <div class="sep"></div>
+  <button type="button" class="warn" id="btn-shuffle">③ 셔플 리트머스</button>
+  <button type="button" class="warn" id="btn-two">④ 두 기억 비교</button>
+  <div class="sep"></div>
+  <div class="sld"><label>k_reinforce</label><input id="h-reinf" type="range" min="0" max="1.5" step="0.05" value="0.6"><span class="sval" id="h-reinf-val">0.6</span></div>
+  <div class="sld"><label>k_forget</label><input id="h-forget" type="range" min="0" max="0.006" step="0.0002" value="0.0008"><span class="sval" id="h-forget-val">0.0008</span></div>
+  <div class="sld"><label>τ_rough ×</label><input id="h-tau" type="range" min="0.5" max="4" step="0.25" value="1"><span class="sval" id="h-tau-val">1</span></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="js/shared/tem_variant_strata.js"></script>
+<script src="js/terrain-variant-sim-page.js"></script>
+</body>
+</html>

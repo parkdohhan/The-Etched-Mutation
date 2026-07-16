@@ -325,6 +325,23 @@
   }
 
   function computeAfTerrainFields(P, filterIdx, opt) {
+    // ── ADDITIVE 이본 지층 provider (default OFF) ──
+    // docs/이본지층/이본지층_설계_v1-260716.md §6. flag: localStorage.tem_variant_strata='1' or ?variant_strata=1
+    // 켜지기 전엔 어떤 경로도 변하지 않는다. 실제 배선(run/봉인)은 W4.
+    // Rollback: delete this block (provider lives in js/shared/tem_variant_strata.js).
+    var _VS = global.TemVariantStrata;
+    if (_VS && _VS.isEnabled && _VS.isEnabled()) {
+      try {
+        var _vf = _VS.computeFields(P, filterIdx, opt, {
+          VA_ANCHORS: VA_ANCHORS,
+          VAD_FULL: VAD_FULL,
+          hashWorldOffset: hashWorldOffset,
+        });
+        if (_vf) return _vf;
+      } catch (_vsErr) {
+        console.warn('[strata] variant strata provider failed — falling back to original', _vsErr);
+      }
+    }
     // ── ADDITIVE §9 replay-terrain provider (default OFF) ──
     // docs/생성형_지형모델_v2-260619.md §9. flag: localStorage.tem_replay_terrain='1' or ?replay_terrain=1
     // Rollback: delete this block (provider lives in js/shared/tem_replay_terrain.js).
