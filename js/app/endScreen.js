@@ -236,7 +236,7 @@ export async function showEndScreen(alignmentResult, forceEndScreen = false) {
             if (normalBadge) normalBadge.classList.remove('active');
             if (subtitle) subtitle.style.display = 'none';
             document.getElementById('endTitle').textContent = 'Touching the Engraving';
-            document.getElementById('finalMessage').innerHTML = '<strong>For a moment, your trajectory and theirs overlapped.</strong><br><br>Not a victory — a rare contact.<br>This variant settles as a thin layer in the strata.';
+            document.getElementById('finalMessage').innerHTML = '<strong>잠깐, 당신의 궤적과 그의 궤적이 겹쳤다.</strong><br>For a moment, your trajectory and theirs overlapped.';
 
             const freshState = appStore.getState();
             const memoryId = currentData?.id || freshState.allMemoriesData?.[freshState.currentMemory]?.id;
