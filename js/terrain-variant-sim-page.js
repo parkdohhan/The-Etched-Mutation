@@ -523,7 +523,7 @@
   }
   function buildBaseSilent(key) { var m = MEMORIES[key]; TVS.buildBase({ id: m.id, scenes: m.scenes }, { G: G }); }
 
-  // 손잡이 스윕 (보정용): 각 설정으로 n명 굽고 최종 features/RMS 반환.
+  // 손잡이 스윕 (보정용): 각 설정으로 n명 굽고 평형·밴드·질량을 사분위 체크포인트로 반환.
   function sweep(cfgs, n) {
     n = n || 500;
     var save = {}; Object.keys(TVS.HANDLES).forEach(function (k) { save[k] = TVS.HANDLES[k]; });
@@ -534,12 +534,34 @@
       var baseLand = Float32Array.from(TVS._currentLand());
       var baseFeat = TVS.getInvariants().features;
       var rng = mulberry32(SEED);
-      for (var i = 0; i < n; i++) sealVisitor(makeVisitor(rng));
-      var inv = TVS.getInvariants();
-      return { cfg: cfg, baseFeat: baseFeat, finalFeat: inv.features, peaks: inv.peaks, basins: inv.basins, rms: +rmsDiff(Float32Array.from(TVS._currentLand()), baseLand).toFixed(3), baseStd: +stddev(baseLand).toFixed(3) };
+      var featMin = baseFeat, featMax = baseFeat, massAnoms = 0;
+      var cp = {}, marks = [Math.floor(n * 0.25), Math.floor(n * 0.5), Math.floor(n * 0.75), n];
+      for (var i = 1; i <= n; i++) {
+        var out2 = sealVisitor(makeVisitor(rng));
+        if (!out2.massLog.ok) massAnoms++;
+        var f = out2.invariants.features;
+        if (f < featMin) featMin = f; if (f > featMax) featMax = f;
+        if (marks.indexOf(i) >= 0) cp[i] = { f: f, rms: +rmsDiff(TVS._currentLand(), baseLand).toFixed(3) };
+      }
+      return {
+        cfg: cfg, baseFeat: baseFeat, featMin: featMin, featMax: featMax,
+        band: [Math.floor(baseFeat * 0.4), Math.ceil(baseFeat * 1.6)],
+        cp: cp, massAnoms: massAnoms, baseStd: +stddev(baseLand).toFixed(3),
+      };
     });
     TVS.setHandles(save);
     return out;
+  }
+  // ⑦ 1인 가시성: 바닥에서 1명만 봉인 → 그 봉인의 delta(RMS·최대) 반환.
+  function oneVisitorVisibility() {
+    var m = MEMORIES[memKey];
+    TVS.buildBase({ id: m.id, scenes: m.scenes }, { G: G });
+    var before = Float32Array.from(TVS._currentLand());
+    var rng = mulberry32(SEED + 777);
+    var out = sealVisitor(makeVisitor(rng));
+    var after = TVS._currentLand();
+    var maxAbs = 0; for (var i = 0; i < after.length; i++) maxAbs = Math.max(maxAbs, Math.abs(after[i] - before[i]));
+    return { rms: +rmsDiff(after, before).toFixed(4), maxDelta: +maxAbs.toFixed(3), baseStd: +stddev(before).toFixed(3), massOk: out.massLog.ok, uplift: out.massLog.uplift };
   }
   function minMax(arr) { var mn = Infinity, mx = -Infinity; arr.forEach(function (v) { if (v < mn) mn = v; if (v > mx) mx = v; }); return [mn, mx]; }
 
@@ -547,6 +569,19 @@
   window._variantSim = {
     buildBase: buildBase, runVisitors: runVisitors, shuffleLitmus: shuffleLitmus,
     twoMemoryLitmus: twoMemoryLitmus, runAllSync: runAllSync, sweep: sweep,
+    oneVisitorVisibility: oneVisitorVisibility,
+    // ⑦ 1봉인 전후 스크린샷용 (렌더 포함)
+    visBefore: function () { buildBase(memKey); updateHud('⑦ 바닥 (1봉인 전)'); return { features: TVS.getInvariants().features }; },
+    visAfter: function () {
+      var rng = mulberry32(SEED + 777);
+      var before = Float32Array.from(TVS._currentLand());
+      var out = sealVisitor(makeVisitor(rng));
+      renderLand(); drawGraphs();
+      var after = TVS._currentLand();
+      var mx = 0; for (var i = 0; i < after.length; i++) mx = Math.max(mx, Math.abs(after[i] - before[i]));
+      updateHud('⑦ 1명 봉인 후 — maxΔ ' + mx.toFixed(2));
+      return { rms: +rmsDiff(after, before).toFixed(4), maxDelta: +mx.toFixed(3), uplift: out.massLog.uplift };
+    },
     getLitmus: function () { return litmus; },
     getRecords: function () { return records; }, isRunning: function () { return running; },
   };

@@ -139,10 +139,14 @@
     tau_rough_mult: 1.0,   // 재응고: τ_rough = 바닥 이웃차 p98 × mult
     p_min_frac: 0.08,      // 위상 자: 지속도 임계 = 바닥 높이 범위 × frac
     features_band_frac: 0.6, // 리트머스: 밴드 = 바닥 features ± frac
-    erosion_scale: 0.012,  // §9.5 물리 보정(1회 확정): 봉인 1회 물방울 총량 배율.
-                           //   순수 침식은 복원력이 없어 어떤 비율이든 500번이면 평탄 끌개로 감.
-                           //   0.012 는 관객당 침식을 얇게 해 500명이 밴드 안(features 4~7)에서
-                           //   이본화(rms≈바닥 std의 79%)하되 무형태로 안 가게 하는 창.
+    // W1-6 박자 융기(퇴적): 관객이 느낀 씬 감정을 그 로브에 쌓는 복원항. 국소 해자로 질량 net≈0.
+    //   융기 도입으로 순수 침식의 '평탄 끌개'가 동적 평형(RMS 포화)으로 바뀐다(§13/W1-6).
+    //   보정 확정(G=96, 1000명): k_uplift 0.5 / erosion_scale 0.3 → RMS 포화(~1.0, 250명에 평형)
+    //   + features 밴드 유지(6~8) + 1명 봉인 maxDelta≈5.7(무대 가시). 근거는 W1_구현보고 §13.
+    k_uplift: 0.5,         // 융기 세기: 감정축 w당 봉우리 진폭 = k_uplift·w
+    // §9.5 물리 보정(1회 확정): 봉인 1회 물방울 총량 배율. W1-6에서 융기가 받쳐주므로
+    //   0.012(종잇장) → 0.3 로 상향 — 관객 1명 몫이 무대에서 보이게(⑦) 하면서 평형 유지.
+    erosion_scale: 0.3,
   };
 
   // ─────────────── emotion space (자족 복사, 판단 아님 — 배치/색 전용) ───────────────
@@ -483,8 +487,51 @@
     };
   }
 
-  // ─────────────────── W1-2 : applyVisitorErosion (파이프라인 §3) ───────────────────
-  // 순서 고정: ①침식(강화) → ②망각 → ③재응고 → ④불변량 → ⑤(serialize는 호출측).
+  // W1-6 박자 융기(퇴적): 관객이 느낀 씬 감정(17축, 안 뭉갬)을 그 씬 로브에 얇게 쌓는다.
+  // buildBase 의 로브 융기와 같은 기하(친척 배치·arousal 폭), 색·simplex 없이 높이만.
+  // **국소 질량 예산**: 봉우리(양 가우시안)를 올리며 그 둘레에 같은 부피의 얕은 해자(음 가우시안,
+  //   σ_out = MOAT·σ, 진폭 = amp/MOAT²)를 판다 — "산이 솟으며 둘레에서 흙을 끌어옴". 먼 벌판 불변.
+  //   그리드 절단분만 잔차로 남아 호출측이 미세 균일 보정(전역 침강 아님).
+  // 반환 = {pos, neg} (양·음 기여 총합) — 질량 예산 로그·잔차 보정용.
+  var MOAT = 2.2;
+  function upliftBeatLobes(land, G, cx, cz, emo, patchR, kUplift) {
+    var pos = 0, neg = 0;
+    for (var k in emo) {
+      if (!Object.prototype.hasOwnProperty.call(emo, k)) continue;
+      var w = Number(emo[k] || 0);
+      if (!w || !VAD[k]) continue;
+      var a01 = (VAD[k].a + 1) / 2;
+      var lx = cx + VAD[k].v * patchR * 0.55;
+      var lz = cz + VAD[k].a * patchR * 0.55;
+      var sig = patchR * (0.16 + 0.20 * (1 - a01));
+      var sigOut = sig * MOAT;
+      var amp = kUplift * w;
+      var ampMoat = amp / (MOAT * MOAT);            // 양·음 부피 동일 → 국소 net≈0
+      var Rb = Math.ceil(sigOut * 3);
+      var x0 = Math.max(0, Math.floor(lx - Rb)), x1 = Math.min(G - 1, Math.ceil(lx + Rb));
+      var z0 = Math.max(0, Math.floor(lz - Rb)), z1 = Math.min(G - 1, Math.ceil(lz + Rb));
+      for (var zz = z0; zz <= z1; zz++) {
+        for (var xx = x0; xx <= x1; xx++) {
+          var ddx = xx - lx, ddz = zz - lz;
+          var r2 = ddx * ddx + ddz * ddz;
+          var up = amp * Math.exp(-r2 / (2 * sig * sig));
+          var moat = ampMoat * Math.exp(-r2 / (2 * sigOut * sigOut));
+          var v = up - moat;
+          if (Math.abs(v) < 0.0005) continue;
+          land[zz * G + xx] += v;
+          if (v > 0) pos += v; else neg += v;
+        }
+      }
+    }
+    return { pos: pos, neg: neg };
+  }
+
+  // ─────────────────── W1-2/W1-6 : applyVisitorErosion (파이프라인) ───────────────────
+  // 순서 고정: ⓪융기(W1-6) → ①침식(강화) → ②망각 → ③재응고 → ④불변량 → ⑤(serialize는 호출측).
+  // 융기를 맨 앞에 둔 근거: 관객은 씬을 '느끼며 퇴적'한 뒤(박자 융기) 그 사이를 '이동하며 침식'한다
+  //   (§9.1 "박자마다 융기, 박자 사이 물"의 관객판). buildBase 도 융기가 먼저다 — 일관.
+  //   beat 즉시가 아니라 봉인 파이프라인 단계로 둔 근거: 소급 변경은 스케줄이 아니라 물리(§9.9),
+  //   같은 로그 = 같은 땅(순수 재계산). beat 은 로그만 쌓고 실제 지형 변형은 봉인 1회에 모은다.
   // 현재 땅(=base+delta)에 이번 관객 몫만 굽고, 누적 delta·발길·generation 갱신.
   function applyVisitorErosion(opt) {
     opt = opt || {};
@@ -501,10 +548,34 @@
     var footWrite = new Float32Array(G * G);        // 이번 관객이 남기는 발길
     var ctx = { footRead: footRead, footWrite: footWrite, kReinforce: HANDLES.k_reinforce };
 
-    var massLog = { erosionBefore: sumArr(land), forgetDrift: 0, thermalBefore: 0, thermalAfter: 0, ok: true };
+    var massStart = sumArr(land);
+    var massLog = { massStart: massStart, forgetDrift: 0, ok: true };
+    var beats = run.active ? run.beats : [];
+    var patchR = Math.max(6, G * 0.055);
+
+    // ── ⓪ 융기 (W1-6): 이번 관객이 느낀 씬을 그 로브에 퇴적 (국소 해자로 질량 예산 net≈0) ──
+    // "올리기·깎기 균형" = 봉우리 올림 + 둘레 해자 팜(국소 상쇄). 그리드 절단 잔차만 미세 균일 보정.
+    var upPos = 0, upNeg = 0;
+    beats.forEach(function (bt) {
+      if (bt.isVoid) return;
+      var c = bt.sceneId != null ? _sceneCenters[String(bt.sceneId)] : null;
+      var emo = bt.userEmo || bt.sceneEmo;
+      if (!c || !emo) return;
+      var r = upliftBeatLobes(land, G, c.gx, c.gz, emo, patchR, HANDLES.k_uplift);
+      upPos += r.pos; upNeg += r.neg;
+    });
+    // 잔차(해자 절단분)만 균일 보정 — 전역 침강 아님(먼 벌판 불변).
+    var residual = upPos + upNeg;                    // 해자가 완전하면 ≈ 0
+    var settle = residual / (G * G);
+    if (settle !== 0) for (i = 0; i < G * G; i++) land[i] -= settle;
+    var massAfterUplift = sumArr(land);
+    massLog.uplift = {
+      pos: upPos, neg: upNeg, residual: residual,
+      net: massAfterUplift - massStart,             // ≈ 0 (국소 해자 + 잔차 보정)
+    };
 
     // ── ① 침식 (강화 내장): 박자 사이 물길 ──
-    var beats = run.active ? run.beats : [];
+    massLog.erosionBefore = massAfterUplift;
     var prevWp = null;
     var waterMul = opt.waterMul != null ? opt.waterMul : 1;
     var dropMul = opt.dropMul != null ? opt.dropMul : 1;
@@ -544,9 +615,12 @@
     massLog.thermalAfter = sumArr(land);
     massLog.thermalConserved = Math.abs(massLog.thermalAfter - massLog.thermalBefore);
 
-    // 질량 이상 판정: 침식·재응고는 보존이어야(허용오차). 망각은 예외.
-    var tol = Math.max(1e-3, Math.abs(massLog.erosionBefore) * 1e-4);
-    massLog.ok = (massLog.erosionConserved <= tol) && (massLog.thermalConserved <= tol);
+    // 질량 이상 판정: 융기(net≈0)·침식·재응고는 보존이어야(허용오차). 망각은 예외.
+    var tol = Math.max(1e-3, Math.abs(massStart) * 1e-4);
+    massLog.uplift.netAbs = Math.abs(massLog.uplift.net);
+    massLog.ok = (massLog.uplift.netAbs <= tol) &&
+                 (massLog.erosionConserved <= tol) &&
+                 (massLog.thermalConserved <= tol);
     massLog.tol = tol;
 
     // ── ④ 불변량 + delta/generation 확정 ──

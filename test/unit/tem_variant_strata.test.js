@@ -178,6 +178,10 @@ describe('applyVisitorErosion — 파이프라인(§3) + 질량 로그(§9.6)', 
     expect(out.massLog.ok).toBe(true);
     expect(out.massLog.erosionConserved).toBeLessThan(1.0);
     expect(out.massLog.thermalConserved).toBeLessThan(1.0);
+    // W1-6 융기 질량 예산: 올린 만큼 국소 해자로 뺌 → net ≈ 0 (로그로 증명)
+    expect(out.massLog.uplift).toBeDefined();
+    expect(out.massLog.uplift.pos).toBeGreaterThan(0);
+    expect(Math.abs(out.massLog.uplift.net)).toBeLessThan(out.massLog.tol);
     // 발길 지도 정규화 0~1
     let mx = 0;
     for (let i = 0; i < out.footMap.length; i++) mx = Math.max(mx, out.footMap[i]);
@@ -205,17 +209,17 @@ describe('applyVisitorErosion — 파이프라인(§3) + 질량 로그(§9.6)', 
     expect(rmsDiff(forward, reverse)).toBeGreaterThan(0.001);
   });
 
-  it('500명이 아니라도, 다관객 누적은 features 밴드 안 (±60%)', () => {
+  // W1-6: 융기(퇴적) 도입 후 features 는 밴드 ±60% 대신 '동적 평형' — 붕괴도 폭발도 안 함.
+  // (엄밀한 features 밴드 유지·RMS 포화 곡선은 시뮬 G=96/1000명 리트머스 ①⑥에서 검증 — 보고서 §13.)
+  it('다관객 누적은 붕괴(≤1)도 폭발(≥base×3)도 안 한다 (융기 평형)', () => {
     const b = TVS.buildBase(makeMemory('mem-ero'), { G: 48 });
-    const lo = b.features * (1 - TVS.HANDLES.features_band_frac);
-    const hi = b.features * (1 + TVS.HANDLES.features_band_frac);
-    for (let v = 0; v < 20; v++) {
+    for (let v = 0; v < 40; v++) {
       const order = [0, 1, 2, 3, 4].sort(() => 0.5 - ((v * 7 + 3) % 5) / 5);
       oneVisitor(order);
     }
     const inv = TVS.getInvariants();
-    expect(inv.features).toBeGreaterThanOrEqual(Math.floor(lo));
-    expect(inv.features).toBeLessThanOrEqual(Math.ceil(hi));
+    expect(inv.features).toBeGreaterThanOrEqual(2);          // 무형태(붕괴) 아님
+    expect(inv.features).toBeLessThanOrEqual(b.features * 3); // 폭발 아님
   });
 });
 
