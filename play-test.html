@@ -48,11 +48,19 @@
   </script>
   <script src="/data/memories.js"></script>
   <script src="js/contamination.js?v=260714"></script>
-  <script src="js/shared/tem_replay_terrain.js?v=260714"></script>
+  <!-- W4 (2026-07-16): 옛 재생 지형(퀼트 섬) 모듈 tem_replay_terrain 은퇴 — script 태그 제거,
+       파일은 보존. tem_variant_strata.js 로 대체(이본 지층: 작가 바닥 + 관객 침식/융기 누적).
+       lumen_replay_fog 는 로드는 두되 attach 게이트가 TemReplayTerrain 부재로 죽어 무력. -->
+  <script src="js/shared/tem_variant_strata.js?v=260716b"></script>
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
   <script src="js/ui/lumen_spatial_fog.js?v=260714"></script>
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
-  <script src="js/shared/tem_af_strata_terrain.js?v=260714"></script>
+  <script src="js/shared/tem_af_strata_terrain.js?v=260716"></script>
+  <script>
+    // W4: 옛 스티키 플래그 청소 — tem_replay_terrain 이 켜진 채 저장돼 있으면 지운다.
+    // (모듈 자체가 로드 안 되므로 이미 무력이지만, 위생을 위해 키를 비운다.)
+    try { localStorage.removeItem('tem_replay_terrain'); } catch (_) {}
+  </script>
   <script src="js/ui/lumen_terrain_adapter.js?v=260714"></script>
   <script src="js/ui/lumen_walk_effects.js?v=260714"></script>
   <script src="js/ui/lumen_visual_effects.js?v=260714"></script>
@@ -4188,25 +4196,19 @@
   }
 
   async function insertPlay(scene, vec, reasonLabel, result, isVoid) {
-    // ── ADDITIVE §9 재생 지형 박자 기록 (flag 기본 OFF — js/shared/tem_replay_terrain.js) ──
+    // ── W4: 이본 지층 박자 기록 (flag 기본 OFF — js/shared/tem_variant_strata.js) ──
     // 두 제출 경로(processEmotionResult / finishScene)가 모두 이 함수를 지나므로 여기 한 곳만 훅.
-    if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled()) {
+    // 설계 §13.2: beat 은 로그만 쌓는다. 실제 지형 변형(융기·침식)은 봉인 1회에 모아 재계산한다
+    // (같은 로그 = 같은 땅, 결정론). 옛 replay 의 "젖은 땅 즉시 재빌드"는 여기서 하지 않는다.
+    if (window.TemVariantStrata && window.TemVariantStrata.isEnabled()) {
       try {
-        window.TemReplayTerrain.beat(game.memoryId, {
+        window.TemVariantStrata.beat(game.memoryId, {
           sceneId: scene.id,
           sceneEmo: safeParseEmotion(scene.original_emotion),
           userEmo: vec || null,
           isVoid: !!isVoid,
         });
-        // 젖은 땅 (§9.9): strata 3D가 떠 있으면 즉시 다시 굽기 — 과거 조각이 물리대로 변한다
-        var _rtWet = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
-        var _svWet = document.getElementById('strataView');
-        if (_rtWet && _svWet && _svWet.style.display !== 'none') {
-          _rtWet.buildTerrain(null);
-          // 안개 한 겹 걷힘 (§9.9) — 방금 구워진 땅이 드러난다
-          if (_rtWet.__lumenReplayFog) _rtWet.__lumenReplayFog.reveal();
-        }
-      } catch (eWet) { console.warn('[replay-terrain] beat 기록 실패 (무해, 원본 경로 유지)', eWet); }
+      } catch (eBeat) { console.warn('[variant-strata] beat 기록 실패 (무해, 원본 경로 유지)', eBeat); }
     }
     let userId = null;
     try {
@@ -5275,6 +5277,67 @@
       LOG('V2-6 drift stamp:', { ghost_variant_id: _gvId, drift: _driftVector });
     } catch (e) { LOG('V2-6 drift stamp exception', e); }
 
+    // ── W4-2: 이본 지층 봉인 파이프라인 — 이번 관객 몫을 굽고(⓪융기→①침식→②망각→③재응고)
+    //   변형층을 저장(record-erosion, 스냅샷 포함). flag ON + _base 준비 시에만.
+    //   실패는 크게 console.error(조용한 실패 금지), 봉인 자체는 진행. 결과는 W4-3 목격·W4-5 reveal 이 쓴다. ──
+    game._variantErosion = null;
+    if (window.TemVariantStrata && window.TemVariantStrata.isEnabled() && game.memoryId) {
+      try {
+        var _vsEro = window.TemVariantStrata.applyVisitorErosion();
+        game._variantErosion = _vsEro;
+        var _vsLayer = window.TemVariantStrata.serializeLayer();
+        var _inv = _vsEro.invariants || {};
+        // 불변량 콘솔 (전시장 디버깅 한 줄)
+        console.log('[variant-strata] 봉인 굽기 gen=' + _vsEro.generation +
+          ' | features=' + _inv.features + ' (peaks ' + _inv.peaks + '/basins ' + _inv.basins + ')' +
+          ' | relief=' + (_inv.relief != null ? _inv.relief.toFixed(2) : '?') +
+          ' | mass=' + (_inv.mass != null ? _inv.mass.toFixed(1) : '?') +
+          ' | massOk=' + (_vsEro.massLog && _vsEro.massLog.ok));
+        // 본문 구성 + 스냅샷(높이맵 전체) 크기 가드 — 본문 한계(512KB) 근접 시 스냅샷만 생략(연구 자료).
+        var _eroBody = {
+          memoryId: game.memoryId,
+          height_delta: _vsLayer.height_delta,
+          foot_map: _vsLayer.foot_map,
+          generation: _vsEro.generation,
+        };
+        try {
+          var _land = window.TemVariantStrata._currentLand && window.TemVariantStrata._currentLand();
+          if (_land) {
+            _eroBody.snapshot = Array.prototype.map.call(_land, function (v) { return Math.round(v * 100) / 100; });
+            var _bodySz = JSON.stringify(_eroBody).length;
+            if (_bodySz > 480000) {
+              delete _eroBody.snapshot;
+              console.warn('[variant-strata] 스냅샷 생략 — 본문 ' + _bodySz + 'B 한계 근접(연구 자료라 봉인엔 무해)');
+            }
+          }
+        } catch (_eSnap) {}
+        // record-erosion: service_role 창구로 변형층 upsert. generation 은 서버가 stored+1 강제.
+        sb.functions.invoke('record-erosion', { body: _eroBody }).then(async function (res) {
+          if (res && res.error) {
+            var detail = res.error.message || String(res.error);
+            var _status = null;
+            try { _status = res.error.context && res.error.context.status; } catch (_) {}
+            try { var j = await res.error.context.json(); if (j && j.error) detail += ' — ' + j.error; } catch (_) {}
+            if (_status === 409) {
+              // generation 경합(동시 봉인) — 다른 봉인이 먼저 저장됨. 이번 몫 포기 (설계 §5: plays 장부가 진실).
+              console.warn('[variant-strata] generation 경합(409) — 다른 봉인이 먼저 저장됨. 이번 몫 포기.', detail);
+            } else {
+              console.error('[variant-strata] record-erosion 실패 —', detail, '| 변형층이 저장되지 않았다.');
+            }
+            return;
+          }
+          var d = (res && res.data) || {};
+          console.log('[variant-strata] 변형층 저장 ok gen=' + (d.generation != null ? d.generation : '?') +
+            ' | cells=' + (d.cells != null ? d.cells : '?') + ' | snapshot=' + (d.snapshot_saved ? '저장' : '없음'));
+        }, function (e) {
+          console.error('[variant-strata] record-erosion 예외 —', e);
+        });
+      } catch (eEro) {
+        console.error('[variant-strata] 봉인 굽기 실패 (applyVisitorErosion) —', eEro,
+          '| _base 미준비 가능성(플래그 ON인데 지형 미진입?). 봉인은 진행.');
+      }
+    }
+
     initAudio();
     fadeOut(SFX.ambient, 1500, true);
     fadeOut(SFX.void, 500, true);
@@ -5290,6 +5353,33 @@
     setTimeout(() => {
       fadeIn(SFX.rain, 0.15, 4000);
     }, 4500);
+
+    // ── W4-3: 목격의 순간 v1 — 봉인 직후, 퇴장(reveal) 전. 침식·융기가 적용된 땅을 카메라 앞에서
+    //   1회 재빌드하고 "네가 지나간 자리가 굳는다" 자막 한 줄. 파티클·고도 연출은 10월(v1 소박).
+    //   flag OFF 면 이 연출 전체 스킵. ──
+    if (window.TemVariantStrata && window.TemVariantStrata.isEnabled() && game._variantErosion) {
+      try {
+        var _svWit = document.getElementById('strataView');
+        var _rtWit = (window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime) || window._fpRuntime;
+        if (_rtWit && _svWit && _svWit.style.display !== 'none' && typeof _rtWit.buildTerrain === 'function') {
+          _rtWit.buildTerrain(null);   // _delta 는 방금 applyVisitorErosion 이 갱신 → 굳은 자국이 눈앞에 뜬다
+          var _witSub = document.createElement('div');
+          _witSub.style.cssText = 'position:fixed;left:0;right:0;bottom:16%;z-index:9998;text-align:center;' +
+            'pointer-events:none;font-size:1.05rem;letter-spacing:0.06em;line-height:1.7;' +
+            'color:rgba(232,224,246,0.94);text-shadow:0 2px 14px rgba(0,0,0,0.8);opacity:0;transition:opacity 1.2s ease;';
+          _witSub.innerHTML = (LANG === 'ko')
+            ? '네가 지나간 자리가 굳는다.<br><span style="font-size:0.82rem;opacity:0.7;">Where you passed, the ground settles.</span>'
+            : 'Where you passed, the ground settles.<br><span style="font-size:0.82rem;opacity:0.7;">네가 지나간 자리가 굳는다.</span>';
+          document.body.appendChild(_witSub);
+          requestAnimationFrame(function () { _witSub.style.opacity = '1'; });
+          setTimeout(function () { _witSub.style.opacity = '0'; }, 2400);
+          setTimeout(function () { try { _witSub.remove(); } catch (_) {} }, 3800);
+          // 카메라가 굳는 순간을 보는 시간 (async 핸들러라 await 로 퇴장 지연)
+          await new Promise(function (r) { setTimeout(r, 2600); });
+        }
+      } catch (eWit) { console.warn('[variant-strata] 목격 연출 실패 (무해, 봉인 진행)', eWit); }
+    }
+
     document.getElementById('mapMode').classList.remove('active');
     const rev = document.getElementById('revealScreen');
     rev.classList.add('active');
@@ -5312,15 +5402,39 @@
       document.getElementById('revealBody').textContent = T.revealFallback;
     } else {
       try {
+        // W4-5: 이본 명명 재료 — variant_summary(정렬 평균·지배 어긋남·고착도) + contact(접촉 사건).
+        //   flag ON 일 때만 부착(구형 응답 하위호환: 없으면 generate-reveal 기존 출력 그대로).
+        //   서열·평가 언어는 함수(v8)가 금지 — 우열이 아니라 성격. 접촉은 '성취'가 아니라 '일어난 사건'.
+        const _revBody = {
+          visits,
+          memory_title: game.memoryTitle || '',
+          emotion_trajectory: game.emotionTrajectory || [],
+          lang: LANG,
+        };
+        if (window.TemVariantStrata && window.TemVariantStrata.isEnabled()) {
+          const _domMis = (game.contPresentation && game.contPresentation.dominant_emotion_label) || '';
+          const _fixLvl = (game.contState && typeof game.contState.cont_fixation === 'number')
+            ? game.contState.cont_fixation : null;
+          _revBody.variant_summary = {
+            alignment_avg: avgAlign,
+            dominant_mismatch: String(_domMis).slice(0, 40),
+            fixation_level: _fixLvl,
+          };
+          const _vcR = game._variantContact;
+          if (_vcR && _vcR.occurred) {
+            _revBody.contact = {
+              occurred: true,
+              scene_text: String(_vcR.sceneText || '').slice(0, 300),
+              utterance: String(_vcR.utterance || '').slice(0, 300),
+            };
+          }
+          console.log('[variant-strata] reveal 배선: variant_summary=', _revBody.variant_summary,
+            '| contact=', _revBody.contact || '(없음)');
+        }
         const res = await fetch(SUPABASE_URL + '/functions/v1/generate-reveal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
-          body: JSON.stringify({
-            visits,
-            memory_title: game.memoryTitle || '',
-            emotion_trajectory: game.emotionTrajectory || [],
-            lang: LANG,
-          })
+          body: JSON.stringify(_revBody)
         });
         const data = await res.json();
         if (data.narrative) {
@@ -5754,10 +5868,12 @@
 
     function initFpPlay(memoryId) {
       if (!memoryId || !window.showStrataView || !window.TemAfStrataTerrain) return false;
-      // ── ADDITIVE §9 퀼트: 체험 시작 선언 — 땅은 공허에서 출발, 조각은 대화가 끝날 때 태어난다 ──
-      if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled() &&
-          typeof window.TemReplayTerrain.beginRun === 'function') {
-        try { window.TemReplayTerrain.beginRun(memoryId); } catch (_) {}
+      // ── W4: 이본 지층 — 체험 시작 선언(이번 관객의 박자 로그 초기화). 실제 침식/융기는 봉인 때. ──
+      if (window.TemVariantStrata && window.TemVariantStrata.isEnabled() &&
+          typeof window.TemVariantStrata.beginRun === 'function') {
+        try { window.TemVariantStrata.beginRun(memoryId); } catch (_) {}
+        // W4-4: 회차 접촉 게이트 리셋(game 은 로드당 1개라 회차 사이 잔존 방지 — dialog_phase1 이 읽는 자리).
+        try { if (window._temGame) window._temGame._variantContact = { occurred: false, count: 0 }; } catch (_) {}
       }
       _fpPlayActive = true;
       window._fpPlayActive = true;
@@ -6124,6 +6240,52 @@
           }
 
           _buildPlayScenePins();
+
+          // ── W4-1: 이본 지층 진입 로드 — 저장된 변형층(terrain_layers)을 불러와 물려받은 땅을 렌더. ──
+          //   flag ON + 층 존재 시에만. 층 없으면 바닥(제0판)만. loadLayer 는 _base(바닥) 가 필요한데,
+          //   지형 첫 빌드가 buildBase 로 _base 를 세운 뒤라 성공한다. 성공하면 재빌드로 델타를 얹는다.
+          (function _loadVariantStrataLayer() {
+            // 주의: 이 블록은 module 뒤쪽 일반 <script> 스코프라 module 의 sb/game 이 안 보인다(4939행 주석).
+            //   supabase 는 window.getSupabaseClient()(683행 노출), 회차 상태는 window._temGame 으로 접근.
+            if (!(window.TemVariantStrata && window.TemVariantStrata.isEnabled())) return;
+            var _vsMemId = window._temGame && window._temGame.memoryId;
+            var _vsSb = (typeof window.getSupabaseClient === 'function') ? window.getSupabaseClient() : null;
+            if (!_vsMemId || !_vsSb) { console.warn('[variant-strata] 진입 로드 스킵 — memId/sb 없음'); return; }
+            _vsSb.from('terrain_layers')
+              .select('height_delta, foot_map, generation')
+              .eq('memory_id', _vsMemId)
+              .then(function (res) {
+                if (res && res.error) { console.warn('[variant-strata] terrain_layers SELECT 실패', res.error); return; }
+                var row = res && res.data && res.data[0];
+                if (!row) { console.log('[variant-strata] 저장된 변형층 없음 — 바닥(제0판)만 렌더'); return; }
+                var _tries = 0;
+                var _hdLen = (row.height_delta && row.height_delta.length) || 0;
+                (function _tryLoad() {
+                  var _st = window.TemVariantStrata._getState && window.TemVariantStrata._getState();
+                  // 바닥(_base) 준비 + 엔진 해상도가 저장 델타와 일치할 때까지 대기(엔진 _G 정착 대기).
+                  //   loadLayer 는 길이 검사를 안 하므로, 격자 불일치를 여기서 막아 NaN 오염을 방지한다.
+                  if (!_st || !_st.base || (_hdLen && _st.G * _st.G !== _hdLen)) {
+                    if (_tries++ < 40) return setTimeout(_tryLoad, 100);
+                    return console.warn('[variant-strata] 로드 대기 초과 — 바닥 미준비 또는 해상도 불일치(저장 ' +
+                      _hdLen + ' vs 엔진 ' + (_st ? _st.G * _st.G : '?') + '). 바닥만 표시(재굽기 필요).');
+                  }
+                  var ok = false;
+                  try {
+                    ok = window.TemVariantStrata.loadLayer({
+                      height_delta: row.height_delta, foot_map: row.foot_map, generation: row.generation,
+                    });
+                  } catch (eL) { console.warn('[variant-strata] loadLayer 예외', eL); }
+                  if (ok) {
+                    console.log('[variant-strata] 변형층 로드 gen=' + row.generation + ' — 물려받은 땅 렌더 (G=' + _st.G + ')');
+                    try { if (rt && typeof rt.buildTerrain === 'function') rt.buildTerrain(null); }
+                    catch (eR) { console.warn('[variant-strata] 로드 후 재빌드 실패', eR); }
+                  } else {
+                    console.warn('[variant-strata] loadLayer 실패(false 반환) — 바닥만 표시.');
+                  }
+                })();
+              }, function (e) { console.warn('[variant-strata] terrain_layers SELECT 예외', e); });
+          })();
+
           // 씬 핀이 방금 생성됐으니 whisper panner + 마네킨 재구축 (attach 시점엔 _fpScenePins 비어있음)
           try {
             if (rt.__lumenAudioSpace && typeof rt.__lumenAudioSpace.rebuildWhispers === 'function') {
@@ -6441,12 +6603,9 @@
         var sp = scene.meta && scene.meta.stage_position;
         var hasSP = sp && Number.isFinite(sp.x) && Number.isFinite(sp.z);
 
-        // ── ADDITIVE §9 퀼트: replay terrain ON이면 핀·유령은 자기 조각 위에 선다 ──
+        // ── W4: 이본 지층 v1 — 핀·유령은 stage_position 에 고정(제0판의 닻). 땅만 침식/융기한다
+        //   (설계 §9: 핀 표류는 10월 옵션). 옛 replay 의 getPiecePos 조각-배치 우선순위 블록 제거. ──
         var _qp = null;
-        if (window.TemReplayTerrain && window.TemReplayTerrain.isEnabled() &&
-            typeof window.TemReplayTerrain.getPiecePos === 'function') {
-          try { _qp = window.TemReplayTerrain.getPiecePos(window._temGame.memoryId, pin.sceneId); } catch (_) {}
-        }
 
         var wx, wz;
         if (_qp) {
@@ -7240,7 +7399,11 @@
       }
 
       var P = rt.getP();
-      var field = T.computeAfTerrainFields(P, null, { G: 48, SZ: SZ_TERRAIN });
+      // W4: variant strata ON이면 이 미니맵도 rt 3D 지형과 같은 해상도(G=160)로 계산한다.
+      //   미니맵의 G=48 호출이 변형 엔진 단일 _G 를 48로 뒤집으면 rt(G=160)가 loadLayer 한 변형층을
+      //   무효화한다(엔진 상태 해상도 뒤집힘 → 물려받은 땅 소실). flag OFF = 기존 G=48(롤백 불변).
+      var _vsOnMini = window.TemVariantStrata && window.TemVariantStrata.isEnabled && window.TemVariantStrata.isEnabled();
+      var field = T.computeAfTerrainFields(P, null, _vsOnMini ? { G: 160, SZ: SZ_TERRAIN } : { G: 48, SZ: SZ_TERRAIN });
       var G = field.G;
       var hts = field.hts;
       var cls = field.cls;

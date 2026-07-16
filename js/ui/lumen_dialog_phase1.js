@@ -1728,6 +1728,42 @@
         console.log('[phase1] 공명 — 유령 이름 드러남: ' + _sub.ghostTrueName);
       }
 
+      // ── W4-4: 접촉 공식화 — resonance(턴 코사인 ≥0.85) 순간을 '접촉 사건'으로 승격. 회차당 최대 1회.
+      //   설계 §2#3: "해냈다"가 아니라 "일어났다". 승리 상태 아님. 이름 드러남은 이 사건의 한 연출.
+      //   회차 전역 게이트 = window._temGame._variantContact (초기화는 play-test initFpPlay).
+      //   record-contact 로 유령 접촉 기록(trajectory_bridges status=contact) — 서버도 회차당 1회 보강.
+      //   접촉 정보는 회차 상태에 보관 → 봉인 시 generate-reveal 의 contact 입력으로(W4-5).
+      //   flag ON 일 때만(플래그 OFF = 롤백, 기존 동작 그대로).
+      if (resonanceForViz === 'resonance'
+          && typeof window !== 'undefined'
+          && window.TemVariantStrata && typeof window.TemVariantStrata.isEnabled === 'function'
+          && window.TemVariantStrata.isEnabled()) {
+        var _vcGame = window._temGame || null;
+        var _vc = _vcGame && (_vcGame._variantContact || (_vcGame._variantContact = { occurred: false, count: 0 }));
+        if (_vc) _vc.count = (_vc.count || 0) + 1;  // 발화율 측정(W3 보완): 회차 내 resonance 총 횟수
+        if (_vc && !_vc.occurred) {
+          _vc.occurred = true;
+          _vc.utterance = String(playerInput || '').slice(0, 300);
+          _vc.sceneText = String((sceneData && sceneData.text) || '').slice(0, 300);
+          _vc.sceneId = sceneId;
+          _vc.turn = turn;
+          _vc.alignment = alignment;
+          console.log('[phase1] 접촉 발생(회차 1회) — turn=' + turn + ' scene=' + String(sceneId).slice(0, 8) +
+            '… align=' + alignment.toFixed(3) + ' | "일어난 사건"으로 기록');
+          if (input.supabase && memoryId) {
+            input.supabase.functions.invoke('record-contact', {
+              body: { memoryId: memoryId, sceneId: sceneId, utterance: _vc.utterance, turn: turn },
+            }).then(function (r) {
+              if (r && r.error) console.warn('[phase1] record-contact 실패 (무해, 접촉은 화면엔 반영됨)', r.error);
+              else console.log('[phase1] record-contact ok', (r && r.data) || {});
+            }, function (e) { console.warn('[phase1] record-contact 예외', e); });
+          }
+        } else if (_vc && _vc.occurred) {
+          // 이름 드러남 이후의 추가 resonance — 접촉 이벤트로 재발화하지 않는다(회차 게이트).
+          console.log('[phase1] resonance 재발생(회차 ' + _vc.count + '회째) — 이미 접촉 있음, 재발화 안 함(게이트).');
+        }
+      }
+
       // 260708: 턴 결 → 얼굴 파편 선명도/흐림 + 윤곽 펄스 (설계 §4)
       try { _updateFaceMood(alignment, resonanceForViz); } catch (_) {}
 

@@ -883,7 +883,15 @@
     var scenes = (m.sceneAF || []).map(function (sc) {
       return { id: sc.id, scene_order: sc.order, original_emotion: sc.emo, meta: sc.meta };
     });
+    // W4 (2026-07-16, 지휘 승인 예외): buildBase 가 _delta·_generation 을 리셋하므로, 로드/누적 상태를
+    // 잠깐 보존했다가 바닥 재생성 후 복원한다. 이게 없으면 진입 훅이 loadLayer 한 변형층을 렌더 직전에
+    // 지워 W4-1(물려받은 땅)·W4-3(목격) 이 바닥만 보이고, generation 이 0으로 리셋돼 다음 봉인이
+    // generation 충돌(409)로 누적에 실패한다. 공식·저장 계약 불변, 그리기·세대 상태만 정상화.
+    // 격자(_G)가 로드 델타와 다르면(해상도 뒤집힘) 복원하지 않는다 — 스케일 오염 방지.
+    var _keepDelta = _delta;
+    var _keepGen = _generation;
     var base = buildBase({ id: m.id, scenes: scenes }, opt);
+    if (_keepDelta && _keepDelta.length === _G * _G) { _delta = _keepDelta; _generation = _keepGen; }
     // 로드된 delta 있으면 얹어서 현재 땅 반영(없으면 바닥 그대로).
     var G = _G, hts = new Float32Array(G * G);
     for (var i = 0; i < G * G; i++) hts[i] = _base[i] + (_delta ? _delta[i] : 0);
