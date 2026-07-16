@@ -105,8 +105,8 @@
 | **AF 좌표** | Attribution × Core Fear 2D 평면 (지형 배치 기준) | 일반 VAD와 다름 |
 | **VAD 투영** | 씬 감정 분포 → (v, a) 2D 좌표 | 지형 pin 위치 계산용 |
 | **author bridge** | 작가가 쓴 해석 조각 (정적) | |
-| **trajectory bridge** | 공명 엔딩 도달자의 궤적이 자동 변환된 브릿지 (동적, 자동 승인) | |
-| **공명 (resonance)** | 트루엔딩 도달. 궤적 브릿지 생성 트리거 | 인기도/좋아요 아님 |
+| **trajectory bridge** | 접촉 기록 (2026-07-16 전용) — 접촉 순간의 발화·씬·시각. 정본화 없음 | |
+| **공명 (resonance) → 접촉 (contact)** | 접촉 — 여정 중 유령과 정말 겹치는 드문 사건 (회차당 최대 1회 표시). 승리 상태 아님. 인기도/좋아요 아님 | 260716 이본지층 재정의: 트루엔딩 폐기 |
 | **echo_words** | 씬에 붙은 공명 단어. 플레이어 경험에서 주변에 뜸 | |
 | **이본론** | TEM 철학: 변이 = 재창조, 오염 ≠ 열화 | |
 | **strata** | 3D 지형 뷰. 씬 pin이 VAD 좌표로 배치됨 | |
@@ -184,6 +184,8 @@ void_mod  = 0.7 if user avoided emotion        // VOID penalty
 **Transition patterns:** echo_follow, bridge, contradiction, displacement, avoidance, fixation
 
 **Design principle:** 엔진은 판단하지 않는다. 관찰하고 보고할 뿐. 해석/추천 없음.
+
+> 2026-07-16 이본지층 재정의: "트루엔딩/공명=보상" 위계를 걷어내며 이 원칙을 완성. 높은 정렬은 승리가 아니라 **접촉**(드문 사건) — "해냈다"가 아니라 "일어났다"의 언어. 엔진 공식·출력은 불변, 어휘만 바뀜.
 
 전문은 `docs/별이엔진_V4-궤적기반_정렬도-260327.md`.
 
