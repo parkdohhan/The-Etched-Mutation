@@ -76,7 +76,7 @@
   <script src="js/ui/lumen_ghost_response.js?v=260714"></script>
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
-  <script src="js/ui/lumen_dialog_phase1.js?v=260714"></script>
+  <script src="js/ui/lumen_dialog_phase1.js?v=260717"></script>
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260714"></script>
   <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
@@ -5427,6 +5427,27 @@
               scene_text: String(_vcR.sceneText || '').slice(0, 300),
               utterance: String(_vcR.utterance || '').slice(0, 300),
             };
+            // W4-4b (260717 지휘): 접촉 기록 봉인-재시도.
+            //   턴 시점 record-contact 는 서버 방어 ②c('최근 180분 plays 존재')에 걸릴 수 있다 —
+            //   첫 씬 접촉은 plays 생성(씬 종료) 전이라 403 실측(한산할 때의 첫 관객 = 기록 유실).
+            //   봉인 시점엔 이 회차 plays 가 존재하므로 게이트 통과. 이미 기록된 경우 서버
+            //   dedup(30분 409)이 무해하게 받는다. 실패는 로그만 — reveal 진행 불변.
+            try {
+              fetch(SUPABASE_URL + '/functions/v1/record-contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+                body: JSON.stringify({
+                  memoryId: game.memoryId,
+                  sceneId: _vcR.sceneId,
+                  utterance: String(_vcR.utterance || '').slice(0, 300),
+                  turn: _vcR.turn,
+                }),
+              }).then(function (r) {
+                if (r.ok) console.log('[variant-strata] 접촉 봉인-재시도 ok');
+                else if (r.status === 409) console.log('[variant-strata] 접촉 봉인-재시도 — 이미 기록됨(409, 정상)');
+                else console.warn('[variant-strata] 접촉 봉인-재시도 거부 status=' + r.status);
+              }, function () {});
+            } catch (_) {}
           }
           console.log('[variant-strata] reveal 배선: variant_summary=', _revBody.variant_summary,
             '| contact=', _revBody.contact || '(없음)');
