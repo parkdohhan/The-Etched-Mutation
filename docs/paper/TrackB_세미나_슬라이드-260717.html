@@ -72,6 +72,18 @@
   #notes .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:#7fa8e6;text-transform:uppercase;margin-bottom:10px}
   #notes .cue{font-family:"Noto Sans KR",var(--sans);color:#f0c987;font-size:15px;margin-bottom:10px}
   #notes .script{font-size:18px;line-height:1.55;max-width:95ch}
+  /* math + tables */
+  .math{font-family:var(--mono);font-size:1.5vw;line-height:2;color:var(--ink)}
+  .math .op{color:var(--faint)} .math .lhs{color:var(--accent);font-weight:700}
+  .math sub{font-size:.7em} .math sup{font-size:.7em}
+  .gloss{color:var(--faint);font-size:1.1vw}
+  table.res{border-collapse:collapse;width:100%;font-size:1.32vw}
+  table.res th,table.res td{border-bottom:1px solid var(--hair);padding:.55em .6em;text-align:center}
+  table.res th{color:var(--accent);font-size:1.02vw;letter-spacing:.04em;text-transform:uppercase;border-bottom:2px solid var(--accent)}
+  table.res td:first-child,table.res th:first-child{text-align:left;font-weight:700}
+  table.res tr.hl td{background:var(--accent-soft);font-weight:700}
+  table.res .mono{font-family:var(--mono)}
+  .cap{font-size:1.02vw;color:var(--faint);margin-top:.8em;line-height:1.5;max-width:90%}
 </style>
 </head>
 <body>
@@ -213,15 +225,39 @@ const SLIDES=[
   script:`The formal version. Take the scenes as points and admissible transitions as edges — that's the base space. Over it we build a cellular sheaf. A section is one playthrough: the emotional trajectory a person left across the scenes they visited. Gluing is exactly the grandmother question — do overlapping sections assemble into one global telling? One trap: a section must carry the seams, the transitions, not just values. Values alone would trivially glue, and the theory would say nothing.`},
 
 { html:`
-  <div class="eyebrow">Instrument 1</div>
-  <h2>Disagreement <span class="k">energy</span></h2>
-  <div class="eq">E = 0 &nbsp;⟺&nbsp; an original consistent with the data exists</div>
-  <ul style="max-width:80%;margin-top:.4em">
-    <li>The sheaf Laplacian measures how far observed local sections sit from any single global section.</li>
-    <li><span class="accent">E &gt; 0</span> → no telling reconciles them. The original is not assumed absent — it is <em>computed</em> absent, with a magnitude.</li>
+  <div class="eyebrow">Derivation · 1 of 2</div>
+  <h2>From tellings to a <span class="k">cochain</span></h2>
+  <div class="two mid">
+    <div>
+      <p class="gloss" style="margin-bottom:.7em">Nerve graph N: nodes = runs; edge (p,q) if they share ≥ m scenes; weight w<sub>pq</sub> = # shared scenes.</p>
+      <div class="math">
+        <div>d<sub>pq</sub>(s) = σ<sub>p</sub>(s) − σ<sub>q</sub>(s)</div>
+        <div><span class="lhs">g<sub>pq</sub></span> = mean<sub>s</sub> d<sub>pq</sub>(s) <span class="gloss">&nbsp;constant offset</span></div>
+        <div><span class="lhs">r<sub>pq</sub></span> = √( mean<sub>s</sub> ‖d<sub>pq</sub>(s) − g<sub>pq</sub>‖² )</div>
+      </div>
+    </div>
+    <div class="box">
+      <h3>Pairwise-consistency gate</h3>
+      <p>Keep an edge only if <b class="accent">r<sub>pq</sub> ≤ τ</b> — the two runs are translatable by a single shift g<sub>pq</sub>. τ = median(r). These are precisely the "agrees with its neighbor" edges.</p>
+    </div>
+  </div>`,
+  cue:`유도 1. g=상수 오프셋(재보정), r=상수이동으로 번역 가능한가. 그림 대신 수식.`,
+  script:`Now the actual construction. Build a nerve graph: each run is a node, and two runs are joined if they share at least m scenes, weighted by how many. On each shared scene, take the difference between the two tellings. Its average is g — a single constant offset, think of it as one run recalibrated onto the other. The residual r asks: can these two runs be reconciled by that one shift alone? If the residual is at most tau, we call the edge consistent — these are the pairs that agree with their neighbor.`},
+
+{ html:`
+  <div class="eyebrow">Derivation · 2 of 2 — the number</div>
+  <h2>What no recalibration removes: <span class="k">ρ</span></h2>
+  <div class="math" style="margin:.2em 0 .3em">
+    <div>h* = argmin<sub>h</sub> &nbsp;Σ<sub>(p,q)∈E</sub> w<sub>pq</sub> ‖ g<sub>pq</sub> − (h<sub>p</sub> − h<sub>q</sub>) ‖² &nbsp;&nbsp;<span class="op">⟶</span>&nbsp;&nbsp; L h = δ<sup>T</sup>(w·g)</div>
+  </div>
+  <div class="eq" style="font-size:2vw;margin:.2em 0 .7em"><span class="accent">ρ</span> = &nbsp;Σ w‖g − δh*‖² &nbsp;/&nbsp; Σ w‖g‖² &nbsp;&nbsp;∈ [0,1]</div>
+  <ul style="max-width:90%">
+    <li>h gives each run its best global recalibration. Whatever it explains away is <span class="muted">reducible</span>.</li>
+    <li><span class="accent">ρ = the share that survives</span> — the cyclic, path-dependent residue. ρ &gt; 0 ⟺ nonzero holonomy around loops.</li>
+    <li class="muted">ρ = 0 ⟺ one global telling fits every run. "The original exists," computed — not assumed.</li>
   </ul>`,
-  cue:`첫 도구. "H¹"이라 부르지 말 것 — 불일치 에너지.`,
-  script:`This gives the first instrument: disagreement energy. Using the sheaf Laplacian, we measure how far the observed local sections sit from any single consistent global section. Zero means an original exists — the pieces stitch. Greater than zero means no telling can reconcile them. And the absence isn't declared; it's computed, with a magnitude. One honest caveat: strictly, no global section *consistent with the observations* — the empty telling always technically exists. The number is distance from consistency.`},
+  cue:`유도 2 = 페이오프. ρ가 재보정으로 안 지워지는 순환 잔여. 느리게.`,
+  script:`Here's the payoff. Let h assign every run its own best global recalibration — solved by a single graph-Laplacian linear system, trivial at this size. Whatever that recalibration explains away is reducible; it's just per-run bias. Rho is the fraction that survives it — the cyclic, path-dependent residue that no per-run shift can remove. Rho greater than zero is exactly nonzero holonomy around loops. And rho equal to zero means one global telling fits every run: the original exists, computed rather than assumed. Rho is the whole experiment in one number.`},
 
 { html:`
   <div class="eyebrow">Instrument 2 — the one that matters</div>
@@ -301,6 +337,34 @@ const SLIDES=[
   </div>`,
   cue:`파일럿 수치. "시뮬이지 실관객 아님" 반드시 명시.`,
   script:`Here's where the pilot stands. On thirty-nine runs, about eighteen percent of the disagreement is cyclic — the part no per-run recalibration removes. And in a thousand simulated worlds where an original genuinely exists, not one reached that value; the p-value is below a thousandth. The honest framing: these runs are not humans. They're language-model personas — simulations. But hold that thought — it makes the finding stranger, not weaker.`},
+
+{ html:`
+  <div class="eyebrow">Pilot results — MM23L · 39 runs · m=2 · τ=median</div>
+  <h2>The <span class="k">table</span></h2>
+  <table class="res">
+    <tr><th>Axis set</th><th>ρ</th><th>N1 · shuffle</th><th>N2 · global-section</th><th>N3 · bootstrap</th><th>Exhibit&nbsp;A</th></tr>
+    <tr class="hl"><td>A12 · decision</td><td class="mono">0.184</td><td class="mono">p = 1.00</td><td class="mono">p &lt; 0.001</td><td class="mono">p &lt; 0.001</td><td class="mono">0</td></tr>
+    <tr><td>A17 · canonical</td><td class="mono">0.176</td><td class="mono">p = 1.00</td><td class="mono">p &lt; 0.001</td><td class="mono">p &lt; 0.001</td><td class="mono">1</td></tr>
+    <tr><td>A9 · judged (6 real)</td><td class="mono">0.187</td><td class="mono">p = 1.00</td><td class="mono">p &lt; 0.001</td><td class="mono">p &lt; 0.001</td><td class="mono">1</td></tr>
+  </table>
+  <p class="cap"><b>N1 p = 1.00</b> is not a failure: destroying scene order gives <em>more</em> cyclic disagreement — order carries real structure. <b>N2</b> is the main null (an original-exists world); observed ρ beats all 1,000 resamples. <b>N3</b> preserves axis correlation and agrees. <b>Exhibit A</b> = loops twisted beyond the null's 99th percentile — present for A17/A9, borderline-absent for the conservative A12 (max ‖W‖/T = 0.996×).</p>`,
+  cue:`결과 표. N1=1.00이 왜 좋은 신호인지 반드시 설명(순서가 구조를 담음).`,
+  script:`Now the full table — three choices of emotion axis space against three null models. Read the decision row, A12. Rho is 0.18. Against N2 — the original-exists null — it beats every one of a thousand resamples, p below a thousandth; N3, which keeps the axis correlations, agrees. Note N1: p equals one. That's not a failure — it says that shuffling the scene order produces MORE cyclic disagreement, so the real order carries structure that reduces it. And Exhibit A — a single loop twisted past the null's 99th percentile — shows up for the other axis sets but sits right on the boundary for the conservative decision axis. That borderline is exactly why the verdict is weak-go, not go. I'm reporting the number that argues against me too.`},
+
+{ html:`
+  <div class="eyebrow">Does the instrument work? — sanity check</div>
+  <h2>Two worlds with <span class="k">known</span> answers</h2>
+  <div class="two mid">
+    <div class="box"><h3>World 1 — no twist, by construction</h3>
+      <p class="mono pos" style="font-size:2.4vw;font-weight:700">ρ = 0.00003</p>
+      <p>A synthetic original-exists world. The pipeline returns ≈ 0, as it must.</p></div>
+    <div class="box" style="border-color:#cdd8ee;background:#eef2fa"><h3>World 2 — one twist injected</h3>
+      <p class="mono accent" style="font-size:2.4vw;font-weight:700">ρ = 0.9998</p>
+      <p>A cyclic twist planted on one ring. ρ spikes <em>and</em> Exhibit A localizes that exact ring.</p></div>
+  </div>
+  <p class="cap">Before trusting any number on real data: the pipeline must return ≈ 0 where the truth is zero, and must find a twist where one was planted. It does both. The measurement was validated before it was used.</p>`,
+  cue:`자가검증. 답 아는 두 세계로 계측기가 진짜인지 먼저 증명. 신뢰의 근거.`,
+  script:`One more slide, because a number is only as good as the instrument that produced it. Before touching the real data, I ran the pipeline on two worlds where I already knew the answer. World one: a synthetic world built to have a single consistent original. The pipeline returns rho of three hundred-thousandths — essentially zero, correct. World two: I planted one cyclic twist on a ring of runs. Rho jumps to point nine-nine-nine, and Exhibit A points back at that exact ring. So the instrument reads zero where the truth is zero, and localizes a twist where one exists. It was validated before it was believed.`},
 
 { html:`
   <div class="eyebrow">Reading it honestly</div>
