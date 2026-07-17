@@ -1872,7 +1872,10 @@
   const ENABLED_LAYERS = ['surface', 'near', 'mid', 'deep', 'bedrock'];
   const game = window._temGame = {
     memoryId: null,
-    _runStartTime: new Date().toISOString(),   // V2-6: 회차 시작 시각 — 회차 끝 plays 도장 UPDATE 범위
+    _runStartTime: new Date().toISOString(),   // V2-6: 회차 시작 시각 — 회차 끝 plays 도장 UPDATE 범위 (run_id 없을 때 폴백)
+    // 260717 지휘: 회차 식별자 — plays.run_id. 익명 관객 회차 복원(이론 자료: 절편=회차) +
+    //   동시 관객 도장 혼선 차단. initFpPlay 에서 회차 시작마다 재생성.
+    _runId: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : null,
     driftStamp: null,                          // V2-6: { ghost_variant_id, picked_at } — dialog_phase1 회차 시작 픽이 박음
     memories: [],
     scenes: [],
@@ -3365,7 +3368,8 @@
             scene,
             result.lastUserEmotion,
             result.scene_link_input || '',
-            { alignment_score: result.alignment, mismatch_type: result.resonance },
+            // 260717 지휘: dialogTurns 관통 — 턴별 원문·공명 라벨을 plays.dialog_turns 로 영속화
+            { alignment_score: result.alignment, mismatch_type: result.resonance, dialogTurns: result.dialogTurns },
             false
           ).then(function () {
             console.log('[v21-phase1] plays inserted + traces.push (sceneId=' + scene.id.slice(0, 8) + '…)');
@@ -4225,8 +4229,16 @@
       wave_data: null,
       layer_id: 0,
       user_id: userId,
+      // 260717 지휘: 회차 식별자 — 익명 회차 복원·도장 정밀화·이론 자료(절편=회차)의 단위
+      run_id: game._runId || null,
       ghost_variant_id: (game.driftStamp && game.driftStamp.ghost_variant_id) || null,  // V2-6: 회차 시작 drift 픽 변주 (final_drift_vector 는 회차 끝 sealBtn 에서 UPDATE)
     };
+    // 260717 지휘: 대화 원문 영속화 — V2.1 대화 경로의 턴별 {원문·감정 지문·정렬·공명 라벨·유령 답}.
+    //   여태 씬 종료 시 버려져 모든 행이 [] 였다(실측). 기억유전학 언어 변이·접촉 임계 결정·턴 궤적 재료.
+    //   고전 감정 제출 경로는 dialogTurns 가 없으므로 키 자체를 생략(컬럼 default [] 유지).
+    if (result && Array.isArray(result.dialogTurns) && result.dialogTurns.length) {
+      row.dialog_turns = result.dialogTurns;
+    }
     const { error } = await sb.from('plays').insert(row);
     if (error) LOG('plays insert error', error);
     else LOG('plays saved', row);
@@ -5260,9 +5272,12 @@
         const _skyStains = (window.TemSkyStains && window.TemSkyStains.serialize()) || null;
         const _stamp = { ghost_variant_id: _gvId, final_drift_vector: _driftVector };
         if (_skyStains) _stamp.sky_stains = _skyStains;
-        sb.from('plays').update(_stamp)
-          .eq('memory_id', game.memoryId).gte('created_at', game._runStartTime)
-          .then(r => { if (r && r.error) LOG('V2-6 drift/sky stamp update error', r.error); });
+        // 260717 지휘: 도장 범위 = run_id (시간 창은 동시 관객이 서로의 행에 도장 찍는 구조였음 — 실측).
+        //   run_id 없으면(구형 브라우저) 기존 시간 창 폴백.
+        let _stampQ = sb.from('plays').update(_stamp).eq('memory_id', game.memoryId);
+        _stampQ = game._runId ? _stampQ.eq('run_id', game._runId)
+                              : _stampQ.gte('created_at', game._runStartTime);
+        _stampQ.then(r => { if (r && r.error) LOG('V2-6 drift/sky stamp update error', r.error); });
         // cumulative_emotion_vec EMA 갱신 (Edge function — RLS 우회, anon 호출)
         if (_endVec && Object.keys(_endVec).length) {
           sb.functions.invoke('record-drift-cumulative', { body: { memoryId: game.memoryId, sessionEmotionVec: _endVec } })
@@ -5889,6 +5904,13 @@
 
     function initFpPlay(memoryId) {
       if (!memoryId || !window.showStrataView || !window.TemAfStrataTerrain) return false;
+      // 260717 지휘: 회차 식별자·시작 시각 갱신 — plays.run_id 의 원천. 플래그와 무관(이론 자료 기반 시설).
+      try {
+        if (window._temGame && typeof crypto !== 'undefined' && crypto.randomUUID) {
+          window._temGame._runId = crypto.randomUUID();
+          window._temGame._runStartTime = new Date().toISOString();
+        }
+      } catch (_) {}
       // ── W4: 이본 지층 — 체험 시작 선언(이번 관객의 박자 로그 초기화). 실제 침식/융기는 봉인 때. ──
       if (window.TemVariantStrata && window.TemVariantStrata.isEnabled() &&
           typeof window.TemVariantStrata.beginRun === 'function') {
