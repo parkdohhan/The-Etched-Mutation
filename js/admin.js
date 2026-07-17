@@ -2558,6 +2558,28 @@ async function saveMemory() {
         currentMemoryIndex = memories.findIndex(m => String(m.id) === String(memoryId));
         await loadAllSessions();
 
+        // 260717 지휘 수리: 저장 후 currentScenes 에 DB 부여 씬 id 재수화(rehydrate).
+        //   버그: editMemory 는 DB 로드라 씬 id 를 갖지만, W1-A 로 저장 후 편집기에 '잔류'하면
+        //   currentScenes 는 id 가 빈 채 남는다. 다음 저장에서 saveMemoryGraph 가 이 씬들을
+        //   '신규'로 오인 → 기존 씬 DELETE + 새 UUID INSERT → plays.scene_id 단절(SET NULL).
+        //   즉 자주 저장하는 저작 루프에서 매 저장마다 관객 기록이 씬 연결을 잃는다(실기 실측).
+        //   loadMemories() 가 방금 가져온 DB 씬(id 有, scene_order 정렬)으로 id 만 되꽂는다.
+        try {
+            const _savedMem = (currentMemoryIndex >= 0) ? memories[currentMemoryIndex] : null;
+            const _dbScenes = (_savedMem && Array.isArray(_savedMem.scenes)) ? _savedMem.scenes : null;
+            if (_dbScenes && _dbScenes.length) {
+                const _byOrder = new Map();
+                _dbScenes.forEach(s => { if (s && s.scene_order != null) _byOrder.set(String(s.scene_order), s.id); });
+                currentScenes.forEach((s, i) => {
+                    const _ord = (s && s.scene_order != null) ? String(s.scene_order) : null;
+                    const _dbId = (_ord != null && _byOrder.has(_ord)) ? _byOrder.get(_ord)
+                                : (_dbScenes[i] ? _dbScenes[i].id : null);
+                    if (_dbId) s.id = _dbId; // 위치·순서 정합 시에만 스탬프(둘 다 array 순서 보존)
+                });
+                renderSceneToc();
+            }
+        } catch (e) { console.warn('[saveMemory] 씬 id 재수화 실패(다음 저장 churn 위험):', e && e.message); }
+
         // W3-K: 저장 직후 판본 스냅샷(최근 20개 유지). 실패해도 저장 자체는 성공.
         try { await snapshotVersion(supabaseClient, memoryId, '저장'); await renderVersions(); }
         catch (e) { console.warn('[saveMemory] 판본 스냅샷 실패(저장은 성공):', e.message); }
