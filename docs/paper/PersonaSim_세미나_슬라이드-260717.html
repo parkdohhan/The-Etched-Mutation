@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulated Readers — Sample Personality, Don't Imagine It</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#1a1a1a; --sub:#555; --faint:#8a8a8a; --hair:#e3e3e3;
+    --accent:#1a4fa0; --accent-soft:#eef2fa; --pos:#0a7d5a; --neg:#b03a2e;
+    --sans:"Helvetica Neue",Arial,"Segoe UI","Noto Sans KR",sans-serif;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#333;font-family:var(--sans);color:var(--ink);overflow:hidden}
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#2b2b2b}
+  #frame{width:min(96vw,calc(96vh*(16/9)));aspect-ratio:16/9;background:var(--bg);
+    position:relative;box-shadow:0 6px 40px rgba(0,0,0,.4);overflow:hidden}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;padding:6.2% 7.2%;opacity:0;transition:opacity .25s}
+  .slide.on{display:flex;opacity:1}
+  .eyebrow{font-size:1.05vw;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:.9em}
+  h1{font-size:4.2vw;font-weight:700;line-height:1.05;letter-spacing:-.01em}
+  h2{font-size:3vw;font-weight:700;line-height:1.12;letter-spacing:-.01em;margin-bottom:.7em}
+  h2 .k{color:var(--accent)}
+  p,li{font-size:1.7vw;line-height:1.5;color:var(--ink)}
+  .sub{color:var(--sub)} .muted{color:var(--faint)}
+  .lead{font-size:1.95vw;color:var(--sub);margin-top:1.1em;max-width:46ch}
+  ul{list-style:none;display:flex;flex-direction:column;gap:.7em;margin-top:.4em}
+  li{position:relative;padding-left:1.4em}
+  li::before{content:"";position:absolute;left:0;top:.62em;width:.5em;height:.5em;border-radius:50%;background:var(--accent)}
+  .accent{color:var(--accent);font-weight:700} .pos{color:var(--pos)} .neg{color:var(--neg)}
+  .fill{flex:1}
+  .foot{font-family:var(--mono);font-size:.92vw;letter-spacing:.06em;color:var(--faint)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:4%;align-items:start;flex:1;align-content:center}
+  .two.mid{align-items:center}
+  .box{border:1px solid var(--hair);border-radius:8px;padding:1.4em 1.5em;background:#fafafa}
+  .box.hl{border-color:#cdd8ee;background:var(--accent-soft)}
+  .box h3{font-size:1.25vw;letter-spacing:.03em;color:var(--accent);font-weight:700;margin-bottom:.5em}
+  .box p{font-size:1.4vw;color:var(--sub)}
+  .callout{font-size:2.5vw;font-weight:700;line-height:1.18;letter-spacing:-.01em;max-width:24ch}
+  .stat{font-size:6.5vw;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .cap{font-size:1.02vw;color:var(--faint);margin-top:.8em;line-height:1.5;max-width:92%}
+  table.res{border-collapse:collapse;width:100%;font-size:1.3vw}
+  table.res th,table.res td{border-bottom:1px solid var(--hair);padding:.5em .6em;text-align:center}
+  table.res th{color:var(--accent);font-size:1.0vw;letter-spacing:.03em;text-transform:uppercase;border-bottom:2px solid var(--accent)}
+  table.res td:first-child,table.res th:first-child{text-align:left;font-weight:700}
+  table.res tr.hl td{background:var(--accent-soft);font-weight:700}
+  table.res .mono{font-family:var(--mono)}
+  .quote{font-family:"Noto Sans KR",var(--sans);font-size:1.55vw;line-height:1.55;color:var(--ink);
+    border-left:3px solid var(--accent);padding-left:1em;font-style:normal}
+  .diagram{display:flex;align-items:center;justify-content:center}
+  .diagram svg{width:100%;height:auto;max-height:34vh}
+  .tag{display:inline-block;font-family:var(--mono);font-size:.9vw;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:.25em .7em;border-radius:3px}
+  #bar{position:absolute;left:0;bottom:0;height:4px;background:var(--accent);width:0;transition:width .25s}
+  #brand{position:absolute;left:7.2%;bottom:3.4%;font-family:var(--mono);font-size:.82vw;letter-spacing:.1em;color:var(--faint)}
+  #pg{position:absolute;right:7.2%;bottom:3.4%;font-family:var(--mono);font-size:.82vw;letter-spacing:.1em;color:var(--faint)}
+  #hint{position:fixed;bottom:10px;left:14px;font-family:var(--mono);font-size:11px;color:#bbb;z-index:40}
+  #notes{position:fixed;left:0;right:0;bottom:0;max-height:40vh;overflow:auto;background:#111;color:#eee;padding:20px 40px 28px;display:none;z-index:50}
+  #notes.on{display:block}
+  #notes .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:#7fa8e6;text-transform:uppercase;margin-bottom:10px}
+  #notes .cue{font-family:"Noto Sans KR",var(--sans);color:#f0c987;font-size:15px;margin-bottom:10px}
+  #notes .script{font-size:18px;line-height:1.55;max-width:95ch}
+</style>
+</head>
+<body>
+<div id="stage"><div id="frame"><div id="deck"></div><div id="bar"></div>
+  <div id="brand">SIMULATED READERS · D. PARK</div><div id="pg"></div></div></div>
+<div id="hint">← → navigate · N speaker notes · F fullscreen · click halves</div>
+<div id="notes"><div class="lbl">Speaker notes</div><div class="cue" id="ncue"></div><div class="script" id="nscript"></div></div>
+<script>
+const A="#1a4fa0", G="#9aa0a6", R="#b03a2e", P="#0a7d5a", HAIR="#cfcfcf";
+const SVG={
+  // over-resonance strip: dots clustered high, empty low tail
+  strip:`<svg viewBox="0 0 400 190">
+    <line x1="30" y1="150" x2="380" y2="150" stroke="${HAIR}" stroke-width="1.5"/>
+    <g font-family="Helvetica" font-size="11" fill="${G}" text-anchor="middle">
+      <text x="30" y="170">0.0</text><text x="205" y="170">0.5</text><text x="380" y="170">1.0</text></g>
+    <rect x="30" y="60" width="87" height="90" fill="#fdecea" opacity=".8"/>
+    <text x="73" y="50" text-anchor="middle" font-family="Helvetica" font-size="11" fill="${R}">human-expected tail — empty</text>
+    <g fill="${A}">
+      <circle cx="252" cy="120" r="6"/><circle cx="268" cy="95" r="6"/><circle cx="285" cy="132" r="6"/>
+      <circle cx="300" cy="108" r="6"/><circle cx="312" cy="128" r="6"/><circle cx="322" cy="92" r="6"/>
+      <circle cx="330" cy="118" r="6"/><circle cx="343" cy="102" r="6"/><circle cx="352" cy="126" r="6"/>
+      <circle cx="360" cy="110" r="6"/><circle cx="245" cy="132" r="6"/><circle cx="295" cy="122" r="6"/>
+      <circle cx="335" cy="132" r="6"/><circle cx="318" cy="112" r="6"/></g>
+    <circle cx="232" cy="118" r="6" fill="${R}"/>
+    <text x="232" y="105" text-anchor="middle" font-family="Helvetica" font-size="10" fill="${R}">p08 (only low)</text>
+    <line x1="325" y1="55" x2="325" y2="150" stroke="${A}" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="325" y="48" text-anchor="middle" font-family="Helvetica" font-size="11" fill="${A}" font-weight="700">mean 0.81</text>
+  </svg>`,
+  // quantization: 3 tall bars
+  quant:`<svg viewBox="0 0 400 190">
+    <line x1="40" y1="155" x2="380" y2="155" stroke="${HAIR}" stroke-width="1.5"/>
+    <g fill="${A}">
+      <rect x="120" y="70" width="46" height="85"/><rect x="185" y="90" width="46" height="65"/>
+      <rect x="250" y="125" width="46" height="30"/></g>
+    <g fill="#cdd8ee"><rect x="60" y="145" width="46" height="10"/><rect x="310" y="147" width="46" height="8"/></g>
+    <g font-family="Helvetica" font-size="12" fill="${G}" text-anchor="middle">
+      <text x="143" y="172">0.52</text><text x="208" y="172">0.62</text><text x="273" y="172">0.72</text></g>
+    <g font-family="Helvetica" font-size="13" font-weight="700" fill="${A}" text-anchor="middle">
+      <text x="143" y="62">33.7%</text><text x="208" y="82">25.4%</text><text x="273" y="117">11.9%</text></g>
+    <text x="210" y="35" text-anchor="middle" font-family="Helvetica" font-size="13" fill="${R}" font-weight="700">71% on 3 values</text>
+  </svg>`,
+  // correlation bars
+  corr:`<svg viewBox="0 0 400 200">
+    <line x1="40" y1="100" x2="380" y2="100" stroke="${HAIR}" stroke-width="1.5"/>
+    <g font-family="Helvetica" font-size="13" font-weight="700" text-anchor="middle">
+      <rect x="70" y="37" width="42" height="63" fill="${A}"/><text x="91" y="28" fill="${A}">O .63</text>
+      <rect x="140" y="41" width="42" height="59" fill="${A}"/><text x="161" y="32" fill="${A}">A .59</text>
+      <rect x="210" y="45" width="42" height="55" fill="${A}"/><text x="231" y="36" fill="${A}">E .55</text>
+      <rect x="290" y="100" width="42" height="31" fill="${R}"/><text x="311" y="148" fill="${R}">N −.31</text>
+    </g>
+    <text x="200" y="188" text-anchor="middle" font-family="Helvetica" font-size="11" fill="${G}">Pearson r vs objective alignment · n=15 · |r|≥0.51 ≈ p&lt;.05</text>
+  </svg>`
+};
+
+const SLIDES=[
+{ html:`
+  <div class="eyebrow">Methods · Affective Interactive Narrative · ICIDS-track</div>
+  <h1>Simulated Readers — <span class="k">sample</span> personality, don't imagine it</h1>
+  <p class="lead">A cheap pre-testing instrument for emotion-driven interactive narrative — and an honest map of what it cannot do.</p>
+  <div class="fill"></div>
+  <p class="foot">Dohan Park · The Etched Mutation · draft v0.1, 2026</p>`,
+  cue:`훅. 방법론 논문 = "정직한 한계 지도"가 팔림. 천천히.`,
+  script:`This is a methods talk. I built a tool to simulate readers for emotion-driven interactive narrative — so I could test a design without recruiting humans every iteration. But the honest core of this paper isn't that the tool works. It's a precise map of what it can and cannot do. And the failures turned out to be the most useful part.`},
+
+{ html:`
+  <div class="eyebrow">The problem</div>
+  <h2>No readers for the <span class="k">iteration</span> loop</h2>
+  <div class="two mid">
+    <div><ul>
+      <li>To prove a system gives <em>diverse readers diverse experiences</em>, you need diverse readers.</li>
+      <li>Real humans cost IRB, recruitment, and tens of minutes each.</li>
+      <li class="accent">Unaffordable inside a fix-check-refix loop.</li>
+    </ul></div>
+    <div class="box"><h3>The default failure</h3><p>The developer ends up judging the system on their own handful of plays — the extreme of sample bias.</p></div>
+  </div>`,
+  cue:`문제 셋업. 반복 설계 단계엔 인간을 못 쓴다.`,
+  script:`Here's the dilemma anyone building these systems knows. To show your system gives different readers different experiences, you need different readers. But real human subjects mean ethics approval, recruitment, payment, tens of minutes each. That's simply unaffordable inside the loop where you fix something, check it, and fix it again. So developers end up judging the whole system on their own five or six playthroughs — the most extreme sample bias there is.`},
+
+{ html:`
+  <div class="eyebrow">The tempting shortcut, and its trap</div>
+  <h2>"LLM, invent some readers" → <span class="k">mode collapse</span></h2>
+  <div class="stack" style="max-width:88%">
+    <p>Ask a language model to generate personas and diversity quietly collapses — they converge to one archetype (mild, thoughtful, middle-class).</p>
+    <p class="accent">Fatal here: the extreme readers are exactly the ones who form the <em>tails</em> of the response distribution.</p>
+  </div>`,
+  cue:`기존 대안의 함정. 붕괴하는 게 하필 꼬리를 만드는 독자.`,
+  script:`The obvious shortcut is to just ask a language model to invent readers. But there's a well-documented failure: mode collapse. The generated personas quietly converge to one archetype — usually a mild, thoughtful, middle-class narrator. The dissociative, the cruel, the extreme get under-sampled. And for evaluating emotional narrative that's fatal, because those extreme readers are exactly the ones who form the tails of your response distribution — the whole point of testing diversity.`},
+
+{ html:`
+  <div class="fill" style="flex:.4"></div>
+  <div class="eyebrow">The core idea</div>
+  <p class="callout">Don't <span class="muted">imagine</span> personality. <span class="k">Sample</span> it — from real people.</p>
+  <p class="lead">Draw Big Five scores by stratified sampling from <b>307,313 real humans</b> (IPIP-NEO-300). The LLM only <em>translates</em> scores into a biography — and the trait labels are forbidden.</p>
+  <div class="fill"></div>`,
+  cue:`논문의 심장. "상상 말고 표집."`,
+  script:`So here's the whole idea in one line. Don't imagine personality — sample it, from real people. We take Big Five personality scores by stratified sampling from three hundred and seven thousand real human respondents to a validated instrument. The language model is demoted: it only translates those real scores into a life story. And crucially, it's forbidden from using the trait labels themselves. That single move addresses both failures at once.`},
+
+{ html:`
+  <div class="eyebrow">Pipeline · fully reproducible</div>
+  <h2>Four stages, <span class="k">two</span> models</h2>
+  <div class="two mid">
+    <div class="box"><p class="mono" style="font-family:var(--mono);font-size:1.2vw;line-height:1.9;color:var(--ink)">
+      307,313 real Big Five scores<br>
+      &nbsp;↓ &nbsp;stratified sample · seed=42<br>
+      15 personas × 5 scores<br>
+      &nbsp;↓ &nbsp;Opus · biography (labels suppressed)<br>
+      15 life stories<br>
+      &nbsp;↓ &nbsp;Sonnet · scene-by-scene reading<br>
+      193 plays → emotion vectors
+    </p></div>
+    <div><ul>
+      <li>Sampling is <span class="accent">deterministic</span> (seed=42) — reproducible.</li>
+      <li>Two models on purpose: open creation on the strong model, bulk structured reads on the cheap one.</li>
+    </ul></div>
+  </div>`,
+  cue:`파이프라인 4단계·2모델. 결정론 표집.`,
+  script:`The pipeline is four stages, all reproducible. Start from three hundred thousand real Big Five score sets. Stratified-sample fifteen personas — deterministic, fixed seed. The strong model expands each into a biography with labels suppressed. Then the cheaper model reads the target work scene by scene, producing an emotion distribution per scene. Two different models is deliberate: open-ended creation on the strong one, high-volume structured reading on the cost-efficient one. Everything is committed and re-runnable.`},
+
+{ html:`
+  <div class="eyebrow">The two design rules that carry the method</div>
+  <h2>Sample the axis · <span class="k">suppress</span> the label</h2>
+  <div class="two">
+    <div class="box"><h3>1 · Stratified sampling</h3><p>15 theory-motivated strata over the real distribution — deliberately including readers who will <em>resist</em> the system (a cynic, an optimist who can't see the shadow).</p></div>
+    <div class="box hl"><h3>2 · Trait-label suppression</h3><p>Never "this person is neurotic." Show the trait only through concrete life events (SHOW, not TELL) + a mandatory contradiction. Blocks stereotype leakage.</p></div>
+  </div>`,
+  cue:`두 규칙. 표집(붕괴 방지)+라벨 억제(캐리커처 방지).`,
+  script:`Two design rules do the real work. First, stratified sampling: fifteen strata chosen for psychological relevance to the work's themes — loss, attachment, dissociation — and deliberately including readers who will resist the system: a cynic, an optimist who can't see the shadow. Second, trait-label suppression: the biography never says "this person is neurotic." It shows the trait only through concrete life events, plus one mandatory moment where they act against type. That blocks the stereotype caricature that labels produce.`},
+
+{ html:`
+  <div class="eyebrow">15 strata · real sampled scores · seed=42</div>
+  <h2>The <span class="k">readers</span> (excerpt)</h2>
+  <table class="res">
+    <tr><th>id</th><th>Reader aimed at</th><th>N</th><th>E</th><th>O</th><th>A</th><th>C</th></tr>
+    <tr class="hl"><td>p08</td><td>cynical dismantler</td><td class="mono">86</td><td class="mono">40</td><td class="mono">42</td><td class="mono">25</td><td class="mono">29</td></tr>
+    <tr><td>p06</td><td>empathic listener</td><td class="mono">59</td><td class="mono">78</td><td class="mono">82</td><td class="mono">80</td><td class="mono">78</td></tr>
+    <tr><td>p13 / p14</td><td>average — controls</td><td class="mono">56/58</td><td class="mono">65/57</td><td class="mono">58/74</td><td class="mono">55/86</td><td class="mono">67/55</td></tr>
+    <tr class="hl"><td>p15</td><td>optimist — can't see the shadow</td><td class="mono">20</td><td class="mono">90</td><td class="mono">84</td><td class="mono">85</td><td class="mono">98</td></tr>
+  </table>
+  <p class="cap">Three design principles: include extremes (p08, p15), keep controls (p13/p14), stay deterministic (seed=42). Remember p08 and p15 — they decide the tools' asymmetric limit later.</p>`,
+  cue:`표집 결과 표. p08(냉소)·p15(낙관) 기억시킬 것.`,
+  script:`Here's an excerpt of the fifteen readers, with their actual sampled scores. Notice the extremes: p08, the cynical dismantler — very low agreeableness and conscientiousness. p15, the relentless optimist who cannot see the shadow. And two average controls. Keep p08 and p15 in mind — these two extremes decide the most important finding of the talk, which is where the tool hits an asymmetric wall.`},
+
+{ html:`
+  <div class="fill" style="flex:.35"></div>
+  <div class="eyebrow">Validation — stated honestly, up front</div>
+  <h2>What this checks: <span class="k">internal</span> calibration — not human truth</h2>
+  <p class="lead">The question is <em>not</em> "do these match real humans." It's: does the instrument produce a non-collapsed spectrum, and do personality→trajectory relations point the way theory predicts? External validity — matching real readers — is future work, and I'll say so twice.</p>
+  <div class="fill"></div>`,
+  cue:`정직 프레임 선포. 내부 눈금 검사지 외적 타당성 아님.`,
+  script:`Before any results, the honest frame — stated up front and again at the end. This validation is internal calibration, not external truth. The question is not "do these simulated readers match real humans." It's narrower: does the instrument produce a non-collapsed spectrum instead of everyone landing in the same place, and do the personality-to-trajectory relations point in the direction theory predicts? Whether the distribution matches real readers is future work. I'll flag that boundary twice, because it's the paper's integrity.`},
+
+{ html:`
+  <div class="eyebrow">Result 1 — the main finding is a failure</div>
+  <h2>LLM readers <span class="k">over-resonate</span></h2>
+  <div class="two mid">
+    <div class="diagram">${SVG.strip}</div>
+    <div><ul>
+      <li>Mean alignment <span class="accent">0.809</span> — target was 0.45–0.65.</li>
+      <li>No low tail. Only the cynic p08 (0.638) dips.</li>
+      <li>The tool can't simulate a reader who <em>fails to connect</em>.</li>
+    </ul></div>
+  </div>
+  <p class="cap">Not a bug — a measured limit. Sampling restores personality diversity, but the LLM's upward bias in emotional response survives it. Good for relative comparison (ranking, correlation); biased for absolute human spectrum.</p>`,
+  cue:`결과1 = 핵심 발견이 실패. 과공명. 이게 정직해서 강함.`,
+  script:`Result one — and the headline finding is a failure. The simulated readers over-resonate. Mean alignment is point eight-one, when we'd targeted the mid-range, point four-five to six-five. There's no low tail at all; only the cynic, p08, dips down. In other words, the tool cannot simulate a reader who fails to connect. This isn't a bug I'm hiding — it's a measured limit. Sampling restores personality diversity, but the model's upward bias in emotional response survives it. So the tool is valid for relative comparison — rankings, correlations — and biased for the absolute human spectrum.`},
+
+{ html:`
+  <div class="eyebrow">Result 2 — a measurement instrument fails a test</div>
+  <h2>Self-report <span class="k">quantizes</span> — so compute it directly</h2>
+  <div class="two mid">
+    <div class="diagram">${SVG.quant}</div>
+    <div><ul>
+      <li>LLM's own alignment scores pile onto 3 values (0.52/0.62/0.72): <span class="accent">71%</span>.</li>
+      <li>Effective range clipped to 0.42–0.82.</li>
+      <li class="accent">Verdict: unusable as a continuous measure. Compute alignment from the emotion distribution (cosine), never self-report.</li>
+    </ul></div>
+  </div>
+  <p class="cap">A practical warning for anyone building a similar pipeline: don't let the model grade its own resonance.</p>`,
+  cue:`결과2. 자기보고 양자화 → 직접 계산해야. 실무 경고.`,
+  script:`Result two is a warning about measurement itself. If you let the model report its own alignment score, those scores quantize — seventy-one percent of them pile onto just three values, and the effective range clips. So the self-report is unusable as a continuous measure. The lesson, and it's a practical one for anyone building a similar pipeline: never let the model grade its own resonance. Compute alignment objectively, from the emotion distribution itself — a cosine against the narrator's original — not from what the model claims it felt.`},
+
+{ html:`
+  <div class="eyebrow">Result 3 — the relations that DO hold</div>
+  <h2>Personality <span class="k">predicts</span> trajectory</h2>
+  <div class="two mid">
+    <div class="diagram">${SVG.corr}</div>
+    <div><ul>
+      <li>Openness, agreeableness, extraversion → higher resonance (r = 0.55–0.63).</li>
+      <li class="neg">Neuroticism reversed (−0.31): the "N makes readers volatile" hypothesis failed.</li>
+      <li>The instrument discriminates — different personalities, different trajectories.</li>
+    </ul></div>
+  </div>
+  <p class="cap">Half the pre-registered hypotheses held (agreeableness), half were rejected (neuroticism, openness-as-displacement). Reporting both is the point.</p>`,
+  cue:`결과3. 성격→궤적 관계 성립. N은 역방향(가설 기각).`,
+  script:`Result three — the relations that do hold, which is what makes the instrument worth anything. Openness, agreeableness, and extraversion all predict higher resonance, correlations in the point five-five to point six-three range. So the tool discriminates: different personalities really do produce different trajectories. But I'll show you the misses too — neuroticism went the wrong way, negative point three-one. My hypothesis that neurotic readers would be more volatile simply failed in the simulation. Half my pre-registered hypotheses held, half were rejected, and reporting both is the whole point of a methods paper.`},
+
+{ html:`
+  <div class="eyebrow">Result 4 — the shape of the wall</div>
+  <h2>An <span class="k">asymmetric</span> limit</h2>
+  <div class="two">
+    <div class="box"><h3>Cruelty · simulable</h3><p>p08 the cynic separates cleanly as the lowest reader (0.638). The negative extreme is reachable.</p></div>
+    <div class="box hl"><h3>Empathic failure · not</h3><p>p15 the optimist "who can't see the shadow" lands 7th of 15 (0.840) — mid-pack. The LLM won't perform not-understanding.</p></div>
+  </div>
+  <p class="cap">The tool can simulate a reader who refuses to feel — but not one who tries and fails to grasp. That asymmetry is the sharpest boundary of the instrument.</p>`,
+  cue:`결과4. 비대칭 한계. 냉소는 되는데 공감실패는 안 됨.`,
+  script:`Result four is the sharpest boundary, and it's asymmetric. The cynic, p08 — a reader who refuses to feel — separates cleanly as the lowest in the distribution. So the negative extreme is reachable. But the optimist, p15 — the one designed to try and fail to grasp the darkness — lands mid-pack, seventh of fifteen. The model simply won't perform not-understanding. So the tool can simulate a reader who refuses to feel, but not one who tries and fails to comprehend. That asymmetry is the most important thing the instrument tells you about its own edge.`},
+
+{ html:`
+  <div class="fill" style="flex:.3"></div>
+  <div class="eyebrow">The method proves itself — inside its own data</div>
+  <h2>Where we <span class="k">didn't</span> sample, it collapsed</h2>
+  <div class="two mid">
+    <div><ul>
+      <li>Personality (sampled) — diverse. ✓</li>
+      <li class="neg">Names (free-generated) — collapsed: "윤" in 8 of 15; three duplicates.</li>
+      <li class="neg">Mismatch category (free) — collapsed: one type is 82.4%.</li>
+    </ul></div>
+    <div class="box hl"><p><b class="accent">Same model, same prompt.</b> The attribute we anchored to a real distribution stayed diverse; every attribute left free converged. The paper's premise, proven by accident inside its own results.</p></div>
+  </div>`,
+  cue:`백미. 이름 붕괴 = 방법론이 스스로 증명. 강조.`,
+  script:`And here's my favorite slide, because the method proves itself inside its own data. We anchored personality to a real distribution — and it stayed diverse. But we left the names to free generation, and they collapsed: the surname "Yoon" appears in eight of fifteen personas, with three outright duplicates. The mismatch category, also left free, collapsed to one type at eighty-two percent. Same model, same prompt. The one attribute we sampled from real data stayed diverse; every attribute we left free converged. My entire thesis — that diversity has to be sampled, not imagined — got proven by accident, inside my own results.`},
+
+{ html:`
+  <div class="eyebrow">The boundary — restated, on purpose</div>
+  <h2>What we validated · what we <span class="k">did not</span></h2>
+  <div class="two">
+    <div class="box"><h3>Shown</h3><p>Internal discrimination — different personalities yield different, non-collapsed trajectory distributions.</p></div>
+    <div class="box" style="border-color:#f0cfcb;background:#fdecea"><h3>Not shown</h3><p>That these distributions match <em>real human</em> readers. Responses pass through the LLM's emotion model — this is an exploratory instrument, not a truth claim.</p></div>
+  </div>`,
+  cue:`경계 재선포(2번째). 이게 논문 무결성.`,
+  script:`Let me restate the boundary, deliberately, a second time. What I showed: internal discrimination — different personalities produce different, non-collapsed distributions. What I did not show: that those distributions match real human readers. The responses pass through the language model's emotion model, so this is an exploratory instrument, not a truth claim about human behavior. Saying this twice, plainly, is what keeps the tool honest — and honestly, more useful.`},
+
+{ html:`
+  <div class="eyebrow">One trace — the chain holds</div>
+  <h2>Score → biography → reaction, <span class="k">coherent</span></h2>
+  <div class="two mid">
+    <div><p class="sub" style="margin-bottom:.5em">p08 · sampled low-A, low-C. Opus wrote (no labels): a man who, in 2019, <b>let his mother's deathbed call ring, knowing.</b></p>
+      <p class="quote">"I can't remember what my mother used to make for me anymore. What business does a man who can't even recall a taste have, longing?"<br><span class="muted" style="font-size:.85em">— p08, scene 8, generated by the reading model</span></p></div>
+    <div class="box"><h3>Why it matters</h3><p>Sampled score and generated reaction were produced by <em>different models</em>, yet the low tail reads as a psychologically consistent person — not noise. The biography's prediction ("defense breaks at bodily detail") shows up in the plays.</p></div>
+  </div>`,
+  cue:`질적 트레이스 1건. 사람 냄새 나는 디테일로 청중 붙잡기.`,
+  script:`One qualitative trace, so the numbers have a face. p08, sampled low on agreeableness and conscientiousness. The strong model, with no labels allowed, wrote a man who in 2019 let his mother's deathbed call ring — knowing. Then a different model, reading the work, produced this line at scene eight: "I can't remember what my mother used to make for me anymore. What business does a man who can't even recall a taste have, longing?" Two different models, and yet the low tail reads as one psychologically consistent person, not noise. The biography predicted his defense would break at bodily detail — and in the plays, it does.`},
+
+{ html:`
+  <div class="eyebrow">Contribution</div>
+  <h2>A <span class="k">limit-measured</span> instrument</h2>
+  <ul style="max-width:86%">
+    <li>A simulated-reader pipeline that avoids mode collapse by <span class="accent">sampling</span> personality from real distributions.</li>
+    <li>A <span class="accent">label-suppression</span> generation protocol against stereotype leakage.</li>
+    <li>A characterization of what it measures — and, honestly, what it can't (over-resonance, empathic-failure blindness, self-report quantization).</li>
+  </ul>
+  <p class="cap">Positioned not as a truth oracle but as an exploratory instrument with measured edges.</p>`,
+  cue:`기여 요약. "진리 계측 아니라 한계 잰 도구."`,
+  script:`So the contribution, condensed. A simulated-reader pipeline that avoids mode collapse by sampling personality from real distributions rather than imagining it. A label-suppression protocol that fights stereotype leakage. And — just as much a contribution — a clear characterization of what the tool measures and what it can't: the over-resonance, the blindness to empathic failure, the self-report quantization. I'm positioning this not as a truth oracle but as an exploratory instrument with measured edges.`},
+
+{ html:`
+  <div class="fill" style="flex:.4"></div>
+  <div class="eyebrow">Where it goes</div>
+  <h2>Next: <span class="k">convergence</span> with real readers</h2>
+  <p class="lead">A small human pilot (N≈15) against the simulated distribution — the first external-validity evidence. Then cross-model runs to isolate emotion-model bias. Target venue: ICIDS Late-Breaking Works.</p>
+  <div class="fill"></div>
+  <p class="foot">Thank you · Simulated Readers · The Etched Mutation · 2026</p>`,
+  cue:`닫기. 다음 계단 = 인간-시뮬 수렴. 감사.`,
+  script:`Where it goes next. The obvious missing piece is a small human pilot — around fifteen readers — measured against the simulated distribution. That's the first real external-validity evidence, and it's the honest next step. After that, running the same personas through different models to isolate how much of the bias is the emotion model itself. The tool exists, its edges are measured, and now it earns its keep by being checked against real people. Thank you.`}
+];
+
+const deck=document.getElementById('deck');
+SLIDES.forEach(s=>{const d=document.createElement('section');d.className='slide';d.innerHTML=s.html;deck.appendChild(d);});
+const slides=[...document.querySelectorAll('.slide')];
+const bar=document.getElementById('bar'),pgEl=document.getElementById('pg');
+const notes=document.getElementById('notes'),ncue=document.getElementById('ncue'),nscript=document.getElementById('nscript');
+let i=0;
+function show(n){i=Math.max(0,Math.min(SLIDES.length-1,n));
+  slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+  bar.style.width=((i+1)/SLIDES.length*100)+'%';
+  pgEl.textContent=String(i+1).padStart(2,'0')+' / '+SLIDES.length;
+  ncue.textContent=SLIDES[i].cue||''; nscript.textContent=SLIDES[i].script||'';}
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+  if(['arrowright','arrowdown','pagedown',' '].includes(k)){show(i+1);e.preventDefault();}
+  else if(['arrowleft','arrowup','pageup'].includes(k)){show(i-1);e.preventDefault();}
+  else if(k==='home'){show(0);} else if(k==='end'){show(SLIDES.length-1);}
+  else if(k==='n'){notes.classList.toggle('on');}
+  else if(k==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}});
+document.getElementById('frame').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect();
+  if(e.clientX-r.left>r.width*0.5)show(i+1);else show(i-1);});
+show(0);
+</script>
+</body>
+</html>
