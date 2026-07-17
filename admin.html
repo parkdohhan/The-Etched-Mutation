@@ -56,6 +56,10 @@
             </div>
 
             <div id="sessionsListSection">
+                <div class="session-search-row" style="margin-bottom:0.9rem;">
+                    <input type="text" id="sessionSearchInput" placeholder="제목 또는 코드로 검색…" oninput="setSessionSearch(this.value)"
+                           style="width:100%;max-width:420px;padding:0.55rem 0.8rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.25);border-radius:4px;color:var(--text-primary);font-size:0.9rem;">
+                </div>
                 <div class="filter-buttons">
                     <button class="filter-btn active" onclick="filterSessions('all')">전체</button>
                     <button class="filter-btn" onclick="filterSessions('archive')">아카이브</button>
@@ -76,15 +80,15 @@
 
             <!-- Anchor Images Manager (dashboard level) -->
             <div class="editor-section" style="margin-top:2rem;padding:2rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);">
-                <h3 class="editor-section-title" style="margin-bottom:1rem;">Anchor Images</h3>
+                <h3 class="editor-section-title" style="margin-bottom:1rem;">앵커 이미지</h3>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-bottom:1.5rem;">
                     <div>
-                        <label style="font-size:0.8rem;color:var(--text-muted);">Keyword</label>
+                        <label style="font-size:0.8rem;color:var(--text-muted);">키워드</label>
                         <input type="text" id="anchorKeyword" placeholder="의자, chair..." style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
                     </div>
                     <div>
-                        <label style="font-size:0.8rem;color:var(--text-muted);">Type</label>
+                        <label style="font-size:0.8rem;color:var(--text-muted);">유형</label>
                         <select id="anchorType" onchange="document.getElementById('anchorPhotoUpload').style.display=this.value==='photo'?'block':'none';document.getElementById('anchorContentArea').style.display=this.value!=='photo'?'block':'none';" style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-size:0.9rem;">
                             <option value="text">text</option>
                             <option value="ascii">ascii</option>
@@ -95,18 +99,18 @@
                 </div>
 
                 <div id="anchorContentArea">
-                    <label style="font-size:0.8rem;color:var(--text-muted);">Content (text or ASCII art)</label>
-                    <textarea id="anchorContent" rows="6" placeholder="ASCII art or text content..." style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-family:monospace;font-size:0.85rem;resize:vertical;"></textarea>
+                    <label style="font-size:0.8rem;color:var(--text-muted);">내용 (텍스트 또는 ASCII 아트)</label>
+                    <textarea id="anchorContent" rows="6" placeholder="ASCII 아트 또는 텍스트 내용…" style="width:100%;padding:0.5rem;background:var(--bg-deep);border:1px solid rgba(196,168,130,.2);color:var(--text-primary);font-family:monospace;font-size:0.85rem;resize:vertical;"></textarea>
                 </div>
 
                 <div id="anchorPhotoUpload" style="display:none;">
-                    <label style="font-size:0.8rem;color:var(--text-muted);">Photo file</label>
+                    <label style="font-size:0.8rem;color:var(--text-muted);">사진 파일</label>
                     <input type="file" id="anchorPhotoFile" accept="image/*" style="width:100%;padding:0.5rem;color:var(--text-muted);font-size:0.85rem;">
                 </div>
 
                 <div style="margin-top:1rem;display:flex;gap:0.8rem;">
-                    <button class="editor-btn" onclick="saveAnchorImage()" style="padding:0.6rem 1.5rem;">Save Anchor</button>
-                    <button class="editor-btn" onclick="loadAnchorImages()" style="padding:0.6rem 1.5rem;opacity:0.7;">Refresh List</button>
+                    <button class="editor-btn" onclick="saveAnchorImage()" style="padding:0.6rem 1.5rem;">앵커 저장</button>
+                    <button class="editor-btn" onclick="loadAnchorImages()" style="padding:0.6rem 1.5rem;opacity:0.7;">목록 새로고침</button>
                 </div>
 
                 <div id="anchorImagesList" style="margin-top:1.5rem;max-height:400px;overflow-y:auto;"></div>
@@ -125,7 +129,7 @@
             <div class="editor-screen-bar">
                 <div class="editor-tabs">
                     <button class="editor-tab active" onclick="switchTab('edit')">편집</button>
-                    <button class="editor-tab" onclick="switchTab('utterances')">잔상</button>
+                    <!-- W2-G(F8): 잔상 모더레이션은 상단 [운영] 탭으로 이관됨 (편집화면 탭 제거) -->
                 </div>
                 <button type="button" class="editor-back-home" onclick="cancelEdit()">대시보드로 돌아가기</button>
             </div>
@@ -385,6 +389,12 @@
                 <h2 class="tv-title">궤적 뷰어</h2>
                 <p class="tv-subtitle" id="tvMemoryLabel">로딩 중…</p>
 
+                <!-- W2-D (F3): 기억 선택기 — 목록 왕복 없이 Canvas에서 바로 전환 -->
+                <select id="tvMemorySelect" onchange="tvSwitchMemory(this.value)" title="기억 전환"
+                        style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.2);color:#e0d8c4;font-family:inherit;font-size:0.78rem;border-radius:2px;margin-bottom:10px;">
+                    <option value="">— 기억 로딩 중 —</option>
+                </select>
+
                 <div style="display:flex;gap:6px;margin-bottom:6px;">
                     <button class="tv-toggle" id="tvAddMemoryBtn" style="flex:1;padding:6px;font-size:0.72rem;">+ 새 기억</button>
                     <button class="tv-toggle" id="tvAddSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="원본(Anchor) 씬 추가">+ 원본 씬</button>
@@ -551,12 +561,12 @@
         <div style="max-width:1200px;margin:40px auto;padding:20px;">
             <h2 style="color:#c4a882;font-family:'Cormorant Garamond',serif;font-weight:300;margin:0 0 20px;letter-spacing:0.04em;">운영</h2>
             <p style="color:#7c7466;font-size:0.8rem;margin:0 0 24px;line-height:1.6;">
-                세션 관리 · 앵커 이미지 · 잔상 모더레이션<br>
-                <span style="color:#5c544a;font-size:0.75rem;">(세션 관리 / 앵커 이미지는 현재 [목록] 탭에서. 향후 이곳으로 이관 예정.)</span>
+                잔상(afterimage) 모더레이션 — 플레이어가 남긴 잔상 발화를 검토·승인·숨김 처리합니다.<br>
+                <span style="color:#5c544a;font-size:0.75rem;">(세션 관리 / 앵커 이미지는 [목록] 탭에 있습니다.)</span>
             </p>
-            <!-- 잔상 모더레이션은 Phase 0.5 이관 미완 — 실제 DOM은 #utterancesContent에 유지 (id 유일성) -->
+            <!-- W2-G(F8): 잔상 모더레이션 DOM(#utterancesContent)이 로드 시 이곳으로 이동됨 (id 유일성 유지) -->
             <div id="operationsMount" style="color:#7c7466;font-size:0.9rem;">
-                <p>잔상 모더레이션은 아직 [목록] 탭의 편집 화면 하단에 있습니다. 다음 작업에서 여기로 이동됩니다.</p>
+                <p>잔상 모더레이션을 불러오는 중…</p>
             </div>
         </div>
     </div>
@@ -681,6 +691,10 @@
         if (id === 'canvas' && window.initTrajectoryViewer) {
             window.initTrajectoryViewer(window.currentMemoryId || null);
         }
+        // W2-G: 운영 탭 진입 시 잔상 모더레이션 목록 로드
+        if (id === 'operations' && window.loadUtterances) {
+            window.loadUtterances();
+        }
     };
     // 로그인 성공 후 adminDashboard가 표시될 때 네비바도 표시
     window.showAdminNav = function() {
@@ -701,7 +715,7 @@
     <script src="js/ui/lumen_admin_scene_terrain_preview.js"></script>
     <script type="module" src="js/admin.js?v=260717a"></script>
     <script type="module" src="js/admin/ghost_variants_editor.js"></script>
-    <script type="module" src="js/admin-trajectory.js"></script>
+    <script type="module" src="js/admin-trajectory.js?v=260717a"></script>
     <script src="js/contamination.js"></script>
 
     <script>
@@ -712,6 +726,11 @@
             const dest = document.getElementById('operationsMount');
             if (src && dest && !dest.contains(src)) {
                 dest.innerHTML = '';
+                // W2-G: editor-content(탭 패널) 클래스를 떼서 switchTab('edit')이 active 를
+                //   뺏어 다시 숨기는 교차오염 방지. 운영 탭에서는 항상 보이도록 display 고정.
+                src.classList.remove('editor-content');
+                src.classList.add('operations-panel');
+                src.style.display = 'block';
                 dest.appendChild(src);
                 return true;
             }

@@ -138,7 +138,39 @@ async function initTrajectoryViewer(memoryId) {
     LumenAdminStageView.setMemoryId(state.memory.id);
   }
   syncStageView();
+  populateMemorySelect(); // W2-D: 사이드바 기억 선택기 채우기(현재 기억 selected)
 }
+
+// W2-D (F3): Canvas 기억 선택기 — 전체 memories 드롭다운, 선택 시 해당 기억 로드.
+function _escHtmlTv(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+async function populateMemorySelect() {
+  const sel = document.getElementById('tvMemorySelect');
+  if (!sel) return;
+  try {
+    const sb = await getSupabaseClient();
+    if (!sb) return;
+    const { data: list, error } = await sb.from('memories').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    // W3 휴지통 제외 — deleted_at 컬럼 없으면 undefined 라 전부 통과(마이그레이션 전 안전).
+    const visible = (list || []).filter(m => !m.deleted_at);
+    const curId = state.memory && state.memory.id;
+    if (visible.length === 0) { sel.innerHTML = '<option value="">— 기억 없음 —</option>'; return; }
+    sel.innerHTML = visible.map(m =>
+      `<option value="${m.id}"${String(m.id) === String(curId) ? ' selected' : ''}>${_escHtmlTv(m.title || '(제목 없음)')} — ${_escHtmlTv(m.code || '')}</option>`
+    ).join('');
+  } catch (e) {
+    console.warn('[tv] populateMemorySelect 실패:', e.message);
+  }
+}
+window.tvSwitchMemory = async function tvSwitchMemory(id) {
+  if (!id) return;
+  const curId = state.memory && state.memory.id;
+  if (String(id) === String(curId)) return; // 같은 기억이면 무시
+  window.currentMemoryId = id;
+  await initTrajectoryViewer(id);
+};
 
 // 작업 15 (개정) — 상하분할 폐기. 상단 탭으로 trajectory/position 단독 전환.
 // 활성 레이어는 localStorage 영속, 디폴트 'trajectory'.

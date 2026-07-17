@@ -237,7 +237,7 @@ async function loadMemories() {
         }
     } catch (error) {
         console.error('loadMemories error:', error);
-        alert('기억 불러오기 오류가 발생했습니다: ' + error.message);
+        showToast('기억 불러오기 오류: ' + error.message, 'error', { ttl: 0 });
  // Error occurred 시 localStorage 서 불러오기
         const stored = loadAdminMemories();
         if (stored && stored.length > 0) {
@@ -455,7 +455,7 @@ function editMemory(index) {
         renderMemoriesTable();
     } catch (error) {
         console.error('toggleMemoryVisibility error:', error);
-        alert('가시성 변경 중 오류가 발생했습니다: ' + error.message);
+        showToast('가시성 변경 오류: ' + error.message, 'error', { ttl: 0 });
     }
 }
 
@@ -485,10 +485,10 @@ async function deleteMemory(index) {
         await loadMemories(); // memories 배열 최신화
         await loadAllSessions(); // 통합 목록 갱신
         
-        alert('기억이 삭제되었습니다.');
+        showToast('기억이 삭제되었습니다', 'success');
     } catch (error) {
         console.error('deleteMemory error:', error);
-        alert('삭제 중 오류가 발생했습니다: ' + error.message);
+        showToast('삭제 오류: ' + error.message, 'error', { ttl: 0 });
     }
 }
 
@@ -1434,7 +1434,7 @@ function addOriginalEmotion(sceneIndex) {
         currentScenes[sceneIndex].originalEmotion[newEmotion] = 0.5;
         renderScenes();
     } else {
-        alert('17개 감정이 모두 추가되었습니다.');
+        showToast('17개 감정이 모두 추가되었습니다', 'success');
     }
 }
 
@@ -1634,7 +1634,7 @@ async function handleUtteranceAction(act, id) {
         await loadUtterances();
     } catch (e) {
         console.error('[utterances] action error:', e);
-        alert('처리 실패: ' + (e?.message || e));
+        showToast('처리 실패: ' + (e?.message || e), 'error', { ttl: 0 });
     }
 }
 
@@ -1699,7 +1699,7 @@ function previewMakeChoice(choiceIndex) {
     const nextScene = choice.nextScene;
 
     if (nextScene === 'end') {
-        alert('엔딩에 도달했습니다.');
+        showToast('엔딩에 도달했습니다', 'info');
         previewCurrentScene = 0;
     } else if (typeof nextScene === 'number' && nextScene < currentScenes.length) {
         previewCurrentScene = nextScene;
@@ -2490,7 +2490,7 @@ function convertToMemoriesDataFormat(adminMemories) {
 // JSON 다운load
 async function exportMemoriesJSON() {
     if (memories.length === 0) {
-        alert('저장된 기억이 없습니다. 먼저 기억을 추가해주세요.');
+        showToast('저장된 기억이 없습니다. 먼저 기억을 추가해주세요.', 'error');
         return;
     }
 
@@ -2511,11 +2511,11 @@ async function exportMemoriesJSON() {
  // 클립보드 copy
     try {
         await navigator.clipboard.writeText(jsonString);
-        alert('클립보드에 복사됨. data/memories.js의 memoriesData 배열에 붙여넣으세요');
+        showToast('클립보드에 복사됨 — data/memories.js의 memoriesData 배열에 붙여넣으세요', 'success');
     } catch (err) {
  // 클립보드 copy failure 시 fallback
         console.error('클립보드 복사 실패:', err);
-        alert('memories-export.json 파일이 다운로드되었습니다. (클립보드 복사 실패)');
+        showToast('memories-export.json 다운로드됨 (클립보드 복사 실패)', 'info');
     }
 }
 
@@ -2530,7 +2530,7 @@ function importMemoriesJSON(event) {
             const jsonData = JSON.parse(e.target.result);
             
             if (!Array.isArray(jsonData)) {
-                alert('올바른 JSON 형식이 아닙니다. 배열 형식이어야 합니다.');
+                showToast('올바른 JSON 형식이 아닙니다. 배열 형식이어야 합니다.', 'error');
                 return;
             }
 
@@ -2560,9 +2560,9 @@ function importMemoriesJSON(event) {
             memories = adminFormat;
             saveMemoriesToStorage();
             renderMemoriesTable();
-            alert('JSON 파일이 성공적으로 불러와졌습니다.');
+            showToast('JSON 파일을 불러왔습니다', 'success');
         } catch (error) {
-            alert('JSON 파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+            showToast('JSON 읽기 오류: ' + error.message, 'error', { ttl: 0 });
         }
     };
     reader.readAsText(file);
@@ -2596,19 +2596,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (simulateLayerBtn) {
         simulateLayerBtn.addEventListener('click', async () => {
             if (!currentMemoryId) {
-                alert('먼저 메모리를 저장해주세요.');
+                showToast('먼저 메모리를 저장해주세요', 'info');
                 return;
             }
 
             const supabaseClient = getSupabaseClient();
             if (!supabaseClient) {
-                alert('Supabase 클라이언트가 초기화되지 않았습니다.');
+                showToast('Supabase 클라이언트가 초기화되지 않았습니다', 'error', { ttl: 0 });
                 return;
             }
 
             const scene = currentScenes[previewCurrentScene];
             if (!scene) {
-                alert('장면을 찾을 수 없습니다.');
+                showToast('장면을 찾을 수 없습니다', 'error');
                 return;
             }
 
@@ -2644,7 +2644,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (playsError) {
                     console.error('[simulateLayer] 레이어 Save failed', playsError);
-                    alert('레이어 저장 중 오류가 발생했습니다: ' + playsError.message);
+                    showToast('레이어 저장 오류: ' + playsError.message, 'error', { ttl: 0 });
                     return;
                 }
 
@@ -2657,12 +2657,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 console.log('[simulateLayer] 레이어 저장 성공', { layerId: currentLayers.length - 1 });
 
-                alert('새 지층 레이어 저장 완료');
+                showToast('새 지층 레이어 저장 완료', 'success');
                 renderWavePreview();
                 
             } catch (error) {
                 console.error('[simulateLayer] 예외 발생', error);
-                alert('레이어 저장 중 오류가 발생했습니다: ' + error.message);
+                showToast('레이어 저장 오류: ' + error.message, 'error', { ttl: 0 });
             }
         });
     }
@@ -2671,6 +2671,14 @@ document.addEventListener('DOMContentLoaded', function() {
 // 통합 session manage function들
 let allSessions = [];
 let currentFilter = 'all';
+let sessionSearchQuery = ''; // W2-E: 제목/코드 부분일치 검색어
+
+// W2-E: 대시보드 목록 검색 — 제목/코드 부분일치 클라이언트 필터
+function setSessionSearch(q) {
+    sessionSearchQuery = (q || '').trim().toLowerCase();
+    renderSessions();
+}
+window.setSessionSearch = setSessionSearch;
 const fateLabels={'preserve':'보존','dilute':'자연 소멸','anonymous':'완전 익명'};
 const fateColors={'preserve':'#7a9a7a','dilute':'#c4a882','anonymous':'#7b8fa8'};
 
@@ -3299,15 +3307,25 @@ function _renderSceneGraph(scenes, patternColors) {
 }
 
 function renderSessions() {
-    const filtered = currentFilter === 'all' 
-        ? allSessions 
+    let filtered = currentFilter === 'all'
+        ? allSessions
         : allSessions.filter(s => s.type === currentFilter);
-    
+
+    // W2-E: 제목/코드 부분일치 검색
+    if (sessionSearchQuery) {
+        filtered = filtered.filter(s => {
+            const title = (s.displayTitle || '').toLowerCase();
+            const code = (s.code || '').toLowerCase();
+            return title.includes(sessionSearchQuery) || code.includes(sessionSearchQuery);
+        });
+    }
+
     const container = document.getElementById('sessionsListContainer');
     if (!container) return;
-    
+
     if (!filtered || filtered.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-muted);">세션이 not found.</p>';
+        const msg = sessionSearchQuery ? '검색 결과가 없습니다.' : '세션이 없습니다.';
+        container.innerHTML = `<p style="color: var(--text-muted);">${msg}</p>`;
         return;
     }
     
@@ -3344,7 +3362,7 @@ function renderSessions() {
 async function toggleArchiveVisibilityById(memoryId) {
     const target = allSessions.find(s => s.type === 'archive' && String(s.id) === String(memoryId));
     if (!target) {
-        alert('대상 기억을 찾지 못했습니다.');
+        showToast('대상 기억을 찾지 못했습니다', 'error');
         return;
     }
 
@@ -3375,7 +3393,7 @@ async function toggleArchiveVisibilityById(memoryId) {
         renderSessions();
     } catch (error) {
         console.error('toggleArchiveVisibilityById error:', error);
-        alert('공개 상태 변경 중 오류가 발생했습니다: ' + error.message);
+        showToast('공개 상태 변경 오류: ' + error.message, 'error', { ttl: 0 });
     }
 }
 
@@ -3458,12 +3476,12 @@ async function deleteSessionById(id, type) {
             }
         }
         
-        alert(`${type === 'archive' ? '아카이브' : '라이브 세션'}이 삭제되었습니다`);
+        showToast(type === 'archive' ? '기억이 삭제되었습니다' : '라이브 세션이 삭제되었습니다', 'success');
         await loadMemories(); // memories 배열 최신화
         await loadAllSessions(); // 통합 목록 갱신
     } catch (e) {
         console.error('Delete error:', e);
-        alert('삭제 중 오류가 발생했습니다: ' + e.message);
+        showToast('삭제 오류: ' + e.message, 'error', { ttl: 0 });
     }
 }
 
@@ -3473,7 +3491,7 @@ async function deleteSelectedSessions() {
     const archiveSessions = Array.from(checkboxes).filter(cb => cb.dataset.type === 'archive').map(cb => cb.dataset.id);
     
     if (liveSessions.length === 0 && archiveSessions.length === 0) {
-        alert('삭제할 세션을 선택하세요');
+        showToast('삭제할 세션을 선택하세요', 'info');
         return;
     }
     
@@ -3553,12 +3571,12 @@ async function deleteSelectedSessions() {
             successMessage = `${archiveSessions.length}개의 아카이브가 삭제되었습니다`;
         }
         
-        alert(successMessage);
+        showToast(successMessage, 'success');
         await loadMemories(); // memories 배열 최신화
         await loadAllSessions(); // 통합 목록 갱신
     } catch (e) {
         console.error('Delete error:', e);
-        alert('삭제 중 오류가 발생했습니다: ' + e.message);
+        showToast('삭제 오류: ' + e.message, 'error', { ttl: 0 });
     }
 }
 
@@ -3770,7 +3788,7 @@ async function saveVector(sceneId) {
     
     if (error) {
         console.error('Save error:', error);
-        alert('저장에 실패했습니다');
+        showToast('저장에 실패했습니다', 'error', { ttl: 0 });
         return;
     }
     
@@ -3782,7 +3800,7 @@ async function saveVector(sceneId) {
     document.getElementById('val-' + sceneId + '-confidence').textContent = confidence.toFixed(2);
     
     cancelEditVector(sceneId);
-    alert('저장 완료');
+    showToast('저장 완료', 'success');
 }
 
 async function updateVoid(sceneId, field, value) {
@@ -3815,7 +3833,7 @@ window.addNewMemory = addNewMemory;
 // 씬의 original_emotion에서 평균 감정벡터를 자동 유도
 function autoFillOriginalVector() {
     if (!currentScenes || currentScenes.length === 0) {
-        alert('씬이 없습니다. 먼저 씬을 추가하세요.');
+        showToast('씬이 없습니다. 먼저 씬을 추가하세요.', 'error');
         return;
     }
     const keys = ['fear','sadness','anger','joy','longing','guilt'];
@@ -3836,7 +3854,7 @@ function autoFillOriginalVector() {
         });
     });
     if (count === 0) {
-        alert('씬에 original_emotion 데이터가 없습니다.');
+        showToast('씬에 original_emotion 데이터가 없습니다', 'error');
         return;
     }
     keys.forEach(k => {
@@ -3858,6 +3876,7 @@ window.openSessionDetail = openSessionDetail;
 window.closeSessionDetail = closeSessionDetail;
 window.startOriginalWavePreview = startOriginalWavePreview;
 window.switchTab = switchTab;
+window.loadUtterances = loadUtterances; // W2-G: 운영 탭 진입 시 인라인 스크립트가 호출
 window.addScene = addScene;
 window.saveMemory = saveMemory;
 window.cancelEdit = cancelEdit;
@@ -4335,7 +4354,7 @@ async function loadStrataPreview(memoryId) {
     
     if (!memoryId) {
         console.warn('[loadStrataPreview] memoryId가 not found.');
-        alert('메모리를 먼저 선택해주세요.');
+        showToast('메모리를 먼저 선택해주세요', 'info');
         return;
     }
 
@@ -4426,7 +4445,7 @@ async function loadStrataPreview(memoryId) {
             loadingEl.style.display = 'flex';
             loadingEl.textContent = '로드 실패: ' + error.message;
         }
-        alert('Strata 미리보기 로드 실패: ' + error.message);
+        showToast('Strata 미리보기 로드 실패: ' + error.message, 'error', { ttl: 0 });
     }
 }
 
@@ -4490,10 +4509,10 @@ window.saveAnchorImage = async function () {
     const vivMax = imageType === 'photo' ? 1.0 : imageType === 'ascii' ? 0.7 : 0.3;
     const fileInput = document.getElementById('anchorPhotoFile');
 
-    if (!keyword) { alert('Keyword is required'); return; }
+    if (!keyword) { showToast('키워드를 입력하세요', 'error'); return; }
 
     const client = getSupabaseClient();
-    if (!client) { alert('No Supabase client'); return; }
+    if (!client) { showToast('Supabase 연결이 없습니다', 'error', { ttl: 0 }); return; }
 
     let storagePath = null;
 
@@ -4508,7 +4527,7 @@ window.saveAnchorImage = async function () {
             .upload(path, file, { upsert: true });
 
         if (uploadErr) {
-            alert('Upload failed: ' + uploadErr.message);
+            showToast('업로드 실패: ' + uploadErr.message, 'error', { ttl: 0 });
             return;
         }
 
@@ -4527,7 +4546,7 @@ window.saveAnchorImage = async function () {
 
     const { error } = await client.from('anchor_images').insert(row);
     if (error) {
-        alert('Save failed: ' + error.message);
+        showToast('저장 실패: ' + error.message, 'error', { ttl: 0 });
     } else {
         // Clear form
         document.getElementById('anchorKeyword').value = '';
