@@ -35,7 +35,7 @@ const sceneWaveAnimationMap = new Map(); // sceneIndex -> requestAnimationFrame 
 
 // 편집 dirty-flag — 저장 안 된 변경 사항 경고 (작업 12-5)
 let editorDirty = false;
-function markEditorDirty() { editorDirty = true; }
+function markEditorDirty() { editorDirty = true; scheduleAutosave(); /* W3-L */ }
 function clearEditorDirty() { editorDirty = false; }
 window.markEditorDirty = markEditorDirty;
 // editorScreen 내부의 input/change 이벤트를 delegation 으로 감지
@@ -284,6 +284,7 @@ function addNewMemory() {
     currentLayers = []; // 새 메모리 생성 시 레이어 초기화
     currentScenes = [];
     sceneCollapseState.clear(); // W1-B: 접기 상태 초기화
+    openSubsections.clear();    // W3
     document.getElementById('memoryTitle').value = '';
     document.getElementById('memoryCode').value = '';
     document.getElementById('memoryDescription').value = '';
@@ -325,6 +326,9 @@ function addNewMemory() {
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
     switchTab('edit');
+    renderVersions();                 // W3-K: 신규는 빈 패널
+    renderSceneToc();                 // W3-M
+    maybeShowAutosaveBanner('new');   // W3-L: 신규 작성 임시본
     setTimeout(clearEditorDirty, 0);
 }
 
@@ -422,10 +426,14 @@ function editMemory(index) {
     if (_graphEl) { _graphEl.style.display = 'none'; document.getElementById('sceneGraphNodes').innerHTML = ''; document.getElementById('sceneGraphSvg').innerHTML = ''; }
     window._diagAccessMatrix = null;
     sceneCollapseState.clear(); // W1-B: 기억마다 접기 상태 초기화(전부 접힘으로 시작)
+    openSubsections.clear();    // W3: choices/dialog 하위 섹션 접힘 초기화
     renderScenes();
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
     switchTab('edit');
+    renderVersions();                 // W3-K: 판본 패널
+    renderSceneToc();                 // W3-M: 씬 목차 사이드바
+    maybeShowAutosaveBanner(currentMemoryId); // W3-L: 임시 저장본 배너
     // 초기 DOM 세팅 이벤트가 dirty 를 트리거했을 수 있으므로 다음 tick 에서 clear
     setTimeout(clearEditorDirty, 0);
 }
@@ -548,6 +556,111 @@ function setAllScenesCollapsed(collapsed) {
 }
 window.toggleSceneCollapse = toggleSceneCollapse;
 window.setAllScenesCollapsed = setAllScenesCollapsed;
+
+// ─── W3 씬 하위 섹션 접힘 상태(choices/dialog 편집기) ──────────────
+const openSubsections = new Set();
+function isSubsectionOpen(id) { return openSubsections.has(id); }
+window.toggleSceneSubsection = function (id, btn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const willOpen = el.style.display === 'none';
+    el.style.display = willOpen ? 'block' : 'none';
+    if (willOpen) openSubsections.add(id); else openSubsections.delete(id);
+    if (btn) btn.textContent = (willOpen ? '▼' : '▶') + btn.textContent.slice(1);
+};
+
+// ─── W3-O: 감정 결 선택지(choices) 편집기 ────────────────────────
+function choiceRowHtml(sceneIndex, ci, c) {
+    const opts = DEFAULT_EMOTION_ANCHORS.map(k => `<option value="${k}"${(c.emotion === k) ? ' selected' : ''}>${k}</option>`).join('');
+    return `<div class="choice-row" data-scene-index="${sceneIndex}" data-choice-index="${ci}" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem;">
+        <input type="text" class="editor-input choice-text-input" data-scene-index="${sceneIndex}" data-choice-index="${ci}" value="${_escHtml(c.text || '')}" placeholder="선택지 문구" style="flex:1;">
+        <select class="editor-input choice-emotion-select" data-scene-index="${sceneIndex}" data-choice-index="${ci}" style="width:auto;">${opts}</select>
+        <input type="number" class="editor-input choice-intensity-input" data-scene-index="${sceneIndex}" data-choice-index="${ci}" min="0" max="10" step="1" value="${c.intensity != null ? c.intensity : 5}" style="width:60px;" title="강도 0~10">
+        <button type="button" class="scene-btn" onclick="deleteChoiceRow(${sceneIndex},${ci})">×</button>
+    </div>`;
+}
+function renderChoicesEditor(scene, sceneIndex) {
+    const rows = (scene.choices || []).map((c, ci) => choiceRowHtml(sceneIndex, ci, c)).join('');
+    const open = isSubsectionOpen('choicesFields-' + sceneIndex);
+    return `<div class="editor-section" style="margin-top:1.5rem;padding:1.25rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
+        <button type="button" class="toggle-contamination-btn" onclick="toggleSceneSubsection('choicesFields-${sceneIndex}', this)">${open ? '▼' : '▶'} 감정 결 선택지 (choices)</button>
+        <div id="choicesFields-${sceneIndex}" style="display:${open ? 'block' : 'none'};margin-top:0.8rem;">
+            <small style="display:block;margin-bottom:0.6rem;font-size:0.8rem;color:var(--text-muted);">감정 결만 기록(다음 씬 지정 없음). 강도 0~10. 저장 시 이 선택지들로 <b>emotion_dist 가 재계산</b>됩니다(R1-3).</small>
+            <div class="choices-list" data-scene-index="${sceneIndex}">${rows}</div>
+            <button type="button" class="add-emotion-btn" onclick="addChoiceRow(${sceneIndex})" style="margin-top:0.5rem;padding:0.4rem 0.9rem;">+ 선택지 추가</button>
+        </div>
+    </div>`;
+}
+window.addChoiceRow = function (sceneIndex) {
+    const s = currentScenes[sceneIndex];
+    if (!Array.isArray(s.choices)) s.choices = [];
+    s.choices.push({ text: '', emotion: 'fear', intensity: 5 });
+    openSubsections.add('choicesFields-' + sceneIndex);
+    markEditorDirty();
+    renderScenes();
+};
+window.deleteChoiceRow = function (sceneIndex, ci) {
+    const s = currentScenes[sceneIndex];
+    if (Array.isArray(s.choices)) { s.choices.splice(ci, 1); markEditorDirty(); renderScenes(); }
+};
+
+// ─── W3-N: 유령 대사(dialog_choices) 편집기 ──────────────────────
+// 실제 스키마(발자국): { ghost_intro:[], scene_context:[], choices:[{label, ghost_reply:[], free_dialog_open:[]}] }
+function _dlgLines(v) { return String(v || '').split('\n').map(s => s.trim()).filter(Boolean); }
+function getDlg(scene) {
+    const d = (scene && scene.meta && scene.meta.dialog_choices) || {};
+    return {
+        ghost_intro: Array.isArray(d.ghost_intro) ? d.ghost_intro : [],
+        scene_context: Array.isArray(d.scene_context) ? d.scene_context : [],
+        choices: Array.isArray(d.choices) ? d.choices : []
+    };
+}
+function setDlg(sceneIndex, dlg) {
+    const s = currentScenes[sceneIndex];
+    if (!s.meta || typeof s.meta !== 'object') s.meta = {};
+    s.meta.dialog_choices = dlg; // meta 병합(다른 키 보존)
+    markEditorDirty();
+}
+function renderDialogEditor(scene, sceneIndex) {
+    const dlg = getDlg(scene);
+    const choicesHtml = dlg.choices.map((c, ci) => `
+        <div class="dlg-choice" style="border:1px solid rgba(196,168,130,.15);border-radius:4px;padding:0.6rem;margin-bottom:0.5rem;">
+            <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.4rem;">
+                <input type="text" class="editor-input dlg-label-input" data-scene-index="${sceneIndex}" data-choice-index="${ci}" value="${_escHtml(c.label || '')}" placeholder="선택지 문구 (…했던 것 같아 회상 화법)" style="flex:1;">
+                <button type="button" class="scene-btn" onclick="deleteDlgChoice(${sceneIndex},${ci})">×</button>
+            </div>
+            <label class="editor-label" style="font-size:0.76rem;">유령 응답 (ghost_reply — 줄바꿈 구분)</label>
+            <textarea class="editor-textarea dlg-reply-input" data-scene-index="${sceneIndex}" data-choice-index="${ci}" rows="2" placeholder="한 줄에 하나씩">${_escHtml((c.ghost_reply || []).join('\n'))}</textarea>
+            <label class="editor-label" style="font-size:0.76rem;">자유 대화 유도 (free_dialog_open — 줄바꿈 구분)</label>
+            <textarea class="editor-textarea dlg-free-input" data-scene-index="${sceneIndex}" data-choice-index="${ci}" rows="2" placeholder="한 줄에 하나씩">${_escHtml((c.free_dialog_open || []).join('\n'))}</textarea>
+        </div>`).join('');
+    const open = isSubsectionOpen('dlgFields-' + sceneIndex);
+    return `<div class="editor-section" style="margin-top:1.5rem;padding:1.25rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
+        <button type="button" class="toggle-contamination-btn" onclick="toggleSceneSubsection('dlgFields-${sceneIndex}', this)">${open ? '▼' : '▶'} 유령 대사 (dialog_choices)</button>
+        <div id="dlgFields-${sceneIndex}" style="display:${open ? 'block' : 'none'};margin-top:0.8rem;">
+            <small style="display:block;margin-bottom:0.6rem;font-size:0.8rem;color:var(--text-muted);">회상 실패자 화법(…했던 것 같아). 실제 스키마(발자국)와 동일: 도입/맥락/선택지(응답·자유대화). scenes.meta.dialog_choices 로 병합.</small>
+            <label class="editor-label" style="font-size:0.78rem;">도입부 (ghost_intro — 줄바꿈 구분)</label>
+            <textarea class="editor-textarea dlg-intro-input" data-scene-index="${sceneIndex}" rows="2" placeholder="한 줄에 하나씩">${_escHtml(dlg.ghost_intro.join('\n'))}</textarea>
+            <label class="editor-label" style="font-size:0.78rem;">장면 맥락 (scene_context — 줄바꿈 구분)</label>
+            <textarea class="editor-textarea dlg-context-input" data-scene-index="${sceneIndex}" rows="3" placeholder="한 줄에 하나씩">${_escHtml(dlg.scene_context.join('\n'))}</textarea>
+            <div class="dlg-choices-list">${choicesHtml}</div>
+            <button type="button" class="add-emotion-btn" onclick="addDlgChoice(${sceneIndex})" style="margin-top:0.5rem;padding:0.4rem 0.9rem;">+ 유령 선택지 추가</button>
+        </div>
+    </div>`;
+}
+window.addDlgChoice = function (sceneIndex) {
+    const dlg = getDlg(currentScenes[sceneIndex]);
+    dlg.choices.push({ label: '', ghost_reply: [], free_dialog_open: [] });
+    setDlg(sceneIndex, dlg);
+    openSubsections.add('dlgFields-' + sceneIndex);
+    renderScenes();
+};
+window.deleteDlgChoice = function (sceneIndex, ci) {
+    const dlg = getDlg(currentScenes[sceneIndex]);
+    dlg.choices.splice(ci, 1);
+    setDlg(sceneIndex, dlg);
+    renderScenes();
+};
 
 // scene 렌더링
 function renderScenes() {
@@ -731,6 +844,8 @@ function renderScenes() {
                     </div>
                 </div>
             </div>
+            ${renderChoicesEditor(scene, sceneIndex)}
+            ${renderDialogEditor(scene, sceneIndex)}
             <div class="editor-section scene-exclusions-section" data-scene-index="${sceneIndex}" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
                 <h3 class="editor-section-title" style="margin-bottom: 0.5rem;">부정 제약 (연출 레이어)</h3>
                 <small style="display: block; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);">
@@ -756,6 +871,7 @@ visited_scene      { type:"visited_scene", sceneIndex:2 }
     });
 
     attachSceneListeners();
+    renderSceneToc(); // W3-M: 씬 목차 동기화
 
     currentScenes.forEach((scene, sceneIndex) => {
         if (scene && scene.wavePreviewEnabled) {
@@ -1110,6 +1226,59 @@ function attachSceneListeners() {
             const v = this.value.trim();
             if (v) scene.meta.ghost_name = v;
             else delete scene.meta.ghost_name;
+        });
+    });
+
+ // W3-O: 감정 결 선택지(choices) 입력
+    document.querySelectorAll('.choice-text-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const si = parseInt(this.dataset.sceneIndex), ci = parseInt(this.dataset.choiceIndex);
+            if (currentScenes[si] && currentScenes[si].choices[ci]) currentScenes[si].choices[ci].text = this.value;
+        });
+    });
+    document.querySelectorAll('.choice-emotion-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+            const si = parseInt(this.dataset.sceneIndex), ci = parseInt(this.dataset.choiceIndex);
+            if (currentScenes[si] && currentScenes[si].choices[ci]) currentScenes[si].choices[ci].emotion = this.value;
+        });
+    });
+    document.querySelectorAll('.choice-intensity-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const si = parseInt(this.dataset.sceneIndex), ci = parseInt(this.dataset.choiceIndex);
+            let v = parseInt(this.value, 10); if (isNaN(v)) v = 5; v = Math.max(0, Math.min(10, v));
+            if (currentScenes[si] && currentScenes[si].choices[ci]) currentScenes[si].choices[ci].intensity = v;
+        });
+    });
+
+ // W3-N: 유령 대사(dialog_choices) 입력 — scenes.meta.dialog_choices 병합
+    document.querySelectorAll('.dlg-intro-input').forEach(t => {
+        t.addEventListener('input', function() {
+            const si = parseInt(this.dataset.sceneIndex);
+            const dlg = getDlg(currentScenes[si]); dlg.ghost_intro = _dlgLines(this.value); setDlg(si, dlg);
+        });
+    });
+    document.querySelectorAll('.dlg-context-input').forEach(t => {
+        t.addEventListener('input', function() {
+            const si = parseInt(this.dataset.sceneIndex);
+            const dlg = getDlg(currentScenes[si]); dlg.scene_context = _dlgLines(this.value); setDlg(si, dlg);
+        });
+    });
+    document.querySelectorAll('.dlg-label-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const si = parseInt(this.dataset.sceneIndex), ci = parseInt(this.dataset.choiceIndex);
+            const dlg = getDlg(currentScenes[si]); if (dlg.choices[ci]) { dlg.choices[ci].label = this.value; setDlg(si, dlg); }
+        });
+    });
+    document.querySelectorAll('.dlg-reply-input').forEach(t => {
+        t.addEventListener('input', function() {
+            const si = parseInt(this.dataset.sceneIndex), ci = parseInt(this.dataset.choiceIndex);
+            const dlg = getDlg(currentScenes[si]); if (dlg.choices[ci]) { dlg.choices[ci].ghost_reply = _dlgLines(this.value); setDlg(si, dlg); }
+        });
+    });
+    document.querySelectorAll('.dlg-free-input').forEach(t => {
+        t.addEventListener('input', function() {
+            const si = parseInt(this.dataset.sceneIndex), ci = parseInt(this.dataset.choiceIndex);
+            const dlg = getDlg(currentScenes[si]); if (dlg.choices[ci]) { dlg.choices[ci].free_dialog_open = _dlgLines(this.value); setDlg(si, dlg); }
         });
     });
 
@@ -2389,6 +2558,12 @@ async function saveMemory() {
         currentMemoryIndex = memories.findIndex(m => String(m.id) === String(memoryId));
         await loadAllSessions();
 
+        // W3-K: 저장 직후 판본 스냅샷(최근 20개 유지). 실패해도 저장 자체는 성공.
+        try { await snapshotVersion(supabaseClient, memoryId, '저장'); await renderVersions(); }
+        catch (e) { console.warn('[saveMemory] 판본 스냅샷 실패(저장은 성공):', e.message); }
+        // W3-L: 저장 성공 시 자동저장 임시본 삭제
+        try { clearAutosave(memoryId); } catch (e) {}
+
         clearEditorDirty(); // 저장 성공 → dirty 해제
         showToast(`저장됨 — 씬 ${currentScenes.length}개`, 'success');
     } catch (error) {
@@ -2672,6 +2847,7 @@ document.addEventListener('DOMContentLoaded', function() {
 let allSessions = [];
 let currentFilter = 'all';
 let sessionSearchQuery = ''; // W2-E: 제목/코드 부분일치 검색어
+let showTrash = false;       // W3-J: 휴지통 보기(삭제된 기억만) 토글
 
 // W2-E: 대시보드 목록 검색 — 제목/코드 부분일치 클라이언트 필터
 function setSessionSearch(q) {
@@ -2679,6 +2855,322 @@ function setSessionSearch(q) {
     renderSessions();
 }
 window.setSessionSearch = setSessionSearch;
+
+// W3-J: 휴지통 보기 토글
+function toggleTrashView() {
+    showTrash = !showTrash;
+    const btn = document.getElementById('trashToggleBtn');
+    if (btn) {
+        btn.textContent = showTrash ? '← 목록으로' : '휴지통';
+        btn.classList.toggle('active', showTrash);
+    }
+    renderSessions();
+}
+window.toggleTrashView = toggleTrashView;
+
+// W3-J: 삭제된 기억 복원 (deleted_at=null). is_public 은 수동 — 자동 재공개 금지.
+async function restoreMemoryById(id) {
+    try {
+        const sb = await getSupabaseClient();
+        if (!sb) throw new Error('Supabase client not initialized.');
+        const { error } = await sb.from('memories').update({ deleted_at: null }).eq('id', id);
+        if (error) throw error;
+        showToast('복원됨 — 공개는 수동으로 켜세요(비공개 상태 유지)', 'success');
+        await loadMemories();
+        await loadAllSessions();
+    } catch (e) {
+        console.error('restoreMemoryById error:', e);
+        showToast('복원 오류: ' + e.message, 'error', { ttl: 0 });
+    }
+}
+window.restoreMemoryById = restoreMemoryById;
+
+// W3-J: 영구 삭제 (confirm 2단, 기존 hard delete 경로)
+async function purgeMemoryById(id, title) {
+    if (!confirm(`"${title || id}" 를 영구 삭제합니다.\n관련 씬·선택지·판본이 모두 사라지고 복구 불가합니다. 계속?`)) return;
+    if (!confirm('되돌릴 수 없습니다. 정말 영구 삭제할까요?')) return;
+    try {
+        const sb = await getSupabaseClient();
+        if (!sb) throw new Error('Supabase client not initialized.');
+        await deleteMemoryGraph(sb, id);
+        showToast('영구 삭제되었습니다', 'success');
+        await loadMemories();
+        await loadAllSessions();
+    } catch (e) {
+        console.error('purgeMemoryById error:', e);
+        showToast('영구 삭제 오류: ' + e.message, 'error', { ttl: 0 });
+    }
+}
+window.purgeMemoryById = purgeMemoryById;
+
+// ─── W3-K: 판본 이력 (admin_versions) ─────────────────────────────
+// 저장 직후 {memory row, scenes[], choices[]} 스냅샷. 기억당 최근 20개 유지.
+async function snapshotVersion(sb, memoryId, note) {
+    if (!sb || !memoryId) return;
+    const { data: memory } = await sb.from('memories').select('*').eq('id', memoryId).single();
+    const { data: scenes } = await sb.from('scenes').select('*').eq('memory_id', memoryId).order('scene_order', { ascending: true });
+    const sceneIds = (scenes || []).map(s => s.id);
+    let choices = [];
+    if (sceneIds.length) {
+        const { data } = await sb.from('choices').select('*').in('scene_id', sceneIds).order('choice_order', { ascending: true });
+        choices = data || [];
+    }
+    const { error } = await sb.from('admin_versions').insert({
+        memory_id: memoryId,
+        snapshot: { memory, scenes: scenes || [], choices },
+        note: note || null
+    });
+    if (error) throw error;
+    // 최근 20개 유지 — 초과분 삭제
+    const { data: all } = await sb.from('admin_versions').select('id').eq('memory_id', memoryId).order('created_at', { ascending: false });
+    if (all && all.length > 20) {
+        const toDelete = all.slice(20).map(r => r.id);
+        await sb.from('admin_versions').delete().in('id', toDelete);
+    }
+}
+
+// 스냅샷(DB row 형태) → 편집기 memory 형태 (listMemoriesWithScenesChoices 매핑 미러)
+function snapshotToEditorMemory(snap) {
+    const m = snap.memory || {};
+    const choicesByScene = {};
+    (snap.choices || []).forEach(c => {
+        (choicesByScene[c.scene_id] = choicesByScene[c.scene_id] || []).push(c);
+    });
+    const scenes = (snap.scenes || []).slice().sort((a, b) => (a.scene_order || 0) - (b.scene_order || 0)).map(scene => ({
+        id: scene.id,
+        text: scene.text || '',
+        sceneType: scene.scene_type || 'normal',
+        scene_role: scene.scene_role || null,
+        echoWords: Array.isArray(scene.echo_words) ? scene.echo_words : (scene.echo_words ? JSON.parse(scene.echo_words) : []),
+        emotionDist: scene.emotion_dist || {},
+        voidInfo: scene.void_info || null,
+        choices: (choicesByScene[scene.id] || []).sort((a, b) => (a.choice_order || 0) - (b.choice_order || 0)).map(choice => ({
+            id: choice.id, text: choice.text || '', emotion: choice.emotion || 'fear', intensity: choice.intensity || 5, nextScene: 'end', percentage: 0
+        })),
+        originalChoice: scene.original_choice || 0,
+        originalReason: scene.original_reason || '',
+        originalEmotion: scene.original_emotion ? (typeof scene.original_emotion === 'string' ? JSON.parse(scene.original_emotion) : scene.original_emotion) : null,
+        originalReasonVector: scene.original_reason_vector ? (typeof scene.original_reason_vector === 'string' ? JSON.parse(scene.original_reason_vector) : scene.original_reason_vector) : null,
+        anchor_emotions: scene.anchor_emotions ? (Array.isArray(scene.anchor_emotions) ? scene.anchor_emotions : (typeof scene.anchor_emotions === 'string' ? JSON.parse(scene.anchor_emotions) : scene.anchor_emotions)) : null,
+        text_stage_1: scene.text_stage_1 || null,
+        text_stage_2: scene.text_stage_2 || null,
+        text_stage_3: scene.text_stage_3 || null,
+        exclusions: scene.exclusions ? (Array.isArray(scene.exclusions) ? scene.exclusions : (typeof scene.exclusions === 'string' ? JSON.parse(scene.exclusions) : scene.exclusions)) : null,
+        meta: scene.meta || null
+    }));
+    return {
+        id: m.id, title: m.title || '', code: m.code || '', description: m.description || '',
+        sound_map: m.sound_map || null, memory_words: m.memory_words || null, completed_sentence: m.completed_sentence || null,
+        author_note: m.author_note || null, status: m.status || 'Fetus', scenes,
+        interpretationLayers: m.cont_depth || 0, visible: m.is_public !== undefined ? m.is_public : true,
+        sensory_anchor: m.sensory_anchor || null, original_vector: m.original_vector || null,
+        original_reason_vector: m.original_reason_vector || null,
+        cont_depth: m.cont_depth != null ? m.cont_depth : null,
+        cont_divergence: m.cont_divergence != null ? m.cont_divergence : null,
+        cont_convergence: m.cont_convergence != null ? m.cont_convergence : null,
+        cont_heterogeneity: m.cont_heterogeneity != null ? m.cont_heterogeneity : null,
+        cont_stage_1: m.cont_stage_1 != null ? m.cont_stage_1 : null,
+        cont_stage_2: m.cont_stage_2 != null ? m.cont_stage_2 : null,
+        cont_stage_3: m.cont_stage_3 != null ? m.cont_stage_3 : null,
+        terrain_shape: m.terrain_shape || null,
+        ghost_condensation_points: Array.isArray(m.ghost_condensation_points) ? m.ghost_condensation_points : []
+    };
+}
+
+// 편집화면 판본 패널 렌더
+async function renderVersions() {
+    const panel = document.getElementById('versionsPanel');
+    if (!panel) return;
+    if (!currentMemoryId) { panel.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">저장 후 판본이 쌓입니다.</div>'; return; }
+    try {
+        const sb = await getSupabaseClient();
+        const { data: rows, error } = await sb.from('admin_versions').select('id, note, created_at').eq('memory_id', currentMemoryId).order('created_at', { ascending: false }).limit(20);
+        if (error) throw error;
+        if (!rows || rows.length === 0) { panel.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">아직 판본이 없습니다. 저장하면 여기에 기록됩니다.</div>'; return; }
+        panel.innerHTML = rows.map(r => `
+            <div style="display:flex;align-items:center;gap:0.8rem;padding:0.5rem 0.7rem;border:1px solid rgba(196,168,130,.15);border-radius:4px;margin-bottom:0.4rem;">
+                <span style="flex:1;font-size:0.82rem;color:#d8cfbf;">${new Date(r.created_at).toLocaleString('ko-KR')}${r.note ? ` · <span style="color:var(--text-muted);">${_escHtml(r.note)}</span>` : ''}</span>
+                <button type="button" class="table-btn" style="font-size:0.78rem;" onclick="restoreVersion('${r.id}')">이 판본으로 복원</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.warn('renderVersions 실패:', e.message);
+        panel.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">판본 목록을 불러오지 못했습니다.</div>';
+    }
+}
+window.renderVersions = renderVersions;
+
+// 판본 복원 — 스냅샷을 편집기 상태로 로드 → saveMemoryGraph 경유(씬 id·plays 보존).
+async function restoreVersion(versionId) {
+    if (!currentMemoryId || currentMemoryIndex == null) { showToast('먼저 기억을 선택하세요', 'info'); return; }
+    if (!confirm('이 판본으로 되돌립니다. 저장하지 않은 현재 편집 내용은 사라질 수 있습니다. 계속?')) return;
+    try {
+        const sb = await getSupabaseClient();
+        if (!sb) throw new Error('Supabase client not initialized.');
+        // 1) 복원 직전 현재 상태 자동 스냅샷
+        await snapshotVersion(sb, currentMemoryId, '복원 전 자동');
+        // 2) 판본 로드
+        const { data: v, error } = await sb.from('admin_versions').select('*').eq('id', versionId).single();
+        if (error) throw error;
+        const editorMem = snapshotToEditorMemory(v.snapshot);
+        // 3) 편집기에 로드 (editMemory 재사용 — 씬 id 보존)
+        memories[currentMemoryIndex] = editorMem;
+        editMemory(currentMemoryIndex);
+        // 4) saveMemoryGraph 경유 저장 (id 보존 diff)
+        await saveMemory();
+        showToast('판본 복원 완료', 'success');
+    } catch (e) {
+        console.error('restoreVersion error:', e);
+        showToast('판본 복원 오류: ' + e.message, 'error', { ttl: 0 });
+    }
+}
+window.restoreVersion = restoreVersion;
+
+// ─── W3-M: 씬 목차 사이드바 ───────────────────────────────────────
+function renderSceneToc() {
+    const el = document.getElementById('sceneTocList');
+    if (!el) return;
+    if (!currentScenes || currentScenes.length === 0) {
+        el.innerHTML = '<div style="color:var(--text-muted);font-size:0.78rem;padding:0.4rem;">씬 없음</div>';
+        return;
+    }
+    el.innerHTML = currentScenes.map((s, i) => {
+        const name = (s.meta && s.meta.ghost_name) ? s.meta.ghost_name : '';
+        const head = (s.text || '').replace(/\s+/g, ' ').trim().slice(0, 16);
+        const role = sceneRoleLabel(s.scene_role);
+        return `<div class="scene-toc-item" onclick="jumpToScene(${i})" title="${_escHtml(head)}">
+            <span class="scene-toc-order">S${i + 1}</span>
+            <span class="scene-toc-name">${_escHtml(name || head || '(빈 씬)')}</span>
+            <span class="scene-toc-role">${_escHtml(role)}</span>
+        </div>`;
+    }).join('');
+}
+window.renderSceneToc = renderSceneToc;
+function jumpToScene(i) {
+    sceneCollapseState.set(i, false); // 펼침 (B 연동)
+    renderScenes();
+    const block = document.querySelector(`.scene-block[data-scene-index="${i}"]`);
+    if (block) {
+        const body = block.querySelector('.scene-body');
+        if (body) body.style.display = '';
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+window.jumpToScene = jumpToScene;
+
+// ─── W3-L: 자동저장(임시본) — localStorage, 디바운스 30초 ─────────────
+const AUTOSAVE_PREFIX = 'tem_admin_autosave_';
+let _autosaveTimer = null;
+function autosaveKey(id) { return AUTOSAVE_PREFIX + (id || 'new'); }
+function _val(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function _setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v == null ? '' : v; }
+function captureEditorState() {
+    return {
+        ts: Date.now(),
+        title: _val('memoryTitle'), code: _val('memoryCode'), description: _val('memoryDescription'),
+        memory_words: _val('memoryWords'), completed_sentence: _val('completedSentence'),
+        author_note: _val('authorNote'), status: _val('memoryStatus'),
+        scenes: currentScenes
+    };
+}
+function scheduleAutosave() {
+    const screen = document.getElementById('editorScreen');
+    if (!screen || !screen.classList.contains('active')) return;
+    if (_autosaveTimer) clearTimeout(_autosaveTimer);
+    _autosaveTimer = setTimeout(() => {
+        try {
+            localStorage.setItem(autosaveKey(currentMemoryId), JSON.stringify(captureEditorState()));
+            const ind = document.getElementById('autosaveIndicator');
+            if (ind) ind.textContent = '임시 저장됨 · ' + new Date().toLocaleTimeString('ko-KR');
+        } catch (e) { console.warn('autosave 실패:', e.message); }
+    }, 30000);
+}
+function clearAutosave(id) { try { localStorage.removeItem(autosaveKey(id)); } catch (e) {} }
+function maybeShowAutosaveBanner(id) {
+    const banner = document.getElementById('autosaveBanner');
+    if (!banner) return;
+    let raw = null;
+    try { raw = localStorage.getItem(autosaveKey(id)); } catch (e) {}
+    if (!raw) { banner.style.display = 'none'; return; }
+    banner.dataset.key = autosaveKey(id);
+    const whenEl = banner.querySelector('.autosave-when');
+    try { if (whenEl) whenEl.textContent = new Date(JSON.parse(raw).ts).toLocaleString('ko-KR'); } catch (e) {}
+    banner.style.display = 'flex';
+}
+function restoreAutosave() {
+    const banner = document.getElementById('autosaveBanner');
+    const key = banner && banner.dataset.key;
+    if (!key) return;
+    let data; try { data = JSON.parse(localStorage.getItem(key)); } catch (e) { return; }
+    if (!data) return;
+    _setVal('memoryTitle', data.title); _setVal('memoryCode', data.code); _setVal('memoryDescription', data.description);
+    _setVal('memoryWords', data.memory_words); _setVal('completedSentence', data.completed_sentence);
+    _setVal('authorNote', data.author_note); _setVal('memoryStatus', data.status);
+    if (Array.isArray(data.scenes)) currentScenes = data.scenes;
+    sceneCollapseState.clear();
+    renderScenes();
+    banner.style.display = 'none';
+    markEditorDirty();
+    showToast('임시 저장본을 복원했습니다', 'success');
+}
+function discardAutosave() {
+    const banner = document.getElementById('autosaveBanner');
+    const key = banner && banner.dataset.key;
+    if (key) { try { localStorage.removeItem(key); } catch (e) {} }
+    if (banner) banner.style.display = 'none';
+    showToast('임시 저장본을 버렸습니다', 'info');
+}
+window.restoreAutosave = restoreAutosave;
+window.discardAutosave = discardAutosave;
+
+// ─── W3-P: 작가 궤적 시딩 ─────────────────────────────────────────
+// 씬별 plays 1행. persona_id='author-seed' (⚠️ 관객 인구 격리 — 자료스키마 §5).
+async function seedAuthorTrajectory() {
+    if (!currentMemoryId) { showToast('먼저 기억을 저장하세요', 'info'); return; }
+    try {
+        const sb = await getSupabaseClient();
+        if (!sb) throw new Error('Supabase client not initialized.');
+        const { data: scenes, error } = await sb.from('scenes')
+            .select('id, scene_order, original_emotion, emotion_dist')
+            .eq('memory_id', currentMemoryId).order('scene_order', { ascending: true });
+        if (error) throw error;
+        if (!scenes || scenes.length === 0) { showToast('씬이 없습니다', 'error'); return; }
+
+        const { data: existing } = await sb.from('plays').select('id')
+            .eq('memory_id', currentMemoryId).eq('persona_id', 'author-seed');
+        if (existing && existing.length > 0) {
+            if (!confirm(`기존 작가 시딩 ${existing.length}행이 있습니다. 삭제하고 다시 심을까요?`)) return;
+            await sb.from('plays').delete().eq('memory_id', currentMemoryId).eq('persona_id', 'author-seed');
+        } else {
+            if (!confirm(`씬 ${scenes.length}개에 작가 궤적(정렬도 1.0)을 심습니다. 계속?`)) return;
+        }
+
+        const runId = crypto.randomUUID();
+        const rows = scenes.map(s => {
+            let ue = s.original_emotion;
+            if (typeof ue === 'string') { try { ue = JSON.parse(ue); } catch (e) { ue = null; } }
+            if (!ue || typeof ue !== 'object') ue = s.emotion_dist || {};
+            return {
+                memory_id: currentMemoryId, scene_id: s.id,
+                user_emotion: ue, user_reason: 'author-seed',
+                alignment: 1.0, mismatch_type: null, run_id: runId,
+                persona_id: 'author-seed', persona_name: 'author-seed',
+                final_drift_vector: {}, sky_stains: {}
+            };
+        });
+        const { error: insErr } = await sb.from('plays').insert(rows);
+        if (insErr) throw insErr;
+
+        // 관객 인구 불변 실측 (§5: 실관객 = persona_id IS NULL AND created_at >= 2026-07-09)
+        const { count } = await sb.from('plays').select('id', { count: 'exact', head: true })
+            .is('persona_id', null).gte('created_at', '2026-07-09');
+        showToast(`작가 궤적 시딩 완료 — ${rows.length}행. 실관객 수(불변 확인)=${count}`, 'success');
+    } catch (e) {
+        console.error('seedAuthorTrajectory error:', e);
+        showToast('시딩 오류: ' + e.message, 'error', { ttl: 0 });
+    }
+}
+window.seedAuthorTrajectory = seedAuthorTrajectory;
 const fateLabels={'preserve':'보존','dilute':'자연 소멸','anonymous':'완전 익명'};
 const fateColors={'preserve':'#7a9a7a','dilute':'#c4a882','anonymous':'#7b8fa8'};
 
@@ -3311,6 +3803,14 @@ function renderSessions() {
         ? allSessions
         : allSessions.filter(s => s.type === currentFilter);
 
+    // W3-J: 휴지통 파티션 — 삭제된 archive 는 기본 숨김, 휴지통 보기에서만 노출.
+    //   라이브 세션은 soft-delete 대상 아님 → 휴지통 보기에서는 제외.
+    if (showTrash) {
+        filtered = filtered.filter(s => s.type === 'archive' && s.deleted_at);
+    } else {
+        filtered = filtered.filter(s => !(s.type === 'archive' && s.deleted_at));
+    }
+
     // W2-E: 제목/코드 부분일치 검색
     if (sessionSearchQuery) {
         filtered = filtered.filter(s => {
@@ -3324,7 +3824,8 @@ function renderSessions() {
     if (!container) return;
 
     if (!filtered || filtered.length === 0) {
-        const msg = sessionSearchQuery ? '검색 결과가 없습니다.' : '세션이 없습니다.';
+        const msg = showTrash ? '휴지통이 비어 있습니다.'
+            : (sessionSearchQuery ? '검색 결과가 없습니다.' : '세션이 없습니다.');
         container.innerHTML = `<p style="color: var(--text-muted);">${msg}</p>`;
         return;
     }
@@ -3351,8 +3852,13 @@ function renderSessions() {
                 ${isArchive ? renderContaminationBadge(session) : ''}
                 ${session.type === 'live' && session.memory_fate ? `<div class="session-fate" style="color: ${fateColors[session.memory_fate] || '#666'}; margin-top: 0.5rem; font-size: 0.9rem;">운명: ${fateLabels[session.memory_fate] || '미정'}</div>` : ''}
             </div>
+            ${showTrash ? `
+            <button class="session-delete-btn" onclick="event.stopPropagation(); restoreMemoryById('${session.id}')" style="padding: 0.5rem 1rem; background: transparent; color: var(--accent-memory); border: 1px solid var(--accent-memory); border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-left: 0.5rem;">복원</button>
+            <button class="session-delete-btn" onclick="event.stopPropagation(); purgeMemoryById('${session.id}', '${(session.displayTitle || '').replace(/'/g, "\\'")}')" style="padding: 0.5rem 1rem; background: var(--accent-live); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-left: 0.5rem;">영구 삭제</button>
+            ` : `
             ${isArchive ? `<button class="session-delete-btn" onclick="event.stopPropagation(); toggleArchiveVisibilityById('${session.id}')" style="padding: 0.5rem 0.85rem; background: transparent; color: var(--accent-memory); border: 1px solid var(--accent-memory); border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-left: 0.5rem;">${visibilityBtnLabel}</button>` : ''}
             <button class="session-delete-btn" onclick="event.stopPropagation(); deleteSessionById('${session.id}', '${session.type}')" style="padding: 0.5rem 1rem; background: var(--accent-live); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; margin-left: 0.5rem;">삭제</button>
+            `}
         </div>
     `;
     }).join('');
@@ -3421,18 +3927,28 @@ function updateSelectedCount() {
 }
 
 async function deleteSessionById(id, type) {
-    if (!confirm(`${type === 'archive' ? '아카이브' : '라이브 세션'}을 삭제하시겠습니까?\n관련된 장면 데이터도 함께 삭제됩니다.`)) {
+    // W3-J: 기억(archive)은 soft-delete(휴지통). 라이브 세션은 기존 hard delete.
+    const confirmMsg = type === 'archive'
+        ? '이 기억을 휴지통으로 보낼까요?\n(공개가 해제되며, 휴지통에서 복원할 수 있습니다.)'
+        : '라이브 세션을 삭제하시겠습니까?\n관련된 장면 데이터도 함께 삭제됩니다.';
+    if (!confirm(confirmMsg)) {
         return;
     }
-    
+
     try {
         const supabaseClient = await getSupabaseClient();
         if (!supabaseClient) {
             throw new Error('Supabase client not initialized.');
         }
-        
+
         if (type === 'archive') {
-            await deleteMemoryGraph(supabaseClient, id);
+            // soft-delete: 행 보존(deleted_at) + 공개 해제(is_public=false).
+            // play-test 는 is_public=false 로 자연 숨김 — play-test 무수정.
+            const { error } = await supabaseClient
+                .from('memories')
+                .update({ deleted_at: new Date().toISOString(), is_public: false })
+                .eq('id', id);
+            if (error) throw error;
         } else {
  // live session delete: 모든 data 먼저 delete
  // 1. live_scenes delete
@@ -3476,7 +3992,7 @@ async function deleteSessionById(id, type) {
             }
         }
         
-        showToast(type === 'archive' ? '기억이 삭제되었습니다' : '라이브 세션이 삭제되었습니다', 'success');
+        showToast(type === 'archive' ? '휴지통으로 보냈습니다' : '라이브 세션이 삭제되었습니다', 'success');
         await loadMemories(); // memories 배열 최신화
         await loadAllSessions(); // 통합 목록 갱신
     } catch (e) {
