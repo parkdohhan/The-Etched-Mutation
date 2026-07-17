@@ -2,6 +2,26 @@ import { getSupabaseClient, waitForSupabaseClient } from './lib/supabaseClient.j
 import { loadAdminMemories, saveAdminMemories, exportAdminMemoriesJSON, importAdminMemoriesJSON } from './lib/storage.js';
 import { listMemoriesWithScenesChoices, saveMemoryGraph, deleteMemoryGraph, listArchiveLayers } from './lib/repo.js';
 import { DEFAULT_EMOTION_ANCHORS, emotionVectorToWaveStyle, cosineSimilarity } from './shared/math.js';
+import { showToast } from './admin/toast.js';
+
+// 저장 버튼(플로팅 + 하단) 일괄 잠금/해제 — 이중 클릭·중복 저장 방지 (W1-A)
+function setSaveButtonsBusy(busy) {
+    document.querySelectorAll('.floating-save-btn, .editor-save-btn').forEach(btn => {
+        if (!btn) return;
+        if (busy) {
+            if (btn.dataset.origLabel == null) btn.dataset.origLabel = btn.textContent;
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            btn.style.cursor = 'progress';
+            btn.textContent = '저장 중…';
+        } else {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            if (btn.dataset.origLabel != null) { btn.textContent = btn.dataset.origLabel; delete btn.dataset.origLabel; }
+        }
+    });
+}
 
 let memories = [];
 let currentScenes = [];
@@ -263,6 +283,7 @@ function addNewMemory() {
     currentMemoryId = null;
     currentLayers = []; // 새 메모리 생성 시 레이어 초기화
     currentScenes = [];
+    sceneCollapseState.clear(); // W1-B: 접기 상태 초기화
     document.getElementById('memoryTitle').value = '';
     document.getElementById('memoryCode').value = '';
     document.getElementById('memoryDescription').value = '';
@@ -400,6 +421,7 @@ function editMemory(index) {
     var _graphEl = document.getElementById('sceneGraphContainer');
     if (_graphEl) { _graphEl.style.display = 'none'; document.getElementById('sceneGraphNodes').innerHTML = ''; document.getElementById('sceneGraphSvg').innerHTML = ''; }
     window._diagAccessMatrix = null;
+    sceneCollapseState.clear(); // W1-B: 기억마다 접기 상태 초기화(전부 접힘으로 시작)
     renderScenes();
     document.getElementById('adminDashboard').classList.remove('active');
     document.getElementById('editorScreen').classList.add('active');
@@ -484,8 +506,48 @@ function addScene() {
         voidInfo: null,
         exclusions: null
     });
+    // W1-B: 새로 추가한 씬은 펼친 상태로 생성 + 그 위치로 스크롤
+    const newIndex = currentScenes.length - 1;
+    sceneCollapseState.set(newIndex, false);
+    renderScenes();
+    const block = document.querySelector(`.scene-block[data-scene-index="${newIndex}"]`);
+    if (block && block.scrollIntoView) block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── 씬 카드 접기 (W1-B, F1) ─────────────────────────────────────
+// 씬 폼이 괴물(씬당 41요소)이라 기본 접힘. 헤더 = S{순서} · {역할} · {본문 첫 20자}.
+const sceneCollapseState = new Map(); // sceneIndex -> collapsed(boolean). 기본 접힘(true).
+function isSceneCollapsed(i) { const v = sceneCollapseState.get(i); return v === undefined ? true : v; }
+function _escHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function sceneRoleLabel(role) {
+    if (role === 'anchor') return '원본(anchor)';
+    if (role === 'residual') return '잔상(residual)';
+    return '역할 없음';
+}
+function sceneCollapseTitle(scene, i) {
+    const head = (scene && scene.text ? scene.text : '').replace(/\s+/g, ' ').trim().slice(0, 20);
+    const gname = (scene && scene.meta && scene.meta.ghost_name) ? ` · 👻${scene.meta.ghost_name}` : '';
+    return `S${i + 1} · ${sceneRoleLabel(scene && scene.scene_role)} · ${head || '(본문 없음)'}${gname}`;
+}
+function toggleSceneCollapse(i) {
+    const collapsed = !isSceneCollapsed(i);
+    sceneCollapseState.set(i, collapsed);
+    const block = document.querySelector(`.scene-block[data-scene-index="${i}"]`);
+    if (!block) return;
+    const body = block.querySelector('.scene-body');
+    const caret = block.querySelector('.scene-collapse-caret');
+    if (body) body.style.display = collapsed ? 'none' : '';
+    if (caret) caret.textContent = collapsed ? '▶' : '▼';
+    block.classList.toggle('collapsed', collapsed);
+}
+function setAllScenesCollapsed(collapsed) {
+    currentScenes.forEach((_, i) => sceneCollapseState.set(i, collapsed));
     renderScenes();
 }
+window.toggleSceneCollapse = toggleSceneCollapse;
+window.setAllScenesCollapsed = setAllScenesCollapsed;
 
 // scene 렌더링
 function renderScenes() {
@@ -494,8 +556,15 @@ function renderScenes() {
 
     currentScenes.forEach((scene, sceneIndex) => {
         const sceneBlock = document.createElement('div');
-        sceneBlock.className = 'scene-block';
+        const _collapsed = isSceneCollapsed(sceneIndex);
+        sceneBlock.className = 'scene-block' + (_collapsed ? ' collapsed' : '');
+        sceneBlock.setAttribute('data-scene-index', sceneIndex);
         sceneBlock.innerHTML = `
+            <div class="scene-collapse-bar" onclick="toggleSceneCollapse(${sceneIndex})" title="클릭하여 접기/펼치기">
+                <span class="scene-collapse-caret">${_collapsed ? '▶' : '▼'}</span>
+                <span class="scene-collapse-title">${_escHtml(sceneCollapseTitle(scene, sceneIndex))}</span>
+            </div>
+            <div class="scene-body"${_collapsed ? ' style="display:none;"' : ''}>
             <div class="scene-header">
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <div class="scene-number">장면 ${sceneIndex + 1}</div>
@@ -519,6 +588,11 @@ function renderScenes() {
             <div class="editor-input-group">
                 <label class="editor-label">본문</label>
                 <textarea class="editor-textarea scene-text-input" data-scene-index="${sceneIndex}" placeholder="장면 본문을 입력하세요">${scene.text || ''}</textarea>
+            </div>
+            <div class="editor-input-group">
+                <label class="editor-label">유령 이름 (공명 시 드러남)</label>
+                <input type="text" class="editor-input scene-ghost-name-input" data-scene-index="${sceneIndex}" placeholder="예: 준호, 엄마, 그 사람" value="${_escHtml((scene.meta && scene.meta.ghost_name) || '')}">
+                <small style="display:block;margin-top:0.4rem;font-size:0.82rem;color:var(--text-muted);">접촉(공명) 순간에만 플레이어에게 드러나는 이름. 비워도 됨.</small>
             </div>
             <div class="contamination-section">
                 <button type="button" class="toggle-contamination-btn" onclick="toggleContamination(${sceneIndex})">
@@ -676,6 +750,7 @@ visited_scene      { type:"visited_scene", sceneIndex:2 }
                     </pre>
                 </details>
             </div>
+            </div><!-- /.scene-body -->
         `;
         container.appendChild(sceneBlock);
     });
@@ -1023,6 +1098,18 @@ function attachSceneListeners() {
             const sceneIndex = parseInt(this.dataset.sceneIndex);
             currentScenes[sceneIndex].text = this.value;
             renderSceneWave(sceneIndex);
+        });
+    });
+
+ // 유령 이름 (W1-C) — scenes.meta.ghost_name 왕복. meta 는 병합(다른 키 보존, CLAUDE 규칙 3).
+    document.querySelectorAll('.scene-ghost-name-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const sceneIndex = parseInt(this.dataset.sceneIndex);
+            const scene = currentScenes[sceneIndex];
+            if (!scene.meta || typeof scene.meta !== 'object') scene.meta = {};
+            const v = this.value.trim();
+            if (v) scene.meta.ghost_name = v;
+            else delete scene.meta.ghost_name;
         });
     });
 
@@ -2157,18 +2244,19 @@ async function saveMemory() {
  // sound_map 을 안 보내면 repo.js 가 기존 DB 값을 보존한다.
 
     if (!title || !code) {
-        alert('제목과 코드를 입력해주세요');
+        showToast('제목과 코드를 입력해주세요', 'error');
         return;
     }
 
     if (currentScenes.length === 0) {
-        alert('최소 하나의 장면을 추가해주세요');
+        showToast('최소 하나의 장면을 추가해주세요', 'error');
         return;
     }
 
+    setSaveButtonsBusy(true);
     try {
         let memoryId;
-        
+
         console.log('[saveMemory] 시작', { currentMemoryId, scenesCount: currentScenes.length });
         
  // Supabase client 져오기
@@ -2286,39 +2374,23 @@ async function saveMemory() {
         console.log('[saveMemory] saveMemoryGraph 완료', { finalMemoryId });
         memoryId = finalMemoryId;
 
- // local memory 업데 트
-        const prevVisibility = currentMemoryIndex !== null
-            ? (memories[currentMemoryIndex]?.is_public ?? memories[currentMemoryIndex]?.visible ?? true)
-            : true;
-        const memoryData = {
-            id: memoryId,
-            title,
-            code,
-            description,
-            memory_words: memoryWords || null,
-            completed_sentence: completedSentence || null,
-            scenes: currentScenes,
-            interpretationLayers: 0,
-            is_public: prevVisibility,
-            visible: prevVisibility
-        };
-
-        if (currentMemoryIndex !== null) {
-            memories[currentMemoryIndex] = memoryData;
-        } else {
-            memories.push(memoryData);
-        }
-
-        saveMemoriesToStorage(); // 백업용
-        renderMemoriesTable();
-
  // R1-7 (2026-07-14): 저장 시 exportMemoriesJSON() 자동 호출 제거 —
  // 저장할 때마다 파일 다운로드 + 클립보드 덮어쓰기가 일어나던 동작.
  // 내보내기는 window.exportMemoriesJSON() 수동 호출로만.
         console.log('[saveMemory] 전체 저장 완료');
 
-        clearEditorDirty(); // 저장 성공 → dirty 해제 (cancelEdit confirm 회피)
-        cancelEdit();
+ // W1-A (B1+B2 봉합): 저장 후 편집기 잔류. 대시보드 퇴출(cancelEdit) 제거.
+ //  - currentMemoryId 확정 → 다음 저장은 UPDATE 경로(신규 중복 INSERT 방지)
+ //  - loadMemories() 로 로컬 memories 를 DB 기준 최신화(신규 기억 재진입 정확성)
+ //  - loadAllSessions() 로 대시보드 통합 목록 즉시 갱신(B1: 새로고침 불요)
+        currentMemoryId = memoryId;
+        window.currentMemoryId = memoryId; // admin-trajectory 등 타 모듈 참조
+        await loadMemories();
+        currentMemoryIndex = memories.findIndex(m => String(m.id) === String(memoryId));
+        await loadAllSessions();
+
+        clearEditorDirty(); // 저장 성공 → dirty 해제
+        showToast(`저장됨 — 씬 ${currentScenes.length}개`, 'success');
     } catch (error) {
         console.error('[saveMemory] 전체 Error occurred', error);
         console.error('[saveMemory] 에러 상세:', {
@@ -2328,7 +2400,9 @@ async function saveMemory() {
             code: error.code,
             stack: error.stack
         });
-        alert('저장 중 오류가 발생했습니다: ' + (error.message || error.toString()) + '\n\n콘솔을 확인해주세요.');
+        showToast('저장 실패: ' + (error.message || error.toString()), 'error', { ttl: 0 });
+    } finally {
+        setSaveButtonsBusy(false);
     }
 }
 

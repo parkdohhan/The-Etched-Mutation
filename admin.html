@@ -313,6 +313,10 @@
 
                 <div class="editor-section">
                     <h3 class="editor-section-title">씬 편집기</h3>
+                    <div class="scenes-toolbar">
+                        <button type="button" onclick="setAllScenesCollapsed(false)">모두 펼치기</button>
+                        <button type="button" onclick="setAllScenesCollapsed(true)">모두 접기</button>
+                    </div>
                     <div id="scenesContainer">
                         <!-- 동적으로 생성됨 -->
                     </div>
@@ -613,6 +617,36 @@
             border-color: #c4a882;
             background: rgba(196,168,130,0.08);
         }
+
+        /* W1-B 씬 카드 접기 (F1) */
+        .scene-collapse-bar {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.7rem 0.9rem; cursor: pointer;
+            background: rgba(196,168,130,0.06);
+            border: 1px solid rgba(196,168,130,0.18);
+            border-radius: 4px;
+            user-select: none;
+            transition: background 0.12s;
+        }
+        .scene-collapse-bar:hover { background: rgba(196,168,130,0.12); }
+        .scene-block.collapsed .scene-collapse-bar { border-radius: 4px; }
+        .scene-block:not(.collapsed) .scene-collapse-bar {
+            border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+        }
+        .scene-collapse-caret { color: #c4a882; font-size: 0.8rem; flex: 0 0 auto; width: 1em; }
+        .scene-collapse-title {
+            color: #d8cfbf; font-family: 'Noto Serif KR', serif; font-size: 0.9rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .scene-body { padding-top: 0.5rem; }
+        .scenes-toolbar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .scenes-toolbar button {
+            padding: 0.4rem 0.85rem; background: transparent;
+            color: #c4a882; border: 1px solid rgba(196,168,130,0.4);
+            border-radius: 3px; cursor: pointer; font-size: 0.82rem;
+            font-family: 'Noto Serif KR', serif;
+        }
+        .scenes-toolbar button:hover { background: rgba(196,168,130,0.08); }
     </style>
 
     <script>
@@ -665,7 +699,7 @@
     <script src="js/shared/spatialAudio.js"></script>
     <script src="js/ui/strataView.js"></script>
     <script src="js/ui/lumen_admin_scene_terrain_preview.js"></script>
-    <script type="module" src="js/admin.js"></script>
+    <script type="module" src="js/admin.js?v=260717a"></script>
     <script type="module" src="js/admin/ghost_variants_editor.js"></script>
     <script type="module" src="js/admin-trajectory.js"></script>
     <script src="js/contamination.js"></script>
