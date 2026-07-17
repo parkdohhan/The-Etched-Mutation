@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Is There an Original? — A Sheaf-Theoretic Formalization of Memory Variance</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#1a1a1a; --sub:#555; --faint:#8a8a8a; --hair:#e3e3e3;
+    --accent:#1a4fa0;            /* calm academic blue */
+    --accent-soft:#eef2fa;
+    --pos:#0a7d5a; --neg:#b03a2e;
+    --sans:"Helvetica Neue",Arial,"Segoe UI","Noto Sans KR",sans-serif;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#333;font-family:var(--sans);color:var(--ink);overflow:hidden}
+  /* 4:3 stage centered, like a real slide */
+  #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#2b2b2b}
+  #frame{width:min(96vw,calc(96vh*(16/9)));aspect-ratio:16/9;background:var(--bg);
+    position:relative;box-shadow:0 6px 40px rgba(0,0,0,.4);overflow:hidden}
+  .slide{position:absolute;inset:0;display:none;flex-direction:column;
+    padding:6.2% 7.2%;opacity:0;transition:opacity .25s}
+  .slide.on{display:flex;opacity:1}
+  /* header rule */
+  .eyebrow{font-size:1.05vw;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+    font-weight:700;margin-bottom:.9em}
+  h1{font-size:4.6vw;font-weight:700;line-height:1.05;letter-spacing:-.01em}
+  h2{font-size:3.1vw;font-weight:700;line-height:1.12;letter-spacing:-.01em;margin-bottom:.7em}
+  h2 .k{color:var(--accent)}
+  p,li{font-size:1.72vw;line-height:1.5;color:var(--ink)}
+  .sub{color:var(--sub)}
+  .muted{color:var(--faint)}
+  .lead{font-size:2vw;color:var(--sub);margin-top:1.1em;max-width:44ch}
+  ul{list-style:none;display:flex;flex-direction:column;gap:.72em;margin-top:.4em}
+  li{position:relative;padding-left:1.4em}
+  li::before{content:"";position:absolute;left:0;top:.62em;width:.5em;height:.5em;border-radius:50%;
+    background:var(--accent)}
+  .accent{color:var(--accent);font-weight:700}
+  .fill{flex:1}
+  .foot{font-family:var(--mono);font-size:.92vw;letter-spacing:.06em;color:var(--faint)}
+  /* layout helpers */
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:4%;align-items:start;flex:1;align-content:center}
+  .two.mid{align-items:center}
+  .box{border:1px solid var(--hair);border-radius:8px;padding:1.5em 1.6em;background:#fafafa}
+  .box h3{font-size:1.28vw;letter-spacing:.03em;color:var(--accent);font-weight:700;margin-bottom:.5em}
+  .box p{font-size:1.45vw;color:var(--sub)}
+  .stat{font-size:8vw;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .stat .u{font-size:2.4vw;color:var(--faint);font-weight:400}
+  .callout{font-size:2.6vw;font-weight:700;line-height:1.18;letter-spacing:-.01em;max-width:22ch}
+  .eq{font-family:var(--mono);font-size:2.2vw;color:var(--ink);background:var(--accent-soft);
+    border-left:4px solid var(--accent);padding:.7em .9em;border-radius:0 6px 6px 0;display:inline-block;margin:.5em 0}
+  .kr{font-family:"Noto Sans KR",var(--sans)}
+  .tag{display:inline-block;font-family:var(--mono);font-size:.9vw;letter-spacing:.1em;
+    text-transform:uppercase;color:#fff;background:var(--accent);padding:.25em .7em;border-radius:3px}
+  .note-quote{font-size:1.5vw;color:var(--sub);font-style:italic;border-left:3px solid var(--hair);padding-left:1em}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+  /* SVG diagram wrapper */
+  .diagram{display:flex;align-items:center;justify-content:center}
+  .diagram svg{width:100%;height:auto;max-height:34vh}
+  /* chrome */
+  #bar{position:absolute;left:0;bottom:0;height:4px;background:var(--accent);width:0;transition:width .25s}
+  #brand{position:absolute;left:7.2%;bottom:3.4%;font-family:var(--mono);font-size:.82vw;
+    letter-spacing:.1em;color:var(--faint)}
+  #pg{position:absolute;right:7.2%;bottom:3.4%;font-family:var(--mono);font-size:.82vw;
+    letter-spacing:.1em;color:var(--faint)}
+  #hint{position:fixed;bottom:10px;left:14px;font-family:var(--mono);font-size:11px;color:#bbb;z-index:40}
+  /* speaker notes */
+  #notes{position:fixed;left:0;right:0;bottom:0;max-height:40vh;overflow:auto;background:#111;color:#eee;
+    padding:20px 40px 28px;display:none;z-index:50}
+  #notes.on{display:block}
+  #notes .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:#7fa8e6;text-transform:uppercase;margin-bottom:10px}
+  #notes .cue{font-family:"Noto Sans KR",var(--sans);color:#f0c987;font-size:15px;margin-bottom:10px}
+  #notes .script{font-size:18px;line-height:1.55;max-width:95ch}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="frame">
+    <div id="deck"></div>
+    <div id="bar"></div>
+    <div id="brand">THE ETCHED MUTATION · D. PARK</div>
+    <div id="pg"></div>
+  </div>
+</div>
+<div id="hint">← → navigate · N speaker notes · F fullscreen · click halves</div>
+<div id="notes"><div class="lbl">Speaker notes</div><div class="cue" id="ncue"></div><div class="script" id="nscript"></div></div>
+
+<script>
+const A_BLUE="#1a4fa0", GREY="#9aa0a6", HAIR="#cfcfcf";
+/* small reusable SVG diagrams (self-contained, no deps) */
+const SVG={
+  tree:`<svg viewBox="0 0 360 220"><g fill="none" stroke="${GREY}" stroke-width="2">
+    <line x1="180" y1="30" x2="90" y2="110"/><line x1="180" y1="30" x2="270" y2="110"/>
+    <line x1="90" y1="110" x2="50" y2="185"/><line x1="90" y1="110" x2="130" y2="185"/>
+    <line x1="270" y1="110" x2="230" y2="185"/><line x1="270" y1="110" x2="310" y2="185"/></g>
+    <circle cx="180" cy="30" r="12" fill="${A_BLUE}"/>
+    <text x="180" y="18" text-anchor="middle" font-family="Helvetica" font-size="13" fill="${A_BLUE}" font-weight="700">?original</text>
+    <g fill="${GREY}"><circle cx="50" cy="185" r="8"/><circle cx="130" cy="185" r="8"/><circle cx="230" cy="185" r="8"/><circle cx="310" cy="185" r="8"/></g>
+  </svg>`,
+  loop:`<svg viewBox="0 0 360 220">
+    <g stroke="${A_BLUE}" stroke-width="2.5" fill="none">
+      <circle cx="120" cy="110" r="26"/><circle cx="240" cy="110" r="26"/><circle cx="180" cy="185" r="26"/>
+      <path d="M146 110 L214 110"/><path d="M132 133 L168 165"/><path d="M228 133 L192 165"/>
+    </g>
+    <g font-family="Helvetica" font-size="15" font-weight="700" fill="${A_BLUE}" text-anchor="middle">
+      <text x="120" y="115">A</text><text x="240" y="115">B</text><text x="180" y="190">C</text></g>
+    <g font-family="Helvetica" font-size="12" fill="${GREY}" text-anchor="middle">
+      <text x="180" y="100">agree</text><text x="132" y="152">agree</text><text x="228" y="152">agree</text></g>
+    <text x="180" y="40" text-anchor="middle" font-family="Helvetica" font-size="15" font-weight="700" fill="#b03a2e">…yet won't be one</text>
+  </svg>`,
+  bell:`<svg viewBox="0 0 360 200">
+    <line x1="30" y1="165" x2="345" y2="165" stroke="${HAIR}" stroke-width="1.5"/>
+    <path d="M40 165 C120 165 120 60 165 60 C210 60 210 165 300 165" fill="#eef2fa" stroke="${A_BLUE}" stroke-width="2"/>
+    <line x1="300" y1="45" x2="300" y2="175" stroke="#b03a2e" stroke-width="2.5"/>
+    <circle cx="300" cy="80" r="5" fill="#b03a2e"/>
+    <text x="300" y="35" text-anchor="middle" font-family="Helvetica" font-size="13" font-weight="700" fill="#b03a2e">observed ρ=0.18</text>
+    <text x="150" y="120" text-anchor="middle" font-family="Helvetica" font-size="12" fill="${GREY}">null: original-exists worlds</text>
+    <text x="150" y="190" text-anchor="middle" font-family="Helvetica" font-size="11" fill="${GREY}">1,000 resamples — none reached observed</text>
+  </svg>`
+};
+
+const SLIDES=[
+{ html:`
+  <div class="eyebrow">Interactive Media Art · Formal Semantics of Memory</div>
+  <h1>Is There an <span class="k">Original</span>?</h1>
+  <p class="lead">A sheaf-theoretic formalization of memory variance —<br>and the artwork built to measure it.</p>
+  <div class="fill"></div>
+  <p class="foot">Dohan Park · The Etched Mutation · pre-registered draft, 2026</p>`,
+  cue:`훅. 제목 읽고 3초 침묵.`,
+  script:`Every field that studies memory shares one silent assumption. Today I want to name it, break it, and replace it with something you can compute. This is a talk about a question we have never been able to ask — and an artwork I built so that we finally can.`},
+
+{ html:`
+  <div class="eyebrow">The premise</div>
+  <h2>The question the <span class="k">tree</span> forbids</h2>
+  <div class="two mid">
+    <div><ul>
+      <li>Manuscript variants are reconstructed with a <span class="accent">family tree</span>: one root archetype, branches of copying error.</li>
+      <li>But drawing the tree <span class="accent">already assumes the root</span>.</li>
+      <li class="muted">Bédier's critique asked <em>which tree</em> — never <em>whether a root exists</em>.</li>
+    </ul></div>
+    <div class="diagram">${SVG.tree}</div>
+  </div>`,
+  cue:`셋업. "뿌리는 이미 전제된다" 강조. 그림 가리키며.`,
+  script:`Here is the standard tool for how texts mutate across copies: a family tree. One original at the root, every scribe's error branching down. Powerful — but notice what it forbids. The instant you draw the tree, the root is already assumed. Even the most famous critique, Bédier's, only asked which tree is right. Nobody could ask whether a root exists at all.`},
+
+{ html:`
+  <div class="eyebrow">The premise, everywhere</div>
+  <h2>Memory science shares the <span class="k">coordinate zero</span></h2>
+  <ul style="max-width:80%">
+    <li>Since Bartlett (1932): recall is <span class="accent">reconstruction</span>, not replay.</li>
+    <li>But "reconstruction" grammatically demands a thing-before-reconstruction.</li>
+    <li class="muted">distortion · contamination · degradation — every standard term sets the original as the origin of coordinates.</li>
+  </ul>`,
+  cue:`같은 병이 심리학에도. 어휘 자체가 원본을 전제.`,
+  script:`And it's not just old manuscripts. Since Bartlett, we've known remembering is reconstruction, not playback. But listen to the word: re-construction presupposes something constructed first. Distortion, contamination, degradation — the whole vocabulary places the original at coordinate zero. Every measurement is a distance from an origin we never questioned.`},
+
+{ html:`
+  <div class="fill" style="flex:.5"></div>
+  <div class="eyebrow">The move</div>
+  <h2 style="font-size:4vw;line-height:1.1">Move existence from<br><span class="muted">premise</span> &nbsp;→&nbsp; <span class="k">computation.</span></h2>
+  <p class="lead">Not: assume the original, measure deviation.<br>Instead: ask whether an original <em>can exist at all</em> — and get a number.</p>
+  <div class="fill"></div>`,
+  cue:`논문의 심장. 또박또박, 느리게.`,
+  script:`So here is the whole move, in one sentence. We stop assuming the original and measuring how far each version strays. Instead we ask whether a single consistent original could exist at all — and we turn that yes-or-no into a computation. Existence stops being a premise. It becomes a result. To do that I need one piece of mathematics.`},
+
+{ html:`
+  <div class="eyebrow">Intuition — no math yet</div>
+  <h2>Three siblings remember one <span class="k">grandmother</span></h2>
+  <div class="two mid">
+    <div class="kr"><ul>
+      <li>Each remembers overlapping but different moments.</li>
+      <li class="accent" style="font-size:2vw">Do the memories reassemble into one true grandmother?</li>
+    </ul></div>
+    <div>
+      <div class="box" style="margin-bottom:1em"><p><b>Common sense</b> — yes. Each saw a part; stitch the parts.</p></div>
+      <div class="box" style="border-color:#cdd8ee;background:#eef2fa"><p><b class="accent">Variant theory</b> — no. They will not stitch. There is no single grandmother.</p></div>
+    </div>
+  </div>`,
+  cue:`할머니 이야기 1부. 긴장 풀리는 자리. 편하게.`,
+  script:`Forget the equations for a moment. Three siblings remember their late grandmother. Their memories overlap in places, differ in others. Ask: if we collect all three, does one true grandmother come back? Common sense says yes — each saw a part, so stitch them. The theory I'm defending says no. They will not stitch into one. There were only ever three different grandmothers. The mathematics I'll show is nothing but the machine that checks: can these pieces be stitched — yes or no?`},
+
+{ html:`
+  <div class="eyebrow">Intuition — the crucial part</div>
+  <h2>The clash lives in the <span class="k">transitions</span>, not the scenes</h2>
+  <div class="two mid">
+    <div class="kr">
+      <p style="margin-bottom:.6em"><span class="tag">same moment</span> &nbsp;the kitchen</p>
+      <ul>
+        <li>Brother A: warm — <span class="muted">right after she forgave him.</span></li>
+        <li>Brother B: cold — <span class="muted">right before the fight.</span></li>
+      </ul>
+    </div>
+    <div>
+      <p>The kitchen <span class="accent">value</span> agrees.<br>What it <span class="accent">connects to</span> is opposite.</p>
+      <p class="sub" style="margin-top:.7em">No single timeline holds both. The conflict is in the <b>seam</b>, not the scene.</p>
+    </div>
+  </div>`,
+  cue:`제일 중요. "충돌은 이음매에 있다" = 논문 뼈대.`,
+  script:`Here's the subtle part — the part that makes this mathematics, not metaphor. The siblings don't just remember different events. Even where they remember the same moment, the connections differ. Both remember the kitchen. For A it was warm, right after forgiveness. For B, cold, right before a fight. Same moment — opposite of what it flows from. You cannot fold these into one timeline. The conflict is not inside the scene. It lives in the seam between scenes. Hold onto that word: seam.`},
+
+{ html:`
+  <div class="eyebrow">Formalization</div>
+  <h2>A memory as a <span class="k">cellular sheaf</span></h2>
+  <ul style="max-width:82%">
+    <li><span class="accent">Base space</span> — scenes of a memory, as a graph of admissible transitions.</li>
+    <li><span class="accent">A section</span> — one playthrough's emotional trajectory over the scenes it visited.</li>
+    <li><span class="accent">Gluing</span> — do overlapping sections assemble into one global telling?</li>
+  </ul>
+  <div class="fill"></div>
+  <p class="note-quote">A section carries the seams, not just the values. Values alone always glue — and the theory would be empty.</p>`,
+  cue:`형식화. "절편=값이 아니라 이음매 포함" 함정 회피.`,
+  script:`The formal version. Take the scenes as points and admissible transitions as edges — that's the base space. Over it we build a cellular sheaf. A section is one playthrough: the emotional trajectory a person left across the scenes they visited. Gluing is exactly the grandmother question — do overlapping sections assemble into one global telling? One trap: a section must carry the seams, the transitions, not just values. Values alone would trivially glue, and the theory would say nothing.`},
+
+{ html:`
+  <div class="eyebrow">Instrument 1</div>
+  <h2>Disagreement <span class="k">energy</span></h2>
+  <div class="eq">E = 0 &nbsp;⟺&nbsp; an original consistent with the data exists</div>
+  <ul style="max-width:80%;margin-top:.4em">
+    <li>The sheaf Laplacian measures how far observed local sections sit from any single global section.</li>
+    <li><span class="accent">E &gt; 0</span> → no telling reconciles them. The original is not assumed absent — it is <em>computed</em> absent, with a magnitude.</li>
+  </ul>`,
+  cue:`첫 도구. "H¹"이라 부르지 말 것 — 불일치 에너지.`,
+  script:`This gives the first instrument: disagreement energy. Using the sheaf Laplacian, we measure how far the observed local sections sit from any single consistent global section. Zero means an original exists — the pieces stitch. Greater than zero means no telling can reconcile them. And the absence isn't declared; it's computed, with a magnitude. One honest caveat: strictly, no global section *consistent with the observations* — the empty telling always technically exists. The number is distance from consistency.`},
+
+{ html:`
+  <div class="eyebrow">Instrument 2 — the one that matters</div>
+  <h2><span class="k">Monodromy</span>: locally fine, globally twisted</h2>
+  <div class="two mid">
+    <div class="diagram">${SVG.loop}</div>
+    <div>
+      <p>Follow overlaps around a loop and return — the telling has <span class="accent">twisted</span>.</p>
+      <div class="box" style="margin-top:.9em;border-color:#cdd8ee;background:#eef2fa">
+        <h3>Why pairwise distance is blind</h3>
+        <p>Every neighbor agrees. Only going <em>around</em> reveals the twist. A flat metric reports "all consistent."</p>
+      </div>
+    </div>
+  </div>`,
+  cue:`두 번째 도구. 뫼비우스 연상. 쌍별로 못 봄이 핵심.`,
+  script:`The second instrument carries the paper. Monodromy — path dependence. Walk the overlaps around a loop and come back, and the telling has twisted. A and B agree, B and C agree, C and A agree — yet the three cannot be one. Like a Möbius strip: every local patch looks normal; only going all the way around reveals the twist. This is why a flat pairwise-similarity metric is blind — every neighbor is consistent, so it reports "all fine." Only the sheaf sees the global twist.`},
+
+{ html:`
+  <div class="eyebrow">The instrument in the world</div>
+  <h2>TEM <span class="k">generates</span> what it measures</h2>
+  <div class="two mid">
+    <div><ul>
+      <li>Applied-sheaf work usually runs on toy data.</li>
+      <li>Hundreds of real emotional trajectories over one scene graph <span class="accent">did not exist</span>.</li>
+      <li>So I built the instrument that produces them.</li>
+    </ul></div>
+    <div class="box"><h3>The Etched Mutation</h3><p>An interactive artwork. Each visitor's telling is recorded as a local section — and reshapes the terrain the next visitor inherits.</p></div>
+  </div>`,
+  cue:`작품 소개. "재는 대상을 스스로 만든다" = 유일무이.`,
+  script:`But this input didn't exist. Most applied sheaf theory runs on toy examples. Hundreds of real emotional trajectories over a shared scene graph — nobody had that. So I built the instrument that produces it. The Etched Mutation is an interactive artwork: each visitor moves through a memory, and their telling is recorded as a local section. The artwork *is* the measurement device. That's the unusual part — the instrument generates the very phenomenon it measures.`},
+
+{ html:`
+  <div class="fill" style="flex:.4"></div>
+  <div class="eyebrow">The reframe</div>
+  <p class="callout" style="max-width:34ch">What the artwork called <span class="accent">"contamination"</span> was the nameless version of disagreement energy.</p>
+  <p class="lead">The seams the engine already tracked — trajectory mismatch between overlapping tellings — are exactly where the cohomological obstruction lives.</p>
+  <div class="fill"></div>`,
+  cue:`반전. 오염 = 코호몰로지의 이름 없는 판본.`,
+  script:`And here the two halves meet. The artwork had, for months, tracked something it called "contamination" — the mismatch between how two overlapping tellings connect. That quantity was the nameless version of disagreement energy. The obstruction to gluing doesn't predict contamination — it *is* contamination, in another language. Art and mathematics were describing the same thing without knowing it.`},
+
+{ html:`
+  <div class="eyebrow">Falsifiability</div>
+  <h2>The test that could <span class="k">kill</span> the theory</h2>
+  <div class="two">
+    <div>
+      <p class="note-quote">Reviewer's knife: "Wouldn't pairwise distances give the same answer? Is the sheaf just decoration?"</p>
+    </div>
+    <div>
+      <p>Defense — one phenomenon must exist in the data:</p>
+      <p class="callout accent" style="font-size:2vw;margin-top:.5em">Tellings that agree with every neighbor, yet twist around the loop.</p>
+      <p class="sub" style="margin-top:.7em">Present → the sheaf earns its place. Absent → the theory downgrades to an essay.</p>
+    </div>
+  </div>`,
+  cue:`반증 조건. 학술적으로 가장 강한 자리.`,
+  script:`A real theory has to be able to die. Here's the test that could kill this one. A reviewer will ask: wouldn't simple pairwise distances give the same result? Is the sheaf decoration? My defense needs one specific phenomenon to exist in the data: tellings that agree with every neighbor, yet twist around the loop. If it's there, the sheaf earns its place — nothing pairwise can reconstruct it. If it's absent, I lose, and this becomes a speculative essay. That's the falsification condition.`},
+
+{ html:`
+  <div class="fill" style="flex:.4"></div>
+  <div class="eyebrow">Method</div>
+  <h2 style="font-size:3.4vw">Criteria fixed <span class="k">before</span> the data.</h2>
+  <p class="lead">Thresholds, null models, and the go / no-go rule were written and committed before running the experiment. When theory is cheap to generate, pre-registration is not a footnote — it is the method.</p>
+  <div class="fill"></div>`,
+  cue:`사전등록. AI 시대에 왜 이게 방법론인지.`,
+  script:`One methodological point, explicit. Every threshold, every null model, the whole go/no-go rule — written and committed before I ran the experiment. This matters more than it used to. A fluent-sounding theory can now be generated in minutes. So what separates a theory that lives from one that merely sounds good is no longer eloquence — it's whether you staked a falsifiable claim before seeing the answer. Pre-registration here isn't a footnote. It's the method.`},
+
+{ html:`
+  <div class="eyebrow">Pilot — simulated</div>
+  <h2>Even coherence-trained AI <span class="k">didn't glue</span></h2>
+  <div class="two mid">
+    <div>
+      <div class="stat" style="color:${A_BLUE}">ρ = 0.18</div>
+      <p class="sub" style="margin-top:.6em">Cyclic (non-reducible) share of disagreement across 39 runs.</p>
+      <p style="margin-top:.7em"><span class="accent">p &lt; 0.001</span> — of 1,000 "original-exists" resamples, <b>zero</b> reached this.</p>
+      <p class="muted" style="margin-top:.5em;font-size:1.3vw">Data: 39 persona-simulation runs. Not human. Not yet.</p>
+    </div>
+    <div class="diagram">${SVG.bell}</div>
+  </div>`,
+  cue:`파일럿 수치. "시뮬이지 실관객 아님" 반드시 명시.`,
+  script:`Here's where the pilot stands. On thirty-nine runs, about eighteen percent of the disagreement is cyclic — the part no per-run recalibration removes. And in a thousand simulated worlds where an original genuinely exists, not one reached that value; the p-value is below a thousandth. The honest framing: these runs are not humans. They're language-model personas — simulations. But hold that thought — it makes the finding stranger, not weaker.`},
+
+{ html:`
+  <div class="eyebrow">Reading it honestly</div>
+  <h2>The strangeness, and the <span class="k">limits</span></h2>
+  <div class="two">
+    <div class="box"><h3>Why it's striking</h3><p>These agents were <em>trained to be consistent</em>. Even they left an irreducible cyclic residue. Real humans should leave more — a pre-registered prediction.</p></div>
+    <div class="box"><h3>What I don't yet have</h3><p>No single dramatic loop yet · 39×10 limits power · LLM persona bias. The real test is <span class="accent">live audience data</span>.</p></div>
+  </div>`,
+  cue:`정직 슬라이드. 강점·한계 나란히. 방어력=정직.`,
+  script:`Why striking? These agents were trained to be coherent — consistency is their whole job. Even they couldn't be stitched into one original; they left an irreducible cyclic residue. If a machine built for consistency leaves that residue, a human remembering a real loss should leave more. That's a pre-registered prediction for the live run. The limits, plainly: no single dramatic loop yet for a figure; thirty-nine runs over ten scenes is modest power; persona bias is real. The genuine test is the live audience — and that data is coming.`},
+
+{ html:`
+  <div class="eyebrow">Contribution</div>
+  <h2>A falsifiable <span class="k">semantics</span> for variant theory</h2>
+  <p class="callout" style="max-width:36ch;margin-bottom:.6em">"Variation is not degradation, but a mode of being."</p>
+  <p>Given a precise, testable meaning:</p>
+  <p class="callout accent" style="max-width:40ch;margin-top:.4em">objects whose baseline state is disagreement energy &gt; 0.</p>
+  <p class="sub" style="margin-top:.7em">Not a metaphor about memory — a measurable property of it.</p>`,
+  cue:`기여. 이본론 명제에 수학적 의미 부여.`,
+  script:`What does the paper contribute? At the heart of variant theory is a claim — variation is not degradation, but a mode of being. Beautiful, but until now unfalsifiable. This work gives it a precise, testable meaning: variant memory is a class of objects whose baseline state is disagreement energy greater than zero. Not "the original is lost" as lament — but "no consistent original exists" as a measured property, with a number attached.`},
+
+{ html:`
+  <div class="eyebrow">Why this medium</div>
+  <h2>Why it had to be an <span class="k">artwork</span></h2>
+  <ul style="max-width:82%">
+    <li>The theory needs local sections that are <span class="accent">lived</span> — trajectories a person walks, not answers they tick.</li>
+    <li>A static survey flattens the very seams the theory is about.</li>
+    <li>The medium is not decoration on the research — it is the <span class="accent">condition</span> of the measurement.</li>
+  </ul>`,
+  cue:`매체 필연성. 왜 설문이 아니라 작품인가.`,
+  script:`Why art, not just a study. The theory needs local sections that are lived — emotional trajectories a person actually walks, moment to moment — not boxes ticked on a form. A static survey flattens exactly the seams the theory is about. Only an interactive work produces trajectories with real transitions in them. So the medium isn't decoration bolted onto the research. It's the precondition of the measurement itself.`},
+
+{ html:`
+  <div class="fill" style="flex:.5"></div>
+  <div class="eyebrow">Where this goes</div>
+  <h2 style="font-size:4vw">From <span class="muted">premise</span> to <span class="k">measurement.</span></h2>
+  <p class="lead">Preservation assumes the pieces reassemble into an original. Variant theory says the seams won't close — and now that refusal has a number, and a claim you could prove wrong. Next: the seams of real people.</p>
+  <div class="fill"></div>
+  <p class="foot">Thank you · The Etched Mutation · dohhan_ · 2026</p>`,
+  cue:`닫기. 1번과 수미상관. 마지막 문장 후 침묵.`,
+  script:`To close where we opened. Preservation believes the pieces stitch back into an original. Variant theory says the seams will not close — and for the first time, that refusal is not a poetic claim but a number you can compute, and a claim you could prove me wrong on. The pilot did it with simulated minds. What remains is to do it with the seams of real people. Thank you.`}
+];
+
+const deck=document.getElementById('deck');
+SLIDES.forEach(s=>{const d=document.createElement('section');d.className='slide';d.innerHTML=s.html;deck.appendChild(d);});
+const slides=[...document.querySelectorAll('.slide')];
+const bar=document.getElementById('bar'),pg=document.getElementById('pg');
+const notes=document.getElementById('notes'),ncue=document.getElementById('ncue'),nscript=document.getElementById('nscript');
+let i=0;
+function show(n){
+  i=Math.max(0,Math.min(SLIDES.length-1,n));
+  slides.forEach((s,k)=>s.classList.toggle('on',k===i));
+  bar.style.width=((i+1)/SLIDES.length*100)+'%';
+  pg.textContent=String(i+1).padStart(2,'0')+' / '+SLIDES.length;
+  ncue.textContent=SLIDES[i].cue||''; nscript.textContent=SLIDES[i].script||'';
+}
+document.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(['arrowright','arrowdown','pagedown',' '].includes(e.key.toLowerCase())){show(i+1);e.preventDefault();}
+  else if(['arrowleft','arrowup','pageup'].includes(e.key.toLowerCase())){show(i-1);e.preventDefault();}
+  else if(k==='home'){show(0);} else if(k==='end'){show(SLIDES.length-1);}
+  else if(k==='n'){notes.classList.toggle('on');}
+  else if(k==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+});
+document.getElementById('frame').addEventListener('click',e=>{
+  const r=e.currentTarget.getBoundingClientRect();
+  if(e.clientX-r.left>r.width*0.5)show(i+1);else show(i-1);
+});
+show(0);
+</script>
+</body>
+</html>
