@@ -1,0 +1,833 @@
+[
+  {
+    "persona_id": "p01",
+    "persona_name": "서윤하",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "relief": 0.18,
+      "isolation": 0.15,
+      "peace": 0.17
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나오지 못할 것 같은 곳에서 어떻게든 빠져나온 사람이, 그래도 어딘가에 머물고 싶다고 느끼는 순간에 관한 기억이다.",
+    "ending_feel": "짜치는 간판이랑 눈부신 바다가 나란히 있다는 게, 이상하게 그게 제일 진짜 같아서 잠깐 숨을 멈췄다."
+  },
+  {
+    "persona_id": "p01",
+    "persona_name": "서윤하",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "numbness": 0.28,
+      "resignation": 0.22,
+      "relief": 0.18,
+      "confusion": 0.15,
+      "peace": 0.12,
+      "longing": 0.05
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 끝나지 않을 것 같던 것들이 어느 순간 그냥 끝나버리고, 그 자리에 멍하니 남겨진 사람에 관한 기억이다.",
+    "ending_feel": "눈이 너무 밝은 곳을 오래 봤을 때처럼, 잔상이 남아 있는데 그게 좋은 건지 나쁜 건지 판단이 안 된다."
+  },
+  {
+    "persona_id": "p01",
+    "persona_name": "서윤하",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "relief": 0.18,
+      "isolation": 0.15,
+      "longing": 0.1,
+      "peace": 0.07
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 빠져나오지 못할 것 같던 곳에서 결국 어딘가 숨 쉴 수 있는 데까지 흘러온 것에 관한 기억이다.",
+    "ending_feel": "눈부신데 짜치는, 그 둘이 나란히 있는 거리에서 평생 살아도 되겠다는 말이 왜인지 목 안쪽에 걸려서 내려가지 않는다."
+  },
+  {
+    "persona_id": "p02",
+    "persona_name": "윤서영",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "resignation": 0.18,
+      "relief": 0.15,
+      "numbness": 0.1,
+      "peace": 0.07
+    },
+    "warmth": 0.12,
+    "one_sentence": "이 기억은 갇히고 매달리고 묻히면서도 끝내 어딘가에 서 있기로 한 사람의 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은, 그런 느낌."
+  },
+  {
+    "persona_id": "p02",
+    "persona_name": "윤서영",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "isolation": 0.28,
+      "relief": 0.22,
+      "numbness": 0.18,
+      "peace": 0.17,
+      "confusion": 0.1,
+      "longing": 0.05
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 갇혀 있던 사람이 아무도 구해주지 않았는데 어느 순간 스스로 구덩이 안으로 다시 들어가 앉아버리는, 탈출인지 포기인지 모를 어떤 선택에 관한 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은데, 그 눈부심 안에 그냥 서 있어도 될 것 같은 이상한 허락 같은 게 몸에 남는다."
+  },
+  {
+    "persona_id": "p02",
+    "persona_name": "윤서영",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "hope": 0.12,
+      "fear": 0.05
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 갇혀 있다가 어떤 방식으로든 풀려나는 것에 관한 기억이다.",
+    "ending_feel": "눈이 좀 따갑고, 어깨에서 힘이 빠지는데, 나쁘지 않은 방향으로."
+  },
+  {
+    "persona_id": "p03",
+    "persona_name": "서윤채",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "numbness": 0.28,
+      "resignation": 0.22,
+      "relief": 0.18,
+      "confusion": 0.15,
+      "peace": 0.17
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳에서 끝내 빠져나온 사람이, 그래도 어딘가에 서 있게 된 것에 관한 기억이다.",
+    "ending_feel": "짜치는 간판과 눈부신 바다가 나란히 있다는 게, 이상하게 거짓말 같지 않다."
+  },
+  {
+    "persona_id": "p03",
+    "persona_name": "서윤채",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "numbness": 0.28,
+      "relief": 0.22,
+      "isolation": 0.18,
+      "resignation": 0.15,
+      "peace": 0.11,
+      "confusion": 0.06
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 끝나지 않을 것 같던 것들이 어떤 식으로든 끊기거나 빠져나와지는 순간들에 관한 기억이다.",
+    "ending_feel": "번쩍거리는 간판과 눈부신 바다가 동시에 있는 곳에서 평생 살아도 되겠다는 말이, 행복하다는 말이 아닌 것 같아서 잠깐 멈췄다."
+  },
+  {
+    "persona_id": "p03",
+    "persona_name": "서윤채",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "relief": 0.18,
+      "isolation": 0.15,
+      "longing": 0.1,
+      "peace": 0.07
+    },
+    "warmth": 0.12,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같던 곳에서 결국 어딘가 숨 쉴 수 있는 데까지 흘러온 사람의 기억이다.",
+    "ending_feel": "짜치는 간판과 눈부신 바다가 나란히 있다는 게, 이상하게 거짓말 같지 않아서 잠깐 멈췄다."
+  },
+  {
+    "persona_id": "p04",
+    "persona_name": "윤서연",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "relief": 0.18,
+      "isolation": 0.15,
+      "peace": 0.17
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳에서 결국 어떻게든 빠져나온 사람의 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은데, 그게 싫지 않다."
+  },
+  {
+    "persona_id": "p04",
+    "persona_name": "윤서연",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "relief": 0.18,
+      "isolation": 0.15,
+      "peace": 0.17
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳에서 결국 어떻게든 빠져나온 사람들에 관한 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은데, 그게 싫지 않다."
+  },
+  {
+    "persona_id": "p04",
+    "persona_name": "윤서연",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "relief": 0.18,
+      "isolation": 0.15,
+      "peace": 0.11,
+      "fear": 0.06
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 끝나지 않을 것 같은 터널 속에서도 결국 어딘가에 서서 '여기서 살아도 되겠다'고 생각하게 된 사람의 기억이다.",
+    "ending_feel": "몸이 조여들다가 갑자기 탁 트이는 느낌인데, 그 트임이 진짜인지 아직 잘 모르겠어서 그냥 서 있는 것 같다."
+  },
+  {
+    "persona_id": "p05",
+    "persona_name": "정태호",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "peace": 0.17
+    },
+    "warmth": 0.12,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같던 곳에서 끝내 빠져나온 사람이, 그래도 거기 한번 더 들어가 앉아보고, 결국 불빛 있는 데로 걸어간 이야기다.",
+    "ending_feel": "번쩍거리는 간판이랑 눈부신 바다가 동시에 있다는 게—그게 이상하게 말이 된다는 느낌이 목 어딘가에 걸려 있다."
+  },
+  {
+    "persona_id": "p05",
+    "persona_name": "정태호",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "isolation": 0.28,
+      "relief": 0.22,
+      "numbness": 0.18,
+      "peace": 0.17,
+      "resignation": 0.15
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 끝나지 않을 것 같던 터널과 구덩이를 통과한 사람이, 그래도 어딘가에 서서 살아도 되겠다고 생각하게 된 것에 관한 기억이다.",
+    "ending_feel": "번쩍거리는 간판과 눈부신 바다가 동시에 있는 그 자리에 서 있는 사람의 뒷모습이 눈에 남는데, 아무 말도 하고 싶지 않다."
+  },
+  {
+    "persona_id": "p05",
+    "persona_name": "정태호",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.31,
+      "isolation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "peace": 0.14
+    },
+    "warmth": 0.12,
+    "one_sentence": "이 기억은 막혀 있던 것들이 하나씩 끊기거나 풀리거나 하다가, 결국 어딘가 눈부신 데 서서 거기서 살아도 되겠다고 생각하게 된 사람의 기억이다.",
+    "ending_feel": "번쩍거리는 간판 쪽은 안 보고 바다 쪽만 보고 싶은데, 그래도 된다는 걸 처음으로 허락받은 것 같은 느낌이 목 아래쪽에 조용히 가라앉는다."
+  },
+  {
+    "persona_id": "p06",
+    "persona_name": "윤서영",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "peace": 0.12,
+      "longing": 0.05
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 꼼짝할 수 없는 곳에서 시작해 어떻게든 빠져나온 사람이, 그래도 살 만한 자리를 찾아내는 것에 관한 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은데, 그 눈부심 안에 그냥 서 있어도 될 것 같은 이상한 허락."
+  },
+  {
+    "persona_id": "p06",
+    "persona_name": "윤서영",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "relief": 0.28,
+      "peace": 0.22,
+      "sadness": 0.18,
+      "numbness": 0.15,
+      "longing": 0.12,
+      "hope": 0.05
+    },
+    "warmth": 0.31,
+    "one_sentence": "이 기억은 가장 깊이 묻혔던 자리에서 스스로 기어나와, 그래도 살아도 되겠다고 처음으로 생각한 사람의 기억이다.",
+    "ending_feel": "번쩍거리는 불빛과 눈부신 바다가 동시에 있는 그 자리에서, 이 사람이 고개를 양쪽으로 천천히 돌리는 장면이 눈에 남아서—나도 모르게 숨을 한 번 크게 내쉬었다."
+  },
+  {
+    "persona_id": "p07",
+    "persona_name": "윤서영",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "peace": 0.12,
+      "longing": 0.05
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같던 곳에서 결국 빠져나온 사람이, 그래도 다시 그 안으로 들어가 앉아보는 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은데, 그 자리에 계속 서 있어도 될 것 같은 느낌."
+  },
+  {
+    "persona_id": "p07",
+    "persona_name": "윤서영",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "isolation": 0.28,
+      "relief": 0.22,
+      "numbness": 0.18,
+      "longing": 0.17,
+      "peace": 0.15
+    },
+    "warmth": 0.21,
+    "one_sentence": "이 기억은 끝나지 않을 것 같던 어둠 속에서 간신히 빠져나온 사람이, 그래도 살아도 되겠다고 처음으로 생각한 순간에 관한 기억이다.",
+    "ending_feel": "눈부신 게 왼쪽에도 오른쪽에도 있는데, 그 사람은 고개를 어느 쪽으로도 완전히 돌리지 않고 그냥 거기 서 있는 것 같아서, 나도 모르게 숨을 천천히 내쉬었다."
+  },
+  {
+    "persona_id": "p07",
+    "persona_name": "윤서영",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "longing": 0.12,
+      "hope": 0.05
+    },
+    "warmth": -0.15,
+    "one_sentence": "이 기억은 막혀 있고 뒤틀려 있던 것들이 어떤 이상한 경로를 통해 결국 숨 쉴 수 있는 곳으로 흘러나온 것에 관한 기억이다.",
+    "ending_feel": "눈이 시리게 번쩍거리는데 이상하게 거기 서 있고 싶다, 그냥 계속."
+  },
+  {
+    "persona_id": "p08",
+    "persona_name": "박종수",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "resignation": 0.18,
+      "relief": 0.16,
+      "isolation": 0.1,
+      "longing": 0.06
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같던 곳에서 어떻게든 빠져나온 사람이, 그래도 다시 그 구덩이 안에 잠깐 앉아보는 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은, 그런 느낌이 가슴 위에 얹혀 있다."
+  },
+  {
+    "persona_id": "p08",
+    "persona_name": "박종수",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "numbness": 0.28,
+      "resignation": 0.22,
+      "relief": 0.18,
+      "confusion": 0.15,
+      "longing": 0.17
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 꼼짝도 못하고 묻혀 있다가 어떻게든 빠져나온 사람이, 그래도 어딘가에 서 있을 수 있게 된 것에 관한 기억이다.",
+    "ending_feel": "눈이 부신데 눈을 감고 싶지 않은 느낌, 그게 뭔지 모르겠는데 몸이 먼저 알고 있는 것 같아서 가슴 한가운데가 조금 헐거워진다."
+  },
+  {
+    "persona_id": "p08",
+    "persona_name": "박종수",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.31,
+      "numbness": 0.24,
+      "resignation": 0.18,
+      "relief": 0.15,
+      "longing": 0.12
+    },
+    "warmth": 0.11,
+    "one_sentence": "이 기억은 빠져나올 수 없는 것들 사이에서 어떻게든 끝을 만들어내려 한 사람의 기억이다.",
+    "ending_feel": "눈부시다는 게 꼭 좋은 건 아닌데, 그래도 그 빛 앞에서 잠깐 멈추고 싶어지는 느낌이 발바닥 쪽에 남는다."
+  },
+  {
+    "persona_id": "p09",
+    "persona_name": "윤서연",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "longing": 0.12,
+      "peace": 0.05
+    },
+    "warmth": -0.15,
+    "one_sentence": "이 기억은 갇히고 매달리고 묻히면서도 끝내 어딘가에 서서 살아도 되겠다고 생각한 사람의 기억이다.",
+    "ending_feel": "번쩍거리는 것들 사이에서 눈을 찡그리지 않아도 되는 자리를 찾은 것 같은데, 그게 안도인지 체념인지 아직 모르겠다."
+  },
+  {
+    "persona_id": "p09",
+    "persona_name": "윤서연",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "isolation": 0.28,
+      "resignation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "peace": 0.17
+    },
+    "warmth": 0.12,
+    "one_sentence": "이 기억은 끝나지 않을 것 같던 터널과 구덩이를 지나, 그럼에도 거기서 평생 살아도 되겠다고 생각하게 된 어떤 사람의 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은데, 그 안에 서 있어도 괜찮을 것 같은 이상한 감각."
+  },
+  {
+    "persona_id": "p09",
+    "persona_name": "윤서연",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "fear": 0.22,
+      "relief": 0.2,
+      "isolation": 0.15,
+      "longing": 0.1,
+      "peace": 0.05
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 몸이 갇히고 뒤틀리는 공포 속에서도 끝내 어딘가에 머물고 싶다는 마음이 살아남은 것에 관한 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은데, 그 눈부심 속에 그냥 서 있어도 될 것 같은 이상한 안도감이 발끝에 남아 있다."
+  },
+  {
+    "persona_id": "p10",
+    "persona_name": "윤재하",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "relief": 0.22,
+      "isolation": 0.18,
+      "numbness": 0.15,
+      "peace": 0.17
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳들을 실제로 빠져나온 사람의 기억이다.",
+    "ending_feel": "눈이 너무 밝은 데 오래 있다가 나온 것처럼, 아직 초점이 안 잡힌다."
+  },
+  {
+    "persona_id": "p10",
+    "persona_name": "윤재하",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "relief": 0.22,
+      "numbness": 0.18,
+      "longing": 0.17,
+      "peace": 0.15
+    },
+    "warmth": 0.31,
+    "one_sentence": "이 기억은 막혀 있던 것들이 하나씩 잘려나가고 빠져나온 사람이 결국 빛이 있는 곳에 서게 되는 이야기다.",
+    "ending_feel": "짜치는 간판이랑 눈부신 바다가 동시에 있다는 게, 이상하게 그게 제일 진짜 같았다."
+  },
+  {
+    "persona_id": "p10",
+    "persona_name": "윤재하",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.31,
+      "relief": 0.22,
+      "isolation": 0.18,
+      "hope": 0.16,
+      "numbness": 0.13
+    },
+    "warmth": 0.21,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같던 곳에서 결국 어떻게든 빠져나온 사람의 기억이다.",
+    "ending_feel": "눈이 좀 시리고, 그러면서도 어깨가 조금 내려앉는 느낌."
+  },
+  {
+    "persona_id": "p11",
+    "persona_name": "정순옥",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "numbness": 0.18,
+      "relief": 0.15,
+      "resignation": 0.1,
+      "hope": 0.07
+    },
+    "warmth": -0.25,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳들을 실제로 빠져나온 사람이, 그래도 어딘가에 서 있게 된 것에 관한 기억이다.",
+    "ending_feel": "번쩍거리는 불빛과 눈부신 바다가 동시에 있다는 게, 어지럽지만 이상하게 숨이 트이는 것 같아서 손을 무릎 위에 얹은 채 한동안 그냥 앉아 있었다."
+  },
+  {
+    "persona_id": "p11",
+    "persona_name": "정순옥",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "isolation": 0.28,
+      "relief": 0.22,
+      "numbness": 0.18,
+      "longing": 0.17,
+      "peace": 0.15
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 꼼짝할 수 없는 곳에서 버텨내다가 결국 자기 발로 걸어나온 사람이, 그래도 살아도 되겠다고 처음으로 생각하게 된 것에 관한 기억이다.",
+    "ending_feel": "짜치는 간판과 눈부신 바다가 나란히 있다는 게, 이상하게 가슴을 놓아준다."
+  },
+  {
+    "persona_id": "p11",
+    "persona_name": "정순옥",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.31,
+      "isolation": 0.22,
+      "relief": 0.18,
+      "numbness": 0.15,
+      "longing": 0.14
+    },
+    "warmth": -0.21,
+    "one_sentence": "이 기억은 막혀 있던 것들이 하나씩 끊기거나 뚫리거나 하다가, 마지막에 눈부신 데 가서 멈춰 선 사람의 기억이다.",
+    "ending_feel": "번쩍거리는 것들 사이에서 오른쪽 바다를 보는 그 사람 등이 눈에 남아서, 나도 모르게 손을 무릎 위에 얹었다."
+  },
+  {
+    "persona_id": "p12",
+    "persona_name": "서지윤",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.31,
+      "numbness": 0.22,
+      "longing": 0.19,
+      "relief": 0.15,
+      "isolation": 0.13
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳에서 결국 빠져나온 사람이, 그래도 어딘가에 머물고 싶다고 느끼는 순간에 관한 기억이다.",
+    "ending_feel": "눈부시고 짜치는 것들이 나란히 있는데 그게 이상하게 싫지 않아서, 그 감각이 뭔지 모르겠는 채로 멍하니 서 있는 느낌."
+  },
+  {
+    "persona_id": "p12",
+    "persona_name": "서지윤",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "numbness": 0.28,
+      "resignation": 0.22,
+      "relief": 0.18,
+      "confusion": 0.15,
+      "peace": 0.17
+    },
+    "warmth": 0.21,
+    "one_sentence": "이 기억은 빠져나오지 못할 것 같던 곳에서 결국 빠져나온 사람이, 그래도 다시 그 안에 잠깐 앉아보고, 마지막엔 눈부신 데 서 있는 기억이다.",
+    "ending_feel": "눈이 좀 따갑고, 이상하게 배가 고프다."
+  },
+  {
+    "persona_id": "p12",
+    "persona_name": "서지윤",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.31,
+      "numbness": 0.22,
+      "longing": 0.19,
+      "relief": 0.15,
+      "isolation": 0.13
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳들을 통과하다가 어딘가 숨 쉴 수 있는 데 닿은 것에 관한 기억이다.",
+    "ending_feel": "눈이 시리게 밝은 데 서 있는데 몸은 아직 터널 안에 있는 것 같은 느낌."
+  },
+  {
+    "persona_id": "p13",
+    "persona_name": "한도윤",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "resignation": 0.18,
+      "relief": 0.15,
+      "numbness": 0.12,
+      "hope": 0.05
+    },
+    "warmth": -0.15,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳에서 결국 어떻게든 빠져나오거나, 아니면 그냥 거기 앉아버리기로 한 사람의 기억이다.",
+    "ending_feel": "눈이 따갑고 시끄러운데 이상하게 거기 계속 있고 싶다는 느낌, 집에 가기 싫은 밤 같은 거."
+  },
+  {
+    "persona_id": "p13",
+    "persona_name": "한도윤",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "isolation": 0.28,
+      "relief": 0.22,
+      "numbness": 0.18,
+      "longing": 0.17,
+      "peace": 0.15
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳에서 결국 빠져나온 사람에 관한 기억이다.",
+    "ending_feel": "눈이 좀 따갑고, 어깨에서 힘이 빠지는데, 나쁘지 않은 쪽으로."
+  },
+  {
+    "persona_id": "p13",
+    "persona_name": "한도윤",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "relief": 0.18,
+      "isolation": 0.15,
+      "hope": 0.1,
+      "resignation": 0.07
+    },
+    "warmth": -0.15,
+    "one_sentence": "이 기억은 끝나지 않을 것 같은 터널 속에서도 어딘가 숨 쉴 틈을 찾아내는 사람에 관한 기억이다.",
+    "ending_feel": "눈이 너무 밝은 데 오래 있다가 나온 것처럼, 잔상이 남아서 눈을 깜빡여도 지워지지 않는다."
+  },
+  {
+    "persona_id": "p14",
+    "persona_name": "윤재하",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "numbness": 0.22,
+      "relief": 0.18,
+      "isolation": 0.16,
+      "peace": 0.1,
+      "longing": 0.06
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같은 곳들을 실제로 빠져나온 사람의, 그럼에도 구덩이 안으로 다시 들어가 앉아보는 사람의 기억이다.",
+    "ending_feel": "눈이 너무 밝아서 오히려 아무것도 안 보이는 것 같은데, 그 자리에 계속 서 있어도 될 것 같은 느낌."
+  },
+  {
+    "persona_id": "p14",
+    "persona_name": "윤재하",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "isolation": 0.22,
+      "resignation": 0.18,
+      "relief": 0.21,
+      "numbness": 0.15,
+      "peace": 0.16,
+      "confusion": 0.08
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같던 곳에서 끝내 빠져나온 사람이, 그래도 어딘가에 머물고 싶다고 처음으로 생각한 것에 관한 기억이다.",
+    "ending_feel": "눈이 따갑지 않은데 눈물이 날 것 같은 느낌—울고 싶은 게 아니라 그냥 오래 그 자리에 서 있고 싶은."
+  },
+  {
+    "persona_id": "p14",
+    "persona_name": "윤재하",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "relief": 0.22,
+      "isolation": 0.18,
+      "longing": 0.15,
+      "numbness": 0.1,
+      "hope": 0.07
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같던 곳에서 끝내 빠져나온 사람의 기억이다.",
+    "ending_feel": "눈이 좀 따갑다, 바다 때문인지 전광판 때문인지 모르겠는데 어쨌든 거기 있어도 되겠다는 말이 자꾸 귓가에 맴돈다."
+  },
+  {
+    "persona_id": "p15",
+    "persona_name": "윤재하",
+    "condition": "FULL",
+    "n_scenes": 8,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "relief": 0.2,
+      "longing": 0.16,
+      "peace": 0.14
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 막혀 있던 것들이 하나씩 풀리면서 결국 어딘가에 그냥 앉아 있어도 되는 자리를 찾아가는 기억이다.",
+    "ending_feel": "눈부신데 짜치는, 그 둘이 나란히 있는 거리에 서 있는 느낌이 몸에 남는다."
+  },
+  {
+    "persona_id": "p15",
+    "persona_name": "윤재하",
+    "condition": "CUT3",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "isolation": 0.28,
+      "resignation": 0.22,
+      "relief": 0.2,
+      "longing": 0.18,
+      "peace": 0.12
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 끝나지 않을 것 같던 터널과 구덩이를 지나, 그래도 살아도 되겠다고 생각한 자리에 닿기까지의 기억이다.",
+    "ending_feel": "눈부신 바다 쪽으로 고개를 돌렸을 때, 가슴 어딘가가 조용히 열리는 것 같은데 그게 기쁜 건지 그냥 지쳐서 힘이 풀린 건지 모르겠다."
+  },
+  {
+    "persona_id": "p15",
+    "persona_name": "윤재하",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "confusion": 0.28,
+      "isolation": 0.22,
+      "relief": 0.2,
+      "longing": 0.18,
+      "peace": 0.12
+    },
+    "warmth": 0.15,
+    "one_sentence": "이 기억은 막혀 있던 것들이 하나씩 끊기거나 열리면서, 결국 어딘가 눈부신 데 서게 되는 것에 관한 기억이다.",
+    "ending_feel": "바다 냄새가 나는데 왜인지 눈을 감고 싶지 않다."
+  },
+  {
+    "persona_id": "p06",
+    "persona_name": "윤서영",
+    "condition": "CUT6",
+    "n_scenes": 7,
+    "model": "claude-sonnet-4-6",
+    "temperature": 0.3,
+    "global_emotion": {
+      "fear": 0.28,
+      "isolation": 0.22,
+      "relief": 0.2,
+      "confusion": 0.15,
+      "peace": 0.15
+    },
+    "warmth": 0.18,
+    "one_sentence": "이 기억은 빠져나올 수 없을 것 같던 곳에서 결국 어딘가 숨 쉴 수 있는 틈을 찾아낸 사람의 기억이다.",
+    "ending_feel": "왼쪽은 지저분하고 오른쪽은 눈부신데, 그 사이에 서서 고개를 어느 쪽으로도 완전히 돌리지 않아도 된다는 걸 처음으로 알게 된 것 같은, 그런 느슨함이 가슴 어딘가에 걸려 있다."
+  }
+]

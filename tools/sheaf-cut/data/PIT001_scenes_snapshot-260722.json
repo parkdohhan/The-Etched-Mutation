@@ -1,0 +1,49 @@
+{
+  "memory_id": "d9fd25f0-26bc-4a52-b02d-5a22a8b5b622",
+  "memory_code": "PIT-001",
+  "memory_title": "구덩이",
+  "snapshot_date": "2026-07-22",
+  "note": "Supabase scenes snapshot for E2 (deconfound replication). original_emotion is NOT normalized in this memory (sums 1.3-2.05); analysis normalizes to sum 1 before computing seam deltas.",
+  "scenes": [
+    {
+      "scene_order": 0,
+      "text": "발가락 사이로 흙이 새어 들어온다. 목에는 지네가 둘러져 있지만 꼼짝도 할 수가 없다. 목 아래는 전부 생매장되어 있기 때문이다. 눈앞에 석양이 지고 있다. 산 두 개 사이로 붉은 해가 처박히고 있다. 니미럴.",
+      "original_emotion": { "fear": 0.55, "anger": 0.3, "numbness": 0.42, "isolation": 0.65 }
+    },
+    {
+      "scene_order": 1,
+      "text": "거꾸로 매달린 청년이 끝내지 못한 이야기를 들려줬다. 끝나지 않는 터널. 들어가면 나오지 못하는 차. 그는 매달려 있어서 다행이라고 웃었다. 더 이상 그 이야기를 끝내지 않아도 되니까.",
+      "original_emotion": { "guilt": 0.45, "longing": 0.35, "sadness": 0.6, "numbness": 0.28 }
+    },
+    {
+      "scene_order": 2,
+      "text": "바다 앞 벤치에 앉아있었다. 자전거를 탄 남자가 지나갔다. 내가 아는 감독과 똑같이 생겼다. 나는 순간 몸을 움츠렸다가 다시 폈다. 그리고 빚쟁이에게 전화를 걸어 나를 데려가라고 했다.",
+      "original_emotion": { "anger": 0.58, "guilt": 0.4, "shame": 0.72, "isolation": 0.35 }
+    },
+    {
+      "scene_order": 3,
+      "text": "토끼가 이쪽을 바라보더니 코앞까지 다가왔다. 나는 충동적으로 발을 물어버렸다. 역겨운 냄새에 바로 후회했다. 토끼는 눈을 동그랗게 뜨더니 내 정수리를 갉아먹기 시작했다.",
+      "original_emotion": { "fear": 0.3, "anger": 0.2, "numbness": 0.55, "isolation": 0.4 }
+    },
+    {
+      "scene_order": 4,
+      "text": "편도 1차선의 버려진 터널이었다. 20분을 달렸지만 터널은 끝나지 않았다. 앞을 막고 있는 레토나 때문에 끝은 보이지 않았다. 터널은 점점 좁아졌다.",
+      "original_emotion": { "fear": 0.7, "numbness": 0.35, "isolation": 0.5 }
+    },
+    {
+      "scene_order": 5,
+      "text": "수풀에서 나온 것은 지쳐보이는 여자 한 명이었다. 내 쪽을 보지도 않고 바로 청년에게 향한다. 야 이 병신아. 가위를 번쩍 들었다. 싹둑. 그는 자유가 되었다.",
+      "original_emotion": { "guilt": 0.3, "longing": 0.25, "sadness": 0.4, "numbness": 0.35 }
+    },
+    {
+      "scene_order": 6,
+      "text": "구덩이를 빠져나오고 나서 나는 그 구덩이 앞에 한참을 서 있었다. 쪼그려 앉았다가, 구덩이 안으로 들어갔다. 흙을 건성으로 쓸어 담아 내 주위에 채우고는 턱을 괴고 어제 보았던 하늘을 본다.",
+      "original_emotion": { "longing": 0.2, "sadness": 0.4, "numbness": 0.65, "isolation": 0.5 }
+    },
+    {
+      "scene_order": 7,
+      "text": "빨간등대가 있는 곳 근처, 형형색색의 LED 전광판이 번쩍거리는 거리. 왼쪽으로 고개를 돌리면 짜치는 간판이 번쩍거리고 오른쪽으로 돌리면 눈부신 바다가 있다. 나는 거기서 평생 살아도 되겠다고 생각했다.",
+      "original_emotion": { "longing": 0.55, "sadness": 0.3, "numbness": 0.25, "isolation": 0.2 }
+    }
+  ]
+}

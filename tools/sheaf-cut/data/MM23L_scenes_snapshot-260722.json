@@ -1,0 +1,59 @@
+{
+  "memory_id": "c291e1aa-06d0-42e5-8cfa-81b8a3f59fe0",
+  "memory_code": "MM23L",
+  "memory_title": "당신에게",
+  "snapshot_date": "2026-07-22",
+  "note": "Supabase scenes table snapshot for the cut-reversal experiment. scene_order 10 (stub) excluded.",
+  "scenes": [
+    {
+      "scene_order": 0,
+      "text": "엄마에게 투정을 부리거나 매달리는 엄마의 모습이 그랬습니다. 무뚝뚝한 저는 그런 식으로 엄마에게 달라붙어본 적이 없었는데, 그것이 핏줄이 아니어서인가, 하는 쓸모없는 결론에 다다르곤 했습니다.",
+      "original_emotion": { "shame": 0.35, "longing": 0.2, "sadness": 0.15, "confusion": 0.05, "isolation": 0.25 }
+    },
+    {
+      "scene_order": 1,
+      "text": "처음 임신했을 때 엄마에게 말하지 않기로 했습니다. 불임인 엄마, 산부인과는 밥먹듯이 갔을 엄마를 생각하면, 대학에 떨어진 친구에게 합격 소식을 전하는 것 같았습니다.",
+      "original_emotion": { "fear": 0.2, "love": 0.1, "guilt": 0.4, "shame": 0.15, "sadness": 0.15 }
+    },
+    {
+      "scene_order": 2,
+      "text": "\"이거 알지, 네가 제일 좋아하는 거.\" 나는 고개를 끄덕였지만 동시에 조금 이상하다고 느꼈습니다. 짜사이는 늘 중국집에서만 먹던 음식이었고, 엄마는 집에서 그런 반찬을 만드는 사람이 아니었습니다.",
+      "original_emotion": { "fear": 0.25, "love": 0.15, "longing": 0.15, "sadness": 0.15, "confusion": 0.3 }
+    },
+    {
+      "scene_order": 3,
+      "text": "한 달 뒤, 엄마는 트럭에 치여 죽었습니다.",
+      "original_emotion": { "fear": 0.1, "guilt": 0.3, "shame": 0.05, "sadness": 0.2, "numbness": 0.35 }
+    },
+    {
+      "scene_order": 4,
+      "text": "영안실에서 엄마의 발가락을 만졌을 때, 엄지발가락의 굳은살과 뒤꿈치의 갈라진 틈이 손에 박혔습니다. 만져본 적 없는 촉감을 눈을 감고 느껴봅니다.",
+      "original_emotion": { "love": 0.15, "guilt": 0.1, "longing": 0.25, "sadness": 0.35, "numbness": 0.15 }
+    },
+    {
+      "scene_order": 5,
+      "text": "현관문을 열어놓고 대리석 바닥에 드러누웠습니다. 소리가 들렸습니다. 당신임을 알았습니다. 미안했어요. 미안했어요. 그 말밖에 나오지 않았습니다.",
+      "original_emotion": { "fear": 0.1, "sadness": 0.2, "guilt": 0.35, "longing": 0.25 }
+    },
+    {
+      "scene_order": 6,
+      "text": "샤워기를 급하게 켜봅니다. 반도 채워지지 않은 찬물에 몸을 던집니다. 차갑다. 돌아와. 당신이 양막 안에서 몸을 웅크리고 있습니다.",
+      "original_emotion": { "fear": 0.3, "love": 0.15, "longing": 0.25, "sadness": 0.15, "numbness": 0.15 }
+    },
+    {
+      "scene_order": 7,
+      "text": "\"다시 태어나도 다시 똑같이 널 사랑할게.\" 꿈에서 들었던 엄마의 목소리. 안 된다고, 그것만은 안 된다고 소리치려 하는데 입이 열리지 않습니다.",
+      "original_emotion": { "fear": 0.4, "love": 0.2, "guilt": 0.15, "longing": 0.15, "confusion": 0.1 }
+    },
+    {
+      "scene_order": 8,
+      "text": "짜사이가 밥상에 올라옵니다. 식감이 엄마가 해준 것과 다릅니다. \"갑자기 먹고 싶길래.\" 엄마가 이 집안 어딘가에 돌아와 있다는 것을 알아챕니다.",
+      "original_emotion": { "fear": 0.2, "hope": 0.1, "love": 0.15, "longing": 0.25, "confusion": 0.3 }
+    },
+    {
+      "scene_order": 9,
+      "text": "껌껌한 어둠으로 채워진 현관문을 보았습니다. 누군가 복도에 서 있습니다. 그것이 당신임을 느낍니다. 현관에 발을 디디는 순간 바람이 불어와 문을 쳐닫습니다.",
+      "original_emotion": { "fear": 0.35, "love": 0.1, "longing": 0.3, "numbness": 0.15, "confusion": 0.1 }
+    }
+  ]
+}
