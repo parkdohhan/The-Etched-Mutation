@@ -236,6 +236,13 @@
     // 지금: 걷힘이 blockBelow 아래인 자리로는 **못 간다**. 대신 벽에 끼이지 않게
     //   (1) 벽면을 따라 미끄러지고(슬라이드)  (2) 더 맑은 쪽 걸음은 언제나 통과.
     var _wallEps = 0.7;   // 걷힘 기울기 측정 간격
+    // 벽에 닿은 순간(이동이 실제로 막히거나 꺾인 순간) 외부에 알림 —
+    // play-test 가 안개 자막("아직 떠오르지 않은 기억이다" 등)을 띄우는 데 쓴다.
+    // 쿨다운·문구 선택은 받는 쪽 책임. 미등록이면 무동작.
+    function _notifyWallTouch() {
+      var cb = global.__temSpatialFogOnWallTouch;
+      if (typeof cb === 'function') { try { cb(); } catch (_) {} }
+    }
     function constrainMove(fx, fz, tx, tz) {
       if (_lift >= 1) return null;
       var BLOCK = opts.moveBlockBelow;
@@ -249,12 +256,13 @@
       var nz = revealAt(fx, fz + _wallEps) - revealAt(fx, fz - _wallEps);
       var nl = Math.sqrt(nx * nx + nz * nz);
       var mx = tx - fx, mz = tz - fz;
-      if (nl < 1e-5) return { x: fx, z: fz };               // 기울기 없음(벽 한복판) — 정지
+      if (nl < 1e-5) { _notifyWallTouch(); return { x: fx, z: fz }; }  // 기울기 없음(벽 한복판) — 정지
 
       nx /= nl; nz /= nl;
       var into = mx * nx + mz * nz;                          // <0 이면 벽 쪽으로 밀고 있음
       if (into < 0) { mx -= nx * into; mz -= nz * into; }    // 벽 성분 제거 → 벽면 따라 미끄러짐
       var sx = fx + mx, sz = fz + mz;
+      _notifyWallTouch();
       if (revealAt(sx, sz) < BLOCK * 0.75) return { x: fx, z: fz };  // 미끄러져도 벽 속 — 정지
       return { x: sx, z: sz };
     }
