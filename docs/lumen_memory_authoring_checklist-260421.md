@@ -1,5 +1,8 @@
 # Lumen 메모리 저작 체크리스트
 
+> ⚠️ **2026-07-27 대체됨** — 현행 정본은 [기억저작_워크시트_v2-260727.md](기억저작_워크시트_v2-260727.md).
+> 이 문서는 SQL 직접 INSERT 시절(4월) 기준.
+
 SQL 직접 INSERT로 Lumen 데모용 기억을 만들 때 **연출 레버 누락 방지용 한 페이지**.
 메모리 1개 쓸 때마다 이걸 훑고, 각 레버의 값을 먼저 결정한 뒤 [supabase/seeds/lumen_memory_template.sql](../supabase/seeds/lumen_memory_template.sql)에 박는다.
 
