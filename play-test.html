@@ -1949,6 +1949,55 @@
     fixation: { radius: 0.09 },
   };
 
+  // ─── 패턴별 중심 이동 (원칙 1: Pattern changes GEOMETRY, not just radius) ───
+  // js/core/SceneNavigator.js PATTERN_CENTER 와 동일 규칙 — 모듈 경계 때문에 복사, 변경 시 양쪽 동기화.
+  // 중심을 지도 좌표 평균이 아니라 감정 공간(17축)에서 섞은 뒤 AF 로 투영한다.
+  const PATTERN_CENTER = {
+    echo_follow:   { wOrig: 0.7, wUser: 0.3 },        // 원본 결 쪽으로
+    bridge:        { wOrig: 0.5, wUser: 0.5 },        // 균형
+    contradiction: { mode: 'negate_user' },           // 유저 감정의 반대편
+    displacement:  { wOrig: 0.3, wUser: 0.7 },        // 유저를 따라가되 원본이 살짝 당김
+    avoidance:     { mode: 'void' },                  // void/중립 영역
+    fixation:      { mode: 'current_scene' },         // 지금 씬 근처 잠금
+  };
+  // 판단 정본 17축 (js/shared/math.js DEFAULT_EMOTION_ANCHORS 복사 — 변경 시 동기화)
+  const PATTERN_AXES = [
+    'fear', 'sadness', 'anger', 'guilt', 'shame',
+    'isolation', 'numbness', 'moral_pain', 'helplessness', 'despair',
+    'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort',
+  ];
+
+  function computeAccessCenter(pattern, userEmotion, originScene, fallbackPos) {
+    const cfg = PATTERN_CENTER[pattern] || PATTERN_CENTER.bridge;
+    const user = safeParseEmotion(userEmotion || {});
+    const orig = originScene ? safeParseEmotion(originScene.original_emotion) : {};
+    if (cfg.mode === 'current_scene') {
+      return Object.keys(orig).length ? emotionToMapCoords(orig) : fallbackPos;
+    }
+    if (cfg.mode === 'negate_user') {
+      const neg = {};
+      for (const k of PATTERN_AXES) neg[k] = 1 - Number(user[k] || 0);
+      return emotionToMapCoords(neg);
+    }
+    if (cfg.mode === 'void') {
+      const vp = game.pins.find(p => p.type === 'voidPin');
+      if (vp) {
+        return {
+          x: (vp.mapX != null ? vp.mapX : vp.x / 100),
+          y: (vp.mapY != null ? vp.mapY : vp.y / 100),
+        };
+      }
+      return fallbackPos;
+    }
+    if (!Object.keys(user).length && !Object.keys(orig).length) return fallbackPos;
+    const blend = {};
+    const keys = new Set(PATTERN_AXES.concat(Object.keys(user), Object.keys(orig)));
+    keys.forEach(k => {
+      blend[k] = Number(orig[k] || 0) * cfg.wOrig + Number(user[k] || 0) * cfg.wUser;
+    });
+    return emotionToMapCoords(blend);
+  }
+
   function emotionToMapCoords(emotion) {
     const af = projectEmotionToAFContour(emotion || {});
     const nx = (af.x * HALF) / SIZE + 0.5;
@@ -1977,19 +2026,51 @@
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  function updateAccess(pattern, emotionPosition, originSceneId) {
-    const cores = game.pins.filter(p => p.type === 'core' || p.type === 'bridge');
+  // ─── 씬 잠금(exclusions) 배선 — SceneNavigator.js matchesExclusion 과 동일 규칙 ───
+  // (모듈 경계 때문에 복사. 규칙 추가 시 양쪽 동기화. emotion_below = 2026-07-27 도입)
+  function _matchesExclusionRule(condition, playerState) {
+    if (!condition || typeof condition !== 'object') return false;
+    if (condition.type === 'emotion_threshold') {
+      const val = Number((playerState.userEmotion || {})[condition.emotion] || 0);
+      return val >= Number(condition.min != null ? condition.min : 0.6);
+    }
+    if (condition.type === 'emotion_below') {
+      const val = Number((playerState.userEmotion || {})[condition.emotion] || 0);
+      return val < Number(condition.max != null ? condition.max : 0.5);
+    }
+    if (condition.type === 'contamination_stage') {
+      return playerState.contaminationStage === condition.stage;
+    }
+    if (condition.type === 'visited_scene') {
+      return (playerState.visitedScenes || []).includes(condition.sceneIndex);
+    }
+    return false;
+  }
+  function _sceneLockedByExclusions(pin) {
+    const scene = game.scenes.find(s => s.id === pin.sceneId);
+    const ex = scene && scene.exclusions;
+    if (!ex || !Array.isArray(ex) || !ex.length) return false;
+    if (game.visitedCore[pin.sceneId]) return false; // 이미 방문한 씬은 다시 잠그지 않음
+    const traj = game.userEmotionTrajectory || [];
+    const st = {
+      userEmotion: traj.length ? traj[traj.length - 1] : {},
+      contaminationStage: null,
+      visitedScenes: game.scenes.map((s, i) => (game.visitedCore[s.id] ? i : -1)).filter(i => i >= 0),
+    };
+    const locked = ex.some(r => _matchesExclusionRule(r && r.condition, st));
+    if (locked) console.log('[LOCK] scene', scene.scene_order, '잠김 —', (ex[0] && ex[0].reason) || 'exclusions');
+    return locked;
+  }
+
+  function updateAccess(pattern, emotionPosition, originSceneId, userEmotion) {
+    const cores = game.pins.filter(p => (p.type === 'core' || p.type === 'bridge') && !_sceneLockedByExclusions(p));
     const originPin = cores.find(p => p.sceneId === originSceneId) || null;
     const rule = TRANSITION_RULES[pattern] || TRANSITION_RULES.bridge;
-    let center = emotionPosition && (emotionPosition.x != null)
+    const fallbackPos = emotionPosition && (emotionPosition.x != null)
       ? { x: emotionPosition.x, y: emotionPosition.y }
       : { x: 0.5, y: 0.5 };
-    if (originPin && originPin.mapX != null) {
-      center = {
-        x: (center.x + originPin.mapX) / 2,
-        y: (center.y + originPin.mapY) / 2,
-      };
-    }
+    const originScene = game.scenes.find(s => s.id === originSceneId) || null;
+    const center = computeAccessCenter(pattern, userEmotion, originScene, fallbackPos);
     let withDist = cores.map(p => ({
       pin: p,
       d: distMap(center, { x: p.mapX, y: p.mapY }),
@@ -2006,10 +2087,13 @@
         selected = withDist.filter(o => o.d <= r2).map(o => o.pin);
       }
       if (!selected.length) {
-        selected = cores.filter(p => !game.visitedCore[p.sceneId]);
-      }
-      if (!selected.length) {
-        selected = cores.slice();
+        // Fallback B (SceneNavigator 동일 규칙): 전부 열지 않고 중심에서 가장 가까운
+        // 미방문 잔향 하나만. (구버전은 미방문 전부 개방 — 패턴이 중심을 멀리 보낸
+        // 순간 기하가 무효화되는 구멍이었다.)
+        const ranked = withDist
+          .filter(o => !game.visitedCore[o.pin.sceneId])
+          .sort((a, b) => a.d - b.d);
+        selected = ranked.length ? [ranked[0].pin] : cores.slice();
       }
     }
 
@@ -2073,7 +2157,7 @@
       game.accessiblePinIds = new Set();
       return;
     }
-    updateAccess(pattern, emotionPosition, originSceneId);
+    updateAccess(pattern, emotionPosition, originSceneId, userEmotion);
     syncPinStateFlags();
     console.log('[DEBUG] active after updateAccess:', game.pins.filter(p => p.state === 'active').map(p => p.id));
   }
@@ -2093,7 +2177,7 @@
   }
 
   function applyInitialAccess() {
-    const cores = game.pins.filter(p => p.type === 'core' || p.type === 'bridge');
+    const cores = game.pins.filter(p => (p.type === 'core' || p.type === 'bridge') && !_sceneLockedByExclusions(p));
     const unvisited = cores.filter(p => !game.visitedCore[p.sceneId]);
     const pool = unvisited.length ? unvisited : cores.slice();
     const sorted = pool.slice().sort((a, b) => (a.sceneOrder || 0) - (b.sceneOrder || 0));
@@ -3347,6 +3431,48 @@
           if (result.resonance) _ds.mismatches.push(result.resonance);
           _ds.emotions.push(result.lastUserEmotion);
 
+          // ── 엔진 스텝 + 접근 재계산 배선 (2026-07-27, 0단계) ──
+          // 이전엔 대화 경로가 handleEmotionResult 를 안 불러 FP 플레이에서 궤적 기하가
+          // 한 번도 안 돌았다 (접근 핀 = 입장 초기 3개 고정, pattern 'bridge' 하드코딩).
+          // 5139행 예고("transition_pattern 복원은 후속 항목")의 그 후속.
+          // game.lastResult 는 여기서 세우지 않는다 — 봉인 오염 집계는 R2-3
+          // dialogSession 경로를 그대로 쓴다 (이중 집계 방지).
+          var _eng = null;
+          try {
+            var _uvec = {
+              base: result.lastUserEmotion,
+              reason_analysis: { is_void: false, attribution: null, target: null, core_fear: null },
+            };
+            var _origV = buildOriginalVectorFromScene(scene);
+            _eng = byeoriCalculateStep({
+              userVector: _uvec,
+              originalVector: _origV,
+              anchorEmotions: parseAnchorEmotions(scene),
+              userTrajectory: game.userEmotionTrajectory || [],
+              originalTrajectory: game.originalEmotionTrajectory || [],
+              sceneScores: game.sceneScores || [],
+            }, {
+              previousBucket: game.previousBucket || null,
+              emotionHistory: game.emotionHistory || [],
+            });
+            game.previousBucket = _eng.alignment_bucket;
+            (game.emotionHistory = game.emotionHistory || []).push(Object.assign({}, result.lastUserEmotion));
+            (game.userEmotionTrajectory = game.userEmotionTrajectory || []).push(Object.assign({}, result.lastUserEmotion));
+            (game.originalEmotionTrajectory = game.originalEmotionTrajectory || []).push(Object.assign({}, _origV.base || {}));
+            (game.sceneScores = game.sceneScores || []).push(_eng.current_scene_score || 0);
+            game.lastUserEmotion = result.lastUserEmotion;
+            game._prevAccessiblePinIds = new Set(game.accessiblePinIds || []);
+            handleEmotionResult({
+              userEmotion: result.lastUserEmotion,
+              result: _eng,
+              originSceneId: scene.id,
+            });
+            console.log('[v21-phase1→engine] pattern=' + _eng.transition_pattern
+              + ' bucket=' + _eng.alignment_bucket + ' → 접근 재계산 완료');
+          } catch (e) {
+            console.warn('[v21-phase1→engine] step fail — 접근 갱신 스킵', e);
+          }
+
           // game.traces — generate-reveal 자리 visits 입력
           if (!game.traces) game.traces = [];
           game.traces.push({
@@ -3357,7 +3483,7 @@
             userEmotion: result.lastUserEmotion,
             alignment: result.alignment,
             bucket: bucket,
-            pattern: 'bridge',  // V2.1 Phase 1 = transition_pattern 미산출, default
+            pattern: (_eng && _eng.transition_pattern) || 'bridge',
             mismatch: result.resonance,
             sceneIndex: pin.sceneIndex,
             sceneLinkInput: result.scene_link_input || '',  // V2.1.2 자리
@@ -6668,7 +6794,10 @@
       // Map pins to 3D positions
       var game = window._temGame || {};
       pins.forEach(function (pin) {
-        if (pin.type !== 'core') return;
+        // 2026-07-27 배선: core 전용 → 역할 기반 확장. bridge(residual 갈비뼈 씬)도 3D 세계에
+        // 등장해야 과거 사연이 걸어서 도달 가능해진다 (UNDW-001에서 발견된 이식 누락).
+        // voidPin 은 같은 씬의 bridge/core 핀과 중복이므로 계속 제외 (침묵 씬은 제 핀으로 등장).
+        if (pin.type !== 'core' && pin.type !== 'bridge') return;
         var scene = scenes.find(function (s) { return s.id === pin.sceneId; });
         if (!scene) return;
 

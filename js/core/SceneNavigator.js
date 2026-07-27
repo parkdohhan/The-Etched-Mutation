@@ -178,6 +178,13 @@ function matchesExclusion(condition, playerState) {
         const min = Number(condition.min ?? 0.6);
         return val >= min;
     }
+    // emotion_below: 해당 감정이 max 미만인 동안 제외(잠김) — "감정이 문턱에 닿아야 열리는 씬"용.
+    // emotion_threshold 의 역방향. 2026-07-27 UNDW-001 S7(진실 씬) 잠금에서 도입.
+    if (condition.type === 'emotion_below') {
+        const val = Number(playerState.userEmotion?.[condition.emotion] || 0);
+        const max = Number(condition.max ?? 0.5);
+        return val < max;
+    }
     if (condition.type === 'contamination_stage') {
         return playerState.contaminationStage === condition.stage;
     }

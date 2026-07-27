@@ -57,6 +57,12 @@
 2. **플레이 후 접근 재계산**: `handleEmotionResult()` → `updateAccess(...)`
 3. `syncPinStateFlags()` + `applyPinVisualFlags()`로 `active/locked/visited/entrance` 상태를 최종 반영
 
+경로별 진입 (260727 배선 완비):
+
+- **고전 감정 제출 경로**: `afterTerrainReturn()` → `handleEmotionResult()`
+- **대화 경로(v21-phase1)**: `onSceneEnd` 에서 `byeoriCalculateStep` 실행 후 `handleEmotionResult()` 호출.
+  260727 이전엔 이 경로가 접근 재계산을 **아예 안 해서** FP 플레이 접근 핀이 입장 초기 3개로 고정돼 있었다.
+
 ---
 
 ## 1) 초기 접근 규칙 (`applyInitialAccess`)
@@ -81,19 +87,25 @@
 - `emotionPosition`: 사용자 감정의 지도 좌표 `{x,y}` (AF 기반)
 - `originSceneId`: 직전에 플레이한 core/bridge/void 장면 id
 
-### 중심점(center) 계산
+### 중심점(center) 계산 — 260727 교체 (원칙 1 수복)
 
-기본:
+> 구모델(패턴 무관하게 `(emotionPosition + originPin) / 2` 평균)은 260727 폐기.
+> 패턴이 반경만 바꾸고 중심은 안 움직여 CLAUDE.md §6.5 #1 WRONG 모델이었다.
 
-- `center = emotionPosition` (없으면 `{0.5, 0.5}`)
+`computeAccessCenter(pattern, userEmotion, originScene, fallbackPos)` —
+중심을 **감정 공간(17축)에서 패턴별로 블렌드한 뒤 AF 지도좌표로 투영**한다.
+규칙은 `js/core/SceneNavigator.js` `PATTERN_CENTER` 와 동일(모듈 경계 사본, 변경 시 동기화):
 
-origin 보정:
+| 패턴 | 중심 |
+|---|---|
+| `echo_follow` | 원본 0.7 : 유저 0.3 블렌드 → 투영 |
+| `bridge` | 0.5 : 0.5 |
+| `displacement` | 원본 0.3 : 유저 0.7 |
+| `contradiction` | 유저 벡터 반전(축별 1−v) → 투영 |
+| `avoidance` | voidPin 좌표 (없으면 유저 위치) |
+| `fixation` | 현재 씬 감정 투영 (선택은 여전히 originPin 단독) |
 
-- origin 핀이 존재하면 \(\text{center} = (center + originPin) / 2\) 로 평균
-
-의도:
-
-- “지금 감정 위치”와 “방금 방문한 장면 위치”를 절충해 다음 접근 범위를 결정
+`emotionPosition`(지도좌표)은 감정 벡터가 비었을 때의 fallback 위치로만 쓰인다.
 
 ### 반경(rule.radius)
 
@@ -114,8 +126,10 @@ origin 보정:
 2. 그 외:
    - \(d(center, pin) <= radius\) 인 핀을 1차 선택
    - 비었으면 \(radius * 1.85\) 로 확장해서 재시도
-   - 그래도 비었으면 “아직 방문하지 않은 core/bridge 전부”
-   - 그것도 비면 “core/bridge 전부”
+   - 그래도 비었으면 **중심에서 가장 가까운 미방문 핀 1개** (260727 교체 — Fallback B,
+     SceneNavigator 동일 규칙. 구버전 "미방문 전부 개방"은 패턴이 중심을 멀리 보낸 순간
+     기하가 무효화되는 구멍이었다)
+   - 미방문이 하나도 없으면 “core/bridge 전부”
 
 ### voidPin 추가 규칙
 
