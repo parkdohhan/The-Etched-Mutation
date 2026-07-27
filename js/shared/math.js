@@ -280,7 +280,9 @@ export function cosineFlat(a, b) {
 /**
  * V4 궤적 형태 유사도 (Shape Similarity)
  */
-export function calculateShapeSimilarity(userTrajectory, originalTrajectory) {
+export function calculateShapeSimilarity(userTrajectory, originalTrajectory, emotionKeys = null) {
+  // emotionKeys (260727 기억별 좌표계): level 과 같은 자로 재도록 호출자가 축 목록을
+  // 넘길 수 있다. 생략 시 판단 기본 17축 — V4 §9.1 (level·shape 동일 좌표계) 유지.
   if (!userTrajectory || !originalTrajectory || userTrajectory.length < 3) {
     return { raw: 1.0, clamped: 1.0, active: false };
   }
@@ -290,7 +292,7 @@ export function calculateShapeSimilarity(userTrajectory, originalTrajectory) {
     deltaUser.push(subtractVectors(userTrajectory[i], userTrajectory[i - 1]));
     deltaOrig.push(subtractVectors(originalTrajectory[i], originalTrajectory[i - 1]));
   }
-  const raw = cosineFlat(flattenDeltas(deltaUser), flattenDeltas(deltaOrig));
+  const raw = cosineFlat(flattenDeltas(deltaUser, emotionKeys), flattenDeltas(deltaOrig, emotionKeys));
   return { raw, clamped: Math.max(0, raw), active: true };
 }
 

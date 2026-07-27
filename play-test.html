@@ -76,7 +76,7 @@
   <script src="js/ui/lumen_ghost_response.js?v=260714"></script>
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
-  <script src="js/ui/lumen_dialog_phase1.js?v=260717"></script>
+  <script src="js/ui/lumen_dialog_phase1.js?v=260727"></script>
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260714"></script>
   <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
@@ -659,13 +659,13 @@
   /* ========== PLAY-TEST BUNDLE ========== */
   import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/lib/config.js';
   import { updateContamination, replayFromPlays, getPresentationState, getDominantMismatch, createEmptyState, computeDriftVector } from './js/core/ContaminationTracker.js';
-  import { calculateStep as engineCalculateStep } from './js/core/ByeoriEngine.js';
+  import { calculateStep as engineCalculateStep } from './js/core/ByeoriEngine.js?v=260727';
   import { getMonologue } from './js/ui/contaminationMonologue.js';
   // calculateFixationLevel 은 이 파일이 이미 인라인 사본을 갖고 있다(2202줄) — import 하면
   // 이름 충돌로 모듈 전체가 SyntaxError 로 죽는다. 사본이 math.js 와 동일하므로 그대로 쓴다.
   // (사본 갈라짐 위험은 보고서 후속 항목 — 별이엔진_단일화_베이스라인 §후속과 같은 자리)
   import { emotionVectorToWaveStyle as sharedEmotionVectorToWaveStyle,
-           projectEmotionToVAD } from './js/shared/math.js';
+           projectEmotionToVAD } from './js/shared/math.js?v=260727';
   import { GHOST_PRESETS } from './js/shared/ghost_presets.js';
   // V2-6 drift 픽 — DriftPicker 는 self-attach (window.DriftPicker), 폴백 문구는 여기서 노출 (dialog_phase1.js non-module 이 사용)
   import './js/core/DriftPicker.js';
@@ -2391,6 +2391,11 @@
   // 덮어쓴다 (엔진 원본은 projectEmotionToVAD 사용 — 3D 핀 좌표 산출 방식이 다름).
   // 베이스라인 대조: docs/별이엔진_단일화_베이스라인-260518.md
   function byeoriCalculateStep(input, context) {
+    // 260727 기억별 좌표계: 판단 축 = 이 기억의 저작 어휘. 모든 엔진 호출이 이 관문을
+    // 지나므로 여기 한 곳에서 주입한다 (docs/기억별_좌표계_결정-260727.md).
+    if (input && !input.emotionKeys && game.memoryEmotionAxes && game.memoryEmotionAxes.length) {
+      input = Object.assign({}, input, { emotionKeys: game.memoryEmotionAxes });
+    }
     const r = engineCalculateStep(input, context);
     const uv = input && input.userVector;
     r.affective_position = projectEmotionToVADContour((uv && uv.base) || uv);
@@ -3435,6 +3440,8 @@
       runtime: runtime,
       supabase: supabase,
       anchorVariantId: anchorVariantId,
+      // 260727 기억별 좌표계: 발화 분류도 판단과 같은 자(이 기억의 저작 어휘)로.
+      memoryEmotionAxes: game.memoryEmotionAxes || null,
       onSceneEnd: function (result) {
         // V2.1.2 (2026-05-05) — 자동 진행 폐기. 매 씬 끝 = 1인칭 지도 복귀, 자유 탐색.
         // 플레이어가 다음 핀(다른 유령) 을 직접 골라서 long press 로 진입.
@@ -4968,6 +4975,20 @@
     if (!game.plays.length && window._simulatedPlaysMap && window._simulatedPlaysMap[memoryId]) {
       LOG('Supabase plays empty, using local fallback for', memoryId);
       game.plays = window._simulatedPlaysMap[memoryId];
+    }
+
+    // === 기억별 좌표계 (260727 사용자 결정 — docs/기억별_좌표계_결정-260727.md) ===
+    // "기억 하나가 하나의 감정 우주다": 판단 축 = 이 기억의 씬들이 실제 쓰는 감정 어휘의
+    // 합집합. 별이엔진 level·shape·mismatch 와 발화 분류가 전부 이 자로 잰다.
+    // 원시 벡터는 plays 에 그대로 보존 — 기억 간 비교는 소급 재측정으로만 (이중 구조).
+    {
+      const axSet = new Set();
+      game.scenes.forEach(s => {
+        const emo = safeParseEmotion(s.original_emotion);
+        for (const k in emo) { if (Number(emo[k]) > 0) axSet.add(k); }
+      });
+      game.memoryEmotionAxes = axSet.size ? Array.from(axSet).sort() : null;
+      LOG('기억별 좌표계: ' + (game.memoryEmotionAxes ? game.memoryEmotionAxes.length + '축 [' + game.memoryEmotionAxes.join(',') + ']' : '없음 — 기본 17축'));
     }
     // === Contamination (MVP v3 + EMA) ===
     // Priority: URL override(개발용) > 상영작이면 관객 플레이 재생 > DB cont_* > 전체 재생

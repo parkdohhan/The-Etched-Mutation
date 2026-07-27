@@ -1657,9 +1657,14 @@
         alignment = Math.max(lastAlignment, 0.7);
         console.log('[phase1] turn ' + turn + ' SHORT_AFFIRMATIVE — alignment=' + alignment.toFixed(3));
       } else {
+        // 260727 기억별 좌표계: 분류 축 우선순위 = 씬 anchor(가장 구체) > 기억의 저작
+        // 어휘(memoryEmotionAxes) > 이 씬 원본 감정의 키 (구버전 fallback).
+        // 판단(별이엔진)과 같은 자로 재야 분류→판단이 한 좌표계가 된다.
         var anchorKeys = (sceneData.anchor_emotions && sceneData.anchor_emotions.length)
           ? sceneData.anchor_emotions
-          : (origEmotion && Object.keys(origEmotion).length ? Object.keys(origEmotion) : null);
+          : ((input.memoryEmotionAxes && input.memoryEmotionAxes.length)
+            ? input.memoryEmotionAxes
+            : (origEmotion && Object.keys(origEmotion).length ? Object.keys(origEmotion) : null));
         userEmo = await _analyzeEmotion(input.supabase, playerInput, anchorKeys);
         alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
         // alignment=0 박히면 진단 + lastAlignment fallback (plays 누적 결 보호).

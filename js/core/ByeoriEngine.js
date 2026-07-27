@@ -15,7 +15,7 @@ import {
   calculateFixationLevel,
   getBucket,
   projectEmotionToVAD
-} from '../shared/math.js';
+} from '../shared/math.js?v=260727';
 
 export class ByeoriEngine {
   constructor() {
@@ -41,7 +41,7 @@ export class ByeoriEngine {
     const {
       userVector, originalVector, anchorEmotions = null,
       userTrajectory = null, originalTrajectory = null,
-      sceneScores = null
+      sceneScores = null, emotionKeys = null
     } = input;
     const { previousBucket = null, emotionHistory = null } = context;
 
@@ -50,8 +50,15 @@ export class ByeoriEngine {
       return this._createEmptyResult();
     }
 
+    // 판단 좌표계 (260727 기억별 좌표계 — docs/기억별_좌표계_결정-260727.md):
+    // 씬 anchor(가장 구체) > emotionKeys(기억의 저작 어휘) > 판단 기본 17축.
+    // level·shape·mismatch 가 전부 같은 자로 재야 V4 §9.1 (곱셈 결합의 동일 공간) 유지.
+    const frameKeys = (anchorEmotions && anchorEmotions.length)
+      ? anchorEmotions
+      : ((emotionKeys && emotionKeys.length) ? emotionKeys : null);
+
     const currentSceneScore = calculateEmotionScore(
-      userVector, originalVector, anchorEmotions
+      userVector, originalVector, frameKeys
     );
 
     const allSceneScores = sceneScores ? [...sceneScores, currentSceneScore] : [currentSceneScore];
@@ -65,7 +72,7 @@ export class ByeoriEngine {
       ? [...originalTrajectory, originalVector.base || originalVector]
       : [originalVector.base || originalVector];
 
-    const shapeResult = calculateShapeSimilarity(userTraj, origTraj);
+    const shapeResult = calculateShapeSimilarity(userTraj, origTraj, frameKeys);
 
     const userReason = userVector.reason_analysis || {};
     const origReason = originalVector.reason_analysis || {};
@@ -77,7 +84,7 @@ export class ByeoriEngine {
 
     const bucket = getBucket(alignment, previousBucket, emotionHistory);
 
-    const mismatchType = this._getMismatchType(userVector, originalVector);
+    const mismatchType = this._getMismatchType(userVector, originalVector, frameKeys);
 
     const transitionPattern = this._getTransitionPattern(
       bucket, mismatchType, level, shapeResult.clamped, userTraj, origTraj
@@ -111,7 +118,7 @@ export class ByeoriEngine {
     };
   }
 
-  _getMismatchType(userVector, originalVector) {
+  _getMismatchType(userVector, originalVector, frameKeys = null) {
     if (!userVector || !originalVector) return null;
 
     const userReason = userVector.reason_analysis || {};
@@ -126,14 +133,16 @@ export class ByeoriEngine {
         userReason.target !== origReason.target) {
       const emotionSim = cosineSimilarity(
         userVector.base || userVector,
-        originalVector.base || originalVector
+        originalVector.base || originalVector,
+        frameKeys
       );
       if (emotionSim >= 0.5) return 'target_displacement';
     }
 
     const emotionSimilarity = cosineSimilarity(
       userVector.base || userVector,
-      originalVector.base || originalVector
+      originalVector.base || originalVector,
+      frameKeys
     );
     if (emotionSimilarity < 0.5) return 'emotion_mismatch';
 
