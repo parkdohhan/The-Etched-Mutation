@@ -51,9 +51,9 @@
   <!-- W4 (2026-07-16): 옛 재생 지형(퀼트 섬) 모듈 tem_replay_terrain 은퇴 — script 태그 제거,
        파일은 보존. tem_variant_strata.js 로 대체(이본 지층: 작가 바닥 + 관객 침식/융기 누적).
        lumen_replay_fog 는 로드는 두되 attach 게이트가 TemReplayTerrain 부재로 죽어 무력. -->
-  <script src="js/shared/tem_variant_strata.js?v=260716b"></script>
+  <script src="js/shared/tem_variant_strata.js?v=260727a"></script>
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
-  <script src="js/ui/lumen_spatial_fog.js?v=260714"></script>
+  <script src="js/ui/lumen_spatial_fog.js?v=260727"></script>
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
   <script src="js/shared/tem_af_strata_terrain.js?v=260716"></script>
   <script>
@@ -6101,6 +6101,45 @@
                   });
                   console.log('[spatial-fog] 입장 시드 — 스폰 + 회랑 ' + carved + '줄기 (도착 시 개화)');
                 })(0);
+                // ── 안개 벽 자막 (260727): 안개에 닿아 걸음이 막히는 순간 —
+                // "기억을 찾는 여정" 문구를 하단에 띄운다 (원칙 4: 막힘은 서사로 감싼다).
+                // 모듈(constrainMove)이 __temSpatialFogOnWallTouch 를 매 접촉 tick 호출,
+                // 쿨다운·문구 무작위(직전 제외)는 여기서 처리. 스타일은 pattern whisper 와 동일.
+                (function _sfWallWhisper() {
+                  var KO = [
+                    '…아직 떠오르지 않은 기억이다.',
+                    '…아직 이곳의 기억은 형태가 없다.',
+                    '…기억에 다가가고 있다.',
+                    '…이 안개 뒤에서, 기억이 너를 기다리고 있다.',
+                  ];
+                  var EN = [
+                    '…a memory not yet surfaced.',
+                    '…the memory here has no shape yet.',
+                    '…you are drawing closer to a memory.',
+                    '…beyond this fog, a memory is waiting for you.',
+                  ];
+                  var COOLDOWN_MS = 9000;
+                  var _last = 0, _lastIdx = -1;
+                  window.__temSpatialFogOnWallTouch = function () {
+                    var now = Date.now();
+                    if (now - _last < COOLDOWN_MS) return;
+                    _last = now;
+                    var pool = (document.documentElement.lang === 'ko') ? KO : EN;
+                    var idx = Math.floor(Math.random() * pool.length);
+                    if (idx === _lastIdx) idx = (idx + 1) % pool.length;
+                    _lastIdx = idx;
+                    var el = document.createElement('div');
+                    el.style.cssText = 'position:fixed;bottom:22%;left:50%;transform:translateX(-50%);z-index:3000;'
+                      + 'pointer-events:none;color:rgba(196,168,130,0.6);font-size:13px;letter-spacing:3px;'
+                      + 'font-family:"Cormorant Garamond",serif;font-style:italic;text-align:center;max-width:80vw;'
+                      + 'text-shadow:0 0 15px rgba(196,168,130,0.2);opacity:0;transition:opacity 1.2s ease;';
+                    el.textContent = pool[idx];
+                    document.body.appendChild(el);
+                    setTimeout(function () { el.style.opacity = '1'; }, 100);
+                    setTimeout(function () { el.style.opacity = '0'; }, 3500);
+                    setTimeout(function () { el.remove(); }, 5000);
+                  };
+                })();
               } catch (eSf) { console.warn('[spatial-fog] attach 실패 (무해)', eSf); }
             }
             // ── ADDITIVE §9.9 안개 해제 (replay terrain flag ON일 때만) ──

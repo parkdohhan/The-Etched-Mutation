@@ -351,11 +351,18 @@
       var emo = parseEmo(sc.emotion_dist) || parseEmo(sc.original_emotion) || parseEmo(sc.emo) || null;
       var sp = (sc.meta && sc.meta.stage_position) ||
                (Number.isFinite(sc.wx) && Number.isFinite(sc.wz) ? { x: sc.wx, z: sc.wz } : null);
+      // 침묵(void) 점수 — sceneAF 형은 voidScore 그대로, DB 형은 void_info 3토글 합산
+      // (computeAfTerrainFields:213 과 동일 규칙: sceneVoid 0.33 + emotionVoid 0.33 + reasonVoid 0.34)
+      var vi = sc.void_info;
+      if (typeof vi === 'string') { try { vi = JSON.parse(vi); } catch (_) { vi = null; } }
+      var vScore = Number.isFinite(sc.voidScore) ? sc.voidScore :
+        (vi ? ((vi.sceneVoid ? 0.33 : 0) + (vi.emotionVoid ? 0.33 : 0) + (vi.reasonVoid ? 0.34 : 0)) : 0);
       return {
         id: sc.id != null ? sc.id : ('s' + i),
         order: sc.scene_order != null ? sc.scene_order : (sc.order != null ? sc.order : i),
         emo: emo,
         sp: sp && Number.isFinite(sp.x) && Number.isFinite(sp.z) ? sp : null,
+        voidScore: vScore,
       };
     }).filter(function (sc) { return sc.emo; });
     // 첫 서술 순서 (결정론 재현용) — 배치 자체는 가산이라 순서 무관하지만 명시.
@@ -406,6 +413,23 @@
             cls[ci] += ec[0] * env * w * 0.16;
             cls[ci + 1] += ec[1] * env * w * 0.16;
             cls[ci + 2] += ec[2] * env * w * 0.16;
+          }
+        }
+      }
+
+      // 침묵 씬 함몰 — computeAfTerrainFields:448 수식 이식 (2026-07-27 VOID 실측기록).
+      // voidScore>0.3 이면 씬 닻 자리에 깊이 14·score 의 가우시안 구덩이. vSig=8 (world) → cell 환산.
+      if (sc.voidScore > 0.3) {
+        var vSigC = 8 * G / SZ;
+        var vRb = Math.ceil(vSigC * 3);
+        var vx0 = Math.max(0, Math.floor(cx - vRb)), vx1 = Math.min(G - 1, Math.ceil(cx + vRb));
+        var vz0 = Math.max(0, Math.floor(cz - vRb)), vz1 = Math.min(G - 1, Math.ceil(cz + vRb));
+        for (var vz = vz0; vz <= vz1; vz++) {
+          for (var vx = vx0; vx <= vx1; vx++) {
+            var vdx = vx - cx, vdz = vz - cz;
+            var vInf = Math.exp(-(vdx * vdx + vdz * vdz) / (2 * vSigC * vSigC));
+            if (vInf < 0.004) continue;
+            hts[vz * G + vx] -= sc.voidScore * 14 * vInf;
           }
         }
       }
@@ -881,7 +905,7 @@
     var m = filterIdx == null ? (P && P[0]) : (P && P[filterIdx]);
     if (!m) return null;
     var scenes = (m.sceneAF || []).map(function (sc) {
-      return { id: sc.id, scene_order: sc.order, original_emotion: sc.emo, meta: sc.meta };
+      return { id: sc.id, scene_order: sc.order, original_emotion: sc.emo, meta: sc.meta, voidScore: sc.voidScore };
     });
     // W4 (2026-07-16, 지휘 승인 예외): buildBase 가 _delta·_generation 을 리셋하므로, 로드/누적 상태를
     // 잠깐 보존했다가 바닥 재생성 후 복원한다. 이게 없으면 진입 훅이 loadLayer 한 변형층을 렌더 직전에
