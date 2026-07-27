@@ -107,9 +107,9 @@
 
 `emotionPosition`(지도좌표)은 감정 벡터가 비었을 때의 fallback 위치로만 쓰인다.
 
-### 반경(rule.radius)
+### 반경 — 260727 적응 스케일
 
-패턴별 반경(`TRANSITION_RULES`):
+패턴별 기본 반경(`TRANSITION_RULES`) — 이 값들의 **비율**만 의미를 갖는다:
 
 - `echo_follow`: 0.42
 - `bridge`: 0.62
@@ -118,18 +118,26 @@
 - `avoidance`: 0.24
 - `fixation`: 0.09
 
+실효 반경 = `rule.radius × 핀 산포` (산포 = core/bridge 핀 최대 쌍거리, floor 0.08 / cap 1.0).
+한 기억의 씬들은 감정이 비슷해 AF 투영이 뭉치므로(발자국 실측 산포 0.121), 절대 반경은
+"모든 패턴 = 전부 열림"으로 붕괴했었다 (260727 0.5단계).
+
 ### 선택 알고리즘
 
-대상은 항상 `core + bridge` 핀들(= `cores`).
+대상 = **미방문** `core + bridge` 핀 (260727 0.5단계 — 방문 핀은 `syncPinStateFlags` 가
+항상 active 로 두므로 선택 풀에 넣으면 좁아진 반경을 원점 핀이 독차지한다).
 
 1. **fixation + originPin 존재**: `selected = [originPin]`
 2. 그 외:
-   - \(d(center, pin) <= radius\) 인 핀을 1차 선택
-   - 비었으면 \(radius * 1.85\) 로 확장해서 재시도
+   - \(d(center, pin) <= 실효반경\) 인 핀을 1차 선택
+   - 비었으면 \(× 1.85\) 로 확장해서 재시도
    - 그래도 비었으면 **중심에서 가장 가까운 미방문 핀 1개** (260727 교체 — Fallback B,
      SceneNavigator 동일 규칙. 구버전 "미방문 전부 개방"은 패턴이 중심을 멀리 보낸 순간
      기하가 무효화되는 구멍이었다)
    - 미방문이 하나도 없으면 “core/bridge 전부”
+
+상한: 중심에서 가까운 순 **2개** (260727 0.5단계, 종전 4). 턴당 한두 갈래여야
+열림/닫힘이 정보가 된다. 닫힌 핀은 FP 에서 회랑 되덮임(`LumenSpatialFog.close`)으로 연출.
 
 ### voidPin 추가 규칙
 

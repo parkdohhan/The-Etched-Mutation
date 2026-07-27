@@ -67,6 +67,7 @@
     corridorRadius: 5,    // 회랑 반폭
     regionMs: 3000,       // 지역 개화 시간
     corridorMs: 1600,     // 회랑 파임 시간 (이후 지역 개화 시작)
+    closeMs: 2600,        // 닫힘(되덮임) 시간 — 개화보다 약간 느리게, 지워지는 게 보이도록
     liftMs: 3000,         // liftAll 소요 시간
     bloomTriggerDist: 7,  // openOnArrive: 플레이어가 이 거리 안에 오면 지역 개화
     // ── 안개 벽 (260712 사용자 요구: "벽처럼 못 보는 영역을 확실히 가리게") ──
@@ -164,14 +165,22 @@
     }
 
     // 시각(now) 기준 실제 적용값 — 회랑은 끝점 전진, 원은 반경 성장
+    // closing(t0c) 이 찍힌 항목은 반대로 오므라든다 — 회랑은 먼 끝에서부터 되덮이고
+    // 원은 반경이 준다. revealAt 이 이 함수를 공유하므로 시각·이동 벽·유령 게이팅이
+    // 한 몸으로 닫힌다 (260727 0.5단계 "닫힘 = 사건").
     function _effective(rp, now) {
       var e = now - rp.t0;
       if (e < 0) return null; // 아직 시작 전
-      if (rp.kind === 'corridor') {
-        var p = _ease(Math.min(1, e / opts.corridorMs));
-        return { ax: rp.ax, az: rp.az, bx: rp.ax + (rp.bx - rp.ax) * p, bz: rp.az + (rp.bz - rp.az) * p, r: rp.target };
+      var s = 1;
+      if (rp.closing != null) {
+        s = 1 - _ease(Math.min(1, (now - rp.closing) / opts.closeMs));
+        if (s <= 0) return null;
       }
-      var k = _ease(Math.min(1, e / opts.regionMs));
+      if (rp.kind === 'corridor') {
+        var p = _ease(Math.min(1, e / opts.corridorMs)) * s;
+        return { ax: rp.ax, az: rp.az, bx: rp.ax + (rp.bx - rp.ax) * p, bz: rp.az + (rp.bz - rp.az) * p, r: rp.target * Math.min(1, s * 2) };
+      }
+      var k = _ease(Math.min(1, e / opts.regionMs)) * s;
       return { ax: rp.ax, az: rp.az, bx: rp.bx, bz: rp.bz, r: rp.target * k };
     }
 
@@ -193,6 +202,28 @@
     function carve(fromX, fromZ, toX, toZ) {
       _reveals.push({ ax: fromX, az: fromZ, bx: toX, bz: toZ, kind: 'corridor', t0: _now(), target: opts.corridorRadius });
       console.log('[spatial-fog] carve — 회랑 (' + Math.round(fromX) + ',' + Math.round(fromZ) + ')→(' + Math.round(toX) + ',' + Math.round(toZ) + ')');
+    }
+    // (x,z) 로 향하던 걷힘을 안개로 되덮는다 (260727 0.5단계 — "내 감정이 길 하나를 지웠다").
+    // 그 지점을 끝점으로 가진 회랑·그 지점의 원·대기 중 도착 개화를 전부 닫는다.
+    // 닫힌 자리는 revealAt 공유 덕에 이동 벽·유령 숨김도 함께 복귀. 플레이어가 그 회랑
+    // 안에 서 있어도 "맑은 쪽 걸음 통과" 규칙이 탈출을 보장한다.
+    function close(x, z) {
+      var now = _now();
+      var hit = 0;
+      var R = Math.max(opts.corridorRadius, opts.regionRadius) * 0.8;
+      for (var i = 0; i < _reveals.length; i++) {
+        var rp = _reveals[i];
+        if (rp.closing != null) continue;
+        var dx = rp.bx - x, dz = rp.bz - z;
+        if (dx * dx + dz * dz <= R * R) { rp.closing = now; hit++; }
+      }
+      for (var p = _pending.length - 1; p >= 0; p--) {
+        var pd = _pending[p];
+        var pdx = pd.x - x, pdz = pd.z - z;
+        if (pdx * pdx + pdz * pdz <= R * R) { _pending.splice(p, 1); hit++; }
+      }
+      if (hit) console.log('[spatial-fog] close — (' + Math.round(x) + ',' + Math.round(z) + ') 길 되덮임 (' + hit + '항목)');
+      return hit;
     }
     // 도착 개화: 플레이어가 (x,z) 근처에 오면 그 지역이 개화한다
     var _pending = [];   // { x, z, r, trigger }
@@ -323,6 +354,11 @@
     function _frame() {
       var now = _now();
       var t = now / 1000;
+      // 다 닫힌 항목 제거 — MAX 24 칸을 유령 항목이 차지하지 않게
+      for (var ci = _reveals.length - 1; ci >= 0; ci--) {
+        var crp = _reveals[ci];
+        if (crp.closing != null && now - crp.closing > opts.closeMs) _reveals.splice(ci, 1);
+      }
       var MAX = U.MAX;
       var startIdx = Math.max(0, _reveals.length - MAX);
       if (startIdx > 0 && !_overflowWarned) {
@@ -414,6 +450,7 @@
       open: open,
       openAt: openAt,
       carve: carve,
+      close: close,
       openOnArrive: openOnArrive,
       liftAll: liftAll,
       revealAt: revealAt,
