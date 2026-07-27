@@ -44,3 +44,6 @@ gana-*.png
 
 # 세션 발화 로그 (사적 대화, 공개 금지)
 _session_user_utterances/
+
+# 개인 전략 문서 (공개 레포 포함 금지)
+private/
