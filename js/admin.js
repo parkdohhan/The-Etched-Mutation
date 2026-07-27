@@ -557,6 +557,28 @@ function setAllScenesCollapsed(collapsed) {
 window.toggleSceneCollapse = toggleSceneCollapse;
 window.setAllScenesCollapsed = setAllScenesCollapsed;
 
+// ─── ADM4: 간단/풀버전 편집 모드 ──────────────────────────────────
+// 기본 = 간단(현행 저작 루프 칸만). .adv-only 요소는 풀버전에서만 표시.
+// 상태는 localStorage 유지 — 재방문 시 마지막 모드 복원.
+const FULL_EDIT_KEY = 'tem_admin_full_edit';
+function applyFullEditMode() {
+    const on = localStorage.getItem(FULL_EDIT_KEY) === '1';
+    const content = document.getElementById('editContent');
+    if (content) content.classList.toggle('full-edit', on);
+    const btn = document.getElementById('fullEditToggle');
+    if (btn) {
+        btn.textContent = on ? '간단 편집으로' : '풀버전 편집';
+        btn.classList.toggle('active', on);
+    }
+}
+function toggleFullEdit() {
+    const on = localStorage.getItem(FULL_EDIT_KEY) === '1';
+    localStorage.setItem(FULL_EDIT_KEY, on ? '0' : '1');
+    applyFullEditMode();
+}
+window.toggleFullEdit = toggleFullEdit;
+applyFullEditMode();
+
 // ─── W3 씬 하위 섹션 접힘 상태(choices/dialog 편집기) ──────────────
 const openSubsections = new Set();
 function isSubsectionOpen(id) { return openSubsections.has(id); }
@@ -681,7 +703,7 @@ function renderScenes() {
             <div class="scene-header">
                 <div style="display: flex; align-items: center; gap: 1rem;">
                     <div class="scene-number">장면 ${sceneIndex + 1}</div>
-                    <select class="editor-input scene-type-select" data-scene-index="${sceneIndex}" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.9rem;">
+                    <select class="editor-input scene-type-select adv-only" data-scene-index="${sceneIndex}" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.9rem;">
                         <option value="normal" ${(scene.sceneType || 'normal') === 'normal' ? 'selected' : ''}>일반</option>
                         <option value="branch" ${scene.sceneType === 'branch' ? 'selected' : ''}>분기</option>
                         <option value="ending" ${scene.sceneType === 'ending' ? 'selected' : ''}>엔딩</option>
@@ -754,7 +776,7 @@ function renderScenes() {
                 <label class="editor-label">잔향 단어</label>
                 <input type="text" class="editor-input scene-echo-words-input" data-scene-index="${sceneIndex}" placeholder="무서웠어, 미안해, 후회했어 (콤마로 구분)" value="${(scene.echoWords || []).join(', ')}">
             </div>
-            <div class="editor-input-group scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'};">
+            <div class="editor-input-group scene-original-fields adv-only" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'};">
                 <label class="editor-label">원본 이유</label>
                 <input type="text" class="editor-input scene-original-reason-input" data-scene-index="${sceneIndex}" placeholder="원본 기록자의 이유 (예: 내가 살릴 수 있었는데...)" value="${scene.originalReason || ''}">
             </div>
@@ -767,7 +789,7 @@ function renderScenes() {
                 <p class="void-level-display" data-scene-index="${sceneIndex}">VOID Level: ${(scene.voidInfo && scene.voidInfo.voidLevel) ? scene.voidInfo.voidLevel.charAt(0).toUpperCase() + scene.voidInfo.voidLevel.slice(1) : 'Low'}</p>
             </div>
             ${renderSceneAfPicker(scene, sceneIndex)}
-            <div class="editor-section" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
+            <div class="editor-section adv-only" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
                 <h3 class="editor-section-title" style="margin-bottom: 1rem;">Original Emotion 매핑</h3>
                 <div class="editor-input-group" style="margin-bottom: 1.5rem;">
                     <label class="editor-label">감정 (emotion : intensity)</label>
@@ -803,7 +825,7 @@ function renderScenes() {
                     <div class="scene-terrain-mount" data-scene-index="${sceneIndex}" id="sceneTerrainMount-${sceneIndex}" style="${scene.terrainPreviewEnabled ? '' : 'display:none;'}"></div>
                 </div>
             </div>
-            <div class="editor-section scene-original-fields" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'}; margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
+            <div class="editor-section scene-original-fields adv-only" data-scene-index="${sceneIndex}" style="display: ${(scene.sceneType === 'branch' || scene.sceneType === 'ending') ? 'block' : 'none'}; margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
                 <h3 class="editor-section-title" style="margin-bottom: 1rem;">원본 이유 (정렬도 비교용)</h3>
                 <div class="editor-input-group" style="margin-bottom: 1.5rem;">
                     <label class="editor-label">감정 앵커 (쉼표로 구분, 자유 입력 가능)</label>
@@ -846,7 +868,7 @@ function renderScenes() {
             </div>
             ${renderChoicesEditor(scene, sceneIndex)}
             ${renderDialogEditor(scene, sceneIndex)}
-            <div class="editor-section scene-exclusions-section" data-scene-index="${sceneIndex}" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
+            <div class="editor-section scene-exclusions-section adv-only" data-scene-index="${sceneIndex}" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2); border-radius: 4px;">
                 <h3 class="editor-section-title" style="margin-bottom: 0.5rem;">부정 제약 (연출 레이어)</h3>
                 <small style="display: block; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);">
                     이 씬이 <b>뜨지 않을 조건</b>을 정의. 하나라도 매칭되면 궤적 후보에서 제외됨. 플레이어에게는 이유가 노출되지 않음.
@@ -4466,7 +4488,7 @@ function renderSceneAfPicker(scene, sceneIndex) {
     const sumColor = (s) => Math.abs(s - 1) < 0.02 ? 'var(--accent-memory)' : (s === 0 ? 'var(--text-muted)' : '#c97a6a');
     const input = (key, group) => `<input type="number" class="editor-input scene-af-input" data-scene-index="${sceneIndex}" data-af-group="${group}" data-af-key="${key}" min="0" max="1" step="0.05" value="${aNum(group === 'attr' ? attr[key] : cf[key])}" style="width:60px;">`;
     return `
-            <div class="scene-af-section" data-scene-index="${sceneIndex}" style="margin-top:1rem;padding:1rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
+            <div class="scene-af-section adv-only" data-scene-index="${sceneIndex}" style="margin-top:1rem;padding:1rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
                 <h4 style="margin:0 0 0.4rem 0;font-size:0.9rem;">씬 AF 좌표 (선택)</h4>
                 <small style="display:block;color:var(--text-muted);margin-bottom:0.6rem;font-size:0.72rem;">비우면 메모리 수준 AF 상속. 씬별 미세 차이 있을 때만 입력.</small>
                 <div style="margin-bottom:0.5rem;">

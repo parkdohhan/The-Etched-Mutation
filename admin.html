@@ -7,7 +7,7 @@
     <link rel="icon" href="data:,">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/admin.css?v=260727a">
 </head>
 <body>
     <div class="password-screen" id="passwordScreen">
@@ -136,6 +136,8 @@
                 <div class="editor-tabs">
                     <button class="editor-tab active" onclick="switchTab('edit')">편집</button>
                     <!-- W2-G(F8): 잔상 모더레이션은 상단 [운영] 탭으로 이관됨 (편집화면 탭 제거) -->
+                    <!-- ADM4: 간단/풀버전 편집 토글 — 기본은 현행 저작 루프 칸만 노출 -->
+                    <button class="editor-tab" id="fullEditToggle" onclick="toggleFullEdit()" title="레거시·고급 칸 표시/숨김">풀버전 편집</button>
                 </div>
                 <button type="button" class="editor-back-home" onclick="cancelEdit()">대시보드로 돌아가기</button>
             </div>
@@ -172,7 +174,7 @@
                         <textarea class="editor-textarea" id="completedSentence" placeholder="이 메모리를 완성하는 문장 입력" rows="2"></textarea>
                         <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">Memory Finder에서 유령처럼 떠다니는 문장</small>
                     </div>
-                    <div class="editor-input-group">
+                    <div class="editor-input-group adv-only">
                         <label class="editor-label">감정 벡터 (Finder 매칭용)</label>
                         <div id="originalVectorEditor" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
                             <label style="font-size:0.85rem;color:var(--text-muted);width:100%;">0~1 사이 값. 비워두면 씬에서 자동 유도</label>
@@ -185,7 +187,7 @@
                         </div>
                         <button type="button" class="table-btn" onclick="autoFillOriginalVector()" style="font-size:0.8rem;">씬에서 자동 유도</button>
                     </div>
-                    <div class="editor-input-group">
+                    <div class="editor-input-group adv-only">
                         <label class="editor-label">작가의 말 (진엔딩 보상)</label>
                         <textarea class="editor-textarea" id="authorNote" placeholder="진엔딩 달성 시 플레이어에게 보여줄 메시지..." rows="3"></textarea>
                         <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">100자 이하 권장</small>
@@ -284,7 +286,7 @@
                 </div>
 
                 <!-- 공간 설정 (Lumen V1, 작업 12-1·12-3) -->
-                <div class="editor-section">
+                <div class="editor-section adv-only">
                     <h3 class="editor-section-title">공간 설정 (Lumen)</h3>
                     <div class="editor-input-group">
                         <label class="editor-label">지형 형태</label>
@@ -315,7 +317,7 @@
                 </div>
 
                 <!-- 유령 변주 풀 (V2.1 SCOPE §4 V2-2) -->
-                <div class="editor-section" id="ghostVariantsSection">
+                <div class="editor-section adv-only" id="ghostVariantsSection">
                     <h3 class="editor-section-title">유령 변주 풀 <span style="color:var(--accent-memory);font-size:0.78rem;">(V2.1)</span></h3>
                     <small id="ghostVariantsHint" style="display:block;font-size:0.72rem;color:var(--text-muted);margin-bottom:0.6rem;">
                         같은 메모리 안의 유령 인격 카드. drift = 같은 유령 발화 변주. speciation = 다른 path 가 만든 새 유령 시드. SeekerMatchEngine 매칭 입력.<br>
@@ -358,7 +360,7 @@
                     <button class="editor-save-btn" onclick="saveMemory()">저장</button>
                     <button class="editor-cancel-btn" onclick="cancelEdit()">취소</button>
                 </div>
-                <div class="export-section" style="margin-top: 2rem; padding: 2rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2);">
+                <div class="export-section adv-only" style="margin-top: 2rem; padding: 2rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2);">
                     <h3 class="editor-section-title">데이터 내보내기 / 가져오기</h3>
                     <div style="margin-bottom: 1.5rem;">
                         <button class="editor-save-btn" onclick="exportMemoriesJSON()" style="margin-right: 1rem;">JSON 다운로드</button>
@@ -759,7 +761,7 @@
     <script src="js/shared/spatialAudio.js"></script>
     <script src="js/ui/strataView.js"></script>
     <script src="js/ui/lumen_admin_scene_terrain_preview.js"></script>
-    <script type="module" src="js/admin.js?v=260717e"></script>
+    <script type="module" src="js/admin.js?v=260727a"></script>
     <script type="module" src="js/admin/ghost_variants_editor.js"></script>
     <script type="module" src="js/admin-trajectory.js?v=260717e"></script>
     <script src="js/contamination.js"></script>
