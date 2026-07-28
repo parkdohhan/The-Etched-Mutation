@@ -1,0 +1,1052 @@
+{
+ "by_memory": {
+  "footprints": {
+   "echo_follow": {
+    "A": {
+     "median": 0.3493,
+     "steps": [
+      0.7262,
+      0.7352,
+      0.3656,
+      0.3096,
+      0.2611,
+      0.333
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 2,
+      "fixation": 2
+     },
+     "buckets": {
+      "HIGH": 2,
+      "MID": 2,
+      "FIXATED": 2
+     }
+    },
+    "B": {
+     "median": 0.3493,
+     "steps": [
+      0.7262,
+      0.7352,
+      0.3656,
+      0.3096,
+      0.2611,
+      0.333
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 2,
+      "fixation": 2
+     },
+     "buckets": {
+      "HIGH": 2,
+      "MID": 2,
+      "FIXATED": 2
+     }
+    },
+    "C": {
+     "median": 0.2526,
+     "steps": [
+      0.6822,
+      0.5149,
+      0.1024,
+      0.2532,
+      0.2452,
+      0.252
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 4
+     },
+     "buckets": {
+      "HIGH": 2,
+      "MID": 4
+     }
+    }
+   },
+   "bridge": {
+    "A": {
+     "median": 0.266,
+     "steps": [
+      0.7071,
+      0.5473,
+      0,
+      0.0896,
+      0.2103,
+      0.3216
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "displacement": 2,
+      "bridge": 2
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 2,
+      "MID": 2
+     }
+    },
+    "B": {
+     "median": 0.266,
+     "steps": [
+      0.7071,
+      0.5473,
+      0,
+      0.0896,
+      0.2103,
+      0.3216
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "displacement": 2,
+      "bridge": 2
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 2,
+      "MID": 2
+     }
+    },
+    "C": {
+     "median": 0.1463,
+     "steps": [
+      0.7161,
+      0.4962,
+      0,
+      0.0462,
+      0.1154,
+      0.1772
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "contradiction": 2,
+      "displacement": 1,
+      "bridge": 1
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 3,
+      "MID": 1
+     }
+    }
+   },
+   "contradiction": {
+    "A": {
+     "median": 0.0209,
+     "steps": [
+      0.5427,
+      0.4747,
+      0.0419,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "displacement": 4
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 4
+     }
+    },
+    "B": {
+     "median": 0.0209,
+     "steps": [
+      0.5427,
+      0.4747,
+      0.0419,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "displacement": 4
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 4
+     }
+    },
+    "C": {
+     "median": 0,
+     "steps": [
+      0.4479,
+      0.3902,
+      0,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "bridge": 3,
+      "contradiction": 3
+     },
+     "buckets": {
+      "MID": 2,
+      "LOW": 4
+     }
+    }
+   },
+   "displacement": {
+    "A": {
+     "median": 0.2945,
+     "steps": [
+      0.4565,
+      0.4138,
+      0.1282,
+      0.2145,
+      0.2641,
+      0.3249
+     ],
+     "patterns": {
+      "bridge": 3,
+      "fixation": 3
+     },
+     "buckets": {
+      "MID": 3,
+      "FIXATED": 3
+     }
+    },
+    "B": {
+     "median": 0.2945,
+     "steps": [
+      0.4565,
+      0.4138,
+      0.1282,
+      0.2145,
+      0.2641,
+      0.3249
+     ],
+     "patterns": {
+      "bridge": 3,
+      "fixation": 3
+     },
+     "buckets": {
+      "MID": 3,
+      "FIXATED": 3
+     }
+    },
+    "C": {
+     "median": 0.1361,
+     "steps": [
+      0.4661,
+      0.3313,
+      0.029,
+      0.088,
+      0.1028,
+      0.1693
+     ],
+     "patterns": {
+      "bridge": 4,
+      "contradiction": 2
+     },
+     "buckets": {
+      "MID": 3,
+      "LOW": 3
+     }
+    }
+   },
+   "avoidance": {
+    "A": {
+     "median": 0.0993,
+     "steps": [
+      0,
+      0.2818,
+      0.0095,
+      0.1725,
+      0.1038,
+      0.0949
+     ],
+     "patterns": {
+      "contradiction": 1,
+      "bridge": 4,
+      "displacement": 1
+     },
+     "buckets": {
+      "LOW": 3,
+      "MID": 3
+     }
+    },
+    "B": {
+     "median": 0.0993,
+     "steps": [
+      0,
+      0.2818,
+      0.0095,
+      0.1725,
+      0.1038,
+      0.0949
+     ],
+     "patterns": {
+      "contradiction": 1,
+      "bridge": 4,
+      "displacement": 1
+     },
+     "buckets": {
+      "LOW": 3,
+      "MID": 3
+     }
+    },
+    "C": {
+     "median": 0.0944,
+     "steps": [
+      0.124,
+      0.2031,
+      0.0159,
+      0.0844,
+      0.082,
+      0.1043
+     ],
+     "patterns": {
+      "bridge": 4,
+      "contradiction": 2
+     },
+     "buckets": {
+      "MID": 2,
+      "LOW": 4
+     }
+    }
+   },
+   "fixation": {
+    "A": {
+     "median": 0,
+     "steps": [
+      0.3858,
+      0.5231,
+      0,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "bridge": 1,
+      "echo_follow": 1,
+      "displacement": 3,
+      "fixation": 1
+     },
+     "buckets": {
+      "MID": 1,
+      "HIGH": 1,
+      "LOW": 3,
+      "FIXATED": 1
+     }
+    },
+    "B": {
+     "median": 0,
+     "steps": [
+      0.3858,
+      0.5231,
+      0,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "bridge": 1,
+      "echo_follow": 1,
+      "displacement": 3,
+      "fixation": 1
+     },
+     "buckets": {
+      "MID": 1,
+      "HIGH": 1,
+      "LOW": 3,
+      "FIXATED": 1
+     }
+    },
+    "C": {
+     "median": 0,
+     "steps": [
+      0.5553,
+      0.4497,
+      0,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "contradiction": 1,
+      "bridge": 1,
+      "fixation": 2
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 2,
+      "FIXATED": 2
+     }
+    }
+   }
+  },
+  "UNDW-001": {
+   "echo_follow": {
+    "A": {
+     "median": 0.5964,
+     "steps": [
+      0.7719,
+      0.7395,
+      0.3825,
+      0.5016,
+      0.5563,
+      0.5748,
+      0.5836,
+      0.5957,
+      0.6105,
+      0.5972,
+      0.6029,
+      0.607
+     ],
+     "patterns": {
+      "echo_follow": 11,
+      "bridge": 1
+     },
+     "buckets": {
+      "HIGH": 11,
+      "MID": 1
+     }
+    },
+    "B": {
+     "median": 0.0691,
+     "steps": [
+      0.4215,
+      0.5447,
+      0.1599,
+      0.1291,
+      0.1082,
+      0.0812,
+      0.0498,
+      0.0569,
+      0.0435,
+      0.029,
+      0.0274,
+      0.0231
+     ],
+     "patterns": {
+      "bridge": 5,
+      "echo_follow": 1,
+      "contradiction": 3,
+      "fixation": 3
+     },
+     "buckets": {
+      "MID": 4,
+      "HIGH": 1,
+      "LOW": 4,
+      "FIXATED": 3
+     }
+    },
+    "C": {
+     "median": 0.0318,
+     "steps": [
+      0.3728,
+      0.4521,
+      0,
+      0,
+      0.0087,
+      0,
+      0.0145,
+      0.051,
+      0.0475,
+      0.0351,
+      0.0332,
+      0.0303
+     ],
+     "patterns": {
+      "bridge": 5,
+      "contradiction": 5,
+      "fixation": 2
+     },
+     "buckets": {
+      "MID": 2,
+      "LOW": 8,
+      "FIXATED": 2
+     }
+    }
+   },
+   "bridge": {
+    "A": {
+     "median": 0.5784,
+     "steps": [
+      0.7135,
+      0.7103,
+      0.4722,
+      0.532,
+      0.5537,
+      0.5728,
+      0.584,
+      0.5909,
+      0.6043,
+      0.5915,
+      0.5685,
+      0.5574
+     ],
+     "patterns": {
+      "echo_follow": 12
+     },
+     "buckets": {
+      "HIGH": 12
+     }
+    },
+    "B": {
+     "median": 0.2466,
+     "steps": [
+      0.2572,
+      0.4937,
+      0.1937,
+      0.2021,
+      0.2265,
+      0.236,
+      0.2325,
+      0.2963,
+      0.3223,
+      0.3226,
+      0.2752,
+      0.2327
+     ],
+     "patterns": {
+      "bridge": 12
+     },
+     "buckets": {
+      "MID": 12
+     }
+    },
+    "C": {
+     "median": 0.073,
+     "steps": [
+      0.1341,
+      0.2841,
+      0.001,
+      0.0004,
+      0.0081,
+      0.0427,
+      0.0682,
+      0.0777,
+      0.09,
+      0.1058,
+      0.0893,
+      0.0624
+     ],
+     "patterns": {
+      "bridge": 5,
+      "contradiction": 6,
+      "fixation": 1
+     },
+     "buckets": {
+      "MID": 2,
+      "LOW": 9,
+      "FIXATED": 1
+     }
+    }
+   },
+   "contradiction": {
+    "A": {
+     "median": 0.4428,
+     "steps": [
+      0.7987,
+      0.7529,
+      0.3273,
+      0.4256,
+      0.4414,
+      0.4671,
+      0.4511,
+      0.4231,
+      0.4301,
+      0.4387,
+      0.4442,
+      0.457
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 10
+     },
+     "buckets": {
+      "HIGH": 2,
+      "MID": 10
+     }
+    },
+    "B": {
+     "median": 0,
+     "steps": [
+      0.339,
+      0.2846,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.0007,
+      0,
+      0.0054,
+      0.0299
+     ],
+     "patterns": {
+      "bridge": 4,
+      "contradiction": 6,
+      "fixation": 2
+     },
+     "buckets": {
+      "MID": 2,
+      "LOW": 8,
+      "FIXATED": 2
+     }
+    },
+    "C": {
+     "median": 0.0132,
+     "steps": [
+      0.7078,
+      0.5277,
+      0,
+      0.0021,
+      0.005,
+      0.0131,
+      0.0152,
+      0,
+      0.0149,
+      0.0133,
+      0.0119,
+      0.0287
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "contradiction": 3,
+      "fixation": 3,
+      "bridge": 4
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 7,
+      "FIXATED": 3
+     }
+    }
+   },
+   "displacement": {
+    "A": {
+     "median": 0.379,
+     "steps": [
+      0.7981,
+      0.7526,
+      0.2988,
+      0.3146,
+      0.3114,
+      0.3549,
+      0.3549,
+      0.3623,
+      0.3958,
+      0.4094,
+      0.4192,
+      0.4443
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 10
+     },
+     "buckets": {
+      "HIGH": 2,
+      "MID": 10
+     }
+    },
+    "B": {
+     "median": 0.0506,
+     "steps": [
+      0.3446,
+      0.2366,
+      0.0398,
+      0.0317,
+      0.0544,
+      0.106,
+      0.0864,
+      0.0518,
+      0.0363,
+      0.0345,
+      0.0426,
+      0.0494
+     ],
+     "patterns": {
+      "bridge": 2,
+      "contradiction": 4,
+      "fixation": 6
+     },
+     "buckets": {
+      "MID": 2,
+      "LOW": 4,
+      "FIXATED": 6
+     }
+    },
+    "C": {
+     "median": 0.0086,
+     "steps": [
+      0.1825,
+      0.1852,
+      0,
+      0,
+      0,
+      0.0339,
+      0.0114,
+      0.0062,
+      0.0052,
+      0.0066,
+      0.0105,
+      0.018
+     ],
+     "patterns": {
+      "bridge": 3,
+      "contradiction": 5,
+      "fixation": 4
+     },
+     "buckets": {
+      "MID": 2,
+      "LOW": 6,
+      "FIXATED": 4
+     }
+    }
+   },
+   "avoidance": {
+    "A": {
+     "median": 0.4837,
+     "steps": [
+      0.6487,
+      0.6779,
+      0.4647,
+      0.6247,
+      0.6175,
+      0.615,
+      0.5026,
+      0.3879,
+      0.3676,
+      0.369,
+      0.3381,
+      0.2894
+     ],
+     "patterns": {
+      "echo_follow": 7,
+      "bridge": 4,
+      "fixation": 1
+     },
+     "buckets": {
+      "HIGH": 7,
+      "MID": 4,
+      "FIXATED": 1
+     }
+    },
+    "B": {
+     "median": 0.0789,
+     "steps": [
+      0,
+      0.3286,
+      0.1568,
+      0.1441,
+      0.0942,
+      0.0454,
+      0.0353,
+      0.0473,
+      0.0769,
+      0.0808,
+      0.0858,
+      0.0763
+     ],
+     "patterns": {
+      "contradiction": 7,
+      "bridge": 5
+     },
+     "buckets": {
+      "LOW": 9,
+      "MID": 3
+     }
+    },
+    "C": {
+     "median": 0,
+     "steps": [
+      0.4558,
+      0.4547,
+      0.0341,
+      0.0346,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "bridge": 4,
+      "contradiction": 8
+     },
+     "buckets": {
+      "MID": 2,
+      "LOW": 10
+     }
+    }
+   },
+   "fixation": {
+    "A": {
+     "median": 0.4301,
+     "steps": [
+      0.8179,
+      0.4089,
+      0.2597,
+      0.3273,
+      0.3859,
+      0.4221,
+      0.4317,
+      0.4286,
+      0.4363,
+      0.4326,
+      0.4409,
+      0.4701
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 10
+     },
+     "buckets": {
+      "HIGH": 2,
+      "MID": 10
+     }
+    },
+    "B": {
+     "median": 0,
+     "steps": [
+      0.8013,
+      0.477,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "contradiction": 6,
+      "fixation": 3,
+      "bridge": 1
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 7,
+      "FIXATED": 3
+     }
+    },
+    "C": {
+     "median": 0,
+     "steps": [
+      0.5995,
+      0.5099,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ],
+     "patterns": {
+      "echo_follow": 2,
+      "contradiction": 3,
+      "bridge": 2,
+      "fixation": 5
+     },
+     "buckets": {
+      "HIGH": 2,
+      "LOW": 5,
+      "FIXATED": 5
+     }
+    }
+   }
+  }
+ },
+ "identity_check": {
+  "footprints_A_equals_B": true
+ },
+ "pattern_counts": {},
+ "undw_only_litmus": {
+  "L1_B_대립_ge_공명": false,
+  "L1_측정": "대립 0.000 vs 공명 0.069",
+  "L2_B_대립자_contradiction_0": false,
+  "L2_측정": "B 대립자 패턴 {\"bridge\":4,\"contradiction\":6,\"fixation\":2}",
+  "L3_A_대립_lt_공명": true,
+  "L3_측정": "A 대립 0.443 vs A 공명 0.596",
+  "L3_보조_A_대립자_contradiction수": 0,
+  "L5_측정": "공명 A 0.596 → B 0.069"
+ },
+ "real_wiring_UNDW": {
+  "echo_follow": {
+   "A": {
+    "median": 0.6757,
+    "patterns": {
+     "echo_follow": 12
+    }
+   },
+   "B": {
+    "median": 0.1441,
+    "patterns": {
+     "echo_follow": 4,
+     "displacement": 5,
+     "fixation": 3
+    }
+   },
+   "C": {
+    "median": 0.0063,
+    "patterns": {
+     "echo_follow": 2,
+     "contradiction": 2,
+     "bridge": 3,
+     "fixation": 2,
+     "displacement": 3
+    }
+   }
+  },
+  "bridge": {
+   "A": {
+    "median": 0.7195,
+    "patterns": {
+     "echo_follow": 11,
+     "bridge": 1
+    }
+   },
+   "B": {
+    "median": 0.4847,
+    "patterns": {
+     "echo_follow": 7,
+     "displacement": 3,
+     "bridge": 2
+    }
+   },
+   "C": {
+    "median": 0.1103,
+    "patterns": {
+     "echo_follow": 2,
+     "contradiction": 3,
+     "fixation": 1,
+     "bridge": 3,
+     "displacement": 3
+    }
+   }
+  },
+  "contradiction": {
+   "A": {
+    "median": 0.5334,
+    "patterns": {
+     "echo_follow": 9,
+     "displacement": 2,
+     "bridge": 1
+    }
+   },
+   "B": {
+    "median": 0,
+    "patterns": {
+     "echo_follow": 2,
+     "bridge": 2,
+     "contradiction": 1,
+     "displacement": 5,
+     "fixation": 2
+    }
+   },
+   "C": {
+    "median": 0.0309,
+    "patterns": {
+     "echo_follow": 2,
+     "contradiction": 1,
+     "fixation": 3,
+     "bridge": 2,
+     "displacement": 4
+    }
+   }
+  },
+  "displacement": {
+   "A": {
+    "median": 0.4975,
+    "patterns": {
+     "echo_follow": 10,
+     "displacement": 1,
+     "bridge": 1
+    }
+   },
+   "B": {
+    "median": 0.1187,
+    "patterns": {
+     "echo_follow": 2,
+     "bridge": 1,
+     "fixation": 6,
+     "displacement": 3
+    }
+   },
+   "C": {
+    "median": 0,
+    "patterns": {
+     "echo_follow": 2,
+     "contradiction": 4,
+     "bridge": 2,
+     "fixation": 4
+    }
+   }
+  },
+  "avoidance": {
+   "A": {
+    "median": 0.5887,
+    "patterns": {
+     "echo_follow": 7,
+     "displacement": 3,
+     "bridge": 1,
+     "fixation": 1
+    }
+   },
+   "B": {
+    "median": 0,
+    "patterns": {
+     "contradiction": 4,
+     "echo_follow": 3,
+     "displacement": 3,
+     "bridge": 2
+    }
+   },
+   "C": {
+    "median": 0,
+    "patterns": {
+     "echo_follow": 1,
+     "bridge": 4,
+     "contradiction": 7
+    }
+   }
+  },
+  "fixation": {
+   "A": {
+    "median": 0.4867,
+    "patterns": {
+     "echo_follow": 10,
+     "bridge": 2
+    }
+   },
+   "B": {
+    "median": 0,
+    "patterns": {
+     "echo_follow": 2,
+     "displacement": 6,
+     "fixation": 3,
+     "bridge": 1
+    }
+   },
+   "C": {
+    "median": 0,
+    "patterns": {
+     "echo_follow": 2,
+     "contradiction": 2,
+     "bridge": 1,
+     "fixation": 5,
+     "displacement": 2
+    }
+   }
+  }
+ }
+}

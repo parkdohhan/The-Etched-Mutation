@@ -1,0 +1,199 @@
+{
+  "meta": {
+    "created": "260728",
+    "source": "supabase bxmppaxpzbkwebfbgpsm — SELECT only (설계 §5·§12)",
+    "note": "이후 전 과정이 이 스냅샷만 읽는다. DB 재조회 금지 (결정성 보장).",
+    "memory_axes_rule": "play-test.html:5176-5181 — 전 씬 original_emotion 중 값>0 키 합집합, 사전순 정렬",
+    "excluded": [
+      { "code": "UNDW-001", "scene_order": 10, "reason": "text 길이 1 (빈 씬) — 발화 생성 불가. 원본 감정 키(fear,numbness,shame)는 타 씬에 모두 존재하여 기억 축 불변" }
+    ],
+    "design_deviation": {
+      "설계": "§5 필수 = 발자국 + 권장 +1",
+      "실측": "발자국 6씬 전부 anchor_emotions = null → 현행 우선순위(씬 anchor > 기억 축 > 원본 키)에서 이미 기억 축 사용 → 자 A ≡ 자 B 축퇴, 대조 불가",
+      "조치": "진짜 A/B 대조는 UNDW-001(씬 anchor 1~2축 vs 기억 축 13축)에서 수행. 발자국은 축퇴 사실 기록 + 0단계·0.5단계 검증과의 연속성 확보용으로 유지"
+    }
+  },
+  "memories": [
+    {
+      "id": "1f586f9b-adad-4443-9289-f3a2529f10ed",
+      "code": "footprints",
+      "title": "발자국",
+      "scene_count_used": 6,
+      "memory_axes": ["anger", "confusion", "emptiness", "fear", "guilt", "isolation", "joy", "longing", "numbness", "sadness", "shame"],
+      "anchor_present": false
+    },
+    {
+      "id": "1835926d-5acc-4d43-afd7-273ed853bca4",
+      "code": "UNDW-001",
+      "title": "팬티만 입은 내여자",
+      "scene_count_used": 12,
+      "memory_axes": ["anger", "disgust", "envy", "fear", "guilt", "hope", "loneliness", "longing", "numbness", "sadness", "shame", "surprise", "tenderness"],
+      "anchor_present": true
+    }
+  ],
+  "scenes": [
+    {
+      "code": "footprints",
+      "scene_id": "cf93290b-8f15-442c-8c9d-5b0468487469",
+      "scene_order": 0,
+      "text": "습지 마을은 발자국이 잘 남는다. 나는 땅을 보고 다닌다. 캔버스화는 17살 여학생, 나이키는 마을회관 아저씨. 내 슬리퍼 자국이 도장처럼 찍힐 때, 나는 그들의 일원이 된다.",
+      "original_emotion_raw": "{\"joy\":0.3,\"fear\":0.2,\"anger\":0,\"guilt\":0,\"shame\":0.4,\"relief\":0,\"longing\":0.7,\"sadness\":0.4,\"numbness\":0,\"confusion\":0,\"emptiness\":0,\"isolation\":0.6}",
+      "anchor_emotions": null,
+      "echo_words": []
+    },
+    {
+      "code": "footprints",
+      "scene_id": "de0e5513-aece-43bb-9f92-494aa0e3b0ec",
+      "scene_order": 1,
+      "text": "여고생 운동화 옆에 누군가 발자국이 딱 붙어 있다. 어둑한 곳에서 멈춰 있다. 샤넬 구두가 와서: \"여기 땅이 참 건축하기 좋아요.\" 나는 발자국 안 남는 땅이 왜 좋은 건지 모른다.",
+      "original_emotion_raw": "{\"joy\":0.3,\"fear\":0.2,\"anger\":0,\"guilt\":0,\"shame\":0,\"relief\":0,\"longing\":0.1,\"sadness\":0.1,\"numbness\":0,\"confusion\":0.6,\"emptiness\":0,\"isolation\":0.4}",
+      "anchor_emotions": null,
+      "echo_words": []
+    },
+    {
+      "code": "footprints",
+      "scene_id": "5f9ee525-dffa-49c9-b96a-4433b718b998",
+      "scene_order": 2,
+      "text": "검은 정장 생쥐가 마을회관에 와서 마른 땅을 사 갔다. 공사장 부츠는 다 똑같다. 사진을 주워준 인력이 내 손을 꼭 붙잡는다. \"고맙다.\" 200원짜리 자판기 핫초코. 그 사진의 주인은 누구였을까.",
+      "original_emotion_raw": "{\"joy\":0.4,\"fear\":0.1,\"anger\":0,\"guilt\":0,\"shame\":0,\"relief\":0,\"longing\":0.7,\"sadness\":0.2,\"numbness\":0,\"confusion\":0.3,\"emptiness\":0,\"isolation\":0.6}",
+      "anchor_emotions": null,
+      "echo_words": []
+    },
+    {
+      "code": "footprints",
+      "scene_id": "f0d2d442-8f2a-4386-8b4d-caeb19f1ca33",
+      "scene_order": 3,
+      "text": "집에 돌아오자 노란 장화가 현관에 있다. 침실 문은 잠겨 있다. 신발장 위 사진 뒷면: \"사랑하는 나의 아내.\" 나는 장화 밑창에 칼로 표식을 새긴다.",
+      "original_emotion_raw": "{\"joy\":0,\"fear\":0.4,\"anger\":0.1,\"guilt\":0.2,\"shame\":0.1,\"relief\":0,\"longing\":0.3,\"sadness\":0.7,\"numbness\":0.6,\"confusion\":0.5,\"emptiness\":0.7,\"isolation\":0.8}",
+      "anchor_emotions": null,
+      "echo_words": []
+    },
+    {
+      "code": "footprints",
+      "scene_id": "07c9ab54-3f28-42cc-a7b9-548b5fef02b4",
+      "scene_order": 4,
+      "text": "2년 후, 마을 도로에 아스팔트가 깔린다. 손으로 짚어도 자국이 안 남는다. 엄마와 그가 혼인신고를 한다. 엄마는 그 사진 속 여인을 알까.",
+      "original_emotion_raw": "{\"joy\":0,\"fear\":0.2,\"anger\":0,\"guilt\":0,\"shame\":0,\"relief\":0,\"longing\":0.4,\"sadness\":0.3,\"numbness\":0,\"confusion\":0.6,\"emptiness\":0,\"isolation\":0}",
+      "anchor_emotions": null,
+      "echo_words": []
+    },
+    {
+      "code": "footprints",
+      "scene_id": "b2d34269-8d56-4333-869b-812f20b9805c",
+      "scene_order": 5,
+      "text": "주택에 사람들이 들어온다. 알 수 없는 발자국들이 끊임없이 생긴다. 이제 나는 아무 곳에도 속하지 못한다.",
+      "original_emotion_raw": "{\"joy\":0,\"fear\":0.4,\"anger\":0,\"guilt\":0,\"shame\":0,\"relief\":0,\"longing\":0.3,\"sadness\":0.7,\"numbness\":0,\"confusion\":0.2,\"emptiness\":0.8,\"isolation\":0.9}",
+      "anchor_emotions": null,
+      "echo_words": []
+    },
+
+    {
+      "code": "UNDW-001",
+      "scene_id": "747a7b85-a235-4bfe-8456-67dfe2308edf",
+      "scene_order": 1,
+      "text": "제물은 실패했다. 나는 발버둥치며 일어난다. 등은 땀으로 범벅이고, 바지엔 피가 샌다. 욕조에 그것이 잠겨 있다. 얼굴은 반쯤 잠겨 윤곽만 아른거린다. 나는 고개를 돌린다. 아른거리는 것이 싫어서. 냄새가 심해서 그런 것이다. 생리대를 사야겠어.",
+      "original_emotion_raw": { "fear": 0.6, "disgust": 0.5, "numbness": 0.4 },
+      "anchor_emotions": ["fear", "numbness"],
+      "echo_words": ["생리대를 사야겠어", "아른거리는 것이 싫어서"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "190f70c5-5f52-47e2-801d-d08157c7d314",
+      "scene_order": 2,
+      "text": "눈보라를 가르며 길을 나선다. 주머니 속 천뭉치를 꽉 쥔다. 낡은 레이스에 밴 냄새를 맡으면 그녀가 멀쩡히 살아있다고 믿고 싶어진다. 세 번째 슈퍼마켓. 빛바랜 파란 지붕. 문은 닫혀 있다. 나는 철문을 두드린다. 안 계세요?",
+      "original_emotion_raw": { "fear": 0.4, "longing": 0.5, "numbness": 0.3 },
+      "anchor_emotions": ["longing"],
+      "echo_words": ["안 계세요?", "파란 지붕"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "538df6fe-37a2-429b-a143-813d97c83000",
+      "scene_order": 3,
+      "text": "생리대 있죠? 여자가 진열대 아래를 뒤진다. 얼굴을 마주치자 숨이 멎는다. 광대뼈가 높고, 입술이 두껍고, 눈 밑이 처진. 아주, 내가 아주 보고 싶어 한 얼굴. 닮은 사람이야 많겠지만, 이 타이밍에, 이 장소에서. 나는 그것이 우연이길 바라지 않는다. 쪽방에서 전화벨이 울린다. 울리고, 끊기고, 울리고.",
+      "original_emotion_raw": { "hope": 0.3, "longing": 0.7, "surprise": 0.6 },
+      "anchor_emotions": ["longing", "surprise"],
+      "echo_words": ["광대뼈", "울리고, 끊기고, 울리고"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "d5be95ae-3970-40ed-9c36-43c62ab5e644",
+      "scene_order": 4,
+      "text": "아이가 여자의 허리에 매달린다. 작은 팔이 감싸는 동작은 익숙하고 자연스러웠다. 매일 하는 동작. 여자는 아이의 머리를 세게 때렸다. 들어가라고. 매일 거부당하는 동작. 그런데도 매일 하는 동작. 나는 그런 동작을 한 적이 있었나. 한 번이라도.",
+      "original_emotion_raw": { "envy": 0.6, "loneliness": 0.7, "tenderness": 0.4 },
+      "anchor_emotions": ["envy", "loneliness"],
+      "echo_words": ["매일 하는 동작", "한 번이라도"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "60c23c6f-df52-44eb-97c0-6996e6aad22d",
+      "scene_order": 5,
+      "text": "진돗개가 죽어 있었다. 입에 흰 거품, 반쯤 뜬 눈 위에 눈가루가 녹지 않고 있었다. 나는 얼어붙은 목줄을 풀었다. 발바닥은 아직 따뜻했다. 이게 뭐야. 할머니가 서 있었다. 당신이 뭘 했어. 나는 뛰었다. 개를 죽인 사람이 되어. 내가 죽인 건 아니지만.",
+      "original_emotion_raw": { "fear": 0.6, "anger": 0.3, "sadness": 0.3, "numbness": 0.2 },
+      "anchor_emotions": ["fear", "anger"],
+      "echo_words": ["내가 죽인 건 아니지만", "아직 따뜻했다"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "f9d4f82e-8d1d-4b17-a68d-011359aa4c26",
+      "scene_order": 6,
+      "text": "산 중턱. 세상이 눈과 나무로만 이루어져 있다. 발밑의 눈을 밀어내고 돌멩이로 땅을 파본다. 꽝꽝 얼어 있다. 삽의 머리조차 들어가지 않을 것이다. 손톱으로 땅을 갉아본다. 갉이지 않는다. 이곳엔 시체를 버릴 강도, 자를 칼도 없다.",
+      "original_emotion_raw": { "fear": 0.2, "sadness": 0.5, "numbness": 0.7 },
+      "anchor_emotions": ["numbness"],
+      "echo_words": ["갉이지 않는다", "꽝꽝 얼어 있다"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "9d289a1a-04ef-4508-994e-627a9901808a",
+      "scene_order": 7,
+      "text": "나는 처음으로 제물의 얼굴을 본다. 물에 불어 일그러졌지만, 광대뼈는 그대로였다. 내 얼굴에도 있는 광대뼈. 처음부터 같은 얼굴이었다. 늙은 손톱. 두꺼운 입술. 처음부터 알고 있었다. 보지 않았을 뿐이다. 전화는 내게 왔었다. 한 달. 한 달 동안. 내가 받지 않았다.",
+      "original_emotion_raw": { "guilt": 0.9, "longing": 0.4, "sadness": 0.6, "numbness": 0.3 },
+      "anchor_emotions": ["guilt", "loss"],
+      "echo_words": ["처음부터 같은 얼굴", "한 달 동안", "내가 받지 않았다"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "b2338c20-7fb5-4d63-985a-c010c7312a70",
+      "scene_order": 8,
+      "text": "엄마가 집에 안 오는 날이면 나는 서랍을 뒤졌다. 레이스가 잔뜩 달린 팬티. 몸에 가장 가깝게 닿는 것. 가장 오래 닿아 있는 것. 그래서 가장 많이 배어 있는 것. 그걸 쥐고 이불에 들어가면 어디선가 같은 팬티를 입고 있을 엄마를 상상할 수 있었다.",
+      "original_emotion_raw": { "longing": 0.7, "loneliness": 0.4, "tenderness": 0.6 },
+      "anchor_emotions": ["longing", "tenderness"],
+      "echo_words": ["가장 많이 배어 있는 것", "서랍"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "2dfc1c8a-03b5-4106-bf87-26c53304b80d",
+      "scene_order": 9,
+      "text": "이것을 입고 있는 한 나는 움직이지 않을 것이고, 움직이지 않으면 나는 나빠지지 않을 것이고, 나빠지지 않으면 엄마는 돌아올 것이다. 레이스가 허벅지를 긁었고, 뛰면 비즈가 살을 눌렀다. 나는 지켰다. 엄마는 안 지켰다.",
+      "original_emotion_raw": { "fear": 0.5, "hope": 0.4, "shame": 0.3, "longing": 0.3 },
+      "anchor_emotions": ["fear", "hope"],
+      "echo_words": ["움직이지 않으면", "나는 지켰다"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "96b9df7b-6037-4710-98cc-7aa26273f4db",
+      "scene_order": 11,
+      "text": "미현에게 팬티를 입혔다. 엄마가 내게 해준 것처럼. 이제 네가 날 지켜줄 거라고 생각했다. 나 여자 안 좋아해. 그 말은 이상하게 아프지 않았고, 그래서 더 오래 아팠다. 계정은 동결되었다. 죽었구나. 확실하지 않았지만 나는 그렇게 정했다.",
+      "original_emotion_raw": { "shame": 0.5, "longing": 0.6, "sadness": 0.5 },
+      "anchor_emotions": ["shame", "longing"],
+      "echo_words": ["나 여자 안 좋아해", "죽었구나"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "d79f3fec-3c6f-4bc5-9913-78edb956adff",
+      "scene_order": 12,
+      "text": "빨래건조대의 팬티가 갈색으로 바래 있다. 한번 배인 피는 완전히 빠지지 않는다. 색이 옅어질 뿐, 섬유 사이에 남는다. 엄마의 팬티도 언젠가 저렇게 되었다. 나는 그때 엄마가 무언가 이상한 액체를 흘리고 있는 줄 알았다.",
+      "original_emotion_raw": { "fear": 0.2, "shame": 0.6, "disgust": 0.5 },
+      "anchor_emotions": ["shame", "disgust"],
+      "echo_words": ["한번 배인 피", "비밀"]
+    },
+    {
+      "code": "UNDW-001",
+      "scene_id": "405e111d-0ee0-48ae-9c67-63e33a7d8734",
+      "scene_order": 13,
+      "text": "벨이 울렸다. 울리고, 끊기고, 울리고. 받을 듯 받지 않는 간격. 나는 화면을 응시하다가 내려놓았다. 연결도 거절도 하지 않은 채. 한 달. 한 달 동안. 저도요, 전화. 안 받은 적이 있어요.",
+      "original_emotion_raw": { "guilt": 0.7, "sadness": 0.4, "numbness": 0.6 },
+      "anchor_emotions": ["guilt", "numbness"],
+      "echo_words": ["받을 듯 받지 않는 간격", "한 달"]
+    }
+  ]
+}

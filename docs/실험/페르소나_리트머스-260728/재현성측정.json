@@ -1,0 +1,670 @@
+{
+ "meta": {
+  "created": "260728",
+  "repeats": 3,
+  "overall_mean_repeat_cosine": 0.9685,
+  "note": "설계 외 추가. 자 간 차이가 이 흔들림보다 큰지 판단하는 기준선."
+ },
+ "results": [
+  {
+   "utterance_id": "u003",
+   "archetype": "echo_follow",
+   "text": "그 붙어 있는 발자국 두 개, 얼마나 오래 보고 있었어요",
+   "repeat_cosines": [
+    0.9808,
+    0.9707,
+    0.9899
+   ],
+   "mean_repeat_cosine": 0.9805,
+   "runs": [
+    {
+     "anger": 0,
+     "confusion": 0.4,
+     "emptiness": 0.5,
+     "fear": 0.3,
+     "guilt": 0.1,
+     "isolation": 0.55,
+     "joy": 0,
+     "longing": 0.75,
+     "numbness": 0.3,
+     "sadness": 0.55,
+     "shame": 0
+    },
+    {
+     "anger": 0,
+     "confusion": 0.3,
+     "emptiness": 0.55,
+     "fear": 0.1,
+     "guilt": 0.1,
+     "isolation": 0.6,
+     "joy": 0.05,
+     "longing": 0.75,
+     "numbness": 0.3,
+     "sadness": 0.55,
+     "shame": 0.1
+    },
+    {
+     "anger": 0,
+     "confusion": 0.2,
+     "emptiness": 0.6,
+     "fear": 0.1,
+     "guilt": 0,
+     "isolation": 0.6,
+     "joy": 0,
+     "longing": 0.75,
+     "numbness": 0.3,
+     "sadness": 0.55,
+     "shame": 0
+    }
+   ]
+  },
+  {
+   "utterance_id": "u013",
+   "archetype": "echo_follow",
+   "text": "고개 돌린 거… 냄새 때문이라고 해두는 게 나았겠죠",
+   "repeat_cosines": [
+    0.9864,
+    0.9686,
+    0.9884
+   ],
+   "mean_repeat_cosine": 0.9811,
+   "runs": [
+    {
+     "anger": 0.1,
+     "disgust": 0.2,
+     "envy": 0,
+     "fear": 0.3,
+     "guilt": 0.4,
+     "hope": 0,
+     "loneliness": 0.5,
+     "longing": 0.3,
+     "numbness": 0.3,
+     "sadness": 0.55,
+     "shame": 0.7,
+     "surprise": 0.1,
+     "tenderness": 0.2
+    },
+    {
+     "anger": 0.1,
+     "disgust": 0.2,
+     "envy": 0,
+     "fear": 0.3,
+     "guilt": 0.5,
+     "hope": 0,
+     "loneliness": 0.5,
+     "longing": 0.2,
+     "numbness": 0.3,
+     "sadness": 0.5,
+     "shame": 0.7,
+     "surprise": 0,
+     "tenderness": 0.1
+    },
+    {
+     "anger": 0.1,
+     "disgust": 0.3,
+     "envy": 0,
+     "fear": 0.3,
+     "guilt": 0.6,
+     "hope": 0,
+     "loneliness": 0.4,
+     "longing": 0.2,
+     "numbness": 0.4,
+     "sadness": 0.5,
+     "shame": 0.7,
+     "surprise": 0,
+     "tenderness": 0.1
+    }
+   ]
+  },
+  {
+   "utterance_id": "u027",
+   "archetype": "bridge",
+   "text": "샤넬 구두 같은 사람 우리 동네도 왔었음. 결국 다 밀렸지",
+   "repeat_cosines": [
+    0.9709,
+    0.9792,
+    0.9565
+   ],
+   "mean_repeat_cosine": 0.9689,
+   "runs": [
+    {
+     "anger": 0.3,
+     "confusion": 0.2,
+     "emptiness": 0.5,
+     "fear": 0.2,
+     "guilt": 0,
+     "isolation": 0.2,
+     "joy": 0.1,
+     "longing": 0,
+     "numbness": 0.4,
+     "sadness": 0.3,
+     "shame": 0.1
+    },
+    {
+     "anger": 0.3,
+     "confusion": 0.2,
+     "emptiness": 0.6,
+     "fear": 0.1,
+     "guilt": 0,
+     "isolation": 0.3,
+     "joy": 0,
+     "longing": 0.1,
+     "numbness": 0.5,
+     "sadness": 0.4,
+     "shame": 0.2
+    },
+    {
+     "anger": 0.3,
+     "confusion": 0.1,
+     "emptiness": 0.5,
+     "fear": 0.1,
+     "guilt": 0,
+     "isolation": 0.2,
+     "joy": 0.2,
+     "longing": 0,
+     "numbness": 0.4,
+     "sadness": 0.3,
+     "shame": 0.1
+    }
+   ]
+  },
+  {
+   "utterance_id": "u037",
+   "archetype": "bridge",
+   "text": "저도 냄새 때문이라고 해놓고 안 본 적 있어요 사실 아니었지만",
+   "repeat_cosines": [
+    0.9933,
+    0.967,
+    0.9858
+   ],
+   "mean_repeat_cosine": 0.982,
+   "runs": [
+    {
+     "anger": 0,
+     "disgust": 0.15,
+     "envy": 0,
+     "fear": 0.1,
+     "guilt": 0.55,
+     "hope": 0,
+     "loneliness": 0.1,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.15,
+     "shame": 0.6,
+     "surprise": 0,
+     "tenderness": 0
+    },
+    {
+     "anger": 0,
+     "disgust": 0.15,
+     "envy": 0,
+     "fear": 0.1,
+     "guilt": 0.55,
+     "hope": 0,
+     "loneliness": 0.1,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.15,
+     "shame": 0.6,
+     "surprise": 0.1,
+     "tenderness": 0
+    },
+    {
+     "anger": 0,
+     "disgust": 0.2,
+     "envy": 0,
+     "fear": 0.2,
+     "guilt": 0.55,
+     "hope": 0,
+     "loneliness": 0.1,
+     "longing": 0,
+     "numbness": 0.15,
+     "sadness": 0.15,
+     "shame": 0.6,
+     "surprise": 0.2,
+     "tenderness": 0
+    }
+   ]
+  },
+  {
+   "utterance_id": "u051",
+   "archetype": "contradiction",
+   "text": "땅 팔아서 돈 벌면 좋은거지 뭘 모르겠다는거임",
+   "repeat_cosines": [
+    0.9588,
+    0.9518,
+    0.9848
+   ],
+   "mean_repeat_cosine": 0.9652,
+   "runs": [
+    {
+     "anger": 0.6,
+     "confusion": 0.4,
+     "emptiness": 0.1,
+     "fear": 0.1,
+     "guilt": 0.1,
+     "isolation": 0.2,
+     "joy": 0.1,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.1,
+     "shame": 0.2
+    },
+    {
+     "anger": 0.6,
+     "confusion": 0.65,
+     "emptiness": 0.1,
+     "fear": 0.1,
+     "guilt": 0.1,
+     "isolation": 0.15,
+     "joy": 0.15,
+     "longing": 0.05,
+     "numbness": 0.1,
+     "sadness": 0.15,
+     "shame": 0.1
+    },
+    {
+     "anger": 0.6,
+     "confusion": 0.55,
+     "emptiness": 0.1,
+     "fear": 0.05,
+     "guilt": 0,
+     "isolation": 0.1,
+     "joy": 0.1,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.1,
+     "shame": 0.05
+    }
+   ]
+  },
+  {
+   "utterance_id": "u061",
+   "archetype": "contradiction",
+   "text": "생리대를 사야겠어? 사람이 욕조에 있는데?",
+   "repeat_cosines": [
+    0.993,
+    0.989,
+    0.9811
+   ],
+   "mean_repeat_cosine": 0.9877,
+   "runs": [
+    {
+     "anger": 0.55,
+     "disgust": 0.2,
+     "envy": 0,
+     "fear": 0.4,
+     "guilt": 0,
+     "hope": 0,
+     "loneliness": 0.1,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.1,
+     "shame": 0.1,
+     "surprise": 0.65,
+     "tenderness": 0
+    },
+    {
+     "anger": 0.5,
+     "disgust": 0.3,
+     "envy": 0,
+     "fear": 0.4,
+     "guilt": 0,
+     "hope": 0,
+     "loneliness": 0.1,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.1,
+     "shame": 0.1,
+     "surprise": 0.7,
+     "tenderness": 0
+    },
+    {
+     "anger": 0.6,
+     "disgust": 0.2,
+     "envy": 0,
+     "fear": 0.4,
+     "guilt": 0,
+     "hope": 0,
+     "loneliness": 0,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.1,
+     "shame": 0,
+     "surprise": 0.7,
+     "tenderness": 0
+    }
+   ]
+  },
+  {
+   "utterance_id": "u075",
+   "archetype": "displacement",
+   "text": "샤넬구두 그 사람들이 다 망친거임",
+   "repeat_cosines": [
+    0.9867,
+    0.9798,
+    0.9776
+   ],
+   "mean_repeat_cosine": 0.9813,
+   "runs": [
+    {
+     "anger": 0.75,
+     "confusion": 0.1,
+     "emptiness": 0.1,
+     "fear": 0,
+     "guilt": 0,
+     "isolation": 0.1,
+     "joy": 0,
+     "longing": 0,
+     "numbness": 0.05,
+     "sadness": 0.3,
+     "shame": 0
+    },
+    {
+     "anger": 0.8,
+     "confusion": 0.1,
+     "emptiness": 0.1,
+     "fear": 0.1,
+     "guilt": 0,
+     "isolation": 0.2,
+     "joy": 0,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.3,
+     "shame": 0
+    },
+    {
+     "anger": 0.8,
+     "confusion": 0.2,
+     "emptiness": 0.1,
+     "fear": 0.1,
+     "guilt": 0,
+     "isolation": 0.1,
+     "joy": 0,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.4,
+     "shame": 0.1
+    }
+   ]
+  },
+  {
+   "utterance_id": "u085",
+   "archetype": "displacement",
+   "text": "그 여자가 애를 그렇게 만든거지 님 탓 아님",
+   "repeat_cosines": [
+    0.9627,
+    0.951,
+    0.9692
+   ],
+   "mean_repeat_cosine": 0.961,
+   "runs": [
+    {
+     "anger": 0.2,
+     "disgust": 0.15,
+     "envy": 0,
+     "fear": 0.1,
+     "guilt": 0.35,
+     "hope": 0.4,
+     "loneliness": 0.15,
+     "longing": 0.1,
+     "numbness": 0.1,
+     "sadness": 0.3,
+     "shame": 0.25,
+     "surprise": 0.1,
+     "tenderness": 0.45
+    },
+    {
+     "anger": 0.3,
+     "disgust": 0.2,
+     "envy": 0,
+     "fear": 0.1,
+     "guilt": 0.5,
+     "hope": 0.3,
+     "loneliness": 0.1,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.3,
+     "shame": 0.3,
+     "surprise": 0.1,
+     "tenderness": 0.4
+    },
+    {
+     "anger": 0.4,
+     "disgust": 0.2,
+     "envy": 0,
+     "fear": 0.1,
+     "guilt": 0.5,
+     "hope": 0.4,
+     "loneliness": 0.2,
+     "longing": 0.1,
+     "numbness": 0.2,
+     "sadness": 0.4,
+     "shame": 0.3,
+     "surprise": 0.1,
+     "tenderness": 0.3
+    }
+   ]
+  },
+  {
+   "utterance_id": "u099",
+   "archetype": "avoidance",
+   "text": "음",
+   "repeat_cosines": [
+    0.9969,
+    0.9723,
+    0.9649
+   ],
+   "mean_repeat_cosine": 0.978,
+   "runs": [
+    {
+     "anger": 0.05,
+     "confusion": 0.55,
+     "emptiness": 0.4,
+     "fear": 0.1,
+     "guilt": 0.05,
+     "isolation": 0.2,
+     "joy": 0.05,
+     "longing": 0.1,
+     "numbness": 0.45,
+     "sadness": 0.15,
+     "shame": 0.05
+    },
+    {
+     "anger": 0.1,
+     "confusion": 0.55,
+     "emptiness": 0.4,
+     "fear": 0.1,
+     "guilt": 0.05,
+     "isolation": 0.2,
+     "joy": 0.05,
+     "longing": 0.1,
+     "numbness": 0.4,
+     "sadness": 0.15,
+     "shame": 0.05
+    },
+    {
+     "anger": 0,
+     "confusion": 0.5,
+     "emptiness": 0.4,
+     "fear": 0,
+     "guilt": 0,
+     "isolation": 0.1,
+     "joy": 0,
+     "longing": 0,
+     "numbness": 0.4,
+     "sadness": 0.1,
+     "shame": 0
+    }
+   ]
+  },
+  {
+   "utterance_id": "u109",
+   "archetype": "avoidance",
+   "text": "욕실 환기는 되나요",
+   "repeat_cosines": [
+    0.9487,
+    1,
+    0.9487
+   ],
+   "mean_repeat_cosine": 0.9658,
+   "runs": [
+    {
+     "anger": 0,
+     "disgust": 0,
+     "envy": 0,
+     "fear": 0,
+     "guilt": 0,
+     "hope": 0.1,
+     "loneliness": 0,
+     "longing": 0,
+     "numbness": 0.2,
+     "sadness": 0,
+     "shame": 0,
+     "surprise": 0,
+     "tenderness": 0
+    },
+    {
+     "anger": 0,
+     "disgust": 0,
+     "envy": 0,
+     "fear": 0,
+     "guilt": 0,
+     "hope": 0.1,
+     "loneliness": 0,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0,
+     "shame": 0,
+     "surprise": 0,
+     "tenderness": 0
+    },
+    {
+     "anger": 0,
+     "disgust": 0,
+     "envy": 0,
+     "fear": 0,
+     "guilt": 0,
+     "hope": 0.1,
+     "loneliness": 0,
+     "longing": 0,
+     "numbness": 0.2,
+     "sadness": 0,
+     "shame": 0,
+     "surprise": 0,
+     "tenderness": 0
+    }
+   ]
+  },
+  {
+   "utterance_id": "u123",
+   "archetype": "fixation",
+   "text": "아니 근데 아까 그 슬리퍼 자국은 어떻게 됐어요",
+   "repeat_cosines": [
+    0.9979,
+    0.9429,
+    0.9449
+   ],
+   "mean_repeat_cosine": 0.9619,
+   "runs": [
+    {
+     "anger": 0.1,
+     "confusion": 0.4,
+     "emptiness": 0,
+     "fear": 0,
+     "guilt": 0,
+     "isolation": 0,
+     "joy": 0,
+     "longing": 0,
+     "numbness": 0,
+     "sadness": 0,
+     "shame": 0
+    },
+    {
+     "anger": 0.1,
+     "confusion": 0.55,
+     "emptiness": 0,
+     "fear": 0,
+     "guilt": 0,
+     "isolation": 0,
+     "joy": 0,
+     "longing": 0,
+     "numbness": 0,
+     "sadness": 0,
+     "shame": 0
+    },
+    {
+     "anger": 0.1,
+     "confusion": 0.55,
+     "emptiness": 0.05,
+     "fear": 0.1,
+     "guilt": 0.05,
+     "isolation": 0.05,
+     "joy": 0.05,
+     "longing": 0.1,
+     "numbness": 0.05,
+     "sadness": 0.05,
+     "shame": 0.05
+    }
+   ]
+  },
+  {
+   "utterance_id": "u133",
+   "archetype": "fixation",
+   "text": "욕조에 잠겨있다는게 계속 걸리네요",
+   "repeat_cosines": [
+    0.9184,
+    0.8471,
+    0.9608
+   ],
+   "mean_repeat_cosine": 0.9088,
+   "runs": [
+    {
+     "anger": 0,
+     "disgust": 0.2,
+     "envy": 0,
+     "fear": 0.3,
+     "guilt": 0.1,
+     "hope": 0,
+     "loneliness": 0.1,
+     "longing": 0,
+     "numbness": 0.3,
+     "sadness": 0.1,
+     "shame": 0.1,
+     "surprise": 0,
+     "tenderness": 0
+    },
+    {
+     "anger": 0,
+     "disgust": 0.35,
+     "envy": 0,
+     "fear": 0.3,
+     "guilt": 0.15,
+     "hope": 0,
+     "loneliness": 0.1,
+     "longing": 0,
+     "numbness": 0.2,
+     "sadness": 0.15,
+     "shame": 0.2,
+     "surprise": 0.1,
+     "tenderness": 0
+    },
+    {
+     "anger": 0,
+     "disgust": 0.3,
+     "envy": 0,
+     "fear": 0.35,
+     "guilt": 0.2,
+     "hope": 0,
+     "loneliness": 0,
+     "longing": 0,
+     "numbness": 0.1,
+     "sadness": 0.15,
+     "shame": 0.2,
+     "surprise": 0.1,
+     "tenderness": 0
+    }
+   ]
+  }
+ ]
+}
