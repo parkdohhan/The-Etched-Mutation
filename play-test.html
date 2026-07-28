@@ -16,6 +16,9 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
   <!-- Lumen 오프닝 직진입: ?memory= 또는 sessionStorage에 id가 있으면 selectScreen flash 방지 + 검은 부팅 overlay -->
   <script>
+  // ── 큐레이터 모드 (2026-07-27): ?curator=1 → 1인칭 대신 작가용 전체 지도 + 접근(불빛) 시뮬.
+  //    모듈/일반 스크립트 양쪽에서 읽도록 가장 이른 시점에 window 플래그로 박는다.
+  try { window.__temCuratorMode = new URLSearchParams(location.search).get('curator') === '1'; } catch (_) { window.__temCuratorMode = false; }
   (function () {
     var hasMem = false;
     try {
@@ -23,6 +26,7 @@
       hasMem = !!p.get('memory') ||
         !!(sessionStorage && (sessionStorage.getItem('tem_archive_memory_id') || sessionStorage.getItem('demoMemoryId')));
     } catch (_) {}
+    if (window.__temCuratorMode) return; // 큐레이터 모드는 검은 부팅 overlay 불필요 (지도 바로 봄)
     if (!hasMem) return;
     var s = document.createElement('style');
     s.textContent = '#selectScreen{display:none!important}';
@@ -2155,6 +2159,8 @@
     }
 
     game.accessiblePinIds = new Set(selected.map(p => p.id));
+    // 큐레이터 모드 오버레이용 — 이번 턴 불빛의 기하(중심·반경·패턴) 기록. 소비자 없으면 무해.
+    game._lastAccessGeom = { pattern, center, radius: rule.radius };
     console.log('[DEBUG] updateAccess selected ids', Array.from(game.accessiblePinIds));
   }
 
@@ -4831,11 +4837,14 @@
     const { data, error } = await sb.from('memories').select('id, title').order('id');
     if (error) throw error;
     const all = data || [];
-    // 상영작만, 그리고 DEMO_MEMORY_IDS 에 적힌 순서대로.
+    // 260728: 상영작 제한 해제 (사용자 요청) — 서가에 모든 기억 노출.
+    // 상영작(DEMO_MEMORY_IDS)은 적힌 순서대로 맨 위, 나머지는 그 아래.
+    // 오염 깊이 규칙(상영작=관객 판만 센다)은 id 기준이라 그대로 유효.
     const demo = DEMO_MEMORY_IDS
       .map(id => all.find(m => m.id === id))
       .filter(Boolean);
-    game.memories = demo.length ? demo : all;  // 상영작이 하나도 안 잡히면 전체로 폴백
+    const rest = all.filter(m => !DEMO_MEMORY_IDS.includes(m.id));
+    game.memories = demo.concat(rest);
 
     // 서가 카드에 새길 깊이 — 진입 문장과 같은 자료(plays)에서 같은 규칙으로 센다.
     // 실패해도 서가는 뜬다 (깊이 줄만 비고, 진입은 막지 않는다).
