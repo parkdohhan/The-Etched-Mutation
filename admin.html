@@ -428,6 +428,9 @@
                     <button class="tv-toggle" id="tvAddMemoryBtn" style="flex:1;padding:6px;font-size:0.72rem;">+ 새 기억</button>
                     <button class="tv-toggle" id="tvAddSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="원본(Anchor) 씬 추가">+ 원본 씬</button>
                 </div>
+                <!-- 큐레이터 시뮬 (2026-07-27): 실전과 같은 함수로 접근(불빛) 이동을 보는 play-test 작가 모드 -->
+                <button class="tv-toggle" id="tvCuratorSimBtn" style="width:100%;padding:6px;font-size:0.72rem;margin-bottom:10px;" title="실전 접근 기하 그대로 — 가상 감정을 한 걸음씩 밟으며 열림 뭉텅이 이동 관찰"
+                        onclick="(function(){var s=document.getElementById('tvMemorySelect');var id=s&&s.value;if(!id){alert('기억을 먼저 선택하세요');return;}window.open('play-test.html?memory='+id+'&variant_strata=1&curator=1','_blank');})()">실전 시뮬 열기 (불빛 관찰)</button>
                 <!-- "+ 잔상 씬" 버튼 폐기 (2026-05-15 phase 1) — 잔상 = 유령 sprite (memories.ghost_condensation_points) 단일 경로로 통합.
                      동적 잔상 mutation/생성은 V3_backlog-260509.md §5-15 (지형 퀼트 작업과 묶음). -->
                 <div style="display:none;gap:6px;margin-bottom:12px;">

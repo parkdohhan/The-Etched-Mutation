@@ -26,11 +26,11 @@
       hasMem = !!p.get('memory') ||
         !!(sessionStorage && (sessionStorage.getItem('tem_archive_memory_id') || sessionStorage.getItem('demoMemoryId')));
     } catch (_) {}
-    if (window.__temCuratorMode) return; // 큐레이터 모드는 검은 부팅 overlay 불필요 (지도 바로 봄)
     if (!hasMem) return;
     var s = document.createElement('style');
     s.textContent = '#selectScreen{display:none!important}';
     document.head.appendChild(s);
+    if (window.__temCuratorMode) return; // 큐레이터 모드: 깜빡임 방지까지만, 검은 부팅 overlay 는 생략 (지도 바로 봄)
     function attachOverlay() {
       if (document.getElementById('lumenBootOverlay')) return;
       var o = document.createElement('div');
@@ -2159,8 +2159,15 @@
     }
 
     game.accessiblePinIds = new Set(selected.map(p => p.id));
-    // 큐레이터 모드 오버레이용 — 이번 턴 불빛의 기하(중심·반경·패턴) 기록. 소비자 없으면 무해.
-    game._lastAccessGeom = { pattern, center, radius: rule.radius };
+    // 큐레이터 모드 오버레이용 — 이번 턴 불빛의 기하(중심·반경·패턴·잠긴 씬) 기록. 소비자 없으면 무해.
+    game._lastAccessGeom = {
+      pattern,
+      center,
+      radius: rule.radius,
+      lockedSceneIds: game.pins
+        .filter(p => (p.type === 'core' || p.type === 'bridge') && _sceneLockedByExclusions(p))
+        .map(p => p.sceneId),
+    };
     console.log('[DEBUG] updateAccess selected ids', Array.from(game.accessiblePinIds));
   }
 
@@ -2234,6 +2241,163 @@
       const vp = game.pins.find(p => p.type === 'voidPin');
       if (vp) game.accessiblePinIds.add(vp.id);
     }
+  }
+
+  // ═══ 큐레이터 모드 (?curator=1) — 작가용 접근 기하 시뮬 ═══════════════════
+  // 원칙: "player sees fog, author sees map". 1인칭을 끄고 2D 전체 지도를 열어,
+  // 가상 감정을 한 걸음씩 넣으며 실제 게임과 **같은 함수**(byeoriCalculateStep →
+  // handleEmotionResult → updateAccess)로 접근 불빛이 움직이는 것을 본다.
+  // 계산기 복사 없음 — Canvas 쪽 별도 구현 대신 이 모드를 쓴다 (자 이원화 방지).
+  // DB 기록 없음: finishScene/insertPlay 를 타지 않는다.
+  // 플래그는 부팅부(L21)의 window.__temCuratorMode 를 그대로 쓴다 (병렬 세션 배관과 합류).
+
+  const CURATOR_PRESETS = [
+    { key: 'guilt',  label: '죄책 (guilt .6)',        vec: { guilt: 0.6, sadness: 0.3, numbness: 0.2 } },
+    { key: 'longing', label: '그리움 (longing .7)',   vec: { longing: 0.7, sadness: 0.4 } },
+    { key: 'numb',   label: '무감·회피 (numbness .6)', vec: { numbness: 0.6, fear: 0.2 } },
+    { key: 'anger',  label: '반발 (anger .6)',         vec: { anger: 0.6, disgust: 0.3 } },
+    { key: 'shame',  label: '수치 (shame .6)',         vec: { shame: 0.6, fear: 0.3 } },
+  ];
+
+  function _curatorEnsureMap() {
+    // FP 를 안 켰으므로 지도 무대를 직접 세운다 (finishScene 복귀 경로와 동일 순서).
+    const _mm = document.getElementById('mapMode');
+    _mm.classList.add('active');
+    _mm.style.visibility = 'visible';   // 직진입 경로가 걸어둔 visibility:hidden 해제 (FP 인계용 가림막)
+    buildTerrainFromData();
+    buildPins();
+    if (!game.accessiblePinIds || !game.accessiblePinIds.size) applyInitialAccess();
+    finalizePinAccess();
+    // 실제 그리기 — 이 두 줄이 없으면 지도가 검은 화면으로 남는다 (계산만 하고 렌더 X).
+    renderContourCanvas();
+    renderPins();
+    updateMapStatus();
+  }
+
+  function _curatorStep() {
+    const sel = document.getElementById('curOrigin');
+    const originIdx = sel ? Number(sel.value) : 0;
+    const scene = game.scenes[originIdx];
+    if (!scene) return;
+    let vec = null;
+    const custom = (document.getElementById('curCustom') || {}).value;
+    if (custom && custom.trim()) {
+      try { vec = JSON.parse(custom); } catch (e) { alert('JSON 형식 오류: ' + e.message); return; }
+    } else {
+      const pk = (document.getElementById('curPreset') || {}).value;
+      const p = CURATOR_PRESETS.find(o => o.key === pk) || CURATOR_PRESETS[0];
+      vec = Object.assign({}, p.vec);
+    }
+    // 가상 방문 처리 — origin 씬을 밟은 것으로 (잠금·visited 규칙이 실전과 같이 반응)
+    game.visitedCore[scene.id] = true;
+    game.currentSceneIndex = originIdx;
+    const userVector = { base: vec, reason_analysis: { is_void: false, attribution: null, target: null, core_fear: null } };
+    const orig = buildOriginalVectorFromScene(scene);
+    const anchors = parseAnchorEmotions(scene);
+    const result = byeoriCalculateStep({
+      userVector, originalVector: orig, anchorEmotions: anchors,
+      userTrajectory: game.userEmotionTrajectory || [],
+      originalTrajectory: game.originalEmotionTrajectory || [],
+      sceneScores: game.sceneScores || [],
+    }, { previousBucket: game.previousBucket, emotionHistory: game.emotionHistory });
+    game.previousBucket = result.alignment_bucket;
+    game.userEmotionTrajectory.push(Object.assign({}, vec));
+    game.originalEmotionTrajectory.push(Object.assign({}, orig.base || {}));
+    game.sceneScores.push(result.current_scene_score || 0);
+    handleEmotionResult({ userEmotion: vec, result, originSceneId: scene.id });
+    finalizePinAccess();
+    buildPins();
+    renderContourCanvas();
+    renderPins();
+    updateMapStatus();
+    _curatorDrawOverlay();
+    _curatorReadout(result);
+  }
+
+  function _curatorDrawOverlay() {
+    const layer = document.getElementById('mapPinsLayer');
+    if (!layer) return;
+    const prev = document.getElementById('curatorGeomOverlay');
+    if (prev) prev.remove();
+    const geom = game._lastAccessGeom;
+    const wrap = document.createElement('div');
+    wrap.id = 'curatorGeomOverlay';
+    wrap.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:3;';
+    if (geom && geom.center) {
+      const c = geom.center;
+      const circle = document.createElement('div');
+      const d = geom.radius * 2 * 100;
+      circle.style.cssText = 'position:absolute;border:1.5px dashed rgba(196,168,130,0.85);border-radius:50%;' +
+        'left:' + ((c.x - geom.radius) * 100) + '%;top:' + ((c.y - geom.radius) * 100) + '%;' +
+        'width:' + d + '%;height:' + d + '%;box-shadow:inset 0 0 40px rgba(196,168,130,0.10);';
+      wrap.appendChild(circle);
+      const dot = document.createElement('div');
+      dot.style.cssText = 'position:absolute;width:8px;height:8px;border-radius:50%;background:#c4a882;' +
+        'left:calc(' + (c.x * 100) + '% - 4px);top:calc(' + (c.y * 100) + '% - 4px);box-shadow:0 0 8px #c4a882;';
+      wrap.appendChild(dot);
+    }
+    // 잠긴 씬 표식
+    (game.pins || []).forEach(p => {
+      if ((p.type !== 'core' && p.type !== 'bridge') || !_sceneLockedByExclusions(p)) return;
+      const b = document.createElement('div');
+      b.textContent = '🔒';
+      b.style.cssText = 'position:absolute;font-size:11px;transform:translate(-50%,-140%);' +
+        'left:' + ((p.mapX != null ? p.mapX : p.x / 100) * 100) + '%;top:' + ((p.mapY != null ? p.mapY : p.y / 100) * 100) + '%;';
+      wrap.appendChild(b);
+    });
+    layer.appendChild(wrap);
+  }
+
+  function _curatorReadout(result) {
+    const el = document.getElementById('curReadout');
+    if (!el) return;
+    const geom = game._lastAccessGeom || {};
+    const openNames = (game.pins || [])
+      .filter(p => game.accessiblePinIds && game.accessiblePinIds.has(p.id))
+      .map(p => { const s = game.scenes.find(sc => sc.id === p.sceneId); return s ? 'S' + s.scene_order + (p.type === 'voidPin' ? '∅' : '') : p.type; });
+    const lockedNames = (game.pins || [])
+      .filter(p => (p.type === 'core' || p.type === 'bridge') && _sceneLockedByExclusions(p))
+      .map(p => { const s = game.scenes.find(sc => sc.id === p.sceneId); return s ? 'S' + s.scene_order : '?'; });
+    el.innerHTML =
+      '패턴: <b>' + (geom.pattern || '-') + '</b> · 반경 ' + (geom.radius != null ? geom.radius : '-') +
+      (result ? ' · 정렬 ' + (result.alignment_score != null ? Number(result.alignment_score).toFixed(2) : '-') : '') +
+      '<br>열림: ' + (openNames.join(', ') || '없음') +
+      '<br>잠김: ' + (lockedNames.join(', ') || '없음');
+  }
+
+  function _curatorInitPanel() {
+    if (!window.__temCuratorMode) return;
+    const sceneOpts = game.scenes.map((s, i) =>
+      '<option value="' + i + '">S' + s.scene_order + ' · ' + String(s.text || '').replace(/[<>"]/g, '').slice(0, 14) + '</option>').join('');
+    const presetOpts = CURATOR_PRESETS.map(p => '<option value="' + p.key + '">' + p.label + '</option>').join('');
+    const panel = document.createElement('div');
+    panel.id = 'curatorPanel';
+    panel.style.cssText = 'position:fixed;right:14px;top:14px;z-index:4000;width:250px;background:rgba(12,13,20,0.92);' +
+      'border:1px solid rgba(196,168,130,0.4);border-radius:6px;padding:12px 14px;color:#e0d8c4;' +
+      'font-family:sans-serif;font-size:12px;line-height:1.6;';
+    panel.innerHTML =
+      '<div style="font-size:13px;color:#c4a882;margin-bottom:8px;">큐레이터 시뮬 — 작가 전용</div>' +
+      '<label>어느 씬에서 감정을 남기나</label><br><select id="curOrigin" style="width:100%;margin:2px 0 8px;">' + sceneOpts + '</select>' +
+      '<label>가상 감정</label><br><select id="curPreset" style="width:100%;margin:2px 0 4px;">' + presetOpts + '</select>' +
+      '<textarea id="curCustom" rows="2" placeholder=\'직접 입력(JSON) 예: {"guilt":0.5}\' style="width:100%;margin:0 0 8px;font-size:11px;"></textarea>' +
+      '<button id="curStepBtn" style="width:100%;padding:6px;background:#c4a882;color:#0c0d14;border:none;border-radius:4px;cursor:pointer;font-weight:600;">한 걸음 ▶</button>' +
+      '<div id="curReadout" style="margin-top:8px;color:#a8a99f;"></div>' +
+      '<div style="margin-top:6px;font-size:10px;color:#6f7180;">기록 없음 — plays 에 안 남습니다.</div>';
+    document.body.appendChild(panel);
+    document.getElementById('curStepBtn').addEventListener('click', _curatorStep);
+    _curatorEnsureMap();
+    _curatorDrawOverlay();
+    _curatorReadout(null);
+  }
+
+  // 씬 데이터 로드 완료를 기다렸다가 패널 가동
+  if (window.__temCuratorMode) {
+    const _curPoll = setInterval(() => {
+      if (game.scenes && game.scenes.length && game.pins && game.pins.length) {
+        clearInterval(_curPoll);
+        _curatorInitPanel();
+      }
+    }, 400);
   }
 
   function getAttributionDirection(attribution) {
@@ -2896,6 +3060,24 @@
   }
 
   function onPinClick(pin) {
+    if (window.__temCuratorMode) {
+      // 큐레이터 모드: 씬에 들어가지 않고 "가상 관객이 이 씬을 방문했다 치고" 이동만.
+      // 출발 씬 드롭다운(curOrigin)과 동기화 — [한 걸음]이 이 씬에서 감정을 남기게 됨.
+      if (pin.type === 'core' || pin.type === 'bridge' || pin.type === 'voidPin') {
+        const idx = game.scenes.findIndex(s => s.id === pin.sceneId);
+        if (idx >= 0) {
+          game.visitedCore[pin.sceneId] = true;
+          game.currentSceneIndex = idx;
+          const sel = document.getElementById('curOrigin');
+          if (sel) sel.value = String(idx);
+          buildPins();
+          renderPins();
+          if (typeof _curatorDrawOverlay === 'function') _curatorDrawOverlay();
+          if (typeof _curatorReadout === 'function') _curatorReadout(null);
+        }
+      }
+      return;
+    }
     if (game.sealed) return;
     if (pin.locked) {
       LOG('pin locked');
@@ -5175,7 +5357,7 @@
     initAudio();
     document.getElementById('selectScreen').style.display = 'none';
     var _mm2 = document.getElementById('mapMode');
-    _mm2.style.visibility = 'hidden';
+    _mm2.style.visibility = window.__temCuratorMode ? 'visible' : 'hidden';
     _mm2.classList.add('active');
     try {
       await loadMemoryData(id);
@@ -6011,8 +6193,9 @@
     if (urlMemoryId) {
       document.getElementById('selectScreen').style.display = 'none';
       // Hide mapMode visually while activating it — FP adapter will take over
+      // (큐레이터 모드는 FP 를 안 켜므로 숨기면 검은 화면으로 남는다 — 그때만 보이게 둔다)
       var _mm = document.getElementById('mapMode');
-      _mm.style.visibility = 'hidden';
+      _mm.style.visibility = window.__temCuratorMode ? 'visible' : 'hidden';
       _mm.classList.add('active');
       try {
         await loadMemoryData(urlMemoryId);
@@ -7606,6 +7789,12 @@
         });
       }
 
+      if (window.__temCuratorMode) {
+        // 큐레이터 모드: 1인칭으로 안 넘어가고 레거시 2D 지도를 그대로 쓴다 (작가 = 지도, 관객 = 안개).
+        clearInterval(_startPoll);
+        console.log('[FP Adapter] curator mode — FP 진입 생략, 2D 지도 유지');
+        return;
+      }
       if (memId && hasPins && hasStrata && !_fpPlayActive) {
         console.log('[FP Adapter] Conditions met, initializing first-person play');
         clearInterval(_startPoll);
