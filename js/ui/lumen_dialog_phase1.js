@@ -987,18 +987,11 @@
   }
 
   // ─── 260730 이어받기 형식 (cont_v1) ─────────────────────────────
-  // 플래그 tem_cont_form (URL ?cont_form=1/0 > localStorage, 기본 OFF — variant strata 전례).
+  // 기본 동작 (사용자 결정 260730 "플래그고 뭐고 하지말고" — 플래그 게이트 제거).
   // 유령의 발화 = 도출 지문(절단점도출-260730, 촉발력 규칙)이 요동에서 찢겨 멈춘 것.
   // 플레이어가 연결사(Δ 연산자, era이론 §3) + 이어쓰기로 era 를 자기 p 로 닫는다.
   // 유령은 대답하지 않는다 — 씬당 이어받기 1회로 사건 종료. 지문 없는 씬은 자유 대화 폴백.
-  function _contFormEnabled() {
-    try {
-      var q = new URLSearchParams(location.search).get('cont_form');
-      if (q === '1') { try { localStorage.setItem('tem_cont_form', '1'); } catch (_) {} return true; }
-      if (q === '0') { try { localStorage.removeItem('tem_cont_form'); } catch (_) {} return false; }
-      return localStorage.getItem('tem_cont_form') === '1';
-    } catch (_) { return false; }
-  }
+  // 롤백 = git revert (플래그 없음).
 
   // setupCoreInput(play-test.html:4012, upstream 1976b7d) 과 같은 8종 — 기존 자산 승계.
   var CONT_CONNECTIVES = ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];
@@ -1516,10 +1509,10 @@
     var memoryId = input.memoryId || '';
     var sceneId  = input.sceneId  || sceneData.id || '';
 
-    // 260730 cont_v1 판정 — 플래그 ON + 이 씬의 도출 지문 존재 시에만. 아니면 자유 대화 그대로.
+    // 260730 cont_v1 판정 — 이 씬의 도출 지문이 있으면 기본 동작. 없으면 자유 대화 폴백.
     var _contMode = false, _contStem = null, _contConnective = '';
     try {
-      if (_contFormEnabled() && global.TemStemCuts) {
+      if (global.TemStemCuts) {
         var _sc0 = global.TemStemCuts[sceneId];
         if (_sc0 && _sc0.text) { _contStem = String(_sc0.text); _contMode = true; }
       }
