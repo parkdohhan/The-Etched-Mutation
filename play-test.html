@@ -73,7 +73,7 @@
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_objects.js?v=260730c"></script><!-- 260712 사물 조형 1단계 · 260730 룩 프리셋 -->
+  <script src="js/ui/lumen_scene_objects.js?v=260730h"></script><!-- 260712 사물 조형 1단계 · 260730 룩 프리셋 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -82,7 +82,8 @@
   <script src="js/ui/lumen_ghost_response.js?v=260714"></script>
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
-  <script src="js/ui/lumen_dialog_phase1.js?v=260730"></script>
+  <script src="js/shared/tem_stem_cuts.js?v=260730"></script><!-- 260730 이어받기 지문 (도출 절단) -->
+  <script src="js/ui/lumen_dialog_phase1.js?v=260730d"></script>
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260714"></script>
   <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
@@ -5135,7 +5136,8 @@
 
     // Extract memory row for cont_* fields
     let memRow = (!memRes.error && memRes.data && memRes.data.length > 0) ? memRes.data[0] : null;
-    game.memoryMeta = (memRow && memRow.meta) || {};  // 260730 사물 GLB 모델 등 기억 단위 meta
+    // 260730 사물 GLB 모델 등 기억 단위 meta — attach 배선은 다른 스코프라 window 로 전달
+    window.__temMemoryMeta = (memRow && memRow.meta) || {};
     if (memRow) {
       game.memoryTitle = memRow.title || game.memoryTitle || '';
       game.memoryLayers = memRow.layers || game.memoryLayers || 0;
@@ -6247,6 +6249,8 @@
     var _fpPlayActive = false; window._fpPlayActive = false;
     var _fpScenePins = [];
     var _fpNearPin = null;
+    var _fpAimSp = null;        // 260730: 크로스헤어가 실제 겨눈 핀 (마네킹 몸 포함)
+    var _fpAimDist = Infinity;
     var _fpNearDoor = false;
     var _fpProxEl = null;
     var _fpHintEl = null;
@@ -6255,6 +6259,8 @@
     var _fpIntroSeqDone = false;
     var PROXIMITY_ENTER = 5;
     var LONG_PRESS_MS = 800; // 2026-05-06: 1200 → 800. 진입 텀 단축 (V2-5 보강).
+    // 260730: 사물 열람도 같은 "길게 누르기" 로 통일 — 모듈이 같은 기준을 쓰게 공개
+    window.__temLongPressMs = LONG_PRESS_MS;
     var _lastFpPos = null;  // save position before entering scene
     var _lastFpYaw = 0;
 
@@ -6694,8 +6700,10 @@
               window.LumenSceneObjects.attach(rt, {
                 getScenePins: function () { return _fpScenePins; },
                 // 260730 GLB 사물 모델 — memories.meta.object_models 를 기억 단위로 전달
+                // (이 스코프엔 game 이 없다 — loadMemoryData 가 window 로 건네줌)
                 getObjectModels: function () {
-                  return (game.memoryMeta && game.memoryMeta.object_models) || null;
+                  var mm = window.__temMemoryMeta;
+                  return (mm && mm.object_models) || null;
                 }
               });
             }
@@ -7214,14 +7222,36 @@
       _aimRaycaster.set(cam.position, cam.getWorldDirection(new THREE.Vector3()));
       _aimRaycaster.far = 30;
       var meshes = [];
-      _fpScenePins.forEach(function (sp) { if (sp.accessible && !sp.visited) meshes.push(sp.mesh); });
+      var meshSp = new Map();   // mesh -> sp (핀 구슬 + 마네킹 몸통 모두 그 씬으로 귀속)
+      _fpScenePins.forEach(function (sp) {
+        if (sp.accessible && !sp.visited) { meshes.push(sp.mesh); meshSp.set(sp.mesh, sp); }
+      });
+      // 260730: 마네킹 몸통도 조준 대상 — "정확히 호버했을 때"의 실체는 유령의 몸이다
+      var rtMq = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+      var mq = rtMq && rtMq.__lumenSceneMannequins;
+      if (mq && typeof mq.ghosts === 'function') {
+        mq.ghosts().forEach(function (g) {
+          var sp = g && g.pin;
+          if (!sp || !sp.accessible || sp.visited || !g.root) return;
+          g.root.traverse(function (c) { if (c.isMesh) { meshes.push(c); meshSp.set(c, sp); } });
+        });
+      }
       // Also check exit door
       var door = window._temExitDoor;
       if (door && door.group) {
         door.group.traverse(function (c) { if (c.isMesh) meshes.push(c); });
       }
+      // 260730: 사물을 가림막으로 넣는다 — 사물을 겨눈 채 길게 누르면 "열람"만,
+      // 뒤에 선 유령의 씬 진입이 같이 터지지 않게 (동작 통일의 전제)
+      var objBlockers = null;
+      var so = rtMq && rtMq.__lumenSceneObjects;
+      if (so && typeof so.meshes === 'function') {
+        objBlockers = so.meshes();
+        for (var b = 0; b < objBlockers.length; b++) meshes.push(objBlockers[b]);
+      }
       var hits = _aimRaycaster.intersectObjects(meshes, false);
       if (hits.length === 0) return null;
+      if (objBlockers && objBlockers.indexOf(hits[0].object) !== -1) return null;  // 사물이 앞을 막음
       // Find which sp this mesh belongs to
       var hitMesh = hits[0].object;
       // Check door first
@@ -7230,9 +7260,8 @@
         door.group.traverse(function (c) { if (c === hitMesh) isDoor = true; });
         if (isDoor) return { type: 'door', dist: hits[0].distance };
       }
-      for (var i = 0; i < _fpScenePins.length; i++) {
-        if (_fpScenePins[i].mesh === hitMesh) return { type: 'pin', sp: _fpScenePins[i], dist: hits[0].distance };
-      }
+      var spHit = meshSp.get(hitMesh);
+      if (spHit) return { type: 'pin', sp: spHit, dist: hits[0].distance };
       return null;
     }
 
@@ -7263,6 +7292,9 @@
         var aimed = _getAimedPin(cam);
         var nowAiming = aimed && aimed.type === 'pin';
         var nowAimingDoor = aimed && aimed.type === 'door';
+        // 260730: 길게 누르기가 참조할 조준 상태 — 거리만으로 열리던 대화의 오발 제거
+        _fpAimSp = nowAiming ? aimed.sp : null;
+        _fpAimDist = nowAiming ? aimed.dist : Infinity;
 
         // Reset previous aimed pin
         if (_aimedPin && (!nowAiming || (aimed && aimed.sp !== _aimedPin))) {
@@ -7313,8 +7345,9 @@
             _fpProxEl.style.opacity = '1';
             var _hl = (document.documentElement.lang || 'en').substring(0, 2);
             _fpHintEl.textContent = _hl === 'ko' ? '길게 눌러 이 장면에 들어가세요' : 'Hold to enter this scene';
-            _fpHintEl.style.opacity = '1';
           }
+          // 260730: 속삭임(분위기)은 근접만으로, 진입 안내는 실제 조준했을 때만
+          if (_fpHintEl) _fpHintEl.style.opacity = (_fpAimSp && _fpAimDist < PROXIMITY_ENTER) ? '1' : '0';
           // Pulse pin (distance-based, only if not already aimed)
           if (!_aimedPin || _aimedPin !== closest) {
             closest.mesh.material.emissiveIntensity = 0.6 + Math.sin(performance.now() * 0.005) * 0.3;
@@ -7374,7 +7407,9 @@
 
       canvas.addEventListener('mousedown', function () {
         if (!_fpPlayActive) return;
-        if (!_fpNearPin && !_fpNearDoor) return;
+        // 260730: 씬(대화) 진입은 근접 + "실제 조준" 둘 다 — 거리만으로 열리던 오발 제거
+        var _aimOk = _fpAimSp && _fpAimDist < PROXIMITY_ENTER;
+        if (!_aimOk && !_fpNearDoor) return;
 
         // Start screen shake while holding
         _canvasOrigTransform = canvas.style.transform || '';
@@ -7449,9 +7484,9 @@
             }
           }, LONG_PRESS_MS);
 
-        } else if (_fpNearPin) {
-          // ─── Scene pin long press ─────────────────────────
-          var targetPin = _fpNearPin;
+        } else if (_aimOk) {
+          // ─── Scene pin long press — 조준한 그 핀으로만 (260730) ───
+          var targetPin = _fpAimSp;
           _pressTimer = setTimeout(function () {
             if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }
             canvas.style.transform = _canvasOrigTransform;
