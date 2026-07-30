@@ -71,7 +71,7 @@
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_objects.js?v=260714"></script><!-- 260712 사물 조형 1단계 -->
+  <script src="js/ui/lumen_scene_objects.js?v=260730b"></script><!-- 260712 사물 조형 1단계 · 260730 룩 프리셋 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -7075,7 +7075,11 @@
         // chat 진입 차단은 _enterLumenDialogPhase1 자리에서 별도로 처리됨 (이중 가드 X).
         // 핀과 마네킨은 살림 — 작가가 dialog_choices 박기 전까지 시각적 자리만 보존.
         if (game.terrain_shape === 'circular' && (!scene.meta || !scene.meta.dialog_choices)) {
-          console.log('[FP Play] dialog_choices 없음 — 핀·마네킨은 표시, chat 진입은 _enterLumenDialogPhase1 가드가 차단. sceneId:', scene.id);
+          // 260728: 옛 문구는 "chat 진입은 _enterLumenDialogPhase1 가드가 차단"이라 했으나
+          // 그 가드는 2026-05-04 완화 때 제거됐고 실제로 존재하지 않는다. 선택지가 없어도
+          // 대화는 열린다 (lumen_dialog_phase1 이 LLM 생성 → 실패 시 균일 톤 안전망).
+          // 게다가 선택지 자체가 260709 사용자 결정으로 폐기(자유 입력만) — 이 로그는 무해.
+          console.log('[FP Play] scene.meta.dialog_choices 없음 (정상) — 대화는 자동 생성/안전망으로 열림. sceneId:', scene.id);
         }
 
         // 작업 15 옵션 A: scene.meta.stage_position 이 있으면 admin 드래그 좌표를 그대로 씀.
@@ -7607,9 +7611,26 @@
                   if (window._temSpatialFog.revealAt(_sfFrom.x, _sfFrom.z) < 0.15) {
                     window._temSpatialFog.seed(_sfFrom.x, _sfFrom.z, 8);
                   }
-                  newPins.forEach(function (np) {
-                    window._temSpatialFog.carve(_sfFrom.x, _sfFrom.z, np.wx, np.wz);
-                    window._temSpatialFog.openOnArrive(np.wx, np.wz);
+                  // 260728 C-2: **접근 가능한 미방문 핀 전부**에 지금 자리에서 길을 확보한다.
+                  // 이전엔 newPins(이번에 새로 열린 것)만 파서, 직전에도 열려 있던 핀은
+                  // "길이 이미 있겠지"로 건너뛰었다 — 그 길은 **옛 위치에서 뻗은 것**이라
+                  // 이동 후엔 발밑과 이어지지 않는다. 실측(memory=1835926d): accessible 2인데
+                  // carve 1줄기. 게다가 이 기억은 스폰 시드 원(r=14) 안에 핀이 없어(최근접 18)
+                  // 회랑이 유일한 통로다 — 한 줄기가 비면 "열렸다고 표시되지만 못 가는 핀"이 된다.
+                  // 이미 충분히 걷힌 목표는 건너뛰어 중복 carve 를 막는다.
+                  var _sfTargets = _fpScenePins.filter(function (sp) { return sp.accessible && !sp.visited; });
+                  var _sfNewSet = {};
+                  newPins.forEach(function (np) { _sfNewSet[np.pin.id] = true; });
+                  _sfTargets.forEach(function (sp) {
+                    var _isNew = !!_sfNewSet[sp.pin.id];
+                    if (!_isNew && window._temSpatialFog.revealAt(sp.wx, sp.wz) >= 0.15) {
+                      // 이미 걷힌 기존 핀 — 다만 지금 자리에서 그 핀까지 길이 끊겼는지 확인.
+                      // 중간점이 안개면 회랑이 옛 위치 기준이라는 뜻이므로 다시 판다.
+                      var _midX = (_sfFrom.x + sp.wx) / 2, _midZ = (_sfFrom.z + sp.wz) / 2;
+                      if (window._temSpatialFog.revealAt(_midX, _midZ) >= 0.15) return;
+                    }
+                    window._temSpatialFog.carve(_sfFrom.x, _sfFrom.z, sp.wx, sp.wz);
+                    window._temSpatialFog.openOnArrive(sp.wx, sp.wz);
                   });
                   // 닫힘 = 사건 (260727 0.5단계): 닫힌 핀으로 향하던 회랑이 안개에 되덮인다.
                   // standAt 전달 = 되덮임이 선 자리를 삼키면 즉시 되열림 (260728 B).
