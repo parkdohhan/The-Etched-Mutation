@@ -146,6 +146,7 @@ const state = {
   ghostPoints: [],             // 잔상 유령 [{x, z, pollution_threshold}] — memories.ghost_condensation_points
   ghostMarkers: [],            // 빌드된 잔상 유령 마커 메쉬 (ghostPoints 와 같은 인덱스)
   sim: { active: false, runners: { A: null, B: null }, compareMode: false },
+  personaHighlight: null,      // 260730 B안 — 페르소나 STEP 강조 sceneId (궤적 2D 탭 은퇴, 3D 핀 이식)
   drag: { sceneId: null, ghostIdx: -1, moved: false, pointerId: null },
   rafId: null,
   resizeObserver: null,
@@ -362,12 +363,21 @@ function renderPins() {
       opacity = 0.5; scale = 0.85;
     }
 
+    // 260730 B안 — 페르소나 STEP 강조: sim 'current' 와 동일 문법 (강조색 + emissive 증폭 + 확대).
+    // renderPins 는 매 render() 마다 전 핀을 다시 칠하므로, 여기서 덮어써야 강조가 재렌더에도 살아남는다.
+    const isPersona = state.personaHighlight != null && scene.id === state.personaHighlight;
+    if (isPersona) {
+      color = BASE_PIN_COLOR; // #c4a882 계열 강조
+      opacity = 1; scale = 1.45;
+    }
+
     pin.head.material.color.setHex(color);
     pin.head.material.emissive.setHex(color);
+    pin.head.material.emissiveIntensity = isPersona ? 0.85 : 0.25; // 비강조 핀은 빌드 기본값으로 복원
     pin.head.material.opacity = opacity;
     pin.head.material.transparent = opacity < 1;
     pin.head.scale.setScalar(scale);
-    pin.shaft.material.opacity = Math.max(0.35, opacity * 0.75);
+    pin.shaft.material.opacity = isPersona ? 0.95 : Math.max(0.35, opacity * 0.75);
     pin.shaft.material.transparent = true;
 
     // 라벨 색 갱신 (필요 시)
@@ -1143,6 +1153,19 @@ function updateGhostPoint(idx, patch) {
   persistGhostPoints();
 }
 
+// ─── 페르소나 STEP 하이라이트 (260730 B안 — 궤적 2D 탭 은퇴, 3D 핀 이식) ──
+// 강조 상태는 state 에 저장되고 renderPins 가 매 렌더마다 적용 — setScenes/드래그/지형 로드 후에도 유지.
+// 핀이 없는 sceneId 는 조용히 무시 (강조만 이 sceneId 로 이동 — 시각 변화 없음, 이전 강조는 해제).
+function highlightPersonaScene(sceneId) {
+  state.personaHighlight = sceneId != null ? sceneId : null;
+  render();
+}
+
+function clearPersonaHighlight() {
+  state.personaHighlight = null;
+  render();
+}
+
 function setSceneClickHandler(fn) {
   state.onSceneClick = (typeof fn === 'function') ? fn : null;
 }
@@ -1168,6 +1191,7 @@ const api = {
   mount, setScenes, setSimState, setMemoryId, setSceneClickHandler, _debugTerrain,
   addGhostPoint, removeGhostPoint, getGhostPointCount,
   setGhostClickHandler, getGhostPoint, updateGhostPoint,
+  highlightPersonaScene, clearPersonaHighlight,
 };
 
 // ─── 글로벌 노출 ───────────────────────────────────────────

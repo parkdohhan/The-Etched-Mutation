@@ -413,15 +413,9 @@
                 </div>
 
                 <!-- 260730 검수: 감정 진입점 필터(emotion_entries 상영 소비자 소멸)·핀 모드(trajectory_targets
-                     죽은 레버 — SceneNavigator 를 부르는 상영 경로 없음) 은퇴. 궤적 탭 = 관찰 전용. -->
-                <div class="tv-section-label">표시 옵션</div>
-                <div class="tv-toggle-row">
-                    <button class="tv-toggle" id="tvToggleAll">전체 표시</button>
-                    <button class="tv-toggle" id="tvToggleBridges">모든 브릿지</button>
-                    <button class="tv-toggle" id="tvToggleTerrain" title="감정 좌표 (V/A) 기반 배치 — 보기 전용">감정 지형 모드</button>
-                    <button class="tv-toggle" id="tvResetLayout" title="드래그로 옮긴 위치 초기화">레이아웃 초기화</button>
-                </div>
-
+                     죽은 레버 — SceneNavigator 를 부르는 상영 경로 없음) 은퇴. -->
+                <!-- 260730 검수 B안: 표시 옵션 줄(전체 표시/모든 브릿지/감정 지형 모드/레이아웃 초기화) 은퇴
+                     — 전부 궤적 2D SVG 전용이었음. -->
                 <div class="tv-section-label">미리보기</div>
                 <div class="tv-toggle-row">
                     <button class="tv-toggle" id="tvStrataPreviewBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="현재 기억의 Strata 3D 지형 열기 (공간음향 테스트)">🌐 Strata 미리보기</button>
@@ -443,26 +437,13 @@
                 <div id="tvStats" class="tv-emo-meta" style="line-height: 1.6;"></div>
             </aside>
 
-            <main class="tv-canvas-wrap" id="tvCanvasWrap" data-active-layer="trajectory">
-                <!-- 상단 토글 — 궤적/위치 단독 표시 전환 (상하분할 폐기) -->
-                <div class="tv-layer-tabs" id="tvLayerTabs">
-                    <button type="button" class="tv-layer-tab is-active" data-layer="trajectory">궤적 · trajectory</button>
-                    <button type="button" class="tv-layer-tab" data-layer="position">위치 · stage</button>
-                </div>
-                <!-- 궤적 레이어 (기존 SVG 노드 그래프) -->
-                <div class="tv-layer-trajectory" id="tvLayerTrajectory" style="position:relative;flex:1 1 0;min-height:0;">
-                    <svg id="tvSvg" xmlns="http://www.w3.org/2000/svg"></svg>
-                    <div class="tv-status" id="tvStatus" style="position:absolute; top:10px; left:50%; transform:translateX(-50%);"></div>
-                    <div id="tvLegend" style="position:absolute;top:10px;right:14px;background:rgba(10,10,15,0.85);border:1px solid rgba(196,168,130,0.15);border-radius:4px;padding:8px 10px;font-size:0.68rem;color:#c0b8a4;backdrop-filter:blur(6px);line-height:1.6;pointer-events:none;">
-                        <div style="font-size:0.62rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">범례</div>
-                        <div><span style="display:inline-block;width:20px;border-top:1.2px solid rgba(196,168,130,0.5);vertical-align:middle;margin-right:5px;"></span>Choice</div>
-                        <div><span style="display:inline-block;width:20px;border-top:1.2px dashed #6aa383;vertical-align:middle;margin-right:5px;"></span>Bridge</div>
-                        <div><span style="display:inline-block;width:9px;height:9px;border:2px solid #c4a882;border-radius:50%;vertical-align:middle;margin-right:5px;"></span>감정 진입점</div>
-                    </div>
-                </div>
-                <!-- 위치 레이어 (작업 15 — strata 좌표계 탑다운 + 유령 위치 / 시뮬 동기화) -->
+            <main class="tv-canvas-wrap" id="tvCanvasWrap">
+                <!-- 260730 검수 B안: 궤적 2D 탭 은퇴 — 위치 stage 단독, 페르소나 하이라이트는 3D 핀으로 이식.
+                     (tv-layer-tabs 궤적/위치 전환 줄 + tv-layer-trajectory SVG 레이어 제거) -->
+                <!-- 위치 레이어 (작업 15 — strata 좌표계 + 유령 위치 / 시뮬 동기화) -->
                 <div class="tv-layer-position" id="tvLayerPosition" style="position:relative;flex:1 1 0;min-height:0;background:#0a0a10;">
                     <div id="tvStageRoot" style="position:absolute;inset:0;"></div>
+                    <div class="tv-status" id="tvStatus" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);pointer-events:none;"></div>
                     <div id="tvStageStatus" style="position:absolute;top:10px;right:14px;font-size:0.68rem;color:#7c7466;background:rgba(10,10,15,0.7);padding:4px 8px;border-radius:2px;line-height:1.5;pointer-events:none;">로딩 중…</div>
                     <div id="tvStageLegend" style="position:absolute;bottom:10px;right:14px;background:rgba(10,10,15,0.85);border:1px solid rgba(196,168,130,0.15);border-radius:4px;padding:7px 10px;font-size:0.66rem;color:#c0b8a4;backdrop-filter:blur(6px);line-height:1.65;pointer-events:none;">
                         <div style="font-size:0.6rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">유령</div>
@@ -497,19 +478,8 @@
         #section-canvas .tv-root { display: grid; grid-template-columns: 220px 1fr 320px; height: 100%; }
         #section-canvas .tv-sidebar { background: rgba(15,15,22,0.9); border-right: 1px solid rgba(196,168,130,0.15); padding: 20px 16px; overflow-y: auto; }
         #section-canvas .tv-canvas-wrap { position: relative; overflow: hidden; background: #07070b; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-        #section-canvas .tv-canvas-wrap svg { width: 100%; height: 100%; display: block; }
-        #section-canvas .tv-layer-trajectory { display: flex; flex-direction: column; }
-        #section-canvas .tv-layer-trajectory svg { flex: 1 1 auto; min-height: 0; }
+        /* 260730 검수 B안: 궤적 2D 탭 은퇴 — tv-layer-tabs·tv-layer-trajectory·data-active-layer CSS 제거 */
         #section-canvas .tv-layer-position { display: block; }
-        #section-canvas .tv-layer-position #tvStageRoot svg { width: 100%; height: 100%; display: block; }
-        /* 토글: 비활성 레이어는 숨김 (상하분할 폐기) */
-        #section-canvas .tv-canvas-wrap[data-active-layer="trajectory"] .tv-layer-position { display: none !important; }
-        #section-canvas .tv-canvas-wrap[data-active-layer="position"] .tv-layer-trajectory { display: none !important; }
-        /* 상단 토글 바 */
-        #section-canvas .tv-layer-tabs { flex: 0 0 auto; display: flex; gap: 6px; padding: 5px 10px; background: rgba(15,15,22,0.85); border-bottom: 1px solid rgba(196,168,130,0.15); }
-        #section-canvas .tv-layer-tab { padding: 3px 12px; font-family: 'Cormorant Garamond', serif; font-size: 0.74rem; letter-spacing: 0.06em; color: #7c7466; background: transparent; border: 1px solid rgba(196,168,130,0.18); border-radius: 2px; cursor: pointer; transition: color .15s, background .15s, border-color .15s; }
-        #section-canvas .tv-layer-tab:hover { color: #c4a882; border-color: rgba(196,168,130,0.35); }
-        #section-canvas .tv-layer-tab.is-active { color: #1a1610; background: rgba(196,168,130,0.85); border-color: rgba(196,168,130,0.85); }
         #section-canvas .tv-detail { background: rgba(15,15,22,0.9); border-left: 1px solid rgba(196,168,130,0.15); padding: 20px 16px; overflow-y: auto; }
         #section-canvas .tv-title { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: #c4a882; margin: 0 0 4px; letter-spacing: 0.04em; }
         #section-canvas .tv-subtitle { font-size: 0.75rem; color: #7c7466; margin: 0 0 18px; }
@@ -524,18 +494,7 @@
         #section-canvas .tv-toggle.active { background: rgba(196,168,130,0.35); border-color: #c4a882; color: #1a1610; font-weight: 600; }
         #section-canvas .tv-status { padding: 12px; font-size: 0.75rem; color: #7c7466; text-align: center; }
         #section-canvas .tv-detail-empty { color: #5c544a; font-size: 0.85rem; padding: 40px 0; text-align: center; }
-        #section-canvas .scene-node { cursor: pointer; }
-        #section-canvas .scene-node-rect { fill: rgba(20,20,28,0.95); stroke: rgba(196,168,130,0.3); stroke-width: 1.2; }
-        #section-canvas .scene-node:hover .scene-node-rect { stroke: #c4a882; }
-        #section-canvas .scene-node-text { fill: #e0d8c4; font-family: 'Noto Serif KR', serif; font-size: 11px; }
-        #section-canvas .scene-node-code { fill: #c4a882; font-family: 'Cormorant Garamond', serif; font-size: 14px; font-style: italic; }
-        #section-canvas .scene-node-counter { fill: #7c7466; font-size: 9px; }
-        #section-canvas .badge-author { fill: #6a655a; }
-        #section-canvas .badge-trajectory { fill: #4a7c9d; }
-        #section-canvas .badge-text { fill: #e0d8c4; font-size: 8px; font-family: 'Noto Serif KR', serif; }
-        #section-canvas .choice-edge { stroke: rgba(196,168,130,0.25); stroke-width: 1; fill: none; }
-        #section-canvas .traj-edge { stroke-width: 1.5; fill: none; opacity: 0.7; }
-        #section-canvas .entry-marker { fill: none; stroke-width: 2; }
+        /* 260730 검수 B안: 2D SVG 노드/엣지/뱃지 CSS(scene-node·badge·choice-edge 등) 은퇴 */
     </style>
 
     <!-- ═══ 섹션: 운영 (잔상 모더레이션 이관됨) ═══ -->
@@ -709,14 +668,14 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+    <!-- 260730 검수 B안: dagre 로드 제거 — 유일 소비자였던 궤적 2D 그래프 렌더 은퇴 -->
     <script src="js/shared/tem_af_strata_terrain.js"></script>
     <script src="js/shared/spatialAudio.js"></script>
     <script src="js/ui/strataView.js"></script>
     <script src="js/ui/lumen_admin_scene_terrain_preview.js"></script>
-    <script type="module" src="js/admin.js?v=260730c"></script>
+    <script type="module" src="js/admin.js?v=260730d"></script>
     <script type="module" src="js/admin/ghost_variants_editor.js"></script>
-    <script type="module" src="js/admin-trajectory.js?v=260730c"></script>
+    <script type="module" src="js/admin-trajectory.js?v=260730d"></script>
     <script src="js/contamination.js"></script>
 
     <script>

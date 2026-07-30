@@ -1,21 +1,10 @@
-// admin-trajectory.js — 다궤적 시각화 UI Phase 1
-// dagre + 바닐라 SVG + d3-zoom
+// admin-trajectory.js — Canvas (궤적 큐레이터)
+// 260730 검수 B안: 궤적 2D 탭(dagre + SVG 그래프 엔진) 은퇴 — 위치 stage 3D 뷰 단독,
+// 페르소나 STEP 하이라이트는 LumenAdminStageView 3D 핀으로 이식.
 
 import { getSupabaseClient } from './lib/supabaseClient.js';
-import LumenAdminStageView from './ui/lumen_admin_stage_view.js';
+import LumenAdminStageView from './ui/lumen_admin_stage_view.js?v=260730'; // 캐시버스터 — 하이라이트 API 추가분 강제 로드
 import { DEFAULT_EMOTION_ANCHORS } from './shared/math.js';
-
-// ─── 감정 팔레트 (8 keys) ──────────────────────────────────
-const EMOTIONS = [
-  { key: 'longing',   label: '그리움',   color: '#c4a882' },
-  { key: 'sadness',   label: '슬픔',     color: '#6a8caf' },
-  { key: 'fear',      label: '공포',     color: '#8b5e3c' },
-  { key: 'shame',     label: '수치',     color: '#a06b8a' },
-  { key: 'anger',     label: '분노',     color: '#b85540' },
-  { key: 'guilt',     label: '죄책감',   color: '#7a6f5d' },
-  { key: 'isolation', label: '고립',     color: '#5a6a78' },
-  { key: 'numbness',  label: '무감',     color: '#4a4a52' },
-];
 
 // ─── 상태 ──────────────────────────────────────────────────
 const state = {
@@ -23,54 +12,13 @@ const state = {
   scenes: [],         // scenes (with meta)
   choices: [],        // flat choices
   trajectoryBridges: [], // from trajectory_bridges table
-  selectedEmotions: new Set(),
-  showAllBridges: false,
   selectedSceneId: null,
-  nodePositions: {}, // {sceneId: {x, y}} — 사용자가 드래그한 위치 오버라이드
-  zoomScale: 1,      // 현재 줌 배율 (드래그 델타 변환용)
-  terrainMode: false, // 감정 지형 모드 (VA 투영)
 };
-
-// ─── VAD projection (tem_af_strata_terrain.js와 동일) ──
-const VAD_FULL = {
-  fear:{v:-0.9,a:0.9}, sadness:{v:-0.8,a:-0.4}, anger:{v:-0.7,a:0.8},
-  guilt:{v:-0.8,a:0.2}, shame:{v:-0.9,a:-0.2}, isolation:{v:-0.7,a:-0.5},
-  numbness:{v:-0.6,a:-0.8}, longing:{v:-0.3,a:0.2}, resentment:{v:-0.5,a:0.6},
-  resignation:{v:-0.4,a:-0.6}, joy:{v:0.9,a:0.6}, hope:{v:0.7,a:0.4},
-  relief:{v:0.6,a:-0.3}, gratitude:{v:0.8,a:-0.2}, love:{v:1.0,a:0.5},
-  peace:{v:0.8,a:-0.6}, confusion:{v:-0.4,a:0.3},
-};
-function projectToVAD(emoVec) {
-  let V = 0, A = 0, wSum = 0;
-  for (const k in emoVec) {
-    const w = Number(emoVec[k] || 0);
-    const m = VAD_FULL[k];
-    if (!w || !m) continue;
-    V += w * m.v; A += w * m.a; wSum += w;
-  }
-  if (wSum <= 0) return { v: 0, a: 0 };
-  return { v: Math.max(-1, Math.min(1, V / wSum)), a: Math.max(-1, Math.min(1, A / wSum)) };
-}
-
-function lsKey() {
-  return state.memory ? `tv_positions_${state.memory.id}` : null;
-}
-function loadNodePositions() {
-  const k = lsKey(); if (!k) return;
-  try {
-    const raw = localStorage.getItem(k);
-    state.nodePositions = raw ? JSON.parse(raw) : {};
-  } catch (e) { state.nodePositions = {}; }
-}
-function saveNodePositions() {
-  const k = lsKey(); if (!k) return;
-  try { localStorage.setItem(k, JSON.stringify(state.nodePositions)); } catch (e) {}
-}
 
 // ─── 부트 ──────────────────────────────────────────────────
 async function initTrajectoryViewer(memoryId) {
   // tv* DOM 없으면 (이 페이지에 뷰어가 없음) 중단
-  if (!document.getElementById('tvSvg')) return;
+  if (!document.getElementById('tvStageRoot')) return;
 
   // 이미 같은 memory로 init됐으면 skip
   if (state.memory && memoryId && state.memory.id === memoryId) return;
@@ -93,17 +41,15 @@ async function initTrajectoryViewer(memoryId) {
   }
 
   setStatus('');
-  loadNodePositions();
   document.getElementById('tvMemoryLabel').textContent =
     `${state.memory.code} — ${state.memory.title}`;
 
   renderStats();
   renderMemoryMeta();
   bindToggles();
-  renderGraph();
   loadPersonasForMemory();
 
-  // 작업 15 — 위치 레이어 mount + 동기화 (idempotent)
+  // 260730 B안 — 위치 stage 뷰 상시 마운트 (레이어 탭 은퇴, 단독 표시). idempotent.
   if (!state._stageMounted) {
     LumenAdminStageView.mount('tvStageRoot');
     // 장면 유령(핀) 클릭(드래그 X) → 우측 씬 편집 패널
@@ -119,7 +65,6 @@ async function initTrajectoryViewer(memoryId) {
         renderGhostDetail(ghostIdx);
       });
     }
-    bindLayerToggle();
     state._stageMounted = true;
   }
   // terrain mesh 는 메모리 단위로 로드 (idempotent — 같은 id 재호출 시 재로드 안 함)
@@ -161,37 +106,8 @@ window.tvSwitchMemory = async function tvSwitchMemory(id) {
   await initTrajectoryViewer(id);
 };
 
-// 작업 15 (개정) — 상하분할 폐기. 상단 탭으로 trajectory/position 단독 전환.
-// 활성 레이어는 localStorage 영속, 디폴트 'trajectory'.
-function bindLayerToggle() {
-  const wrap = document.getElementById('tvCanvasWrap');
-  const tabs = document.getElementById('tvLayerTabs');
-  if (!wrap || !tabs || tabs._bound) return;
-  tabs._bound = true;
-
-  const LS_KEY = 'tv_active_layer'; // 'trajectory' | 'position'
-  const apply = (layer) => {
-    const v = layer === 'position' ? 'position' : 'trajectory';
-    wrap.setAttribute('data-active-layer', v);
-    tabs.querySelectorAll('.tv-layer-tab').forEach((b) => {
-      b.classList.toggle('is-active', b.dataset.layer === v);
-    });
-    try { localStorage.setItem(LS_KEY, v); } catch (e) {}
-  };
-  // 초기 복원
-  let initial = 'trajectory';
-  try {
-    const saved = localStorage.getItem(LS_KEY);
-    if (saved === 'trajectory' || saved === 'position') initial = saved;
-  } catch (e) {}
-  apply(initial);
-
-  tabs.addEventListener('click', (e) => {
-    const btn = e.target.closest('.tv-layer-tab');
-    if (!btn) return;
-    apply(btn.dataset.layer);
-  });
-}
+// 260730 검수 B안: 궤적/위치 레이어 전환 장치(bindLayerToggle · localStorage 'tv_active_layer') 은퇴
+// — 위치 stage 뷰 상시 표시.
 
 // 작업 15 — 위치 레이어로 현 상태 push. scene/시뮬 변동 시점에 호출.
 function syncStageView() {
@@ -329,9 +245,8 @@ function renderStats() {
   const authorBridgeCount = state.scenes.reduce((n, s) =>
     n + (s.meta && Array.isArray(s.meta.author_bridges) ? s.meta.author_bridges.length : 0), 0);
   const trajBridgeCount = state.trajectoryBridges.length;
-  const selected = state.selectedEmotions.size;
   document.getElementById('tvStats').innerHTML =
-    `씬: ${sceneCount}<br>선택지: ${choiceCount}<br>작가 브릿지: ${authorBridgeCount}<br>궤적 브릿지: ${trajBridgeCount}<br>활성 궤적: ${selected}`;
+    `씬: ${sceneCount}<br>선택지: ${choiceCount}<br>작가 브릿지: ${authorBridgeCount}<br>궤적 브릿지: ${trajBridgeCount}`;
 }
 
 // ─── 모달 ───────────────────────────────────────────────────
@@ -439,7 +354,7 @@ async function deleteScene(s) {
     state.scenes = state.scenes.filter(x => x.id !== s.id);
     state.selectedSceneId = null;
     document.getElementById('tvDetail').innerHTML = '<div class="tv-detail-empty">씬이 삭제되었습니다.</div>';
-    renderGraph();
+    syncStageView();
     renderStats();
   } catch (e) {
     console.error(e);
@@ -505,7 +420,7 @@ async function _insertScene({ role }) {
     }).select().single();
     if (se) throw se;
     state.scenes.push(sc);
-    renderGraph();
+    syncStageView();
     renderStats();
     selectScene(sc);
   } catch (e) {
@@ -515,32 +430,8 @@ async function _insertScene({ role }) {
 }
 
 function bindToggles() {
-  // 감정 필터 UI 은퇴 (2026-07-30) — DOM이 남아있는 동안만 동작, 없으면 조용히 skip.
-  const allBtn = document.getElementById('tvToggleAll');
-  if (allBtn) allBtn.addEventListener('click', (ev) => {
-    const allOn = ev.target.classList.toggle('active');
-    state.selectedEmotions = new Set(allOn ? EMOTIONS.map(e => e.key).filter(k =>
-      state.memory.meta && state.memory.meta.emotion_entries && state.memory.meta.emotion_entries[k]
-    ) : []);
-    renderGraph();
-    renderStats();
-  });
-  document.getElementById('tvToggleBridges').addEventListener('click', (ev) => {
-    state.showAllBridges = ev.target.classList.toggle('active');
-    renderGraph();
-  });
-  document.getElementById('tvResetLayout').addEventListener('click', () => {
-    if (!confirm('드래그로 옮긴 위치를 모두 초기화할까요?')) return;
-    state.nodePositions = {};
-    saveNodePositions();
-    _pan = { scale: 1, tx: 0, ty: 0 };
-    renderGraph();
-  });
-  document.getElementById('tvToggleTerrain').addEventListener('click', (ev) => {
-    state.terrainMode = ev.target.classList.toggle('active');
-    // 모드 전환 시 드래그 저장 초기화 여부 물음 (노드가 튈 수 있으니)
-    renderGraph();
-  });
+  // 260730 검수 B안: 표시 옵션 토글(전체 표시/모든 브릿지/감정 지형 모드/레이아웃 초기화)
+  // 은퇴 — 전부 2D SVG 그래프 전용이었음.
   const addMemBtn = document.getElementById('tvAddMemoryBtn');
   if (addMemBtn) addMemBtn.addEventListener('click', openNewMemoryModal);
   const addSceneBtn = document.getElementById('tvAddSceneBtn');
@@ -704,23 +595,17 @@ function updatePersonaStepButtons() {
   if (nextBtn) nextBtn.disabled = !total || idx >= total - 1;
 }
 
+// 260730 검수 B안: 2D SVG 노드 테두리 강조 → 위치 stage 3D 핀 강조로 이식.
 function highlightSceneNode(sceneId) {
-  document.querySelectorAll('#tvSvg .scene-node .scene-node-rect').forEach(r => {
-    r.setAttribute('stroke', 'rgba(196,168,130,0.3)');
-    r.setAttribute('stroke-width', '1.2');
-  });
-  const node = document.querySelector(`#tvSvg .scene-node[data-scene-id="${sceneId}"] .scene-node-rect`);
-  if (node) {
-    node.setAttribute('stroke', '#c4a882');
-    node.setAttribute('stroke-width', '3');
+  if (typeof LumenAdminStageView.highlightPersonaScene === 'function') {
+    LumenAdminStageView.highlightPersonaScene(sceneId);
   }
 }
 
 function clearSceneHighlight() {
-  document.querySelectorAll('#tvSvg .scene-node .scene-node-rect').forEach(r => {
-    r.setAttribute('stroke', 'rgba(196,168,130,0.3)');
-    r.setAttribute('stroke-width', '1.2');
-  });
+  if (typeof LumenAdminStageView.clearPersonaHighlight === 'function') {
+    LumenAdminStageView.clearPersonaHighlight();
+  }
 }
 
 function updatePersonaPanel(persona, play) {
@@ -749,350 +634,29 @@ function updatePersonaPanel(persona, play) {
   }
 }
 
-// ─── 그래프 ────────────────────────────────────────────────
-function renderGraph() {
-  const svg = document.getElementById('tvSvg');
-  svg.innerHTML = '';
-
-  const entries = (state.memory.meta && state.memory.meta.emotion_entries) || {};
-  const codeToScene = {};
-  state.scenes.forEach(s => {
-    const code = s.meta && s.meta.scene_code ? s.meta.scene_code : String(s.scene_order);
-    codeToScene[code] = s;
-  });
-
-  // 어떤 씬을 그릴지 결정
-  // 감정 진입점 필터 은퇴 (2026-07-30) — emotion_entries 유무와 무관하게 전체 씬 선형 표시.
-  let visibleScenes;
-  const linearMode = true;
-  if (linearMode) {
-    // 선형 모드: 전체 씬을 표시
-    visibleScenes = state.scenes;
-  } else if (state.selectedEmotions.size === 0) {
-    // emotion_entries 있지만 아무것도 선택 안 됨: 빈 캔버스
-    return;
-  } else {
-    // 선택된 감정의 진입 씬부터 scene_order 끝까지 통과
-    const visibleIds = new Set();
-    state.selectedEmotions.forEach(emoKey => {
-      const entryCode = entries[emoKey];
-      const entryScene = codeToScene[entryCode];
-      if (!entryScene) return;
-      state.scenes.forEach(s => {
-        if (s.scene_order >= entryScene.scene_order) visibleIds.add(s.id);
-      });
-    });
-    visibleScenes = state.scenes.filter(s => visibleIds.has(s.id));
-  }
-
-  if (visibleScenes.length === 0) return;
-
-  // 통과 카운터: 각 씬을 몇 개의 활성 감정 궤적이 지나가는가
-  // 선형 모드에서는 모든 씬 passCount = 1 (단순 표시)
-  const passCount = {};
-  if (linearMode) {
-    visibleScenes.forEach(s => { passCount[s.id] = 1; });
-  } else {
-    visibleScenes.forEach(s => {
-      let count = 0;
-      state.selectedEmotions.forEach(emoKey => {
-        const entryCode = entries[emoKey];
-        const entryScene = codeToScene[entryCode];
-        if (entryScene && s.scene_order >= entryScene.scene_order) count++;
-      });
-      passCount[s.id] = count;
-    });
-  }
-
-  // dagre 레이아웃
-  const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'LR', nodesep: 50, ranksep: 140, marginx: 60, marginy: 60 });
-  g.setDefaultEdgeLabel(() => ({}));
-
-  visibleScenes.forEach(s => {
-    g.setNode(s.id, { width: 160, height: 80, scene: s });
-  });
-
-  // choice edge: 인접 scene_order 자동 연결 (TEM 선형 모델, 시각화 전용).
-  {
-    const orderToScene = {};
-    visibleScenes.forEach(s => orderToScene[s.scene_order] = s);
-    visibleScenes.forEach(s => {
-      const next = orderToScene[s.scene_order + 1];
-      if (next) g.setEdge(s.id, next.id, { type: 'choice' });
-    });
-  }
-
-  dagre.layout(g);
-
-  // 감정 지형 모드: VA 투영으로 위치 오버라이드
-  if (state.terrainMode) {
-    const TERRAIN_W = 1400, TERRAIN_H = 900;
-    visibleScenes.forEach(s => {
-      const emoVec = s.emotion_dist || {};
-      const vad = projectToVAD(emoVec);
-      const n = g.node(s.id);
-      if (n) {
-        // v: -1 왼쪽(부정), +1 오른쪽(긍정); a: -1 아래(저각성), +1 위(고각성) — 화면 y 반전
-        n.x = ((vad.v + 1) / 2) * TERRAIN_W + 80;
-        n.y = ((1 - vad.a) / 2) * TERRAIN_H + 80;
-      }
-    });
-  }
-
-  // 사용자 저장 위치 오버라이드 (가장 우선) — nodePositions (localStorage)
-  visibleScenes.forEach(s => {
-    const n = g.node(s.id);
-    if (!n) return;
-    const pos = state.nodePositions[s.id];
-    if (pos) { n.x = pos.x; n.y = pos.y; }
-  });
-
-  const graphInfo = g.graph();
-  const W = Math.max(graphInfo.width || 800, 1200);
-  const H = Math.max(graphInfo.height || 400, 600);
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-
-  // ── 줌/팬 그룹 ──
-  const zoomG = svgEl('g', { id: 'zoomG' });
-  svg.appendChild(zoomG);
-
-  // 감정 지형 배경 (터레인 모드일 때만)
-  if (state.terrainMode) {
-    drawVaTerrain(zoomG);
-  }
-
-  // 모든 edge/overlay는 한 레이어에 — 노드보다 먼저 (뒤에 렌더)
-  const edgeLayer = svgEl('g', { id: 'edgeLayer' });
-  zoomG.appendChild(edgeLayer);
-
-  // 재그리기 가능하도록 현재 그래프 컨텍스트 저장
-  _renderCtx = { g, visibleScenes, entries, codeToScene, edgeLayer };
-
-  // 최초 그리기
-  redrawEdges();
-
-  // ── 진입 감정 매핑 (씬 → 진입 감정, 있을 경우) ──
-  const sceneEntryEmotion = {};
-  Object.entries(entries).forEach(([emoKey, code]) => {
-    const sc = codeToScene[code];
-    if (sc) sceneEntryEmotion[sc.id] = emoKey;
-  });
-
-  // ── nodes ──
-  g.nodes().forEach(id => {
-    const n = g.node(id);
-    if (!n) return;
-    const s = n.scene;
-    const code = s.meta && s.meta.scene_code ? s.meta.scene_code : String(s.scene_order);
-    const text = (s.text || '').slice(0, 28) + (s.text && s.text.length > 28 ? '…' : '');
-
-    const authorBridges = (s.meta && Array.isArray(s.meta.author_bridges)) ? s.meta.author_bridges : [];
-    const trajBridges = state.trajectoryBridges.filter(b => b.scene_id === s.id);
-
-    const group = svgEl('g', {
-      class: 'scene-node',
-      'data-scene-id': s.id,
-      transform: `translate(${n.x - n.width / 2},${n.y - n.height / 2})`
-    });
-    group.dataset.sceneId = s.id;
-    group.style.cursor = 'grab';
-    group.addEventListener('click', () => selectScene(s));
-
-    // 진입점 씬이면 해당 감정 색으로 테두리
-    const entryEmo = sceneEntryEmotion[s.id];
-    const entryEmoObj = entryEmo ? EMOTIONS.find(e => e.key === entryEmo) : null;
-    const isActiveEntry = entryEmo && state.selectedEmotions.has(entryEmo);
-    const rectAttrs = {
-      class: 'scene-node-rect',
-      width: n.width, height: n.height, rx: 4, ry: 4
-    };
-    if (isActiveEntry && entryEmoObj) {
-      rectAttrs.stroke = entryEmoObj.color;
-      rectAttrs['stroke-width'] = 2.5;
-    }
-    group.appendChild(svgEl('rect', rectAttrs));
-    // code (좌상단)
-    group.appendChild(svgEl('text', {
-      class: 'scene-node-code', x: 8, y: 18
-    }, code));
-    // counter (우상단)
-    group.appendChild(svgEl('text', {
-      class: 'scene-node-counter', x: n.width - 8, y: 16, 'text-anchor': 'end'
-    }, `×${passCount[s.id] || 0}`));
-    // text snippet
-    group.appendChild(svgEl('text', {
-      class: 'scene-node-text', x: 8, y: 38
-    }, text));
-
-    // bridge badges (하단)
-    let bx = 8;
-    const by = n.height - 8;
-    authorBridges.forEach((b, i) => {
-      if (i >= 3) return;
-      const w = 20;
-      group.appendChild(svgEl('rect', { x: bx, y: by - 10, width: w, height: 12, rx: 2, ry: 2, class: 'badge-author' }));
-      group.appendChild(svgEl('text', { x: bx + 4, y: by, class: 'badge-text' }, '🔗'));
-      bx += w + 3;
-    });
-    trajBridges.forEach((b, i) => {
-      if (i >= 3) return;
-      const w = 20;
-      group.appendChild(svgEl('rect', { x: bx, y: by - 10, width: w, height: 12, rx: 2, ry: 2, class: 'badge-trajectory' }));
-      group.appendChild(svgEl('text', { x: bx + 4, y: by, class: 'badge-text' }, '🌊'));
-      bx += w + 3;
-    });
-
-    zoomG.appendChild(group);
-  });
-
-  // ── 줌/팬 (한 번만 붙임) ──
-  attachZoomPan(svg, zoomG);
-
-  // ── 노드 드래그 ──
-  attachNodeDrag(svg, g);
-
-  // 작업 15 — 위치 레이어도 같은 scene 갱신을 받음
-  if (state._stageMounted) syncStageView();
-}
-
-let _zoomPanAttached = false;
-let _pan = { scale: 1, tx: 0, ty: 0 };
-
-function attachZoomPan(svg, zoomG) {
-  const apply = () => {
-    state.zoomScale = _pan.scale;
-    zoomG.setAttribute('transform', `translate(${_pan.tx},${_pan.ty}) scale(${_pan.scale})`);
-  };
-  apply(); // 재렌더 시에도 현재 팬 상태 유지
-
-  if (_zoomPanAttached) return;
-  _zoomPanAttached = true;
-
-  let dragging = false, lastX = 0, lastY = 0;
-
-  svg.addEventListener('wheel', (ev) => {
-    ev.preventDefault();
-    const rect = svg.getBoundingClientRect();
-    const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
-    const factor = ev.deltaY < 0 ? 1.1 : 0.9;
-    const newScale = Math.max(0.2, Math.min(4, _pan.scale * factor));
-    _pan.tx = mx - (mx - _pan.tx) * (newScale / _pan.scale);
-    _pan.ty = my - (my - _pan.ty) * (newScale / _pan.scale);
-    _pan.scale = newScale;
-    const zg = document.getElementById('zoomG');
-    if (zg) { state.zoomScale = _pan.scale; zg.setAttribute('transform', `translate(${_pan.tx},${_pan.ty}) scale(${_pan.scale})`); }
-  }, { passive: false });
-
-  svg.addEventListener('mousedown', (ev) => {
-    if (ev.target.closest('.scene-node')) return; // 노드는 드래그 핸들러가 처리
-    dragging = true; lastX = ev.clientX; lastY = ev.clientY;
-    svg.style.cursor = 'grabbing';
-  });
-  window.addEventListener('mousemove', (ev) => {
-    if (!dragging) return;
-    _pan.tx += ev.clientX - lastX;
-    _pan.ty += ev.clientY - lastY;
-    lastX = ev.clientX; lastY = ev.clientY;
-    const zg = document.getElementById('zoomG');
-    if (zg) zg.setAttribute('transform', `translate(${_pan.tx},${_pan.ty}) scale(${_pan.scale})`);
-  });
-  window.addEventListener('mouseup', () => {
-    dragging = false; svg.style.cursor = '';
-  });
-}
-
-// ─── 노드 드래그 ──────────────────────────────────────────
-let _nodeDrag = { active: null, suppressClick: false, currentGraph: null };
-
-function attachNodeDrag(svg, g) {
-  _nodeDrag.currentGraph = g;
-
-  svg.querySelectorAll('.scene-node').forEach(group => {
-    group.addEventListener('mousedown', (ev) => {
-      ev.stopPropagation();
-      const sceneId = group.dataset.sceneId;
-      if (!sceneId) return;
-      const gg = _nodeDrag.currentGraph;
-      const node = gg && gg.node(sceneId);
-      if (!node) return;
-      _nodeDrag.active = {
-        sceneId, node, group,
-        startMouseX: ev.clientX, startMouseY: ev.clientY,
-        origX: node.x, origY: node.y,
-        moved: false,
-      };
-      group.style.cursor = 'grabbing';
-    });
-    group.addEventListener('click', (ev) => {
-      if (_nodeDrag.suppressClick) { ev.stopPropagation(); _nodeDrag.suppressClick = false; }
-    });
-  });
-
-  if (!attachNodeDrag._bound) {
-    attachNodeDrag._bound = true;
-    window.addEventListener('mousemove', (ev) => {
-      const d = _nodeDrag.active;
-      if (!d) return;
-      const dx = (ev.clientX - d.startMouseX) / state.zoomScale;
-      const dy = (ev.clientY - d.startMouseY) / state.zoomScale;
-      if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
-      d.node.x = d.origX + dx;
-      d.node.y = d.origY + dy;
-      d.group.setAttribute('transform', `translate(${d.node.x - d.node.width / 2},${d.node.y - d.node.height / 2})`);
-      updateEdgesForNode(_nodeDrag.currentGraph, d.sceneId);
-    });
-    window.addEventListener('mouseup', () => {
-      const d = _nodeDrag.active;
-      if (!d) return;
-      if (d.moved) {
-        // 드래그 = 로컬 위치만 이동 (localStorage nodePositions). DB 저장 없음.
-        state.nodePositions[d.sceneId] = { x: d.node.x, y: d.node.y };
-        saveNodePositions();
-        _nodeDrag.suppressClick = true;
-      }
-      d.group.style.cursor = 'grab';
-      _nodeDrag.active = null;
-    });
-  }
-}
-
-function updateEdgesForNode(g, sceneId) {
-  // 통합 레이어 전체 재그리기 — 노드 수가 적으니 충분히 빠름
-  redrawEdges();
-}
+// 260730 검수 B안: 2D SVG 그래프 엔진 전체 은퇴 — dagre 레이아웃 렌더·노드 드래그·줌팬·
+// 케이블/브릿지 엣지 그리기·VA 지형 배경 모드·노드 위치 localStorage 저장. 위치 stage 3D 뷰 단독.
 
 // ─── 디테일 패널 ───────────────────────────────────────────
 function selectScene(s) {
   state.selectedSceneId = s.id;
-  renderDetail(s, state.detailTab || 'detail');
+  renderDetail(s);
 }
 
-function renderDetail(s, tab) {
-  state.detailTab = tab;
+// 260730 검수 B안: 경로 비교 탭 은퇴 — 씬 편집 단일 패널.
+function renderDetail(s) {
   const container = document.getElementById('tvDetail');
   const code = s.meta && s.meta.scene_code ? s.meta.scene_code : String(s.scene_order);
 
-  // 헤더 + 탭
   const headerHtml = `
     <div style="font-family:'Cormorant Garamond';font-size:1.4rem;color:#c4a882;margin-bottom:4px;">${code}</div>
     <div style="font-size:0.7rem;color:#7c7466;margin-bottom:14px;">scene_order ${s.scene_order}</div>
-    <div style="display:flex;gap:0;border-bottom:1px solid rgba(196,168,130,0.15);margin-bottom:14px;">
-      <button class="tv-tab" data-tab="detail" style="flex:1;padding:8px;background:none;border:none;color:${tab==='detail'?'#c4a882':'#7c7466'};border-bottom:2px solid ${tab==='detail'?'#c4a882':'transparent'};font-size:0.8rem;cursor:pointer;font-family:inherit;">씬 디테일</button>
-      <button class="tv-tab" data-tab="compare" style="flex:1;padding:8px;background:none;border:none;color:${tab==='compare'?'#c4a882':'#7c7466'};border-bottom:2px solid ${tab==='compare'?'#c4a882':'transparent'};font-size:0.8rem;cursor:pointer;font-family:inherit;">경로 비교</button>
-    </div>
   `;
 
-  const bodyHtml = tab === 'compare' ? renderCompareTab(s) : renderDetailTab(s);
-  container.innerHTML = headerHtml + bodyHtml;
-
-  // 탭 핸들러
-  container.querySelectorAll('.tv-tab').forEach(btn => {
-    btn.addEventListener('click', () => renderDetail(s, btn.dataset.tab));
-  });
+  container.innerHTML = headerHtml + renderDetailTab(s);
 
   // 편집 모드 이벤트 바인딩
-  if (tab === 'detail') bindDetailFormEvents(s);
+  bindDetailFormEvents(s);
 }
 
 // 잔상 유령 편집 패널 — 씬 편집기와 같은 자리(#tvDetail), 잔상 전용 UI (2026-05-16).
@@ -1251,7 +815,7 @@ function bindDetailFormEvents(s) {
     if (!s.meta) s.meta = {};
     if (!Array.isArray(s.meta.author_bridges)) s.meta.author_bridges = [];
     s.meta.author_bridges.push({ id: `ab-${Date.now()}`, text: '', reveal_hint: '' });
-    renderDetail(s, 'detail'); // 재렌더
+    renderDetail(s); // 재렌더
   });
 
   // 브릿지 삭제
@@ -1260,7 +824,7 @@ function bindDetailFormEvents(s) {
       const idx = parseInt(btn.dataset.idx, 10);
       if (s.meta?.author_bridges) {
         s.meta.author_bridges.splice(idx, 1);
-        renderDetail(s, 'detail');
+        renderDetail(s);
       }
     });
   });
@@ -1280,7 +844,7 @@ function bindDetailFormEvents(s) {
         current.push({ condition: { type, sceneIndex: firstOrder } });
       }
       s.meta.exclusions = current;
-      renderDetail(s, 'detail');
+      renderDetail(s);
     });
   });
 
@@ -1292,7 +856,7 @@ function bindDetailFormEvents(s) {
       current.splice(idx, 1);
       if (!s.meta) s.meta = {};
       s.meta.exclusions = current;
-      renderDetail(s, 'detail');
+      renderDetail(s);
     });
   });
 }
@@ -1383,8 +947,8 @@ async function saveScene(s) {
     statusEl.style.color = '#6aa383';
     setTimeout(() => { statusEl.textContent = ''; }, 2000);
 
-    // 그래프 재렌더 (모티프/코드 바뀌면 뱃지/브릿지선 변화)
-    renderGraph();
+    // 위치 stage 뷰 재동기화 (코드/감정 바뀌면 핀 라벨·위치 갱신)
+    syncStageView();
   } catch (e) {
     console.error(e);
     statusEl.textContent = '❌ ' + e.message;
@@ -1599,280 +1163,14 @@ function collectExclusionsFromDOM() {
   return result.length > 0 ? result : null;
 }
 
-function renderCompareTab(s) {
-  const entries = (state.memory.meta && state.memory.meta.emotion_entries) || {};
-  const codeToScene = {};
-  state.scenes.forEach(sc => {
-    const c = sc.meta && sc.meta.scene_code ? sc.meta.scene_code : String(sc.scene_order);
-    codeToScene[c] = sc;
-  });
-
-  // 선택된 감정 중, 이 씬에 도달하는 궤적만
-  const reaching = [];
-  state.selectedEmotions.forEach(emoKey => {
-    const entryCode = entries[emoKey];
-    const entryScene = codeToScene[entryCode];
-    if (!entryScene) return;
-    if (entryScene.scene_order > s.scene_order) return; // 못 도달
-    const path = state.scenes
-      .filter(sc => sc.scene_order >= entryScene.scene_order && sc.scene_order <= s.scene_order)
-      .sort((a, b) => a.scene_order - b.scene_order);
-    reaching.push({ emoKey, emo: EMOTIONS.find(e => e.key === emoKey), path });
-  });
-
-  if (reaching.length === 0) {
-    return `<div style="color:#5c544a;font-size:0.85rem;padding:30px 0;text-align:center;">활성 궤적 없음.<br>좌측에서 감정을 선택하세요.</div>`;
-  }
-
-  const trajBridges = state.trajectoryBridges.filter(b => b.scene_id === s.id);
-
-  return reaching.map(r => {
-    const pathCodes = r.path.map(sc => sc.meta && sc.meta.scene_code ? sc.meta.scene_code : String(sc.scene_order));
-    // 경로 상 누적 echo_words
-    const echoSet = new Set();
-    r.path.forEach(sc => {
-      (sc.echo_words || []).forEach(w => echoSet.add(w));
-    });
-    // 경로 상 누적 모티프
-    const motifSet = new Set();
-    r.path.forEach(sc => {
-      const m = (sc.meta && sc.meta.motif_tags) || [];
-      m.forEach(x => motifSet.add(x));
-    });
-    // 해당 궤적의 궤적 브릿지 (entry_emotion 매칭)
-    const matchingTrajBridges = trajBridges.filter(b => b.entry_emotion === r.emoKey);
-
-    return `
-      <div style="border:1px solid rgba(196,168,130,0.12);border-left:3px solid ${r.emo.color};border-radius:3px;padding:10px 12px;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span style="width:10px;height:10px;border-radius:50%;background:${r.emo.color};"></span>
-          <span style="color:#c4a882;font-size:0.85rem;font-weight:600;">${r.emo.label}</span>
-        </div>
-        <div style="font-size:0.7rem;color:#7c7466;margin-bottom:4px;">경로</div>
-        <div style="font-size:0.82rem;color:#d0c8b4;margin-bottom:8px;font-family:'Cormorant Garamond',serif;letter-spacing:0.05em;">
-          ${pathCodes.join(' <span style="color:#5c544a">→</span> ')}
-        </div>
-        ${motifSet.size ? `
-        <div style="font-size:0.7rem;color:#7c7466;margin-bottom:4px;">누적 모티프</div>
-        <div style="margin-bottom:8px;">${[...motifSet].map(m => `<span style="display:inline-block;padding:1px 6px;margin:2px 3px 2px 0;font-size:0.65rem;background:rgba(196,168,130,0.08);border-radius:2px;color:#c0b8a4;">${m}</span>`).join('')}</div>
-        ` : ''}
-        ${echoSet.size ? `
-        <div style="font-size:0.7rem;color:#7c7466;margin-bottom:4px;">echo_words</div>
-        <div style="margin-bottom:8px;">${[...echoSet].slice(0,8).map(w => `<span style="display:inline-block;padding:1px 6px;margin:2px 3px 2px 0;font-size:0.65rem;background:rgba(196,168,130,0.04);color:#a09886;border-radius:2px;">${escapeHtml(w)}</span>`).join('')}</div>
-        ` : ''}
-        ${matchingTrajBridges.length ? `
-        <div style="font-size:0.7rem;color:#7c7466;margin-bottom:4px;">🌊 이 궤적의 브릿지</div>
-        ${matchingTrajBridges.map(b => `
-          <div style="font-size:0.75rem;color:#a8c4d8;padding:6px 8px;border-left:2px solid #4a7c9d;background:rgba(74,124,157,0.06);margin-bottom:4px;">
-            ${escapeHtml(b.source_completed_sentence || '(본문 없음)')}
-          </div>
-        `).join('')}
-        ` : ''}
-      </div>
-    `;
-  }).join('');
-}
-
-// ─── VA 지형 배경 (간단 2D) ─────────────────────────────────
-function drawVaTerrain(zoomG) {
-  const W = 1400, H = 900, OX = 80, OY = 80;
-  const terrainG = svgEl('g', { id: 'terrainG' });
-  // 외곽 박스
-  terrainG.appendChild(svgEl('rect', {
-    x: OX, y: OY, width: W, height: H,
-    fill: 'rgba(20,20,28,0.4)', stroke: 'rgba(196,168,130,0.1)', 'stroke-width': 1
-  }));
-  // 격자 (0.2 단위)
-  for (let i = 1; i < 10; i++) {
-    const f = i / 10;
-    terrainG.appendChild(svgEl('line', {
-      x1: OX + W * f, y1: OY, x2: OX + W * f, y2: OY + H,
-      stroke: 'rgba(196,168,130,0.04)', 'stroke-width': 1
-    }));
-    terrainG.appendChild(svgEl('line', {
-      x1: OX, y1: OY + H * f, x2: OX + W, y2: OY + H * f,
-      stroke: 'rgba(196,168,130,0.04)', 'stroke-width': 1
-    }));
-  }
-  // 중심 축 (v=0, a=0)
-  terrainG.appendChild(svgEl('line', {
-    x1: OX + W / 2, y1: OY, x2: OX + W / 2, y2: OY + H,
-    stroke: 'rgba(196,168,130,0.18)', 'stroke-width': 1, 'stroke-dasharray': '3,4'
-  }));
-  terrainG.appendChild(svgEl('line', {
-    x1: OX, y1: OY + H / 2, x2: OX + W, y2: OY + H / 2,
-    stroke: 'rgba(196,168,130,0.18)', 'stroke-width': 1, 'stroke-dasharray': '3,4'
-  }));
-  // 축 라벨
-  const labelStyle = { fill: 'rgba(196,168,130,0.5)', 'font-size': 13, 'font-family': 'Noto Serif KR' };
-  terrainG.appendChild(svgEl('text', { ...labelStyle, x: OX + W + 10, y: OY + H / 2 + 4 }, '쾌 →'));
-  terrainG.appendChild(svgEl('text', { ...labelStyle, x: OX - 30, y: OY + H / 2 + 4 }, '← 불쾌'));
-  terrainG.appendChild(svgEl('text', { ...labelStyle, x: OX + W / 2 - 14, y: OY - 10 }, '↑ 각성'));
-  terrainG.appendChild(svgEl('text', { ...labelStyle, x: OX + W / 2 - 14, y: OY + H + 22 }, '↓ 이완'));
-  // 사분면 의미 힌트
-  const quadStyle = { fill: 'rgba(196,168,130,0.18)', 'font-size': 11, 'font-family': 'Noto Serif KR' };
-  terrainG.appendChild(svgEl('text', { ...quadStyle, x: OX + 20, y: OY + 30 }, '공포·분노·수치 영역'));
-  terrainG.appendChild(svgEl('text', { ...quadStyle, x: OX + W - 180, y: OY + 30 }, '기쁨·희망 영역'));
-  terrainG.appendChild(svgEl('text', { ...quadStyle, x: OX + 20, y: OY + H - 18 }, '슬픔·무감·고립 영역'));
-  terrainG.appendChild(svgEl('text', { ...quadStyle, x: OX + W - 160, y: OY + H - 18 }, '안도·평화 영역'));
-
-  zoomG.appendChild(terrainG);
-}
-
-// ─── 통합 edge/overlay 렌더 ─────────────────────────────────
-let _renderCtx = null; // { g, visibleScenes, entries, codeToScene, edgeLayer }
-
-function redrawEdges() {
-  if (!_renderCtx) return;
-  const { g, visibleScenes, entries, codeToScene, edgeLayer } = _renderCtx;
-  // 레이어 비우기
-  while (edgeLayer.firstChild) edgeLayer.removeChild(edgeLayer.firstChild);
-
-  // ── choice edges (실선 cable) — 균일 스타일 ──
-  g.edges().forEach(e => {
-    const n1 = g.node(e.v);
-    const n2 = g.node(e.w);
-    if (!n1 || !n2) return;
-    edgeLayer.appendChild(svgEl('path', {
-      class: 'choice-edge',
-      'data-edge-from': e.v, 'data-edge-to': e.w,
-      d: cableChoice(n1, n2),
-      fill: 'none',
-      stroke: 'rgba(196,168,130,0.35)',
-      'stroke-width': 1.5,
-      'vector-effect': 'non-scaling-stroke',
-    }));
-  });
-
-  // ── trajectory overlay (각 감정마다 색 있는 cable) ──
-  const selectedList = Array.from(state.selectedEmotions);
-  selectedList.forEach((emoKey, idx) => {
-    const emo = EMOTIONS.find(e => e.key === emoKey);
-    const entryCode = entries[emoKey];
-    const entryScene = codeToScene[entryCode];
-    if (!entryScene) return;
-    const path = visibleScenes
-      .filter(s => s.scene_order >= entryScene.scene_order)
-      .sort((a, b) => a.scene_order - b.scene_order);
-    // 궤적별 sag 오프셋
-    const sagOffset = (idx - (selectedList.length - 1) / 2) * 6;
-    for (let i = 0; i < path.length - 1; i++) {
-      const n1 = g.node(path[i].id);
-      const n2 = g.node(path[i + 1].id);
-      if (!n1 || !n2) continue;
-      edgeLayer.appendChild(svgEl('path', {
-        class: 'traj-edge',
-        d: cablePath(rightPort(n1), leftPort(n2), sagOffset),
-        fill: 'none',
-        stroke: emo.color,
-        'stroke-width': 2.5,
-        opacity: 0.75,
-      }));
-    }
-  });
-
-  // ── bridge edges (점선 cable, 노드 하단에서 하단) ──
-  const bridgePairs = computeBridgePairs(visibleScenes);
-  bridgePairs.forEach(pair => {
-    let shouldShow = state.showAllBridges;
-    if (!shouldShow) {
-      for (const emoKey of state.selectedEmotions) {
-        const entryCode = entries[emoKey];
-        const entryScene = codeToScene[entryCode];
-        if (!entryScene) continue;
-        if (entryScene.scene_order <= pair.from.scene_order) {
-          shouldShow = true; break;
-        }
-      }
-    }
-    if (!shouldShow) return;
-    const n1 = g.node(pair.from.id);
-    const n2 = g.node(pair.to.id);
-    if (!n1 || !n2) return;
-    edgeLayer.appendChild(svgEl('path', {
-      class: 'bridge-edge',
-      d: cableBridge(n1, n2),
-      fill: 'none',
-      stroke: '#6aa383',
-      'stroke-width': 1.2,
-      'stroke-dasharray': '5,4',
-      opacity: 0.7,
-    }));
-    // 라벨
-    const p1 = bottomPort(n1), p2 = bottomPort(n2);
-    const midX = (p1.x + p2.x) / 2;
-    const midY = Math.max(p1.y, p2.y) + Math.min(120, Math.abs(p2.x - p1.x) * 0.35) + 8;
-    edgeLayer.appendChild(svgEl('text', {
-      x: midX, y: midY, 'text-anchor': 'middle',
-      fill: '#6aa383', 'font-size': 10, 'font-family': 'Noto Serif KR'
-    }, `🔗 ${pair.motif}`));
-  });
-}
-
-// ─── Cable 경로 (ComfyUI 대롱대롱) ──────────────────────────
-// 노드 중심 간 연결 시 "포트"가 양옆(LR 레이아웃)에 있고, 중력으로 아래로 쳐짐
-function cablePath(p1, p2, sag = 0) {
-  const x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
-  const dx = Math.abs(x2 - x1);
-  const cx = Math.max(40, dx * 0.5);
-  // 양 control point를 중력으로 처지게
-  const gravity = Math.min(80, dx * 0.25) + sag;
-  return `M${x1},${y1} C${x1 + cx},${y1 + gravity} ${x2 - cx},${y2 + gravity} ${x2},${y2}`;
-}
-function rightPort(n)  { return { x: n.x + n.width / 2, y: n.y }; }
-function leftPort(n)   { return { x: n.x - n.width / 2, y: n.y }; }
-function bottomPort(n) { return { x: n.x, y: n.y + n.height / 2 }; }
-
-// 경로 선택을 좀 더 유연하게 — 브릿지는 bottom→bottom, choice는 right→left
-function cableChoice(n1, n2) {
-  return cablePath(rightPort(n1), leftPort(n2), 0);
-}
-function cableBridge(n1, n2) {
-  const p1 = bottomPort(n1), p2 = bottomPort(n2);
-  const dx = Math.abs(p2.x - p1.x);
-  const midY = Math.max(p1.y, p2.y) + Math.min(120, dx * 0.35);
-  return `M${p1.x},${p1.y} Q${(p1.x + p2.x) / 2},${midY} ${p2.x},${p2.y}`;
-}
-
-// ─── 브릿지 쌍 계산 ────────────────────────────────────────
-// 같은 모티프를 가진 두 씬 중 scene_order 인접하지 않은 쌍만 추출
-// (인접한 것은 choice edge로 이미 표현됨)
-function computeBridgePairs(scenes) {
-  const pairs = [];
-  const byMotif = {};
-  scenes.forEach(s => {
-    const motifs = (s.meta && Array.isArray(s.meta.motif_tags)) ? s.meta.motif_tags : [];
-    motifs.forEach(m => {
-      if (!byMotif[m]) byMotif[m] = [];
-      byMotif[m].push(s);
-    });
-  });
-  Object.entries(byMotif).forEach(([motif, list]) => {
-    if (list.length < 2) return;
-    list.sort((a, b) => a.scene_order - b.scene_order);
-    // 연속 쌍만 (n개 있으면 n-1개 쌍)
-    for (let i = 0; i < list.length - 1; i++) {
-      const from = list[i], to = list[i + 1];
-      // scene_order 차이가 1이면 choice edge랑 겹치므로 제외
-      if (to.scene_order - from.scene_order <= 1) continue;
-      pairs.push({ from, to, motif });
-    }
-  });
-  return pairs;
-}
+// 260730 검수 B안: renderCompareTab(경로 비교 탭) 은퇴 — 감정 궤적 선택 UI 선행 은퇴로 항상 빈 상태였음.
 
 // ─── 유틸 ──────────────────────────────────────────────────
-function svgEl(tag, attrs = {}, textContent) {
-  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-  for (const k in attrs) el.setAttribute(k, attrs[k]);
-  if (textContent !== undefined) el.textContent = textContent;
-  return el;
-}
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function setStatus(msg) {
-  document.getElementById('tvStatus').textContent = msg;
+  const el = document.getElementById('tvStatus');
+  if (el) el.textContent = msg;
 }
