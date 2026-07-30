@@ -59,6 +59,9 @@ function rulerAxes(ruler, scene, memory) {
   return keys.length ? keys : null;
 }
 
+// 260728 reason 주입 (§7-① 후속): 프로덕션 _analyzeEmotion 이 reason: text 로 바뀜.
+// 하네스도 동형이어야 재실행이 "고친 경로"를 시험한다. 옛 형태(reason:'')의 결과는
+// 분류결과-{A,B,C}.json 에 동결 — 본 하네스는 이제 -v2 파일에 쓴다 (동결 침범 금지).
 async function callOnce(text, axes) {
   const resp = await fetch(FN_URL, {
     method: 'POST',
@@ -67,7 +70,7 @@ async function callOnce(text, axes) {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     },
-    body: JSON.stringify({ type: 'emotion_analysis', emotion: text, reason: '', anchorEmotions: axes }),
+    body: JSON.stringify({ type: 'emotion_analysis', emotion: text, reason: text, anchorEmotions: axes }),
   });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} ${(await resp.text()).slice(0, 200)}`);
   const data = await resp.json();
@@ -76,7 +79,13 @@ async function callOnce(text, axes) {
   if (typeof base === 'string') { try { base = JSON.parse(base); } catch (_) { base = null; } }
   if (Array.isArray(base)) base = null;
   if (base && typeof base === 'object' && Object.keys(base).length > 0) {
-    return { vector: base, confidence: data.analysis.confidence ?? null, intensity: data.analysis.intensity ?? null };
+    return {
+      vector: base,
+      confidence: data.analysis.confidence ?? null,
+      intensity: data.analysis.intensity ?? null,
+      // 260728: is_void 배선 검증용 — 프로덕션이 이제 이 값을 소비한다
+      reason_analysis: data.reason_analysis ?? null,
+    };
   }
   return null;
 }
@@ -110,9 +119,9 @@ async function main() {
   const sceneById = new Map(snap.scenes.map((s) => [s.scene_id, s]));
   const memByCode = new Map(snap.memories.map((m) => [m.code, m]));
 
-  // 자 A 이고 축이 B 와 동일하면 B 결과 재사용
+  // 자 A 이고 축이 B 와 동일하면 B 결과 재사용 — v2 파일에서 (동형 호출끼리만 재사용 가능)
   let bResults = null;
-  const bPath = path.join(EXP_DIR, '분류결과-B.json');
+  const bPath = path.join(EXP_DIR, '분류결과-B-v2.json');
   if (ruler === 'A' && fs.existsSync(bPath)) {
     bResults = new Map(loadJSON(bPath).results.map((r) => [r.utterance_id, r]));
   }
@@ -154,6 +163,7 @@ async function main() {
           vector: r ? r.vector : null,
           confidence: r ? r.confidence : null,
           intensity: r ? r.intensity : null,
+          reason_analysis: r ? r.reason_analysis : null, // 260728 is_void 배선 검증용
           missing: !r,
           reused_from_B: false,
         };
@@ -170,8 +180,9 @@ async function main() {
     meta: {
       created: '260728',
       ruler,
+      variant: 'v2-reason주입',
       endpoint: FN_URL,
-      note: '배포판 claude-scene 호출. 설계 §7. DB 쓰기 0건.',
+      note: '배포판 claude-scene 호출, reason=발화 텍스트 (§7-① 후속). DB 쓰기 0건. v1(reason 빈값)은 분류결과-{A,B,C}.json 동결.',
       call_count: jobs.length - reuse,
       reused_from_B: reuse,
       missing_count: missing,
@@ -179,7 +190,7 @@ async function main() {
     },
     results,
   };
-  const outPath = path.join(EXP_DIR, `분류결과-${ruler}.json`);
+  const outPath = path.join(EXP_DIR, `분류결과-${ruler}-v2.json`);
   fs.writeFileSync(outPath, JSON.stringify(out, null, 1), 'utf8');
   console.log(`저장: ${outPath} (결측 ${missing}/${results.length})`);
 }

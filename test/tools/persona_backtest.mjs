@@ -105,6 +105,9 @@ function runSession(ruler, archetype, memory, scenes, utterances, classMap, opts
   const orig0 = null;
   let lastUserEmotion = null;
   let lastAlignment = 0;
+  // 260728 v2: 분류기 reason_analysis(is_void) 배선 — lumen_dialog lastReasonAnalysis 와 동형.
+  // v1 분류결과에는 이 필드가 없으므로(reason:'' 시절) v1 재계산은 자동으로 구동작 유지.
+  let lastReasonAnalysis = null;
   let previousBucket = null;
   const emotionHistory = [];
   const userTrajectory = [];
@@ -129,6 +132,7 @@ function runSession(ruler, archetype, memory, scenes, utterances, classMap, opts
       } else {
         const c = classMap.get(u.id);
         userEmo = c && c.vector ? c.vector : null;
+        if (c && c.reason_analysis) lastReasonAnalysis = c.reason_analysis;
         alignment = userEmo ? dialogCosine(userEmo, origEmotion) : 0.5;
         via = userEmo ? 'classified' : 'missing';
         if (alignment === 0) {
@@ -147,7 +151,9 @@ function runSession(ruler, archetype, memory, scenes, utterances, classMap, opts
     if (!lastUserEmotion) continue; // no user emotion — 실전도 스킵
 
     const input = {
-      userVector: { base: lastUserEmotion, reason_analysis: { is_void: false, attribution: null, target: null, core_fear: null } },
+      // 260728 v2: is_void 만 실측 배선 (play-test.html 대화 경로 배선과 동형).
+      // attribution/core_fear 는 어휘 충돌로 실전에서도 null 봉인 — 동일하게 재현.
+      userVector: { base: lastUserEmotion, reason_analysis: { is_void: !!(lastReasonAnalysis && lastReasonAnalysis.is_void), attribution: null, target: null, core_fear: null } },
       originalVector: origVector,
       anchorEmotions: useSceneAnchorForJudge ? (scene.anchor_emotions || null) : null,
       userTrajectory: [...userTrajectory],
@@ -226,6 +232,10 @@ function summarize(sessions) {
 
 function main() {
   selfCheck();
+  // 260728 --suffix v2: reason 주입 재실행분(분류결과-{A,B}-v2.json) 재계산.
+  // 동결본(무접미사)은 읽기 전용으로 남기고 출력도 결과-{ruler}-v2.json 으로 분리.
+  const argv = process.argv.slice(2);
+  const sfx = argv.includes('--suffix') ? `-${argv[argv.indexOf('--suffix') + 1]}` : '';
   const snap = load('씬스냅샷.json');
   const corpus = load('발화코퍼스.json');
   const memByCode = new Map(snap.memories.map((m) => [m.code, m]));
@@ -238,7 +248,9 @@ function main() {
   const all = {};
 
   for (const ruler of rulers) {
-    const cls = load(`분류결과-${ruler}.json`);
+    const clsPath = path.join(EXP_DIR, `분류결과-${ruler}${sfx}.json`);
+    if (!fs.existsSync(clsPath)) { console.log(`(스킵: 분류결과-${ruler}${sfx}.json 없음)`); continue; }
+    const cls = load(`분류결과-${ruler}${sfx}.json`);
     const classMap = new Map(cls.results.map((r) => [r.utterance_id, r]));
     const sessions = [];
     const sessionsRealWiring = [];
@@ -262,22 +274,27 @@ function main() {
       summary: summarize(sessions),
       summary_real_wiring: summarize(sessionsRealWiring),
     };
-    fs.writeFileSync(path.join(EXP_DIR, `결과-${ruler}.json`), JSON.stringify(payload, null, 1), 'utf8');
+    fs.writeFileSync(path.join(EXP_DIR, `결과-${ruler}${sfx}.json`), JSON.stringify(payload, null, 1), 'utf8');
     all[ruler] = payload;
-    console.log(`저장: 결과-${ruler}.json`);
+    console.log(`저장: 결과-${ruler}${sfx}.json`);
   }
 
   // ── 요약 표 ──
   console.log('\n== 아키타입 × 자 → 정렬 중앙값 (판단=기억 축 고정) ==');
   console.log('아키타입'.padEnd(14), 'A(현행)'.padEnd(10), 'B(수술안)'.padEnd(10), 'C(17축)');
   for (const a of archetypes) {
-    const row = rulers.map((r) => (all[r].summary[a] ? all[r].summary[a].alignment_median.toFixed(3) : '—'));
+    const row = rulers.map((r) => (all[r] && all[r].summary[a] ? all[r].summary[a].alignment_median.toFixed(3) : '—'));
     console.log(a.padEnd(14), row[0].padEnd(10), row[1].padEnd(10), row[2]);
   }
-  console.log('\n== 패턴 분포 (자 B) ==');
-  for (const a of archetypes) console.log(a.padEnd(14), JSON.stringify(all.B.summary[a].patterns));
-  console.log('\n== 패턴 분포 (자 A) ==');
-  for (const a of archetypes) console.log(a.padEnd(14), JSON.stringify(all.A.summary[a].patterns));
+  if (all.B) {
+    console.log('\n== 패턴 분포 (자 B) ==');
+    for (const a of archetypes) console.log(a.padEnd(14), JSON.stringify(all.B.summary[a].patterns));
+  }
+  if (all.A) {
+    console.log('\n== 패턴 분포 (자 A) ==');
+    for (const a of archetypes) console.log(a.padEnd(14), JSON.stringify(all.A.summary[a].patterns));
+  }
+  if (!all.A || !all.B) { console.log('\n(자 A/B 미비 — 리트머스 판정 생략)'); return; }
 
   // ── 리트머스 판정 (§9) ──
   const verdicts = [];
@@ -354,7 +371,7 @@ function main() {
   console.log(`\n== 대체 문턱(LOW<q25=${lowCut}, HIGH≥q75=${highCut}) 적용 시 패턴 분포 (자 B) ==`);
   for (const a of archetypes) console.log(a.padEnd(14), JSON.stringify(altPatterns[a] || {}));
 
-  fs.writeFileSync(path.join(EXP_DIR, '판정.json'), JSON.stringify({
+  fs.writeFileSync(path.join(EXP_DIR, `판정${sfx}.json`), JSON.stringify({
     verdicts, thresholds, alt_threshold_patterns: altPatterns,
     alt_cuts: { low: lowCut, high: highCut },
   }, null, 1), 'utf8');

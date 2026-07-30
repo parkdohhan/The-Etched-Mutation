@@ -1341,7 +1341,12 @@
   // ─── claude-scene 호출 (emotion 추출) ───
   // claude-scene index.ts:226 — body { type:'emotion_analysis', emotion, reason, anchorEmotions }
   //   → { generatedEmotion, analysis:{ base:{...}, detailed, intensity, confidence }, reason_analysis }
-  // Phase 1: 자유대화 텍스트 → body.emotion (통째). reason 분리 X. anchor_emotions 씬 배열 전달.
+  // 260728 (리트머스 §7-① 후속): reason 을 발화 텍스트로 채운다. 이전엔 '' 로 보냈고,
+  //   edge function 규칙("빈 입력 → is_void:true")에 걸려 모든 발화가 회피 판정 +
+  //   "말하기를 거부한다" 틀로 감정이 오독됐다 (공감 질문 → anger 0.55, 냉소 해석.
+  //   reason 채우면 같은 문장이 longing 0.6 — 배포판 실측 4케이스 + 회피 3케이스 확인:
+  //   "모르겠어요"류는 채워도 is_void:true 유지, 구체 발화는 false. 깨끗이 분리됨).
+  //   반환도 base 단독 → { base, reason_analysis } 로 확장 (avoidance 배선 재료).
   async function _analyzeEmotion(supabase, text, anchorEmotions) {
     if (!supabase || !text) return null;
     try {
@@ -1349,7 +1354,7 @@
         body: {
           type: 'emotion_analysis',
           emotion: text,
-          reason: '',
+          reason: text,
           anchorEmotions: anchorEmotions || null,
         },
       });
@@ -1366,7 +1371,9 @@
         }
         if (Array.isArray(base)) base = null; // 인덱스 키 자리 박힘 회피
         if (base && typeof base === 'object' && Object.keys(base).length > 0) {
-          return base;
+          var reason = (data.reason_analysis && typeof data.reason_analysis === 'object'
+            && !Array.isArray(data.reason_analysis)) ? data.reason_analysis : null;
+          return { base: base, reason_analysis: reason };
         }
       }
       return null;
@@ -1569,6 +1576,9 @@
     var lastAlignment = 0.5;
     var lastResonance = 'vague';
     var lastUserEmotion = null;
+    // 260728: 분류기의 reason_analysis (is_void 등). SHORT_AFFIRMATIVE 턴은 분류를 안
+    // 타므로 직전 값 유지 (lastUserEmotion 재사용과 같은 결).
+    var lastReasonAnalysis = null;
     var dialogTurns = [];
     var dialogHistory = [];  // V2.1.2 (ε) — dialog-turn 자리 누적 자리
     // 2026-05-08: 자료 §12.5c fix — sceneData.original_emotion 가 jsonb string
@@ -1665,7 +1675,9 @@
           : ((input.memoryEmotionAxes && input.memoryEmotionAxes.length)
             ? input.memoryEmotionAxes
             : (origEmotion && Object.keys(origEmotion).length ? Object.keys(origEmotion) : null));
-        userEmo = await _analyzeEmotion(input.supabase, playerInput, anchorKeys);
+        var anaRes = await _analyzeEmotion(input.supabase, playerInput, anchorKeys);
+        userEmo = anaRes ? anaRes.base : null;
+        if (anaRes && anaRes.reason_analysis) lastReasonAnalysis = anaRes.reason_analysis;
         alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;
         // alignment=0 박히면 진단 + lastAlignment fallback (plays 누적 결 보호).
         if (alignment === 0) {
@@ -1883,6 +1895,8 @@
       sceneCycleMs: sceneCycleMs,
       // V2.1.2 (5-05) — plays insert 자리 (호출자 onSceneEnd 에서 사용)
       lastUserEmotion: lastUserEmotion,
+      // 260728: 엔진 스텝 배선용 (play-test 대화 경로가 is_void 만 소비 — avoidance 부활)
+      lastReasonAnalysis: lastReasonAnalysis,
       dialogTurns: dialogTurns,
     };
     if (typeof input.onSceneEnd === 'function') input.onSceneEnd(result);

@@ -80,7 +80,7 @@
   <script src="js/ui/lumen_ghost_response.js?v=260714"></script>
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
-  <script src="js/ui/lumen_dialog_phase1.js?v=260727"></script>
+  <script src="js/ui/lumen_dialog_phase1.js?v=260728"></script>
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260714"></script>
   <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
@@ -3673,9 +3673,16 @@
           // dialogSession 경로를 그대로 쓴다 (이중 집계 방지).
           var _eng = null;
           try {
+            // 260728 (리트머스 §7-② avoidance 부활): is_void 를 분류기 실측으로.
+            // 이전엔 is_void:false 하드코딩 → void_mismatch 판정 불가 → 패턴 6종 중
+            // avoidance 가 상영 경로에서 도달 불가였다 (회피 발화가 contradiction 으로 오분류).
+            // attribution/core_fear 는 의도적으로 null 유지 — 분류기 어휘(other_blame/
+            // fate_blame)와 원본 씬 어휘(helpless_situation/external_threat 등)가 달라
+            // 그대로 이으면 가짜 attribution_mismatch 양산. 어휘 통일(감정축 회의) 전까지 봉인.
+            var _ra = result.lastReasonAnalysis || {};
             var _uvec = {
               base: result.lastUserEmotion,
-              reason_analysis: { is_void: false, attribution: null, target: null, core_fear: null },
+              reason_analysis: { is_void: !!_ra.is_void, attribution: null, target: null, core_fear: null },
             };
             var _origV = buildOriginalVectorFromScene(scene);
             _eng = byeoriCalculateStep({

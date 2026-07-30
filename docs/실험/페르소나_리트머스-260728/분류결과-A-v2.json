@@ -1,0 +1,4311 @@
+{
+ "meta": {
+  "created": "260728",
+  "ruler": "A",
+  "variant": "v2-reason주입",
+  "endpoint": "https://bxmppaxpzbkwebfbgpsm.supabase.co/functions/v1/claude-scene",
+  "note": "배포판 claude-scene 호출, reason=발화 텍스트 (§7-① 후속). DB 쓰기 0건. v1(reason 빈값)은 분류결과-{A,B,C}.json 동결.",
+  "call_count": 72,
+  "reused_from_B": 72,
+  "missing_count": 0,
+  "missing_rate": 0
+ },
+ "results": [
+  {
+   "utterance_id": "u001",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.4,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.3,
+    "joy": 0.2,
+    "longing": 0.75,
+    "numbness": 0.1,
+    "sadness": 0.5,
+    "shame": 0
+   },
+   "confidence": 0.7,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u002",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.5,
+    "fear": 0.3,
+    "guilt": 0.1,
+    "isolation": 0.75,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.4,
+    "sadness": 0.65,
+    "shame": 0.5
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u003",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.4,
+    "emptiness": 0.3,
+    "fear": 0.4,
+    "guilt": 0.1,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.6,
+    "numbness": 0.1,
+    "sadness": 0.4,
+    "shame": 0.1
+   },
+   "confidence": 0.55,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u004",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.7,
+    "emptiness": 0.4,
+    "fear": 0.1,
+    "guilt": 0.2,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.2,
+    "sadness": 0.3,
+    "shame": 0.1
+   },
+   "confidence": 0.7,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u005",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.2,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0.3,
+    "longing": 0.8,
+    "numbness": 0,
+    "sadness": 0.3,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u006",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.6,
+    "emptiness": 0.2,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0,
+    "longing": 0.5,
+    "numbness": 0,
+    "sadness": 0.2,
+    "shame": 0
+   },
+   "confidence": 0.6,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u007",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.15,
+    "confusion": 0.4,
+    "emptiness": 0.55,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.75,
+    "joy": 0,
+    "longing": 0.5,
+    "numbness": 0.35,
+    "sadness": 0.55,
+    "shame": 0.1
+   },
+   "confidence": 0.55,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u008",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.6,
+    "fear": 0.3,
+    "guilt": 0.1,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0.75,
+    "numbness": 0.2,
+    "sadness": 0.65,
+    "shame": 0.1
+   },
+   "confidence": 0.7,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u009",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.3,
+    "emptiness": 0.85,
+    "fear": 0.2,
+    "guilt": 0,
+    "isolation": 0.5,
+    "joy": 0,
+    "longing": 0.55,
+    "numbness": 0.6,
+    "sadness": 0.55,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u010",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.5,
+    "emptiness": 0.3,
+    "fear": 0.6,
+    "guilt": 0.4,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.2,
+    "sadness": 0.4,
+    "shame": 0.3
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u011",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.2,
+    "emptiness": 0.75,
+    "fear": 0.2,
+    "guilt": 0.15,
+    "isolation": 0.8,
+    "joy": 0,
+    "longing": 0.6,
+    "numbness": 0.4,
+    "sadness": 0.65,
+    "shame": 0.3
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u012",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.5,
+    "emptiness": 0.8,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0.5,
+    "numbness": 0.4,
+    "sadness": 0.7,
+    "shame": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u013",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.55,
+    "numbness": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u014",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u015",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.1,
+    "surprise": 0.85
+   },
+   "confidence": 0.75,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u016",
+   "ruler": "A",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0.65,
+    "loneliness": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u017",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.4,
+    "anger": 0
+   },
+   "confidence": 0.65,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u018",
+   "ruler": "A",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.75
+   },
+   "confidence": 0.65,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u019",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.75,
+    "loss": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u020",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.6,
+    "tenderness": 0.7
+   },
+   "confidence": 0.65,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u021",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.55,
+    "hope": 0.4
+   },
+   "confidence": 0.65,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u022",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.45,
+    "longing": 0.3
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u023",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.75,
+    "disgust": 0.6
+   },
+   "confidence": 0.7,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u024",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.1,
+    "numbness": 0.5
+   },
+   "confidence": 0.7,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u025",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.15,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.05,
+    "joy": 0.55,
+    "longing": 0.45,
+    "numbness": 0.1,
+    "sadness": 0.05,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u026",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.2,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.5,
+    "joy": 0.2,
+    "longing": 0.1,
+    "numbness": 0.1,
+    "sadness": 0.1,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u027",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.3,
+    "confusion": 0.2,
+    "emptiness": 0.6,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.5,
+    "sadness": 0.4,
+    "shame": 0.1
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u028",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.1,
+    "fear": 0,
+    "guilt": 0.75,
+    "isolation": 0,
+    "joy": 0.55,
+    "longing": 0.1,
+    "numbness": 0,
+    "sadness": 0.2,
+    "shame": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u029",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.3,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.4,
+    "joy": 0.3,
+    "longing": 0.6,
+    "numbness": 0.1,
+    "sadness": 0.4,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u030",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.1,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.3,
+    "sadness": 0.1,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.3,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u031",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.2,
+    "confusion": 0.6,
+    "emptiness": 0.4,
+    "fear": 0.5,
+    "guilt": 0.2,
+    "isolation": 0.5,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.6,
+    "sadness": 0.4,
+    "shame": 0.3
+   },
+   "confidence": 0.7,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u032",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.05,
+    "confusion": 0.3,
+    "emptiness": 0.5,
+    "fear": 0.35,
+    "guilt": 0.45,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.3,
+    "sadness": 0.55,
+    "shame": 0.65
+   },
+   "confidence": 0.65,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u033",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.55,
+    "confusion": 0.3,
+    "emptiness": 0.4,
+    "fear": 0.15,
+    "guilt": 0.1,
+    "isolation": 0.75,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.25,
+    "sadness": 0.6,
+    "shame": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u034",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.65,
+    "emptiness": 0.15,
+    "fear": 0.3,
+    "guilt": 0.1,
+    "isolation": 0.05,
+    "joy": 0.05,
+    "longing": 0.1,
+    "numbness": 0.1,
+    "sadness": 0.35,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u035",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.2,
+    "emptiness": 0.65,
+    "fear": 0.3,
+    "guilt": 0.1,
+    "isolation": 0.8,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.5,
+    "sadness": 0.55,
+    "shame": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u036",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.3,
+    "emptiness": 0.6,
+    "fear": 0.2,
+    "guilt": 0.2,
+    "isolation": 0.85,
+    "joy": 0,
+    "longing": 0.4,
+    "numbness": 0.4,
+    "sadness": 0.65,
+    "shame": 0.5
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u037",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.3,
+    "numbness": 0.55
+   },
+   "confidence": 0.65,
+   "intensity": 0.45,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u038",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.85
+   },
+   "confidence": 0.8,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u039",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.55,
+    "surprise": 0.65
+   },
+   "confidence": 0.6,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u040",
+   "ruler": "A",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0,
+    "loneliness": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u041",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.65,
+    "anger": 0.55
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u042",
+   "ruler": "A",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.65
+   },
+   "confidence": 0.7,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u043",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.75,
+    "loss": 0.5
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u044",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.85,
+    "tenderness": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u045",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.55,
+    "hope": 0.5
+   },
+   "confidence": 0.7,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u046",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.65,
+    "longing": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u047",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.45,
+    "disgust": 0.3
+   },
+   "confidence": 0.65,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u048",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.1,
+    "numbness": 0.6
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u049",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.3,
+    "confusion": 0.2,
+    "emptiness": 0.4,
+    "fear": 0.1,
+    "guilt": 0.1,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.5,
+    "sadness": 0.4,
+    "shame": 0.3
+   },
+   "confidence": 0.65,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u050",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.75,
+    "confusion": 0.2,
+    "emptiness": 0.15,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.15,
+    "shame": 0.55
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u051",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.4,
+    "confusion": 0.7,
+    "emptiness": 0.1,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0.2,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.1,
+    "shame": 0
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u052",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.3,
+    "confusion": 0.2,
+    "emptiness": 0.6,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.5,
+    "sadness": 0.5,
+    "shame": 0.3
+   },
+   "confidence": 0.7,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u053",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.75,
+    "confusion": 0.1,
+    "emptiness": 0.15,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.05,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u054",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.3,
+    "emptiness": 0.5,
+    "fear": 0.1,
+    "guilt": 0.2,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0.6,
+    "numbness": 0.2,
+    "sadness": 0.6,
+    "shame": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u055",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.3,
+    "emptiness": 0.1,
+    "fear": 0.75,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.1,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u056",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.85,
+    "confusion": 0.3,
+    "emptiness": 0.1,
+    "fear": 0.15,
+    "guilt": 0.1,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.05,
+    "sadness": 0.25,
+    "shame": 0.2
+   },
+   "confidence": 0.85,
+   "intensity": 0.8,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u057",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.55,
+    "confusion": 0.3,
+    "emptiness": 0.1,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0.1,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0,
+    "shame": 0
+   },
+   "confidence": 0.6,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u058",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.6,
+    "confusion": 0.2,
+    "emptiness": 0.4,
+    "fear": 0.1,
+    "guilt": 0.2,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.5,
+    "sadness": 0.4,
+    "shame": 0.1
+   },
+   "confidence": 0.65,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u059",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.75,
+    "confusion": 0.1,
+    "emptiness": 0.4,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.2,
+    "sadness": 0.3,
+    "shame": 0.35
+   },
+   "confidence": 0.85,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u060",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.65,
+    "confusion": 0.2,
+    "emptiness": 0.35,
+    "fear": 0.15,
+    "guilt": 0.1,
+    "isolation": 0.55,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.3,
+    "sadness": 0.5,
+    "shame": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u061",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.9,
+    "numbness": 0.75
+   },
+   "confidence": 0.7,
+   "intensity": 0.9,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u062",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u063",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.65,
+    "surprise": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u064",
+   "ruler": "A",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0.2,
+    "loneliness": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u065",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.1,
+    "anger": 0.65
+   },
+   "confidence": 0.7,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u066",
+   "ruler": "A",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.65
+   },
+   "confidence": 0.8,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u067",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.1,
+    "loss": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u068",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.65,
+    "tenderness": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u069",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.65,
+    "hope": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u070",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.2,
+    "longing": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u071",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.2,
+    "disgust": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u072",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.1,
+    "numbness": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u073",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.65,
+    "confusion": 0.1,
+    "emptiness": 0.2,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.55,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.5,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u074",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.75,
+    "confusion": 0.2,
+    "emptiness": 0.15,
+    "fear": 0.3,
+    "guilt": 0.1,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.1,
+    "sadness": 0.45,
+    "shame": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u075",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.8,
+    "confusion": 0.2,
+    "emptiness": 0.1,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.4,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u076",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.75,
+    "confusion": 0.3,
+    "emptiness": 0.1,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.15,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.3,
+    "shame": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u077",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.75,
+    "confusion": 0.1,
+    "emptiness": 0.1,
+    "fear": 0.15,
+    "guilt": 0.05,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.3,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u078",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.45,
+    "confusion": 0.1,
+    "emptiness": 0.1,
+    "fear": 0.1,
+    "guilt": 0.05,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.2,
+    "shame": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.45,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u079",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.65,
+    "confusion": 0.3,
+    "emptiness": 0.1,
+    "fear": 0.15,
+    "guilt": 0.05,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.2,
+    "shame": 0.15
+   },
+   "confidence": 0.65,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u080",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.75,
+    "confusion": 0.3,
+    "emptiness": 0.2,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.2,
+    "sadness": 0.55,
+    "shame": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u081",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.65,
+    "confusion": 0.3,
+    "emptiness": 0.2,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.1,
+    "sadness": 0.4,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u082",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.65,
+    "confusion": 0.2,
+    "emptiness": 0.1,
+    "fear": 0.15,
+    "guilt": 0.1,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.2,
+    "shame": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u083",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.65,
+    "confusion": 0.2,
+    "emptiness": 0.4,
+    "fear": 0.2,
+    "guilt": 0,
+    "isolation": 0.7,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.1,
+    "sadness": 0.55,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u084",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.55,
+    "confusion": 0.2,
+    "emptiness": 0.5,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.3,
+    "sadness": 0.45,
+    "shame": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u085",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.2,
+    "numbness": 0.6
+   },
+   "confidence": 0.65,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u086",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.1
+   },
+   "confidence": 0.6,
+   "intensity": 0.2,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u087",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0,
+    "surprise": 0.3
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u088",
+   "ruler": "A",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0,
+    "loneliness": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u089",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.4,
+    "anger": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u090",
+   "ruler": "A",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u091",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.1,
+    "loss": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u092",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.2,
+    "tenderness": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u093",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.3,
+    "hope": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u094",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.2,
+    "longing": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u095",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.35,
+    "disgust": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u096",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.1,
+    "numbness": 0.6
+   },
+   "confidence": 0.65,
+   "intensity": 0.3,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u097",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.75,
+    "emptiness": 0.1,
+    "fear": 0.3,
+    "guilt": 0,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.15,
+    "sadness": 0.05,
+    "shame": 0
+   },
+   "confidence": 0.65,
+   "intensity": 0.45,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u098",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.05,
+    "confusion": 0.05,
+    "emptiness": 0,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.15,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u099",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.6,
+    "emptiness": 0.5,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.5,
+    "sadness": 0.1,
+    "shame": 0
+   },
+   "confidence": 0.3,
+   "intensity": 0.2,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u100",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.1,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0,
+    "joy": 0.1,
+    "longing": 0.4,
+    "numbness": 0,
+    "sadness": 0.1,
+    "shame": 0
+   },
+   "confidence": 0.6,
+   "intensity": 0.2,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u101",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.15,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0,
+    "joy": 0.3,
+    "longing": 0.55,
+    "numbness": 0.05,
+    "sadness": 0.2,
+    "shame": 0
+   },
+   "confidence": 0.65,
+   "intensity": 0.35,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u102",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.3,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0.1,
+    "longing": 0.7,
+    "numbness": 0.1,
+    "sadness": 0.3,
+    "shame": 0
+   },
+   "confidence": 0.6,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u103",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.6,
+    "emptiness": 0.4,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.5,
+    "sadness": 0,
+    "shame": 0
+   },
+   "confidence": 0.2,
+   "intensity": 0.2,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u104",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.55,
+    "emptiness": 0.3,
+    "fear": 0.1,
+    "guilt": 0.05,
+    "isolation": 0.3,
+    "joy": 0.1,
+    "longing": 0.1,
+    "numbness": 0.4,
+    "sadness": 0.15,
+    "shame": 0.05
+   },
+   "confidence": 0.55,
+   "intensity": 0.3,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u105",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.3,
+    "emptiness": 0,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0,
+    "sadness": 0,
+    "shame": 0
+   },
+   "confidence": 0.4,
+   "intensity": 0.1,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u106",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.1,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.2,
+    "sadness": 0,
+    "shame": 0
+   },
+   "confidence": 0.4,
+   "intensity": 0.1,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u107",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.5,
+    "emptiness": 0.3,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.4,
+    "sadness": 0,
+    "shame": 0
+   },
+   "confidence": 0.2,
+   "intensity": 0.2,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u108",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.4,
+    "emptiness": 0.1,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.2,
+    "sadness": 0.1,
+    "shame": 0
+   },
+   "confidence": 0.5,
+   "intensity": 0.25,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u109",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0,
+    "numbness": 0.3
+   },
+   "confidence": 0.6,
+   "intensity": 0.1,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u110",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.55
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u111",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.65,
+    "surprise": 0.3
+   },
+   "confidence": 0.6,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u112",
+   "ruler": "A",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0.55,
+    "loneliness": 0.5
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u113",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.2,
+    "anger": 0
+   },
+   "confidence": 0.6,
+   "intensity": 0.2,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u114",
+   "ruler": "A",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.1
+   },
+   "confidence": 0.6,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u115",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.1,
+    "loss": 0.1
+   },
+   "confidence": 0.3,
+   "intensity": 0.1,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u116",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.6,
+    "tenderness": 0.65
+   },
+   "confidence": 0.7,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u117",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.3,
+    "hope": 0.2
+   },
+   "confidence": 0.6,
+   "intensity": 0.3,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u118",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0,
+    "longing": 0.6
+   },
+   "confidence": 0.5,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u119",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0,
+    "disgust": 0.1
+   },
+   "confidence": 0.6,
+   "intensity": 0.1,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u120",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.1,
+    "numbness": 0.6
+   },
+   "confidence": 0.3,
+   "intensity": 0.3,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u121",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.45,
+    "emptiness": 0.15,
+    "fear": 0.1,
+    "guilt": 0.1,
+    "isolation": 0.1,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.1,
+    "sadness": 0.2,
+    "shame": 0.1
+   },
+   "confidence": 0.6,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u122",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.6,
+    "emptiness": 0,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0,
+    "sadness": 0,
+    "shame": 0
+   },
+   "confidence": 0.6,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u123",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.4,
+    "emptiness": 0,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0,
+    "sadness": 0,
+    "shame": 0
+   },
+   "confidence": 0.6,
+   "intensity": 0.2,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u124",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.4,
+    "emptiness": 0.3,
+    "fear": 0.3,
+    "guilt": 0.1,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.3,
+    "sadness": 0.4,
+    "shame": 0.3
+   },
+   "confidence": 0.6,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u125",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.4,
+    "emptiness": 0.1,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.1,
+    "sadness": 0.1,
+    "shame": 0
+   },
+   "confidence": 0.4,
+   "intensity": 0.3,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u126",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.5,
+    "emptiness": 0.2,
+    "fear": 0.4,
+    "guilt": 0.4,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.2,
+    "sadness": 0.3,
+    "shame": 0.6
+   },
+   "confidence": 0.55,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u127",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.5,
+    "emptiness": 0.2,
+    "fear": 0.4,
+    "guilt": 0.1,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.1,
+    "sadness": 0.2,
+    "shame": 0.1
+   },
+   "confidence": 0.55,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u128",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.65,
+    "emptiness": 0.15,
+    "fear": 0.45,
+    "guilt": 0.1,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0,
+    "numbness": 0.1,
+    "sadness": 0.2,
+    "shame": 0.4
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u129",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.55,
+    "fear": 0.05,
+    "guilt": 0,
+    "isolation": 0.15,
+    "joy": 0,
+    "longing": 0.5,
+    "numbness": 0.2,
+    "sadness": 0.45,
+    "shame": 0
+   },
+   "confidence": 0.65,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u130",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.5,
+    "emptiness": 0.5,
+    "fear": 0.4,
+    "guilt": 0.1,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.4,
+    "numbness": 0.3,
+    "sadness": 0.4,
+    "shame": 0.1
+   },
+   "confidence": 0.5,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u131",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.3,
+    "confusion": 0.4,
+    "emptiness": 0.4,
+    "fear": 0.1,
+    "guilt": 0.1,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.5,
+    "sadness": 0.4,
+    "shame": 0.2
+   },
+   "confidence": 0.6,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u132",
+   "ruler": "A",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.4,
+    "fear": 0.3,
+    "guilt": 0,
+    "isolation": 0.5,
+    "joy": 0.1,
+    "longing": 0.7,
+    "numbness": 0.1,
+    "sadness": 0.4,
+    "shame": 0
+   },
+   "confidence": 0.7,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": true
+  },
+  {
+   "utterance_id": "u133",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.4,
+    "numbness": 0.5
+   },
+   "confidence": 0.5,
+   "intensity": 0.45,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u134",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.05
+   },
+   "confidence": 0.75,
+   "intensity": 0.3,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u135",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.1,
+    "surprise": 0.4
+   },
+   "confidence": 0.55,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u136",
+   "ruler": "A",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0,
+    "loneliness": 0.55
+   },
+   "confidence": 0.65,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u137",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.6,
+    "anger": 0.1
+   },
+   "confidence": 0.6,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u138",
+   "ruler": "A",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.75
+   },
+   "confidence": 0.65,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u139",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.3,
+    "loss": 0.4
+   },
+   "confidence": 0.65,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u140",
+   "ruler": "A",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.3,
+    "tenderness": 0
+   },
+   "confidence": 0.7,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u141",
+   "ruler": "A",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.75,
+    "hope": 0.1
+   },
+   "confidence": 0.7,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u142",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.55,
+    "longing": 0.2
+   },
+   "confidence": 0.45,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u143",
+   "ruler": "A",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.3,
+    "disgust": 0.4
+   },
+   "confidence": 0.6,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  },
+  {
+   "utterance_id": "u144",
+   "ruler": "A",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.3,
+    "numbness": 0.6
+   },
+   "confidence": 0.65,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false,
+   "reused_from_B": false
+  }
+ ]
+}
