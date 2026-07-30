@@ -954,6 +954,7 @@ async function saveConfessionToDB() {
         });
 
         console.log('[Memory] V2 memory save complete:', memoryId);
+        requestObjectModels(memoryId, 'enqueue');   // 260730 사물 3D 모델 주문 (기다리지 않음)
         alert('기억이 지층에 묻혔습니다.');
         endConfession();
 
@@ -1364,6 +1365,11 @@ async function saveRecordMemory(conversationData, sceneData, lang, userTitle, sh
             console.warn('[Record] utterance harvest skipped:', e?.message || e);
         }
 
+        // ─── 260730: 사물 앵커 3D 모델 자동 생성 주문 ───────────────
+        // 관객이 기억을 묻는 순간 서버에 주문만 넣는다 (완성까지 60~120초 × 단어 수라
+        // 여기서 기다리지 않는다). 완성분은 다음 방문 때 collect 가 거둬온다.
+        requestObjectModels(memory.id, 'enqueue');
+
         return memory.id;
     } catch (e) {
         console.error('[Record] Save error:', e);
@@ -1371,6 +1377,35 @@ async function saveRecordMemory(conversationData, sceneData, lang, userTitle, sh
         return null;
     }
 }
+
+/**
+ * 사물 앵커 3D 모델 생성 요청 — 서버(generate-object-model)에 넘기고 기다리지 않는다.
+ *
+ * 260730. 왜 기다리지 않나: 모델 하나에 60~120초. 관객을 붙잡아둘 수 없다.
+ *   mode 'enqueue' = 주문만 넣기 (기억을 묻은 직후)
+ *   mode 'collect' = 완성분 거둬오기 (그 기억을 다시 열 때 — play-test 진입에서 호출)
+ * 실패는 조용히 넘긴다 — 모델이 없으면 지형은 블록으로 서고, 다음 호출이 다시 시도한다.
+ */
+export async function requestObjectModels(memoryId, mode = 'sync') {
+    if (!memoryId) return null;
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) return null;
+        const { data, error } = await supabase.functions.invoke('generate-object-model', {
+            body: { memoryId, mode },
+        });
+        if (error) {
+            console.warn('[ObjectModels] 요청 실패:', error.message || error);
+            return null;
+        }
+        console.log('[ObjectModels]', mode, data);
+        return data;
+    } catch (e) {
+        console.warn('[ObjectModels] 예외:', e?.message || e);
+        return null;
+    }
+}
+if (typeof window !== 'undefined') window.temRequestObjectModels = requestObjectModels;
 
 /**
  * Record = First Play — 기억을 기록하는 행위 자체가 첫 번째 체험이다.

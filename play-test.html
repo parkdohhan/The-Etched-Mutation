@@ -5139,6 +5139,17 @@
     let memRow = (!memRes.error && memRes.data && memRes.data.length > 0) ? memRes.data[0] : null;
     // 260730 사물 GLB 모델 등 기억 단위 meta — attach 배선은 다른 스코프라 window 로 전달
     window.__temMemoryMeta = (memRow && memRow.meta) || {};
+    // 260730: 이 기억에 아직 굽고 있는 사물 모델이 있으면 완성분을 거둬온다.
+    //   RECORD 가 주문만 넣고 떠나므로(모델 하나에 60~120초), 실제 수확은 여기서 일어난다.
+    //   기다리지 않는다 — 이번 회차는 블록으로 서고, 다음 진입 때 3D 로 선다.
+    try {
+      var _jobs = window.__temMemoryMeta.object_model_jobs;
+      if (_jobs && Object.keys(_jobs).length) {
+        sb.functions.invoke('generate-object-model', { body: { memoryId: memoryId, mode: 'collect' } })
+          .then(function (r) { console.log('[ObjectModels] collect', r && r.data); })
+          .catch(function (e) { console.warn('[ObjectModels] collect 실패', e && e.message); });
+      }
+    } catch (_) {}
     if (memRow) {
       game.memoryTitle = memRow.title || game.memoryTitle || '';
       game.memoryLayers = memRow.layers || game.memoryLayers || 0;
