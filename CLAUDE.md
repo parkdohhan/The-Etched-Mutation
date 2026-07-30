@@ -113,6 +113,8 @@
 | **Canvas** | admin의 궤적 큐레이터 통합 뷰 (2026-04-12부터) | |
 | **pin_override** | ⚠️ 죽은 레버 (R1 2026-07-14 정정) — admin 드래그가 `meta.pin_override` 로 저장은 하지만 플레이/지형 쪽 **소비자 없음**. 실제 핀 위치 반영 경로는 `meta.stage_position` (위치 stage 탭) | pin_override 를 읽는 신규 코드 금지 — stage_position 을 쓸 것 |
 | **choices / emotion_dist** | ⚠️ 죽은 레버 (2026-07-30 정정) — choices 버튼은 현행 상영 미노출(구 archive 플레이·휴면 live 전용). 유일 실효였던 "저장 시 emotion_dist 재계산"은 8감정 고정이라 17축 기여분 유실. 씬 감정 정본 = `original_emotion`, 지형(strata)도 260730부터 original 우선 | emotion_dist 를 1순위로 읽는 신규 코드 금지 — original_emotion 을 쓸 것. admin 편집기는 풀버전 전용(adv-only) |
+| **trajectory_targets / 핀 모드** | ⚠️ 죽은 레버 (2026-07-30 검수) — 소비자 SceneNavigator 를 부르는 상영 경로 없음(play-test 는 접근 기하 자체 계산, 구 archive 는 R5-5 제거). Canvas 핀 모드 UI 삭제됨 | trajectory_targets 를 읽는 신규 코드 금지. 분기 확인은 "실전 시뮬 열기(불빛 관찰)" 로 |
+| **admin 전수 검수 (260730)** | 상영 미사용 확정: 상태(Fetus)·메모리 단어·기억 AF 좌표·Finder 감정벡터·작가의 말·scene_type·씬 이유벡터 드롭다운(전부 풀버전 격리), 분기 시뮬·JSON 내보내기·진단기(삭제) | 정본 = docs/admin_사용설명서-260423.md 부록 Z.9~Z.14 |
 
 ---
 
