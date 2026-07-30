@@ -13,7 +13,10 @@
 import { chromium } from 'playwright';
 import { mkdir } from 'fs/promises';
 
-const BASE_URL = 'http://localhost:5173';
+// 260730 QA 러너 대응: --url(vite HMR 리로드 간섭 회피용 정적 서버) · --memory(QA 전용 기억 고정) 인자
+const _args = process.argv.slice(2);
+const BASE_URL = (_args.find(a => a.startsWith('--url=')) || '--url=http://localhost:5173').slice(6);
+const MEMORY_ARG = (_args.find(a => a.startsWith('--memory=')) || '--memory=').slice(9);
 const OUT = 'test/e2e/screenshots';
 await mkdir(OUT, { recursive: true });
 
@@ -35,7 +38,7 @@ page.on('dialog', async d => { console.log(`[dialog] ${d.message()}`); await d.a
 // 부트 + FP 진입
 await page.goto(BASE_URL + '/');
 await page.waitForTimeout(1500);
-const memId = await page.evaluate(async () => {
+const memId = MEMORY_ARG || await page.evaluate(async () => {
   const sb = await window.getSupabaseClient();
   const { data } = await sb.from('memories').select('id').limit(1);
   return data?.[0]?.id;
