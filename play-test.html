@@ -72,8 +72,9 @@
   <script src="js/ui/lumen_visual_effects.js?v=260714"></script>
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_mannequins.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_objects.js?v=260730h"></script><!-- 260712 사물 조형 1단계 · 260730 룩 프리셋 -->
+  <script src="js/ui/lumen_scene_mannequins.js?v=260730a"></script><!-- 260730 GLB 유령 몸 갈래 -->
+  <script src="js/shared/tem_object_anchors.js?v=260730a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
+  <script src="js/ui/lumen_scene_objects.js?v=260730j"></script><!-- 260712 사물 조형 1단계 · 260730 룩 프리셋 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -6679,11 +6680,14 @@
                 }
               });
             }
-            // 2026-04-26: 장면핀 자리에 ybot 마네킨 유령. ghost-mannequin-test 검증값 잠금.
+            // 2026-04-26: 장면핀 자리에 마네킨 유령. ghost-mannequin-test 검증값 잠금.
             //   _buildPlayScenePins 가 이 attach 직후 sync 로 실행되므로 명시적 rebuild 호출은 그 뒤(아래 whisper 옆).
+            // 260730: 몸 교체 — ybot.fbx(36MB 체조 로봇) → Tripo 생성 "이목구비 없는 사람" GLB
+            //   (idle 동작 내장, spec=mixamo 본). 롤백 = fbxBaseUrl 줄 삭제(기본 /test/ybot.fbx).
             if (window.LumenSceneMannequins && typeof window.LumenSceneMannequins.attach === 'function') {
               window.LumenSceneMannequins.attach(rt, {
                 getScenePins: function () { return _fpScenePins; },
+                fbxBaseUrl: 'assets/ghost_models/ghost_faceless_idle.glb?v=260730a',
                 // S1·T4 배선 — 그 핀 장면이 within-run 으로 물들면 마네킨 기욺. p = _fpScenePins 원소.
                 getGhostDrift: function (p) {
                   try {
@@ -6905,6 +6909,41 @@
           // Face the door toward player spawn
           doorGrp.lookAt(spawnX, doorH, spawnZ);
           scene3.add(doorGrp);
+
+          // ─── RECORD ASCII door → GLB swap (260730) ──────────
+          // RECORD 메뉴의 아스키 문(패널 2위아래 + 오른쪽 ◉ 손잡이 + 이중선 문틀)을
+          // Tripo 로 3D화한 모델. 로드 성공 시 상자 대역만 치우고 실물로 교체.
+          // 실패(오프라인/캐시 등) 시 대역 유지 — 출구 판정·조명·위치는 불변.
+          (function () {
+            if (!THREE.GLTFLoader) return;
+            new THREE.GLTFLoader().load('assets/object_models/door_record.glb', function (g) {
+              var m = g.scene;
+              // Tripo 출력이 옆면(x축)을 보고 서 있음 — 문짝 정면을 그룹 z축(관객 쪽)으로
+              m.rotation.y = Math.PI / 2;
+              m.updateMatrixWorld(true);
+              // 전고 3.3m 표준화 (대역 문틀 3.2~3.25m 와 동급)
+              var box = new THREE.Box3().setFromObject(m);
+              var size = box.getSize(new THREE.Vector3());
+              var s = 3.3 / Math.max(size.y, 0.001);
+              m.scale.setScalar(s);
+              box.setFromObject(m);
+              var c = box.getCenter(new THREE.Vector3());
+              m.position.x -= c.x; m.position.z -= c.z; m.position.y -= box.min.y;
+              // 밤에도 제 색 유지 — 사물 모델(lumen_scene_objects modelEmissive)과 같은 규약
+              m.traverse(function (o) {
+                if (o.isMesh && o.material && o.material.emissive && o.material.color) {
+                  o.material.emissive.copy(o.material.color);
+                  o.material.emissiveIntensity = 0.25;
+                }
+              });
+              doorGrp.remove(pillarL); doorGrp.remove(pillarR);
+              doorGrp.remove(lintel); doorGrp.remove(panel);
+              doorGrp.add(m);
+              console.log('[door] RECORD 아스키 문 GLB 교체 완료');
+            }, undefined, function (e) {
+              console.warn('[door] GLB 로드 실패 — 상자 대역 유지', e && e.message);
+            });
+          })();
 
           // Store door position for exit detection later
           window._temExitDoor = { x: doorX, z: doorZ, group: doorGrp };
