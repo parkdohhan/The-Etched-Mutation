@@ -604,10 +604,13 @@ function choiceRowHtml(sceneIndex, ci, c) {
 function renderChoicesEditor(scene, sceneIndex) {
     const rows = (scene.choices || []).map((c, ci) => choiceRowHtml(sceneIndex, ci, c)).join('');
     const open = isSubsectionOpen('choicesFields-' + sceneIndex);
-    return `<div class="editor-section" style="margin-top:1.5rem;padding:1.25rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
-        <button type="button" class="toggle-contamination-btn" onclick="toggleSceneSubsection('choicesFields-${sceneIndex}', this)">${open ? '▼' : '▶'} 감정 결 선택지 (choices)</button>
+    // 260730: adv-only — 상영 경로(play-test)에 choices 버튼 미노출. 유일 실효 = 저장 시
+    // emotion_dist 재계산 → 지형(strata)만 이걸 1순위로 읽어 original_emotion 과 갈라짐.
+    // 구 archive 플레이/live 부활 대비 콘텐츠용으로만 풀버전 편집에 보존 (사용자 지시).
+    return `<div class="editor-section adv-only" style="margin-top:1.5rem;padding:1.25rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
+        <button type="button" class="toggle-contamination-btn" onclick="toggleSceneSubsection('choicesFields-${sceneIndex}', this)">${open ? '▼' : '▶'} 감정 결 선택지 (choices) — 상영 미사용 (구 플레이·live 전용)</button>
         <div id="choicesFields-${sceneIndex}" style="display:${open ? 'block' : 'none'};margin-top:0.8rem;">
-            <small style="display:block;margin-bottom:0.6rem;font-size:0.8rem;color:var(--text-muted);">감정 결만 기록(다음 씬 지정 없음). 강도 0~10. 저장 시 이 선택지들로 <b>emotion_dist 가 재계산</b>됩니다(R1-3).</small>
+            <small style="display:block;margin-bottom:0.6rem;font-size:0.8rem;color:var(--text-muted);">감정 결만 기록(다음 씬 지정 없음). 강도 0~10. 저장 시 이 선택지들로 <b>emotion_dist 가 재계산</b>됩니다(R1-3). ⚠️ 채우면 지형(strata)이 original_emotion 대신 이 8감정 요약을 1순위로 읽어 판정·Canvas 와 감정이 갈라집니다.</small>
             <div class="choices-list" data-scene-index="${sceneIndex}">${rows}</div>
             <button type="button" class="add-emotion-btn" onclick="addChoiceRow(${sceneIndex})" style="margin-top:0.5rem;padding:0.4rem 0.9rem;">+ 선택지 추가</button>
         </div>
@@ -3186,7 +3189,15 @@ async function seedAuthorTrajectory() {
             .eq('memory_id', currentMemoryId).eq('persona_id', 'author-seed');
         if (existing && existing.length > 0) {
             if (!confirm(`기존 작가 시딩 ${existing.length}행이 있습니다. 삭제하고 다시 심을까요?`)) return;
-            await sb.from('plays').delete().eq('memory_id', currentMemoryId).eq('persona_id', 'author-seed');
+            // RLS 는 DELETE 차단 시 에러 없이 0행 처리한다(R3-N1). 그대로 재삽입하면 중복이
+            // 쌓이므로, 삭제 실측(잔존 0행)을 통과해야만 심는다. 260730 정책(plays_delete_author_seed).
+            const { error: delErr } = await sb.from('plays').delete()
+                .eq('memory_id', currentMemoryId).eq('persona_id', 'author-seed');
+            if (delErr) throw delErr;
+            const { count: leftover } = await sb.from('plays').select('id', { count: 'exact', head: true })
+                .eq('memory_id', currentMemoryId).eq('persona_id', 'author-seed');
+            if (leftover > 0) throw new Error(
+                `기존 시딩 삭제가 차단되었습니다(${leftover}행 잔존) — 중복 방지를 위해 중단. plays_delete_author_seed 정책을 확인하세요.`);
         } else {
             if (!confirm(`씬 ${scenes.length}개에 작가 궤적(정렬도 1.0)을 심습니다. 계속?`)) return;
         }
