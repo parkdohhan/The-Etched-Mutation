@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -164,10 +164,10 @@
                         <label class="editor-label">설명</label>
                         <textarea class="editor-textarea" id="memoryDescription" placeholder="메모리 설명 입력"></textarea>
                     </div>
-                    <div class="editor-input-group">
-                        <label class="editor-label">메모리 단어</label>
+                    <div class="editor-input-group adv-only">
+                        <label class="editor-label">메모리 단어 (상영 미사용)</label>
                         <input type="text" class="editor-input" id="memoryWords" placeholder="이 메모리를 나타내는 단어 입력 (쉼표 구분)">
-                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">예: 고독, 상실, 그리움</small>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">⚠️ 현행 소비자 없음 — 문자열 저장 vs 배열 소비 불일치로 구경로 툴팁도 미작동 (260730 검수)</small>
                     </div>
                     <div class="editor-input-group">
                         <label class="editor-label">완성 문장 (Finder 혼잣말)</label>
@@ -175,7 +175,7 @@
                         <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">Memory Finder에서 유령처럼 떠다니는 문장</small>
                     </div>
                     <div class="editor-input-group adv-only">
-                        <label class="editor-label">감정 벡터 (Finder 매칭용)</label>
+                        <label class="editor-label">감정 벡터 (Finder 매칭용 — 상영 미사용 ⚠️ 소비 경로 단선: 재조립에서 컬럼 탈락, 260730 검수)</label>
                         <div id="originalVectorEditor" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
                             <label style="font-size:0.85rem;color:var(--text-muted);width:100%;">0~1 사이 값. 비워두면 씬에서 자동 유도</label>
                             <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:0.8rem;color:#c4a882;min-width:50px;">fear</span><input type="number" id="ov_fear" min="0" max="1" step="0.05" style="width:60px;" class="editor-input"></div>
@@ -188,17 +188,17 @@
                         <button type="button" class="table-btn" onclick="autoFillOriginalVector()" style="font-size:0.8rem;">씬에서 자동 유도</button>
                     </div>
                     <div class="editor-input-group adv-only">
-                        <label class="editor-label">작가의 말 (진엔딩 보상)</label>
-                        <textarea class="editor-textarea" id="authorNote" placeholder="진엔딩 달성 시 플레이어에게 보여줄 메시지..." rows="3"></textarea>
-                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">100자 이하 권장</small>
+                        <label class="editor-label">작가의 말 (구경로 전용 — 트루엔딩 폐기로 개념 소멸)</label>
+                        <textarea class="editor-textarea" id="authorNote" placeholder="옛 진엔딩 메시지 (현행 상영 미표시)..." rows="3"></textarea>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">⚠️ 260716 접촉 재정의로 "진엔딩=보상" 개념 폐기. 현행 상영 참조 0회 (260730 검수)</small>
                     </div>
-                    <div class="editor-input-group">
-                        <label class="editor-label">상태</label>
+                    <div class="editor-input-group adv-only">
+                        <label class="editor-label">상태 (상영 미사용)</label>
                         <select id="memoryStatus" class="editor-input">
                             <option value="Fetus">태아 (미출생)</option>
                             <option value="alive">활성 (활성화됨)</option>
                         </select>
-                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">태아: 아직 아무도 경험하지 않음 / 활성: 현재 활성</small>
+                        <small style="display: block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">⚠️ 이 값으로 거르는 쿼리 없음 — 노출 여부는 공개(is_public)가 결정 (260730 검수)</small>
                     </div>
                 </div>
 
@@ -206,7 +206,7 @@
                 <div class="editor-section">
                     <h3 class="editor-section-title">감각 앵커 (Phase A)</h3>
                     <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
-                        기억 전체를 관통하는 단일 감각. 첫 30초 톤 결정.
+                        기억 전체를 관통하는 단일 감각. 실제 반영 = 3D 지형 첫 씬 주변 입자의 색·크기(<b>양태만</b> 소비 — 내용·강도는 현행 미사용, 260730 검수).
                     </p>
                     <div class="editor-input-group">
                         <label class="editor-label">양태</label>
@@ -227,11 +227,11 @@
                     </div>
                 </div>
 
-                <!-- AF 좌표 (Lumen V1, 작업 12-1) -->
-                <div class="editor-section">
-                    <h3 class="editor-section-title">AF 좌표 (귀인 × 핵심 공포)</h3>
+                <!-- AF 좌표 (Lumen V1, 작업 12-1) — 260730 검수: 완전 사장 → 풀버전 격리 -->
+                <div class="editor-section adv-only">
+                    <h3 class="editor-section-title">AF 좌표 (귀인 × 핵심 공포) — 상영 미사용</h3>
                     <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:1rem">
-                        Strata 지형 배치 결정. 각 그룹 합 = 1 근사 (자동 정규화 가능).
+                        ⚠️ 소비자 없음 — 지형 AF 배치는 이 값이 아니라 관객 plays 감정 평균에서 유도됨 (260730 검수). 각 그룹 합 = 1 근사.
                     </p>
                     <div class="editor-input-group">
                         <label class="editor-label">Attribution (귀인) — 합 <span id="arAttribSum" style="color:var(--accent-memory);">0.00</span></label>
@@ -296,24 +296,8 @@
                         <small style="font-size:0.72rem;color:var(--text-muted);">현재 circular만. V2에서 확장.</small>
                     </div>
                     <!-- 유령 응결점 SVG UI 폐기 (2026-05-16) — 잔상 유령은 궤적 큐레이터 "위치 stage" 탭에서
-                         3D 지형 위 회색 마커로 편집. 데이터 경로(memories.ghost_condensation_points)는 동일. -->
-                    <div class="editor-input-group" style="display:none;">
-                        <label class="editor-label">유령 응결점 (폐기 — 위치 stage 탭으로 이동) <span id="ghostPointsCount" style="color:var(--accent-memory);">0</span></label>
-                        <small style="display:block;font-size:0.72rem;color:var(--text-muted);margin-bottom:0.6rem;">
-                            DEPRECATED 2026-05-16. 궤적 큐레이터 "위치 stage" 탭에서 편집하세요.
-                        </small>
-                        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
-                            <svg id="ghostPointsSvg" width="360" height="360" viewBox="-60 -60 120 120" style="background:#0a0a0e;border:1px solid rgba(196,168,130,.3);border-radius:4px;cursor:crosshair;user-select:none;">
-                                <circle cx="0" cy="0" r="56" fill="none" stroke="rgba(196,168,130,.4)" stroke-width="0.4"/>
-                                <circle cx="0" cy="0" r="5.6" fill="rgba(168,140,196,.08)" stroke="rgba(168,140,196,.35)" stroke-dasharray="1,1" stroke-width="0.3"/>
-                                <line x1="-56" y1="0" x2="56" y2="0" stroke="rgba(196,168,130,.08)" stroke-width="0.2"/>
-                                <line x1="0" y1="-56" x2="0" y2="56" stroke="rgba(196,168,130,.08)" stroke-width="0.2"/>
-                                <g id="scenePinsRefGroup"></g>
-                                <g id="ghostPointsGroup"></g>
-                            </svg>
-                            <div id="ghostPointsList" style="flex:1;min-width:260px;max-width:360px;font-size:0.8rem;"></div>
-                        </div>
-                    </div>
+                         3D 지형 위 회색 마커로 편집. 데이터 경로(memories.ghost_condensation_points)는 동일·현역.
+                         260730 검수: display:none 시체 마크업 제거. -->
                 </div>
 
                 <!-- 유령 변주 풀 (V2.1 SCOPE §4 V2-2) -->
@@ -360,19 +344,11 @@
                     <button class="editor-save-btn" onclick="saveMemory()">저장</button>
                     <button class="editor-cancel-btn" onclick="cancelEdit()">취소</button>
                 </div>
-                <div class="export-section adv-only" style="margin-top: 2rem; padding: 2rem; background: var(--bg-surface); border: 1px solid rgba(196, 168, 130, .2);">
-                    <h3 class="editor-section-title">데이터 내보내기 / 가져오기</h3>
-                    <div style="margin-bottom: 1.5rem;">
-                        <button class="editor-save-btn" onclick="exportMemoriesJSON()" style="margin-right: 1rem;">JSON 다운로드</button>
-                        <label for="importFile" class="editor-save-btn" style="display: inline-block; cursor: pointer; margin: 0;">
-                            JSON 가져오기
-                            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importMemoriesJSON(event)">
-                        </label>
-                    </div>
-                    <div style="padding: 1rem; background: var(--bg-deep); border: 1px solid rgba(196, 168, 130, .1); font-size: .85rem; color: var(--text-muted); line-height: 1.6;">
-                        <strong style="color: var(--accent-memory);">참고:</strong> 다운로드한 JSON 내용을 <code style="color: var(--accent-memory);">data/memories.js</code>의 <code style="color: var(--accent-memory);">memoriesData</code> 배열에 붙여넣으면 메인 페이지에 반영됩니다.
-                    </div>
-                </div>
+                <!-- 260730 검수: JSON 내보내기/가져오기 제거 — 6축 옛 형식이라 data/memories.js
+                     실스키마(UUID·17축)와 불일치(안내문 허위), 가져오기는 DB 미반영에 벡터 유실.
+                     백업은 휴지통 + 판본 이력(admin_versions 20개)이 담당. -->
+
+
             </div>
 
             <!-- ─── 잔상(afterimage) 모더레이션 ─── -->
@@ -380,8 +356,8 @@
                 <div class="editor-section" style="padding:2rem;">
                     <h3 class="editor-section-title">잔상 모더레이션</h3>
                     <p style="margin:0.5rem 0 1rem;font-size:0.85rem;color:var(--text-muted);line-height:1.6;">
-                        Record/Play 중 수집된 발화 후보. <strong>승인</strong>하면 다른 관객의 장면 종료 후 떠오를 수 있습니다.
-                        <strong>거절</strong>하면 풀에서 제외됩니다. 작가/관객의 목소리는 모두 동일하게 처리됩니다.
+                        Record/Play 중 수집된 발화 후보. <strong>승인</strong> + <strong>공개</strong> 둘 다 켜야 노출 풀에 들어갑니다.
+                        ⚠️ <strong>현행 상영(play-test)에는 표시 경로가 없음</strong> — 승인분은 구 플레이 화면(엔딩 후)에서만 떠오름 (260730 검수).
                     </p>
                     <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
                         <button class="editor-btn" id="utterancesRefresh" type="button">새로고침</button>
@@ -431,25 +407,18 @@
                 <!-- 큐레이터 시뮬 (2026-07-27): 실전과 같은 함수로 접근(불빛) 이동을 보는 play-test 작가 모드 -->
                 <button class="tv-toggle" id="tvCuratorSimBtn" style="width:100%;padding:6px;font-size:0.72rem;margin-bottom:10px;" title="실전 접근 기하 그대로 — 가상 감정을 한 걸음씩 밟으며 열림 뭉텅이 이동 관찰"
                         onclick="(function(){var s=document.getElementById('tvMemorySelect');var id=s&&s.value;if(!id){alert('기억을 먼저 선택하세요');return;}window.open('play-test.html?memory='+id+'&variant_strata=1&curator=1','_blank');})()">실전 시뮬 열기 (불빛 관찰)</button>
-                <!-- "+ 잔상 씬" 버튼 폐기 (2026-05-15 phase 1) — 잔상 = 유령 sprite (memories.ghost_condensation_points) 단일 경로로 통합.
-                     동적 잔상 mutation/생성은 V3_backlog-260509.md §5-15 (지형 퀼트 작업과 묶음). -->
-                <div style="display:none;gap:6px;margin-bottom:12px;">
-                    <button class="tv-toggle" id="tvAddBridgeSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(106,163,131,0.08);border-color:rgba(106,163,131,0.3);" title="DEPRECATED 2026-05-15. 잔상은 유령 sprite로 통합.">+ 잔상 씬 (폐기)</button>
-                </div>
                 <!-- 2026-05-16 — 잔상 유령 추가. "위치 stage" 탭에서 회색 마커로 떠서 드래그 편집. -->
                 <div style="display:flex;gap:6px;margin-bottom:12px;">
                     <button class="tv-toggle" id="tvAddGhostBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(200,200,208,0.1);border-color:rgba(200,200,208,0.35);" title="잔상 유령 추가 — memories.ghost_condensation_points. '위치 stage' 탭에서 밝은 회색 마커로 드래그.">+ 잔상 유령</button>
                 </div>
 
-                <div class="tv-section-label">감정 진입점</div>
-                <div id="tvEmotionList"></div>
-
+                <!-- 260730 검수: 감정 진입점 필터(emotion_entries 상영 소비자 소멸)·핀 모드(trajectory_targets
+                     죽은 레버 — SceneNavigator 를 부르는 상영 경로 없음) 은퇴. 궤적 탭 = 관찰 전용. -->
                 <div class="tv-section-label">표시 옵션</div>
                 <div class="tv-toggle-row">
                     <button class="tv-toggle" id="tvToggleAll">전체 표시</button>
                     <button class="tv-toggle" id="tvToggleBridges">모든 브릿지</button>
-                    <button class="tv-toggle" id="tvToggleTerrain" title="감정 좌표 (V/A) 기반 배치">감정 지형 모드</button>
-                    <button class="tv-toggle" id="tvToggleSpatial" title="핀 모드 — 씬마다 원을 그리고, 원 안에 들어온 씬이 자동으로 '다음 갈 수 있는 씬'(meta.trajectory_targets)에 추가됨. 게임 분기가 이 데이터를 따라감.">핀 모드</button>
+                    <button class="tv-toggle" id="tvToggleTerrain" title="감정 좌표 (V/A) 기반 배치 — 보기 전용">감정 지형 모드</button>
                     <button class="tv-toggle" id="tvResetLayout" title="드래그로 옮긴 위치 초기화">레이아웃 초기화</button>
                 </div>
 
@@ -468,27 +437,8 @@
                 </div>
                 <div id="tvPersonaInfo" style="font-size:0.7rem;color:#7c7466;margin-top:6px;line-height:1.5;"></div>
 
-                <div class="tv-section-label" title="가상 관객 감정을 주입해 씬 이동 경로를 실시간 시뮬합니다 (작업 12-4)">분기 시뮬 <span style="color:#5c544a;text-transform:none;letter-spacing:0;font-size:0.62rem;">· B runner 비교</span></div>
-                <div id="tvSimRoot" style="font-size:0.72rem;color:#c0b8a4;">
-                    <div style="display:flex;gap:6px;margin-bottom:6px;">
-                        <select id="tvSimPreset" style="flex:1;padding:4px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.2);color:#e0d8c4;font-family:inherit;font-size:0.72rem;border-radius:2px;">
-                            <option value="">— 프리셋 —</option>
-                        </select>
-                        <button class="tv-toggle" id="tvSimLoadFromPersona" style="padding:4px 8px;font-size:0.68rem;" title="페르소나 선택에서 평균 감정 불러오기">페르소나 ←</button>
-                    </div>
-                    <div id="tvSimSliders" data-runner="A" style="border:1px solid rgba(196,168,130,0.15);border-left:3px solid #c4a882;border-radius:3px;padding:6px 8px;margin-bottom:6px;"></div>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:0.7rem;color:#7c7466;margin-bottom:6px;cursor:pointer;">
-                        <input type="checkbox" id="tvSimCompareToggle"> 비교 모드 (B runner 활성)
-                    </label>
-                    <div id="tvSimSlidersB" data-runner="B" style="display:none;border:1px solid rgba(106,163,131,0.2);border-left:3px solid #6aa383;border-radius:3px;padding:6px 8px;margin-bottom:6px;"></div>
-                    <div class="tv-toggle-row" style="margin-top:4px;">
-                        <button class="tv-toggle" id="tvSimStartBtn" style="flex:1;padding:5px;font-size:0.7rem;" disabled title="이전 step 으로 (visited 스택 한 칸 뒤로)">◀ 이전</button>
-                        <button class="tv-toggle" id="tvSimStepBtn" style="flex:1;padding:5px;font-size:0.7rem;" title="다음 step 진행 (sim 미시작 시 시작)">다음 ▶</button>
-                        <button class="tv-toggle" id="tvSimResetBtn" style="flex:1;padding:5px;font-size:0.7rem;" title="시뮬 초기화">되돌리기</button>
-                    </div>
-                    <div id="tvSimReadout" style="margin-top:6px;font-size:0.7rem;line-height:1.55;"></div>
-                </div>
-
+                <!-- 260730 검수: 분기 시뮬(작업 12-4) 은퇴 — 6축 옛 자(기억별 좌표계 위반) +
+                     "실전 시뮬 열기(불빛 관찰)"(7-27, 실전 동일 함수)가 완전 대체. -->
                 <div class="tv-section-label">통계</div>
                 <div id="tvStats" class="tv-emo-meta" style="line-height: 1.6;"></div>
             </aside>
@@ -764,9 +714,9 @@
     <script src="js/shared/spatialAudio.js"></script>
     <script src="js/ui/strataView.js"></script>
     <script src="js/ui/lumen_admin_scene_terrain_preview.js"></script>
-    <script type="module" src="js/admin.js?v=260730b"></script>
+    <script type="module" src="js/admin.js?v=260730c"></script>
     <script type="module" src="js/admin/ghost_variants_editor.js"></script>
-    <script type="module" src="js/admin-trajectory.js?v=260730b"></script>
+    <script type="module" src="js/admin-trajectory.js?v=260730c"></script>
     <script src="js/contamination.js"></script>
 
     <script>
