@@ -3,7 +3,7 @@
 // 페르소나 STEP 하이라이트는 LumenAdminStageView 3D 핀으로 이식.
 
 import { getSupabaseClient } from './lib/supabaseClient.js';
-import LumenAdminStageView from './ui/lumen_admin_stage_view.js?v=260730'; // 캐시버스터 — 하이라이트 API 추가분 강제 로드
+import LumenAdminStageView from './ui/lumen_admin_stage_view.js?v=260730f'; // 캐시버스터 — 260730f 사물 클릭=씬 편집 열기
 import { DEFAULT_EMOTION_ANCHORS } from './shared/math.js';
 
 // ─── 상태 ──────────────────────────────────────────────────
@@ -1063,6 +1063,22 @@ async function saveScene(s) {
   });
   const motifsStr = document.getElementById('sceneMotifs').value;
   const motifs = motifsStr.split(',').map(x => x.trim()).filter(Boolean);
+  // 260730 사물 전용 목록 — 3상태 (키 없음 / 빈 배열 / 목록). null = 키를 지운다는 뜻.
+  const objNone = !!document.getElementById('sceneObjectNone')?.checked;
+  const objTagsRaw = (document.getElementById('sceneObjectTags')?.value || '')
+    .split(',').map(x => x.trim()).filter(Boolean);
+  const objectTags = objNone ? [] : (objTagsRaw.length ? objTagsRaw : null);
+  // 사물 문장 지정 — "단어: 문장" 한 줄씩. 콜론 첫 개만 구분자로 쓴다 (문장 안 콜론 보존).
+  const objectLines = {};
+  (document.getElementById('sceneObjectLines')?.value || '').split(/\r?\n/).forEach(line => {
+    const t = line.trim();
+    if (!t) return;
+    const i = t.indexOf(':');
+    if (i <= 0) return;
+    const w = t.slice(0, i).trim();
+    const sentence = t.slice(i + 1).trim();
+    if (w && sentence) objectLines[w] = sentence;
+  });
   const sceneCode = document.getElementById('sceneCode').value.trim();
   const soundSelectEl = document.getElementById('sceneSoundSelect');
   const soundUrlInputEl = document.getElementById('sceneSoundUrl');
@@ -1119,6 +1135,11 @@ async function saveScene(s) {
     const newMeta = { ...(s.meta || {}) };
     newMeta.motif_tags = motifs;
     newMeta.author_bridges = bridges;
+    // 260730 사물 전용 목록·문장. null 이면 키 자체를 지워 모티프 태그 폴백으로 되돌린다.
+    if (objectTags === null) delete newMeta.object_tags;
+    else newMeta.object_tags = objectTags;
+    if (Object.keys(objectLines).length) newMeta.object_lines = objectLines;
+    else delete newMeta.object_lines;
     if (sceneCode) newMeta.scene_code = sceneCode;
     if (soundUrl) {
       newMeta.sound_url = soundUrl;
@@ -1197,6 +1218,11 @@ function renderDetailTab(s) {
   // 앵커 감정·잔향 단어 — 배열/문자열 두 형태 모두 들어온 이력이 있다. 둘 다 받아준다.
   const anchorStr = Array.isArray(s.anchor_emotions) ? s.anchor_emotions.join(', ') : String(s.anchor_emotions || '');
   const echoStr = Array.isArray(s.echo_words) ? s.echo_words.join(', ') : String(s.echo_words || '');
+  // 260730 사물 전용 칸 — 3상태: 키 없음(모티프 태그 따름) / 빈 배열(사물 없음) / 목록
+  const hasObjTagsKey = !!(s.meta && Array.isArray(s.meta.object_tags));
+  const objTagStr = hasObjTagsKey ? s.meta.object_tags.join(', ') : '';
+  const objLines = (s.meta && s.meta.object_lines && typeof s.meta.object_lines === 'object') ? s.meta.object_lines : {};
+  const objLinesStr = Object.keys(objLines).map(k => `${k}: ${objLines[k]}`).join('\n');
   const stageOpen = tvSectionOpen('sceneStageBody', false);
   // 씬 순서 이동 — 경계에서는 못 누르게
   const ordered = state.scenes.slice().sort((a, b) => (a.scene_order ?? 0) - (b.scene_order ?? 0));
@@ -1266,6 +1292,20 @@ function renderDetailTab(s) {
 
     <label style="${labelStyle}">모티프 태그 (쉼표 구분)</label>
     <input type="text" id="sceneMotifs" value="${escapeHtml(motifs.join(', '))}" style="${inputStyle}" />
+    <div style="${helpStyle}">되새김 판정·대화 재료·아카이브 검색이 함께 쓰는 목록. 지형에 세울 물건만 따로 정하려면 아래 칸을 쓸 것.</div>
+
+    <label style="${labelStyle}">사물 태그 — 지형에 세울 물건만 (쉼표 구분)</label>
+    <input type="text" id="sceneObjectTags" value="${escapeHtml(objTagStr)}" style="${inputStyle}" ${hasObjTagsKey && !objTagStr ? 'disabled' : ''} />
+    <label style="display:flex;align-items:center;gap:6px;margin-top:5px;font-size:0.72rem;color:#9a9080;cursor:pointer;">
+      <input type="checkbox" id="sceneObjectNone" ${hasObjTagsKey && !objTagStr ? 'checked' : ''}
+             onchange="document.getElementById('sceneObjectTags').disabled = this.checked;" />
+      이 씬엔 사물 없음 (일부러 아무것도 안 세움)
+    </label>
+    <div style="${helpStyle}">비워두면 위의 모티프 태그를 그대로 사용. 여기에 적으면 지형 사물은 이 목록만 따르고, 모티프 태그는 되새김·대화·검색에만 쓰인다.</div>
+
+    <label style="${labelStyle}">사물 문장 지정 (한 줄에 <b>단어: 문장</b>)</label>
+    <textarea id="sceneObjectLines" rows="3" style="${inputStyle}resize:vertical;" placeholder="팬티: 레이스가 허벅지를 긁었고, 뛰면 비즈가 살을 눌렀다.">${escapeHtml(objLinesStr)}</textarea>
+    <div style="${helpStyle}">사물을 길게 눌러 들여다볼 때 뜨는 문장. 안 적으면 씬 본문에서 그 단어가 든 문장을 자동으로 골라 쓴다. 반전급 문장을 콕 집을 때만 사용.</div>
 
     <label style="${labelStyle}">씬 코드 (A, B, C…)</label>
     <input type="text" id="sceneCode" value="${escapeHtml(s.meta?.scene_code || '')}" maxlength="4" style="${inputStyle}width:80px;" />

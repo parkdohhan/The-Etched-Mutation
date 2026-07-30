@@ -94,14 +94,21 @@ function autoProjectFromOrder(scene, total) {
   return { x: r * Math.cos(angle), z: r * Math.sin(angle) };
 }
 function getStagePosition(scene, total) {
-  const sp = scene.meta && scene.meta.stage_position;
-  if (sp && Number.isFinite(sp.x) && Number.isFinite(sp.z)) {
-    return { x: sp.x, z: sp.z, source: 'manual' };
+  // 260730: 자리 규칙을 **플레이와 공유**한다 (js/shared/tem_object_anchors.js).
+  //   그전까지 admin 은 stage_position 없는 씬을 AF/VAD/원형 공식으로 그렸고 플레이는
+  //   감정 투영(H2=23 + 기억 해시)을 썼다 → 같은 씬이 두 화면에서 다른 자리.
+  //   사물을 admin 에서 배치하려면 기준틀부터 같아야 하므로 관객이 걷는 쪽으로 통일.
+  const OA = window.TemObjectAnchors;
+  if (OA && typeof OA.resolvePinPos === 'function') {
+    const r = OA.resolvePinPos(scene, state.terrain.memoryId);
+    if (r) return r;
   }
+  // 이하 최후 폴백 — 감정도 없는 씬 (플레이는 이 경우 핀을 아예 안 세운다.
+  //   admin 은 편집 대상을 잃지 않도록 계속 보여준다.)
   const af = autoProjectFromAF(scene);
   if (af) return { x: af.x, z: af.z, source: 'af' };
   const em = autoProjectFromEmotion(scene);
-  if (em) return { x: em.x, z: em.z, source: 'emotion' };
+  if (em) return { x: em.x, z: em.z, source: 'emotion-legacy' };
   const ord = autoProjectFromOrder(scene, total);
   return { x: ord.x, z: ord.z, source: 'order' };
 }
@@ -137,6 +144,9 @@ const state = {
   },
   pinsGroup: null,             // 모든 핀(shaft+head+label) 컨테이너 — 장면 유령
   ghostsGroup: null,           // 잔상 유령 마커 컨테이너 (2026-05-16)
+  objectsGroup: null,          // 사물 앵커 마커 컨테이너 (260730)
+  objectAnchors: [],           // 공용 계산기 결과 [{scene, sceneId, word, x, z, rotY, pinned}]
+  objectMarkers: [],           // 빌드된 사물 마커 (objectAnchors 와 같은 인덱스)
   threadsGroup: null,          // scene_order 점선
   edgesGroup: null,            // 시뮬 visited / candidate 화살
   voidMarker: null,            // 중앙 void 표시 디스크
@@ -147,7 +157,7 @@ const state = {
   ghostMarkers: [],            // 빌드된 잔상 유령 마커 메쉬 (ghostPoints 와 같은 인덱스)
   sim: { active: false, runners: { A: null, B: null }, compareMode: false },
   personaHighlight: null,      // 260730 B안 — 페르소나 STEP 강조 sceneId (궤적 2D 탭 은퇴, 3D 핀 이식)
-  drag: { sceneId: null, ghostIdx: -1, moved: false, pointerId: null },
+  drag: { sceneId: null, ghostIdx: -1, objIdx: -1, moved: false, pointerId: null },
   rafId: null,
   resizeObserver: null,
   onSceneClick: null,          // 장면 유령(핀) 클릭(드래그 X) 시 (sceneId) => void 호출
@@ -288,6 +298,101 @@ function renderGhostMarkers() {
     m.body.position.y = GHOST_MARKER_R + 1.2;
     m.disc.position.y = 0.05;
     m.group.userData._ghostIdx = i;
+  });
+}
+
+// ─── 사물 앵커 마커 (260730) ──────────────────────────────
+// 유령(파란 핀)·잔상(회색 옥타헤드론)과 구분 — 땅에 붙은 흙빛 상자 + 이름표.
+// 자리는 공용 계산기(TemObjectAnchors)가 정하고, 끌면 scenes.meta.object_pos 에 저장.
+// 작가 지정 좌표를 가진 사물은 테두리가 밝다 (자동 자리와 구별).
+const OBJ_COLOR = 0xb99a6b;          // 마른 흙 (지형 사물 톤)
+const OBJ_PINNED_COLOR = 0xe0cEaa;   // 작가 지정 = 밝은 금빛
+const OBJ_BOX = 1.6;
+
+function _buildObjectMarker(word) {
+  const group = new THREE.Group();
+  const geo = new THREE.BoxGeometry(OBJ_BOX, OBJ_BOX * 0.7, OBJ_BOX);
+  const mat = new THREE.MeshStandardMaterial({
+    color: OBJ_COLOR, emissive: OBJ_COLOR, emissiveIntensity: 0.25,
+    roughness: 0.75, metalness: 0.05, transparent: true, opacity: 0.9,
+  });
+  const body = new THREE.Mesh(geo, mat);
+  body.position.y = OBJ_BOX * 0.35;
+  body.userData._objPart = 'body';
+  group.add(body);
+  // 바닥 디스크 — 지형 위 어느 자리인지 읽히게
+  const discGeo = new THREE.CircleGeometry(OBJ_BOX * 1.1, 20);
+  discGeo.rotateX(-Math.PI / 2);
+  const discMat = new THREE.MeshBasicMaterial({
+    color: OBJ_COLOR, transparent: true, opacity: 0.2,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
+  const disc = new THREE.Mesh(discGeo, discMat);
+  disc.position.y = 0.05;
+  disc.userData._objPart = 'disc';
+  group.add(disc);
+  const label = _makeLabelSprite(word, OBJ_PINNED_COLOR);
+  label.position.y = OBJ_BOX + 1.6;
+  label.scale.set(6, 6, 1);
+  // 260730 실측: 이름표 스프라이트는 6유닛 사각형 + depthTest 없음이라, 옆 사물의 이름표가
+  //   내가 겨눈 몸통보다 카메라에 가까워 raycast 를 가로챘다 ("피" 를 집었는데 "눈" 이 잡힘).
+  //   이름표는 읽기용이므로 조준 대상에서 제외 — 집는 것은 몸통·바닥 디스크뿐.
+  label.raycast = function () {};
+  group.add(label);
+  return { group, body, disc, label, word };
+}
+
+function _disposeObjectMarker(m) {
+  if (!m) return;
+  if (m.body) { m.body.geometry.dispose(); m.body.material.dispose(); }
+  if (m.disc) { m.disc.geometry.dispose(); m.disc.material.dispose(); }
+  if (m.label) {
+    if (m.label.material.map) m.label.material.map.dispose();
+    m.label.material.dispose();
+  }
+}
+
+// 공용 계산기로 현 씬 목록의 사물 자리를 구한다 (작가 지정 우선은 계산기 안에서 처리).
+function _computeObjectAnchors() {
+  const OA = window.TemObjectAnchors;
+  if (!OA || typeof OA.layout !== 'function') return [];
+  const total = state.scenes.length;
+  const items = state.scenes.map(sc => {
+    const pos = getStagePosition(sc, total);
+    return pos ? { scene: sc, wx: pos.x, wz: pos.z } : null;
+  }).filter(Boolean);
+  return OA.layout(items);
+}
+
+function renderObjectMarkers() {
+  if (!state.scene || !state.objectsGroup) return;
+  state.objectAnchors = _computeObjectAnchors();
+  const list = state.objectAnchors;
+
+  // 개수 초과 마커 제거 / 부족분 생성 (라벨 텍스트가 달라지면 새로 만든다)
+  while (state.objectMarkers.length > list.length) {
+    const m = state.objectMarkers.pop();
+    state.objectsGroup.remove(m.group);
+    _disposeObjectMarker(m);
+  }
+  list.forEach((a, i) => {
+    let m = state.objectMarkers[i];
+    if (!m || m.word !== a.word) {
+      if (m) { state.objectsGroup.remove(m.group); _disposeObjectMarker(m); }
+      m = _buildObjectMarker(a.word);
+      state.objectsGroup.add(m.group);
+      state.objectMarkers[i] = m;
+    }
+    const wy = _terrainHeightAt(a.x, a.z);
+    m.group.position.set(a.x, wy, a.z);
+    m.group.rotation.y = a.rotY || 0;
+    m.group.userData._objIdx = i;
+    const col = a.pinned ? OBJ_PINNED_COLOR : OBJ_COLOR;
+    m.body.material.color.setHex(col);
+    m.body.material.emissive.setHex(col);
+    m.body.material.emissiveIntensity = a.pinned ? 0.5 : 0.22;
+    m.disc.material.color.setHex(col);
+    m.disc.material.opacity = a.pinned ? 0.3 : 0.18;
   });
 }
 
@@ -500,6 +605,7 @@ function renderEdges() {
 function render() {
   renderPins();
   renderGhostMarkers();
+  renderObjectMarkers();   // 260730 사물 앵커 — 핀 자리에 의존하므로 핀 다음
   renderThreads();
   renderEdges();
   _updateStatus();
@@ -619,6 +725,10 @@ function _initScene() {
   state.ghostsGroup = new THREE.Group();
   state.ghostsGroup.name = 'tvStageGhosts';
   scene.add(state.ghostsGroup);
+
+  state.objectsGroup = new THREE.Group();   // 260730 사물 앵커
+  state.objectsGroup.name = 'tvStageObjects';
+  scene.add(state.objectsGroup);
 
   state.raycaster = new THREE.Raycaster();
   state.mouseNDC = new THREE.Vector2();
@@ -810,6 +920,21 @@ function _pickTerrain(evt) {
   return hits[0].point.clone();
 }
 
+// 사물 마커 raycast → objectAnchors 인덱스 (없으면 -1)
+function _pickObjectMarker(evt) {
+  if (!state.raycaster || !state.objectsGroup) return -1;
+  _setNDC(evt);
+  state.raycaster.setFromCamera(state.mouseNDC, state.camera);
+  const hits = state.raycaster.intersectObjects(state.objectsGroup.children, true);
+  if (!hits.length) return -1;
+  let obj = hits[0].object;
+  while (obj && obj !== state.objectsGroup) {
+    if (obj.userData && typeof obj.userData._objIdx === 'number') return obj.userData._objIdx;
+    obj = obj.parent;
+  }
+  return -1;
+}
+
 // 잔상 유령 마커 raycast → ghostPoints 인덱스 (없으면 -1)
 function _pickGhostMarker(evt) {
   if (!state.raycaster || !state.ghostsGroup) return -1;
@@ -830,31 +955,50 @@ function _bindPointerEvents() {
 
   state.canvas.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
-    // 장면 유령(핀) 먼저, 없으면 잔상 유령 마커
+    // 우선순위: 장면 유령(핀) → 사물 마커 → 잔상 유령 마커
     const picked = _pickPin(e);
+    state.drag.sceneId = null;
+    state.drag.ghostIdx = -1;
+    state.drag.objIdx = -1;
     if (picked) {
       state.drag.sceneId = picked.sceneId;
-      state.drag.ghostIdx = -1;
     } else {
-      const gi = _pickGhostMarker(e);
-      if (gi < 0) return;
-      state.drag.sceneId = null;
-      state.drag.ghostIdx = gi;
+      const oi = _pickObjectMarker(e);
+      if (oi >= 0) {
+        state.drag.objIdx = oi;
+      } else {
+        const gi = _pickGhostMarker(e);
+        if (gi < 0) return;
+        state.drag.ghostIdx = gi;
+      }
     }
     state.drag.moved = false;
     state.drag.pointerId = e.pointerId;
     if (state.controls) state.controls.enabled = false;
-    state.canvas.setPointerCapture(e.pointerId);
-    e.preventDefault();
+    try { state.canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    // 260730: 사물 마커를 집었을 때는 preventDefault 를 하지 않는다.
+    //   Chrome 은 pointerdown 의 기본동작을 막으면 뒤따르는 click/dblclick 을 아예 안 만든다
+    //   → "두 번 클릭 = 자동 자리 복귀" 가 영영 발동하지 않았다 (260730 실측).
+    //   드래그 자체는 pointercapture 로 처리되므로 기본동작을 살려도 문제 없다.
+    if (state.drag.objIdx < 0) e.preventDefault();
   });
 
   state.canvas.addEventListener('pointermove', (e) => {
-    const dragging = (state.drag.sceneId != null) || (state.drag.ghostIdx >= 0);
+    const dragging = (state.drag.sceneId != null) || (state.drag.ghostIdx >= 0) || (state.drag.objIdx >= 0);
     if (!dragging || e.pointerId !== state.drag.pointerId) return;
     const hit = _pickTerrain(e);
     if (!hit) return;
     const c = clampToTerrain(hit.x, hit.z);
-    if (state.drag.sceneId != null) {
+    if (state.drag.objIdx >= 0) {
+      // 사물 — scenes.meta.object_pos[단어]. 로컬 meta 에 먼저 써야 다음 render 에서
+      // 공용 계산기가 이 좌표를 읽는다 (안 그러면 손을 놓기 전에 제자리로 튄다).
+      const a = state.objectAnchors[state.drag.objIdx];
+      if (!a || !a.scene) return;
+      const sc = a.scene;
+      if (!sc.meta) sc.meta = {};
+      if (!sc.meta.object_pos || typeof sc.meta.object_pos !== 'object') sc.meta.object_pos = {};
+      sc.meta.object_pos[a.word] = { x: c.x, z: c.z };
+    } else if (state.drag.sceneId != null) {
       // 장면 유령 — scenes.meta.stage_position
       const sc = state.scenes.find(s => s.id === state.drag.sceneId);
       if (!sc) return;
@@ -875,18 +1019,32 @@ function _bindPointerEvents() {
   const endDrag = (e) => {
     const wasScene = state.drag.sceneId != null;
     const wasGhost = state.drag.ghostIdx >= 0;
-    if (!wasScene && !wasGhost) return;
+    const wasObj = state.drag.objIdx >= 0;
+    if (!wasScene && !wasGhost && !wasObj) return;
     if (e && e.pointerId !== state.drag.pointerId) return;
     const sceneId = state.drag.sceneId;
     const ghostIdx = state.drag.ghostIdx;
+    const objIdx = state.drag.objIdx;
     const moved = state.drag.moved;
     state.drag.sceneId = null;
     state.drag.ghostIdx = -1;
+    state.drag.objIdx = -1;
     state.drag.moved = false;
     state.drag.pointerId = null;
     if (state.controls) state.controls.enabled = true;
     if (e && state.canvas.hasPointerCapture && state.canvas.hasPointerCapture(e.pointerId)) {
       try { state.canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    if (wasObj) {
+      const a = state.objectAnchors[objIdx];
+      if (moved) {
+        if (a && a.scene) persistObjectPos(a.scene, a.word);
+      } else if (a && a.sceneId && typeof state.onSceneClick === 'function') {
+        // 260730: 사물을 한 번 클릭 = 그 사물이 속한 씬 편집 열기.
+        //   사물 태그·문장 지정 칸으로 가는 통로 (핀을 따로 찾을 필요 없게).
+        try { state.onSceneClick(a.sceneId); } catch (err) { console.error('[StageView] onSceneClick error', err); }
+      }
+      return;
     }
     if (wasGhost) {
       // 잔상 유령 — 이동 시 저장, 클릭(미이동) 시 편집 패널 콜백
@@ -912,6 +1070,55 @@ function _bindPointerEvents() {
   };
   state.canvas.addEventListener('pointerup', endDrag);
   state.canvas.addEventListener('pointercancel', endDrag);
+
+  // 사물 마커 두 번 클릭 = 작가 지정 취소 → 자동 자리로 복귀 (260730)
+  state.canvas.addEventListener('dblclick', (e) => {
+    const oi = _pickObjectMarker(e);
+    if (oi < 0) { console.log('[Admin/stage v2] 두 번 클릭 — 사물 마커 아님 (무시)'); return; }
+    const a = state.objectAnchors[oi];
+    if (!a || !a.scene) return;
+    if (!a.pinned) { console.log('[Admin/stage v2] 두 번 클릭 —', a.word, '은 이미 자동 자리'); return; }
+    const sc = a.scene;
+    if (sc.meta && sc.meta.object_pos) {
+      delete sc.meta.object_pos[a.word];
+      if (!Object.keys(sc.meta.object_pos).length) delete sc.meta.object_pos;
+    }
+    render();
+    persistObjectPos(sc, a.word);
+    e.preventDefault();
+  });
+}
+
+// 사물 좌표 저장 — 해당 씬의 object_pos 전체를 통째로 UPDATE.
+// 지정이 하나도 안 남으면 키 자체를 지운다 (죽은 키가 쌓이지 않게).
+async function persistObjectPos(scene, word) {
+  if (!scene || !scene.id) return;
+  try {
+    const sb = await getSupabaseClient();
+    if (!sb) return;
+    const newMeta = Object.assign({}, scene.meta || {});
+    const src = (scene.meta && scene.meta.object_pos) || null;
+    if (src && Object.keys(src).length) {
+      const rounded = {};
+      Object.keys(src).forEach(k => {
+        const p = src[k];
+        if (p && Number.isFinite(+p.x) && Number.isFinite(+p.z)) {
+          rounded[k] = { x: +(+p.x).toFixed(3), z: +(+p.z).toFixed(3) };
+        }
+      });
+      if (Object.keys(rounded).length) newMeta.object_pos = rounded;
+      else delete newMeta.object_pos;
+    } else {
+      delete newMeta.object_pos;
+    }
+    const { error } = await sb.from('scenes').update({ meta: newMeta }).eq('id', scene.id);
+    if (error) { console.error('[object_pos] save failed', error); return; }
+    scene.meta = newMeta;
+    console.log('[Admin/stage v2] object_pos saved', word,
+      newMeta.object_pos ? newMeta.object_pos[word] || '(자동 복귀)' : '(자동 복귀)');
+  } catch (e) {
+    console.error('[object_pos] error', e);
+  }
 }
 
 async function persistStagePosition(sceneId, x, z) {
@@ -1187,8 +1394,31 @@ function _debugTerrain() {
   };
 }
 
+// 사물 앵커 점검·자동화용 (260730). 화면 좌표까지 주므로 드래그 e2e 에도 쓴다.
+function _debugObjects() {
+  const rect = state.canvas ? state.canvas.getBoundingClientRect() : null;
+  return state.objectAnchors.map((a, i) => {
+    let screen = null;
+    const m = state.objectMarkers[i];
+    if (m && state.camera && rect) {
+      const v = m.group.position.clone();
+      v.y += OBJ_BOX * 0.35;
+      v.project(state.camera);
+      screen = {
+        x: Math.round(rect.left + (v.x + 1) / 2 * rect.width),
+        y: Math.round(rect.top + (1 - v.y) / 2 * rect.height),
+      };
+    }
+    return {
+      i, word: a.word, sceneId: a.sceneId,
+      order: a.scene && a.scene.scene_order,
+      x: +a.x.toFixed(2), z: +a.z.toFixed(2), pinned: !!a.pinned, screen,
+    };
+  });
+}
+
 const api = {
-  mount, setScenes, setSimState, setMemoryId, setSceneClickHandler, _debugTerrain,
+  mount, setScenes, setSimState, setMemoryId, setSceneClickHandler, _debugTerrain, _debugObjects,
   addGhostPoint, removeGhostPoint, getGhostPointCount,
   setGhostClickHandler, getGhostPoint, updateGhostPoint,
   highlightPersonaScene, clearPersonaHighlight,

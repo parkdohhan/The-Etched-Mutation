@@ -401,78 +401,44 @@
 
     var _gen = 0;   // 회차 세대 카운터 — 비동기 GLB 로드의 유령 콜백 차단
 
-    // ─── 배치: scene_order 사슬 길목 (§2.5) — 접근성 무관, 결정적 고정 좌표 ───
+    // ─── 배치: 공용 계산기(TemObjectAnchors)가 정한 자리에 세운다 ───
+    // 260730: 자리 수식은 js/shared/tem_object_anchors.js 한 곳에만 있다 (admin 과 공유).
+    //   작가 지정 좌표(scenes.meta.object_pos) 우선 적용도 그 안에서 처리.
     function _rebuild() {
       _clear();      // 폴링도 함께 멈춘다
       _startPoll();  // 이 회차분을 다시 켠다 (안 켜면 rebuild 후 되새김 동기가 죽는다)
       if (typeof opts.getScenePins !== 'function') return;
-      var pins = (opts.getScenePins() || []).filter(function (p) {
-        return p && typeof p.wx === 'number' && typeof p.wz === 'number' && p.scene;
+      var OA = global.TemObjectAnchors;
+      if (!OA || typeof OA.layout !== 'function') {
+        console.error('[lumen-scene-objects] TemObjectAnchors 미로드 — 사물 배치 중단. '
+          + 'js/shared/tem_object_anchors.js script 태그 확인');
+        return;
+      }
+      var pins = opts.getScenePins() || [];
+      var anchors = OA.layout(pins, {
+        maxPerScene: opts.maxPerScene,
+        segT: opts.segT, perpMin: opts.perpMin, perpMax: opts.perpMax,
       });
-      if (pins.length < 1) return;
-      pins.sort(function (a, b) {
-        var ao = (a.scene.scene_order != null) ? a.scene.scene_order : ((a.pin && a.pin.sceneOrder) || 0);
-        var bo = (b.scene.scene_order != null) ? b.scene.scene_order : ((b.pin && b.pin.sceneOrder) || 0);
-        return ao - bo;
-      });
+      if (!anchors.length) return;
+
+      // getter 가 던져도 사물 배치 전체가 죽으면 안 된다 — 실패 시 블록 대역으로 전원 진행
+      var models = null;
+      if (typeof opts.getObjectModels === 'function') {
+        try { models = opts.getObjectModels() || null; } catch (e) {
+          console.warn('[lumen-scene-objects] getObjectModels 실패 — 블록 대역:', e && e.message);
+        }
+      }
 
       var placed = 0;
-      for (var k = 0; k < pins.length; k++) {
-        var p = pins[k];
-        var sMeta = (p.scene && p.scene.meta) || {};
-        // 사물 단어 소스 (260713 fix): object_tags 키가 **존재하면** 그것만 쓴다.
-        //   빈 배열 = "이 씬엔 세울 사물이 없다"는 명시적 의사표시 (Record AI 가 그렇게 반환).
-        //   예전 코드는 length 로 판정해서 빈 배열이면 motif_tags 로 폴백 → "손끝·먼지" 같은
-        //   비사물이 지형에 서는 버그. motif_tags 폴백은 object_tags 자체가 없는
-        //   레거시 기억에서만.
-        var words;
-        if (Array.isArray(sMeta.object_tags)) {
-          words = sMeta.object_tags;
-        } else if (Array.isArray(sMeta.motif_tags)) {
-          words = sMeta.motif_tags;
-        } else {
-          words = [];
-        }
-        words = words.slice(0, opts.maxPerScene);
-        if (!words.length) continue;
-
-        // 이 씬의 길목 선분: 내 핀 → 다음 핀 (마지막 씬은 이전 핀 방향)
-        var q = pins[k + 1] || pins[k - 1] || p;
-        var dx = q.wx - p.wx, dz = q.wz - p.wz;
-        var len = Math.sqrt(dx * dx + dz * dz);
-        // 260713 fix: 핀이 겹치거나(감정 벡터 없는 기억 등) 선분이 0에 가까우면
-        //   방향이 정의되지 않아 그 기억의 사물이 전부 한 점에 포개졌다.
-        //   씬 인덱스 기반 결정적 방사 배치로 대체 (핀 주변에 흩뿌림).
-        if (len < 0.5) {
-          var ang0 = (k * 2.39996) % (Math.PI * 2);   // 황금각 — 씬마다 고르게 벌어짐
-          dx = Math.cos(ang0) * 8;
-          dz = Math.sin(ang0) * 8;
-          len = 8;
-        }
-        var ux = dx / len, uz = dz / len;             // 선분 방향
-        var px = -uz, pz = ux;                        // 수직 방향
-
-        // getter 가 던져도 사물 배치 전체가 죽으면 안 된다 — 실패 시 블록 대역으로 전원 진행
-        var models = null;
-        if (typeof opts.getObjectModels === 'function') {
-          try { models = opts.getObjectModels() || null; } catch (e) {
-            console.warn('[lumen-scene-objects] getObjectModels 실패 — 블록 대역:', e && e.message);
-          }
-        }
-        for (var w = 0; w < words.length; w++) {
-          var word = String(words[w] || '').trim();
-          if (!word) continue;
-          var r = _rng('place|' + word + '|' + k);
-          var t = opts.segT[0] + r() * (opts.segT[1] - opts.segT[0]);
-          var side = (r() < 0.5 ? -1 : 1);
-          var perp = opts.perpMin + r() * (opts.perpMax - opts.perpMin);
-          var cx = p.wx + dx * t + px * perp * side;
-          var cz = p.wz + dz * t + pz * perp * side;
+      {
+        for (var w = 0; w < anchors.length; w++) {
+          var a = anchors[w];
+          var word = a.word;
+          var cx = a.x, cz = a.z, rotY = a.rotY;
           var gy = (typeof runtime.gH === 'function') ? runtime.gH(cx, cz) : 0;
           if (gy < -10) gy = -10;
-          var rotY = r() * Math.PI * 2;
 
-          var sentence = _pickSentence(word, p.scene);
+          var sentence = _pickSentence(word, a.scene);
           var label = null;
           if (opts.labelMode === 'float') {   // 구버전 공중 라벨 (롤백용)
             label = _buildLabel(word, sentence);
@@ -523,7 +489,8 @@
           placed++;
         }
       }
-      console.log('[lumen-scene-objects] placed:', placed, '/ scenes:', pins.length);
+      console.log('[lumen-scene-objects] placed:', placed,
+        '/ 작가지정:', anchors.filter(function (a) { return a.pinned; }).length);
     }
 
     // ─── 2단계: 되새김 stage → 발광/붕괴 (설계 §3.2, 곡선은 260709 확정본) ───
@@ -823,6 +790,7 @@
             word: o.word, x: +o.cx.toFixed(1), z: +o.cz.toFixed(1),
             stage: o.stage, collapsed: o.collapsed, collapsing: !!o.collapsing,
             model: o.isModel ? (o.group ? 'loaded' : 'loading') : false,
+            sentence: o.sentence || null,
           };
         });
       },
