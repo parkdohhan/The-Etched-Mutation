@@ -676,6 +676,7 @@ async function loadPersonasForMemory() {
     const byPersona = new Map();
     for (const p of personaState.plays) {
       if (!p.persona_id) continue;
+      if (p.persona_id === 'author-seed') continue; // 작가 시딩 — 페르소나 아님 (인구 격리)
       if (!byPersona.has(p.persona_id)) {
         byPersona.set(p.persona_id, {
           persona_id: p.persona_id,
@@ -1986,11 +1987,9 @@ async function saveScene(s) {
     // 사운드 프롬프트는 URL 유무와 무관하게 보존 — 나중에 재생성용
     if (soundPrompt) newMeta.sound_prompt = soundPrompt;
     else delete newMeta.sound_prompt;
-    if (exclusions) {
-      newMeta.exclusions = exclusions;
-    } else {
-      delete newMeta.exclusions;
-    }
+    // 260730: 잠금은 scenes.exclusions 컬럼에 저장 (상영이 읽는 정본).
+    // meta.exclusions 에 쓰던 결함 경로 폐기 — 남은 레거시 키는 저장 시 청소.
+    delete newMeta.exclusions;
 
     const { error } = await sb.from('scenes').update({
       text,
@@ -1999,6 +1998,7 @@ async function saveScene(s) {
       // R1-5: jsonb 컬럼에 JSON.stringify 로 문자열을 넣던 버그 — 객체 그대로 저장.
       // (문자열로 들어가면 소비자마다 typeof 검사 + JSON.parse 이중화가 강제됨)
       original_emotion: emo,
+      exclusions: exclusions,
       meta: newMeta,
     }).eq('id', s.id);
     if (error) throw error;
@@ -2007,6 +2007,7 @@ async function saveScene(s) {
     s.text = text;
     s.emotion_dist = emo;
     s.original_emotion = emo;
+    s.exclusions = exclusions;
     s.meta = newMeta;
 
     statusEl.textContent = '✓ 저장됨';
@@ -2213,7 +2214,10 @@ const STAGE_OPTIONS = [
 ];
 
 function renderExclusionRows(s, emoKeys) {
-  const list = Array.isArray(s.meta?.exclusions) ? s.meta.exclusions : [];
+  // 260730: 정본 = scenes.exclusions 컬럼 (상영 play-test 가 읽는 유일한 자리).
+  // meta.exclusions 는 이 패널이 잘못 쓰던 레거시 — 표시 폴백으로만 남김.
+  const list = Array.isArray(s.exclusions) ? s.exclusions
+    : (Array.isArray(s.meta?.exclusions) ? s.meta.exclusions : []);
   if (list.length === 0) {
     return `<div style="font-size:0.72rem;color:#5c544a;padding:6px 0;font-style:italic;">조건 없음 — 항상 후보에 포함됨</div>`;
   }

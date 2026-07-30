@@ -2610,8 +2610,10 @@ async function saveMemory() {
         // W3-K: 저장 직후 판본 스냅샷(최근 20개 유지). 실패해도 저장 자체는 성공.
         try { await snapshotVersion(supabaseClient, memoryId, '저장'); await renderVersions(); }
         catch (e) { console.warn('[saveMemory] 판본 스냅샷 실패(저장은 성공):', e.message); }
-        // W3-L: 저장 성공 시 자동저장 임시본 삭제
-        try { clearAutosave(memoryId); } catch (e) {}
+        // W3-L: 저장 성공 시 자동저장 임시본 삭제.
+        // 260730: 신규 작성은 'new' 키로 쌓이므로 같이 청소 — 안 지우면 다음
+        // "+ 새 메모리"에서 이전 작업의 임시본 배너가 영구히 뜬다.
+        try { clearAutosave(memoryId); clearAutosave('new'); } catch (e) {}
 
         clearEditorDirty(); // 저장 성공 → dirty 해제
         showToast(`저장됨 — 씬 ${currentScenes.length}개`, 'success');

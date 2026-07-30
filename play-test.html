@@ -13,6 +13,8 @@
   <!-- Lumen 마네킨 유령 (장면핀 자리 ybot.fbx). 순서 의존 — lumen_scene_mannequins.js 보다 위. -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script><!-- 260730 사물 GLB 모델 -->
+
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
   <!-- Lumen 오프닝 직진입: ?memory= 또는 sessionStorage에 id가 있으면 selectScreen flash 방지 + 검은 부팅 overlay -->
   <script>
@@ -71,7 +73,7 @@
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_objects.js?v=260730b"></script><!-- 260712 사물 조형 1단계 · 260730 룩 프리셋 -->
+  <script src="js/ui/lumen_scene_objects.js?v=260730c"></script><!-- 260712 사물 조형 1단계 · 260730 룩 프리셋 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -80,7 +82,7 @@
   <script src="js/ui/lumen_ghost_response.js?v=260714"></script>
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
-  <script src="js/ui/lumen_dialog_phase1.js?v=260728c"></script>
+  <script src="js/ui/lumen_dialog_phase1.js?v=260730"></script>
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260714"></script>
   <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
@@ -5116,7 +5118,10 @@
     const [scenesRes, playsRes, memRes] = await Promise.all([
       sb.from('scenes').select('*').eq('memory_id', memoryId).order('scene_order'),
       sb.from('plays')
-        .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id')
+        // 260730: persona_id 추가 — isVisitorPlay 의 !p.persona_id 검사가 미조회 컬럼이라
+        // 항상 통과하던 구멍 봉합. author-seed(작가 시딩, alignment=1.0)는 입구에서 차단
+        // — 오염도 평균·터치수·재생에 섞이면 "인구 격리" 약속(자료스키마 §5)이 깨진다.
+        .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id, persona_id')
         .eq('memory_id', memoryId)
         .order('created_at'),
       sb.from('memories')
@@ -5126,10 +5131,11 @@
     if (scenesRes.error) throw scenesRes.error;
     if (playsRes.error) throw playsRes.error;
     game.scenes = scenesRes.data || [];
-    game.plays = playsRes.data || [];
+    game.plays = (playsRes.data || []).filter(function (p) { return p.persona_id !== 'author-seed'; });
 
     // Extract memory row for cont_* fields
     let memRow = (!memRes.error && memRes.data && memRes.data.length > 0) ? memRes.data[0] : null;
+    game.memoryMeta = (memRow && memRow.meta) || {};  // 260730 사물 GLB 모델 등 기억 단위 meta
     if (memRow) {
       game.memoryTitle = memRow.title || game.memoryTitle || '';
       game.memoryLayers = memRow.layers || game.memoryLayers || 0;
@@ -6686,7 +6692,11 @@
             // 260712 사물 조형 (설계 v1.1 §3.1) — 마네킹과 같은 핀 소스, 전 장면(접근성 무관)
             if (window.LumenSceneObjects && typeof window.LumenSceneObjects.attach === 'function') {
               window.LumenSceneObjects.attach(rt, {
-                getScenePins: function () { return _fpScenePins; }
+                getScenePins: function () { return _fpScenePins; },
+                // 260730 GLB 사물 모델 — memories.meta.object_models 를 기억 단위로 전달
+                getObjectModels: function () {
+                  return (game.memoryMeta && game.memoryMeta.object_models) || null;
+                }
               });
             }
             // rewind / return_mode / return_speech / return_events (작업 2-A~2-D) 배선 제거 — R2-8.
