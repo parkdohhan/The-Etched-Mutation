@@ -986,6 +986,111 @@
     } catch (_) {}
   }
 
+  // ─── 260730 이어받기 형식 (cont_v1) ─────────────────────────────
+  // 플래그 tem_cont_form (URL ?cont_form=1/0 > localStorage, 기본 OFF — variant strata 전례).
+  // 유령의 발화 = 도출 지문(절단점도출-260730, 촉발력 규칙)이 요동에서 찢겨 멈춘 것.
+  // 플레이어가 연결사(Δ 연산자, era이론 §3) + 이어쓰기로 era 를 자기 p 로 닫는다.
+  // 유령은 대답하지 않는다 — 씬당 이어받기 1회로 사건 종료. 지문 없는 씬은 자유 대화 폴백.
+  function _contFormEnabled() {
+    try {
+      var q = new URLSearchParams(location.search).get('cont_form');
+      if (q === '1') { try { localStorage.setItem('tem_cont_form', '1'); } catch (_) {} return true; }
+      if (q === '0') { try { localStorage.removeItem('tem_cont_form'); } catch (_) {} return false; }
+      return localStorage.getItem('tem_cont_form') === '1';
+    } catch (_) { return false; }
+  }
+
+  // setupCoreInput(play-test.html:4012, upstream 1976b7d) 과 같은 8종 — 기존 자산 승계.
+  var CONT_CONNECTIVES = ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];
+
+  function _renderContInput(overlay, opts, onSubmit) {
+    opts = opts || {};
+    var area = overlay.querySelector('[id$="-input-area"]');
+    area.innerHTML = '';
+
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:8px;width:100%;align-items:center;flex-wrap:wrap;';
+
+    var sel = document.createElement('select');
+    var opt0 = document.createElement('option');
+    opt0.value = ''; opt0.textContent = '…'; opt0.disabled = false;
+    sel.appendChild(opt0);
+    CONT_CONNECTIVES.forEach(function (c) {
+      var o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      sel.appendChild(o);
+    });
+    sel.style.cssText = [
+      'padding:12px 10px',
+      'background:rgba(0,0,0,0.38)',
+      'border:none',
+      'border-bottom:1px solid rgba(196,168,130,0.32)',
+      'color:rgba(232,216,252,0.92)',
+      'font-family:inherit', 'font-size:1.02rem',
+      'outline:none', 'border-radius:0', 'cursor:pointer',
+    ].join(';');
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = opts.placeholder || (_dialogLang() === 'ko' ? '문장을 이어서…' : 'continue the sentence…');
+    input.style.cssText = [
+      'flex:1', 'min-width:180px', 'padding:12px 14px',
+      'background:rgba(0,0,0,0.38)',
+      'border:none',
+      'border-bottom:1px solid rgba(196,168,130,0.32)',
+      'color:rgba(232,216,252,0.92)',
+      'font-family:inherit', 'font-size:1.08rem',
+      'text-align:center',
+      'outline:none', 'border-radius:0',
+      'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
+    ].join(';');
+    input.oninput = function () { _previewWaveColorFromText((sel.value ? sel.value + ' ' : '') + (input.value || '')); };
+
+    var btn = document.createElement('button');
+    btn.textContent = opts.submitLabel || '↵';
+    btn.style.cssText = [
+      'padding:12px 18px',
+      'background:transparent',
+      'border:none',
+      'border-bottom:1px solid rgba(196,168,130,0.45)',
+      'color:rgba(232,216,252,0.92)',
+      'font-family:inherit', 'font-size:1.02rem', 'cursor:pointer', 'border-radius:0',
+    ].join(';');
+
+    function _go() {
+      var v = (input.value || '').trim();
+      var conn = sel.value || '';
+      if (!conn) {
+        // 연결사 필수 — 결핍을 어느 방향으로 채울지의 선언이 형식의 핵심.
+        sel.style.borderBottomColor = 'rgba(220,120,120,0.85)';
+        setTimeout(function () { sel.style.borderBottomColor = 'rgba(196,168,130,0.32)'; }, 900);
+        return;
+      }
+      if (!v) return;
+      area.innerHTML = '';
+      onSubmit({ text: conn + ' ' + v, connective: conn });
+    }
+    btn.onclick = _go;
+    input.onkeydown = function (e) { if (e.key === 'Enter') _go(); };
+
+    wrap.appendChild(sel);
+    wrap.appendChild(input);
+    wrap.appendChild(btn);
+    wrap.style.opacity = '0';
+    wrap.style.transition = 'opacity 400ms ease';
+    _subtitleIdle().then(function () {
+      if (!area.isConnected) return;
+      _sub.ff = false;
+      _sub.skipMode = 'exit';
+      var _skipEl = overlay.querySelector('.ldp-skip');
+      if (_skipEl) _skipEl.textContent = _dialogLang() === 'ko' ? '나가기 ▸' : 'LEAVE ▸';
+      area.appendChild(wrap);
+      _setFaceActivity(overlay, true);
+      requestAnimationFrame(function () { wrap.style.opacity = '1'; });
+      setTimeout(function () { input.focus(); }, 80);
+    });
+  }
+
   function _renderTextInput(overlay, opts, onSubmit) {
     opts = opts || {};
     var area = overlay.querySelector('[id$="-input-area"]');
@@ -1411,6 +1516,16 @@
     var memoryId = input.memoryId || '';
     var sceneId  = input.sceneId  || sceneData.id || '';
 
+    // 260730 cont_v1 판정 — 플래그 ON + 이 씬의 도출 지문 존재 시에만. 아니면 자유 대화 그대로.
+    var _contMode = false, _contStem = null, _contConnective = '';
+    try {
+      if (_contFormEnabled() && global.TemStemCuts) {
+        var _sc0 = global.TemStemCuts[sceneId];
+        if (_sc0 && _sc0.text) { _contStem = String(_sc0.text); _contMode = true; }
+      }
+    } catch (_) {}
+    if (_contMode) console.log('[phase1] cont_v1 ON — 지문 절단 이어받기 (sceneId=' + String(sceneId).slice(0, 8) + '…)');
+
     // T3: 다른 기억으로 갈아타면 유령별 재대화 카운트(층 진행)·풀 캐시 초기화 (stale 방지).
     //   같은 기억 안에서는 유지 → 같은 물든 유령에 다시 말 걸수록 더 오래된 층.
     if (_retalkActiveMemoryId !== memoryId) {
@@ -1460,7 +1575,9 @@
     // 본문 split 으로 *즉시* 렌더. 사용자 체감 = 길게 클릭하자마자 유령 대사 나옴.
     // LLM 은 백그라운드에서 *선택지* 만 채움; scene_context 렌더 동안 (~2.7s) 거의 완료.
     var _preRenderedCtx = false;
-    if (!dlg) {
+    // 260730 cont_v1: 유령 발화 = 지문 하나. LLM 대사 생성·scene_context 렌더 전부 생략.
+    if (_contMode) { _preRenderedCtx = true; }
+    if (!dlg && !_contMode) {
       var llmPromise = null;
       if (input.supabase && memoryId) {
         // (B) 백그라운드 — 메모리 통째 호출 (fire-and-forget). DB 캐시 박음 — 다음 씬은 즉시.
@@ -1526,6 +1643,8 @@
       }
     }
 
+    if (_contMode && !dlg) { dlg = { scene_context: [], choices: [], ghost_intro: [] }; }
+
     var ghosts  = global.LumenGhostResponse || null;
 
     // drift visualizer attach (있으면)
@@ -1547,7 +1666,7 @@
     // 0. scene_context — V2.1.2 (ε, 2026-05-06) 자리 짧게 자리 (5-6 → 2-3 문장).
     //    유령 자리 첫 등장 자리 = 그 씬 자리 분위기 자리 *조금만* 자리. 사용자 비전 자리.
     //    그 후 선택지 + 자유 입력 동시 자리 박힘.
-    if (!_preRenderedCtx && dlg.scene_context && Array.isArray(dlg.scene_context)) {
+    if (!_contMode && !_preRenderedCtx && dlg.scene_context && Array.isArray(dlg.scene_context)) {
       var ctxLines = dlg.scene_context.slice(0, 3);  // 2-3 문장 자리만
       for (var sc = 0; sc < ctxLines.length; sc++) {
         var line = ctxLines[sc];
@@ -1560,12 +1679,18 @@
     // 1. ghost_intro — 보존 자리.
     //    T3 (전이·층층이=나): 이 유령이 물들었으면 첫 라인을 "변형된 대사"로 교체.
     //      재대화 반복할수록 더 오래된 층(layerIndex=retalkCount). 안 물들거나 재료 없으면 기존 동작.
-    var introText = _pickRedialogOpening(input.runtime, memoryId, sceneId);
-    if (!introText) {
+    var introText = _contMode ? null : _pickRedialogOpening(input.runtime, memoryId, sceneId);
+    if (!introText && !_contMode) {
       introText = _pickAuthored(dlg.ghost_intro, 'intro|' + memoryId + '|' + sceneId);
     }
     if (introText) {
       _addMessage(overlay, introText, { who: 'ghost' });
+      await _sleep(DEFAULTS.pacingDelays.afterIntroMs);
+    }
+
+    // 260730 cont_v1: 유령의 발화 = era 를 요동에서 찢은 지문. 이것 하나가 인트로·혼잣말 전부를 대체.
+    if (_contMode && _contStem) {
+      _addMessage(overlay, _contStem, { who: 'ghost' });
       await _sleep(DEFAULTS.pacingDelays.afterIntroMs);
     }
 
@@ -1585,6 +1710,9 @@
     var lastReasonAnalysis = null;
     var dialogTurns = [];
     var dialogHistory = [];  // V2.1.2 (ε) — dialog-turn 자리 누적 자리
+    // 260730 cont_v1: 지문을 유령 발화 이력으로 — 분류 맥락(ghost_line)이 지문을 받게 됨
+    // (리트머스 호출 형태와 동형: context.ghost_line = 지문).
+    if (_contMode && _contStem) dialogHistory.push({ role: 'assistant', content: _contStem });
     // 2026-05-08: 자료 §12.5c fix — sceneData.original_emotion 가 jsonb string
     // 으로 박힌 자리 우회. play-test.html safeParseEmotion 박은 자리는 pin
     // 전달 시점이라 phase1.js 직접 진입 시 raw string 박힘. defensive parse.
@@ -1620,12 +1748,22 @@
       var _left = false;  // 260709 '나가기 ▸' 로 대화를 뜬 경우
       if (turn === 1) {
         // 260709 선택지 폐기 (사용자 결정) — 자유 입력만. dlg.choices 데이터는 유지(미표시).
+        // 260730 cont_v1: 연결사 + 이어쓰기 입력 (260709 폐기물과 다른 물건 — 감정 선택지가
+        // 아니라 Δ 연산자 선택. 이어쓰는 문장은 자유 입력 유지).
         var firstInput = await new Promise(function (resolve) {
           _sub.exit = function () { resolve(null); }; // '나가기 ▸' 클릭 → 대화 종료
-          _renderChoicesOrInput(overlay, [], { placeholder: _inputPlaceholder() }, resolve);
+          if (_contMode) {
+            _renderContInput(overlay, {}, resolve);
+          } else {
+            _renderChoicesOrInput(overlay, [], { placeholder: _inputPlaceholder() }, resolve);
+          }
         });
         _sub.exit = null;
-        if (firstInput === null) { _left = true; } else { playerInput = firstInput.text; }
+        if (firstInput === null) { _left = true; }
+        else {
+          playerInput = firstInput.text;
+          if (_contMode) _contConnective = firstInput.connective || '';
+        }
       } else {
         playerInput = await new Promise(function (resolve) {
           _sub.exit = function () { resolve(null); }; // '나가기 ▸' 클릭 → 대화 종료
@@ -1713,10 +1851,20 @@
       _applyWaveColorFromEmotion(userEmo);
 
       // 응답 자리 = dialog-turn 자리 (V2.1.2 ε). 실패 시 pickResponse 자리 안전망 자리.
-      var loading = _showLoadingBubble(overlay);
       var ghostReply = null;
       var resonanceForViz = 'vague';
       var via = 'unknown';
+      if (_contMode) {
+        // 260730 cont_v1: 유령은 대답하지 않는다 — 응답 채널 없음(챗봇 금지, 존재론 가드).
+        // 공명 라벨만 산출 (파동·이름 드러남·접촉 연출의 재료 — 자유 대화와 같은 자).
+        ghostReply = '';
+        resonanceForViz = ghosts && typeof ghosts.classifyResonance === 'function'
+          ? ghosts.classifyResonance(alignment) : 'vague';
+        via = 'cont_form';
+        console.log('[phase1] cont_v1 alignment=' + alignment.toFixed(3) +
+          ' resonance=' + resonanceForViz + ' connective="' + _contConnective + '"');
+      } else {
+      var loading = _showLoadingBubble(overlay);
       try {
         var dlgResp = await _callDialogTurn(input.supabase, memoryId, sceneId, playerInput, dialogHistory);
         if (dlgResp && dlgResp.reply) {
@@ -1747,6 +1895,7 @@
           ' DIALOG_TURN alignment=' + alignment.toFixed(3) +
           ' resonance=' + resonanceForViz +
           ' reply="' + ghostReply.slice(0, 30) + '..."');
+      }
       }
       lastResonance = resonanceForViz;
 
@@ -1860,11 +2009,11 @@
         window._fpAmbientWave.pulseResonance(resonanceForViz);
       }
 
-      _addMessage(overlay, ghostReply, { who: 'ghost' });
+      if (!_contMode) _addMessage(overlay, ghostReply, { who: 'ghost' });
 
       // dialogHistory 자리 누적 (다음 턴 자리 dialog-turn 자리 호출 자리에 박음)
       dialogHistory.push({ role: 'user', content: playerInput });
-      dialogHistory.push({ role: 'assistant', content: ghostReply });
+      if (!_contMode) dialogHistory.push({ role: 'assistant', content: ghostReply });
 
       // plays 자리 박음 자리 (보존)
       dialogTurns.push({
@@ -1878,9 +2027,16 @@
         ts: new Date().toISOString(),
         // 260730 형식 epoch 마커 — 입력 형식이 바뀌면 정렬도 분포가 비교 불가능해지므로
         // (이어받기형식_리트머스_설계-260730 §결정2) 턴마다 형식을 명시한다.
-        // 'free_v1' = 자유 대화. 이어받기 배포 시 'cont_v1'. 키 없는 옛 행 = free_v1 유산.
-        input_form: 'free_v1',
+        // 'free_v1' = 자유 대화. 'cont_v1' = 이어받기. 키 없는 옛 행 = free_v1 유산.
+        input_form: _contMode ? 'cont_v1' : 'free_v1',
+        connective: _contMode ? _contConnective : undefined,
       });
+
+      // 260730 cont_v1: 씬당 이어받기 1회 = era 닫힘 = 씬 사건 종료 (urge 작별 한마디로).
+      if (_contMode) {
+        console.log('[phase1] cont_v1 — era 닫힘, 씬 사건 종료');
+        break;
+      }
 
       await _sleep(DEFAULTS.pacingDelays.afterTurnMs);
     }
