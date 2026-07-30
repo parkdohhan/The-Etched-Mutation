@@ -7607,6 +7607,19 @@
                     if (_camC) _sfCam = { x: _camC.position.x, z: _camC.position.z };
                   } catch (_) {}
                   var _sfFrom = _sfCam || _lastFpPos || { x: 0, z: 0 };
+
+                  // ── 순서 주의 (260728 D): 닫기를 **먼저**, 파기를 나중에 ──────────
+                  // 실측 로그(memory=1835926d)에서 잡힌 결함: 파기 → 닫기 순서였을 때
+                  //   carve (4,-2)→(5,-7) 직후 close(8,3) 이 "8항목" 을 닫았는데, 닫기
+                  //   반경 R=12.8 이 방금 판 회랑 끝점(5,-7)까지 10.4 거리로 덮어
+                  //   **막 만든 길이 그대로 지워졌다** (발밑 시드까지 함께 닫혀 발밑 보호가
+                  //   발동한 것도 이 때문). 닫기가 지울 것을 다 지운 뒤 파야 길이 살아남는다.
+                  // 닫힘 = 사건 (260727 0.5단계): 닫힌 핀으로 향하던 회랑이 안개에 되덮인다.
+                  // standAt 전달 = 되덮임이 선 자리를 삼키면 즉시 되열림 (260728 B).
+                  closedPins.forEach(function (cp) {
+                    window._temSpatialFog.close(cp.wx, cp.wz, _sfFrom);
+                  });
+
                   // 선 자리를 먼저 확보 — 회랑들이 여기서 뻗어나가므로 시작점은 늘 걷혀 있어야 한다.
                   if (window._temSpatialFog.revealAt(_sfFrom.x, _sfFrom.z) < 0.15) {
                     window._temSpatialFog.seed(_sfFrom.x, _sfFrom.z, 8);
@@ -7631,11 +7644,6 @@
                     }
                     window._temSpatialFog.carve(_sfFrom.x, _sfFrom.z, sp.wx, sp.wz);
                     window._temSpatialFog.openOnArrive(sp.wx, sp.wz);
-                  });
-                  // 닫힘 = 사건 (260727 0.5단계): 닫힌 핀으로 향하던 회랑이 안개에 되덮인다.
-                  // standAt 전달 = 되덮임이 선 자리를 삼키면 즉시 되열림 (260728 B).
-                  closedPins.forEach(function (cp) {
-                    window._temSpatialFog.close(cp.wx, cp.wz, _sfFrom);
                   });
                   var _sfLeft = _fpScenePins.some(function (sp) { return sp.accessible && !sp.visited; });
                   if (!_sfLeft) window._temSpatialFog.liftAll();

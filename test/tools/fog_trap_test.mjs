@@ -95,5 +95,39 @@ check('회랑 위 전진 자유', step(30, 0, 33, 0) === null, `회랑 중앙 �
 const offCorridor = step(30, 0, 30, 30);
 check('회랑 밖(측면) 제약 걸림', offCorridor !== null, `측면 걷힘 ${at(30, 30).toFixed(3)}, ${fmt(offCorridor)}`);
 
-console.log(`\n===== 통과 ${pass} / 실패 ${fail} =====`);
+
+// ── [7] 순서 결함 (260728 D) ──────────────────────────────────────────────
+// close 는 대상을 회랑의 **끝점**(rp.bx/bz)으로 고른다. 그래서 파기 → 닫기 순서면
+// 닫는 지점이 방금 판 회랑의 끝점 근처일 때 **막 만든 길이 닫기 대상에 포함된다.**
+// 실측(memory=1835926d): carve (4,-2)→(5,-7) 직후 close(8,3) 이 8항목을 닫았고,
+// 끝점까지 거리 10.4 < 닫기 반경 12.8 이었다.
+console.log('\n[7] 순서 결함 — close 가 방금 판 회랑을 지우는가');
+const R_CLOSE = Math.max(F.opts.corridorRadius, F.opts.regionRadius) * 0.8;
+
+// 순수 조건: 다른 걷힘(스폰 시드·발밑 보호)을 전부 배제하고 회랑 하나만 놓고 본다.
+// 실전에서는 여러 겹이 겹쳐 대개 구제되지만(→ 7b), 규칙 자체의 결함은 이렇게만 보인다.
+function pureOrder(closeFirst) {
+  const stand = { x: 0, z: 0 }, target = { x: 0, z: 12 }, closed = { x: 2, z: 14 };
+  F.clear();
+  if (closeFirst) { F.close(closed.x, closed.z); F.carve(stand.x, stand.z, target.x, target.z); }
+  else { F.carve(stand.x, stand.z, target.x, target.z); F.close(closed.x, closed.z); }
+  F.advance(4000);
+  return F.revealAt(target.x, target.z);
+}
+const p_old = pureOrder(false), p_new = pureOrder(true);
+console.log(`  7a 순수 조건 (끝점→닫는점 거리 2.8 < ${R_CLOSE.toFixed(1)})`);
+console.log(`     목표 걷힘 — 파기후닫기 ${p_old.toFixed(3)} / 닫기후파기 ${p_new.toFixed(3)}`);
+check('7a 구순서: 방금 판 길이 지워짐 (결함 확인)', p_old < BLOCK, `${p_old.toFixed(3)} < ${BLOCK}`);
+check('7a 신순서: 길 생존 (수리 확인)', p_new >= BLOCK, `${p_new.toFixed(3)} ≥ ${BLOCK}`);
+
+// 7b — 실측 좌표에서는 겹친 걷힘(스폰 시드 r=14 + 발밑 보호 r=8)이 구제한다.
+//   즉 이 기억에서 결함의 실피해는 없었다. 순서 수정은 방어적 조치 (비용 0).
+F.clear();
+F.seed(18, 18, 14); F.carve(18, 18, 8, 3); F.advance(3000);
+F.seed(4, -2, 8); F.carve(4, -2, 5, -7); F.close(8, 3, { x: 4, z: -2 }); F.advance(4000);
+const realOld = F.revealAt(5, -7);
+console.log(`  7b 실측좌표 — 구순서에서도 목표 걷힘 ${realOld.toFixed(3)} (스폰 시드가 덮음)`);
+check('7b 실측 배치에서는 겹친 걷힘이 구제 — 실피해 없었음', realOld >= BLOCK);
+
+console.log(`\n===== 최종 통과 ${pass} / 실패 ${fail} =====`);
 process.exit(fail ? 1 : 0);
