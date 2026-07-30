@@ -348,7 +348,9 @@
     // ── 씬 목록 정규화 (sceneAF 형/DB 형 모두 흡수) ──
     var scenes = (memoryData && (memoryData.scenes || memoryData.sceneAF)) || [];
     var normScenes = scenes.map(function (sc, i) {
-      var emo = parseEmo(sc.emotion_dist) || parseEmo(sc.original_emotion) || parseEmo(sc.emo) || null;
+      // 260730: original_emotion(저작 어휘 정본) 우선. emotion_dist 는 admin 저장 시
+      // choices 8감정으로 재계산되며 17축 기여분이 유실되므로 대체값으로 강등.
+      var emo = parseEmo(sc.original_emotion) || parseEmo(sc.emotion_dist) || parseEmo(sc.emo) || null;
       var sp = (sc.meta && sc.meta.stage_position) ||
                (Number.isFinite(sc.wx) && Number.isFinite(sc.wz) ? { x: sc.wx, z: sc.wz } : null);
       // 침묵(void) 점수 — sceneAF 형은 voidScore 그대로, DB 형은 void_info 3토글 합산
