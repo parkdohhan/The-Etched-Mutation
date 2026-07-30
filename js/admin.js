@@ -657,8 +657,10 @@ function renderDialogEditor(scene, sceneIndex) {
             <textarea class="editor-textarea dlg-free-input" data-scene-index="${sceneIndex}" data-choice-index="${ci}" rows="2" placeholder="한 줄에 하나씩">${_escHtml((c.free_dialog_open || []).join('\n'))}</textarea>
         </div>`).join('');
     const open = isSubsectionOpen('dlgFields-' + sceneIndex);
-    return `<div class="editor-section" style="margin-top:1.5rem;padding:1.25rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
-        <button type="button" class="toggle-contamination-btn" onclick="toggleSceneSubsection('dlgFields-${sceneIndex}', this)">${open ? '▼' : '▶'} 유령 대사 (dialog_choices)</button>
+    // 260728: adv-only — 상영 경로에서 dialog_choices 선택지는 260709 사용자 결정으로 폐기
+    // (자유 입력만). 안 쓰는 편집기는 풀버전 편집에서만 노출 (사용자 지시).
+    return `<div class="editor-section adv-only" style="margin-top:1.5rem;padding:1.25rem;background:var(--bg-surface);border:1px solid rgba(196,168,130,.2);border-radius:4px;">
+        <button type="button" class="toggle-contamination-btn" onclick="toggleSceneSubsection('dlgFields-${sceneIndex}', this)">${open ? '▼' : '▶'} 유령 대사 (dialog_choices) — 상영 미사용 (260709 폐기)</button>
         <div id="dlgFields-${sceneIndex}" style="display:${open ? 'block' : 'none'};margin-top:0.8rem;">
             <small style="display:block;margin-bottom:0.6rem;font-size:0.8rem;color:var(--text-muted);">회상 실패자 화법(…했던 것 같아). 실제 스키마(발자국)와 동일: 도입/맥락/선택지(응답·자유대화). scenes.meta.dialog_choices 로 병합.</small>
             <label class="editor-label" style="font-size:0.78rem;">도입부 (ghost_intro — 줄바꿈 구분)</label>

@@ -205,9 +205,14 @@
     }
     // (x,z) 로 향하던 걷힘을 안개로 되덮는다 (260727 0.5단계 — "내 감정이 길 하나를 지웠다").
     // 그 지점을 끝점으로 가진 회랑·그 지점의 원·대기 중 도착 개화를 전부 닫는다.
-    // 닫힌 자리는 revealAt 공유 덕에 이동 벽·유령 숨김도 함께 복귀. 플레이어가 그 회랑
-    // 안에 서 있어도 "맑은 쪽 걸음 통과" 규칙이 탈출을 보장한다.
-    function close(x, z) {
+    // 닫힌 자리는 revealAt 공유 덕에 이동 벽·유령 숨김도 함께 복귀.
+    //
+    // 260728 B — 발밑 보호: 닫기 반경 R(=16*0.8)이 회랑 반폭(5)보다 훨씬 넓어, 닫는
+    //   지점이 플레이어와 가까우면 **서 있는 자리의 걷힘까지** 통째로 닫혔다. 그러면
+    //   사방이 균일한 안개가 되고 이동이 잠긴다 (A 면제가 받아주지만 그건 사고 대응이고,
+    //   여기서는 사고 자체를 막는다). 닫은 뒤 발밑이 벽 밑으로 떨어졌으면 즉시 되열어
+    //   "내가 선 자리는 늘 걷혀 있다"를 보장한다. standAt 미지정이면 구동작.
+    function close(x, z, standAt) {
       var now = _now();
       var hit = 0;
       var R = Math.max(opts.corridorRadius, opts.regionRadius) * 0.8;
@@ -223,6 +228,13 @@
         if (pdx * pdx + pdz * pdz <= R * R) { _pending.splice(p, 1); hit++; }
       }
       if (hit) console.log('[spatial-fog] close — (' + Math.round(x) + ',' + Math.round(z) + ') 길 되덮임 (' + hit + '항목)');
+      // 닫힘이 *끝난 뒤* 발밑에 남는 걷힘으로 판정 (skipClosing) — 예약 직후의 값으로
+      // 재면 아직 걷혀 있어서 보호가 절대 발동하지 않는다.
+      if (standAt && hit && revealAt(standAt.x, standAt.z, true) < opts.moveBlockBelow) {
+        seed(standAt.x, standAt.z, opts.corridorRadius * 1.6);
+        console.log('[spatial-fog] 발밑 보호 — 되덮임이 선 자리를 삼켜 즉시 되열음 (' +
+          Math.round(standAt.x) + ',' + Math.round(standAt.z) + ')');
+      }
       return hit;
     }
     // 도착 개화: 플레이어가 (x,z) 근처에 오면 그 지역이 개화한다
@@ -239,11 +251,15 @@
 
     // 그 좌표의 걷힘 정도 0..1 — 셰이더와 같은 식 (edge noise 제외).
     // 유령/핀/소리 게이팅이 이 하나를 공유해야 시각과 상호작용이 안 어긋난다.
-    function revealAt(x, z) {
+    // skipClosing=true 면 닫히는 중인 항목을 제외 — "이 닫힘들이 끝나면 얼마나 남는가"
+    // (close 의 발밑 보호 판정용. 닫힘은 예약 즉시가 아니라 closeMs 에 걸쳐 진행되므로,
+    //  직후 revealAt 은 아직 높아서 보호가 발동하지 않는 구멍이 있었다).
+    function revealAt(x, z, skipClosing) {
       if (_lift >= 1) return 1;
       var now = _now();
       var rv = 0;
       for (var i = 0; i < _reveals.length; i++) {
+        if (skipClosing && _reveals[i].closing != null) continue;
         var ef = _effective(_reveals[i], now);
         if (!ef || ef.r < 0.01) continue;
         var pax = x - ef.ax, paz = z - ef.az;
@@ -267,6 +283,7 @@
     // 지금: 걷힘이 blockBelow 아래인 자리로는 **못 간다**. 대신 벽에 끼이지 않게
     //   (1) 벽면을 따라 미끄러지고(슬라이드)  (2) 더 맑은 쪽 걸음은 언제나 통과.
     var _wallEps = 0.7;   // 걷힘 기울기 측정 간격
+    var _trappedSince = 0; // 갇힘 면제 발동 시각 (0=정상). 로그 1회만 찍기 위한 상태
     // 벽에 닿은 순간(이동이 실제로 막히거나 꺾인 순간) 외부에 알림 —
     // play-test 가 안개 자막("아직 떠오르지 않은 기억이다" 등)을 띄우는 데 쓴다.
     // 쿨다운·문구 선택은 받는 쪽 책임. 미등록이면 무동작.
@@ -281,6 +298,23 @@
       if (rvTo >= BLOCK) return null;                       // 열린 자리 — 자유
       var rvFrom = revealAt(fx, fz);
       if (rvTo > rvFrom + 1e-4) return null;                // 맑은 쪽으로 = 항상 허용 (갇힘 방지)
+
+      // ── 갇힘 면제 (260728 A) ────────────────────────────────────────
+      // 벽의 목적은 "맑은 자리에서 안개로 못 들어가게"다. **이미 안개 속에 서 있는**
+      // 플레이어를 세우는 것은 목적이 아니다.
+      // 사고 경로: close() 가 발밑 걷힘까지 되덮으면 사방이 균일한 안개가 되고 —
+      //   rvTo≈rvFrom (맑은 쪽 없음) + 기울기≈0 (미끄러질 방향 없음) → 전 방향 정지.
+      //   "맑은 쪽 걸음이 탈출을 보장한다"던 전제가 균일 안개에서 성립하지 않았다.
+      // 정상 플레이는 항상 걷힌 자리에 서 있으므로 이 면제는 발동하지 않는다.
+      if (rvFrom < BLOCK) {
+        if (!_trappedSince) {
+          _trappedSince = _now();
+          console.warn('[spatial-fog] 갇힘 감지 — 발밑 걷힘 ' + rvFrom.toFixed(3) +
+            ' < ' + BLOCK + '. 벽 규칙 면제 (탈출 허용). 원인: close 가 발밑을 덮었거나 회랑 시드 누락.');
+        }
+        return null;                                        // 안개 속 → 자유 이동으로 빠져나갈 수 있게
+      }
+      if (_trappedSince) _trappedSince = 0;
 
       // 걷힘의 기울기 = 맑은 쪽을 가리키는 방향 = 벽의 법선
       var nx = revealAt(fx + _wallEps, fz) - revealAt(fx - _wallEps, fz);

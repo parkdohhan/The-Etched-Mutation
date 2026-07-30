@@ -57,7 +57,7 @@
        lumen_replay_fog 는 로드는 두되 attach 게이트가 TemReplayTerrain 부재로 죽어 무력. -->
   <script src="js/shared/tem_variant_strata.js?v=260727a"></script>
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
-  <script src="js/ui/lumen_spatial_fog.js?v=260727b"></script>
+  <script src="js/ui/lumen_spatial_fog.js?v=260728"></script>
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
   <script src="js/shared/tem_af_strata_terrain.js?v=260716"></script>
   <script>
@@ -7593,14 +7593,28 @@
               // 막다른 곳(남은 접근 핀 0)이면 안개 전부 걷기 — 지나온 길이 드러난다 (원칙 4).
               if (window._temSpatialFog) {
                 try {
-                  var _sfFrom = _lastFpPos || { x: 0, z: 0 };
+                  // 260728 C: 회랑 시작점 = **지금 서 있는 자리**. _lastFpPos 는 씬에
+                  // 들어가기 직전 좌표라, 대화 후 유령·핀이 재배치되면 실제 위치와
+                  // 어긋나 새 길이 발밑을 안 지나갔다 (닫힘과 겹치면 사방 안개 → 이동 잠김).
+                  var _sfCam = null;
+                  try {
+                    var _rtC = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+                    var _camC = _rtC && _rtC.getCamera && _rtC.getCamera();
+                    if (_camC) _sfCam = { x: _camC.position.x, z: _camC.position.z };
+                  } catch (_) {}
+                  var _sfFrom = _sfCam || _lastFpPos || { x: 0, z: 0 };
+                  // 선 자리를 먼저 확보 — 회랑들이 여기서 뻗어나가므로 시작점은 늘 걷혀 있어야 한다.
+                  if (window._temSpatialFog.revealAt(_sfFrom.x, _sfFrom.z) < 0.15) {
+                    window._temSpatialFog.seed(_sfFrom.x, _sfFrom.z, 8);
+                  }
                   newPins.forEach(function (np) {
                     window._temSpatialFog.carve(_sfFrom.x, _sfFrom.z, np.wx, np.wz);
                     window._temSpatialFog.openOnArrive(np.wx, np.wz);
                   });
                   // 닫힘 = 사건 (260727 0.5단계): 닫힌 핀으로 향하던 회랑이 안개에 되덮인다.
+                  // standAt 전달 = 되덮임이 선 자리를 삼키면 즉시 되열림 (260728 B).
                   closedPins.forEach(function (cp) {
-                    window._temSpatialFog.close(cp.wx, cp.wz);
+                    window._temSpatialFog.close(cp.wx, cp.wz, _sfFrom);
                   });
                   var _sfLeft = _fpScenePins.some(function (sp) { return sp.accessible && !sp.visited; });
                   if (!_sfLeft) window._temSpatialFog.liftAll();
