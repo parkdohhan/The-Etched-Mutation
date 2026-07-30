@@ -227,8 +227,31 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
       const emotionText = body.emotion || '';
       const reasonText = body.reason || '';
       const anchorEmotions = body.anchorEmotions || [];
-      
-      console.log('감정 및 이유 분석 요청:', { emotionText, reasonText, anchorEmotions });
+
+      // 260728 씬 맥락 조건부 주입 (리트머스 §7-① 2단계) — body.context 가 없으면
+      // 아래 ctxHeader = '' 이고 프롬프트는 기존과 문자 그대로 동일 (RECORD/live 무영향).
+      // 배경: 관객은 유령에게 "말을 거는" 형식으로 쓴다("~겠네요"). 맥락 없이 읽으면
+      // 분류기가 이를 화자 자신의 감정 서술로 뒤집어 공감을 냉소로 오독한다 (실측:
+      // 공감 질문 → anger 0.55·"조롱하듯"). reason 주입(1단계)으로는 미해소.
+      const ctx = (body.context && typeof body.context === 'object' && !Array.isArray(body.context))
+        ? body.context : null;
+      const ctxSceneText = (ctx && typeof ctx.scene_text === 'string') ? ctx.scene_text.slice(0, 400) : '';
+      const ctxGhostLine = (ctx && typeof ctx.ghost_line === 'string') ? ctx.ghost_line.slice(0, 200) : '';
+      const ctxHeader = (ctxSceneText || ctxGhostLine) ? `[상황] 아래 "입력된 감정" 텍스트는 관객이 타인의 기억 장면을 지나며, 그 기억의 화자(유령)에게 직접 건넨 말이다.
+
+${ctxSceneText ? `[장면 원문 — 배경 참고용, 분석 대상 아님]
+"${ctxSceneText}"
+
+` : ''}${ctxGhostLine ? `[직전 유령의 말]
+"${ctxGhostLine}"
+
+` : ''}[읽기 규칙 — 최우선]
+- 측정할 것은 관객 발화에 담긴 **관객 자신의** 감정뿐이다. 장면 원문의 감정 분포를 그대로 옮겨 적으면 오답이다. 장면과 발화의 감정 결이 다르면 반드시 발화를 따르라.
+- "~겠네요", "~었어요?" 같은 문형은 상대의 경험을 헤아려 건네는 말이다. 이를 관객 자신의 냉소·조롱·거리감으로 뒤집어 읽지 마라. 명백한 조롱 표지가 없는 한, 헤아림에 담기는 감정은 공감·애틋함·그리움·따뜻한 슬픔 쪽이다.
+
+` : '';
+
+      console.log('감정 및 이유 분석 요청:', { emotionText, reasonText, anchorEmotions, hasContext: !!ctxHeader });
 
       // 감정 앵커 목록 동적 생성
       const defaultAnchors = 'fear, sadness, anger, joy, hope, relief, longing, guilt, isolation, numbness, shame, peace, love, gratitude';
@@ -236,8 +259,8 @@ JSON만: { "questions": [{ "text": "...", "category": "spotlight|counterfactual|
         ? anchorEmotions.join(', ')
         : defaultAnchors;
 
-      // 프롬프트 수정: 이유 분석 규칙 추가 + 동적 앵커
-      const prompt = `다음 감정 표현과 그 이유를 분석해줘.
+      // 프롬프트 수정: 이유 분석 규칙 추가 + 동적 앵커 (+ 260728 조건부 ctxHeader)
+      const prompt = `${ctxHeader}다음 감정 표현과 그 이유를 분석해줘.
 
 입력된 감정: "${emotionText}"
 입력된 이유: "${reasonText}"

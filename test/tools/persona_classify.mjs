@@ -59,10 +59,12 @@ function rulerAxes(ruler, scene, memory) {
   return keys.length ? keys : null;
 }
 
-// 260728 reason 주입 (§7-① 후속): 프로덕션 _analyzeEmotion 이 reason: text 로 바뀜.
+// 260728 reason 주입 (§7-① 1단계): 프로덕션 _analyzeEmotion 이 reason: text 로 바뀜.
 // 하네스도 동형이어야 재실행이 "고친 경로"를 시험한다. 옛 형태(reason:'')의 결과는
-// 분류결과-{A,B,C}.json 에 동결 — 본 하네스는 이제 -v2 파일에 쓴다 (동결 침범 금지).
-async function callOnce(text, axes) {
+// 분류결과-{A,B,C}.json 에 동결, 1단계 재실행은 -v2 에 동결.
+// 260728 저녁 v3 (§7-① 2단계): context { scene_text } 추가 — 프로덕션 씬 맥락 주입과
+// 동형. 실전과의 차이 1건: ghost_line 은 코퍼스에 유령 대사가 없어 null (명시적 한계).
+async function callOnce(text, axes, ctx) {
   const resp = await fetch(FN_URL, {
     method: 'POST',
     headers: {
@@ -70,7 +72,7 @@ async function callOnce(text, axes) {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     },
-    body: JSON.stringify({ type: 'emotion_analysis', emotion: text, reason: text, anchorEmotions: axes }),
+    body: JSON.stringify({ type: 'emotion_analysis', emotion: text, reason: text, anchorEmotions: axes, context: ctx || null }),
   });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} ${(await resp.text()).slice(0, 200)}`);
   const data = await resp.json();
@@ -90,16 +92,16 @@ async function callOnce(text, axes) {
   return null;
 }
 
-async function classify(text, axes) {
+async function classify(text, axes, ctx) {
   try {
-    const r = await callOnce(text, axes);
+    const r = await callOnce(text, axes, ctx);
     if (r) return r;
   } catch (e) {
     process.stderr.write(`  retry after: ${e.message}\n`);
   }
   await new Promise((r) => setTimeout(r, 1200));
   try {
-    const r = await callOnce(text, axes);
+    const r = await callOnce(text, axes, ctx);
     if (r) return r;
   } catch (e) {
     process.stderr.write(`  FAIL: ${e.message}\n`);
@@ -119,9 +121,10 @@ async function main() {
   const sceneById = new Map(snap.scenes.map((s) => [s.scene_id, s]));
   const memByCode = new Map(snap.memories.map((m) => [m.code, m]));
 
-  // 자 A 이고 축이 B 와 동일하면 B 결과 재사용 — v2 파일에서 (동형 호출끼리만 재사용 가능)
+  // 자 A 이고 축이 B 와 동일하면 B 결과 재사용 — v3 파일에서 (동형 호출끼리만 재사용
+  // 가능. v2 결과는 context 없이 만든 것이라 v3 에서 재사용 불가)
   let bResults = null;
-  const bPath = path.join(EXP_DIR, '분류결과-B-v2.json');
+  const bPath = path.join(EXP_DIR, '분류결과-B-v3.json');
   if (ruler === 'A' && fs.existsSync(bPath)) {
     bResults = new Map(loadJSON(bPath).results.map((r) => [r.utterance_id, r]));
   }
@@ -132,7 +135,8 @@ async function main() {
     const axes = rulerAxes(ruler, scene, memory);
     const bAxes = rulerAxes('B', scene, memory);
     const sameAsB = ruler === 'A' && JSON.stringify(axes) === JSON.stringify(bAxes);
-    return { u, axes, sameAsB };
+    const ctx = { scene_text: String(scene.text || '').slice(0, 400), ghost_line: null };
+    return { u, axes, sameAsB, ctx };
   });
 
   const reuse = jobs.filter((j) => j.sameAsB && bResults && bResults.has(j.u.id)).length;
@@ -155,7 +159,7 @@ async function main() {
         const b = bResults.get(j.u.id);
         results[i] = { ...b, ruler, reused_from_B: true };
       } else {
-        const r = await classify(j.u.text, j.axes);
+        const r = await classify(j.u.text, j.axes, j.ctx);
         results[i] = {
           utterance_id: j.u.id,
           ruler,
@@ -180,9 +184,9 @@ async function main() {
     meta: {
       created: '260728',
       ruler,
-      variant: 'v2-reason주입',
+      variant: 'v3-씬맥락주입',
       endpoint: FN_URL,
-      note: '배포판 claude-scene 호출, reason=발화 텍스트 (§7-① 후속). DB 쓰기 0건. v1(reason 빈값)은 분류결과-{A,B,C}.json 동결.',
+      note: '배포판 claude-scene 호출, reason=발화 + context.scene_text (§7-① 2단계). ghost_line=null (코퍼스 한계). DB 쓰기 0건. v1·v2 는 동결.',
       call_count: jobs.length - reuse,
       reused_from_B: reuse,
       missing_count: missing,
@@ -190,7 +194,7 @@ async function main() {
     },
     results,
   };
-  const outPath = path.join(EXP_DIR, `분류결과-${ruler}-v2.json`);
+  const outPath = path.join(EXP_DIR, `분류결과-${ruler}-v3.json`);
   fs.writeFileSync(outPath, JSON.stringify(out, null, 1), 'utf8');
   console.log(`저장: ${outPath} (결측 ${missing}/${results.length})`);
 }

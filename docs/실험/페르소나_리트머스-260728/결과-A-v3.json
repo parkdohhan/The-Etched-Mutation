@@ -1,0 +1,5040 @@
+{
+ "meta": {
+  "created": "260728",
+  "ruler": "A",
+  "judge_frame": "기억 축 고정 (설계 §3 — 변인은 분류 축뿐)",
+  "appendix": "판단_실전배선 = 씬 anchor 우선 (현행 코드 재현)",
+  "missing_rate": 0,
+  "reused_from_B": 72
+ },
+ "sessions": [
+  {
+   "ruler": "A",
+   "archetype": "echo_follow",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7292,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7292,
+     "level": 0.7292,
+     "shape": 1,
+     "dialog_alignment": 0.7292
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.7437,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7582,
+     "level": 0.7437,
+     "shape": 1,
+     "dialog_alignment": 0.7582
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.6044,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7491,
+     "level": 0.7455,
+     "shape": 0.8108,
+     "dialog_alignment": 0.7491
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.3941,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.7947,
+     "level": 0.7578,
+     "shape": 0.5201,
+     "dialog_alignment": 0.7947
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.2532,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.7507,
+     "level": 0.7564,
+     "shape": 0.3348,
+     "dialog_alignment": 0.7507
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.362,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.9411,
+     "level": 0.7872,
+     "shape": 0.4599,
+     "dialog_alignment": 0.9411
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u001",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.887
+    },
+    {
+     "utterance_id": "u002",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7292
+    },
+    {
+     "utterance_id": "u003",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4702
+    },
+    {
+     "utterance_id": "u004",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7582
+    },
+    {
+     "utterance_id": "u005",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7672
+    },
+    {
+     "utterance_id": "u006",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7491
+    },
+    {
+     "utterance_id": "u007",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9645
+    },
+    {
+     "utterance_id": "u008",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7947
+    },
+    {
+     "utterance_id": "u009",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.502
+    },
+    {
+     "utterance_id": "u010",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7507
+    },
+    {
+     "utterance_id": "u011",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9548
+    },
+    {
+     "utterance_id": "u012",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.9411
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "echo_follow",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.8164,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8164,
+     "level": 0.8164,
+     "shape": 1,
+     "dialog_alignment": 0.8164
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7618,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7618,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.5166,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9343,
+     "level": 0.8193,
+     "shape": 0.6306,
+     "dialog_alignment": 0.9343
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6623,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9147,
+     "level": 0.8431,
+     "shape": 0.7855,
+     "dialog_alignment": 0.9147
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6771,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.872,
+     "level": 0.8489,
+     "shape": 0.7976,
+     "dialog_alignment": 0.872
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.678,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.8395,
+     "shape": 0.8076,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6683,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.8275,
+     "shape": 0.8076,
+     "dialog_alignment": 0.4666
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.6601,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9119,
+     "level": 0.838,
+     "shape": 0.7876,
+     "dialog_alignment": 0.9119
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.661,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7888,
+     "level": 0.8326,
+     "shape": 0.7939,
+     "dialog_alignment": 0.7888
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.6563,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7923,
+     "level": 0.8285,
+     "shape": 0.7921,
+     "dialog_alignment": 0.7923
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.6581,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9283,
+     "level": 0.8376,
+     "shape": 0.7857,
+     "dialog_alignment": 0.9283
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.6594,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8703,
+     "level": 0.8403,
+     "shape": 0.7847,
+     "dialog_alignment": 0.8703
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u013",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8164
+    },
+    {
+     "utterance_id": "u014",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u015",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9343
+    },
+    {
+     "utterance_id": "u016",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9147
+    },
+    {
+     "utterance_id": "u017",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.872
+    },
+    {
+     "utterance_id": "u018",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u019",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4666
+    },
+    {
+     "utterance_id": "u020",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9119
+    },
+    {
+     "utterance_id": "u021",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7888
+    },
+    {
+     "utterance_id": "u022",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7923
+    },
+    {
+     "utterance_id": "u023",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9283
+    },
+    {
+     "utterance_id": "u024",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8703
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "bridge",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.8467,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8467,
+     "level": 0.8467,
+     "shape": 1,
+     "dialog_alignment": 0.8467
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.5903,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.3338,
+     "level": 0.5903,
+     "shape": 1,
+     "dialog_alignment": 0.3338
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.5552,
+     "level": 0.5786,
+     "shape": 0,
+     "dialog_alignment": 0.5552
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.0339,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.8267,
+     "level": 0.6406,
+     "shape": 0.0529,
+     "dialog_alignment": 0.8267
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.1011,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7963,
+     "level": 0.6718,
+     "shape": 0.1505,
+     "dialog_alignment": 0.7963
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.1644,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.8992,
+     "level": 0.7097,
+     "shape": 0.2317,
+     "dialog_alignment": 0.8992
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u025",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7448
+    },
+    {
+     "utterance_id": "u026",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8467
+    },
+    {
+     "utterance_id": "u027",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4151
+    },
+    {
+     "utterance_id": "u028",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.3338
+    },
+    {
+     "utterance_id": "u029",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.813
+    },
+    {
+     "utterance_id": "u030",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5552
+    },
+    {
+     "utterance_id": "u031",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8753
+    },
+    {
+     "utterance_id": "u032",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8267
+    },
+    {
+     "utterance_id": "u033",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.523
+    },
+    {
+     "utterance_id": "u034",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7963
+    },
+    {
+     "utterance_id": "u035",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9322
+    },
+    {
+     "utterance_id": "u036",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8992
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "bridge",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.8164,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8164,
+     "level": 0.8164,
+     "shape": 1,
+     "dialog_alignment": 0.8164
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7618,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7618,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.4944,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9509,
+     "level": 0.8248,
+     "shape": 0.5994,
+     "dialog_alignment": 0.9509
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6527,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9174,
+     "level": 0.8479,
+     "shape": 0.7697,
+     "dialog_alignment": 0.9174
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6874,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8646,
+     "level": 0.8513,
+     "shape": 0.8074,
+     "dialog_alignment": 0.8646
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6908,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.8415,
+     "shape": 0.821,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6823,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.8292,
+     "shape": 0.8229,
+     "dialog_alignment": 0.6432
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.6726,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.916,
+     "level": 0.84,
+     "shape": 0.8007,
+     "dialog_alignment": 0.916
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6761,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8327,
+     "level": 0.8392,
+     "shape": 0.8056,
+     "dialog_alignment": 0.8327
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.6602,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7056,
+     "level": 0.8259,
+     "shape": 0.7994,
+     "dialog_alignment": 0.7056
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.6464,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9675,
+     "level": 0.8387,
+     "shape": 0.7706,
+     "dialog_alignment": 0.9675
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.6534,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9108,
+     "level": 0.8447,
+     "shape": 0.7734,
+     "dialog_alignment": 0.9108
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u037",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8164
+    },
+    {
+     "utterance_id": "u038",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u039",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9509
+    },
+    {
+     "utterance_id": "u040",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9174
+    },
+    {
+     "utterance_id": "u041",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8646
+    },
+    {
+     "utterance_id": "u042",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u043",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6432
+    },
+    {
+     "utterance_id": "u044",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.916
+    },
+    {
+     "utterance_id": "u045",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8327
+    },
+    {
+     "utterance_id": "u046",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7056
+    },
+    {
+     "utterance_id": "u047",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9675
+    },
+    {
+     "utterance_id": "u048",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9108
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "contradiction",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7733,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7733,
+     "level": 0.7733,
+     "shape": 1,
+     "dialog_alignment": 0.7733
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6217,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4701,
+     "level": 0.6217,
+     "shape": 1,
+     "dialog_alignment": 0.4701
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.2564,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5652,
+     "level": 0.6029,
+     "shape": 0.4253,
+     "dialog_alignment": 0.5652
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.527,
+     "level": 0.5839,
+     "shape": 0,
+     "dialog_alignment": 0.527
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.5973,
+     "level": 0.5866,
+     "shape": 0,
+     "dialog_alignment": 0.5973
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7543,
+     "level": 0.6145,
+     "shape": 0,
+     "dialog_alignment": 0.7543
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u049",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.549
+    },
+    {
+     "utterance_id": "u050",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7733
+    },
+    {
+     "utterance_id": "u051",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6418
+    },
+    {
+     "utterance_id": "u052",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.4701
+    },
+    {
+     "utterance_id": "u053",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.219
+    },
+    {
+     "utterance_id": "u054",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5652
+    },
+    {
+     "utterance_id": "u055",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.5751
+    },
+    {
+     "utterance_id": "u056",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.527
+    },
+    {
+     "utterance_id": "u057",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.3665
+    },
+    {
+     "utterance_id": "u058",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5973
+    },
+    {
+     "utterance_id": "u059",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.479
+    },
+    {
+     "utterance_id": "u060",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7543
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "contradiction",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.785,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.785,
+     "level": 0.785,
+     "shape": 1,
+     "dialog_alignment": 0.785
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.746,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.746,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.1983,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.6066,
+     "level": 0.6996,
+     "shape": 0.2834,
+     "dialog_alignment": 0.6066
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.3961,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.9174,
+     "level": 0.754,
+     "shape": 0.5254,
+     "dialog_alignment": 0.9174
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.4375,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.6082,
+     "level": 0.7248,
+     "shape": 0.6036,
+     "dialog_alignment": 0.6082
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.4661,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.7361,
+     "shape": 0.6331,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.4876,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.7389,
+     "shape": 0.6599,
+     "dialog_alignment": 0.555
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.5049,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9174,
+     "level": 0.7612,
+     "shape": 0.6633,
+     "dialog_alignment": 0.9174
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.5151,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8235,
+     "level": 0.7681,
+     "shape": 0.6706,
+     "dialog_alignment": 0.8235
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.4979,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.5392,
+     "level": 0.7452,
+     "shape": 0.6681,
+     "dialog_alignment": 0.5392
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.4869,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7433,
+     "level": 0.745,
+     "shape": 0.6536,
+     "dialog_alignment": 0.7433
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.5108,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.917,
+     "level": 0.7594,
+     "shape": 0.6726,
+     "dialog_alignment": 0.917
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u061",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.785
+    },
+    {
+     "utterance_id": "u062",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u063",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6066
+    },
+    {
+     "utterance_id": "u064",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9174
+    },
+    {
+     "utterance_id": "u065",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6082
+    },
+    {
+     "utterance_id": "u066",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u067",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.555
+    },
+    {
+     "utterance_id": "u068",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9174
+    },
+    {
+     "utterance_id": "u069",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8235
+    },
+    {
+     "utterance_id": "u070",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.5392
+    },
+    {
+     "utterance_id": "u071",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7433
+    },
+    {
+     "utterance_id": "u072",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.917
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "displacement",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.5165,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.5165,
+     "level": 0.5165,
+     "shape": 1,
+     "dialog_alignment": 0.5165
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.507,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4975,
+     "level": 0.507,
+     "shape": 1,
+     "dialog_alignment": 0.4975
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.1918,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5139,
+     "level": 0.5093,
+     "shape": 0.3767,
+     "dialog_alignment": 0.5139
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.2605,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8404,
+     "level": 0.5921,
+     "shape": 0.44,
+     "dialog_alignment": 0.8404
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.3136,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.5279,
+     "level": 0.5792,
+     "shape": 0.5414,
+     "dialog_alignment": 0.5279
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.3894,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8586,
+     "level": 0.6258,
+     "shape": 0.6222,
+     "dialog_alignment": 0.8586
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u073",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.666
+    },
+    {
+     "utterance_id": "u074",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5165
+    },
+    {
+     "utterance_id": "u075",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.3639
+    },
+    {
+     "utterance_id": "u076",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.4975
+    },
+    {
+     "utterance_id": "u077",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.3895
+    },
+    {
+     "utterance_id": "u078",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5139
+    },
+    {
+     "utterance_id": "u079",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6822
+    },
+    {
+     "utterance_id": "u080",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8404
+    },
+    {
+     "utterance_id": "u081",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4737
+    },
+    {
+     "utterance_id": "u082",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5279
+    },
+    {
+     "utterance_id": "u083",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.904
+    },
+    {
+     "utterance_id": "u084",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8586
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "displacement",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.7586,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7586,
+     "level": 0.7586,
+     "shape": 1,
+     "dialog_alignment": 0.7586
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7328,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7328,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.3887,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.9283,
+     "level": 0.798,
+     "shape": 0.4871,
+     "dialog_alignment": 0.9283
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.4257,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.6965,
+     "level": 0.7726,
+     "shape": 0.551,
+     "dialog_alignment": 0.6965
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.386,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5091,
+     "level": 0.7199,
+     "shape": 0.5362,
+     "dialog_alignment": 0.5091
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.4171,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.732,
+     "shape": 0.5698,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.4323,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.7354,
+     "shape": 0.5879,
+     "dialog_alignment": 0.3617
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.4561,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.8933,
+     "level": 0.7551,
+     "shape": 0.604,
+     "dialog_alignment": 0.8933
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.4854,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.8305,
+     "level": 0.7635,
+     "shape": 0.6358,
+     "dialog_alignment": 0.8305
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.4951,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.8198,
+     "level": 0.7691,
+     "shape": 0.6437,
+     "dialog_alignment": 0.8198
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.5058,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9632,
+     "level": 0.7868,
+     "shape": 0.6429,
+     "dialog_alignment": 0.9632
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.5156,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8317,
+     "level": 0.7905,
+     "shape": 0.6522,
+     "dialog_alignment": 0.8317
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u085",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7586
+    },
+    {
+     "utterance_id": "u086",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u087",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9283
+    },
+    {
+     "utterance_id": "u088",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6965
+    },
+    {
+     "utterance_id": "u089",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.5091
+    },
+    {
+     "utterance_id": "u090",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u091",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.3617
+    },
+    {
+     "utterance_id": "u092",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8933
+    },
+    {
+     "utterance_id": "u093",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8305
+    },
+    {
+     "utterance_id": "u094",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8198
+    },
+    {
+     "utterance_id": "u095",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9632
+    },
+    {
+     "utterance_id": "u096",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8317
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "avoidance",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.798,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.798,
+     "level": 0.798,
+     "shape": 1,
+     "dialog_alignment": 0.798
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6449,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4917,
+     "level": 0.6449,
+     "shape": 1,
+     "dialog_alignment": 0.4917
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.2133,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.7205,
+     "level": 0.6701,
+     "shape": 0.3183,
+     "dialog_alignment": 0.7205
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.188,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.7156,
+     "level": 0.6815,
+     "shape": 0.2758,
+     "dialog_alignment": 0.7156
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4482,
+     "level": 0.6348,
+     "shape": 0,
+     "dialog_alignment": 0.4482
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9155,
+     "level": 0.6816,
+     "shape": 0,
+     "dialog_alignment": 0.9155
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u097",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.2074
+    },
+    {
+     "utterance_id": "u098",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.798
+    },
+    {
+     "utterance_id": "u099",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.5172
+    },
+    {
+     "utterance_id": "u100",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.4917
+    },
+    {
+     "utterance_id": "u101",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7698
+    },
+    {
+     "utterance_id": "u102",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7205
+    },
+    {
+     "utterance_id": "u103",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "short_affirmative",
+     "dialog_alignment": 0.7205
+    },
+    {
+     "utterance_id": "u104",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7156
+    },
+    {
+     "utterance_id": "u105",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7508
+    },
+    {
+     "utterance_id": "u106",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.4482
+    },
+    {
+     "utterance_id": "u107",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "short_affirmative",
+     "dialog_alignment": 0.7
+    },
+    {
+     "utterance_id": "u108",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.9155
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "avoidance",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.7897,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7897,
+     "level": 0.7897,
+     "shape": 1,
+     "dialog_alignment": 0.7897
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7484,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7484,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.4712,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9283,
+     "level": 0.8083,
+     "shape": 0.583,
+     "dialog_alignment": 0.9283
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6423,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9169,
+     "level": 0.8355,
+     "shape": 0.7688,
+     "dialog_alignment": 0.9169
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6482,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8808,
+     "level": 0.8445,
+     "shape": 0.7675,
+     "dialog_alignment": 0.8808
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.627,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.8359,
+     "shape": 0.7501,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.511,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.2518,
+     "level": 0.7524,
+     "shape": 0.6792,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.4893,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9166,
+     "level": 0.773,
+     "shape": 0.633,
+     "dialog_alignment": 0.9166
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.5183,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.832,
+     "level": 0.7795,
+     "shape": 0.665,
+     "dialog_alignment": 0.832
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.3637,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.7167,
+     "level": 0.7732,
+     "shape": 0.672,
+     "dialog_alignment": 0.7167
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.5293,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.943,
+     "level": 0.7887,
+     "shape": 0.6712,
+     "dialog_alignment": 0.943
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.4531,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0,
+     "level": 0.7229,
+     "shape": 0.6267,
+     "dialog_alignment": 0.943
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u109",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7897
+    },
+    {
+     "utterance_id": "u110",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u111",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9283
+    },
+    {
+     "utterance_id": "u112",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9169
+    },
+    {
+     "utterance_id": "u113",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8808
+    },
+    {
+     "utterance_id": "u114",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u115",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "short_affirmative",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u116",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9166
+    },
+    {
+     "utterance_id": "u117",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.832
+    },
+    {
+     "utterance_id": "u118",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7167
+    },
+    {
+     "utterance_id": "u119",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.943
+    },
+    {
+     "utterance_id": "u120",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "short_affirmative",
+     "dialog_alignment": 0.943
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "fixation",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7717,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7717,
+     "level": 0.7717,
+     "shape": 1,
+     "dialog_alignment": 0.7717
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.719,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6662,
+     "level": 0.719,
+     "shape": 1,
+     "dialog_alignment": 0.6662
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.1109,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.5237,
+     "level": 0.6539,
+     "shape": 0.1696,
+     "dialog_alignment": 0.5237
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.0121,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7379,
+     "level": 0.6749,
+     "shape": 0.0179,
+     "dialog_alignment": 0.7379
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.6552,
+     "level": 0.671,
+     "shape": 0,
+     "dialog_alignment": 0.6552
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9472,
+     "level": 0.717,
+     "shape": 0,
+     "dialog_alignment": 0.9472
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u121",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7723
+    },
+    {
+     "utterance_id": "u122",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7717
+    },
+    {
+     "utterance_id": "u123",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7209
+    },
+    {
+     "utterance_id": "u124",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.6662
+    },
+    {
+     "utterance_id": "u125",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7083
+    },
+    {
+     "utterance_id": "u126",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5237
+    },
+    {
+     "utterance_id": "u127",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8277
+    },
+    {
+     "utterance_id": "u128",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7379
+    },
+    {
+     "utterance_id": "u129",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6046
+    },
+    {
+     "utterance_id": "u130",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.6552
+    },
+    {
+     "utterance_id": "u131",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8718
+    },
+    {
+     "utterance_id": "u132",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.9472
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "fixation",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.8121,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8121,
+     "level": 0.8121,
+     "shape": 1,
+     "dialog_alignment": 0.8121
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7596,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7596,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.4214,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8154,
+     "level": 0.7782,
+     "shape": 0.5415,
+     "dialog_alignment": 0.8154
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.4516,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6965,
+     "level": 0.7578,
+     "shape": 0.596,
+     "dialog_alignment": 0.6965
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.4839,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8456,
+     "level": 0.7753,
+     "shape": 0.6241,
+     "dialog_alignment": 0.8456
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.5106,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.7782,
+     "shape": 0.6561,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.5243,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.7749,
+     "shape": 0.6766,
+     "dialog_alignment": 0.4835
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.5447,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8933,
+     "level": 0.7897,
+     "shape": 0.6897,
+     "dialog_alignment": 0.8933
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.5596,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.765,
+     "level": 0.787,
+     "shape": 0.7111,
+     "dialog_alignment": 0.765
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.5642,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8404,
+     "level": 0.7923,
+     "shape": 0.7121,
+     "dialog_alignment": 0.8404
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.5753,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9632,
+     "level": 0.8079,
+     "shape": 0.7121,
+     "dialog_alignment": 0.9632
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.5967,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9057,
+     "level": 0.816,
+     "shape": 0.7312,
+     "dialog_alignment": 0.9057
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u133",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8121
+    },
+    {
+     "utterance_id": "u134",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u135",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8154
+    },
+    {
+     "utterance_id": "u136",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6965
+    },
+    {
+     "utterance_id": "u137",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8456
+    },
+    {
+     "utterance_id": "u138",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u139",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4835
+    },
+    {
+     "utterance_id": "u140",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8933
+    },
+    {
+     "utterance_id": "u141",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.765
+    },
+    {
+     "utterance_id": "u142",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8404
+    },
+    {
+     "utterance_id": "u143",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9632
+    },
+    {
+     "utterance_id": "u144",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9057
+    }
+   ]
+  }
+ ],
+ "sessions_real_wiring": [
+  {
+   "ruler": "A",
+   "archetype": "echo_follow",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7292,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7292,
+     "level": 0.7292,
+     "shape": 1,
+     "dialog_alignment": 0.7292
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.7437,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7582,
+     "level": 0.7437,
+     "shape": 1,
+     "dialog_alignment": 0.7582
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.6044,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7491,
+     "level": 0.7455,
+     "shape": 0.8108,
+     "dialog_alignment": 0.7491
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.3941,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.7947,
+     "level": 0.7578,
+     "shape": 0.5201,
+     "dialog_alignment": 0.7947
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.2532,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.7507,
+     "level": 0.7564,
+     "shape": 0.3348,
+     "dialog_alignment": 0.7507
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.362,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.9411,
+     "level": 0.7872,
+     "shape": 0.4599,
+     "dialog_alignment": 0.9411
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u001",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.887
+    },
+    {
+     "utterance_id": "u002",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7292
+    },
+    {
+     "utterance_id": "u003",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4702
+    },
+    {
+     "utterance_id": "u004",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7582
+    },
+    {
+     "utterance_id": "u005",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7672
+    },
+    {
+     "utterance_id": "u006",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7491
+    },
+    {
+     "utterance_id": "u007",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9645
+    },
+    {
+     "utterance_id": "u008",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7947
+    },
+    {
+     "utterance_id": "u009",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.502
+    },
+    {
+     "utterance_id": "u010",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7507
+    },
+    {
+     "utterance_id": "u011",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9548
+    },
+    {
+     "utterance_id": "u012",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.9411
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "echo_follow",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9935,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9935,
+     "level": 0.9935,
+     "shape": 1,
+     "dialog_alignment": 0.8164
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9967,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9967,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.9131,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9825,
+     "level": 0.992,
+     "shape": 0.9205,
+     "dialog_alignment": 0.9343
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.9904,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9971,
+     "level": 0.9933,
+     "shape": 0.9971,
+     "dialog_alignment": 0.9147
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.5791,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9899,
+     "level": 0.9926,
+     "shape": 0.5834,
+     "dialog_alignment": 0.872
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6941,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9938,
+     "shape": 0.6984,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.5808,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6178,
+     "level": 0.9401,
+     "shape": 0.6178,
+     "dialog_alignment": 0.4666
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7263,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9941,
+     "level": 0.9469,
+     "shape": 0.7671,
+     "dialog_alignment": 0.9119
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6632,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9463,
+     "level": 0.9468,
+     "shape": 0.7005,
+     "dialog_alignment": 0.7888
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.767,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9407,
+     "level": 0.9462,
+     "shape": 0.8106,
+     "dialog_alignment": 0.7923
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.528,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9583,
+     "level": 0.9473,
+     "shape": 0.5574,
+     "dialog_alignment": 0.9283
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.8024,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9487,
+     "level": 0.9474,
+     "shape": 0.8469,
+     "dialog_alignment": 0.8703
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u013",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8164
+    },
+    {
+     "utterance_id": "u014",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u015",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9343
+    },
+    {
+     "utterance_id": "u016",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9147
+    },
+    {
+     "utterance_id": "u017",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.872
+    },
+    {
+     "utterance_id": "u018",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u019",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4666
+    },
+    {
+     "utterance_id": "u020",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9119
+    },
+    {
+     "utterance_id": "u021",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7888
+    },
+    {
+     "utterance_id": "u022",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7923
+    },
+    {
+     "utterance_id": "u023",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9283
+    },
+    {
+     "utterance_id": "u024",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8703
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "bridge",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.8467,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8467,
+     "level": 0.8467,
+     "shape": 1,
+     "dialog_alignment": 0.8467
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.5903,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.3338,
+     "level": 0.5903,
+     "shape": 1,
+     "dialog_alignment": 0.3338
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.5552,
+     "level": 0.5786,
+     "shape": 0,
+     "dialog_alignment": 0.5552
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.0339,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.8267,
+     "level": 0.6406,
+     "shape": 0.0529,
+     "dialog_alignment": 0.8267
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.1011,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7963,
+     "level": 0.6718,
+     "shape": 0.1505,
+     "dialog_alignment": 0.7963
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.1644,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.8992,
+     "level": 0.7097,
+     "shape": 0.2317,
+     "dialog_alignment": 0.8992
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u025",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7448
+    },
+    {
+     "utterance_id": "u026",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8467
+    },
+    {
+     "utterance_id": "u027",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4151
+    },
+    {
+     "utterance_id": "u028",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.3338
+    },
+    {
+     "utterance_id": "u029",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.813
+    },
+    {
+     "utterance_id": "u030",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5552
+    },
+    {
+     "utterance_id": "u031",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8753
+    },
+    {
+     "utterance_id": "u032",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8267
+    },
+    {
+     "utterance_id": "u033",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.523
+    },
+    {
+     "utterance_id": "u034",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7963
+    },
+    {
+     "utterance_id": "u035",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9322
+    },
+    {
+     "utterance_id": "u036",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8992
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "bridge",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9935,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9935,
+     "level": 0.9935,
+     "shape": 1,
+     "dialog_alignment": 0.8164
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9967,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9967,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.8819,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9978,
+     "shape": 0.8838,
+     "dialog_alignment": 0.9509
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.9983,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9984,
+     "shape": 1,
+     "dialog_alignment": 0.9174
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.7902,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9816,
+     "level": 0.995,
+     "shape": 0.7942,
+     "dialog_alignment": 0.8646
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.7117,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9958,
+     "shape": 0.7146,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.8306,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8517,
+     "level": 0.9752,
+     "shape": 0.8517,
+     "dialog_alignment": 0.6432
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7363,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9984,
+     "level": 0.9781,
+     "shape": 0.7528,
+     "dialog_alignment": 0.916
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.7795,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9989,
+     "level": 0.9805,
+     "shape": 0.795,
+     "dialog_alignment": 0.8327
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.7573,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8378,
+     "level": 0.9662,
+     "shape": 0.7838,
+     "dialog_alignment": 0.7056
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.2409,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9987,
+     "level": 0.9691,
+     "shape": 0.2485,
+     "dialog_alignment": 0.9675
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.8635,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9928,
+     "level": 0.9711,
+     "shape": 0.8892,
+     "dialog_alignment": 0.9108
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u037",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8164
+    },
+    {
+     "utterance_id": "u038",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u039",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9509
+    },
+    {
+     "utterance_id": "u040",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9174
+    },
+    {
+     "utterance_id": "u041",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8646
+    },
+    {
+     "utterance_id": "u042",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u043",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6432
+    },
+    {
+     "utterance_id": "u044",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.916
+    },
+    {
+     "utterance_id": "u045",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8327
+    },
+    {
+     "utterance_id": "u046",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7056
+    },
+    {
+     "utterance_id": "u047",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9675
+    },
+    {
+     "utterance_id": "u048",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9108
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "contradiction",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7733,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7733,
+     "level": 0.7733,
+     "shape": 1,
+     "dialog_alignment": 0.7733
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6217,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4701,
+     "level": 0.6217,
+     "shape": 1,
+     "dialog_alignment": 0.4701
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.2564,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5652,
+     "level": 0.6029,
+     "shape": 0.4253,
+     "dialog_alignment": 0.5652
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.527,
+     "level": 0.5839,
+     "shape": 0,
+     "dialog_alignment": 0.527
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.5973,
+     "level": 0.5866,
+     "shape": 0,
+     "dialog_alignment": 0.5973
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7543,
+     "level": 0.6145,
+     "shape": 0,
+     "dialog_alignment": 0.7543
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u049",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.549
+    },
+    {
+     "utterance_id": "u050",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7733
+    },
+    {
+     "utterance_id": "u051",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6418
+    },
+    {
+     "utterance_id": "u052",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.4701
+    },
+    {
+     "utterance_id": "u053",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.219
+    },
+    {
+     "utterance_id": "u054",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5652
+    },
+    {
+     "utterance_id": "u055",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.5751
+    },
+    {
+     "utterance_id": "u056",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.527
+    },
+    {
+     "utterance_id": "u057",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.3665
+    },
+    {
+     "utterance_id": "u058",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5973
+    },
+    {
+     "utterance_id": "u059",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.479
+    },
+    {
+     "utterance_id": "u060",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7543
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "contradiction",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9552,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9552,
+     "level": 0.9552,
+     "shape": 1,
+     "dialog_alignment": 0.785
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9776,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9776,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.7599,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9825,
+     "level": 0.9792,
+     "shape": 0.7761,
+     "dialog_alignment": 0.6066
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.9844,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9844,
+     "shape": 1,
+     "dialog_alignment": 0.9174
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.1174,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.6905,
+     "level": 0.9256,
+     "shape": 0.1269,
+     "dialog_alignment": 0.6082
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.5902,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.938,
+     "shape": 0.6292,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6679,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7348,
+     "level": 0.909,
+     "shape": 0.7348,
+     "dialog_alignment": 0.555
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.5954,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9204,
+     "shape": 0.647,
+     "dialog_alignment": 0.9174
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.1701,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9879,
+     "level": 0.9279,
+     "shape": 0.1833,
+     "dialog_alignment": 0.8235
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.6204,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6402,
+     "level": 0.8991,
+     "shape": 0.69,
+     "dialog_alignment": 0.5392
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.5311,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7673,
+     "level": 0.8871,
+     "shape": 0.5987,
+     "dialog_alignment": 0.7433
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.7545,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9996,
+     "level": 0.8965,
+     "shape": 0.8417,
+     "dialog_alignment": 0.917
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u061",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.785
+    },
+    {
+     "utterance_id": "u062",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u063",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6066
+    },
+    {
+     "utterance_id": "u064",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9174
+    },
+    {
+     "utterance_id": "u065",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6082
+    },
+    {
+     "utterance_id": "u066",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u067",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.555
+    },
+    {
+     "utterance_id": "u068",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9174
+    },
+    {
+     "utterance_id": "u069",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8235
+    },
+    {
+     "utterance_id": "u070",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.5392
+    },
+    {
+     "utterance_id": "u071",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7433
+    },
+    {
+     "utterance_id": "u072",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.917
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "displacement",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.5165,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.5165,
+     "level": 0.5165,
+     "shape": 1,
+     "dialog_alignment": 0.5165
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.507,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4975,
+     "level": 0.507,
+     "shape": 1,
+     "dialog_alignment": 0.4975
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.1918,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5139,
+     "level": 0.5093,
+     "shape": 0.3767,
+     "dialog_alignment": 0.5139
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.2605,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8404,
+     "level": 0.5921,
+     "shape": 0.44,
+     "dialog_alignment": 0.8404
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.3136,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.5279,
+     "level": 0.5792,
+     "shape": 0.5414,
+     "dialog_alignment": 0.5279
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.3894,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8586,
+     "level": 0.6258,
+     "shape": 0.6222,
+     "dialog_alignment": 0.8586
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u073",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.666
+    },
+    {
+     "utterance_id": "u074",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5165
+    },
+    {
+     "utterance_id": "u075",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.3639
+    },
+    {
+     "utterance_id": "u076",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.4975
+    },
+    {
+     "utterance_id": "u077",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.3895
+    },
+    {
+     "utterance_id": "u078",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5139
+    },
+    {
+     "utterance_id": "u079",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6822
+    },
+    {
+     "utterance_id": "u080",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8404
+    },
+    {
+     "utterance_id": "u081",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4737
+    },
+    {
+     "utterance_id": "u082",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5279
+    },
+    {
+     "utterance_id": "u083",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.904
+    },
+    {
+     "utterance_id": "u084",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.8586
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "displacement",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9231,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9231,
+     "level": 0.9231,
+     "shape": 1,
+     "dialog_alignment": 0.7586
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9615,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9615,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.6543,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9762,
+     "level": 0.9664,
+     "shape": 0.6771,
+     "dialog_alignment": 0.9283
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6944,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7593,
+     "level": 0.9146,
+     "shape": 0.7593,
+     "dialog_alignment": 0.6965
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.4574,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.578,
+     "level": 0.8473,
+     "shape": 0.5398,
+     "dialog_alignment": 0.5091
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.5929,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.8728,
+     "shape": 0.6794,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.391,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4789,
+     "level": 0.8165,
+     "shape": 0.4789,
+     "dialog_alignment": 0.3617
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.5412,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9738,
+     "level": 0.8361,
+     "shape": 0.6472,
+     "dialog_alignment": 0.8933
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.5412,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9962,
+     "level": 0.8539,
+     "shape": 0.6338,
+     "dialog_alignment": 0.8305
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.5886,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9734,
+     "level": 0.8659,
+     "shape": 0.6798,
+     "dialog_alignment": 0.8198
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.4069,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9943,
+     "level": 0.8776,
+     "shape": 0.4637,
+     "dialog_alignment": 0.9632
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.6439,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9066,
+     "level": 0.88,
+     "shape": 0.7317,
+     "dialog_alignment": 0.8317
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u085",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7586
+    },
+    {
+     "utterance_id": "u086",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u087",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9283
+    },
+    {
+     "utterance_id": "u088",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6965
+    },
+    {
+     "utterance_id": "u089",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.5091
+    },
+    {
+     "utterance_id": "u090",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u091",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.3617
+    },
+    {
+     "utterance_id": "u092",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8933
+    },
+    {
+     "utterance_id": "u093",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8305
+    },
+    {
+     "utterance_id": "u094",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8198
+    },
+    {
+     "utterance_id": "u095",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9632
+    },
+    {
+     "utterance_id": "u096",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8317
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "avoidance",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.798,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.798,
+     "level": 0.798,
+     "shape": 1,
+     "dialog_alignment": 0.798
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6449,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4917,
+     "level": 0.6449,
+     "shape": 1,
+     "dialog_alignment": 0.4917
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.2133,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.7205,
+     "level": 0.6701,
+     "shape": 0.3183,
+     "dialog_alignment": 0.7205
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.188,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.7156,
+     "level": 0.6815,
+     "shape": 0.2758,
+     "dialog_alignment": 0.7156
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4482,
+     "level": 0.6348,
+     "shape": 0,
+     "dialog_alignment": 0.4482
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9155,
+     "level": 0.6816,
+     "shape": 0,
+     "dialog_alignment": 0.9155
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u097",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.2074
+    },
+    {
+     "utterance_id": "u098",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.798
+    },
+    {
+     "utterance_id": "u099",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.5172
+    },
+    {
+     "utterance_id": "u100",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.4917
+    },
+    {
+     "utterance_id": "u101",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7698
+    },
+    {
+     "utterance_id": "u102",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7205
+    },
+    {
+     "utterance_id": "u103",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "short_affirmative",
+     "dialog_alignment": 0.7205
+    },
+    {
+     "utterance_id": "u104",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7156
+    },
+    {
+     "utterance_id": "u105",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7508
+    },
+    {
+     "utterance_id": "u106",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.4482
+    },
+    {
+     "utterance_id": "u107",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "short_affirmative",
+     "dialog_alignment": 0.7
+    },
+    {
+     "utterance_id": "u108",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.9155
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "avoidance",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9609,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9609,
+     "level": 0.9609,
+     "shape": 1,
+     "dialog_alignment": 0.7897
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9805,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9805,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.9229,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9762,
+     "level": 0.979,
+     "shape": 0.9427,
+     "dialog_alignment": 0.9283
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.9836,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9994,
+     "level": 0.9841,
+     "shape": 0.9994,
+     "dialog_alignment": 0.9169
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.4037,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9873,
+     "shape": 0.4088,
+     "dialog_alignment": 0.8808
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.277,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9894,
+     "shape": 0.28,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0,
+     "level": 0.8481,
+     "shape": 0,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7019,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9991,
+     "level": 0.867,
+     "shape": 0.8097,
+     "dialog_alignment": 0.9166
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.5556,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.998,
+     "level": 0.8815,
+     "shape": 0.6303,
+     "dialog_alignment": 0.832
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.5199,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.851,
+     "level": 0.8785,
+     "shape": 0.8455,
+     "dialog_alignment": 0.7167
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.4463,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9734,
+     "level": 0.8871,
+     "shape": 0.5031,
+     "dialog_alignment": 0.943
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.1005,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0,
+     "level": 0.8132,
+     "shape": 0.1236,
+     "dialog_alignment": 0.943
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u109",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7897
+    },
+    {
+     "utterance_id": "u110",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u111",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9283
+    },
+    {
+     "utterance_id": "u112",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9169
+    },
+    {
+     "utterance_id": "u113",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8808
+    },
+    {
+     "utterance_id": "u114",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u115",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "short_affirmative",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u116",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9166
+    },
+    {
+     "utterance_id": "u117",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.832
+    },
+    {
+     "utterance_id": "u118",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7167
+    },
+    {
+     "utterance_id": "u119",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.943
+    },
+    {
+     "utterance_id": "u120",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "short_affirmative",
+     "dialog_alignment": 0.943
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "fixation",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7717,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7717,
+     "level": 0.7717,
+     "shape": 1,
+     "dialog_alignment": 0.7717
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.719,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6662,
+     "level": 0.719,
+     "shape": 1,
+     "dialog_alignment": 0.6662
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.1109,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.5237,
+     "level": 0.6539,
+     "shape": 0.1696,
+     "dialog_alignment": 0.5237
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.0121,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7379,
+     "level": 0.6749,
+     "shape": 0.0179,
+     "dialog_alignment": 0.7379
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.6552,
+     "level": 0.671,
+     "shape": 0,
+     "dialog_alignment": 0.6552
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9472,
+     "level": 0.717,
+     "shape": 0,
+     "dialog_alignment": 0.9472
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u121",
+     "scene_order": 0,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7723
+    },
+    {
+     "utterance_id": "u122",
+     "scene_order": 0,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7717
+    },
+    {
+     "utterance_id": "u123",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7209
+    },
+    {
+     "utterance_id": "u124",
+     "scene_order": 1,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.6662
+    },
+    {
+     "utterance_id": "u125",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7083
+    },
+    {
+     "utterance_id": "u126",
+     "scene_order": 2,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.5237
+    },
+    {
+     "utterance_id": "u127",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8277
+    },
+    {
+     "utterance_id": "u128",
+     "scene_order": 3,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.7379
+    },
+    {
+     "utterance_id": "u129",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6046
+    },
+    {
+     "utterance_id": "u130",
+     "scene_order": 4,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.6552
+    },
+    {
+     "utterance_id": "u131",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8718
+    },
+    {
+     "utterance_id": "u132",
+     "scene_order": 5,
+     "turn": 2,
+     "via": "classified",
+     "dialog_alignment": 0.9472
+    }
+   ]
+  },
+  {
+   "ruler": "A",
+   "archetype": "fixation",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9882,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9882,
+     "level": 0.9882,
+     "shape": 1,
+     "dialog_alignment": 0.8121
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9941,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9941,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.7503,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8575,
+     "level": 0.9486,
+     "shape": 0.791,
+     "dialog_alignment": 0.8154
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6843,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7593,
+     "level": 0.9012,
+     "shape": 0.7593,
+     "dialog_alignment": 0.6965
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6628,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.96,
+     "level": 0.913,
+     "shape": 0.726,
+     "dialog_alignment": 0.8456
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6867,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9275,
+     "shape": 0.7403,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.5675,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6402,
+     "level": 0.8864,
+     "shape": 0.6402,
+     "dialog_alignment": 0.4835
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.5712,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9738,
+     "level": 0.8974,
+     "shape": 0.6366,
+     "dialog_alignment": 0.8933
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6851,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9177,
+     "level": 0.8996,
+     "shape": 0.7616,
+     "dialog_alignment": 0.765
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.6032,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9978,
+     "level": 0.9094,
+     "shape": 0.6633,
+     "dialog_alignment": 0.8404
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.4253,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9943,
+     "level": 0.9172,
+     "shape": 0.4637,
+     "dialog_alignment": 0.9632
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.7729,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9872,
+     "level": 0.923,
+     "shape": 0.8374,
+     "dialog_alignment": 0.9057
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "u133",
+     "scene_order": 1,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8121
+    },
+    {
+     "utterance_id": "u134",
+     "scene_order": 2,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "u135",
+     "scene_order": 3,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8154
+    },
+    {
+     "utterance_id": "u136",
+     "scene_order": 4,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.6965
+    },
+    {
+     "utterance_id": "u137",
+     "scene_order": 5,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8456
+    },
+    {
+     "utterance_id": "u138",
+     "scene_order": 6,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "u139",
+     "scene_order": 7,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.4835
+    },
+    {
+     "utterance_id": "u140",
+     "scene_order": 8,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8933
+    },
+    {
+     "utterance_id": "u141",
+     "scene_order": 9,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.765
+    },
+    {
+     "utterance_id": "u142",
+     "scene_order": 11,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.8404
+    },
+    {
+     "utterance_id": "u143",
+     "scene_order": 12,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9632
+    },
+    {
+     "utterance_id": "u144",
+     "scene_order": 13,
+     "turn": 1,
+     "via": "classified",
+     "dialog_alignment": 0.9057
+    }
+   ]
+  }
+ ],
+ "summary": {
+  "echo_follow": {
+   "n_steps": 18,
+   "alignment_median": 0.6605,
+   "alignment_q25": 0.6174,
+   "alignment_q75": 0.6778,
+   "alignment_min": 0.2532,
+   "alignment_max": 0.8164,
+   "patterns": {
+    "echo_follow": 15,
+    "fixation": 3
+   },
+   "buckets": {
+    "HIGH": 15,
+    "FIXATED": 3
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.49925,
+     "patterns": {
+      "echo_follow": 3,
+      "fixation": 3
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.6616500000000001,
+     "patterns": {
+      "echo_follow": 12
+     }
+    }
+   }
+  },
+  "bridge": {
+   "n_steps": 18,
+   "alignment_median": 0.6568,
+   "alignment_q25": 0.5184,
+   "alignment_q75": 0.6861,
+   "alignment_min": 0,
+   "alignment_max": 0.8467,
+   "patterns": {
+    "echo_follow": 14,
+    "displacement": 4
+   },
+   "buckets": {
+    "HIGH": 14,
+    "LOW": 3,
+    "MID": 1
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.13274999999999998,
+     "patterns": {
+      "echo_follow": 2,
+      "displacement": 4
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.67435,
+     "patterns": {
+      "echo_follow": 12
+     }
+    }
+   }
+  },
+  "contradiction": {
+   "n_steps": 18,
+   "alignment_median": 0.4872,
+   "alignment_q25": 0.2913,
+   "alignment_q75": 0.514,
+   "alignment_min": 0,
+   "alignment_max": 0.785,
+   "patterns": {
+    "echo_follow": 9,
+    "bridge": 5,
+    "fixation": 1,
+    "displacement": 3
+   },
+   "buckets": {
+    "HIGH": 9,
+    "MID": 6,
+    "FIXATED": 1,
+    "LOW": 2
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.1282,
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 1,
+      "fixation": 1,
+      "displacement": 2
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.49275,
+     "patterns": {
+      "echo_follow": 7,
+      "displacement": 1,
+      "bridge": 4
+     }
+    }
+   }
+  },
+  "displacement": {
+   "n_steps": 18,
+   "alignment_median": 0.4442,
+   "alignment_q25": 0.3889,
+   "alignment_q75": 0.5067,
+   "alignment_min": 0.1918,
+   "alignment_max": 0.7586,
+   "patterns": {
+    "echo_follow": 6,
+    "bridge": 9,
+    "fixation": 3
+   },
+   "buckets": {
+    "HIGH": 6,
+    "MID": 9,
+    "FIXATED": 3
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.35150000000000003,
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 1,
+      "fixation": 3
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.47075,
+     "patterns": {
+      "echo_follow": 4,
+      "bridge": 8
+     }
+    }
+   }
+  },
+  "avoidance": {
+   "n_steps": 18,
+   "alignment_median": 0.5147,
+   "alignment_q25": 0.3861,
+   "alignment_q75": 0.6442,
+   "alignment_min": 0,
+   "alignment_max": 0.798,
+   "patterns": {
+    "echo_follow": 13,
+    "bridge": 2,
+    "fixation": 1,
+    "displacement": 2
+   },
+   "buckets": {
+    "HIGH": 13,
+    "MID": 2,
+    "FIXATED": 1,
+    "LOW": 2
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.20065,
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 1,
+      "fixation": 1,
+      "displacement": 2
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.5238,
+     "patterns": {
+      "echo_follow": 11,
+      "bridge": 1
+     }
+    }
+   }
+  },
+  "fixation": {
+   "n_steps": 18,
+   "alignment_median": 0.5345,
+   "alignment_q25": 0.4289,
+   "alignment_q75": 0.5914,
+   "alignment_min": 0,
+   "alignment_max": 0.8121,
+   "patterns": {
+    "echo_follow": 14,
+    "displacement": 4
+   },
+   "buckets": {
+    "HIGH": 14,
+    "MID": 1,
+    "LOW": 3
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.0615,
+     "patterns": {
+      "echo_follow": 2,
+      "displacement": 4
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.5521499999999999,
+     "patterns": {
+      "echo_follow": 12
+     }
+    }
+   }
+  }
+ },
+ "summary_real_wiring": {
+  "echo_follow": {
+   "n_steps": 18,
+   "alignment_median": 0.7102,
+   "alignment_q25": 0.5795,
+   "alignment_q75": 0.7935,
+   "alignment_min": 0.2532,
+   "alignment_max": 0.9967,
+   "patterns": {
+    "echo_follow": 15,
+    "fixation": 3
+   },
+   "buckets": {
+    "HIGH": 15,
+    "FIXATED": 3
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.49925,
+     "patterns": {
+      "echo_follow": 3,
+      "fixation": 3
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.74665,
+     "patterns": {
+      "echo_follow": 12
+     }
+    }
+   }
+  },
+  "bridge": {
+   "n_steps": 18,
+   "alignment_median": 0.7684,
+   "alignment_q25": 0.3283,
+   "alignment_q75": 0.8593,
+   "alignment_min": 0,
+   "alignment_max": 0.9983,
+   "patterns": {
+    "echo_follow": 13,
+    "displacement": 5
+   },
+   "buckets": {
+    "HIGH": 13,
+    "LOW": 3,
+    "MID": 2
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.13274999999999998,
+     "patterns": {
+      "echo_follow": 2,
+      "displacement": 4
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.8104,
+     "patterns": {
+      "echo_follow": 11,
+      "displacement": 1
+     }
+    }
+   }
+  },
+  "contradiction": {
+   "n_steps": 18,
+   "alignment_median": 0.6079,
+   "alignment_q25": 0.1917,
+   "alignment_q75": 0.7586,
+   "alignment_min": 0,
+   "alignment_max": 0.9844,
+   "patterns": {
+    "echo_follow": 12,
+    "bridge": 1,
+    "fixation": 1,
+    "displacement": 4
+   },
+   "buckets": {
+    "HIGH": 12,
+    "MID": 3,
+    "FIXATED": 1,
+    "LOW": 2
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.1282,
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 1,
+      "fixation": 1,
+      "displacement": 2
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.64415,
+     "patterns": {
+      "echo_follow": 10,
+      "displacement": 2
+     }
+    }
+   }
+  },
+  "displacement": {
+   "n_steps": 18,
+   "alignment_median": 0.5289,
+   "alignment_q25": 0.395,
+   "alignment_q75": 0.6311,
+   "alignment_min": 0.1918,
+   "alignment_max": 0.9615,
+   "patterns": {
+    "echo_follow": 13,
+    "bridge": 2,
+    "fixation": 3
+   },
+   "buckets": {
+    "HIGH": 13,
+    "MID": 2,
+    "FIXATED": 3
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.35150000000000003,
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 1,
+      "fixation": 3
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.59075,
+     "patterns": {
+      "echo_follow": 11,
+      "bridge": 1
+     }
+    }
+   }
+  },
+  "avoidance": {
+   "n_steps": 18,
+   "alignment_median": 0.4831,
+   "alignment_q25": 0.1943,
+   "alignment_q75": 0.774,
+   "alignment_min": 0,
+   "alignment_max": 0.9836,
+   "patterns": {
+    "echo_follow": 11,
+    "bridge": 1,
+    "fixation": 1,
+    "displacement": 5
+   },
+   "buckets": {
+    "HIGH": 11,
+    "MID": 3,
+    "FIXATED": 1,
+    "LOW": 3
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.20065,
+     "patterns": {
+      "echo_follow": 2,
+      "bridge": 1,
+      "fixation": 1,
+      "displacement": 2
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.53775,
+     "patterns": {
+      "echo_follow": 9,
+      "displacement": 3
+     }
+    }
+   }
+  },
+  "fixation": {
+   "n_steps": 18,
+   "alignment_median": 0.6735,
+   "alignment_q25": 0.4608,
+   "alignment_q75": 0.7425,
+   "alignment_min": 0,
+   "alignment_max": 0.9941,
+   "patterns": {
+    "echo_follow": 14,
+    "displacement": 4
+   },
+   "buckets": {
+    "HIGH": 14,
+    "MID": 1,
+    "LOW": 3
+   },
+   "by_memory": {
+    "footprints": {
+     "alignment_median": 0.0615,
+     "patterns": {
+      "echo_follow": 2,
+      "displacement": 4
+     }
+    },
+    "UNDW-001": {
+     "alignment_median": 0.6847000000000001,
+     "patterns": {
+      "echo_follow": 12
+     }
+    }
+   }
+  }
+ }
+}

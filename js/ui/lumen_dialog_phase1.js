@@ -1347,7 +1347,10 @@
   //   reason 채우면 같은 문장이 longing 0.6 — 배포판 실측 4케이스 + 회피 3케이스 확인:
   //   "모르겠어요"류는 채워도 is_void:true 유지, 구체 발화는 false. 깨끗이 분리됨).
   //   반환도 base 단독 → { base, reason_analysis } 로 확장 (avoidance 배선 재료).
-  async function _analyzeEmotion(supabase, text, anchorEmotions) {
+  // 260728 2단계: context { scene_text, ghost_line } — 관객 발화가 "유령에게 건네는 말"
+  //   임을 서버가 알게 한다. reason 주입만으로는 공감→냉소 오독이 안 풀렸음 (v2 재실행:
+  //   공명자 순위 역전 유지). 서버는 context 없으면 기존 프롬프트 그대로 (하위호환).
+  async function _analyzeEmotion(supabase, text, anchorEmotions, context) {
     if (!supabase || !text) return null;
     try {
       var resp = await supabase.functions.invoke('claude-scene', {
@@ -1356,6 +1359,7 @@
           emotion: text,
           reason: text,
           anchorEmotions: anchorEmotions || null,
+          context: context || null,
         },
       });
       if (resp && resp.error) {
@@ -1675,7 +1679,15 @@
           : ((input.memoryEmotionAxes && input.memoryEmotionAxes.length)
             ? input.memoryEmotionAxes
             : (origEmotion && Object.keys(origEmotion).length ? Object.keys(origEmotion) : null));
-        var anaRes = await _analyzeEmotion(input.supabase, playerInput, anchorKeys);
+        // 260728: 씬 원문 + 직전 유령 대사를 분류 맥락으로 (서버 ctxHeader 조건부 발동)
+        var _lastGhostLine = null;
+        for (var _gi = dialogHistory.length - 1; _gi >= 0; _gi--) {
+          if (dialogHistory[_gi].role === 'assistant') { _lastGhostLine = dialogHistory[_gi].content; break; }
+        }
+        var anaRes = await _analyzeEmotion(input.supabase, playerInput, anchorKeys, {
+          scene_text: String(sceneData.text || '').slice(0, 400),
+          ghost_line: _lastGhostLine ? String(_lastGhostLine).slice(0, 200) : null,
+        });
         userEmo = anaRes ? anaRes.base : null;
         if (anaRes && anaRes.reason_analysis) lastReasonAnalysis = anaRes.reason_analysis;
         alignment = userEmo ? _cosineSim(userEmo, origEmotion) : 0.5;

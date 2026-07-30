@@ -1,0 +1,84 @@
+{
+ "verdicts": [
+  {
+   "id": "L1",
+   "조건": "자 B에서 대립자 정렬 중앙값 ≥ 공명자 정렬 중앙값",
+   "측정": "대립 0.109 vs 공명 0.303",
+   "위반": false
+  },
+  {
+   "id": "L2",
+   "조건": "자 B에서 대립자 회차의 contradiction 패턴 = 0",
+   "측정": "contradiction 5회 / 18스텝",
+   "위반": false
+  },
+  {
+   "id": "L3",
+   "조건": "자 A에서 L1이 통과됨(=병명 재현 실패)",
+   "측정": "A: 대립 0.487 vs 공명 0.660",
+   "위반": true
+  },
+  {
+   "id": "L4",
+   "조건": "회피자 발화의 short-affirmative 우회 발동률 > 30%",
+   "측정": "16.7% (4/24)",
+   "위반": false
+  },
+  {
+   "id": "L5",
+   "조건": "자 B에서 공명자가 HIGH 상실 (A 대비 급락해 MID 아래)",
+   "측정": "공명자 B 0.303 vs A 0.660 (MID 하한 0.10)",
+   "위반": false
+  }
+ ],
+ "thresholds": {
+  "n": 108,
+  "q10": 0,
+  "q25": 0.0677,
+  "q50": 0.1902,
+  "q75": 0.3266,
+  "q90": 0.5945,
+  "현행_HIGH_0_50_이상_비율": 0.1481,
+  "현행_LOW_0_10_미만_비율": 0.3426,
+  "딱지": "잠정 — 페르소나 분포 기반. 알파 실관객 3회차 분포로 재추정."
+ },
+ "alt_threshold_patterns": {
+  "echo_follow": {
+   "echo_follow": 7,
+   "bridge": 11
+  },
+  "bridge": {
+   "echo_follow": 13,
+   "displacement": 4,
+   "bridge": 1
+  },
+  "contradiction": {
+   "echo_follow": 4,
+   "bridge": 10,
+   "displacement": 3,
+   "contradiction": 1
+  },
+  "displacement": {
+   "echo_follow": 3,
+   "bridge": 12,
+   "contradiction": 3
+  },
+  "avoidance": {
+   "echo_follow": 5,
+   "bridge": 9,
+   "displacement": 3,
+   "avoidance": 1
+  },
+  "fixation": {
+   "echo_follow": 4,
+   "displacement": 4,
+   "avoidance": 1,
+   "contradiction": 4,
+   "bridge": 5
+  }
+ },
+ "alt_cuts": {
+  "low": 0.0677,
+  "high": 0.3266
+ }
+}
