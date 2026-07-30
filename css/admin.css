@@ -191,8 +191,27 @@ body::before {
 .editor-screen {
     display: none;
 }
+/* 260730 통합: 저작 정본은 Canvas. 옛 전체 폼은 어디서 열리든 백업 오버레이로 뜬다
+   (DOM 이 body 직속으로 이관돼 섹션 표시 상태와 무관하게 덮음) */
 .editor-screen.active {
     display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 2400;
+    overflow-y: auto;
+    background: var(--bg-deep, #0a0a0f);
+    padding-top: 8px;
+}
+.editor-screen .editor-screen-bar::before {
+    content: '백업 폼 — 저작 정본은 Canvas 입니다';
+    display: block;
+    width: 100%;
+    font-size: 0.78rem;
+    color: #8a7c6a;
+    padding: 0.4rem 0.6rem;
+    margin-bottom: 0.6rem;
+    border: 1px dashed rgba(196, 168, 130, .3);
+    border-radius: 3px;
 }
 .editor-screen-bar {
     display: flex;

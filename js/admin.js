@@ -235,6 +235,8 @@ async function loadMemories() {
                 memories = [];
             }
         }
+        // 260730: 풀버전 편집기 팝업(admin.html)이 id→index 를 찾을 수 있게 노출
+        window.memories = memories;
     } catch (error) {
         console.error('loadMemories error:', error);
         showToast('기억 불러오기 오류: ' + error.message, 'error', { ttl: 0 });
@@ -247,7 +249,11 @@ async function loadMemories() {
         }
     }
     renderMemoriesTable();
+    window.memories = memories; // 실패 경로(localStorage 폴백)에서도 최신 참조 유지
 }
+// 260730: 백업 폼(풀버전 편집기)을 열기 직전 DB 재조회용.
+// 낡은 memories[] 로 열어 저장하면 그 사이 Canvas 에서 고친 값이 통째로 롤백된다.
+window.adminReloadMemories = loadMemories;
 
 // memory list 테 블 렌더링
 function renderMemoriesTable() {
@@ -2636,7 +2642,7 @@ function cancelEdit() {
         if (!confirm('저장하지 않은 변경사항이 있습니다.\n정말 나가시겠습니까?')) return;
     }
     clearEditorDirty();
-    document.getElementById('editorScreen').classList.remove('active');
+    document.getElementById('editorScreen').classList.remove('active'); // 260730: 백업 오버레이 닫기
     document.getElementById('adminDashboard').classList.add('active');
     currentMemoryIndex = null;
     currentScenes = [];
@@ -2879,6 +2885,16 @@ async function renderVersions() {
 }
 window.renderVersions = renderVersions;
 
+// 260730 통합: 판본 이력 / 작가 궤적 시딩 패널이 Canvas 사이드바로 이사했다.
+// 두 기능은 이 파일 안쪽 변수(currentMemoryId)를 보므로, Canvas 에서 기억을 바꾸면
+// window.currentMemoryId 만이 아니라 이 안쪽 변수까지 같이 맞춰줘야 한다.
+window.adminSetCurrentMemory = function adminSetCurrentMemory(id) {
+    currentMemoryId = id || null;
+    window.currentMemoryId = currentMemoryId;
+    const idx = (memories || []).findIndex(m => m && String(m.id) === String(id));
+    if (idx >= 0) currentMemoryIndex = idx; // 판본 복원이 목록 자리를 필요로 함
+};
+
 // 판본 복원 — 스냅샷을 편집기 상태로 로드 → saveMemoryGraph 경유(씬 id·plays 보존).
 async function restoreVersion(versionId) {
     if (!currentMemoryId || currentMemoryIndex == null) { showToast('먼저 기억을 선택하세요', 'info'); return; }
@@ -2897,6 +2913,13 @@ async function restoreVersion(versionId) {
         editMemory(currentMemoryIndex);
         // 4) saveMemoryGraph 경유 저장 (id 보존 diff)
         await saveMemory();
+        // 5) 260730 통합: 판본 이력 패널은 Canvas 사이드바에 산다. 위 3)이 백업 오버레이
+        //    (#editorScreen)를 열어버리므로 복원이 끝나면 닫고, Canvas 를 새 내용으로 다시 그린다.
+        const overlay = document.getElementById('editorScreen');
+        if (overlay) overlay.classList.remove('active');
+        const dash = document.getElementById('adminDashboard');
+        if (dash) dash.classList.add('active');
+        if (window.tvReloadMemory) { try { await window.tvReloadMemory(currentMemoryId); } catch (e2) { console.warn(e2); } }
         showToast('판본 복원 완료', 'success');
     } catch (e) {
         console.error('restoreVersion error:', e);
@@ -3471,11 +3494,15 @@ async function deleteSelectedSessions() {
 
 async function openSessionDetail(id, type) {
     if (type === 'archive') {
- // existing archive 상세 직 - 디터 열기
+        // 260730 통합: 저작 정본 = Canvas. 카드 클릭은 옛 편집 폼 대신 Canvas 로 진입한다
+        // (옛 폼은 네비바 [풀버전 편집기] 팝업 백업으로만 남음).
         const memoryIndex = memories.findIndex(m => m.id == id);
-        if (memoryIndex !== -1) {
-            editMemory(memoryIndex);
-        }
+        if (memoryIndex === -1) return;
+        currentMemoryIndex = memoryIndex;
+        currentMemoryId = id;
+        window.currentMemoryId = id;
+        if (window.switchAdminSection) window.switchAdminSection('canvas');
+        if (window.tvSwitchMemory) window.tvSwitchMemory(id);
     } else {
  // live session 상세
         openLiveSessionDetail(id);

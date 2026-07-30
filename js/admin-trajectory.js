@@ -105,6 +105,17 @@ window.tvSwitchMemory = async function tvSwitchMemory(id) {
   window.currentMemoryId = id;
   await initTrajectoryViewer(id);
 };
+// 같은 기억이라도 DB 에서 강제로 다시 읽는다 (판본 복원 뒤처럼 내용이 통째로 바뀐 경우).
+window.tvReloadMemory = async function tvReloadMemory(id) {
+  const target = id || (state.memory && state.memory.id) || window.currentMemoryId;
+  if (!target) return;
+  state.memory = null;         // 같은 id 로도 다시 읽히도록 초기화
+  state.selectedSceneId = null;
+  const detail = document.getElementById('tvDetail');
+  if (detail) detail.innerHTML = '<div class="tv-detail-empty">노드를 클릭하세요</div>';
+  window.currentMemoryId = target;
+  await initTrajectoryViewer(target);
+};
 
 // 260730 검수 B안: 궤적/위치 레이어 전환 장치(bindLayerToggle · localStorage 'tv_active_layer') 은퇴
 // — 위치 stage 뷰 상시 표시.
@@ -117,48 +128,160 @@ function syncStageView() {
   LumenAdminStageView.setSimState({ active: false, runners: { A: null, B: null }, compareMode: false });
 }
 
-// ─── 메모리 기본 설정 패널 (우측 하단) ─────────────────────
+// ─── 접이식 섹션 공용 토글 (사이드바·씬 패널 공통) ─────────
+// 라벨을 누르면 바로 아래 상자를 접었다 폈다 한다. ▶ = 접힘 / ▼ = 펼침.
+window.tvToggleSection = function tvToggleSection(bodyId, labelEl) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  if (labelEl) {
+    const caret = labelEl.querySelector('.tv-caret');
+    if (caret) caret.textContent = open ? '▶' : '▼';
+  }
+  try { localStorage.setItem('tv_sec_' + bodyId, open ? '0' : '1'); } catch (e) {}
+};
+function tvSectionOpen(bodyId, dflt) {
+  try {
+    const v = localStorage.getItem('tv_sec_' + bodyId);
+    if (v === '0') return false;
+    if (v === '1') return true;
+  } catch (e) {}
+  return !!dflt;
+}
+
+// ─── 메모리 기본 설정 패널 (좌측 사이드바 "기억 설정") ─────
 function renderMemoryMeta() {
   const el = document.getElementById('tvMemoryMeta');
   if (!el) return;
   const m = state.memory;
   if (!m) { el.innerHTML = '<div class="tv-detail-empty">메모리 없음</div>'; return; }
 
-  const keywords = Array.isArray(m.memory_words) ? m.memory_words.join(', ') : '';
+  // 옛 폼은 이 칸을 문자열로 저장했다 — 배열만 받으면 빈칸으로 보였다가 저장 시 값이 날아간다.
+  // 문자열도 그대로 받아 보여주고, 저장은 배열로 통일한다.
+  const keywords = Array.isArray(m.memory_words) ? m.memory_words.join(', ') : String(m.memory_words || '');
+  const inputStyle = `width:100%;box-sizing:border-box;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;`;
+  const labelStyle = `font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;display:block;margin-top:12px;`;
+  const helpStyle = `font-size:0.66rem;color:#5c544a;line-height:1.5;margin-top:3px;`;
+  const numStyle = `width:62px;box-sizing:border-box;padding:3px 5px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.12);color:#e0d8c4;font-family:inherit;font-size:0.74rem;border-radius:2px;`;
+
+  // 감각 앵커 — jsonb {modality, content, weight}. 문자열로만 저장된 옛 값도 흡수.
+  const sa = (m.sensory_anchor && typeof m.sensory_anchor === 'object' && !Array.isArray(m.sensory_anchor))
+    ? m.sensory_anchor
+    : { modality: '', content: (typeof m.sensory_anchor === 'string' ? m.sensory_anchor : ''), weight: 0.7 };
+  const saMod = sa.modality || '';
+  const saWeight = sa.weight != null ? sa.weight : 0.7;
+  const modOpts = [['', '없음'], ['smell', '냄새 (smell)'], ['sound', '소리 (sound)'], ['touch', '촉감 (touch)']]
+    .map(([v, l]) => `<option value="${v}"${saMod === v ? ' selected' : ''}>${l}</option>`).join('');
+
+  const num = (v, d) => (v != null ? v : d);
+  const contOpen = tvSectionOpen('metaContBody', false);
+  const saOpen = tvSectionOpen('metaSensoryBody', false);
 
   el.innerHTML = `
-    <div style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:#c4a882;margin-bottom:2px;">${escapeHtml(m.code || '')}</div>
-    <div style="font-size:0.7rem;color:#7c7466;margin-bottom:14px;">id: ${m.id?.slice(0,8) || '—'}…</div>
+    <div style="font-size:0.66rem;color:#5c544a;margin-bottom:6px;">id: ${m.id?.slice(0,8) || '—'}…</div>
 
-    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">제목</div>
-    <input type="text" id="metaTitle" value="${escapeHtml(m.title || '')}" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.85rem;border-radius:2px;margin-bottom:12px;" />
+    <label style="${labelStyle}margin-top:0;">코드 <span style="color:#5c544a;text-transform:none;letter-spacing:0;">— 기억 고유 번호 (code)</span></label>
+    <input type="text" id="metaCode" value="${escapeHtml(m.code || '')}" style="${inputStyle}" />
+    <div style="${helpStyle}">기억마다 겹치지 않아야 함. 예: E-005</div>
 
-    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">설명</div>
-    <textarea id="metaDescription" rows="3" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:12px;resize:vertical;">${escapeHtml(m.description || '')}</textarea>
+    <label style="${labelStyle}">제목</label>
+    <input type="text" id="metaTitle" value="${escapeHtml(m.title || '')}" style="${inputStyle}" />
 
-    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">키워드 (쉼표 구분)</div>
-    <input type="text" id="metaKeywords" value="${escapeHtml(keywords)}" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:12px;" />
+    <label style="${labelStyle}">설명</label>
+    <textarea id="metaDescription" rows="3" style="${inputStyle}resize:vertical;">${escapeHtml(m.description || '')}</textarea>
 
-    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">완성 문장</div>
-    <textarea id="metaCompletedSentence" rows="2" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:12px;resize:vertical;">${escapeHtml(m.completed_sentence || '')}</textarea>
+    <label style="${labelStyle}">키워드 (쉼표 구분)</label>
+    <input type="text" id="metaKeywords" value="${escapeHtml(keywords)}" style="${inputStyle}" />
 
-    <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">페르소나 컨텍스트 <span style="color:#5c544a;text-transform:none;letter-spacing:0;">— 시뮬레이션용 주제 요약 (1-2단락)</span></div>
-    <textarea id="metaPersonaContext" rows="4" placeholder="이 작품의 핵심 테마, 상징, 관계 구도를 시뮬 독자가 알아야 할 만큼 요약. 예: '편지로 끝내지 못한 말, 침묵, 부모와 연인 사이의 미완성된 대화.'" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;margin-bottom:14px;resize:vertical;">${escapeHtml(m.meta?.persona_context || '')}</textarea>
+    <label style="${labelStyle}">완성 문장</label>
+    <textarea id="metaCompletedSentence" rows="2" style="${inputStyle}resize:vertical;">${escapeHtml(m.completed_sentence || '')}</textarea>
 
-    <button class="tv-toggle" id="metaSaveBtn" style="padding:6px 12px;font-size:0.75rem;">저장</button>
-    <span id="metaSaveStatus" style="margin-left:10px;font-size:0.7rem;color:#7c7466;"></span>
+    <label style="${labelStyle}">페르소나 컨텍스트 <span style="color:#5c544a;text-transform:none;letter-spacing:0;">— 시뮬용 주제 요약</span></label>
+    <textarea id="metaPersonaContext" rows="4" placeholder="이 작품의 핵심 테마, 상징, 관계 구도를 시뮬 독자가 알아야 할 만큼 요약." style="${inputStyle}resize:vertical;">${escapeHtml(m.meta?.persona_context || '')}</textarea>
+
+    <div class="tv-section-label" style="cursor:pointer;margin:14px 0 6px;" onclick="tvToggleSection('metaSensoryBody', this)"><span class="tv-caret">${saOpen ? '▼' : '▶'}</span> 감각 앵커</div>
+    <div id="metaSensoryBody" style="display:${saOpen ? '' : 'none'};">
+      <div style="${helpStyle}margin-bottom:6px;">기억 전체를 관통하는 단일 감각. 실제 반영 = 3D 지형 첫 씬 주변 입자의 색·크기(양태만 소비).</div>
+      <label style="${labelStyle}margin-top:0;">양태</label>
+      <select id="metaSensoryModality" style="${inputStyle}">${modOpts}</select>
+      <label style="${labelStyle}">내용 (단어)</label>
+      <input type="text" id="metaSensoryContent" value="${escapeHtml(sa.content || '')}" placeholder="예: 발소리, 소독약, 차가운 대리석" style="${inputStyle}" />
+      <label style="${labelStyle}">강도 (0~1)</label>
+      <input type="number" id="metaSensoryWeight" min="0" max="1" step="0.05" value="${saWeight}" style="${numStyle}" />
+    </div>
+
+    <div class="tv-section-label" style="cursor:pointer;margin:14px 0 6px;" onclick="tvToggleSection('metaContBody', this)"><span class="tv-caret">${contOpen ? '▼' : '▶'}</span> 오염 초기 상태</div>
+    <div id="metaContBody" style="display:${contOpen ? '' : 'none'};">
+      <div style="${helpStyle}margin-bottom:6px;">관객 첫 진입 시 상태. 봉인되면 런타임 값으로 덮임(1회성 씨앗).</div>
+      <label style="${labelStyle}margin-top:0;">누적 깊이 (cont_depth, 0~30)</label>
+      <input type="number" id="metaContDepth" min="0" max="30" step="1" value="${num(m.cont_depth, 0)}" style="${numStyle}" />
+      <div style="${helpStyle}">0 = 신선 / 5~10 = 누적 / 15+ = 과숙</div>
+      <label style="${labelStyle}">3축 (0~1)</label>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#a09886;"><span style="width:92px;flex-shrink:0;">divergence</span><input type="number" id="metaContDivergence" min="0" max="1" step="0.05" value="${num(m.cont_divergence, 0)}" style="${numStyle}" /></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#a09886;"><span style="width:92px;flex-shrink:0;">convergence</span><input type="number" id="metaContConvergence" min="0" max="1" step="0.05" value="${num(m.cont_convergence, 0)}" style="${numStyle}" /></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#a09886;"><span style="width:92px;flex-shrink:0;">heterogeneity</span><input type="number" id="metaContHeterogeneity" min="0" max="1" step="0.05" value="${num(m.cont_heterogeneity, 0)}" style="${numStyle}" /></label>
+      </div>
+      <label style="${labelStyle}">단계 혼합 (0~1, 합 1)</label>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#a09886;"><span style="width:92px;flex-shrink:0;">stage_1 편향</span><input type="number" id="metaContStage1" min="0" max="1" step="0.01" value="${num(m.cont_stage_1, 0.33)}" style="${numStyle}" /></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#a09886;"><span style="width:92px;flex-shrink:0;">stage_2 병치</span><input type="number" id="metaContStage2" min="0" max="1" step="0.01" value="${num(m.cont_stage_2, 0.33)}" style="${numStyle}" /></label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.72rem;color:#a09886;"><span style="width:92px;flex-shrink:0;">stage_3 과완결</span><input type="number" id="metaContStage3" min="0" max="1" step="0.01" value="${num(m.cont_stage_3, 0.34)}" style="${numStyle}" /></label>
+      </div>
+      <button class="tv-toggle" id="metaContNormBtn" style="padding:3px 8px;font-size:0.68rem;margin-top:5px;">합 = 1 로 맞추기</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;align-items:center;">
+      <button class="tv-toggle" id="metaSaveBtn" style="padding:6px 12px;font-size:0.75rem;">저장</button>
+      <span id="metaSaveStatus" style="font-size:0.7rem;color:#7c7466;"></span>
+    </div>
   `;
 
   document.getElementById('metaSaveBtn').addEventListener('click', saveMemoryMeta);
+  const normBtn = document.getElementById('metaContNormBtn');
+  if (normBtn) normBtn.addEventListener('click', () => {
+    const ids = ['metaContStage1', 'metaContStage2', 'metaContStage3'];
+    const vals = ids.map(id => Math.max(0, parseFloat(document.getElementById(id)?.value) || 0));
+    const sum = vals.reduce((a, b) => a + b, 0);
+    if (sum <= 0) { ids.forEach((id, i) => { document.getElementById(id).value = (i === 2 ? 0.34 : 0.33); }); return; }
+    ids.forEach((id, i) => { document.getElementById(id).value = (vals[i] / sum).toFixed(2); });
+  });
+
+  // 유령 변주 풀 — Canvas 사이드바로 이사한 실사용 편집기. 기억 바뀔 때마다 다시 읽는다.
+  if (typeof window.loadGhostVariants === 'function') {
+    try { window.loadGhostVariants(m.id); } catch (e) { console.warn('[tv] loadGhostVariants 실패:', e.message); }
+  }
+  // 판본 이력 — admin.js 구현. 모듈 내부 currentMemoryId 를 먼저 맞춰야 새 기억 것을 그린다.
+  if (typeof window.adminSetCurrentMemory === 'function') window.adminSetCurrentMemory(m.id);
+  if (typeof window.renderVersions === 'function') {
+    try { window.renderVersions(); } catch (e) { console.warn('[tv] renderVersions 실패:', e.message); }
+  }
 }
 
 async function saveMemoryMeta() {
   const statusEl = document.getElementById('metaSaveStatus');
+  const code = document.getElementById('metaCode').value.trim();
   const title = document.getElementById('metaTitle').value.trim();
   const desc = document.getElementById('metaDescription').value.trim();
   const keywords = document.getElementById('metaKeywords').value.split(',').map(s => s.trim()).filter(Boolean);
   const completed = document.getElementById('metaCompletedSentence').value.trim();
   const personaCtx = document.getElementById('metaPersonaContext').value.trim();
+
+  // 감각 앵커 — 양태 비면 통째로 없음(null) 처리
+  const saMod = document.getElementById('metaSensoryModality')?.value || '';
+  const saContent = (document.getElementById('metaSensoryContent')?.value || '').trim();
+  const saWeightRaw = parseFloat(document.getElementById('metaSensoryWeight')?.value);
+  const sensoryAnchor = saMod
+    ? { modality: saMod, content: saContent, weight: isNaN(saWeightRaw) ? 0.7 : Math.min(1, Math.max(0, saWeightRaw)) }
+    : null;
+
+  const numOr = (id, dflt, lo, hi) => {
+    const v = parseFloat(document.getElementById(id)?.value);
+    if (isNaN(v)) return dflt;
+    return Math.min(hi, Math.max(lo, v));
+  };
+  const contDepth = Math.round(numOr('metaContDepth', 0, 0, 30));
 
   statusEl.textContent = '저장 중…';
   statusEl.style.color = '#7c7466';
@@ -168,22 +291,31 @@ async function saveMemoryMeta() {
     if (personaCtx) nextMeta.persona_context = personaCtx;
     else delete nextMeta.persona_context;
 
-    const { error } = await sb.from('memories').update({
+    const patch = {
       title, description: desc || null,
       memory_words: keywords.length ? keywords : null,
       completed_sentence: completed || null,
+      sensory_anchor: sensoryAnchor,
+      cont_depth: contDepth,
+      cont_divergence: numOr('metaContDivergence', 0, 0, 1),
+      cont_convergence: numOr('metaContConvergence', 0, 0, 1),
+      cont_heterogeneity: numOr('metaContHeterogeneity', 0, 0, 1),
+      cont_stage_1: numOr('metaContStage1', 0.33, 0, 1),
+      cont_stage_2: numOr('metaContStage2', 0.33, 0, 1),
+      cont_stage_3: numOr('metaContStage3', 0.34, 0, 1),
       meta: nextMeta,
-    }).eq('id', state.memory.id);
+    };
+    if (code) patch.code = code; // 빈 값으로 코드를 지우지는 않음 (UNIQUE 컬럼)
+
+    const { error } = await sb.from('memories').update(patch).eq('id', state.memory.id);
     if (error) throw error;
-    state.memory.title = title;
-    state.memory.description = desc || null;
+    Object.assign(state.memory, patch);
     state.memory.memory_words = keywords;
-    state.memory.completed_sentence = completed || null;
-    state.memory.meta = nextMeta;
     document.getElementById('tvMemoryLabel').textContent = `${state.memory.code} — ${state.memory.title}`;
     statusEl.textContent = '✓ 저장됨';
     statusEl.style.color = '#6aa383';
     setTimeout(() => { statusEl.textContent = ''; }, 2000);
+    populateMemorySelect(); // 제목·코드 바뀌면 드롭다운 라벨도 갱신
   } catch (e) {
     statusEl.textContent = '❌ ' + e.message;
     statusEl.style.color = '#b85540';
@@ -290,6 +422,9 @@ function openNewMemoryModal() {
   document.getElementById('nmCreateBtn').addEventListener('click', createNewMemory);
   document.getElementById('nmTitle').focus();
 }
+// 260730 통합: 대시보드 [+ 새 메모리 추가] 도 이 모달을 쓴다 (옛 폼 대신).
+// Canvas 탭이 아직 안 열렸어도 모달은 body 직속 #tvModal 이라 그대로 뜬다.
+window.tvOpenNewMemory = openNewMemoryModal;
 
 async function createNewMemory() {
   const title = document.getElementById('nmTitle').value.trim();
@@ -327,12 +462,14 @@ async function createNewMemory() {
     statusEl.textContent = '✓ 생성됨. 로딩…';
     statusEl.style.color = '#6aa383';
 
-    // 3) 해당 메모리로 Canvas 전환
+    // 3) 해당 메모리로 Canvas 전환 (목록 탭에서 만들었을 수도 있으니 화면부터 Canvas 로)
     setTimeout(async () => {
       closeModal();
       window.currentMemoryId = mem.id;
       state.memory = null; // 강제 리로드
       await initTrajectoryViewer(mem.id);
+      // 화면 전환은 로딩 끝난 뒤 — 여기서 다시 불리는 init 은 같은 기억이라 그냥 빠져나간다.
+      if (typeof window.switchAdminSection === 'function') window.switchAdminSection('canvas');
     }, 600);
   } catch (e) {
     console.error(e);
@@ -359,6 +496,35 @@ async function deleteScene(s) {
   } catch (e) {
     console.error(e);
     alert('삭제 실패: ' + e.message);
+  }
+}
+
+// ─── 씬 순서 이동 (▲ ▼) ────────────────────────────────────
+// 바로 위/아래 씬과 scene_order 를 맞바꾼다. UPDATE 2회 후 로컬 정렬·무대·패널 갱신.
+async function moveSceneOrder(s, dir) {
+  const sorted = state.scenes.slice().sort((a, b) => (a.scene_order ?? 0) - (b.scene_order ?? 0));
+  const i = sorted.findIndex(x => x.id === s.id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= sorted.length) return;
+  const other = sorted[j];
+  let mine = s.scene_order ?? i;
+  let theirs = other.scene_order ?? j;
+  // 두 씬 순서 값이 같으면(옛 데이터 사고) 맞바꿔도 자리가 안 바뀐다 — 한 칸 벌려준다.
+  if (mine === theirs) theirs = mine + dir;
+  try {
+    const sb = await getSupabaseClient();
+    const { error: e1 } = await sb.from('scenes').update({ scene_order: theirs }).eq('id', s.id);
+    if (e1) throw e1;
+    const { error: e2 } = await sb.from('scenes').update({ scene_order: mine }).eq('id', other.id);
+    if (e2) throw e2;
+    s.scene_order = theirs;
+    other.scene_order = mine;
+    state.scenes.sort((a, b) => (a.scene_order ?? 0) - (b.scene_order ?? 0));
+    syncStageView();
+    renderDetail(s);
+  } catch (e) {
+    console.error(e);
+    alert('순서 이동 실패: ' + e.message);
   }
 }
 
@@ -432,6 +598,23 @@ async function _insertScene({ role }) {
 function bindToggles() {
   // 260730 검수 B안: 표시 옵션 토글(전체 표시/모든 브릿지/감정 지형 모드/레이아웃 초기화)
   // 은퇴 — 전부 2D SVG 그래프 전용이었음.
+  // ⚠️ 이 함수는 기억을 바꿀 때마다 다시 불린다. 한 번만 묶지 않으면 같은 버튼에 처리기가
+  //    겹겹이 쌓여 "+ 원본 씬" 한 번 눌렀는데 씬이 두세 개 생기는 사고가 난다.
+  if (state._togglesBound) return;
+  state._togglesBound = true;
+
+  // 사이드바 접이식 섹션 — 지난번에 접어둔 상태 복원
+  ['tvMemoryMeta', 'ghostVariantsSection', 'tvVersionsBox', 'tvSeedBox'].forEach(id => {
+    const box = document.getElementById(id);
+    if (!box) return;
+    const dflt = box.style.display !== 'none';
+    const open = tvSectionOpen(id, dflt);
+    box.style.display = open ? '' : 'none';
+    const label = box.previousElementSibling;
+    const caret = label && label.querySelector ? label.querySelector('.tv-caret') : null;
+    if (caret) caret.textContent = open ? '▼' : '▶';
+  });
+
   const addMemBtn = document.getElementById('tvAddMemoryBtn');
   if (addMemBtn) addMemBtn.addEventListener('click', openNewMemoryModal);
   const addSceneBtn = document.getElementById('tvAddSceneBtn');
@@ -608,30 +791,26 @@ function clearSceneHighlight() {
   }
 }
 
+// ⚠️ 260730: 이 함수는 예전에 #tvDetail(씬 편집 폼)을 통째로 덮어썼다 — 씬을 고치다가
+// 페르소나 step 을 누르면 저장 안 한 입력이 전부 사라졌다. 이제 사이드바의 페르소나 칸
+// (#tvPersonaInfo) 안에만 그린다. #tvDetail 은 씬 편집 전용으로 고정.
 function updatePersonaPanel(persona, play) {
   const infoEl = document.getElementById('tvPersonaInfo');
-  const detailEl = document.getElementById('tvDetail');
+  if (!infoEl) return;
   const scene = state.scenes.find(s => s.id === play.scene_id);
   const ue = play.user_emotion || {};
   const top3 = Object.entries(typeof ue === 'string' ? JSON.parse(ue) : ue)
     .sort((a, b) => b[1] - a[1]).slice(0, 3)
     .map(([k, v]) => `${k}:${Number(v).toFixed(2)}`).join(' · ');
-  if (infoEl) {
-    const total = personaState.orderedPlays.length;
-    const stepLabel = total ? `step ${personaState.currentIdx + 1} / ${total}` : '';
-    infoEl.innerHTML = `<b style="color:#c4a882;">${escapeHtml(persona.persona_name)}</b> <span style="color:#7c7466;">· ${stepLabel}</span><br>씬 ${scene ? (scene.scene_order + 1) : '?'} · 정렬도 ${(play.alignment != null ? (play.alignment * 100).toFixed(0) + '%' : '—')}`;
-  }
-  if (detailEl) {
-    detailEl.innerHTML = `
-      <div style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:#c4a882;margin-bottom:8px;">▶ ${escapeHtml(persona.persona_name)}</div>
-      <div style="font-size:0.75rem;color:#7c7466;margin-bottom:10px;">${escapeHtml(persona.strata_label || '')}</div>
-      <div style="font-size:0.8rem;color:#e0d8c4;margin-bottom:6px;"><b>씬 ${scene ? (scene.scene_order + 1) : '?'}</b> ${scene ? escapeHtml((scene.text || '').slice(0, 60)) : ''}…</div>
-      <div style="font-size:0.75rem;color:#c0b8a4;line-height:1.7;margin-top:10px;">
-        <div>🎯 정렬도: <b>${play.alignment != null ? (play.alignment * 100).toFixed(0) + '%' : '—'}</b></div>
-        <div>⚠️ mismatch: <b>${escapeHtml(play.mismatch_type || '—')}</b></div>
-        <div style="margin-top:6px;color:#7c7466;">감정 top3: ${top3 || '—'}</div>
-      </div>`;
-  }
+  const total = personaState.orderedPlays.length;
+  const stepLabel = total ? `step ${personaState.currentIdx + 1} / ${total}` : '';
+  infoEl.innerHTML = `
+    <b style="color:#c4a882;">${escapeHtml(persona.persona_name)}</b> <span style="color:#7c7466;">· ${stepLabel}</span>
+    ${persona.strata_label ? `<div style="color:#5c544a;">${escapeHtml(persona.strata_label)}</div>` : ''}
+    <div style="color:#c0b8a4;margin-top:3px;">씬 ${scene ? (scene.scene_order + 1) : '?'} · 정렬도 <b>${play.alignment != null ? (play.alignment * 100).toFixed(0) + '%' : '—'}</b></div>
+    <div>어긋남: ${escapeHtml(play.mismatch_type || '—')}</div>
+    <div style="color:#7c7466;">감정 top3: ${top3 || '—'}</div>
+    ${scene ? `<div style="color:#5c544a;margin-top:3px;">${escapeHtml((scene.text || '').slice(0, 50))}…</div>` : ''}`;
 }
 
 // 260730 검수 B안: 2D SVG 그래프 엔진 전체 은퇴 — dagre 레이아웃 렌더·노드 드래그·줌팬·
@@ -724,6 +903,12 @@ function bindDetailFormEvents(s) {
   // 삭제 버튼
   const delBtn = document.getElementById('sceneDeleteBtn');
   if (delBtn) delBtn.addEventListener('click', () => deleteScene(s));
+
+  // 씬 순서 이동 (▲ 앞으로 / ▼ 뒤로)
+  const upBtn = document.getElementById('sceneMoveUpBtn');
+  if (upBtn) upBtn.addEventListener('click', () => moveSceneOrder(s, -1));
+  const downBtn = document.getElementById('sceneMoveDownBtn');
+  if (downBtn) downBtn.addEventListener('click', () => moveSceneOrder(s, 1));
 
   // 사운드 드롭다운 → URL 입력칸 연동
   const soundSelect = document.getElementById('sceneSoundSelect');
@@ -830,20 +1015,27 @@ function bindDetailFormEvents(s) {
   });
 
   // 부정 제약 추가
+  // 260730: 예전엔 s.meta.exclusions 에 넣었는데 화면은 s.exclusions 를 먼저 읽어서,
+  // 조건이 이미 있는 씬에서는 [+ …] 을 눌러도 아무 일도 안 일어나는 것처럼 보였다. 정본 자리로 통일.
   document.querySelectorAll('.exclusion-add-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (!s.meta) s.meta = {};
-      if (!Array.isArray(s.meta.exclusions)) s.meta.exclusions = [];
-      // DOM 상태 먼저 수거 (다른 row 편집 유지)
-      const current = collectExclusionsFromDOM() || [];
+      // DOM 상태 먼저 수거 (다른 row 편집 유지). 못 그린 조건은 뒤에 딸려 온다.
+      const current = collectExclusionsFromDOM(s.id) || [];
       const type = btn.dataset.type;
-      if (type === 'emotion_threshold') current.push({ condition: { type, emotion: 'fear', min: 0.6 } });
-      else if (type === 'contamination_stage') current.push({ condition: { type, stage: 'hypercompletion' } });
+      const added = [];
+      if (type === 'emotion_threshold') added.push({ condition: { type, emotion: 'fear', min: 0.6 } });
+      else if (type === 'contamination_stage') added.push({ condition: { type, stage: 'hypercompletion' } });
       else if (type === 'visited_scene') {
         const firstOrder = state.scenes?.[0]?.scene_order ?? 0;
-        current.push({ condition: { type, sceneIndex: firstOrder } });
+        added.push({ condition: { type, sceneIndex: firstOrder } });
       }
-      s.meta.exclusions = current;
+      // 그릴 수 있는 조건은 앞쪽, 못 그리는 보관분은 뒤쪽 — 새 행은 그릴 수 있는 것들 끝에 붙인다.
+      const keepCount = (state._unrenderedExclusions && state._unrenderedExclusions.sceneId === s.id)
+        ? state._unrenderedExclusions.items.length : 0;
+      const head = keepCount ? current.slice(0, current.length - keepCount) : current;
+      const tail = keepCount ? current.slice(current.length - keepCount) : [];
+      s.exclusions = head.concat(added, tail);
+      if (s.meta) delete s.meta.exclusions; // 레거시 자리 청소
       renderDetail(s);
     });
   });
@@ -851,11 +1043,11 @@ function bindDetailFormEvents(s) {
   // 부정 제약 삭제
   document.querySelectorAll('#sceneExclusionsList .exRow-del').forEach(btn => {
     btn.addEventListener('click', () => {
-      const current = collectExclusionsFromDOM() || [];
+      const current = collectExclusionsFromDOM(s.id) || [];
       const idx = parseInt(btn.dataset.idx, 10);
-      current.splice(idx, 1);
-      if (!s.meta) s.meta = {};
-      s.meta.exclusions = current;
+      current.splice(idx, 1); // data-idx = 화면에 그려진 행 순서 = current 앞쪽 순서와 일치
+      s.exclusions = current;
+      if (s.meta) delete s.meta.exclusions;
       renderDetail(s);
     });
   });
@@ -882,8 +1074,28 @@ async function saveScene(s) {
   const soundRadius = parseFloat(document.getElementById('sceneSoundRadius')?.value) || 15;
   const soundPrompt = (document.getElementById('sceneSoundPrompt')?.value || '').trim();
 
-  // 부정 제약 (DOM row에서 수거)
-  const exclusions = collectExclusionsFromDOM();
+  // 260730 Canvas 통합 — 옛 전체 폼에만 있던 칸들
+  const roleVal = document.getElementById('sceneRole')?.value || '';
+  const ghostName = (document.getElementById('sceneGhostName')?.value || '').trim();
+  const echoWords = (document.getElementById('sceneEchoWords')?.value || '')
+    .split(',').map(x => x.trim()).filter(Boolean);
+  const anchorEmotions = (document.getElementById('sceneAnchorEmotions')?.value || '')
+    .split(',').map(x => x.trim()).filter(Boolean);
+  const vScene = !!document.getElementById('sceneVoidScene')?.checked;
+  const vEmotion = !!document.getElementById('sceneVoidEmotion')?.checked;
+  const vReason = !!document.getElementById('sceneVoidReason')?.checked;
+  const voidCount = (vScene ? 1 : 0) + (vEmotion ? 1 : 0) + (vReason ? 1 : 0);
+  // 옛 규칙 그대로: 두 개 이상 체크면 high, 아니면 low. 하나도 없으면 통째로 없음(null).
+  const voidInfo = voidCount > 0
+    ? { sceneVoid: vScene, emotionVoid: vEmotion, reasonVoid: vReason, voidLevel: voidCount > 1 ? 'high' : 'low' }
+    : null;
+  const stage1 = (document.getElementById('sceneStage1')?.value || '').trim();
+  const stage2 = (document.getElementById('sceneStage2')?.value || '').trim();
+  const stage3 = (document.getElementById('sceneStage3')?.value || '').trim();
+  const originalReason = (document.getElementById('sceneOriginalReason')?.value || '').trim();
+
+  // 부정 제약 (DOM row에서 수거 + 화면에 못 그린 조건 보존)
+  const exclusions = collectExclusionsFromDOM(s.id);
 
   // 브릿지 입력 수집
   const bridges = [];
@@ -920,11 +1132,14 @@ async function saveScene(s) {
     // 사운드 프롬프트는 URL 유무와 무관하게 보존 — 나중에 재생성용
     if (soundPrompt) newMeta.sound_prompt = soundPrompt;
     else delete newMeta.sound_prompt;
+    // 유령 이름 — meta 안에 산다. 비우면 키 자체를 지운다.
+    if (ghostName) newMeta.ghost_name = ghostName;
+    else delete newMeta.ghost_name;
     // 260730: 잠금은 scenes.exclusions 컬럼에 저장 (상영이 읽는 정본).
     // meta.exclusions 에 쓰던 결함 경로 폐기 — 남은 레거시 키는 저장 시 청소.
     delete newMeta.exclusions;
 
-    const { error } = await sb.from('scenes').update({
+    const patch = {
       text,
       emotion_dist: emo,
       emotion_vector: emo,
@@ -932,16 +1147,22 @@ async function saveScene(s) {
       // (문자열로 들어가면 소비자마다 typeof 검사 + JSON.parse 이중화가 강제됨)
       original_emotion: emo,
       exclusions: exclusions,
+      // 260730 Canvas 통합 — 아래 7개는 예전엔 옛 폼에서만 저장되던 컬럼
+      scene_role: roleVal || null,
+      echo_words: echoWords,
+      anchor_emotions: anchorEmotions.length ? anchorEmotions : null,
+      void_info: voidInfo,
+      text_stage_1: stage1 || null,
+      text_stage_2: stage2 || null,
+      text_stage_3: stage3 || null,
+      original_reason: originalReason || null,
       meta: newMeta,
-    }).eq('id', s.id);
+    };
+    const { error } = await sb.from('scenes').update(patch).eq('id', s.id);
     if (error) throw error;
 
-    // 로컬 state 업데이트
-    s.text = text;
-    s.emotion_dist = emo;
-    s.original_emotion = emo;
-    s.exclusions = exclusions;
-    s.meta = newMeta;
+    // 로컬 state 업데이트 — DB 로 보낸 값과 화면이 어긋나지 않게 전부 반영
+    Object.assign(s, patch);
 
     statusEl.textContent = '✓ 저장됨';
     statusEl.style.color = '#6aa383';
@@ -963,26 +1184,43 @@ function renderDetailTab(s) {
   const emo = s.original_emotion ? (typeof s.original_emotion === 'string' ? safeJsonParse(s.original_emotion) : s.original_emotion) : (s.emotion_dist || {});
 
   // 편집 폼
-  const inputStyle = `width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;`;
+  const inputStyle = `width:100%;box-sizing:border-box;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.15);color:#e0d8c4;font-family:inherit;font-size:0.8rem;border-radius:2px;`;
   const labelStyle = `font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;display:block;margin-top:14px;`;
   // R1-5 (2026-07-14): 8축 하드코딩 → 17축 (엔진 판단 축과 동일 목록). 8축만 그리면
   // saveScene 이 화면에 없는 축을 조용히 잘라먹었다 (아래 emo 수집이 입력칸 기준이라).
   // 씬에 이미 있는 비표준 축(longing 등 레거시)은 뒤에 붙여 편집 가능하게 유지.
   const EMO_KEYS = [...DEFAULT_EMOTION_ANCHORS];
   Object.keys(emo || {}).forEach(k => { if (!EMO_KEYS.includes(k)) EMO_KEYS.push(k); });
-  const isResidual = s.scene_role === 'residual';
-  const roleLabel = isResidual ? '잔상 (Residual / Bridge)' : '원본 (Anchor)';
-  const roleColor = isResidual ? '#6aa383' : '#c4a882';
-  const hasVoid = s.void_info && s.void_info.sceneVoid;
+  const helpStyle = `font-size:0.66rem;color:#5c544a;line-height:1.5;margin-top:3px;`;
+  const roleVal = s.scene_role || '';
+  const vi = s.void_info || {};
+  // 앵커 감정·잔향 단어 — 배열/문자열 두 형태 모두 들어온 이력이 있다. 둘 다 받아준다.
+  const anchorStr = Array.isArray(s.anchor_emotions) ? s.anchor_emotions.join(', ') : String(s.anchor_emotions || '');
+  const echoStr = Array.isArray(s.echo_words) ? s.echo_words.join(', ') : String(s.echo_words || '');
+  const stageOpen = tvSectionOpen('sceneStageBody', false);
+  // 씬 순서 이동 — 경계에서는 못 누르게
+  const ordered = state.scenes.slice().sort((a, b) => (a.scene_order ?? 0) - (b.scene_order ?? 0));
+  const myIdx = ordered.findIndex(x => x.id === s.id);
+  const canUp = myIdx > 0;
+  const canDown = myIdx >= 0 && myIdx < ordered.length - 1;
+  // 이 편집기가 못 그리는 조건이 몇 개인지 (저장 시 보존됨 — 안내만).
+  // splitExclusions 가 state._unrenderedExclusions 에 보관까지 해준다 (아래 renderExclusionRows 와 같은 계산).
+  splitExclusions(s);
+  const unrenderedCount = state._unrenderedExclusions.items.length;
 
   return `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:0.72rem;">
-      <span style="color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;">역할</span>
-      <span style="color:${roleColor};font-weight:500;">${roleLabel}</span>
-      ${hasVoid ? '<span style="color:#8a7c6a;border:1px dotted #8a7c6a;padding:0 6px;border-radius:2px;font-size:0.68rem;">void</span>' : ''}
-    </div>
+    <label style="${labelStyle}margin-top:0;">역할 <span style="color:#5c544a;text-transform:none;letter-spacing:0;">— 이 씬이 원본인지 잔상인지 (scene_role)</span></label>
+    <select id="sceneRole" style="${inputStyle}">
+      <option value=""${roleVal === '' ? ' selected' : ''}>역할 없음</option>
+      <option value="anchor"${roleVal === 'anchor' ? ' selected' : ''}>원본 (anchor)</option>
+      <option value="residual"${roleVal === 'residual' ? ' selected' : ''}>잔상 (residual)</option>
+    </select>
 
-    <label style="${labelStyle}margin-top:0;">본문</label>
+    <label style="${labelStyle}">유령 이름 (접촉 시 드러남)</label>
+    <input type="text" id="sceneGhostName" value="${escapeHtml(s.meta?.ghost_name || '')}" placeholder="예: 준호, 엄마, 그 사람" style="${inputStyle}" />
+    <div style="${helpStyle}">비워도 됨.</div>
+
+    <label style="${labelStyle}">본문</label>
     <textarea id="sceneText" rows="6" style="${inputStyle}resize:vertical;line-height:1.5;">${escapeHtml(s.text || '')}</textarea>
 
     <label style="${labelStyle}">감정 분포 (0~1)</label>
@@ -993,6 +1231,37 @@ function renderDetailTab(s) {
           <input type="number" class="sceneEmoInput" data-emo="${k}" min="0" max="1" step="0.05" value="${(emo[k] != null ? emo[k] : 0).toFixed(2)}" style="flex:1;padding:3px 6px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.12);color:#e0d8c4;font-family:inherit;font-size:0.75rem;border-radius:2px;" />
         </label>
       `).join('')}
+    </div>
+
+    <label style="${labelStyle}">잔향 단어 (쉼표 구분)</label>
+    <input type="text" id="sceneEchoWords" value="${escapeHtml(echoStr)}" placeholder="무서웠어, 미안해, 후회했어" style="${inputStyle}" />
+    <div style="${helpStyle}">이 씬 주변에 떠오르는 낱말 (echo_words).</div>
+
+    <label style="${labelStyle}">앵커 감정 (쉼표 구분)</label>
+    <input type="text" id="sceneAnchorEmotions" value="${escapeHtml(anchorStr)}" placeholder="fear, guilt, longing" style="${inputStyle}" />
+    <div style="${helpStyle}">이 씬에서 측정할 감정. 비우면 기본 17축. 엔진 판정 축이 여기서 좁혀짐 (anchor_emotions).</div>
+
+    <label style="${labelStyle}">침묵 (VOID)</label>
+    <div style="display:flex;flex-direction:column;gap:3px;font-size:0.74rem;color:#a09886;">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="sceneVoidScene"${vi.sceneVoid ? ' checked' : ''} /> 장면이 비어 있음 (sceneVoid)</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="sceneVoidEmotion"${vi.emotionVoid ? ' checked' : ''} /> 감정이 비어 있음 (emotionVoid)</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="sceneVoidReason"${vi.reasonVoid ? ' checked' : ''} /> 이유가 비어 있음 (reasonVoid)</label>
+    </div>
+    <div style="${helpStyle}">체크한 축은 관객이 비워둔 자리로 취급 — 회피 판정·지형 구덩이에 쓰임. 두 개 이상 체크하면 자동으로 '깊음(high)'.</div>
+
+    <label style="${labelStyle}">원본 이유</label>
+    <input type="text" id="sceneOriginalReason" value="${escapeHtml(s.original_reason || '')}" placeholder="예: 내가 살릴 수 있었는데…" style="${inputStyle}" />
+    <div style="${helpStyle}">작가가 기록한 이유 문장. 귀인 대조에 쓰임 (original_reason).</div>
+
+    <div class="tv-section-label" style="cursor:pointer;margin:14px 0 6px;" onclick="tvToggleSection('sceneStageBody', this)"><span class="tv-caret">${stageOpen ? '▼' : '▶'}</span> 오염 버전 텍스트 (stage 1/2/3)</div>
+    <div id="sceneStageBody" style="display:${stageOpen ? '' : 'none'};">
+      <div style="${helpStyle}margin-bottom:6px;">관객 오염도가 오르면 본문 대신 이 문장이 뜬다. 비우면 원문 유지. 재생성은 풀버전 편집기(백업)에서.</div>
+      <label style="${labelStyle}margin-top:0;">1단계 — 편향</label>
+      <textarea id="sceneStage1" rows="3" style="${inputStyle}resize:vertical;">${escapeHtml(s.text_stage_1 || '')}</textarea>
+      <label style="${labelStyle}">2단계 — 해석 병치</label>
+      <textarea id="sceneStage2" rows="3" style="${inputStyle}resize:vertical;">${escapeHtml(s.text_stage_2 || '')}</textarea>
+      <label style="${labelStyle}">3단계 — 과완결</label>
+      <textarea id="sceneStage3" rows="3" style="${inputStyle}resize:vertical;">${escapeHtml(s.text_stage_3 || '')}</textarea>
     </div>
 
     <label style="${labelStyle}">모티프 태그 (쉼표 구분)</label>
@@ -1034,16 +1303,23 @@ function renderDetailTab(s) {
     <div id="sceneExclusionsList">
       ${renderExclusionRows(s, EMO_KEYS)}
     </div>
+    ${unrenderedCount ? `<div style="font-size:0.68rem;color:#9d8a4a;background:rgba(157,138,74,0.08);border:1px solid rgba(157,138,74,0.25);border-radius:2px;padding:5px 7px;margin-top:5px;line-height:1.5;">이 씬에는 이 편집기가 못 그리는 조건 ${unrenderedCount}개가 있음 — 저장해도 <b>보존됨</b>. 편집은 풀버전 편집기에서.</div>` : ''}
     <div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">
       <button class="tv-toggle exclusion-add-btn" data-type="emotion_threshold" style="padding:3px 8px;font-size:0.7rem;">+ 감정 강도</button>
       <button class="tv-toggle exclusion-add-btn" data-type="contamination_stage" style="padding:3px 8px;font-size:0.7rem;">+ 오염 단계</button>
       <button class="tv-toggle exclusion-add-btn" data-type="visited_scene" style="padding:3px 8px;font-size:0.7rem;">+ 씬 방문</button>
     </div>
 
-    <div style="display:flex;gap:8px;margin-top:16px;align-items:center;">
+    <div style="display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap;">
       <button class="tv-toggle" id="sceneSaveBtn" style="padding:6px 14px;font-size:0.78rem;">저장</button>
       <button class="tv-toggle" id="sceneDeleteBtn" style="padding:6px 14px;font-size:0.78rem;color:#b85540;border-color:rgba(184,85,64,0.3);">씬 삭제</button>
+      <button class="tv-toggle" id="sceneMoveUpBtn" style="padding:6px 10px;font-size:0.78rem;" title="한 칸 앞으로"${canUp ? '' : ' disabled'}>▲</button>
+      <button class="tv-toggle" id="sceneMoveDownBtn" style="padding:6px 10px;font-size:0.78rem;" title="한 칸 뒤로"${canDown ? '' : ' disabled'}>▼</button>
       <span id="sceneSaveStatus" style="font-size:0.7rem;color:#7c7466;"></span>
+    </div>
+    <div style="font-size:0.66rem;color:#5c544a;line-height:1.6;margin-top:10px;padding-top:8px;border-top:1px solid rgba(196,168,130,0.06);">
+      이 외 레거시 칸(선택지·유령 대사·이유 벡터·씬 타입)은 네비바 [풀버전 편집기] 백업에서 편집.
+      원본 파동·3D 모양 미리보기는 가운데 3D 무대와 겹쳐 옮기지 않음.
     </div>
 
     <div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(196,168,130,0.08);">
@@ -1086,11 +1362,33 @@ const STAGE_OPTIONS = [
   { v: 'stable', l: '안정 (stable)' },
 ];
 
-function renderExclusionRows(s, emoKeys) {
+// 이 패널이 그릴 줄 아는 조건 종류. 이 밖의 것(옛 폼에서 자유 JSON 으로 넣은 조건 등)은
+// 화면에 못 그리므로 따로 보관했다가 저장할 때 그대로 되돌려 붙인다 — 안 그러면 조용히 지워진다.
+const RENDERABLE_EXCLUSION_TYPES = ['emotion_threshold', 'contamination_stage', 'visited_scene'];
+
+function exclusionListOf(s) {
   // 260730: 정본 = scenes.exclusions 컬럼 (상영 play-test 가 읽는 유일한 자리).
   // meta.exclusions 는 이 패널이 잘못 쓰던 레거시 — 표시 폴백으로만 남김.
-  const list = Array.isArray(s.exclusions) ? s.exclusions
+  return Array.isArray(s.exclusions) ? s.exclusions
     : (Array.isArray(s.meta?.exclusions) ? s.meta.exclusions : []);
+}
+
+// 못 그리는 조건을 state 에 챙겨두고, 그릴 수 있는 것만 돌려준다.
+function splitExclusions(s) {
+  const list = exclusionListOf(s);
+  const drawable = [];
+  const kept = [];
+  list.forEach(entry => {
+    const t = entry && entry.condition && entry.condition.type;
+    if (RENDERABLE_EXCLUSION_TYPES.includes(t)) drawable.push(entry);
+    else kept.push(entry);
+  });
+  state._unrenderedExclusions = { sceneId: s.id, items: kept };
+  return drawable;
+}
+
+function renderExclusionRows(s, emoKeys) {
+  const list = splitExclusions(s);
   if (list.length === 0) {
     return `<div style="font-size:0.72rem;color:#5c544a;padding:6px 0;font-style:italic;">조건 없음 — 항상 후보에 포함됨</div>`;
   }
@@ -1140,7 +1438,7 @@ function renderExclusionRows(s, emoKeys) {
   }).join('');
 }
 
-function collectExclusionsFromDOM() {
+function collectExclusionsFromDOM(sceneId) {
   const rows = document.querySelectorAll('#sceneExclusionsList .exclusion-row');
   const result = [];
   rows.forEach(row => {
@@ -1160,7 +1458,11 @@ function collectExclusionsFromDOM() {
     }
     if (condition) result.push(reason ? { condition, reason } : { condition });
   });
-  return result.length > 0 ? result : null;
+  // 화면에 못 그린 조건을 뒤에 그대로 붙여 되살린다 (조용한 유실 방지).
+  const stash = state._unrenderedExclusions;
+  const keep = (stash && (!sceneId || stash.sceneId === sceneId)) ? stash.items : [];
+  const merged = keep.length ? result.concat(keep) : result;
+  return merged.length > 0 ? merged : null;
 }
 
 // 260730 검수 B안: renderCompareTab(경로 비교 탭) 은퇴 — 감정 궤적 선택 UI 선행 은퇴로 항상 빈 상태였음.
