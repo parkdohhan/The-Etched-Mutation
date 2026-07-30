@@ -37,6 +37,7 @@ interface RequestBody {
   sceneId: string;
   utterance: string;
   turn: number;
+  runId?: string | null;   // 260728: 회차 식별자 (선택 — 없으면 시간창 폴백)
 }
 
 function jsonError(msg: string, status: number, cors: Record<string, string>) {
@@ -86,6 +87,18 @@ serve(async (req: Request) => {
     turn = body.turn;
   }
 
+  // ─── runId: 회차 식별자 (260728 신설, 선택) ───────────────
+  // plays.run_id 와 같은 원천. 있으면 ④ 중복 판정을 **회차 단위**로 하고
+  // trajectory_bridges.source_run_id 를 채운다 (접촉을 회차에 귀속 — 7-17 run_id 신설 목적).
+  // 없으면 기존 memory_id 30분 창 폴백 (구형 클라이언트 하위호환).
+  let runId: string | null = null;
+  if (body.runId !== undefined && body.runId !== null) {
+    if (typeof body.runId !== "string" || !UUID_RX.test(body.runId)) {
+      return jsonError("runId must be a uuid when provided", 400, corsHeaders);
+    }
+    runId = body.runId;
+  }
+
   // ─── Service-role client (RLS 우회) ──────────────────────
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -122,18 +135,27 @@ serve(async (req: Request) => {
     return jsonError("no recent play for this memory", 403, corsHeaders);
   }
 
-  // ─── ④: 회차 중복 차단 (30분 내 같은 기억 contact 1회) ───
-  const dedupSince = new Date(Date.now() - CONTACT_DEDUP_MIN * 60 * 1000).toISOString();
-  const { count: recentContacts, error: dupErr } = await sb
-    .from("trajectory_bridges").select("id", { count: "exact", head: true })
-    .eq("memory_id", body.memoryId).eq("status", "contact").gte("created_at", dedupSince);
+  // ─── ④: 회차당 접촉 1회 ──────────────────────────────────
+  // 260728 수리: runId 가 오면 **그 회차**에 이미 접촉이 있는지만 본다.
+  //   이전엔 runId 없이 memory_id + 30분 창으로만 판정해서, 같은 기억을 30분 안에
+  //   두 사람이 플레이하면 뒷사람 접촉이 409 로 버려졌다 (주석은 "회차당 1회"였지만
+  //   구현은 회차를 구분하지 않았다 — 알파 3명 연속 플레이에서 직접 유실되는 결함).
+  //   runId 없으면 옛 시간창 폴백 유지.
+  let dupQ = sb.from("trajectory_bridges").select("id", { count: "exact", head: true })
+    .eq("memory_id", body.memoryId).eq("status", "contact");
+  if (runId) {
+    dupQ = dupQ.eq("source_run_id", runId);
+  } else {
+    dupQ = dupQ.gte("created_at", new Date(Date.now() - CONTACT_DEDUP_MIN * 60 * 1000).toISOString());
+  }
+  const { count: recentContacts, error: dupErr } = await dupQ;
   if (dupErr) {
     console.error("[record-contact] dedup check failed:", dupErr);
     return jsonError(dupErr.message, 500, corsHeaders);
   }
   if (recentContacts && recentContacts > 0) {
-    console.warn(`[record-contact] duplicate contact within ${CONTACT_DEDUP_MIN}min for memory ${body.memoryId}`);
-    return jsonError("contact already recorded for this session", 409, corsHeaders);
+    console.warn(`[record-contact] duplicate contact — ${runId ? `run ${runId}` : `memory ${body.memoryId} within ${CONTACT_DEDUP_MIN}min`}`);
+    return jsonError("contact already recorded for this run", 409, corsHeaders);
   }
 
   // ─── 쓰기: trajectory_bridges INSERT (status='contact') ──
@@ -145,6 +167,7 @@ serve(async (req: Request) => {
       status: "contact",
       contact_utterance: utterance,
       contact_turn: turn,
+      source_run_id: runId,       // 260728: 접촉을 회차에 귀속 (없으면 null — 구동작)
     }).select("id").maybeSingle();
   if (insErr) {
     console.error("[record-contact] insert failed:", insErr);

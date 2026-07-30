@@ -55,7 +55,7 @@
   <!-- W4 (2026-07-16): 옛 재생 지형(퀼트 섬) 모듈 tem_replay_terrain 은퇴 — script 태그 제거,
        파일은 보존. tem_variant_strata.js 로 대체(이본 지층: 작가 바닥 + 관객 침식/융기 누적).
        lumen_replay_fog 는 로드는 두되 attach 게이트가 TemReplayTerrain 부재로 죽어 무력. -->
-  <script src="js/shared/tem_variant_strata.js?v=260727a"></script>
+  <script src="js/shared/tem_variant_strata.js?v=260730"></script>
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
   <script src="js/ui/lumen_spatial_fog.js?v=260728"></script>
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
@@ -80,7 +80,7 @@
   <script src="js/ui/lumen_ghost_response.js?v=260714"></script>
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
-  <script src="js/ui/lumen_dialog_phase1.js?v=260728b"></script>
+  <script src="js/ui/lumen_dialog_phase1.js?v=260728c"></script>
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260714"></script>
   <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
@@ -3630,6 +3630,10 @@
       anchorVariantId: anchorVariantId,
       // 260727 기억별 좌표계: 발화 분류도 판단과 같은 자(이 기억의 저작 어휘)로.
       memoryEmotionAxes: game.memoryEmotionAxes || null,
+      // 260728: 회차 식별자 — record-contact 중복 판정·귀속을 회차 단위로 (plays.run_id 와 동일 원천).
+      // 이전엔 안 넘겨서 서버가 memory_id 30분 창으로 dedup → 같은 기억을 30분 안에 두 사람이
+      // 플레이하면 뒷사람 접촉이 409 로 버려졌다 (알파 3명 연속 플레이에서 직접 유실).
+      runId: game._runId || null,
       onSceneEnd: function (result) {
         // V2.1.2 (2026-05-05) — 자동 진행 폐기. 매 씬 끝 = 1인칭 지도 복귀, 자유 탐색.
         // 플레이어가 다음 핀(다른 유령) 을 직접 골라서 long press 로 진입.

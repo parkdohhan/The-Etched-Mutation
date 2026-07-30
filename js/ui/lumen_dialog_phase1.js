@@ -1781,7 +1781,12 @@
             '… align=' + alignment.toFixed(3) + ' | "일어난 사건"으로 기록');
           if (input.supabase && memoryId) {
             input.supabase.functions.invoke('record-contact', {
-              body: { memoryId: memoryId, sceneId: sceneId, utterance: _vc.utterance, turn: turn },
+              // 260728: runId 동봉 — 서버가 회차 단위로 중복 판정하고 source_run_id 를 채운다.
+              // 없으면 서버가 기존 memory_id 30분 창으로 폴백 (하위호환).
+              body: {
+                memoryId: memoryId, sceneId: sceneId, utterance: _vc.utterance, turn: turn,
+                runId: input.runId || null,
+              },
             }).then(function (r) {
               if (r && r.error) console.warn('[phase1] record-contact 실패 (무해, 접촉은 화면엔 반영됨)', r.error);
               else console.log('[phase1] record-contact ok', (r && r.data) || {});
