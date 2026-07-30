@@ -1,0 +1,4429 @@
+{
+ "meta": {
+  "created": "260730",
+  "judge_frames": [
+   "기억 축 고정 (부록)",
+   "실전 배선 (씬 anchor 우선) — 비교 정본"
+  ],
+  "baseline": "페르소나_리트머스-260728/결과-A-v3.json (자유 대화, 동일 분류기 세대)",
+  "missing_rate": 0
+ },
+ "sessions": [
+  {
+   "archetype": "echo_follow",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7558,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7558,
+     "level": 0.7558,
+     "shape": 1,
+     "dialog_alignment": 0.7558
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.5954,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.435,
+     "level": 0.5954,
+     "shape": 1,
+     "dialog_alignment": 0.435
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7927,
+     "level": 0.6611,
+     "shape": 0,
+     "dialog_alignment": 0.7927
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.2062,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.8613,
+     "level": 0.7112,
+     "shape": 0.2899,
+     "dialog_alignment": 0.8613
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.1907,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7793,
+     "level": 0.7248,
+     "shape": 0.2631,
+     "dialog_alignment": 0.7793
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.2895,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.953,
+     "level": 0.7628,
+     "shape": 0.3795,
+     "dialog_alignment": 0.953
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c001",
+     "scene_order": 0,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.7558
+    },
+    {
+     "utterance_id": "c007",
+     "scene_order": 1,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.435
+    },
+    {
+     "utterance_id": "c013",
+     "scene_order": 2,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.7927
+    },
+    {
+     "utterance_id": "c019",
+     "scene_order": 3,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.8613
+    },
+    {
+     "utterance_id": "c025",
+     "scene_order": 4,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.7793
+    },
+    {
+     "utterance_id": "c031",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.953
+    }
+   ]
+  },
+  {
+   "archetype": "echo_follow",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.7923,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7923,
+     "level": 0.7923,
+     "shape": 1,
+     "dialog_alignment": 0.7923
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7497,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7497,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.5093,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9453,
+     "level": 0.8149,
+     "shape": 0.625,
+     "dialog_alignment": 0.9453
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6543,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9147,
+     "level": 0.8399,
+     "shape": 0.7791,
+     "dialog_alignment": 0.9147
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6752,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.833,
+     "level": 0.8385,
+     "shape": 0.8053,
+     "dialog_alignment": 0.833
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6754,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.8308,
+     "shape": 0.8129,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6713,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.82,
+     "shape": 0.8186,
+     "dialog_alignment": 0.6341
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.6705,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9173,
+     "level": 0.8322,
+     "shape": 0.8057,
+     "dialog_alignment": 0.9173
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6621,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7822,
+     "level": 0.8266,
+     "shape": 0.801,
+     "dialog_alignment": 0.7822
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.6516,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8166,
+     "level": 0.8256,
+     "shape": 0.7892,
+     "dialog_alignment": 0.8166
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.6465,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9675,
+     "level": 0.8385,
+     "shape": 0.771,
+     "dialog_alignment": 0.9675
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.6545,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9169,
+     "level": 0.8451,
+     "shape": 0.7745,
+     "dialog_alignment": 0.9169
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c037",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7923
+    },
+    {
+     "utterance_id": "c043",
+     "scene_order": 2,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c049",
+     "scene_order": 3,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9453
+    },
+    {
+     "utterance_id": "c055",
+     "scene_order": 4,
+     "connective": "그러다가",
+     "via": "classified",
+     "dialog_alignment": 0.9147
+    },
+    {
+     "utterance_id": "c061",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.833
+    },
+    {
+     "utterance_id": "c067",
+     "scene_order": 6,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c073",
+     "scene_order": 7,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.6341
+    },
+    {
+     "utterance_id": "c079",
+     "scene_order": 8,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.9173
+    },
+    {
+     "utterance_id": "c085",
+     "scene_order": 9,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7822
+    },
+    {
+     "utterance_id": "c091",
+     "scene_order": 11,
+     "connective": "그러다가",
+     "via": "classified",
+     "dialog_alignment": 0.8166
+    },
+    {
+     "utterance_id": "c097",
+     "scene_order": 12,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.9675
+    },
+    {
+     "utterance_id": "c103",
+     "scene_order": 13,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.9169
+    }
+   ]
+  },
+  {
+   "archetype": "bridge",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7913,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7913,
+     "level": 0.7913,
+     "shape": 1,
+     "dialog_alignment": 0.7913
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6708,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.5504,
+     "level": 0.6708,
+     "shape": 1,
+     "dialog_alignment": 0.5504
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.2371,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.746,
+     "level": 0.6959,
+     "shape": 0.3407,
+     "dialog_alignment": 0.746
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.2028,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5844,
+     "level": 0.668,
+     "shape": 0.3035,
+     "dialog_alignment": 0.5844
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.0359,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.6114,
+     "level": 0.6567,
+     "shape": 0.0547,
+     "dialog_alignment": 0.6114
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.058,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9499,
+     "level": 0.7056,
+     "shape": 0.0822,
+     "dialog_alignment": 0.9499
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c002",
+     "scene_order": 0,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7913
+    },
+    {
+     "utterance_id": "c008",
+     "scene_order": 1,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.5504
+    },
+    {
+     "utterance_id": "c014",
+     "scene_order": 2,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.746
+    },
+    {
+     "utterance_id": "c020",
+     "scene_order": 3,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.5844
+    },
+    {
+     "utterance_id": "c026",
+     "scene_order": 4,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6114
+    },
+    {
+     "utterance_id": "c032",
+     "scene_order": 5,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9499
+    }
+   ]
+  },
+  {
+   "archetype": "bridge",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.8126,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8126,
+     "level": 0.8126,
+     "shape": 1,
+     "dialog_alignment": 0.8126
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7598,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7598,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.4251,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8571,
+     "level": 0.7923,
+     "shape": 0.5366,
+     "dialog_alignment": 0.8571
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6083,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9147,
+     "level": 0.8229,
+     "shape": 0.7393,
+     "dialog_alignment": 0.9147
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6591,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8688,
+     "level": 0.8321,
+     "shape": 0.7921,
+     "dialog_alignment": 0.8688
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6668,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.8255,
+     "shape": 0.8077,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6673,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.8155,
+     "shape": 0.8183,
+     "dialog_alignment": 0.6834
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.6694,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9174,
+     "level": 0.8282,
+     "shape": 0.8082,
+     "dialog_alignment": 0.9174
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6694,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8235,
+     "level": 0.8277,
+     "shape": 0.8087,
+     "dialog_alignment": 0.8235
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.6615,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7923,
+     "level": 0.8241,
+     "shape": 0.8027,
+     "dialog_alignment": 0.7923
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.6673,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9632,
+     "level": 0.8368,
+     "shape": 0.7974,
+     "dialog_alignment": 0.9632
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.6722,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.89,
+     "level": 0.8412,
+     "shape": 0.7991,
+     "dialog_alignment": 0.89
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c038",
+     "scene_order": 1,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8126
+    },
+    {
+     "utterance_id": "c044",
+     "scene_order": 2,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c050",
+     "scene_order": 3,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8571
+    },
+    {
+     "utterance_id": "c056",
+     "scene_order": 4,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9147
+    },
+    {
+     "utterance_id": "c062",
+     "scene_order": 5,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8688
+    },
+    {
+     "utterance_id": "c068",
+     "scene_order": 6,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c074",
+     "scene_order": 7,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6834
+    },
+    {
+     "utterance_id": "c080",
+     "scene_order": 8,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9174
+    },
+    {
+     "utterance_id": "c086",
+     "scene_order": 9,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8235
+    },
+    {
+     "utterance_id": "c092",
+     "scene_order": 11,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7923
+    },
+    {
+     "utterance_id": "c098",
+     "scene_order": 12,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9632
+    },
+    {
+     "utterance_id": "c104",
+     "scene_order": 13,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.89
+    }
+   ]
+  },
+  {
+   "archetype": "contradiction",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.6933,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6933,
+     "level": 0.6933,
+     "shape": 1,
+     "dialog_alignment": 0.6933
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6278,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.5624,
+     "level": 0.6278,
+     "shape": 1,
+     "dialog_alignment": 0.5624
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.3118,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5724,
+     "level": 0.6094,
+     "shape": 0.5116,
+     "dialog_alignment": 0.5724
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.2895,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.9152,
+     "level": 0.6858,
+     "shape": 0.4221,
+     "dialog_alignment": 0.9152
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.1812,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4664,
+     "level": 0.6419,
+     "shape": 0.2823,
+     "dialog_alignment": 0.4664
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.1565,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8937,
+     "level": 0.6839,
+     "shape": 0.2288,
+     "dialog_alignment": 0.8937
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c003",
+     "scene_order": 0,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.6933
+    },
+    {
+     "utterance_id": "c009",
+     "scene_order": 1,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.5624
+    },
+    {
+     "utterance_id": "c015",
+     "scene_order": 2,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.5724
+    },
+    {
+     "utterance_id": "c021",
+     "scene_order": 3,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9152
+    },
+    {
+     "utterance_id": "c027",
+     "scene_order": 4,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.4664
+    },
+    {
+     "utterance_id": "c033",
+     "scene_order": 5,
+     "connective": "그럼에도 불구하고",
+     "via": "classified",
+     "dialog_alignment": 0.8937
+    }
+   ]
+  },
+  {
+   "archetype": "contradiction",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.8211,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8211,
+     "level": 0.8211,
+     "shape": 1,
+     "dialog_alignment": 0.8211
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7641,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7641,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.5552,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9504,
+     "level": 0.8262,
+     "shape": 0.672,
+     "dialog_alignment": 0.9504
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6971,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9066,
+     "level": 0.8463,
+     "shape": 0.8238,
+     "dialog_alignment": 0.9066
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6812,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7231,
+     "level": 0.8216,
+     "shape": 0.829,
+     "dialog_alignment": 0.7231
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6842,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.8168,
+     "shape": 0.8376,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6817,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.808,
+     "shape": 0.8437,
+     "dialog_alignment": 0.5521
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.6821,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9111,
+     "level": 0.8209,
+     "shape": 0.8309,
+     "dialog_alignment": 0.9111
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6758,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7822,
+     "level": 0.8166,
+     "shape": 0.8275,
+     "dialog_alignment": 0.7822
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.667,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8075,
+     "level": 0.8157,
+     "shape": 0.8177,
+     "dialog_alignment": 0.8075
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.6653,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9538,
+     "level": 0.8283,
+     "shape": 0.8032,
+     "dialog_alignment": 0.9538
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.6668,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.901,
+     "level": 0.8343,
+     "shape": 0.7992,
+     "dialog_alignment": 0.901
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c039",
+     "scene_order": 1,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.8211
+    },
+    {
+     "utterance_id": "c045",
+     "scene_order": 2,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c051",
+     "scene_order": 3,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9504
+    },
+    {
+     "utterance_id": "c057",
+     "scene_order": 4,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9066
+    },
+    {
+     "utterance_id": "c063",
+     "scene_order": 5,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.7231
+    },
+    {
+     "utterance_id": "c069",
+     "scene_order": 6,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c075",
+     "scene_order": 7,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.5521
+    },
+    {
+     "utterance_id": "c081",
+     "scene_order": 8,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9111
+    },
+    {
+     "utterance_id": "c087",
+     "scene_order": 9,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.7822
+    },
+    {
+     "utterance_id": "c093",
+     "scene_order": 11,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.8075
+    },
+    {
+     "utterance_id": "c099",
+     "scene_order": 12,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9538
+    },
+    {
+     "utterance_id": "c105",
+     "scene_order": 13,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.901
+    }
+   ]
+  },
+  {
+   "archetype": "displacement",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.721,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.721,
+     "level": 0.721,
+     "shape": 1,
+     "dialog_alignment": 0.721
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.5532,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.3854,
+     "level": 0.5532,
+     "shape": 1,
+     "dialog_alignment": 0.3854
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.094,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4426,
+     "level": 0.5163,
+     "shape": 0.182,
+     "dialog_alignment": 0.4426
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.0837,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.8164,
+     "level": 0.5913,
+     "shape": 0.1416,
+     "dialog_alignment": 0.8164
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.2221,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5138,
+     "level": 0.5758,
+     "shape": 0.3857,
+     "dialog_alignment": 0.5138
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.333,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.9647,
+     "level": 0.6407,
+     "shape": 0.5197,
+     "dialog_alignment": 0.9647
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c004",
+     "scene_order": 0,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.721
+    },
+    {
+     "utterance_id": "c010",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.3854
+    },
+    {
+     "utterance_id": "c016",
+     "scene_order": 2,
+     "connective": "그러자",
+     "via": "classified",
+     "dialog_alignment": 0.4426
+    },
+    {
+     "utterance_id": "c022",
+     "scene_order": 3,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8164
+    },
+    {
+     "utterance_id": "c028",
+     "scene_order": 4,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.5138
+    },
+    {
+     "utterance_id": "c034",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9647
+    }
+   ]
+  },
+  {
+   "archetype": "displacement",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.7831,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7831,
+     "level": 0.7831,
+     "shape": 1,
+     "dialog_alignment": 0.7831
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7451,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7451,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.4801,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9482,
+     "level": 0.8128,
+     "shape": 0.5907,
+     "dialog_alignment": 0.9482
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.571,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8205,
+     "level": 0.8147,
+     "shape": 0.7008,
+     "dialog_alignment": 0.8205
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.5263,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6082,
+     "level": 0.7734,
+     "shape": 0.6805,
+     "dialog_alignment": 0.6082
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.5432,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.7766,
+     "shape": 0.6995,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.5662,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.7736,
+     "shape": 0.7319,
+     "dialog_alignment": 0.609
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.587,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9013,
+     "level": 0.7895,
+     "shape": 0.7434,
+     "dialog_alignment": 0.9013
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.5987,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8305,
+     "level": 0.7941,
+     "shape": 0.754,
+     "dialog_alignment": 0.8305
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.6009,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8374,
+     "level": 0.7984,
+     "shape": 0.7526,
+     "dialog_alignment": 0.8374
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.5832,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7442,
+     "level": 0.7935,
+     "shape": 0.735,
+     "dialog_alignment": 0.7442
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.5854,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8974,
+     "level": 0.8021,
+     "shape": 0.7298,
+     "dialog_alignment": 0.8974
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c040",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7831
+    },
+    {
+     "utterance_id": "c046",
+     "scene_order": 2,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c052",
+     "scene_order": 3,
+     "connective": "그러자",
+     "via": "classified",
+     "dialog_alignment": 0.9482
+    },
+    {
+     "utterance_id": "c058",
+     "scene_order": 4,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8205
+    },
+    {
+     "utterance_id": "c064",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.6082
+    },
+    {
+     "utterance_id": "c070",
+     "scene_order": 6,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c076",
+     "scene_order": 7,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.609
+    },
+    {
+     "utterance_id": "c082",
+     "scene_order": 8,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9013
+    },
+    {
+     "utterance_id": "c088",
+     "scene_order": 9,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8305
+    },
+    {
+     "utterance_id": "c094",
+     "scene_order": 11,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8374
+    },
+    {
+     "utterance_id": "c100",
+     "scene_order": 12,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7442
+    },
+    {
+     "utterance_id": "c106",
+     "scene_order": 13,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8974
+    }
+   ]
+  },
+  {
+   "archetype": "avoidance",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.546,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.546,
+     "level": 0.546,
+     "shape": 1,
+     "dialog_alignment": 0.546
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.449,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.7369,
+     "level": 0.6414,
+     "shape": 1,
+     "dialog_alignment": 0.7369
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.2502,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.5802,
+     "level": 0.621,
+     "shape": 0.5756,
+     "dialog_alignment": 0.5802
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.3448,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8919,
+     "level": 0.6887,
+     "shape": 0.5007,
+     "dialog_alignment": 0.8919
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.3429,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.6668,
+     "level": 0.6843,
+     "shape": 0.5011,
+     "dialog_alignment": 0.6668
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.2426,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.8093,
+     "level": 0.7052,
+     "shape": 0.4914,
+     "dialog_alignment": 0.8093
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c005",
+     "scene_order": 0,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.546
+    },
+    {
+     "utterance_id": "c011",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7369
+    },
+    {
+     "utterance_id": "c017",
+     "scene_order": 2,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.5802
+    },
+    {
+     "utterance_id": "c023",
+     "scene_order": 3,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8919
+    },
+    {
+     "utterance_id": "c029",
+     "scene_order": 4,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.6668
+    },
+    {
+     "utterance_id": "c035",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8093
+    }
+   ]
+  },
+  {
+   "archetype": "avoidance",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.7022,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7022,
+     "level": 0.7022,
+     "shape": 1,
+     "dialog_alignment": 0.7022
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.7047,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.7047,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.452,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9441,
+     "level": 0.7845,
+     "shape": 0.5762,
+     "dialog_alignment": 0.9441
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.6216,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9147,
+     "level": 0.817,
+     "shape": 0.7608,
+     "dialog_alignment": 0.9147
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6428,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8666,
+     "level": 0.827,
+     "shape": 0.7773,
+     "dialog_alignment": 0.8666
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6454,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.8212,
+     "shape": 0.7859,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6471,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.8118,
+     "shape": 0.7971,
+     "dialog_alignment": 0.5898
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.6507,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9166,
+     "level": 0.8249,
+     "shape": 0.7888,
+     "dialog_alignment": 0.9166
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6589,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8327,
+     "level": 0.8258,
+     "shape": 0.798,
+     "dialog_alignment": 0.8327
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.6571,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.827,
+     "level": 0.8259,
+     "shape": 0.7957,
+     "dialog_alignment": 0.827
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.6481,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9648,
+     "level": 0.8385,
+     "shape": 0.7729,
+     "dialog_alignment": 0.9648
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.6454,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8735,
+     "level": 0.8414,
+     "shape": 0.7671,
+     "dialog_alignment": 0.8735
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c041",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7022
+    },
+    {
+     "utterance_id": "c047",
+     "scene_order": 2,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c053",
+     "scene_order": 3,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9441
+    },
+    {
+     "utterance_id": "c059",
+     "scene_order": 4,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9147
+    },
+    {
+     "utterance_id": "c065",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8666
+    },
+    {
+     "utterance_id": "c071",
+     "scene_order": 6,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c077",
+     "scene_order": 7,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.5898
+    },
+    {
+     "utterance_id": "c083",
+     "scene_order": 8,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9166
+    },
+    {
+     "utterance_id": "c089",
+     "scene_order": 9,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8327
+    },
+    {
+     "utterance_id": "c095",
+     "scene_order": 11,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.827
+    },
+    {
+     "utterance_id": "c101",
+     "scene_order": 12,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9648
+    },
+    {
+     "utterance_id": "c107",
+     "scene_order": 13,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8735
+    }
+   ]
+  },
+  {
+   "archetype": "fixation",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7473,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7473,
+     "level": 0.7473,
+     "shape": 1,
+     "dialog_alignment": 0.7473
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6201,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4929,
+     "level": 0.6201,
+     "shape": 1,
+     "dialog_alignment": 0.4929
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7218,
+     "level": 0.654,
+     "shape": 0,
+     "dialog_alignment": 0.7218
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8991,
+     "level": 0.7153,
+     "shape": 0,
+     "dialog_alignment": 0.8991
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.749,
+     "level": 0.722,
+     "shape": 0,
+     "dialog_alignment": 0.749
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8431,
+     "level": 0.7422,
+     "shape": 0,
+     "dialog_alignment": 0.8431
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c006",
+     "scene_order": 0,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7473
+    },
+    {
+     "utterance_id": "c012",
+     "scene_order": 1,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.4929
+    },
+    {
+     "utterance_id": "c018",
+     "scene_order": 2,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7218
+    },
+    {
+     "utterance_id": "c024",
+     "scene_order": 3,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.8991
+    },
+    {
+     "utterance_id": "c030",
+     "scene_order": 4,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.749
+    },
+    {
+     "utterance_id": "c036",
+     "scene_order": 5,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8431
+    }
+   ]
+  },
+  {
+   "archetype": "fixation",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.821,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.821,
+     "level": 0.821,
+     "shape": 1,
+     "dialog_alignment": 0.821
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.764,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7071,
+     "level": 0.764,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.5174,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9405,
+     "level": 0.8229,
+     "shape": 0.6288,
+     "dialog_alignment": 0.9405
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.3903,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.6965,
+     "level": 0.7913,
+     "shape": 0.7047,
+     "dialog_alignment": 0.6965
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.5641,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8386,
+     "level": 0.8007,
+     "shape": 0.7044,
+     "dialog_alignment": 0.8386
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.5806,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7926,
+     "level": 0.7994,
+     "shape": 0.7263,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.5888,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7553,
+     "level": 0.7931,
+     "shape": 0.7424,
+     "dialog_alignment": 0.555
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.5951,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9133,
+     "level": 0.8081,
+     "shape": 0.7364,
+     "dialog_alignment": 0.9133
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.5889,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6841,
+     "level": 0.7943,
+     "shape": 0.7413,
+     "dialog_alignment": 0.6841
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.5891,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8198,
+     "level": 0.7969,
+     "shape": 0.7392,
+     "dialog_alignment": 0.8198
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.5756,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6202,
+     "level": 0.7808,
+     "shape": 0.7372,
+     "dialog_alignment": 0.6202
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.5775,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.834,
+     "level": 0.7852,
+     "shape": 0.7354,
+     "dialog_alignment": 0.834
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c042",
+     "scene_order": 1,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.821
+    },
+    {
+     "utterance_id": "c048",
+     "scene_order": 2,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c054",
+     "scene_order": 3,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.9405
+    },
+    {
+     "utterance_id": "c060",
+     "scene_order": 4,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6965
+    },
+    {
+     "utterance_id": "c066",
+     "scene_order": 5,
+     "connective": "그러다가",
+     "via": "classified",
+     "dialog_alignment": 0.8386
+    },
+    {
+     "utterance_id": "c072",
+     "scene_order": 6,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c078",
+     "scene_order": 7,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.555
+    },
+    {
+     "utterance_id": "c084",
+     "scene_order": 8,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9133
+    },
+    {
+     "utterance_id": "c090",
+     "scene_order": 9,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6841
+    },
+    {
+     "utterance_id": "c096",
+     "scene_order": 11,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.8198
+    },
+    {
+     "utterance_id": "c102",
+     "scene_order": 12,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6202
+    },
+    {
+     "utterance_id": "c108",
+     "scene_order": 13,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.834
+    }
+   ]
+  }
+ ],
+ "sessions_real_wiring": [
+  {
+   "archetype": "echo_follow",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7558,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7558,
+     "level": 0.7558,
+     "shape": 1,
+     "dialog_alignment": 0.7558
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.5954,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.435,
+     "level": 0.5954,
+     "shape": 1,
+     "dialog_alignment": 0.435
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7927,
+     "level": 0.6611,
+     "shape": 0,
+     "dialog_alignment": 0.7927
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.2062,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.8613,
+     "level": 0.7112,
+     "shape": 0.2899,
+     "dialog_alignment": 0.8613
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.1907,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7793,
+     "level": 0.7248,
+     "shape": 0.2631,
+     "dialog_alignment": 0.7793
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.2895,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.953,
+     "level": 0.7628,
+     "shape": 0.3795,
+     "dialog_alignment": 0.953
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c001",
+     "scene_order": 0,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.7558
+    },
+    {
+     "utterance_id": "c007",
+     "scene_order": 1,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.435
+    },
+    {
+     "utterance_id": "c013",
+     "scene_order": 2,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.7927
+    },
+    {
+     "utterance_id": "c019",
+     "scene_order": 3,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.8613
+    },
+    {
+     "utterance_id": "c025",
+     "scene_order": 4,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.7793
+    },
+    {
+     "utterance_id": "c031",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.953
+    }
+   ]
+  },
+  {
+   "archetype": "echo_follow",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9641,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9641,
+     "level": 0.9641,
+     "shape": 1,
+     "dialog_alignment": 0.7923
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9821,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9821,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.9239,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9941,
+     "level": 0.9861,
+     "shape": 0.937,
+     "dialog_alignment": 0.9453
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.986,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9971,
+     "level": 0.9888,
+     "shape": 0.9971,
+     "dialog_alignment": 0.9147
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.7435,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9457,
+     "level": 0.9802,
+     "shape": 0.7585,
+     "dialog_alignment": 0.833
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6946,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9835,
+     "shape": 0.7063,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.8085,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8396,
+     "level": 0.9629,
+     "shape": 0.8396,
+     "dialog_alignment": 0.6341
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7532,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9999,
+     "level": 0.9676,
+     "shape": 0.7784,
+     "dialog_alignment": 0.9173
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6919,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9383,
+     "level": 0.9643,
+     "shape": 0.7175,
+     "dialog_alignment": 0.7822
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.7969,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9696,
+     "level": 0.9648,
+     "shape": 0.8259,
+     "dialog_alignment": 0.8166
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.2713,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9987,
+     "level": 0.9679,
+     "shape": 0.2803,
+     "dialog_alignment": 0.9675
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.8564,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9994,
+     "level": 0.9705,
+     "shape": 0.8824,
+     "dialog_alignment": 0.9169
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c037",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7923
+    },
+    {
+     "utterance_id": "c043",
+     "scene_order": 2,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c049",
+     "scene_order": 3,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9453
+    },
+    {
+     "utterance_id": "c055",
+     "scene_order": 4,
+     "connective": "그러다가",
+     "via": "classified",
+     "dialog_alignment": 0.9147
+    },
+    {
+     "utterance_id": "c061",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.833
+    },
+    {
+     "utterance_id": "c067",
+     "scene_order": 6,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c073",
+     "scene_order": 7,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.6341
+    },
+    {
+     "utterance_id": "c079",
+     "scene_order": 8,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.9173
+    },
+    {
+     "utterance_id": "c085",
+     "scene_order": 9,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7822
+    },
+    {
+     "utterance_id": "c091",
+     "scene_order": 11,
+     "connective": "그러다가",
+     "via": "classified",
+     "dialog_alignment": 0.8166
+    },
+    {
+     "utterance_id": "c097",
+     "scene_order": 12,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.9675
+    },
+    {
+     "utterance_id": "c103",
+     "scene_order": 13,
+     "connective": "그리고",
+     "via": "classified",
+     "dialog_alignment": 0.9169
+    }
+   ]
+  },
+  {
+   "archetype": "bridge",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7913,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7913,
+     "level": 0.7913,
+     "shape": 1,
+     "dialog_alignment": 0.7913
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6708,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.5504,
+     "level": 0.6708,
+     "shape": 1,
+     "dialog_alignment": 0.5504
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.2371,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.746,
+     "level": 0.6959,
+     "shape": 0.3407,
+     "dialog_alignment": 0.746
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.2028,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5844,
+     "level": 0.668,
+     "shape": 0.3035,
+     "dialog_alignment": 0.5844
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.0359,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.6114,
+     "level": 0.6567,
+     "shape": 0.0547,
+     "dialog_alignment": 0.6114
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.058,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9499,
+     "level": 0.7056,
+     "shape": 0.0822,
+     "dialog_alignment": 0.9499
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c002",
+     "scene_order": 0,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7913
+    },
+    {
+     "utterance_id": "c008",
+     "scene_order": 1,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.5504
+    },
+    {
+     "utterance_id": "c014",
+     "scene_order": 2,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.746
+    },
+    {
+     "utterance_id": "c020",
+     "scene_order": 3,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.5844
+    },
+    {
+     "utterance_id": "c026",
+     "scene_order": 4,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6114
+    },
+    {
+     "utterance_id": "c032",
+     "scene_order": 5,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9499
+    }
+   ]
+  },
+  {
+   "archetype": "bridge",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9888,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9888,
+     "level": 0.9888,
+     "shape": 1,
+     "dialog_alignment": 0.8126
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9944,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9944,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.762,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9013,
+     "level": 0.9634,
+     "shape": 0.791,
+     "dialog_alignment": 0.8571
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.969,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9971,
+     "level": 0.9718,
+     "shape": 0.9971,
+     "dialog_alignment": 0.9147
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.7741,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9864,
+     "level": 0.9747,
+     "shape": 0.7941,
+     "dialog_alignment": 0.8688
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.7391,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9789,
+     "shape": 0.755,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.8762,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9048,
+     "level": 0.9683,
+     "shape": 0.9048,
+     "dialog_alignment": 0.6834
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7755,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9723,
+     "shape": 0.7976,
+     "dialog_alignment": 0.9174
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.7415,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9879,
+     "level": 0.974,
+     "shape": 0.7613,
+     "dialog_alignment": 0.8235
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.8276,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9407,
+     "level": 0.9707,
+     "shape": 0.8525,
+     "dialog_alignment": 0.7923
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.608,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9943,
+     "level": 0.9729,
+     "shape": 0.625,
+     "dialog_alignment": 0.9632
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.8708,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9701,
+     "level": 0.9726,
+     "shape": 0.8953,
+     "dialog_alignment": 0.89
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c038",
+     "scene_order": 1,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8126
+    },
+    {
+     "utterance_id": "c044",
+     "scene_order": 2,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c050",
+     "scene_order": 3,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8571
+    },
+    {
+     "utterance_id": "c056",
+     "scene_order": 4,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9147
+    },
+    {
+     "utterance_id": "c062",
+     "scene_order": 5,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8688
+    },
+    {
+     "utterance_id": "c068",
+     "scene_order": 6,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c074",
+     "scene_order": 7,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6834
+    },
+    {
+     "utterance_id": "c080",
+     "scene_order": 8,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9174
+    },
+    {
+     "utterance_id": "c086",
+     "scene_order": 9,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8235
+    },
+    {
+     "utterance_id": "c092",
+     "scene_order": 11,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7923
+    },
+    {
+     "utterance_id": "c098",
+     "scene_order": 12,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9632
+    },
+    {
+     "utterance_id": "c104",
+     "scene_order": 13,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.89
+    }
+   ]
+  },
+  {
+   "archetype": "contradiction",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.6933,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6933,
+     "level": 0.6933,
+     "shape": 1,
+     "dialog_alignment": 0.6933
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6278,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.5624,
+     "level": 0.6278,
+     "shape": 1,
+     "dialog_alignment": 0.5624
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.3118,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5724,
+     "level": 0.6094,
+     "shape": 0.5116,
+     "dialog_alignment": 0.5724
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.2895,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.9152,
+     "level": 0.6858,
+     "shape": 0.4221,
+     "dialog_alignment": 0.9152
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.1812,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4664,
+     "level": 0.6419,
+     "shape": 0.2823,
+     "dialog_alignment": 0.4664
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.1565,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8937,
+     "level": 0.6839,
+     "shape": 0.2288,
+     "dialog_alignment": 0.8937
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c003",
+     "scene_order": 0,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.6933
+    },
+    {
+     "utterance_id": "c009",
+     "scene_order": 1,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.5624
+    },
+    {
+     "utterance_id": "c015",
+     "scene_order": 2,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.5724
+    },
+    {
+     "utterance_id": "c021",
+     "scene_order": 3,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9152
+    },
+    {
+     "utterance_id": "c027",
+     "scene_order": 4,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.4664
+    },
+    {
+     "utterance_id": "c033",
+     "scene_order": 5,
+     "connective": "그럼에도 불구하고",
+     "via": "classified",
+     "dialog_alignment": 0.8937
+    }
+   ]
+  },
+  {
+   "archetype": "contradiction",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9992,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9992,
+     "level": 0.9992,
+     "shape": 1,
+     "dialog_alignment": 0.8211
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9996,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9996,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.9818,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9994,
+     "level": 0.9995,
+     "shape": 0.9823,
+     "dialog_alignment": 0.9504
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.985,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9882,
+     "level": 0.9967,
+     "shape": 0.9882,
+     "dialog_alignment": 0.9066
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6509,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8209,
+     "level": 0.9615,
+     "shape": 0.677,
+     "dialog_alignment": 0.7231
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.7308,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.968,
+     "shape": 0.755,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6829,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7311,
+     "level": 0.9341,
+     "shape": 0.7311,
+     "dialog_alignment": 0.5521
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7776,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9932,
+     "level": 0.9415,
+     "shape": 0.826,
+     "dialog_alignment": 0.9111
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6368,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9383,
+     "level": 0.9411,
+     "shape": 0.6766,
+     "dialog_alignment": 0.7822
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.8243,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9588,
+     "level": 0.9429,
+     "shape": 0.8742,
+     "dialog_alignment": 0.8075
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.5364,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9846,
+     "level": 0.9467,
+     "shape": 0.5666,
+     "dialog_alignment": 0.9538
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.8394,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9821,
+     "level": 0.9497,
+     "shape": 0.8839,
+     "dialog_alignment": 0.901
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c039",
+     "scene_order": 1,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.8211
+    },
+    {
+     "utterance_id": "c045",
+     "scene_order": 2,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c051",
+     "scene_order": 3,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9504
+    },
+    {
+     "utterance_id": "c057",
+     "scene_order": 4,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9066
+    },
+    {
+     "utterance_id": "c063",
+     "scene_order": 5,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.7231
+    },
+    {
+     "utterance_id": "c069",
+     "scene_order": 6,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c075",
+     "scene_order": 7,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.5521
+    },
+    {
+     "utterance_id": "c081",
+     "scene_order": 8,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9111
+    },
+    {
+     "utterance_id": "c087",
+     "scene_order": 9,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.7822
+    },
+    {
+     "utterance_id": "c093",
+     "scene_order": 11,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.8075
+    },
+    {
+     "utterance_id": "c099",
+     "scene_order": 12,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.9538
+    },
+    {
+     "utterance_id": "c105",
+     "scene_order": 13,
+     "connective": "하지만",
+     "via": "classified",
+     "dialog_alignment": 0.901
+    }
+   ]
+  },
+  {
+   "archetype": "displacement",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.721,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.721,
+     "level": 0.721,
+     "shape": 1,
+     "dialog_alignment": 0.721
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.5532,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.3854,
+     "level": 0.5532,
+     "shape": 1,
+     "dialog_alignment": 0.3854
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.094,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4426,
+     "level": 0.5163,
+     "shape": 0.182,
+     "dialog_alignment": 0.4426
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.0837,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.8164,
+     "level": 0.5913,
+     "shape": 0.1416,
+     "dialog_alignment": 0.8164
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.2221,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.5138,
+     "level": 0.5758,
+     "shape": 0.3857,
+     "dialog_alignment": 0.5138
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.333,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.9647,
+     "level": 0.6407,
+     "shape": 0.5197,
+     "dialog_alignment": 0.9647
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c004",
+     "scene_order": 0,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.721
+    },
+    {
+     "utterance_id": "c010",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.3854
+    },
+    {
+     "utterance_id": "c016",
+     "scene_order": 2,
+     "connective": "그러자",
+     "via": "classified",
+     "dialog_alignment": 0.4426
+    },
+    {
+     "utterance_id": "c022",
+     "scene_order": 3,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8164
+    },
+    {
+     "utterance_id": "c028",
+     "scene_order": 4,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.5138
+    },
+    {
+     "utterance_id": "c034",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9647
+    }
+   ]
+  },
+  {
+   "archetype": "displacement",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.9529,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9529,
+     "level": 0.9529,
+     "shape": 1,
+     "dialog_alignment": 0.7831
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9765,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9765,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.9796,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9971,
+     "level": 0.9833,
+     "shape": 0.9961,
+     "dialog_alignment": 0.9482
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.8597,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8944,
+     "level": 0.9611,
+     "shape": 0.8944,
+     "dialog_alignment": 0.8205
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.5396,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6905,
+     "level": 0.907,
+     "shape": 0.5949,
+     "dialog_alignment": 0.6082
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.5767,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9225,
+     "shape": 0.6252,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.7305,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8064,
+     "level": 0.9059,
+     "shape": 0.8064,
+     "dialog_alignment": 0.609
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7613,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9825,
+     "level": 0.9155,
+     "shape": 0.8316,
+     "dialog_alignment": 0.9013
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.5796,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9962,
+     "level": 0.9245,
+     "shape": 0.627,
+     "dialog_alignment": 0.8305
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.823,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9943,
+     "level": 0.9314,
+     "shape": 0.8836,
+     "dialog_alignment": 0.8374
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.1537,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7682,
+     "level": 0.9166,
+     "shape": 0.1677,
+     "dialog_alignment": 0.7442
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.7903,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9782,
+     "level": 0.9217,
+     "shape": 0.8574,
+     "dialog_alignment": 0.8974
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c040",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7831
+    },
+    {
+     "utterance_id": "c046",
+     "scene_order": 2,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c052",
+     "scene_order": 3,
+     "connective": "그러자",
+     "via": "classified",
+     "dialog_alignment": 0.9482
+    },
+    {
+     "utterance_id": "c058",
+     "scene_order": 4,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8205
+    },
+    {
+     "utterance_id": "c064",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.6082
+    },
+    {
+     "utterance_id": "c070",
+     "scene_order": 6,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c076",
+     "scene_order": 7,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.609
+    },
+    {
+     "utterance_id": "c082",
+     "scene_order": 8,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9013
+    },
+    {
+     "utterance_id": "c088",
+     "scene_order": 9,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8305
+    },
+    {
+     "utterance_id": "c094",
+     "scene_order": 11,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8374
+    },
+    {
+     "utterance_id": "c100",
+     "scene_order": 12,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7442
+    },
+    {
+     "utterance_id": "c106",
+     "scene_order": 13,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8974
+    }
+   ]
+  },
+  {
+   "archetype": "avoidance",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.546,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.546,
+     "level": 0.546,
+     "shape": 1,
+     "dialog_alignment": 0.546
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.449,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.7369,
+     "level": 0.6414,
+     "shape": 1,
+     "dialog_alignment": 0.7369
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.2502,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.5802,
+     "level": 0.621,
+     "shape": 0.5756,
+     "dialog_alignment": 0.5802
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.3448,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8919,
+     "level": 0.6887,
+     "shape": 0.5007,
+     "dialog_alignment": 0.8919
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.3429,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": null,
+     "scene_score": 0.6668,
+     "level": 0.6843,
+     "shape": 0.5011,
+     "dialog_alignment": 0.6668
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.2426,
+     "bucket": "MID",
+     "pattern": "bridge",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.8093,
+     "level": 0.7052,
+     "shape": 0.4914,
+     "dialog_alignment": 0.8093
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c005",
+     "scene_order": 0,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.546
+    },
+    {
+     "utterance_id": "c011",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7369
+    },
+    {
+     "utterance_id": "c017",
+     "scene_order": 2,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.5802
+    },
+    {
+     "utterance_id": "c023",
+     "scene_order": 3,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8919
+    },
+    {
+     "utterance_id": "c029",
+     "scene_order": 4,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.6668
+    },
+    {
+     "utterance_id": "c035",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8093
+    }
+   ]
+  },
+  {
+   "archetype": "avoidance",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.8545,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8545,
+     "level": 0.8545,
+     "shape": 1,
+     "dialog_alignment": 0.7022
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9273,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9273,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.834,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9928,
+     "level": 0.9491,
+     "shape": 0.8787,
+     "dialog_alignment": 0.9441
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.9583,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9971,
+     "level": 0.9611,
+     "shape": 0.9971,
+     "dialog_alignment": 0.9147
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6544,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9839,
+     "level": 0.9657,
+     "shape": 0.6777,
+     "dialog_alignment": 0.8666
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.6599,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9714,
+     "shape": 0.6794,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.7373,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7809,
+     "level": 0.9442,
+     "shape": 0.7809,
+     "dialog_alignment": 0.5898
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7095,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9991,
+     "level": 0.951,
+     "shape": 0.7461,
+     "dialog_alignment": 0.9166
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.7116,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9989,
+     "level": 0.9564,
+     "shape": 0.7441,
+     "dialog_alignment": 0.8327
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.7557,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9819,
+     "level": 0.9589,
+     "shape": 0.7881,
+     "dialog_alignment": 0.827
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.1928,
+     "bucket": "MID",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.9959,
+     "level": 0.9623,
+     "shape": 0.2003,
+     "dialog_alignment": 0.9648
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.8196,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9522,
+     "level": 0.9614,
+     "shape": 0.8525,
+     "dialog_alignment": 0.8735
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c041",
+     "scene_order": 1,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7022
+    },
+    {
+     "utterance_id": "c047",
+     "scene_order": 2,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c053",
+     "scene_order": 3,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9441
+    },
+    {
+     "utterance_id": "c059",
+     "scene_order": 4,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9147
+    },
+    {
+     "utterance_id": "c065",
+     "scene_order": 5,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8666
+    },
+    {
+     "utterance_id": "c071",
+     "scene_order": 6,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c077",
+     "scene_order": 7,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.5898
+    },
+    {
+     "utterance_id": "c083",
+     "scene_order": 8,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9166
+    },
+    {
+     "utterance_id": "c089",
+     "scene_order": 9,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8327
+    },
+    {
+     "utterance_id": "c095",
+     "scene_order": 11,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.827
+    },
+    {
+     "utterance_id": "c101",
+     "scene_order": 12,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.9648
+    },
+    {
+     "utterance_id": "c107",
+     "scene_order": 13,
+     "connective": "그래서",
+     "via": "classified",
+     "dialog_alignment": 0.8735
+    }
+   ]
+  },
+  {
+   "archetype": "fixation",
+   "memory_code": "footprints",
+   "steps": [
+    {
+     "scene_order": 0,
+     "alignment": 0.7473,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7473,
+     "level": 0.7473,
+     "shape": 1,
+     "dialog_alignment": 0.7473
+    },
+    {
+     "scene_order": 1,
+     "alignment": 0.6201,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "emotion_mismatch",
+     "scene_score": 0.4929,
+     "level": 0.6201,
+     "shape": 1,
+     "dialog_alignment": 0.4929
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.7218,
+     "level": 0.654,
+     "shape": 0,
+     "dialog_alignment": 0.7218
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8991,
+     "level": 0.7153,
+     "shape": 0,
+     "dialog_alignment": 0.8991
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0,
+     "bucket": "LOW",
+     "pattern": "displacement",
+     "mismatch": null,
+     "scene_score": 0.749,
+     "level": 0.722,
+     "shape": 0,
+     "dialog_alignment": 0.749
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0,
+     "bucket": "FIXATED",
+     "pattern": "fixation",
+     "mismatch": null,
+     "scene_score": 0.8431,
+     "level": 0.7422,
+     "shape": 0,
+     "dialog_alignment": 0.8431
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c006",
+     "scene_order": 0,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7473
+    },
+    {
+     "utterance_id": "c012",
+     "scene_order": 1,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.4929
+    },
+    {
+     "utterance_id": "c018",
+     "scene_order": 2,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7218
+    },
+    {
+     "utterance_id": "c024",
+     "scene_order": 3,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.8991
+    },
+    {
+     "utterance_id": "c030",
+     "scene_order": 4,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.749
+    },
+    {
+     "utterance_id": "c036",
+     "scene_order": 5,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.8431
+    }
+   ]
+  },
+  {
+   "archetype": "fixation",
+   "memory_code": "UNDW-001",
+   "steps": [
+    {
+     "scene_order": 1,
+     "alignment": 0.999,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.999,
+     "level": 0.999,
+     "shape": 1,
+     "dialog_alignment": 0.821
+    },
+    {
+     "scene_order": 2,
+     "alignment": 0.9995,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9995,
+     "shape": 1,
+     "dialog_alignment": 0.7071
+    },
+    {
+     "scene_order": 3,
+     "alignment": 0.9335,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9891,
+     "level": 0.996,
+     "shape": 0.9372,
+     "dialog_alignment": 0.9405
+    },
+    {
+     "scene_order": 4,
+     "alignment": 0.4979,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": "void_mismatch",
+     "scene_score": 0.7593,
+     "level": 0.9368,
+     "shape": 0.7593,
+     "dialog_alignment": 0.6965
+    },
+    {
+     "scene_order": 5,
+     "alignment": 0.6662,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.952,
+     "level": 0.9399,
+     "shape": 0.7088,
+     "dialog_alignment": 0.8386
+    },
+    {
+     "scene_order": 6,
+     "alignment": 0.7032,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 1,
+     "level": 0.9499,
+     "shape": 0.7403,
+     "dialog_alignment": 0.7926
+    },
+    {
+     "scene_order": 7,
+     "alignment": 0.6754,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.7348,
+     "level": 0.9192,
+     "shape": 0.7348,
+     "dialog_alignment": 0.555
+    },
+    {
+     "scene_order": 8,
+     "alignment": 0.7021,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9956,
+     "level": 0.9287,
+     "shape": 0.756,
+     "dialog_alignment": 0.9133
+    },
+    {
+     "scene_order": 9,
+     "alignment": 0.6713,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.8207,
+     "level": 0.9167,
+     "shape": 0.7323,
+     "dialog_alignment": 0.6841
+    },
+    {
+     "scene_order": 11,
+     "alignment": 0.7482,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9734,
+     "level": 0.9224,
+     "shape": 0.8112,
+     "dialog_alignment": 0.8198
+    },
+    {
+     "scene_order": 12,
+     "alignment": 0.5347,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.6402,
+     "level": 0.8967,
+     "shape": 0.5962,
+     "dialog_alignment": 0.6202
+    },
+    {
+     "scene_order": 13,
+     "alignment": 0.7626,
+     "bucket": "HIGH",
+     "pattern": "echo_follow",
+     "mismatch": null,
+     "scene_score": 0.9091,
+     "level": 0.8978,
+     "shape": 0.8495,
+     "dialog_alignment": 0.834
+    }
+   ],
+   "turns": [
+    {
+     "utterance_id": "c042",
+     "scene_order": 1,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.821
+    },
+    {
+     "utterance_id": "c048",
+     "scene_order": 2,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.7071
+    },
+    {
+     "utterance_id": "c054",
+     "scene_order": 3,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.9405
+    },
+    {
+     "utterance_id": "c060",
+     "scene_order": 4,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6965
+    },
+    {
+     "utterance_id": "c066",
+     "scene_order": 5,
+     "connective": "그러다가",
+     "via": "classified",
+     "dialog_alignment": 0.8386
+    },
+    {
+     "utterance_id": "c072",
+     "scene_order": 6,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.7926
+    },
+    {
+     "utterance_id": "c078",
+     "scene_order": 7,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.555
+    },
+    {
+     "utterance_id": "c084",
+     "scene_order": 8,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.9133
+    },
+    {
+     "utterance_id": "c090",
+     "scene_order": 9,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6841
+    },
+    {
+     "utterance_id": "c096",
+     "scene_order": 11,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.8198
+    },
+    {
+     "utterance_id": "c102",
+     "scene_order": 12,
+     "connective": "그런데",
+     "via": "classified",
+     "dialog_alignment": 0.6202
+    },
+    {
+     "utterance_id": "c108",
+     "scene_order": 13,
+     "connective": "그 순간",
+     "via": "classified",
+     "dialog_alignment": 0.834
+    }
+   ]
+  }
+ ],
+ "summary_memory_axes": {
+  "echo_follow": {
+   "n_steps": 18,
+   "alignment_median": 0.6544,
+   "patterns": {
+    "echo_follow": 14,
+    "displacement": 3,
+    "bridge": 1
+   },
+   "buckets": {
+    "HIGH": 14,
+    "LOW": 1,
+    "MID": 3
+   }
+  },
+  "bridge": {
+   "n_steps": 18,
+   "alignment_median": 0.667,
+   "patterns": {
+    "echo_follow": 14,
+    "bridge": 2,
+    "displacement": 2
+   },
+   "buckets": {
+    "HIGH": 14,
+    "MID": 2,
+    "LOW": 2
+   }
+  },
+  "contradiction": {
+   "n_steps": 18,
+   "alignment_median": 0.6714,
+   "patterns": {
+    "echo_follow": 14,
+    "bridge": 1,
+    "fixation": 3
+   },
+   "buckets": {
+    "HIGH": 14,
+    "MID": 1,
+    "FIXATED": 3
+   }
+  },
+  "displacement": {
+   "n_steps": 18,
+   "alignment_median": 0.5686,
+   "patterns": {
+    "echo_follow": 14,
+    "displacement": 2,
+    "bridge": 2
+   },
+   "buckets": {
+    "HIGH": 14,
+    "LOW": 2,
+    "MID": 2
+   }
+  },
+  "avoidance": {
+   "n_steps": 18,
+   "alignment_median": 0.6441,
+   "patterns": {
+    "echo_follow": 14,
+    "bridge": 3,
+    "fixation": 1
+   },
+   "buckets": {
+    "HIGH": 14,
+    "MID": 3,
+    "FIXATED": 1
+   }
+  },
+  "fixation": {
+   "n_steps": 18,
+   "alignment_median": 0.5791,
+   "patterns": {
+    "echo_follow": 13,
+    "displacement": 2,
+    "fixation": 2,
+    "bridge": 1
+   },
+   "buckets": {
+    "HIGH": 13,
+    "LOW": 2,
+    "FIXATED": 2,
+    "MID": 1
+   }
+  }
+ },
+ "summary_real_wiring": {
+  "echo_follow": {
+   "n_steps": 18,
+   "alignment_median": 0.7484,
+   "patterns": {
+    "echo_follow": 13,
+    "displacement": 4,
+    "bridge": 1
+   },
+   "buckets": {
+    "HIGH": 13,
+    "LOW": 1,
+    "MID": 4
+   }
+  },
+  "bridge": {
+   "n_steps": 18,
+   "alignment_median": 0.7681,
+   "patterns": {
+    "echo_follow": 14,
+    "bridge": 2,
+    "displacement": 2
+   },
+   "buckets": {
+    "HIGH": 14,
+    "MID": 2,
+    "LOW": 2
+   }
+  },
+  "contradiction": {
+   "n_steps": 18,
+   "alignment_median": 0.6881,
+   "patterns": {
+    "echo_follow": 14,
+    "bridge": 1,
+    "fixation": 3
+   },
+   "buckets": {
+    "HIGH": 14,
+    "MID": 1,
+    "FIXATED": 3
+   }
+  },
+  "displacement": {
+   "n_steps": 18,
+   "alignment_median": 0.6503,
+   "patterns": {
+    "echo_follow": 13,
+    "displacement": 3,
+    "bridge": 2
+   },
+   "buckets": {
+    "HIGH": 13,
+    "LOW": 2,
+    "MID": 3
+   }
+  },
+  "avoidance": {
+   "n_steps": 18,
+   "alignment_median": 0.6847,
+   "patterns": {
+    "echo_follow": 13,
+    "bridge": 3,
+    "fixation": 1,
+    "displacement": 1
+   },
+   "buckets": {
+    "HIGH": 13,
+    "MID": 4,
+    "FIXATED": 1
+   }
+  },
+  "fixation": {
+   "n_steps": 18,
+   "alignment_median": 0.6734,
+   "patterns": {
+    "echo_follow": 14,
+    "displacement": 2,
+    "fixation": 2
+   },
+   "buckets": {
+    "HIGH": 14,
+    "LOW": 2,
+    "FIXATED": 2
+   }
+  }
+ },
+ "contact": {
+  "free": {
+   "n_turns": 144,
+   "turn_rate_over": 0.2708,
+   "n_sessions": 12,
+   "session_rate_over": 0.9167,
+   "turn_median": 0.772,
+   "turn_q90": 0.925,
+   "turn_q95": 0.943
+  },
+  "cont": {
+   "n_turns": 108,
+   "turn_rate_over": 0.3241,
+   "n_sessions": 12,
+   "session_rate_over": 1,
+   "turn_median": 0.7926,
+   "turn_q90": 0.9416,
+   "turn_q95": 0.9521
+  },
+  "matched_threshold": 0.89
+ },
+ "observations": [
+  {
+   "id": "M1",
+   "항목": "아키타입 분리 유지 (대립 < 공명, 실전 배선)",
+   "측정": "대립 0.6881 vs 공명 0.7484",
+   "위반": false
+  },
+  {
+   "id": "M2",
+   "항목": "정렬 분포 이동량 (cont − free, 실전 배선)",
+   "측정": {
+    "echo_follow": {
+     "free": 0.7102,
+     "cont": 0.7484,
+     "delta": 0.0382
+    },
+    "bridge": {
+     "free": 0.7684,
+     "cont": 0.7681,
+     "delta": -0.0003
+    },
+    "contradiction": {
+     "free": 0.6079,
+     "cont": 0.6881,
+     "delta": 0.0802
+    },
+    "displacement": {
+     "free": 0.5289,
+     "cont": 0.6503,
+     "delta": 0.1214
+    },
+    "avoidance": {
+     "free": 0.4831,
+     "cont": 0.6847,
+     "delta": 0.2016
+    },
+    "fixation": {
+     "free": 0.6735,
+     "cont": 0.6734,
+     "delta": -0.0001
+    }
+   },
+   "위반": null
+  },
+  {
+   "id": "M3",
+   "항목": "접촉 희소성 (턴 코사인 ≥0.85)",
+   "측정": {
+    "free": {
+     "turn_rate": 0.2708,
+     "session_rate": 0.9167,
+     "turn_median": 0.772
+    },
+    "cont": {
+     "turn_rate": 0.3241,
+     "session_rate": 1,
+     "turn_median": 0.7926
+    },
+    "분위수맞춤문턱": 0.89,
+    "딱지": "잠정 — 페르소나 분포. 알파 실관객 분포로 재추정."
+   },
+   "위반": false
+  },
+  {
+   "id": "M4",
+   "항목": "패턴 도달성 (contradiction·avoidance 사멸 여부)",
+   "측정": {
+    "contradiction": 0,
+    "avoidance": 0,
+    "패턴분포": {
+     "echo_follow": {
+      "echo_follow": 13,
+      "displacement": 4,
+      "bridge": 1
+     },
+     "bridge": {
+      "echo_follow": 14,
+      "bridge": 2,
+      "displacement": 2
+     },
+     "contradiction": {
+      "echo_follow": 14,
+      "bridge": 1,
+      "fixation": 3
+     },
+     "displacement": {
+      "echo_follow": 13,
+      "displacement": 3,
+      "bridge": 2
+     },
+     "avoidance": {
+      "echo_follow": 13,
+      "bridge": 3,
+      "fixation": 1,
+      "displacement": 1
+     },
+     "fixation": {
+      "echo_follow": 14,
+      "displacement": 2,
+      "fixation": 2
+     }
+    }
+   },
+   "위반": true
+  },
+  {
+   "id": "M5",
+   "항목": "연결사 × 아키타입 (관찰만 — Δ 서명 가설 첫 데이터)",
+   "측정": {
+    "echo_follow": {
+     "그리고": 9,
+     "그 순간": 1,
+     "그래서": 6,
+     "그러다가": 2
+    },
+    "bridge": {
+     "그런데": 18
+    },
+    "contradiction": {
+     "하지만": 17,
+     "그럼에도 불구하고": 1
+    },
+    "displacement": {
+     "그래서": 16,
+     "그러자": 2
+    },
+    "avoidance": {
+     "그래서": 18
+    },
+    "fixation": {
+     "그런데": 10,
+     "그 순간": 7,
+     "그러다가": 1
+    }
+   },
+   "위반": null
+  }
+ ]
+}

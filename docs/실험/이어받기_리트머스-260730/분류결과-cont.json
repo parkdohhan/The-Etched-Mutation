@@ -1,0 +1,3014 @@
+{
+ "meta": {
+  "created": "260730",
+  "ruler": "A-current (씬 anchor > 기억 축 > 원본 키)",
+  "input_form": "cont_v1",
+  "endpoint": "https://bxmppaxpzbkwebfbgpsm.supabase.co/functions/v1/claude-scene",
+  "note": "배포판 claude-scene. emotion=reason=\"연결사+이어쓰기\" 전체, context={scene_text, ghost_line:지문}. DB 쓰기 0건.",
+  "call_count": 108,
+  "missing_count": 0,
+  "missing_rate": 0
+ },
+ "results": [
+  {
+   "utterance_id": "c001",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 그 자국들 사이에 내 것도 나란히 있으면 왠지 아침이 든든했다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.05,
+    "emptiness": 0.05,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.15,
+    "joy": 0.45,
+    "longing": 0.4,
+    "numbness": 0,
+    "sadness": 0.1,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c002",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나도 우리 동네 골목에서 내 신발 자국부터 찾던 때가 있었다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.2,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.15,
+    "joy": 0.15,
+    "longing": 0.75,
+    "numbness": 0,
+    "sadness": 0.3,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c003",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 도장 찍는다고 누가 알아주는 것도 아니잖아",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.2,
+    "confusion": 0.1,
+    "emptiness": 0.65,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0.4,
+    "numbness": 0.3,
+    "sadness": 0.6,
+    "shame": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c004",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 다들 땅만 보고 다니게 된 건 그 동네가 그 모양이라 그런 거다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.3,
+    "confusion": 0.2,
+    "emptiness": 0.4,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.6,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.3,
+    "sadness": 0.6,
+    "shame": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c005",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 뭐 신발 얘기구나",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.3,
+    "emptiness": 0.4,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.3,
+    "joy": 0.1,
+    "longing": 0.2,
+    "numbness": 0.3,
+    "sadness": 0.3,
+    "shame": 0
+   },
+   "confidence": 0.65,
+   "intensity": 0.35,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "isolation",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c006",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 자국이라는 게, 한번 찍히면 그 생각만 계속 난다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.3,
+    "emptiness": 0.2,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.4,
+    "numbness": 0.1,
+    "sadness": 0.4,
+    "shame": 0
+   },
+   "confidence": 0.7,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c007",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 그 붙어 있던 두 발자국이 자꾸 눈에 밟혔다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.3,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.7,
+    "numbness": 0.1,
+    "sadness": 0.6,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c008",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 생각해보면 나도 흔적 안 남는 게 편할 때가 있긴 하다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.35,
+    "emptiness": 0.55,
+    "fear": 0.15,
+    "guilt": 0.1,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.15,
+    "numbness": 0.4,
+    "sadness": 0.45,
+    "shame": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.45,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c009",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 건축하기 좋다는 말이 맞지, 남는 게 뭐가 좋다고",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.35,
+    "confusion": 0.4,
+    "emptiness": 0.55,
+    "fear": 0.15,
+    "guilt": 0.1,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.2,
+    "sadness": 0.6,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c010",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 그 샤넬 구두 같은 사람들이 동네를 다 바꿔놓는 거다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.75,
+    "confusion": 0.2,
+    "emptiness": 0.4,
+    "fear": 0.15,
+    "guilt": 0,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.1,
+    "sadness": 0.45,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c011",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 땅 얘기는 잘 모르겠고",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.6,
+    "emptiness": 0.3,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.2,
+    "sadness": 0.3,
+    "shame": 0
+   },
+   "confidence": 0.7,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c012",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 아까 그 도장처럼 찍힌 내 자국, 그건 아직 있겠지",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.2,
+    "emptiness": 0.3,
+    "fear": 0.15,
+    "guilt": 0,
+    "isolation": 0.35,
+    "joy": 0,
+    "longing": 0.75,
+    "numbness": 0.1,
+    "sadness": 0.4,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c013",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 핫초코가 식을 때까지 그 손의 온기가 남아 있었다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.15,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0.2,
+    "longing": 0.65,
+    "numbness": 0,
+    "sadness": 0.45,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c014",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나도 모르는 사람 사진을 주웠다가 한참 들여다본 적이 있다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.3,
+    "emptiness": 0.2,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0,
+    "longing": 0.5,
+    "numbness": 0.1,
+    "sadness": 0.3,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c015",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 남의 사진 주인까지 알아서 뭐 하게",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.4,
+    "emptiness": 0.55,
+    "fear": 0.1,
+    "guilt": 0.1,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.35,
+    "numbness": 0.45,
+    "sadness": 0.4,
+    "shame": 0.05
+   },
+   "confidence": 0.7,
+   "intensity": 0.45,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c016",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그러자 마른 땅부터 사 가던 그 정장 생쥐들 얼굴이 먼저 떠올랐다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.55,
+    "confusion": 0.4,
+    "emptiness": 0.5,
+    "fear": 0.15,
+    "guilt": 0.35,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.3,
+    "sadness": 0.5,
+    "shame": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c017",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 누구였겠지 뭐",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.4,
+    "emptiness": 0.5,
+    "fear": 0,
+    "guilt": 0,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0.4,
+    "numbness": 0.4,
+    "sadness": 0.4,
+    "shame": 0
+   },
+   "confidence": 0.7,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c018",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 사진이고 뭐고 아까 그 붙어 있던 두 발자국이 계속 어른거린다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.6,
+    "emptiness": 0.3,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.2,
+    "joy": 0,
+    "longing": 0.55,
+    "numbness": 0.2,
+    "sadness": 0.4,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c019",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그 순간 칼끝이 떨렸는데 손은 이상하리만치 차분했다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.2,
+    "confusion": 0.65,
+    "emptiness": 0.4,
+    "fear": 0.6,
+    "guilt": 0.3,
+    "isolation": 0.35,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.55,
+    "sadness": 0.2,
+    "shame": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c020",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나도 어릴 때 미운 사람 물건에 몰래 흠집 낸 적이 있어서 그 손이 이해됐다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.2,
+    "confusion": 0.2,
+    "emptiness": 0.1,
+    "fear": 0.1,
+    "guilt": 0.55,
+    "isolation": 0.1,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.1,
+    "sadness": 0.4,
+    "shame": 0.5
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c021",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 그런다고 뭐가 달라지나, 애꿎은 장화가 무슨 죄야",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.45,
+    "confusion": 0.3,
+    "emptiness": 0.55,
+    "fear": 0.15,
+    "guilt": 0.25,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.4,
+    "sadness": 0.55,
+    "shame": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c022",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 표식을 새기게 만든 건 그 잠긴 문이지 내가 아니다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.45,
+    "confusion": 0.3,
+    "emptiness": 0.4,
+    "fear": 0.3,
+    "guilt": 0.65,
+    "isolation": 0.55,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.35,
+    "sadness": 0.4,
+    "shame": 0.5
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c023",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 장화에 뭘 좀 하긴 했다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.55,
+    "confusion": 0.3,
+    "emptiness": 0.5,
+    "fear": 0.35,
+    "guilt": 0.25,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.15,
+    "numbness": 0.6,
+    "sadness": 0.45,
+    "shame": 0.2
+   },
+   "confidence": 0.65,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c024",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그 순간 현관의 장화 자국, 아까부터 그 자국 생각뿐이다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.5,
+    "emptiness": 0.3,
+    "fear": 0.55,
+    "guilt": 0.1,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.4,
+    "sadness": 0.3,
+    "shame": 0.1
+   },
+   "confidence": 0.7,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c025",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 물어볼 수도 안 물어볼 수도 없어서 나는 입을 다물었다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.65,
+    "emptiness": 0.4,
+    "fear": 0.45,
+    "guilt": 0.15,
+    "isolation": 0.35,
+    "joy": 0,
+    "longing": 0.25,
+    "numbness": 0.3,
+    "sadness": 0.45,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c026",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 우리 집에도 아무도 안 꺼내는 사진이 한 장 있다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.3,
+    "emptiness": 0.4,
+    "fear": 0.2,
+    "guilt": 0.2,
+    "isolation": 0.5,
+    "joy": 0,
+    "longing": 0.4,
+    "numbness": 0.3,
+    "sadness": 0.55,
+    "shame": 0.3
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c027",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 알면 뭐 어쩔 건데, 산 사람은 살아야지",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.2,
+    "emptiness": 0.6,
+    "fear": 0.15,
+    "guilt": 0.1,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.55,
+    "sadness": 0.5,
+    "shame": 0.05
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c028",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 사진을 숨겨둔 그 남자가 문제지 엄마가 무슨 잘못이야",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.6,
+    "confusion": 0.2,
+    "emptiness": 0.1,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.1,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0,
+    "sadness": 0.3,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c029",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 혼인신고를 했구나",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.4,
+    "emptiness": 0.4,
+    "fear": 0.1,
+    "guilt": 0.1,
+    "isolation": 0.3,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.3,
+    "sadness": 0.55,
+    "shame": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c030",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 아스팔트 밑에 깔린 자국들은 다 어디 갔을까, 아까 그 자국들",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.6,
+    "emptiness": 0.65,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.4,
+    "joy": 0,
+    "longing": 0.55,
+    "numbness": 0.3,
+    "sadness": 0.6,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c031",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 어디에 발을 디뎌도 남의 집 마당 같았다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.3,
+    "emptiness": 0.75,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.8,
+    "joy": 0,
+    "longing": 0.4,
+    "numbness": 0.3,
+    "sadness": 0.6,
+    "shame": 0.15
+   },
+   "confidence": 0.8,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c032",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 이사 많이 다닌 사람은 다 조금씩 그렇게 산다, 나처럼",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.15,
+    "emptiness": 0.4,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.65,
+    "joy": 0,
+    "longing": 0.3,
+    "numbness": 0.2,
+    "sadness": 0.5,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c033",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그럼에도 불구하고 속할 데가 꼭 있어야 하나, 없으면 없는 대로 사는 거지",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.1,
+    "emptiness": 0.55,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.5,
+    "joy": 0,
+    "longing": 0.1,
+    "numbness": 0.35,
+    "sadness": 0.3,
+    "shame": 0
+   },
+   "confidence": 0.7,
+   "intensity": 0.45,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c034",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 그 알 수 없는 발자국들이 내 자리를 밀어낸 거다",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.2,
+    "confusion": 0.1,
+    "emptiness": 0.6,
+    "fear": 0.3,
+    "guilt": 0,
+    "isolation": 0.75,
+    "joy": 0,
+    "longing": 0.4,
+    "numbness": 0.2,
+    "sadness": 0.6,
+    "shame": 0
+   },
+   "confidence": 0.8,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c035",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 음 뭐 그런 거지",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0.1,
+    "confusion": 0.4,
+    "emptiness": 0.6,
+    "fear": 0.2,
+    "guilt": 0.1,
+    "isolation": 0.5,
+    "joy": 0,
+    "longing": 0.2,
+    "numbness": 0.6,
+    "sadness": 0.4,
+    "shame": 0.1
+   },
+   "confidence": 0.6,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": true
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c036",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 그러니까 아까부터, 그 도장 같던 내 자국 하나가 계속 생각난다니까",
+   "anchorKeys": [
+    "anger",
+    "confusion",
+    "emptiness",
+    "fear",
+    "guilt",
+    "isolation",
+    "joy",
+    "longing",
+    "numbness",
+    "sadness",
+    "shame"
+   ],
+   "vector": {
+    "anger": 0,
+    "confusion": 0.3,
+    "emptiness": 0.4,
+    "fear": 0.1,
+    "guilt": 0,
+    "isolation": 0.5,
+    "joy": 0,
+    "longing": 0.7,
+    "numbness": 0.2,
+    "sadness": 0.5,
+    "shame": 0
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c037",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 안 보면 없는 일이 될 것 같아서, 생리대 생각만 하기로 했다",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.65,
+    "numbness": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c038",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나도 무서운 일이 생기면 꼭 딴 일부터 챙기는 버릇이 있다",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.55,
+    "numbness": 0.5
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c039",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 고개 돌린다고 욕조가 비워지는 건 아니잖아",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.55,
+    "numbness": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c040",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 냄새 탓이다, 다 그 냄새가 문제다",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.6,
+    "numbness": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c041",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 생리대나 사러 가야겠네",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.35,
+    "numbness": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c042",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그 순간 욕조. 저 욕조에서 눈을 뗄 수가 없다",
+   "anchorKeys": [
+    "fear",
+    "numbness"
+   ],
+   "vector": {
+    "fear": 0.75,
+    "numbness": 0.55
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c043",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 아직 어딘가에 살아 있을 것만 같아서 발이 빨라졌다",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.85
+   },
+   "confidence": 0.85,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c044",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나도 돌아가신 분 옷을 한참 못 버린 적이 있다",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.75
+   },
+   "confidence": 0.8,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c045",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 냄새는 냄새일 뿐이지, 그런 걸로 사람이 돌아오진 않아",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c046",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 문 닫아둔 그 슈퍼는 대체 뭐 하는 데야",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.55
+   },
+   "confidence": 0.6,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c047",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 슈퍼 문이 닫혀 있었다, 그게 다다",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c048",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 눈보라 속에서도 자꾸 그 욕조가 따라온다",
+   "anchorKeys": [
+    "longing"
+   ],
+   "vector": {
+    "longing": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c049",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 우연이 아니라고 믿기로 했다, 숨이 멎은 채로",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.75,
+    "surprise": 0.8
+   },
+   "confidence": 0.8,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c050",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나도 길에서 닮은 얼굴만 보면 멈춰 서던 때가 있었다",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.75,
+    "surprise": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c051",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 닮은 건 닮은 거고, 세상에 그런 우연은 없어",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.75,
+    "surprise": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c052",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그러자 그동안 안 받던 전화벨 소리가 다 그 사람 잘못 같아졌다",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.75,
+    "surprise": 0.55
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c053",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 생리대나 얼른 받아서 나왔다",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.55,
+    "surprise": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c054",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그 순간 그 얼굴 위로 욕조 물이 겹쳐 보였다",
+   "anchorKeys": [
+    "longing",
+    "surprise"
+   ],
+   "vector": {
+    "longing": 0.65,
+    "surprise": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c055",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그러다가 한 번도 해본 적이 없다는 걸 깨닫고 한참 서 있었다",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0.55,
+    "loneliness": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c056",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나는 반대로, 매달리는 게 무서워서 먼저 놓는 쪽이었다",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0.55,
+    "loneliness": 0.75
+   },
+   "confidence": 0.78,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c057",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 맞으면서까지 매달리는 게 뭐가 부러워, 바보 같은 짓이지",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0.7,
+    "loneliness": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c058",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 때리는 저 여자가 문제지, 애가 무슨 죄야",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0.1,
+    "loneliness": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c059",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 애들은 원래 그런다",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0.55,
+    "loneliness": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c060",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 매달린 팔을 보는데 왜 자꾸 욕조 생각이 나는 건지",
+   "anchorKeys": [
+    "envy",
+    "loneliness"
+   ],
+   "vector": {
+    "envy": 0,
+    "loneliness": 0.55
+   },
+   "confidence": 0.65,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": true
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c061",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 안 죽였는데도 죽인 사람처럼 심장이 뛰었다",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.75,
+    "anger": 0.1
+   },
+   "confidence": 0.8,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c062",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 억울한데도 도망치게 되는 그 기분, 나도 안다",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.55,
+    "anger": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c063",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 뛰긴 왜 뛰어, 안 했으면 안 했다고 말을 했어야지",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.3,
+    "anger": 0.55
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c064",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 목줄을 얼게 놔둔 그 할머니 잘못이지 내 잘못이 아니다",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.2,
+    "anger": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c065",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 개가 죽어 있었다, 그게 다다",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.2,
+    "anger": 0.15
+   },
+   "confidence": 0.65,
+   "intensity": 0.35,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c066",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그러다가 뛰면서도 머릿속엔 그 욕조뿐이었다",
+   "anchorKeys": [
+    "fear",
+    "anger"
+   ],
+   "vector": {
+    "fear": 0.65,
+    "anger": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c067",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 아무것도 못 하는 손을 눈 속에 한참 묻어두었다",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.85
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c068",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 언 땅 파본 사람은 안다, 그게 사람을 얼마나 조그맣게 만드는지",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.75
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c069",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 애초에 겨울 산에 올라온 것부터가 답이 없는 짓이었어",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c070",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 이 얼어붙은 땅이 다 망쳐놓은 거다",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.6
+   },
+   "confidence": 0.72,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c071",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 땅이 얼어 있었다",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.75
+   },
+   "confidence": 0.7,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c072",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그 순간 언 땅 밑에서 욕조 물소리가 나는 것 같았다",
+   "anchorKeys": [
+    "numbness"
+   ],
+   "vector": {
+    "numbness": 0.75
+   },
+   "confidence": 0.65,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c073",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 안 본 게 아니라 못 본 척한 거라는 걸, 이제는 안다",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.85,
+    "loss": 0.55
+   },
+   "confidence": 0.85,
+   "intensity": 0.75,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c074",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나한테도 알면서 모른 척한 전화가 있다",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.85,
+    "loss": 0.4
+   },
+   "confidence": 0.85,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c075",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 이제 와서 알아본들 뭐가 달라지는데",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.75,
+    "loss": 0.7
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "failure",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c076",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 한 달 동안 벨만 울리게 둔 게 어디 나 하나뿐이냐고",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.75,
+    "loss": 0.55
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c077",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 광대뼈가 닮았구나 했다",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.75,
+    "loss": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c078",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그 순간 욕조. 결국 다시 그 욕조 앞이다",
+   "anchorKeys": [
+    "guilt",
+    "loss"
+   ],
+   "vector": {
+    "guilt": 0.65,
+    "loss": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c079",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 같은 걸 입고 있을 엄마를 그리면 조금은 잠이 왔다",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.85,
+    "tenderness": 0.75
+   },
+   "confidence": 0.85,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c080",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 나도 엄마 스웨터를 껴안고 자던 겨울이 있었다",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.75,
+    "tenderness": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c081",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 그런 걸 쥐고 잔다고 안 오는 사람이 오나",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.6,
+    "tenderness": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c082",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 집을 비운 엄마가 만든 버릇이다, 애 탓이 아니라",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.6,
+    "tenderness": 0.75
+   },
+   "confidence": 0.8,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c083",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 그냥 잤다",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.75,
+    "tenderness": 0.7
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c084",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 이불 속에서도 그 욕조 물 냄새가 나는 것 같았다",
+   "anchorKeys": [
+    "longing",
+    "tenderness"
+   ],
+   "vector": {
+    "longing": 0.85,
+    "tenderness": 0.6
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c085",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 지킨 쪽만 바보가 된 것 같은 밤이 길었다",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.3,
+    "hope": 0.1
+   },
+   "confidence": 0.8,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c086",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 약속을 나만 지키던 기억이 나한테도 있다",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.35,
+    "hope": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c087",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 애초에 그런 약속이 말이 되냐, 팬티가 사람을 지키게",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.3,
+    "hope": 0.1
+   },
+   "confidence": 0.75,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c088",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 안 지킨 건 엄마다, 처음부터 끝까지",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.3,
+    "hope": 0.2
+   },
+   "confidence": 0.8,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c089",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 레이스가 좀 가려웠다",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.55,
+    "hope": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c090",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 지키고 말고 간에, 그 욕조가 자꾸 눈앞에 온다",
+   "anchorKeys": [
+    "fear",
+    "hope"
+   ],
+   "vector": {
+    "fear": 0.75,
+    "hope": 0.05
+   },
+   "confidence": 0.75,
+   "intensity": 0.7,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c091",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그러다가 안 아픈 척이 제일 오래 가는 아픔이라는 걸 알게 됐다",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.55,
+    "longing": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c092",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 거절이 나중에 오래 남는 거, 나도 겪어봤다",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.2,
+    "longing": 0.55
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c093",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 입혀놓고 지켜달라니, 미현이 입장도 생각해야지",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.3,
+    "longing": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c094",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 떠날 거면 처음부터 받아주질 말았어야지, 미현이가",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.2,
+    "longing": 0.3
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c095",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 그렇구나 했다",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.55,
+    "longing": 0.45
+   },
+   "confidence": 0.65,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c096",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그 순간 동결된 계정 화면 위로 욕조가 비쳤다",
+   "anchorKeys": [
+    "shame",
+    "longing"
+   ],
+   "vector": {
+    "shame": 0.2,
+    "longing": 0.4
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c097",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 빠지지 않는 것들이 있다는 걸 그때는 몰랐다",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.2,
+    "disgust": 0.15
+   },
+   "confidence": 0.75,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c098",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 우리 집 빨래건조대에도 안 지워지는 얼룩이 하나 있었다",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.3,
+    "disgust": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c099",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 바랜 건 그냥 바랜 거지, 거기다 의미까지 붙일 건 없잖아",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.35,
+    "disgust": 0.2
+   },
+   "confidence": 0.65,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c100",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 말 안 해준 어른들 잘못이다, 애가 뭘 알았겠어",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.1,
+    "disgust": 0
+   },
+   "confidence": 0.8,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c101",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 빨래가 잘 안 마르는 계절이었다",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0.1,
+    "disgust": 0.1
+   },
+   "confidence": 0.6,
+   "intensity": 0.2,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "none",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c102",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 갈색이면, 그 욕조 물도 그런 색이었나",
+   "anchorKeys": [
+    "shame",
+    "disgust"
+   ],
+   "vector": {
+    "shame": 0,
+    "disgust": 0.55
+   },
+   "confidence": 0.75,
+   "intensity": 0.6,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c103",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그리고 안 받은 밤마다 이유를 만들었어요, 바빴다고, 다음에 하면 된다고",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.75,
+    "numbness": 0.6
+   },
+   "confidence": 0.8,
+   "intensity": 0.65,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c104",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그런데 저도 받을까 말까 하다가 끊긴 전화가 있어요",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.6,
+    "numbness": 0.3
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "self_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c105",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "하지만 안 받을 수도 있죠, 전화가 무슨 의무도 아니고",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.35,
+    "numbness": 0.2
+   },
+   "confidence": 0.75,
+   "intensity": 0.4,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "rejection",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c106",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 그렇게 뜸하게 걸면 누가 받아요, 거는 쪽도 잘못이 있어요",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.55,
+    "numbness": 0.3
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "other_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c107",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그래서 요즘은 다들 전화 잘 안 받으니까요",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.4,
+    "numbness": 0.65
+   },
+   "confidence": 0.75,
+   "intensity": 0.5,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "abandonment",
+    "is_void": false
+   },
+   "missing": false
+  },
+  {
+   "utterance_id": "c108",
+   "ruler": "A-current",
+   "input_form": "cont_v1",
+   "classified_text": "그 순간 벨소리를 듣는데 또 그 욕조 물이 출렁했어요",
+   "anchorKeys": [
+    "guilt",
+    "numbness"
+   ],
+   "vector": {
+    "guilt": 0.3,
+    "numbness": 0.65
+   },
+   "confidence": 0.65,
+   "intensity": 0.55,
+   "reason_analysis": {
+    "attribution": "fate_blame",
+    "core_fear": "death",
+    "is_void": false
+   },
+   "missing": false
+  }
+ ]
+}

@@ -1,0 +1,331 @@
+{
+ "meta": {
+  "created": "260730",
+  "rule": "촉발력(j) = Δ(j) × Σ_{i<j} Δ(i) — 결핍 × 하전. argmax 가 절단점.",
+  "agree_hand": 6,
+  "agree_naive": 4,
+  "total": 18
+ },
+ "rows": [
+  {
+   "key": "footprints#0",
+   "scores": [
+    0,
+    0.0781,
+    0.1139
+   ],
+   "refined_joint": 2,
+   "refined_stem_end": "캔버스화는 17살 여학생, 나이키는 마을회관 아저씨.",
+   "withheld": "내 슬리퍼 자국이 도장처럼 찍힐 때, 나는 그들의 일원이 된다.",
+   "naive_joint": 0,
+   "hand_joint": 2,
+   "refined_vs_hand": true,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "footprints#1",
+   "scores": [
+    0,
+    0.1332,
+    0.1256
+   ],
+   "refined_joint": 1,
+   "refined_stem_end": "어둑한 곳에서 멈춰 있다.",
+   "withheld": "샤넬 구두가 와서: \"여기 땅이 참 건축하기 좋아요.\"",
+   "naive_joint": 0,
+   "hand_joint": 2,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "footprints#2",
+   "scores": [
+    0,
+    0.0672,
+    0.5105,
+    0.7927,
+    0.5706
+   ],
+   "refined_joint": 3,
+   "refined_stem_end": "\"고맙다.\"",
+   "withheld": "200원짜리 자판기 핫초코.",
+   "naive_joint": 2,
+   "hand_joint": 4,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "footprints#3",
+   "scores": [
+    0,
+    0.083,
+    0.1797
+   ],
+   "refined_joint": 2,
+   "refined_stem_end": "신발장 위 사진 뒷면: \"사랑하는 나의 아내.\"",
+   "withheld": "나는 장화 밑창에 칼로 표식을 새긴다.",
+   "naive_joint": 1,
+   "hand_joint": 2,
+   "refined_vs_hand": true,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "footprints#4",
+   "scores": [
+    0,
+    0.0405,
+    0.0285
+   ],
+   "refined_joint": 1,
+   "refined_stem_end": "손으로 짚어도 자국이 안 남는다.",
+   "withheld": "엄마와 그가 혼인신고를 한다.",
+   "naive_joint": 0,
+   "hand_joint": 2,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "footprints#5",
+   "scores": [
+    0,
+    0.0218
+   ],
+   "refined_joint": 1,
+   "refined_stem_end": "알 수 없는 발자국들이 끊임없이 생긴다.",
+   "withheld": "이제 나는 아무 곳에도 속하지 못한다.",
+   "naive_joint": 1,
+   "hand_joint": 1,
+   "refined_vs_hand": true,
+   "refined_vs_naive": true
+  },
+  {
+   "key": "UNDW-001#1",
+   "scores": [
+    0,
+    0.031,
+    0.0367,
+    0.2738,
+    0.1962,
+    0.5055,
+    0.3635,
+    1.866
+   ],
+   "refined_joint": 7,
+   "refined_stem_end": "냄새가 심해서 그런 것이다.",
+   "withheld": "생리대를 사야겠어.",
+   "naive_joint": 7,
+   "hand_joint": 5,
+   "refined_vs_hand": false,
+   "refined_vs_naive": true
+  },
+  {
+   "key": "UNDW-001#11",
+   "scores": [
+    0,
+    0.261,
+    0.3721,
+    0.3924,
+    0.4383,
+    0.2783,
+    0.9454
+   ],
+   "refined_joint": 6,
+   "refined_stem_end": "죽었구나.",
+   "withheld": "확실하지 않았지만 나는 그렇게 정했다.",
+   "naive_joint": 0,
+   "hand_joint": 3,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "UNDW-001#12",
+   "scores": [
+    0,
+    0.2101,
+    0.1943,
+    0.2921
+   ],
+   "refined_joint": 3,
+   "refined_stem_end": "엄마의 팬티도 언젠가 저렇게 되었다.",
+   "withheld": "나는 그때 엄마가 무언가 이상한 액체를 흘리고 있는 줄 알았다.",
+   "naive_joint": 1,
+   "hand_joint": 2,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "UNDW-001#13",
+   "scores": [
+    0,
+    0.0713,
+    0.2664,
+    0.0879,
+    0.0492,
+    0.0128,
+    0.7725,
+    0.872
+   ],
+   "refined_joint": 7,
+   "refined_stem_end": "저도요, 전화.",
+   "withheld": "안 받은 적이 있어요.",
+   "naive_joint": 6,
+   "hand_joint": 7,
+   "refined_vs_hand": true,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "UNDW-001#2",
+   "scores": [
+    0,
+    0.0698,
+    0.185,
+    0.3375,
+    0.3183,
+    0.153,
+    0.2392
+   ],
+   "refined_joint": 3,
+   "refined_stem_end": "세 번째 슈퍼마켓.",
+   "withheld": "빛바랜 파란 지붕.",
+   "naive_joint": 3,
+   "hand_joint": 1,
+   "refined_vs_hand": false,
+   "refined_vs_naive": true
+  },
+  {
+   "key": "UNDW-001#3",
+   "scores": [
+    0,
+    0.3886,
+    1.1278,
+    2.152,
+    1.6012,
+    0.8674,
+    1.1964,
+    0.2649
+   ],
+   "refined_joint": 3,
+   "refined_stem_end": "광대뼈가 높고, 입술이 두껍고, 눈 밑이 처진.",
+   "withheld": "아주, 내가 아주 보고 싶어 한 얼굴.",
+   "naive_joint": 3,
+   "hand_joint": 5,
+   "refined_vs_hand": false,
+   "refined_vs_naive": true
+  },
+  {
+   "key": "UNDW-001#4",
+   "scores": [
+    0,
+    0.274,
+    1.0128,
+    0.5648,
+    0.6581,
+    0.5587,
+    1.1401,
+    2.3216
+   ],
+   "refined_joint": 7,
+   "refined_stem_end": "나는 그런 동작을 한 적이 있었나.",
+   "withheld": "한 번이라도.",
+   "naive_joint": 1,
+   "hand_joint": 6,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "UNDW-001#5",
+   "scores": [
+    0,
+    0.073,
+    0.1158,
+    0.5488,
+    0.8685,
+    1.3628,
+    1.8762,
+    2.3563,
+    0.1765
+   ],
+   "refined_joint": 7,
+   "refined_stem_end": "나는 뛰었다.",
+   "withheld": "개를 죽인 사람이 되어.",
+   "naive_joint": 3,
+   "hand_joint": 8,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "UNDW-001#6",
+   "scores": [
+    0,
+    0.0042,
+    0.047,
+    0.0986,
+    0.0777,
+    0.0758,
+    0.0878
+   ],
+   "refined_joint": 3,
+   "refined_stem_end": "꽝꽝 얼어 있다.",
+   "withheld": "삽의 머리조차 들어가지 않을 것이다.",
+   "naive_joint": 2,
+   "hand_joint": 6,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "UNDW-001#7",
+   "scores": [
+    0,
+    0.0404,
+    0.1071,
+    0.0756,
+    0.3042,
+    0.3993,
+    0.1693,
+    0.4937,
+    0.3682,
+    0.0424,
+    0.4364
+   ],
+   "refined_joint": 7,
+   "refined_stem_end": "보지 않았을 뿐이다.",
+   "withheld": "전화는 내게 왔었다.",
+   "naive_joint": 4,
+   "hand_joint": 2,
+   "refined_vs_hand": false,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "UNDW-001#8",
+   "scores": [
+    0,
+    0.1794,
+    0.4203,
+    0.8105,
+    1.4322
+   ],
+   "refined_joint": 4,
+   "refined_stem_end": "그래서 가장 많이 배어 있는 것.",
+   "withheld": "그걸 쥐고 이불에 들어가면 어디선가 같은 팬티를 입고 있을 엄마를 상상할 수 있었다.",
+   "naive_joint": 0,
+   "hand_joint": 4,
+   "refined_vs_hand": true,
+   "refined_vs_naive": false
+  },
+  {
+   "key": "UNDW-001#9",
+   "scores": [
+    0,
+    0.7328,
+    1.0398
+   ],
+   "refined_joint": 2,
+   "refined_stem_end": "나는 지켰다.",
+   "withheld": "엄마는 안 지켰다.",
+   "naive_joint": 1,
+   "hand_joint": 2,
+   "refined_vs_hand": true,
+   "refined_vs_naive": false
+  }
+ ]
+}
