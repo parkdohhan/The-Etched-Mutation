@@ -6,7 +6,9 @@
  *
  * 수정 금지 함수 원칙 준수: tem_af_strata_terrain.js 한 글자도 안 건드림.
  * 외부 파이프라인:
- *   - 의존: THREE r128 + FBXLoader + SkeletonUtils + (fflate)
+ *   - 의존: THREE r128 + FBXLoader(fbx 쓸 때) + GLTFLoader(glb 쓸 때) + SkeletonUtils + (fflate)
+ *   - 260730: fbxBaseUrl 이 .glb 면 GLTFLoader 로 읽음 (Tripo 생성 유령 몸 —
+ *     tools/tripo_generate.cjs --rig 산출물. spec=mixamo 라 본 이름·headBone 탐색 호환)
  *   - 어댑터: runtime.__lumenAdapter 의 'enter'/'exit' 구독
  *   - render wrap: 가장 바깥 (mixer.update 만 함, 카메라 안 건드림)
  *
@@ -142,8 +144,11 @@
       console.warn('[lumen-scene-mannequins] THREE/scene/renderer 없음 — 비활성');
       return null;
     }
-    if (!THREE.FBXLoader || !THREE.SkeletonUtils) {
-      console.warn('[lumen-scene-mannequins] FBXLoader / SkeletonUtils 누락. play-test.html 의 CDN include 확인');
+    // 260730: 필요한 로더만 검사 — glb 경로면 GLTFLoader, fbx 경로면 FBXLoader.
+    var _isGlbUrl = function (url) { return /\.(glb|gltf)(\?|#|$)/i.test(url || ''); };
+    var _needGlb = _isGlbUrl(opts.fbxBaseUrl);
+    if (!THREE.SkeletonUtils || (_needGlb ? !THREE.GLTFLoader : !THREE.FBXLoader)) {
+      console.warn('[lumen-scene-mannequins] ' + (_needGlb ? 'GLTFLoader' : 'FBXLoader') + ' / SkeletonUtils 누락. play-test.html 의 CDN include 확인');
       return null;
     }
 
@@ -231,6 +236,20 @@
       });
     }
 
+    // 260730: GLB/GLTF — Tripo 생성 유령 몸. gltf.scene + gltf.animations 를 FBX 와 같은 모양으로.
+    function _loadGlb(url) {
+      return new Promise(function (resolve, reject) {
+        var loader = new THREE.GLTFLoader();
+        loader.load(url, function (gltf) {
+          resolve({ scene: gltf.scene, animations: gltf.animations || [] });
+        }, null, reject);
+      });
+    }
+
+    function _loadModel(url) {
+      return _isGlbUrl(url) ? _loadGlb(url) : _loadFbx(url);
+    }
+
     function _nameFromUrl(url) {
       var base = (url || '').split('/').pop().split('?')[0].split('#')[0];
       try { base = decodeURIComponent(base); } catch (_) {}
@@ -240,11 +259,11 @@
     function _loadSource() {
       if (_source) return Promise.resolve(_source);
       if (_loading) return _loading;
-      _loading = _loadFbx(opts.fbxBaseUrl).then(function (base) {
+      _loading = _loadModel(opts.fbxBaseUrl).then(function (base) {
         // extras push 전 base 클립 개수 기록 — _spawnAt 의 excludeBaseClips 분기에서 base/extras 경계 식별
         base._lumenBaseClipCount = (base.animations || []).length;
         if (!opts.fbxClipUrls || !opts.fbxClipUrls.length) return base;
-        return Promise.all(opts.fbxClipUrls.map(_loadFbx)).then(function (extras) {
+        return Promise.all(opts.fbxClipUrls.map(_loadModel)).then(function (extras) {
           extras.forEach(function (e, i) {
             if (e.animations && e.animations[0]) {
               var clip = e.animations[0];
@@ -260,13 +279,22 @@
         if (opts.autoRescale) {
           var bbox = new THREE.Box3().setFromObject(base.scene);
           var sz = bbox.getSize(new THREE.Vector3());
-          if (sz.y > 10) {
+          // 260730: FBX(cm, ~180) 만 아니라 GLB(m 또는 정규화 ~1)도 — 키가 1.8m 에서
+          //   15% 넘게 벗어나면 항상 1.8m 로 맞춤. ybot 은 기존과 동일 결과.
+          if (sz.y > 0.01 && Math.abs(sz.y - 1.8) > 0.27) {
             var s = 1.8 / sz.y;
             base.scene.scale.setScalar(s);
           }
+          // 260730: 발바닥 오프셋 — Tripo GLB 는 원점이 몸 중앙이라 그대로 세우면 반쯤
+          //   파묻힘. 스케일 반영 후 bbox 바닥(min.y)을 재서 _spawnAt 이 보정.
+          //   Mixamo(원점=발) 는 ~0 이라 기존과 동일.
+          var bbox2 = new THREE.Box3().setFromObject(base.scene);
+          base._lumenFootY = isFinite(bbox2.min.y) ? bbox2.min.y : 0;
+        } else {
+          base._lumenFootY = 0;
         }
         _source = base;
-        console.log('[lumen-scene-mannequins] FBX loaded; clips:',
+        console.log('[lumen-scene-mannequins] model loaded (' + (_isGlbUrl(opts.fbxBaseUrl) ? 'glb' : 'fbx') + '); clips:',
           base.animations.map(function (c) { return c.name || '(unnamed)'; }));
         return base;
       }).catch(function (err) {
@@ -500,13 +528,20 @@
       var root = THREE.SkeletonUtils.clone(_source.scene);
       _stripDetails(root);
       // Mixamo 본 이름은 'mixamorigHead' 또는 'mixamorig:Head' — 'head'로 끝나는 첫 본만 (HeadTop_End 제외)
-      var headBone = null;
+      // 260730 Tripo GLB: 'tripo::Head_0'(머리 관절)·'tripo::Head_1'(정수리) — 끝이 _N 이라
+      //   느슨한 매칭(head 포함, End 제외)을 2순위로. traverse 는 부모 먼저라 Head_0 이 잡힘.
+      var headBone = null, headLoose = null;
       root.traverse(function (o) {
-        if (!headBone && o.isBone && /head$/i.test(o.name)) headBone = o;
+        if (!o.isBone) return;
+        if (!headBone && /head$/i.test(o.name)) headBone = o;
+        if (!headLoose && /head/i.test(o.name) && !/end/i.test(o.name)) headLoose = o;
       });
+      if (!headBone) headBone = headLoose;
 
       var groundY = (typeof runtime.gH === 'function') ? runtime.gH(pin.wx, pin.wz) : 0;
-      root.position.set(pin.wx, groundY + opts.yOffset, pin.wz);
+      // 260730: _lumenFootY = 모델 바닥 높이 (Tripo GLB 원점 보정). Mixamo 는 ~0.
+      var footY = _source._lumenFootY || 0;
+      root.position.set(pin.wx, groundY + opts.yOffset - footY, pin.wz);
       if (opts.faceCenter) {
         root.rotation.y = Math.atan2(-pin.wx, -pin.wz);
       }
