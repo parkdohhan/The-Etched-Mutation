@@ -1671,14 +1671,16 @@
         alignment = Math.max(lastAlignment, 0.7);
         console.log('[phase1] turn ' + turn + ' SHORT_AFFIRMATIVE — alignment=' + alignment.toFixed(3));
       } else {
-        // 260727 기억별 좌표계: 분류 축 우선순위 = 씬 anchor(가장 구체) > 기억의 저작
-        // 어휘(memoryEmotionAxes) > 이 씬 원본 감정의 키 (구버전 fallback).
-        // 판단(별이엔진)과 같은 자로 재야 분류→판단이 한 좌표계가 된다.
-        var anchorKeys = (sceneData.anchor_emotions && sceneData.anchor_emotions.length)
-          ? sceneData.anchor_emotions
-          : ((input.memoryEmotionAxes && input.memoryEmotionAxes.length)
-            ? input.memoryEmotionAxes
-            : (origEmotion && Object.keys(origEmotion).length ? Object.keys(origEmotion) : null));
+        // 260730 자 수술 (페르소나_리트머스_설계-260728 §13 집행): 분류 축에서 씬 anchor
+        // 제거 → 기억 축(memoryEmotionAxes) 고정. 씬 anchor 는 1~2축이고 코사인은 축이
+        // 좁을수록 1에 붙는다 — "가둠 = 축 축소 = 코사인 부풀림" (260728 실측 확정).
+        // 이어받기 형식 리트머스 v2(260730)에서 이 가둠이 결박 제약으로 승격
+        // (촉발↔측정 트레이드오프: 좋은 절단일수록 변별 협소 — 보고서 §7).
+        // 구 우선순위(씬 anchor > 기억 축 > 원본 키)는 260727 기억별 좌표계 1차 배선.
+        // 문턱·버킷은 재추정 묶음(잠정 접촉 0.90, 알파 재추정) — 임계 소비처는 불변.
+        var anchorKeys = (input.memoryEmotionAxes && input.memoryEmotionAxes.length)
+          ? input.memoryEmotionAxes
+          : (origEmotion && Object.keys(origEmotion).length ? Object.keys(origEmotion) : null);
         // 260728: 씬 원문 + 직전 유령 대사를 분류 맥락으로 (서버 ctxHeader 조건부 발동)
         var _lastGhostLine = null;
         for (var _gi = dialogHistory.length - 1; _gi >= 0; _gi--) {
@@ -1874,6 +1876,10 @@
         ghost_reply: ghostReply,
         via: via,
         ts: new Date().toISOString(),
+        // 260730 형식 epoch 마커 — 입력 형식이 바뀌면 정렬도 분포가 비교 불가능해지므로
+        // (이어받기형식_리트머스_설계-260730 §결정2) 턴마다 형식을 명시한다.
+        // 'free_v1' = 자유 대화. 이어받기 배포 시 'cont_v1'. 키 없는 옛 행 = free_v1 유산.
+        input_form: 'free_v1',
       });
 
       await _sleep(DEFAULTS.pacingDelays.afterTurnMs);
