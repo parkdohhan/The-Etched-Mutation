@@ -955,6 +955,7 @@ async function saveConfessionToDB() {
 
         console.log('[Memory] V2 memory save complete:', memoryId);
         requestObjectModels(memoryId, 'enqueue');   // 260730 사물 3D 모델 주문 (기다리지 않음)
+        saveRepAnchors(memoryId, scenes);           // 260731 대표 앵커 자동 추출 (기다리지 않음)
         alert('기억이 지층에 묻혔습니다.');
         endConfession();
 
@@ -1337,6 +1338,7 @@ async function saveRecordMemory(conversationData, sceneData, lang, userTitle, sh
 
         console.log('[Record] Memory saved:', memory.id, userId ? '(logged in)' : '(anonymous)');
         _pendingSave = null;
+        saveRepAnchors(memory.id, sceneData.scenes);   // 260731 대표 앵커 자동 추출 (기다리지 않음)
 
         // ─── Afterimage: harvest utterance candidates from this Record session ───
         // Stored as is_public=false / pending. Never shown to other viewers without
@@ -1375,6 +1377,57 @@ async function saveRecordMemory(conversationData, sceneData, lang, userTitle, sh
         console.error('[Record] Save error:', e);
         _pendingSave = { conversationData, sceneData, lang };
         return null;
+    }
+}
+
+/**
+ * 260731 대표 앵커 자동 추출 — 이 이야기 전체의 "얼굴"이 되는 사물 1~3개.
+ *
+ * 규칙: 여러 씬에 반복 등장한 사물 우선(반복 = 그 기억이 자꾸 돌아가는 자리),
+ *       동률이면 이야기 앞쪽 씬의 사물 우선. 최대 3개.
+ * 소비처: 관객 흐름 연출 — 문에서 나온 관객이 처음 보는 것이 이 목록이고,
+ *         "…기억나? 이것들 말야." 질문의 주어가 된다. admin 위치 탭에서 Alt+클릭으로 수정 가능.
+ */
+export function extractRepAnchors(sceneList) {
+    const seen = new Map();   // word -> { count, firstOrder }
+    (sceneList || []).forEach((s, i) => {
+        const order = s.order || s.scene_order || i + 1;
+        const words = Array.isArray(s.objects) ? s.objects : [];
+        words.forEach(raw => {
+            const w = String(raw || '').trim();
+            if (!w) return;
+            const rec = seen.get(w);
+            if (rec) { rec.count += 1; rec.firstOrder = Math.min(rec.firstOrder, order); }
+            else seen.set(w, { count: 1, firstOrder: order });
+        });
+    });
+    return Array.from(seen.entries())
+        .sort((a, b) => (b[1].count - a[1].count) || (a[1].firstOrder - b[1].firstOrder))
+        .slice(0, 3)
+        .map(([w]) => w);
+}
+
+/**
+ * 260731 대표 앵커 저장 — memories.meta.rep_anchors (fetch→merge→update).
+ * meta 를 통째로 덮으면 Edge Function 이 쓰는 object_models 를 지울 수 있어 최신 meta 에 얹는다.
+ * 실패는 조용히 — 대표 앵커가 없으면 관객 흐름이 기존 방식으로 동작하면 된다.
+ */
+export async function saveRepAnchors(memoryId, sceneList) {
+    if (!memoryId) return;
+    try {
+        const anchors = extractRepAnchors(sceneList);
+        if (!anchors.length) return;
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+        const { data: fresh } = await supabase.from('memories').select('meta').eq('id', memoryId).maybeSingle();
+        const newMeta = Object.assign({}, (fresh && fresh.meta) || {});
+        if (Array.isArray(newMeta.rep_anchors) && newMeta.rep_anchors.length) return; // 작가 지정 존중 — 자동이 덮지 않음
+        newMeta.rep_anchors = anchors;
+        const { error } = await supabase.from('memories').update({ meta: newMeta }).eq('id', memoryId);
+        if (error) { console.warn('[RepAnchors] 저장 실패:', error.message || error); return; }
+        console.log('[RepAnchors] 대표 앵커 자동 지정:', anchors.join(', '));
+    } catch (e) {
+        console.warn('[RepAnchors] error', e?.message || e);
     }
 }
 

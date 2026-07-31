@@ -163,9 +163,60 @@
     return out;
   }
 
+  /**
+   * 출구문 자리 (260730) — 사물과 같은 문법. 플레이·admin 공용.
+   *
+   * 배경(결함): 문이 (22,22) 하드코딩이라 모든 기억이 같은 자리였고, 씬 핀은 ±50까지
+   *   흩어져 있어 어떤 기억은 문이 씬 한복판, 어떤 기억은 아무도 안 가는 구석이었다.
+   *   게다가 "문을 시작 자리 쪽으로 돌린다"는 줄이 문 자신의 좌표를 바라보게 돼 있어
+   *   회전이 통째로 무효였다.
+   *
+   * 우선순위: 1) memories.meta.door_pos (작가가 admin 에서 끌어 지정)
+   *           2) 자동 — **씬 무리의 반대편**. 관객은 지형 중심에서 시작해 기억들 쪽으로
+   *              걸어가므로, 그 반대편이 곧 등 뒤가 된다("들어온 쪽으로 나간다").
+   *              시작 좌표가 아니라 씬 배치로 정의해야 admin 도 같은 자리를 그릴 수 있다.
+   *
+   * @param items [{ wx, wz }] — 핀 좌표 (resolvePinPos 결과)
+   * @param memoryMeta memories.meta
+   * @returns { x, z, faceX, faceZ, source } — face* = 문이 바라볼 지점(씬 무리 중심)
+   */
+  function resolveDoorPos(items, memoryMeta) {
+    var pts = (items || []).filter(function (p) {
+      return p && typeof p.wx === 'number' && typeof p.wz === 'number';
+    });
+    // 씬 무리 중심 — 문이 바라볼 곳
+    var cx = 0, cz = 0;
+    if (pts.length) {
+      for (var i = 0; i < pts.length; i++) { cx += pts[i].wx; cz += pts[i].wz; }
+      cx /= pts.length; cz /= pts.length;
+    }
+    var meta = memoryMeta || {};
+    var dp = meta.door_pos;
+    if (dp && isFinite(dp.x) && isFinite(dp.z)) {
+      return { x: Number(dp.x), z: Number(dp.z), faceX: cx, faceZ: cz, source: 'manual' };
+    }
+    // 자동 — 중심에서 씬 무리 반대 방향으로, 무리 반경만큼 더 멀리
+    var len = Math.sqrt(cx * cx + cz * cz);
+    var ux, uz;
+    if (len < 0.5) {                 // 씬이 지형 한가운데 모여 방향이 없을 때
+      ux = 0.7071; uz = 0.7071;      // 옛 (22,22) 와 같은 대각 방향 유지
+    } else {
+      ux = cx / len; uz = cz / len;
+    }
+    // 무리에서 가장 먼 씬까지의 거리 + 여유 → 문이 기억들 바깥에 선다
+    var far = 0;
+    for (var k = 0; k < pts.length; k++) {
+      var d = Math.sqrt(pts[k].wx * pts[k].wx + pts[k].wz * pts[k].wz);
+      if (d > far) far = d;
+    }
+    var R = Math.max(15, Math.min(50, far * 0.55 + 12));
+    return { x: -ux * R, z: -uz * R, faceX: cx, faceZ: cz, source: 'auto' };
+  }
+
   global.TemObjectAnchors = {
     layout: layout,
     resolvePinPos: resolvePinPos,
+    resolveDoorPos: resolveDoorPos,
     wordsFor: wordsFor,
     hash: _hash,
     rng: _rng,

@@ -145,6 +145,11 @@ const state = {
   pinsGroup: null,             // 모든 핀(shaft+head+label) 컨테이너 — 장면 유령
   ghostsGroup: null,           // 잔상 유령 마커 컨테이너 (2026-05-16)
   objectsGroup: null,          // 사물 앵커 마커 컨테이너 (260730)
+  doorGroup: null,             // 출구문 마커 컨테이너 (260730)
+  doorMarker: null,            // 빌드된 문 마커
+  doorAnchor: null,            // { x, z, faceX, faceZ, source } — 공용 계산기 결과
+                               // (door_pos 는 아래 memoryMeta 에 산다 — 260731 rep_anchors 와 같은 그릇)
+  memoryMeta: null,            // 260731 기억 meta (rep_anchors 대표 앵커 읽기/쓰기용)
   objectAnchors: [],           // 공용 계산기 결과 [{scene, sceneId, word, x, z, rotY, pinned}]
   objectMarkers: [],           // 빌드된 사물 마커 (objectAnchors 와 같은 인덱스)
   threadsGroup: null,          // scene_order 점선
@@ -307,9 +312,16 @@ function renderGhostMarkers() {
 // 작가 지정 좌표를 가진 사물은 테두리가 밝다 (자동 자리와 구별).
 const OBJ_COLOR = 0xb99a6b;          // 마른 흙 (지형 사물 톤)
 const OBJ_PINNED_COLOR = 0xe0cEaa;   // 작가 지정 = 밝은 금빛
+const OBJ_REP_COLOR = 0xcbb8e8;      // 260731 대표 앵커 = 유령 보랏빛 (기억의 얼굴)
 const OBJ_BOX = 1.6;
 
-function _buildObjectMarker(word) {
+// 260731 대표 앵커 목록 — memories.meta.rep_anchors (없으면 빈 배열)
+function _repAnchors() {
+  const r = state.memoryMeta && state.memoryMeta.rep_anchors;
+  return Array.isArray(r) ? r : [];
+}
+
+function _buildObjectMarker(word, rep) {
   const group = new THREE.Group();
   const geo = new THREE.BoxGeometry(OBJ_BOX, OBJ_BOX * 0.7, OBJ_BOX);
   const mat = new THREE.MeshStandardMaterial({
@@ -331,7 +343,21 @@ function _buildObjectMarker(word) {
   disc.position.y = 0.05;
   disc.userData._objPart = 'disc';
   group.add(disc);
-  const label = _makeLabelSprite(word, OBJ_PINNED_COLOR);
+  // 260731: 대표 앵커 — 바닥에 보랏빛 링 하나 (멀리서도 대표가 읽히게)
+  if (rep) {
+    const ringGeo = new THREE.RingGeometry(OBJ_BOX * 1.3, OBJ_BOX * 1.5, 28);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: OBJ_REP_COLOR, transparent: true, opacity: 0.55,
+      side: THREE.DoubleSide, depthWrite: false,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.y = 0.08;
+    ring.raycast = function () {};   // 링은 장식 — 조준 대상 아님
+    group.add(ring);
+  }
+  // 260731: 대표 앵커는 이름표에 ★ + 보랏빛 — "이 기억의 얼굴" 표시
+  const label = _makeLabelSprite(rep ? '★ ' + word : word, rep ? OBJ_REP_COLOR : OBJ_PINNED_COLOR);
   label.position.y = OBJ_BOX + 1.6;
   label.scale.set(6, 6, 1);
   // 260730 실측: 이름표 스프라이트는 6유닛 사각형 + depthTest 없음이라, 옆 사물의 이름표가
@@ -339,16 +365,20 @@ function _buildObjectMarker(word) {
   //   이름표는 읽기용이므로 조준 대상에서 제외 — 집는 것은 몸통·바닥 디스크뿐.
   label.raycast = function () {};
   group.add(label);
-  return { group, body, disc, label, word };
+  return { group, body, disc, label, word, _rep: !!rep };
 }
 
 function _disposeObjectMarker(m) {
   if (!m) return;
-  if (m.body) { m.body.geometry.dispose(); m.body.material.dispose(); }
-  if (m.disc) { m.disc.geometry.dispose(); m.disc.material.dispose(); }
-  if (m.label) {
-    if (m.label.material.map) m.label.material.map.dispose();
-    m.label.material.dispose();
+  // 260731: ring 등 파생 mesh까지 — group 순회로 일괄 dispose (개별 ref 누락 방지)
+  if (m.group) {
+    m.group.traverse(o => {
+      if (o.geometry && o.geometry.dispose) o.geometry.dispose();
+      if (o.material) {
+        if (o.material.map && o.material.map.dispose) o.material.map.dispose();
+        if (o.material.dispose) o.material.dispose();
+      }
+    });
   }
 }
 
@@ -375,11 +405,14 @@ function renderObjectMarkers() {
     state.objectsGroup.remove(m.group);
     _disposeObjectMarker(m);
   }
+  const reps = _repAnchors();
   list.forEach((a, i) => {
+    const isRep = reps.indexOf(a.word) !== -1;
     let m = state.objectMarkers[i];
-    if (!m || m.word !== a.word) {
+    // 260731: 대표 여부가 바뀌면 마커를 새로 만든다 (이름표 텍스처·링이 빌드 시점 고정이라)
+    if (!m || m.word !== a.word || m._rep !== isRep) {
       if (m) { state.objectsGroup.remove(m.group); _disposeObjectMarker(m); }
-      m = _buildObjectMarker(a.word);
+      m = _buildObjectMarker(a.word, isRep);
       state.objectsGroup.add(m.group);
       state.objectMarkers[i] = m;
     }
@@ -387,13 +420,82 @@ function renderObjectMarkers() {
     m.group.position.set(a.x, wy, a.z);
     m.group.rotation.y = a.rotY || 0;
     m.group.userData._objIdx = i;
-    const col = a.pinned ? OBJ_PINNED_COLOR : OBJ_COLOR;
+    // 260731: 대표 > 작가 지정 > 자동 순으로 색 우선
+    const col = isRep ? OBJ_REP_COLOR : (a.pinned ? OBJ_PINNED_COLOR : OBJ_COLOR);
     m.body.material.color.setHex(col);
     m.body.material.emissive.setHex(col);
-    m.body.material.emissiveIntensity = a.pinned ? 0.5 : 0.22;
+    m.body.material.emissiveIntensity = isRep ? 0.6 : (a.pinned ? 0.5 : 0.22);
     m.disc.material.color.setHex(col);
-    m.disc.material.opacity = a.pinned ? 0.3 : 0.18;
+    m.disc.material.opacity = isRep ? 0.35 : (a.pinned ? 0.3 : 0.18);
   });
+}
+
+// ─── 출구문 마커 (260730) ─────────────────────────────────
+// 사물과 같은 조작: 끌면 memories.meta.door_pos 저장, 두 번 클릭이면 자동 자리 복귀.
+// 자동 자리 = 씬 무리의 반대편 (공용 계산기 resolveDoorPos).
+const DOOR_COLOR = 0x8a7a65;
+const DOOR_PINNED_COLOR = 0xd8c49a;
+
+function _buildDoorMarker() {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: DOOR_COLOR, emissive: DOOR_COLOR, emissiveIntensity: 0.3,
+    roughness: 0.85, metalness: 0.05, transparent: true, opacity: 0.9,
+  });
+  // 문틀 — 기둥 둘 + 인방 (플레이의 대역 문과 같은 실루엣, 3.2m 를 무대 축척에 맞춰 확대)
+  const S = 2.2;
+  const pillarGeo = new THREE.BoxGeometry(0.35 * S, 3.2 * S, 0.35 * S);
+  const pL = new THREE.Mesh(pillarGeo, mat);
+  pL.position.set(-0.7 * S, 1.6 * S, 0);
+  const pR = new THREE.Mesh(pillarGeo, mat);
+  pR.position.set(0.7 * S, 1.6 * S, 0);
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(1.75 * S, 0.35 * S, 0.35 * S), mat);
+  lintel.position.set(0, 3.3 * S, 0);
+  group.add(pL); group.add(pR); group.add(lintel);
+  const discGeo = new THREE.CircleGeometry(2.6, 22);
+  discGeo.rotateX(-Math.PI / 2);
+  const disc = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({
+    color: DOOR_COLOR, transparent: true, opacity: 0.22,
+    side: THREE.DoubleSide, depthWrite: false,
+  }));
+  disc.position.y = 0.05;
+  group.add(disc);
+  const label = _makeLabelSprite('출구', DOOR_PINNED_COLOR);
+  label.position.y = 3.9 * S;
+  label.scale.set(9, 9, 1);
+  label.raycast = function () {};      // 이름표가 조준을 가로채지 않게 (사물과 같은 규약)
+  group.add(label);
+  return { group, parts: [pL, pR, lintel], disc, label, mat };
+}
+
+function renderDoorMarker() {
+  if (!state.scene || !state.doorGroup) return;
+  const OA = window.TemObjectAnchors;
+  if (!OA || typeof OA.resolveDoorPos !== 'function') return;
+  const total = state.scenes.length;
+  const items = state.scenes.map(sc => {
+    const p = getStagePosition(sc, total);
+    return p ? { wx: p.x, wz: p.z } : null;
+  }).filter(Boolean);
+  const d = OA.resolveDoorPos(items, state.memoryMeta || {});
+  state.doorAnchor = d;
+  if (!state.doorMarker) {
+    state.doorMarker = _buildDoorMarker();
+    state.doorGroup.add(state.doorMarker.group);
+  }
+  const m = state.doorMarker;
+  const wy = _terrainHeightAt(d.x, d.z);
+  m.group.position.set(d.x, wy, d.z);
+  // 문이 씬 무리를 마주 보게 — 플레이와 같은 규칙
+  if (Math.abs(d.faceX - d.x) > 0.01 || Math.abs(d.faceZ - d.z) > 0.01) {
+    m.group.lookAt(d.faceX, wy, d.faceZ);
+  }
+  m.group.userData._doorMarker = true;
+  const col = d.source === 'manual' ? DOOR_PINNED_COLOR : DOOR_COLOR;
+  m.mat.color.setHex(col);
+  m.mat.emissive.setHex(col);
+  m.mat.emissiveIntensity = d.source === 'manual' ? 0.5 : 0.28;
+  m.disc.material.color.setHex(col);
 }
 
 // ─── 시뮬 highlight 판정 (v1 _simHighlight 로직 동일) ─────
@@ -606,6 +708,7 @@ function render() {
   renderPins();
   renderGhostMarkers();
   renderObjectMarkers();   // 260730 사물 앵커 — 핀 자리에 의존하므로 핀 다음
+  renderDoorMarker();      // 260730 출구문 — 씬 무리 중심에 의존
   renderThreads();
   renderEdges();
   _updateStatus();
@@ -729,6 +832,10 @@ function _initScene() {
   state.objectsGroup = new THREE.Group();   // 260730 사물 앵커
   state.objectsGroup.name = 'tvStageObjects';
   scene.add(state.objectsGroup);
+
+  state.doorGroup = new THREE.Group();      // 260730 출구문
+  state.doorGroup.name = 'tvStageDoor';
+  scene.add(state.doorGroup);
 
   state.raycaster = new THREE.Raycaster();
   state.mouseNDC = new THREE.Vector2();
@@ -920,6 +1027,14 @@ function _pickTerrain(evt) {
   return hits[0].point.clone();
 }
 
+// 출구문 마커 raycast → true/false
+function _pickDoorMarker(evt) {
+  if (!state.raycaster || !state.doorGroup || !state.doorMarker) return false;
+  _setNDC(evt);
+  state.raycaster.setFromCamera(state.mouseNDC, state.camera);
+  return state.raycaster.intersectObjects(state.doorGroup.children, true).length > 0;
+}
+
 // 사물 마커 raycast → objectAnchors 인덱스 (없으면 -1)
 function _pickObjectMarker(evt) {
   if (!state.raycaster || !state.objectsGroup) return -1;
@@ -960,12 +1075,15 @@ function _bindPointerEvents() {
     state.drag.sceneId = null;
     state.drag.ghostIdx = -1;
     state.drag.objIdx = -1;
+    state.drag.door = false;
     if (picked) {
       state.drag.sceneId = picked.sceneId;
     } else {
       const oi = _pickObjectMarker(e);
       if (oi >= 0) {
         state.drag.objIdx = oi;
+      } else if (_pickDoorMarker(e)) {
+        state.drag.door = true;
       } else {
         const gi = _pickGhostMarker(e);
         if (gi < 0) return;
@@ -984,12 +1102,17 @@ function _bindPointerEvents() {
   });
 
   state.canvas.addEventListener('pointermove', (e) => {
-    const dragging = (state.drag.sceneId != null) || (state.drag.ghostIdx >= 0) || (state.drag.objIdx >= 0);
+    const dragging = (state.drag.sceneId != null) || (state.drag.ghostIdx >= 0)
+      || (state.drag.objIdx >= 0) || state.drag.door;
     if (!dragging || e.pointerId !== state.drag.pointerId) return;
     const hit = _pickTerrain(e);
     if (!hit) return;
     const c = clampToTerrain(hit.x, hit.z);
-    if (state.drag.objIdx >= 0) {
+    if (state.drag.door) {
+      // 출구문 — memories.meta.door_pos. 로컬 meta 에 먼저 써야 다음 render 가 읽는다.
+      if (!state.memoryMeta) state.memoryMeta = {};
+      state.memoryMeta.door_pos = { x: c.x, z: c.z };
+    } else if (state.drag.objIdx >= 0) {
       // 사물 — scenes.meta.object_pos[단어]. 로컬 meta 에 먼저 써야 다음 render 에서
       // 공용 계산기가 이 좌표를 읽는다 (안 그러면 손을 놓기 전에 제자리로 튄다).
       const a = state.objectAnchors[state.drag.objIdx];
@@ -1020,7 +1143,8 @@ function _bindPointerEvents() {
     const wasScene = state.drag.sceneId != null;
     const wasGhost = state.drag.ghostIdx >= 0;
     const wasObj = state.drag.objIdx >= 0;
-    if (!wasScene && !wasGhost && !wasObj) return;
+    const wasDoor = state.drag.door;
+    if (!wasScene && !wasGhost && !wasObj && !wasDoor) return;
     if (e && e.pointerId !== state.drag.pointerId) return;
     const sceneId = state.drag.sceneId;
     const ghostIdx = state.drag.ghostIdx;
@@ -1029,16 +1153,24 @@ function _bindPointerEvents() {
     state.drag.sceneId = null;
     state.drag.ghostIdx = -1;
     state.drag.objIdx = -1;
+    state.drag.door = false;
     state.drag.moved = false;
     state.drag.pointerId = null;
     if (state.controls) state.controls.enabled = true;
     if (e && state.canvas.hasPointerCapture && state.canvas.hasPointerCapture(e.pointerId)) {
       try { state.canvas.releasePointerCapture(e.pointerId); } catch (_) {}
     }
+    if (wasDoor) {
+      if (moved) persistDoorPos();
+      return;
+    }
     if (wasObj) {
       const a = state.objectAnchors[objIdx];
       if (moved) {
         if (a && a.scene) persistObjectPos(a.scene, a.word);
+      } else if (a && e && e.altKey) {
+        // 260731: Alt+클릭 = 대표 앵커 토글 — "이 기억의 얼굴" 지정 (최대 3개)
+        toggleRepAnchor(a.word);
       } else if (a && a.sceneId && typeof state.onSceneClick === 'function') {
         // 260730: 사물을 한 번 클릭 = 그 사물이 속한 씬 편집 열기.
         //   사물 태그·문장 지정 칸으로 가는 통로 (핀을 따로 찾을 필요 없게).
@@ -1071,8 +1203,19 @@ function _bindPointerEvents() {
   state.canvas.addEventListener('pointerup', endDrag);
   state.canvas.addEventListener('pointercancel', endDrag);
 
-  // 사물 마커 두 번 클릭 = 작가 지정 취소 → 자동 자리로 복귀 (260730)
+  // 사물·출구문 두 번 클릭 = 작가 지정 취소 → 자동 자리로 복귀 (260730)
   state.canvas.addEventListener('dblclick', (e) => {
+    if (_pickDoorMarker(e)) {
+      if (state.memoryMeta && state.memoryMeta.door_pos) {
+        delete state.memoryMeta.door_pos;
+        render();
+        persistDoorPos();
+      } else {
+        console.log('[Admin/stage v2] 두 번 클릭 — 출구문은 이미 자동 자리');
+      }
+      e.preventDefault();
+      return;
+    }
     const oi = _pickObjectMarker(e);
     if (oi < 0) { console.log('[Admin/stage v2] 두 번 클릭 — 사물 마커 아님 (무시)'); return; }
     const a = state.objectAnchors[oi];
@@ -1087,6 +1230,34 @@ function _bindPointerEvents() {
     persistObjectPos(sc, a.word);
     e.preventDefault();
   });
+}
+
+// 출구문 좌표 저장 — memories.meta.door_pos. 없으면 키 삭제(자동 자리 복귀).
+// meta 를 통째로 덮으면 Edge Function 이 같은 시각에 쓴 object_models 를 지울 수 있어
+// **최신 meta 를 다시 읽어 그 위에 병합**한다 (사물 자동 생성과 같은 그릇을 쓰므로).
+async function persistDoorPos() {
+  const memoryId = state.terrain.memoryId;
+  if (!memoryId) { console.warn('[door_pos] memoryId 없음 — 저장 스킵'); return; }
+  try {
+    const sb = await getSupabaseClient();
+    if (!sb) return;
+    const { data: fresh, error: readErr } = await sb.from('memories')
+      .select('meta').eq('id', memoryId).maybeSingle();
+    if (readErr) { console.error('[door_pos] 읽기 실패', readErr); return; }
+    const newMeta = Object.assign({}, (fresh && fresh.meta) || {});
+    const dp = state.memoryMeta && state.memoryMeta.door_pos;
+    if (dp && Number.isFinite(+dp.x) && Number.isFinite(+dp.z)) {
+      newMeta.door_pos = { x: +(+dp.x).toFixed(3), z: +(+dp.z).toFixed(3) };
+    } else {
+      delete newMeta.door_pos;
+    }
+    const { error } = await sb.from('memories').update({ meta: newMeta }).eq('id', memoryId);
+    if (error) { console.error('[door_pos] save failed', error); return; }
+    state.memoryMeta = newMeta;
+    console.log('[Admin/stage v2] door_pos saved', newMeta.door_pos || '(자동 복귀)');
+  } catch (e) {
+    console.error('[door_pos] error', e);
+  }
 }
 
 // 사물 좌표 저장 — 해당 씬의 object_pos 전체를 통째로 UPDATE.
@@ -1118,6 +1289,53 @@ async function persistObjectPos(scene, word) {
       newMeta.object_pos ? newMeta.object_pos[word] || '(자동 복귀)' : '(자동 복귀)');
   } catch (e) {
     console.error('[object_pos] error', e);
+  }
+}
+
+// ─── 260731 대표 앵커 (rep_anchors) ─────────────────────────
+// Alt+클릭 토글 → memories.meta.rep_anchors 저장. 최대 3개.
+// 관객 흐름(261차 연출)의 연료: 문에서 나온 관객이 처음 보는 사물 = 이 목록.
+function toggleRepAnchor(word) {
+  if (!word) return;
+  if (!state.memoryMeta) state.memoryMeta = {};
+  const cur = _repAnchors().slice();
+  const at = cur.indexOf(word);
+  if (at !== -1) {
+    cur.splice(at, 1);
+    console.log('[Admin/stage v2] 대표 앵커 해제:', word, '→', cur.join(', ') || '(없음)');
+  } else {
+    if (cur.length >= 3) {
+      console.warn('[Admin/stage v2] 대표 앵커는 최대 3개 — 먼저 하나를 해제하세요:', cur.join(', '));
+      return;
+    }
+    cur.push(word);
+    console.log('[Admin/stage v2] 대표 앵커 지정:', word, '→', cur.join(', '));
+  }
+  state.memoryMeta.rep_anchors = cur;
+  render();
+  persistRepAnchors(cur);
+}
+
+// 저장은 fetch→merge→update — meta 를 통째로 덮으면 Edge Function 이 동시에 쓰는
+// object_models/object_model_jobs 를 지울 수 있어서, 최신 meta 를 다시 읽고 얹는다.
+async function persistRepAnchors(list) {
+  const memoryId = state.terrain.memoryId;
+  if (!memoryId) { console.warn('[rep_anchors] memoryId 없음 — 저장 스킵'); return; }
+  try {
+    const sb = await getSupabaseClient();
+    if (!sb) return;
+    const { data: fresh, error: readErr } = await sb.from('memories')
+      .select('meta').eq('id', memoryId).maybeSingle();
+    if (readErr) { console.error('[rep_anchors] meta 재조회 실패', readErr); return; }
+    const newMeta = Object.assign({}, (fresh && fresh.meta) || {});
+    if (list && list.length) newMeta.rep_anchors = list.slice(0, 3);
+    else delete newMeta.rep_anchors;
+    const { error } = await sb.from('memories').update({ meta: newMeta }).eq('id', memoryId);
+    if (error) { console.error('[rep_anchors] save failed', error); return; }
+    state.memoryMeta = newMeta;
+    console.log('[Admin/stage v2] rep_anchors saved:', newMeta.rep_anchors || '(없음)');
+  } catch (e) {
+    console.error('[rep_anchors] error', e);
   }
 }
 
@@ -1200,6 +1418,8 @@ async function _fetchTerrainP(memoryId) {
   ]);
   const memRow = memRes && memRes.data;
   if (!memRow) return null;
+  // 260731 대표 앵커 — 기억 meta 를 잡아둔다 (rep_anchors 토글·표시용)
+  state.memoryMeta = memRow.meta || {};
   const sceneRows = (scnRes && scnRes.data) || [];
   const plays = (playRes && playRes.data) || [];
   const playsByMem = {}; playsByMem[memoryId] = plays;

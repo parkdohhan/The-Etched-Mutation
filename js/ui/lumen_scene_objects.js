@@ -60,6 +60,9 @@
     collapseKeepRatio: 0.55,     // 붕괴 시 잔해로 남는 블록 비율 ("무너진 기억"도 기억)
     collapseMs: 1400,
     collapsedDim: 0.55,          // 잔해 밝기 배율
+    // 260731 회상 연출 — 단어 필터. () => null(전부) | ['팬티',...] (그 단어만 세움).
+    //   play-test 가 "회상 전엔 대표 앵커만" 게이트로 쓴다. rebuild 시점마다 다시 묻는다.
+    wordFilter: null,
   };
 
   // ─── 결정적 PRNG (lumen_recalled_anchors / mannequins 와 동일 문법) ───
@@ -419,6 +422,23 @@
         maxPerScene: opts.maxPerScene,
         segT: opts.segT, perpMin: opts.perpMin, perpMax: opts.perpMax,
       });
+      // 260731 회상 연출 — 필터가 목록을 주면 그 단어만, 단어당 한 자리(첫 등장 씬 자리)만
+      //   세운다 (같은 단어가 씬마다 반복 배치되면 "사물 1~3개" 연출이 깨짐).
+      //   자리는 전체 계산 그대로 — 나중에 전부 등장해도 대표 앵커가 안 움직인다.
+      if (typeof opts.wordFilter === 'function') {
+        try {
+          var fw = opts.wordFilter();
+          if (Array.isArray(fw)) {
+            var takenWord = {};
+            anchors = anchors.filter(function (a) {
+              if (fw.indexOf(a.word) === -1) return false;
+              if (takenWord[a.word]) return false;
+              takenWord[a.word] = true;
+              return true;
+            });
+          }
+        } catch (_) {}
+      }
       if (!anchors.length) return;
 
       // getter 가 던져도 사물 배치 전체가 죽으면 안 된다 — 실패 시 블록 대역으로 전원 진행
@@ -777,6 +797,10 @@
         return out;
       },
       isAiming: function () { return !!_aimedObj; },
+      // 260731 회상 연출 — 지금 세워진 사물의 단어·자리. play-test 근접 판정용 (읽기 전용).
+      anchors: function () {
+        return _objects.map(function (o) { return { word: o.word, x: o.cx, z: o.cz }; });
+      },
       // §3.3 룩 튜닝 — 조형만 다시 세운다 (배치 좌표는 결정적이라 그대로)
       setLook: function (lookName, paletteName) {
         if (lookName && LOOKS[lookName]) opts.look = lookName;

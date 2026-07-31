@@ -104,7 +104,11 @@
     driftLeanLerp: 0.08,                      // 매 프레임 기욺 LERP (갑자기 안 꺾이게). 0=즉시
     // 그 핀이 물들었는지 묻는 콜백. W(play-test.html)가 runtime.__quiltDemo.getGhostDrift 를 넘김.
     //   기대 반환: { strength, input, firedAt } | null  (T0 계약). 없으면 기욺 항상 0.
-    getGhostDrift: null                       // (pin) => { strength } | null
+    getGhostDrift: null,                      // (pin) => { strength } | null
+    // 260731 회상 연출 — 스폰 게이트. () => false 면 rebuild 가 유령을 세우지 않는다
+    //   (핀 가림은 그대로). 관객이 대표 앵커를 보고 "기억나?"에 답하면 play-test 가
+    //   rebuild() 를 다시 불러 유령이 그때 나타난다. 미설정 = 항상 열림(기존 동작).
+    spawnGate: null
   };
 
   // ─── 결정적 PRNG: FNV-1a + mulberry32 (lumen_return_speech 와 동일) ───
@@ -646,6 +650,18 @@
       _clear();
       if (!_source || typeof opts.getScenePins !== 'function') return;
       var pins = opts.getScenePins() || [];
+      // 260731 회상 연출 — 게이트 닫힘이면 유령 없이 (핀 가림은 아래에서 그대로 함).
+      //   관객이 대표 앵커를 보고 "기억나?"에 답하면 play-test 가 rebuild() 를 다시 불러
+      //   유령이 그때 나타난다. 게이트 미설정 = 항상 열림(기존 동작).
+      var _gateOpen = true;
+      if (typeof opts.spawnGate === 'function') {
+        try { _gateOpen = !!opts.spawnGate(); } catch (_) {}
+      }
+      if (!_gateOpen) {
+        if (opts.hidePinVisuals) _hidePinVisuals(pins);
+        console.log('[lumen-scene-mannequins] spawn gate 닫힘 — 유령 대기 (회상 전)');
+        return;
+      }
       pins.forEach(function (p, i) {
         if (opts.accessibleOnly && !p.accessible) return;
         var g = _spawnAt(p, i);

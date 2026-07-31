@@ -411,6 +411,11 @@
                     <!-- 2026-05-16 — 잔상 유령 추가. 3D 무대에서 회색 마커로 떠서 드래그 편집. -->
                     <button class="tv-toggle" id="tvAddGhostBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(200,200,208,0.1);border-color:rgba(200,200,208,0.35);" title="잔상 유령 추가 — memories.ghost_condensation_points. 3D 무대에서 밝은 회색 마커로 드래그.">+ 잔상 유령</button>
                 </div>
+                <!-- 260730 사물 3D 모델 — 서버(generate-object-model)에 주문/수확을 시킨다.
+                     RECORD 가 자동으로 부르지만, 작가가 즉시 돌리고 결과를 보고 싶을 때. -->
+                <button class="tv-toggle" id="tvObjectModelsBtn" style="width:100%;padding:6px;font-size:0.72rem;margin-bottom:4px;background:rgba(185,154,107,0.12);border-color:rgba(185,154,107,0.4);"
+                        title="이 기억의 사물 단어에 3D 모델을 주문하고, 완성된 것을 거둬온다. 이미 있는 건 건너뛴다(추가 비용 0).">사물 3D 모델 뽑기</button>
+                <div id="tvObjectModelsStatus" style="font-size:0.66rem;color:#7c7466;line-height:1.5;margin-bottom:6px;min-height:1em;"></div>
                 <!-- 큐레이터 시뮬 (2026-07-27): 실전과 같은 함수로 접근(불빛) 이동을 보는 play-test 작가 모드 -->
                 <button class="tv-toggle" id="tvCuratorSimBtn" style="width:100%;padding:6px;font-size:0.72rem;margin-bottom:6px;" title="실전 접근 기하 그대로 — 가상 감정을 한 걸음씩 밟으며 열림 뭉텅이 이동 관찰"
                         onclick="(function(){var s=document.getElementById('tvMemorySelect');var id=s&&s.value;if(!id){alert('기억을 먼저 선택하세요');return;}window.open('play-test.html?memory='+id+'&variant_strata=1&curator=1','_blank');})()">실전 시뮬 열기 (불빛 관찰)</button>
@@ -685,13 +690,13 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <!-- 260730 검수 B안: dagre 로드 제거 — 유일 소비자였던 궤적 2D 그래프 렌더 은퇴 -->
     <script src="js/shared/tem_af_strata_terrain.js"></script>
-    <script src="js/shared/tem_object_anchors.js?v=260730a"></script><!-- 260730 사물 자리 계산 (플레이 공용) -->
+    <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (플레이 공용) -->
     <script src="js/shared/spatialAudio.js"></script>
     <script src="js/ui/strataView.js"></script>
     <script src="js/ui/lumen_admin_scene_terrain_preview.js"></script>
     <script type="module" src="js/admin.js?v=260730e"></script>
     <script type="module" src="js/admin/ghost_variants_editor.js?v=260730e"></script>
-    <script type="module" src="js/admin-trajectory.js?v=260730f"></script><!-- 260730f 사물 태그·문장 칸 -->
+    <script type="module" src="js/admin-trajectory.js?v=260731a"></script><!-- 260731a 대표 앵커 Alt+클릭 지정 -->
     <script src="js/contamination.js"></script>
 
     <script>
