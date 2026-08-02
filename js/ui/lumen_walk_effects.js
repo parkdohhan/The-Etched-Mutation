@@ -10,9 +10,12 @@
  * 제공 효과:
  *   1. Bob            — 보행 중 y-축 sin(진폭은 오염 depth 가산)
  *   2. Headsway       — 보행 중 yaw ±1° sin
- *   3. Breathing      — 정지 시 y-축 1cm, 주기 3~4초 sin
- *   4. Inertia        — 시각 x,z가 논리 위치를 가속 0.3s / 감속 0.2s feel 로 따라감 (지수 smoothing)
- *   5. Step sound     — bob sin 양→음 zero-cross 시 footstep_on_dirt.mp3 (3 segment 자동 분할) 재생.
+ *   3. Inertia        — 시각 x,z가 논리 위치를 가속 0.3s / 감속 0.2s feel 로 따라감 (지수 smoothing)
+ *   4. Step sound     — bob sin 양→음 zero-cross 시 footstep_on_dirt.mp3 (3 segment 자동 분할) 재생.
+ *
+ * 260731 폐기: Breathing (정지 중 y-축 1cm 호흡). 사용자 결정 — 자이로드롭 재발원.
+ *   정지 상태에서만 도는 효과라 render 가 한 프레임에 두 번 불릴 때(= wrap 이중 체인)
+ *   moving 판정에 안 걸리고 계속 누적돼 카메라가 크게 출렁였다. 걸음 흔들림은 유지.
  *
  * 스텝 사운드: sounds/footstep_on_dirt.mp3 한 파일에 3개 발자국이 무음 사이로 들어있음.
  *   AudioBuffer 로드 후 amplitude threshold 로 segment 경계 자동 detect → 매 스텝 1 segment 재생.
@@ -34,8 +37,7 @@
     bobDepthCap: 2.0,            // depth 폭주 방지 (최대 amp = bobAmp * cap)
     swayFreqHz: 0.6,             // yaw 진동은 bob 의 절반
     swayAmpRad: 0.01745,         // ±1° ≈ 0.01745 rad
-    breathFreqHz: 0.3,           // ~3.3초 주기
-    breathAmp: 0.01,             // 1 cm
+    // breathFreqHz / breathAmp — 260731 폐기 (호흡 연출 제거). 재도입 금지.
     inertiaTauAccel: 0.10,
     inertiaTauDecel: 0.07,
     moveSpeedThreshold: 0.3,
@@ -62,9 +64,18 @@
 
     var _bobPhase = 0;
     var _swayPhase = 0;
-    var _breathPhase = 0;
     var _prevBobSin = 0;
     var _tPrev = performance.now();
+
+    // ── 누적 방지 (260731) ───────────────────────────────────────────
+    // 이 모듈은 "_fpTick 이 매 프레임 카메라를 논리 baseline 으로 리셋한다"를 전제로
+    // 오프셋만 가산한다. 그 전제가 깨지는 프레임(render 가 한 프레임에 두 번 불리거나
+    // _fpTick 없이 render 만 도는 경로)에서는 우리가 쓴 값을 baseline 으로 다시 읽어
+    // 오프셋이 무한 누적된다 → 카메라 자이로드롭.
+    // 방어: 직전에 써넣은 값과 카메라 현재값이 같으면 그때의 baseline 을 되쓴다.
+    var _lastWrittenY = null, _lastBaseY = 0;
+    var _lastWrittenRotY = null, _lastBaseRotY = 0;
+    function _resetAccumGuard() { _lastWrittenY = null; _lastWrittenRotY = null; }
 
     // WebAudio: footstep_on_dirt.mp3 (3 발 segment) 로드 후 segment 자동 분할 → 매 스텝 1개 BufferSource 재생.
     var _audioCtx = null;
@@ -223,12 +234,13 @@
         _hasInit = false;
         _bobPhase = 0;
         _prevBobSin = 0;
+        _resetAccumGuard();
         return;
       }
 
       // 씬/대화 오버레이가 떠 있으면 _fpTick 이 freeze 상태로 카메라를 논리 위치에 고정한다
       // (tem_af_strata_terrain.js _fpTick 1215~1224). 이때 효과를 계속 얹으면 _fpTick reset 과
-      // 어긋나는 프레임에서 breath/bob y 오프셋이 누적 → 카메라가 위아래로 진동(자이로드롭).
+      // 어긋나는 프레임에서 bob y 오프셋이 누적 → 카메라가 위아래로 진동(자이로드롭).
       // _fpTick 과 동일 조건으로 freeze — 읽는 동안 카메라 완전 정지.
       var _sceneOpen = document.getElementById('sceneMode');
       if ((_sceneOpen && _sceneOpen.classList.contains('active')) ||
@@ -236,6 +248,7 @@
         _hasInit = false;
         _bobPhase = 0;
         _prevBobSin = 0;
+        _resetAccumGuard();
         return;
       }
 
@@ -247,6 +260,10 @@
       var lx = cam.position.x;
       var ly = cam.position.y;
       var lz = cam.position.z;
+
+      // 누적 가드 — _fpTick 이 y 를 리셋하지 않은 프레임이면(= 카메라 y 가 우리가 쓴 값 그대로)
+      // 그때의 baseline 을 되쓴다. 안 그러면 오프셋 위에 오프셋이 얹혀 카메라가 크게 출렁인다.
+      if (_lastWrittenY !== null && Math.abs(ly - _lastWrittenY) < 1e-9) ly = _lastBaseY;
 
       if (!_hasInit) {
         _lastPos.x = lx; _lastPos.z = lz;
@@ -291,13 +308,7 @@
         swayYaw = Math.sin(_swayPhase) * opts.swayAmpRad;
       }
 
-      // ── Breathing (idle) ──────────────────────────────────
-      var breathY = 0;
-      if (!moving) {
-        _breathPhase += opts.breathFreqHz * 2 * Math.PI * dt;
-        if (_breathPhase > Math.PI * 1e4) _breathPhase -= Math.PI * 1e4;
-        breathY = Math.sin(_breathPhase) * opts.breathAmp;
-      }
+      // ── Breathing — 260731 폐기 (정지 중 카메라 상하 이동 없음) ──
 
       // ── Step sound: bob sin +→- zero cross ──
       if (moving && _prevBobSin > 0 && bobSin <= 0) {
@@ -306,20 +317,43 @@
       _prevBobSin = bobSin;
 
       // ── 적용 (camera 가시 오프셋만 수정 — 다음 _fpTick이 reset) ──
+      var baseRotY = cam.rotation.y || 0;
+      if (_lastWrittenRotY !== null && Math.abs(baseRotY - _lastWrittenRotY) < 1e-9) baseRotY = _lastBaseRotY;
+
       cam.position.x = _visualPos.x;
       cam.position.z = _visualPos.z;
-      cam.position.y = ly + bobY + breathY;
-      cam.rotation.y = (cam.rotation.y || 0) + swayYaw;
+      cam.position.y = ly + bobY;
+      cam.rotation.y = baseRotY + swayYaw;
+
+      // 누적 가드 기록 — 다음 프레임에 "리셋됐는지" 판별하는 기준
+      _lastBaseY = ly;
+      _lastWrittenY = cam.position.y;
+      _lastBaseRotY = baseRotY;
+      _lastWrittenRotY = cam.rotation.y;
 
       _lastPos.x = lx;
       _lastPos.z = lz;
     }
 
-    var _origRender = renderer.render.bind(renderer);
-    renderer.render = function wrappedRender(scene, camera) {
-      try { _applyEffectsToCamera(camera); } catch (e) { /* 연출 실패가 render 막지 않게 */ }
-      return _origRender(scene, camera);
-    };
+    // 이중 wrap 차단 (260731) — FP 재진입으로 runtime 이 새로 생기면 __lumenWalkFx 가드가
+    // 안 걸려 같은 renderer 에 wrap 이 두 겹 쌓인다. 그러면 render 1회당 효과가 2회 적용돼
+    // 오프셋이 누적된다(자이로드롭 재발원). renderer 에 도장을 찍어 한 겹만 유지.
+    // wrap 은 한 겹만 만들고, 실제 호출 대상은 renderer 에 얹어 매 attach 마다 최신으로 갈아끼운다
+    // (겹만 막으면 재진입 후 걸음 연출이 옛 runtime 을 보고 죽는다).
+    renderer.__lumenWalkApply = _applyEffectsToCamera;
+    if (!renderer.__lumenWalkWrapped) {
+      renderer.__lumenWalkWrapped = true;
+      var _origRender = renderer.render.bind(renderer);
+      renderer.render = function wrappedRender(scene, camera) {
+        try {
+          var fn = renderer.__lumenWalkApply;
+          if (fn) fn(camera);
+        } catch (e) { /* 연출 실패가 render 막지 않게 */ }
+        return _origRender(scene, camera);
+      };
+    } else {
+      console.log('[lumen-walk] 기존 render wrap 재사용 — 효과 함수만 교체 (이중 부착 차단)');
+    }
 
     _ensureAudio();
 

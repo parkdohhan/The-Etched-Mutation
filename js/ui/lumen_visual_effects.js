@@ -153,6 +153,10 @@
     var _shakePulseStart = 0;      // 펄스 시작 시각 (선형 감쇠 분모)
     var _shakePulseUntil = 0;      // 펄스 종료 시각 (performance.now 기준)
     var _prevDriftVisActive = false;
+    // 누적 방지 (260731) — 직전에 써넣은 rotation 과 그때의 baseline.
+    // _fpTick 리셋이 건너뛴 프레임에서 떨림이 무한 누적되는 것을 차단한다.
+    var _lastShakeWritten = null;
+    var _lastShakeBase = { x: 0, y: 0, z: 0 };
 
     // intensity 0~1 → 짧은 burst. 진행 중 펄스보다 약하면 무시 (큰 결 어긋남이 작은 것에 안 덮이게).
     function applyDriftCameraShake(intensity, durationMs) {
@@ -194,7 +198,7 @@
         pulseAmp = _shakePulsePeak * ((_shakePulseUntil - now) / Math.max(1, _shakePulseUntil - _shakePulseStart));
       }
       var amp = ambAmp + pulseAmp;
-      if (amp <= 1e-6) return;
+      if (amp <= 1e-6) { _lastShakeWritten = null; return; }
 
       _shakePhase += opts.driftShakeFreqHz * 2 * Math.PI * dt;
       if (_shakePhase > Math.PI * 1e4) _shakePhase -= Math.PI * 1e4;
@@ -203,9 +207,21 @@
       var pitch = amp * (Math.sin(p) * 0.62 + Math.sin(p * 1.73 + 0.9) * 0.38);
       var roll  = amp * opts.driftShakeRollRatio * (Math.sin(p * 0.91 + 2.1) * 0.6 + Math.sin(p * 1.57 + 0.3) * 0.4);
       var yaw   = amp * opts.driftShakeYawRatio  * (Math.sin(p * 1.21 + 4.0) * 0.7 + Math.sin(p * 0.67 + 1.4) * 0.3);
-      cam.rotation.x = (cam.rotation.x || 0) + pitch;
-      cam.rotation.z = (cam.rotation.z || 0) + roll;
-      cam.rotation.y = (cam.rotation.y || 0) + yaw;
+
+      // 누적 가드 (260731) — _fpTick 이 rotation 을 리셋하지 않은 프레임이면(= 우리가 쓴 값 그대로)
+      // 그때의 baseline 을 되쓴다. 안 그러면 미세 떨림이 프레임마다 쌓여 화면이 크게 요동친다.
+      var bx = cam.rotation.x || 0, by = cam.rotation.y || 0, bz = cam.rotation.z || 0;
+      if (_lastShakeWritten) {
+        if (Math.abs(bx - _lastShakeWritten.x) < 1e-9) bx = _lastShakeBase.x;
+        if (Math.abs(by - _lastShakeWritten.y) < 1e-9) by = _lastShakeBase.y;
+        if (Math.abs(bz - _lastShakeWritten.z) < 1e-9) bz = _lastShakeBase.z;
+      }
+      _lastShakeBase = { x: bx, y: by, z: bz };
+
+      cam.rotation.x = bx + pitch;
+      cam.rotation.z = bz + roll;
+      cam.rotation.y = by + yaw;
+      _lastShakeWritten = { x: cam.rotation.x, y: cam.rotation.y, z: cam.rotation.z };
     }
 
     function _applyFrame(cam) {
@@ -218,6 +234,7 @@
         _shakePhase = 0;
         _shakeTPrev = _now();
         _prevDriftVisActive = false;
+        _lastShakeWritten = null;
         return;
       }
       var depth = _contDepth();
@@ -252,17 +269,30 @@
       if (_ovOpen) {
         _shakePhase = 0;
         _shakeTPrev = _now();
+        _lastShakeWritten = null;
         return;
       }
       _applyDriftShake(cam, depth);
     }
 
     // renderer.render wrap (walk_effects 가 이미 wrap 했으면 그 위에 체인됨 → 순서 의존 없음)
-    var _origRender = renderer.render.bind(renderer);
-    renderer.render = function lumenVisualRender(sceneArg, cameraArg) {
-      try { _applyFrame(cameraArg); } catch (e) { /* 연출 실패가 render 막지 않게 */ }
-      return _origRender(sceneArg, cameraArg);
-    };
+    // 260731: wrap 은 한 겹만. FP 재진입으로 runtime 이 새로 생기면 __lumenVisualFx 가드가 안 걸려
+    // 같은 renderer 에 겹이 쌓이고, render 1회당 떨림이 2회 얹혀 누적된다(자이로드롭 재발원).
+    // 호출 대상만 매 attach 마다 최신으로 교체한다.
+    renderer.__lumenVisualApply = _applyFrame;
+    if (!renderer.__lumenVisualWrapped) {
+      renderer.__lumenVisualWrapped = true;
+      var _origRender = renderer.render.bind(renderer);
+      renderer.render = function lumenVisualRender(sceneArg, cameraArg) {
+        try {
+          var fn = renderer.__lumenVisualApply;
+          if (fn) fn(cameraArg);
+        } catch (e) { /* 연출 실패가 render 막지 않게 */ }
+        return _origRender(sceneArg, cameraArg);
+      };
+    } else {
+      console.log('[lumen-visual] 기존 render wrap 재사용 — 효과 함수만 교체 (이중 부착 차단)');
+    }
 
     var api = {
       _runtime: runtime,
