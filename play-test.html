@@ -8573,6 +8573,77 @@
       };
     }
 
+    // ─── 260802 알파1: 미니맵 안개 층 ─────────────────────────────
+    // 본 세계 안개(revealAt)와 같은 식을 64x64 격자로 샘플 → 안 걷힌 곳을 덮는다.
+    // 회랑이 파이거나(open/carve) 길이 되덮일 때(close) 미니맵에서도 실시간으로 보인다.
+    var _miniFogCanvas = null, _miniFogCtx = null, _miniFogData = null;
+    var MINI_FOG_G = 64;
+    function _drawMiniFog() {
+      var fog = window._temSpatialFog;
+      if (!fog || typeof fog.revealAt !== 'function') return;
+      if (fog.isLifted && fog.isLifted()) return;   // 전부 걷힘 — 덮개 없음
+      if (!_miniFogCanvas) {
+        _miniFogCanvas = document.createElement('canvas');
+        _miniFogCanvas.width = MINI_FOG_G; _miniFogCanvas.height = MINI_FOG_G;
+        _miniFogCtx = _miniFogCanvas.getContext('2d');
+        _miniFogData = _miniFogCtx.createImageData(MINI_FOG_G, MINI_FOG_G);
+      }
+      var d = _miniFogData.data;
+      for (var iz = 0; iz < MINI_FOG_G; iz++) {
+        for (var ix = 0; ix < MINI_FOG_G; ix++) {
+          var wx = ((ix + 0.5) / MINI_FOG_G - 0.5) * SZ_TERRAIN;
+          var wz = ((iz + 0.5) / MINI_FOG_G - 0.5) * SZ_TERRAIN;
+          var rv = fog.revealAt(wx, wz);
+          var o = (iz * MINI_FOG_G + ix) * 4;
+          d[o] = 16; d[o + 1] = 15; d[o + 2] = 24;          // 안개색 (지형 fog 톤)
+          d[o + 3] = Math.round((1 - rv) * 216);            // 최대 ~85% 덮임
+        }
+      }
+      _miniFogCtx.putImageData(_miniFogData, 0, 0);
+      // 저해상도 → 캔버스 확대 (smoothing 이 경계를 부드럽게)
+      _miniCtx.drawImage(_miniFogCanvas, 0, 0, _miniCanvas.width, _miniCanvas.height);
+    }
+
+    // ─── 260802 알파1: 미니맵 사물 빛점 ───────────────────────────
+    // 세워진 사물(열람 대상)마다 금색 숨쉬는 점 + 새로 생긴 직후 2.4초 파문 링.
+    // 안개 속 사물은 본 세계처럼 미니맵에도 안 찍는다 (원칙 5).
+    var _miniObjSeen = {};   // key(word@좌표) → 처음 목격 시각 (파문 링용)
+    function _drawMiniObjects() {
+      var rt = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+      var so = rt && rt.__lumenSceneObjects;
+      if (!so || typeof so.anchors !== 'function') return;
+      var list = null;
+      try { list = so.anchors() || []; } catch (_) { return; }
+      var fog = window._temSpatialFog;
+      var now = performance.now();
+      for (var i = 0; i < list.length; i++) {
+        var a = list[i];
+        if (!a || typeof a.x !== 'number' || typeof a.z !== 'number') continue;
+        var key = (a.word || '?') + '@' + Math.round(a.x) + ',' + Math.round(a.z);
+        if (!_miniObjSeen[key]) _miniObjSeen[key] = now;
+        if (fog && typeof fog.revealAt === 'function' && fog.revealAt(a.x, a.z) < 0.35) continue;
+        var mp = _worldToMini(a.x, a.z);
+        var pulse = 0.5 + 0.5 * Math.sin(now * 0.004 + i * 1.7);
+        _miniCtx.save();
+        _miniCtx.shadowColor = 'rgba(232,206,150,0.9)';
+        _miniCtx.shadowBlur = 6 + pulse * 7;
+        _miniCtx.beginPath();
+        _miniCtx.arc(mp.x, mp.y, 2.8 + pulse * 1.2, 0, Math.PI * 2);
+        _miniCtx.fillStyle = 'rgba(232, 206, 150, 0.95)';
+        _miniCtx.fill();
+        _miniCtx.restore();
+        var age = now - _miniObjSeen[key];
+        if (age < 2400) {                                    // 갓 생긴 사물 — 퍼지는 파문
+          var k = age / 2400;
+          _miniCtx.beginPath();
+          _miniCtx.arc(mp.x, mp.y, 4 + k * 16, 0, Math.PI * 2);
+          _miniCtx.strokeStyle = 'rgba(232,206,150,' + (0.8 * (1 - k)).toFixed(3) + ')';
+          _miniCtx.lineWidth = 1.5;
+          _miniCtx.stroke();
+        }
+      }
+    }
+
     function _updateMinimap() {
       if (!_miniCtx || !_fpPlayActive) return;
       var W = _miniCanvas.width, H = _miniCanvas.height;
@@ -8584,6 +8655,9 @@
         _miniCtx.drawImage(_miniContourImg, 0, 0, W, H);
         _miniCtx.globalAlpha = 1;
       }
+
+      // 260802 알파1: 안개 층 — 등고선 위, 핀·사물·플레이어 아래
+      _drawMiniFog();
 
       // Draw pins
       // 작업 4 scope change (2026-04-22): Lumen 모드(circular terrain)에서는 씬 핀을 미니맵에서
@@ -8628,6 +8702,9 @@
           _miniCtx.stroke();
         });
       }
+
+      // 260802 알파1: 사물 빛점 (생긴 자리 + 새로 생김 파문)
+      _drawMiniObjects();
 
       // 작업 11: 출구 고정 표시 (들어온 문 위치, 세션 내내 표시)
       var exitMp = _worldToMini(EXIT_DOOR_POS.x, EXIT_DOOR_POS.z);
