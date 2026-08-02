@@ -323,20 +323,25 @@
       var rvFrom = revealAt(fx, fz);
       if (rvTo > rvFrom + 1e-4) return null;                // 맑은 쪽으로 = 항상 허용 (갇힘 방지)
 
-      // ── 갇힘 면제 (260728 A) ────────────────────────────────────────
+      // ── 갇힘 면제 (260728 A → 260802 알파1 봉합) ────────────────────
       // 벽의 목적은 "맑은 자리에서 안개로 못 들어가게"다. **이미 안개 속에 서 있는**
       // 플레이어를 세우는 것은 목적이 아니다.
       // 사고 경로: close() 가 발밑 걷힘까지 되덮으면 사방이 균일한 안개가 되고 —
       //   rvTo≈rvFrom (맑은 쪽 없음) + 기울기≈0 (미끄러질 방향 없음) → 전 방향 정지.
       //   "맑은 쪽 걸음이 탈출을 보장한다"던 전제가 균일 안개에서 성립하지 않았다.
-      // 정상 플레이는 항상 걷힌 자리에 서 있으므로 이 면제는 발동하지 않는다.
+      // 260802 알파1: 예전 면제(전 방향 자유)는 관통로였다 — 슬라이드로 반 발짝만
+      //   벽 밑에 들어가면 그때부터 안개 전체가 무사통과. 지금은 "같거나 맑아지는
+      //   걸음"만 허용 — 균일 안개에선 여전히 움직여 탈출할 수 있고, 더 깊은
+      //   안개로 파고드는 걸음(걷힘이 실제로 떨어지는 방향)은 막는다.
       if (rvFrom < BLOCK) {
         if (!_trappedSince) {
           _trappedSince = _now();
           console.warn('[spatial-fog] 갇힘 감지 — 발밑 걷힘 ' + rvFrom.toFixed(3) +
-            ' < ' + BLOCK + '. 벽 규칙 면제 (탈출 허용). 원인: close 가 발밑을 덮었거나 회랑 시드 누락.');
+            ' < ' + BLOCK + '. 탈출 방향만 허용 (더 깊은 안개는 차단). 원인: close 가 발밑을 덮었거나 회랑 시드 누락.');
         }
-        return null;                                        // 안개 속 → 자유 이동으로 빠져나갈 수 있게
+        if (rvTo >= rvFrom - 1e-4) return null;             // 같거나 맑은 쪽 → 탈출 가능
+        _notifyWallTouch();
+        return { x: fx, z: fz };                            // 더 깊은 안개 → 정지
       }
       if (_trappedSince) _trappedSince = 0;
 
@@ -352,7 +357,10 @@
       if (into < 0) { mx -= nx * into; mz -= nz * into; }    // 벽 성분 제거 → 벽면 따라 미끄러짐
       var sx = fx + mx, sz = fz + mz;
       _notifyWallTouch();
-      if (revealAt(sx, sz) < BLOCK * 0.75) return { x: fx, z: fz };  // 미끄러져도 벽 속 — 정지
+      // 260802 알파1: 슬라이드 허용선이 BLOCK*0.75 라서 "벽 밑 반 발짝"(0.1125~0.15)에
+      // 설 수 있었고, 거기서 갇힘 면제가 발동해 안개가 통째로 뚫렸다. 슬라이드도
+      // 정상 기준(BLOCK) 이상인 자리만 — 벽 밑으로는 한 발짝도 안 들어간다.
+      if (revealAt(sx, sz) < BLOCK) return { x: fx, z: fz };  // 미끄러져도 벽 속 — 정지
       return { x: sx, z: sz };
     }
     global.__temSpatialFogConstrain = constrainMove;

@@ -63,8 +63,8 @@ describe('TemVariantStrata 계약', () => {
     });
   });
 
-  it('플래그 기본 OFF (테스트 환경엔 URL/localStorage 없음)', () => {
-    expect(TVS.isEnabled()).toBe(false);
+  it('플래그 기본 ON (260802 알파1 — opt-out 없으면 켜짐)', () => {
+    expect(TVS.isEnabled()).toBe(true);
   });
 });
 

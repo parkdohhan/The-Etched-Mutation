@@ -4,9 +4,9 @@
  * 연속 대륙 + 작가 바닥(제0판) + 관객 침식 누적(기억 작용 3종) + 위상 자로 재편.
  *
  * ADDITIVE & FLAG-GATED (default OFF).
- *   enable:  ?variant_strata=1  또는  localStorage.tem_variant_strata='1'
- *            또는 console: TemVariantStrata.setEnabled(true)
- *   disable: TemVariantStrata.setEnabled(false)  또는  ?variant_strata=0
+ *   260802 알파1부터 기본 ON (사용자 결정 — 알파 수집은 지형 릴레이까지).
+ *   disable: TemVariantStrata.setEnabled(false)  또는  ?variant_strata=0 (디버그 opt-out, sticky)
+ *   re-enable: ?variant_strata=1  또는  TemVariantStrata.setEnabled(true)
  *   rollback: 이 파일 삭제 + tem_af_strata_terrain.js computeAfTerrainFields 상단
  *             guarded block 삭제. (배선은 W4 몫 — 이 레인은 엔진+시뮬만.)
  *
@@ -41,12 +41,17 @@
     if (on != null) {
       try { global.localStorage.setItem(FLAG_KEY, on ? '1' : '0'); } catch (_) {}
     } else {
-      try { on = global.localStorage && global.localStorage.getItem(FLAG_KEY) === '1'; }
-      catch (_) { on = false; }
+      // 260802 알파1: 기본 ON (사용자 결정 — 알파 수집은 지형 릴레이까지).
+      // 첫 테스터 회차가 깃발 OFF 라 지형에 안 구워진 사고 후 뒤집음.
+      // 끄기는 디버그 opt-out 전용: ?variant_strata=0 (sticky).
+      try { on = !(global.localStorage && global.localStorage.getItem(FLAG_KEY) === '0'); }
+      catch (_) { on = true; }
     }
     _enabled = !!on;
     if (_enabled) {
-      console.log('[variant-strata] ON — 이본 지층 경로 활성. 끄기: TemVariantStrata.setEnabled(false) 또는 ?variant_strata=0');
+      console.log('[variant-strata] ON (기본, 260802) — 이본 지층 경로 활성. 끄기: TemVariantStrata.setEnabled(false) 또는 ?variant_strata=0');
+    } else {
+      console.log('[variant-strata] OFF (디버그 opt-out) — 켜기: ?variant_strata=1 또는 TemVariantStrata.setEnabled(true)');
     }
     return _enabled;
   }

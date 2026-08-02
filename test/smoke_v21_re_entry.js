@@ -153,7 +153,8 @@
         !!fpsEl && fpsEl.querySelector('.fps-title') && fpsEl.querySelector('.fps-title').textContent === 'your engraving');
       ok('3.4 .fps-sentence 완성 문장 박힘',
         !!fpsEl && /당신의 음각/.test((fpsEl.querySelector('.fps-sentence') || {}).textContent || ''));
-      ok('3.5 파동 캔버스 = 씬 수(3)', !!fpsEl && fpsEl.querySelectorAll('.fps-wave-canvas').length === 3);
+      // 260802 알파1 피드백 5: 파동 스택 삭제 — 있으면 실패 (회귀 감시 방향 반전)
+      ok('3.5 파동 캔버스 없음 (260802 삭제)', !!fpsEl && fpsEl.querySelectorAll('.fps-wave-canvas').length === 0);
       var fpsCta = fpsEl && fpsEl.querySelector('[data-fps-action="continue"]');
       ok('3.6 Continue 버튼 박힘', !!fpsCta);
 

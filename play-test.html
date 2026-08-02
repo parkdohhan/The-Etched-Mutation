@@ -57,9 +57,9 @@
   <!-- W4 (2026-07-16): 옛 재생 지형(퀼트 섬) 모듈 tem_replay_terrain 은퇴 — script 태그 제거,
        파일은 보존. tem_variant_strata.js 로 대체(이본 지층: 작가 바닥 + 관객 침식/융기 누적).
        lumen_replay_fog 는 로드는 두되 attach 게이트가 TemReplayTerrain 부재로 죽어 무력. -->
-  <script src="js/shared/tem_variant_strata.js?v=260730"></script>
+  <script src="js/shared/tem_variant_strata.js?v=260802a"></script><!-- 260802a 알파1: 기본 ON (지형 릴레이 수집) -->
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
-  <script src="js/ui/lumen_spatial_fog.js?v=260802a"></script><!-- 260802a 문 영구 개방(keepOpen/keepCorridor) -->
+  <script src="js/ui/lumen_spatial_fog.js?v=260802b"></script><!-- 260802b 알파1: 안개 벽 관통 봉합(슬라이드·갇힘면제) -->
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
   <script src="js/shared/tem_af_strata_terrain.js?v=260802b"></script><!-- 260802 지형질감 3단계(그림자·살결 셰이더·바위) -->
   <script>
@@ -84,7 +84,7 @@
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
   <script src="js/shared/tem_stem_cuts.js?v=260730"></script><!-- 260730 이어받기 지문 (도출 절단) -->
-  <script src="js/ui/lumen_dialog_phase1.js?v=260730d"></script>
+  <script src="js/ui/lumen_dialog_phase1.js?v=260802a"></script><!-- 260802a 알파1: SKIP/나가기 삭제 + 연결사 안내 -->
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260714"></script>
   <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
@@ -4655,7 +4655,7 @@
   }
 
   async function insertPlay(scene, vec, reasonLabel, result, isVoid) {
-    // ── W4: 이본 지층 박자 기록 (flag 기본 OFF — js/shared/tem_variant_strata.js) ──
+    // ── W4: 이본 지층 박자 기록 (260802부터 flag 기본 ON — js/shared/tem_variant_strata.js) ──
     // 두 제출 경로(processEmotionResult / finishScene)가 모두 이 함수를 지나므로 여기 한 곳만 훅.
     // 설계 §13.2: beat 은 로그만 쌓는다. 실제 지형 변형(융기·침식)은 봉인 1회에 모아 재계산한다
     // (같은 로그 = 같은 땅, 결정론). 옛 replay 의 "젖은 땅 즉시 재빌드"는 여기서 하지 않는다.
@@ -6297,7 +6297,7 @@
               };
               const hasFirst = !!localStorage.getItem('tem_first_play:' + memoryId);
               if (!hasFirst) {
-                const mod = await import('./js/app/firstPlayScenification.js');
+                const mod = await import('./js/app/firstPlayScenification.js?v=260802a'); // 260802a 알파1: 파동 스택 삭제
                 await mod.showFirstPlayScenification({
                   memoryId,
                   completedSentence,
@@ -6552,6 +6552,32 @@
     var LONG_PRESS_MS = 800; // 2026-05-06: 1200 → 800. 진입 텀 단축 (V2-5 보강).
     // 260730: 사물 열람도 같은 "길게 누르기" 로 통일 — 모듈이 같은 기준을 쓰게 공개
     window.__temLongPressMs = LONG_PRESS_MS;
+    // ── 260802 알파1 추가 피드백: 문(퇴장) 잠금 ──────────────────────
+    // 씬 인터랙션 5회 전엔 문이 안 열린다 — 시스템 경고가 아니라 독백으로 막는다
+    // (원칙 4 "fallback 은 서사로"). 씬이 5개 미만인 기억은 전부 보면 열림.
+    var DOOR_MIN_VISITS = 5;
+    var _doorBlockIdx = 0;
+    var _fpDoorGateWas = null;   // 문 앞에 서 있는 동안 관문 상태가 바뀌면 속삭임 갱신용
+    function _doorGateOk() {
+      var g = window._temGame || {};
+      var visited = (g.visitOrder && g.visitOrder.length) || (g.traces && g.traces.length) || 0;
+      // 260802 사용자 지시: 사물 열람도 인터랙션으로 — 서로 다른 사물 단어 수 (열람 장부 260731)
+      var objViews = 0;
+      try {
+        var _rtD = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+        var _soD = _rtD && _rtD.__lumenSceneObjects;
+        if (_soD && typeof _soD.getViewLog === 'function') objViews = (_soD.getViewLog() || []).length;
+      } catch (_) {}
+      var total = (g.scenes && g.scenes.length) || DOOR_MIN_VISITS;
+      return visited + objViews >= Math.min(DOOR_MIN_VISITS, total);
+    }
+    function _doorBlockLine() {
+      var _ko = (document.documentElement.lang || 'en').substring(0, 2) === 'ko';
+      var lines = _ko
+        ? ['… 더 둘러봐야 할 것 같아.', '아직… 충분히 보지 못했어.']
+        : ['… I should look around more.', 'not yet… I haven\'t seen enough.'];
+      return lines[(_doorBlockIdx++) % lines.length];
+    }
     var _lastFpPos = null;  // save position before entering scene
     var _lastFpYaw = 0;
 
@@ -7641,6 +7667,28 @@
 
     // Raycast from camera center to detect aimed pin
     var _aimRaycaster = null;
+    // 260802 알파1 피드백 1: "길게 누를 때 호버 범위가 너무 작아서 잘 안 눌림".
+    // 정밀 레이캐스트가 유령 몸을 픽셀 단위로 빗나가도, 시선 원뿔 안(핀 중심 반경
+    // 약 1.4 유닛 상당, 최소 6.5도)의 핀은 조준으로 인정하는 관용 판정.
+    // 사물이 정면을 막는 경우는 이 함수까지 안 온다(정밀 히트가 먼저 잡음) — 오발 불변.
+    function _aimAssistPin(cam) {
+      var dir = cam.getWorldDirection(new THREE.Vector3());
+      var best = null, bestAng = Infinity;
+      _fpScenePins.forEach(function (sp) {
+        if (!sp.accessible || sp.visited || !sp.mesh) return;
+        var vx = sp.wx - cam.position.x;
+        var vy = sp.mesh.position.y - cam.position.y;
+        var vz = sp.wz - cam.position.z;
+        var d = Math.sqrt(vx * vx + vy * vy + vz * vz);
+        if (d < 0.5 || d > 30) return;
+        var dot = (vx * dir.x + vy * dir.y + vz * dir.z) / d;
+        var ang = Math.acos(Math.max(-1, Math.min(1, dot)));
+        var tol = Math.max(0.115, Math.atan(1.4 / d));
+        if (ang < tol && ang < bestAng) { bestAng = ang; best = { type: 'pin', sp: sp, dist: d }; }
+      });
+      return best;
+    }
+
     function _getAimedPin(cam) {
       if (!_aimRaycaster) _aimRaycaster = new THREE.Raycaster();
       _aimRaycaster.set(cam.position, cam.getWorldDirection(new THREE.Vector3()));
@@ -7674,7 +7722,7 @@
         for (var b = 0; b < objBlockers.length; b++) meshes.push(objBlockers[b]);
       }
       var hits = _aimRaycaster.intersectObjects(meshes, false);
-      if (hits.length === 0) return null;
+      if (hits.length === 0) return _aimAssistPin(cam);  // 260802 알파1: 빗나감 → 원뿔 관용 판정
       if (objBlockers && objBlockers.indexOf(hits[0].object) !== -1) return null;  // 사물이 앞을 막음
       // Find which sp this mesh belongs to
       var hitMesh = hits[0].object;
@@ -7803,14 +7851,23 @@
           var ddz = cam.position.z - door.z;
           var doorDist = Math.sqrt(ddx * ddx + ddz * ddz);
           if (doorDist < 5) {
-            if (!_fpNearDoor) {
+            // 260802 알파1: 5회 인터랙션 관문 — 문 앞에서 관문 상태가 바뀌면(5회 채움) 속삭임도 갱신
+            var _dGate = _doorGateOk();
+            if (!_fpNearDoor || _fpDoorGateWas !== _dGate) {
               _fpNearDoor = true;
+              _fpDoorGateWas = _dGate;
               _ensureProxUI();
               var lang = (document.documentElement.lang || 'en').substring(0, 2);
-              _fpProxEl.textContent = lang === 'ko' ? '......나가자.' : '......let\'s go.';
+              if (_dGate) {
+                _fpProxEl.textContent = lang === 'ko' ? '......나가자.' : '......let\'s go.';
+                _fpHintEl.textContent = lang === 'ko' ? '길게 눌러 나가기' : 'Hold to leave';
+                _fpHintEl.style.opacity = '1';
+              } else {
+                _fpProxEl.textContent = _doorBlockLine();
+                _fpHintEl.textContent = '';
+                _fpHintEl.style.opacity = '0';
+              }
               _fpProxEl.style.opacity = '1';
-              _fpHintEl.textContent = lang === 'ko' ? '길게 눌러 나가기' : 'Hold to leave';
-              _fpHintEl.style.opacity = '1';
             }
             // Pulse door light
             if (door.group) {
@@ -7838,6 +7895,14 @@
         // 260730: 씬(대화) 진입은 근접 + "실제 조준" 둘 다 — 거리만으로 열리던 오발 제거
         var _aimOk = _fpAimSp && _fpAimDist < PROXIMITY_ENTER;
         if (!_aimOk && !_fpNearDoor) return;
+        // 260802 알파1: 문 잠금 — 5회 전엔 흔들림·타이머 없이 독백만 새로 띄운다.
+        // (핀을 조준 중이면 아래 씬 진입 분기가 평소대로 동작)
+        if (_fpNearDoor && !_aimOk && !_doorGateOk()) {
+          _ensureProxUI();
+          _fpProxEl.textContent = _doorBlockLine();
+          _fpProxEl.style.opacity = '1';
+          return;
+        }
 
         // Start screen shake while holding
         _canvasOrigTransform = canvas.style.transform || '';
@@ -7849,8 +7914,8 @@
           canvas.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
         }, 30);
 
-        if (_fpNearDoor) {
-          // ─── Exit door long press ─────────────────────────
+        if (_fpNearDoor && _doorGateOk()) {
+          // ─── Exit door long press (260802: 5회 관문 통과 시에만) ───
           var targetDoor = true;
           _pressTimer = setTimeout(function () {
             if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }

@@ -570,41 +570,10 @@
     ].join(';');
     box.appendChild(nameTag);
 
-    // SKIP — 남은 대사 전부 빨리감기 (입력창 나올 때 자동 해제)
-    var skipBtn = document.createElement('button');
-    skipBtn.className = 'ldp-skip';
-    skipBtn.textContent = 'SKIP ▸';
-    skipBtn.style.cssText = [
-      'position:absolute', 'top:-0.95em', 'right:16px',
-      'padding:3px 14px',
-      'background:rgba(8,6,14,0.95)',
-      'border:1.5px solid rgba(196,168,130,0.4)',
-      'border-radius:4px',
-      'font-family:inherit', 'font-size:0.8rem', 'letter-spacing:0.12em',
-      'color:rgba(196,168,130,0.8)',
-      'cursor:pointer',
-      'transition:color 200ms ease, border-color 200ms ease',
-    ].join(';');
-    skipBtn.onmouseenter = function () {
-      skipBtn.style.color = 'rgba(232,216,252,0.95)';
-      skipBtn.style.borderColor = 'rgba(196,168,130,0.8)';
-    };
-    skipBtn.onmouseleave = function () {
-      skipBtn.style.color = 'rgba(196,168,130,0.8)';
-      skipBtn.style.borderColor = 'rgba(196,168,130,0.4)';
-    };
-    skipBtn.onclick = function (ev) {
-      ev.stopPropagation(); // 오버레이 넘김 클릭과 중복 방지
-      // 260709: 입력 차례('나가기 ▸')면 대화 종료, 대사 중('SKIP ▸')이면 빨리감기.
-      if (_sub.skipMode === 'exit') {
-        if (typeof _sub.exit === 'function') _sub.exit();
-        return;
-      }
-      _sub.ff = true;
-      if (typeof _sub.advance === 'function') { _sub.advance(); }
-      if (typeof _sub.advance === 'function') { _sub.advance(); }
-    };
-    box.appendChild(skipBtn);
+    // 260802 알파1 피드백 3: SKIP ▸ / 나가기 ▸ 버튼 삭제 (사용자 결정).
+    // 대사 넘김은 오버레이 클릭(RPG식 수동 넘김)이 그대로 담당하고, 대화는 턴이
+    // 다하면 자연 종료된다. '.ldp-skip' 을 찾는 자리들은 전부 null 가드라 무해.
+    // _sub.skipMode/_sub.exit 배선은 보존 (롤백 = 이 자리에 버튼 블록 복원).
 
     var textEl = document.createElement('div');
     textEl.className = 'ldp-text';
@@ -1004,9 +973,25 @@
     var wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;gap:8px;width:100%;align-items:center;flex-wrap:wrap;';
 
+    // 260802 알파1 피드백 2: "연결사를 선택해야 함을 직관적으로 이해가 안 된다".
+    // 입력줄 위에 할 일을 말로 알려주는 안내 한 줄 + 고르기 전 선택 상자 강조.
+    var _koG = _dialogLang() === 'ko';
+    var guide = document.createElement('div');
+    var _guideBase = _koG
+      ? '문장이 끊겼습니다 — 연결사를 고르고, 뒤를 이어서 써 주세요.'
+      : 'The sentence broke off — pick a connective, then continue it.';
+    guide.textContent = _guideBase;
+    guide.style.cssText = [
+      'flex-basis:100%', 'text-align:center',
+      'font-size:0.88rem', 'letter-spacing:0.05em',
+      'color:rgba(196,168,130,0.85)',
+      'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
+      'transition:color 300ms ease',
+    ].join(';');
+
     var sel = document.createElement('select');
     var opt0 = document.createElement('option');
-    opt0.value = ''; opt0.textContent = '…'; opt0.disabled = false;
+    opt0.value = ''; opt0.textContent = _koG ? '연결사…' : 'connective…'; opt0.disabled = false;
     sel.appendChild(opt0);
     CONT_CONNECTIVES.forEach(function (c) {
       var o = document.createElement('option');
@@ -1022,6 +1007,11 @@
       'font-family:inherit', 'font-size:1.02rem',
       'outline:none', 'border-radius:0', 'cursor:pointer',
     ].join(';');
+    // 고르기 전엔 밝게 — "여기부터"가 보이게. 고르면 평상 톤으로.
+    sel.style.borderBottomColor = 'rgba(196,168,130,0.75)';
+    sel.onchange = function () {
+      sel.style.borderBottomColor = sel.value ? 'rgba(196,168,130,0.32)' : 'rgba(196,168,130,0.75)';
+    };
 
     var input = document.createElement('input');
     input.type = 'text';
@@ -1055,8 +1045,15 @@
       var conn = sel.value || '';
       if (!conn) {
         // 연결사 필수 — 결핍을 어느 방향으로 채울지의 선언이 형식의 핵심.
+        // 260802 알파1: 조용한 붉은 테두리만으론 왜 안 되는지 몰랐다 — 말로 알려준다.
         sel.style.borderBottomColor = 'rgba(220,120,120,0.85)';
-        setTimeout(function () { sel.style.borderBottomColor = 'rgba(196,168,130,0.32)'; }, 900);
+        guide.textContent = _koG ? '연결사를 먼저 골라 주세요.' : 'Pick a connective first.';
+        guide.style.color = 'rgba(220,120,120,0.9)';
+        setTimeout(function () {
+          sel.style.borderBottomColor = sel.value ? 'rgba(196,168,130,0.32)' : 'rgba(196,168,130,0.75)';
+          guide.textContent = _guideBase;
+          guide.style.color = 'rgba(196,168,130,0.85)';
+        }, 1400);
         return;
       }
       if (!v) return;
@@ -1066,6 +1063,7 @@
     btn.onclick = _go;
     input.onkeydown = function (e) { if (e.key === 'Enter') _go(); };
 
+    wrap.appendChild(guide);
     wrap.appendChild(sel);
     wrap.appendChild(input);
     wrap.appendChild(btn);
