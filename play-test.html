@@ -68,13 +68,13 @@
     try { localStorage.removeItem('tem_replay_terrain'); } catch (_) {}
   </script>
   <script src="js/ui/lumen_terrain_adapter.js?v=260714"></script>
-  <script src="js/ui/lumen_walk_effects.js?v=260714"></script>
-  <script src="js/ui/lumen_visual_effects.js?v=260714"></script>
+  <script src="js/ui/lumen_walk_effects.js?v=260731b"></script><!-- 260731 호흡 연출 폐기 + 누적 가드 -->
+  <script src="js/ui/lumen_visual_effects.js?v=260731b"></script><!-- 260731 떨림 누적 가드 -->
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260731a"></script><!-- 260731 회상 spawnGate -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260731a"></script><!-- 260731 회상 wordFilter·anchors -->
+  <script src="js/ui/lumen_scene_objects.js?v=260731b"></script><!-- 260731 회상 wordFilter·anchors -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -3762,7 +3762,14 @@
             console.warn('[v21-phase1] insertPlay fail', e);
           });
         } else {
-          console.warn('[v21-phase1] no user emotion — traces/plays insert skip');
+          // 260731: 침묵도 데이터 — plays 에는 안 넣고(지표 오염) 회차 일지에 남긴다.
+          //   "들어갔지만 말하지 못했다"는 "방문 안 함"과 다른 사건이다.
+          console.warn('[v21-phase1] no user emotion — plays skip → 회차 일지에 침묵 방문 기록');
+          try {
+            game._silentVisits = game._silentVisits || [];
+            game._silentVisits.push({ scene_id: scene.id, ts: new Date().toISOString() });
+            if (window.__temJournal) window.__temJournal({ silent_visits: game._silentVisits });
+          } catch (eSv) { console.warn('[v21-phase1] 침묵 기록 실패 (무해)', eSv); }
         }
       },
     });
@@ -4628,6 +4635,38 @@
     if (error) LOG('plays insert error', error);
     else LOG('plays saved', row);
   }
+
+  // ── 260731 회차 일지 (run_journals) — 감정 제출이 아닌 회차 사건 기록 ──
+  // 알파 데이터 구멍 봉합: 회상 대답 / 침묵 방문 / 사물 열람·되새김 스냅샷.
+  // plays 와 분리된 전용 테이블 — plays 행 수를 세는 지표(오염도 평균·깊이·겹)에 안 섞인다.
+  // 회차당 1행, 사건마다 patch. 행은 첫 사건 때 만든다 (사건 없는 회차 = 행 없음).
+  async function _journalPatch(patch) {
+    try {
+      if (!game.memoryId || !patch) return;
+      if (!game._journalId) {
+        if (!game._journalCreating) {
+          game._journalCreating = (async () => {
+            let userId = null;
+            try { const { data: { user } } = await sb.auth.getUser(); userId = user?.id || null; } catch (_) {}
+            const { data, error } = await sb.from('run_journals').insert({
+              memory_id: game.memoryId,
+              run_id: game._runId || null,
+              user_id: userId,
+            }).select('id').single();
+            if (error || !data) { LOG('run_journal insert error', error); return null; }
+            return data.id;
+          })();
+        }
+        game._journalId = await game._journalCreating;
+        if (!game._journalId) { game._journalCreating = null; return; }  // 실패 — 다음 사건이 재시도
+      }
+      patch.updated_at = new Date().toISOString();
+      const { error: upErr } = await sb.from('run_journals').update(patch).eq('id', game._journalId);
+      if (upErr) LOG('run_journal patch error', upErr);
+      else LOG('run_journal patched:', Object.keys(patch).join(','));
+    } catch (e) { LOG('run_journal exception', e); }
+  }
+  window.__temJournal = _journalPatch;   // 회상 게이트(다른 스코프)에서도 쓴다
 
   async function reloadPlaysOnly() {
     const { data, error } = await sb.from('plays')
@@ -5710,6 +5749,23 @@
       LOG('V2-6 drift stamp:', { ghost_variant_id: _gvId, drift: _driftVector });
     } catch (e) { LOG('V2-6 drift stamp exception', e); }
 
+    // ── 260731 회차 일지 봉인 스냅샷 — 되새김 도달 + 사물 열람 + 회상 게이트 여부 ──
+    // "사물을 본다 → 입에 담는다 → 되새김" 고리가 이 회차에 실제로 작동했는지의 기록.
+    try {
+      var _jSnap = {};
+      if (window.LumenRecalledAnchors && typeof window.LumenRecalledAnchors.getState === 'function') {
+        var _ras = window.LumenRecalledAnchors.getState();
+        if (_ras && _ras.words && Object.keys(_ras.words).length) _jSnap.recall_stages = _ras.words;
+      }
+      var _rtJ = window._fpRuntime;
+      if (_rtJ && _rtJ.__lumenSceneObjects && typeof _rtJ.__lumenSceneObjects.getViewLog === 'function') {
+        var _ovl = _rtJ.__lumenSceneObjects.getViewLog();
+        if (_ovl && _ovl.length) _jSnap.object_views = _ovl;
+      }
+      if (window._temRecall) _jSnap.rep_gate = !!window._temRecall.asked;
+      if (Object.keys(_jSnap).length && window.__temJournal) window.__temJournal(_jSnap);
+    } catch (eJ) { LOG('run_journal 봉인 스냅샷 실패 (무해)', eJ); }
+
     // ── W4-2: 이본 지층 봉인 파이프라인 — 이번 관객 몫을 굽고(⓪융기→①침식→②망각→③재응고)
     //   변형층을 저장(record-erosion, 스냅샷 포함). flag ON + _base 준비 시에만.
     //   실패는 크게 console.error(조용한 실패 금지), 봉인 자체는 진행. 결과는 W4-3 목격·W4-5 reveal 이 쓴다. ──
@@ -6332,6 +6388,10 @@
         if (window._temGame && typeof crypto !== 'undefined' && crypto.randomUUID) {
           window._temGame._runId = crypto.randomUUID();
           window._temGame._runStartTime = new Date().toISOString();
+          // 260731 회차 일지 리셋 — 앞 회차의 일지 행·침묵 목록이 새 회차에 이어붙지 않게
+          window._temGame._journalId = null;
+          window._temGame._journalCreating = null;
+          window._temGame._silentVisits = [];
         }
       } catch (_) {}
       // ── W4: 이본 지층 — 체험 시작 선언(이번 관객의 박자 로그 초기화). 실제 침식/융기는 봉인 때. ──
@@ -6709,12 +6769,12 @@
             })();
             // 2026-04-26: 장면핀 자리에 마네킨 유령. ghost-mannequin-test 검증값 잠금.
             //   _buildPlayScenePins 가 이 attach 직후 sync 로 실행되므로 명시적 rebuild 호출은 그 뒤(아래 whisper 옆).
-            // 260730: 몸 교체 — ybot.fbx(36MB 체조 로봇) → Tripo 생성 "이목구비 없는 사람" GLB
-            //   (idle 동작 내장, spec=mixamo 본). 롤백 = fbxBaseUrl 줄 삭제(기본 /test/ybot.fbx).
+            // 260731: Tripo GLB 몸(ghost_faceless_idle.glb) 반려 — 아이 체형 + 땅 박힘 (사용자 결정).
+            //   기본값 ybot.fbx 복귀. 재도전 시 fbxBaseUrl: 'assets/ghost_models/....glb' 한 줄이면 됨
+            //   (모듈의 GLB 갈래·발바닥 보정은 살아 있음).
             if (window.LumenSceneMannequins && typeof window.LumenSceneMannequins.attach === 'function') {
               window.LumenSceneMannequins.attach(rt, {
                 getScenePins: function () { return _fpScenePins; },
-                fbxBaseUrl: 'assets/ghost_models/ghost_faceless_idle.glb?v=260730a',
                 // 260731 회상 게이트 — 대답 전엔 유령을 세우지 않는다
                 spawnGate: function () {
                   var r = window._temRecall;
@@ -6793,6 +6853,12 @@
                   rr.answered = true;
                   window.__temRecallAnswer = val || '(침묵)';   // 침묵도 대답 — 유령은 어차피 온다 (폴백 보장)
                   console.log('[Recall] 대답:', window.__temRecallAnswer, '→ 유령 등장');
+                  // 260731: 대답을 회차 일지에 즉시 기록 — 브라우저를 닫아도 남게 (대답 그 순간이 커밋 시점)
+                  try {
+                    if (window.__temJournal) window.__temJournal({
+                      recall_answer: { text: val || null, silent: !val, ts: new Date().toISOString() },
+                    });
+                  } catch (_) {}
                   wrap.style.opacity = '0';
                   setTimeout(function () { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }, 1300);
                   // 게이트 열림 — 유령 등장 + 나머지 사물이 이제 전부 선다

@@ -652,7 +652,11 @@
       _uiSent.style.cssText = 'position:absolute;bottom:160px;left:50%;transform:translateX(-50%);color:rgba(216,204,186,0.9);font-size:14px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;max-width:520px;line-height:1.7;text-shadow:0 0 8px rgba(216,204,186,0.35);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiSent);
     }
+    // 260731 열람 장부 — 이번 회차에 어떤 사물을 몇 번 들여다봤나 (회차 일지 봉인용).
+    // "지형에서 본다 → 입에 담는다 → 되새김" 고리가 실제로 작동했는지의 앞 단 증거.
+    var _viewLog = {};
     function _showClickUI(word, sentence) {
+      _viewLog[word] = (_viewLog[word] || 0) + 1;
       _ensureClickUI();
       _uiWord.textContent = word;
       _uiSent.textContent = sentence || '';
@@ -797,6 +801,10 @@
         return out;
       },
       isAiming: function () { return !!_aimedObj; },
+      // 260731 열람 장부 — [{ word, count }] (회차 일지 봉인 스냅샷용, 읽기 전용)
+      getViewLog: function () {
+        return Object.keys(_viewLog).map(function (w) { return { word: w, count: _viewLog[w] }; });
+      },
       // 260731 회상 연출 — 지금 세워진 사물의 단어·자리. play-test 근접 판정용 (읽기 전용).
       anchors: function () {
         return _objects.map(function (o) { return { word: o.word, x: o.cx, z: o.cz }; });
