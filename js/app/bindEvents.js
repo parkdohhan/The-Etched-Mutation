@@ -2,6 +2,7 @@
 // 모든 벤트 바인딩 코드 중앙 서 manage
 
 import { showNotification } from '../ui/notify.js';
+import { isTesterMode } from './testerMode.js';
 
 /**
  * 모든 벤트 listener 등록하 function
@@ -77,6 +78,12 @@ function bindOpeningEvents() {
             v213SkipOpening = true;
         }
     } catch (_) {}
+    // 260802 테스터 모드 — 재방문이든 뭐든 오프닝을 매번 처음부터 보여준다.
+    // (테스터마다 같은 진입을 겪어야 반응을 비교할 수 있다. 풀버전은 위 규칙 그대로.)
+    if (isTesterMode() && v213SkipOpening) {
+        v213SkipOpening = false;
+        console.info('[opening] 테스터 모드 — 재방문 오프닝 skip 무시, 오프닝 강제 표시');
+    }
     const skipOpeningInit = oauthSkipOpening || v213SkipOpening;
 
  // 오프닝 sound 및 UI init

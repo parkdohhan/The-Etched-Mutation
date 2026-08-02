@@ -646,6 +646,9 @@
     var sD = []; var P = [];
     var terrainMemFilter = null;
     var hts; var cls; var pos;
+    // 260802 목격 연출(morphHeights): 마지막 빌드의 정규화 기준. 같은 mn/rg 로 보간해야
+    // 변하지 않은 셀이 1px 도 안 움직인다 (재정규화 팝 방지).
+    var _lastMn = 0; var _lastRg = 1; var _morphTok = null;
     // ─── Per-scene plate registry (ADDITIVE — only populated when buildTerrain({perScenePlates:true})). ──
     // 비어 있으면(_plates.length===0) gH 는 기존 단일-메쉬 경로(_gHBase)로만 동작한다. 롤백 = 이 배열을 안 채우면 끝.
     // 각 항목: { sceneId, group(THREE.Group), worldAABB:{minX,maxX,minZ,maxZ}, G_k, SZ_k, hts_k(Float32Array), pos_k, posY, sclX, sclZ, sclY }
@@ -945,6 +948,267 @@
       }
     }
 
+    // ── 바위 질감 셰이더 (260802 2단계) — 단일메쉬·plate 공용 ───────────────
+    // 싼마이 원인 3종 수술:
+    //   ① 잡티가 밝기만 ±6% 흔듦 → 법선(빛 튀는 방향)을 흔드는 요철로. 격자(70cm)보다
+    //      훨씬 잔 결이 조명에 실제로 반응한다.
+    //   ② 결이 한 겹 → 굵은 얼룩 / 중간 결 / 잔 알갱이 3겹. 멀리서도 가까이서도 결이 보임.
+    //   ③ 전면 단일 재질(roughness 0.82 고정) → 높이·경사별 거칠기. 골짜기=젖은 듯 반들,
+    //      능선=메마름, 절벽면=중간.
+    // 기존 지층 밴드(_stage*)·오염 uniform 은 그대로 유지. 종전 _slope 는 뷰(카메라) 기준이라
+    // 궤도 돌리면 무늬가 따라 돌던 결함 — vWNorm(월드 법선)으로 교정.
+    // Rollback: _mkTerrainPatch 호출 2곳(terrainMat / plates mat)을 각각 종전 인라인 패치와
+    //   _sfPatchShader 로 되돌리면 종전과 동일.
+    function _rockPatchShader(shader, cont) {
+      cont = cont || {};
+      shader.uniforms._stage1 = { value: cont.stage1 || 0 };
+      shader.uniforms._stage2 = { value: cont.stage2 || 0 };
+      shader.uniforms._stage3 = { value: cont.stage3 || 0 };
+      shader.uniforms._contDepth = { value: Math.min(cont.depth || 0, 50) };
+
+      // Inject noise + varyings + uniforms into fragment shader
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'void main() {',
+        [
+          'varying vec3 vWPos;',
+          'varying vec3 vWNorm;',
+          'uniform float _stage1;',
+          'uniform float _stage2;',
+          'uniform float _stage3;',
+          'uniform float _contDepth;',
+          'float _h31(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}',
+          'float _n31(vec3 p){',
+          '  vec3 i=floor(p),f=fract(p);',
+          '  f=f*f*(3.0-2.0*f);',
+          '  return mix(mix(mix(_h31(i),_h31(i+vec3(1,0,0)),f.x),',
+          '    mix(_h31(i+vec3(0,1,0)),_h31(i+vec3(1,1,0)),f.x),f.y),',
+          '    mix(mix(_h31(i+vec3(0,0,1)),_h31(i+vec3(1,0,1)),f.x),',
+          '    mix(_h31(i+vec3(0,1,1)),_h31(i+vec3(1,1,1)),f.x),f.y),f.z);',
+          '}',
+          'float _fbm3(vec3 p){',
+          '  float v=0.0,a=0.5;',
+          '  for(int i=0;i<4;i++){v+=a*_n31(p);p*=2.1;a*=0.5;}',
+          '  return v;',
+          '}',
+          // 요철 표본용 싼 2옥타브 — 법선 계산이 픽셀당 3번 표본하므로 비용 절제
+          'float _fbm2(vec3 p){return _n31(p)*0.667+_n31(p*2.3)*0.333;}',
+          'float _bumpH(vec3 p){return _fbm2(p*2.6)*0.7+_fbm2(p*11.0)*0.3;}',
+          'void main() {',
+        ].join('\n')
+      );
+
+      // ③ 높이·경사별 거칠기 — 조명 계산 전에 roughnessFactor 를 지형 좌표로 변조
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <roughnessmap_fragment>',
+        [
+          '#include <roughnessmap_fragment>',
+          '{',
+          '  float _rHgt = clamp(vWPos.y * 0.05 + 0.5, 0.0, 1.0);', // 지형 Y ±10 → 0..1
+          '  float _rSlp = 1.0 - abs(normalize(vWNorm).y);',
+          '  float _rr = mix(0.60, 0.95, _rHgt);',                  // 골짜기 젖음 → 능선 메마름
+          '  _rr = mix(_rr, 0.78, _rSlp * 0.6);',                   // 절벽면은 중간대
+          '  _rr += (_fbm2(vWPos * 1.7) - 0.5) * 0.18;',            // 얼룩덜룩한 편차
+          '  roughnessFactor = clamp(_rr, 0.35, 1.0);',
+          '}',
+        ].join('\n')
+      );
+
+      // ① 법선 요철 — 밝기 대신 빛이 튀는 방향을 흔든다 (world XZ 높이장 기울기 → 뷰 공간)
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <normal_fragment_maps>',
+        [
+          '#include <normal_fragment_maps>',
+          '{',
+          '  float _be = 0.22;',
+          '  float _b0 = _bumpH(vWPos);',
+          '  float _bx = _bumpH(vWPos + vec3(_be, 0.0, 0.0));',
+          '  float _bz = _bumpH(vWPos + vec3(0.0, 0.0, _be));',
+          '  vec3 _wg = vec3((_bx - _b0) / _be, 0.0, (_bz - _b0) / _be);',
+          '  vec3 _vg = (viewMatrix * vec4(_wg, 0.0)).xyz;',
+          '  float _gl2 = length(_vg);',
+          '  if (_gl2 > 1.4) _vg *= 1.4 / _gl2;',                   // 과한 기울기 폭주 방지
+          '  normal = normalize(normal - _vg * 0.55);',
+          '}',
+        ].join('\n')
+      );
+
+      // ② 결 3겹 + 골 그늘 + 지층 밴드 (지층 로직은 종전 유지, 경사만 월드 기준으로 교정)
+      shader.fragmentShader = shader.fragmentShader.replace(
+        'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+        [
+          'vec3 _wp = vWPos;',
+          'float _slope = 1.0 - abs(normalize(vWNorm).y);',
+          'float _gMac = _fbm3(_wp * 0.33);',                       // 굵은 얼룩 (~3m)
+          'float _gMes = _fbm3(_wp * 1.6);',                        // 중간 결 (~60cm)
+          'float _gMic = _n31(_wp * 14.0);',                        // 잔 알갱이 (~7cm)
+          'float _grain = (_gMac - 0.5) * 0.16 + (_gMes - 0.5) * 0.13 + (_gMic - 0.5) * 0.07;',
+          'float _crevice = _slope * _slope * 0.30;',
+          'float _cav = smoothstep(0.2, 0.8, _gMes) * 0.22;',       // 골(음푹한 결) 그늘
+          '',
+          '// Strata layers visible on steep slopes (cliff faces)',
+          'if (_slope > 0.3 && _contDepth > 0.5) {',
+          '  float _strataY = _wp.y * (1.0 + _contDepth * 0.1);',
+          '  float _band = fract(_strataY * 0.8 + _fbm3(_wp * 0.5) * 0.3);',
+          '  vec3 _s1col = vec3(0.45, 0.32, 0.22);', // stage1: warm brown (biased tilt)
+          '  vec3 _s2col = vec3(0.35, 0.22, 0.42);', // stage2: contrasting purple (juxtaposition)
+          '  vec3 _s3col = vec3(0.55, 0.58, 0.62);', // stage3: cold geometric grey (hypercompletion)
+          '  vec3 _strataTint = _s1col * _stage1 + _s2col * _stage2 + _s3col * _stage3;',
+          '  float _strataStr = _slope * min(_contDepth / 10.0, 1.0) * 0.4;',
+          '  float _bandEdge = smoothstep(0.45, 0.55, _band);',
+          '  outgoingLight = mix(outgoingLight, _strataTint * (0.6 + _bandEdge * 0.4), _strataStr);',
+          '}',
+          '',
+          '// 곱셈 잡티 — 종전 덧셈(+_grain)은 어두운 감정색을 회백색으로 떠 보이게 했음',
+          'outgoingLight *= vec3(1.0 + _grain * 1.7, 1.0 + _grain * 1.25, 1.0 + _grain * 0.85);',
+          'outgoingLight *= (1.0 - _crevice) * (1.0 - _cav);',
+          'outgoingLight = max(outgoingLight, vec3(0.015));',
+          'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+        ].join('\n')
+      );
+
+      // Vertex shader: world position + world normal
+      shader.vertexShader = shader.vertexShader.replace(
+        'void main() {',
+        'varying vec3 vWPos;\nvarying vec3 vWNorm;\nvoid main() {'
+      );
+      shader.vertexShader = shader.vertexShader.replace(
+        '#include <fog_vertex>',
+        '#include <fog_vertex>\nvWPos = (modelMatrix * vec4(position, 1.0)).xyz;\nvWNorm = normalize(mat3(modelMatrix) * normal);'
+      );
+    }
+
+    // 바위 질감 → 공간 안개 순서 합성. _sfPatchShader 는 vWPos 중복 선언을 자체 가드하므로
+    // 뒤에 와야 한다 (안개가 최종 색을 덮는 순서도 이 순서가 맞음).
+    function _mkTerrainPatch(cont) {
+      return function (shader) {
+        _rockPatchShader(shader, cont);
+        _sfPatchShader(shader);
+      };
+    }
+
+    // ── 흩뿌림 바위 라이브러리 (260802 3단계) ────────────────────────────────
+    // 종전: 파편 = 정사면체(삼각형 4장), 고착 결정 = 원뿔 — "종이접기" 실루엣이 싼마이 주범.
+    // 1층 폴백: 절차 바위 — 정이십면체 꼭짓점을 위치 해시로 밀고 당겨 만든 낮은 폴리 돌.
+    //   해시가 위치 기반이라 중복 정점(비인덱스 지오메트리)이 같은 값을 받아 면이 안 갈라짐.
+    // 2층 업그레이드: assets/terrain_rocks/ 에 Tripo GLB(rock_a/b/c, crystal_a)를 두면
+    //   _upgradeScatter 가 이미 세운 폴백을 그 자리에서 실물로 교체. 파일 없으면 조용히
+    //   폴백 유지 (로드 실패 = 무동작). 좌표·회전·크기는 태그에 저장돼 교체 후에도 동일.
+    // Rollback: 파편 루프의 _makeScatterRock 호출을 종전 TetrahedronGeometry 블록으로 되돌림.
+    // manifest.json 이 정본 — 파일을 폴더에 넣고 목록에 이름을 적어야 로드된다.
+    // (무작정 경로 4개를 찔러보면 파일 없을 때마다 콘솔에 404 빨간 줄 — 소음 차단)
+    var _ROCK_DIR = 'assets/terrain_rocks/';
+    var _rockLib = { rocks: [], crystal: null, tried: false };
+    var _procRockGeos = null;
+    var _procRockMatCache = null;
+
+    function _getProcRockGeo(pick) {
+      if (!_procRockGeos) {
+        _procRockGeos = [];
+        for (var v = 0; v < 4; v++) {
+          var g = new THREE.IcosahedronGeometry(0.5, 1);
+          var pa = g.attributes.position;
+          for (var i = 0; i < pa.count; i++) {
+            var vx = pa.getX(i), vy = pa.getY(i), vz = pa.getZ(i);
+            // 위치 해시 → 같은 자리 정점은 같은 변위 (면 갈라짐 방지)
+            var hh = Math.abs(Math.sin(vx * 12.9898 + vy * 78.233 + vz * 37.719 + v * 17.13) * 43758.5453) % 1;
+            var d = 0.68 + hh * 0.62;
+            pa.setXYZ(i, vx * d, vy * d * (0.62 + 0.25 * ((hh * 7) % 1)), vz * d); // 세로 눌림 — 구르는 돌
+          }
+          g.computeVertexNormals(); // 비인덱스라 면 단위 법선 = 각진 바위 면
+          g.computeBoundingBox();
+          var bb = g.boundingBox, sy = bb.max.y - bb.min.y;
+          // 바닥 22% 파묻힌 원점 — position.y = 지면 높이로 두면 "박힌" 돌이 됨
+          g.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + sy * 0.22), -(bb.min.z + bb.max.z) / 2);
+          _procRockGeos.push(g);
+        }
+      }
+      return _procRockGeos[Math.floor(pick * 3.999)];
+    }
+    function _procRockMat() {
+      if (!_procRockMatCache) {
+        _procRockMatCache = new THREE.MeshStandardMaterial({ color: 0x35333c, roughness: 0.88, metalness: 0.05 });
+      }
+      return _procRockMatCache;
+    }
+    function _makeScatterRock(pick, size, rotY, tilt, groundY) {
+      var mesh = new THREE.Mesh(_getProcRockGeo(pick), _procRockMat());
+      mesh.scale.set(size, size, size);
+      mesh.rotation.set(0, rotY, tilt);
+      mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.userData._temScatter = { kind: 'rock', pick: pick, size: size, groundY: groundY, upgraded: false };
+      return mesh;
+    }
+
+    // GLB 안 첫 메쉬 → { geo, mat, s(최장변→1 배율), sH(높이→1 배율) }. 바닥 원점으로 구움.
+    function _normGlbMesh(root, sinkRatio) {
+      var found = null;
+      root.updateMatrixWorld(true);
+      root.traverse(function (o) { if (!found && o.isMesh) found = o; });
+      if (!found) return null;
+      var g = found.geometry.clone();
+      g.applyMatrix4(found.matrixWorld);
+      g.computeBoundingBox();
+      var bb = g.boundingBox;
+      var sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
+      var maxDim = Math.max(sx, sy, sz) || 1;
+      g.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + sy * (sinkRatio || 0)), -(bb.min.z + bb.max.z) / 2);
+      var m = found.material;
+      if (m && m.clone) { m = m.clone(); if (m.color) m.color.multiplyScalar(0.85); } // 무대 톤에 맞춰 약간 어둡게
+      return { geo: g, mat: m, s: 1 / maxDim, sH: 1 / (sy || 1) };
+    }
+
+    function _loadRockLib() {
+      if (_rockLib.tried || !THREE.GLTFLoader || typeof fetch !== 'function') return;
+      _rockLib.tried = true;
+      fetch(_ROCK_DIR + 'manifest.json')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (man) {
+          if (!man) return;
+          var loader = new THREE.GLTFLoader();
+          (man.rocks || []).forEach(function (f) {
+            loader.load(_ROCK_DIR + f, function (gl) {
+              var n = _normGlbMesh(gl.scene, 0.2);
+              if (n) { _rockLib.rocks.push(n); _upgradeScatter(); }
+            }, undefined, function () { /* 목록엔 있는데 파일 없음 = 폴백 유지 */ });
+          });
+          if (man.crystal) {
+            loader.load(_ROCK_DIR + man.crystal, function (gl) {
+              var n = _normGlbMesh(gl.scene, 0);
+              if (n) {
+                if (n.mat && n.mat.emissive) { n.mat.emissive = new THREE.Color(0x0a0a15); n.mat.emissiveIntensity = 0.35; }
+                _rockLib.crystal = n; _upgradeScatter();
+              }
+            }, undefined, function () {});
+          }
+        })
+        .catch(function () { /* manifest 없음/깨짐 = 절차 바위 유지 */ });
+    }
+
+    // 이미 세워진 폴백(절차 바위·원뿔)을 GLB 실물로 그 자리에서 교체.
+    // buildTerrain 끝과 GLB 로드 완료 시 양쪽에서 불러 로드/구축 순서와 무관하게 수렴.
+    function _upgradeScatter() {
+      if (!seedGrp) return;
+      seedGrp.traverse(function (o) {
+        var t = o.userData && o.userData._temScatter;
+        if (!t || t.upgraded) return;
+        if (t.kind === 'rock' && _rockLib.rocks.length) {
+          var lib = _rockLib.rocks[Math.floor(t.pick * 9973) % _rockLib.rocks.length];
+          o.geometry = lib.geo; o.material = lib.mat;
+          var s = t.size * lib.s;
+          o.scale.set(s, s, s);
+          o.position.y = t.groundY;
+          t.upgraded = true;
+        } else if (t.kind === 'crystal' && _rockLib.crystal) {
+          var cl = _rockLib.crystal;
+          o.geometry = cl.geo; o.material = cl.mat;
+          var cs = t.height * cl.sH;
+          o.scale.set(cs, cs, cs);
+          o.position.y = t.bottomY;
+          t.upgraded = true;
+        }
+      });
+    }
+
     function _buildScenePlates(filterIdx) {
       _disposePlates();
       var memList = filterIdx == null
@@ -975,8 +1239,9 @@
             color: new THREE.Color(ec[0], ec[1], ec[2]),
             roughness: 0.82, metalness: 0.06, side: THREE.DoubleSide,
           });
-          mat.onBeforeCompile = _sfPatchShader; // ADDITIVE 공간 안개 B안 (uniform 게이트, 기본 무동작)
+          mat.onBeforeCompile = _mkTerrainPatch(m.cont || {}); // 바위 질감(260802) + 공간 안개 B안
           var mesh = new THREE.Mesh(geo, mat);
+          mesh.castShadow = true; mesh.receiveShadow = true;   // 260802 1단계
           var group = new THREE.Group();
           group.add(mesh);
 
@@ -1001,6 +1266,53 @@
       });
     }
 
+    // ─── 260802 목격 연출: 높이 점진 보간 ─────────────────────────────
+    // buildTerrain 전체 재생성(지오메트리·머티리얼·셰이더 재컴파일 = 히치 + 재정규화 팝) 없이,
+    // 현재 메시의 정점 Y 만 목표 필드로 easeInOut 이동시킨다. 봉인 직후 "땅이 굳는 순간"을
+    // 카메라 앞에서 몇 초에 걸쳐 보여주는 용도.
+    //   targetHts = 원시 높이 필드 (Float32Array G*G — computeAfTerrainFields/computeFields 단위)
+    //   o.durMs   = 보간 시간 (기본 4000)
+    //   o.onDone  = 완료 콜백
+    // 반환 token — token.dead=true 로 즉시 중단. buildTerrain 이 돌면 자동 중단(재빌드가 이긴다).
+    // gH 는 pos 배열을 직접 읽으므로 보간 중에도 발밑 높이가 연속으로 따라온다.
+    function morphHeights(targetHts, o) {
+      o = o || {};
+      if (!terrain || !pos || !targetHts || targetHts.length !== G * G) return null;
+      if (_morphTok) _morphTok.dead = true;
+      var meshRef = terrain;
+      var geoRef = terrain.geometry;
+      var startY = new Float32Array(G * G);
+      var endY = new Float32Array(G * G);
+      for (var j = 0; j < G * G; j++) {
+        startY[j] = pos[j * 3 + 1];
+        endY[j] = ((targetHts[j] - _lastMn) / _lastRg - 0.5) * 20;
+      }
+      var dur = o.durMs || 4000;
+      var t0 = performance.now();
+      var tok = { dead: false };
+      _morphTok = tok;
+      var frame = 0;
+      (function step() {
+        if (tok.dead || terrain !== meshRef) return;
+        var k = Math.min(1, (performance.now() - t0) / dur);
+        var e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        for (var i = 0; i < G * G; i++) pos[i * 3 + 1] = startY[i] + (endY[i] - startY[i]) * e;
+        geoRef.attributes.position.needsUpdate = true;
+        // 노멀 재계산은 무거워서(25,600 정점) 4프레임에 1번 + 마지막 프레임.
+        if ((frame++ & 3) === 0 || k >= 1) geoRef.computeVertexNormals();
+        if (k < 1) { requestAnimationFrame(step); return; }
+        hts = targetHts;   // 내부 필드 동기화 (gH 는 pos 를 읽으므로 이미 일치)
+        if (terrainWire && terrainWire.geometry && terrainWire.geometry.attributes.position) {
+          var wp = terrainWire.geometry.attributes.position.array;
+          for (var w = 0; w < pos.length; w++) wp[w] = pos[w];
+          terrainWire.geometry.attributes.position.needsUpdate = true;
+        }
+        if (_morphTok === tok) _morphTok = null;
+        if (typeof o.onDone === 'function') { try { o.onDone(); } catch (_) {} }
+      })();
+      return tok;
+    }
+
     function buildTerrain(filterIdx, buildOpts) {
       // Accept buildTerrain(idx) OR buildTerrain({...}) OR buildTerrain(idx, {...}).
       if (filterIdx != null && typeof filterIdx === 'object') { buildOpts = filterIdx; filterIdx = (buildOpts.filterIdx != null ? buildOpts.filterIdx : null); }
@@ -1016,6 +1328,8 @@
       pos = geo.attributes.position.array; var colA = new Float32Array(pos.length);
       var mn = field.minH; var mx = field.maxH;
       var rg = mx - mn || 1;
+      _lastMn = mn; _lastRg = rg;                       // 260802 morphHeights 기준 저장
+      if (_morphTok) { _morphTok.dead = true; _morphTok = null; }  // 진행 중 보간은 재빌드가 이긴다
       for (var j = 0; j < G * G; j++) {
         pos[j * 3 + 1] = ((hts[j] - mn) / rg - 0.5) * 20;
         var cj = j * 3;
@@ -1026,86 +1340,13 @@
       geo.setAttribute('color', new THREE.BufferAttribute(colA, 3)); geo.computeVertexNormals();
       var terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.06, side: THREE.DoubleSide });
 
-      // ─── Shader patch: rock texture + strata layers ────────────
+      // ─── Shader patch: 바위 질감 + 지층 밴드 + 공간 안개 (260802 _rockPatchShader 로 추출) ───
       var cont0 = P.length > 0 && P[0].cont ? P[0].cont : {};
-      terrainMat.onBeforeCompile = function (shader) {
-        // Uniforms for strata
-        shader.uniforms._stage1 = { value: cont0.stage1 || 0 };
-        shader.uniforms._stage2 = { value: cont0.stage2 || 0 };
-        shader.uniforms._stage3 = { value: cont0.stage3 || 0 };
-        shader.uniforms._contDepth = { value: Math.min(cont0.depth || 0, 50) };
-
-        // Inject noise + varying + uniforms into fragment shader
-        shader.fragmentShader = shader.fragmentShader.replace(
-          'void main() {',
-          [
-            'varying vec3 vWPos;',
-            'uniform float _stage1;',
-            'uniform float _stage2;',
-            'uniform float _stage3;',
-            'uniform float _contDepth;',
-            'float _h31(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}',
-            'float _n31(vec3 p){',
-            '  vec3 i=floor(p),f=fract(p);',
-            '  f=f*f*(3.0-2.0*f);',
-            '  return mix(mix(mix(_h31(i),_h31(i+vec3(1,0,0)),f.x),',
-            '    mix(_h31(i+vec3(0,1,0)),_h31(i+vec3(1,1,0)),f.x),f.y),',
-            '    mix(mix(_h31(i+vec3(0,0,1)),_h31(i+vec3(1,0,1)),f.x),',
-            '    mix(_h31(i+vec3(0,1,1)),_h31(i+vec3(1,1,1)),f.x),f.y),f.z);',
-            '}',
-            'float _fbm3(vec3 p){',
-            '  float v=0.0,a=0.5;',
-            '  for(int i=0;i<4;i++){v+=a*_n31(p);p*=2.1;a*=0.5;}',
-            '  return v;',
-            '}',
-            'void main() {',
-          ].join('\n')
-        );
-
-        // Apply rock texture + strata layers before output
-        shader.fragmentShader = shader.fragmentShader.replace(
-          'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
-          [
-            'vec3 _wp = vWPos;',
-            'float _grain = _fbm3(_wp * 8.0) * 0.12 - 0.06;',
-            'float _slope = 1.0 - abs(dot(normal, vec3(0.0, 1.0, 0.0)));',
-            'float _crevice = _slope * _slope * 0.15;',
-            '',
-            '// Strata layers visible on steep slopes (cliff faces)',
-            'if (_slope > 0.3 && _contDepth > 0.5) {',
-            '  float _strataY = _wp.y * (1.0 + _contDepth * 0.1);',
-            '  float _band = fract(_strataY * 0.8 + _fbm3(_wp * 0.5) * 0.3);',
-            '  vec3 _s1col = vec3(0.45, 0.32, 0.22);', // stage1: warm brown (biased tilt)
-            '  vec3 _s2col = vec3(0.35, 0.22, 0.42);', // stage2: contrasting purple (juxtaposition)
-            '  vec3 _s3col = vec3(0.55, 0.58, 0.62);', // stage3: cold geometric grey (hypercompletion)
-            '  vec3 _strataTint = _s1col * _stage1 + _s2col * _stage2 + _s3col * _stage3;',
-            '  float _strataStr = _slope * min(_contDepth / 10.0, 1.0) * 0.4;',
-            '  float _bandEdge = smoothstep(0.45, 0.55, _band);',
-            '  outgoingLight = mix(outgoingLight, _strataTint * (0.6 + _bandEdge * 0.4), _strataStr);',
-            '}',
-            '',
-            'outgoingLight += _grain;',
-            'outgoingLight -= _crevice;',
-            'outgoingLight = max(outgoingLight, vec3(0.02));',
-            'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
-          ].join('\n')
-        );
-
-        // Vertex shader: pass world position
-        shader.vertexShader = shader.vertexShader.replace(
-          'void main() {',
-          'varying vec3 vWPos;\nvoid main() {'
-        );
-        shader.vertexShader = shader.vertexShader.replace(
-          '#include <fog_vertex>',
-          '#include <fog_vertex>\nvWPos = (modelMatrix * vec4(position, 1.0)).xyz;'
-        );
-
-        // ── ADDITIVE 공간 안개 B안: 지점별 fog 마스크 (기본 OFF, uniform 게이트) ──
-        _sfPatchShader(shader);
-      };
+      terrainMat.onBeforeCompile = _mkTerrainPatch(cont0);
 
       terrain = new THREE.Mesh(geo, terrainMat);
+      terrain.castShadow = true;      // 260802 1단계: 산이 제 그림자를 드리움
+      terrain.receiveShadow = true;   // 260802 1단계: 바위·사물 그림자를 받음
       scene3.add(terrain);
       terrainWire = new THREE.Mesh(geo.clone(), new THREE.MeshBasicMaterial({ wireframe: true, color: 0x221833, opacity: 0.02, transparent: true }));
       scene3.add(terrainWire);
@@ -1142,12 +1383,16 @@
           });
           var crystal = new THREE.Mesh(crystalGeo, crystalMat);
           crystal.position.set(fwx, fh + crystalH / 2, fwz);
+          crystal.castShadow = true; // 260802 1단계
+          crystal.userData._temScatter = { kind: 'crystal', height: crystalH, bottomY: fh, upgraded: false }; // 260802 3단계
           seedGrp.add(crystal);
           // Secondary tilted crystal
           if (cont.fixation > 0.6) {
             var c2 = new THREE.Mesh(crystalGeo.clone(), crystalMat.clone());
             c2.position.set(fwx + 0.5, fh + crystalH * 0.3, fwz + 0.3);
             c2.rotation.set(0.3, 0, -0.4);
+            c2.castShadow = true;
+            c2.userData._temScatter = { kind: 'crystal', height: crystalH, bottomY: fh - crystalH * 0.2, upgraded: false };
             seedGrp.add(c2);
           }
         }
@@ -1188,10 +1433,9 @@
         });
 
         // Heterogeneity → debris (small rocks scattered on terrain)
+        // 260802 3단계: 정사면체 → 절차 바위 (Tripo GLB 있으면 _upgradeScatter 가 실물 교체)
         if (cont.heterogeneity > 0.15 && scenes.length > 0) {
           var debrisCount = Math.round(cont.heterogeneity * 40);
-          var debrisGeo = new THREE.TetrahedronGeometry(0.12, 0);
-          var debrisMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.9, metalness: 0.1 });
           var rng = sR(hashWorldOffset(m.id).ox * 1000 | 0);
           for (var di = 0; di < debrisCount; di++) {
             var dsc = scenes[di % scenes.length];
@@ -1200,11 +1444,12 @@
             var dwx = dsc.wx + Math.cos(dAngle) * dRad;
             var dwz = dsc.wz + Math.sin(dAngle) * dRad;
             var dwh = gH(dwx, dwz);
-            var debris = new THREE.Mesh(debrisGeo, debrisMat);
-            debris.position.set(dwx, dwh + 0.06, dwz);
-            debris.rotation.set(rng() * 3, rng() * 3, rng() * 3);
-            var dScale = 0.5 + rng() * 1.5;
-            debris.scale.set(dScale, dScale, dScale);
+            var dPick = rng();
+            var dRotY = rng() * Math.PI * 2;
+            var dTilt = (rng() - 0.5) * 0.5;
+            var dScale = (0.5 + rng() * 1.5) * 0.3; // 바위 최장변 0.15~0.6 world unit
+            var debris = _makeScatterRock(dPick, dScale, dRotY, dTilt, dwh);
+            debris.position.set(dwx, dwh, dwz);
             seedGrp.add(debris);
           }
         }
@@ -1262,6 +1507,9 @@
           if (global.console) console.warn('[strata] perScenePlates build failed, fell back to single-mesh gH:', e);
         }
       }
+
+      // 260802 3단계: GLB 가 이미 도착해 있으면 방금 세운 폴백을 즉시 실물로 교체
+      _upgradeScatter();
 
       var totalPlays = 0;
       for (var pi = 0; pi < P.length; pi++) totalPlays += P[pi].pc;
@@ -1400,6 +1648,7 @@
       renderer.setSize(vp0.w, vp0.h);
       renderer.setPixelRatio(Math.min(global.devicePixelRatio || 1, 2));
       renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 260802 1단계: 딱딱한 계단 경계 → 부드러운 가장자리
 
       controls = new THREE.OrbitControls(camera, canvas);
       controls.enableDamping = true;
@@ -1412,8 +1661,13 @@
       scene3.add(new THREE.AmbientLight(0x1a1828, 1.3));
       var dl = new THREE.DirectionalLight(0xc4a882, 0.7);
       dl.position.set(40, 60, 30); dl.castShadow = true;
-      dl.shadow.mapSize.set(1024, 1024);
-      dl.shadow.camera.left = -50; dl.shadow.camera.right = 50; dl.shadow.camera.top = 50; dl.shadow.camera.bottom = -50;
+      // 260802 1단계: 그림자 카메라가 지형(SZ=112, 반경 56)을 다 덮어야 가장자리 씬의
+      // 그림자가 잘리지 않는다 (종전 ±50 은 모서리 잘림). 해상도 1024→2048.
+      dl.shadow.mapSize.set(2048, 2048);
+      dl.shadow.camera.left = -75; dl.shadow.camera.right = 75; dl.shadow.camera.top = 75; dl.shadow.camera.bottom = -75;
+      dl.shadow.camera.near = 10; dl.shadow.camera.far = 220;
+      dl.shadow.bias = -0.0002;   // 그림자 여드름(acne) 방지
+      dl.shadow.normalBias = 0.5; // 경사면 자기그림자 줄무늬 방지
       scene3.add(dl);
       var dl2 = new THREE.DirectionalLight(0x3a4a80, 0.3); dl2.position.set(-30, 40, -20); scene3.add(dl2);
       oP1 = new THREE.PointLight(0x7a3020, 0.4, 70); scene3.add(oP1);
@@ -1435,6 +1689,9 @@
       scene3.add(parts);
 
       // Axis markers removed — fog hides terrain edges instead
+
+      // 260802 3단계: Tripo 바위 GLB 로드 시동 (GLTFLoader 없는 페이지는 조용히 스킵)
+      _loadRockLib();
 
       return { scene: scene3, camera: camera, renderer: renderer, controls: controls };
     }
@@ -1798,6 +2055,7 @@
       setSceneTransition: function (v) { _fpSceneTransition = !!v; },
       setYaw: function (y) { _fpEuler.yaw = y; },
       getYaw: function () { return _fpEuler.yaw; },
+      morphHeights: morphHeights,   // 260802 목격 연출 — 높이 점진 보간 (재빌드 없음)
     };
   }
 

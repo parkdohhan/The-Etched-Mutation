@@ -1,0 +1,6 @@
+{
+  "_설명": "Tripo에서 뽑은 GLB를 이 폴더에 넣고 아래 목록에 파일명을 적으면, 지형에 흩어진 파편 바위(절차 생성 폴백)와 고착 결정(원뿔 폴백)이 실물 모델로 바뀐다. rocks 는 여러 개 적을수록 다양해짐(권장 3개). crystal 은 하나. 목록이 비어 있으면 코드가 만든 절차 바위가 그대로 쓰인다.",
+  "_예시": { "rocks": ["rock_a.glb", "rock_b.glb", "rock_c.glb"], "crystal": "crystal_a.glb" },
+  "rocks": [],
+  "crystal": null
+}

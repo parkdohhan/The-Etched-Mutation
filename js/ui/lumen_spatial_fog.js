@@ -20,6 +20,9 @@
  *   seed(x, z[, r])            — 즉시 열린 지역 (런 시작 지점용, 애니메이션 없음)
  *   open(fx, fz, tx, tz[, r])  — 회랑 파임 → 지역 개화 (unlock 연출)
  *   openAt(x, z[, r])          — 회랑 없이 지역만 개화
+ *   keepOpen(x, z[, r])        — **영구** 개방 지역 (260802: 나가는 문 자리용).
+ *                                close() 로 안 닫히고, MAX 잘림에서도 살아남는다.
+ *   keepCorridor(fx,fz,tx,tz)  — **영구** 회랑 (문까지 가는 길)
  *   revealAt(x, z) → 0..1      — 그 좌표의 걷힘 정도 (유령/핀 투명도 게이팅용, 3단계 소비)
  *   liftAll()                  — 안개 전부 걷기 (막다른 자리 fallback — 원칙 4)
  *   clear() / detach()
@@ -198,6 +201,26 @@
       _reveals.push({ ax: toX, az: toZ, bx: toX, bz: toZ, kind: 'circle', t0: now + opts.corridorMs, target: r || opts.regionRadius });
       console.log('[spatial-fog] open — 회랑 파임, ' + opts.corridorMs + 'ms 후 지역 개화 (' + Math.round(toX) + ',' + Math.round(toZ) + ')');
     }
+    // ── 영구 개방 (260802) ───────────────────────────────────────
+    // 나가는 문은 언제나 갈 수 있어야 한다 (사용자 결정). 여기 등록된 자리는
+    //   ① close() 의 되덮임 대상에서 제외되고
+    //   ② 열린 자리가 MAX 를 넘어 잘릴 때도 우선 보존된다.
+    // 그 외 동작(개화 애니메이션·liftAll·clear)은 일반 자리와 같다.
+    function keepOpen(x, z, r) {
+      _reveals.push({
+        ax: x, az: z, bx: x, bz: z, kind: 'circle',
+        t0: _now() - opts.regionMs, target: r || opts.regionRadius, permanent: true,
+      });
+      console.log('[spatial-fog] keepOpen — 영구 개방 지역 (' + Math.round(x) + ',' + Math.round(z) + ') r=' + Math.round(r || opts.regionRadius));
+    }
+    function keepCorridor(fromX, fromZ, toX, toZ) {
+      _reveals.push({
+        ax: fromX, az: fromZ, bx: toX, bz: toZ, kind: 'corridor',
+        t0: _now() - opts.corridorMs, target: opts.corridorRadius, permanent: true,
+      });
+      console.log('[spatial-fog] keepCorridor — 영구 회랑 (' + Math.round(fromX) + ',' + Math.round(fromZ) + ')→(' + Math.round(toX) + ',' + Math.round(toZ) + ')');
+    }
+
     // 회랑만 파기 (지역 개화 없음) — openOnArrive 와 짝
     function carve(fromX, fromZ, toX, toZ) {
       _reveals.push({ ax: fromX, az: fromZ, bx: toX, bz: toZ, kind: 'corridor', t0: _now(), target: opts.corridorRadius });
@@ -219,6 +242,7 @@
       for (var i = 0; i < _reveals.length; i++) {
         var rp = _reveals[i];
         if (rp.closing != null) continue;
+        if (rp.permanent) continue;   // 260802 영구 개방(문)은 되덮지 않는다
         var dx = rp.bx - x, dz = rp.bz - z;
         if (dx * dx + dz * dz <= R * R) { rp.closing = now; hit++; }
       }
@@ -394,13 +418,24 @@
         if (crp.closing != null && now - crp.closing > opts.closeMs) _reveals.splice(ci, 1);
       }
       var MAX = U.MAX;
-      var startIdx = Math.max(0, _reveals.length - MAX);
+      var n = 0;
+      // 260802: 영구 개방(문)을 먼저 채운다 — 자리가 모자라도 문은 안 잘린다.
+      for (var pi = 0; pi < _reveals.length && n < MAX; pi++) {
+        if (!_reveals[pi].permanent) continue;
+        var pef = _effective(_reveals[pi], now);
+        if (!pef) continue;
+        U.uSeg.value[n].set(pef.ax, pef.az, pef.bx, pef.bz);
+        U.uRad.value[n] = pef.r;
+        n++;
+      }
+      // 나머지는 최신순 — 남은 칸이 모자라면 가장 오래된 자리부터 잘린다 (기존 동작).
+      var startIdx = Math.max(0, _reveals.length - Math.max(0, MAX - n));
       if (startIdx > 0 && !_overflowWarned) {
         _overflowWarned = true;
-        console.warn('[spatial-fog] 열린 자리 ' + _reveals.length + '개 > MAX ' + MAX + ' — 가장 오래된 자리부터 다시 안개에 덮임');
+        console.warn('[spatial-fog] 열린 자리 ' + _reveals.length + '개 > MAX ' + MAX + ' — 가장 오래된 자리부터 다시 안개에 덮임 (영구 개방 제외)');
       }
-      var n = 0;
-      for (var i = startIdx; i < _reveals.length; i++) {
+      for (var i = startIdx; i < _reveals.length && n < MAX; i++) {
+        if (_reveals[i].permanent) continue;   // 위에서 이미 넣음
         var ef = _effective(_reveals[i], now);
         if (!ef) continue;
         U.uSeg.value[n].set(ef.ax, ef.az, ef.bx, ef.bz);
@@ -483,6 +518,8 @@
       seed: seed,
       open: open,
       openAt: openAt,
+      keepOpen: keepOpen,         // 260802 영구 개방 (문)
+      keepCorridor: keepCorridor, // 260802 영구 회랑 (문까지 가는 길)
       carve: carve,
       close: close,
       openOnArrive: openOnArrive,

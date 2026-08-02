@@ -351,14 +351,15 @@
     // Monologue text (bottom center)
     var el = document.createElement('div');
     el.id = 'strataProximityText';
-    el.style.cssText = 'position:absolute;bottom:80px;left:50%;transform:translateX(-50%);color:#c4a882;font-size:14px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 0 10px rgba(196,168,130,0.4);max-width:400px;';
+    // 260802: 지형 뷰 근접 문구도 같이 키움 (하단에 너무 붙어 잘 안 읽혔다).
+    el.style.cssText = 'position:absolute;bottom:120px;left:50%;transform:translateX(-50%);color:#d4bc96;font-size:17px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 2px 10px rgba(0,0,0,0.6);max-width:520px;';
     parent.appendChild(el);
     _proxState.el = el;
 
     // Long-press hint (below monologue)
     var hint = document.createElement('div');
     hint.id = 'strataProximityHint';
-    hint.style.cssText = 'position:absolute;bottom:50px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.4);font-size:11px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;';
+    hint.style.cssText = 'position:absolute;bottom:84px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.7);font-size:15px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;text-shadow:0 2px 8px rgba(0,0,0,0.6);';
     parent.appendChild(hint);
     _proxState.hintEl = hint;
 
@@ -409,6 +410,11 @@
   function _openScenePanel(pin) {
     var sd = pin.userData._sceneData;
     if (!sd) return;
+    // 260802 2중 안전장치 — 어떤 경로로 불려도 FP 상영 중엔 이 패널을 띄우지 않는다.
+    if (typeof window !== 'undefined' && window._fpPlayActive) {
+      console.warn('[strata] FP 상영 중 구 상세 패널 차단 — scene=' + String(sd.id || '').slice(0, 8));
+      return;
+    }
     _ensureProximityUI();
 
     // Freeze terrain animation (camera stays, world pauses)
@@ -578,6 +584,11 @@
     var _pressStart = 0;
     var _pressTimer = null;
     var _onMouseDown = function () {
+      // 260802 "제3의 본문 상자" 봉쇄 — FP 상영 중엔 이 옛 상세 패널을 열지 않는다.
+      //   _showProximityMonologue 는 FP 일 때 '문구 표시'만 건너뛰고 nearPin 은 세워둔다.
+      //   그래서 1인칭에서 사물·유령을 길게 누르면 (사물 열람·씬 진입과 동시에)
+      //   #strataScenePanel 이 함께 열려 정체불명 상자로 보였다. 실측 확인 260802.
+      if (typeof window !== 'undefined' && window._fpPlayActive) return;
       if (!_proxState.nearPin) return;
       _pressStart = Date.now();
       _pressTimer = setTimeout(function () {

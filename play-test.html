@@ -3791,6 +3791,11 @@
             sceneIndex: pin.sceneIndex,
             sceneLinkInput: result.scene_link_input || '',  // V2.1.2 자리
           });
+          // 260802 판본 봉합: 대화 경로도 visitOrder 를 채운다 — 고전 경로(processEmotionResult)와
+          // 동일 패턴. 이게 없으면 run_traces.visit_order 가 빈 배열로 봉인된다 (e2e 실측).
+          if (!game.visitOrder) game.visitOrder = [];
+          var _voId = pin.sceneId || scene.id;
+          if (!game.visitOrder.includes(_voId)) game.visitOrder.push(_voId);
 
           // plays insert (generate-reveal 보조 자리 + 회차 outro)
           insertPlay(
@@ -6527,7 +6532,7 @@
   })();
 
   </script>
-  <script src="js/ui/strataView.js?v=260802a"></script><!-- 260802a 근접 문구 크기·위치 -->
+  <script src="js/ui/strataView.js?v=260802b"></script><!-- 260802b 근접 문구 크기·위치 + FP 중 구 상세 패널 차단 -->
   <script>
   // ─── 1인칭 지형 탐색 어댑터 (등고선 지도 대체) ─────────────
   (function () {
@@ -7211,21 +7216,9 @@
           monoEl.style.cssText = 'position:fixed;bottom:35%;left:50%;transform:translateX(-50%);z-index:10001;pointer-events:none;color:#c4a882;font-size:15px;letter-spacing:3px;text-align:center;opacity:0;transition:opacity 1.2s;text-shadow:0 0 15px rgba(196,168,130,0.4);font-family:"Cormorant Garamond",serif;';
           document.body.appendChild(monoEl);
 
-          // 2026-05-08: 자료 §11.3 자리 — 도어 인트로 스킵 안내. 첫 진입자가
-          // 의례 결을 받되, 길게 느낄 자리에 *키 한 번이면 지나간다*는 신호 박음.
-          // mono1 박히는 자리(3.4s) 와 함께 하단에 작은 글씨 페이드인.
-          var skipHintEl = document.createElement('div');
-          // 260802: 11px → 15px, 파동 위(300px)로. 8% 는 파동 한복판이라 안 보였다.
-          skipHintEl.style.cssText = 'position:fixed;bottom:300px;left:50%;transform:translateX(-50%);z-index:10001;pointer-events:none;color:rgba(196,168,130,0.62);font-size:15px;letter-spacing:4px;text-align:center;opacity:0;transition:opacity 1.6s;font-family:"Cormorant Garamond",serif;text-shadow:0 0 8px rgba(0,0,0,0.6);';
-          skipHintEl.textContent = lang === 'ko' ? '아무 키 — 건너뛰기' : 'Any key — skip';
-          document.body.appendChild(skipHintEl);
-          setTimeout(function () { skipHintEl.style.opacity = '1'; }, 3400);
-          setTimeout(function () {
-            skipHintEl.style.opacity = '0';
-            setTimeout(function () {
-              if (skipHintEl.parentNode) skipHintEl.parentNode.removeChild(skipHintEl);
-            }, 1600);
-          }, 12500);
+          // 260802: "아무 키 — 건너뛰기" 스킵 안내 삭제 (사용자 결정).
+          // 안내가 3.4s 에 떴는데 키 리스너는 8.0s 에야 붙어 4초간 거짓 안내였다.
+          // 스킵 기능 자체(any-key + 재진입 자동 스킵)는 안내 없이 그대로 산다.
 
           setTimeout(function () {
             monoEl.textContent = mono1;

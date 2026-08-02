@@ -8,6 +8,7 @@
 import { NPC_DIALOGUES } from '../npc-dialogues.js';
 import { setLanguage } from '../lib/i18n.js';
 import { setUserName, getUserName } from './userIdentity.js';
+import { isTesterMode, TESTER_MEMORY_CODE, TESTER_MEMORY_ID } from './testerMode.js';
 import { buildDoor } from './confession.js';
 import { _pickTopMemoryForLumen } from './archive.js';
 import { pickTopMemory, pickGhostVariant } from '../core/SeekerMatchEngine.js';
@@ -45,6 +46,19 @@ let _openingWaveDesat = 0; // 0..1
 // 메뉴 복귀(← 버튼) 시 +1 → 진행 중이던 _handleOpeningSubmit 흐름이
 // 자기 세션과 어긋남을 보고 파동 흡수·도어·play-test 점프를 중단.
 let _finderSessionSeq = 0;
+
+// ─────────────────────────────────────
+// === 테스터 모드 (2026-08-02) ===
+// ─────────────────────────────────────
+// 데모 테스터에게 finder 인터뷰(닉네임 + 질문 3턴)는 의미 없는 문턱이다.
+// 대답으로 기억을 고를 근거가 없으므로 대표 기억 하나로 고정하고,
+// 대사 한 줄 → "저기로 가봐" → 문 으로 직행한다.
+//
+// **풀버전 흐름은 한 줄도 지우지 않았다.** 아래 두 함수의 `if (isTesterMode())`
+// 분기 바깥(else 쪽)이 원본 그대로다. 되돌리기 = 스위치 끄기(?tester=0).
+// 테스터 모드 자체를 걷어내는 방법은 docs/오프닝_테스터모드-260802.md 참조.
+//
+// 스위치 본체는 ./testerMode.js (bindEvents.js 도 같은 스위치를 본다).
 
 // ─────────────────────────────────────
 // === Text Utilities ===
@@ -167,6 +181,7 @@ const V2_DIALOGUES = {
     namePlaceholder: '...이름 하나',
     replayIntro: '...다른 걸 찾고있어?',
     transition: '...저기로 가봐.',
+    testerIntro: '지금부터 너는 한 기억을 떠올리게될거야',   // 테스터 모드 전용 (260802)
     placeholder: '단어 하나, 감정 하나...',
     chips: [
       { label: '슬픔', emotion: 'sadness' },
@@ -183,6 +198,7 @@ const V2_DIALOGUES = {
     namePlaceholder: '...a name',
     replayIntro: '...looking for something else?',
     transition: '...you can go there.',
+    testerIntro: 'you are about to remember something',   // 테스터 모드 전용 (260802)
     placeholder: 'A word, a feeling...',
     chips: [
       { label: 'sadness', emotion: 'sadness' },
@@ -371,6 +387,18 @@ async function _runV2Sequence() {
   // 기존 "...Come in." 대사 부드럽게 페이드아웃 (갑자기 지워지지 않도록)
   await _fadeOutDialogue(dialogue, 1100);
   await new Promise(r => setTimeout(r, 900)); // 정적 여백
+
+  // ─── 테스터 모드 (260802): 인터뷰 통째로 건너뛰고 대사 한 줄 → 문 ───
+  // 닉네임 · intro 질문 · 감정 칩 · 멀티턴 질문 전부 미표시.
+  // 아래 원본 흐름(else 이하)은 손대지 않았다 — 스위치 끄면 그대로 돌아온다.
+  if (isTesterMode()) {
+    console.info('[opening] 테스터 모드 — finder 인터뷰 생략, 대표 기억 직행');
+    await _typeLinesSequential(dialogue, [D.testerIntro]);
+    await new Promise(r => setTimeout(r, 2200));
+    // 입력 단계는 아예 띄우지 않는다 (inputPhase 는 기본 opacity 0 / pointerEvents none).
+    await _handleOpeningSubmit(null, '');
+    return;
+  }
 
   // Returning user gets the same intro prompt as first-time — V2-13's separate
   // replayIntro branch retired (sound-first pivot, 2026-05-15). Nickname prompt
@@ -576,7 +604,10 @@ async function _handleOpeningSubmit(emotion, text) {
   }
 
   // 턴 2 + 3: NPC 질문 → 입력 → 분석. 빈 입력은 그 턴 skip.
-  for (let turnNum = 2; turnNum <= TOTAL_TURNS; turnNum++) {
+  // 260802 테스터 모드 — 질문 루프 자체를 건너뛴다 (fp 는 빈 채로 남고,
+  // 아래 매칭에서 대표 기억 고정 경로가 이를 대신한다).
+  const _testerSkipTurns = isTesterMode();
+  for (let turnNum = 2; !_testerSkipTurns && turnNum <= TOTAL_TURNS; turnNum++) {
     await _fadeOutDialogue(dialogue, 600);
     const question = _pickNextQuestion(fp, _openingLang);
     await _showNpcQuestion(question);
@@ -665,7 +696,23 @@ async function _handleOpeningSubmit(emotion, text) {
   let variantDelta = 0;
   let variants = [];   // V2-4 decideBranch 풀 입력 (memory 못 찾으면 빈 배열 → empty_pool)
 
-  const memMatch = pickTopMemory(fp, langFiltered);
+  // ─── 테스터 모드 (260802): 대표 기억 고정 ───
+  // 인터뷰를 건너뛰어 fp 가 비었으므로 매칭 근거가 없다. 누가 하든 같은 기억을
+  // 보게 해서 반응을 비교할 수 있도록 코드로 지정한다 (code 우선, 없으면 id).
+  if (isTesterMode()) {
+    const pool = (window.appStore && window.appStore.getState && window.appStore.getState().allMemoriesData) || [];
+    memory = pool.find(m => m && m.code === TESTER_MEMORY_CODE)
+          || pool.find(m => m && String(m.id) === TESTER_MEMORY_ID)
+          || null;
+    if (memory) {
+      variants = await _loadGhostVariantsForMemory(memory.id);
+      console.info('[opening] 테스터 모드 — 대표 기억 고정:', memory.code || memory.id);
+    } else {
+      console.warn('[opening] 테스터 모드 — 대표 기억(' + TESTER_MEMORY_CODE + ') 못 찾음, 기본 매칭으로 폴백');
+    }
+  }
+
+  const memMatch = memory ? null : pickTopMemory(fp, langFiltered);
   if (memMatch && memMatch.memory) {
     memory = memMatch.memory;
     memDelta = memMatch.runnerUpDelta;
