@@ -998,6 +998,12 @@
       o.value = c; o.textContent = c;
       sel.appendChild(o);
     });
+    // 260802 알파2 파일럿 피드백: "연결사가 부족해서 그냥 넘겼다" — 9번째 선택지 = 직접 입력.
+    // 형식(결핍 방향의 선언, era이론 §3)은 보존 — 선언을 8종 목록 밖에서도 할 수 있게만 연다.
+    var optC = document.createElement('option');
+    optC.value = '__custom__';
+    optC.textContent = _koG ? '직접 입력…' : 'type your own…';
+    sel.appendChild(optC);
     sel.style.cssText = [
       'padding:12px 10px',
       'background:rgba(0,0,0,0.38)',
@@ -1007,9 +1013,33 @@
       'font-family:inherit', 'font-size:1.02rem',
       'outline:none', 'border-radius:0', 'cursor:pointer',
     ].join(';');
+    // 직접 입력 칸 — '직접 입력…' 을 골랐을 때만 나타난다.
+    var custom = document.createElement('input');
+    custom.type = 'text';
+    custom.maxLength = 14;
+    custom.placeholder = _koG ? '이음말' : 'connective';
+    custom.style.cssText = [
+      'width:110px', 'padding:12px 10px',
+      'background:rgba(0,0,0,0.38)',
+      'border:none',
+      'border-bottom:1px solid rgba(196,168,130,0.55)',
+      'color:rgba(232,216,252,0.92)',
+      'font-family:inherit', 'font-size:1.02rem',
+      'text-align:center', 'outline:none', 'border-radius:0',
+      'display:none',
+    ].join(';');
+
+    // 지금 유효한 연결사 — 목록 선택 또는 직접 입력값
+    function _effConn() {
+      return sel.value === '__custom__' ? (custom.value || '').trim() : (sel.value || '');
+    }
+
     // 고르기 전엔 밝게 — "여기부터"가 보이게. 고르면 평상 톤으로.
     sel.style.borderBottomColor = 'rgba(196,168,130,0.75)';
     sel.onchange = function () {
+      var isC = sel.value === '__custom__';
+      custom.style.display = isC ? '' : 'none';
+      if (isC) setTimeout(function () { custom.focus(); }, 30);
       sel.style.borderBottomColor = sel.value ? 'rgba(196,168,130,0.32)' : 'rgba(196,168,130,0.75)';
     };
 
@@ -1027,7 +1057,7 @@
       'outline:none', 'border-radius:0',
       'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
     ].join(';');
-    input.oninput = function () { _previewWaveColorFromText((sel.value ? sel.value + ' ' : '') + (input.value || '')); };
+    input.oninput = function () { var _c = _effConn(); _previewWaveColorFromText((_c ? _c + ' ' : '') + (input.value || '')); };
 
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
@@ -1042,12 +1072,15 @@
 
     function _go() {
       var v = (input.value || '').trim();
-      var conn = sel.value || '';
+      var conn = _effConn();
       if (!conn) {
         // 연결사 필수 — 결핍을 어느 방향으로 채울지의 선언이 형식의 핵심.
         // 260802 알파1: 조용한 붉은 테두리만으론 왜 안 되는지 몰랐다 — 말로 알려준다.
+        var _customEmpty = sel.value === '__custom__';
         sel.style.borderBottomColor = 'rgba(220,120,120,0.85)';
-        guide.textContent = _koG ? '연결사를 먼저 골라 주세요.' : 'Pick a connective first.';
+        guide.textContent = _customEmpty
+          ? (_koG ? '이음말을 먼저 적어 주세요.' : 'Type your connective first.')
+          : (_koG ? '연결사를 먼저 골라 주세요.' : 'Pick a connective first.');
         guide.style.color = 'rgba(220,120,120,0.9)';
         setTimeout(function () {
           sel.style.borderBottomColor = sel.value ? 'rgba(196,168,130,0.32)' : 'rgba(196,168,130,0.75)';
@@ -1062,9 +1095,11 @@
     }
     btn.onclick = _go;
     input.onkeydown = function (e) { if (e.key === 'Enter') _go(); };
+    custom.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); input.focus(); } };
 
     wrap.appendChild(guide);
     wrap.appendChild(sel);
+    wrap.appendChild(custom);
     wrap.appendChild(input);
     wrap.appendChild(btn);
     wrap.style.opacity = '0';
