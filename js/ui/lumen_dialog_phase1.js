@@ -984,7 +984,10 @@
     guide.style.cssText = [
       'flex-basis:100%', 'text-align:center',
       'font-size:0.88rem', 'letter-spacing:0.05em',
-      'color:rgba(196,168,130,0.85)',
+      'color:rgba(196,168,130,0.9)',
+      // 260802 알파2b: 밝은 배경(눈 지형 등) 위에서 안 읽힘 — 검은 박스 덧댐 (사용자 지시)
+      'background:rgba(8,6,14,0.82)',
+      'padding:7px 12px', 'border-radius:4px',
       'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
       'transition:color 300ms ease',
     ].join(';');

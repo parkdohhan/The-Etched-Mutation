@@ -84,7 +84,7 @@
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
   <script src="js/shared/tem_stem_cuts.js?v=260730"></script><!-- 260730 이어받기 지문 (도출 절단) -->
-  <script src="js/ui/lumen_dialog_phase1.js?v=260802b"></script><!-- 260802b 알파2: 연결사 직접 입력 -->
+  <script src="js/ui/lumen_dialog_phase1.js?v=260802c"></script><!-- 260802c 알파2b: 안내 문구 검은 박스 -->
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260714"></script>
   <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
@@ -7491,8 +7491,8 @@
                   hintEl.style.opacity = '0';
                   setTimeout(function () {
                     hintEl.textContent = lang === 'ko'
-                      ? '[흐릿한 사람 곁에 가서, 겨눈 채 길게 누르면 이야기가 시작됩니다]'
-                      : '[Walk up to a blurred figure — aim and hold to begin its story]';
+                      ? '[흐릿한 대상 곁에 가서, 겨눈 채 길게 누르면 이야기가 시작됩니다]'
+                      : '[Walk up to a blurred presence — aim and hold to begin its story]';
                     hintEl.style.opacity = '1';
                     setTimeout(function () {
                       hintEl.style.opacity = '0';
@@ -7515,12 +7515,12 @@
         var lines = langC === 'ko' ? [
           '이곳은 한 사람의 기억입니다.',
           '당신이 지나갈 때마다, 기억은 당신 쪽으로 조금씩 물듭니다.',
-          '흐릿한 사람들에게 다가가세요. 끊긴 문장을 건네면, 당신의 말로 이어 주세요.',
+          '흐릿한 대상들에게 다가가세요. 끊긴 문장을 건네면, 당신의 말로 이어 주세요.',
           '충분히 만난 뒤에야, 나가는 문이 열립니다.',
         ] : [
           "This is someone's memory.",
           'Each time you pass through, it stains toward you.',
-          'Approach the blurred figures. When a broken sentence is handed to you, continue it in your own words.',
+          'Approach the blurred presences. When a broken sentence is handed to you, continue it in your own words.',
           'Only after enough encounters will the exit open.',
         ];
         var promptTxt = langC === 'ko' ? '[ 클릭해서 들어가기 ]' : '[ Click to enter ]';
@@ -7798,6 +7798,13 @@
 
       _fpInterval = setInterval(function () {
         if (!_fpPlayActive || !rt.isFirstPerson()) return;
+        // 260802 알파2b: 대화창이 열려 있으면 근접 속삭임·"길게 눌러…" 힌트를 숨긴다 —
+        // 대화 입력창 위로 힌트가 겹쳐 뜨던 결함 (사용자 스크린샷).
+        if (document.getElementById('lumenDialogPhase1')) {
+          if (_fpProxEl) _fpProxEl.style.opacity = '0';
+          if (_fpHintEl) _fpHintEl.style.opacity = '0';
+          return;
+        }
         var cam = rt.getCamera();
         if (!cam) return;
 
@@ -8440,7 +8447,7 @@
     var _miniCanvas = null;
     var _miniCtx = null;
     var _miniContourImg = null; // cached contour background
-    var MINI_SIZE = 260;
+    var MINI_SIZE = 325; // 260802 알파2b: 260 → 325 (1.25배, 사용자 지시 — 아이콘도 같이 확대)
     // 2026-05-15: 46 → 112. tem_af_strata_terrain.js 의 PlaneGeometry SZ 와 일치해야
     //   미니맵이 지형 외곽까지 담음. 46 이었을 때 월드 ±23 바깥 영역(전체의 ~58%)이
     //   가장자리에 짓눌려 잘려보였음.
@@ -8634,8 +8641,10 @@
           var wz = ((iz + 0.5) / MINI_FOG_G - 0.5) * SZ_TERRAIN;
           var rv = fog.revealAt(wx, wz);
           var o = (iz * MINI_FOG_G + ix) * 4;
-          d[o] = 16; d[o + 1] = 15; d[o + 2] = 24;          // 안개색 (지형 fog 톤)
-          d[o + 3] = Math.round((1 - rv) * 216);            // 최대 ~85% 덮임
+          // 260802 알파2b: 어두운 안개색은 어두운 지형과 구분 불가("안개 안 보임") —
+          // 본 세계 안개 벽처럼 뿌연 회보라로 밝혀 걷힌 곳(어두운 지형)과 대비시킨다.
+          d[o] = 96; d[o + 1] = 90; d[o + 2] = 116;
+          d[o + 3] = Math.round((1 - rv) * 232);
         }
       }
       _miniFogCtx.putImageData(_miniFogData, 0, 0);
@@ -8665,9 +8674,9 @@
         var pulse = 0.5 + 0.5 * Math.sin(now * 0.004 + i * 1.7);
         _miniCtx.save();
         _miniCtx.shadowColor = 'rgba(232,206,150,0.9)';
-        _miniCtx.shadowBlur = 6 + pulse * 7;
+        _miniCtx.shadowBlur = 8 + pulse * 9;                 // 260802 알파2b 확대
         _miniCtx.beginPath();
-        _miniCtx.arc(mp.x, mp.y, 2.8 + pulse * 1.2, 0, Math.PI * 2);
+        _miniCtx.arc(mp.x, mp.y, 4 + pulse * 1.6, 0, Math.PI * 2);
         _miniCtx.fillStyle = 'rgba(232, 206, 150, 0.95)';
         _miniCtx.fill();
         _miniCtx.restore();
@@ -8675,9 +8684,9 @@
         if (age < 2400) {                                    // 갓 생긴 사물 — 퍼지는 파문
           var k = age / 2400;
           _miniCtx.beginPath();
-          _miniCtx.arc(mp.x, mp.y, 4 + k * 16, 0, Math.PI * 2);
+          _miniCtx.arc(mp.x, mp.y, 5 + k * 20, 0, Math.PI * 2);
           _miniCtx.strokeStyle = 'rgba(232,206,150,' + (0.8 * (1 - k)).toFixed(3) + ')';
-          _miniCtx.lineWidth = 1.5;
+          _miniCtx.lineWidth = 2;
           _miniCtx.stroke();
         }
       }
@@ -8711,15 +8720,16 @@
           if (window._temSpatialFog && window._temSpatialFog.revealAt(sp.wx, sp.wz) < 0.5) return;
           var mp = _worldToMini(sp.wx, sp.wz);
           _miniCtx.beginPath();
+          // 260802 알파2b: 아이콘 확대 (사용자 지시 — 너무 작아서 안 보임)
           if (sp.visited) {
             _miniCtx.fillStyle = 'rgba(100,100,100,0.5)';
-            _miniCtx.arc(mp.x, mp.y, 3, 0, Math.PI * 2);
+            _miniCtx.arc(mp.x, mp.y, 4.5, 0, Math.PI * 2);
           } else if (sp.accessible) {
-            _miniCtx.fillStyle = 'rgba(106,159,216,0.8)';
-            _miniCtx.arc(mp.x, mp.y, 4, 0, Math.PI * 2);
+            _miniCtx.fillStyle = 'rgba(106,159,216,0.85)';
+            _miniCtx.arc(mp.x, mp.y, 6, 0, Math.PI * 2);
           } else {
             _miniCtx.fillStyle = 'rgba(60,60,70,0.4)';
-            _miniCtx.arc(mp.x, mp.y, 2.5, 0, Math.PI * 2);
+            _miniCtx.arc(mp.x, mp.y, 3.5, 0, Math.PI * 2);
           }
           _miniCtx.fill();
         });
@@ -8733,10 +8743,10 @@
           if (!g) return;
           var mp = _worldToMini(g.x, g.z);
           _miniCtx.beginPath();
-          _miniCtx.arc(mp.x, mp.y, 3.5, 0, Math.PI * 2);
+          _miniCtx.arc(mp.x, mp.y, 5, 0, Math.PI * 2);       // 260802 알파2b 확대
           _miniCtx.fillStyle = 'rgba(168, 140, 196, 0.85)';   // 창백한 자주 — 유령 톤
           _miniCtx.fill();
-          _miniCtx.lineWidth = 0.8;
+          _miniCtx.lineWidth = 1;
           _miniCtx.strokeStyle = 'rgba(232, 216, 252, 0.5)';
           _miniCtx.stroke();
         });
@@ -8750,10 +8760,10 @@
       _miniCtx.save();
       _miniCtx.translate(exitMp.x, exitMp.y);
       _miniCtx.fillStyle = 'rgba(196, 168, 130, 0.9)';
-      _miniCtx.fillRect(-4, -6, 8, 12);
+      _miniCtx.fillRect(-5, -8, 10, 16);                     // 260802 알파2b 확대
       _miniCtx.strokeStyle = 'rgba(232, 216, 180, 1)';
-      _miniCtx.lineWidth = 1.2;
-      _miniCtx.strokeRect(-4, -6, 8, 12);
+      _miniCtx.lineWidth = 1.5;
+      _miniCtx.strokeRect(-5, -8, 10, 16);
       _miniCtx.restore();
 
       // Draw player position as red triangle pointing in look direction
@@ -8764,7 +8774,7 @@
 
       var pp = _worldToMini(cam.position.x, cam.position.z);
       var yaw = cam.rotation.y;
-      var triSize = 7;
+      var triSize = 10;   // 260802 알파2b: 7 → 10 (사용자 지시 — 현재 위치 화살표 확대)
 
       _miniCtx.save();
       _miniCtx.translate(pp.x, pp.y);
@@ -8782,7 +8792,7 @@
       _miniCtx.beginPath();
       _miniCtx.moveTo(0, 0);
       var fovHalf = (cam.fov / 2) * Math.PI / 180;
-      var coneLen = 25;
+      var coneLen = 32;   // 260802 알파2b 확대
       _miniCtx.lineTo(Math.sin(-fovHalf) * coneLen, -Math.cos(-fovHalf) * coneLen);
       _miniCtx.lineTo(Math.sin(fovHalf) * coneLen, -Math.cos(fovHalf) * coneLen);
       _miniCtx.closePath();
