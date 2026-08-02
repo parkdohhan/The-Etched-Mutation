@@ -574,7 +574,23 @@
         var bbox2 = new THREE.Box3().setFromObject(inst);
         inst.position.y -= bbox2.min.y;          // 바닥 원점 보정 — 어떤 원점이 와도 발이 땅에
         root.add(inst);
-        _stripDetails(root);                     // 유령 재질(반투명 xray)로 통일 — "사물의 유령"
+        // 260802b: 유령빛(xray) 대신 Tripo 원색 그대로 (사용자 결정 — "그 멋있는 걸로").
+        //   밤 조명에 색이 죽지 않게 자가발광만 태움 — lumen_scene_objects 모델 재질과 동일 손질.
+        inst.traverse(function (m) {
+          if (!m.isMesh || !m.material) return;
+          var list = Array.isArray(m.material) ? m.material : [m.material];
+          var cloned = list.map(function (mm) {
+            var c = mm.clone();
+            c.fog = true;
+            if (c.emissive) {
+              if (c.map && 'emissiveMap' in c) c.emissiveMap = c.map;
+              if (c.map) c.emissive.setScalar(0.4);
+              else c.emissive.copy(c.color).multiplyScalar(0.4);
+            }
+            return c;
+          });
+          m.material = Array.isArray(m.material) ? cloned : cloned[0];
+        });
         var h = bbox2.max.y - bbox2.min.y;
         g.headY = Math.max(0.6, h * 0.62);
         g.headRadius = Math.max(0.18,
@@ -972,9 +988,14 @@
           if (w) _dlgSpawnWord(w, false);
         }
         var head = _ghostHeadWorld(g, new THREE.Vector3());
+        // 260802b: 줌 힌트 — 사물 몸은 "줌인했구나" 정도만 (사용자 결정: 너무 파고들지 말 것).
+        //   사람 몸 0.75m 유지 / 사물 몸은 크기 비례로 물러남 + 시선 낙폭도 얕게.
+        var isObjectBody = !!g.objectWord;
         return {
           ok: true,
           headWorld: head.clone(),
+          zoomDist: isObjectBody ? Math.max(2.6, (g.headRadius || 0.45) * 4.5) : 0.75,
+          lookDrop: isObjectBody ? 0.05 : 0.28,
           getHeadWorld: function () { return _ghostHeadWorld(g, new THREE.Vector3()); }
         };
       },

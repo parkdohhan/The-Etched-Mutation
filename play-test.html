@@ -72,9 +72,9 @@
   <script src="js/ui/lumen_visual_effects.js?v=260731b"></script><!-- 260731 떨림 누적 가드 -->
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_mannequins.js?v=260802a"></script><!-- 260802 유령 외관=사물 (bodyForPin) -->
+  <script src="js/ui/lumen_scene_mannequins.js?v=260802b"></script><!-- 260802b 사물 몸 원색 + 줌 완화 -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260802b"></script><!-- 260802b 사물 그림자(불투명도 연동) -->
+  <script src="js/ui/lumen_scene_objects.js?v=260802c"></script><!-- 260802c 안내 문구 파동 위로 + 크기 상향 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -3584,12 +3584,13 @@
         _dir.y = 0;
         if (_dir.lengthSq() < 1e-4) _dir.set(0, 0, 1);
         _dir.normalize();
-        var _tgtPos = _head.clone().add(_dir.multiplyScalar(0.75));
+        // 260802b: 줌 거리는 몸이 정한다 — 사람 0.75m / 사물은 크기 비례로 멀찍이 (dialogFocus 힌트)
+        var _tgtPos = _head.clone().add(_dir.multiplyScalar(_faceFocus.zoomDist || 0.75));
         _tgtPos.y = _head.y + 0.01;
         // 시선을 머리보다 약간 아래(가슴)로 — 얼굴이 화면 위쪽 1/3에 오고,
-        // 하단 자막·선택지와 안 겹친다 (영화 구도).
+        // 하단 자막·선택지와 안 겹친다 (영화 구도). 사물 몸은 낙폭 얕게 (땅 안 보게).
         var _lookTarget = _head.clone();
-        _lookTarget.y -= 0.28;
+        _lookTarget.y -= (_faceFocus.lookDrop != null ? _faceFocus.lookDrop : 0.28);
         var _lookM = new window.THREE.Matrix4().lookAt(_tgtPos, _lookTarget, new window.THREE.Vector3(0, 1, 0));
         var _tgtQuat = new window.THREE.Quaternion().setFromRotationMatrix(_lookM);
         // render wrap 이 매 프레임 이 자세로 덮어씀 — _fpTick 의 freeze 리셋을 이김.
@@ -6311,7 +6312,7 @@
   })();
 
   </script>
-  <script src="js/ui/strataView.js?v=260714"></script>
+  <script src="js/ui/strataView.js?v=260802a"></script><!-- 260802a 근접 문구 크기·위치 -->
   <script>
   // ─── 1인칭 지형 탐색 어댑터 (등고선 지도 대체) ─────────────
   (function () {
