@@ -7365,29 +7365,10 @@
             _doorSeqSkipped = true;
           }
 
-          // 2026-05-08: 자료 §11.3 자리 — 같은 메모리 재진입자는 도어 인트로 자동 스킵.
-          // localStorage 'tem_lumen_visited_memories' 자리에 진입 메모리 id 박음.
-          // 첫 진입자는 의례 결 그대로 받음. 두 번째부터 인트로 짧게.
-          try {
-            // 260802 알파2 결함 수리: 이 스크립트 구역엔 `game` 이 없다 (module/일반 2분할) —
-            // ReferenceError 가 try 에 삼켜져 방문 기록이 한 번도 저장된 적 없었다
-            // (= 재진입 인트로 자동 스킵도 5-08부터 죽어 있었음). window._temGame 로 교정.
-            var _curMemId = (window._temGame && window._temGame.memoryId) || new URLSearchParams(location.search).get('memory') || '';
-            if (_curMemId) {
-              var _visitedRaw = localStorage.getItem('tem_lumen_visited_memories') || '[]';
-              var _visited = JSON.parse(_visitedRaw);
-              if (!Array.isArray(_visited)) _visited = [];
-              if (_visited.indexOf(_curMemId) >= 0) {
-                // 재진입자 — 도어 인트로 자동 스킵 (mono1 박힌 자리 짧게 후 종료)
-                setTimeout(function () { _skipDoorSeq(); }, 1500);
-              }
-              if (_visited.indexOf(_curMemId) < 0) {
-                _visited.push(_curMemId);
-                if (_visited.length > 100) _visited = _visited.slice(-100);
-                localStorage.setItem('tem_lumen_visited_memories', JSON.stringify(_visited));
-              }
-            }
-          } catch (_) {}
+          // 260802 사용자 결정: 재진입자 인트로 자동 스킵 **철거** — 재방문도 의례를 다시 밟는다.
+          // (구 5-08 코드는 game ReferenceError 로 원래 무동작이었고, 오늘 한때 수리했다가
+          //  사용자 지시로 완전 삭제. 방문 기록 tem_lumen_visited_memories 저장도 하지 않는다.
+          //  any-key 수동 스킵은 그대로 산다. 이 자동 스킵을 되살리지 말 것.)
 
           // Start door sequence at 8.0s (after mono2 fades at 7.6s)
           setTimeout(function () {
@@ -7526,15 +7507,11 @@
       // ─── 260802 알파2: 입장 계약 카드 ────────────────────────────
       // 파일럿 2인 총합: "미완성 소설로 읽음"(프레임 오독) + "뭘 해야 하는지 모름"(이해도 50%).
       // 눈뜨기 인트로 전, 검은 화면 위 4줄 계약 — 클릭해야 입장 (클릭이 오디오 잠금도 푼다).
-      // 재진입자(tem_lumen_visited_memories)는 생략 — 인트로 자동 스킵과 같은 기준.
+      // 260802 사용자 결정(재방문 스킵 철거)에 맞춰 **매 방문 표시** — 줄이 다 뜨기 전에도
+      // 클릭하면 바로 입장되므로 재방문자는 한 클릭으로 통과한다.
       // 문구는 작가 감수 대기 초안 (docs/알파_수정방안_확립-260802.md).
       function _showEntryContract(onEnter) {
         var langC = (document.documentElement.lang || 'en').substring(0, 2);
-        try {
-          var _memC = (window._temGame && window._temGame.memoryId) || new URLSearchParams(location.search).get('memory') || '';
-          var _vC = JSON.parse(localStorage.getItem('tem_lumen_visited_memories') || '[]');
-          if (_memC && Array.isArray(_vC) && _vC.indexOf(_memC) >= 0) { onEnter(); return; }
-        } catch (_) {}
         var lines = langC === 'ko' ? [
           '이곳은 한 사람의 기억입니다.',
           '당신이 지나갈 때마다, 기억은 당신 쪽으로 조금씩 물듭니다.',
