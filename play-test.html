@@ -72,9 +72,9 @@
   <script src="js/ui/lumen_visual_effects.js?v=260731b"></script><!-- 260731 떨림 누적 가드 -->
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_mannequins.js?v=260802c"></script><!-- 260802c 프롤로그 ghostGate -->
+  <script src="js/ui/lumen_scene_mannequins.js?v=260802d"></script><!-- 260802d 지면 재정렬 -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260802c"></script><!-- 260802c 안내 문구 파동 위로 + 크기 상향 -->
+  <script src="js/ui/lumen_scene_objects.js?v=260802d"></script><!-- 260802c 안내 문구 파동 위로 + 크기 상향 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -2634,6 +2634,21 @@
   const DEPTH_STAGE_2 = 5;   // 5명째부터 문장이 파편화된다
   const DEPTH_STAGE_3 = 15;  // 15명째부터 키워드만 남는다
 
+  // ── 260802 판본 봉합: 이 회차에 실제 표출된 판본 기록 ──
+  // "내가 가지고 나갈 나의 판본"의 재료. 여태 그 사람이 읽은 텍스트는 어디에도 저장되지 않았다
+  // (scenes.text_stage_* 는 다음 사람용으로 덮어써지고, cont_depth 도 최신값만 남아 역산 불가).
+  // applyStageText 가 어느 판본을 골랐는지를 씬별로 남겨, 봉인 시 run_journals.run_traces 로 영속화한다.
+  function _noteSeenText(scene, stage, text, depth) {
+    try {
+      if (!scene || !scene.id) return;
+      (game._seenTexts = game._seenTexts || {})[scene.id] = {
+        stage: stage,                                // 'original' | 'stage_1/2/3' | 'fallback_*'
+        depth: depth,                                // 판본을 고른 순간의 cont_depth
+        text: String(text || '').slice(0, 4000),     // 실제 화면에 나간 문자열
+      };
+    } catch (_) {}
+  }
+
   // opts.plain — 태그 없는 평문으로 돌려준다.
   //   기본(고전 씬 UI)은 <span class="cont-word"> 로 감싼 HTML 을 innerHTML 에 꽂는다.
   //   대화 UI(lumen_dialog_phase1)는 본문을 textContent 로 한 글자씩 타이핑하므로,
@@ -2657,17 +2672,17 @@
 
     // 최초 목격자. 아무도 지나가지 않은 기억의 원본을 볼 수 있는 유일한 사람이다.
     // 이 사람의 플레이가 이 기억의 첫 번째 오염이 된다.
-    if (depth <= 0) return originalText;
+    if (depth <= 0) { _noteSeenText(scene, 'original', originalText, depth); return originalText; }
 
-    if (depth >= DEPTH_STAGE_3 && scene.text_stage_3) return scene.text_stage_3;
-    if (depth >= DEPTH_STAGE_2 && scene.text_stage_2) return scene.text_stage_2;
-    if (scene.text_stage_1) return scene.text_stage_1;
+    if (depth >= DEPTH_STAGE_3 && scene.text_stage_3) { _noteSeenText(scene, 'stage_3', scene.text_stage_3, depth); return scene.text_stage_3; }
+    if (depth >= DEPTH_STAGE_2 && scene.text_stage_2) { _noteSeenText(scene, 'stage_2', scene.text_stage_2, depth); return scene.text_stage_2; }
+    if (scene.text_stage_1) { _noteSeenText(scene, 'stage_1', scene.text_stage_1, depth); return scene.text_stage_1; }
 
     // 붕괴 판본이 집필되지 않은 씬 — 아래 클라이언트 폴백(단어 교란)으로 내려간다.
     // 폴백은 작가가 쓴 판본에 비해 초라하므로, 상영작의 모든 씬에 text_stage_* 를 채우는 것이
     // 우선 작업이다. (2026-07-09 기준 발자국 0/6, 엘리베이터 3/4 미집필)
     const { stage, intensity } = pres;
-    if (stage === 'stable' || intensity < 0.01) return originalText;
+    if (stage === 'stable' || intensity < 0.01) { _noteSeenText(scene, 'original', originalText, depth); return originalText; }
 
     // band 는 getPresentationState 가 내주지만, pres 를 직접 조립해 넘기는 호출자도 있어
     // 없으면 intensity 에서 도출한다. 선언이 없으면 아래 폴백에서 ReferenceError 로 씬 진입이 죽는다.
@@ -2723,7 +2738,10 @@
         }
       }
     }
-    return hasContamination ? out : originalText;
+    // 폴백 결과 기록 — 고전 UI 는 HTML(span 태그 포함), 대화 UI 는 평문이 그대로 남는다.
+    const _fbOut = hasContamination ? out : originalText;
+    _noteSeenText(scene, hasContamination ? ('fallback_' + stage) : 'original', _fbOut, depth);
+    return _fbOut;
   }
 
   function buildTerrainFromData() {
@@ -3740,10 +3758,15 @@
 
           // game.traces — generate-reveal 자리 visits 입력
           if (!game.traces) game.traces = [];
+          // 260802 판본 봉합: 대화 경로의 scene.text 는 enterSceneMode 가 이미 오염 판본으로
+          // 바꿔 넘긴 사본(_sceneForDialog)이라 그 자체가 "읽은 텍스트"다. 판본 번호는 장부에서.
+          var _seenTD = (game._seenTexts || {})[pin.sceneId || scene.id] || null;
           game.traces.push({
             pinType: pin.type,
             sceneId: pin.sceneId || scene.id,
             sceneText: scene.text || '',
+            seenStage: _seenTD ? _seenTD.stage : null,
+            seenText: _seenTD ? _seenTD.text : (scene.text || ''),
             userVector: { base: result.lastUserEmotion },
             userEmotion: result.lastUserEmotion,
             alignment: result.alignment,
@@ -4538,10 +4561,13 @@
 
     const baseEmotion = userVector.base || {};
     game.lastUserEmotion = Object.assign({}, baseEmotion);
+    const _seenT = (game._seenTexts || {})[pin.sceneId || scene.id] || null;   // 260802 판본 봉합
     game.traces.push({
       pinType: pin.type,
       sceneId: pin.sceneId || scene.id,
       sceneText: scene.text || '',
+      seenStage: _seenT ? _seenT.stage : null,   // 260802: 그때 읽은 판본 번호
+      seenText: _seenT ? _seenT.text : null,     // 260802: 그때 읽은 문자열
       userVector,
       userEmotion: baseEmotion,
       alignment: engineResult.alignment_score,
@@ -5769,6 +5795,32 @@
         if (_ovl && _ovl.length) _jSnap.object_views = _ovl;
       }
       // (rep_gate 기록은 260802 제거 — 회상 게이트 폐기와 함께)
+      // ── 260802 판본 봉합: 여정 스냅샷 = "내가 가지고 나갈 나의 판본" 재료 ──
+      // plays 로 방문 순서·감정은 복원되지만, "그때 읽은 판본 텍스트"는 여기 말고 어디에도
+      // 남지 않는다 (generate-reveal 요청 본문으로 나가고 버려지던 것을 영속화).
+      var _trJ = game.traces || [];
+      if (_trJ.length) {
+        _jSnap.run_traces = {
+          visit_order: (game.visitOrder || []).slice(),
+          scenes: _trJ.map(function (t, i) {
+            var _sn = (game._seenTexts || {})[t.sceneId] || null;
+            return {
+              order: i + 1,
+              scene_id: t.sceneId || null,
+              pin_type: t.pinType || null,
+              seen_stage: t.seenStage != null ? t.seenStage : (_sn ? _sn.stage : null),
+              seen_depth: _sn ? _sn.depth : null,
+              seen_text: t.seenText != null ? t.seenText : (_sn ? _sn.text : (t.sceneText || '')),
+              user_emotion: t.userEmotion || null,
+              scene_link_input: t.sceneLinkInput || '',
+              alignment: t.alignment != null ? t.alignment : null,
+              bucket: t.bucket || null,
+              pattern: t.pattern || null,
+              mismatch: t.mismatch || null,
+            };
+          }),
+        };
+      }
       if (Object.keys(_jSnap).length && window.__temJournal) window.__temJournal(_jSnap);
     } catch (eJ) { LOG('run_journal 봉인 스냅샷 실패 (무해)', eJ); }
 
@@ -5958,6 +6010,8 @@
           typeRevealText(document.getElementById('revealBody'), data.narrative);
           // V2-13: hand the sealed narrative to firstPlayScenification / playReplayCompare.
           game.completedSentence = data.narrative;
+          // 260802 판본 봉합: 봉인 서사도 회차 장부에 — 여태 localStorage(첫 회차)에만 남았다.
+          try { if (window.__temJournal) window.__temJournal({ reveal_narrative: data.narrative }); } catch (_) {}
           // 2026-05-08: 자료 critic 개입 3-b — revealScreen 메타 신호.
           // AI 내러티브가 *이본론(변이=재창조)* 자리에서 박힌 결을 한 줄로 가시화.
           const _metaEl = document.getElementById('revealMeta');

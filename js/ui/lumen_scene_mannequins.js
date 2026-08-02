@@ -765,6 +765,7 @@
     // renderer.render wrap — 가장 바깥. mixer + awareness (proximity opacity + gaze LERP).
     var _origRender = renderer.render.bind(renderer);
     var _t0 = performance.now();
+    var _groundSyncAt = 0;                    // 260802d 지면 재정렬 스로틀
     var _camRight = new THREE.Vector3();      // 매 프레임 재사용 (alloc 절약)
     var _headTiltAxisX = new THREE.Vector3(1, 0, 0);
     var _headTiltQuatTmp = new THREE.Quaternion();
@@ -785,9 +786,27 @@
         if (rl > 0.0001) _camRight.multiplyScalar(1 / rl);
       }
 
+      // 260802d 공중부양 수리 — 지형이 회차 중 살아 움직인다(퀼트 융기·침식).
+      //   유령 발을 0.5초마다 땅에 다시 붙인다 (델타 갱신이라 footY 보정과 무관하게 안전).
+      var _doGroundSync = false;
+      var _nowMs = performance.now();
+      if (_nowMs - _groundSyncAt > 500 && typeof runtime.gH === 'function') {
+        _groundSyncAt = _nowMs;
+        _doGroundSync = true;
+      }
+
       for (var i = 0; i < _ghosts.length; i++) {
         var g = _ghosts[i];
         if (g.mixer) g.mixer.update(dt * opts.speed);
+
+        if (_doGroundSync && g.pin && typeof g.pin.wx === 'number') {
+          var _ngy = runtime.gH(g.pin.wx, g.pin.wz);
+          if (_ngy < -10) _ngy = -10;
+          if (Math.abs(_ngy - g.groundY) > 0.005) {
+            g.root.position.y += (_ngy - g.groundY);
+            g.groundY = _ngy;
+          }
+        }
 
         // ─── T4: 자세 기욺 — 물든 핀이면 옆으로 strength 비례로 기운다 ───
         // 목표 기욺 = strength × driftLeanFactor (안 물들면 0). 갑자기 안 꺾이게 매 프레임 LERP.
@@ -1028,6 +1047,46 @@
         if (!_dlg) return;
         _dlg.dying = true;
         for (var i = 0; i < _dlg.sprites.length; i++) _dlg.sprites[i].dying = true;
+      },
+
+      // ─── 260802 목격 연출: 1회용 시네마틱 몸 ───
+      // 봉인 직후 카메라가 등 뒤로 빠질 때 "플레이어의 몸"으로 세우는 ybot 클론.
+      // _ghosts 목록에 안 들어간다 — 응시/혼잣말/클릭 대상 아님. 자체 rAF 로 idle 만 재생.
+      // rotY = 몸이 바라보는 방향 (플레이어 yaw + π 를 넘기면 카메라에 등이 보인다).
+      // 반환 { root, dispose } — 연출 끝나면 반드시 dispose() (카메라가 몸 안으로 복귀하므로).
+      spawnCinematicBody: function (wx, wz, rotY) {
+        return _loadSource().then(function () {
+          if (!_source || !_source.scene) return null;
+          var root = THREE.SkeletonUtils.clone(_source.scene);
+          _stripDetails(root);
+          var groundY = (runtime && typeof runtime.gH === 'function') ? runtime.gH(wx, wz) : 0;
+          var footY = _source._lumenFootY || 0;
+          root.position.set(wx, groundY + (opts.yOffset || 0) - footY, wz);
+          root.rotation.y = rotY || 0;
+          scene.add(root);
+          var mixer = new THREE.AnimationMixer(root);
+          var anims = _source.animations || [];
+          if (anims.length) {
+            var a = mixer.clipAction(anims[0]);   // 기본 idle (base 클립 첫 번째)
+            a.play();
+          }
+          var alive = true;
+          var prev = performance.now();
+          (function tickBody() {
+            if (!alive) return;
+            var now = performance.now();
+            mixer.update(Math.min((now - prev) / 1000, 0.1));
+            prev = now;
+            requestAnimationFrame(tickBody);
+          })();
+          return {
+            root: root,
+            dispose: function () {
+              alive = false;
+              try { if (root.parent) root.parent.remove(root); } catch (_) {}
+            }
+          };
+        });
       }
     };
     runtime.__lumenSceneMannequins = api;

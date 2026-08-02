@@ -484,7 +484,7 @@
             group: null, mats: [], blocks: [],
             label: label && label.sprite, labelMat: label && label.mat,
             sentence: sentence,
-            cx: cx, cz: cz, word: word,
+            cx: cx, cz: cz, gy: gy, word: word,
             stage: 0, glowBoost: 1, everSynced: false,
             collapsing: null, collapsed: false, isModel: false,
           };
@@ -753,8 +753,26 @@
     var _origRender = renderer.render.bind(renderer);
     var fadeRange = Math.max(0.01, opts.fadeFar - opts.fadeNear);
     var _aimCheckAt = 0;
+    var _groundSyncAt = 0;
     renderer.render = function (s, c) {
       if (c && c.position) _lastCam = c;
+      // 260802d 공중부양 수리 — 지형이 회차 중 살아 움직인다(퀼트 융기·침식).
+      //   배치 순간의 높이에 박제하지 말고 0.5초마다 발밑을 다시 재서 땅에 붙인다.
+      var nowG = performance.now();
+      if (nowG - _groundSyncAt > 500 && typeof runtime.gH === 'function') {
+        _groundSyncAt = nowG;
+        for (var gsi = 0; gsi < _objects.length; gsi++) {
+          var og = _objects[gsi];
+          if (!og.group || typeof og.gy !== 'number') continue;
+          var ngy = runtime.gH(og.cx, og.cz);
+          if (ngy < -10) ngy = -10;
+          if (Math.abs(ngy - og.gy) > 0.005) {
+            og.group.position.y += (ngy - og.gy);
+            if (og.label) og.label.position.y += (ngy - og.gy);
+            og.gy = ngy;
+          }
+        }
+      }
       // 조준 안내 — 매 프레임 레이캐스트는 낭비라 120ms 간격으로만
       if (opts.labelMode === 'click' && _objects.length && c && c.position) {
         var nowA = performance.now();
