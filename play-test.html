@@ -59,7 +59,7 @@
        lumen_replay_fog 는 로드는 두되 attach 게이트가 TemReplayTerrain 부재로 죽어 무력. -->
   <script src="js/shared/tem_variant_strata.js?v=260730"></script>
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
-  <script src="js/ui/lumen_spatial_fog.js?v=260728"></script>
+  <script src="js/ui/lumen_spatial_fog.js?v=260802a"></script><!-- 260802a 문 영구 개방(keepOpen/keepCorridor) -->
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
   <script src="js/shared/tem_af_strata_terrain.js?v=260802b"></script><!-- 260802 지형질감 3단계(그림자·살결 셰이더·바위) -->
   <script>
@@ -491,6 +491,13 @@
     .esc-exit:hover { border-color:rgba(180,80,80,0.6); color:rgba(180,80,80,1); }
     .esc-resume { margin-top:1rem; background:none; border:none; color:rgba(196,168,130,0.35); font-family:'Cormorant Garamond',serif; font-size:11px; letter-spacing:3px; cursor:pointer; padding:8px 20px; }
     .esc-resume:hover { color:rgba(196,168,130,0.6); }
+
+    /* ── 아스키 커서 (260802 사용자 결정) — 게임 안에서는 이것 하나만 ──
+       터미널 픽셀 화살표 (금색 윤곽 + 어두운 속, RECORD 아스키 문·Courier 공명 단어와 같은 결).
+       !important 로 pointer/help/text 등 OS 기본 커서 전부 대체. 1인칭 포인터 잠금 중에는
+       브라우저가 커서 자체를 숨기므로 이 규칙과 무관 (그때는 조준점이 기준).
+       Rollback: 이 블록 삭제 + assets/cursor/ 폴더 삭제. */
+    html, body, * { cursor: url('assets/cursor/tem_cursor.svg') 1 1, auto !important; }
   </style>
 </head>
 <body>
@@ -3608,6 +3615,14 @@
         // 260802b: 줌 거리는 몸이 정한다 — 사람 0.75m / 사물은 크기 비례로 멀찍이 (dialogFocus 힌트)
         var _tgtPos = _head.clone().add(_dir.multiplyScalar(_faceFocus.zoomDist || 0.75));
         _tgtPos.y = _head.y + 0.01;
+        // 260802f: 줌이 뒤로 물러나면서(2.6m+) 비탈에선 카메라가 땅속에 박힘 — 지면 위로 클램프.
+        //   (온통 잿빛 화면의 정체 = 지형 안쪽에서 안개만 보이던 것)
+        try {
+          if (runtime && typeof runtime.gH === 'function') {
+            var _camGround = runtime.gH(_tgtPos.x, _tgtPos.z);
+            if (isFinite(_camGround) && _tgtPos.y < _camGround + 0.55) _tgtPos.y = _camGround + 0.55;
+          }
+        } catch (_) {}
         // 시선을 머리보다 약간 아래(가슴)로 — 얼굴이 화면 위쪽 1/3에 오고,
         // 하단 자막·선택지와 안 겹친다 (영화 구도). 사물 몸은 낙폭 얕게 (땅 안 보게).
         var _lookTarget = _head.clone();
@@ -6766,6 +6781,18 @@
                   var cam0 = rt.getCamera();
                   var sx = cam0.position.x, sz = cam0.position.z;
                   sf.seed(sx, sz, 14);
+                  // 260802 나가는 문은 언제나 갈 수 있어야 한다 (사용자 결정).
+                  //   문 주변을 영구 개방하고, 스폰에서 문까지 영구 회랑을 둔다.
+                  //   keepOpen/keepCorridor 는 close() 되덮임·MAX 잘림에서 보호된다.
+                  //   문 생성이 비동기라 아직 없으면 짧게 기다렸다 등록.
+                  (function _sfKeepDoor(t) {
+                    var d = window._temExitDoor;
+                    if (!d && t < 25) { setTimeout(function () { _sfKeepDoor(t + 1); }, 200); return; }
+                    if (!d) { console.warn('[spatial-fog] 문 좌표 못 찾음 — 영구 개방 생략'); return; }
+                    if (typeof sf.keepOpen !== 'function') { console.warn('[spatial-fog] keepOpen 없음 — 옛 모듈 캐시?'); return; }
+                    sf.keepOpen(d.x, d.z, 20);
+                    sf.keepCorridor(sx, sz, d.x, d.z);
+                  })(0);
                   var carved = 0;
                   _fpScenePins.forEach(function (sp) {
                     if (sp.visited) { sf.seed(sp.wx, sp.wz); return; }  // 가 본 곳은 걷힌 채로
@@ -7580,7 +7607,9 @@
       var parent = document.getElementById('strataView') || document.body;
       // Center dot
       _crosshairEl = document.createElement('div');
-      _crosshairEl.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;background:rgba(196,168,130,0.5);border-radius:50%;pointer-events:none;z-index:300;transition:background 0.3s,box-shadow 0.3s,transform 0.3s;';
+      // 260802: 2중톤 — 밝은 심 + 어두운 테두리. 밝은 경사면/시커먼 골짜기 어디서든 보인다
+      // (종전 rgba(196,168,130,0.5) 4px 단색은 사용자 실플레이에서 "안 보인다" 지적)
+      _crosshairEl.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:5px;height:5px;background:rgba(236,224,200,0.95);border-radius:50%;box-shadow:0 0 0 1.5px rgba(10,8,14,0.65),0 0 6px rgba(196,168,130,0.4);pointer-events:none;z-index:300;transition:background 0.3s,box-shadow 0.3s,transform 0.3s;';
       parent.appendChild(_crosshairEl);
       // Outer ring (appears when aiming at pin)
       _crosshairRingEl = document.createElement('div');
@@ -7591,14 +7620,15 @@
     function _setCrosshairAiming(isAiming) {
       if (!_crosshairEl) return;
       if (isAiming) {
-        _crosshairEl.style.background = 'rgba(196,168,130,0.9)';
-        _crosshairEl.style.boxShadow = '0 0 8px rgba(196,168,130,0.6)';
+        _crosshairEl.style.background = 'rgba(214,186,142,1)';
+        _crosshairEl.style.boxShadow = '0 0 0 1.5px rgba(10,8,14,0.7),0 0 10px rgba(196,168,130,0.8)';
         _crosshairEl.style.transform = 'translate(-50%,-50%) scale(1.5)';
         _crosshairRingEl.style.borderColor = 'rgba(196,168,130,0.4)';
         _crosshairRingEl.style.transform = 'translate(-50%,-50%) scale(1)';
       } else {
-        _crosshairEl.style.background = 'rgba(196,168,130,0.5)';
-        _crosshairEl.style.boxShadow = 'none';
+        // 260802: 비조준 상태도 2중톤 유지 (종전엔 여기서 흐린 옛 스타일로 되돌아갔음)
+        _crosshairEl.style.background = 'rgba(236,224,200,0.95)';
+        _crosshairEl.style.boxShadow = '0 0 0 1.5px rgba(10,8,14,0.65),0 0 6px rgba(196,168,130,0.4)';
         _crosshairEl.style.transform = 'translate(-50%,-50%) scale(1)';
         _crosshairRingEl.style.borderColor = 'rgba(196,168,130,0)';
         _crosshairRingEl.style.transform = 'translate(-50%,-50%) scale(0.5)';
