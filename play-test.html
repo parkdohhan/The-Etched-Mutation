@@ -61,7 +61,7 @@
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
   <script src="js/ui/lumen_spatial_fog.js?v=260728"></script>
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
-  <script src="js/shared/tem_af_strata_terrain.js?v=260802"></script><!-- 260802 지형질감 3단계(그림자·살결 셰이더·바위) -->
+  <script src="js/shared/tem_af_strata_terrain.js?v=260802b"></script><!-- 260802 지형질감 3단계(그림자·살결 셰이더·바위) -->
   <script>
     // W4: 옛 스티키 플래그 청소 — tem_replay_terrain 이 켜진 채 저장돼 있으면 지운다.
     // (모듈 자체가 로드 안 되므로 이미 무력이지만, 위생을 위해 키를 비운다.)
@@ -72,9 +72,9 @@
   <script src="js/ui/lumen_visual_effects.js?v=260731b"></script><!-- 260731 떨림 누적 가드 -->
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_mannequins.js?v=260802d"></script><!-- 260802d 지면 재정렬 -->
+  <script src="js/ui/lumen_scene_mannequins.js?v=260802e"></script><!-- 260802e 목격 v2 시네마틱 몸 -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260802d"></script><!-- 260802c 안내 문구 파동 위로 + 크기 상향 -->
+  <script src="js/ui/lumen_scene_objects.js?v=260802e"></script><!-- 260802c 안내 문구 파동 위로 + 크기 상향 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -5678,6 +5678,133 @@
     }
   }
 
+  // ── 260802 목격의 순간 v2: 3인칭 등 뒤 + 변형 클로즈업 메들리 ──────────────
+  // 봉인 직후(applyVisitorErosion 완료 후) 호출. 순서:
+  //   ① 플레이어 자리에 ybot 몸(유령과 같은 반투명 잿빛)을 세우고
+  //   ② 카메라가 몸을 빠져나가 등 뒤 3.4m 로 물러난다 (뒷모습)
+  //   ③ 땅이 옛 모습 → 이번 회차 몫이 반영된 모습으로 morphHeights 보간 시작
+  //   ④ 변형 최대 지점(침식 물길·융기)을 클로즈업으로 순회 — 바닥이 눈앞에서 움직인다
+  //   ⑤ 자막 → 원래 시점 복귀 → 몸 제거
+  // 카메라 탈취 = 검증된 render wrap 패턴 그대로 (_temDialogCam + _runCamTween — 대화 줌인과 동일).
+  // 조건 미비/실패 시 false 반환 → 호출부가 v1(즉시 재빌드+자막)로 폴백. 봉인 파이프라인 불변.
+  async function _witnessCinematicV2(rt) {
+    var VS = window.TemVariantStrata;
+    var T3 = window.THREE;
+    if (!VS || !T3 || !rt) return false;
+    if (!rt.isFirstPerson || !rt.isFirstPerson()) return false;          // 3인칭 전환은 FP 전제
+    if (typeof rt.morphHeights !== 'function') return false;             // tem_af_strata_terrain.js 캐시?
+    var cam = rt.getCamera && rt.getCamera();
+    if (!cam || !_ensureDialogCamOverride(rt)) return false;
+    var st = VS._getState && VS._getState();
+    var land = VS._currentLand && VS._currentLand();                     // base + 방금 구운 delta
+    if (!st || !st.delta || !land) return false;
+    var G2 = st.G, SZ2 = st.SZ;
+
+    // 변형 스팟 — 침식 최대(-delta, 물길)와 융기 최대(+delta). 겹치면 한 곳만.
+    var _iUp = -1, _iDn = -1, _vUp = 0, _vDn = 0;
+    for (var j = 0; j < G2 * G2; j++) {
+      var dv = st.delta[j];
+      if (dv > _vUp) { _vUp = dv; _iUp = j; }
+      if (dv < _vDn) { _vDn = dv; _iDn = j; }
+    }
+    if (_iUp < 0 && _iDn < 0) return false;                              // 변형 0 — 보여줄 게 없다
+    var _cellW = function (idx) {                                        // 셀 → 월드 (gH 역식과 동일)
+      var ix = idx % G2, iz = Math.floor(idx / G2);
+      return { x: (ix / (G2 - 1) - 0.5) * SZ2, z: (iz / (G2 - 1) - 0.5) * SZ2 };
+    };
+    var spots = [];
+    if (_iDn >= 0) spots.push(_cellW(_iDn));                             // 물길 먼저 (내가 지나간 자국)
+    if (_iUp >= 0) spots.push(_cellW(_iUp));
+    if (spots.length === 2) {
+      var _dxS = spots[0].x - spots[1].x, _dzS = spots[0].z - spots[1].z;
+      if (Math.sqrt(_dxS * _dxS + _dzS * _dzS) < 6) spots.pop();
+    }
+
+    // 연출 동안 입력 삼킴 (lumen_rewind_playback 패턴) — 몸·카메라가 어긋나지 않게.
+    var _swallow = function (e) { e.stopImmediatePropagation(); e.preventDefault(); };
+    var _swTypes = ['keydown', 'keyup', 'mousemove', 'mousedown', 'wheel'];
+    _swTypes.forEach(function (t) { document.addEventListener(t, _swallow, true); });
+
+    var _saved = { pos: cam.position.clone(), quat: cam.quaternion.clone() };
+    window._temDialogCam = { pos: _saved.pos.clone(), quat: _saved.quat.clone() };
+    var _tok = { dead: false };
+    var _lookQuat = function (fromP, atP) {
+      var m = new T3.Matrix4().lookAt(fromP, atP, new T3.Vector3(0, 1, 0));
+      return new T3.Quaternion().setFromRotationMatrix(m);
+    };
+    var _tween = function (toPos, toQuat, dur) {
+      return new Promise(function (res) {
+        _runCamTween(window._temDialogCam.pos.clone(), window._temDialogCam.quat.clone(),
+          toPos, toQuat, dur, _tok, res);
+      });
+    };
+    var _wait = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+    var _body = null;
+    var _witSub = null;
+    try {
+      // ① 플레이어 몸 — 시선 방향(yaw)+π 로 세우면 카메라에 등이 보인다. 실패해도 연출은 진행.
+      var _yaw = (rt.getYaw && rt.getYaw()) || 0;
+      var _mq = rt.__lumenSceneMannequins;
+      if (_mq && typeof _mq.spawnCinematicBody === 'function') {
+        try { _body = await _mq.spawnCinematicBody(cam.position.x, cam.position.z, _yaw + Math.PI); }
+        catch (_) { _body = null; }
+      }
+
+      // ② 등 뒤로 물러남 — 뒤 3.4m·위 1.1m. 시선은 몸의 가슴께.
+      var _bx = cam.position.x + Math.sin(_yaw) * 3.4;
+      var _bz = cam.position.z + Math.cos(_yaw) * 3.4;
+      var _ghB = rt.gH ? rt.gH(_bx, _bz) : 0;
+      var _backPos = new T3.Vector3(_bx, Math.max(cam.position.y + 1.1, _ghB + 2.0), _bz);
+      var _chest = new T3.Vector3(cam.position.x, cam.position.y - 0.35, cam.position.z);
+      await _tween(_backPos, _lookQuat(_backPos, _chest), 1700);
+      await _wait(700);
+
+      // ③ 땅이 굳기 시작 — 클로즈업 메들리 전체에 걸쳐 천천히 (재빌드 팝 없음).
+      rt.morphHeights(land, { durMs: 1200 + spots.length * 2800 });
+
+      // 자막 — v1 문장 그대로, 메들리 동안 떠 있다가 복귀 전에 걷는다.
+      _witSub = document.createElement('div');
+      _witSub.style.cssText = 'position:fixed;left:0;right:0;bottom:16%;z-index:9998;text-align:center;' +
+        'pointer-events:none;font-size:1.05rem;letter-spacing:0.06em;line-height:1.7;' +
+        'color:rgba(232,224,246,0.94);text-shadow:0 2px 14px rgba(0,0,0,0.8);opacity:0;transition:opacity 1.2s ease;';
+      _witSub.innerHTML = (LANG === 'ko')
+        ? '네가 지나간 자리가 굳는다.<br><span style="font-size:0.82rem;opacity:0.7;">Where you passed, the ground settles.</span>'
+        : 'Where you passed, the ground settles.<br><span style="font-size:0.82rem;opacity:0.7;">네가 지나간 자리가 굳는다.</span>';
+      document.body.appendChild(_witSub);
+      requestAnimationFrame(function () { if (_witSub) _witSub.style.opacity = '1'; });
+
+      // ④ 클로즈업 메들리 — 스팟마다 옆 2.4m·위 1.7m 에서 바닥을 내려다본다.
+      //    카메라는 항상 플레이어 쪽에서 접근 (돌아보면 자기 자국을 보는 구도).
+      for (var si = 0; si < spots.length; si++) {
+        var sp = spots[si];
+        var _ghS = rt.gH ? rt.gH(sp.x, sp.z) : 0;
+        var _target = new T3.Vector3(sp.x, _ghS, sp.z);
+        var _ang = Math.atan2(cam.position.x - sp.x, cam.position.z - sp.z);
+        var _cpos = new T3.Vector3(sp.x + Math.sin(_ang) * 2.4, _ghS + 1.7, sp.z + Math.cos(_ang) * 2.4);
+        await _tween(_cpos, _lookQuat(_cpos, _target), 1300);
+        await _wait(1500);
+      }
+
+      // ⑤ 자막 걷고 복귀.
+      if (_witSub) _witSub.style.opacity = '0';
+      await _tween(_saved.pos.clone(), _saved.quat.clone(), 1300);
+      console.log('[variant-strata] 목격 v2 완료 — spots=' + spots.length +
+        ' | maxΔ +' + _vUp.toFixed(2) + ' / ' + _vDn.toFixed(2));
+      return true;
+    } finally {
+      _tok.dead = true;
+      window._temDialogCam = null;
+      if (_body && _body.dispose) { try { _body.dispose(); } catch (_) {} }
+      _swTypes.forEach(function (t) { document.removeEventListener(t, _swallow, true); });
+      if (_witSub) {
+        var _subRef = _witSub;
+        _subRef.style.opacity = '0';
+        setTimeout(function () { try { _subRef.remove(); } catch (_) {} }, 1300);
+      }
+    }
+  }
+
   document.getElementById('sealBtn').addEventListener('click', async () => {
     if (game.sealed) return;
     if (game.coreVisitCount < 3 && !game._exitDoorUsed) return;
@@ -5901,28 +6028,33 @@
       fadeIn(SFX.rain, 0.15, 4000);
     }, 4500);
 
-    // ── W4-3: 목격의 순간 v1 — 봉인 직후, 퇴장(reveal) 전. 침식·융기가 적용된 땅을 카메라 앞에서
-    //   1회 재빌드하고 "네가 지나간 자리가 굳는다" 자막 한 줄. 파티클·고도 연출은 10월(v1 소박).
-    //   flag OFF 면 이 연출 전체 스킵. ──
+    // ── W4-3: 목격의 순간 — 봉인 직후, 퇴장(reveal) 전. flag OFF 면 연출 전체 스킵.
+    //   v2 (260802): 3인칭 등 뒤 + 변형 클로즈업 메들리 + 땅이 굳는 과정 보간(_witnessCinematicV2).
+    //   v1 (폴백): 침식·융기가 적용된 땅을 1회 재빌드 + 자막 2.6초 — v2 조건 미비/실패 시. ──
     if (window.TemVariantStrata && window.TemVariantStrata.isEnabled() && game._variantErosion) {
       try {
         var _svWit = document.getElementById('strataView');
         var _rtWit = (window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime) || window._fpRuntime;
         if (_rtWit && _svWit && _svWit.style.display !== 'none' && typeof _rtWit.buildTerrain === 'function') {
-          _rtWit.buildTerrain(null);   // _delta 는 방금 applyVisitorErosion 이 갱신 → 굳은 자국이 눈앞에 뜬다
-          var _witSub = document.createElement('div');
-          _witSub.style.cssText = 'position:fixed;left:0;right:0;bottom:16%;z-index:9998;text-align:center;' +
-            'pointer-events:none;font-size:1.05rem;letter-spacing:0.06em;line-height:1.7;' +
-            'color:rgba(232,224,246,0.94);text-shadow:0 2px 14px rgba(0,0,0,0.8);opacity:0;transition:opacity 1.2s ease;';
-          _witSub.innerHTML = (LANG === 'ko')
-            ? '네가 지나간 자리가 굳는다.<br><span style="font-size:0.82rem;opacity:0.7;">Where you passed, the ground settles.</span>'
-            : 'Where you passed, the ground settles.<br><span style="font-size:0.82rem;opacity:0.7;">네가 지나간 자리가 굳는다.</span>';
-          document.body.appendChild(_witSub);
-          requestAnimationFrame(function () { _witSub.style.opacity = '1'; });
-          setTimeout(function () { _witSub.style.opacity = '0'; }, 2400);
-          setTimeout(function () { try { _witSub.remove(); } catch (_) {} }, 3800);
-          // 카메라가 굳는 순간을 보는 시간 (async 핸들러라 await 로 퇴장 지연)
-          await new Promise(function (r) { setTimeout(r, 2600); });
+          var _witV2Done = false;
+          try { _witV2Done = await _witnessCinematicV2(_rtWit); }
+          catch (eW2) { console.warn('[variant-strata] 목격 v2 실패 — v1 폴백', eW2); }
+          if (!_witV2Done) {
+            _rtWit.buildTerrain(null);   // _delta 는 방금 applyVisitorErosion 이 갱신 → 굳은 자국이 눈앞에 뜬다
+            var _witSub = document.createElement('div');
+            _witSub.style.cssText = 'position:fixed;left:0;right:0;bottom:16%;z-index:9998;text-align:center;' +
+              'pointer-events:none;font-size:1.05rem;letter-spacing:0.06em;line-height:1.7;' +
+              'color:rgba(232,224,246,0.94);text-shadow:0 2px 14px rgba(0,0,0,0.8);opacity:0;transition:opacity 1.2s ease;';
+            _witSub.innerHTML = (LANG === 'ko')
+              ? '네가 지나간 자리가 굳는다.<br><span style="font-size:0.82rem;opacity:0.7;">Where you passed, the ground settles.</span>'
+              : 'Where you passed, the ground settles.<br><span style="font-size:0.82rem;opacity:0.7;">네가 지나간 자리가 굳는다.</span>';
+            document.body.appendChild(_witSub);
+            requestAnimationFrame(function () { _witSub.style.opacity = '1'; });
+            setTimeout(function () { _witSub.style.opacity = '0'; }, 2400);
+            setTimeout(function () { try { _witSub.remove(); } catch (_) {} }, 3800);
+            // 카메라가 굳는 순간을 보는 시간 (async 핸들러라 await 로 퇴장 지연)
+            await new Promise(function (r) { setTimeout(r, 2600); });
+          }
         }
       } catch (eWit) { console.warn('[variant-strata] 목격 연출 실패 (무해, 봉인 진행)', eWit); }
     }

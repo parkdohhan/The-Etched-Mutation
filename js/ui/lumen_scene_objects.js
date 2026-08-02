@@ -124,9 +124,13 @@
     var r = _rng('line|' + word);
     var hit = idxs[Math.floor(r() * idxs.length)];
     // 260802c: 단답 → 본문 발췌 (사용자 결정 — 유령 아닌 사물이 스토리를 나른다).
-    //   단어가 든 문장 + 앞뒤 한 문장씩, 최대 3문장. 작가 오버라이드(object_lines)는 위에서 우선.
+    // 260802e: 최소 3문장 보장, 길어도 됨(최대 ~4문장) — "스토리 이해" 용 (사용자 지시).
     var from = Math.max(0, hit - 1);
-    var to = Math.min(all.length - 1, hit + 1);
+    var to = Math.min(all.length - 1, hit + 2);
+    while ((to - from + 1) < 3 && (from > 0 || to < all.length - 1)) {
+      if (from > 0) from--;
+      else to++;
+    }
     return all.slice(from, to + 1).join(' ');
   }
 
@@ -681,7 +685,8 @@
       _uiSent.style.opacity = '1';
       if (_uiTimer) clearTimeout(_uiTimer);
       // 260802c: 발췌가 길어졌다 — 표시 시간을 글 길이에 비례 (읽다 끊기지 않게)
-      var _readMs = Math.min(9500, 3200 + String(sentence || '').length * 45);
+      // 260802e: 최소 3문장 체제 — 상한도 같이 올림
+      var _readMs = Math.min(14000, 3200 + String(sentence || '').length * 45);
       _uiTimer = setTimeout(function () {
         if (_uiWord) _uiWord.style.opacity = '0';
         if (_uiSent) _uiSent.style.opacity = '0';
