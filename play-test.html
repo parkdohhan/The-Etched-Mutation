@@ -3864,6 +3864,17 @@
       return _enterLumenDialogPhase1(pin, _sceneForDialog);
     }
 
+    // 260802g: FP 상영 중엔 구 씬 UI(어두운 본문 패널)로 절대 안 떨어진다 — "제3의 상자" 봉쇄.
+    // 위 대화 가드가 순간적으로 깨졌다면(모듈 미로드 등) 이번 진입만 조용히 무산 —
+    // 관객은 다시 길게 누르면 되고, 아래 로그 한 줄이 깨진 조건을 정확히 말해준다.
+    var _fpNowGuard = window._fpPlay && window._fpPlay.isActive && window._fpPlay.isActive();
+    if (_fpNowGuard) {
+      console.warn('[enterSceneMode] 구 씬 UI 폴백 차단 — shape=' + game.terrain_shape
+        + ' | text=' + !!scene.text + ' | dlgModule=' + !!window.LumenDialogPhase1
+        + ' | scene=' + String(scene.id).slice(0, 8) + '…');
+      return;
+    }
+
     clearTimers();
     if (typeof window.destroyFloatingAnchor === 'function') window.destroyFloatingAnchor();
     if (game.postSubmitTerrainCleanup) game.postSubmitTerrainCleanup();
