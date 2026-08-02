@@ -113,14 +113,21 @@
     try {
       wordRe = new RegExp('(^|[^가-힣])' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     } catch (_) { wordRe = null; }
-    var parts = text.split(/(?<=[.!?。])\s+/).map(function (s) { return s.trim(); })
-      .filter(function (s) {
-        if (s.length < 4) return false;
-        return wordRe ? wordRe.test(s) : s.indexOf(word) !== -1;
-      });
-    if (!parts.length) return null;
+    var all = text.split(/(?<=[.!?。])\s+/).map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
+    var idxs = [];
+    for (var si = 0; si < all.length; si++) {
+      if (all[si].length < 4) continue;
+      if (wordRe ? wordRe.test(all[si]) : all[si].indexOf(word) !== -1) idxs.push(si);
+    }
+    if (!idxs.length) return null;
     var r = _rng('line|' + word);
-    return parts[Math.floor(r() * parts.length)];
+    var hit = idxs[Math.floor(r() * idxs.length)];
+    // 260802c: 단답 → 본문 발췌 (사용자 결정 — 유령 아닌 사물이 스토리를 나른다).
+    //   단어가 든 문장 + 앞뒤 한 문장씩, 최대 3문장. 작가 오버라이드(object_lines)는 위에서 우선.
+    var from = Math.max(0, hit - 1);
+    var to = Math.min(all.length - 1, hit + 1);
+    return all.slice(from, to + 1).join(' ');
   }
 
   function attach(runtime, opts) {
@@ -659,7 +666,7 @@
       _uiWord.style.cssText = 'position:absolute;bottom:452px;left:50%;transform:translateX(-50%);color:#e8d8b6;font-size:24px;letter-spacing:6px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;text-shadow:0 0 14px rgba(224,206,170,0.55);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiWord);
       _uiSent = document.createElement('div');
-      _uiSent.style.cssText = 'position:absolute;bottom:160px;left:50%;transform:translateX(-50%);color:rgba(216,204,186,0.9);font-size:14px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;max-width:520px;line-height:1.7;text-shadow:0 0 8px rgba(216,204,186,0.35);font-family:"Gowun Batang","Noto Serif KR",serif;';
+      _uiSent.style.cssText = 'position:absolute;bottom:384px;left:50%;transform:translateX(-50%);color:rgba(226,216,200,0.94);font-size:17px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;max-width:620px;line-height:1.7;text-shadow:0 2px 10px rgba(0,0,0,0.7);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiSent);
     }
     // 260731 열람 장부 — 이번 회차에 어떤 사물을 몇 번 들여다봤나 (회차 일지 봉인용).
@@ -673,10 +680,12 @@
       _uiWord.style.opacity = '1';
       _uiSent.style.opacity = '1';
       if (_uiTimer) clearTimeout(_uiTimer);
+      // 260802c: 발췌가 길어졌다 — 표시 시간을 글 길이에 비례 (읽다 끊기지 않게)
+      var _readMs = Math.min(9500, 3200 + String(sentence || '').length * 45);
       _uiTimer = setTimeout(function () {
         if (_uiWord) _uiWord.style.opacity = '0';
         if (_uiSent) _uiSent.style.opacity = '0';
-      }, 4200);
+      }, _readMs);
     }
     function _hideClickUI() {
       if (_uiTimer) { clearTimeout(_uiTimer); _uiTimer = null; }

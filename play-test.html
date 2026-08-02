@@ -72,7 +72,7 @@
   <script src="js/ui/lumen_visual_effects.js?v=260731b"></script><!-- 260731 떨림 누적 가드 -->
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_mannequins.js?v=260802b"></script><!-- 260802b 사물 몸 원색 + 줌 완화 -->
+  <script src="js/ui/lumen_scene_mannequins.js?v=260802c"></script><!-- 260802c 프롤로그 ghostGate -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
   <script src="js/ui/lumen_scene_objects.js?v=260802c"></script><!-- 260802c 안내 문구 파동 위로 + 크기 상향 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
@@ -629,7 +629,10 @@
     <p id="revealBody"></p>
     <p id="revealMeta" style="margin-top:1.4rem;color:rgba(196,168,130,0.55);font-style:italic;font-size:0.82rem;letter-spacing:0.04em;line-height:1.6;max-width:480px;"></p>
     <p id="revealStats" style="display:none;"></p>
-    <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;"></button>
+    <!-- 260802 삭제: '다시 시작'(revealRestart) 버튼. 회차 끝은 봉인이지 재도전이 아니다.
+         (되돌리려면 아래 한 줄을 복구 + revealScreen 아래 이 버튼을 참조하던 4자리 원복 —
+          js 쪽 주석 '260802 다시 시작 버튼 삭제' 로 검색)
+    <button type="button" class="action-btn" id="revealRestart" style="margin-top:1.5rem;"></button> -->
   </div>
 
   <!-- Strata overlay (copied from index.html) -->
@@ -2237,9 +2240,9 @@
     const unvisited = cores.filter(p => !game.visitedCore[p.sceneId]);
     const pool = unvisited.length ? unvisited : cores.slice();
     const sorted = pool.slice().sort((a, b) => (a.sceneOrder || 0) - (b.sceneOrder || 0));
-    // 260802: 3 → 1 (사용자 결정) — 시작은 씬 1 하나만. "약간은 스토리대로" 흐르되
-    // 첫 자리만 작가 고정이고 다음부터는 궤적 엔진 그대로 (게임북 환원 아님).
-    const initialCount = Math.min(1, sorted.length);
+    // 260802c: 시작 = 첫 두 씬 (사용자 결정). 첫 씬은 프롤로그 — 유령 없이 사물(욕조·피)만
+    // 열리고, 첫 대화 상대(유령)는 둘째 씬. 이후는 궤적 엔진 그대로 (게임북 환원 아님).
+    const initialCount = Math.min(2, sorted.length);
     const picked = sorted.slice(0, initialCount);
     game.accessiblePinIds = new Set(picked.map(p => p.id));
     const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
@@ -5981,7 +5984,7 @@
     const _fromDemo = _urlParams.get('memory');
     const _targetMemoryId = _fromDemo || game.memoryId;
     if (_targetMemoryId) {
-      document.getElementById('revealRestart').style.display = 'none';
+      // 260802 다시 시작 버튼 삭제 — 숨김 처리 자체가 불필요해짐 (요소가 없다).
       if (!document.getElementById('revealContinueBtn')) {
         const continueBtn = document.createElement('button');
         continueBtn.id = 'revealContinueBtn';
@@ -6137,17 +6140,18 @@
             });
           }, 2000);
         });
-        const restartBtn = document.getElementById('revealRestart');
-        restartBtn.parentNode.insertBefore(continueBtn, restartBtn.nextSibling);
+        // 260802 다시 시작 버튼 삭제 — 그 버튼 뒤에 끼워 넣던 것을 봉인 화면 끝에 그냥 붙인다.
+        document.getElementById('revealScreen').appendChild(continueBtn);
       }
     }
   });
 
-  document.getElementById('revealRestart').addEventListener('click', () => {
+  // 260802 다시 시작 버튼 삭제 — 클릭 시 페이지를 새로고침하던 핸들러도 함께 제거.
+  /* document.getElementById('revealRestart').addEventListener('click', () => {
     initAudio();
     fadeOut(SFX.rain, 2000, true);
     setTimeout(() => location.reload(), 2000);
-  });
+  }); */
 
   window.addEventListener('beforeunload', () => { stopAll(); });
 
@@ -6163,8 +6167,7 @@
     }
     const rt = document.getElementById('revealTitle');
     if (rt) rt.textContent = T.revealTitle;
-    const rr = document.getElementById('revealRestart');
-    if (rr) rr.textContent = T.revealRestart;
+    // 260802 다시 시작 버튼 삭제 — 라벨 적용 대상에서 제외 (T.revealRestart 문구는 보존).
     const rc = document.getElementById('revealContinueBtn');
     if (rc) rc.textContent = T.revealContinue;
     const sub = document.getElementById('submitBtn');
@@ -6779,6 +6782,22 @@
               } catch (_) {}
               return null;
             }
+            // 260802c: 첫 씬(최소 scene_order) = 프롤로그 — 유령 없이 사물만 (사용자 결정:
+            // "첫 두 사물은 유령 역할 없음, 그 뒤 사물부터 유령"). 첫 대화 상대는 둘째 씬부터.
+            function _temFirstSceneOrder() {
+              var min = Infinity;
+              var scs = (window._temGame && window._temGame.scenes) || [];
+              for (var fi = 0; fi < scs.length; fi++) {
+                var fo = scs[fi] && (scs[fi].scene_order != null ? scs[fi].scene_order : scs[fi].sceneOrder);
+                if (typeof fo === 'number' && fo < min) min = fo;
+              }
+              return isFinite(min) ? min : 1;
+            }
+            function _temIsPrologueScene(sc) {
+              if (!sc) return false;
+              var o = (sc.scene_order != null ? sc.scene_order : sc.sceneOrder);
+              return o === _temFirstSceneOrder();
+            }
             // 2026-04-26: 장면핀 자리에 유령. ghost-mannequin-test 검증값 잠금.
             //   _buildPlayScenePins 가 이 attach 직후 sync 로 실행되므로 명시적 rebuild 호출은 그 뒤(아래 whisper 옆).
             // 260802: 몸 = 그 씬의 상징 사물 (bodyForPin). 롤백 = bodyForPin 줄 삭제(마네킹 복귀).
@@ -6788,6 +6807,10 @@
                 // 260802 유령 외관=사물 — p.scene 의 상징 사물 GLB 를 몸으로
                 bodyForPin: function (p) {
                   return _temSymbolForScene((p && p.scene) || null);
+                },
+                // 260802c 프롤로그 씬(첫 씬)엔 유령 없음 — 욕조·피는 그냥 큰 사물
+                ghostGate: function (p) {
+                  return !_temIsPrologueScene((p && p.scene) || null);
                 },
                 // S1·T4 배선 — 그 핀 장면이 within-run 으로 물들면 마네킨 기욺. p = _fpScenePins 원소.
                 getGhostDrift: function (p) {
@@ -6822,8 +6845,10 @@
                   }
                   return false;
                 },
-                // 260802 심볼 중복 제외 — 유령 몸이 된 단어는 일반 사물로 또 세우지 않는다
+                // 260802 심볼 중복 제외 — 유령 몸이 된 단어는 일반 사물로 또 세우지 않는다.
+                // 260802c: 프롤로그 씬은 유령이 없으므로 제외 안 함 — 심볼(욕조)이 큰 사물로 선다
                 excludeWordForScene: function (sc) {
+                  if (_temIsPrologueScene(sc)) return null;
                   var s = _temSymbolForScene(sc);
                   return s ? s.word : null;
                 }

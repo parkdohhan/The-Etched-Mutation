@@ -109,6 +109,9 @@
     //   (pin) => { path, word?, scale? } | null. null 이면 기존 마네킹(사람) 폴백.
     //   조준·대화 줌인·얼굴 속 글자·기욺·응시 등 유령 계약은 전부 그대로 — 몸만 바뀐다.
     bodyForPin: null,
+    // 260802c 핀 단위 유령 게이트 — false 를 주면 그 핀엔 유령을 아예 안 세운다.
+    //   첫 씬(프롤로그)은 유령 없이 사물만 (사용자 결정: 첫 두 사물은 유령 역할 없음).
+    ghostGate: null,                          // (pin) => bool. 미설정 = 전부 세움
     // 상징 사물 크기 — 일반 사물 표준(1.15m)의 1.5배. "사람 키만 한 사물"이 유령의 자리 표식.
     symbolMaxDim: 1.725
   };
@@ -739,6 +742,12 @@
       var pins = opts.getScenePins() || [];
       pins.forEach(function (p, i) {
         if (opts.accessibleOnly && !p.accessible) return;
+        // 260802c: 핀 단위 유령 게이트 — 프롤로그 씬 등은 유령 없이 지나간다
+        if (typeof opts.ghostGate === 'function') {
+          var _gOk = true;
+          try { _gOk = !!opts.ghostGate(p); } catch (_) {}
+          if (!_gOk) return;
+        }
         var g = _spawnAt(p, i);
         if (g) _ghosts.push(g);
       });
