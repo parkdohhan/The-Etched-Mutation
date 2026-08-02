@@ -60,9 +60,13 @@
     collapseKeepRatio: 0.55,     // 붕괴 시 잔해로 남는 블록 비율 ("무너진 기억"도 기억)
     collapseMs: 1400,
     collapsedDim: 0.55,          // 잔해 밝기 배율
-    // 260731 회상 연출 — 단어 필터. () => null(전부) | ['팬티',...] (그 단어만 세움).
-    //   play-test 가 "회상 전엔 대표 앵커만" 게이트로 쓴다. rebuild 시점마다 다시 묻는다.
-    wordFilter: null,
+    // 260802 노출 게이트 (사용자 결정: "시작하면 씬1 것만") — 열린/방문한 씬의 사물만 세운다.
+    //   (scene) => bool. 미설정 = 전 씬(기존 §2.2). 좌표는 전체 계산 그대로라 등장 시점만 달라짐
+    //   (순간이동 함정 회피 원칙 유지 — 자리는 불변, 노출만 게이트).
+    sceneGate: null,
+    // 260802 심볼 중복 제외 — 그 씬의 "상징 사물"(유령 몸이 된 단어)은 일반 사물로 또 세우지
+    //   않는다 (같은 모형이 크게+작게 두 번 서는 혼동 방지). (scene) => word | null.
+    excludeWordForScene: null,
   };
 
   // ─── 결정적 PRNG (lumen_recalled_anchors / mannequins 와 동일 문법) ───
@@ -103,8 +107,17 @@
     }
     var text = (scene && scene.text) || '';
     if (!text) return null;
+    // 260802: 부분 문자열 오탐 차단 — "물"이 "제물"에, "눈"이 "눈물"에 걸리던 것.
+    //   단어 앞 글자가 한글이면 다른 단어의 꼬리다. 뒤는 조사(물이/물을)라 한글 허용.
+    var wordRe;
+    try {
+      wordRe = new RegExp('(^|[^가-힣])' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    } catch (_) { wordRe = null; }
     var parts = text.split(/(?<=[.!?。])\s+/).map(function (s) { return s.trim(); })
-      .filter(function (s) { return s.length >= 4 && s.indexOf(word) !== -1; });
+      .filter(function (s) {
+        if (s.length < 4) return false;
+        return wordRe ? wordRe.test(s) : s.indexOf(word) !== -1;
+      });
     if (!parts.length) return null;
     var r = _rng('line|' + word);
     return parts[Math.floor(r() * parts.length)];
@@ -422,22 +435,16 @@
         maxPerScene: opts.maxPerScene,
         segT: opts.segT, perpMin: opts.perpMin, perpMax: opts.perpMax,
       });
-      // 260731 회상 연출 — 필터가 목록을 주면 그 단어만, 단어당 한 자리(첫 등장 씬 자리)만
-      //   세운다 (같은 단어가 씬마다 반복 배치되면 "사물 1~3개" 연출이 깨짐).
-      //   자리는 전체 계산 그대로 — 나중에 전부 등장해도 대표 앵커가 안 움직인다.
-      if (typeof opts.wordFilter === 'function') {
-        try {
-          var fw = opts.wordFilter();
-          if (Array.isArray(fw)) {
-            var takenWord = {};
-            anchors = anchors.filter(function (a) {
-              if (fw.indexOf(a.word) === -1) return false;
-              if (takenWord[a.word]) return false;
-              takenWord[a.word] = true;
-              return true;
-            });
-          }
-        } catch (_) {}
+      // 260802 노출 게이트 + 심볼 중복 제외 — 자리는 전체 계산 그대로, 거르기만 한다.
+      if (typeof opts.sceneGate === 'function' || typeof opts.excludeWordForScene === 'function') {
+        anchors = anchors.filter(function (a) {
+          try {
+            if (typeof opts.sceneGate === 'function' && !opts.sceneGate(a.scene)) return false;
+            if (typeof opts.excludeWordForScene === 'function' &&
+                opts.excludeWordForScene(a.scene) === a.word) return false;
+          } catch (_) {}
+          return true;
+        });
       }
       if (!anchors.length) return;
 
@@ -636,7 +643,8 @@
       if (_uiHint) return;
       var parent = document.getElementById('strataView') || document.body;
       _uiHint = document.createElement('div');
-      _uiHint.style.cssText = 'position:absolute;bottom:90px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.65);font-size:14px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.4s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.3);';
+      // 260802: 하단 파동(280px) 위로 올림 + 키움 — play-test 의 _fpHintEl 과 같은 자리·같은 크기.
+      _uiHint.style.cssText = 'position:absolute;bottom:300px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.82);font-size:17px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.4s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.45);';
       _uiHint.textContent = (document.documentElement.lang || 'en').substring(0, 2) === 'ko'
         ? '길게 눌러 들여다보기' : 'Hold to look closer';
       parent.appendChild(_uiHint);
@@ -645,8 +653,10 @@
       if (_uiWord) return;
       var parent = document.getElementById('strataView') || document.body;
       _uiWord = document.createElement('div');
-      // 하단 배치: 속삭임(_fpProxEl bottom:120)·안내(bottom:90)와 안 겹치게 한 층 위
-      _uiWord.style.cssText = 'position:absolute;bottom:196px;left:50%;transform:translateX(-50%);color:#e0ceaa;font-size:19px;letter-spacing:6px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;text-shadow:0 0 12px rgba(224,206,170,0.5);font-family:"Gowun Batang","Noto Serif KR",serif;';
+      // 하단 배치 (260802 재조정 — 전부 파동 280px 위로):
+      //   안내 300 ↔ 속삭임(_fpProxEl) 340 ↔ 문장 384 ↔ 사물 이름 452
+      //   문장이 두 줄로 자라도 이름과 안 겹치도록 384↔452 를 68px 벌려 둠.
+      _uiWord.style.cssText = 'position:absolute;bottom:452px;left:50%;transform:translateX(-50%);color:#e8d8b6;font-size:24px;letter-spacing:6px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;text-shadow:0 0 14px rgba(224,206,170,0.55);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiWord);
       _uiSent = document.createElement('div');
       _uiSent.style.cssText = 'position:absolute;bottom:160px;left:50%;transform:translateX(-50%);color:rgba(216,204,186,0.9);font-size:14px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;max-width:520px;line-height:1.7;text-shadow:0 0 8px rgba(216,204,186,0.35);font-family:"Gowun Batang","Noto Serif KR",serif;';
@@ -708,6 +718,10 @@
       if (opts.labelMode !== 'click' || !_objects.length) return;
       if (typeof runtime.isFirstPerson === 'function' && !runtime.isFirstPerson()) return;
       _cancelHold();
+      // 260802 이중 발동 차단 — 유령이 조준선 앞에 있으면 열람 양보 (진입만 발동).
+      //   우리 raycast 는 사물만 보므로, 유령이 앞이고 사물이 뒤인 각도에서
+      //   씬 대화와 사물 열람이 동시에 터지던 결함. play-test 가 매 프레임 세팅.
+      if (global.__temGhostAimed) return;
       var o = _pickObject();
       if (!o) return;
       _holdObj = o;
@@ -767,6 +781,9 @@
             var mat = o.blocks[m].mat;
             var tgt = mat._dying ? 0 : op;
             mat.opacity = mat.opacity + (tgt - mat.opacity) * 0.08;   // 부드럽게
+            // 260802 지형질감 1단계: 또렷할 때만 그림자 — 흐려져 사라진 사물이
+            // 그림자만 땅에 남기는 결함 방지 (불투명도 연동 게이트)
+            o.blocks[m].mesh.castShadow = mat.opacity > 0.3;
           }
           if (o.labelMat) {                                 // float 모드에만 존재
             var lt = dist <= opts.labelNear

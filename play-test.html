@@ -61,7 +61,7 @@
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
   <script src="js/ui/lumen_spatial_fog.js?v=260728"></script>
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
-  <script src="js/shared/tem_af_strata_terrain.js?v=260716"></script>
+  <script src="js/shared/tem_af_strata_terrain.js?v=260802"></script><!-- 260802 지형질감 3단계(그림자·살결 셰이더·바위) -->
   <script>
     // W4: 옛 스티키 플래그 청소 — tem_replay_terrain 이 켜진 채 저장돼 있으면 지운다.
     // (모듈 자체가 로드 안 되므로 이미 무력이지만, 위생을 위해 키를 비운다.)
@@ -72,9 +72,9 @@
   <script src="js/ui/lumen_visual_effects.js?v=260731b"></script><!-- 260731 떨림 누적 가드 -->
   <script src="js/ui/lumen_audio_space.js?v=260714"></script>
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
-  <script src="js/ui/lumen_scene_mannequins.js?v=260731a"></script><!-- 260731 회상 spawnGate -->
+  <script src="js/ui/lumen_scene_mannequins.js?v=260802a"></script><!-- 260802 유령 외관=사물 (bodyForPin) -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260731b"></script><!-- 260731 회상 wordFilter·anchors -->
+  <script src="js/ui/lumen_scene_objects.js?v=260802b"></script><!-- 260802b 사물 그림자(불투명도 연동) -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -2237,7 +2237,9 @@
     const unvisited = cores.filter(p => !game.visitedCore[p.sceneId]);
     const pool = unvisited.length ? unvisited : cores.slice();
     const sorted = pool.slice().sort((a, b) => (a.sceneOrder || 0) - (b.sceneOrder || 0));
-    const initialCount = Math.min(3, sorted.length);
+    // 260802: 3 → 1 (사용자 결정) — 시작은 씬 1 하나만. "약간은 스토리대로" 흐르되
+    // 첫 자리만 작가 고정이고 다음부터는 궤적 엔진 그대로 (게임북 환원 아님).
+    const initialCount = Math.min(1, sorted.length);
     const picked = sorted.slice(0, initialCount);
     game.accessiblePinIds = new Set(picked.map(p => p.id));
     const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
@@ -5762,7 +5764,7 @@
         var _ovl = _rtJ.__lumenSceneObjects.getViewLog();
         if (_ovl && _ovl.length) _jSnap.object_views = _ovl;
       }
-      if (window._temRecall) _jSnap.rep_gate = !!window._temRecall.asked;
+      // (rep_gate 기록은 260802 제거 — 회상 게이트 폐기와 함께)
       if (Object.keys(_jSnap).length && window.__temJournal) window.__temJournal(_jSnap);
     } catch (eJ) { LOG('run_journal 봉인 스냅샷 실패 (무해)', eJ); }
 
@@ -6751,34 +6753,40 @@
                 }
               });
             }
-            // ─── 260731 회상 연출 — 대표 앵커 먼저, 유령은 대답 후 ───────────
-            // 사용자 결정: 문에서 나온 관객이 보는 것은 대표 사물(rep_anchors)뿐
-            // 전부 가까이서 보고 나면 "…기억나? 이것들 말야." 입력이 남고, 대답하면
-            // 유령이 나타난다(접근 기하는 기존 그대로 — 폴백 최소 1체 보장 불변).
-            // rep_anchors 없는 기억은 — 게이트가 아예 안 선가 = 기존 흐름 그대로
-            (function () {
-              var reps = (window.__temMemoryMeta && window.__temMemoryMeta.rep_anchors) || [];
-              window._temRecall = {
-                active: Array.isArray(reps) && reps.length > 0,
-                words: Array.isArray(reps) ? reps.slice(0, 3) : [],
-                seen: {}, asked: false, answered: false,
-              };
-              if (window._temRecall.active) {
-                console.log('[Recall] 대표 앵커 게이트 활성:', window._temRecall.words.join(', '));
-              }
-            })();
-            // 2026-04-26: 장면핀 자리에 마네킨 유령. ghost-mannequin-test 검증값 잠금.
+            // ─── 260802 유령 외관=사물 (사용자 결정) ──────────────────────
+            // 궤적(접근 기하)은 불변 — 유령이 "어디에" 나타나는가는 기존 그대로,
+            // "무엇으로 보이는가"만 그 씬의 상징 사물(일반 사물의 1.5배)로 바뀐다.
+            // 심볼 결정: scenes.meta.symbol_object 작가 지정 우선 → 씬 태그 중 GLB 있는
+            // 첫 단어 → 없으면 null(그 씬만 기존 마네킹 폴백). 260731 회상 게이트(대표
+            // 앵커 3개 + 질문창)는 폐기 — 시작 연출은 applyInitialAccess 1핀으로 대신한다.
+            function _temSymbolForScene(sc) {
+              try {
+                if (!sc) return null;
+                var meta = sc.meta || {};
+                var models = (window.__temMemoryMeta && window.__temMemoryMeta.object_models) || {};
+                if (meta.symbol_object && models[meta.symbol_object] && models[meta.symbol_object].path) {
+                  var e0 = models[meta.symbol_object];
+                  return { word: meta.symbol_object, path: e0.path, scale: e0.scale };
+                }
+                // 260713 규칙 동일: object_tags 키가 존재하면 그것만, 없을 때만 motif_tags
+                var tags = Array.isArray(meta.object_tags) ? meta.object_tags
+                         : (Array.isArray(meta.motif_tags) ? meta.motif_tags : []);
+                for (var ti = 0; ti < tags.length; ti++) {
+                  var e = models[tags[ti]];
+                  if (e && e.path) return { word: tags[ti], path: e.path, scale: e.scale };
+                }
+              } catch (_) {}
+              return null;
+            }
+            // 2026-04-26: 장면핀 자리에 유령. ghost-mannequin-test 검증값 잠금.
             //   _buildPlayScenePins 가 이 attach 직후 sync 로 실행되므로 명시적 rebuild 호출은 그 뒤(아래 whisper 옆).
-            // 260731: Tripo GLB 몸(ghost_faceless_idle.glb) 반려 — 아이 체형 + 땅 박힘 (사용자 결정).
-            //   기본값 ybot.fbx 복귀. 재도전 시 fbxBaseUrl: 'assets/ghost_models/....glb' 한 줄이면 됨
-            //   (모듈의 GLB 갈래·발바닥 보정은 살아 있음).
+            // 260802: 몸 = 그 씬의 상징 사물 (bodyForPin). 롤백 = bodyForPin 줄 삭제(마네킹 복귀).
             if (window.LumenSceneMannequins && typeof window.LumenSceneMannequins.attach === 'function') {
               window.LumenSceneMannequins.attach(rt, {
                 getScenePins: function () { return _fpScenePins; },
-                // 260731 회상 게이트 — 대답 전엔 유령을 세우지 않는다
-                spawnGate: function () {
-                  var r = window._temRecall;
-                  return !(r && r.active && !r.answered);
+                // 260802 유령 외관=사물 — p.scene 의 상징 사물 GLB 를 몸으로
+                bodyForPin: function (p) {
+                  return _temSymbolForScene((p && p.scene) || null);
                 },
                 // S1·T4 배선 — 그 핀 장면이 within-run 으로 물들면 마네킨 기욺. p = _fpScenePins 원소.
                 getGhostDrift: function (p) {
@@ -6791,7 +6799,9 @@
                 }
               });
             }
-            // 260712 사물 조형 (설계 v1.1 §3.1) — 마네킹과 같은 핀 소스, 전 장면(접근성 무관)
+            // 260712 사물 조형 (설계 v1.1 §3.1) — 마네킹과 같은 핀 소스
+            // 260802: 노출은 열린/방문한 씬만 (사용자 결정 "시작하면 욕조·피 두 개만").
+            //   좌표는 전체 계산 그대로 — 자리는 불변, 회차가 열리며 사물이 떠오른다.
             if (window.LumenSceneObjects && typeof window.LumenSceneObjects.attach === 'function') {
               window.LumenSceneObjects.attach(rt, {
                 getScenePins: function () { return _fpScenePins; },
@@ -6801,104 +6811,27 @@
                   var mm = window.__temMemoryMeta;
                   return (mm && mm.object_models) || null;
                 },
-                // 260731 회상 게이트 — 대답 전엔 대표 앵커만 세운다 (배치 좌표는 전체 계산 그대로
-                wordFilter: function () {
-                  var r = window._temRecall;
-                  return (r && r.active && !r.answered) ? r.words : null;
+                // 260802 노출 게이트 — 그 사물의 소속 씬이 열려 있거나 방문됐을 때만
+                sceneGate: function (sc) {
+                  if (!sc) return true;
+                  for (var gi = 0; gi < _fpScenePins.length; gi++) {
+                    var sp = _fpScenePins[gi];
+                    var sid = (sp.scene && sp.scene.id) || (sp.pin && sp.pin.sceneId);
+                    if (sid === sc.id) return !!(sp.accessible || sp.visited);
+                  }
+                  return false;
+                },
+                // 260802 심볼 중복 제외 — 유령 몸이 된 단어는 일반 사물로 또 세우지 않는다
+                excludeWordForScene: function (sc) {
+                  var s = _temSymbolForScene(sc);
+                  return s ? s.word : null;
                 }
               });
             }
 
-            // ─── 260731 회상 감시자 — 대표 앵커 근접 → 질문 → 대답 → 유령 등장 ───
-            (function () {
-              var SEEN_DIST = 4.5;              // 근접 문장이 또렷해지는 거리와 같은 감각
-              var ASK_DELAY_MS = 1100;          // 마지막 앵커를 본 뒤 한 박자 쉬고 묻는다
-              var QUESTIONS_KO = ['…기억이 나기 시작했어?', '…기억나? 이것들 말야.'];
-              var QUESTIONS_EN = ['…is it starting to come back?', '…remember? these things.'];
-
-              function _recallShowAsk() {
-                var r = window._temRecall;
-                if (!r || r.answered || document.getElementById('temRecallAsk')) return;
-                var lang = (document.documentElement.lang || 'en').substring(0, 2);
-                var pool = lang === 'ko' ? QUESTIONS_KO : QUESTIONS_EN;
-                var q = pool[Math.floor(Math.random() * pool.length)];
-                var wrap = document.createElement('div');
-                wrap.id = 'temRecallAsk';
-                wrap.style.cssText = 'position:fixed;left:50%;bottom:26%;transform:translateX(-50%);' +
-                  'z-index:3400;display:flex;flex-direction:column;align-items:center;gap:14px;' +
-                  'opacity:0;transition:opacity 1.2s ease;pointer-events:auto;';
-                var qEl = document.createElement('div');
-                qEl.textContent = q;
-                qEl.style.cssText = 'font-family:"Gowun Batang","Noto Serif KR",serif;font-size:1.35rem;' +
-                  'color:rgba(232,216,252,0.92);text-shadow:0 0 14px rgba(203,184,232,0.45);' +
-                  'background:rgba(8,8,14,0.55);padding:10px 22px;border-radius:2px;letter-spacing:0.04em;';
-                var input = document.createElement('input');
-                input.type = 'text';
-                input.placeholder = lang === 'ko' ? '떠오르는 대로…' : 'whatever surfaces…';
-                input.style.cssText = 'width:min(420px,72vw);background:rgba(8,8,14,0.6);border:none;' +
-                  'border-bottom:1px solid rgba(203,184,232,0.4);color:rgba(238,232,250,0.95);' +
-                  'font-family:"Gowun Batang","Noto Serif KR",serif;font-size:1.05rem;padding:8px 10px;' +
-                  'outline:none;text-align:center;letter-spacing:0.03em;';
-                wrap.appendChild(qEl); wrap.appendChild(input);
-                document.body.appendChild(wrap);
-                requestAnimationFrame(function () { wrap.style.opacity = '1'; });
-                setTimeout(function () { try { input.focus(); } catch (_) {} }, 300);
-                // FP 이동 키 핸들러(document)로 있지 않게 — 입력 중 w/a/s/d 는 글자다
-                input.addEventListener('keydown', function (ev) {
-                  ev.stopPropagation();
-                  if (ev.key !== 'Enter') return;
-                  var val = String(input.value || '').trim();
-                  var rr = window._temRecall;
-                  if (!rr) return;
-                  rr.answered = true;
-                  window.__temRecallAnswer = val || '(침묵)';   // 침묵도 대답 — 유령은 어차피 온다 (폴백 보장)
-                  console.log('[Recall] 대답:', window.__temRecallAnswer, '→ 유령 등장');
-                  // 260731: 대답을 회차 일지에 즉시 기록 — 브라우저를 닫아도 남게 (대답 그 순간이 커밋 시점)
-                  try {
-                    if (window.__temJournal) window.__temJournal({
-                      recall_answer: { text: val || null, silent: !val, ts: new Date().toISOString() },
-                    });
-                  } catch (_) {}
-                  wrap.style.opacity = '0';
-                  setTimeout(function () { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); }, 1300);
-                  // 게이트 열림 — 유령 등장 + 나머지 사물이 이제 전부 선다
-                  try { if (rt.__lumenSceneMannequins) rt.__lumenSceneMannequins.rebuild(); } catch (_) {}
-                  try { if (rt.__lumenSceneObjects) rt.__lumenSceneObjects.rebuild(); } catch (_) {}
-                });
-              }
-
-              var _recallTimer = setInterval(function () {
-                var r = window._temRecall;
-                if (!r || !r.active || r.asked) return;
-                if (!rt.isFirstPerson || !rt.isFirstPerson()) return;
-                var so = rt.__lumenSceneObjects;
-                var cam = rt.getCamera && rt.getCamera();
-                if (!so || !so.anchors || !cam) return;
-                var list = so.anchors();
-                var allSeen = r.words.length > 0;
-                for (var i = 0; i < r.words.length; i++) {
-                  var w = r.words[i];
-                  if (r.seen[w]) continue;
-                  // 같은 단어가 여러 자리에 설 수 있다 — 어느 자리든 가까이 가면 "봄
-                  for (var k = 0; k < list.length; k++) {
-                    if (list[k].word !== w) continue;
-                    var dx = list[k].x - cam.position.x, dz = list[k].z - cam.position.z;
-                    if (Math.sqrt(dx * dx + dz * dz) < SEEN_DIST) {
-                      r.seen[w] = true;
-                      console.log('[Recall] 대표 앵커 봄:', w,
-                        '(' + Object.keys(r.seen).length + '/' + r.words.length + ')');
-                      break;
-                    }
-                  }
-                  if (!r.seen[w]) allSeen = false;
-                }
-                if (allSeen) {
-                  r.asked = true;
-                  clearInterval(_recallTimer);
-                  setTimeout(_recallShowAsk, ASK_DELAY_MS);
-                }
-              }, 600);
-            })();
+            // (260731 회상 감시자 — 대표 앵커 근접 → 질문 오버레이 — 는 260802 폐기.
+            //  3D 기억 공간의 텍스트 질문창이 작품 결과 안 맞았다. 시작 연출은
+            //  applyInitialAccess 1핀 + 사물 노출 게이트가 대신한다. 사용자 결정.)
             // rewind / return_mode / return_speech / return_events (작업 2-A~2-D) 배선 제거 — R2-8.
             // 귀환은 "퇴장 사건"이 아니라 접촉+시간으로 굴러가는 과정으로 재정의됐다
             // (docs/귀환_시스템_정합성_재정의-260613.md). 네 모듈은 옛 사건 모델의 잔존물이라
@@ -7032,7 +6965,8 @@
           // 의례 결을 받되, 길게 느낄 자리에 *키 한 번이면 지나간다*는 신호 박음.
           // mono1 박히는 자리(3.4s) 와 함께 하단에 작은 글씨 페이드인.
           var skipHintEl = document.createElement('div');
-          skipHintEl.style.cssText = 'position:fixed;bottom:8%;left:50%;transform:translateX(-50%);z-index:10001;pointer-events:none;color:rgba(196,168,130,0.4);font-size:11px;letter-spacing:4px;text-align:center;opacity:0;transition:opacity 1.6s;font-family:"Cormorant Garamond",serif;';
+          // 260802: 11px → 15px, 파동 위(300px)로. 8% 는 파동 한복판이라 안 보였다.
+          skipHintEl.style.cssText = 'position:fixed;bottom:300px;left:50%;transform:translateX(-50%);z-index:10001;pointer-events:none;color:rgba(196,168,130,0.62);font-size:15px;letter-spacing:4px;text-align:center;opacity:0;transition:opacity 1.6s;font-family:"Cormorant Garamond",serif;text-shadow:0 0 8px rgba(0,0,0,0.6);';
           skipHintEl.textContent = lang === 'ko' ? '아무 키 — 건너뛰기' : 'Any key — skip';
           document.body.appendChild(skipHintEl);
           setTimeout(function () { skipHintEl.style.opacity = '1'; }, 3400);
@@ -7134,6 +7068,7 @@
               m.position.x -= c.x; m.position.z -= c.z; m.position.y -= box.min.y;
               // 밤에도 제 색 유지 — 사물 모델(lumen_scene_objects modelEmissive)과 같은 규약
               m.traverse(function (o) {
+                if (o.isMesh) o.castShadow = true; // 260802 지형질감 1단계: 문이 땅에 그림자를 드리움
                 if (o.isMesh && o.material && o.material.emissive && o.material.color) {
                   o.material.emissive.copy(o.material.color);
                   o.material.emissiveIntensity = 0.25;
@@ -7292,7 +7227,8 @@
 
                 // Show movement control hint
                 var hintEl = document.createElement('div');
-                hintEl.style.cssText = 'position:fixed;bottom:35%;left:50%;transform:translateX(-50%);color:rgba(160,160,160,0.7);font-size:15px;letter-spacing:3px;pointer-events:none;opacity:0;transition:opacity 1.2s ease;z-index:9999;text-align:center;font-family:"Cormorant Garamond",serif;';
+                // 260802: 15px 흐린 회색이라 화면에서 안 읽혔다 → 21px + 대비 상향 + 그림자.
+                hintEl.style.cssText = 'position:fixed;bottom:38%;left:50%;transform:translateX(-50%);color:rgba(226,220,208,0.94);font-size:21px;letter-spacing:3px;pointer-events:none;opacity:0;transition:opacity 1.2s ease;z-index:9999;text-align:center;font-family:"Cormorant Garamond","Gowun Batang","Noto Serif KR",serif;text-shadow:0 2px 14px rgba(0,0,0,0.85);';
                 hintEl.textContent = lang === 'ko' ? '[화면을 클릭하고, 방향키로 움직이세요]' : '[Click to look around, move with arrow keys]';
                 document.body.appendChild(hintEl);
                 requestAnimationFrame(function () { hintEl.style.opacity = '1'; });
@@ -7511,10 +7447,12 @@
       if (_fpProxEl) return;
       var parent = document.getElementById('strataView') || document.body;
       _fpProxEl = document.createElement('div');
-      _fpProxEl.style.cssText = 'position:absolute;bottom:120px;left:50%;transform:translateX(-50%);color:#c4a882;font-size:15px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 0 12px rgba(196,168,130,0.5);max-width:400px;';
+      // 260802: 하단 파동(fpAmbientWaveWrap, 높이 280px) 위로 올림 — 파동 마루와 글자가 겹쳐 안 읽혔다.
+      _fpProxEl.style.cssText = 'position:absolute;bottom:340px;left:50%;transform:translateX(-50%);color:#c4a882;font-size:18px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 0 12px rgba(196,168,130,0.5);max-width:520px;';
       parent.appendChild(_fpProxEl);
       _fpHintEl = document.createElement('div');
-      _fpHintEl.style.cssText = 'position:absolute;bottom:90px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.65);font-size:14px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.3);';
+      // 260802: 파동(280px) 위로 + 키움. 아래층(300) ↔ 속삭임(340) ↔ 문장(384) ↔ 사물 이름(452) 순.
+      _fpHintEl.style.cssText = 'position:absolute;bottom:300px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.82);font-size:17px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.45);';
       parent.appendChild(_fpHintEl);
     }
 
@@ -7537,6 +7475,8 @@
         // 260730: 길게 누르기가 참조할 조준 상태 — 거리만으로 열리던 대화의 오발 제거
         _fpAimSp = nowAiming ? aimed.sp : null;
         _fpAimDist = nowAiming ? aimed.dist : Infinity;
+        // 260802: 사물 모듈이 읽는 조준 신호 — 유령을 겨눈 동안 사물 열람이 같이 터지지 않게
+        window.__temGhostAimed = !!(_fpAimSp && _fpAimDist < PROXIMITY_ENTER);
 
         // Reset previous aimed pin
         if (_aimedPin && (!nowAiming || (aimed && aimed.sp !== _aimedPin))) {

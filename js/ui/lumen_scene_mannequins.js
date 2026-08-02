@@ -105,10 +105,12 @@
     // 그 핀이 물들었는지 묻는 콜백. W(play-test.html)가 runtime.__quiltDemo.getGhostDrift 를 넘김.
     //   기대 반환: { strength, input, firedAt } | null  (T0 계약). 없으면 기욺 항상 0.
     getGhostDrift: null,                      // (pin) => { strength } | null
-    // 260731 회상 연출 — 스폰 게이트. () => false 면 rebuild 가 유령을 세우지 않는다
-    //   (핀 가림은 그대로). 관객이 대표 앵커를 보고 "기억나?"에 답하면 play-test 가
-    //   rebuild() 를 다시 불러 유령이 그때 나타난다. 미설정 = 항상 열림(기존 동작).
-    spawnGate: null
+    // 260802 유령 외관=사물 (사용자 결정) — 핀마다 "그 씬의 상징 사물" GLB 를 몸으로 세운다.
+    //   (pin) => { path, word?, scale? } | null. null 이면 기존 마네킹(사람) 폴백.
+    //   조준·대화 줌인·얼굴 속 글자·기욺·응시 등 유령 계약은 전부 그대로 — 몸만 바뀐다.
+    bodyForPin: null,
+    // 상징 사물 크기 — 일반 사물 표준(1.15m)의 1.5배. "사람 키만 한 사물"이 유령의 자리 표식.
+    symbolMaxDim: 1.725
   };
 
   // ─── 결정적 PRNG: FNV-1a + mulberry32 (lumen_return_speech 와 동일) ───
@@ -252,6 +254,15 @@
 
     function _loadModel(url) {
       return _isGlbUrl(url) ? _loadGlb(url) : _loadFbx(url);
+    }
+
+    // ─── 260802 사물 몸 템플릿 캐시 — 같은 path 는 한 번만 내려받고 clone ───
+    var _bodyCache = {};
+    function _loadBodyTemplate(path) {
+      if (!_bodyCache[path]) {
+        _bodyCache[path] = _loadGlb(path).then(function (r) { return r.scene; });
+      }
+      return _bodyCache[path];
     }
 
     function _nameFromUrl(url) {
@@ -445,7 +456,8 @@
       if (g.headBone) {
         g.headBone.getWorldPosition(v);
       } else {
-        v.set(g.root.position.x, (g.groundY || 0) + 1.62, g.root.position.z);
+        // 260802: 사물 몸은 headBone 이 없다 — bbox 로 잰 "얼굴 높이"(headY) 사용
+        v.set(g.root.position.x, (g.groundY || 0) + (g.headY || 1.62), g.root.position.z);
       }
       return v;
     }
@@ -456,11 +468,13 @@
       var rng = _mulberry32(_hashString('faceword|' + word + '|' + _dlg.sprites.length));
       var sp = _makeFaceWordSprite(word);
       scene.add(sp);
+      // 260802: 사물 몸은 머리(0.11m)보다 크다 — headRadius 비례로 글자 궤도를 넓힌다
+      var radMul = (_dlg.ghost && _dlg.ghost.headRadius) ? (_dlg.ghost.headRadius / 0.11) : 1;
       _dlg.sprites.push({
         sp: sp,
         phase: rng() * Math.PI * 2,
-        rx: 0.02 + rng() * 0.05,          // 수평 궤도 반경 — 머리 반경(~0.11m) *안쪽*
-        ry: 0.025 + rng() * 0.035,        // 수직 흔들림 폭 — 얼굴 높이 안
+        rx: (0.02 + rng() * 0.05) * radMul,          // 수평 궤도 반경 — 몸 크기 안쪽
+        ry: (0.025 + rng() * 0.035) * Math.min(radMul, 3),  // 수직 흔들림 폭
         speed: 0.1 + rng() * 0.08,        // 궤도 속도 (아주 느리게)
         flashUntil: isAbsorbed ? (performance.now() + 1400) : 0,  // 흡수 단어 등장 플래시
         dying: false
@@ -527,8 +541,65 @@
       _dlg = null;
     }
 
+    // ─── 260802 사물 몸 스폰 — 유령 계약(root/pin/headY/lean/gaze)은 지키고 몸만 사물 ───
+    // 자리는 즉시 확보(빈 그룹), GLB 는 비동기로 채움. 실패 시 그 핀만 마네킹 폴백.
+    function _spawnObjectBody(pin, idx, entry) {
+      var root = new THREE.Group();
+      var groundY = (typeof runtime.gH === 'function') ? runtime.gH(pin.wx, pin.wz) : 0;
+      root.position.set(pin.wx, groundY + opts.yOffset, pin.wz);
+      if (opts.faceCenter) root.rotation.y = Math.atan2(-pin.wx, -pin.wz);
+      root.userData._lumenGhostIdx = idx;
+      scene.add(root);
+      var g = {
+        root: root, mixer: null, pinIndex: idx, pin: pin,
+        baseRotY: root.rotation.y, seen: false,
+        monologueSprite: null, monologueLine: null, monologuePhase: idx * 1.37,
+        groundY: groundY,
+        pickedClipName: '(object:' + (entry.word || '?') + ')',
+        headBone: null, leanCur: 0,
+        // 얼굴 좌표 대체값 — 로드 후 bbox 로 갱신. headY=글자·줌인 높이, headRadius=글자 궤도 반경.
+        headY: 1.05, headRadius: 0.45, objectWord: entry.word || null
+      };
+      _loadBodyTemplate(entry.path).then(function (tpl) {
+        if (_ghosts.indexOf(g) === -1) return;   // 회차가 이미 끝남 — 유령 콜백 버림
+        var inst = tpl.clone(true);
+        inst.updateMatrixWorld(true);
+        var bbox = new THREE.Box3().setFromObject(inst);
+        var sz = bbox.getSize(new THREE.Vector3());
+        var maxDim = Math.max(sz.x, sz.y, sz.z) || 1;
+        var s = (opts.symbolMaxDim || 1.725) / maxDim;
+        if (entry.scale) s *= entry.scale;
+        inst.scale.setScalar(s);
+        inst.updateMatrixWorld(true);
+        var bbox2 = new THREE.Box3().setFromObject(inst);
+        inst.position.y -= bbox2.min.y;          // 바닥 원점 보정 — 어떤 원점이 와도 발이 땅에
+        root.add(inst);
+        _stripDetails(root);                     // 유령 재질(반투명 xray)로 통일 — "사물의 유령"
+        var h = bbox2.max.y - bbox2.min.y;
+        g.headY = Math.max(0.6, h * 0.62);
+        g.headRadius = Math.max(0.18,
+          Math.max(bbox2.max.x - bbox2.min.x, bbox2.max.z - bbox2.min.z) * 0.3);
+      }).catch(function (e) {
+        console.warn('[lumen-scene-mannequins] 사물 몸 로드 실패 — 마네킹 폴백:', entry.path, e && e.message);
+        if (_ghosts.indexOf(g) === -1 || !_source) return;
+        try {
+          var mroot = THREE.SkeletonUtils.clone(_source.scene);
+          _stripDetails(mroot);
+          root.add(mroot);
+          g.headY = 1.62; g.headRadius = 0.11;
+        } catch (_) {}
+      });
+      return g;
+    }
+
     function _spawnAt(pin, idx) {
       if (!_source) return null;
+      // 260802: 유령 외관=사물 — bodyForPin 이 entry 를 주면 그 씬의 상징 사물이 몸.
+      if (typeof opts.bodyForPin === 'function') {
+        var _bodyEntry = null;
+        try { _bodyEntry = opts.bodyForPin(pin); } catch (_) { _bodyEntry = null; }
+        if (_bodyEntry && _bodyEntry.path) return _spawnObjectBody(pin, idx, _bodyEntry);
+      }
       var root = THREE.SkeletonUtils.clone(_source.scene);
       _stripDetails(root);
       // Mixamo 본 이름은 'mixamorigHead' 또는 'mixamorig:Head' — 'head'로 끝나는 첫 본만 (HeadTop_End 제외)
@@ -650,18 +721,6 @@
       _clear();
       if (!_source || typeof opts.getScenePins !== 'function') return;
       var pins = opts.getScenePins() || [];
-      // 260731 회상 연출 — 게이트 닫힘이면 유령 없이 (핀 가림은 아래에서 그대로 함).
-      //   관객이 대표 앵커를 보고 "기억나?"에 답하면 play-test 가 rebuild() 를 다시 불러
-      //   유령이 그때 나타난다. 게이트 미설정 = 항상 열림(기존 동작).
-      var _gateOpen = true;
-      if (typeof opts.spawnGate === 'function') {
-        try { _gateOpen = !!opts.spawnGate(); } catch (_) {}
-      }
-      if (!_gateOpen) {
-        if (opts.hidePinVisuals) _hidePinVisuals(pins);
-        console.log('[lumen-scene-mannequins] spawn gate 닫힘 — 유령 대기 (회상 전)');
-        return;
-      }
       pins.forEach(function (p, i) {
         if (opts.accessibleOnly && !p.accessible) return;
         var g = _spawnAt(p, i);
