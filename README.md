@@ -69,7 +69,7 @@ supabase/           schema migrations and edge functions
 index.html          the work itself (PLAY / RECORD / ARCHIVE)
 ```
 
-Working documents are in Korean; papers and code are in English. Root-level PNG files are development screenshots.
+Working documents and papers are in Korean (papers carry English titles); code is in English. Root-level PNG files are development screenshots.
 
 ## Contact
 
