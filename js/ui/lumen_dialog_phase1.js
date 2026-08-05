@@ -58,6 +58,19 @@
 (function (global) {
   'use strict';
 
+  // 260806 모바일: 가로로 눕힌 휴대폰의 세로는 390~420px. 데스크톱 치수(하단 여백 300px +
+  //   본문 1.3rem) 그대로 두면 대화 박스가 화면 위쪽으로 넘쳐 대사 첫 줄부터 잘려나간다
+  //   (실측: 자막 y = -127px). 아래 _mq() 가 켜지면 여백·글자를 한 단계씩 줄인다.
+  function _isTouchUI() {
+    if (global.__temForceTouch !== null && global.__temForceTouch !== undefined) return global.__temForceTouch;
+    if (typeof global._temIsMobileDevice === 'function') return global._temIsMobileDevice();
+    var hasTouch = 'ontouchstart' in global || navigator.maxTouchPoints > 0;
+    var coarse = !!(global.matchMedia && global.matchMedia('(pointer: coarse)').matches);
+    return /Mobi|Android|iPhone|iPod|iPad/i.test(navigator.userAgent) || (hasTouch && coarse);
+  }
+  // 좁은 화면 여부 — 터치 기기이면서 세로가 짧을 때만 축소한다(태블릿 세로는 그대로).
+  function _mq() { return _isTouchUI() && global.innerHeight < 560; }
+
   var DEFAULTS = {
     overlayId: 'lumenDialogPhase1',
     maxFreeDialogTurns: 3,    // 2026-05-04 ego-state turn-taking 차용 (5-2 단일턴 결정 번복). docs/유령대화_egostate_차용-260504.md
@@ -522,7 +535,8 @@
       'top:0', 'left:0', 'right:0', 'bottom:0',
       'display:flex', 'flex-direction:column', 'justify-content:flex-end',
       'align-items:center',
-      'padding:0 24px 300px 24px',
+      // 260806: 하단 여백은 파동 높이에 맞춘다 (데스크톱 파동 280 → 300, 모바일 132 → 148).
+      _mq() ? 'padding:0 10px 148px 10px' : 'padding:0 24px 300px 24px',
       'background:transparent',
       'z-index:2800',
       'pointer-events:auto',
@@ -530,7 +544,7 @@
       'font-family:"Gowun Batang",serif',
       'color:rgba(232,216,252,0.92)',
       'box-sizing:border-box',
-      'font-size:1.08rem',
+      _mq() ? 'font-size:0.95rem' : 'font-size:1.08rem',
     ].join(';');
     ov.onclick = function (ev) {
       var t = ev.target;
@@ -558,8 +572,8 @@
       'background:rgba(8,6,14,0.85)',
       'border:1.5px solid rgba(196,168,130,0.5)',
       'border-radius:6px',
-      'padding:20px 26px 24px 26px',
-      'min-height:5.4em',
+      _mq() ? 'padding:13px 15px 15px 15px' : 'padding:20px 26px 24px 26px',
+      _mq() ? 'min-height:4em' : 'min-height:5.4em',
       'box-shadow:0 4px 34px rgba(0,0,0,0.55)',
       'opacity:0', 'transition:opacity 400ms ease',
     ].join(';');
@@ -572,7 +586,7 @@
       'background:rgba(8,6,14,0.95)',
       'border:1.5px solid rgba(196,168,130,0.5)',
       'border-radius:4px',
-      'font-size:0.92rem', 'letter-spacing:0.08em',
+      _mq() ? 'font-size:0.78rem' : 'font-size:0.92rem', 'letter-spacing:0.08em',
       'color:rgba(224,210,250,0.95)',
     ].join(';');
     box.appendChild(nameTag);
@@ -585,7 +599,8 @@
     var textEl = document.createElement('div');
     textEl.className = 'ldp-text';
     textEl.style.cssText = [
-      'font-size:1.3rem', 'line-height:1.85',
+      _mq() ? 'font-size:1.02rem' : 'font-size:1.3rem',
+      _mq() ? 'line-height:1.62' : 'line-height:1.85',
       'letter-spacing:0.01em',
       'white-space:pre-wrap',
       'text-shadow:0 0 18px rgba(168,140,196,0.18)',
@@ -608,12 +623,12 @@
 
     var metaZone = document.createElement('div');
     metaZone.id = id + '-meta';
-    metaZone.style.cssText = 'width:min(820px,94vw);flex-shrink:0;min-height:2em;text-align:center;margin-top:2px;pointer-events:none;';
+    metaZone.style.cssText = 'width:min(820px,94vw);flex-shrink:0;min-height:' + (_mq() ? '1.2em' : '2em') + ';text-align:center;margin-top:2px;pointer-events:none;';
     ov.appendChild(metaZone);
 
     var inputArea = document.createElement('div');
     inputArea.id = id + '-input-area';
-    inputArea.style.cssText = 'width:min(820px,94vw);min-height:64px;flex-shrink:0;margin-top:10px;pointer-events:auto;';
+    inputArea.style.cssText = 'width:min(820px,94vw);min-height:' + (_mq() ? '44px' : '64px') + ';flex-shrink:0;margin-top:' + (_mq() ? '6px' : '10px') + ';pointer-events:auto;';
     ov.appendChild(inputArea);
 
     document.body.appendChild(ov);
@@ -748,12 +763,12 @@
       var btn = document.createElement('button');
       btn.textContent = c.label;
       btn.style.cssText = [
-        'padding:11px 18px', 'width:100%', 'box-sizing:border-box',
+        _mq() ? 'padding:8px 14px' : 'padding:11px 18px', 'width:100%', 'box-sizing:border-box',
         'background:rgba(0,0,0,0.34)',
         'border:none',
         'border-bottom:1px solid rgba(196,168,130,0.26)',
         'color:rgba(232,216,252,0.9)',
-        'font-family:inherit', 'font-size:1.08rem',
+        'font-family:inherit', _mq() ? 'font-size:0.95rem' : 'font-size:1.08rem',
         'cursor:pointer', 'border-radius:0',
         'text-align:center',
         'text-shadow:0 1px 9px rgba(0,0,0,0.9)',
@@ -806,11 +821,11 @@
         var btn = document.createElement('button');
         btn.textContent = c.label;
         btn.style.cssText = [
-          'padding:14px 20px', 'width:100%', 'box-sizing:border-box',
+          _mq() ? 'padding:9px 14px' : 'padding:14px 20px', 'width:100%', 'box-sizing:border-box',
           'background:rgba(196,168,130,0.06)',
           'border:1px solid rgba(196,168,130,0.32)',
           'color:rgba(232,216,252,0.86)',
-          'font-family:inherit', 'font-size:1.05rem',
+          'font-family:inherit', _mq() ? 'font-size:0.95rem' : 'font-size:1.05rem',
           'cursor:pointer', 'border-radius:2px',
           'text-align:left',
           'transition:background 200ms ease, border-color 200ms ease',
@@ -839,12 +854,12 @@
     input.type = 'text';
     input.placeholder = opts.placeholder || _inputPlaceholder();
     input.style.cssText = [
-      'flex:1', 'padding:12px 14px',
+      'flex:1', _mq() ? 'padding:8px 12px' : 'padding:12px 14px',
       'background:rgba(0,0,0,0.38)',
       'border:none',
       'border-bottom:1px solid rgba(196,168,130,0.32)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'font-size:1.08rem',
+      'font-family:inherit', _mq() ? 'font-size:0.95rem' : 'font-size:1.08rem',
       'text-align:center',
       'outline:none', 'border-radius:0',
       'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
@@ -857,7 +872,7 @@
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
     btn.style.cssText = [
-      'padding:12px 18px',
+      _mq() ? 'padding:8px 14px' : 'padding:12px 18px',
       'background:transparent',
       'border:none',
       'border-bottom:1px solid rgba(196,168,130,0.45)',
@@ -1057,12 +1072,12 @@
     input.type = 'text';
     input.placeholder = opts.placeholder || (_dialogLang() === 'ko' ? '문장을 이어서…' : 'continue the sentence…');
     input.style.cssText = [
-      'flex:1', 'min-width:180px', 'padding:12px 14px',
+      'flex:1', 'min-width:180px', _mq() ? 'padding:8px 12px' : 'padding:12px 14px',
       'background:rgba(0,0,0,0.38)',
       'border:none',
       'border-bottom:1px solid rgba(196,168,130,0.32)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'font-size:1.08rem',
+      'font-family:inherit', _mq() ? 'font-size:0.95rem' : 'font-size:1.08rem',
       'text-align:center',
       'outline:none', 'border-radius:0',
       'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
@@ -1072,7 +1087,7 @@
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
     btn.style.cssText = [
-      'padding:12px 18px',
+      _mq() ? 'padding:8px 14px' : 'padding:12px 18px',
       'background:transparent',
       'border:none',
       'border-bottom:1px solid rgba(196,168,130,0.45)',
@@ -1138,12 +1153,12 @@
     input.type = 'text';
     input.placeholder = opts.placeholder || _t('freeInputPlaceholder');
     input.style.cssText = [
-      'flex:1', 'padding:12px 14px',
+      'flex:1', _mq() ? 'padding:8px 12px' : 'padding:12px 14px',
       'background:rgba(0,0,0,0.38)',
       'border:none',
       'border-bottom:1px solid rgba(196,168,130,0.32)',
       'color:rgba(232,216,252,0.92)',
-      'font-family:inherit', 'font-size:1.08rem',
+      'font-family:inherit', _mq() ? 'font-size:0.95rem' : 'font-size:1.08rem',
       'text-align:center',
       'outline:none', 'border-radius:0',
       'text-shadow:0 1px 8px rgba(0,0,0,0.8)',
@@ -1156,7 +1171,7 @@
     var btn = document.createElement('button');
     btn.textContent = opts.submitLabel || '↵';
     btn.style.cssText = [
-      'padding:12px 18px',
+      _mq() ? 'padding:8px 14px' : 'padding:12px 18px',
       'background:transparent',
       'border:none',
       'border-bottom:1px solid rgba(196,168,130,0.45)',

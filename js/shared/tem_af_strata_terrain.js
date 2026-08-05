@@ -1862,6 +1862,11 @@
     var _fpLastTime = 0;
     var _fpSavedCamPos = null;
     var _fpSavedTarget = null;
+    // 260806 모바일: 터치 조작(십자 패드) 입력 창구. 키보드와 같은 축으로 합산된다.
+    //   x = 좌우(+오른쪽), y = 앞뒤(+앞). 값 범위 -1..1 (스틱 기울기 = 걷는 속도).
+    //   키 입력 경로는 손대지 않는다 — 창구만 하나 더 여는 것.
+    var _fpTouchMove = { x: 0, y: 0 };
+    var _fpTouchJump = false;
 
     function _fpOnKeyDown(e) {
       // Don't intercept keys when scene UI / ESC menu / lumen dialog is open (allow typing)
@@ -1901,14 +1906,23 @@
       _fpEuler.yaw = 0;
       _fpEuler.pitch = 0;
       _fpLastTime = performance.now();
-      // Pointer lock requires user gesture — defer to next click
-      var _plRetry = function () {
-        if (_fpActive && !document.pointerLockElement) {
-          canvas.requestPointerLock().catch(function () {});
-        }
-        canvas.removeEventListener('click', _plRetry);
-      };
-      canvas.addEventListener('click', _plRetry);
+      _fpTouchMove.x = 0; _fpTouchMove.y = 0;
+      _fpTouchJump = false;
+      // 260806 모바일: 터치 기기는 포인터 잠금이 없다(또는 실패한다). 요청하면 화면만 깜빡이므로 생략.
+      //   둘러보기는 TemMobileControls 의 화면 쓸기가 addLook 으로 직접 넣는다.
+      var _isTouchDev = (global.__temForceTouch !== null && global.__temForceTouch !== undefined)
+        ? !!global.__temForceTouch
+        : !!(global._temIsMobileDevice && global._temIsMobileDevice());
+      if (!_isTouchDev) {
+        // Pointer lock requires user gesture — defer to next click
+        var _plRetry = function () {
+          if (_fpActive && !document.pointerLockElement) {
+            canvas.requestPointerLock().catch(function () {});
+          }
+          canvas.removeEventListener('click', _plRetry);
+        };
+        canvas.addEventListener('click', _plRetry);
+      }
       document.addEventListener('keydown', _fpOnKeyDown);
       document.addEventListener('keyup', _fpOnKeyUp);
       document.addEventListener('mousemove', _fpOnMouseMove);
@@ -1922,6 +1936,8 @@
       document.removeEventListener('mousemove', _fpOnMouseMove);
       if (document.pointerLockElement) document.exitPointerLock();
       _fpKeys = {};
+      _fpTouchMove.x = 0; _fpTouchMove.y = 0;
+      _fpTouchJump = false;
       camera.fov = 50;
       camera.updateProjectionMatrix();
       if (controls) controls.enabled = true;
@@ -1954,8 +1970,15 @@
       if (_fpKeys['KeyS'] || _fpKeys['ArrowDown'])   { mx -= forward.x; mz -= forward.z; }
       if (_fpKeys['KeyA'] || _fpKeys['ArrowLeft'])    { mx -= right.x;   mz -= right.z;   }
       if (_fpKeys['KeyD'] || _fpKeys['ArrowRight'])   { mx += right.x;   mz += right.z;   }
+      // 260806 모바일 십자 패드 — 키와 같은 축으로 합산.
+      if (_fpTouchMove.x !== 0 || _fpTouchMove.y !== 0) {
+        mx += forward.x * _fpTouchMove.y + right.x * _fpTouchMove.x;
+        mz += forward.z * _fpTouchMove.y + right.z * _fpTouchMove.x;
+      }
+      // len > 1 일 때만 정규화한다: 키 단독(len=1)·대각선(len=√2) 은 기존 동작 그대로이고,
+      // 스틱을 살짝 민 경우(len<1)의 "천천히 걷기"만 새로 살아난다.
       var len = Math.sqrt(mx * mx + mz * mz);
-      if (len > 0) { mx /= len; mz /= len; }
+      if (len > 1) { mx /= len; mz /= len; }
 
       var _nx = _fpPos.x + mx * _fpSpeed * dt;
       var _nz = _fpPos.z + mz * _fpSpeed * dt;
@@ -1973,11 +1996,12 @@
       var terrainH = gH(_fpPos.x, _fpPos.z);
       if (terrainH < -10) terrainH = -10;
 
-      // Jump (Space)
+      // Jump (Space / 모바일 점프 버튼)
       var onGround = _fpJumpHeight <= 0;
-      if (onGround && (_fpKeys['Space'])) {
+      if (onGround && (_fpKeys['Space'] || _fpTouchJump)) {
         _fpVelocityY = 7;
       }
+      _fpTouchJump = false;
       _fpVelocityY -= 18 * dt; // gravity
       _fpJumpHeight += _fpVelocityY * dt;
       if (_fpJumpHeight < 0) { _fpJumpHeight = 0; _fpVelocityY = 0; }
@@ -2059,6 +2083,20 @@
       setSceneTransition: function (v) { _fpSceneTransition = !!v; },
       setYaw: function (y) { _fpEuler.yaw = y; },
       getYaw: function () { return _fpEuler.yaw; },
+      // ─── 260806 모바일 터치 입력 창구 (TemMobileControls 전용) ───
+      // 십자 패드 기울기. x = 좌우(+오른쪽), y = 앞뒤(+앞). -1..1 로 조인다.
+      setTouchMove: function (x, y) {
+        _fpTouchMove.x = Math.max(-1, Math.min(1, x || 0));
+        _fpTouchMove.y = Math.max(-1, Math.min(1, y || 0));
+      },
+      // 화면 쓸기 → 시선. 마우스 movementX/Y 와 같은 단위(픽셀)로 받아 같은 감도식을 탄다.
+      addLook: function (dx, dy) {
+        if (!_fpActive) return;
+        _fpEuler.yaw -= (dx || 0) * 0.002;
+        _fpEuler.pitch -= (dy || 0) * 0.002;
+        _fpEuler.pitch = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, _fpEuler.pitch));
+      },
+      touchJump: function () { _fpTouchJump = true; },
       morphHeights: morphHeights,   // 260802 목격 연출 — 높이 점진 보간 (재빌드 없음)
     };
   }

@@ -2,7 +2,9 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- 260806: viewport-fit=cover 로 노치 뒤까지 화면을 쓰고, 두 손가락 확대는 막는다
+       (조준 중 실수로 확대되면 크로스헤어와 조준선이 어긋난다). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>TEM — Play Test</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,6 +23,13 @@
   // ── 큐레이터 모드 (2026-07-27): ?curator=1 → 1인칭 대신 작가용 전체 지도 + 접근(불빛) 시뮬.
   //    모듈/일반 스크립트 양쪽에서 읽도록 가장 이른 시점에 window 플래그로 박는다.
   try { window.__temCuratorMode = new URLSearchParams(location.search).get('curator') === '1'; } catch (_) { window.__temCuratorMode = false; }
+  // ── 260806 터치 조작 강제 (?touch=1) ──
+  //    노트북에서도 모바일 조작(십자 패드·화면 쓸기·길게 누르기)을 그대로 켠다. 검증용이자,
+  //    터치 노트북처럼 자동 판정이 애매한 기기의 수동 스위치. ?touch=0 이면 반대로 강제 해제.
+  try {
+    var _tq = new URLSearchParams(location.search).get('touch');
+    window.__temForceTouch = _tq === '1' ? true : (_tq === '0' ? false : null);
+  } catch (_) { window.__temForceTouch = null; }
   (function () {
     var hasMem = false;
     try {
@@ -61,7 +70,7 @@
   <script src="js/ui/lumen_replay_fog.js?v=260714"></script>
   <script src="js/ui/lumen_spatial_fog.js?v=260802b"></script><!-- 260802b 알파1: 안개 벽 관통 봉합(슬라이드·갇힘면제) -->
   <script src="js/shared/tem_sky_stains.js?v=260714"></script>
-  <script src="js/shared/tem_af_strata_terrain.js?v=260804b"></script><!-- 260802 지형질감 3단계(그림자·살결 셰이더·바위) -->
+  <script src="js/shared/tem_af_strata_terrain.js?v=260806"></script><!-- 260802 지형질감 3단계(그림자·살결 셰이더·바위) -->
   <script>
     // W4: 옛 스티키 플래그 청소 — tem_replay_terrain 이 켜진 채 저장돼 있으면 지운다.
     // (모듈 자체가 로드 안 되므로 이미 무력이지만, 위생을 위해 키를 비운다.)
@@ -75,6 +84,7 @@
   <script src="js/ui/lumen_scene_mannequins.js?v=260802e"></script><!-- 260802e 목격 v2 시네마틱 몸 -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
   <script src="js/ui/lumen_scene_objects.js?v=260802e"></script><!-- 260802c 안내 문구 파동 위로 + 크기 상향 -->
+  <script src="js/ui/tem_mobile_controls.js?v=260806"></script><!-- 260806 모바일 1인칭: 십자 패드 + 화면 쓸기 + 길게 누르기 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
   <!-- V2.1 Phase 1 — multi-turn dialog (circular memory + dialog_choices 메모리 한정) -->
@@ -84,10 +94,10 @@
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
   <script src="js/shared/tem_stem_cuts.js?v=260805"></script><!-- 260805 EN 데모: UNDW-001-EN 지문 12종 추가 -->
-  <script src="js/ui/lumen_dialog_phase1.js?v=260805"></script><!-- 260805 EN 데모: 위기 키워드 영어 보강 -->
+  <script src="js/ui/lumen_dialog_phase1.js?v=260806"></script><!-- 260806 모바일: 좁은 화면 대화창 축소(넘침 수리) -->
   <script src="js/ui/strataSection.js?v=260714"></script>
-  <script src="js/ui/floatingAnchor.js?v=260714"></script>
-  <script src="js/ui/lumen_recalled_anchors.js?v=260714"></script>
+  <script src="js/ui/floatingAnchor.js?v=260806"></script><!-- 260806 낭독 띠 회피 -->
+  <script src="js/ui/lumen_recalled_anchors.js?v=260806"></script><!-- 260806 낭독 띠 회피 -->
   <style>
     :root {
       --bg-deep: #0a0a0c;
@@ -474,6 +484,20 @@
       .map-pin.echo { width: 10px; height: 10px; }
       .map-pin.visited::after { width: 6px; height: 6px; }
       .map-pin-label { font-size: 12px; left: 22px; }
+    }
+    /* ── 260806 모바일 1인칭 조작 ──────────────────────────────
+       손가락으로 걷고 둘러보는 동안 브라우저 기본 동작(스크롤·당겨서 새로고침·
+       두 손가락 확대·꾹 눌러 텍스트 선택)이 끼어들면 시선이 튄다. 지형 위에서만 끈다. */
+    #strataView, #strataCanvas { touch-action: none; }
+    @media (pointer: coarse) {
+      html, body { overscroll-behavior: none; }
+      #strataView {
+        -webkit-user-select: none; user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      /* 가로로 눕힌 휴대폰은 세로가 390~420px — 대화창 여백을 줄여 본문 줄 수를 지킨다. */
+      #sceneMode { padding: 10px 14px; }
     }
     /* ── ESC 메뉴 ────────────────────────── */
     #escMenu { display:none; position:fixed; inset:0; z-index:9000; background:rgba(6,6,10,0.88); backdrop-filter:blur(8px); justify-content:center; align-items:center; }
@@ -5460,6 +5484,7 @@
   // 2D 지도로 라우팅해야 하는 기기. iPadOS 사파리는 데스크톱 Mac UA 로 위장하므로
   // (MacIntel + maxTouchPoints>1) 와 coarse 포인터로 보강해 'iPad → 데스크톱 오판 → 검은 화면'을 막는다.
   function _temIsMobileDevice() {
+    if (window.__temForceTouch !== null && window.__temForceTouch !== undefined) return window.__temForceTouch;
     var hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
     var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
@@ -5476,6 +5501,9 @@
   // 두 진입 경로(startBtn·URL 딥링크)에서 loadMemoryData 직후 호출해 복구.
   function _temShowMapIfMobile() {
     if (!_temIsMobileDevice()) return false;
+    // 260806: 터치 조작기가 실려 있으면 모바일도 1인칭으로 간다 — 2D 지도를 되살리면
+    // 지형이 뜨기 전 한 프레임 동안 옛 지도가 번쩍인다. 조작기가 없을 때만 옛 경로.
+    if (window.TemMobileControls && window.TemMobileControls.isMobile) return false;
     var mm = document.getElementById('mapMode');
     if (mm) {
       mm.style.visibility = '';
@@ -5525,6 +5553,11 @@
 
     enterText.addEventListener('click', function () {
       if (!document.getElementById('memorySelect').value) return;
+      // 260806 모바일: 여기가 이 회차의 유일한 "확실한 손가락 제스처" — 전체화면·가로 고정은
+      //   제스처 안에서만 허용된다. 지형에 들어간 뒤에 부르면 브라우저가 거절한다.
+      if (window.TemMobileControls && window.TemMobileControls.isMobile()) {
+        try { window.TemMobileControls.requestImmersive(); } catch (_) {}
+      }
       var enter = document.getElementById('landingEnter');
       if (enter) enter.classList.remove('ready');   // 두 번 눌림 방지
       veil.classList.add('closing');
@@ -6549,6 +6582,17 @@
     var _fpLongPress = null;
     var _fpIntroSeqDone = false;
     var PROXIMITY_ENTER = 5;
+    // 260806: 이 블록은 일반 <script> 라 module 스코프의 _temIsMobileDevice 가 안 보인다
+    //   (260708 검은 화면 사고와 같은 함정). 전역 공유본을 통해서만 부른다.
+    function _isTouchDevice() {
+      if (window.__temForceTouch !== null && window.__temForceTouch !== undefined) return window.__temForceTouch;
+      if (typeof window._temIsMobileDevice === 'function') return window._temIsMobileDevice();
+      var hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      var iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+      var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      return /Mobi|Android|iPhone|iPod|iPad/i.test(navigator.userAgent)
+        || iPadOS || (hasTouch && coarse) || (hasTouch && window.innerWidth < 768);
+    }
     var LONG_PRESS_MS = 800; // 2026-05-06: 1200 → 800. 진입 텀 단축 (V2-5 보강).
     // 260730: 사물 열람도 같은 "길게 누르기" 로 통일 — 모듈이 같은 기준을 쓰게 공개
     window.__temLongPressMs = LONG_PRESS_MS;
@@ -7378,6 +7422,8 @@
             var _skipHandler = function () { _skipDoorSeq(); };
             document.addEventListener('keydown', _skipHandler, { once: false });
             document.addEventListener('mousedown', _skipHandler, { once: false });
+            // 260806: 모바일은 합성 mousedown 이 늦거나 안 오는 브라우저가 있다 — 손가락 신호를 직접 받는다.
+            document.addEventListener('touchstart', _skipHandler, { once: false, passive: true });
 
             var _savedYaw = rt.getYaw();
 
@@ -7454,6 +7500,7 @@
               monoEl.style.opacity = '0';
               document.removeEventListener('keydown', _skipHandler);
               document.removeEventListener('mousedown', _skipHandler);
+              document.removeEventListener('touchstart', _skipHandler);
               // Cleanup overlay elements
               setTimeout(function () {
                 if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
@@ -7462,7 +7509,9 @@
                 if (monoEl.parentNode) monoEl.parentNode.removeChild(monoEl);
 
                 // Request pointer lock for 360° mouse look
-                var _plC = document.getElementById('strataCanvas');
+                // 260806: 터치 기기는 포인터 잠금이 없다 — 요청하면 실패하며 화면만 깜빡인다.
+                //   그쪽 둘러보기는 tem_mobile_controls.js 의 화면 쓸기가 맡는다.
+                var _plC = _isTouchDevice() ? null : document.getElementById('strataCanvas');
                 if (_plC) {
                   var _plLock = function () {
                     // V2-13 fix: dialog overlay active → skip pointer lock to avoid
@@ -7482,7 +7531,18 @@
                 var hintEl = document.createElement('div');
                 // 260802: 15px 흐린 회색이라 화면에서 안 읽혔다 → 21px + 대비 상향 + 그림자.
                 hintEl.style.cssText = 'position:fixed;bottom:38%;left:50%;transform:translateX(-50%);color:rgba(226,220,208,0.94);font-size:21px;letter-spacing:3px;pointer-events:none;opacity:0;transition:opacity 1.2s ease;z-index:9999;text-align:center;font-family:"Cormorant Garamond","Gowun Batang","Noto Serif KR",serif;text-shadow:0 2px 14px rgba(0,0,0,0.85);';
-                hintEl.textContent = lang === 'ko' ? '[화면을 클릭한 뒤 — 마우스로 둘러보고, W·A·S·D 또는 방향키로 걷습니다]' : '[Click, then look with the mouse — walk with W·A·S·D or arrow keys]';
+                // 260806: 조작법 안내는 기기별로 갈린다 — 휴대폰에 "클릭·W·A·S·D"는 읽어도 할 수 없는 말.
+                var _touchDev = _isTouchDevice();
+                if (_touchDev) {
+                  hintEl.style.fontSize = '17px';
+                  hintEl.style.letterSpacing = '2px';
+                  hintEl.style.bottom = '46%';
+                  hintEl.textContent = lang === 'ko'
+                    ? '[왼쪽 십자를 밀어 걷고, 화면을 쓸어 둘러봅니다]'
+                    : '[Push the left pad to walk — swipe the screen to look around]';
+                } else {
+                  hintEl.textContent = lang === 'ko' ? '[화면을 클릭한 뒤 — 마우스로 둘러보고, W·A·S·D 또는 방향키로 걷습니다]' : '[Click, then look with the mouse — walk with W·A·S·D or arrow keys]';
+                }
                 document.body.appendChild(hintEl);
                 requestAnimationFrame(function () { hintEl.style.opacity = '1'; });
                 // 260802 알파2: 힌트 2단 — 걷기 다음 "무엇을 해야 하는가"(유령 접근+길게 누르기).
@@ -7491,8 +7551,12 @@
                   hintEl.style.opacity = '0';
                   setTimeout(function () {
                     hintEl.textContent = lang === 'ko'
-                      ? '[흐릿한 대상 곁에 가서, 겨눈 채 길게 누르면 이야기가 시작됩니다]'
-                      : '[Walk up to a blurred presence — aim and hold to begin its story]';
+                      ? (_touchDev
+                          ? '[흐릿한 대상 곁에 가서, 그 대상을 손가락으로 길게 누르세요]'
+                          : '[흐릿한 대상 곁에 가서, 겨눈 채 길게 누르면 이야기가 시작됩니다]')
+                      : (_touchDev
+                          ? '[Walk up to a blurred presence — press and hold it with your finger]'
+                          : '[Walk up to a blurred presence — aim and hold to begin its story]');
                     hintEl.style.opacity = '1';
                     setTimeout(function () {
                       hintEl.style.opacity = '0';
@@ -7523,19 +7587,24 @@
           'Approach the blurred presences. When a broken sentence is handed to you, continue it in your own words.',
           'Only after enough encounters will the exit open.',
         ];
-        var promptTxt = langC === 'ko' ? '[ 클릭해서 들어가기 ]' : '[ Click to enter ]';
+        // 260806: 휴대폰엔 클릭할 마우스가 없다 — 손가락 말로 바꾼다.
+        //   화면도 좁으므로(가로 눕힘 기준 세로 390) 글자·줄간격을 한 단계 줄여 4줄이 다 들어오게 한다.
+        var _mobC = _isTouchDevice();
+        var promptTxt = langC === 'ko'
+          ? (_mobC ? '[ 화면을 눌러 들어가기 ]' : '[ 클릭해서 들어가기 ]')
+          : (_mobC ? '[ Tap to enter ]' : '[ Click to enter ]');
         var card = document.createElement('div');
-        card.style.cssText = 'position:fixed;inset:0;z-index:10005;background:#08060e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.3em;cursor:pointer;padding:0 8vw;transition:opacity 0.9s ease;';
+        card.style.cssText = 'position:fixed;inset:0;z-index:10005;background:#08060e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:' + (_mobC ? '0.7em' : '1.3em') + ';cursor:pointer;padding:0 ' + (_mobC ? '6vw' : '8vw') + ';transition:opacity 0.9s ease;';
         var els = lines.map(function (t) {
           var d = document.createElement('div');
           d.textContent = t;
-          d.style.cssText = 'color:#c4a882;font-size:17px;letter-spacing:2px;line-height:1.9;text-align:center;opacity:0;transition:opacity 1.1s ease;text-shadow:0 0 15px rgba(196,168,130,0.35);font-family:"Cormorant Garamond","Gowun Batang","Noto Serif KR",serif;max-width:640px;';
+          d.style.cssText = 'color:#c4a882;font-size:' + (_mobC ? 14 : 17) + 'px;letter-spacing:' + (_mobC ? 1 : 2) + 'px;line-height:' + (_mobC ? 1.65 : 1.9) + ';text-align:center;opacity:0;transition:opacity 1.1s ease;text-shadow:0 0 15px rgba(196,168,130,0.35);font-family:"Cormorant Garamond","Gowun Batang","Noto Serif KR",serif;max-width:640px;';
           card.appendChild(d);
           return d;
         });
         var pr = document.createElement('div');
         pr.textContent = promptTxt;
-        pr.style.cssText = 'margin-top:2.1em;color:rgba(196,168,130,0.65);font-size:13px;letter-spacing:4px;opacity:0;transition:opacity 1.4s ease;font-family:"Cormorant Garamond","Gowun Batang","Noto Serif KR",serif;';
+        pr.style.cssText = 'margin-top:' + (_mobC ? '1.1em' : '2.1em') + ';color:rgba(196,168,130,0.65);font-size:' + (_mobC ? 12 : 13) + 'px;letter-spacing:' + (_mobC ? 3 : 4) + 'px;opacity:0;transition:opacity 1.4s ease;font-family:"Cormorant Garamond","Gowun Batang","Noto Serif KR",serif;';
         card.appendChild(pr);
         document.body.appendChild(card);
         els.forEach(function (d, i) { setTimeout(function () { d.style.opacity = '1'; }, 500 + i * 1000); });
@@ -7673,6 +7742,9 @@
 
     function _ensureCrosshair() {
       if (_crosshairEl) return;
+      // 260806: 모바일은 화면 한가운데 조준을 쓰지 않는다(유령을 손가락으로 직접 짚는다).
+      //   조준점을 남겨두면 "여기에 맞춰야 하나?" 하고 헛수고하게 만든다 — 아예 안 만든다.
+      if (_isTouchDevice()) return;
       var parent = document.getElementById('strataView') || document.body;
       // Center dot
       _crosshairEl = document.createElement('div');
@@ -7710,8 +7782,10 @@
     // 정밀 레이캐스트가 유령 몸을 픽셀 단위로 빗나가도, 시선 원뿔 안(핀 중심 반경
     // 약 1.4 유닛 상당, 최소 6.5도)의 핀은 조준으로 인정하는 관용 판정.
     // 사물이 정면을 막는 경우는 이 함수까지 안 온다(정밀 히트가 먼저 잡음) — 오발 불변.
-    function _aimAssistPin(cam) {
-      var dir = cam.getWorldDirection(new THREE.Vector3());
+    // 260806: dirOverride 를 주면 그 방향(= 손가락으로 짚은 화면 좌표의 광선)을 기준으로 재는다.
+    //   모바일은 화면 한가운데 조준 대신 "짚은 자리"가 곧 조준이다.
+    function _aimAssistPin(cam, dirOverride) {
+      var dir = dirOverride || cam.getWorldDirection(new THREE.Vector3());
       var best = null, bestAng = Infinity;
       _fpScenePins.forEach(function (sp) {
         if (!sp.accessible || sp.visited || !sp.mesh) return;
@@ -7728,9 +7802,12 @@
       return best;
     }
 
-    function _getAimedPin(cam) {
+    // ndc = {x, y} (-1..1 화면 정규화 좌표). 주면 그 지점으로 광선을 쏜다(모바일 직접 짚기).
+    // 안 주면 예전처럼 카메라 정면 = 화면 한가운데 크로스헤어.
+    function _getAimedPin(cam, ndc) {
       if (!_aimRaycaster) _aimRaycaster = new THREE.Raycaster();
-      _aimRaycaster.set(cam.position, cam.getWorldDirection(new THREE.Vector3()));
+      if (ndc) _aimRaycaster.setFromCamera(ndc, cam);
+      else _aimRaycaster.set(cam.position, cam.getWorldDirection(new THREE.Vector3()));
       _aimRaycaster.far = 30;
       var meshes = [];
       var meshSp = new Map();   // mesh -> sp (핀 구슬 + 마네킹 몸통 모두 그 씬으로 귀속)
@@ -7761,7 +7838,8 @@
         for (var b = 0; b < objBlockers.length; b++) meshes.push(objBlockers[b]);
       }
       var hits = _aimRaycaster.intersectObjects(meshes, false);
-      if (hits.length === 0) return _aimAssistPin(cam);  // 260802 알파1: 빗나감 → 원뿔 관용 판정
+      // 260802 알파1: 빗나감 → 원뿔 관용 판정 (모바일은 짚은 광선 방향으로)
+      if (hits.length === 0) return _aimAssistPin(cam, ndc ? _aimRaycaster.ray.direction.clone() : null);
       if (objBlockers && objBlockers.indexOf(hits[0].object) !== -1) return null;  // 사물이 앞을 막음
       // Find which sp this mesh belongs to
       var hitMesh = hits[0].object;
@@ -7779,13 +7857,18 @@
     function _ensureProxUI() {
       if (_fpProxEl) return;
       var parent = document.getElementById('strataView') || document.body;
+      // 260806: 문구 높이는 하단 파동(AW_HEIGHT) 위에 얹혀야 한다 — 파동이 모바일에서 132 로
+      //   줄었으므로 문구도 같이 내려온다. 안 그러면 화면 위쪽에 붕 떠서 지형을 가린다.
+      var _mob = _isTouchDevice();
+      var _proxBottom = _mob ? 172 : 340;
+      var _hintBottom = _mob ? 142 : 300;
       _fpProxEl = document.createElement('div');
-      // 260802: 하단 파동(fpAmbientWaveWrap, 높이 280px) 위로 올림 — 파동 마루와 글자가 겹쳐 안 읽혔다.
-      _fpProxEl.style.cssText = 'position:absolute;bottom:340px;left:50%;transform:translateX(-50%);color:#c4a882;font-size:18px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 0 12px rgba(196,168,130,0.5);max-width:520px;';
+      // 260802: 하단 파동(fpAmbientWaveWrap) 위로 올림 — 파동 마루와 글자가 겹쳐 안 읽혔다.
+      _fpProxEl.style.cssText = 'position:absolute;bottom:' + _proxBottom + 'px;left:50%;transform:translateX(-50%);color:#c4a882;font-size:' + (_mob ? 15 : 18) + 'px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 0 12px rgba(196,168,130,0.5);max-width:' + (_mob ? '78vw' : '520px') + ';';
       parent.appendChild(_fpProxEl);
       _fpHintEl = document.createElement('div');
-      // 260802: 파동(280px) 위로 + 키움. 아래층(300) ↔ 속삭임(340) ↔ 문장(384) ↔ 사물 이름(452) 순.
-      _fpHintEl.style.cssText = 'position:absolute;bottom:300px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.82);font-size:17px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.45);';
+      // 260802: 파동 위로 + 키움. 아래층(300) ↔ 속삭임(340) ↔ 문장(384) ↔ 사물 이름(452) 순.
+      _fpHintEl.style.cssText = 'position:absolute;bottom:' + _hintBottom + 'px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.82);font-size:' + (_mob ? 14 : 17) + 'px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.45);';
       parent.appendChild(_fpHintEl);
     }
 
@@ -7866,10 +7949,19 @@
             _fpProxEl.textContent = _getFpWhisper(closest);
             _fpProxEl.style.opacity = '1';
             var _hl = (document.documentElement.lang || 'en').substring(0, 2);
-            _fpHintEl.textContent = _hl === 'ko' ? '길게 눌러 이 장면에 들어가세요' : 'Hold to enter this scene';
+            // 260806: 모바일은 조준이 아니라 "그 대상을 짚는" 동작이다 — 안내도 그렇게 말한다.
+            _fpHintEl.textContent = _isTouchDevice()
+              ? (_hl === 'ko' ? '그 대상을 길게 누르세요' : 'Press and hold that presence')
+              : (_hl === 'ko' ? '길게 눌러 이 장면에 들어가세요' : 'Hold to enter this scene');
           }
           // 260730: 속삭임(분위기)은 근접만으로, 진입 안내는 실제 조준했을 때만
-          if (_fpHintEl) _fpHintEl.style.opacity = (_fpAimSp && _fpAimDist < PROXIMITY_ENTER) ? '1' : '0';
+          // 260806: 모바일은 화면 한가운데 조준을 안 쓰므로 근접만으로 안내를 띄운다 —
+          //   조준 기준으로 두면 손가락으로 짚어 들어갈 수 있는 상황인데도 안내가 안 뜬다.
+          if (_fpHintEl) {
+            _fpHintEl.style.opacity = _isTouchDevice()
+              ? '1'
+              : ((_fpAimSp && _fpAimDist < PROXIMITY_ENTER) ? '1' : '0');
+          }
           // Pulse pin (distance-based, only if not already aimed)
           if (!_aimedPin || _aimedPin !== closest) {
             closest.mesh.material.emissiveIntensity = 0.6 + Math.sin(performance.now() * 0.005) * 0.3;
@@ -7901,6 +7993,7 @@
             var _dGate = _doorGateOk();
             if (!_fpNearDoor || _fpDoorGateWas !== _dGate) {
               _fpNearDoor = true;
+              window.__temNearDoor = true;  // 260806: 모바일 "길게 누르기" 버튼 점등 신호
               _fpDoorGateWas = _dGate;
               _ensureProxUI();
               var lang = (document.documentElement.lang || 'en').substring(0, 2);
@@ -7924,6 +8017,7 @@
           } else {
             if (_fpNearDoor) {
               _fpNearDoor = false;
+              window.__temNearDoor = false;
               if (_fpProxEl) _fpProxEl.style.opacity = '0';
               if (_fpHintEl) _fpHintEl.style.opacity = '0';
             }
@@ -7936,10 +8030,38 @@
       var _shakeInterval = null;
       var _canvasOrigTransform = '';
 
-      canvas.addEventListener('mousedown', function () {
+      // 260806: 인라인 mousedown 핸들러였던 것을 이름 붙은 함수로 뽑았다.
+      //   ① 진입 조건(조준·근접·문 관문)과 진입 처리는 한 곳에만 있어야 한다.
+      //   ② 모바일은 화면 한가운데 조준 대신 **짚은 자리**가 조준이다 — 엄지로 화면을 쓸어
+      //      유령을 정확히 한가운데 맞추는 건 폰에서 너무 성가시다(사용자 지적, 8-06).
+      //      ptX/ptY 가 오면 그 좌표로 광선을 다시 쏴서 조준 대상을 그 자리에서 정한다.
+      var _pressTargetSp = null;    // 이번 누르기가 실제로 겨눈 유령
+      function _fpPressStart(ptX, ptY) {
         if (!_fpPlayActive) return;
         // 260730: 씬(대화) 진입은 근접 + "실제 조준" 둘 다 — 거리만으로 열리던 오발 제거
-        var _aimOk = _fpAimSp && _fpAimDist < PROXIMITY_ENTER;
+        var _aimSp = _fpAimSp, _aimD = _fpAimDist, _tapHitPin = false;
+        if (_isTouchDevice() && ptX != null && ptY != null) {
+          var _rtT = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+          var _camT = _rtT && _rtT.getCamera();
+          var _cvT = document.getElementById('strataCanvas');
+          if (_camT && _cvT) {
+            var _rT = _cvT.getBoundingClientRect();
+            var _ndc = {
+              x: ((ptX - _rT.left) / _rT.width) * 2 - 1,
+              y: -(((ptY - _rT.top) / _rT.height) * 2 - 1)
+            };
+            var _tapped = _getAimedPin(_camT, _ndc);
+            if (_tapped && _tapped.type === 'pin') {
+              _aimSp = _tapped.sp; _aimD = _tapped.dist; _tapHitPin = true;
+            } else if (_tapped && _tapped.type === 'door') {
+              _aimSp = null; _aimD = Infinity;   // 문을 짚었다 — 아래 문 분기로
+            } else {
+              _aimSp = null; _aimD = Infinity;   // 허공을 짚었다 — 아무 일도 없다
+            }
+          }
+        }
+        _pressTargetSp = _aimSp;
+        var _aimOk = _aimSp && _aimD < PROXIMITY_ENTER;
         if (!_aimOk && !_fpNearDoor) return;
         // 260802 알파1: 문 잠금 — 5회 전엔 흔들림·타이머 없이 독백만 새로 띄운다.
         // (핀을 조준 중이면 아래 씬 진입 분기가 평소대로 동작)
@@ -7960,7 +8082,9 @@
           canvas.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
         }, 30);
 
-        if (_fpNearDoor && _doorGateOk()) {
+        // 260806: 손가락이 유령을 정확히 짚었으면 유령이 이긴다 — 문 앞에 선 채로
+        //   유령을 눌렀는데 나가기가 열리면 오발이다. 데스크톱(_tapHitPin=false)은 기존 순서 그대로.
+        if (_fpNearDoor && _doorGateOk() && !_tapHitPin) {
           // ─── Exit door long press (260802: 5회 관문 통과 시에만) ───
           var targetDoor = true;
           _pressTimer = setTimeout(function () {
@@ -8024,8 +8148,8 @@
           }, LONG_PRESS_MS);
 
         } else if (_aimOk) {
-          // ─── Scene pin long press — 조준한 그 핀으로만 (260730) ───
-          var targetPin = _fpAimSp;
+          // ─── Scene pin long press — 조준한(또는 손가락으로 짚은) 그 핀으로만 (260730 / 260806) ───
+          var targetPin = _pressTargetSp;
           _pressTimer = setTimeout(function () {
             if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }
             canvas.style.transform = _canvasOrigTransform;
@@ -8054,12 +8178,40 @@
             if (rt3 && rt3.setSceneTransition) rt3.setSceneTransition(false);
           }, LONG_PRESS_MS);
         }
-      });
-      canvas.addEventListener('mouseup', function () {
+      }
+      function _fpPressEnd() {
         if (_pressTimer) { clearTimeout(_pressTimer); _pressTimer = null; }
         if (_shakeInterval) { clearInterval(_shakeInterval); _shakeInterval = null; }
         canvas.style.transform = _canvasOrigTransform;
+        _pressTargetSp = null;
+        if (window.TemMobileControls && window.TemMobileControls.hidePressRing) {
+          window.TemMobileControls.hidePressRing();
+        }
+      }
+
+      // 마우스·손가락 공통 창구. pointer 이벤트 하나로 둘 다 받으므로 데스크톱 동작은 그대로고,
+      // 모바일은 화면을 그 자리에서 꾹 눌러도 진입한다(우하단 버튼과 별개로).
+      var _pressStartXY = null;
+      canvas.addEventListener('pointerdown', function (e) {
+        _pressStartXY = { x: e.clientX, y: e.clientY };
+        _fpPressStart(e.clientX, e.clientY);
+        // 짚은 자리에 차오르는 링 — 모바일 전용. 데스크톱은 크로스헤어 + 화면 흔들림이
+        // 이미 피드백이라, 링을 얹으면 조준점 위에 큰 원이 겹쳐 뜬다(기존 연출 훼손).
+        if (_pressTimer && _isTouchDevice() && window.TemMobileControls && window.TemMobileControls.showPressRing) {
+          window.TemMobileControls.showPressRing(e.clientX, e.clientY);
+        }
       });
+      canvas.addEventListener('pointerup', function () { _pressStartXY = null; _fpPressEnd(); });
+      canvas.addEventListener('pointercancel', function () { _pressStartXY = null; _fpPressEnd(); });
+      // 손가락이 크게 움직였다면 그건 "둘러보기"지 진입 의도가 아니다 — 꾹 누르기를 물린다.
+      // (데스크톱은 포인터 잠금 중이라 clientX/Y 가 고정 — 이 취소에 걸리지 않는다.)
+      canvas.addEventListener('pointermove', function (e) {
+        if (!_pressStartXY || !_pressTimer) return;
+        var d = Math.abs(e.clientX - _pressStartXY.x) + Math.abs(e.clientY - _pressStartXY.y);
+        if (d > 12) { _pressStartXY = null; _fpPressEnd(); }
+      });
+      // 모바일 조작기(tem_mobile_controls.js)가 빌려 쓰는 자리
+      window.__temFpPress = { start: _fpPressStart, end: _fpPressEnd };
     }
 
     // After scene emotion submit, return to 3D walk instead of mapMode
@@ -8091,7 +8243,8 @@
               if (_svParent && _awW.parentNode === document.body) _svParent.appendChild(_awW);
             }
             // Re-acquire pointer lock immediately + fallback to click
-            var _plCanvas = document.getElementById('strataCanvas');
+            // 260806: 터치 기기는 잠글 마우스가 없다 — 건너뛴다.
+            var _plCanvas = _isTouchDevice() ? null : document.getElementById('strataCanvas');
             if (_plCanvas) {
               var _dlgActive = !!document.getElementById('lumenDialogPhase1');
               // V2-13 fix: skip pointer lock entirely while dialog overlay is up.
@@ -8401,14 +8554,18 @@
             || (hasTouch && coarse)
             || (hasTouch && window.innerWidth < 768);
         })();
+    // 260806: 모바일도 1인칭으로 들어간다. 여태 막아둔 이유(방향키·포인터 잠금 부재)는
+    // tem_mobile_controls.js 가 십자 패드 + 화면 쓸기로 대체하면서 사라졌다.
+    // 조작기가 실려 있지 않은 경우에만 옛 2D 지도로 물러선다(안전망).
+    var _hasTouchCtl = !!(window.TemMobileControls && window.TemMobileControls.isMobile);
+    var _skipFp = _isMobile && !_hasTouchCtl;
     if (_isMobile) {
-      console.log('[FP Adapter] Mobile detected, skipping first-person mode');
-      // Restore mapMode visibility for mobile (no FP takeover)
-      if (mapMode) mapMode.style.visibility = '';
+      console.log('[FP Adapter] Mobile detected — touch controls: ' + (_hasTouchCtl ? 'ON (1인칭 진입)' : 'MISSING (2D 지도 폴백)'));
+      if (_skipFp && mapMode) mapMode.style.visibility = '';
     }
 
     var _pollCount = 0;
-    var _startPoll = _isMobile ? null : setInterval(function () {
+    var _startPoll = _skipFp ? null : setInterval(function () {
       _pollCount++;
       var mapActive = mapMode && mapMode.classList.contains('active');
       var memId = window._temGame && window._temGame.memoryId;
@@ -8447,7 +8604,9 @@
     var _miniCanvas = null;
     var _miniCtx = null;
     var _miniContourImg = null; // cached contour background
-    var MINI_SIZE = 325; // 260802 알파2b: 260 → 325 (1.25배, 사용자 지시 — 아이콘도 같이 확대)
+    // 260802 알파2b: 260 → 325 (1.25배, 사용자 지시 — 아이콘도 같이 확대)
+    // 260806: 가로로 눕힌 휴대폰의 세로는 390~420px — 325 면 화면 높이의 8할을 미니맵이 먹는다.
+    var MINI_SIZE = _isTouchDevice() ? 148 : 325;
     // 2026-05-15: 46 → 112. tem_af_strata_terrain.js 의 PlaneGeometry SZ 와 일치해야
     //   미니맵이 지형 외곽까지 담음. 46 이었을 때 월드 ±23 바깥 영역(전체의 ~58%)이
     //   가장자리에 짓눌려 잘려보였음.
@@ -8821,7 +8980,9 @@
     var _awCurrentNarrator = null;   // 현재 원본 감정 waveStyle
     var _awCurrentUser = null;       // 현재 유저 오염 waveStyle
     var _awPollInterval = null;
-    var AW_HEIGHT = 280; // v2: 상단 잘림 방지 + A/B 슬롯 간격 확보
+    // v2: 상단 잘림 방지 + A/B 슬롯 간격 확보
+    // 260806: 모바일 가로(높이 ~390)에서는 280 이 화면의 7할 — 파동만 보이고 지형이 안 보인다.
+    var AW_HEIGHT = _isTouchDevice() ? 132 : 280;
     var AW_FADE_DIST = 15;
 
     // idle 파동 스타일 (아무 핀에도 안 가까울 때) — 차분히 흐르는 기본
