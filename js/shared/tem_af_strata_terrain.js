@@ -1851,7 +1851,11 @@
     var _fpKeys = {};
     var _fpEuler = { yaw: 0, pitch: 0 };
     var _fpEyeHeight = 1.6;
-    var _fpSpeed = 4.5;
+    // 260804 파일럿 4회차: 지형 한 변이 112라 가로지르는 데만 25초 — 헤매다 지친다는
+    // 보고. Shift 달리기를 넣었다가 철회했다(속도를 손에 쥐여주면 "목표까지 이동"이
+    // 되어 퀘스트 감각을 밀고, 같은 회차에서 나온 "퀘스트 깨는 느낌"과 정면 충돌).
+    // 기본 걸음만 1.15배 — 걷는다는 감각은 유지한 채 대기시간만 덜어낸다. 4.5 * 1.15.
+    var _fpSpeed = 5.175;
     var _fpPos = { x: 0, z: 0 };
     var _fpVelocityY = 0;
     var _fpJumpHeight = 0;
