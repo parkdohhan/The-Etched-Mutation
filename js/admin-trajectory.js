@@ -531,26 +531,58 @@ async function moveSceneOrder(s, dir) {
 // ─── 사운드 미리듣기 (Web Audio API) ────────────────────────
 let _audioCtx = null;
 let _currentPreview = null;
+// 260804: 눌러도 화면에 아무 표시가 없어서 "버튼이 안 먹는 것"과 "파일이 원래 조용한 것"을
+//         구분할 수 없었다. 상태 문구 + suspended 해제 안전망 추가.
+function _soundSay(msg, color) {
+  const el = document.getElementById('sceneSoundGenStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = color || '#7c7466';
+}
+
 async function previewSound(url, volume) {
   try {
     if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 브라우저가 소리 장치를 잠가둔 상태면 깨운다. 안 깨우면 에러 없이 조용히 안 들린다.
+    if (_audioCtx.state === 'suspended') await _audioCtx.resume();
     if (_currentPreview) { try { _currentPreview.stop(); } catch(e){} _currentPreview = null; }
 
+    _soundSay('불러오는 중…');
     const res = await fetch(url);
     if (!res.ok) throw new Error('파일 로드 실패: ' + res.status);
     const buf = await res.arrayBuffer();
     const audioBuf = await _audioCtx.decodeAudioData(buf);
 
+    // 라이브러리에 최대 진폭 0.01 수준의 사실상 무음 파일이 섞여 있다(amb_crowd, Base_white 등).
+    // 정상 재생인데 안 들리는 경우를 문구로 구분해준다.
+    const ch = audioBuf.getChannelData(0);
+    const step = Math.max(1, Math.floor(ch.length / 20000));
+    let peak = 0;
+    for (let i = 0; i < ch.length; i += step) { const v = Math.abs(ch[i]); if (v > peak) peak = v; }
+
+    const vol = Math.max(0, Math.min(1, volume));
     const src = _audioCtx.createBufferSource();
     src.buffer = audioBuf;
     const gain = _audioCtx.createGain();
-    gain.gain.value = Math.max(0, Math.min(1, volume));
+    gain.gain.value = vol;
     src.connect(gain).connect(_audioCtx.destination);
     src.start();
     _currentPreview = src;
+
+    const secs = Math.min(10, audioBuf.duration);
+    if (peak * vol < 0.02) {
+      _soundSay(`▶ 재생 중 — 이 파일은 거의 무음 (최대 ${peak.toFixed(3)} × 볼륨 ${vol} = ${(peak * vol).toFixed(4)})`, '#9d8a4a');
+    } else {
+      _soundSay(`▶ 재생 중 ${secs.toFixed(1)}초 · 볼륨 ${vol} · 최대 ${peak.toFixed(2)}`, '#6aa383');
+    }
     // 최대 10초 미리듣기
-    setTimeout(() => { try { src.stop(); } catch(e){} }, 10000);
+    setTimeout(() => {
+      try { src.stop(); } catch(e){}
+      const el = document.getElementById('sceneSoundGenStatus');
+      if (el && el.textContent.startsWith('▶')) _soundSay('■ 미리듣기 끝');
+    }, 10000);
   } catch (e) {
+    _soundSay('❌ ' + (e.message || '재생 실패'), '#b85540');
     alert('재생 실패: ' + e.message);
   }
 }
