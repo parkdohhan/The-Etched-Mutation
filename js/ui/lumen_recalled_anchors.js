@@ -161,13 +161,15 @@
   }
 
   // 단계 → FloatingAnchor 옵션. imageType 이 바뀌므로 승급 시엔 재생성한다.
+  // 260806 — 중앙 낭독 띠(씬 본문·대사 구역) 회피. EN 데모 겹침 결함 수리 (floatingAnchor avoidBandY).
+  var READ_BAND = [0.32, 0.66];
   function _optsForStage(word, stage) {
     if (stage >= DEFAULTS.decayStage) {
       // 붕괴 — 아스키/블록. anchor_images 에 작가가 ascii 를 등록해두면 그걸 우선 쓰도록 열어둔 자리.
-      return { keyword: word, alignment: 0.15, clarity: 0, imageType: 'ascii', content: _decayText(word) };
+      return { keyword: word, alignment: 0.15, clarity: 0, imageType: 'ascii', content: _decayText(word), avoidBandY: READ_BAND };
     }
-    if (stage === 2) return { keyword: word, alignment: 0.75, clarity: 0, imageType: 'text' }; // 또렷
-    return { keyword: word, alignment: 0.35, clarity: 0.25, imageType: 'text' };               // 흐릿
+    if (stage === 2) return { keyword: word, alignment: 0.75, clarity: 0, imageType: 'text', avoidBandY: READ_BAND }; // 또렷
+    return { keyword: word, alignment: 0.35, clarity: 0.25, imageType: 'text', avoidBandY: READ_BAND };               // 흐릿
   }
 
   function _spawn(word, stage) {

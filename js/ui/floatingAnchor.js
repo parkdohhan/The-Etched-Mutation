@@ -96,6 +96,10 @@ class FloatingAnchor {
     this.content = options.content || '';
     this.storagePath = options.storagePath || '';
     this.vividness = options.vividness ?? 0.5;
+    // 260806 겹침 수리 — 중앙 낭독 띠 회피 (씬 본문·대사가 뜨는 구역). [top비율, bottom비율] 또는 null.
+    //   EN 데모에서 앵커("blood")가 씬 본문과 겹치는 결함 보고로 추가. 옵트인 — 기존 용처 무영향.
+    this.avoidBandY = (Array.isArray(options.avoidBandY) && options.avoidBandY.length === 2)
+      ? options.avoidBandY : null;
 
     this.el = null;
     this.x = 0;
@@ -184,6 +188,19 @@ class FloatingAnchor {
     this.x = -extraW + Math.random() * (containerW + extraW * 2 - this.width);
     this.y = 20 + Math.random() * (containerH - this.height - 40);
 
+    // 260806 — 낭독 띠 안에서 태어나지 않게: 위/아래 여백 중 넓은 쪽으로 재배치
+    if (this.avoidBandY) {
+      const bandTop = containerH * this.avoidBandY[0];
+      const bandBot = containerH * this.avoidBandY[1];
+      if (this.y + this.height > bandTop && this.y < bandBot) {
+        const topRoom = bandTop - this.height - 20;
+        const botRoom = containerH - bandBot - this.height - 20;
+        this.y = (topRoom >= botRoom)
+          ? 20 + Math.random() * Math.max(1, topRoom)
+          : bandBot + Math.random() * Math.max(1, botRoom);
+      }
+    }
+
     // clarity가 높을수록 느리게 떠다님 (1.0 → 0.3x speed)
     const claritySpeedMul = 1 - this.clarity * 0.7;
     this.baseSpeed = 0.15 + Math.random() * 0.25;
@@ -230,6 +247,22 @@ class FloatingAnchor {
       this.y = containerH - this.height;
       this.vy = -Math.abs(this.vy);
       this._onBounce();
+    }
+
+    // 260806 — 낭독 띠 반사: 띠에 닿으면 벽처럼 튕겨 나간다 (겹침 수리)
+    if (this.avoidBandY) {
+      const bandTop = containerH * this.avoidBandY[0];
+      const bandBot = containerH * this.avoidBandY[1];
+      if (this.y + this.height > bandTop && this.y < bandBot) {
+        if (this.vy >= 0) {
+          this.y = Math.max(0, bandTop - this.height);
+          this.vy = -(Math.abs(this.vy) || 0.08);
+        } else {
+          this.y = Math.min(containerH - this.height, bandBot);
+          this.vy = Math.abs(this.vy) || 0.08;
+        }
+        this._onBounce();
+      }
     }
 
     this._applyPosition();
