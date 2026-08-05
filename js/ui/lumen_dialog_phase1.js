@@ -72,9 +72,14 @@
       sceneContextMs:  900, // 신규 — scene_context 라인 사이 (이전 하드코딩 1700)
     },
     // Record CRISIS_REACTIONS 키워드 (recordChat.js 패턴 재활용)
+    // 260805 EN 데모 대비 — 영어 위기 표현 보강 (기존 3개는 너무 얇았음).
+    //   'kill me' 단독은 영어 구어 과장("this kills me")과 충돌해 제외. 부분일치 소문자 비교 유지.
     crisisKeywords: [
       '자살', '죽고싶', '죽이', '죽일', '자해', '베다', '베고', '뛰어내리', '목매', '약 먹',
-      'kill myself', 'suicide', 'self harm',
+      'kill myself', 'suicide', 'self harm', 'self-harm',
+      'want to die', 'wanna die', 'end my life', 'end it all',
+      'hurt myself', 'cut myself', "don't want to live", 'dont want to live', 'don’t want to live',
+      'no reason to live', 'overdose', 'jump off',
     ],
     // Record END_PHRASES (recordChat.js)
     endPhrases: [
@@ -131,6 +136,8 @@
     '그래', '그러게', '그치', '그렇지',
     '오키', '오케이',
     'ok', 'OK', 'okay', 'yes', 'yeah',
+    // 260805 EN 데모 대비 — 길이 ≤4 게이트에 맞는 영어 맞장구만 (right/exactly 는 게이트 밖)
+    'yep', 'yup', 'mhm', 'sure', 'true', 'kk',
   ];
   function _isShortAffirmative(text) {
     if (!text || typeof text !== 'string') return false;
