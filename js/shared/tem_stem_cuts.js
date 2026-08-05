@@ -92,5 +92,67 @@ window.TemStemCuts = {
   "text": "벨이 울렸다. 울리고, 끊기고, 울리고. 받을 듯 받지 않는 간격. 나는 화면을 응시하다가 내려놓았다. 연결도 거절도 하지 않은 채. 한 달. 한 달 동안. 저도요, 전화…",
   "rule": "trigger-power-v1",
   "joint": 7
+ },
+ // ─── 260805 수동 추가: UNDW-001-EN (영어 초벌 사본) 지문 — 절단점은 한국어판 joint 미러.
+ //     주의: 이 파일을 emit 도구로 재생성하면 아래 EN 블록이 유실됨. 재생성 시 이 블록 백업 후 재부착할 것.
+ "7a1d4e92-3b6f-4c8a-9d2e-5f7b1c3a8e41": {
+  "text": "The offering failed. I thrash myself upright. My back is soaked in sweat; blood is leaking through my pants. It lies sunk in the bathtub. The face half-submerged, only an outline shimmering. I turn my head away. Because I hate the shimmering. It's because the smell is too much…",
+  "rule": "trigger-power-v1",
+  "joint": 7
+ },
+ "2c9f7b34-8e1a-4f6d-b3c8-7a2e9d5f1b62": {
+  "text": "I set out, cutting through the blizzard. In my pocket, I grip the bundle of cloth tight. When I smell the old lace, I want to believe she is alive and well. The third supermarket…",
+  "rule": "trigger-power-v1",
+  "joint": 3
+ },
+ "8d3a1f56-2c7e-4b9a-8e4f-3d6b2a9c7e83": {
+  "text": "You have sanitary pads, right? The woman digs under the shelf. Our eyes meet and my breath stops. High cheekbones, thick lips, sagging under the eyes…",
+  "rule": "trigger-power-v1",
+  "joint": 3
+ },
+ "5e7c2d18-9f3b-4a6e-9c1d-8b4f7e2a3d94": {
+  "text": "A child clings to the woman's waist. The way the small arms wrap around is practiced, natural. A motion made every day. The woman strikes the child hard on the head. Go inside. A motion refused every day. And still made every day. Have I ever made a motion like that…",
+  "rule": "trigger-power-v1",
+  "joint": 7
+ },
+ "1f4b8e63-7a2d-4e9c-a5b7-2c8d4f9e6a15": {
+  "text": "The Jindo dog was dead. White foam at its mouth; snow powder unmelting on its half-open eyes. I unfastened the frozen leash. The pads of its feet were still warm. What is this. An old woman was standing there. What did you do. I ran…",
+  "rule": "trigger-power-v1",
+  "joint": 7
+ },
+ "9b2e5c47-4d8f-4c3a-b7e9-6a1c3d8f5b26": {
+  "text": "Halfway up the mountain. The world is made of nothing but snow and trees. I push aside the snow underfoot and dig at the ground with a stone. Frozen solid…",
+  "rule": "trigger-power-v1",
+  "joint": 3
+ },
+ "4a8d3f92-6b1e-4d7c-8a2f-9e5b7c4d1a37": {
+  "text": "For the first time, I look at the offering's face. Swollen and warped by the water, but the cheekbones were the same. The cheekbones I have in my own face. It was the same face from the beginning. Old fingernails. Thick lips. I knew from the beginning. I just didn't look…",
+  "rule": "trigger-power-v1",
+  "joint": 7
+ },
+ "6c1a9e25-3f7d-4b8e-9d6a-4b2f8c5e7d48": {
+  "text": "On days Mom didn't come home, I went through her drawer. Panties heavy with lace. The thing that touches the body closest. That stays touching longest. And so the thing most steeped in her…",
+  "rule": "trigger-power-v1",
+  "joint": 4
+ },
+ "3e6f4b81-5c9a-4e2d-a8c4-7d3b9f6e2c59": {
+  "text": "As long as I am wearing this, I will not move; if I do not move, I will not go bad; if I do not go bad, Mom will come back. The lace scratched my thighs, and when I ran, the beads pressed into my skin. I kept the promise…",
+  "rule": "trigger-power-v1",
+  "joint": 2
+ },
+ "2a5e7d93-4c8b-4f1e-9b3d-6e8a4c2f9d71": {
+  "text": "I dressed Mihyun in the panties. The way Mom had done for me. I thought: now you will protect me. I don't like girls. Strangely, the words didn't hurt — and so they hurt longer. Her account was frozen. So she's dead…",
+  "rule": "trigger-power-v1",
+  "joint": 6
+ },
+ "8f4b2c67-1d9e-4c6a-a7f2-3b5d8e9c4a82": {
+  "text": "The panties on the drying rack have faded to brown. Blood, once soaked in, never fully washes out. It only pales, staying between the fibers. Mom's panties went that way too, once…",
+  "rule": "trigger-power-v1",
+  "joint": 3
+ },
+ "5b9d6e32-7f2a-4d4c-8c5e-1a7f3b6d9e93": {
+  "text": "The phone rang. Ringing, cut off, ringing. An interval that seems about to answer, and doesn't. I stared at the screen, then set it down. Neither connecting nor refusing. A month. For a whole month. Me too — the phone…",
+  "rule": "trigger-power-v1",
+  "joint": 7
  }
 };
