@@ -44,6 +44,7 @@
   var _pollTimer = null;
   var _uiTimer = null;
   var _canvas = null;
+  var _miniHidden = null;   // 미니맵 접힘 상태 (바뀔 때만 손대기 위한 기억)
 
   function _lang() {
     var l = (doc.documentElement.lang || 'ko').substring(0, 2);
@@ -414,10 +415,15 @@
       if (_pad) _pad.style.pointerEvents = hide ? 'none' : 'auto';
       if (_jumpBtn) _jumpBtn.style.pointerEvents = hide ? 'none' : 'auto';
       // 좁은 화면에서는 대화 박스가 미니맵 자리까지 올라온다 — 대화 중엔 지도도 접어둔다.
-      var mini = doc.getElementById('fpMinimap');
-      if (mini) {
-        mini.style.transition = 'opacity 0.35s ease';
-        mini.style.opacity = hide ? '0' : '1';
+      // 상태가 바뀔 때만 손댄다: 매 폴링마다 '1' 로 덮으면 사물 열람 중 지도를 접어둔
+      // lumen_scene_objects 의 처리가 120ms 만에 되살아난다.
+      if (_miniHidden !== hide) {
+        _miniHidden = hide;
+        var mini = doc.getElementById('fpMinimap');
+        if (mini) {
+          mini.style.transition = 'opacity 0.35s ease';
+          mini.style.opacity = hide ? '0' : '1';
+        }
       }
       if (hide) {
         hidePressRing();
@@ -453,6 +459,7 @@
     if (_enterBtn && _enterBtn.parentNode) _enterBtn.parentNode.removeChild(_enterBtn);
     var miniD = doc.getElementById('fpMinimap');
     if (miniD) miniD.style.opacity = '1';   // 접어둔 지도 원복
+    _miniHidden = null;                     // 다음 회차에 옛 상태가 남지 않게
     _root = null; _pad = null; _knob = null;
     _enterBtn = null; _enterRing = null; _jumpBtn = null;
     _padTouchId = null; _lookTouchId = null;

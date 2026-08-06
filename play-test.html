@@ -83,7 +83,7 @@
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260802e"></script><!-- 260802e 목격 v2 시네마틱 몸 -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260802e"></script><!-- 260802c 안내 문구 파동 위로 + 크기 상향 -->
+  <script src="js/ui/lumen_scene_objects.js?v=260806"></script><!-- 260806 사물 이름·본문 겹침 수리 + 좁은 화면 치수 -->
   <script src="js/ui/tem_mobile_controls.js?v=260806"></script><!-- 260806 모바일 1인칭: 십자 패드 + 화면 쓸기 + 길게 누르기 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
@@ -8053,6 +8053,10 @@
             var _tapped = _getAimedPin(_camT, _ndc);
             if (_tapped && _tapped.type === 'pin') {
               _aimSp = _tapped.sp; _aimD = _tapped.dist; _tapHitPin = true;
+              // 260806: 사물 모듈이 이 플래그를 보고 열람을 양보한다. pointerdown 이
+              //   touchstart 보다 먼저 돌므로, 손가락이 유령을 짚은 사실이 제때 전달된다.
+              //   (안 하면 유령 앞 사물이 같이 열려 대화와 열람이 겹친다 — 260802 결함의 짚기판)
+              if (_aimD < PROXIMITY_ENTER) window.__temGhostAimed = true;
             } else if (_tapped && _tapped.type === 'door') {
               _aimSp = null; _aimD = Infinity;   // 문을 짚었다 — 아래 문 분기로
             } else {

@@ -11,6 +11,18 @@ export const TESTER_FLAG_KEY = 'tem_tester_mode';
 export const TESTER_MEMORY_CODE = 'UNDW-001';                          // 대표 기억 (사용자 결정 2026-08-02)
 export const TESTER_MEMORY_ID = '1835926d-5acc-4d43-afd7-273ed853bca4'; // code 조회 실패 시 폴백
 
+// 260806: 영어 사본 대표 기억. 260805 에 UNDW-001-EN 을 만들어 두고도 테스터 모드가
+//   한국어판 코드 하나만 보고 있어, 언어를 영어로 고르고 들어와도 한국어판이 나왔다.
+export const TESTER_MEMORY_CODE_EN = 'UNDW-001-EN';
+export const TESTER_MEMORY_ID_EN = '3f8e2a71-9c4b-4d2e-8f6a-1b5c9d7e3a20';
+
+/** 언어에 맞는 대표 기억의 { code, id }. 'en' 이 아니면 한국어판. */
+export function testerMemoryFor(lang) {
+  return String(lang || '').toLowerCase().slice(0, 2) === 'en'
+    ? { code: TESTER_MEMORY_CODE_EN, id: TESTER_MEMORY_ID_EN }
+    : { code: TESTER_MEMORY_CODE, id: TESTER_MEMORY_ID };
+}
+
 export function isTesterMode() {
   try {
     const q = new URLSearchParams(location.search).get('tester');

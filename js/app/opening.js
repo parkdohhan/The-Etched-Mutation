@@ -8,7 +8,7 @@
 import { NPC_DIALOGUES } from '../npc-dialogues.js';
 import { setLanguage } from '../lib/i18n.js';
 import { setUserName, getUserName } from './userIdentity.js';
-import { isTesterMode, TESTER_MEMORY_CODE, TESTER_MEMORY_ID } from './testerMode.js';
+import { isTesterMode, TESTER_MEMORY_CODE, TESTER_MEMORY_ID, testerMemoryFor } from './testerMode.js';
 import { buildDoor } from './confession.js';
 import { _pickTopMemoryForLumen } from './archive.js';
 import { pickTopMemory, pickGhostVariant } from '../core/SeekerMatchEngine.js';
@@ -699,16 +699,26 @@ async function _handleOpeningSubmit(emotion, text) {
   // ─── 테스터 모드 (260802): 대표 기억 고정 ───
   // 인터뷰를 건너뛰어 fp 가 비었으므로 매칭 근거가 없다. 누가 하든 같은 기억을
   // 보게 해서 반응을 비교할 수 있도록 코드로 지정한다 (code 우선, 없으면 id).
+  // 260806: 언어별로 갈린다. 영어를 고르고 들어온 사람에게 한국어판을 주면 대사·씬이 전부
+  //   한글로 나온다(사용자 보고 8-06). 영어 사본(UNDW-001-EN)이 260805 부터 있으므로 그걸 준다.
   if (isTesterMode()) {
     const pool = (window.appStore && window.appStore.getState && window.appStore.getState().allMemoriesData) || [];
-    memory = pool.find(m => m && m.code === TESTER_MEMORY_CODE)
-          || pool.find(m => m && String(m.id) === TESTER_MEMORY_ID)
+    const want = testerMemoryFor(_openingLang);
+    memory = pool.find(m => m && m.code === want.code)
+          || pool.find(m => m && String(m.id) === want.id)
           || null;
+    // 영어 사본이 풀에 없으면(비공개 전환·삭제 등) 한국어 원본으로라도 진행한다 — 빈손보다 낫다.
+    if (!memory && want.code !== TESTER_MEMORY_CODE) {
+      memory = pool.find(m => m && m.code === TESTER_MEMORY_CODE)
+            || pool.find(m => m && String(m.id) === TESTER_MEMORY_ID)
+            || null;
+      if (memory) console.warn('[opening] 테스터 모드 — 영어 사본(' + want.code + ') 없음, 한국어 원본으로 폴백');
+    }
     if (memory) {
       variants = await _loadGhostVariantsForMemory(memory.id);
-      console.info('[opening] 테스터 모드 — 대표 기억 고정:', memory.code || memory.id);
+      console.info('[opening] 테스터 모드 — 대표 기억 고정(' + _openingLang + '):', memory.code || memory.id);
     } else {
-      console.warn('[opening] 테스터 모드 — 대표 기억(' + TESTER_MEMORY_CODE + ') 못 찾음, 기본 매칭으로 폴백');
+      console.warn('[opening] 테스터 모드 — 대표 기억(' + want.code + ') 못 찾음, 기본 매칭으로 폴백');
     }
   }
 

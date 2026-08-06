@@ -650,12 +650,31 @@
     var _uiWord = null, _uiSent = null, _uiTimer = null;
     // 조준 안내 — 유령의 "길게 눌러 이 장면에…" 와 같은 자리·같은 결 (둘은 배타적)
     var _uiHint = null;
+
+    // ── 260806 하단 문구 층 치수 ────────────────────────────────
+    // 좁은 화면(가로로 눕힌 폰, 세로 390~420)에서는 데스크톱 치수가 화면 밖으로 넘친다.
+    // play-test 의 파동 높이(AW_HEIGHT 280→132)와 같은 기준으로 층 전체를 내린다.
+    function _isTouchUI() {
+      if (global.__temForceTouch !== null && global.__temForceTouch !== undefined) return global.__temForceTouch;
+      if (typeof global._temIsMobileDevice === 'function') return global._temIsMobileDevice();
+      var hasTouch = 'ontouchstart' in global || navigator.maxTouchPoints > 0;
+      var coarse = !!(global.matchMedia && global.matchMedia('(pointer: coarse)').matches);
+      return /Mobi|Android|iPhone|iPod|iPad/i.test(navigator.userAgent) || (hasTouch && coarse);
+    }
+    function _narrow() { return _isTouchUI() && global.innerHeight < 560; }
+    function _lay() {
+      return _narrow()
+        ? { hint: 142, sent: 186, gap: 20, fWord: 19, fSent: 14, fHint: 14, maxW: '80vw' }
+        : { hint: 300, sent: 384, gap: 39, fWord: 24, fSent: 17, fHint: 17, maxW: '620px' };
+    }
+
     function _ensureHintUI() {
       if (_uiHint) return;
       var parent = document.getElementById('strataView') || document.body;
+      var L = _lay();
       _uiHint = document.createElement('div');
-      // 260802: 하단 파동(280px) 위로 올림 + 키움 — play-test 의 _fpHintEl 과 같은 자리·같은 크기.
-      _uiHint.style.cssText = 'position:absolute;bottom:300px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.82);font-size:17px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.4s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.45);';
+      // 260802: 하단 파동 위로 올림 + 키움 — play-test 의 _fpHintEl 과 같은 자리·같은 크기.
+      _uiHint.style.cssText = 'position:absolute;bottom:' + L.hint + 'px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.82);font-size:' + L.fHint + 'px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.4s;z-index:200;text-shadow:0 0 8px rgba(196,168,130,0.45);';
       _uiHint.textContent = (document.documentElement.lang || 'en').substring(0, 2) === 'ko'
         ? '길게 눌러 들여다보기' : 'Hold to look closer';
       parent.appendChild(_uiHint);
@@ -663,14 +682,19 @@
     function _ensureClickUI() {
       if (_uiWord) return;
       var parent = document.getElementById('strataView') || document.body;
+      var L = _lay();
       _uiWord = document.createElement('div');
-      // 하단 배치 (260802 재조정 — 전부 파동 280px 위로):
-      //   안내 300 ↔ 속삭임(_fpProxEl) 340 ↔ 문장 384 ↔ 사물 이름 452
-      //   문장이 두 줄로 자라도 이름과 안 겹치도록 384↔452 를 68px 벌려 둠.
-      _uiWord.style.cssText = 'position:absolute;bottom:452px;left:50%;transform:translateX(-50%);color:#e8d8b6;font-size:24px;letter-spacing:6px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;text-shadow:0 0 14px rgba(224,206,170,0.55);font-family:"Gowun Batang","Noto Serif KR",serif;';
+      // 하단 배치 (260802 재조정 — 전부 파동 위로):
+      //   안내 ↔ 속삭임(_fpProxEl) ↔ 문장 ↔ 사물 이름
+      // 260806 수리: 둘 다 bottom 고정인데 문장만 위로 자란다. 종전엔 384↔452 를 68px
+      //   벌려 "두 줄까지"를 버텼는데, 영어 사본 문장이 세 줄(17px × 1.7 × 3 ≈ 87px)이 되며
+      //   이름을 밟았다(사용자 스크린샷 8-06, "blood" 가 본문 위에 겹침).
+      //   이제 이름의 bottom 은 고정값이 아니라 _showClickUI 에서 문장 실제 높이 + gap 으로 잡는다.
+      //   gap 39 는 한 줄 문장일 때 종전 452 와 같은 자리가 되도록 맞춘 값(384 + 29 + 39 = 452).
+      _uiWord.style.cssText = 'position:absolute;bottom:' + (L.sent + L.gap + Math.round(L.fSent * 1.7)) + 'px;left:50%;transform:translateX(-50%);color:#e8d8b6;font-size:' + L.fWord + 'px;letter-spacing:6px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s,bottom 0.25s ease;z-index:200;text-shadow:0 0 14px rgba(224,206,170,0.55);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiWord);
       _uiSent = document.createElement('div');
-      _uiSent.style.cssText = 'position:absolute;bottom:384px;left:50%;transform:translateX(-50%);color:rgba(226,216,200,0.94);font-size:17px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;max-width:620px;line-height:1.7;text-shadow:0 2px 10px rgba(0,0,0,0.7);font-family:"Gowun Batang","Noto Serif KR",serif;';
+      _uiSent.style.cssText = 'position:absolute;bottom:' + L.sent + 'px;left:50%;transform:translateX(-50%);color:rgba(226,216,200,0.94);font-size:' + L.fSent + 'px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;max-width:' + L.maxW + ';line-height:1.7;text-shadow:0 2px 10px rgba(0,0,0,0.7);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiSent);
     }
     // 260731 열람 장부 — 이번 회차에 어떤 사물을 몇 번 들여다봤나 (회차 일지 봉인용).
@@ -683,6 +707,17 @@
       _uiSent.textContent = sentence || '';
       _uiWord.style.opacity = '1';
       _uiSent.style.opacity = '1';
+      // 260806: 문장이 몇 줄이 되든 이름이 그 위에 얹히게 — 그려진 뒤 실제 높이를 재서 밀어올린다.
+      //   (문장 길이는 언어·사물마다 달라 고정 간격으로는 못 막는다.)
+      var _L2 = _lay();
+      requestAnimationFrame(function () {
+        if (!_uiWord || !_uiSent) return;
+        var h = _uiSent.offsetHeight || Math.round(_L2.fSent * 1.7);
+        _uiWord.style.bottom = (_L2.sent + h + _L2.gap) + 'px';
+      });
+      // 260806: 문장이 세 줄이 되면 좌상단 미니맵(325px) 높이까지 올라와 첫 몇 글자가
+      //   지도에 가려 안 읽힌다(영어 사본에서 드러남). 읽는 동안만 지도를 접는다.
+      _fadeMinimap(true);
       if (_uiTimer) clearTimeout(_uiTimer);
       // 260802c: 발췌가 길어졌다 — 표시 시간을 글 길이에 비례 (읽다 끊기지 않게)
       // 260802e: 최소 3문장 체제 — 상한도 같이 올림
@@ -690,22 +725,36 @@
       _uiTimer = setTimeout(function () {
         if (_uiWord) _uiWord.style.opacity = '0';
         if (_uiSent) _uiSent.style.opacity = '0';
+        _fadeMinimap(false);
       }, _readMs);
+    }
+    // 읽는 동안 미니맵 접기. 모바일 조작기(tem_mobile_controls)도 대화 중 같은 자리를
+    // 건드리므로, 그쪽은 상태가 바뀔 때만 세팅하도록 맞춰 두었다 — 서로 덮어쓰지 않는다.
+    function _fadeMinimap(dim) {
+      var mini = document.getElementById('fpMinimap');
+      if (!mini) return;
+      mini.style.transition = 'opacity 0.4s ease';
+      mini.style.opacity = dim ? '0.08' : '1';
     }
     function _hideClickUI() {
       if (_uiTimer) { clearTimeout(_uiTimer); _uiTimer = null; }
       if (_uiWord) _uiWord.style.opacity = '0';
       if (_uiSent) _uiSent.style.opacity = '0';
       if (_uiHint) _uiHint.style.opacity = '0';
+      _fadeMinimap(false);
     }
     var _lastCam = null;
     var _clickRay = null;
     var _downAt = 0;
     var _aimedObj = null;   // 지금 겨눈 사물 (조준 안내 + play-test 가림 판정용)
-    function _pickObject() {
+    // ndc = {x, y} (-1..1). 주면 그 화면 지점으로 광선을 쏜다 — 모바일은 손가락으로 사물을 직접 짚는다
+    // (260806: 유령 진입이 짚기로 바뀌면서 모바일 크로스헤어를 없앴다. 사물만 보이지 않는
+    //  화면 한가운데에 맞추라고 두면 조작이 둘로 갈린다.)
+    function _pickObject(ndc) {
       if (!_lastCam) return null;
       if (!_clickRay) _clickRay = new THREE.Raycaster();
-      _clickRay.set(_lastCam.position, _lastCam.getWorldDirection(new THREE.Vector3()));
+      if (ndc) _clickRay.setFromCamera(ndc, _lastCam);
+      else _clickRay.set(_lastCam.position, _lastCam.getWorldDirection(new THREE.Vector3()));
       _clickRay.far = opts.clickRange;
       var groups = [];
       for (var i = 0; i < _objects.length; i++) if (_objects[i].group) groups.push(_objects[i].group);
@@ -728,15 +777,17 @@
       if (_holdTimer) { clearTimeout(_holdTimer); _holdTimer = null; }
       if (_holdObj) { _holdObj.holdBoost = 0; _holdObj = null; }
     }
-    function _beginHold() {
+    function _beginHold(ndc) {
       if (opts.labelMode !== 'click' || !_objects.length) return;
       if (typeof runtime.isFirstPerson === 'function' && !runtime.isFirstPerson()) return;
       _cancelHold();
       // 260802 이중 발동 차단 — 유령이 조준선 앞에 있으면 열람 양보 (진입만 발동).
       //   우리 raycast 는 사물만 보므로, 유령이 앞이고 사물이 뒤인 각도에서
       //   씬 대화와 사물 열람이 동시에 터지던 결함. play-test 가 매 프레임 세팅.
+      //   260806 모바일: play-test 의 pointerdown 이 touchstart 보다 먼저 돌아, 손가락이
+      //   유령을 짚었으면 그 자리에서 같은 플래그를 세운다 — 짚기에서도 양보가 유지된다.
       if (global.__temGhostAimed) return;
-      var o = _pickObject();
+      var o = _pickObject(ndc);
       if (!o) return;
       _holdObj = o;
       _holdStart = performance.now();
@@ -746,11 +797,26 @@
       }, _holdMs());
     }
     var _holdStart = 0;
-    renderer.domElement.addEventListener('mousedown', function () { _downAt = performance.now(); _beginHold(); });
+    // 260806: 터치 기기에서만 짚은 좌표를 쓴다. 데스크톱은 포인터 잠금이라 커서 좌표가
+    //   의미 없으므로(그리고 크로스헤어가 살아 있으므로) 예전대로 카메라 정면을 겨눈다.
+    function _ndcFromEvent(e) {
+      if (!_isTouchUI()) return null;
+      var t = (e && e.changedTouches && e.changedTouches[0])
+           || (e && e.touches && e.touches[0])
+           || e;
+      if (!t || typeof t.clientX !== 'number') return null;
+      var r = renderer.domElement.getBoundingClientRect();
+      if (!r.width || !r.height) return null;
+      return {
+        x: ((t.clientX - r.left) / r.width) * 2 - 1,
+        y: -(((t.clientY - r.top) / r.height) * 2 - 1)
+      };
+    }
+    renderer.domElement.addEventListener('mousedown', function (e) { _downAt = performance.now(); _beginHold(_ndcFromEvent(e)); });
     renderer.domElement.addEventListener('mouseup', _cancelHold);
     renderer.domElement.addEventListener('mouseleave', _cancelHold);
     // 모바일 — 탭이 아니라 꾹 누르기로 동일하게
-    renderer.domElement.addEventListener('touchstart', function () { _downAt = performance.now(); _beginHold(); }, { passive: true });
+    renderer.domElement.addEventListener('touchstart', function (e) { _downAt = performance.now(); _beginHold(_ndcFromEvent(e)); }, { passive: true });
     renderer.domElement.addEventListener('touchend', _cancelHold);
     renderer.domElement.addEventListener('touchcancel', _cancelHold);
 
