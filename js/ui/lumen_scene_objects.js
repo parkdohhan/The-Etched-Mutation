@@ -32,6 +32,9 @@
     // 260730 GLB 사물 모델 — memories.meta.object_models = { 단어: { path, scale?, rotX?, rotY?, rotZ? } }
     // 모델이 있는 단어는 GLB 로 서고, 없는 단어는 블록 대역 유지 ("만질 수 없는 것은 응결되지 않는다").
     getObjectModels: null,       // () => ({ 단어: entry }) | null — 기억 단위 (play-test 배선)
+    // 260804 응결점v2 Phase1 — 앞사람이 두고 간 말. (word) => string|null (play-test 배선).
+    // null 이면 줄 자체가 안 뜸 (하위호환·풀 미적재 무해).
+    getVariantLine: null,
     modelMaxDim: 1.15,           // 모델 최대 변 길이(m) 표준화 — entry.scale 로 단어별 배율
     modelNearOpacity: 0.92,      // 모델 근접 불투명도 — 유령(0.72)보다 또렷하게 ("증거물")
     modelEmissive: 0.4,          // 밤에도 제 색을 내는 자가발광 강도 (텍스처 색 유지, 0~1)
@@ -647,7 +650,7 @@
 
     // ─── 260730 클릭 열람 — 사물을 겨눠 짧게 클릭 → 하단 대화창풍 창에 단어+원문 ───
     // (공중 부유 라벨 대체. 긴 클릭은 씬 진입이므로 400ms 이내만 열람으로 침)
-    var _uiWord = null, _uiSent = null, _uiTimer = null;
+    var _uiWord = null, _uiSent = null, _uiVar = null, _uiTimer = null;
     // 조준 안내 — 유령의 "길게 눌러 이 장면에…" 와 같은 자리·같은 결 (둘은 배타적)
     var _uiHint = null;
 
@@ -664,8 +667,8 @@
     function _narrow() { return _isTouchUI() && global.innerHeight < 560; }
     function _lay() {
       return _narrow()
-        ? { hint: 142, sent: 186, gap: 20, fWord: 19, fSent: 14, fHint: 14, maxW: '80vw' }
-        : { hint: 300, sent: 384, gap: 39, fWord: 24, fSent: 17, fHint: 17, maxW: '620px' };
+        ? { hint: 142, sent: 186, gap: 20, fWord: 19, fSent: 14, fHint: 14, maxW: '80vw', vLine: 162, fVar: 12 }
+        : { hint: 300, sent: 384, gap: 39, fWord: 24, fSent: 17, fHint: 17, maxW: '620px', vLine: 356, fVar: 14 };
     }
 
     function _ensureHintUI() {
@@ -696,6 +699,10 @@
       _uiSent = document.createElement('div');
       _uiSent.style.cssText = 'position:absolute;bottom:' + L.sent + 'px;left:50%;transform:translateX(-50%);color:rgba(226,216,200,0.94);font-size:' + L.fSent + 'px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;max-width:' + L.maxW + ';line-height:1.7;text-shadow:0 2px 10px rgba(0,0,0,0.7);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiSent);
+      // 260804 응결점v2 Phase1 — 발췌 아래 "앞사람이 두고 간 말" 한 줄 (회차마다 다름)
+      _uiVar = document.createElement('div');
+      _uiVar.style.cssText = 'position:absolute;bottom:' + L.vLine + 'px;left:50%;transform:translateX(-50%);color:rgba(196,168,130,0.72);font-size:' + L.fVar + 'px;letter-spacing:1px;font-style:italic;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.7s;z-index:200;max-width:' + L.maxW + ';line-height:1.6;text-shadow:0 2px 8px rgba(0,0,0,0.75);font-family:"Gowun Batang","Noto Serif KR",serif;';
+      parent.appendChild(_uiVar);
     }
     // 260731 열람 장부 — 이번 회차에 어떤 사물을 몇 번 들여다봤나 (회차 일지 봉인용).
     // "지형에서 본다 → 입에 담는다 → 되새김" 고리가 실제로 작동했는지의 앞 단 증거.
@@ -707,6 +714,18 @@
       _uiSent.textContent = sentence || '';
       _uiWord.style.opacity = '1';
       _uiSent.style.opacity = '1';
+      // 260804 응결점v2 Phase1 — 앞사람이 두고 간 말 (있을 때만 발췌 아래 한 줄)
+      var _vline = null;
+      try { _vline = (typeof opts.getVariantLine === 'function') ? opts.getVariantLine(word) : null; } catch (_) {}
+      if (_uiVar) {
+        if (_vline) {
+          var _koV = (document.documentElement.lang || 'en').substring(0, 2) === 'ko';
+          _uiVar.textContent = (_koV ? '…누군가 여기 두고 간 말 — “' : '…words someone left here — “') + _vline + '”';
+          _uiVar.style.opacity = '1';
+        } else {
+          _uiVar.style.opacity = '0';
+        }
+      }
       // 260806: 문장이 몇 줄이 되든 이름이 그 위에 얹히게 — 그려진 뒤 실제 높이를 재서 밀어올린다.
       //   (문장 길이는 언어·사물마다 달라 고정 간격으로는 못 막는다.)
       var _L2 = _lay();
@@ -721,10 +740,11 @@
       if (_uiTimer) clearTimeout(_uiTimer);
       // 260802c: 발췌가 길어졌다 — 표시 시간을 글 길이에 비례 (읽다 끊기지 않게)
       // 260802e: 최소 3문장 체제 — 상한도 같이 올림
-      var _readMs = Math.min(14000, 3200 + String(sentence || '').length * 45);
+      var _readMs = Math.min(14000, 3200 + (String(sentence || '').length + String(_vline || '').length) * 45);
       _uiTimer = setTimeout(function () {
         if (_uiWord) _uiWord.style.opacity = '0';
         if (_uiSent) _uiSent.style.opacity = '0';
+        if (_uiVar) _uiVar.style.opacity = '0';
         _fadeMinimap(false);
       }, _readMs);
     }
@@ -740,6 +760,7 @@
       if (_uiTimer) { clearTimeout(_uiTimer); _uiTimer = null; }
       if (_uiWord) _uiWord.style.opacity = '0';
       if (_uiSent) _uiSent.style.opacity = '0';
+      if (_uiVar) _uiVar.style.opacity = '0';
       if (_uiHint) _uiHint.style.opacity = '0';
       _fadeMinimap(false);
     }

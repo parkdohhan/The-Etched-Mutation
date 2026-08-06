@@ -83,7 +83,7 @@
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260802e"></script><!-- 260802e 목격 v2 시네마틱 몸 -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260806"></script><!-- 260806 사물 이름·본문 겹침 수리 + 좁은 화면 치수 -->
+  <script src="js/ui/lumen_scene_objects.js?v=260806a"></script><!-- 260806a 응결점v2 P1: 앞사람이 두고 간 말 한 줄 -->
   <script src="js/ui/tem_mobile_controls.js?v=260806"></script><!-- 260806 모바일 1인칭: 십자 패드 + 화면 쓸기 + 길게 누르기 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
@@ -7122,12 +7122,53 @@
                 }
               });
             }
+            // ── 260804 응결점v2 Phase1: 사물에 앞사람이 두고 간 말 ──
+            // 회차 시작에 이 기억의 흡수 변주(ghost_variants drift, 관객 발화)를 한 번 적재.
+            // 열람 시 사물 단어 ↔ motif_tags 일치 우선, 없으면 아무 화석 1줄. 풀 비면 줄 안 뜸.
+            (function _ovLoadPool() {
+              var sbOv = (typeof window.getSupabaseClient === 'function') ? window.getSupabaseClient() : null;
+              var memOv = window._temGame && window._temGame.memoryId;
+              window.__temObjectVariantPool = [];
+              if (!sbOv || !memOv) return;
+              sbOv.from('ghost_variants')
+                .select('utterance, motif_tags, is_seed, parent_variant_id')
+                .eq('memory_id', memOv)
+                .order('created_at', { ascending: false })
+                .limit(160)
+                .then(function (respOv) {
+                  if (respOv.error || !Array.isArray(respOv.data)) { console.warn('[사물변주] 풀 로드 실패', respOv.error); return; }
+                  window.__temObjectVariantPool = respOv.data.filter(function (v) {
+                    // anchor(작가 원본 씨앗)는 제외 — "앞사람이 두고 간 말"은 관객 발화만
+                    return v && v.utterance && !(v.is_seed === true && !v.parent_variant_id);
+                  }).map(function (v) {
+                    return { utterance: String(v.utterance), motifs: Array.isArray(v.motif_tags) ? v.motif_tags.map(String) : [] };
+                  });
+                  console.log('[사물변주] 앞사람 말 ' + window.__temObjectVariantPool.length + '줄 적재');
+                }, function (eOv) { console.warn('[사물변주] 풀 예외', eOv); });
+            })();
+            window.__temObjectVariantLine = function (word) {
+              var pool = window.__temObjectVariantPool || [];
+              if (!pool.length) return null;
+              var w = String(word || '').trim();
+              var match = pool.filter(function (r) {
+                return r.motifs.some(function (m) {
+                  m = String(m).trim();
+                  return m && (m === w || m.indexOf(w) >= 0 || w.indexOf(m) >= 0);
+                });
+              });
+              var src = match.length ? match : pool;
+              var pick = src[Math.floor(Math.random() * src.length)];
+              return pick ? pick.utterance : null;
+            };
+
             // 260712 사물 조형 (설계 v1.1 §3.1) — 마네킹과 같은 핀 소스
             // 260802: 노출은 열린/방문한 씬만 (사용자 결정 "시작하면 욕조·피 두 개만").
             //   좌표는 전체 계산 그대로 — 자리는 불변, 회차가 열리며 사물이 떠오른다.
             if (window.LumenSceneObjects && typeof window.LumenSceneObjects.attach === 'function') {
               window.LumenSceneObjects.attach(rt, {
                 getScenePins: function () { return _fpScenePins; },
+                // 260804 응결점v2 Phase1 — 앞사람이 두고 간 말 한 줄
+                getVariantLine: window.__temObjectVariantLine,
                 // 260730 GLB 사물 모델 — memories.meta.object_models 를 기억 단위로 전달
                 // (이 스코프엔 game 이 없다 — loadMemoryData 가 window 로 건네줌)
                 getObjectModels: function () {
@@ -7623,6 +7664,133 @@
       return true;
     }
 
+    // ─── 260804 응결점 v2 — 조건 응결 침묵 인물 ─────────────────────
+    // 계획: docs/응결점v2_계획-260804.md. 화석(사물) → 부름(되새김) → 응결(사람) → 이름(공명).
+    // 데이터: memories.ghost_condensation_points 항목 중 scene_id 가 있는 점 = 사람 응결점
+    //   { x, z, scene_id, trigger:'recall', call_words:[…] }. scene_id 없는 옛 점 = 단어 잔상 그대로.
+    // 방아쇠: 되새김(LumenRecalledAnchors.check 반환값 — 관객이 입에 담은 모티프)이
+    //   call_words(없으면 그 씬의 motif/echo)와 일치 → "부름". 응결은 궤적 엔진이
+    //   그 씬을 허락(accessiblePinIds)했을 때만 — 조건은 문 하나 더 달기, 엔진 우회 금지.
+    var _cdInit = false;
+    var _cdPoints = [];   // { x, z, sceneId, trigger, callWords, called, condensed }
+    function _cdEnsureInit() {
+      if (_cdInit) return;
+      _cdInit = true;
+      var g = window._temGame || {};
+      var pts = Array.isArray(g.ghost_condensation_points) ? g.ghost_condensation_points : [];
+      pts.forEach(function (p) {
+        if (!p || !p.scene_id || typeof p.x !== 'number' || typeof p.z !== 'number') return;
+        _cdPoints.push({
+          x: p.x, z: p.z, sceneId: String(p.scene_id),
+          trigger: p.trigger || 'recall',
+          callWords: Array.isArray(p.call_words) ? p.call_words.map(String) : null,
+          called: false, condensed: false,
+        });
+      });
+      if (_cdPoints.length) console.log('[응결점v2] 사람 응결점 ' + _cdPoints.length + '개 — 부름 대기');
+    }
+    function _cdPointForScene(sceneId) {
+      _cdEnsureInit();
+      for (var i = 0; i < _cdPoints.length; i++) if (_cdPoints[i].sceneId === sceneId) return _cdPoints[i];
+      return null;
+    }
+    // 이 씬의 부름말 — 점의 call_words 우선, 없으면 씬 자신의 motif/echo (되새김과 같은 어휘)
+    function _cdCallWords(p) {
+      if (p.callWords && p.callWords.length) return p.callWords;
+      var g = window._temGame || {};
+      var s = (g.scenes || []).find(function (sc) { return sc.id === p.sceneId; });
+      if (!s) return [];
+      var meta = s.meta || {};
+      return [].concat(Array.isArray(meta.motif_tags) ? meta.motif_tags : [],
+                       Array.isArray(s.echo_words) ? s.echo_words : []).map(String);
+    }
+    function _cdWordHit(recalledWord, callWord) {
+      var w = String(recalledWord || '').trim(), c = String(callWord || '').trim();
+      return !!(w && c && (w === c || w.indexOf(c) >= 0 || c.indexOf(w) >= 0));
+    }
+    // 되새김 훅이 부른다 — recalled = [{word, stage}]
+    function _cdOnRecall(recalled) {
+      _cdEnsureInit();
+      if (!recalled || !recalled.length || !_cdPoints.length) return;
+      var any = false;
+      recalled.forEach(function (r) {
+        _cdPoints.forEach(function (p) {
+          if (p.called || p.condensed || p.trigger !== 'recall') return;
+          if (_cdCallWords(p).some(function (cw) { return _cdWordHit(r.word, cw); })) {
+            p.called = true; any = true;
+            console.log('[응결점v2] 부름 — "' + r.word + '" → 씬 ' + p.sceneId.slice(0, 8) + '… (엔진 허가 시 응결)');
+          }
+        });
+      });
+      if (any) _cdTryCondense();
+    }
+    // 부름 받은 점 중 엔진이 허락한 것을 응결시킨다. 대화 종료 후 재빌드 자리에서도 재시도.
+    function _cdTryCondense() {
+      _cdEnsureInit();
+      var g = window._temGame || {};
+      var acc = g.accessiblePinIds;
+      var did = false;
+      _cdPoints.forEach(function (p) {
+        if (!p.called || p.condensed) return;
+        var pin = (g.pins || []).find(function (pn) {
+          return pn.sceneId === p.sceneId && (pn.type === 'core' || pn.type === 'bridge');
+        });
+        if (!pin || !acc || !acc.has || !acc.has(pin.id)) return; // 엔진 미허가 — 대기
+        p.condensed = true; did = true;
+        console.log('[응결점v2] 응결 — 씬 ' + p.sceneId.slice(0, 8) + '… (' + Math.round(p.x) + ',' + Math.round(p.z) + ')');
+      });
+      if (!did) return;
+      // 재빌드 (응결 씬 포함) — 대화 종료 재빌드 블록과 같은 순서
+      var rtC = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+      var scene3C = rtC && rtC.getScene && rtC.getScene();
+      if (scene3C) {
+        var rm = [];
+        scene3C.traverse(function (o) { if (o.userData._fpPin) rm.push(o); });
+        rm.forEach(function (o) {
+          scene3C.remove(o);
+          if (o.geometry) o.geometry.dispose();
+          if (o.material) o.material.dispose();
+        });
+      }
+      _fpScenePins = [];
+      _buildPlayScenePins();
+      try { if (rtC && rtC.__lumenSceneMannequins && rtC.__lumenSceneMannequins.rebuild) rtC.__lumenSceneMannequins.rebuild(); } catch (_) {}
+      try { if (rtC && rtC.__lumenSceneObjects && rtC.__lumenSceneObjects.rebuild) rtC.__lumenSceneObjects.rebuild(); } catch (_) {}
+      try { if (rtC && rtC.__lumenAudioSpace && rtC.__lumenAudioSpace.rebuildSceneVoices) rtC.__lumenAudioSpace.rebuildSceneVoices(); } catch (_) {}
+      // 연출: 그 자리 안개 개화 + 속삭임 한 줄 (원칙 4 — 사건은 서사로. 문구는 작가 감수 대기 초안)
+      _cdPoints.forEach(function (p) {
+        if (!p.condensed || p._staged) return;
+        p._staged = true;
+        try { if (window._temSpatialFog && window._temSpatialFog.openAt) window._temSpatialFog.openAt(p.x, p.z); } catch (_) {}
+      });
+      try {
+        _ensureProxUI();
+        var _koCd = (document.documentElement.lang || 'en').substring(0, 2) === 'ko';
+        _fpProxEl.textContent = _koCd ? '……무언가, 네 부름을 듣고 왔다.' : '……something has come, hearing your call.';
+        _fpProxEl.style.opacity = '1';
+        setTimeout(function () { if (_fpProxEl) _fpProxEl.style.opacity = '0'; }, 4200);
+      } catch (_) {}
+    }
+    // 되새김 훅 설치 — 대화 파일 무수정 (check 반환값을 구독만 한다)
+    function _cdInstallRecallHook() {
+      if (!window.LumenRecalledAnchors || window.LumenRecalledAnchors.__cdWrapped) return;
+      var _origChk = window.LumenRecalledAnchors.check;
+      if (typeof _origChk !== 'function') return;
+      window.LumenRecalledAnchors.check = function () {
+        var out = _origChk.apply(this, arguments) || [];
+        try { _cdOnRecall(out); } catch (eCd) { console.warn('[응결점v2] recall hook 예외', eCd); }
+        return out;
+      };
+      window.LumenRecalledAnchors.__cdWrapped = true;
+      console.log('[응결점v2] 되새김 훅 설치');
+    }
+    // 검증·디버그 손잡이 (프로젝트 관행: _tem* 콘솔 진입)
+    window._temCondensationDebug = {
+      points: function () { _cdEnsureInit(); return _cdPoints.map(function (p) { return { sceneId: p.sceneId, called: p.called, condensed: p.condensed, x: p.x, z: p.z }; }); },
+      tryCondense: _cdTryCondense,
+      onRecall: _cdOnRecall,
+    };
+
     function _buildPlayScenePins() {
       var rt = window.TemAfStrataTerrain._lastRuntime;
       if (!rt) return;
@@ -7647,6 +7815,10 @@
         var scene = scenes.find(function (s) { return s.id === pin.sceneId; });
         if (!scene) return;
 
+        // 260804 응결점 v2 — 응결 전 침묵 인물은 세상에 없다 (부르기 전까지 미표시)
+        var _cdP = _cdPointForScene(pin.sceneId);
+        if (_cdP && !_cdP.condensed) return;
+
         // 2026-05-04: 가드 완화. dialog_choices 박힌 메모리가 0개라 위 룰이 *모든 메모리* 의
         // 핀+마네킨을 0으로 차단하고 있었음 — 작품 자리 위반.
         // chat 진입 차단은 _enterLumenDialogPhase1 자리에서 별도로 처리됨 (이중 가드 X).
@@ -7669,7 +7841,11 @@
         var _qp = null;
 
         var wx, wz;
-        if (_qp) {
+        if (_cdP && _cdP.condensed) {
+          // 260804 응결점 v2 — 응결한 사람은 작가가 찍은 응결점 좌표에 선다
+          wx = _cdP.x;
+          wz = _cdP.z;
+        } else if (_qp) {
           wx = _qp.x;
           wz = _qp.z;
         } else if (hasSP) {
@@ -7878,6 +8054,7 @@
       if (!rt || !canvas) return;
 
       _ensureCrosshair();
+      _cdInstallRecallHook(); // 260804 응결점 v2 — 되새김 반환값 구독 (대화 파일 무수정)
 
       _fpInterval = setInterval(function () {
         if (!_fpPlayActive || !rt.isFirstPerson()) return;
@@ -8292,6 +8469,9 @@
               });
               _fpScenePins = [];
               _buildPlayScenePins();
+              // 260804 응결점 v2 — 턴 갱신으로 엔진 허가가 새로 열렸으면, 부름 받고
+              // 대기하던 침묵 인물이 이 시점에 응결한다.
+              try { _cdTryCondense(); } catch (_) {}
               // 턴 전환 — 접근 가능 집합이 바뀌었으니 씬 음성 재배치.
               // scene-voice 는 fade-in/out 처리돼서 whisper 같은 BufferSource glitch 없음.
               // (whisper rebuild 는 여전히 호출 안 함 — fade 없어 숨소리 튐.)
@@ -8630,7 +8810,8 @@
       var g = (typeof game !== 'undefined') ? game : (window._temGame || null);
       var pts = (g && g.ghost_condensation_points) || [];
       _fpGhostPoints = pts.filter(function (p) {
-        return p && typeof p.x === 'number' && typeof p.z === 'number';
+        // 260804 응결점 v2 — scene_id 있는 점은 사람 응결점 (단어 잔상·응시 표시 대상 아님)
+        return p && typeof p.x === 'number' && typeof p.z === 'number' && !p.scene_id;
       });
       _fpSeenGhosts = new Set();
     }
