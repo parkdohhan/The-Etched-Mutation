@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#ffffff;overflow:hidden;}
+  .viz-root{
+    color-scheme: light;
+    --surface-1:#ffffff; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+    width:2400px; height:1400px; background:var(--surface-1);
+    font-family:"Malgun Gothic","Segoe UI",sans-serif;
+  }
+  text{font-family:"Malgun Gothic","Segoe UI",sans-serif; font-variant-numeric:tabular-nums;}
+</style></head>
+<body><div class="viz-root"><svg id="fig" width="2400" height="1400" viewBox="0 0 2400 1400"></svg></div>
+<script>
+(function(){
+  const svg = document.getElementById('fig');
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!=null) e.textContent=text; svg.appendChild(e); return e; }
+
+  const series=[
+    {name:'체험자 A', color:'#2a78d6', off:-7, end:'A — 5씬 완주', lab:{dx:24, dy:-48},
+     pts:[[1,2],[2,6],[3,5],[4,7],[5,13]]},
+    {name:'체험자 B', color:'#eb6834', off:0, end:'B — 6씬 완주', lab:{dx:24, dy:60},
+     pts:[[1,2],[2,6],[3,5],[4,9],[5,13],[6,4]]},
+    {name:'체험자 C', color:'#1baf7a', off:7, end:'C — 10씬 완주', lab:{dx:30, dy:12},
+     pts:[[1,2],[2,6],[3,5],[4,9],[5,10],[6,13],[7,4],[8,3],[9,8],[10,11]]},
+  ];
+  const ML=190, MR=330, MT=180, MB=170;
+  const W=2400, H=1400, plotW=W-ML-MR, plotH=H-MT-MB;
+  const X = v => ML + (v-1)/(10-1)*plotW;
+  const Y = s => MT + plotH - (s-2)/(13-2)*plotH;
+
+  // warm-up band (visits 1..3)
+  el('rect',{x:X(1)-40, y:MT-20, width:X(3)-X(1)+80, height:plotH+40, fill:'#f2f1ee'});
+  el('text',{x:(X(1)+X(3))/2, y:MT+34, 'text-anchor':'middle','font-size':32, fill:'#898781'}, '공통 구간 (방문 1–3)');
+
+  // gridlines: horizontal per scene number
+  for(let s=2;s<=13;s++){
+    el('line',{x1:ML-20, y1:Y(s), x2:ML+plotW+20, y2:Y(s), stroke:'#e1e0d9','stroke-width':1.5});
+    el('text',{x:ML-40, y:Y(s)+11, 'text-anchor':'end','font-size':30, fill:'#898781'}, s);
+  }
+  // x ticks
+  for(let v=1;v<=10;v++){
+    el('line',{x1:X(v), y1:MT+plotH+20, x2:X(v), y2:MT+plotH+34, stroke:'#c3c2b7','stroke-width':3});
+    el('text',{x:X(v), y:MT+plotH+76, 'text-anchor':'middle','font-size':32, fill:'#898781'}, v);
+  }
+  el('text',{x:ML+plotW/2, y:H-40, 'text-anchor':'middle','font-size':36, fill:'#52514e'}, '방문 순서');
+  el('text',{x:56, y:MT+plotH/2, 'text-anchor':'middle','font-size':36, fill:'#52514e', transform:`rotate(-90 56 ${MT+plotH/2})`}, '씬 번호 (scene_order)');
+
+  // divergence marker at visit 4
+  el('line',{x1:X(4), y1:MT-20, x2:X(4), y2:MT+plotH+20, stroke:'#898781','stroke-width':3,'stroke-dasharray':'12 10'});
+  el('text',{x:X(4), y:MT-46, 'text-anchor':'middle','font-size':34, 'font-weight':'bold', fill:'#0b0b0b'}, '4번째 방문에서 분기');
+
+  // lines + markers (2px white ring; small constant offset to keep tied values visible)
+  series.forEach(s=>{
+    const d = s.pts.map((p,i)=>(i?'L':'M')+' '+X(p[0])+' '+(Y(p[1])+s.off)).join(' ');
+    el('path',{d:d, fill:'none', stroke:s.color,'stroke-width':4.5,'stroke-linejoin':'round'});
+    s.pts.forEach(p=>{
+      el('circle',{cx:X(p[0]), cy:Y(p[1])+s.off, r:12, fill:s.color, stroke:'#ffffff','stroke-width':3});
+    });
+    const last = s.pts[s.pts.length-1];
+    el('text',{x:X(last[0])+s.lab.dx, y:Y(last[1])+s.off+s.lab.dy, 'font-size':36,'font-weight':'bold', fill:'#0b0b0b'}, s.end);
+  });
+
+  // legend (top-right)
+  let lx=ML+plotW-760, ly=64;
+  series.forEach((s,i)=>{
+    el('rect',{x:lx+i*260, y:ly-26, width:32, height:32, rx:8, fill:s.color});
+    el('text',{x:lx+i*260+46, y:ly, 'font-size':34, fill:'#0b0b0b'}, s.name);
+  });
+
+  // tie note
+  el('text',{x:ML, y:64, 'font-size':28, fill:'#898781'}, '동일 씬을 지나는 구간은 겹침을 피하기 위해 선을 미세하게 수직 분리했다');
+})();
+</script>
+</body></html>

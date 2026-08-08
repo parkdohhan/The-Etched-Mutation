@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#ffffff;overflow:hidden;}
+  .viz-root{
+    color-scheme: light;
+    --surface-1:#ffffff; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --s1:#2a78d6; --s2:#eb6834;
+    width:2400px; height:1560px; background:var(--surface-1);
+    font-family:"Malgun Gothic","Segoe UI",sans-serif;
+  }
+  text{font-family:"Malgun Gothic","Segoe UI",sans-serif; font-variant-numeric:tabular-nums;}
+</style></head>
+<body><div class="viz-root"><svg id="fig" width="2400" height="1560" viewBox="0 0 2400 1560"></svg></div>
+<script>
+(function(){
+  const svg = document.getElementById('fig');
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!=null) e.textContent=text; svg.appendChild(e); return e; }
+
+  // bins: index 1..20, each [ (i-1)*0.05, i*0.05 )
+  const simN = {6:2,7:1,8:2,9:4,10:3,11:2,12:4,13:4,14:10,15:19,16:29,17:16,18:33,19:47,20:17}; // n=193
+  const humN = {3:2,4:1,7:2,8:1,9:1,10:1,11:1,12:1,13:4,14:3,15:3,16:1};                        // n=21
+  const SIM_TOT=193, HUM_TOT=21;
+
+  const ML=190, MR=90, plotW=2400-ML-MR;
+  const panels=[
+    {y0:150, h:520, data:simN, tot:SIM_TOT, color:'#2a78d6', label:'페르소나 시뮬레이션', n:'n = 193', mean:0.809,
+     tailNote:'0.25 미만 0건', meanLabel:'평균 0.809'},
+    {y0:880, h:520, data:humN, tot:HUM_TOT, color:'#eb6834', label:'인간 파일럿 (알파 3회차)', n:'n = 21', mean:0.517,
+     tailNote:'21건 중 3건(14.3%)이 0.25 미만', meanLabel:'평균 0.517'},
+  ];
+  const YMAX=25; // percent
+  const xPos = v => ML + v*plotW;
+
+  panels.forEach(p=>{
+    const yPos = pct => p.y0 + p.h - (pct/YMAX)*p.h;
+    // panel header: color chip + label (identity not by color alone)
+    el('rect',{x:ML, y:p.y0-78, width:34, height:34, rx:8, fill:p.color});
+    el('text',{x:ML+50, y:p.y0-50, 'font-size':40, 'font-weight':'bold', fill:'#0b0b0b'}, p.label);
+    el('text',{x:ML+50+(p.label.length*40*0.95)+30, y:p.y0-50, 'font-size':36, fill:'#52514e'}, p.n);
+
+    // gridlines every 5%
+    for(let g=0; g<=YMAX; g+=5){
+      el('line',{x1:ML, y1:yPos(g), x2:ML+plotW, y2:yPos(g), stroke: g===0 ? '#c3c2b7' : '#e1e0d9', 'stroke-width': g===0?3:1.5});
+      el('text',{x:ML-18, y:yPos(g)+11, 'text-anchor':'end','font-size':30, fill:'#898781'}, g+'%');
+    }
+    // bars
+    for(let b=1;b<=20;b++){
+      const n = p.data[b]||0; if(!n) continue;
+      const pct = 100*n/p.tot;
+      const x0=xPos((b-1)*0.05)+3, x1=xPos(b*0.05)-3;
+      const yTop=yPos(pct), yBase=yPos(0);
+      const r=Math.min(8,(yBase-yTop)/2);
+      el('path',{d:`M ${x0} ${yBase} L ${x0} ${yTop+r} Q ${x0} ${yTop} ${x0+r} ${yTop} L ${x1-r} ${yTop} Q ${x1} ${yTop} ${x1} ${yTop+r} L ${x1} ${yBase} Z`, fill:p.color});
+    }
+    // x ticks
+    [0,0.25,0.5,0.75,1].forEach(t=>{
+      el('line',{x1:xPos(t), y1:yPos(0), x2:xPos(t), y2:yPos(0)+14, stroke:'#c3c2b7','stroke-width':3});
+      el('text',{x:xPos(t), y:yPos(0)+56, 'text-anchor':'middle','font-size':32, fill:'#898781'}, t.toFixed(2));
+    });
+    // threshold 0.25 dashed
+    el('line',{x1:xPos(0.25), y1:p.y0-14, x2:xPos(0.25), y2:yPos(0), stroke:'#898781','stroke-width':3,'stroke-dasharray':'12 10'});
+    // mean line
+    el('line',{x1:xPos(p.mean), y1:p.y0+26, x2:xPos(p.mean), y2:yPos(0), stroke:'#0b0b0b','stroke-width':3});
+    el('text',{x:xPos(p.mean), y:p.y0+6, 'text-anchor':'middle','font-size':32, 'font-weight':'bold', fill:'#0b0b0b'}, p.meanLabel);
+    // tail annotation near threshold
+    const ta = el('text',{x:xPos(0.25)+16, y:p.y0+70, 'font-size':32, fill:'#52514e'}, p.tailNote);
+  });
+
+  // shared threshold label at very top
+  el('text',{x:xPos(0.25), y:52, 'text-anchor':'middle','font-size':34, fill:'#52514e'}, '낮은 꼬리 경계 0.25');
+  // x axis title bottom
+  el('text',{x:ML+plotW/2, y:1530, 'text-anchor':'middle','font-size':36, fill:'#52514e'}, '정렬도 (감정 분포 ↔ 원본 감정 코사인 유사도, 장면 단위)');
+})();
+</script>
+</body></html>

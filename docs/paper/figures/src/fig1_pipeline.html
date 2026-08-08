@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#ffffff;overflow:hidden;}
+  .viz-root{
+    color-scheme: light;
+    --surface-1:#ffffff; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7;
+    width:3000px; height:700px; background:var(--surface-1);
+    font-family:"Malgun Gothic","Segoe UI",sans-serif;
+  }
+  text{font-family:"Malgun Gothic","Segoe UI",sans-serif;}
+</style></head>
+<body><div class="viz-root"><svg id="fig" width="3000" height="700" viewBox="0 0 3000 700">
+<defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#52514e"/>
+  </marker>
+  <marker id="arrm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#898781"/>
+  </marker>
+</defs>
+</svg></div>
+<script>
+(function(){
+  const svg = document.getElementById('fig');
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!=null) e.textContent=text; svg.appendChild(e); return e; }
+
+  const boxes = [
+    {title:'체험자 감정 입력', sub:'매 턴 · 이어쓰기 / 선택'},
+    {title:'ByeoriEngine', sub:'정렬도 = level × shape × void'},
+    {title:'ContaminationTracker', sub:'오염 벡터 drift · fixation 갱신'},
+    {title:'SceneNavigator', sub:'접근 가능 씬 집합 계산'},
+    {title:'Renderer', sub:'text_stage 1/2/3 · 잔상 · 공간음향'},
+  ];
+  const BW=470, BH=170, GAP=105, Y=170, X0=60;
+  boxes.forEach((b,i)=>{
+    const x = X0 + i*(BW+GAP);
+    el('rect',{x:x, y:Y, width:BW, height:BH, rx:14, fill:'#ffffff', stroke:'#52514e','stroke-width':3});
+    el('text',{x:x+BW/2, y:Y+72, 'text-anchor':'middle','font-size':40,'font-weight':'bold',fill:'#0b0b0b'}, b.title);
+    el('text',{x:x+BW/2, y:Y+126, 'text-anchor':'middle','font-size':30, fill:'#52514e'}, b.sub);
+    if(i<boxes.length-1){
+      el('line',{x1:x+BW+8, y1:Y+BH/2, x2:x+BW+GAP-12, y2:Y+BH/2, stroke:'#52514e','stroke-width':4,'marker-end':'url(#arr)'});
+    }
+  });
+
+  // annotation above engine boxes
+  el('text',{x:1500, y:110, 'text-anchor':'middle','font-size':30, fill:'#898781'}, '엔진은 판단하지 않는다 — 관찰하고 보고할 뿐 (§4)');
+
+  // return loop: Renderer -> trajectory bridge -> next experiencer input
+  const lastX = X0+4*(BW+GAP), firstX = X0;
+  const loopY = 560;
+  const bw2 = 1360;
+  el('rect',{x:1500-bw2/2, y:loopY-60, width:bw2, height:130, rx:14, fill:'#ffffff', stroke:'#898781','stroke-width':3,'stroke-dasharray':'12 10'});
+  el('text',{x:1500, y:loopY-6, 'text-anchor':'middle','font-size':38,'font-weight':'bold', fill:'#0b0b0b'}, 'trajectory bridge');
+  el('text',{x:1500, y:loopY+44, 'text-anchor':'middle','font-size':29, fill:'#52514e'}, '공명 도달 회차의 궤적을 자동 변환 — 인기도 아닌 정렬도 기반 노출 (§3.5)');
+
+  // down from Renderer
+  el('path',{d:`M ${lastX+BW/2} ${Y+BH+8} L ${lastX+BW/2} ${loopY+5} L ${1500+bw2/2+12} ${loopY+5}`, fill:'none', stroke:'#898781','stroke-width':4,'stroke-dasharray':'12 10','marker-end':'url(#arrm)'});
+  // up to input (next experiencer)
+  el('path',{d:`M ${1500-bw2/2-12} ${loopY+5} L ${firstX+BW/2} ${loopY+5} L ${firstX+BW/2} ${Y+BH+16}`, fill:'none', stroke:'#898781','stroke-width':4,'stroke-dasharray':'12 10','marker-end':'url(#arrm)'});
+  el('text',{x:firstX+BW/2+18, y:loopY-24, 'font-size':30, fill:'#898781'}, '다음 체험자에게');
+})();
+</script>
+</body></html>
