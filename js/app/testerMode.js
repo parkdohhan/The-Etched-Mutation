@@ -4,7 +4,8 @@
 // 왜 별도 파일인가: opening.js(오프닝 흐름)와 bindEvents.js(오프닝을 띄울지 말지 판단)
 // 두 곳이 같은 스위치를 봐야 하는데, 서로 import 하면 얽힌다. 스위치만 떼어둔다.
 //
-// 켜기: ?tester=1  /  끄기: ?tester=0  (한 번 켜면 그 브라우저에 저장)
+// 260809 사용자 결정: **기본값 = 켜짐.** 배포 주소를 맨몸으로 열어도 테스터 오프닝이 나온다.
+// 끄기: ?tester=0 (그 브라우저에 저장) / 다시 켜기: ?tester=1
 // 전체 설명·되돌리기 절차: docs/오프닝_테스터모드-260802.md
 
 export const TESTER_FLAG_KEY = 'tem_tester_mode';
@@ -31,11 +32,13 @@ export function isTesterMode() {
       return true;
     }
     if (q === '0' || q === 'false') {
-      localStorage.removeItem(TESTER_FLAG_KEY);
+      // 260809 기본값 ON 전환에 맞춰 "끔"도 저장한다 (예전엔 키 삭제 = 기본 꺼짐이었음).
+      localStorage.setItem(TESTER_FLAG_KEY, '0');
       return false;
     }
-    return localStorage.getItem(TESTER_FLAG_KEY) === '1';
+    // 저장값 없으면 켜짐 — 명시적으로 '0'(?tester=0)을 저장한 브라우저만 풀버전.
+    return localStorage.getItem(TESTER_FLAG_KEY) !== '0';
   } catch (_) {
-    return false;
+    return true;
   }
 }
