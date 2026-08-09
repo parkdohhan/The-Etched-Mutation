@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
+  <!-- 260809: 아스키 커서 — 오프닝·데모·설문과 같은 포인터 (단일 출처, 옛 인라인 규칙 대체) -->
+  <link rel="stylesheet" href="css/tem_cursor.css?v=260809" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -516,12 +518,9 @@
     .esc-resume { margin-top:1rem; background:none; border:none; color:rgba(196,168,130,0.35); font-family:'Cormorant Garamond',serif; font-size:11px; letter-spacing:3px; cursor:pointer; padding:8px 20px; }
     .esc-resume:hover { color:rgba(196,168,130,0.6); }
 
-    /* ── 아스키 커서 (260802 사용자 결정) — 게임 안에서는 이것 하나만 ──
-       터미널 픽셀 화살표 (금색 윤곽 + 어두운 속, RECORD 아스키 문·Courier 공명 단어와 같은 결).
-       !important 로 pointer/help/text 등 OS 기본 커서 전부 대체. 1인칭 포인터 잠금 중에는
-       브라우저가 커서 자체를 숨기므로 이 규칙과 무관 (그때는 조준점이 기준).
-       Rollback: 이 블록 삭제 + assets/cursor/ 폴더 삭제. */
-    html, body, * { cursor: url('assets/cursor/tem_cursor.svg') 1 1, auto !important; }
+    /* ── 아스키 커서 (260802 사용자 결정) — 무대 안에서는 이것 하나만 ──
+       260809: 규칙을 css/tem_cursor.css 로 옮겼다 (오프닝·데모·설문도 같은 커서를 쓰게 되면서,
+       사본이 갈라지지 않도록 단일 출처로). 이 파일의 <link> 는 head 위쪽에 있다. */
   </style>
 </head>
 <body>

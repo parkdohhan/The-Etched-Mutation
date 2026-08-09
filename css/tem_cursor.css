@@ -1,0 +1,18 @@
+/* TEM 아스키 커서 — 관객이 보는 모든 화면의 단일 포인터
+ *
+ * 260802: play-test(상영)에만 적용 (docs/커서_조준점-260802.md).
+ * 260809 사용자 결정: "커서 나오는 모든 곳" — 오프닝에서 OS 기본 커서가 나와 결이 끊긴다.
+ *   그래서 규칙을 이 파일 하나로 옮기고, 관객 화면들이 이걸 참조한다.
+ *   (사본을 각 html 에 복사하면 커서 모양을 바꿀 때 갈라진다 — 단일 출처 유지.)
+ *
+ * 참조하는 곳: index.html(오프닝·메뉴) / play-test.html(상영) / demo-sequence.html(데모) /
+ *   pilot-survey.html(설문). admin·시뮬레이터·test 는 무대 밖이라 제외 (작업 정밀도 우선).
+ *
+ * !important 로 pointer/help/text 등 OS 기본 커서를 전부 대체한다 — 무대 안에서는 이것 하나.
+ * 1인칭 포인터 잠금 중에는 브라우저가 커서 자체를 숨기므로 이 규칙과 무관 (그때는 조준점).
+ * 핫스팟 = 화살촉 (1,1). SVG 는 20x32 (Chrome 커서 상한 32px 준수).
+ *
+ * 경로 주의: url() 은 이 CSS 파일 기준이라 ../assets/... 다 (html 기준 아님).
+ * Rollback: 이 파일 참조 <link> 제거 (파일·assets 는 남아도 무해).
+ */
+html, body, * { cursor: url('../assets/cursor/tem_cursor.svg') 1 1, auto !important; }
