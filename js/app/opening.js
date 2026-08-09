@@ -901,6 +901,39 @@ function _initOpeningLangGate() {
 // === Wave Animation ===
 // ─────────────────────────────────────
 
+// 2026-08-09: 호버 = "만지는 감각"으로 재작성.
+//
+// 옛 방식은 매 프레임 sin 합성으로 선을 새로 그렸다 — 직전 프레임의 휘어짐을 하나도
+// 기억하지 않으므로 커서를 치우면 그 즉시 흔적이 0. 게다가 컨테이너가 scale(5,1) 이라
+// 코드상 350px 가로 띠가 화면에선 1750px → 화면 폭 전체가 통째로 들썩였다.
+//
+// 새 방식은 선마다 [현재 변위 / 현재 속도] 를 들고 다닌다. 이웃끼리 장력으로 당기므로
+// 떨림이 실을 타고 좌우로 흐르고, 감쇠가 있으므로 커서를 치운 뒤에도 몇 초간 잦아든다.
+// 커서는 근처 지점을 자기 쪽으로 끌어당기고(pull), 커서가 빠르게 지나가면 튕긴다(flick).
+//
+// 되돌리기: WAVE_PHYSICS.enabled = false. 옛 루프(animateLegacy)가 손대지 않은 채
+// 아래 그대로 남아 있으므로 스위치 하나로 260808 이전 거동으로 복귀한다.
+// 세기 조절: 브라우저 콘솔에서 temWave.pull = 0.05 처럼 즉시 바꿀 수 있다(새로고침 불필요).
+// temWave.enabled = false 면 그 자리에서 옛 거동으로 돌아간다.
+const WAVE_PHYSICS = {
+    enabled: true,
+    substeps: 4,        // 프레임당 물리 반복 — 파가 옆으로 흐르는 속도에 비례
+    tension: 0.30,      // 이웃이 당기는 힘. 0.5 넘기면 수치가 발산한다(화면이 지직거림)
+    damping: 0.994,     // 공기저항. 낮출수록 빨리 잦아든다 (0.994 ≈ 손 뗀 뒤 2.8초 여운)
+    restore: 0.0009,    // 제자리 복원 — 눌린 자국이 영구히 남지 않게
+    grabX: 40,          // 손가락 가로 반경 (캔버스 내부 px. 화면에선 ×5)
+    grabY: 34,          // 손가락 세로 반경 (세로는 배율 1 이라 화면에서도 34px)
+    pull: 0.012,        // 실이 목표를 따라가는 무게감 — 낮을수록 무겁고 굼뜨게
+    attack: 0.02,       // 닿았을 때 스르르 잡히는 속도 (≈ 0.8초에 걸쳐 잡음. 홱 낚아채기 방지)
+    // 공명: 커서를 얹으면 그 자리의 목표 지점이 천천히 크게 오르내리고 실이 무겁게 따라간다.
+    // 오프라인 시뮬 검증값(T안) — 실측 폭 ~73px, 한 사이클 ≈ 3.5초, 잔떨림 1.9px/frame.
+    tremble: 140,       // 공명 목표 폭 (px. 실측 폭은 이보다 작다 — 무겁게 따라가므로)
+    trembleFreq: 0.06,  // 공명 빠르기 (0.06 ≈ 한 번 출렁이는 데 3.5초)
+    breathFreq: 0.045,  // 떨림 폭이 숨 쉬듯 커졌다 작아지는 주기 (≈ 5초)
+    maxDisp: 120,       // 안전 상한 — 어떤 경우에도 화면 밖으로 튀지 않게
+};
+try { if (typeof window !== 'undefined') window.temWave = WAVE_PHYSICS; } catch (_) {}
+
 function startOpeningWaveAnimation(canvas) {
     const ctx = canvas.getContext('2d');
     canvas.width = canvas.offsetWidth * 2;
@@ -915,6 +948,14 @@ function startOpeningWaveAnimation(canvas) {
         openingMouseX = (e.clientX - rect.left) * (canvas.width / 2 / rect.width);
         openingMouseY = (e.clientY - rect.top) * (canvas.height / 2 / rect.height);
     });
+
+    // 커서가 창 밖으로 나가면 손을 뗀 것 — 좌표를 남겨두면 실이 계속 붙잡혀 있는다.
+    const _releaseTouch = () => {
+        openingMouseX = -100;
+        openingMouseY = -100;
+    };
+    document.addEventListener('mouseleave', _releaseTouch);
+    window.addEventListener('blur', _releaseTouch);
 
     const width = canvas.width / 2;
     const height = canvas.height / 2;
@@ -932,7 +973,8 @@ function startOpeningWaveAnimation(canvas) {
 
     let time = 0;
 
-    function animate() {
+    // ── 옛 루프 (260808 이전). 손대지 않고 보존 — WAVE_PHYSICS.enabled=false 면 이쪽이 돈다. ──
+    function animateLegacy() {
         ctx.fillStyle = 'rgba(10, 10, 12, 0.92)';
         ctx.fillRect(0, 0, width, height);
 
@@ -996,11 +1038,129 @@ function startOpeningWaveAnimation(canvas) {
 
         time += 0.5 * _openingWaveSpeedMul;
         if (!openingSkipped) {
-            openingWaveAnimationId = requestAnimationFrame(animate);
+            openingWaveAnimationId = requestAnimationFrame(animateLegacy);
         }
     }
 
-    animate();
+    // ── 새 루프: 장력·관성 있는 줄 ──
+    // 선 하나당 버퍼 셋. base = 이번 프레임의 sin 합성 높이(옛 식 그대로),
+    // disp = 그 높이에서 얼마나 밀려나 있는가, vel = 지금 얼마나 빠르게 움직이는가.
+    const N = Math.max(2, Math.floor(width));
+    waves.forEach(w => {
+        w._base = new Float32Array(N);
+        w._disp = new Float32Array(N);
+        w._vel = new Float32Array(N);
+    });
+
+    // 바탕 흐름은 손대지 않는다 — 옛 식 그대로의 정지 높이를 채운다.
+    function fillBase(wave, out, centerY) {
+        for (let x = 0; x < N; x++) {
+            const baseY = centerY
+                + Math.sin(x * wave.freq + time * wave.speed + wave.phase) * wave.amplitude
+                + Math.sin(x * wave.freq * 0.5 + time * wave.speed * 0.6 + wave.phase * 1.4) * (wave.amplitude * 0.4)
+                + Math.sin(x * wave.freq * 2.3 + time * wave.speed * 1.3) * (wave.amplitude * 0.15)
+                + Math.sin(x * wave.freq * 0.3 + time * wave.speed * 0.4 + wave.phase * 2.1) * (wave.amplitude * 0.25)
+                + Math.sin(x * wave.freq * 3.7 + time * wave.speed * 1.8 + wave.phase * 0.7) * (wave.amplitude * 0.1);
+            const noise = Math.sin(x * 0.003 + time * 0.02) * Math.cos(x * 0.007 + time * 0.015) * wave.noiseScale;
+            out[x] = baseY + wave.amplitude * noise * 0.4;
+        }
+    }
+
+    // 커서가 닿은 구간만 훑어 힘을 준다 (전체 폭을 돌지 않는다).
+    // 손이 실에 잡히는 정도 — 닿으면 attack 속도로 스르르 1까지, 떼면 서서히 0으로.
+    let touchEnv = 0;
+    function applyTouch(base, disp, vel, wave) {
+        if (openingMouseX < 0 || openingMouseY < 0 || touchEnv <= 0.01) return;
+        const P = WAVE_PHYSICS;
+        // 목표 오실레이션 — 얹은 자리의 목표 지점이 천천히 크게 오르내리고 실이 무겁게 따라간다.
+        // 파형은 하나만 (보조 파형·튕김 임펄스는 잔떨림을 만들어 260809e 에서 제거).
+        // 위상차는 아주 작게 — 7가닥이 거의 한 몸으로, 깊이감만 남긴다.
+        const breath = 0.55 + 0.45 * Math.sin(time * P.breathFreq + wave.phase * 0.5);
+        const trem = (Math.sin(time * P.trembleFreq + wave.phase * 0.5)
+                   + 0.15 * Math.sin(time * P.trembleFreq * 1.7 + wave.phase * 0.8)) / 1.15
+                   * breath * (P.tremble || 0);
+        const target = openingMouseY + trem;
+        const i0 = Math.max(0, Math.ceil(openingMouseX - P.grabX));
+        const i1 = Math.min(N - 1, Math.floor(openingMouseX + P.grabX));
+        for (let i = i0; i <= i1; i++) {
+            const u = 1 - Math.abs(i - openingMouseX) / P.grabX;
+            if (u <= 0) continue;
+            // 붙잡혔는지 판정은 실의 "원래 자리" 기준 — 물결로 커서에서 멀어져도 놓치지 않는다.
+            const adyRest = Math.abs(openingMouseY - base[i]);
+            if (adyRest > P.grabY) continue;           // 커서가 이 선에서 멀면 안 닿은 것
+            const w = u * u * (3 - 2 * u) * (1 - adyRest / P.grabY) * touchEnv;
+            vel[i] += (target - (base[i] + disp[i])) * P.pull * w;  // 목표 따라 출렁임
+        }
+    }
+
+    // 이웃 장력 + 감쇠 + 복원. mul=0 (흡수 연출) 이면 떨림도 그 자리에 얼어붙는다.
+    function stepPhysics(disp, vel, mul) {
+        const P = WAVE_PHYSICS;
+        if (mul <= 0) return;
+        const decay = 1 - (1 - P.damping) * mul;
+        for (let s = 0; s < P.substeps; s++) {
+            for (let i = 1; i < N - 1; i++) {
+                const lap = disp[i - 1] + disp[i + 1] - 2 * disp[i];
+                vel[i] = (vel[i] + (lap * P.tension - disp[i] * P.restore) * mul) * decay;
+            }
+            for (let i = 1; i < N - 1; i++) {
+                let d = disp[i] + vel[i] * mul;
+                if (d > P.maxDisp) { d = P.maxDisp; vel[i] = 0; }
+                else if (d < -P.maxDisp) { d = -P.maxDisp; vel[i] = 0; }
+                disp[i] = d;
+            }
+        }
+        // 양 끝 고정 — 파가 끝에 닿으면 되돌아온다 (끝은 화면 밖이라 보이지 않음)
+        disp[0] = 0; vel[0] = 0;
+        disp[N - 1] = 0; vel[N - 1] = 0;
+    }
+
+    function animatePhysics() {
+        // 콘솔에서 temWave.enabled 를 껐다 켜면 그 프레임부터 즉시 반영된다.
+        if (!WAVE_PHYSICS.enabled) { animateLegacy(); return; }
+        ctx.fillStyle = 'rgba(10, 10, 12, 0.92)';
+        ctx.fillRect(0, 0, width, height);
+
+        if (_openingWaveDesat > 0) {
+            const satPct = Math.max(0, Math.round((1 - _openingWaveDesat) * 100));
+            ctx.filter = `saturate(${satPct}%)`;
+        }
+
+        const centerY = height / 2;
+        const mul = _openingWaveSpeedMul;
+
+        // 잡는 손 봉투 갱신 — 커서가 화면에 있으면 스르르 잡고, 나가면 서서히 놓는다.
+        touchEnv = (openingMouseX >= 0 && openingMouseY >= 0)
+            ? Math.min(1, touchEnv + (WAVE_PHYSICS.attack || 0.02))
+            : touchEnv * 0.96;
+
+        waves.forEach((wave) => {
+            const base = wave._base, disp = wave._disp, vel = wave._vel;
+            fillBase(wave, base, centerY);
+            applyTouch(base, disp, vel, wave);
+            stepPhysics(disp, vel, mul);
+
+            ctx.beginPath();
+            ctx.lineWidth = 1.2;
+            for (let x = 0; x < N; x++) {
+                const y = Math.max(2, Math.min(height - 2, base[x] + disp[x]));
+                x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = wave.color + wave.baseOpacity + ')';
+            ctx.stroke();
+        });
+
+        if (_openingWaveDesat > 0) ctx.filter = 'none';
+
+        time += 0.5 * mul;
+        if (!openingSkipped) {
+            openingWaveAnimationId = requestAnimationFrame(animatePhysics);
+        }
+    }
+
+    // 시작은 새 루프로. 끄면 animatePhysics 첫 줄에서 옛 루프로 넘어간다
+    // (옛 루프는 자기 자신을 다시 예약하므로, 다시 켜려면 새로고침이 필요하다).
+    animatePhysics();
 }
 
 // ─────────────────────────────────────
