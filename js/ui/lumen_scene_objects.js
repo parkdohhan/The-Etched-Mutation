@@ -697,7 +697,7 @@
       _uiWord.style.cssText = 'position:absolute;bottom:' + (L.sent + L.gap + Math.round(L.fSent * 1.7)) + 'px;left:50%;transform:translateX(-50%);color:#e8d8b6;font-size:' + L.fWord + 'px;letter-spacing:6px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s,bottom 0.25s ease;z-index:200;text-shadow:0 0 14px rgba(224,206,170,0.55);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiWord);
       _uiSent = document.createElement('div');
-      _uiSent.style.cssText = 'position:absolute;bottom:' + L.sent + 'px;left:50%;transform:translateX(-50%);color:rgba(226,216,200,0.94);font-size:' + L.fSent + 'px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s;z-index:200;max-width:' + L.maxW + ';line-height:1.7;text-shadow:0 2px 10px rgba(0,0,0,0.7);font-family:"Gowun Batang","Noto Serif KR",serif;';
+      _uiSent.style.cssText = 'position:absolute;bottom:' + L.sent + 'px;left:50%;transform:translateX(-50%);color:rgba(226,216,200,0.94);font-size:' + L.fSent + 'px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.5s,bottom 0.25s ease;z-index:200;max-width:' + L.maxW + ';line-height:1.7;text-shadow:0 2px 10px rgba(0,0,0,0.7);font-family:"Gowun Batang","Noto Serif KR",serif;';
       parent.appendChild(_uiSent);
       // 260804 응결점v2 Phase1 — 발췌 아래 "앞사람이 두고 간 말" 한 줄 (회차마다 다름)
       _uiVar = document.createElement('div');
@@ -728,11 +728,17 @@
       }
       // 260806: 문장이 몇 줄이 되든 이름이 그 위에 얹히게 — 그려진 뒤 실제 높이를 재서 밀어올린다.
       //   (문장 길이는 언어·사물마다 달라 고정 간격으로는 못 막는다.)
+      // 260809: 앞사람 말(_uiVar)이 두 줄로 접히면 위 문장(384)을 뚫었다(사용자 스크린샷 8-09,
+      //   "욕조" 발췌 위에 이탤릭 줄 겹침). 셋을 아래에서부터 실측으로 쌓는다:
+      //   앞사람 말(356 고정) → 문장(앞사람 말 실제 높이 위) → 사물 이름(문장 실제 높이 위).
       var _L2 = _lay();
       requestAnimationFrame(function () {
         if (!_uiWord || !_uiSent) return;
+        var vh = (_uiVar && _uiVar.style.opacity !== '0') ? _uiVar.offsetHeight : 0;
+        var sentB = vh > 0 ? Math.max(_L2.sent, _L2.vLine + vh + 14) : _L2.sent;
+        _uiSent.style.bottom = sentB + 'px';
         var h = _uiSent.offsetHeight || Math.round(_L2.fSent * 1.7);
-        _uiWord.style.bottom = (_L2.sent + h + _L2.gap) + 'px';
+        _uiWord.style.bottom = (sentB + h + _L2.gap) + 'px';
       });
       // 260806: 문장이 세 줄이 되면 좌상단 미니맵(325px) 높이까지 올라와 첫 몇 글자가
       //   지도에 가려 안 읽힌다(영어 사본에서 드러남). 읽는 동안만 지도를 접는다.
@@ -748,14 +754,10 @@
         _fadeMinimap(false);
       }, _readMs);
     }
-    // 읽는 동안 미니맵 접기. 모바일 조작기(tem_mobile_controls)도 대화 중 같은 자리를
-    // 건드리므로, 그쪽은 상태가 바뀔 때만 세팅하도록 맞춰 두었다 — 서로 덮어쓰지 않는다.
-    function _fadeMinimap(dim) {
-      var mini = document.getElementById('fpMinimap');
-      if (!mini) return;
-      mini.style.transition = 'opacity 0.4s ease';
-      mini.style.opacity = dim ? '0.08' : '1';
-    }
+    // 260809 사용자 지시: 열람 동안 지도를 접던 연출(260806) 철회 — 열람할 때마다
+    // 지도가 꺼졌다 켜졌다 해서 정신 사납다. 도입 이유였던 "긴 문장이 지도까지 올라와
+    // 가림"은 _showClickUI 의 실측 쌓기가 담당한다. 호출부는 그대로 두고 몸만 비운다.
+    function _fadeMinimap(dim) {}
     function _hideClickUI() {
       if (_uiTimer) { clearTimeout(_uiTimer); _uiTimer = null; }
       if (_uiWord) _uiWord.style.opacity = '0';
@@ -783,11 +785,24 @@
       var hits = _clickRay.intersectObjects(groups, true);
       if (!hits.length) return null;
       var node = hits[0].object;
-      while (node) {
-        for (var j = 0; j < _objects.length; j++) if (_objects[j].group === node) return _objects[j];
+      var found = null;
+      while (node && !found) {
+        for (var j = 0; j < _objects.length; j++) if (_objects[j].group === node) { found = _objects[j]; break; }
         node = node.parent;
       }
-      return null;
+      if (!found) return null;
+      // 260809: 거리 페이드로 다 바랜 사물(불투명도 ≤ baseOpacity 0.14)은 조준·열람에서
+      // 제외 — 화면엔 아무것도 안 보이는데 "길게 눌러 들여다보기"가 뜨던 결함(사용자 보고 8-09).
+      // GLB 모델(blocks 비어 있음)은 항상 또렷하므로 그대로 통과.
+      if (found.blocks.length) {
+        var vis = 0;
+        for (var vb = 0; vb < found.blocks.length; vb++) {
+          var vm = found.blocks[vb].mat;
+          if (vm && vm.opacity > vis) vis = vm.opacity;
+        }
+        if (vis < 0.15) return null;
+      }
+      return found;
     }
     // 길게 누르기 = 열람 (씬 진입과 동일한 동작. 겨눈 대상이 사물이면 열람, 유령이면 진입)
     var _holdTimer = null, _holdObj = null;

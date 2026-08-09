@@ -85,7 +85,7 @@
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260802e"></script><!-- 260802e 목격 v2 시네마틱 몸 -->
   <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260806a"></script><!-- 260806a 응결점v2 P1: 앞사람이 두고 간 말 한 줄 -->
+  <script src="js/ui/lumen_scene_objects.js?v=260809a"></script><!-- 260809a 열람 자막 실측 쌓기 + 미니맵 접기 철회 + 바랜 사물 조준 제외 -->
   <script src="js/ui/tem_mobile_controls.js?v=260806"></script><!-- 260806 모바일 1인칭: 십자 패드 + 화면 쓸기 + 길게 누르기 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
@@ -8122,8 +8122,9 @@
           if (_fpNearPin !== closest) {
             _fpNearPin = closest;
             _ensureProxUI();
-            _fpProxEl.textContent = _getFpWhisper(closest);
-            _fpProxEl.style.opacity = '1';
+            // 260809 사용자 지시: 근접 분위기 속삭임("자주 불리는 이름이야" 등 하드코딩 문구)
+            // 제거 — 근접 시엔 "길게 눌러 …" 안내 한 줄만 남긴다.
+            // _fpProxEl 자체는 문 안내·응결점·독백이 계속 쓰므로 요소는 유지.
             var _hl = (document.documentElement.lang || 'en').substring(0, 2);
             // 260806: 모바일은 조준이 아니라 "그 대상을 짚는" 동작이다 — 안내도 그렇게 말한다.
             _fpHintEl.textContent = _isTouchDevice()
