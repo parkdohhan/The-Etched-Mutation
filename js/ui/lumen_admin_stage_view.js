@@ -162,7 +162,9 @@ const state = {
   ghostMarkers: [],            // 빌드된 잔상 유령 마커 메쉬 (ghostPoints 와 같은 인덱스)
   sim: { active: false, runners: { A: null, B: null }, compareMode: false },
   personaHighlight: null,      // 260730 B안 — 페르소나 STEP 강조 sceneId (궤적 2D 탭 은퇴, 3D 핀 이식)
-  drag: { sceneId: null, ghostIdx: -1, objIdx: -1, moved: false, pointerId: null },
+  // 260809: armed/holdTimer 추가 — 꾹 잡아야(DRAG_HOLD_MS) 끌리기 시작한다.
+  //   종전엔 누른 즉시 끌려서, 편집창만 열려던 클릭이 손떨림 1px 로 "이동+저장"이 됐다.
+  drag: { sceneId: null, ghostIdx: -1, objIdx: -1, moved: false, pointerId: null, armed: false, holdTimer: null },
   rafId: null,
   resizeObserver: null,
   onSceneClick: null,          // 장면 유령(핀) 클릭(드래그 X) 시 (sceneId) => void 호출
@@ -1065,6 +1067,21 @@ function _pickGhostMarker(evt) {
   return -1;
 }
 
+// 260809 사용자 지시: "핀 움직이려면 좀 꾹 잡고있어야" — 편집창만 보려고 누른 클릭이
+//   손떨림으로 좌표를 바꿔버리던 문제. 이 시간만큼 누르고 있어야 끌기가 시작된다.
+//   그 전의 움직임은 무시(취소 아님) — 누른 채 바로 끄는 자연스러운 동작도 0.35초 뒤 이어진다.
+//   짧게 누르면 armed 가 안 되므로 언제나 클릭(편집창 열기)으로 떨어진다.
+const DRAG_HOLD_MS = 350;
+
+function _clearHoldTimer() {
+  if (state.drag.holdTimer) { clearTimeout(state.drag.holdTimer); state.drag.holdTimer = null; }
+}
+// 잡혔다는 유일한 신호 — 커서. (핀 강조는 render() 가 매 프레임 덮어써서 못 쓴다)
+function _setGrabCursor(on) {
+  if (!state.canvas) return;
+  state.canvas.style.cursor = on ? 'grabbing' : '';
+}
+
 function _bindPointerEvents() {
   if (!state.canvas) return;
 
@@ -1092,6 +1109,15 @@ function _bindPointerEvents() {
     }
     state.drag.moved = false;
     state.drag.pointerId = e.pointerId;
+    // 260809: 아직 안 잡힘 — DRAG_HOLD_MS 지나야 끌기 시작 (그 전 움직임은 무시)
+    state.drag.armed = false;
+    _clearHoldTimer();
+    state.drag.holdTimer = setTimeout(() => {
+      state.drag.holdTimer = null;
+      if (state.drag.pointerId == null) return;   // 이미 손 뗌
+      state.drag.armed = true;
+      _setGrabCursor(true);
+    }, DRAG_HOLD_MS);
     if (state.controls) state.controls.enabled = false;
     try { state.canvas.setPointerCapture(e.pointerId); } catch (_) {}
     // 260730: 사물 마커를 집었을 때는 preventDefault 를 하지 않는다.
@@ -1105,6 +1131,7 @@ function _bindPointerEvents() {
     const dragging = (state.drag.sceneId != null) || (state.drag.ghostIdx >= 0)
       || (state.drag.objIdx >= 0) || state.drag.door;
     if (!dragging || e.pointerId !== state.drag.pointerId) return;
+    if (!state.drag.armed) return;   // 260809: 아직 꾹 안 잡았다 — 좌표 안 건드림 (클릭 보호)
     const hit = _pickTerrain(e);
     if (!hit) return;
     const c = clampToTerrain(hit.x, hit.z);
@@ -1156,6 +1183,9 @@ function _bindPointerEvents() {
     state.drag.door = false;
     state.drag.moved = false;
     state.drag.pointerId = null;
+    state.drag.armed = false;      // 260809 꾹 잡기 해제
+    _clearHoldTimer();
+    _setGrabCursor(false);
     if (state.controls) state.controls.enabled = true;
     if (e && state.canvas.hasPointerCapture && state.canvas.hasPointerCapture(e.pointerId)) {
       try { state.canvas.releasePointerCapture(e.pointerId); } catch (_) {}
@@ -1498,7 +1528,7 @@ function _updateStatus() {
     const p = getStagePosition(s, total);
     if (p && counts[p.source] != null) counts[p.source]++;
   });
-  status.textContent = `장면 유령 ${total} · 수동 ${counts.manual} · AF ${counts.af} · 감정 ${counts.emotion} · 순서 ${counts.order}  ·  잔상 유령 ${state.ghostPoints.length}  ·  드래그=좌표 편집  ·  마우스=회전·줌`;
+  status.textContent = `장면 유령 ${total} · 수동 ${counts.manual} · AF ${counts.af} · 감정 ${counts.emotion} · 순서 ${counts.order}  ·  잔상 유령 ${state.ghostPoints.length}  ·  클릭=편집창  ·  꾹 눌러 끌기=좌표 이동  ·  마우스=회전·줌`;
 }
 
 // ─── 외부 API ──────────────────────────────────────────────

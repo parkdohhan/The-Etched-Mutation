@@ -3,7 +3,7 @@
 // 페르소나 STEP 하이라이트는 LumenAdminStageView 3D 핀으로 이식.
 
 import { getSupabaseClient } from './lib/supabaseClient.js';
-import LumenAdminStageView from './ui/lumen_admin_stage_view.js?v=260731b'; // 캐시버스터 — 260731a 대표 앵커 Alt+클릭
+import LumenAdminStageView from './ui/lumen_admin_stage_view.js?v=260809a'; // 캐시버스터 — 260809a 꾹 잡아야 끌기
 import { DEFAULT_EMOTION_ANCHORS } from './shared/math.js';
 
 // ─── 상태 ──────────────────────────────────────────────────
