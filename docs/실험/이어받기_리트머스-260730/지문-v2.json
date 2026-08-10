@@ -3,7 +3,8 @@
   "created": "260730",
   "rule": "절단점 도출 v1 — 촉발력(j)=Δ(j)×Σ_{i<j}Δ(i), argmax. 손 편집 0 (기계 생성).",
   "source": "절단프로브.json + 절단프로브_2차규칙.json (동결본)",
-  "author_veto": "미행사 — 작가 거부권 대기 (기각 시 차순위 이음매)"
+  "author_veto": "미행사 — 작가 거부권 대기 (기각 시 차순위 이음매)",
+  "refreshed_260810": "UNDW-001 재도출 — 본문 개고 반영 (규칙 동일 trigger-power-v1, 원문 = text_stage_1 우선). 타 기억 동결 유지."
  },
  "stems": [
   {
@@ -58,97 +59,97 @@
    "memory_code": "UNDW-001",
    "scene_order": 1,
    "rule": "trigger-power-v1",
-   "refined_joint": 7,
-   "withheld": "생리대를 사야겠어.",
-   "text": "제물은 실패했다. 나는 발버둥치며 일어난다. 등은 땀으로 범벅이고, 바지엔 피가 샌다. 욕조에 그것이 잠겨 있다. 얼굴은 반쯤 잠겨 윤곽만 아른거린다. 나는 고개를 돌린다. 아른거리는 것이 싫어서. 냄새가 심해서 그런 것이다…"
+   "refined_joint": 3,
+   "withheld": "아른거리는 것이 싫어서.",
+   "text": "제물은 실패했다. 욕조에 그것이 잠겨 있다. 얼굴은 반쯤 잠겨 윤곽만 아른거린다. 나는 고개를 돌린다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 2,
    "rule": "trigger-power-v1",
    "refined_joint": 3,
-   "withheld": "빛바랜 파란 지붕.",
-   "text": "눈보라를 가르며 길을 나선다. 주머니 속 천뭉치를 꽉 쥔다. 낡은 레이스에 밴 냄새를 맡으면 그녀가 멀쩡히 살아있다고 믿고 싶어진다. 세 번째 슈퍼마켓…"
+   "withheld": "안 계세요?",
+   "text": "눈보라를 가르며 길을 나선다. 빛바랜 파란 지붕. 문은 닫혀 있다. 나는 철문을 두드린다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 3,
    "rule": "trigger-power-v1",
-   "refined_joint": 3,
-   "withheld": "아주, 내가 아주 보고 싶어 한 얼굴.",
-   "text": "생리대 있죠? 여자가 진열대 아래를 뒤진다. 얼굴을 마주치자 숨이 멎는다. 광대뼈가 높고, 입술이 두껍고, 눈 밑이 처진…"
+   "refined_joint": 0,
+   "withheld": "울리고, 끊기고, 울리고.",
+   "text": "쪽방에서 전화벨이 울린다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 4,
    "rule": "trigger-power-v1",
-   "refined_joint": 7,
-   "withheld": "한 번이라도.",
-   "text": "아이가 여자의 허리에 매달린다. 작은 팔이 감싸는 동작은 익숙하고 자연스러웠다. 매일 하는 동작. 여자는 아이의 머리를 세게 때렸다. 들어가라고. 매일 거부당하는 동작. 그런데도 매일 하는 동작. 나는 그런 동작을 한 적이 있었나…"
+   "refined_joint": 1,
+   "withheld": "나는 엄마에게 저런적이 있었나.",
+   "text": "아이가 여자의 허리에 매달린다. 작은 팔이 감싸는 동작은 익숙하고 자연스러웠다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 5,
    "rule": "trigger-power-v1",
-   "refined_joint": 7,
+   "refined_joint": 4,
    "withheld": "개를 죽인 사람이 되어.",
-   "text": "진돗개가 죽어 있었다. 입에 흰 거품, 반쯤 뜬 눈 위에 눈가루가 녹지 않고 있었다. 나는 얼어붙은 목줄을 풀었다. 발바닥은 아직 따뜻했다. 이게 뭐야. 할머니가 서 있었다. 당신이 뭘 했어. 나는 뛰었다…"
+   "text": "진돗개가 죽어 있었다. 나는 얼어붙은 목줄을 풀었다. 발바닥은 아직 따뜻했다. \"당신이 뭘 했어.\" 그순간 나는 뛰었다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 6,
    "rule": "trigger-power-v1",
-   "refined_joint": 3,
-   "withheld": "삽의 머리조차 들어가지 않을 것이다.",
-   "text": "산 중턱. 세상이 눈과 나무로만 이루어져 있다. 발밑의 눈을 밀어내고 돌멩이로 땅을 파본다. 꽝꽝 얼어 있다…"
+   "refined_joint": 1,
+   "withheld": "내 얼굴에도 있는 광대뼈.",
+   "text": "나는 처음으로 제물의 얼굴을 본다. 물에 불어 일그러졌지만, 광대뼈는 그대로였다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 7,
    "rule": "trigger-power-v1",
-   "refined_joint": 7,
-   "withheld": "전화는 내게 왔었다.",
-   "text": "나는 처음으로 제물의 얼굴을 본다. 물에 불어 일그러졌지만, 광대뼈는 그대로였다. 내 얼굴에도 있는 광대뼈. 처음부터 같은 얼굴이었다. 늙은 손톱. 두꺼운 입술. 처음부터 알고 있었다. 보지 않았을 뿐이다…"
+   "refined_joint": 4,
+   "withheld": "내가 받지 않았다.",
+   "text": "처음부터 알고 있었다. 보지 않았을 뿐이다. 전화는 내게 왔었다. 한 달. 한 달 동안…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 8,
    "rule": "trigger-power-v1",
-   "refined_joint": 4,
+   "refined_joint": 0,
    "withheld": "그걸 쥐고 이불에 들어가면 어디선가 같은 팬티를 입고 있을 엄마를 상상할 수 있었다.",
-   "text": "엄마가 집에 안 오는 날이면 나는 서랍을 뒤졌다. 레이스가 잔뜩 달린 팬티. 몸에 가장 가깝게 닿는 것. 가장 오래 닿아 있는 것. 그래서 가장 많이 배어 있는 것…"
+   "text": "엄마가 집에 안 오는 날이면 나는 서랍을 뒤졌다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 9,
    "rule": "trigger-power-v1",
-   "refined_joint": 2,
-   "withheld": "엄마는 안 지켰다.",
-   "text": "이것을 입고 있는 한 나는 움직이지 않을 것이고, 움직이지 않으면 나는 나빠지지 않을 것이고, 나빠지지 않으면 엄마는 돌아올 것이다. 레이스가 허벅지를 긁었고, 뛰면 비즈가 살을 눌렀다. 나는 지켰다…"
+   "refined_joint": 0,
+   "withheld": "엄마는 돌아오지 않았다.",
+   "text": "이것을 입고 있는 한 나는 움직이지 않을 것이고, 움직이지 않으면 나는 나빠지지 않을 것이고, 나빠지지 않으면 엄마는 돌아올 것이다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 11,
    "rule": "trigger-power-v1",
-   "refined_joint": 6,
-   "withheld": "확실하지 않았지만 나는 그렇게 정했다.",
-   "text": "미현에게 팬티를 입혔다. 엄마가 내게 해준 것처럼. 이제 네가 날 지켜줄 거라고 생각했다. 나 여자 안 좋아해. 그 말은 이상하게 아프지 않았고, 그래서 더 오래 아팠다. 계정은 동결되었다. 죽었구나…"
+   "refined_joint": 0,
+   "withheld": "확실하지 않았지만 나는 엄마가 죽었다고 굳게 믿기로 결정했다.",
+   "text": "죽었구나…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 12,
    "rule": "trigger-power-v1",
-   "refined_joint": 3,
-   "withheld": "나는 그때 엄마가 무언가 이상한 액체를 흘리고 있는 줄 알았다.",
-   "text": "빨래건조대의 팬티가 갈색으로 바래 있다. 한번 배인 피는 완전히 빠지지 않는다. 색이 옅어질 뿐, 섬유 사이에 남는다. 엄마의 팬티도 언젠가 저렇게 되었다…"
+   "refined_joint": 1,
+   "withheld": "색이 옅어질 뿐, 섬유 사이에 남는다.",
+   "text": "빨래건조대의 팬티가 갈색으로 바래 있다. 한번 배인 피는 완전히 빠지지 않는다…"
   },
   {
    "memory_code": "UNDW-001",
    "scene_order": 13,
    "rule": "trigger-power-v1",
-   "refined_joint": 7,
+   "refined_joint": 4,
    "withheld": "안 받은 적이 있어요.",
-   "text": "벨이 울렸다. 울리고, 끊기고, 울리고. 받을 듯 받지 않는 간격. 나는 화면을 응시하다가 내려놓았다. 연결도 거절도 하지 않은 채. 한 달. 한 달 동안. 저도요, 전화…"
+   "text": "화면을 응시하다가 내려놓았다. 연결도 거절도 하지 않은 채. 한 달. 한 달 동안. 저도요, 전화…"
   }
  ]
 }
