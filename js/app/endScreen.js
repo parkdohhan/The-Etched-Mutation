@@ -138,7 +138,9 @@ async function _maybeHandoffToReentryFlow(state, alignmentResult) {
     };
 
     if (!hasFirstPlayData(snapshot.memoryId)) {
-        const { showFirstPlayScenification } = await import('./firstPlayScenification.js');
+        // 260810: hideSentence 안 켬 — 이 경로(index.html archive)는 reveal 화면이 없어
+        // 장면화 화면이 봉인 문장을 처음이자 한 번만 보여주는 자리다.
+        const { showFirstPlayScenification } = await import('./firstPlayScenification.js?v=260810a');
         await showFirstPlayScenification({
             memoryId: snapshot.memoryId,
             completedSentence: snapshot.completedSentence,
@@ -152,7 +154,7 @@ async function _maybeHandoffToReentryFlow(state, alignmentResult) {
     }
 
     try {
-        const { showPlayReplayCompare } = await import('./playReplayCompare.js');
+        const { showPlayReplayCompare } = await import('./playReplayCompare.js?v=260810a');
         await showPlayReplayCompare({
             memoryId: snapshot.memoryId,
             completedSentence: snapshot.completedSentence,

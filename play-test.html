@@ -6330,21 +6330,26 @@
                 setTimeout(() => { window.location.href = 'index.html'; }, 600);
               };
               const hasFirst = !!localStorage.getItem('tem_first_play:' + memoryId);
+              // 260810: hideSentence — 봉인 서사는 방금 revealScreen 이 타자기로 이미 보여줬다.
+              //   후속 화면이 같은 문장을 통째로 반복하던 이중 노출 제거 (첫 회차 = 바로 이름 입력,
+              //   재회차 = 파동 비교만). completedSentence 는 저장용으로 계속 넘긴다.
               if (!hasFirst) {
-                const mod = await import('./js/app/firstPlayScenification.js?v=260802a'); // 260802a 알파1: 파동 스택 삭제
+                const mod = await import('./js/app/firstPlayScenification.js?v=260810a'); // 260810a: hideSentence 옵션
                 await mod.showFirstPlayScenification({
                   memoryId,
                   completedSentence,
                   scenes,
+                  hideSentence: true,
                   onContinue: _toMenu,
                 });
                 _v213Handed = true;
               } else {
-                const mod = await import('./js/app/playReplayCompare.js');
+                const mod = await import('./js/app/playReplayCompare.js?v=260810a'); // 260810a: hideSentence 옵션
                 await mod.showPlayReplayCompare({
                   memoryId,
                   completedSentence,
                   secondScenes: scenes,
+                  hideSentence: true,
                   onContinue: _toMenu,
                 });
                 _v213Handed = true;

@@ -189,6 +189,7 @@ function _removeContainer() {
  * @param {number} [args.secondAlignment]
  * @param {string} [args.secondBucket]
  * @param {string} [args.secondTransitionPattern]
+ * @param {boolean} [args.hideSentence] — 260810: reveal 화면이 봉인 서사를 이미 보여준 경우 문장 생략 (파동 비교만 표시)
  * @param {() => void} [args.onContinue]
  */
 export async function showPlayReplayCompare(args) {
@@ -199,6 +200,7 @@ export async function showPlayReplayCompare(args) {
         memoryId,
         completedSentence,
         secondScenes = [],
+        hideSentence = false,
         onContinue,
     } = args;
 
@@ -223,10 +225,14 @@ export async function showPlayReplayCompare(args) {
 
     const container = document.createElement('div');
     container.id = CONTAINER_ID;
+    const sentenceHtml = hideSentence
+        ? ''
+        : `<div class="prc-sentence">${sentenceText.replace(/</g, '&lt;')}</div>`;
+
     container.innerHTML = `
         <div class="prc-title">re-engraving</div>
         <div class="prc-greeting">${greetingText.replace(/</g, '&lt;')}</div>
-        <div class="prc-sentence">${sentenceText.replace(/</g, '&lt;')}</div>
+        ${sentenceHtml}
         <div class="prc-legend">
             <span class="first">first</span>
             <span class="second">now</span>

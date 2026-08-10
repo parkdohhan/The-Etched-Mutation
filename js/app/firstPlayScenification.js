@@ -7,6 +7,10 @@
  * 260802 알파1 피드백 5: 씬별 파동 줄("파동 주르륵") 삭제 (사용자 결정).
  * 파동 스택 렌더 루프(_drawWave/_startAnim)와 .fps-waves DOM 제거 —
  * 문장과 이름 입력만 남는다. 롤백 = git revert.
+ *
+ * 260810: hideSentence 옵션 — play-test reveal 화면이 봉인 서사를 이미 보여준 뒤
+ * 호출될 때 같은 문장을 반복하지 않도록. 켜면 문장·Continue 없이 바로 이름 입력.
+ * (index.html archive 경로(endScreen.js)는 reveal 화면이 없어 기본값 유지 = 문장 표시)
  */
 
 import { setUserName, saveFirstPlayData } from './userIdentity.js';
@@ -109,6 +113,7 @@ function _removeContainer() {
  * @param {number} [args.alignment]
  * @param {string} [args.bucket]
  * @param {string} [args.transitionPattern]
+ * @param {boolean} [args.hideSentence]    Skip the sentence (already shown on reveal screen) — go straight to nickname input.
  * @param {() => void} [args.onContinue]   Called after nickname submit + save.
  */
 export async function showFirstPlayScenification(args) {
@@ -122,6 +127,7 @@ export async function showFirstPlayScenification(args) {
         alignment,
         bucket,
         transitionPattern,
+        hideSentence = false,
         onContinue,
     } = args;
 
@@ -132,7 +138,9 @@ export async function showFirstPlayScenification(args) {
         ? completedSentence
         : '— this memory now bears your trace. —';
 
-    container.innerHTML = `
+    container.innerHTML = hideSentence
+        ? `<div class="fps-title">your engraving</div>`
+        : `
         <div class="fps-title">your engraving</div>
         <div class="fps-sentence">${sentenceText.replace(/</g, '&lt;')}</div>
         <button class="fps-cta" data-fps-action="continue">Continue</button>
@@ -179,7 +187,11 @@ export async function showFirstPlayScenification(args) {
         });
     }
 
-    container.querySelector('[data-fps-action="continue"]')?.addEventListener('click', showNamePrompt);
+    if (hideSentence) {
+        showNamePrompt();
+    } else {
+        container.querySelector('[data-fps-action="continue"]')?.addEventListener('click', showNamePrompt);
+    }
 }
 
 export function dismissFirstPlayScenification() {
