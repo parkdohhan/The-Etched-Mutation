@@ -986,6 +986,8 @@
 
   // setupCoreInput(play-test.html:4012, upstream 1976b7d) 과 같은 8종 — 기존 자산 승계.
   var CONT_CONNECTIVES = ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];
+  // 260810 EN 데모: 연결사도 언어를 탄다 — KO 8종의 결(전환·역접·순접·양보·인과·경과·즉응·순간) 대응.
+  var CONT_CONNECTIVES_EN = ['but then', 'but', 'and', 'even so', 'so', 'and then', 'at that', 'in that moment'];
 
   function _renderContInput(overlay, opts, onSubmit) {
     opts = opts || {};
@@ -1018,7 +1020,7 @@
     var opt0 = document.createElement('option');
     opt0.value = ''; opt0.textContent = _koG ? '연결사…' : 'connective…'; opt0.disabled = false;
     sel.appendChild(opt0);
-    CONT_CONNECTIVES.forEach(function (c) {
+    (_koG ? CONT_CONNECTIVES : CONT_CONNECTIVES_EN).forEach(function (c) {
       var o = document.createElement('option');
       o.value = c; o.textContent = c;
       sel.appendChild(o);
