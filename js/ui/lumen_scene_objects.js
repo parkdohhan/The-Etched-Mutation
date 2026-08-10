@@ -666,9 +666,13 @@
     }
     function _narrow() { return _isTouchUI() && global.innerHeight < 560; }
     function _lay() {
+      // 260810 자막 확대 — 플레이 영상에서 안 읽힘. 대화창 지문 크기(≈21px)에 맞춤.
+      //   글자가 커진 만큼 하단 스택 간격도 재배치 (겹침 방지):
+      //   데스크톱 힌트(300) ↔ 속삭임(340, play-test) ↔ 앞사람 말(360) ↔ 문장(392) ↔ 이름(동적).
+      //   모바일은 힌트(142) ↔ 속삭임(172) ↔ 앞사람 말(198) ↔ 문장(226) 순.
       return _narrow()
-        ? { hint: 142, sent: 186, gap: 20, fWord: 19, fSent: 14, fHint: 14, maxW: '80vw', vLine: 162, fVar: 12 }
-        : { hint: 300, sent: 384, gap: 39, fWord: 24, fSent: 17, fHint: 17, maxW: '620px', vLine: 356, fVar: 14 };
+        ? { hint: 142, sent: 226, gap: 20, fWord: 22, fSent: 17, fHint: 16, maxW: '82vw', vLine: 198, fVar: 14 }
+        : { hint: 300, sent: 392, gap: 39, fWord: 28, fSent: 21, fHint: 20, maxW: '640px', vLine: 360, fVar: 16 };
     }
 
     function _ensureHintUI() {

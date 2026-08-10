@@ -235,10 +235,16 @@
 
           var panner = ctx.createPanner();
           panner.panningModel = 'HRTF';
-          panner.distanceModel = 'inverse';
-          panner.refDistance = opts.sceneVoiceRefDistance;
-          panner.maxDistance = (p.radius != null ? p.radius : opts.sceneVoiceMaxDistance);
-          panner.rolloffFactor = opts.sceneVoiceRolloff;
+          // 260810 수리 2단: 작가 반경(meta.sound_radius)이 inverse 모델의 maxDistance 에
+          // 꽂혀 있었다 — inverse 공식은 maxDistance 를 안 쓰므로 죽은 배선이었고,
+          // 게다가 inverse 는 거리가 멀어도 0 에 안 닿아 반경 5 소리가 스폰까지 샜다.
+          // linear 로 교체: 반경 안쪽 1/4 = 최대 볼륨, 반경에서 정확히 0, 밖 = 무음.
+          // "반경 = 들리는 한계" — 작가 조작이 그대로 청감이 된다.
+          var _vr = (p.radius != null ? p.radius : opts.sceneVoiceMaxDistance);
+          panner.distanceModel = 'linear';
+          panner.refDistance = Math.max(1, _vr * 0.25);
+          panner.maxDistance = Math.max(panner.refDistance + 0.5, _vr);
+          panner.rolloffFactor = 1;
           var px = p.x || 0, py = (p.y != null ? p.y : 1.2), pz = p.z || 0;
           if (panner.positionX) {
             panner.positionX.value = px;

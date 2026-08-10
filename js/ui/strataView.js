@@ -352,14 +352,15 @@
     var el = document.createElement('div');
     el.id = 'strataProximityText';
     // 260802: 지형 뷰 근접 문구도 같이 키움 (하단에 너무 붙어 잘 안 읽혔다).
-    el.style.cssText = 'position:absolute;bottom:120px;left:50%;transform:translateX(-50%);color:#d4bc96;font-size:17px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 2px 10px rgba(0,0,0,0.6);max-width:520px;';
+    // 260810: 자막 확대 2차 — 플레이 영상 기준 대화창 지문 크기(≈21px)에 맞춤.
+    el.style.cssText = 'position:absolute;bottom:124px;left:50%;transform:translateX(-50%);color:#d4bc96;font-size:21px;letter-spacing:2px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.8s;z-index:200;text-shadow:0 2px 10px rgba(0,0,0,0.6);max-width:560px;';
     parent.appendChild(el);
     _proxState.el = el;
 
     // Long-press hint (below monologue)
     var hint = document.createElement('div');
     hint.id = 'strataProximityHint';
-    hint.style.cssText = 'position:absolute;bottom:84px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.7);font-size:15px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;text-shadow:0 2px 8px rgba(0,0,0,0.6);';
+    hint.style.cssText = 'position:absolute;bottom:84px;left:50%;transform:translateX(-50%);color:rgba(206,180,144,0.7);font-size:18px;letter-spacing:1px;text-align:center;pointer-events:none;opacity:0;transition:opacity 0.6s;z-index:200;text-shadow:0 2px 8px rgba(0,0,0,0.6);';
     parent.appendChild(hint);
     _proxState.hintEl = hint;
 
