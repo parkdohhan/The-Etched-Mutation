@@ -1990,7 +1990,12 @@
       _fpPos.x = _nx;
       _fpPos.z = _nz;
 
-      var half = SZ / 2 + 3;
+      // 260809: 예전 값은 SZ/2 + 3 — 지형 판(±SZ/2) 밖 3칸까지 걸어나갈 수 있었다.
+      // 판 밖에는 메시가 없어 _sampleHeight 의 격자 보간이 외삽으로 새고(가장자리
+      // 기울기를 그대로 늘린 가짜 높이), 시야엔 y=-10 배경판이 이음매 없는 평면 +
+      // 직선 지평선으로 드러났다. 가장자리 씬에 닿아 안개가 걷히면 실제로 도달했다.
+      // 판 안쪽으로 2칸 당겨 어떤 경로로도 판 밖에 서지 못하게 한다.
+      var half = SZ / 2 - 2;
       _fpPos.x = Math.max(-half, Math.min(half, _fpPos.x));
       _fpPos.z = Math.max(-half, Math.min(half, _fpPos.z));
       var terrainH = gH(_fpPos.x, _fpPos.z);
