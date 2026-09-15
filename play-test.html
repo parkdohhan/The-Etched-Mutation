@@ -111,14 +111,18 @@
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; background: #0a0a0e; color: var(--text-primary); font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; overflow: hidden; }
-    #selectScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0e; }
+    /* 260915: 서가가 화면보다 길어지면(기억 11개째부터 ~920px 창에서 발생) "Enter this memory" 줄이
+       body overflow:hidden 아래로 밀려 누를 수 없었다. 서가 화면만 스스로 스크롤하고, 세로 가운데는
+       justify-content:center 대신 첫/끝 자식의 margin:auto 로 — 넘치면 위에서부터 보이고 끝까지 스크롤된다. */
+    #selectScreen { height: 100vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: #0a0a0e; }
 
     /* ─── 260713 진입 의례 (서가) ────────────────────────────────────
        개발자 선택 UI(드롭다운 + Enter the memory)를 폐기하고 작품의 언어로.
        기억 카드에 '몇 번 읽혔는가'(cont_depth)를 새겨, 첫 화면에서 오염 개념이
        설명 없이 서게 한다 — 이미 서른 명을 거친 기억과 아무도 안 읽은 기억. */
     #selectScreen { gap: 0; padding: 6vh 24px; position: relative; }
-    #landingHead { text-align: center; margin-bottom: clamp(2.4rem, 6vh, 4rem); }
+    #landingHead { text-align: center; margin-top: auto; margin-bottom: clamp(2.4rem, 6vh, 4rem); flex-shrink: 0; }
+    #landingShelf { flex-shrink: 0; }
     #landingTitle {
       font-family: 'Cormorant Garamond', serif; color: #e8e4df;
       font-size: clamp(1.9rem, 4vw, 2.7rem); font-weight: 400; letter-spacing: 0.14em;
@@ -156,7 +160,7 @@
       white-space: nowrap; flex-shrink: 0;
     }
     #landingEnter {
-      margin-top: clamp(2rem, 5vh, 3.2rem); min-height: 2.6em;
+      margin-top: clamp(2rem, 5vh, 3.2rem); margin-bottom: auto; min-height: 2.6em; flex-shrink: 0;
       display: flex; align-items: center;
       opacity: 0; pointer-events: none;
       transition: opacity 900ms ease;
@@ -5225,7 +5229,11 @@
         shelf.querySelectorAll('.shelf-card').forEach(c => c.classList.remove('chosen'));
         card.classList.add('chosen');
         document.getElementById('memorySelect').value = m.id;
-        if (enter) enter.classList.add('ready');
+        if (enter) {
+          enter.classList.add('ready');
+          // 260915: 서가가 화면보다 길면 진입 문장이 아래로 숨는다 — 고른 순간 그 줄까지 끌어내린다.
+          try { enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+        }
       });
       shelf.appendChild(card);
     });
