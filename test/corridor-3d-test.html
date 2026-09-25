@@ -1,0 +1,826 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>통로 3D · 방에서 문을 열고 통로로</title>
+<!--
+  TEM 실험 페이지 — 통로 T1′: 3D 1인칭 통로 (2026-09-25)
+  발단: 사용자 정정(9-25) "내가 말한 통로는 3D 로서의 통로야. 미니맵에서 보이는 통로가 아니라 3D 1인칭에서의 통로.
+        Among the Sleep 에 나오는 통로들을 상상하면 돼." 어제 T1(안개에 깎은 회랑)은 1인칭에서 "언덕 사이 골"로 보였다
+        (docs/통로_T1_실험-260923.md §5 #8 · §7). 이번엔 벽·천장·바닥·문이 있는 진짜 통로 몸통을 세운다.
+  무엇을 보나: 출발 방 A 안에서 시작 → 문 앞에 서면 문이 2.5초에 걸려 열림 → 통로(중심선 = corridor-t1-rules buildPath,
+        단면 = 정렬 수준별 폭×높이) → 걷는 동안 벽·바닥 색·조명·소리가 A 재료에서 B 재료로 섞임 → 도착 문 → 방 B.
+  선례: test/corridor-t1-rules.js(중심선·델타·마디 — import 해서 그대로 씀, 수정 0)
+        · test/glb-room-test.html(합성 방 6×2.8×6, 조명 감쇠 2·목표 세기 2, 유령 1.8m 기준)
+        · test/life-t2-test.html(조절판·훅·2.5초 지수 접근) · test/corridor-t1-test.html(WASD·드래그, 연결사 입구 자막).
+        · docs/GLB방_호환실험-260923.md §2 (방 안 안개는 사실상 0 → 가림 수단 = 어둠+국소 조명).
+  조사(Among the Sleep 통로 결 체크리스트) 대조는 문서·반환값에. 여기서는 규칙만:
+        닫힌 관 + 벽의 작은 문(길이감) · 실물 크기 참조물(문·손잡이·의자) · 뛰기 없음, 3초 넘는 넓은 기울기
+        · 문 = 문턱(2.5초 지수 접근, 도착 문은 정렬도가 속도를 정함) · 광원 둘(관객 국소광 + 도착 문 새는 빛)
+        · 도착 소리는 남은 거리에 반비례 · 걷는 동안 공간이 변함(정렬도 낮을수록 벽이 다가오고 빛이 줆)
+        · 관객은 자기 자리만 본다(조감·단면은 작가용 뷰에만, 패턴 이름은 관객 화면에 0).
+  본 코드(js/**, play-test.html) 미반영. 저장 0 · 서버 0 · 엔진 0(패턴·정렬도·오염은 사람이 고른다). 난수 0.
+  좌표: 규칙은 T1 규모(핀 거리 58, seedR 6)로 계산하고 14 m 로 축척(×0.2414) — contradiction 되돌림 바닥·displacement
+        옆 밀림이 T1 과 같은 비율로 남는다. 문 앞 여유 = 6 × 0.2414 ≈ 1.45 m.
+  불가능 공간: contradiction 의 되돌림, fixation 의 고리는 방의 부피를 지난다(Among the Sleep "안이 밖보다 큰 옷장").
+        방은 관객이 그 안에 있거나 문이 열린 동안만 그려진다 — 통로 안에서 뒤돌아보면 닫힌 문짝뿐.
+
+  260925 자체 검수(헤드리스 실측)에서 고친 것:
+    · 도착 문 빛 1.6/거리 24 → 0.7/26(echo)·0.45/11·0.2/5(avoidance), 높이 2.25 — 문 앞 1 m 에서 문짝이 순백으로 탔다(GLB 실험 "세기 10" 재발).
+    · 방↔통로 이음은 문틀(throughDoor)에서만, 문턱 규칙은 그 문 쪽 30 % 구간에서만(doorActive) — contradiction 되돌림이
+      방 A 부피를 지나며 "방 안"으로 판정돼 관객이 벽 없는 방을 걸었다. 통로에 있던 사람은 통로 영역을 벗어나야 방이 된다(이력 우선).
+    · 벽 미끄러짐 = 움직임을 접선에 투영(앞 성분 보존) — 예전 클램프는 휘는 벽에서 걸음이 멎었다(echo t 0.28, displacement t 0.18).
+    · fixation: 들머리 3.5 m + 끝 문은 고리 두 마디 앞(n−2) + 문은 통로 앞/뒤 절반에서만 반응 — 끝 문이 들머리 곁에 붙어 지나가며 열리고
+      그 문 평면이 들머리 걸음을 막았다. 방 B(=A 재료 복제)는 들머리·고리와 겹친다(불가능 공간, 단면 뷰에서 보임).
+    · walk() 는 통로 접선으로 0.8 초 시간상수로 고개를 돌린다(영상용). settled() 는 teleport·rebuild 뒤 3 프레임 미정착.
+    실측(1.15 m/s): echo 방 A→문 A(2.1 s 열림 대기)→통로→문 B→방 B 17 s · displacement 목→평행→옆 벽 문 17 s
+                    · contradiction 갈고리→문 B 19 s · fixation 들머리→고리→끝 문→방 A′ 15 s · avoidance 띠→문 B 16 s. 콘솔 오류 0.
+
+  260925 검토(2차) 반영 — 발견 high 5 · medium 9:
+    · fixation: 방 B(A 복제)를 없앴다. 고리는 x≈−rt(문 A 왼쪽 1.9~3.5 m)에서 곧게 되돌아와 방 A 옆벽을 지나므로, 거기에 둘째 문(옆문)을
+      낸다 — 문 둘 = 정말 같은 방. 들머리 0.8 m. 문턱 규칙은 각 문 그룹의 자기 좌표계로(inRoom/throughDoor/crossesClosedDoor).
+      "끝 문 열리면 앞 절반 숨김" 편법 삭제. 고리 바깥쪽 벽에는 A 사물만 되풀이(nSym+2) — 휘는 통로에서 앞에 보이는 건 바깥 벽이므로
+      "또 나온다"가 걷는 내내 보인다. 문 그룹은 방에서 떼어 world 에 두어 방이 숨어도 닫힌 문짝이 보인다.
+    · 상징 사물은 폭 1.0 m 미만 자리(displacement 목·FIXATED 단면)엔 두지 않는다 — 통로 가운데까지 들어와 길을 막았다.
+    · 패턴 서명을 순간이 아니라 구간으로: contradiction 바닥빛(0.12 m)은 되돌림 끝 tBack 부터 t 0.6 까지 서서히 눈높이로 올라오고
+      그 구간 세기 ×1.8(바닥빛은 벽에 닿는 면이 작다). echo_follow 는 수준 한 단계 넓은 단면 + 벽 결 진폭 0 ("순한 관").
+    · 흰 트림 클리핑: 문틀·작은 문·상징 사물 trim ×0.55(builder TRIM_K), 창틀 emissive 절반, echo 도착 빛 0.7/26 → 0.45/14,
+      도착 빛은 관객이 1.5 m 안이면 거리 비례로 줄인다. 캡처 도착 컷은 t 0.95 → 0.90(문에서 ~1.7 m — 문틀·손잡이가 프레임 안).
+    · 어둠: ambient 0x2a2838×1.2, 벽·바닥 명도 +30 %, 국소광 세기 ×1.8·거리 9×(0.7+0.3a). 판정용 sRGB 출력 토글(setSrgb) — 무대 기본은 Linear.
+    · 렌즈: 세로 FOV 62° → 50°(가로 ≈74°). 폭 MID 1.5 / LOW 1.1 / FIXATED 0.85 (HIGH 2.4 유지).
+    · 눈높이 0.9: 상징 사물 ×1.3(작아진 몸이 벽에서도 읽히게). 조절판 눈높이 변경은 다시 세운다.
+    · 조각보·줄무늬: 색 보간만이 아니라 명도 ±35 % + 재료 둘로 분할(거칠기 0.92 ↔ 0.5, 결 진폭 0.15 ↔ 0.6). 줄무늬 폭 1.2 m.
+    · 방 조명 1.6×/9 m → 0.7×/5 m (도착 방이 체험에서 가장 밝던 결함).
+    · 작은 문: 시작 3.8 m·간격 2.7 m·사물 회피 반경 0.6 m — 이전엔 사물 격자와 겹쳐 4 패턴에서 0 개였다. state().smallDoors 로 검증.
+      사물·작은 문은 그 자리에 다른 관 부피가 겹치면 건너뛴다.
+    · openDoor(which, at?) 는 hold — updateDoors 가 거리로 덮어쓰지 않는다(rebuild·teleport 가 hold 를 푼다). at 을 주면 그 열림에 고정(캡처용).
+
+  playwright 훅: window.__t3 = { ready, setPattern, setPair, setAlignment, setBucket, setCont(d,c,h), setEye(m), setConnective(i),
+                                  setView('fp'|'section'), setSectionSide(bool), setSrgb(bool), rebuild(), teleport(t,{lookAhead, look:{x,z}}), walk(seconds),
+                                  openDoor('A'|'B', at?), state(), settled(), setPanel(bool), setHud(bool), caption() }
+    setX 는 값만 바꾼다 — rebuild() 를 불러야 통로가 다시 선다(조절판은 자동으로 다시 세운다).
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap">
+<style>
+  :root{
+    --ground:#0b0b12; --panel:rgba(11,11,18,0.86); --line:rgba(214,201,173,0.14);
+    --ink:#d6c9ad; --ink-2:#8f8797; --accent:#c4a882; --accent-dim:rgba(196,168,130,0.35); --ghost:#e8d8fc;
+    --serif:'Cormorant Garamond','Noto Serif KR','Gowun Batang',serif; --kr:'Noto Serif KR','Cormorant Garamond',serif;
+  }
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--kr);font-weight:300;overflow:hidden;-webkit-font-smoothing:antialiased}
+  #stage{position:fixed;inset:0}
+  #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+  #gl.section{cursor:default}
+  #hint{position:fixed;top:18px;left:20px;font-family:var(--serif);font-size:15px;letter-spacing:0.14em;color:var(--ink-2);pointer-events:none;line-height:1.7}
+  #hint b{color:var(--ink);font-weight:400}
+  #hint .kr{font-family:var(--kr);letter-spacing:0.04em}
+  #caption{position:fixed;left:50%;bottom:9vh;transform:translateX(-50%);width:min(760px,86vw);text-align:center;pointer-events:none;opacity:0;transition:opacity 1.4s cubic-bezier(.2,.7,.2,1)}
+  #caption.in{opacity:1}
+  #caption.out{opacity:0;transition-duration:1.1s}
+  #capLine{font-family:var(--kr);font-weight:300;font-size:clamp(19px,2.4vw,26px);line-height:1.75;color:var(--ghost);letter-spacing:0.04em}
+  #capSrc{margin-top:10px;font-family:var(--serif);font-size:12.5px;letter-spacing:0.22em;color:var(--ink-2)}
+  #startNote{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--kr);font-size:15px;letter-spacing:0.08em;color:var(--ink-2);pointer-events:none;text-align:center;line-height:1.8;transition:opacity 1.2s}
+  #startNote.gone{opacity:0}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:340px;max-width:88vw;background:var(--panel);backdrop-filter:blur(10px);border-left:1px solid var(--line);display:flex;flex-direction:column;padding-block:22px;padding-inline:22px;box-sizing:border-box;overflow-y:auto;gap:18px;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+  #panel.closed{transform:translateX(100%)}
+  #panel h1{font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:0.12em;margin:0;color:var(--ink);text-wrap:balance}
+  #panel .sub{font-size:12px;color:var(--ink-2);letter-spacing:0.06em;margin-top:4px;line-height:1.6}
+  .grp{display:flex;flex-direction:column;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+  .grp:first-of-type{border-top:0;padding-top:0}
+  .grp h2{font-family:var(--serif);font-weight:400;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:var(--accent);margin:0}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px}
+  .row label{flex:1;color:var(--ink)}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--ink-2);min-width:3.2em;text-align:right;font-family:var(--serif);font-size:15px}
+  .slider{display:flex;flex-direction:column;gap:4px}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:22px}
+  input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
+  select{background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--kr);font-size:12.5px;padding:4px 6px;border-radius:2px;max-width:60%}
+  select option{background:#0b0b12}
+  .note{font-size:12px;color:var(--ink-2);line-height:1.6;margin:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line);background:transparent;color:var(--ink-2);font-family:var(--kr);font-size:13px;padding:7px 11px;border-radius:2px;cursor:pointer;text-align:left}
+  .chip small{display:block;font-family:var(--serif);font-size:10.5px;letter-spacing:0.1em;color:var(--ink-2);opacity:.8}
+  .chip.on{border-color:var(--accent);color:var(--ink)}
+  .chip:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+  .btn{border:1px solid var(--line);background:transparent;color:var(--ink);font-family:var(--serif);font-size:14px;letter-spacing:0.14em;padding:9px 12px;cursor:pointer;border-radius:2px}
+  .btn:hover{border-color:var(--accent-dim)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  #toggle{position:fixed;top:14px;right:354px;z-index:5;transition:right .5s cubic-bezier(.2,.7,.2,1);border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--serif);font-size:13px;letter-spacing:0.16em;padding:8px 12px;cursor:pointer;border-radius:2px}
+  body.panel-closed #toggle{right:14px}
+  #status{font-family:var(--serif);font-size:12px;letter-spacing:0.06em;color:var(--ink-2);line-height:1.7;white-space:pre-line}
+  @media (max-width:640px){
+    #toggle{right:14px}
+    #panel{top:auto;left:0;right:0;width:auto;max-width:none;max-height:50vh;border-left:0;border-top:1px solid var(--line);padding-block:16px;gap:14px}
+    #panel.closed{transform:translateY(100%)}
+    #hint{font-size:13px;top:14px;left:16px}
+    #caption{bottom:52vh}
+  }
+  @media (prefers-reduced-motion:reduce){#panel,#toggle,#caption{transition:none}}
+</style>
+
+<div id="stage"><canvas id="gl"></canvas></div>
+<div id="hint"><b>출발</b> <span class="kr" id="hintFrom"></span><span id="hintTo"></span><br><span id="hintView">1인칭 · W 앞으로 · 끌어서 둘러보기</span></div>
+<div id="caption"><div id="capLine"></div><div id="capSrc"></div></div>
+<div id="startNote">문 앞에 서면 문이 열린다<br><span style="font-size:12px;letter-spacing:.2em">W A S D · 끌어서 둘러보기 · 소리는 첫 클릭 뒤</span></div>
+<button id="toggle" type="button" aria-controls="panel">조절판</button>
+
+<aside id="panel" aria-label="실험 조절판">
+  <div>
+    <h1>방에서 문을 열고 통로로</h1>
+    <div class="sub">통로 3D (T1′) · 실험 페이지 · 본 코드에는 반영 안 됨<br>저장 0 · 서버 0 · 엔진 0 · 난수 0 (패턴·정렬도·오염은 사람이 고른다)</div>
+  </div>
+
+  <section class="grp">
+    <h2>패턴 (중심선 모양 + 통로 사건)</h2>
+    <div class="chips" id="patterns"></div>
+    <p class="note">중심선은 corridor-t1-rules 가 정한다. 같은 패턴이라도 출발·도착 쌍이 다르면 휘는 쪽·길이·벽에 놓이는 사물·색·소리가 달라진다. 관객 화면에는 패턴 이름이 안 나온다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>장면 (재료 세트)</h2>
+    <div class="row"><label for="fromSel">출발 방 A</label><select id="fromSel"></select></div>
+    <div class="row"><label for="toSel">도착 방 B</label><select id="toSel"></select></div>
+    <p class="note" id="deltaNote"></p>
+  </section>
+
+  <section class="grp">
+    <h2>정렬 (길이 · 단면)</h2>
+    <div class="slider"><div class="row"><label for="align">정렬도 → 길이·안개·빛 거리·도착 문 속도</label><span class="val" id="alignV">0.70</span></div><input type="range" id="align" min="0" max="1" step="0.01" value="0.7"></div>
+    <div class="row"><label for="bucketSel">수준 → 폭×높이 (HIGH 2.4×2.7 · MID 1.5×2.5 · LOW 1.1×2.1 · FIXATED 0.85×1.9 · 곧장 따라감은 한 단계 넓게)</label>
+      <select id="bucketSel"><option>HIGH</option><option selected>MID</option><option>LOW</option><option>FIXATED</option></select></div>
+  </section>
+
+  <section class="grp">
+    <h2>오염 (결)</h2>
+    <div class="slider"><div class="row"><label for="contD">발산 — 벽 결 진폭 · 빛 깜빡임(0.3~0.6 Hz)</label><span class="val" id="contDV">0.00</span></div><input type="range" id="contD" min="0" max="1" step="0.01" value="0"></div>
+    <div class="slider"><div class="row"><label for="contC">수렴 — 끝으로 갈수록 좁아짐 (1−0.35c)</label><span class="val" id="contCV">0.00</span></div><input type="range" id="contC" min="0" max="1" step="0.01" value="0"></div>
+    <div class="slider"><div class="row"><label for="contH">이질 — 마디마다 A/B 재료 조각보</label><span class="val" id="contHV">0.00</span></div><input type="range" id="contH" min="0" max="1" step="0.01" value="0"></div>
+  </section>
+
+  <section class="grp">
+    <h2>관객</h2>
+    <div class="row"><label for="eyeSel">눈높이</label><select id="eyeSel"><option value="1.6" selected>1.6 m (기본)</option><option value="0.9">0.9 m (어린 기억)</option></select></div>
+    <div class="row"><label for="connSel">입구 연결사 (대화 모듈 8종)</label><select id="connSel"></select></div>
+    <p class="note" id="connNote">읽는 중…</p>
+    <div class="row"><label for="muteOn">소리 끄기</label><input type="checkbox" id="muteOn"></div>
+  </section>
+
+  <section class="grp">
+    <h2>뷰</h2>
+    <div class="chips" id="views">
+      <button class="chip on" type="button" data-view="fp">1인칭 <small>관객이 보는 것</small></button>
+      <button class="chip" type="button" data-view="section">단면 <small>작가용 · 1.5 m 높이에서 자름</small></button>
+    </div>
+    <div class="row"><label for="sideOn">옆에서 자름 (단면 전용)</label><input type="checkbox" id="sideOn"></div>
+    <div class="row"><label for="srgbOn">sRGB 출력 (판정용 · 무대 기본은 Linear)</label><input type="checkbox" id="srgbOn"></div>
+  </section>
+
+  <section class="grp">
+    <h2>동작</h2>
+    <div class="btns"><button class="btn" id="rebuild" type="button">다시 세우기</button><button class="btn" id="reset" type="button">처음으로</button></div>
+  </section>
+
+  <section class="grp"><div id="status">불러오는 중…</div></section>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script type="module">
+import { AXIS_KO, SCENES, PATTERNS, PATTERN_KO, BUCKETS, buildPath } from './corridor-t1-rules.js';
+import { MATERIAL_SETS, ROOM, buildRoom, buildSymbol, buildSmallDoor, setDoorOpen, buildTubeGeometry, densify, makeGrainTexture, lerpHex, hash1 } from './corridor-3d-build.js';
+import { CorridorAudio } from './corridor-3d-audio.js';
+
+const $ = (id) => document.getElementById(id);
+const statusEl = $('status');
+if (!window.THREE) { $('hint').textContent = 'three.js 를 불러오지 못했습니다.'; throw new Error('THREE missing'); }
+
+// ─── 잠금값 ───────────────────────────────────────────────────────
+const RULE_L = 58, DIRECT_M = 14, SCALE = DIRECT_M / RULE_L, SEED_R = 6;   // T1 규모 → 14 m
+const PIN_A = { x: 0, z: 0 }, PIN_B = { x: RULE_L, z: 0 };
+const SIZE = { HIGH: [2.4, 2.7], MID: [1.5, 2.5], LOW: [1.1, 2.1], FIXATED: [0.85, 1.9] };   // 폭 × 높이 (m) — 260925: MID/LOW/FIXATED 좁힘 (FOV 50° 와 짝)
+const WIDER = { HIGH: 'HIGH', MID: 'HIGH', LOW: 'MID', FIXATED: 'LOW' };                    // echo_follow = 한 단계 넓은 단면 ("순한 관")
+const LIGHT_K = 1.8;                 // 관객 국소광 세기 배율 (이전 1.25)
+const TRANS_S = 2.5;                 // 전환 (지수 접근, 2.5 초에 95 %)
+const DOOR_NEAR = 0.8, DOOR_FAR = 1.7;
+const WALK = 1.15;                   // 걸음 속도 m/s (뛰기 없음)
+const STEP_M = 0.72;                 // 발소리 간격
+const CLEAR = 0x0b0b12;
+const SAMPLE_M = 0.3;                // 통로 링 간격
+const FALLBACK_CONN = ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];
+
+// ─── 상태 ─────────────────────────────────────────────────────────
+const S = { pattern: 'echo_follow', from: 0, to: 2, alignment: 0.7, bucket: 'MID', cont: { d: 0, c: 0, h: 0 }, eye: 1.6, connective: 0, view: 'fp', sectionSide: false, srgb: false };
+let CONNECTIVES = null, connSource = '';
+let W = null;    // 세워진 세계 { path, samples, total, roomA, roomB, doorA, doorB, tube:[mesh], objects, endLight, slit, ... }
+let building = false;
+const audio = new CorridorAudio();
+
+// ─── 장면 ─────────────────────────────────────────────────────────
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(CLEAR);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(CLEAR);
+scene.fog = new THREE.FogExp2(CLEAR, 0.06);
+const fpCam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 120);   // 세로 50° = 가로 ≈74° (1440×900) — 제한된 시야. 62° 는 가로 88° 였다
+const secCam = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.01, 60);
+let activeCam = fpCam;
+scene.add(new THREE.AmbientLight(0x2a2838, 1.2));
+const playerLight = new THREE.PointLight(0xffffff, 1.2, 9, 2); scene.add(playerLight);
+// 판정용 sRGB 출력 (무대 기본 = Linear, glb-room-test 와 같은 조건). 켜면 재료를 다시 컴파일한다.
+function setSrgb(on) {
+  renderer.outputEncoding = on ? THREE.sRGBEncoding : THREE.LinearEncoding;
+  S.srgb = !!on;
+  scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
+  dirtyFrames = 3;
+}
+const world = new THREE.Group(); scene.add(world);
+// 단면 뷰 전용 관객 표식 (관객 화면엔 안 나온다)
+const marker = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 12), new THREE.MeshBasicMaterial({ color: 0xc4a882 }));
+marker.rotation.x = Math.PI / 2; marker.visible = false; scene.add(marker);
+
+// 지수 접근으로 굴러가는 값들 (느리고 넓고 무겁게)
+const SM = { fog: 0.06, lightR: 1, lightG: 1, lightB: 1, lightI: 1, lightY: 1.6, eye: 1.6, bob: 0, dist: 9 };
+const SM_T = { fog: 0.06, lightR: 1, lightG: 1, lightB: 1, lightI: 1, lightY: 1.6, eye: 1.6, bob: 0, dist: 9 };
+
+// ─── 관객 ─────────────────────────────────────────────────────────
+const fp = { x: 0, z: 0, yaw: 0, pitch: -0.03, keys: {}, zone: 'A', t: 0, idx: 0, moving: false, bobPhase: 0, stepAcc: 0, walkUntil: 0, enteredCorridor: false };
+
+// ─── 세우기 ───────────────────────────────────────────────────────
+function disposeWorld() {
+  world.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); } });
+  while (world.children.length) world.remove(world.children[0]);
+}
+function smoothstep(a, b, x) { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+
+function build() {
+  building = true;
+  disposeWorld();
+  const setA = MATERIAL_SETS[SCENES[S.from].id], setB = MATERIAL_SETS[SCENES[S.to].id];
+  const a = S.alignment, cont = S.cont, pat = S.pattern;
+  const path = buildPath({ A: PIN_A, B: PIN_B, pattern: pat, from: SCENES[S.from].vec, to: SCENES[S.to].vec, alignment: a, bucket: S.bucket, cont, gridMargin: 200, seedR: SEED_R });
+  const side = path.info.side, p = { x: 0, z: 1 };   // u = (1,0) → 왼쪽 수직 p = (0,1) (규칙과 같은 정의)
+  let pts = path.points.map((q) => ({ x: q.x * SCALE, z: q.z * SCALE }));
+  let sideDoor = null;   // fixation: 방 A 옆문 { wall, z } (방 로컬)
+  if (pat === 'fixation') {
+    // 고리(타원: 접선축 rt = 1.9~3.5 m, 반지름 r ≈ 2.7 m)는 x ≈ −rt 에서 거의 곧게 되돌아온다(side 쪽 z 가 줄며).
+    // 방 A 는 중심 (−3,0)·옆벽 z = ±3·x ∈ [−6,0] 이라 그 되돌아오는 자리가 옆벽 안에 든다 → 거기에 둘째 문(옆문).
+    // 방 B 없음 — 문 둘 = 정말 같은 방. 되돌아오는 반쪽은 옆벽 1.5 m 앞(|z| = 4.5)까지만 쓰고 곧게 옆문으로 잇는다.
+    // (260925 검토 이전: 3.5 m 들머리 + 방 B(A 복제)가 들머리·고리와 겹쳐 끝 문 구역에 A 색 관과 작은 문 판이 비쳐들었다.)
+    const LEAD = 0.8;
+    const loop = pts.slice(1).map((q) => ({ x: q.x + LEAD, z: q.z }));   // pts[0] = A 는 들머리가 대신한다. loop 끝 = (LEAD, 0) 닫힘점
+    const kept = []; let xMin = 0;
+    for (let i = 0; i < loop.length; i++) {
+      const q = loop[i]; xMin = Math.min(xMin, q.x);
+      if (i > loop.length / 2 && side * q.z < 4.8) break;   // 되돌아오는 반쪽, 옆벽 1.8 m 앞에서 끊는다
+      kept.push(q);
+    }
+    const xE = Math.max(-5.2, Math.min(-1.0, xMin));   // 옆문 자리 (문 폭 0.9 + 틀이 앞 모서리 x=0 을 안 넘게)
+    pts = [{ x: 0, z: 0 }, { x: LEAD * 0.5, z: 0 }].concat(kept, [{ x: xE, z: side * 4.5 }, { x: xE, z: side * 3.0 }]);
+    sideDoor = { wall: side > 0 ? 'left' : 'right', z: xE + 3 };   // 방 A 로컬(ry = π/2): lx = −wz, lz = wx + 3
+  }
+  if (pat === 'displacement') {                                          // 도착 문이 B 방 옆 벽에 붙도록 문 앞 토막
+    const Bp = pts[pts.length - 1];
+    pts.splice(pts.length - 1, 0, { x: Bp.x + p.x * side * 1.0, z: Bp.z + p.z * side * 1.0 });
+  }
+  const { samples, total } = densify(pts, SAMPLE_M);
+  const sizeKey = pat === 'echo_follow' ? WIDER[S.bucket] : S.bucket;   // echo = 한 단계 넓은 단면 ("순한 관", 260925)
+  const [wB, hB] = SIZE[sizeKey];
+  // displacement 목 (첫 마디 폭 ×0.55) — 마디 경계에서 매끈히
+  let neckEnd = -1;
+  if (pat === 'displacement') { const k = samples.findIndex((s) => s.seg >= 1); neckEnd = k > 0 ? samples[k].t : 0.3; }
+  // contradiction 되돌림 구간 끝 = 접선이 다시 +u 를 향하는 첫 샘플
+  let tBack = 0;
+  if (pat === 'contradiction') { const k = samples.findIndex((s, i) => i > 2 && s.tx > 0.2); tBack = k > 0 ? samples[k].t : 0.35; }
+  for (const s of samples) {
+    let w = wB * (1 - 0.35 * cont.c * s.t) * (1 - 0.25 * (1 - a) * s.t);
+    if (neckEnd >= 0) w *= 0.55 + 0.45 * smoothstep(neckEnd - 0.06, neckEnd + 0.06, s.t);
+    s.w = Math.max(0.7, w); s.h = pat === 'avoidance' ? 0 : hB;
+  }
+  // 재료 섞임 — 위치 t 로 A→B, 이질은 마디×면 조각보, bridge 는 가운데 줄무늬(폭 1.2 m)
+  // 260925: 색 보간만으론 어두운 조명이 대비를 눌러 안 읽혔다 → 명도 ±35 % + 재료 둘로 분할(거칠기 0.92 ↔ 0.5 · 결 진폭 0.6 ↔ 0.15)
+  const cA = setA.palette, cB = setB.palette;
+  const inStripe = (i) => pat === 'bridge' && samples[i].t > 0.3 && samples[i].t < 0.7;
+  const cls = (i, face) => {   // 재료 클래스: −1 기본 · 0 어둡고 거침 · 1 밝고 매끈
+    if (cont.h >= 0.5) return ((samples[i].seg + face) % 2 === 0) ? 0 : 1;
+    if (inStripe(i)) return Math.floor(samples[i].s / 1.2) % 2;
+    return -1;
+  };
+  const colorAt = (t, seg, face, i) => {
+    let m = t, lum = 1;
+    if (inStripe(i)) { const stripe = Math.floor(samples[i].s / 1.2) % 2; m = m * 0.35 + (stripe ? 0.85 : 0.15) * 0.65; lum = stripe ? 1.35 : 0.65; }
+    if (cont.h > 0) { const quilt = ((seg + face) % 2 === 0) ? 0 : 1; m += (quilt - m) * cont.h * 0.85; lum = 1 + (quilt ? 0.35 : -0.35) * cont.h; }
+    const key = face === 0 ? 'floor' : 'wall';
+    const c = lerpHex(THREE, cA[key], cB[key], m).multiplyScalar(lum);
+    if (face === 2) c.multiplyScalar(0.8);
+    return c;
+  };
+  const ampBase = (pat === 'echo_follow' ? 0 : 0.15) + 0.6 * cont.d;   // echo = 벽 결 0 ("순한 관")
+  const grain = makeGrainTexture(THREE, ampBase, 3.1 + S.from);
+  const split = cont.h >= 0.5 || pat === 'bridge';
+  const tubeMats = { '-1': new THREE.MeshStandardMaterial({ vertexColors: true, map: grain, side: THREE.DoubleSide, roughness: 0.92, metalness: 0.02 }) };
+  if (split) {
+    tubeMats['0'] = new THREE.MeshStandardMaterial({ vertexColors: true, map: makeGrainTexture(THREE, 0.6, 5.3 + S.to), side: THREE.DoubleSide, roughness: 0.92, metalness: 0.02 });
+    tubeMats['1'] = new THREE.MeshStandardMaterial({ vertexColors: true, map: makeGrainTexture(THREE, 0.15, 7.7 + S.from), side: THREE.DoubleSide, roughness: 0.5, metalness: 0.02 });
+  }
+  const half = Math.floor(samples.length / 2);
+  const tube = [];
+  for (const [lo, hi] of [[0, half], [half, samples.length - 1]]) {
+    for (const c of (split ? [-1, 0, 1] : [-1])) {
+      const geo = buildTubeGeometry(THREE, samples.slice(lo, hi + 1), colorAt, { floorOnly: pat === 'avoidance', quadFilter: split ? (i, face) => cls(lo + i, face) === c : null });
+      if (!geo.index || geo.index.count === 0) { geo.dispose(); continue; }
+      const mesh = new THREE.Mesh(geo, tubeMats[String(c)]); mesh.name = 'tube_' + lo + '_' + c; world.add(mesh); tube.push(mesh);
+    }
+  }
+  // 방 A — 문의 바깥 법선 = 첫 접선 (fixation 은 정확히 +x: 옆문 자리를 방 로컬로 계산했으므로)
+  const s0 = samples[0], sN = samples[samples.length - 1];
+  const nA = pat === 'fixation' ? { x: 1, z: 0 } : { x: s0.tx, z: s0.tz };
+  const roomA = buildRoom(THREE, SCENES[S.from].id, grain, sideDoor ? { sideDoor } : null);
+  roomA.position.set(s0.x - nA.x * ROOM.D / 2, 0, s0.z - nA.z * ROOM.D / 2); roomA.rotation.y = Math.atan2(nA.x, nA.z); world.add(roomA);
+  // 방 B — 도착 문의 바깥 법선 = −끝 접선. fixation 은 방 B 없음: 끝 문 = 방 A 의 옆문
+  const nB = { x: -sN.tx, z: -sN.tz };
+  let roomB, doorB;
+  if (pat === 'fixation') { roomB = roomA; doorB = roomA.userData.sideDoor; }
+  else {
+    roomB = buildRoom(THREE, SCENES[S.to].id, grain);
+    roomB.position.set(sN.x - nB.x * ROOM.D / 2, 0, sN.z - nB.z * ROOM.D / 2); roomB.rotation.y = Math.atan2(nB.x, nB.z); world.add(roomB);
+    doorB = roomB.userData.door;
+  }
+  // 문은 방 그룹에서 떼어 world 에 둔다(세계 변환 유지) — 방이 숨어도 닫힌 문짝은 보여야 한다
+  // (260925 검토: contradiction 되돌림 끝에서 뒤돌아보면 방 A 가 숨어 문까지 사라져 "벽으로 닫힘"이 검은 구멍으로 읽혔다)
+  for (const r of (roomA === roomB ? [roomA] : [roomA, roomB])) {
+    r.updateMatrixWorld(true);
+    for (const d of r.userData.doors) { d.applyMatrix4(r.matrixWorld); world.add(d); d.updateMatrixWorld(true); }
+  }
+  const doorA = roomA.userData.door;
+  doorA.userData.tc = TRANS_S / 3; doorB.userData.tc = (TRANS_S * (1.6 - 0.6 * a)) / 3;   // 도착 문은 정렬도가 속도를 정한다
+  doorA.userData.pos = new THREE.Vector3(s0.x, 0, s0.z); doorB.userData.pos = new THREE.Vector3(sN.x, 0, sN.z);
+  doorA.userData.room = roomA; doorB.userData.room = roomB;
+  // 도착 문에서 새어 나오는 빛 (광원 둘 중 둘째) + 문 밑 틈
+  // 세기는 GLB 실험 결론(목표 2 안팎, 10 은 순백으로 탐)보다 낮게. echo 0.7/26 은 문 앞 1 m 에서 트림이 255 로 잘렸다(260925 실측) → 0.45/14.
+  // 관객이 문 1.5 m 안이면 frame() 이 거리 비례로 더 줄인다.
+  const endI = pat === 'avoidance' ? 0.2 : 0.45;
+  const endD = pat === 'avoidance' ? 5 : pat === 'echo_follow' ? 14 : 11;
+  const endLight = new THREE.PointLight(setB.light.color, endI, endD, 2); endLight.position.set(sN.x + nB.x * 0.9, 2.25, sN.z + nB.z * 0.9); world.add(endLight);
+  const slit = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.05), new THREE.MeshBasicMaterial({ color: setB.light.color, transparent: true, opacity: pat === 'avoidance' ? 0.35 : 0.95, side: THREE.DoubleSide }));
+  slit.position.set(sN.x + nB.x * 0.09, 0.03, sN.z + nB.z * 0.09); slit.rotation.y = Math.atan2(nB.x, nB.z); world.add(slit);
+  // 벽의 작은 문 + 두 방의 상징 사물(빈도 = mN)
+  const objects = [], smallDoorList = [];
+  const at = (sArc) => { let best = 0, bd = Infinity; for (let i = 0; i < samples.length; i++) { const d = Math.abs(samples[i].s - sArc); if (d < bd) { bd = d; best = i; } } return samples[best]; };
+  // 그 자리에 다른 관 부피가 겹치는가 (호 길이 3 m 넘게 떨어진 샘플이 폭 반경 안에) — 겹치면 사물·작은 문을 두지 않는다
+  const crowded = (sm) => samples.some((o) => Math.abs(o.s - sm.s) > 3 && Math.hypot(o.x - sm.x, o.z - sm.z) < (sm.w + o.w) / 2 + 0.3);
+  const placeOnWall = (obj, sm, sideSign, inset) => {
+    const nx = -sm.tz, nz = sm.tx;                     // 왼쪽 수직
+    obj.position.set(sm.x + nx * sideSign * (sm.w / 2 - inset), 0, sm.z + nz * sideSign * (sm.w / 2 - inset));
+    obj.rotation.y = Math.atan2(-nx * sideSign, -nz * sideSign);   // 정면(+z) = 통로 가운데 쪽
+    world.add(obj); objects.push(obj);
+  };
+  const symScale = S.eye < 1.2 ? 1.3 : 1;              // 어린 기억: 사물이 커진다 (작아진 몸이 벽에서도 읽히게)
+  // fixation 은 A 사물만 고리 바깥쪽 벽에 되풀이(nSym+2) — 휘는 통로에서 앞에 보이는 건 바깥 벽이다(안쪽 벽은 시야 밖으로 미끄러진다).
+  // "또 나온다"가 걷는 내내 보인다. 나머지 패턴은 A/B 번갈아 좌우 교대.
+  const nSym = 2 + Math.round(4 * path.info.mN) + (pat === 'fixation' ? 2 : 0);
+  const symArcs = []; let nSymPlaced = 0;
+  for (let i = 0; i < nSym; i++) {
+    // fixation 은 t 0.06~0.8 에만 — 옆문 앞 곧은 마지막 1.5 m 는 비워 문이 보이게
+    const sArc = pat === 'fixation' ? total * (0.06 + 0.74 * (i + 1) / (nSym + 1)) : total * (i + 1) / (nSym + 1); symArcs.push(sArc);
+    const sm = at(sArc);
+    if (crowded(sm) || sm.w < 1.0) continue;   // 폭 1 m 미만(목·FIXATED)엔 사물 없음 — 가운데까지 들어와 길을 막는다
+    const key = (pat === 'fixation' || i % 2 === 0) ? SCENES[S.from].id : SCENES[S.to].id;
+    const sym = buildSymbol(THREE, key); sym.scale.setScalar(symScale);
+    placeOnWall(sym, sm, pat === 'fixation' ? -side : (i % 2 === 0 ? 1 : -1) * side, 0.45 * symScale);
+    nSymPlaced++;
+  }
+  if (pat !== 'avoidance') {
+    // 260925: 이전(2.2 m 부터 3.2 m 마다, 사물 1.3 m 안 회피)은 사물 격자와 겹쳐 4 패턴에서 0 개였다 → 3.8 m 부터 2.7 m 마다, 회피 0.6 m
+    let k = 0;
+    for (let sArc = 3.8; sArc < total - 1.6; sArc += 2.7, k++) {
+      // fixation 은 사물이 전부 바깥 벽이라 작은 문은 안쪽 벽에만(회피 반경 0.3) — 안 그러면 짧은 고리에서 전부 걸러진다
+      if (symArcs.some((x) => Math.abs(x - sArc) < (pat === 'fixation' ? 0.3 : 0.6))) continue;
+      const sm = at(sArc);
+      if (crowded(sm)) continue;
+      const trim = lerpHex(THREE, cA.trim, cB.trim, sm.t).getHex();
+      const sideSign = pat === 'fixation' ? side : (k % 2 === 0 ? -1 : 1);
+      const sd = buildSmallDoor(THREE, trim);
+      placeOnWall(sd, sm, sideSign, 0.02);
+      smallDoorList.push({ t: +sm.t.toFixed(3), s: +sm.s.toFixed(2), x: +sm.x.toFixed(2), z: +sm.z.toFixed(2), px: +sd.position.x.toFixed(2), pz: +sd.position.z.toFixed(2), side: sideSign });
+    }
+  }
+  W = { path, samples, total, roomA, roomB, doorA, doorB, tube, objects, endLight, slit, setA, setB, tBack, neckEnd, wB, hB, sizeKey, sideDoor, symScale, nSymPlaced, smallDoorList,
+        fogT: pat === 'avoidance' ? 0.24 : 0.05 + 0.10 * (1 - a), lightDist: 9 * (0.7 + 0.3 * a) };
+  for (const d of [doorA, doorB]) { setDoorOpen(d, 0); d.userData.target = 0; d.userData.hold = false; }
+  audio.setPresets(setA, setB);
+  // 관객: 출발 방 안, 문을 보며 (문에서 2.2 m)
+  roomA.updateMatrixWorld(true);
+  const startLocal = new THREE.Vector3(0, 0, ROOM.D / 2 - 2.2).applyMatrix4(roomA.matrixWorld);
+  fp.x = startLocal.x; fp.z = startLocal.z; fp.yaw = Math.atan2(nA.x, nA.z); fp.pitch = -0.03; fp.zone = 'A'; fp.t = 0; fp.enteredCorridor = false; fp.moving = false;
+  Object.assign(SM_T, { fog: W.fogT, dist: W.lightDist, eye: S.eye, lightY: S.eye });
+  roomB.updateMatrixWorld(true);
+  updateVisibility(true); dirtyFrames = 3;
+  if (S.view === 'section') frameSection();
+  $('hintFrom').textContent = SCENES[S.from].name; $('hintTo').textContent = '';
+  building = false;
+  console.log('[t3] 통로 —', pat, SCENES[S.from].name, '→', SCENES[S.to].name, '마디', path.segments, '길이', total.toFixed(1), 'm', '×' + (total / DIRECT_M).toFixed(2), '단면', wB + '×' + hB, '지배축', path.info.dom, 'side', side, 'mN', path.info.mN, '사물', nSymPlaced, '작은 문', smallDoorList.length);
+  refreshStatus();
+}
+
+// ─── 이동 제한 ────────────────────────────────────────────────────
+// 문턱 규칙은 각 문 그룹의 자기 좌표계로 — 문 로컬 z>0 = 방 바깥(통로 쪽). 앞문·옆문(fixation)이 같은 코드를 탄다 (260925).
+const _v = new THREE.Vector3();
+function roomLocal(room, x, z) { _v.set(x, 0, z); room.worldToLocal(_v); return { x: _v.x, z: _v.z }; }
+function doorLocal(door, x, z) { _v.set(x, 0, z); door.worldToLocal(_v); return { x: _v.x, z: _v.z }; }
+function doorNormal(door) { const n = new THREE.Vector3(); door.getWorldDirection(n); return { x: n.x, z: n.z }; }   // 문 바깥(통로 쪽) 단위 벡터
+function inRoom(room, x, z) {
+  const l = roomLocal(room, x, z);
+  if (Math.abs(l.x) <= 2.72 && Math.abs(l.z) <= 2.72) return true;
+  for (const d of room.userData.doors) { const q = doorLocal(d, x, z); if (Math.abs(q.x) <= 0.38 && q.z > -0.4 && q.z <= 0.3) return true; }   // 문틀 안
+  return false;
+}
+function nearest(x, z, near) {
+  const sm = W.samples; let best = 0, bd = Infinity;
+  // near = 직전 샘플 번호 — 고리(fixation)처럼 통로가 자기 곁을 지나는 곳에서 t 가 튀지 않게 이웃 12 샘플 안에서 먼저 찾는다
+  let lo = 0, hi = sm.length - 1;
+  if (near != null) { lo = Math.max(0, near - 12); hi = Math.min(sm.length - 1, near + 12); }
+  for (let i = lo; i <= hi; i++) { const d = (sm[i].x - x) ** 2 + (sm[i].z - z) ** 2; if (d < bd) { bd = d; best = i; } }
+  if (near != null && Math.sqrt(bd) > sm[best].w) return nearest(x, z, null);
+  const s = sm[best]; const nx = -s.tz, nz = s.tx;
+  const lat = (x - s.x) * nx + (z - s.z) * nz, along = (x - s.x) * s.tx + (z - s.z) * s.tz;
+  return { i: best, s, lat, along, nx, nz };
+}
+function inCorridor(x, z) {
+  const q = nearest(x, z, fp.zone === 'C' ? fp.idx : null);
+  if (Math.abs(q.lat) > q.s.w / 2 - 0.2) return false;
+  if (q.i === 0 && q.along < -0.05) return false;
+  if (q.i === W.samples.length - 1 && q.along > 0.05) return false;
+  return true;
+}
+function crossesClosedDoor(door, ox, oz, nx, nz) {
+  const a = doorLocal(door, ox, oz), b = doorLocal(door, nx, nz);
+  return a.z * b.z < 0 && Math.abs(b.x) < 0.7 && door.userData.open < 0.6;
+}
+// 문 앞뒤 판정은 "그 문 곁에 있을 때"만 — contradiction 되돌림은 방의 부피를 지나므로(불가능 공간)
+// 통로 한가운데서 방 문 평면을 스치는 일이 있다. 문에서 2 m 안일 때만 문턱 규칙을 건다.
+function nearDoor(door, x, z) { return Math.hypot(x - door.userData.pos.x, z - door.userData.pos.z) < 2.0; }
+// 문틀을 지나는 중인가 — 문 로컬 |x| ≤ 0.6, z 가 벽면 앞뒤 0.5 m 안
+function throughDoor(door, x, z) { const l = doorLocal(door, x, z); return Math.abs(l.x) <= 0.6 && l.z >= -0.5 && l.z <= 0.35; }
+// 이 문의 문턱 규칙이 지금 유효한가 — 그 방에 있거나, 통로의 그 문 쪽 끝(앞 30 % / 뒤 30 %)에 있을 때만
+function doorActive(which) {
+  if (fp.zone === which) return true;
+  if (fp.zone !== 'C') return false;
+  return which === 'A' ? fp.t < 0.3 : fp.t > 0.7;
+}
+function allowed(ox, oz, x, z) {
+  if (!W) return true;
+  if (doorActive('A') && nearDoor(W.doorA, x, z) && crossesClosedDoor(W.doorA, ox, oz, x, z)) return false;
+  if (doorActive('B') && nearDoor(W.doorB, x, z) && crossesClosedDoor(W.doorB, ox, oz, x, z)) return false;
+  // 방과 통로는 문틀에서만 이어진다 — 통로가 방의 부피를 지나도(불가능 공간) 벽 너머로 새지 않는다
+  const dA = doorActive('A') && throughDoor(W.doorA, x, z), dB = doorActive('B') && throughDoor(W.doorB, x, z);
+  if (fp.zone === 'C') return inCorridor(x, z) || (dA && inRoom(W.roomA, x, z)) || (dB && inRoom(W.roomB, x, z));
+  if (fp.zone === 'A') return inRoom(W.roomA, x, z) || (dA && inCorridor(x, z));
+  return inRoom(W.roomB, x, z) || (dB && inCorridor(x, z));
+}
+function moveTo(tx, tz) {
+  const ox = fp.x, oz = fp.z;
+  if (allowed(ox, oz, tx, tz)) { fp.x = tx; fp.z = tz; return; }
+  // 통로 벽에 옆으로 미끄러지기 — 움직임을 그 자리 접선에 투영(앞으로 가는 성분은 남긴다)
+  const q = nearest(ox, oz, fp.zone === 'C' ? fp.idx : null);
+  const mv = (tx - ox) * q.s.tx + (tz - oz) * q.s.tz;
+  const sx = ox + q.s.tx * mv, sz = oz + q.s.tz * mv;
+  if (allowed(ox, oz, sx, sz)) { fp.x = sx; fp.z = sz; return; }
+  // 그래도 막히면 옆 거리를 한계 안으로 끌어당긴 자리로
+  const q2 = nearest(sx, sz, fp.zone === 'C' ? fp.idx : null);
+  const lim = q2.s.w / 2 - 0.2;
+  const lat = Math.max(-lim, Math.min(lim, q2.lat));
+  const cx = q2.s.x + q2.nx * lat + q2.s.tx * Math.max(-0.05, Math.min(0.05, q2.along)), cz = q2.s.z + q2.nz * lat + q2.s.tz * Math.max(-0.05, Math.min(0.05, q2.along));
+  if (allowed(ox, oz, cx, cz) && Math.hypot(cx - ox, cz - oz) < 0.6) { fp.x = cx; fp.z = cz; return; }
+  if (allowed(ox, oz, tx, oz)) { fp.x = tx; return; }
+  if (allowed(ox, oz, ox, tz)) { fp.z = tz; return; }
+}
+function updateZone() {
+  if (!W) return;
+  // 이력 우선: 통로에 있던 사람은 통로 영역을 벗어나야 방이 된다(방 부피와 겹치는 구간 대비). 방 → 통로는 문을 지나야.
+  const inC = inCorridor(fp.x, fp.z), inA = inRoom(W.roomA, fp.x, fp.z), inB = inRoom(W.roomB, fp.x, fp.z);
+  let zone = fp.zone;
+  const nA = doorActive('A') && throughDoor(W.doorA, fp.x, fp.z), nB = doorActive('B') && throughDoor(W.doorB, fp.x, fp.z);
+  if (zone === 'C') { if (!inC) zone = (inA && nA) ? 'A' : (inB && nB) ? 'B' : 'C'; }
+  else if (zone === 'A') { if (!inA) zone = inC ? 'C' : 'A'; }
+  else { if (!inB) zone = inC ? 'C' : 'B'; }
+  fp.zone = zone;
+  if (zone === 'A') { fp.t = 0; fp.idx = 0; } else if (zone === 'B') { fp.t = 1; fp.idx = W.samples.length - 1; }
+  else { const q = nearest(fp.x, fp.z, fp.idx); fp.t = q.s.t; fp.idx = q.i; if (!fp.enteredCorridor) { fp.enteredCorridor = true; onEnterCorridor(); } }
+}
+
+// ─── 문·가시성 ────────────────────────────────────────────────────
+function updateDoors(dt) {
+  for (const d of [W.doorA, W.doorB]) {
+    const dist = Math.hypot(fp.x - d.userData.pos.x, fp.z - d.userData.pos.z);
+    // 출발 문은 통로 앞쪽 절반, 도착 문은 뒤쪽 절반에서만 반응 (fixation 끝 문이 들머리 곁에 있어 지나가며 열리던 결함)
+    const sideOk = fp.zone !== 'C' || (d === W.doorA ? fp.t < 0.5 : fp.t >= 0.5);
+    // hold(openDoor 훅) 는 거리 판정을 건너뛴다 — 이전엔 매 프레임 거리로 덮어써 문 1.7 m 밖에선 죽은 훅이었다 (260925)
+    if (!d.userData.hold) { if (dist < DOOR_NEAR && sideOk) d.userData.target = 1; else if (dist > DOOR_FAR || !sideOk) d.userData.target = 0; }
+    const k = 1 - Math.exp(-dt / d.userData.tc);
+    setDoorOpen(d, d.userData.open + (d.userData.target - d.userData.open) * k);
+  }
+  if (W.doorB.userData.open > 0.5 && !$('hintTo').textContent) $('hintTo').textContent = ' → ' + (S.pattern === 'fixation' ? SCENES[S.from].name : SCENES[S.to].name);
+}
+function updateVisibility(force) {
+  const rA = W.roomA, rB = W.roomB;
+  const nearA = Math.hypot(fp.x - W.doorA.userData.pos.x, fp.z - W.doorA.userData.pos.z) < 2.5;
+  const nearB = Math.hypot(fp.x - W.doorB.userData.pos.x, fp.z - W.doorB.userData.pos.z) < 2.5;
+  const visA = fp.zone === 'A' || W.doorA.userData.open > 0.02 || (nearA && S.pattern !== 'contradiction');
+  const visB = fp.zone === 'B' || W.doorB.userData.open > 0.02 || nearB;
+  if (rA === rB) rA.visible = visA || visB; else { rA.visible = visA; rB.visible = visB; }   // fixation: 문 둘 = 같은 방
+  if (S.view === 'section') { rA.visible = rB.visible = true; }
+  rA.userData.light.visible = rA.visible; rB.userData.light.visible = rB.visible;
+  const corridorOn = fp.zone === 'C' || W.doorA.userData.open > 0.02 || W.doorB.userData.open > 0.02 || S.view === 'section';
+  for (const m of W.tube) m.visible = corridorOn;
+  for (const o of W.objects) o.visible = corridorOn;
+  W.endLight.visible = corridorOn; W.slit.visible = corridorOn;
+}
+
+// ─── 카메라 ───────────────────────────────────────────────────────
+function applyFpCam(dt, time) {
+  const bobAmp = 0.012 + 0.02 * W.path.info.mN, bobPeriod = 3.2 + 1.5 * W.path.info.mN;   // 넓고 느린 기울기 (잔떨림 아님)
+  if (fp.moving) fp.bobPhase += dt / bobPeriod;
+  const roll = SM.bob * bobAmp * Math.sin(2 * Math.PI * fp.bobPhase);
+  const dy = SM.bob * 0.02 * Math.sin(4 * Math.PI * fp.bobPhase);
+  fpCam.position.set(fp.x, SM.eye + dy, fp.z);
+  const cp = Math.cos(fp.pitch);
+  fpCam.up.set(Math.sin(roll), Math.cos(roll), 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), fp.yaw);
+  fpCam.lookAt(fp.x + Math.sin(fp.yaw) * cp, fpCam.position.y + Math.sin(fp.pitch), fp.z + Math.cos(fp.yaw) * cp);
+}
+function frameSection() {
+  if (!W) return;
+  const pts = W.samples.map((s) => [s.x, s.z]);
+  for (const r of [W.roomA, W.roomB]) for (const [lx, lz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) { const v = new THREE.Vector3(lx, 0, lz); r.localToWorld(v); pts.push([v.x, v.z]); }
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const [x, z] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, asp = innerWidth / innerHeight;
+  if (!S.sectionSide) {
+    let hw = (x1 - x0) / 2 + 2, hh = (z1 - z0) / 2 + 2;
+    if (hw / hh < asp) hw = hh * asp; else hh = hw / asp;
+    secCam.left = -hw; secCam.right = hw; secCam.top = hh; secCam.bottom = -hh; secCam.near = 0.01; secCam.far = 3;
+    secCam.position.set(cx, 1.5, cz); secCam.up.set(0, 0, -1); secCam.lookAt(cx, 0, cz);
+  } else {
+    // 옆 단면: −z 쪽에서 +z 를 보며, 중심선 가운데 샘플의 z 에서 자른다
+    const mid = W.samples[Math.floor(W.samples.length / 2)];
+    let hw = (x1 - x0) / 2 + 2, hh = 2.2;
+    if (hw / hh < asp) hw = hh * asp; else hh = hw / asp;
+    secCam.left = -hw; secCam.right = hw; secCam.top = hh * 1.6 - 0.2; secCam.bottom = -hh * 0.4 - 0.2;
+    const camZ = z0 - 3;
+    secCam.near = mid.z - camZ; secCam.far = z1 - camZ + 4;
+    secCam.position.set(cx, 1.2, camZ); secCam.up.set(0, 1, 0); secCam.lookAt(cx, 1.2, cz);
+  }
+  secCam.updateProjectionMatrix();
+}
+function setView(v) {
+  if (v !== 'fp' && v !== 'section') return;
+  S.view = v; activeCam = v === 'fp' ? fpCam : secCam;
+  canvas.classList.toggle('section', v === 'section');
+  document.querySelectorAll('#views .chip').forEach((c) => c.classList.toggle('on', c.dataset.view === v));
+  $('hintView').textContent = v === 'fp' ? '1인칭 · W 앞으로 · 끌어서 둘러보기' : '단면 (작가용) · 관객 화면 아님';
+  marker.visible = v === 'section';
+  if (v === 'section') frameSection();
+  if (W) updateVisibility(true);
+}
+function setSectionSide(b) { S.sectionSide = !!b; $('sideOn').checked = S.sectionSide; if (S.view === 'section') frameSection(); }
+
+// 조작 — 끌어서 둘러보기, WASD 걷기 (뛰기 없음)
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => { if (S.view === 'fp') drag = { x: e.clientX, y: e.clientY }; audio.ensure(); $('startNote').classList.add('gone'); });
+addEventListener('pointerup', () => { drag = null; });
+addEventListener('pointermove', (e) => {
+  if (!drag || S.view !== 'fp') return;
+  fp.yaw -= (e.clientX - drag.x) * 0.004; fp.pitch = Math.max(-0.8, Math.min(0.6, fp.pitch - (e.clientY - drag.y) * 0.003));
+  drag = { x: e.clientX, y: e.clientY };
+});
+addEventListener('keydown', (e) => { if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; fp.keys[e.key.toLowerCase()] = true; audio.ensure(); $('startNote').classList.add('gone'); });
+addEventListener('keyup', (e) => { fp.keys[e.key.toLowerCase()] = false; });
+function stepFp(dt) {
+  let f = 0, s = 0;
+  const walking = performance.now() < fp.walkUntil;
+  if (walking && fp.zone === 'C') {   // walk() 시뮬: 통로 접선을 향해 느리게 고개를 돌린다 (0.8 초 시간상수)
+    const s = W.samples[Math.min(W.samples.length - 1, fp.idx + 3)];
+    let dy = Math.atan2(s.tx, s.tz) - fp.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    fp.yaw += dy * (1 - Math.exp(-dt / 0.8));
+  }
+  if (fp.keys.w || fp.keys.arrowup || walking) f += 1; if (fp.keys.s || fp.keys.arrowdown) f -= 1;
+  if (fp.keys.a || fp.keys.arrowleft) s -= 1; if (fp.keys.d || fp.keys.arrowright) s += 1;
+  fp.moving = !!(f || s);
+  if (fp.moving) {
+    const sy = Math.sin(fp.yaw), cy = Math.cos(fp.yaw);
+    const mx = (sy * f + cy * s) * WALK * dt, mz = (cy * f - sy * s) * WALK * dt;
+    const ox = fp.x, oz = fp.z;
+    moveTo(fp.x + mx, fp.z + mz);
+    const moved = Math.hypot(fp.x - ox, fp.z - oz);
+    fp.stepAcc += moved;
+    if (fp.stepAcc >= STEP_M) { fp.stepAcc -= STEP_M; audio.step(W.setA.step, W.setB.step); }
+    if (moved < 1e-4) fp.moving = false;
+  }
+}
+
+// ─── 자막 ─────────────────────────────────────────────────────────
+const capEl = $('caption'), capLine = $('capLine'), capSrc = $('capSrc');
+let capTimer = null;
+function showCaption(text, src, holdMs) {
+  clearTimeout(capTimer);
+  capLine.textContent = text; capSrc.textContent = src || '';
+  capEl.classList.remove('out'); capEl.classList.add('in');
+  capTimer = setTimeout(() => { capEl.classList.remove('in'); capEl.classList.add('out'); }, holdMs || 4500);
+}
+function currentConnective() { return (CONNECTIVES || FALLBACK_CONN)[S.connective] || ''; }
+function captionSrc() { return S.pattern === 'avoidance' ? '소리만 남은 길' : '문 너머 · 통로 입구'; }
+function onEnterCorridor() { showCaption(currentConnective(), captionSrc(), 5000); }
+
+// ─── 조절판 배선 ──────────────────────────────────────────────────
+const patEl = $('patterns');
+for (const p of PATTERNS) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (p === S.pattern ? ' on' : ''); b.dataset.pattern = p;
+  b.innerHTML = PATTERN_KO[p] + '<small>' + p + '</small>'; patEl.appendChild(b);
+}
+patEl.addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) { setPattern(b.dataset.pattern); build(); } });
+function setPattern(p) { if (!PATTERNS.includes(p)) return; S.pattern = p; document.querySelectorAll('#patterns .chip').forEach((c) => c.classList.toggle('on', c.dataset.pattern === p)); }
+function domAxis(vec) { let b = -1, k = 'fear'; for (const a in vec) if (vec[a] > b) { b = vec[a]; k = a; } return k; }
+for (const id of ['fromSel', 'toSel']) {
+  const sel = $(id);
+  SCENES.forEach((sc, i) => { const o = document.createElement('option'); o.value = i; o.textContent = sc.name + ' · ' + AXIS_KO[domAxis(sc.vec)]; sel.appendChild(o); });
+  sel.addEventListener('change', () => { setPair(+$('fromSel').value, +$('toSel').value); build(); });
+}
+function setPair(fi, ti) {
+  if (SCENES[fi]) S.from = fi; if (SCENES[ti]) S.to = ti;
+  $('fromSel').value = S.from; $('toSel').value = S.to;
+  const info = buildPath({ A: PIN_A, B: PIN_B, pattern: 'echo_follow', from: SCENES[S.from].vec, to: SCENES[S.to].vec, alignment: S.alignment }).info;
+  $('deltaNote').textContent = '감정 델타: 지배 축 ' + AXIS_KO[info.dom] + ' ' + (info.side > 0 ? '늘어남 → 왼쪽으로 휨' : '줄어듦 → 오른쪽으로 휨') + ' · 크기 ' + info.m + ' (mN ' + info.mN + ' → 사물 ' + (2 + Math.round(4 * info.mN)) + '개) · r2 ' + info.r2;
+}
+function bindRange(id, apply, fmt) {
+  const el = $(id), v = $(id + 'V');
+  const upd = (fromUi) => { apply(parseFloat(el.value)); v.textContent = fmt(parseFloat(el.value)); if (fromUi) build(); };
+  el.addEventListener('input', () => upd(true)); upd(false);
+}
+bindRange('align', (x) => { S.alignment = x; }, (x) => x.toFixed(2));
+bindRange('contD', (x) => { S.cont.d = x; }, (x) => x.toFixed(2));
+bindRange('contC', (x) => { S.cont.c = x; }, (x) => x.toFixed(2));
+bindRange('contH', (x) => { S.cont.h = x; }, (x) => x.toFixed(2));
+function setAlignment(a) { S.alignment = Math.max(0, Math.min(1, a)); $('align').value = S.alignment; $('alignV').textContent = S.alignment.toFixed(2); }
+function setCont(d, c, h) {
+  if (d != null) { S.cont.d = Math.max(0, Math.min(1, d)); $('contD').value = S.cont.d; $('contDV').textContent = S.cont.d.toFixed(2); }
+  if (c != null) { S.cont.c = Math.max(0, Math.min(1, c)); $('contC').value = S.cont.c; $('contCV').textContent = S.cont.c.toFixed(2); }
+  if (h != null) { S.cont.h = Math.max(0, Math.min(1, h)); $('contH').value = S.cont.h; $('contHV').textContent = S.cont.h.toFixed(2); }
+}
+$('bucketSel').addEventListener('change', () => { setBucket($('bucketSel').value); build(); });
+function setBucket(b) { if (BUCKETS.includes(b)) { S.bucket = b; $('bucketSel').value = b; } }
+$('eyeSel').addEventListener('change', () => { setEye(parseFloat($('eyeSel').value)); build(); });   // 사물 크기(×1.3)가 눈높이를 타므로 다시 세운다
+function setEye(m) { S.eye = Math.max(0.4, Math.min(2.2, m)); SM_T.eye = S.eye; const o = Array.from($('eyeSel').options).find((x) => parseFloat(x.value) === S.eye); if (o) $('eyeSel').value = o.value; }
+$('srgbOn').addEventListener('change', () => setSrgb($('srgbOn').checked));
+$('connSel').addEventListener('change', () => { setConnective(+$('connSel').value); });
+function setConnective(i) { const list = CONNECTIVES || FALLBACK_CONN; if (list[i] != null) { S.connective = i; $('connSel').value = i; } }
+function fillConnectives() {
+  const sel = $('connSel'); sel.innerHTML = '';
+  (CONNECTIVES || FALLBACK_CONN).forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = c; sel.appendChild(o); });
+  sel.value = S.connective; $('connNote').textContent = connSource;
+}
+$('muteOn').addEventListener('change', () => audio.setMuted($('muteOn').checked));
+$('views').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) setView(b.dataset.view); });
+$('sideOn').addEventListener('change', () => setSectionSide($('sideOn').checked));
+$('rebuild').addEventListener('click', build);
+$('reset').addEventListener('click', () => { setPattern('echo_follow'); setPair(0, 2); setAlignment(0.7); setBucket('MID'); setCont(0, 0, 0); setEye(1.6); setConnective(0); setView('fp'); build(); });
+const panel = $('panel');
+function setPanel(open) { panel.classList.toggle('closed', !open); document.body.classList.toggle('panel-closed', !open); }
+function setHud(show) { $('hint').hidden = !show; $('toggle').hidden = !show; $('startNote').hidden = !show; }
+$('toggle').addEventListener('click', () => setPanel(panel.classList.contains('closed')));
+addEventListener('resize', () => { fpCam.aspect = innerWidth / innerHeight; fpCam.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); if (S.view === 'section') frameSection(); });
+
+// ─── 상태줄 ───────────────────────────────────────────────────────
+function curMix() { // 현재 자리 재료 혼합비 (0 = A, 1 = B)
+  if (!W) return 0;
+  const t = fp.t; let m = t;
+  if (S.cont.h > 0 && fp.zone === 'C') { const q = nearest(fp.x, fp.z); const quilt = ((q.s.seg + 1) % 2 === 0) ? 0 : 1; m += (quilt - m) * S.cont.h * 0.85; }
+  return m;
+}
+function curSize() { if (!W || fp.zone !== 'C') return { w: W ? W.wB : 0, h: W ? W.hB : 0 }; const q = nearest(fp.x, fp.z); return { w: q.s.w, h: q.s.h }; }
+function refreshStatus() {
+  if (!W) return;
+  const v = audio.volumes(), sz = curSize();
+  statusEl.textContent =
+    '패턴 ' + S.pattern + ' · ' + (settled() ? '정착' : '움직이는 중') + ' · 자리 ' + (fp.zone === 'C' ? '통로' : fp.zone === 'A' ? '방 A' : '방 B') + '\n' +
+    '마디 ' + W.path.segments + ' · 길이 ' + W.total.toFixed(1) + ' m (직선 ' + DIRECT_M + ', ×' + (W.total / DIRECT_M).toFixed(2) + ') · 단면 ' + W.wB + '×' + W.hB + ' → 여기 ' + sz.w.toFixed(2) + '×' + sz.h.toFixed(2) + ' · 사물 ' + W.nSymPlaced + ' · 작은 문 ' + W.smallDoorList.length + '\n' +
+    '현재 t ' + fp.t.toFixed(3) + ' · 재료 혼합 A→B ' + curMix().toFixed(2) + ' · 문 A ' + W.doorA.userData.open.toFixed(2) + ' 문 B ' + W.doorB.userData.open.toFixed(2) + '\n' +
+    '음량 A ' + v.A.toFixed(2) + ' · B ' + v.B.toFixed(2) + ' · 드론 ' + v.drone.toFixed(2) + ' · 허밍 ' + v.hum.toFixed(2) + ' · 발 ' + v.step.toFixed(2) + ' · 저음 ' + v.thump.toFixed(2) + ' (' + v.ctx + ')\n' +
+    '안개 ' + SM.fog.toFixed(3) + ' · 빛 거리 ' + SM.dist.toFixed(1) + ' · 빛 높이 ' + SM.lightY.toFixed(2) + ' · 지배축 ' + W.path.info.dom + ' side ' + W.path.info.side + ' mN ' + W.path.info.mN;
+}
+let dirtyFrames = 0;   // teleport·rebuild 직후 두 프레임은 미정착 (캡처 스크립트가 옛 프레임을 찍지 않게)
+function settled() {
+  if (!window.__t3 || !window.__t3.ready || !W || building || dirtyFrames > 0) return false;
+  if (performance.now() < fp.walkUntil) return false;
+  for (const d of [W.doorA, W.doorB]) if (Math.abs(d.userData.open - d.userData.target) > 0.01) return false;
+  for (const k of Object.keys(SM_T)) if (Math.abs(SM[k] - SM_T[k]) > (k === 'fog' ? 0.002 : 0.02)) return false;
+  return true;
+}
+
+// ─── 프레임 ───────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+let frameCount = 0;
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.1), time = clock.elapsedTime;
+  if (!W) return;
+  if (dirtyFrames > 0) dirtyFrames--;
+  if (S.view === 'fp') stepFp(dt); else fp.moving = false;
+  updateZone();
+  updateDoors(dt);
+  updateVisibility(false);
+  // 목표값 — 위치 t 로 A→B 보간, contradiction 되돌림 구간은 빛이 바닥에서
+  const t = fp.t, mix = curMix();
+  const lc = lerpHex(THREE, W.setA.light.color, W.setB.light.color, mix);
+  SM_T.lightR = lc.r; SM_T.lightG = lc.g; SM_T.lightB = lc.b;
+  // contradiction 바닥빛 — 되돌림 구간(t<tBack)은 0.12 m, 그 뒤 t 0.6 까지 서서히 눈높이로 (서명을 순간이 아니라 구간으로, 260925).
+  // 바닥빛은 벽에 닿는 면이 작아 같은 세기면 더 어둡다 → 그 몫만큼 세기 ×1.8.
+  let floorK = 0;   // 1 = 완전 바닥빛
+  if (S.pattern === 'contradiction' && fp.zone === 'C') floorK = t < W.tBack ? 1 : 1 - smoothstep(W.tBack, 0.6, t);
+  SM_T.lightI = (W.setA.light.intensity * (1 - t) + W.setB.light.intensity * t) * LIGHT_K * (1 + 0.8 * floorK);
+  SM_T.lightY = 0.12 * floorK + SM.eye * (1 - floorK);
+  SM_T.bob = fp.moving ? 1 : 0;
+  const k = 1 - Math.exp(-dt / (TRANS_S / 3));
+  for (const key of Object.keys(SM_T)) SM[key] += (SM_T[key] - SM[key]) * k;
+  scene.fog.density = SM.fog;
+  const flick = 1 + 0.35 * S.cont.d * Math.sin(2 * Math.PI * (0.3 + 0.3 * S.cont.d) * time);
+  playerLight.color.setRGB(SM.lightR, SM.lightG, SM.lightB);
+  playerLight.intensity = SM.lightI * flick; playerLight.distance = SM.dist;
+  playerLight.position.set(fp.x, SM.lightY, fp.z);
+  if (W.endLight.userData.base == null) W.endLight.userData.base = W.endLight.intensity;
+  // 도착 빛은 관객이 문 1.5 m 안에 들면 거리 비례로 줄인다 — 국소광과 겹쳐 문틀이 순백으로 타던 자리 (260925)
+  const dEnd = Math.hypot(fp.x - W.doorB.userData.pos.x, fp.z - W.doorB.userData.pos.z);
+  const nearK = Math.max(0.15, Math.min(1, dEnd / 1.5));
+  W.endLight.intensity = W.endLight.userData.base * nearK * (1 + 0.25 * S.cont.d * Math.sin(2 * Math.PI * 0.4 * time + 1.7));
+  audio.setMix(fp.zone === 'A' ? 0 : fp.zone === 'B' ? 1 : t);
+  audio.update(time);
+  marker.position.set(fp.x, 0.6, fp.z); marker.rotation.set(Math.PI / 2, 0, -fp.yaw + Math.PI, 'YXZ');
+  if (S.view === 'fp') applyFpCam(dt, time);
+  renderer.render(scene, activeCam);
+  if (++frameCount % 10 === 0) refreshStatus();
+}
+
+// ─── 연결사 8종 — 대화 모듈 소스에서 그대로 읽는다 (T1 과 같은 방식) ─────
+async function loadConnectives() {
+  try {
+    const txt = await (await fetch('../js/ui/lumen_dialog_phase1.js', { cache: 'no-store' })).text();
+    const m = txt.match(/CONT_CONNECTIVES\s*=\s*\[([^\]]*)\]/);
+    if (m) { const list = Array.from(m[1].matchAll(/'([^']*)'/g)).map((x) => x[1]); if (list.length) { CONNECTIVES = list; connSource = 'js/ui/lumen_dialog_phase1.js CONT_CONNECTIVES ' + list.length + '종 (읽어 옴)'; } }
+  } catch (e) { console.warn('[t3] 연결사 읽기 실패 — 사본 사용', e); }
+  if (!CONNECTIVES) { CONNECTIVES = FALLBACK_CONN.slice(); connSource = '읽기 실패 — 페이지 사본 8종'; }
+  fillConnectives();
+}
+
+// ─── 훅 ───────────────────────────────────────────────────────────
+function teleport(t, opts) {
+  if (!W) return;
+  const lookAhead = !(opts && opts.lookAhead === false);
+  for (const d of [W.doorA, W.doorB]) d.userData.hold = false;   // openDoor 의 hold 는 teleport·rebuild 가 푼다
+  if (t <= 0) {
+    const d = W.doorA, n = doorNormal(d);
+    fp.x = d.userData.pos.x - n.x * 0.7; fp.z = d.userData.pos.z - n.z * 0.7;
+    fp.yaw = Math.atan2(n.x, n.z); setDoorOpen(d, 1); d.userData.target = 1;
+  } else {
+    const i = Math.round(Math.max(0, Math.min(1, t)) * (W.samples.length - 1)), s = W.samples[i];
+    fp.x = s.x; fp.z = s.z; fp.yaw = lookAhead ? Math.atan2(s.tx, s.tz) : Math.atan2(-s.tx, -s.tz);
+    fp.enteredCorridor = true; fp.idx = i;
+  }
+  if (opts && opts.look) fp.yaw = Math.atan2(opts.look.x - fp.x, opts.look.z - fp.z);   // 그 자리(예: 작은 문)를 바라본다
+  fp.pitch = -0.03; fp.moving = false; fp.bobPhase = 0;
+  fp.zone = t <= 0 ? 'A' : 'C';
+  updateZone(); updateVisibility(true); dirtyFrames = 3;
+}
+function walk(seconds) { fp.walkUntil = performance.now() + seconds * 1000; return new Promise((res) => setTimeout(res, seconds * 1000 + 50)); }
+// openDoor(which, at?) — hold: updateDoors 가 거리로 덮어쓰지 않는다. at 을 주면 그 열림에 즉시 고정(캡처 "열리는 중" 컷용).
+function openDoor(which, at) {
+  const d = which === 'B' ? W.doorB : W.doorA; d.userData.hold = true;
+  if (at != null) { const v = Math.max(0, Math.min(1, at)); setDoorOpen(d, v); d.userData.target = v; } else d.userData.target = 1;
+  updateVisibility(true); dirtyFrames = 3;
+}
+window.__t3 = {
+  ready: false,
+  setPattern, setPair, setAlignment, setBucket, setCont, setEye, setConnective, setView, setSectionSide, setSrgb, rebuild: build, teleport, walk, openDoor, settled, setPanel, setHud,
+  caption() { showCaption(currentConnective(), captionSrc(), 6000); },
+  state() {
+    if (!W) return null;
+    const sz = curSize(), q = fp.zone === 'C' ? nearest(fp.x, fp.z) : null;
+    return {
+      pattern: S.pattern, from: SCENES[S.from].id, to: SCENES[S.to].id, alignment: S.alignment, bucket: S.bucket, sizeKey: W.sizeKey, cont: { ...S.cont }, eye: S.eye, connective: currentConnective(), view: S.view, srgb: S.srgb, fov: fpCam.fov,
+      segments: W.path.segments, nodes: W.path.nodes, length: +W.total.toFixed(2), direct: DIRECT_M, ratio: +(W.total / DIRECT_M).toFixed(3), ratioTarget: +W.path.ratioTarget.toFixed(3),
+      width: W.wB, height: W.hB, widthHere: +sz.w.toFixed(3), heightHere: +sz.h.toFixed(3), samples: W.samples.length,
+      zone: fp.zone, t: +fp.t.toFixed(3), mix: +curMix().toFixed(3), lateral: q ? +q.lat.toFixed(3) : 0,
+      doors: { A: +W.doorA.userData.open.toFixed(3), B: +W.doorB.userData.open.toFixed(3), tcB: +W.doorB.userData.tc.toFixed(3), holdA: !!W.doorA.userData.hold, holdB: !!W.doorB.userData.hold, distB: +Math.hypot(fp.x - W.doorB.userData.pos.x, fp.z - W.doorB.userData.pos.z).toFixed(2) },
+      sound: audio.volumes(), fog: +SM.fog.toFixed(4), fogTarget: W.fogT, lightDist: +SM.dist.toFixed(2), lightY: +SM.lightY.toFixed(2), lightI: +SM.lightI.toFixed(3), lightColor: [SM.lightR, SM.lightG, SM.lightB].map((v) => +v.toFixed(3)), endLightI: +W.endLight.intensity.toFixed(3),
+      tBack: +W.tBack.toFixed(3), objects: W.objects.length, symbols: W.nSymPlaced, smallDoors: W.smallDoorList.length, smallDoorList: W.smallDoorList, symScale: W.symScale,
+      sameRoom: W.roomA === W.roomB, sideDoor: W.sideDoor, info: W.path.info, fp: { x: +fp.x.toFixed(2), z: +fp.z.toFixed(2), yaw: +fp.yaw.toFixed(3) },
+      roomA: { x: +W.roomA.position.x.toFixed(2), z: +W.roomA.position.z.toFixed(2), yaw: +W.roomA.rotation.y.toFixed(3) }, roomB: { x: +W.roomB.position.x.toFixed(2), z: +W.roomB.position.z.toFixed(2), yaw: +W.roomB.rotation.y.toFixed(3) },
+      points: W.samples.filter((_, i) => i % 8 === 0).map((s) => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), w: +s.w.toFixed(2) })),
+    };
+  },
+};
+setPair(S.from, S.to);
+frame();
+await loadConnectives();
+build();
+requestAnimationFrame(() => { window.__t3.ready = true; refreshStatus(); });
+</script>

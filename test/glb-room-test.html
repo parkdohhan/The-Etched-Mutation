@@ -1,0 +1,600 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>조각 B · 방 규모 GLB 무대 진입 실험</title>
+<!--
+  TEM 실험 페이지 — 조각 B: 방 규모 GLB 가 r128 무대에 들어오는가 (2026-09-23)
+  배경: 기억마다 "방"을 생성기(Higgsfield 3D Jutsu / World Labs Marble)로 만들어 무대에 심는 안.
+        무대 = Three.js r128 전역 빌드(지형 셰이더·안개 벽·마네킹·FBX 로더가 묶임) → 스플랫 렌더러 불가,
+        GLB 경로만 검증한다. 저장소에는 사물 GLB(assets/object_models, 상징 사물 1.725m 규격)만 있고 방 규모는 없다.
+  본 코드(play-test.html / js/**) 미반영. 서버 0 · 저장 0. 신규 파일은 test/ 아래에만.
+  선례: test/life-t2-test.html(조절판 틀·조명 상수·훅 형식) · test/ghost-mannequin-test.html(FBX 로더·유령 재질)
+        · js/ui/lumen_scene_mannequins.js _loadGlb / 사물 몸 bbox 맞춤(symbolMaxDim)·발바닥 보정(min.y) 방식을 방에 그대로 적용.
+
+  표본 (test/assets_glb/, 각 30MB 이하, 커밋 금지 · .gitignore 는 손대지 않음 — 다운로드 산물):
+    LittlestTokyo.glb      3.94MB  three.js r128 examples/models/gltf (Sketchfab 작가 Glen Fox, CC-BY 4.0). Draco 필수(KHR_draco_mesh_compression, extensionsRequired). 메시 71·삼각형 약 14만·텍스처 4·애니 1. 건물 한 채짜리 디오라마 = "방 규모·사물 여러 개"의 대역.
+    LightsPunctualLamp.glb 4.14MB  KhronosGroup/glTF-Sample-Assets (CC0 계열, Wayfair 제공). KHR_lights_punctual(점광 5개, 세기 1.5~180cd)+KHR_materials_transmission. 메시 3·삼각형 6천. GLB 내장 조명이 r128 에서 켜지는지 보는 표본.
+    VC.glb                 2.94MB  KhronosGroup/glTF-Sample-Models 2.0/VC (Virtual City, CC-BY 4.0, COLLADA2GLTF). 확장 0. 메시 135·노드 234·재질 167·텍스처 28·애니 1 — 사물이 많은 도시 블록(방 대신 "군집" 표본).
+    합성 방                 페이지 안에서 r128 GLTFExporter 로 바닥·벽 3·사물 6·점광 2·캔버스 텍스처 1장을 GLB(binary)로 내보내고 GLTFLoader.parse 로 다시 읽는 왕복. 생성기 GLB 가 없어도 "내장 조명·텍스처가 왕복을 견디는가"를 본다.
+  출처 URL 은 아래 SAMPLES 표에.
+
+  r128 GLTFLoader 지원 확장 (https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js 소스 실독):
+    KHR_draco_mesh_compression      ○ (DRACOLoader + setDracoLoader 필요 — 이 페이지는 jsdelivr examples/js/libs/draco/ 디코더 사용)
+    KHR_texture_basisu              △ 코드는 있으나 setKTX2Loader 필수. r128 전역 빌드(examples/js)에 KTX2Loader 가 없음(404) → 전역 빌드 무대에서는 사실상 불가. 생성기가 KTX2 를 내보내면 PNG/JPG 로 재변환해야 함.
+    KHR_materials_pbrSpecularGlossiness ○  KHR_materials_clearcoat ○  KHR_materials_transmission ○  KHR_materials_unlit ○
+    KHR_materials_ior / sheen / specular / volume   ✕ (r128 목록에 없음 — r129~r131 에 추가. 있으면 무시되고 기본 PBR 로 뜸)
+    KHR_lights_punctual             ○ (directional/point/spot → THREE 조명, decay=2, range→distance. 세기는 파일 값 그대로)
+    KHR_mesh_quantization           ○   KHR_texture_transform ○   EXT_texture_webp ○(브라우저 지원 시)
+    EXT_meshopt_compression         ○ (setMeshoptDecoder 필요 — examples/js/libs/meshopt_decoder.js 전역 MeshoptDecoder, 이 페이지에서 연결)
+    MSFT_texture_dds                ✕ (명시적으로 throw)
+  생성기 내보내기 옵션 (문서 확인 260923):
+    Higgsfield 3D Jutsu — "animated MP4, a static frame, or a GLB file". 조명 3종(sun/point/spot) 편집 가능하나 GLB 에 조명이 실리는지는 미확인. 압축·텍스처 형식 미확인.
+    Marble(World Labs) — 스플랫 SPZ/PLY(약 2M, 저해상 500k) + 메시 GLB 3종: 충돌용(10~20만 삼각형, 3~4MB) / 고품질 텍스처(약 60만 삼각형) / 고품질 정점색(약 100만) — 고품질은 100~200MB, 생성 최대 1시간, 시간당 4회 제한. 좌표계 OpenCV → Y·Z 에 −1 (docs.worldlabs.ai/marble/export/specs). 압축 형식 미확인.
+
+  무대 잠금값(출처 = life-t2-test / tem_af_strata_terrain.js): 배경 0x0b0b12 · 안개 FogExp2 0x12121a · ambient 0x1a1828 1.3 / key 0xc4a882 0.7 / fill 0x3a4a80 0.3.
+  유령 = test/ybot.fbx 1.8m, ghost-mannequin-test 재질(grey 128 · opacity 0.7 · Additive · DoubleSide · depthWrite=false).
+  배치 = bbox 로 바닥 y=0·중심 x/z=0 자동 정렬 (마네킹 모듈 사물 몸과 같은 방식). 카메라 전환은 2.5초 지수 접근(느리고 넓고 무겁게).
+  결정론: 페이지 로직에 난수 없음(합성 방 배치는 상수표).
+
+  단위 규칙: 자동 판별 = 가장 긴 가로변(x/z)이 0.5~60 이면 미터로 보고 그대로, 아니면 8 m 로 맞춤. 조절판에서 raw/fit 강제 가능.
+  내장 조명 규칙 (260923 검토 반영): 파일 안 최대 세기 > 4 이면 2/최대 를 곱한다(목표 2). 첫 회차의 "목표 10" 은 램프 갓·유령·합성 방 벽이 순백으로 탔다 —
+                                  읽히는 실측 세기는 2 안팎. 슬라이더 배율(기본 1)은 그 위에 곱 → 배율 5 = 옛 목표 10 재현(비교용).
+  시점 규칙 (260923 검토 반영): 밖 = 카메라 거리 하한 4 m (작은 표본도 전신+주변). 입구→안 이동 폭 = max(2.5 m, 방 깊이 절반) 보장,
+                                  안 시점 타깃은 뒷벽 좌측 1/3 (T2 교훈: 회전보다 이동 → 이동을 키우고 시선은 보조). 안 자리에서 ±x·±z·−y 5방향 광선을 쏴
+                                  전부 뒷면이면 "내부 없음(벽 속)", 앞면 3방향 이상이면 "내부 있음", 그 외 "열림" 배지를 상태줄에 단다.
+                                  크기 비교(scale) = 유령을 표본과 같은 깊이(z) 옆에 세우고 정면·좁은 렌즈(fov 25)로 본다 → 원근 편향 0 (같은 깊이).
+  안개 규칙: 슬라이더 상한 0.30. 방 규모에서 무대 기본 0.045 는 6 m 에서 7% 가림이라 사실상 0 — 0.15(6 m 에서 55%) 와 나란히 찍어 비교한다.
+             방 안에서는 안개 대신 "어둠+국소 조명"(무대 조명만 / 내장 배율 낮춤)이 가림 수단이 될 수 있다 — 어느 쪽이 무대 톤인지는 사용자 판정.
+  playwright 훅: window.__b1 = { ready, load(url), setSample(key), setView('out'|'door'|'in'|'scale', {instant}), setScale(s), setUnits('auto'|'raw'|'fit'), setFog(d),
+                                  setGhost(bool), setGhostAt('beside'|'door'|'inside'|'sameDepth'), setStageLights(bool), setGlbLights(bool), setGlbLightGain(x), setPhysLights(bool),
+                                  setHud(bool), stats(), warnings(), settled(), view(), setPanel(bool) }
+                 stats() 에 interior(내부 판정)·ghostScale·ghostHeightM·camPos·camTgt 가 붙는다. 단위 판별 검증은 사진이 아니라 bboxStage[1]·ghostHeightM 수치로 적을 것.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap">
+<style>
+  :root{
+    --ground:#0b0b12;
+    --panel:rgba(11,11,18,0.86);
+    --line:rgba(214,201,173,0.14);
+    --ink:#d6c9ad;
+    --ink-2:#8f8797;
+    --accent:#c4a882;
+    --accent-dim:rgba(196,168,130,0.35);
+    --serif:'Cormorant Garamond','Noto Serif KR','Gowun Batang',serif;
+    --kr:'Noto Serif KR','Cormorant Garamond',serif;
+  }
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--kr);font-weight:300;overflow:hidden;-webkit-font-smoothing:antialiased}
+  #stage{position:fixed;inset:0}
+  #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  #hint{position:fixed;top:18px;left:20px;font-family:var(--serif);font-size:15px;letter-spacing:0.14em;color:var(--ink-2);pointer-events:none;line-height:1.7;max-width:60vw}
+  #hint b{color:var(--ink);font-weight:400}
+  #statusbar{position:fixed;left:20px;bottom:16px;right:340px;font-family:var(--serif);font-size:12.5px;letter-spacing:0.06em;color:var(--ink-2);line-height:1.7;pointer-events:none;white-space:pre-wrap}
+  body.panel-closed #statusbar{right:20px}
+  #statusbar b{color:var(--ink);font-weight:400}
+  #panel{position:fixed;top:0;right:0;bottom:0;width:320px;max-width:88vw;background:var(--panel);backdrop-filter:blur(10px);border-left:1px solid var(--line);display:flex;flex-direction:column;padding-block:22px;padding-inline:22px;box-sizing:border-box;overflow-y:auto;gap:20px;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+  #panel.closed{transform:translateX(100%)}
+  #panel h1{font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:0.12em;margin:0;color:var(--ink);text-wrap:balance}
+  #panel .sub{font-size:12px;color:var(--ink-2);letter-spacing:0.06em;margin-top:4px;line-height:1.6}
+  .grp{display:flex;flex-direction:column;gap:10px;padding-top:16px;border-top:1px solid var(--line)}
+  .grp:first-of-type{border-top:0;padding-top:0}
+  .grp h2{font-family:var(--serif);font-weight:400;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:var(--accent);margin:0}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px}
+  .row label{flex:1;color:var(--ink)}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--ink-2);min-width:3.2em;text-align:right;font-family:var(--serif);font-size:15px}
+  .slider{display:flex;flex-direction:column;gap:4px}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:22px}
+  input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
+  input[type=text]{width:100%;box-sizing:border-box;background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--kr);font-size:13px;padding:7px 9px;border-radius:2px}
+  input[type=text]:focus{border-color:var(--accent-dim)}
+  select{background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--kr);font-size:12.5px;padding:4px 6px;border-radius:2px;max-width:100%}
+  select option{background:#0b0b12;color:var(--ink)}
+  .note{font-size:12px;color:var(--ink-2);line-height:1.6;margin:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line);background:transparent;color:var(--ink-2);font-family:var(--kr);font-size:13px;padding:7px 11px;border-radius:2px;cursor:pointer}
+  .chip.on{border-color:var(--accent);color:var(--ink)}
+  .chip:focus-visible,button:focus-visible,input:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+  .btn{border:1px solid var(--line);background:transparent;color:var(--ink);font-family:var(--serif);font-size:14px;letter-spacing:0.14em;padding:9px 12px;cursor:pointer;border-radius:2px}
+  .btn:hover{border-color:var(--accent-dim)}
+  #toggle{position:fixed;top:14px;right:334px;z-index:5;transition:right .5s cubic-bezier(.2,.7,.2,1);border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--serif);font-size:13px;letter-spacing:0.16em;padding:8px 12px;cursor:pointer;border-radius:2px}
+  body.panel-closed #toggle{right:14px}
+  #status{font-family:var(--serif);font-size:12px;letter-spacing:0.08em;color:var(--ink-2);line-height:1.6;white-space:pre-wrap}
+  @media (max-width:640px){
+    #toggle{right:14px}
+    #panel{top:auto;left:0;right:0;width:auto;max-width:none;max-height:50vh;border-left:0;border-top:1px solid var(--line);padding-block:16px;gap:16px}
+    #panel.closed{transform:translateY(100%)}
+    #hint{font-size:13px;top:14px;left:16px}
+    #statusbar{right:16px;left:16px;bottom:52vh;font-size:11px}
+  }
+  @media (prefers-reduced-motion:reduce){#panel,#toggle{transition:none}}
+</style>
+
+<div id="stage"><canvas id="gl"></canvas></div>
+<div id="hint"><b>조각 B</b> · 방 규모 GLB · r128 무대 진입 실험</div>
+<div id="statusbar">불러오는 중…</div>
+<button id="toggle" type="button" aria-controls="panel">조절판</button>
+
+<aside id="panel" aria-label="실험 조절판">
+  <div>
+    <h1>방 GLB 진입 실험</h1>
+    <div class="sub">조각 B · 실험 페이지 · 본 코드에는 반영 안 됨<br>표본은 test/assets_glb/ (커밋 금지) · three r128 전역 빌드</div>
+  </div>
+
+  <section class="grp">
+    <h2>표본</h2>
+    <select id="sample">
+      <option value="tokyo">LittlestTokyo — 디오라마 · Draco 필수 (three.js 예제)</option>
+      <option value="lamp">LightsPunctualLamp — 내장 점광 5개 (Khronos)</option>
+      <option value="vc">VC — 사물 군집 · 확장 0 (Khronos)</option>
+      <option value="synthetic">합성 방 — GLTFExporter 왕복 (바닥·벽·사물 6·점광 2·텍스처 1)</option>
+      <option value="custom">URL 직접 입력…</option>
+    </select>
+    <input type="text" id="customUrl" placeholder="/test/assets_glb/xxx.glb 또는 https://…/room.glb" hidden>
+    <button class="btn" id="reload" type="button">다시 불러오기</button>
+    <p class="note">방은 바닥이 y=0 에 닿고 가운데가 원점에 오도록 자동 정렬된다. 단위 "자동 판별" = 가장 긴 가로변이 0.5~60 이면 미터로 보고 그대로, 아니면 8 m 로 맞춘다(cm 단위 파일 대비).</p>
+    <div class="row"><label for="units">단위</label>
+      <select id="units"><option value="auto">자동 판별</option><option value="raw">원본 그대로 (m)</option><option value="fit">가장 긴 가로변 = 8 m</option></select>
+    </div>
+    <div class="slider"><div class="row"><label for="scale">스케일 배율</label><span class="val" id="scaleV">1.00</span></div><input type="range" id="scale" min="0.05" max="4" step="0.01" value="1"></div>
+  </section>
+
+  <section class="grp">
+    <h2>시점</h2>
+    <div class="chips" id="views">
+      <button class="chip on" type="button" data-view="out">밖에서 전체</button>
+      <button class="chip" type="button" data-view="door">입구</button>
+      <button class="chip" type="button" data-view="in">안</button>
+      <button class="chip" type="button" data-view="scale">크기 비교</button>
+    </div>
+    <p class="note">전환은 2.5초 지수 접근. 끌어서 둘러보기는 항상 가능(다음 프리셋을 누르면 다시 잠긴 자리로 간다). "밖"은 4 m 이상 물러서고, "안"은 입구에서 2.5 m(또는 방 깊이 절반) 이상 들어가 뒷벽 좌측을 본다. "크기 비교"는 유령을 같은 깊이 옆에 세우고 좁은 렌즈(fov 25)로 정면에서 본다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>무대 조건</h2>
+    <div class="slider"><div class="row"><label for="fog">안개 밀도</label><span class="val" id="fogV">0.045</span></div><input type="range" id="fog" min="0" max="0.30" step="0.001" value="0.045"></div>
+    <p class="note">무대 기본 0.045 는 방 규모(6 m)에서 7% 가림 — 사실상 0. 0.15 면 6 m 에서 55%. 방 안에서는 안개 대신 어둠+국소 조명이 가림 수단일 수 있다.</p>
+    <div class="row"><label for="stageLights">무대 조명 (ambient·key·fill)</label><input type="checkbox" id="stageLights" checked></div>
+    <div class="row"><label for="glbLights">GLB 내장 조명 사용</label><input type="checkbox" id="glbLights" checked></div>
+    <div class="slider"><div class="row"><label for="glbLightGain">내장 조명 세기 배율 (자동 감쇠 위에 곱함)</label><span class="val" id="glbLightGainV">1.00</span></div><input type="range" id="glbLightGain" min="0.01" max="3" step="0.01" value="1"></div>
+    <div class="row"><label for="physLights">물리 단위 조명 (physicallyCorrectLights)</label><input type="checkbox" id="physLights"></div>
+    <div class="row"><label for="srgbOut">sRGB 출력 (무대 기본은 꺼짐)</label><input type="checkbox" id="srgbOut"></div>
+    <div class="row"><label for="ghostOn">유령 표시 (1.8 m 기준자)</label><input type="checkbox" id="ghostOn" checked></div>
+    <div class="row"><label for="ghostAt">유령 자리</label>
+      <select id="ghostAt"><option value="beside">방 옆</option><option value="door">입구</option><option value="inside">방 안</option><option value="sameDepth">같은 깊이 옆 (크기 비교)</option></select>
+    </div>
+    <p class="note">KHR_lights_punctual 의 점광 세기는 칸델라(cd) 값이라 r128 기본(비물리) 조명에선 쉽게 타 버린다. 자동 감쇠 규칙: 파일 안 최대 세기가 4 를 넘으면 2/최대 를 곱한다(목표 2 · 그 아래면 그대로). 배율 5 = 첫 회차의 "목표 10"(탔음) 재현. 배율·물리 단위로 비교한다.</p>
+  </section>
+
+  <section class="grp">
+    <div id="status">불러오는 중…</div>
+  </section>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/meshopt_decoder.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+<script>
+(function () {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const statusEl = $('status'), barEl = $('statusbar');
+
+// ─── 콘솔 경고 계수 — GLTFLoader 의 "Unknown extension" 등을 잡는다 (페이지 수명 전체) ───
+const WARN = { warn: 0, error: 0, lines: [] };
+const _w = console.warn.bind(console), _e = console.error.bind(console);
+console.warn = function () { WARN.warn++; WARN.lines.push('[warn] ' + Array.from(arguments).map(String).join(' ')); _w.apply(console, arguments); };
+console.error = function () { WARN.error++; WARN.lines.push('[error] ' + Array.from(arguments).map(String).join(' ')); _e.apply(console, arguments); };
+
+if (!window.THREE || !THREE.GLTFLoader || !THREE.DRACOLoader || !THREE.FBXLoader || !THREE.GLTFExporter) {
+  $('hint').textContent = 'three.js r128 또는 로더(GLTF/DRACO/FBX/Exporter)를 불러오지 못했습니다. 인터넷 연결을 확인하세요.';
+  throw new Error('THREE or loaders missing');
+}
+
+// ─── 잠금값 (출처는 파일 머리 주석) ─────────────────────────────────
+const TONE = {
+  ground: 0x0b0b12, fog: 0x12121a, fogDensity: 0.045,
+  ambient: [0x1a1828, 1.3], key: [0xc4a882, 0.7], fill: [0x3a4a80, 0.3],
+  ghostGrey: 128, ghostOpacity: 0.7
+};
+const FIT_LONGEST_M = 8;          // 자동 맞춤: 가장 긴 가로변(x/z)을 8 m 로 — "방 한 칸" 규모
+const EYE_M = 1.6;                // 입구·안 시점 눈높이
+const TRANS_S = 2.5;              // 시점 전환 시간(초) — 느리고 넓고 무겁게
+const CDN = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/';
+
+const SAMPLES = {
+  tokyo: { url: '/test/assets_glb/LittlestTokyo.glb', label: 'LittlestTokyo',
+           src: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/LittlestTokyo.glb (Glen Fox, CC-BY 4.0)' },
+  lamp:  { url: '/test/assets_glb/LightsPunctualLamp.glb', label: 'LightsPunctualLamp',
+           src: 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Assets@main/Models/LightsPunctualLamp/glTF-Binary/LightsPunctualLamp.glb (Khronos Sample Assets)' },
+  vc:    { url: '/test/assets_glb/VC.glb', label: 'VC (Virtual City)',
+           src: 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/VC/glTF-Binary/VC.glb (CC-BY 4.0)' },
+  synthetic: { url: 'synthetic://room', label: '합성 방 (GLTFExporter 왕복)', src: '페이지 내 생성 → GLB 내보내기 → 다시 읽기' }
+};
+
+// ─── 장면 ────────────────────────────────────────────────────────
+const canvas = $('gl');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(TONE.ground);
+scene.fog = new THREE.FogExp2(TONE.fog, TONE.fogDensity);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.05, 400);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// 무대(play-test)는 outputEncoding·toneMapping 을 건드리지 않는다 → 기본(Linear, NoToneMapping)으로 시작. 체크로 비교.
+
+const ctrl = new THREE.OrbitControls(camera, canvas);
+ctrl.enableDamping = true;
+
+// 무대 조명
+const stageLightGroup = new THREE.Group(); stageLightGroup.name = 'stageLights';
+stageLightGroup.add(new THREE.AmbientLight(TONE.ambient[0], TONE.ambient[1]));
+const key = new THREE.DirectionalLight(TONE.key[0], TONE.key[1]);
+key.position.set(6, 6, 4); key.target.position.set(0, 1, 0); stageLightGroup.add(key, key.target);
+const fill = new THREE.DirectionalLight(TONE.fill[0], TONE.fill[1]);
+fill.position.set(-5, 3, 4); stageLightGroup.add(fill);
+scene.add(stageLightGroup);
+
+// 바닥 (무대 안개색 — 방 바닥이 없을 때 지면 감각)
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshLambertMaterial({ color: TONE.fog, fog: true }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = -0.005; scene.add(floor);
+
+// ─── 로더 ────────────────────────────────────────────────────────
+const draco = new THREE.DRACOLoader();
+draco.setDecoderPath(CDN + 'draco/');
+const gltfLoader = new THREE.GLTFLoader();
+gltfLoader.setDRACOLoader(draco);   // r128 이름 = setDRACOLoader (대문자)
+if (window.MeshoptDecoder) gltfLoader.setMeshoptDecoder(window.MeshoptDecoder);
+// KTX2Loader: r128 examples/js 에 없음(404) → 연결 불가. 파일 머리 주석 참조.
+
+// ─── 상태 ────────────────────────────────────────────────────────
+let room = null;        // { root, gltf, lights[], stats, bboxRaw, base: Box3(정렬 후 스케일1 기준) }
+let ghost = null;       // { root, mixer }
+let view = 'out';
+let userScale = 1, unitsMode = 'auto';
+let glbLightGain = 1;
+const LIGHT_AUTO_MAX = 4;         // 내장 조명 자동 감쇠 문턱 — 최대 세기가 이보다 크면 LIGHT_TARGET/최대 를 곱한다 (cd 값 방어)
+const LIGHT_TARGET = 2;           // 감쇠 목표 세기 — 첫 회차 10 은 갓·유령·벽이 순백으로 탔다 (260923 검토), 읽히는 값은 2 안팎
+const OUT_MIN_DIST = 4.0;         // 밖 시점 카메라 거리 하한(m) — 작은 표본(램프 1.86 m)도 전신+주변이 들어오게
+const IN_MIN_STEP = 2.5;          // 입구→안 이동 폭 하한(m)
+const FOV_DEFAULT = 42, FOV_SCALE = 25;   // 크기 비교 시점은 좁은 렌즈(원근 편향 억제)
+const UNIT_METER_RANGE = [0.5, 60];   // 자동 판별: 가장 긴 가로변이 이 안이면 미터로 본다 (램프 1.13 m 도 잡히게 하한 0.5)
+const camGoal = { pos: new THREE.Vector3(6, 4, 10), tgt: new THREE.Vector3(0, 1, 0) };
+camera.position.copy(camGoal.pos); ctrl.target.copy(camGoal.tgt); ctrl.update();
+let camMoving = false;
+
+function fmtBox(b) { const s = b.getSize(new THREE.Vector3()); return s.x.toFixed(2) + ' × ' + s.y.toFixed(2) + ' × ' + s.z.toFixed(2); }
+
+function collectStats(gltfRoot, gltf, loadMs) {
+  let meshes = 0, tris = 0; const texSet = new Set(); const lights = [];
+  gltfRoot.traverse((o) => {
+    if (o.isMesh) {
+      meshes++;
+      const g = o.geometry;
+      if (g) tris += Math.floor((g.index ? g.index.count : (g.attributes.position ? g.attributes.position.count : 0)) / 3);
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      mats.forEach((m) => { if (!m) return; ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap','alphaMap','transmissionMap','clearcoatMap'].forEach((k) => { if (m[k]) texSet.add(m[k].uuid); }); });
+    }
+    if (o.isLight) lights.push(o);
+  });
+  const json = gltf && gltf.parser && gltf.parser.json || {};
+  return {
+    meshes, triangles: tris, textures: texSet.size, lights: lights.length,
+    extensionsUsed: json.extensionsUsed || [], extensionsRequired: json.extensionsRequired || [],
+    generator: json.asset && json.asset.generator || '', animations: (gltf.animations || []).length, loadMs: Math.round(loadMs)
+  };
+}
+
+// 재정렬: 스케일 적용 → 바닥 y=0, 중심 x/z=0 (마네킹 모듈의 사물 몸 보정과 같은 순서)
+function relayout() {
+  if (!room) return;
+  const r = room.root;
+  r.scale.setScalar(1); r.position.set(0, 0, 0); r.updateMatrixWorld(true);
+  const raw = new THREE.Box3().setFromObject(r);
+  const sz = raw.getSize(new THREE.Vector3());
+  const longest = Math.max(sz.x, sz.z) || 1;
+  const looksMeters = longest >= UNIT_METER_RANGE[0] && longest <= UNIT_METER_RANGE[1];
+  const useRaw = unitsMode === 'raw' || (unitsMode === 'auto' && looksMeters);
+  const fit = useRaw ? 1 : FIT_LONGEST_M / longest;
+  room.unitGuess = useRaw ? 'm 그대로' : '8 m 맞춤';
+  const s = fit * userScale;
+  r.scale.setScalar(s); r.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(r);
+  const c = b.getCenter(new THREE.Vector3());
+  r.position.set(-c.x, -b.min.y, -c.z);
+  r.updateMatrixWorld(true);
+  room.bboxRaw = raw; room.fitScale = fit; room.box = new THREE.Box3().setFromObject(r);
+  room.interior = probeInterior();
+  placeGhost();
+  applyView(view);
+}
+
+// ─── 내부 판정 — 안 시점 자리에서 ±x·±z·−y 5방향 광선 (r128 Raycaster 는 FrontSide 재질의 뒷면을 걸러내므로 잠시 DoubleSide 로 바꿔 쏜다) ───
+function probeInterior() {
+  if (!room) return null;
+  const origin = computeView('in').pos.clone();
+  const dirs = { '+x': [1, 0, 0], '-x': [-1, 0, 0], '+z': [0, 0, 1], '-z': [0, 0, -1], '-y': [0, -1, 0] };
+  const swapped = [];
+  room.root.traverse((o) => {
+    if (!o.isMesh) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    ms.forEach((m) => { if (m && m.side !== THREE.DoubleSide) { swapped.push([m, m.side]); m.side = THREE.DoubleSide; } });
+  });
+  const rc = new THREE.Raycaster(); rc.far = 200;
+  const nm = new THREE.Matrix3(); const n = new THREE.Vector3();
+  const hits = {}; let back = 0, front = 0, miss = 0;
+  try {
+    Object.keys(dirs).forEach((k) => {
+      rc.set(origin, new THREE.Vector3().fromArray(dirs[k]));
+      const list = rc.intersectObject(room.root, true);
+      const h = list.find((x) => x.face);
+      if (!h) { hits[k] = { hit: false }; miss++; return; }
+      nm.getNormalMatrix(h.object.matrixWorld);
+      n.copy(h.face.normal).applyMatrix3(nm).normalize();
+      const orig = swapped.find((s) => s[0] === h.object.material || (Array.isArray(h.object.material) && h.object.material.includes(s[0])));
+      if (orig && orig[1] === THREE.BackSide) n.negate();   // BackSide 재질은 감기 방향이 뒤집힌 셈
+      const backface = n.dot(rc.ray.direction) > 0;
+      hits[k] = { hit: true, dist: +h.distance.toFixed(2), backface, name: h.object.name || '' };
+      if (backface) back++; else front++;
+    });
+  } finally { swapped.forEach(([m, s]) => { m.side = s; }); }
+  const verdict = back === 5 ? '내부 없음(벽 속)' : front >= 3 ? '내부 있음' : '열림(둘러싼 벽 없음)';
+  return { verdict, front, back, miss, origin: origin.toArray().map((v) => +v.toFixed(2)), hits };
+}
+
+function applyGlbLights() {
+  if (!room) return;
+  const on = $('glbLights').checked;
+  const maxI = room.lights.reduce((m, L) => Math.max(m, L.userData.intensity0), 0);
+  room.lightAutoGain = maxI > LIGHT_AUTO_MAX ? LIGHT_TARGET / maxI : 1;
+  room.lights.forEach((L) => { L.visible = on; L.intensity = L.userData.intensity0 * room.lightAutoGain * glbLightGain; });
+}
+
+function clearRoom() {
+  if (!room) return;
+  scene.remove(room.root);
+  room.root.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+  room = null;
+}
+
+let loadSeq = 0;
+function installRoom(gltf, label, loadMs) {
+  clearRoom();
+  const root = gltf.scene || gltf.scenes[0];
+  const lights = [];
+  root.traverse((o) => {
+    if (o.isLight) { o.userData.intensity0 = o.intensity; lights.push(o); }
+    if (o.isMesh) { o.frustumCulled = true; const mats = Array.isArray(o.material) ? o.material : [o.material]; mats.forEach((m) => { if (m) m.fog = true; }); }
+  });
+  scene.add(root);
+  room = { root, gltf, lights, label, stats: collectStats(root, gltf, loadMs), mixer: null };
+  if (gltf.animations && gltf.animations.length) { room.mixer = new THREE.AnimationMixer(root); room.mixer.clipAction(gltf.animations[0]).play(); }
+  applyGlbLights();
+  relayout();
+  refreshStatus();
+}
+
+function load(url) {
+  const seq = ++loadSeq;
+  const label = url.startsWith('synthetic://') ? SAMPLES.synthetic.label : url.split('/').pop();
+  barEl.textContent = '불러오는 중 … ' + label;
+  const t0 = performance.now();
+  const w0 = WARN.warn, e0 = WARN.error, n0 = WARN.lines.length;   // 이번 로드에서 새로 난 경고만 세기 위한 기준점
+  const p = url.startsWith('synthetic://') ? buildSyntheticRoomGlb().then((buf) => parseGlb(buf, label)) : new Promise((res, rej) => gltfLoader.load(url, res, undefined, rej));
+  return p.then((gltf) => {
+    if (seq !== loadSeq) return null;
+    installRoom(gltf, label, performance.now() - t0);
+    room.stats.warnNew = WARN.warn - w0; room.stats.errorNew = WARN.error - e0; room.stats.warnLines = WARN.lines.slice(n0);
+    refreshStatus();
+    return room.stats;
+  }).catch((err) => {
+    if (seq !== loadSeq) return null;
+    console.error('[glb-room] 로드 실패', label, err);
+    barEl.textContent = '로드 실패 · ' + label + ' · ' + (err && err.message || err);
+    statusEl.textContent = barEl.textContent;
+    throw err;
+  });
+}
+function parseGlb(arrayBuffer, label) {
+  return new Promise((res, rej) => gltfLoader.parse(arrayBuffer, '', res, rej));
+}
+
+// ─── 합성 방 — r128 GLTFExporter 왕복 (난수 없음) ─────────────────
+function buildSyntheticRoomGlb() {
+  const g = new THREE.Group(); g.name = 'synthetic_room';
+  const W = 6, D = 6, H = 2.8;
+  // 텍스처 1장: 캔버스 체크무늬(결정론)
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const cx = cv.getContext('2d');
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { cx.fillStyle = (x + y) % 2 ? '#3a3548' : '#2a2636'; cx.fillRect(x * 32, y * 32, 32, 32); }
+  const tex = new THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(3, 3);
+  const floorM = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, metalness: 0 }));
+  floorM.name = 'floor'; floorM.rotation.x = -Math.PI / 2; g.add(floorM);
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x4a4458, roughness: 0.95, metalness: 0, side: THREE.DoubleSide });
+  const mk = (geo, mat, name, x, y, z, ry) => { const m = new THREE.Mesh(geo, mat); m.name = name; m.position.set(x, y, z); if (ry) m.rotation.y = ry; g.add(m); return m; };
+  mk(new THREE.PlaneGeometry(W, H), wallMat, 'wall_back', 0, H / 2, -D / 2, 0);
+  mk(new THREE.PlaneGeometry(D, H), wallMat, 'wall_left', -W / 2, H / 2, 0, Math.PI / 2);
+  mk(new THREE.PlaneGeometry(D, H), wallMat, 'wall_right', W / 2, H / 2, 0, -Math.PI / 2);
+  // 사물 6개 (상수 배치)
+  mk(new THREE.BoxGeometry(1.4, 0.75, 0.8), new THREE.MeshStandardMaterial({ color: 0x6b5a45, roughness: 0.7 }), 'table', 0, 0.375, -1.2);
+  mk(new THREE.BoxGeometry(0.45, 0.9, 0.45), new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.8 }), 'chair', -1.1, 0.45, -0.6);
+  mk(new THREE.CylinderGeometry(0.18, 0.22, 1.5, 24), new THREE.MeshStandardMaterial({ color: 0xc4a882, roughness: 0.5, metalness: 0.2 }), 'lamp_stand', 2.2, 0.75, -2.2);
+  mk(new THREE.SphereGeometry(0.3, 24, 16), new THREE.MeshStandardMaterial({ color: 0xe8d8fc, emissive: 0x6a5a8a, roughness: 0.3 }), 'lamp_bulb', 2.2, 1.75, -2.2);
+  mk(new THREE.BoxGeometry(0.9, 1.9, 0.4), new THREE.MeshStandardMaterial({ color: 0x3a4a80, roughness: 0.9 }), 'wardrobe', -2.3, 0.95, -2.5);
+  mk(new THREE.TorusGeometry(0.25, 0.08, 12, 32), new THREE.MeshStandardMaterial({ color: 0x8f8797, roughness: 0.4, metalness: 0.6 }), 'ring', 0.3, 0.83, -1.1, 0);
+  // 점광 2개 (KHR_lights_punctual 로 내보내짐)
+  const l1 = new THREE.PointLight(0xffd9a0, 12, 9, 2); l1.name = 'light_warm'; l1.position.set(2.2, 1.9, -2.2); g.add(l1);
+  const l2 = new THREE.PointLight(0x8090ff, 6, 8, 2); l2.name = 'light_cool'; l2.position.set(-2, 2.4, 1.5); g.add(l2);
+  return new Promise((res, rej) => {
+    try {
+      new THREE.GLTFExporter().parse(g, (buf) => { syntheticBytes = buf.byteLength; res(buf); }, { binary: true, includeCustomExtensions: false });
+    } catch (e) { rej(e); }
+  });
+}
+let syntheticBytes = 0;
+
+// ─── 유령 (ghost-mannequin-test 재질) ─────────────────────────────
+function makeGhostMat() {
+  const gv = TONE.ghostGrey;
+  const mat = new THREE.MeshLambertMaterial({ color: (gv << 16) | (gv << 8) | gv, transparent: true, opacity: TONE.ghostOpacity, fog: true, emissive: 0x000000, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+  mat.skinning = true; mat.morphTargets = true; return mat;
+}
+new THREE.FBXLoader().load('/test/ybot.fbx', (obj) => {
+  const bbox = new THREE.Box3().setFromObject(obj);
+  const sz = bbox.getSize(new THREE.Vector3());
+  if (sz.y > 10) obj.scale.setScalar(1.8 / sz.y);   // Mixamo cm → m
+  obj.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { o.material = makeGhostMat(); o.frustumCulled = false; } });
+  scene.add(obj);
+  const mixer = new THREE.AnimationMixer(obj);
+  if (obj.animations && obj.animations[0]) mixer.clipAction(obj.animations[0]).play();
+  ghost = { root: obj, mixer };
+  obj.visible = $('ghostOn').checked;
+  placeGhost();
+  checkReady();
+}, undefined, (err) => { console.error('[glb-room] 유령 로드 실패', err); ghostFailed = true; checkReady(); });
+let ghostFailed = false;
+
+function placeGhost() {
+  if (!ghost) return;
+  const b = room ? room.box : new THREE.Box3(new THREE.Vector3(-3, 0, -3), new THREE.Vector3(3, 2.8, 3));
+  const where = $('ghostAt').value;
+  const r = ghost.root;
+  const c = b.getCenter(new THREE.Vector3());
+  if (where === 'inside') r.position.set(0, 0, (b.min.z + b.max.z) / 2 + 0.6);
+  else if (where === 'door') r.position.set(0, 0, b.max.z + 0.3);
+  else if (where === 'sameDepth') r.position.set(b.max.x + 0.6, 0, c.z);   // 크기 비교: 표본과 같은 깊이 옆 → 원근 편향 없음
+  else r.position.set(b.max.x + 0.9, 0, b.max.z - 0.4);
+  r.rotation.y = 0;   // ybot 정면 = +z = 밖(카메라) 쪽
+}
+
+// ─── 시점 프리셋 — 방 bbox 로 계산 ────────────────────────────────
+function computeView(v) {
+  const b = room ? room.box : new THREE.Box3(new THREE.Vector3(-3, 0, -3), new THREE.Vector3(3, 2.8, 3));
+  const sz = b.getSize(new THREE.Vector3()); const c = b.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(sz.x, sz.y, sz.z);
+  const doorZ = b.max.z + Math.max(1.2, sz.z * 0.15);
+  if (v === 'door') return { pos: new THREE.Vector3(c.x, EYE_M, doorZ), tgt: new THREE.Vector3(c.x, EYE_M * 0.8, c.z), fov: FOV_DEFAULT };
+  // 안: 입구에서 max(2.5 m, 방 깊이 절반) 들어간다(이동 폭 보장). 눈높이는 방 높이의 60% 를 넘지 않게(작은 파일 대비).
+  // 타깃은 뒷벽 가운데가 아니라 좌측 1/3 — 전경 사물이 바뀌어 입구 컷과 구분되게 (회전은 보조, 이동이 주).
+  const eyeIn = Math.min(EYE_M, Math.max(0.3, sz.y * 0.6));
+  if (v === 'in')   return { pos: new THREE.Vector3(c.x, eyeIn, doorZ - Math.max(IN_MIN_STEP, sz.z * 0.5)), tgt: new THREE.Vector3(c.x - sz.x * 0.3, eyeIn * 0.8, b.min.z), fov: FOV_DEFAULT };
+  // 크기 비교: 유령(같은 깊이 옆)과 표본을 정면·좁은 렌즈로. 거리 = max(6 m, maxDim·3) → fov 25 에서 세로 2.66 m 이상 들어온다.
+  if (v === 'scale') { const d = Math.max(6, maxDim * 3); return { pos: new THREE.Vector3(c.x + 0.3, 1.0, c.z + d), tgt: new THREE.Vector3(c.x + 0.3, 0.95, c.z), fov: FOV_SCALE }; }
+  // 밖: 거리 하한 4 m — 작은 표본(램프)도 전신+주변이 들어온다. 비율은 첫 회차(x 0.75 : z 0.95) 유지.
+  const dz = Math.max(maxDim * 0.95, OUT_MIN_DIST);
+  return { pos: new THREE.Vector3(c.x + dz * (0.75 / 0.95), Math.max(sz.y * 0.9, 2.2), b.max.z + dz), tgt: new THREE.Vector3(c.x, sz.y * 0.35, c.z), fov: FOV_DEFAULT };
+}
+function applyView(v, opts) {
+  view = v;
+  if (v === 'scale' && $('ghostAt').value !== 'sameDepth') { $('ghostAt').value = 'sameDepth'; placeGhost(); }
+  const g = computeView(v);
+  camGoal.pos.copy(g.pos); camGoal.tgt.copy(g.tgt);
+  if (camera.fov !== g.fov) { camera.fov = g.fov; camera.updateProjectionMatrix(); }
+  if (opts && opts.instant) { camera.position.copy(g.pos); ctrl.target.copy(g.tgt); ctrl.update(); camMoving = false; }
+  else camMoving = true;
+  document.querySelectorAll('#views .chip').forEach((cEl) => cEl.classList.toggle('on', cEl.dataset.view === v));
+}
+
+// ─── 상태줄 ──────────────────────────────────────────────────────
+function refreshStatus() {
+  if (!room) return;
+  const s = room.stats;
+  const b = room.box.getSize(new THREE.Vector3());
+  const line1 = room.label + ' · 메시 ' + s.meshes + ' · 삼각형 ' + s.triangles.toLocaleString() + ' · 텍스처 ' + s.textures + ' · 내장 조명 ' + s.lights + ' · 애니 ' + s.animations
+    + ' · 로드 ' + s.loadMs + ' ms' + (room.label === SAMPLES.synthetic.label ? ' · GLB ' + (syntheticBytes / 1024).toFixed(0) + ' KB' : '');
+  const line2 = '확장 ' + (s.extensionsUsed.length ? s.extensionsUsed.join(', ') : '없음') + (s.extensionsRequired.length ? ' (필수: ' + s.extensionsRequired.join(', ') + ')' : '')
+    + ' · 이번 로드 경고 ' + (s.warnNew == null ? '…' : s.warnNew) + ' / 오류 ' + (s.errorNew == null ? '…' : s.errorNew) + ' (페이지 누적 경고 ' + WARN.warn + ' · 오류 ' + WARN.error + ', 유령 FBX 경고 2 포함)'
+    + (room.lights.length ? ' · 내장 조명 자동 감쇠 ×' + room.lightAutoGain.toFixed(3) + ' (목표 ' + LIGHT_TARGET + ')' : '');
+  const it = room.interior;
+  const line3 = '원본 bbox ' + fmtBox(room.bboxRaw) + ' (파일 단위) → 무대 ' + b.x.toFixed(2) + ' × ' + b.y.toFixed(2) + ' × ' + b.z.toFixed(2) + ' m · 단위 ' + room.unitGuess + ' ×' + room.fitScale.toFixed(3) + ' × 배율 ' + userScale.toFixed(2)
+    + ' · 유령 1.80 m' + (it ? ' · <b>' + it.verdict + '</b> (안 자리 5방향: 앞면 ' + it.front + ' · 뒷면 ' + it.back + ' · 빈 ' + it.miss + ')' : '');
+  barEl.innerHTML = '<b>' + line1 + '</b>\n' + line2 + '\n' + line3;
+  statusEl.textContent = (s.generator ? '생성기 ' + s.generator + '\n' : '') + '출처 ' + (currentSampleSrc() || '(직접 입력)');
+}
+function currentSampleSrc() { const k = $('sample').value; return SAMPLES[k] ? SAMPLES[k].src : $('customUrl').value; }
+
+// ─── 조절판 배선 ──────────────────────────────────────────────────
+function currentUrl() { const k = $('sample').value; return k === 'custom' ? $('customUrl').value.trim() : SAMPLES[k].url; }
+$('sample').addEventListener('change', () => { $('customUrl').hidden = $('sample').value !== 'custom'; if ($('sample').value !== 'custom') load(currentUrl()).catch(() => {}); });
+$('customUrl').addEventListener('change', () => { const u = currentUrl(); if (u) load(u).catch(() => {}); });
+$('reload').addEventListener('click', () => { const u = currentUrl(); if (u) load(u).catch(() => {}); });
+$('units').addEventListener('change', () => { unitsMode = $('units').value; relayout(); refreshStatus(); });
+$('scale').addEventListener('input', () => { userScale = parseFloat($('scale').value); $('scaleV').textContent = userScale.toFixed(2); relayout(); refreshStatus(); });
+$('fog').addEventListener('input', () => { scene.fog.density = parseFloat($('fog').value); $('fogV').textContent = scene.fog.density.toFixed(3); });
+$('stageLights').addEventListener('change', () => { stageLightGroup.visible = $('stageLights').checked; });
+$('glbLights').addEventListener('change', applyGlbLights);
+$('glbLightGain').addEventListener('input', () => { glbLightGain = parseFloat($('glbLightGain').value); $('glbLightGainV').textContent = glbLightGain.toFixed(2); applyGlbLights(); });
+function markMaterialsDirty() { scene.traverse((o) => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { if (m) m.needsUpdate = true; }); } }); }
+$('physLights').addEventListener('change', () => { renderer.physicallyCorrectLights = $('physLights').checked; markMaterialsDirty(); });
+$('srgbOut').addEventListener('change', () => { renderer.outputEncoding = $('srgbOut').checked ? THREE.sRGBEncoding : THREE.LinearEncoding; markMaterialsDirty(); });
+$('ghostOn').addEventListener('change', () => { if (ghost) ghost.root.visible = $('ghostOn').checked; });
+$('ghostAt').addEventListener('change', placeGhost);
+$('views').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) applyView(b.dataset.view); });
+const panel = $('panel');
+function setPanel(open) { panel.classList.toggle('closed', !open); document.body.classList.toggle('panel-closed', !open); }
+// HUD(머리글·상태줄·조절판 버튼) 숨김 — "자막 없이 읽히는가" 검증용 캡처. 수치는 stats() 로 따로 받는다.
+function setHud(show) { $('hint').hidden = !show; $('statusbar').hidden = !show; $('toggle').hidden = !show; }
+$('toggle').addEventListener('click', () => setPanel(panel.classList.contains('closed')));
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+// ─── 프레임 ───────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  if (ghost) ghost.mixer.update(dt);
+  if (room && room.mixer) room.mixer.update(dt);
+  if (camMoving) {
+    // 느리게, 넓게, 무겁게 — 목표까지 지수 접근. TRANS_S 초에 약 95% 도달. 사용자가 끌면(orbit) 그 자리에서 멈춘다.
+    const k = 1 - Math.exp(-dt / (TRANS_S / 3));
+    camera.position.lerp(camGoal.pos, k);
+    ctrl.target.lerp(camGoal.tgt, k);
+    if (camera.position.distanceTo(camGoal.pos) < 0.01 && ctrl.target.distanceTo(camGoal.tgt) < 0.01) camMoving = false;
+  }
+  ctrl.update();
+  renderer.render(scene, camera);
+}
+ctrl.addEventListener('start', () => { camMoving = false; });
+frame();
+
+// ─── 준비·훅 ──────────────────────────────────────────────────────
+let firstLoadDone = false;
+function checkReady() { if ((ghost || ghostFailed) && firstLoadDone) window.__b1.ready = true; }
+load(currentUrl()).catch(() => {}).then(() => { firstLoadDone = true; checkReady(); });
+
+window.__b1 = {
+  ready: false,
+  load(url) { return load(url); },
+  setSample(key) { if (!SAMPLES[key]) return Promise.reject(new Error('no sample ' + key)); $('sample').value = key; $('customUrl').hidden = true; return load(SAMPLES[key].url); },
+  setView(v, opts) { if (['out', 'door', 'in', 'scale'].includes(v)) applyView(v, opts); },   // opts.instant = 전환 없이 바로 (캡처용)
+  setHud,
+  setScale(s) { $('scale').value = s; $('scale').dispatchEvent(new Event('input')); },
+  setUnits(m) { if (['auto', 'raw', 'fit'].includes(m)) { $('units').value = m; $('units').dispatchEvent(new Event('change')); } },
+  setFog(d) { $('fog').value = d; $('fog').dispatchEvent(new Event('input')); },
+  setGhost(b) { $('ghostOn').checked = !!b; $('ghostOn').dispatchEvent(new Event('change')); },
+  setGhostAt(w) { $('ghostAt').value = w; placeGhost(); },
+  setStageLights(b) { $('stageLights').checked = !!b; $('stageLights').dispatchEvent(new Event('change')); },
+  setGlbLights(b) { $('glbLights').checked = !!b; $('glbLights').dispatchEvent(new Event('change')); },
+  setGlbLightGain(x) { $('glbLightGain').value = x; $('glbLightGain').dispatchEvent(new Event('input')); },
+  setPhysLights(b) { $('physLights').checked = !!b; $('physLights').dispatchEvent(new Event('change')); },
+  setPanel,
+  stats() {
+    if (!room) return null;
+    const b = room.box.getSize(new THREE.Vector3());
+    const gs = ghost ? ghost.root.scale.x : null;
+    const gh = ghost ? new THREE.Box3().setFromObject(ghost.root).getSize(new THREE.Vector3()).y : null;
+    return Object.assign({}, room.stats, { label: room.label, bboxRaw: room.bboxRaw.getSize(new THREE.Vector3()).toArray(), bboxStage: b.toArray(), unitGuess: room.unitGuess, fitScale: room.fitScale, userScale, lightAutoGain: room.lightAutoGain, lightTarget: LIGHT_TARGET, lightMaxRaw: room.lights.reduce((m, L) => Math.max(m, L.userData.intensity0), 0), syntheticBytes: room.label === SAMPLES.synthetic.label ? syntheticBytes : 0,
+      interior: room.interior, ghostScale: gs, ghostHeightM: gh, ghostPos: ghost ? ghost.root.position.toArray() : null, fogDensity: scene.fog.density, fov: camera.fov,
+      camPos: camera.position.toArray().map((v) => +v.toFixed(2)), camTgt: ctrl.target.toArray().map((v) => +v.toFixed(2)) });
+  },
+  warnings() { return { warn: WARN.warn, error: WARN.error, lines: WARN.lines.slice() }; },
+  settled() { return !!room && !camMoving; },
+  view() { return view; }
+};
+})();
+</script>

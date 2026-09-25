@@ -1,0 +1,1856 @@
+{
+  "report": [
+    {
+      "file": "b1-00-tokyo-out.png",
+      "label": "LittlestTokyo / out / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "out",
+        "label": "LittlestTokyo.glb",
+        "meshes": 71,
+        "triangles": 141802,
+        "textures": 4,
+        "lights": 0,
+        "ext": [
+          "KHR_draco_mesh_compression"
+        ],
+        "loadMs": 1484,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "8 m 맞춤",
+        "fitScale": 0.0145,
+        "userScale": 1,
+        "lightAutoGain": 1,
+        "lightMaxRaw": 0,
+        "lightTarget": 2,
+        "bboxStage": [
+          7.899,
+          6.294,
+          8
+        ],
+        "interior": {
+          "verdict": "내부 없음(벽 속)",
+          "front": 0,
+          "back": 5,
+          "miss": 0,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 0.13,
+              "backface": true,
+              "name": "Object649_metalmat_0"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 1.93,
+              "backface": true,
+              "name": "Object649_paintmat_0"
+            },
+            "+z": {
+              "hit": true,
+              "dist": 1.08,
+              "backface": true,
+              "name": "Object649_paintmat_0"
+            },
+            "-z": {
+              "hit": true,
+              "dist": 3.08,
+              "backface": true,
+              "name": "Object649_normal_0"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.36,
+              "backface": true,
+              "name": "Object674_outline_0"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          4.85,
+          0,
+          3.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          6,
+          5.66,
+          11.6
+        ],
+        "camTgt": [
+          0,
+          2.2,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-01-tokyo-door.png",
+      "label": "LittlestTokyo / door / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "door",
+        "label": "LittlestTokyo.glb",
+        "meshes": 71,
+        "triangles": 141802,
+        "textures": 4,
+        "lights": 0,
+        "ext": [
+          "KHR_draco_mesh_compression"
+        ],
+        "loadMs": 1484,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "8 m 맞춤",
+        "fitScale": 0.0145,
+        "userScale": 1,
+        "lightAutoGain": 1,
+        "lightMaxRaw": 0,
+        "lightTarget": 2,
+        "bboxStage": [
+          7.899,
+          6.294,
+          8
+        ],
+        "interior": {
+          "verdict": "내부 없음(벽 속)",
+          "front": 0,
+          "back": 5,
+          "miss": 0,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 0.13,
+              "backface": true,
+              "name": "Object649_metalmat_0"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 1.93,
+              "backface": true,
+              "name": "Object649_paintmat_0"
+            },
+            "+z": {
+              "hit": true,
+              "dist": 1.08,
+              "backface": true,
+              "name": "Object649_paintmat_0"
+            },
+            "-z": {
+              "hit": true,
+              "dist": 3.08,
+              "backface": true,
+              "name": "Object649_normal_0"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.36,
+              "backface": true,
+              "name": "Object674_outline_0"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          4.85,
+          0,
+          3.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          5.2
+        ],
+        "camTgt": [
+          0,
+          1.28,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-02-tokyo-in.png",
+      "label": "LittlestTokyo / in / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "in",
+        "label": "LittlestTokyo.glb",
+        "meshes": 71,
+        "triangles": 141802,
+        "textures": 4,
+        "lights": 0,
+        "ext": [
+          "KHR_draco_mesh_compression"
+        ],
+        "loadMs": 1484,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "8 m 맞춤",
+        "fitScale": 0.0145,
+        "userScale": 1,
+        "lightAutoGain": 1,
+        "lightMaxRaw": 0,
+        "lightTarget": 2,
+        "bboxStage": [
+          7.899,
+          6.294,
+          8
+        ],
+        "interior": {
+          "verdict": "내부 없음(벽 속)",
+          "front": 0,
+          "back": 5,
+          "miss": 0,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 0.13,
+              "backface": true,
+              "name": "Object649_metalmat_0"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 1.93,
+              "backface": true,
+              "name": "Object649_paintmat_0"
+            },
+            "+z": {
+              "hit": true,
+              "dist": 1.08,
+              "backface": true,
+              "name": "Object649_paintmat_0"
+            },
+            "-z": {
+              "hit": true,
+              "dist": 3.08,
+              "backface": true,
+              "name": "Object649_normal_0"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.36,
+              "backface": true,
+              "name": "Object674_outline_0"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          4.85,
+          0,
+          3.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.2
+        ],
+        "camTgt": [
+          -2.37,
+          1.28,
+          -4
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-03-lamp-out.png",
+      "label": "LightsPunctualLamp / out / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "out",
+        "label": "LightsPunctualLamp.glb",
+        "meshes": 3,
+        "triangles": 6000,
+        "textures": 7,
+        "lights": 5,
+        "ext": [
+          "KHR_materials_transmission",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1540,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.0111,
+        "lightMaxRaw": 180,
+        "lightTarget": 2,
+        "bboxStage": [
+          1.127,
+          1.864,
+          0.722
+        ],
+        "interior": {
+          "verdict": "열림(둘러싼 벽 없음)",
+          "front": 0,
+          "back": 0,
+          "miss": 5,
+          "origin": [
+            0,
+            1.12,
+            -0.94
+          ],
+          "hits": {
+            "+x": {
+              "hit": false
+            },
+            "-x": {
+              "hit": false
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": false
+            },
+            "-y": {
+              "hit": false
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          1.46,
+          0,
+          -0.04
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          3.16,
+          2.2,
+          4.36
+        ],
+        "camTgt": [
+          0,
+          0.65,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-04-lamp-door.png",
+      "label": "LightsPunctualLamp / door / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "door",
+        "label": "LightsPunctualLamp.glb",
+        "meshes": 3,
+        "triangles": 6000,
+        "textures": 7,
+        "lights": 5,
+        "ext": [
+          "KHR_materials_transmission",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1540,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.0111,
+        "lightMaxRaw": 180,
+        "lightTarget": 2,
+        "bboxStage": [
+          1.127,
+          1.864,
+          0.722
+        ],
+        "interior": {
+          "verdict": "열림(둘러싼 벽 없음)",
+          "front": 0,
+          "back": 0,
+          "miss": 5,
+          "origin": [
+            0,
+            1.12,
+            -0.94
+          ],
+          "hits": {
+            "+x": {
+              "hit": false
+            },
+            "-x": {
+              "hit": false
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": false
+            },
+            "-y": {
+              "hit": false
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          1.46,
+          0,
+          -0.04
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.56
+        ],
+        "camTgt": [
+          0,
+          1.28,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-05-lamp-in.png",
+      "label": "LightsPunctualLamp / in / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "in",
+        "label": "LightsPunctualLamp.glb",
+        "meshes": 3,
+        "triangles": 6000,
+        "textures": 7,
+        "lights": 5,
+        "ext": [
+          "KHR_materials_transmission",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1540,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.0111,
+        "lightMaxRaw": 180,
+        "lightTarget": 2,
+        "bboxStage": [
+          1.127,
+          1.864,
+          0.722
+        ],
+        "interior": {
+          "verdict": "열림(둘러싼 벽 없음)",
+          "front": 0,
+          "back": 0,
+          "miss": 5,
+          "origin": [
+            0,
+            1.12,
+            -0.94
+          ],
+          "hits": {
+            "+x": {
+              "hit": false
+            },
+            "-x": {
+              "hit": false
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": false
+            },
+            "-y": {
+              "hit": false
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          1.46,
+          0,
+          -0.04
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.12,
+          -0.94
+        ],
+        "camTgt": [
+          -0.34,
+          0.89,
+          -0.36
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-06-vc-out.png",
+      "label": "VC / out / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "out",
+        "label": "VC.glb",
+        "meshes": 167,
+        "triangles": 8383,
+        "textures": 28,
+        "lights": 0,
+        "ext": [],
+        "loadMs": 421,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "8 m 맞춤",
+        "fitScale": 0.0473,
+        "userScale": 1,
+        "lightAutoGain": 1,
+        "lightMaxRaw": 0,
+        "lightTarget": 2,
+        "bboxStage": [
+          7.865,
+          4.645,
+          8
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 5,
+          "back": 0,
+          "miss": 0,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_1"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_7"
+            },
+            "+z": {
+              "hit": true,
+              "dist": 2.67,
+              "backface": false,
+              "name": "skbox_4"
+            },
+            "-z": {
+              "hit": true,
+              "dist": 5.2,
+              "backface": false,
+              "name": "skbox_2"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.54,
+              "backface": false,
+              "name": "Rectangle01"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          4.83,
+          0,
+          3.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          6,
+          4.18,
+          11.6
+        ],
+        "camTgt": [
+          0,
+          1.63,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-07-vc-door.png",
+      "label": "VC / door / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "door",
+        "label": "VC.glb",
+        "meshes": 167,
+        "triangles": 8383,
+        "textures": 28,
+        "lights": 0,
+        "ext": [],
+        "loadMs": 421,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "8 m 맞춤",
+        "fitScale": 0.0473,
+        "userScale": 1,
+        "lightAutoGain": 1,
+        "lightMaxRaw": 0,
+        "lightTarget": 2,
+        "bboxStage": [
+          7.865,
+          4.645,
+          8
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 5,
+          "back": 0,
+          "miss": 0,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_1"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_7"
+            },
+            "+z": {
+              "hit": true,
+              "dist": 2.67,
+              "backface": false,
+              "name": "skbox_4"
+            },
+            "-z": {
+              "hit": true,
+              "dist": 5.2,
+              "backface": false,
+              "name": "skbox_2"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.54,
+              "backface": false,
+              "name": "Rectangle01"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          4.83,
+          0,
+          3.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          5.2
+        ],
+        "camTgt": [
+          0,
+          1.28,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-08-vc-in.png",
+      "label": "VC / in / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "in",
+        "label": "VC.glb",
+        "meshes": 167,
+        "triangles": 8383,
+        "textures": 28,
+        "lights": 0,
+        "ext": [],
+        "loadMs": 421,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "8 m 맞춤",
+        "fitScale": 0.0473,
+        "userScale": 1,
+        "lightAutoGain": 1,
+        "lightMaxRaw": 0,
+        "lightTarget": 2,
+        "bboxStage": [
+          7.865,
+          4.645,
+          8
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 5,
+          "back": 0,
+          "miss": 0,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_1"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_7"
+            },
+            "+z": {
+              "hit": true,
+              "dist": 2.67,
+              "backface": false,
+              "name": "skbox_4"
+            },
+            "-z": {
+              "hit": true,
+              "dist": 5.2,
+              "backface": false,
+              "name": "skbox_2"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.54,
+              "backface": false,
+              "name": "Rectangle01"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          4.83,
+          0,
+          3.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.2
+        ],
+        "camTgt": [
+          -2.36,
+          1.28,
+          -4
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-09-synthetic-out.png",
+      "label": "합성방 / out / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "out",
+        "label": "합성 방 (GLTFExporter 왕복)",
+        "meshes": 10,
+        "triangles": 1628,
+        "textures": 1,
+        "lights": 2,
+        "ext": [
+          "KHR_texture_transform",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1391,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.1667,
+        "lightMaxRaw": 12,
+        "lightTarget": 2,
+        "bboxStage": [
+          6,
+          2.8,
+          6
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 4,
+          "back": 0,
+          "miss": 1,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_right"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_left"
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": true,
+              "dist": 4.2,
+              "backface": false,
+              "name": "wall_back"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.6,
+              "backface": false,
+              "name": "floor"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          3.9,
+          0,
+          2.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          4.5,
+          2.52,
+          8.7
+        ],
+        "camTgt": [
+          0,
+          0.98,
+          0
+        ],
+        "syntheticBytes": 59036
+      }
+    },
+    {
+      "file": "b1-10-synthetic-door.png",
+      "label": "합성방 / door / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "door",
+        "label": "합성 방 (GLTFExporter 왕복)",
+        "meshes": 10,
+        "triangles": 1628,
+        "textures": 1,
+        "lights": 2,
+        "ext": [
+          "KHR_texture_transform",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1391,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.1667,
+        "lightMaxRaw": 12,
+        "lightTarget": 2,
+        "bboxStage": [
+          6,
+          2.8,
+          6
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 4,
+          "back": 0,
+          "miss": 1,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_right"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_left"
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": true,
+              "dist": 4.2,
+              "backface": false,
+              "name": "wall_back"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.6,
+              "backface": false,
+              "name": "floor"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          3.9,
+          0,
+          2.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          4.2
+        ],
+        "camTgt": [
+          0,
+          1.28,
+          0
+        ],
+        "syntheticBytes": 59036
+      }
+    },
+    {
+      "file": "b1-11-synthetic-in.png",
+      "label": "합성방 / in / HUD 없음 / 안개 0.045 / 내장 목표 2",
+      "st": {
+        "view": "in",
+        "label": "합성 방 (GLTFExporter 왕복)",
+        "meshes": 10,
+        "triangles": 1628,
+        "textures": 1,
+        "lights": 2,
+        "ext": [
+          "KHR_texture_transform",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1391,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.1667,
+        "lightMaxRaw": 12,
+        "lightTarget": 2,
+        "bboxStage": [
+          6,
+          2.8,
+          6
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 4,
+          "back": 0,
+          "miss": 1,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_right"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_left"
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": true,
+              "dist": 4.2,
+              "backface": false,
+              "name": "wall_back"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.6,
+              "backface": false,
+              "name": "floor"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          3.9,
+          0,
+          2.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.2
+        ],
+        "camTgt": [
+          -1.8,
+          1.28,
+          -3
+        ],
+        "syntheticBytes": 59036
+      }
+    },
+    {
+      "file": "b1-12-ghost-size-lamp.png",
+      "label": "유령 크기 비교 (램프와 같은 깊이 옆 · 정면 · fov 25)",
+      "st": {
+        "view": "scale",
+        "label": "LightsPunctualLamp.glb",
+        "meshes": 3,
+        "triangles": 6000,
+        "textures": 7,
+        "lights": 5,
+        "ext": [
+          "KHR_materials_transmission",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 441,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.0111,
+        "lightMaxRaw": 180,
+        "lightTarget": 2,
+        "bboxStage": [
+          1.127,
+          1.864,
+          0.722
+        ],
+        "interior": {
+          "verdict": "열림(둘러싼 벽 없음)",
+          "front": 0,
+          "back": 0,
+          "miss": 5,
+          "origin": [
+            0,
+            1.12,
+            -0.94
+          ],
+          "hits": {
+            "+x": {
+              "hit": false
+            },
+            "-x": {
+              "hit": false
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": false
+            },
+            "-y": {
+              "hit": false
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          1.16,
+          0,
+          0
+        ],
+        "fogDensity": 0.045,
+        "fov": 25,
+        "camPos": [
+          0.3,
+          1,
+          6
+        ],
+        "camTgt": [
+          0.3,
+          0.95,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-13-synthetic-in-glblights-only.png",
+      "label": "합성방 / 안 / 내장 조명만(목표 2) + 유령 안",
+      "st": {
+        "view": "in",
+        "label": "합성 방 (GLTFExporter 왕복)",
+        "meshes": 10,
+        "triangles": 1628,
+        "textures": 1,
+        "lights": 2,
+        "ext": [
+          "KHR_texture_transform",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1474,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.1667,
+        "lightMaxRaw": 12,
+        "lightTarget": 2,
+        "bboxStage": [
+          6,
+          2.8,
+          6
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 4,
+          "back": 0,
+          "miss": 1,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_right"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_left"
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": true,
+              "dist": 4.2,
+              "backface": false,
+              "name": "wall_back"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.6,
+              "backface": false,
+              "name": "floor"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          0,
+          0,
+          0.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.2
+        ],
+        "camTgt": [
+          -1.8,
+          1.28,
+          -3
+        ],
+        "syntheticBytes": 59036
+      }
+    },
+    {
+      "file": "b1-14-synthetic-in-stagelights-only.png",
+      "label": "합성방 / 안 / 무대 조명만 (방 규모 안개 대체안: 어둠)",
+      "st": {
+        "view": "in",
+        "label": "합성 방 (GLTFExporter 왕복)",
+        "meshes": 10,
+        "triangles": 1628,
+        "textures": 1,
+        "lights": 2,
+        "ext": [
+          "KHR_texture_transform",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1474,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.1667,
+        "lightMaxRaw": 12,
+        "lightTarget": 2,
+        "bboxStage": [
+          6,
+          2.8,
+          6
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 4,
+          "back": 0,
+          "miss": 1,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_right"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_left"
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": true,
+              "dist": 4.2,
+              "backface": false,
+              "name": "wall_back"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.6,
+              "backface": false,
+              "name": "floor"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          0,
+          0,
+          0.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.2
+        ],
+        "camTgt": [
+          -1.8,
+          1.28,
+          -3
+        ],
+        "syntheticBytes": 59036
+      }
+    },
+    {
+      "file": "b1-15-synthetic-in-glbgain015.png",
+      "label": "합성방 / 안 / 무대+내장 배율 0.15 (국소 조명 대체안)",
+      "st": {
+        "view": "in",
+        "label": "합성 방 (GLTFExporter 왕복)",
+        "meshes": 10,
+        "triangles": 1628,
+        "textures": 1,
+        "lights": 2,
+        "ext": [
+          "KHR_texture_transform",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1474,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.1667,
+        "lightMaxRaw": 12,
+        "lightTarget": 2,
+        "bboxStage": [
+          6,
+          2.8,
+          6
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 4,
+          "back": 0,
+          "miss": 1,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_right"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_left"
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": true,
+              "dist": 4.2,
+              "backface": false,
+              "name": "wall_back"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.6,
+              "backface": false,
+              "name": "floor"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          0,
+          0,
+          0.6
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.2
+        ],
+        "camTgt": [
+          -1.8,
+          1.28,
+          -3
+        ],
+        "syntheticBytes": 59036
+      }
+    },
+    {
+      "file": "b1-16-synthetic-door-fog015.png",
+      "label": "합성방 / 입구 / 안개 0.15 (b1-10 과 비교)",
+      "st": {
+        "view": "door",
+        "label": "합성 방 (GLTFExporter 왕복)",
+        "meshes": 10,
+        "triangles": 1628,
+        "textures": 1,
+        "lights": 2,
+        "ext": [
+          "KHR_texture_transform",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1474,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.1667,
+        "lightMaxRaw": 12,
+        "lightTarget": 2,
+        "bboxStage": [
+          6,
+          2.8,
+          6
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 4,
+          "back": 0,
+          "miss": 1,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_right"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_left"
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": true,
+              "dist": 4.2,
+              "backface": false,
+              "name": "wall_back"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.6,
+              "backface": false,
+              "name": "floor"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          3.9,
+          0,
+          2.6
+        ],
+        "fogDensity": 0.15,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          4.2
+        ],
+        "camTgt": [
+          0,
+          1.28,
+          0
+        ],
+        "syntheticBytes": 59036
+      }
+    },
+    {
+      "file": "b1-17-synthetic-in-fog015.png",
+      "label": "합성방 / 안 / 안개 0.15 (b1-11 과 비교)",
+      "st": {
+        "view": "in",
+        "label": "합성 방 (GLTFExporter 왕복)",
+        "meshes": 10,
+        "triangles": 1628,
+        "textures": 1,
+        "lights": 2,
+        "ext": [
+          "KHR_texture_transform",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 1474,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.1667,
+        "lightMaxRaw": 12,
+        "lightTarget": 2,
+        "bboxStage": [
+          6,
+          2.8,
+          6
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 4,
+          "back": 0,
+          "miss": 1,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_right"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3,
+              "backface": false,
+              "name": "wall_left"
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": true,
+              "dist": 4.2,
+              "backface": false,
+              "name": "wall_back"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.6,
+              "backface": false,
+              "name": "floor"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          3.9,
+          0,
+          2.6
+        ],
+        "fogDensity": 0.15,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.2
+        ],
+        "camTgt": [
+          -1.8,
+          1.28,
+          -3
+        ],
+        "syntheticBytes": 59036
+      }
+    },
+    {
+      "file": "b1-18-vc-door-fog015.png",
+      "label": "VC / 입구 / 안개 0.15 (b1-07 과 비교)",
+      "st": {
+        "view": "door",
+        "label": "VC.glb",
+        "meshes": 167,
+        "triangles": 8383,
+        "textures": 28,
+        "lights": 0,
+        "ext": [],
+        "loadMs": 371,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "8 m 맞춤",
+        "fitScale": 0.0473,
+        "userScale": 1,
+        "lightAutoGain": 1,
+        "lightMaxRaw": 0,
+        "lightTarget": 2,
+        "bboxStage": [
+          7.865,
+          4.645,
+          8
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 5,
+          "back": 0,
+          "miss": 0,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_1"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_7"
+            },
+            "+z": {
+              "hit": true,
+              "dist": 2.67,
+              "backface": false,
+              "name": "skbox_4"
+            },
+            "-z": {
+              "hit": true,
+              "dist": 5.2,
+              "backface": false,
+              "name": "skbox_2"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.54,
+              "backface": false,
+              "name": "Rectangle01"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          4.83,
+          0,
+          3.6
+        ],
+        "fogDensity": 0.15,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          5.2
+        ],
+        "camTgt": [
+          0,
+          1.28,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-19-vc-in-fog015.png",
+      "label": "VC / 안 / 안개 0.15 (b1-08 과 비교)",
+      "st": {
+        "view": "in",
+        "label": "VC.glb",
+        "meshes": 167,
+        "triangles": 8383,
+        "textures": 28,
+        "lights": 0,
+        "ext": [],
+        "loadMs": 371,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "8 m 맞춤",
+        "fitScale": 0.0473,
+        "userScale": 1,
+        "lightAutoGain": 1,
+        "lightMaxRaw": 0,
+        "lightTarget": 2,
+        "bboxStage": [
+          7.865,
+          4.645,
+          8
+        ],
+        "interior": {
+          "verdict": "내부 있음",
+          "front": 5,
+          "back": 0,
+          "miss": 0,
+          "origin": [
+            0,
+            1.6,
+            1.2
+          ],
+          "hits": {
+            "+x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_1"
+            },
+            "-x": {
+              "hit": true,
+              "dist": 3.37,
+              "backface": false,
+              "name": "skbox_7"
+            },
+            "+z": {
+              "hit": true,
+              "dist": 2.67,
+              "backface": false,
+              "name": "skbox_4"
+            },
+            "-z": {
+              "hit": true,
+              "dist": 5.2,
+              "backface": false,
+              "name": "skbox_2"
+            },
+            "-y": {
+              "hit": true,
+              "dist": 1.54,
+              "backface": false,
+              "name": "Rectangle01"
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          4.83,
+          0,
+          3.6
+        ],
+        "fogDensity": 0.15,
+        "fov": 42,
+        "camPos": [
+          0,
+          1.6,
+          1.2
+        ],
+        "camTgt": [
+          -2.36,
+          1.28,
+          -4
+        ],
+        "syntheticBytes": 0
+      }
+    },
+    {
+      "file": "b1-20-lamp-out-target10.png",
+      "label": "램프 / 밖 / 배율 5 = 옛 목표 10 (탐 대조, b1-03 과 비교)",
+      "st": {
+        "view": "out",
+        "label": "LightsPunctualLamp.glb",
+        "meshes": 3,
+        "triangles": 6000,
+        "textures": 7,
+        "lights": 5,
+        "ext": [
+          "KHR_materials_transmission",
+          "KHR_lights_punctual"
+        ],
+        "loadMs": 460,
+        "warnNew": 0,
+        "errorNew": 0,
+        "unitGuess": "m 그대로",
+        "fitScale": 1,
+        "userScale": 1,
+        "lightAutoGain": 0.0111,
+        "lightMaxRaw": 180,
+        "lightTarget": 2,
+        "bboxStage": [
+          1.127,
+          1.864,
+          0.722
+        ],
+        "interior": {
+          "verdict": "열림(둘러싼 벽 없음)",
+          "front": 0,
+          "back": 0,
+          "miss": 5,
+          "origin": [
+            0,
+            1.12,
+            -0.94
+          ],
+          "hits": {
+            "+x": {
+              "hit": false
+            },
+            "-x": {
+              "hit": false
+            },
+            "+z": {
+              "hit": false
+            },
+            "-z": {
+              "hit": false
+            },
+            "-y": {
+              "hit": false
+            }
+          }
+        },
+        "ghostScale": 0.0102,
+        "ghostHeightM": 1.8,
+        "ghostPos": [
+          1.46,
+          0,
+          -0.04
+        ],
+        "fogDensity": 0.045,
+        "fov": 42,
+        "camPos": [
+          3.16,
+          2.2,
+          4.36
+        ],
+        "camTgt": [
+          0,
+          0.65,
+          0
+        ],
+        "syntheticBytes": 0
+      }
+    }
+  ],
+  "warnings": {
+    "warn": 2,
+    "error": 0,
+    "lines": [
+      "[warn] THREE.FBXLoader: %s map is not supported in three.js, skipping texture. ShininessExponent",
+      "[warn] THREE.FBXLoader: Vertex has more than 4 skinning weights assigned to vertex. Deleting additional weights."
+    ]
+  },
+  "consoleErrors": [
+    "[warning] [.WebGL-0x579c00ee5800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[warning] [.WebGL-0x579c00ee5800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[warning] [.WebGL-0x579c00ee5800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[warning] [.WebGL-0x579c00ee5800]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)",
+    "[warning] THREE.FBXLoader: %s map is not supported in three.js, skipping texture. ShininessExponent",
+    "[warning] THREE.FBXLoader: Vertex has more than 4 skinning weights assigned to vertex. Deleting additional weights."
+  ]
+}

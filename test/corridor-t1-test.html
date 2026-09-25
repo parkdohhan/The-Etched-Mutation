@@ -1,0 +1,695 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>통로 T1 · 회랑의 모양·길이·폭·결</title>
+<!--
+  TEM 실험 페이지 — 통로 T1: 회랑에 전이의 모양·길이·폭·결을 준다 (2026-09-23)
+  목적: 현행 무대에서 씬을 마치고 지도로 돌아오면 안개 모듈이 "현재 위치 → 새로 열린 핀"으로
+        안개를 *직선*으로 깎아 회랑을 낸다(반폭 5, 도착 시 3초 개화). 늘 같은 결이다.
+        이 페이지는 그 회랑이 전이 패턴·출발/도착 장면의 감정 델타·정렬도·오염 3축에 따라
+        달라지면 관객 눈에 갈리는지를 보는 실험이다.
+  근거: docs/공간안개_B안_구현-260709.md (안개=벽, 연출 규칙), docs/씬은_사건이다_결정-260727.md
+        (패턴 = 중심 이동, contradiction = 지도 반사), docs/귀환_시스템_정합성_재정의-260613.md (전이 v2),
+        docs/생성형_지형모델_v2-260619.md §9 (7-02 "라벨 6개만 쓰면 궤적이 뭉개진다").
+  선례: test/life-t2-test.html (조절판·훅·전환 결) · test/fog-reveal-test.html (지형+안개 단독 구동)
+        · test/ghost-mannequin-test.html (유령 재질 — 여기서는 fog-reveal 의 스프라이트 유령을 씀).
+  본 코드(js/**, play-test.html) 미반영. 저장 0 · 서버 0 · 엔진 0 (패턴·정렬도·오염은 사람이 고른다).
+
+  모듈 사용 방식 (모듈 수정 0):
+    js/ui/lumen_spatial_fog.js 는 지형 파일이 만드는 전역 uniform(window.__temSpatialFogUniforms)과
+    runtime{getScene,getRenderer,getCamera} 를 요구한다. 이 페이지는 그 uniform 객체를 같은 모양으로
+    직접 만들고, fog-reveal-test 의 인라인 지형에 본 지형(tem_af_strata_terrain.js _sfPatchShader)의
+    "안개=벽" 규칙을 옮겨 붙인 셰이더로 그것을 읽는다. 회랑 목록·애니메이션은 모듈이 그대로 관리한다.
+    곡선·꺾인 회랑 = 꺾은 선의 마디마다 carve() 를 여러 번 부른 것. 마디별 폭 = carve 직전 setOptions.
+    이동 벽 = window.__temSpatialFogConstrain (attach 반환값이 아니라 전역에 걸린다).
+    페이지 전용 uniform(_t1*) = 결(가장자리 일렁임 진폭·주파수·벽 결·이질 얼룩·벽 얇아짐).
+    → 본 무대로 옮기려면 지형 셰이더에 같은 uniform 이 필요하다 ("본 코드 수정 필요").
+
+  260923 검토 반영 (docs/통로_T1_스크린샷/ 재촬영):
+    · 마디 간격 700 → 1400ms (관절에 원이 "툭" 열리던 튕김 제거)  · 출발 걷힘 반경 9 → 6
+    · displacement 에 목 마디(A→A2, 반폭 w×0.55) — 1인칭에서 실제로 들어간다 (걷기 실측은 캡처 스크립트)
+    · contradiction 되돌림 바닥 seedR+w+1 — 갈고리가 원 밖으로 나온다  · echo_follow 마디 ≥6, 봉우리 0.5±0.1
+    · avoidance 띠가 델타 반대쪽으로 비켜 난다(A→K→B) + 얇아짐 0.55 바닥 + 반폭 w×1.2
+    · 도착 유령·고리 바닥 불투명도 제거(걷힘에만 비례, avoidance 는 thinAmt 비례)
+    · 가장자리 일렁임 ≤ 반폭 절반, 시간항은 거칠수록 느리게
+    · 길이 규칙의 실제 유효 범위는 corridor-t1-rules.js 머리 주석 §길이 에 정직히 적음
+
+  기하 규칙 = test/corridor-t1-rules.js 파일 머리 주석 (결정론, 난수 없음).
+  연결사 8종 = js/ui/lumen_dialog_phase1.js 의 CONT_CONNECTIVES 를 페이지 로드 시 그 파일에서 읽어 옴.
+  패턴 이름은 관객 화면(무대·힌트·자막)에 나오지 않는다. 조절판·상태줄에만.
+
+  playwright 훅: window.__t1 = { ready, setPattern(p), setPair(fromIdx,toIdx), setAlignment(a), setBucket(b),
+                                  setCont(d,c,h), setConnective(i), setView('top'|'fp'), recarve(), settled(),
+                                  state(), setPanel(bool), setGuide(bool), caption(), fp:{setPos(x,z), setYaw(rad), move(x,z)} }
+    setX 는 값만 바꾼다 — recarve() 를 불러야 회랑이 다시 파인다 (조절판은 자동으로 다시 판다).
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap">
+<style>
+  :root{
+    --ground:#0b0b12;
+    --panel:rgba(11,11,18,0.86);
+    --line:rgba(214,201,173,0.14);
+    --ink:#d6c9ad;
+    --ink-2:#8f8797;
+    --accent:#c4a882;
+    --accent-dim:rgba(196,168,130,0.35);
+    --ghost:#e8d8fc;
+    --serif:'Cormorant Garamond','Noto Serif KR','Gowun Batang',serif;
+    --kr:'Noto Serif KR','Cormorant Garamond',serif;
+  }
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--kr);font-weight:300;overflow:hidden;-webkit-font-smoothing:antialiased}
+  #stage{position:fixed;inset:0}
+  #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
+  #gl.free{cursor:grab}
+  #gl.fp{cursor:crosshair}
+  #hint{position:fixed;top:18px;left:20px;font-family:var(--serif);font-size:15px;letter-spacing:0.14em;color:var(--ink-2);pointer-events:none;line-height:1.7}
+  #hint b{color:var(--ink);font-weight:400}
+  #hint .kr{font-family:var(--kr);letter-spacing:0.04em}
+
+  /* 자막 — T2 와 같은 자리·톤 */
+  #caption{position:fixed;left:50%;bottom:9vh;transform:translateX(-50%);width:min(760px,86vw);text-align:center;pointer-events:none;opacity:0;transition:opacity 1.4s cubic-bezier(.2,.7,.2,1)}
+  #caption.in{opacity:1}
+  #caption.out{opacity:0;transition-duration:1.1s}
+  #capLine{font-family:var(--kr);font-weight:300;font-size:clamp(19px,2.4vw,26px);line-height:1.75;color:var(--ghost);letter-spacing:0.04em}
+  #capSrc{margin-top:10px;font-family:var(--serif);font-size:12.5px;letter-spacing:0.22em;color:var(--ink-2)}
+
+  #panel{position:fixed;top:0;right:0;bottom:0;width:330px;max-width:88vw;background:var(--panel);backdrop-filter:blur(10px);border-left:1px solid var(--line);display:flex;flex-direction:column;padding-block:22px;padding-inline:22px;box-sizing:border-box;overflow-y:auto;gap:18px;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+  #panel.closed{transform:translateX(100%)}
+  #panel h1{font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:0.12em;margin:0;color:var(--ink);text-wrap:balance}
+  #panel .sub{font-size:12px;color:var(--ink-2);letter-spacing:0.06em;margin-top:4px;line-height:1.6}
+  .grp{display:flex;flex-direction:column;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+  .grp:first-of-type{border-top:0;padding-top:0}
+  .grp h2{font-family:var(--serif);font-weight:400;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:var(--accent);margin:0}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px}
+  .row label{flex:1;color:var(--ink)}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--ink-2);min-width:3.2em;text-align:right;font-family:var(--serif);font-size:15px}
+  .slider{display:flex;flex-direction:column;gap:4px}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:22px}
+  input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
+  select{background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--kr);font-size:12.5px;padding:4px 6px;border-radius:2px;max-width:60%}
+  select option{background:#0b0b12}
+  .note{font-size:12px;color:var(--ink-2);line-height:1.6;margin:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line);background:transparent;color:var(--ink-2);font-family:var(--kr);font-size:13px;padding:7px 11px;border-radius:2px;cursor:pointer;text-align:left}
+  .chip small{display:block;font-family:var(--serif);font-size:10.5px;letter-spacing:0.1em;color:var(--ink-2);opacity:.8}
+  .chip.on{border-color:var(--accent);color:var(--ink)}
+  .chip:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+  .btn{border:1px solid var(--line);background:transparent;color:var(--ink);font-family:var(--serif);font-size:14px;letter-spacing:0.14em;padding:9px 12px;cursor:pointer;border-radius:2px}
+  .btn:hover{border-color:var(--accent-dim)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  #toggle{position:fixed;top:14px;right:344px;z-index:5;transition:right .5s cubic-bezier(.2,.7,.2,1);border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--serif);font-size:13px;letter-spacing:0.16em;padding:8px 12px;cursor:pointer;border-radius:2px}
+  body.panel-closed #toggle{right:14px}
+  #status{font-family:var(--serif);font-size:12px;letter-spacing:0.06em;color:var(--ink-2);line-height:1.7;white-space:pre-line}
+  @media (max-width:640px){
+    #toggle{right:14px}
+    #panel{top:auto;left:0;right:0;width:auto;max-width:none;max-height:50vh;border-left:0;border-top:1px solid var(--line);padding-block:16px;gap:14px}
+    #panel.closed{transform:translateY(100%)}
+    #hint{font-size:13px;top:14px;left:16px}
+    #caption{bottom:52vh}
+  }
+  @media (prefers-reduced-motion:reduce){#panel,#toggle,#caption{transition:none}}
+</style>
+
+<div id="stage"><canvas id="gl"></canvas></div>
+<div id="hint"><b>출발</b> <span class="kr" id="hintFrom"></span> → <b>도착</b> <span class="kr" id="hintTo"></span><br><span id="hintView">조감</span></div>
+<div id="caption"><div id="capLine"></div><div id="capSrc"></div></div>
+<button id="toggle" type="button" aria-controls="panel">조절판</button>
+
+<aside id="panel" aria-label="실험 조절판">
+  <div>
+    <h1>회랑의 모양·길이·폭·결</h1>
+    <div class="sub">통로 T1 · 실험 페이지 · 본 코드에는 반영 안 됨<br>저장 0 · 서버 0 · 엔진 0 (패턴·정렬도·오염은 사람이 고른다)</div>
+  </div>
+
+  <section class="grp">
+    <h2>패턴 (모양)</h2>
+    <div class="chips" id="patterns"></div>
+    <p class="note">같은 패턴이라도 출발·도착 장면의 감정 차이(지배 축·크기)에 따라 휘는 쪽·곡률·마디 수가 달라진다. 관객 화면에는 패턴 이름이 안 나온다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>장면</h2>
+    <div class="row"><label for="fromSel">출발 장면</label><select id="fromSel"></select></div>
+    <div class="row"><label for="toSel">도착 장면</label><select id="toSel"></select></div>
+    <p class="note" id="deltaNote"></p>
+  </section>
+
+  <section class="grp">
+    <h2>정렬 (길이·폭)</h2>
+    <div class="slider"><div class="row"><label for="align">정렬도 → 길이 = 직선 × (1 + 0.75·(1−a)), 상한 1.6</label><span class="val" id="alignV">0.70</span></div><input type="range" id="align" min="0" max="1" step="0.01" value="0.7"></div>
+    <div class="row"><label for="bucketSel">수준 → 반폭 (HIGH 7 · MID 5 · LOW 3.5 · FIXATED 2.5)</label>
+      <select id="bucketSel"><option>HIGH</option><option selected>MID</option><option>LOW</option><option>FIXATED</option></select></div>
+  </section>
+
+  <section class="grp">
+    <h2>오염 (결)</h2>
+    <div class="slider"><div class="row"><label for="contD">발산 — 가장자리 일렁임·거칠기 ↑</label><span class="val" id="contDV">0.00</span></div><input type="range" id="contD" min="0" max="1" step="0.01" value="0"></div>
+    <div class="slider"><div class="row"><label for="contC">수렴 — 좁고 매끈</label><span class="val" id="contCV">0.00</span></div><input type="range" id="contC" min="0" max="1" step="0.01" value="0"></div>
+    <div class="slider"><div class="row"><label for="contH">이질 — 마디마다 폭·색 얼룩</label><span class="val" id="contHV">0.00</span></div><input type="range" id="contH" min="0" max="1" step="0.01" value="0"></div>
+  </section>
+
+  <section class="grp">
+    <h2>입구 자막</h2>
+    <div class="row"><label for="connSel">연결사 (8종, 대화 모듈에서 읽음)</label><select id="connSel"></select></div>
+    <p class="note" id="connNote">읽는 중…</p>
+  </section>
+
+  <section class="grp">
+    <h2>카메라</h2>
+    <div class="chips" id="views">
+      <button class="chip on" type="button" data-view="top">조감 <small>비교용 · 회랑 전체</small></button>
+      <button class="chip" type="button" data-view="fp">1인칭 <small>관객이 보는 것 · WASD · 끌어서 둘러보기</small></button>
+    </div>
+    <div class="row"><label for="guideOn">계획선 표시 (조감 전용, 관객 화면 아님)</label><input type="checkbox" id="guideOn"></div>
+  </section>
+
+  <section class="grp">
+    <h2>동작</h2>
+    <div class="btns"><button class="btn" id="recarve" type="button">회랑 다시 파기</button><button class="btn" id="reset" type="button">처음으로</button></div>
+  </section>
+
+  <section class="grp">
+    <div id="status">불러오는 중…</div>
+  </section>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="../js/ui/lumen_spatial_fog.js"></script>
+<script type="module">
+import { AXES, AXIS_KO, SCENES, PATTERNS, PATTERN_KO, BUCKETS, buildPath } from './corridor-t1-rules.js';
+
+const $ = (id) => document.getElementById(id);
+const statusEl = $('status');
+if (!window.THREE || !window.LumenSpatialFog) {
+  $('hint').textContent = 'three.js 또는 안개 모듈을 불러오지 못했습니다.';
+  throw new Error('THREE or LumenSpatialFog missing');
+}
+
+// ─── 잠금값 (출처는 파일 머리 주석 / fog-reveal-test / 안개 모듈 DEFAULTS) ─
+const SZ = 190, G = 160;             // 지형 크기·격자 (fog-reveal: 120/128 — 반대편 뚫림 + 조감 여유로 키움)
+const GRID_MARGIN = 56;              // 회랑 점의 클램프 경계 (contradiction 반대편)
+const CLEAR_COLOR = 0x12121a;
+const FOG_CLEAR_DENSITY = 0.006;     // tem_af_strata_terrain 기본
+const SF_MAX = 24;                   // 지형 파일 _SF_MAX 와 동일
+const WALL = 0.985;                  // 모듈 DEFAULTS.wallStrength
+const SKY = 0x555f6e;                // 안개 벽 색 (지형 파일 uSky)
+// 마디 간격 — 앞 마디 끝이 관절에 거의 닿은 뒤(진행률 ≈0.97) 다음 마디가 시작한다.
+// 260923 검토: 700ms 였을 때 앞 마디가 38% 만 파인 시점에 관절 자리에 반폭 원이 "툭" 열렸다(튕김).
+const STAGGER_MS = 1400;
+const CORRIDOR_MS = 1600, REGION_MS = 3000;   // 모듈 DEFAULTS
+// 출발 자리 걷힘 반경 (무대 입장 14 보다 작게). 260923: 9 → 6 — 9 는 1인칭 75° 시야를 통째로 걷어
+// 입구 좌우 벽이 화면에 안 들어왔고, contradiction 갈고리를 원이 삼켰다.
+const SEED_R = 6;
+const BLOOM_R = 14;                  // 도착 개화 반경
+const TRANS_S = 2.5;                 // 결 uniform 전환 (지수 접근, 느리고 넓고 무겁게)
+const PIN_A = { x: -24, z: 16 }, PIN_B = { x: 26, z: -14 };
+const EYE = 1.7, WALK = 9;           // 1인칭 눈높이·걸음 속도(단위/초)
+
+// 17축 → 지형 물감 (fog-reveal EC 를 17축으로 늘림)
+const EC = {
+  fear: [0.48, 0.35, 0.85], sadness: [0.35, 0.50, 0.85], anger: [0.85, 0.35, 0.35], guilt: [0.60, 0.40, 0.30],
+  shame: [0.70, 0.30, 0.50], isolation: [0.40, 0.45, 0.60], numbness: [0.50, 0.50, 0.55], moral_pain: [0.60, 0.25, 0.35],
+  helplessness: [0.35, 0.40, 0.50], despair: [0.25, 0.25, 0.40], joy: [0.91, 0.77, 0.42], hope: [0.70, 0.85, 0.50],
+  relief: [0.35, 0.85, 0.72], gratitude: [0.85, 0.70, 0.55], love: [0.90, 0.50, 0.60], peace: [0.50, 0.80, 0.80], comfort: [0.80, 0.75, 0.60],
+};
+function domAxis(vec) { let b = -1, k = AXES[0]; for (const a of AXES) { const v = vec[a] || 0; if (v > b) { b = v; k = a; } } return k; }
+
+// ─── 상태 ───────────────────────────────────────────────────────
+const S = { pattern: 'echo_follow', from: 0, to: 2, alignment: 0.7, bucket: 'MID', cont: { d: 0, c: 0, h: 0 }, connective: 0, view: 'top', guide: false };
+let CONNECTIVES = null;     // 대화 모듈에서 읽은 8종
+let connSource = '';
+let path = null;            // buildPath 결과
+let carveTimers = [];
+let doneAt = 0;
+let carveId = 0;
+
+// ─── 결정론 노이즈 (fog-reveal 과 동일) ───────────────────────────
+function hash2(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); }
+function noise2(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y); let fx = x - ix, fy = y - iy;
+  fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+  const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1);
+  return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+}
+function fbm2(x, y) { let v = 0, a = 0.5; for (let i = 0; i < 4; i++) { v += a * noise2(x, y); x *= 2.1; y *= 2.1; a *= 0.5; } return v; }
+function heightAt(wx, wz) { return fbm2(wx * 0.035 + 7.3, wz * 0.035 + 2.1) * 14 - 5 + fbm2(wx * 0.11, wz * 0.11) * 3.5; }
+
+// ─── 장면 ────────────────────────────────────────────────────────
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(CLEAR_COLOR);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(CLEAR_COLOR);
+scene.fog = new THREE.FogExp2(CLEAR_COLOR, FOG_CLEAR_DENSITY);   // 셰이더 분기(FOG_EXP2)에 필요
+
+const topCam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 600);
+const fpCam = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 600);
+let activeCam = topCam;
+const controls = new THREE.OrbitControls(topCam, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08; controls.maxPolarAngle = Math.PI * 0.49;
+
+scene.add(new THREE.AmbientLight(0x404050, 0.7));
+const dl = new THREE.DirectionalLight(0x8090b0, 0.55); dl.position.set(30, 60, 20); scene.add(dl);
+
+// ─── 공유 uniform — 지형 파일이 만드는 것과 같은 모양 (모듈이 여기에 숫자를 흘려보낸다) ──
+const U = window.__temSpatialFogUniforms = {
+  MAX: SF_MAX,
+  uOn: { value: 0 }, uCount: { value: 0 }, uTime: { value: 0 },
+  uWall: { value: WALL }, uSky: { value: new THREE.Color(SKY) },
+  uSeg: { value: [] }, uRad: { value: new Float32Array(SF_MAX) },
+};
+for (let i = 0; i < SF_MAX; i++) U.uSeg.value.push(new THREE.Vector4(0, 0, 0, 0));
+// 페이지 전용 결 uniform — 본 무대 지형 셰이더에는 없다 (본 코드 수정 필요 항목)
+const T1 = {
+  edgeAmp: { value: 1 }, edgeFreq: { value: 1 }, grain: { value: 0.16 }, hetero: { value: 0 },
+  thin: { value: new THREE.Vector4(0, 0, 0, 0) }, thin2: { value: new THREE.Vector4(0, 0, 0, 0) }, thinR: { value: 1 }, thinAmt: { value: 0 },
+};
+const T1_TARGET = { edgeAmp: 1, edgeFreq: 1, grain: 0.16, hetero: 0, thinAmt: 0 };
+
+// ─── 지형 (fog-reveal-test 인라인 지형 + 본 지형 _sfPatchShader 의 안개=벽 규칙) ──
+const geo = new THREE.PlaneGeometry(SZ, SZ, G - 1, G - 1);
+geo.rotateX(-Math.PI / 2);
+const pos = geo.attributes.position.array;
+const colA = new Float32Array(pos.length);
+for (let j = 0; j < G * G; j++) pos[j * 3 + 1] = heightAt(pos[j * 3], pos[j * 3 + 2]);
+geo.setAttribute('color', new THREE.BufferAttribute(colA, 3));
+geo.computeVertexNormals();
+function paintTerrain() {
+  const tints = [{ p: PIN_A, ec: EC[domAxis(SCENES[S.from].vec)] }, { p: PIN_B, ec: EC[domAxis(SCENES[S.to].vec)] }];
+  for (let j = 0; j < G * G; j++) {
+    const wx = pos[j * 3], wz = pos[j * 3 + 2], h = pos[j * 3 + 1];
+    const t = Math.min(1, Math.max(0, (h + 8) / 18));
+    let r = 0.10 + t * 0.14, g = 0.10 + t * 0.13, b = 0.14 + t * 0.15;
+    for (const ti of tints) {
+      const d = Math.hypot(wx - ti.p.x, wz - ti.p.z);
+      const k = Math.max(0, 1 - d / 15) * 0.45;
+      if (k > 0) { r += (ti.ec[0] * 0.5 - r) * k; g += (ti.ec[1] * 0.5 - g) * k; b += (ti.ec[2] * 0.5 - b) * k; }
+    }
+    colA[j * 3] = r; colA[j * 3 + 1] = g; colA[j * 3 + 2] = b;
+  }
+  geo.attributes.color.needsUpdate = true;
+}
+paintTerrain();
+
+const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.06, side: THREE.DoubleSide });
+terrainMat.onBeforeCompile = function (shader) {
+  shader.uniforms._sfOn = U.uOn; shader.uniforms._sfCount = U.uCount; shader.uniforms._sfTime = U.uTime;
+  shader.uniforms._sfWall = U.uWall; shader.uniforms._sfSky = U.uSky; shader.uniforms._sfSeg = U.uSeg; shader.uniforms._sfRad = U.uRad;
+  shader.uniforms._t1EdgeAmp = T1.edgeAmp; shader.uniforms._t1EdgeFreq = T1.edgeFreq; shader.uniforms._t1Grain = T1.grain;
+  shader.uniforms._t1Hetero = T1.hetero; shader.uniforms._t1Thin = T1.thin; shader.uniforms._t1Thin2 = T1.thin2; shader.uniforms._t1ThinR = T1.thinR; shader.uniforms._t1ThinAmt = T1.thinAmt;
+
+  shader.fragmentShader = shader.fragmentShader.replace('void main() {', [
+    'varying vec3 vWPos;',
+    'uniform float _sfOn; uniform int _sfCount; uniform float _sfTime; uniform float _sfWall; uniform vec3 _sfSky;',
+    'uniform vec4 _sfSeg[' + SF_MAX + ']; uniform float _sfRad[' + SF_MAX + '];',
+    'uniform float _t1EdgeAmp; uniform float _t1EdgeFreq; uniform float _t1Grain; uniform float _t1Hetero;',
+    'uniform vec4 _t1Thin; uniform vec4 _t1Thin2; uniform float _t1ThinR; uniform float _t1ThinAmt;',
+    'float _t1SegD(vec2 p, vec4 s){ vec2 pa = p - s.xy; vec2 ba = s.zw - s.xy; float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0); return length(pa - ba * h); }',
+    'float _sfH31(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}',
+    'float _sfN31(vec3 p){ vec3 i=floor(p),f=fract(p); f=f*f*(3.0-2.0*f);',
+    '  return mix(mix(mix(_sfH31(i),_sfH31(i+vec3(1,0,0)),f.x), mix(_sfH31(i+vec3(0,1,0)),_sfH31(i+vec3(1,1,0)),f.x),f.y),',
+    '    mix(mix(_sfH31(i+vec3(0,0,1)),_sfH31(i+vec3(1,0,1)),f.x), mix(_sfH31(i+vec3(0,1,1)),_sfH31(i+vec3(1,1,1)),f.x),f.y),f.z);}',
+    'float _sfFbm3(vec3 p){ float v=0.0,a=0.5; for(int i=0;i<4;i++){v+=a*_sfN31(p);p*=2.1;a*=0.5;} return v;}',
+    'void main() {',
+  ].join('\n'));
+  // 암석 질감 (fog-reveal 과 동일 — 충돌 없음 증명용)
+  shader.fragmentShader = shader.fragmentShader.replace('gl_FragColor = vec4( outgoingLight, diffuseColor.a );', [
+    'float _grain0 = _sfFbm3(vWPos * 8.0) * 0.12 - 0.06;',
+    'float _slope0 = 1.0 - abs(dot(normal, vec3(0.0, 1.0, 0.0)));',
+    'outgoingLight += _grain0; outgoingLight -= _slope0 * _slope0 * 0.15;',
+    'outgoingLight = max(outgoingLight, vec3(0.02));',
+    'gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+  ].join('\n'));
+  // 안개 = 벽 (본 지형 규칙) + 페이지 결 uniform
+  shader.fragmentShader = shader.fragmentShader.replace('#include <fog_fragment>', [
+    '#if defined( USE_FOG ) && defined( FOG_EXP2 )',
+    'if (_sfOn > 0.5) {',
+    '  float _rv = 0.0; float _nr = 0.0;',
+    // 가장자리 노이즈 (±0.5). 시간항은 거칠수록 느리게(0.18 ÷ max(1, edgeAmp)) — "거칠지만 느린" 결, 잔떨림 금지.
+    '  float _eN = _sfFbm3(vec3(vWPos.x * 0.22 * _t1EdgeFreq, _sfTime * 0.18 / max(1.0, _t1EdgeAmp), vWPos.z * 0.22 * _t1EdgeFreq)) - 0.5;',
+    '  for (int i = 0; i < ' + SF_MAX + '; i++) {',
+    '    if (i >= _sfCount) break;',
+    '    float _r = _sfRad[i]; if (_r < 0.01) continue;',
+    '    vec2 _pa = vWPos.xz - _sfSeg[i].xy; vec2 _ba = _sfSeg[i].zw - _sfSeg[i].xy;',
+    '    float _hh = clamp(dot(_pa, _ba) / max(dot(_ba, _ba), 1e-6), 0.0, 1.0);',
+    '    float _d0 = length(_pa - _ba * _hh);',
+    // 일렁임 진폭은 반폭의 절반을 넘지 못한다 (260923: 발산 0.9 에서 회랑 코어까지 덮여 보이는 벽≠걷는 벽)
+    '    float _d = _d0 + _eN * min(0.5 * _r, _r * 0.35 * _t1EdgeAmp);',
+    '    _rv = max(_rv, 1.0 - smoothstep(_r * 0.55, _r, _d));',
+    '    _nr = max(_nr, 1.0 - smoothstep(_r, _r * 3.5, _d0));',   // 회랑 언저리 (이질 얼룩은 구간 곁에만)
+    '  }',
+    '  float _W = (1.0 - _rv) * _sfWall;',
+    // avoidance — 회랑을 깎지 않고 벽만 얇아진다 (이동 벽은 모듈 revealAt 그대로 = 여전히 막힘)
+    // 띠는 두 마디(A→K, K→B) — 델타 반대쪽으로 비켜 난 꺾은 선
+    '  if (_t1ThinAmt > 0.001) {',
+    '    float _td = min(_t1SegD(vWPos.xz, _t1Thin), _t1SegD(vWPos.xz, _t1Thin2)) + _eN * 2.0;',
+    '    _W *= 1.0 - _t1ThinAmt * (1.0 - smoothstep(_t1ThinR * 0.3, _t1ThinR, _td));',
+    '  }',
+    '  float _dc = length(vWPos - cameraPosition);',
+    '  float _fogC = 1.0 - exp(-fogDensity * fogDensity * _dc * _dc);',
+    '  float _ff = clamp(_fogC + _W * (1.0 - _fogC), 0.0, 1.0);',
+    '  float _g = (_sfFbm3(vec3(vWPos.x * 0.05, _sfTime * 0.04, vWPos.z * 0.05)) - 0.5) * _t1Grain;',
+    // 이질 — 안개 벽 색이 덩어리마다 다른 얼룩 (따뜻한 쪽 / 차가운 쪽)
+    '  float _bl = _sfFbm3(vec3(vWPos.x * 0.09 + 5.0, _sfTime * 0.02, vWPos.z * 0.09));',
+    '  vec3 _alt = vec3(_sfSky.r * 1.3, _sfSky.g * 0.95, _sfSky.b * 0.78);',
+    '  vec3 _alt2 = vec3(_sfSky.r * 0.78, _sfSky.g * 0.9, _sfSky.b * 1.25);',
+    '  vec3 _skyCol = mix(_sfSky, mix(_alt2, _alt, smoothstep(0.35, 0.65, _bl)), _t1Hetero * 0.9 * _nr);',
+    '  vec3 _col = mix(fogColor, _skyCol * (1.0 + _g), _W);',
+    '  gl_FragColor.rgb = mix(gl_FragColor.rgb, _col, _ff);',
+    '} else {',
+    '#include <fog_fragment>',
+    '}',
+    '#else',
+    '#include <fog_fragment>',
+    '#endif',
+  ].join('\n'));
+  shader.vertexShader = shader.vertexShader.replace('void main() {', 'varying vec3 vWPos;\nvoid main() {');
+  shader.vertexShader = shader.vertexShader.replace('#include <fog_vertex>', '#include <fog_vertex>\nvWPos = (modelMatrix * vec4(position, 1.0)).xyz;');
+};
+scene.add(new THREE.Mesh(geo, terrainMat));
+
+// ─── 핀: A = 서 있는 자리 고리, B = 유령 스프라이트 (fog-reveal 방식) ─────
+function makeGhostTexture(rgb) {
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+  const cx = cv.getContext('2d');
+  const cs = 'rgba(' + Math.round(rgb[0] * 255) + ',' + Math.round(rgb[1] * 255) + ',' + Math.round(rgb[2] * 255);
+  const grd = cx.createRadialGradient(64, 56, 6, 64, 56, 60);
+  grd.addColorStop(0, cs + ',0.50)'); grd.addColorStop(1, cs + ',0)');
+  cx.fillStyle = grd; cx.fillRect(0, 0, 128, 128);
+  cx.fillStyle = cs + ',0.88)'; cx.beginPath();
+  cx.arc(64, 48, 20, Math.PI, 0); cx.lineTo(84, 92);
+  cx.quadraticCurveTo(78, 84, 72, 94); cx.quadraticCurveTo(66, 86, 60, 95); cx.quadraticCurveTo(54, 85, 48, 93);
+  cx.lineTo(44, 92); cx.closePath(); cx.fill();
+  return new THREE.CanvasTexture(cv);
+}
+const ghostB = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGhostTexture(EC.joy), transparent: true, depthWrite: false, fog: true, opacity: 0 }));
+ghostB.scale.set(5, 5, 1); scene.add(ghostB);
+const ringA = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.0, 40), new THREE.MeshBasicMaterial({ color: 0xc4a882, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+ringA.rotation.x = -Math.PI / 2; ringA.position.set(PIN_A.x, heightAt(PIN_A.x, PIN_A.z) + 0.25, PIN_A.z); scene.add(ringA);
+const ringB = ringA.clone(); ringB.material = ringA.material.clone(); ringB.position.set(PIN_B.x, heightAt(PIN_B.x, PIN_B.z) + 0.25, PIN_B.z); scene.add(ringB);
+function placeGhostB() {
+  ghostB.material.map = makeGhostTexture(EC[domAxis(SCENES[S.to].vec)]); ghostB.material.needsUpdate = true;
+  ghostB.position.set(PIN_B.x, heightAt(PIN_B.x, PIN_B.z) + 3.2, PIN_B.z);
+}
+placeGhostB();
+
+// 계획선 (조감 비교용, 기본 꺼짐 — 관객 화면 아님)
+const guideLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xc4a882, transparent: true, opacity: 0.55, depthTest: false }));
+guideLine.renderOrder = 10; guideLine.visible = false; scene.add(guideLine);
+function updateGuide() {
+  if (!path) return;
+  const arr = path.points.map((q) => new THREE.Vector3(q.x, heightAt(q.x, q.z) + 0.8, q.z));
+  guideLine.geometry.dispose(); guideLine.geometry = new THREE.BufferGeometry().setFromPoints(arr);
+  guideLine.visible = S.guide && S.view === 'top';
+}
+
+// ─── 안개 모듈 attach (모듈 수정 0) ───────────────────────────────
+const runtime = { getScene: () => scene, getRenderer: () => renderer, getCamera: () => activeCam };
+const fog = LumenSpatialFog.attach(runtime, { corridorRadius: 5, regionRadius: BLOOM_R });
+if (!fog) { statusEl.textContent = '안개 모듈 attach 실패'; throw new Error('fog attach failed'); }
+const constrain = () => window.__temSpatialFogConstrain;   // 이동 벽 (전역에 걸린다)
+
+// ─── 자막 ─────────────────────────────────────────────────────────
+const capEl = $('caption'), capLine = $('capLine'), capSrc = $('capSrc');
+let capTimer = null;
+function showCaption(text, src, holdMs) {
+  clearTimeout(capTimer);
+  capLine.textContent = text; capSrc.textContent = src || '';
+  capEl.classList.remove('out'); capEl.classList.add('in');
+  capTimer = setTimeout(() => { capEl.classList.remove('in'); capEl.classList.add('out'); }, holdMs || 4500);
+}
+function currentConnective() { return (CONNECTIVES || FALLBACK_CONN)[S.connective] || ''; }
+const FALLBACK_CONN = ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];
+
+// ─── 회랑 파기 ────────────────────────────────────────────────────
+function clearTimers() { for (const t of carveTimers) clearTimeout(t); carveTimers = []; }
+function recarve() {
+  carveId++;
+  clearTimers();
+  fog.clear();
+  fog.seed(PIN_A.x, PIN_A.z, SEED_R);
+  path = buildPath({ A: PIN_A, B: PIN_B, pattern: S.pattern, from: SCENES[S.from].vec, to: SCENES[S.to].vec,
+    alignment: S.alignment, bucket: S.bucket, cont: S.cont, gridMargin: GRID_MARGIN, seedR: SEED_R });
+  // 결 목표값 — 프레임에서 2.5초 지수 접근
+  Object.assign(T1_TARGET, { edgeAmp: path.texture.edgeAmp, edgeFreq: path.texture.edgeFreq, grain: path.texture.grain, hetero: path.texture.hetero, thinAmt: 0 });
+  const now = performance.now();
+  if (path.thin) {
+    T1.thin.value.set(path.thin.a.x, path.thin.a.z, path.thin.k.x, path.thin.k.z);
+    T1.thin2.value.set(path.thin.k.x, path.thin.k.z, path.thin.b.x, path.thin.b.z);
+    T1.thinR.value = path.thin.r;
+    T1_TARGET.thinAmt = path.thin.amt;
+    doneAt = now + TRANS_S * 1000 * 1.5;
+    carveTimers.push(setTimeout(() => showCaption(currentConnective(), '벽 앞 · 길은 나지 않는다', 5000), 600));
+  } else {
+    for (let i = 0; i < path.segments; i++) {
+      const p0 = path.points[i], p1 = path.points[i + 1], w = path.halfWidths[i];
+      carveTimers.push(setTimeout(() => { fog.setOptions({ corridorRadius: w }); fog.carve(p0.x, p0.z, p1.x, p1.z); }, i * STAGGER_MS));
+    }
+    const lastAt = (path.segments - 1) * STAGGER_MS + CORRIDOR_MS;
+    if (path.bloomAtB) carveTimers.push(setTimeout(() => fog.openAt(PIN_B.x, PIN_B.z, BLOOM_R), lastAt));
+    doneAt = now + lastAt + (path.bloomAtB ? REGION_MS : 0) + 200;
+    carveTimers.push(setTimeout(() => showCaption(currentConnective(), '회랑 입구', 4500), Math.round(CORRIDOR_MS * 0.6)));
+  }
+  updateGuide();
+  if (S.view === 'top') frameTop();
+  else placeFp();
+  console.log('[t1] 회랑 —', S.pattern, SCENES[S.from].name, '→', SCENES[S.to].name,
+    '마디', path.segments, '길이', path.length.toFixed(1), '×' + path.ratio.toFixed(2), '반폭', path.halfWidth.toFixed(1),
+    '지배축', path.info.dom, 'side', path.info.side, 'mN', path.info.mN);
+  refreshStatus(true);
+}
+
+// ─── 카메라 ───────────────────────────────────────────────────────
+function frameTop() {
+  const pts = (path ? path.points : []).concat([PIN_A, PIN_B]);
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const q of pts) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); z0 = Math.min(z0, q.z); z1 = Math.max(z1, q.z); }
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const ext = Math.max(x1 - x0, z1 - z0) + 36;
+  const h = ext * 1.05 + 20;
+  topCam.position.set(cx, h, cz + h * 0.28);
+  controls.target.set(cx, 0, cz);
+  controls.update();
+}
+const fp = { x: PIN_A.x, z: PIN_A.z, yaw: 0, pitch: -0.05, keys: {} };
+function placeFp() {
+  fp.x = PIN_A.x; fp.z = PIN_A.z;
+  // 첫 마디 방향을 본다 (avoidance 는 회랑이 없으니 띠가 꺾이는 K 쪽 벽을 본다)
+  const look = (path && path.points.length > 1) ? path.points[1] : PIN_B;
+  fp.yaw = Math.atan2(look.x - fp.x, look.z - fp.z);   // +z 정면 기준
+  fp.pitch = -0.05;
+}
+function setView(v) {
+  if (v !== 'top' && v !== 'fp') return;
+  S.view = v;
+  activeCam = v === 'top' ? topCam : fpCam;
+  controls.enabled = v === 'top';
+  canvas.classList.toggle('free', v === 'top'); canvas.classList.toggle('fp', v === 'fp');
+  document.querySelectorAll('#views .chip').forEach((c) => c.classList.toggle('on', c.dataset.view === v));
+  $('hintView').textContent = v === 'top' ? '조감' : '1인칭';
+  ringA.visible = v === 'top';       // 1인칭에선 발밑 고리가 화면 아래를 채워 가린다
+  if (v === 'top') frameTop(); else placeFp();
+  updateGuide();
+}
+// 1인칭 조작 — 끌어서 둘러보기, WASD/방향키 걷기 (이동 벽 = 모듈 constrainMove)
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => { if (S.view === 'fp') drag = { x: e.clientX, y: e.clientY }; });
+addEventListener('pointerup', () => { drag = null; });
+addEventListener('pointermove', (e) => {
+  if (!drag || S.view !== 'fp') return;
+  fp.yaw -= (e.clientX - drag.x) * 0.004; fp.pitch = Math.max(-0.8, Math.min(0.6, fp.pitch - (e.clientY - drag.y) * 0.003));
+  drag = { x: e.clientX, y: e.clientY };
+});
+addEventListener('keydown', (e) => { if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; fp.keys[e.key.toLowerCase()] = true; });
+addEventListener('keyup', (e) => { fp.keys[e.key.toLowerCase()] = false; });
+function stepFp(dt) {
+  let f = 0, s = 0;
+  if (fp.keys.w || fp.keys.arrowup) f += 1; if (fp.keys.s || fp.keys.arrowdown) f -= 1;
+  if (fp.keys.a || fp.keys.arrowleft) s -= 1; if (fp.keys.d || fp.keys.arrowright) s += 1;
+  if (f || s) {
+    const sy = Math.sin(fp.yaw), cy = Math.cos(fp.yaw);
+    const mx = (sy * f + cy * s) * WALK * dt, mz = (cy * f - sy * s) * WALK * dt;
+    moveFp(fp.x + mx, fp.z + mz);
+  }
+}
+function moveFp(tx, tz) {
+  tx = Math.max(-SZ / 2 + 2, Math.min(SZ / 2 - 2, tx)); tz = Math.max(-SZ / 2 + 2, Math.min(SZ / 2 - 2, tz));
+  const c = constrain();
+  const r = c ? c(fp.x, fp.z, tx, tz) : null;
+  if (r) { fp.x = r.x; fp.z = r.z; } else { fp.x = tx; fp.z = tz; }
+}
+function applyFpCam() {
+  fpCam.position.set(fp.x, heightAt(fp.x, fp.z) + EYE, fp.z);
+  const cp = Math.cos(fp.pitch);
+  fpCam.lookAt(fp.x + Math.sin(fp.yaw) * cp, fpCam.position.y + Math.sin(fp.pitch), fp.z + Math.cos(fp.yaw) * cp);
+}
+
+// ─── 조절판 배선 ──────────────────────────────────────────────────
+const patEl = $('patterns');
+for (const p of PATTERNS) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (p === S.pattern ? ' on' : ''); b.dataset.pattern = p;
+  b.innerHTML = PATTERN_KO[p] + '<small>' + p + '</small>'; patEl.appendChild(b);
+}
+patEl.addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) { setPattern(b.dataset.pattern); recarve(); } });
+function setPattern(p) {
+  if (!PATTERNS.includes(p)) return;
+  S.pattern = p;
+  document.querySelectorAll('#patterns .chip').forEach((c) => c.classList.toggle('on', c.dataset.pattern === p));
+}
+for (const id of ['fromSel', 'toSel']) {
+  const sel = $(id);
+  SCENES.forEach((sc, i) => { const o = document.createElement('option'); o.value = i; o.textContent = sc.name + ' · ' + AXIS_KO[domAxis(sc.vec)]; sel.appendChild(o); });
+  sel.addEventListener('change', () => { setPair(+$('fromSel').value, +$('toSel').value); recarve(); });
+}
+function setPair(fi, ti) {
+  if (SCENES[fi]) S.from = fi; if (SCENES[ti]) S.to = ti;
+  $('fromSel').value = S.from; $('toSel').value = S.to;
+  $('hintFrom').textContent = SCENES[S.from].name; $('hintTo').textContent = SCENES[S.to].name;
+  paintTerrain(); placeGhostB();
+  const info = buildPath({ A: PIN_A, B: PIN_B, pattern: 'echo_follow', from: SCENES[S.from].vec, to: SCENES[S.to].vec, alignment: S.alignment }).info;
+  $('deltaNote').textContent = '감정 델타: 지배 축 ' + AXIS_KO[info.dom] + '(' + info.dom + ') ' + (info.side > 0 ? '늘어남 → 왼쪽으로 휨' : '줄어듦 → 오른쪽으로 휨')
+    + ' · 크기 ' + info.m + ' (mN ' + info.mN + ') · 둘째 축 ' + (info.sec ? AXIS_KO[info.sec] : '—') + ' r2 ' + info.r2;
+}
+function bindRange(id, apply, fmt) {
+  const el = $(id), v = $(id + 'V');
+  const upd = (fromUi) => { apply(parseFloat(el.value)); v.textContent = fmt(parseFloat(el.value)); if (fromUi) recarve(); };
+  el.addEventListener('input', () => upd(true)); upd(false);
+}
+bindRange('align', (x) => { S.alignment = x; }, (x) => x.toFixed(2));
+bindRange('contD', (x) => { S.cont.d = x; }, (x) => x.toFixed(2));
+bindRange('contC', (x) => { S.cont.c = x; }, (x) => x.toFixed(2));
+bindRange('contH', (x) => { S.cont.h = x; }, (x) => x.toFixed(2));
+function setAlignment(a) { S.alignment = Math.max(0, Math.min(1, a)); $('align').value = S.alignment; $('alignV').textContent = S.alignment.toFixed(2); }
+function setCont(d, c, h) {
+  if (d != null) { S.cont.d = Math.max(0, Math.min(1, d)); $('contD').value = S.cont.d; $('contDV').textContent = S.cont.d.toFixed(2); }
+  if (c != null) { S.cont.c = Math.max(0, Math.min(1, c)); $('contC').value = S.cont.c; $('contCV').textContent = S.cont.c.toFixed(2); }
+  if (h != null) { S.cont.h = Math.max(0, Math.min(1, h)); $('contH').value = S.cont.h; $('contHV').textContent = S.cont.h.toFixed(2); }
+}
+$('bucketSel').addEventListener('change', () => { setBucket($('bucketSel').value); recarve(); });
+function setBucket(b) { if (BUCKETS.includes(b)) { S.bucket = b; $('bucketSel').value = b; } }
+$('connSel').addEventListener('change', () => { setConnective(+$('connSel').value); });
+function setConnective(i) { const list = CONNECTIVES || FALLBACK_CONN; if (list[i] != null) { S.connective = i; $('connSel').value = i; } }
+function fillConnectives() {
+  const sel = $('connSel'); sel.innerHTML = '';
+  (CONNECTIVES || FALLBACK_CONN).forEach((c, i) => { const o = document.createElement('option'); o.value = i; o.textContent = c; sel.appendChild(o); });
+  sel.value = S.connective;
+  $('connNote').textContent = connSource;
+}
+$('views').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) setView(b.dataset.view); });
+$('guideOn').addEventListener('change', () => { setGuide($('guideOn').checked); });
+function setGuide(b) { S.guide = !!b; $('guideOn').checked = S.guide; updateGuide(); }
+$('recarve').addEventListener('click', recarve);
+$('reset').addEventListener('click', () => {
+  setPattern('echo_follow'); setPair(0, 2); setAlignment(0.7); setBucket('MID'); setCont(0, 0, 0); setConnective(0); setGuide(false);
+  setView('top'); recarve();
+});
+const panel = $('panel');
+function setPanel(open) { panel.classList.toggle('closed', !open); document.body.classList.toggle('panel-closed', !open); }
+$('toggle').addEventListener('click', () => setPanel(panel.classList.contains('closed')));
+addEventListener('resize', () => {
+  for (const c of [topCam, fpCam]) { c.aspect = innerWidth / innerHeight; c.updateProjectionMatrix(); }
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ─── 상태줄 ───────────────────────────────────────────────────────
+function refreshStatus(force) {
+  if (!path) return;
+  const wl = path.halfWidths.length ? path.halfWidths.map((w) => w.toFixed(1)) : [];
+  const wRange = wl.length ? (Math.min(...path.halfWidths).toFixed(1) + '~' + Math.max(...path.halfWidths).toFixed(1)) : '—';
+  const settledTxt = settled() ? '정착' : '파이는 중';
+  statusEl.textContent =
+    '패턴 ' + S.pattern + ' · ' + settledTxt + '\n' +
+    '마디 ' + path.segments + ' · 총 길이 ' + path.length.toFixed(1) + ' (직선 ' + path.direct.toFixed(1) + ', ×' + path.ratio.toFixed(2) + ', 목표 ×' + path.ratioTarget.toFixed(2) + ')\n' +
+    '반폭 ' + path.halfWidth.toFixed(1) + ' (마디별 ' + wRange + ')' + (path.thin ? ' · 벽 얇아짐 ' + path.thin.amt.toFixed(2) : '') + '\n' +
+    '지배축 ' + path.info.dom + ' side ' + path.info.side + ' mN ' + path.info.mN + ' r2 ' + path.info.r2 + ' · 결 edge ' + T1.edgeAmp.value.toFixed(2) + ' grain ' + T1.grain.value.toFixed(2);
+}
+function settled() {
+  if (!window.__t1 || !window.__t1.ready || !path) return false;
+  if (performance.now() < doneAt) return false;
+  for (const k of Object.keys(T1_TARGET)) if (Math.abs(T1[k].value - T1_TARGET[k]) > 0.01) return false;
+  return true;
+}
+
+// ─── 프레임 ───────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+let frameCount = 0;
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  // 결 uniform — 느리고 넓고 무겁게 (TRANS_S 초에 약 95% 도달)
+  const k = 1 - Math.exp(-dt / (TRANS_S / 3));
+  for (const key of Object.keys(T1_TARGET)) T1[key].value += (T1_TARGET[key] - T1[key].value) * k;
+
+  if (S.view === 'fp') { stepFp(dt); applyFpCam(); } else controls.update();
+
+  // 도착 유령·고리 = 걷힘(모듈 revealAt)에만 비례 — 바닥값 없음 (260923: 0.12 바닥이 안개 벽 너머로 새어
+  // 안개 원칙 #5 위반). avoidance 만 예외: 띠가 얇아진 만큼(thinAmt×0.55) "벽 너머로 비치는" 정도로.
+  const rvB = fog.revealAt(PIN_B.x, PIN_B.z);
+  const seeB = Math.max(rvB, T1.thinAmt.value * 0.55);
+  ghostB.material.opacity = seeB * (0.8 + 0.1 * Math.sin(clock.elapsedTime * 1.2));
+  ringB.material.opacity = seeB * 0.55;
+
+  renderer.render(scene, activeCam);   // 모듈이 render wrap 으로 uniform 을 흘려보낸다
+  if (++frameCount % 12 === 0) refreshStatus(false);
+}
+
+// ─── 연결사 8종 — 대화 모듈 소스에서 그대로 읽는다 ─────────────────
+async function loadConnectives() {
+  try {
+    const txt = await (await fetch('../js/ui/lumen_dialog_phase1.js', { cache: 'no-store' })).text();
+    const m = txt.match(/CONT_CONNECTIVES\s*=\s*\[([^\]]*)\]/);
+    if (m) {
+      const list = Array.from(m[1].matchAll(/'([^']*)'/g)).map((x) => x[1]);
+      if (list.length) { CONNECTIVES = list; connSource = 'js/ui/lumen_dialog_phase1.js CONT_CONNECTIVES ' + list.length + '종 (읽어 옴)'; }
+    }
+  } catch (e) { console.warn('[t1] 연결사 읽기 실패 — 사본 사용', e); }
+  if (!CONNECTIVES) { CONNECTIVES = FALLBACK_CONN.slice(); connSource = '읽기 실패 — 페이지 사본 8종'; }
+  fillConnectives();
+}
+
+// ─── 시작 ─────────────────────────────────────────────────────────
+window.__t1 = {
+  ready: false,
+  setPattern, setPair, setAlignment, setBucket, setCont, setConnective, setView, recarve, settled, setPanel, setGuide,
+  state() {
+    return path ? {
+      pattern: S.pattern, from: SCENES[S.from].id, to: SCENES[S.to].id, alignment: S.alignment, bucket: S.bucket,
+      cont: { ...S.cont }, connective: currentConnective(), view: S.view,
+      segments: path.segments, nodes: path.nodes, length: +path.length.toFixed(2), direct: +path.direct.toFixed(2),
+      ratio: +path.ratio.toFixed(3), ratioTarget: +path.ratioTarget.toFixed(3), halfWidth: +path.halfWidth.toFixed(2),
+      halfWidths: path.halfWidths.map((w) => +w.toFixed(2)), points: path.points.map((q) => ({ x: +q.x.toFixed(2), z: +q.z.toFixed(2) })),
+      thin: path.thin ? { amt: +path.thin.amt.toFixed(3), r: +path.thin.r.toFixed(2), bend: path.thin.bend } : null,
+      texture: path.texture, info: path.info, revealAtB: +fog.revealAt(PIN_B.x, PIN_B.z).toFixed(3),
+      ghostBOpacity: +ghostB.material.opacity.toFixed(3), seedR: SEED_R, staggerMs: STAGGER_MS, fp: { x: fp.x, z: fp.z, yaw: fp.yaw },
+    } : null;
+  },
+  fp: { setPos(x, z) { fp.x = x; fp.z = z; }, setYaw(y) { fp.yaw = y; }, move(tx, tz) { moveFp(tx, tz); } },
+  revealAt(x, z) { return fog.revealAt(x, z); },
+  // 검증용 — 지금 화면을 한 번 그려 주어진 가로줄들의 밝기(0..255)를 돌려준다 (잔떨림·튕김 측정)
+  scanRows(rows) {
+    renderer.render(scene, activeCam);
+    const gl = renderer.getContext();
+    const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+    const buf = new Uint8Array(W * 4);
+    const out = {};
+    for (const y of rows) {
+      gl.readPixels(0, H - 1 - Math.round(y * (H / innerHeight)), W, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      const lum = new Array(W);
+      for (let x = 0; x < W; x++) lum[x] = Math.round(0.299 * buf[x * 4] + 0.587 * buf[x * 4 + 1] + 0.114 * buf[x * 4 + 2]);
+      out[y] = lum;
+    }
+    return { width: W, scale: W / innerWidth, rows: out };
+  },
+  // 캡처용 — 입구 자막을 지금 다시 띄운다 (연출상은 회랑이 파일 때 한 번만)
+  caption() { showCaption(currentConnective(), path && path.thin ? '벽 앞 · 길은 나지 않는다' : '회랑 입구', 6000); },
+};
+setPair(S.from, S.to);
+frame();                       // 연결사 읽기가 늦어도 무대는 먼저 돈다
+await loadConnectives();
+recarve();
+requestAnimationFrame(() => { window.__t1.ready = true; refreshStatus(true); });
+</script>

@@ -1,0 +1,486 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>생애 전승 T2 · 유령 표현 비교</title>
+<!--
+  TEM 실험 페이지 — 생애 전승 시제품 T2: 유령 표현 비교 (2026-09-22)
+  근거: docs/생애그릇_영생_브레인스토밍-260922.md §8 권고 + Dropbox "tem life proto.pdf" 15쪽 T2
+        ("기다림·고독·혼합·기본을 같은 카메라에서 비교하는 로컬 장면. 차이가 안 읽히면 저장 범위를
+          넓히기 전에 대사·거리·방향을 조정한다").
+  본 코드(play-test.html / lumen_scene_mannequins.js) 미반영. 서버 0 · 저장 0 · 분류기 0.
+  선례: test/ghost-mannequin-test.html(로더·재질 그대로) · test/horizon-wave-test.html(조절판 틀).
+
+  무엇을 보나:
+    한 카메라 · 유령 하나 · 창문 하나. 버튼으로 상태(기본/기다림/고독/혼합/유보)를 바꾸면
+    유령의 말과 자세가 *느리게* 바뀐다. "조각 판"을 켜면 작가 템플릿 대사 대신 관객이 실제로 한 말의
+    조각(js/core/drift_lines.js 규칙: 12자 혼잣말 / 18자 재대화)이 들어간다 — 어느 쪽이
+    "관객 때문에 물들었다"로 읽히는지 나란히 보기 위함.
+
+  출처 표기한 잠금값:
+    조명 ambient 0x1a1828 1.3 / key 0xc4a882 0.7 / fill 0x3a4a80 0.3 = tem_af_strata_terrain.js
+    유령 재질 grey 128 · opacity 0.7 · xray(Additive·DoubleSide·depthWrite=false) = lumen_scene_mannequins.js DEFAULTS
+    기울기 상한 0.18rad(driftLeanFactor) · 응시 LERP 0.045(gazeFollowSpeed) = lumen_scene_mannequins.js
+    초기 자세 수치(기울기 0.06rad · 물러남 0.25m · 교대 8초) = 명세 7쪽 (예술적 제안값, 조절판으로 바꿈)
+    전환은 느리고 넓고 무겁게(2.5초 지수 접근) — 명세의 500ms 경계 보간 대신 작가 결(260809) 적용.
+
+  playwright 훅: window.__t2 = { ready, setMode(m), setFragment(bool), setInputs(a,b), setPanel(bool),
+                                  getMode(), settled(), setParam(k,v), line() }
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap">
+<style>
+  :root{
+    --ground:#0b0b12;
+    --panel:rgba(11,11,18,0.86);
+    --line:rgba(214,201,173,0.14);
+    --ink:#d6c9ad;
+    --ink-2:#8f8797;
+    --accent:#c4a882;
+    --accent-dim:rgba(196,168,130,0.35);
+    --ghost:#e8d8fc;
+    --serif:'Cormorant Garamond','Noto Serif KR','Gowun Batang',serif;
+    --kr:'Noto Serif KR','Cormorant Garamond',serif;
+  }
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--kr);font-weight:300;overflow:hidden;-webkit-font-smoothing:antialiased}
+  #stage{position:fixed;inset:0}
+  #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
+  #gl.free{cursor:grab}
+  #hint{position:fixed;top:18px;left:20px;font-family:var(--serif);font-size:15px;letter-spacing:0.14em;color:var(--ink-2);pointer-events:none;line-height:1.7}
+  #hint b{color:var(--ink);font-weight:400}
+
+  /* 자막 — 무대 하단 자막 톤(play-test 대화 자막과 같은 자리) */
+  #caption{position:fixed;left:50%;bottom:9vh;transform:translateX(-50%);width:min(760px,86vw);text-align:center;pointer-events:none;transition:opacity 1.4s cubic-bezier(.2,.7,.2,1)}
+  #caption.out{opacity:0;transition-duration:.7s}
+  #capLine{font-family:var(--kr);font-weight:300;font-size:clamp(17px,2.1vw,23px);line-height:1.75;color:var(--ghost);letter-spacing:0.02em;text-wrap:balance}
+  #capSrc{margin-top:10px;font-family:var(--serif);font-size:12.5px;letter-spacing:0.22em;color:var(--ink-2)}
+  #capSrc.left{color:var(--accent)}
+
+  #panel{position:fixed;top:0;right:0;bottom:0;width:320px;max-width:88vw;background:var(--panel);backdrop-filter:blur(10px);border-left:1px solid var(--line);display:flex;flex-direction:column;padding-block:22px;padding-inline:22px;box-sizing:border-box;overflow-y:auto;gap:20px;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+  #panel.closed{transform:translateX(100%)}
+  #panel h1{font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:0.12em;margin:0;color:var(--ink);text-wrap:balance}
+  #panel .sub{font-size:12px;color:var(--ink-2);letter-spacing:0.06em;margin-top:4px;line-height:1.6}
+  .grp{display:flex;flex-direction:column;gap:10px;padding-top:16px;border-top:1px solid var(--line)}
+  .grp:first-of-type{border-top:0;padding-top:0}
+  .grp h2{font-family:var(--serif);font-weight:400;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:var(--accent);margin:0}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px}
+  .row label{flex:1;color:var(--ink)}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--ink-2);min-width:3.2em;text-align:right;font-family:var(--serif);font-size:15px}
+  .slider{display:flex;flex-direction:column;gap:4px}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:22px}
+  input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
+  input[type=text]{width:100%;box-sizing:border-box;background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--kr);font-size:13px;padding:7px 9px;border-radius:2px}
+  input[type=text]:focus{border-color:var(--accent-dim)}
+  select{background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--kr);font-size:12.5px;padding:4px 6px;border-radius:2px}
+  .note{font-size:12px;color:var(--ink-2);line-height:1.6;margin:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line);background:transparent;color:var(--ink-2);font-family:var(--kr);font-size:13px;padding:7px 11px;border-radius:2px;cursor:pointer}
+  .chip.on{border-color:var(--accent);color:var(--ink)}
+  .chip:focus-visible,button:focus-visible,input:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+  .btn{border:1px solid var(--line);background:transparent;color:var(--ink);font-family:var(--serif);font-size:14px;letter-spacing:0.14em;padding:9px 12px;cursor:pointer;border-radius:2px}
+  .btn:hover{border-color:var(--accent-dim)}
+  #toggle{position:fixed;top:14px;right:334px;z-index:5;transition:right .5s cubic-bezier(.2,.7,.2,1);border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--serif);font-size:13px;letter-spacing:0.16em;padding:8px 12px;cursor:pointer;border-radius:2px}
+  body.panel-closed #toggle{right:14px}
+  #status{font-family:var(--serif);font-size:12px;letter-spacing:0.08em;color:var(--ink-2);line-height:1.6}
+  @media (max-width:640px){
+    #toggle{right:14px}
+    #panel{top:auto;left:0;right:0;width:auto;max-width:none;max-height:50vh;border-left:0;border-top:1px solid var(--line);padding-block:16px;gap:16px}
+    #panel.closed{transform:translateY(100%)}
+    #hint{font-size:13px;top:14px;left:16px}
+    #caption{bottom:52vh}
+  }
+  @media (prefers-reduced-motion:reduce){#panel,#toggle,#caption{transition:none}}
+</style>
+
+<div id="stage"><canvas id="gl"></canvas></div>
+<div id="hint"><b>S1 창문</b> · 서윤 · 같은 카메라</div>
+<div id="caption"><div id="capLine"></div><div id="capSrc"></div></div>
+<button id="toggle" type="button" aria-controls="panel">조절판</button>
+
+<aside id="panel" aria-label="실험 조절판">
+  <div>
+    <h1>유령 표현 비교</h1>
+    <div class="sub">생애 전승 T2 · 실험 페이지 · 본 코드에는 반영 안 됨<br>저장 0 · 서버 0 · 분류기 0 (상태는 사람이 고른다)</div>
+  </div>
+
+  <section class="grp">
+    <h2>상태</h2>
+    <div class="chips" id="modes">
+      <button class="chip on" type="button" data-mode="baseline">기본</button>
+      <button class="chip" type="button" data-mode="waiting">기다림</button>
+      <button class="chip" type="button" data-mode="solitude">고독</button>
+      <button class="chip" type="button" data-mode="mixed">혼합</button>
+      <button class="chip" type="button" data-mode="uncertain">유보</button>
+    </div>
+    <p class="note">기본 = 남긴 말 그대로. 나머지 = 관객의 읽기가 스며든 뒤. 혼합은 두 방향을 번갈아 오간다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>판</h2>
+    <div class="row"><label for="fragOn">조각 판 (관객 실제 말 조각)</label><input type="checkbox" id="fragOn"></div>
+    <p class="note">꺼짐 = 작가가 미리 쓴 템플릿 대사. 켜짐 = 아래 관객 말에서 drift_lines 규칙으로 깎아 낸 조각이 유령 입에 들어간다.</p>
+    <label class="note" for="inA">관객 A의 말 (기다림으로 읽은 사람)</label>
+    <input type="text" id="inA" value="누군가 돌아오길 기다린 것 같아.">
+    <label class="note" for="inB">관객 B의 말 (고독으로 읽은 사람)</label>
+    <input type="text" id="inB" value="나는 혼자 있고 싶어서 그랬다고 봐.">
+  </section>
+
+  <section class="grp">
+    <h2>자세 수치</h2>
+    <div class="slider"><div class="row"><label for="lean">옆 기울기 (rad)</label><span class="val" id="leanV">0.120</span></div><input type="range" id="lean" min="0" max="0.25" step="0.005" value="0.12"></div>
+    <div class="slider"><div class="row"><label for="headYaw">고개 돌림 (rad)</label><span class="val" id="headYawV">0.90</span></div><input type="range" id="headYaw" min="0" max="1.4" step="0.02" value="0.9"></div>
+    <div class="slider"><div class="row"><label for="bodyYaw">몸 돌림 (rad)</label><span class="val" id="bodyYawV">0.80</span></div><input type="range" id="bodyYaw" min="0" max="1.6" step="0.02" value="0.8"></div>
+    <div class="slider"><div class="row"><label for="approach">창가로 다가감 (m)</label><span class="val" id="approachV">0.45</span></div><input type="range" id="approach" min="0" max="1.2" step="0.01" value="0.45"></div>
+    <div class="slider"><div class="row"><label for="retreat">물러남 (m)</label><span class="val" id="retreatV">0.70</span></div><input type="range" id="retreat" min="0" max="1.5" step="0.01" value="0.7"></div>
+    <div class="slider"><div class="row"><label for="period">혼합 교대 주기 (초)</label><span class="val" id="periodV">8.0</span></div><input type="range" id="period" min="3" max="16" step="0.5" value="8"></div>
+    <div class="slider"><div class="row"><label for="trans">전환 시간 (초)</label><span class="val" id="transV">2.5</span></div><input type="range" id="trans" min="0.3" max="5" step="0.1" value="2.5"></div>
+    <div class="row"><label for="headAxis">고개 돌림 축 (모델 본에 따라)</label>
+      <select id="headAxis"><option value="y">Y</option><option value="z">Z</option><option value="x">X</option></select>
+    </div>
+    <div class="row"><label for="headSign">고개 방향 뒤집기</label><input type="checkbox" id="headSign"></div>
+    <p class="note">마네킹 모듈이 "물듦"에 쓰는 기울기 최대값은 0.18. 명세 7쪽 제안값(기울기 0.06·고개 0.6·몸 0.35·물러남 0.25)은 첫 캡처에서 "몸이 안 달라진다"로 판정돼 폭을 키웠다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>카메라</h2>
+    <div class="row"><label for="camLock">같은 카메라로 잠금</label><input type="checkbox" id="camLock" checked></div>
+    <button class="btn" id="resetView" type="button">시점 처음으로</button>
+  </section>
+
+  <section class="grp">
+    <div id="status">불러오는 중…</div>
+  </section>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+<script type="module">
+import { pickDriftedLine } from '../js/core/drift_lines.js';
+
+const $ = (id) => document.getElementById(id);
+const statusEl = $('status');
+if (!window.THREE || !THREE.FBXLoader) {
+  $('hint').textContent = 'three.js 또는 FBX 로더를 불러오지 못했습니다. 인터넷 연결을 확인하세요.';
+  throw new Error('THREE missing');
+}
+
+// ─── 잠금값 (출처는 파일 머리 주석) ─────────────────────────────────
+const TONE = {
+  ground: 0x0b0b12, fog: 0x12121a, fogDensity: 0.045,
+  ambient: [0x1a1828, 1.3], key: [0xc4a882, 0.7], fill: [0x3a4a80, 0.3],
+  ghostGrey: 128, ghostOpacity: 0.7,
+  wall: 0x14141d, frame: 0x6b5a45, pane: 0x3a4a80
+};
+const WINDOW_X = 2.1;                       // 창이 있는 벽의 x 위치 (유령 오른쪽) — 2.6 은 화면 밖으로 잘림(1차 캡처)
+
+// ─── 대사 (템플릿 판 = 명세 7쪽 신규 대사, 원문 = 명세 3쪽 S1) ──────
+const TEMPLATE = {
+  baseline:  { line: '비가 오면 창문을 조금 열어두었다. 방 안에서도 밖의 소리가 들렸으면 했다.', src: '남긴 말' },
+  waiting:   { line: '아직 들려올 소리가 있는 것 같아.',            src: '이어진 말 · 작가 템플릿' },
+  solitude:  { line: '바깥 소리는 듣고 싶었어. 혼자서.',            src: '이어진 말 · 작가 템플릿' },
+  mixed:     { line: '누가 올 것 같기도 해. 혼자 듣고 싶기도 하고.', src: '이어진 말 · 작가 템플릿' },
+  uncertain: { line: '왜 열어두었는지는 아직 모르겠어.',             src: '이어진 말 · 작가 템플릿' }
+};
+
+// ─── 조절판 상태 ──────────────────────────────────────────────────
+// 260923: 1차 값(기울기 0.06·고개 0.6·몸 0.35·물러남 0.25)은 사용자 판정 "몸이 안 달라진다" → 폭을 키움(넓게).
+//   기다림 = 창가로 다가가며 몸을 돌림, 고독 = 창에서 등을 돌리고 물러남. 명세 제안값은 슬라이더로 되돌릴 수 있음.
+const P = { lean: 0.12, headYaw: 0.9, bodyYaw: 0.8, approach: 0.45, retreat: 0.7, period: 8, trans: 2.5, headAxis: 'y', headSign: 1 };
+let mode = 'baseline';
+let fragment = false;
+let modeSince = 0;                          // 상태를 바꾼 시각(초) — 혼합 교대 위상의 기준
+
+// ─── 장면 ────────────────────────────────────────────────────────
+const canvas = $('gl');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(TONE.ground);
+scene.fog = new THREE.FogExp2(TONE.fog, TONE.fogDensity);
+
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+// 유령은 왼쪽 1/3, 창은 오른쪽 1/3 에 오도록 (1차 캡처에서 창이 잘려 조정)
+const CAM_HOME = { pos: new THREE.Vector3(1.35, 1.55, 4.1), tgt: new THREE.Vector3(0.8, 1.1, 0) };
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+const ctrl = new THREE.OrbitControls(camera, canvas);
+ctrl.enableDamping = true;
+function resetView() {
+  camera.position.copy(CAM_HOME.pos);
+  ctrl.target.copy(CAM_HOME.tgt);
+  ctrl.update();
+}
+resetView();
+function applyCamLock() {
+  const locked = $('camLock').checked;
+  ctrl.enabled = !locked;
+  canvas.classList.toggle('free', !locked);
+  if (locked) resetView();
+}
+applyCamLock();
+
+// 조명 — 주광은 창 쪽(+x)에서 들어온다
+scene.add(new THREE.AmbientLight(TONE.ambient[0], TONE.ambient[1]));
+const key = new THREE.DirectionalLight(TONE.key[0], TONE.key[1]);
+key.position.set(6, 3.2, 1.2); key.target.position.set(0, 1, 0); scene.add(key, key.target);
+const fill = new THREE.DirectionalLight(TONE.fill[0], TONE.fill[1]);
+fill.position.set(-4, 2, 3); scene.add(fill);
+
+// 바닥
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshLambertMaterial({ color: TONE.fog, fog: true }));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+
+// 벽 + 창 구멍 (shape 의 x → 세계 z, shape 의 y → 세계 y)
+const wallShape = new THREE.Shape();
+wallShape.moveTo(-7, 0); wallShape.lineTo(7, 0); wallShape.lineTo(7, 3.2); wallShape.lineTo(-7, 3.2); wallShape.closePath();
+const hole = new THREE.Path();
+const HZ = 0.55, HY0 = 1.0, HY1 = 2.15;
+hole.moveTo(-HZ, HY0); hole.lineTo(HZ, HY0); hole.lineTo(HZ, HY1); hole.lineTo(-HZ, HY1); hole.closePath();
+wallShape.holes.push(hole);
+const wall = new THREE.Mesh(new THREE.ShapeGeometry(wallShape), new THREE.MeshLambertMaterial({ color: TONE.wall, fog: true, side: THREE.DoubleSide }));
+wall.rotation.y = -Math.PI / 2; wall.position.x = WINDOW_X; scene.add(wall);
+
+// 창틀
+const frameMat = new THREE.MeshLambertMaterial({ color: TONE.frame, fog: true });
+function bar(w, h, d, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat); m.position.set(x, y, z); scene.add(m); return m; }
+bar(0.10, 0.05, HZ * 2 + 0.1, WINDOW_X, HY0 - 0.025, 0);          // 아래 (창턱)
+bar(0.08, 0.05, HZ * 2 + 0.1, WINDOW_X, HY1 + 0.025, 0);          // 위
+bar(0.08, HY1 - HY0 + 0.1, 0.05, WINDOW_X, (HY0 + HY1) / 2, -HZ - 0.025);
+bar(0.08, HY1 - HY0 + 0.1, 0.05, WINDOW_X, (HY0 + HY1) / 2, HZ + 0.025);
+bar(0.06, HY1 - HY0, 0.03, WINDOW_X, (HY0 + HY1) / 2, 0);        // 가운데 살
+
+// 창문 두 짝 — 왼쪽 닫힘, 오른쪽은 "조금 열어" 둠 (방 안쪽으로 0.35rad)
+const paneMat = new THREE.MeshLambertMaterial({ color: TONE.pane, transparent: true, opacity: 0.16, fog: true, side: THREE.DoubleSide, depthWrite: false });
+const paneGeo = new THREE.PlaneGeometry(HZ, HY1 - HY0);
+const paneL = new THREE.Mesh(paneGeo, paneMat);
+paneL.rotation.y = -Math.PI / 2; paneL.position.set(WINDOW_X, (HY0 + HY1) / 2, -HZ / 2); scene.add(paneL);
+const hinge = new THREE.Group(); hinge.position.set(WINDOW_X, 0, HZ); scene.add(hinge);
+const paneR = new THREE.Mesh(paneGeo, paneMat);
+paneR.rotation.y = -Math.PI / 2; paneR.position.set(0, (HY0 + HY1) / 2, -HZ / 2); hinge.add(paneR);
+const paneEdge = new THREE.Mesh(new THREE.BoxGeometry(0.03, HY1 - HY0, 0.03), frameMat);
+paneEdge.position.set(0, (HY0 + HY1) / 2, -HZ); hinge.add(paneEdge);
+hinge.rotation.y = 0.35;
+
+// 비 — 창 너머에만 (벽이 가려 구멍으로만 보인다)
+const RAIN_N = 900;
+const rainPos = new Float32Array(RAIN_N * 3);
+// 창 구멍 바로 뒤에 모아야 구멍으로 보인다 (1차 캡처: 넓게 흩뿌리니 한두 점만 보임)
+const RAIN_BOX = { x0: WINDOW_X + 0.15, x1: WINDOW_X + 1.6, y0: 0, y1: 3.4, z0: -1.3, z1: 1.3 };
+for (let i = 0; i < RAIN_N; i++) {
+  rainPos[i * 3]     = RAIN_BOX.x0 + Math.random() * (RAIN_BOX.x1 - RAIN_BOX.x0);
+  rainPos[i * 3 + 1] = RAIN_BOX.y0 + Math.random() * (RAIN_BOX.y1 - RAIN_BOX.y0);
+  rainPos[i * 3 + 2] = RAIN_BOX.z0 + Math.random() * (RAIN_BOX.z1 - RAIN_BOX.z0);
+}
+const rainGeo = new THREE.BufferGeometry();
+rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+const rain = new THREE.Points(rainGeo, new THREE.PointsMaterial({ color: 0x9f97a7, size: 0.03, transparent: true, opacity: 0.7, fog: true, depthWrite: false }));
+scene.add(rain);
+const rainSpeed = new Float32Array(RAIN_N);
+for (let i = 0; i < RAIN_N; i++) rainSpeed[i] = 1.1 + Math.random() * 0.7;
+
+// ─── 유령 (ghost-mannequin-test 의 로더·재질 그대로) ──────────────
+let ghost = null;   // { root, mixer, headBone }
+function makeGhostMat() {
+  const g = TONE.ghostGrey;
+  const mat = new THREE.MeshLambertMaterial({
+    color: (g << 16) | (g << 8) | g,
+    transparent: true, opacity: TONE.ghostOpacity, fog: true, emissive: 0x000000,
+    side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  mat.skinning = true; mat.morphTargets = true;
+  return mat;
+}
+function stripDetails(root) {
+  root.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) { o.material = makeGhostMat(); o.frustumCulled = false; o.castShadow = false; o.receiveShadow = false; }
+  });
+}
+function findHeadBone(root) {
+  let found = null;
+  // Mixamo 이름 = "mixamorigHead" (구분자 없음). "HeadTop_End" 는 End 로 끝나 제외된다.
+  root.traverse((o) => { if (!found && o.isBone && /head$/i.test(o.name)) found = o; });
+  return found;
+}
+new THREE.FBXLoader().load('/test/ybot.fbx', (obj) => {
+  const bbox = new THREE.Box3().setFromObject(obj);
+  const sz = bbox.getSize(new THREE.Vector3());
+  if (sz.y > 10) obj.scale.setScalar(1.8 / sz.y);   // Mixamo cm → m
+  stripDetails(obj);
+  obj.position.set(0, 0, 0);
+  obj.rotation.y = 0;                                 // ybot 기본 정면 = +z = 카메라 쪽
+  scene.add(obj);
+  const mixer = new THREE.AnimationMixer(obj);
+  const clip = obj.animations && obj.animations[0];
+  if (clip) mixer.clipAction(clip).play();            // Take 001 = 차분한 standing (마네킹 모듈과 동일)
+  ghost = { root: obj, mixer, headBone: findHeadBone(obj) };
+  statusEl.textContent = '유령 준비됨 · 클립 ' + (clip ? clip.name : '없음') + ' · 머리 본 ' + (ghost.headBone ? ghost.headBone.name : '못 찾음');
+  window.__t2.ready = true;
+}, undefined, (err) => {
+  statusEl.textContent = '유령 로드 실패 · ' + (err && err.message || err);
+  console.error(err);
+});
+
+// ─── 자세 목표 ────────────────────────────────────────────────────
+// 좌표 약속: 창 = +x. rotation.y 양수 = 창 쪽으로 몸 돌림. rotation.z 음수 = 창 쪽으로 옆 기울기.
+const POSE0 = { lean: 0, headYaw: 0, headPitch: 0, bodyYaw: 0, ox: 0, oz: 0 };
+const cur = { ...POSE0 };
+// 기다림: 창 쪽(+x)으로 다가가고(approach) 몸·고개를 창으로 돌리며 살짝 기운다.
+function waitingPose()  { return { lean: -P.lean, headYaw: +P.headYaw, headPitch: 0.04, bodyYaw: +P.bodyYaw, ox: +P.approach, oz: -P.approach * 0.3 }; }
+// 고독: 창에서 등을 돌리고(−bodyYaw 그대로) 고개를 떨구며 안쪽(−x, −z)으로 물러난다.
+function solitudePose() { return { lean: 0, headYaw: -P.headYaw * 0.3, headPitch: -0.22, bodyYaw: -P.bodyYaw, ox: -P.retreat * 0.5, oz: -P.retreat }; }
+function targetPose(t) {
+  switch (mode) {
+    case 'waiting':  return waitingPose();
+    case 'solitude': return solitudePose();
+    case 'mixed': {
+      const phase = Math.floor((t - modeSince) / P.period) % 2;
+      return phase === 0 ? waitingPose() : solitudePose();
+    }
+    case 'uncertain': {
+      const s = Math.sin((t - modeSince) * 2 * Math.PI / 6.5);   // 6.5초 한 바퀴, ±0.03rad (명세 7쪽)
+      return { lean: 0.03 * s, headYaw: 0.12 * s, headPitch: -0.04, bodyYaw: 0.03 * s, ox: 0, oz: 0 };
+    }
+    default: return POSE0;
+  }
+}
+
+// ─── 자막 ─────────────────────────────────────────────────────────
+const capEl = $('caption'), capLine = $('capLine'), capSrc = $('capSrc');
+let capTimer = null;
+function fragmentLines() {
+  const A = $('inA').value.trim(), B = $('inB').value.trim();
+  const fa = pickDriftedLine({ drift: { input: A }, mode: 'redialog', layerIndex: 0 }) || A;
+  const fb = pickDriftedLine({ drift: { input: B }, mode: 'redialog', layerIndex: 0 }) || B;
+  const ma = pickDriftedLine({ drift: { input: A }, mode: 'murmur' }) || A;
+  const mb = pickDriftedLine({ drift: { input: B }, mode: 'murmur' }) || B;
+  return {
+    waiting:   { line: fa,              src: '이어진 말 · 관객 A의 말 조각' },
+    solitude:  { line: fb,              src: '이어진 말 · 관객 B의 말 조각' },
+    mixed:     { line: ma + ' ' + mb,   src: '이어진 말 · 관객 A·B의 말 조각' },
+    uncertain: TEMPLATE.uncertain
+  };
+}
+function currentLine() {
+  if (mode === 'baseline') return TEMPLATE.baseline;
+  return fragment ? fragmentLines()[mode] : TEMPLATE[mode];
+}
+function refreshCaption(immediate) {
+  const L = currentLine();
+  const apply = () => {
+    capLine.textContent = L.line;
+    capSrc.textContent = L.src;
+    capSrc.classList.toggle('left', mode === 'baseline');
+    capEl.classList.remove('out');
+  };
+  clearTimeout(capTimer);
+  if (immediate) { apply(); return; }
+  capEl.classList.add('out');
+  capTimer = setTimeout(apply, 700);
+}
+
+// ─── 조절판 배선 ──────────────────────────────────────────────────
+function setMode(m) {
+  if (!TEMPLATE[m]) return;
+  mode = m; modeSince = clock.elapsedTime;
+  document.querySelectorAll('#modes .chip').forEach((c) => c.classList.toggle('on', c.dataset.mode === m));
+  refreshCaption(false);
+}
+$('modes').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) setMode(b.dataset.mode); });
+$('fragOn').addEventListener('change', () => { fragment = $('fragOn').checked; refreshCaption(false); });
+$('inA').addEventListener('input', () => { if (fragment) refreshCaption(true); });
+$('inB').addEventListener('input', () => { if (fragment) refreshCaption(true); });
+function bindRange(id, key, fmt) {
+  const el = $(id), v = $(id + 'V');
+  const upd = () => { P[key] = parseFloat(el.value); v.textContent = fmt(P[key]); };
+  el.addEventListener('input', upd); upd();
+}
+bindRange('lean', 'lean', (x) => x.toFixed(3));
+bindRange('headYaw', 'headYaw', (x) => x.toFixed(2));
+bindRange('bodyYaw', 'bodyYaw', (x) => x.toFixed(2));
+bindRange('approach', 'approach', (x) => x.toFixed(2));
+bindRange('retreat', 'retreat', (x) => x.toFixed(2));
+bindRange('period', 'period', (x) => x.toFixed(1));
+bindRange('trans', 'trans', (x) => x.toFixed(1));
+$('headAxis').addEventListener('change', () => { P.headAxis = $('headAxis').value; });
+$('headSign').addEventListener('change', () => { P.headSign = $('headSign').checked ? -1 : 1; });
+$('camLock').addEventListener('change', applyCamLock);
+$('resetView').addEventListener('click', resetView);
+const panel = $('panel');
+function setPanel(open) { panel.classList.toggle('closed', !open); document.body.classList.toggle('panel-closed', !open); }
+$('toggle').addEventListener('click', () => setPanel(panel.classList.contains('closed')));
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+// ─── 프레임 ───────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+const AXES = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+const qYaw = new THREE.Quaternion(), qPitch = new THREE.Quaternion();
+let lastTgt = { ...POSE0 };
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  const t = clock.elapsedTime;
+
+  // 비
+  for (let i = 0; i < RAIN_N; i++) {
+    let y = rainPos[i * 3 + 1] - rainSpeed[i] * dt;
+    if (y < RAIN_BOX.y0) y = RAIN_BOX.y1;
+    rainPos[i * 3 + 1] = y;
+  }
+  rainGeo.attributes.position.needsUpdate = true;
+
+  if (ghost) {
+    ghost.mixer.update(dt);
+    // 느리게, 넓게, 무겁게 — 목표까지 지수 접근. trans 초에 약 95% 도달.
+    const tgt = targetPose(t); lastTgt = tgt;
+    const k = 1 - Math.exp(-dt / (P.trans / 3));
+    for (const key of Object.keys(POSE0)) cur[key] += (tgt[key] - cur[key]) * k;
+    ghost.root.rotation.z = cur.lean;
+    ghost.root.rotation.y = cur.bodyYaw;
+    ghost.root.position.x = cur.ox;
+    ghost.root.position.z = cur.oz;
+    if (ghost.headBone) {
+      // mixer 가 매 프레임 머리 본을 클립 값으로 덮어쓰므로 곱하기도 매 프레임 (마네킹 모듈과 같은 방식)
+      qYaw.setFromAxisAngle(AXES[P.headAxis], cur.headYaw * P.headSign);
+      ghost.headBone.quaternion.multiply(qYaw);
+      qPitch.setFromAxisAngle(AXES.x, cur.headPitch);
+      ghost.headBone.quaternion.multiply(qPitch);
+    }
+  }
+  ctrl.update();
+  renderer.render(scene, camera);
+
+  // 상태줄에 유령 몸의 *실제* 회전·위치를 매 순간 표시 — "안 움직인다"가 폭 문제인지 진짜 정지인지 가르기 위함
+  if (ghost && (++frameCount % 6 === 0)) {
+    const r = ghost.root;
+    statusEl.textContent = '몸 돌림 ' + (r.rotation.y * 180 / Math.PI).toFixed(1) + '° · 옆 기울기 ' + (r.rotation.z * 180 / Math.PI).toFixed(1)
+      + '° · 위치 x ' + r.position.x.toFixed(2) + ' z ' + r.position.z.toFixed(2) + ' · 고개 ' + (cur.headYaw * 180 / Math.PI).toFixed(0) + '° · ' + mode;
+  }
+}
+let frameCount = 0;
+refreshCaption(true);
+frame();
+
+// ─── playwright / 콘솔 훅 ─────────────────────────────────────────
+window.__t2 = {
+  ready: false,
+  setMode, setPanel,
+  setFragment(b) { $('fragOn').checked = !!b; fragment = !!b; refreshCaption(true); },
+  setInputs(a, b) { if (a != null) $('inA').value = a; if (b != null) $('inB').value = b; refreshCaption(true); },
+  setParam(k, v) { if (k in P) { P[k] = v; const el = $(k); if (el) { el.value = v; el.dispatchEvent(new Event('input')); } } },
+  getMode() { return mode; },
+  line() { return currentLine(); },
+  pose() { return { ...cur }; },
+  // 렌더에 실제로 들어간 값 (cur 와 다르면 다른 무언가가 덮어쓰는 것)
+  actual() { if (!ghost) return null; const r = ghost.root; return { rotY: r.rotation.y, rotZ: r.rotation.z, x: r.position.x, z: r.position.z }; },
+  // 목표에 다 왔는가 — 혼합·유보는 끝없이 움직이므로 전환 시간 경과로 본다
+  settled() {
+    if (!ghost) return false;
+    if (mode === 'mixed' || mode === 'uncertain') return (clock.elapsedTime - modeSince) > P.trans * 1.2;
+    // lastTgt 는 다음 프레임에야 갱신되므로 지금 목표를 직접 계산해 비교 (상태 바꾼 직후 오판 방지)
+    const tgt = targetPose(clock.elapsedTime);
+    return Object.keys(POSE0).every((key) => Math.abs(cur[key] - tgt[key]) < 0.003);
+  }
+};
+</script>
