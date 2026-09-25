@@ -27,18 +27,25 @@
  *
  * 재료 세트(프리셋 5, corridor-t1-rules SCENES 의 id 와 같은 키):
  *   palette {wall, floor, trim}  · symbol(상징 사물, 단순 기하)  · light {color, intensity}
- *   · sound(합성 소리 종류)  · step(발소리 바닥재)  · space(공간 — 위 절)
+ *   · sound(합성 소리 종류)  · step(발소리 바닥재)  · space(공간 — 위 절)  · audio {drone, hum, thump} (기억별 도착·뒤쪽 소리 양, 260925 저녁)
+ *
+ * ─── 260925 저녁 — 검토 반영 ────────────────────────────────────────────────────────────────
+ *   · audio 필드(위) — 오전판은 도착 저음·허밍·9 초 둔탁음이 다섯 기억 공통이었다(오후 재설계가 공간에는 "기억별"을 적용하고 소리엔 안 옮긴 불일치).
+ *   · 공간 그룹 userData.symbol — 사건 소리(전화벨·삐)가 그 사물 자리에서 나게 페이지가 세계 좌표를 읽는다.
+ *   · buildSnowTrace(amount) — 지나온 기억이 도착 공간에 남기는 첫 흔적(눈 한 줌 + 녹은 자국). 여정·감쇠 규칙은 페이지가 갖는다.
  */
 
 // 260925 검토 반영: 벽·바닥 명도 +30 % (선형 출력에서 0.10 이 화면 26/255 로 눌려 바닥이 안 보였다).
 //                  trim 은 원색 그대로 두고, 문틀·작은 문·상징 사물 쪽에서 ×0.55 로 낮춘다(흰 트림이 전구보다 밝던 결함).
 // 260925 오후: 첫눈의 마당 바닥은 밟힌 눈(0xb8babe) — 눈밭 원판(0xc4c6ca)보다 살짝 어두워 "길"로 읽히게.
 const MAT = {
-  window: { name: '빈 방의 창',      palette: { wall: 0x4d5568, floor: 0x313745, trim: 0x8b95a8 }, light: { color: 0x8fa3c4, intensity: 0.95 }, sound: 'rain', step: 'wood',   symbol: 'window' },
-  lie:    { name: '들킨 거짓말',     palette: { wall: 0x603d40, floor: 0x382a2a, trim: 0x8a5a4a }, light: { color: 0xc27a56, intensity: 0.75 }, sound: 'hum',  step: 'wood',   symbol: 'chair' },
-  snow:   { name: '첫눈의 마당',     palette: { wall: 0x9f9fa6, floor: 0xb8babe, trim: 0xd8dce4 }, light: { color: 0xe4ecf6, intensity: 1.05 }, sound: 'wind', step: 'snow',   symbol: 'tree' },
-  ward:   { name: '병실 복도',       palette: { wall: 0x647c72, floor: 0x4b5753, trim: 0xb9c8c0 }, light: { color: 0xd8e6ea, intensity: 0.85 }, sound: 'beep', step: 'tile',   symbol: 'iv' },
-  call:   { name: '다시 걸려온 전화', palette: { wall: 0x755c46, floor: 0x46392f, trim: 0xc9a06a }, light: { color: 0xe6b874, intensity: 0.90 }, sound: 'ring', step: 'carpet', symbol: 'phone' },
+  // audio (260925 저녁, 검토 반영): 도착 저음(drone)·허밍(hum)·뒤쪽 저음(thump)은 기억마다 얼마나 쓸지 정한다 — 오전판은 다섯 기억 전부에
+  //   같은 값(0.22 / 0.16 / 0.3)이 깔려 열린 눈밭에도 음산한 결이 들어갔다. 눈밭·빈 방은 0, 병실은 형광등 허밍만, 거짓말은 Among the Sleep 결 그대로.
+  window: { name: '빈 방의 창',      palette: { wall: 0x4d5568, floor: 0x313745, trim: 0x8b95a8 }, light: { color: 0x8fa3c4, intensity: 0.95 }, sound: 'rain', step: 'wood',   symbol: 'window', audio: { drone: 0.08, hum: 0,    thump: 0 } },
+  lie:    { name: '들킨 거짓말',     palette: { wall: 0x603d40, floor: 0x382a2a, trim: 0x8a5a4a }, light: { color: 0xc27a56, intensity: 0.75 }, sound: 'hum',  step: 'wood',   symbol: 'chair',  audio: { drone: 0.22, hum: 0.16, thump: 0.3 } },
+  snow:   { name: '첫눈의 마당',     palette: { wall: 0x9f9fa6, floor: 0xb8babe, trim: 0xd8dce4 }, light: { color: 0xe4ecf6, intensity: 1.05 }, sound: 'wind', step: 'snow',   symbol: 'tree',   audio: { drone: 0,    hum: 0,    thump: 0 } },
+  ward:   { name: '병실 복도',       palette: { wall: 0x647c72, floor: 0x4b5753, trim: 0xb9c8c0 }, light: { color: 0xd8e6ea, intensity: 0.85 }, sound: 'beep', step: 'tile',   symbol: 'iv',     audio: { drone: 0.05, hum: 0.18, thump: 0 } },
+  call:   { name: '다시 걸려온 전화', palette: { wall: 0x755c46, floor: 0x46392f, trim: 0xc9a06a }, light: { color: 0xe6b874, intensity: 0.90 }, sound: 'ring', step: 'carpet', symbol: 'phone',  audio: { drone: 0.16, hum: 0,    thump: 0.18 } },
 };
 
 // ─── 공간 (기억마다 다르다 — 260925 오후) ─────────────────────────────────
@@ -305,7 +312,7 @@ function buildClosedRoom(THREE, key, grainTex, opts) {
     g.add(side); doors.push(side);
     g.userData.sideDoor = side;
   }
-  g.userData = Object.assign(g.userData || {}, { key, kind: 'closed', door, doors, light: lights, set, space: sp, dims: { W, H, D }, footprint: { hx: W / 2, hz: D / 2 } });
+  g.userData = Object.assign(g.userData || {}, { key, kind: 'closed', door, doors, light: lights, set, space: sp, dims: { W, H, D }, footprint: { hx: W / 2, hz: D / 2 }, symbol: sym });
   return g;
 }
 
@@ -335,7 +342,7 @@ function buildOpenSpace(THREE, key, opts) {
     g.add(side); doors.push(side); g.userData.sideDoor = side;
   }
   const lights = new THREE.Group(); lights.name = 'room_lights'; g.add(lights);   // 빛은 하늘(ambient+sun) — 국소 광원 없음
-  g.userData = Object.assign(g.userData || {}, { key, kind: 'open', door, doors, light: lights, set, space: sp, dims: { W, H: sp.H, D }, footprint: { hx: 4, hz: 4 } });
+  g.userData = Object.assign(g.userData || {}, { key, kind: 'open', door, doors, light: lights, set, space: sp, dims: { W, H: sp.H, D }, footprint: { hx: 4, hz: 4 }, symbol: sym });
   return g;
 }
 
@@ -366,7 +373,34 @@ function buildVoidSpace(THREE, key, opts) {
     side.rotation.y = sd.wall === 'left' ? -Math.PI / 2 : Math.PI / 2;
     g.add(side); doors.push(side); g.userData.sideDoor = side;
   }
-  g.userData = Object.assign(g.userData || {}, { key, kind: 'void', door, doors, light: lights, set, space: sp, dims: { W, H: sp.H, D }, footprint: { hx: sp.groundR + 0.5, hz: sp.groundR + 0.5 } });
+  g.userData = Object.assign(g.userData || {}, { key, kind: 'void', door, doors, light: lights, set, space: sp, dims: { W, H: sp.H, D }, footprint: { hx: sp.groundR + 0.5, hz: sp.groundR + 0.5 }, symbol: sym });
+  return g;
+}
+
+// ─── 흔적 (260925 저녁, 검토 반영 #1) — 지나온 기억이 도착 공간에 남기는 것. 첫 흔적 = 눈 한 줌 ────
+/**
+ * 눈 흔적 — 바닥 y=0, 원점 중심. amount 0..1 이 크기·덩이 수를 정한다(0.5 = 한 칸 건넌 뒤 절반).
+ * 납작한 무더기 1 + 작은 덩이 round(2·amount) + 아래 녹은 자국(어두운 원판). 해시로만 흩뿌린다(난수 0).
+ * @param opts { wet: bool (녹은 자국, 기본 true), seed: number }
+ */
+export function buildSnowTrace(THREE, amount, opts) {
+  const a = Math.max(0, Math.min(1, amount || 0));
+  const seed = (opts && opts.seed) || 1, wet = !(opts && opts.wet === false);
+  const g = new THREE.Group(); g.name = 'snow_trace'; g.userData = { amount: a };
+  if (a <= 0.02) return g;
+  const snowMat = std(THREE, 0xaeb2ba, { roughness: 1 });
+  const r = 0.16 + 0.34 * a;
+  const main = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 9), snowMat); main.scale.set(1, 0.2, 0.85); main.position.y = 0.005; g.add(main);
+  const n = Math.round(2 * a);
+  for (let i = 0; i < n; i++) {
+    const k = seed * 5.1 + i * 2.9, rr = 0.06 + 0.08 * hash1(k);
+    const m = new THREE.Mesh(new THREE.SphereGeometry(rr, 10, 6), snowMat); m.scale.set(1, 0.3, 1);
+    m.position.set((hash1(k + 0.7) - 0.5) * 2 * (r + 0.25), 0.004, (hash1(k + 1.9) - 0.5) * 2 * (r + 0.2)); g.add(m);
+  }
+  if (wet) {
+    const patch = new THREE.Mesh(new THREE.CircleGeometry(r * 1.7, 20), new THREE.MeshStandardMaterial({ color: 0x1a1c22, transparent: true, opacity: 0.32 + 0.2 * a, roughness: 0.25, depthWrite: false }));
+    patch.rotation.x = -Math.PI / 2; patch.position.y = 0.002; g.add(patch);
+  }
   return g;
 }
 

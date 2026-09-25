@@ -74,6 +74,32 @@
                                   start(), openDoor('A'|'B', at?), state(), settled(), setPanel(bool), setHud(bool), caption() }
     setX 는 값만 바꾼다 — rebuild() 를 불러야 통로가 다시 선다(조절판은 자동으로 다시 세운다). start() = 시작 자리(문에서 2.2 m, 문 닫힘)로.
     state() 에 space:{A,B}(종류·치수·하늘·입자), enclosure(현재 자리 e), eA/eB, skyOpen, sky, ambient, sun, localK, snow 가 있다.
+
+  ─── 260925 저녁 — 검토 반영 (외부 검토문 5항 · 사용자 "전부 실행") ─────────────────────────────────────
+    코드 결함 3 (전부 실제로 있었다):
+    · 줄무늬 색 어긋남 — 통로를 앞/뒤 두 덩어리로 세우며 colorAt 이 덩어리 안 번호 i 로 samples[i] 를 읽어 뒤 덩어리가 앞 자리를 봤다
+      (검토(2차) #21 "low·미수정"). 이제 lo + i. bridge 줄무늬가 t 0.5 뒤에서도 재료 클래스(quadFilter, 이미 lo+i)와 같은 자리에 선다.
+    · 좌우가 지배 축 하나의 부호로 뒤집힘 — 규칙 파일 buildPath 에 softSide 옵션(이 페이지만 켠다): 좌우 = 17축 감정가 이동 Σvalence·Δ 의
+      부호(밝아짐 왼쪽 / 어두워짐 오른쪽), 또렷함 sideK 가 작을수록(같은 결 안의 이동) 옆 폭을 반까지 줄인다. 거짓말→마당처럼 "수치 −0.6 ·
+      기쁨 +0.6" 동률이 순서 하나로 갈리던 자리가 사라진다. 20 쌍 중 12 쌍의 좌우가 종전과 다르다(뜻이 바뀐 것 — 캡처 1~52 와 비교 시 주의).
+    · 조절값을 바꾸면 출발점으로 — "자리 유지"(기본 켬): 다시 세우기 전 자리(공간/t/시선/문 열림)를 적어 두었다가 같은 자리로 돌려놓는다.
+      공간 A 에 있었으면 종전대로 시작 자리. 패턴·쌍이 바뀌어 통로 모양이 달라져도 같은 t 에 선다(같은 자리에서 전후 비교).
+    소리 3 (검토 #3): 기억별 도착 저음·허밍·뒤쪽 저음 양(빌더 audio 필드 — 눈밭 0) · 전화벨·삐는 그 사물 자리에서(PannerNode HRTF, 관객 =
+      카메라) · 뒤쪽 저음은 울리는 순간 관객 뒤 3 m 에 자리(고개 돌리면 방향이 바뀜) · 닫힌 문 너머는 로패스로 먹먹(닫힌 공간의 문만 막는다).
+    시간차 (검토 #2): 시각(벽색·빛·하늘·안개·눈발) · 배경 소리 · 발소리 · 도착 소리가 진행도 t 를 각자 다른 구간에서 읽는다 — LAG 표.
+      '눈이 먼저'(기본): 시각 0.1→0.7, 배경 소리 0.3→0.9, 발소리 0.75→1, 도착 소리 0.5→1. 눈은 이미 안 보이는데 발밑은 눈,
+      병실 형광등 아래 도착해서야 타일 발소리. '동시' = 종전(전부 0→1). '귀가 먼저' = 반대. 통로 구조(닫힘 e(t)·폭·중심선)는 곡선을 안 탄다.
+      전이 감각 비교: 시청각(기본) / 시각만(소리는 출발 기억 그대로) / 청각만(재료·빛·하늘·눈발은 출발 기억 그대로). 길·속도는 같다.
+    흔적 (검토 #1, 첫 시제품 = 눈 한 줌): 여정 journey = 봉인된 앞 구간들. 도착 공간 B 에 지나온 공간의 눈이 남는다 — hop 0 (현재 출발) 1.0,
+      한 칸 건널 때마다 ×0.5. 자리 = 도착 문 안쪽 0.6 m + 상징 사물 아래(병실 = 링거대 아래). 통로 바닥에도 시각 곡선이 끝난 뒤부터 도착 문까지
+      작은 눈덩이(벽은 이미 병실인데 발밑엔 눈). 눈이 어디서 왔고 무엇을 거쳤는지 = state().trace {origin, hops, via, parts}. 도착 공간이
+      스스로 눈밭이면 안 둔다. "다음 기억으로 잇기"(도착 뒤에만) 로 세 번째 기억까지 이어 걷는다. 쌍을 손으로 바꾸면 새 여정.
+    정렬도 쓰임 (검토 마지막 단락 — 비교 스위치, 기본 = 종전): 편안함(종전) = 안개 ×(1+2(1−a)) · 빛 거리 · 도착 문 속도 /
+      잔류·겹침(신안) = 안개·빛 거리·문 속도는 기억이 정하고, 정렬도가 낮을수록 출발 재료가 오래 남고(곡선 +0.25(1−a)) 흔적이 더 남는다(×0.6+0.8(1−a)).
+      길이 규칙(규칙 파일, 정렬도 → 길이)은 두 안 공통. CLAUDE.md §6.3 "높은 정렬 = 접촉이지 승리가 아님"의 통로 판.
+    새 훅: setLag('sync'|'eyeFirst'|'earFirst'), setSense('both'|'eye'|'ear'), setAlignUse('comfort'|'residue'), setKeepPos(bool),
+           continueTo(toIdx, {force}) → 여정에 현재 구간을 봉인하고 다음 구간을 세운다(도착 전엔 force 없이는 거절), journey(), resetJourney().
+           state() 에 lag, sense, alignUse, keepPos, curves{vis,amb,step,arrive}, trace, journey, arrived, sideK/lat(info), sound.muffleA/B·src·listener.
 -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap">
 <style>
@@ -162,7 +188,10 @@
 
   <section class="grp">
     <h2>정렬 (길이 · 단면)</h2>
-    <div class="slider"><div class="row"><label for="align">정렬도 → 길이·안개·빛 거리·도착 문 속도</label><span class="val" id="alignV">0.70</span></div><input type="range" id="align" min="0" max="1" step="0.01" value="0.7"></div>
+    <div class="slider"><div class="row"><label for="align" id="alignLabel">정렬도 → 길이·안개·빛 거리·도착 문 속도</label><span class="val" id="alignV">0.70</span></div><input type="range" id="align" min="0" max="1" step="0.01" value="0.7"></div>
+    <div class="row"><label for="alignUse">정렬도 쓰임 (비교)</label>
+      <select id="alignUse"><option value="comfort" selected>편안함 (종전)</option><option value="residue">잔류·겹침 (신안)</option></select></div>
+    <p class="note" id="alignUseNote"></p>
     <div class="row"><label for="bucketSel">수준 → 폭×높이 (HIGH 2.4×2.7 · MID 1.5×2.5 · LOW 1.1×2.1 · FIXATED 0.85×1.9 · 곧장 따라감은 한 단계 넓게 · 높이에는 닫힘 e(t) 가 곱해진다)</label>
       <select id="bucketSel"><option>HIGH</option><option selected>MID</option><option>LOW</option><option>FIXATED</option></select></div>
   </section>
@@ -180,6 +209,25 @@
     <div class="row"><label for="connSel">입구 연결사 (대화 모듈 8종)</label><select id="connSel"></select></div>
     <p class="note" id="connNote">읽는 중…</p>
     <div class="row"><label for="muteOn">소리 끄기</label><input type="checkbox" id="muteOn"></div>
+    <div class="row"><label for="keepOn">조절 뒤 자리 유지 (같은 자리에서 전후 비교)</label><input type="checkbox" id="keepOn" checked></div>
+  </section>
+
+  <section class="grp">
+    <h2>전이 (시간차 · 감각)</h2>
+    <div class="row"><label for="lagSel">시간차 — 무엇이 먼저 바뀌나</label>
+      <select id="lagSel"><option value="sync">동시 (종전)</option><option value="eyeFirst" selected>눈이 먼저</option><option value="earFirst">귀가 먼저</option></select></div>
+    <div class="row"><label for="senseSel">전이 감각 — 무엇이 바뀌나</label>
+      <select id="senseSel"><option value="both" selected>시청각</option><option value="eye">시각만</option><option value="ear">청각만</option></select></div>
+    <p class="note" id="lagNote"></p>
+  </section>
+
+  <section class="grp">
+    <h2>여정 (흔적)</h2>
+    <p class="note" id="journeyLine"></p>
+    <div class="row"><label for="nextSel">다음 기억</label><select id="nextSel"></select></div>
+    <div class="btns"><button class="btn" id="continueBtn" type="button" disabled>다음 기억으로 잇기</button><button class="btn" id="journeyReset" type="button">여정 지우기</button></div>
+    <p class="note">도착 공간에 지나온 공간의 눈이 남는다 — 현재 출발이 눈밭이면 1, 한 칸 건널 때마다 절반. 도착 문 안쪽·상징 사물 아래, 통로 바닥에도. 잇기는 도착한 뒤에만.</p>
+    <p class="note" id="traceNote"></p>
   </section>
 
   <section class="grp">
@@ -203,7 +251,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script type="module">
 import { AXIS_KO, SCENES, PATTERNS, PATTERN_KO, BUCKETS, buildPath } from './corridor-t1-rules.js';
-import { MATERIAL_SETS, ENCLOSURE_E, ENCLOSURE_KO, buildSpace, buildSymbol, buildSmallDoor, setDoorOpen, buildTubeGeometry, densify, makeGrainTexture, lerpHex, smoothstep, snowPositions, makeSnowPoints, tickSnow } from './corridor-3d-build.js';
+import { MATERIAL_SETS, ENCLOSURE_E, ENCLOSURE_KO, buildSpace, buildSymbol, buildSmallDoor, setDoorOpen, buildTubeGeometry, densify, makeGrainTexture, lerpHex, smoothstep, snowPositions, makeSnowPoints, tickSnow, buildSnowTrace } from './corridor-3d-build.js';
 import { CorridorAudio } from './corridor-3d-audio.js';
 
 const $ = (id) => document.getElementById(id);
@@ -227,8 +275,65 @@ const SNOW_FIELD_N = 2600, SNOW_RING_N = 10;   // 눈 입자: 열린 땅 상자(
 const FALLBACK_CONN = ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];
 
 // ─── 상태 ─────────────────────────────────────────────────────────
-const S = { pattern: 'echo_follow', from: 0, to: 2, alignment: 0.7, bucket: 'MID', cont: { d: 0, c: 0, h: 0 }, eye: 1.6, connective: 0, view: 'fp', sectionSide: false, srgb: false };
+const S = { pattern: 'echo_follow', from: 0, to: 2, alignment: 0.7, bucket: 'MID', cont: { d: 0, c: 0, h: 0 }, eye: 1.6, connective: 0, view: 'fp', sectionSide: false, srgb: false,
+            lag: 'eyeFirst', sense: 'both', alignUse: 'comfort', keepPos: true, journey: [] };   // 260925 저녁
 let CONNECTIVES = null, connSource = '';
+
+// ─── 전이 곡선 (260925 저녁, 검토 #2 — 감각의 시간차) ────────────────────
+// 시각(벽색·빛·하늘·안개·눈발) · 배경 소리(비·바람·삐…) · 발소리 · 도착 소리(드론·허밍)가 진행도 t 를 각자 다른 구간 [a, b] 에서 읽는다.
+// t ≤ a 출발 재료, t ≥ b 도착 재료, 사이는 직선. '동시' = 전부 [0, 1] (종전과 같다). 통로 구조(닫힘 e(t)·폭·중심선)는 곡선을 타지 않는다.
+const LAG = {
+  sync:     { vis: [0, 1],      amb: [0, 1],      step: [0, 1],     arrive: [0, 1] },
+  eyeFirst: { vis: [0.1, 0.7],  amb: [0.3, 0.9],  step: [0.75, 1],  arrive: [0.5, 1] },      // 눈은 이미 안 보이는데 발밑은 아직 눈. 형광등 아래 도착해서야 발소리가 바뀐다
+  earFirst: { vis: [0.35, 0.9], amb: [0.1, 0.65], step: [0.2, 0.6], arrive: [0.15, 0.7] },   // 소리가 먼저 도착 기억이 되고 벽은 늦게
+};
+const LAG_KO = { sync: '동시', eyeFirst: '눈이 먼저', earFirst: '귀가 먼저' };
+const SENSE_KO = { both: '시청각', eye: '시각만', ear: '청각만' };
+const ALIGN_USE_KO = { comfort: '편안함(종전)', residue: '잔류·겹침(신안)' };
+function ramp(t, ab, late) {
+  let [a, b] = ab;
+  if (late) { a = Math.min(1, a + late); b = Math.min(1, b + late); }   // 신안: 정렬도가 낮으면 출발 재료가 오래 남는다
+  if (b <= a) return t >= b ? 1 : 0;
+  return Math.max(0, Math.min(1, (t - a) / (b - a)));
+}
+function residueLate() { return S.alignUse === 'residue' ? 0.25 * (1 - S.alignment) : 0; }
+function visAt(t)    { return S.sense === 'ear' ? 0 : ramp(t, LAG[S.lag].vis, residueLate()); }
+function ambAt(t)    { return S.sense === 'eye' ? 0 : ramp(t, LAG[S.lag].amb, residueLate()); }
+function stepAt(t)   { return S.sense === 'eye' ? 0 : ramp(t, LAG[S.lag].step, residueLate()); }
+function arriveAt(t) { return S.sense === 'eye' ? 0 : ramp(t, LAG[S.lag].arrive, 0); }
+
+// ─── 여정 · 흔적 (260925 저녁, 검토 #1 — 지나온 경로가 공간을 바꾼다, 첫 흔적 = 눈 한 줌) ───────
+// S.journey = 봉인된 앞 구간들 [{from, to, pattern, alignment}] (오래된 것부터). 현재 구간의 출발 = 마지막 도착.
+// 흔적은 지나온 공간의 "입자"(눈)만 — hop 0 = 현재 출발 공간(눈밭 → 병실이면 병실에 눈 한 줌), hop 1 = 그 앞 구간의 출발 … 한 칸에 ×0.5.
+// 도착 공간이 스스로 눈밭이면 흔적을 안 둔다(눈 위의 눈). 신안(잔류)에서는 정렬도가 낮을수록 더 남는다: ×(0.6 + 0.8(1−a)).
+// 기록: origin(어디서 왔나) · hops(몇 칸 건넜나) · via(무엇을 거쳤나) · parts(공간별 몫). 이본지층 "발길" 계수의 통로 판 — 정본화 없음, 세션 안에서만.
+const TRACE_DECAY = 0.5;
+function traceFor(fromIdx, toIdx) {
+  const chain = [fromIdx].concat(S.journey.slice().reverse().map((leg) => leg.from));   // hop 0, 1, 2 …
+  const dest = MATERIAL_SETS[SCENES[toIdx].id].space;
+  const out = { snow: 0, origin: null, originName: null, hops: null, via: [], parts: [], gain: 1 };
+  if (dest.particles > 0) return out;
+  const gain = S.alignUse === 'residue' ? 0.6 + 0.8 * (1 - S.alignment) : 1;
+  out.gain = +gain.toFixed(3);
+  chain.forEach((idx, hop) => {
+    const sp = MATERIAL_SETS[SCENES[idx].id].space;
+    if (!sp.particles) return;
+    const amt = sp.particles * Math.pow(TRACE_DECAY, hop) * gain;
+    out.parts.push({ id: SCENES[idx].id, name: SCENES[idx].name, hop, amount: +amt.toFixed(3) });
+    out.snow += amt;
+    if (out.origin == null) { out.origin = SCENES[idx].id; out.originName = SCENES[idx].name; out.hops = hop; out.via = chain.slice(0, hop).map((k) => SCENES[k].name); }
+  });
+  out.snow = +Math.min(1, out.snow).toFixed(3);
+  return out;
+}
+function journeyText() {
+  const names = S.journey.map((leg) => SCENES[leg.from].name).concat([SCENES[S.from].name, SCENES[S.to].name + (S.pattern === 'fixation' ? '(같은 공간으로)' : '')]);
+  return names.join(' → ') + (S.journey.length ? ' · 봉인 ' + S.journey.length + '구간' : ' · 첫 구간');
+}
+function traceText(tr) {
+  if (!tr || tr.snow <= 0.02) return '흔적 없음' + (tr && MATERIAL_SETS[SCENES[S.to].id].space.particles > 0 ? ' (도착이 눈밭)' : '');
+  return '눈 ' + tr.snow.toFixed(2) + ' ← ' + tr.originName + ' (' + tr.hops + '칸' + (tr.via.length ? ', ' + tr.via.join('·') + ' 거쳐' : '') + (tr.gain !== 1 ? ', 잔류 ×' + tr.gain : '') + ')';
+}
 let W = null;    // 세워진 세계 { path, samples, total, roomA, roomB, doorA, doorB, tube:[mesh], objects, endLight, slit, spA, spB, eA, eB, snow, ... }
 let building = false;
 const audio = new CorridorAudio();
@@ -276,6 +381,8 @@ function disposeWorld() {
 function openKind(room) { return room.userData.kind !== 'closed'; }
 
 function build() {
+  // 자리 유지 (260925 저녁): 다시 세우기 전 자리를 적어 둔다 — 공간 A 에 있었으면 종전대로 시작 자리
+  const prev = (W && S.keepPos && !building) ? { zone: fp.zone, t: fp.t, yaw: fp.yaw, pitch: fp.pitch, openA: W.doorA.userData.open, tgtA: W.doorA.userData.target, openB: W.doorB.userData.open, tgtB: W.doorB.userData.target, hintTo: $('hintTo').textContent } : null;
   building = true;
   disposeWorld();
   const setA = MATERIAL_SETS[SCENES[S.from].id], setB = MATERIAL_SETS[SCENES[S.to].id];
@@ -283,7 +390,7 @@ function build() {
   // 공간 — fixation 은 같은 공간으로 돌아오므로 B 쪽 공간값도 A (색·소리는 종전대로 B 프리셋을 섞는다)
   const spA = setA.space, spB = pat === 'fixation' ? setA.space : setB.space;
   const eA = ENCLOSURE_E[spA.enclosure], eB = ENCLOSURE_E[spB.enclosure];
-  const path = buildPath({ A: PIN_A, B: PIN_B, pattern: pat, from: SCENES[S.from].vec, to: SCENES[S.to].vec, alignment: a, bucket: S.bucket, cont, gridMargin: 200, seedR: SEED_R });
+  const path = buildPath({ A: PIN_A, B: PIN_B, pattern: pat, from: SCENES[S.from].vec, to: SCENES[S.to].vec, alignment: a, bucket: S.bucket, cont, gridMargin: 200, seedR: SEED_R, softSide: true });   // softSide: 좌우 = 감정가 이동 (260925 저녁)
   const side = path.info.side, p = { x: 0, z: 1 };   // u = (1,0) → 왼쪽 수직 p = (0,1) (규칙과 같은 정의)
   let pts = path.points.map((q) => ({ x: q.x * SCALE, z: q.z * SCALE }));
   let sideDoor = null;   // fixation: 공간 A 옆문 { wall, z } (공간 로컬)
@@ -336,8 +443,9 @@ function build() {
     if (inStripe(i)) return Math.floor(samples[i].s / 1.2) % 2;
     return -1;
   };
+  // colorAt 의 i = 전체 샘플 번호 (260925 저녁: 뒤 덩어리는 lo + i 로 넘긴다 — 검토(2차) #21 줄무늬 위상 어긋남 수정). m = 시각 곡선(시간차).
   const colorAt = (t, seg, face, i) => {
-    let m = t, lum = 1;
+    let m = visAt(t), lum = 1;
     if (inStripe(i)) { const stripe = Math.floor(samples[i].s / 1.2) % 2; m = m * 0.35 + (stripe ? 0.85 : 0.15) * 0.65; lum = stripe ? 1.35 : 0.65; }
     if (cont.h > 0) { const quilt = ((seg + face) % 2 === 0) ? 0 : 1; m += (quilt - m) * cont.h * 0.85; lum = 1 + (quilt ? 0.35 : -0.35) * cont.h; }
     const key = face === 0 ? 'floor' : 'wall';
@@ -357,7 +465,7 @@ function build() {
   const tube = [];
   for (const [lo, hi] of [[0, half], [half, samples.length - 1]]) {
     for (const c of (split ? [-1, 0, 1] : [-1])) {
-      const geo = buildTubeGeometry(THREE, samples.slice(lo, hi + 1), colorAt, { floorOnly: pat === 'avoidance', quadFilter: split ? (i, face) => cls(lo + i, face) === c : null });
+      const geo = buildTubeGeometry(THREE, samples.slice(lo, hi + 1), (t, seg, face, i) => colorAt(t, seg, face, lo + i), { floorOnly: pat === 'avoidance', quadFilter: split ? (i, face) => cls(lo + i, face) === c : null });
       if (!geo.index || geo.index.count === 0) { geo.dispose(); continue; }
       const mesh = new THREE.Mesh(geo, tubeMats[String(c)]); mesh.name = 'tube_' + lo + '_' + c; world.add(mesh); tube.push(mesh);
     }
@@ -385,7 +493,8 @@ function build() {
     for (const d of r.userData.doors) { d.applyMatrix4(r.matrixWorld); world.add(d); d.updateMatrixWorld(true); }
   }
   const doorA = roomA.userData.door;
-  doorA.userData.tc = TRANS_S / 3; doorB.userData.tc = (TRANS_S * (1.6 - 0.6 * a)) / 3;   // 도착 문은 정렬도가 속도를 정한다
+  // 도착 문 속도: 편안함(종전) = 정렬도가 정한다(a=1 2.5 s · a=0 4 s) / 잔류(신안) = 기억과 무관하게 2.5 s (정렬도는 보상이 아니다, 260925 저녁)
+  doorA.userData.tc = TRANS_S / 3; doorB.userData.tc = S.alignUse === 'comfort' ? (TRANS_S * (1.6 - 0.6 * a)) / 3 : TRANS_S / 3;
   doorA.userData.pos = new THREE.Vector3(s0.x, 0, s0.z); doorB.userData.pos = new THREE.Vector3(sN.x, 0, sN.z);
   doorA.userData.room = roomA; doorB.userData.room = roomB;
   // 도착 문에서 새어 나오는 빛 (광원 둘 중 둘째) + 문 밑 틈
@@ -441,7 +550,39 @@ function build() {
     }
   }
   W = { path, samples, total, roomA, roomB, doorA, doorB, tube, objects, endLight, slit, setA, setB, spA, spB, eA, eB, HA, HB, nA, tBack, neckEnd, wB, hB, sizeKey, sideDoor, symScale, nSymPlaced, smallDoorList, snow: [],
-        lightDist: 9 * (0.7 + 0.3 * a) };
+        lightDist: S.alignUse === 'comfort' ? 9 * (0.7 + 0.3 * a) : 8.2, arrived: false, trace: null, traceMeshes: [] };
+  // ─── 흔적 (260925 저녁, 검토 #1) — 도착 공간에 지나온 공간의 눈이 남는다 ───
+  // fixation 은 도착 = 공간 A(옆문). 도착 공간이 눈밭이면 traceFor 가 0 을 준다.
+  const trace = traceFor(S.from, pat === 'fixation' ? S.from : S.to);
+  W.trace = trace;
+  if (trace.snow > 0.02) {
+    roomB.updateMatrixWorld(true);
+    const putInRoom = (room, worldPt, amount, seed) => {
+      const tr = buildSnowTrace(THREE, amount, { seed });
+      const l = worldPt.clone(); room.worldToLocal(l); tr.position.set(l.x, 0, l.z); room.add(tr); W.traceMeshes.push(tr); return tr;
+    };
+    // 도착 문 안쪽 0.6 m — 문으로 들어온 사람이 처음 밟는 자리 (문 로컬 +z = 바깥)
+    putInRoom(roomB, new THREE.Vector3(0.2, 0, -0.6).applyMatrix4(doorB.matrixWorld), trace.snow, 3);
+    // 상징 사물 아래 (병실 = 링거대 아래, 창 = 창 아래, 전화 = 탁자 곁) — 도착 문 흔적의 0.7
+    const sym = roomB.userData.symbol;
+    if (sym) { const v = new THREE.Vector3(); sym.getWorldPosition(v); v.x += 0.15; v.z += 0.35; putInRoom(roomB, v, trace.snow * 0.7, 7); }
+    // 통로 바닥의 잔류 눈 — 시각 곡선이 0.85 를 넘은 자리(벽은 이미 도착 재료)부터 도착 문 앞 0.8 m 까지 1.1 m 마다, 도착으로 갈수록 작게.
+    // "눈은 이미 안 보이는데 발밑엔 눈" 을 바닥에 놓은 것. 동시(종전) 곡선은 t=1 에서야 0.85 를 넘으므로 통로 눈덩이가 없다.
+    if (pat !== 'avoidance') {
+      const k0 = samples.findIndex((s) => visAt(s.t) >= 0.85);
+      if (k0 > 0) {
+        let n = 0;
+        for (let sArc = samples[k0].s + 0.4; sArc < total - 0.8; sArc += 1.1, n++) {
+          const sm = at(sArc); if (sm.w < 1.0 || crowded(sm)) continue;
+          const f = 1 - 0.6 * (sm.t - samples[k0].t) / Math.max(1e-3, 1 - samples[k0].t);
+          const lump = buildSnowTrace(THREE, trace.snow * 0.45 * f, { seed: 11 + n, wet: false });
+          const nx = -sm.tz, nz = sm.tx, sg = n % 2 === 0 ? 1 : -1;
+          lump.position.set(sm.x + nx * sg * (sm.w / 2 - 0.3), 0.01, sm.z + nz * sg * (sm.w / 2 - 0.3));
+          world.add(lump); objects.push(lump); W.traceMeshes.push(lump);
+        }
+      }
+    }
+  }
   // 눈 입자 (260925 오후) — 열린 땅의 상자(중심 ±18 m, 높이 0~7)에 결정론으로 흩뿌리고, 닫힌 공간 부피·지붕 덮인 통로 부피 안은 뺀다.
   // 통로에는 링마다 round(10 · 입자밀도(t) · (1−e(t))) 개 — 벽이 낮은 곳으로 눈발이 든다.
   const inClosedBoxPad = (room, x, z, pad) => { if (room.userData.kind !== 'closed') return false; const l = roomLocal(room, x, z), d = room.userData.dims; return Math.abs(l.x) <= d.W / 2 + pad && Math.abs(l.z) <= d.D / 2 + pad; };
@@ -457,7 +598,7 @@ function build() {
   if (spA.particles > 0 || spB.particles > 0) {
     const list = [];
     samples.forEach((s, i) => {
-      const pd = (spA.particles + (spB.particles - spA.particles) * s.t) * (1 - s.e);
+      const pd = (spA.particles + (spB.particles - spA.particles) * visAt(s.t)) * (1 - s.e);   // 눈발은 시각 곡선을 탄다 (260925 저녁)
       const n = Math.round(SNOW_RING_N * pd); if (n <= 0) return;
       const nx = -s.tz, nz = s.tx, hw = s.w / 2 + 1.2;
       for (const q of snowPositions(n, { x0: -hw, x1: hw, y0: 0, y1: hB + 1.5, z0: -0.15, z1: 0.15 }, 101 + i * 7)) {
@@ -468,14 +609,36 @@ function build() {
   }
   for (const d of [doorA, doorB]) { setDoorOpen(d, 0); d.userData.target = 0; d.userData.hold = false; }
   audio.setPresets(setA, setB);
-  placeAtStart();
-  Object.assign(SM_T, { dist: W.lightDist, eye: S.eye, lightY: S.eye }, envAt(0));
+  // 사건 소리(전화벨·삐)의 자리 = 그 공간의 상징 사물 (260925 저녁) — 전화기·링거대에서 난다
+  const symWorld = (room) => { const s = room.userData.symbol; if (!s) return null; room.updateMatrixWorld(true); const v = new THREE.Vector3(); s.getWorldPosition(v); return { x: v.x, y: 1.0, z: v.z }; };
+  audio.setSourcePos('A', symWorld(roomA)); audio.setSourcePos('B', symWorld(roomB));
+  $('hintFrom').textContent = SCENES[S.from].name; $('hintTo').textContent = '';
+  if (prev && prev.zone !== 'A') restorePos(prev); else placeAtStart();
+  Object.assign(SM_T, { dist: W.lightDist, eye: S.eye, lightY: S.eye }, envAt(fp.t));
   roomB.updateMatrixWorld(true);
   if (S.view === 'section') frameSection();
-  $('hintFrom').textContent = SCENES[S.from].name; $('hintTo').textContent = '';
+  $('continueBtn').disabled = !W.arrived;
+  $('journeyLine').textContent = journeyText(); $('traceNote').textContent = '흔적: ' + traceText(trace);
   building = false;
-  console.log('[t3] 통로 —', pat, SCENES[S.from].name, '(' + spA.enclosure + ') →', SCENES[S.to].name, '(' + spB.enclosure + ')', '마디', path.segments, '길이', total.toFixed(1), 'm', '×' + (total / DIRECT_M).toFixed(2), '단면', wB + '×' + hB, 'e', eA + '→' + eB, '지배축', path.info.dom, 'side', side, 'mN', path.info.mN, '사물', nSymPlaced, '작은 문', smallDoorList.length, '눈', W.snow.map((m) => m.userData.base.length).join('+'));
+  console.log('[t3] 통로 —', pat, SCENES[S.from].name, '(' + spA.enclosure + ') →', SCENES[S.to].name, '(' + spB.enclosure + ')', '마디', path.segments, '길이', total.toFixed(1), 'm', '×' + (total / DIRECT_M).toFixed(2), '단면', wB + '×' + hB, 'e', eA + '→' + eB, '지배축', path.info.dom, 'side', side, '(감정가', path.info.valenceShift, 'K', path.info.sideK, '옆 폭 ×' + path.info.lat + ')', 'mN', path.info.mN, '사물', nSymPlaced, '작은 문', smallDoorList.length, '눈', W.snow.map((m) => m.userData.base.length).join('+'), '흔적', traceText(trace), '전이', LAG_KO[S.lag] + '/' + SENSE_KO[S.sense], '정렬도', ALIGN_USE_KO[S.alignUse], prev ? '자리 유지 ' + prev.zone + ' t ' + prev.t.toFixed(2) : '시작 자리');
   refreshStatus();
+}
+// 자리 유지 (260925 저녁) — 다시 세운 뒤 적어 둔 자리로. 통로면 같은 t, 공간 B 면 도착 문 안쪽 1.3 m. 시선·문 열림도 되돌린다
+function restorePos(prev) {
+  if (prev.zone === 'B') placeInRoomB(); else teleport(prev.t);
+  fp.yaw = prev.yaw; fp.pitch = prev.pitch; fp.enteredCorridor = true;
+  setDoorOpen(W.doorA, prev.openA); W.doorA.userData.target = prev.tgtA;
+  if (prev.zone !== 'B') { setDoorOpen(W.doorB, prev.openB); W.doorB.userData.target = prev.tgtB; }
+  $('hintTo').textContent = prev.hintTo;
+  updateZone(); updateVisibility(true); dirtyFrames = 3;
+}
+function placeInRoomB() {
+  const p = new THREE.Vector3(0, 0, -1.3).applyMatrix4(W.doorB.matrixWorld), n = doorNormal(W.doorB);
+  fp.x = p.x; fp.z = p.z; fp.yaw = Math.atan2(-n.x, -n.z); fp.pitch = -0.03;
+  fp.zone = 'B'; fp.t = 1; fp.idx = W.samples.length - 1; fp.moving = false; fp.bobPhase = 0; fp.enteredCorridor = true;
+  for (const d of [W.doorA, W.doorB]) d.userData.hold = false;
+  setDoorOpen(W.doorB, 1); W.doorB.userData.target = 1; W.arrived = true;
+  updateZone(); updateVisibility(true); dirtyFrames = 3;
 }
 // 관객: 출발 공간 안, 문을 보며 (문에서 2.2 m — 공간이 startBack 을 주면 그 값). start() 훅도 이걸 부른다.
 function placeAtStart() {
@@ -487,9 +650,10 @@ function placeAtStart() {
 }
 // 공간 환경 — 관객 위치 t 로 A→B (260925 오후). 안개 = 공간 기본 밀도 × 정렬도 배율(1+2(1−a); avoidance 4.8) — 닫힌 방에서 종전 0.05+0.10(1−a) 와 같다
 function envAt(t) {
-  const A = W.spA, B = W.spB, L = (x, y) => x + (y - x) * t;
-  const fogK = S.pattern === 'avoidance' ? 4.8 : 1 + 2 * (1 - S.alignment);
-  const bg = lerpHex(THREE, A.bg, B.bg, t), am = lerpHex(THREE, A.ambient.color, B.ambient.color, t);
+  const A = W.spA, B = W.spB, v = visAt(t), L = (x, y) => x + (y - x) * v;   // 하늘·안개·빛은 시각 곡선을 탄다 (260925 저녁)
+  // 안개 배율: 편안함(종전) = 정렬도가 낮을수록 짙다(×1+2(1−a)) / 잔류(신안) = 기억의 안개만 (정렬도는 보상이 아니다)
+  const fogK = S.pattern === 'avoidance' ? 4.8 : S.alignUse === 'comfort' ? 1 + 2 * (1 - S.alignment) : 1;
+  const bg = lerpHex(THREE, A.bg, B.bg, v), am = lerpHex(THREE, A.ambient.color, B.ambient.color, v);
   return { fog: L(A.fogBase, B.fogBase) * fogK, bgR: bg.r, bgG: bg.g, bgB: bg.b, ambR: am.r, ambG: am.g, ambB: am.b, ambI: L(A.ambient.intensity, B.ambient.intensity), sun: L(A.sun, B.sun), local: L(A.localLight, B.localLight) };
 }
 function eAt(t) { return W.eA + (W.eB - W.eA) * t; }
@@ -752,11 +916,13 @@ for (const id of ['fromSel', 'toSel']) {
   SCENES.forEach((sc, i) => { const o = document.createElement('option'); o.value = i; o.textContent = sc.name + ' · ' + AXIS_KO[domAxis(sc.vec)] + ' · ' + ENCLOSURE_KO[MATERIAL_SETS[sc.id].space.enclosure]; sel.appendChild(o); });
   sel.addEventListener('change', () => { setPair(+$('fromSel').value, +$('toSel').value); build(); });
 }
-function setPair(fi, ti) {
+function setPair(fi, ti, opts) {
   if (SCENES[fi]) S.from = fi; if (SCENES[ti]) S.to = ti;
+  if (!(opts && opts.keepJourney)) S.journey = [];   // 쌍을 손으로 바꾸면 새 여정 — 잇기(continueTo)만 keepJourney
   $('fromSel').value = S.from; $('toSel').value = S.to;
-  const info = buildPath({ A: PIN_A, B: PIN_B, pattern: 'echo_follow', from: SCENES[S.from].vec, to: SCENES[S.to].vec, alignment: S.alignment }).info;
-  $('deltaNote').textContent = '감정 델타: 지배 축 ' + AXIS_KO[info.dom] + ' ' + (info.side > 0 ? '늘어남 → 왼쪽으로 휨' : '줄어듦 → 오른쪽으로 휨') + ' · 크기 ' + info.m + ' (mN ' + info.mN + ' → 사물 ' + (2 + Math.round(4 * info.mN)) + '개) · r2 ' + info.r2;
+  const info = buildPath({ A: PIN_A, B: PIN_B, pattern: 'echo_follow', from: SCENES[S.from].vec, to: SCENES[S.to].vec, alignment: S.alignment, softSide: true }).info;
+  $('deltaNote').textContent = '감정 델타: 지배 축 ' + AXIS_KO[info.dom] + ' · 감정가 이동 ' + info.valenceShift + ' (' + (info.side > 0 ? '밝아짐 → 왼쪽으로 휨' : '어두워짐 → 오른쪽으로 휨') + ', 또렷함 ' + info.sideK + ' → 옆 폭 ×' + info.lat + ') · 크기 ' + info.m + ' (mN ' + info.mN + ' → 사물 ' + (2 + Math.round(4 * info.mN)) + '개) · r2 ' + info.r2;
+  $('journeyLine').textContent = journeyText();
   const sA = MATERIAL_SETS[SCENES[S.from].id].space, sB = MATERIAL_SETS[SCENES[S.to].id].space;
   $('spaceNote').textContent = 'A ' + sA.note + ' (e ' + ENCLOSURE_E[sA.enclosure] + ') → B ' + sB.note + ' (e ' + ENCLOSURE_E[sB.enclosure] + '). 통로 벽 높이 = H·e(t), e<0.08 이면 바닥만. 하늘·안개·빛도 t 로 섞인다.';
 }
@@ -769,7 +935,7 @@ bindRange('align', (x) => { S.alignment = x; }, (x) => x.toFixed(2));
 bindRange('contD', (x) => { S.cont.d = x; }, (x) => x.toFixed(2));
 bindRange('contC', (x) => { S.cont.c = x; }, (x) => x.toFixed(2));
 bindRange('contH', (x) => { S.cont.h = x; }, (x) => x.toFixed(2));
-function setAlignment(a) { S.alignment = Math.max(0, Math.min(1, a)); $('align').value = S.alignment; $('alignV').textContent = S.alignment.toFixed(2); }
+function setAlignment(a) { S.alignment = Math.max(0, Math.min(1, a)); $('align').value = S.alignment; $('alignV').textContent = S.alignment.toFixed(2); refreshNotes(); }
 function setCont(d, c, h) {
   if (d != null) { S.cont.d = Math.max(0, Math.min(1, d)); $('contD').value = S.cont.d; $('contDV').textContent = S.cont.d.toFixed(2); }
   if (c != null) { S.cont.c = Math.max(0, Math.min(1, c)); $('contC').value = S.cont.c; $('contCV').textContent = S.cont.c.toFixed(2); }
@@ -791,7 +957,39 @@ $('muteOn').addEventListener('change', () => audio.setMuted($('muteOn').checked)
 $('views').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) setView(b.dataset.view); });
 $('sideOn').addEventListener('change', () => setSectionSide($('sideOn').checked));
 $('rebuild').addEventListener('click', build);
-$('reset').addEventListener('click', () => { setPattern('echo_follow'); setPair(0, 2); setAlignment(0.7); setBucket('MID'); setCont(0, 0, 0); setEye(1.6); setConnective(0); setView('fp'); build(); });
+// 260925 저녁 — 전이(시간차·감각) · 정렬도 쓰임 · 자리 유지 · 여정
+function refreshNotes() {
+  const a = S.alignment, L = LAG[S.lag], f = (ab) => ab[0].toFixed(2) + '→' + ab[1].toFixed(2);
+  $('alignLabel').textContent = S.alignUse === 'comfort' ? '정렬도 → 길이·안개·빛 거리·도착 문 속도' : '정렬도 → 길이 · 출발 재료 지속 · 흔적 양';
+  $('alignUseNote').textContent = S.alignUse === 'comfort'
+    ? '종전: 안개 ×' + (1 + 2 * (1 - a)).toFixed(2) + ' · 빛 거리 ' + (9 * (0.7 + 0.3 * a)).toFixed(1) + ' m · 도착 문 ' + (TRANS_S * (1.6 - 0.6 * a)).toFixed(1) + ' s. 높은 정렬 = 넓고 밝고 빨리 열림 (보상처럼 읽힐 수 있다 — 검토). 길이는 두 안 공통.'
+    : '신안: 안개·빛 거리·문 속도는 기억이 정한다. 정렬도가 낮을수록 출발 재료가 오래 남고(곡선 +' + residueLate().toFixed(2) + ') 흔적이 더 남는다(×' + (0.6 + 0.8 * (1 - a)).toFixed(2) + '). 정렬은 접촉이지 승리가 아니다.';
+  $('lagNote').textContent = '시각 ' + f(L.vis) + ' · 배경 소리 ' + f(L.amb) + ' · 발소리 ' + f(L.step) + ' · 도착 소리 ' + f(L.arrive) + (residueLate() ? ' (+' + residueLate().toFixed(2) + ' 잔류)' : '') +
+    (S.sense === 'eye' ? ' · 시각만: 소리는 출발 기억 그대로' : S.sense === 'ear' ? ' · 청각만: 재료·빛·하늘·눈발은 출발 기억 그대로' : '') + '. 길·속도·닫힘 e(t) 는 같다.';
+}
+function setLag(v) { if (LAG[v]) { S.lag = v; $('lagSel').value = v; refreshNotes(); } }
+function setSense(v) { if (SENSE_KO[v]) { S.sense = v; $('senseSel').value = v; refreshNotes(); } }
+function setAlignUse(v) { if (ALIGN_USE_KO[v]) { S.alignUse = v; $('alignUse').value = v; refreshNotes(); } }
+function setKeepPos(b) { S.keepPos = !!b; $('keepOn').checked = S.keepPos; }
+$('lagSel').addEventListener('change', () => { setLag($('lagSel').value); build(); });
+$('senseSel').addEventListener('change', () => { setSense($('senseSel').value); build(); });
+$('alignUse').addEventListener('change', () => { setAlignUse($('alignUse').value); build(); });
+$('keepOn').addEventListener('change', () => setKeepPos($('keepOn').checked));
+$('align').addEventListener('input', refreshNotes);
+{ const sel = $('nextSel'); SCENES.forEach((sc, i) => { const o = document.createElement('option'); o.value = i; o.textContent = sc.name + ' · ' + ENCLOSURE_KO[MATERIAL_SETS[sc.id].space.enclosure]; sel.appendChild(o); }); sel.value = 3; }
+// 잇기 — 현재 구간을 여정에 봉인하고, 도착 공간을 출발로 다음 구간을 세운다(그 공간의 시작 자리에서). 도착 전엔 거절(force 는 캡처용)
+function continueTo(ti, opts) {
+  if (!W || !SCENES[ti]) return false;
+  if (!W.arrived && !(opts && opts.force)) { showCaption('아직 도착하지 않았다', '여정', 2500); return false; }
+  S.journey.push({ from: S.from, to: S.pattern === 'fixation' ? S.from : S.to, pattern: S.pattern, alignment: S.alignment });
+  setPair(S.pattern === 'fixation' ? S.from : S.to, +ti, { keepJourney: true });
+  const keep = S.keepPos; S.keepPos = false; build(); S.keepPos = keep;
+  return true;
+}
+function resetJourney() { S.journey = []; $('journeyLine').textContent = journeyText(); build(); }
+$('continueBtn').addEventListener('click', () => continueTo(+$('nextSel').value));
+$('journeyReset').addEventListener('click', resetJourney);
+$('reset').addEventListener('click', () => { setPattern('echo_follow'); setPair(0, 2); setAlignment(0.7); setBucket('MID'); setCont(0, 0, 0); setEye(1.6); setConnective(0); setView('fp'); setLag('eyeFirst'); setSense('both'); setAlignUse('comfort'); setKeepPos(true); S.journey = []; const keep = S.keepPos; S.keepPos = false; build(); S.keepPos = keep; });
 const panel = $('panel');
 function setPanel(open) { panel.classList.toggle('closed', !open); document.body.classList.toggle('panel-closed', !open); }
 function setHud(show) { $('hint').hidden = !show; $('toggle').hidden = !show; $('startNote').hidden = !show; }
@@ -799,9 +997,9 @@ $('toggle').addEventListener('click', () => setPanel(panel.classList.contains('c
 addEventListener('resize', () => { fpCam.aspect = innerWidth / innerHeight; fpCam.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); if (S.view === 'section') frameSection(); });
 
 // ─── 상태줄 ───────────────────────────────────────────────────────
-function curMix() { // 현재 자리 재료 혼합비 (0 = A, 1 = B)
+function curMix() { // 현재 자리 재료 혼합비 (0 = A, 1 = B) — 시각 곡선 (260925 저녁)
   if (!W) return 0;
-  const t = fp.t; let m = t;
+  const t = fp.t; let m = visAt(t);
   if (S.cont.h > 0 && fp.zone === 'C') { const q = nearest(fp.x, fp.z); const quilt = ((q.s.seg + 1) % 2 === 0) ? 0 : 1; m += (quilt - m) * S.cont.h * 0.85; }
   return m;
 }
@@ -816,7 +1014,10 @@ function refreshStatus() {
     '마디 ' + W.path.segments + ' · 길이 ' + W.total.toFixed(1) + ' m (직선 ' + DIRECT_M + ', ×' + (W.total / DIRECT_M).toFixed(2) + ') · 단면 ' + W.wB + '×' + W.hB + ' → 여기 ' + sz.w.toFixed(2) + '×' + sz.h.toFixed(2) + ' · 사물 ' + W.nSymPlaced + ' · 작은 문 ' + W.smallDoorList.length + '\n' +
     '현재 t ' + fp.t.toFixed(3) + ' · 재료 혼합 A→B ' + curMix().toFixed(2) + ' · 문 A ' + W.doorA.userData.open.toFixed(2) + ' 문 B ' + W.doorB.userData.open.toFixed(2) + '\n' +
     '음량 A ' + v.A.toFixed(2) + ' · B ' + v.B.toFixed(2) + ' · 드론 ' + v.drone.toFixed(2) + ' · 허밍 ' + v.hum.toFixed(2) + ' · 발 ' + v.step.toFixed(2) + ' · 저음 ' + v.thump.toFixed(2) + ' (' + v.ctx + ')\n' +
-    '안개 ' + SM.fog.toFixed(3) + ' · 빛 거리 ' + SM.dist.toFixed(1) + ' · 빛 높이 ' + SM.lightY.toFixed(2) + ' · ambient ' + SM.ambI.toFixed(2) + ' · 태양 ' + SM.sun.toFixed(2) + ' · 국소광 ×' + SM.local.toFixed(2) + ' · 지배축 ' + W.path.info.dom + ' side ' + W.path.info.side + ' mN ' + W.path.info.mN;
+    '안개 ' + SM.fog.toFixed(3) + ' · 빛 거리 ' + SM.dist.toFixed(1) + ' · 빛 높이 ' + SM.lightY.toFixed(2) + ' · ambient ' + SM.ambI.toFixed(2) + ' · 태양 ' + SM.sun.toFixed(2) + ' · 국소광 ×' + SM.local.toFixed(2) + ' · 지배축 ' + W.path.info.dom + ' side ' + W.path.info.side + ' (감정가 ' + W.path.info.valenceShift + ' K ' + W.path.info.sideK + ' 옆 폭 ×' + W.path.info.lat + ') mN ' + W.path.info.mN + '\n' +
+    '전이 ' + LAG_KO[S.lag] + ' · ' + SENSE_KO[S.sense] + ' · 시각 ' + visAt(fp.t).toFixed(2) + ' · 소리 ' + ambAt(fp.t).toFixed(2) + ' · 발 ' + stepAt(fp.t).toFixed(2) + ' · 도착음 ' + arriveAt(fp.t).toFixed(2) + ' · 먹먹 A ' + v.muffleA.toFixed(2) + ' B ' + v.muffleB.toFixed(2) + ' · 뒤 저음 양 ' + v.thumpAmt.toFixed(2) + '\n' +
+    '정렬도 쓰임 ' + ALIGN_USE_KO[S.alignUse] + ' · 자리 유지 ' + (S.keepPos ? '켬' : '끔') + ' · 도착 ' + (W.arrived ? '함' : '아직') + '\n' +
+    '여정 ' + journeyText() + '\n흔적 ' + traceText(W.trace);
 }
 let dirtyFrames = 0;   // teleport·rebuild 직후 두 프레임은 미정착 (캡처 스크립트가 옛 프레임을 찍지 않게)
 function settled() {
@@ -847,7 +1048,8 @@ function frame() {
   // 바닥빛은 벽에 닿는 면이 작아 같은 세기면 더 어둡다 → 그 몫만큼 세기 ×1.8.
   let floorK = 0;   // 1 = 완전 바닥빛
   if (S.pattern === 'contradiction' && fp.zone === 'C') floorK = t < W.tBack ? 1 : 1 - smoothstep(W.tBack, 0.6, t);
-  SM_T.lightI = (W.setA.light.intensity * (1 - t) + W.setB.light.intensity * t) * LIGHT_K * (1 + 0.8 * floorK);
+  const vis = visAt(t);   // 빛 세기도 시각 곡선 (260925 저녁)
+  SM_T.lightI = (W.setA.light.intensity * (1 - vis) + W.setB.light.intensity * vis) * LIGHT_K * (1 + 0.8 * floorK);
   SM_T.lightY = 0.12 * floorK + SM.eye * (1 - floorK);
   SM_T.bob = fp.moving ? 1 : 0;
   Object.assign(SM_T, envAt(t));   // 하늘·안개·ambient·태양·국소광 배율 (260925 오후)
@@ -866,10 +1068,19 @@ function frame() {
   const nearK = Math.max(0.15, Math.min(1, dEnd / 1.5));
   W.endLight.intensity = W.endLight.userData.base * nearK * (1 + 0.25 * S.cont.d * Math.sin(2 * Math.PI * 0.4 * time + 1.7));
   for (const m of W.snow) if (m.visible) tickSnow(m, time, { x: fp.x, z: fp.z, r: 0.8 });
-  audio.setMix(fp.zone === 'A' ? 0 : fp.zone === 'B' ? 1 : t);
+  // 소리 — 배경·발·도착이 각자의 곡선으로 (t 는 공간 A 0 · 공간 B 1, updateZone 이 정한다). 260925 저녁
+  audio.setMix(ambAt(t), stepAt(t), arriveAt(t));
+  // 닫힌 문 너머 먹먹함 — 닫힌 공간의 문만 막는다(홀로 선 문은 안 막음). 관객과 그 공간 사이 문들의 열림(0.6 에서 완전 열림)을 곱한다
+  const doorEff = (d, room) => room.userData.kind === 'closed' ? Math.max(0, Math.min(1, d.userData.open / 0.6)) : 1;
+  const effA = doorEff(W.doorA, W.roomA), effB = doorEff(W.doorB, W.roomB);
+  let mA = 1, mB = 1;
+  if (fp.zone === 'A') mB = effA * effB; else if (fp.zone === 'B') mA = effA * effB; else { mA = effA; mB = effB; }
+  audio.setMuffle(mA, mB);
   audio.update(time);
+  if (fp.zone === 'B' && !W.arrived) { W.arrived = true; $('continueBtn').disabled = false; }   // 도착 — 잇기 가능
   marker.position.set(fp.x, 0.6, fp.z); marker.rotation.set(Math.PI / 2, 0, -fp.yaw + Math.PI, 'YXZ');
   if (S.view === 'fp') applyFpCam(dt, time);
+  { const f = new THREE.Vector3(); fpCam.getWorldDirection(f); audio.setListener(fpCam.position, f, fpCam.up); }   // 관객 = 카메라 (HRTF)
   renderer.render(scene, activeCam);
   if (++frameCount % 10 === 0) refreshStatus();
 }
@@ -924,12 +1135,17 @@ function spaceInfo(room, sp) {
 window.__t3 = {
   ready: false,
   setPattern, setPair, setAlignment, setBucket, setCont, setEye, setConnective, setView, setSectionSide, setSrgb, rebuild: build, teleport, walk, start, openDoor, settled, setPanel, setHud,
+  setLag, setSense, setAlignUse, setKeepPos, continueTo, resetJourney, journey: () => S.journey.slice(),   // 260925 저녁
+  lookAt(x, z, pitch) { fp.yaw = Math.atan2(x - fp.x, z - fp.z); fp.pitch = pitch == null ? -0.03 : Math.max(-0.8, Math.min(0.6, pitch)); dirtyFrames = 3; },   // 그 자리를 본다 (캡처용, 위치는 그대로; pitch 음수 = 고개 숙임)
   caption() { showCaption(currentConnective(), captionSrc(), 6000); },
   state() {
     if (!W) return null;
     const sz = curSize(), q = fp.zone === 'C' ? nearest(fp.x, fp.z) : null, sky = skyState();
     return {
       pattern: S.pattern, from: SCENES[S.from].id, to: SCENES[S.to].id, alignment: S.alignment, bucket: S.bucket, sizeKey: W.sizeKey, cont: { ...S.cont }, eye: S.eye, connective: currentConnective(), view: S.view, srgb: S.srgb, fov: fpCam.fov,
+      lag: S.lag, sense: S.sense, alignUse: S.alignUse, keepPos: S.keepPos, arrived: W.arrived,
+      curves: { vis: +visAt(fp.t).toFixed(3), amb: +ambAt(fp.t).toFixed(3), step: +stepAt(fp.t).toFixed(3), arrive: +arriveAt(fp.t).toFixed(3), late: +residueLate().toFixed(3) },
+      trace: W.trace, traceMeshes: W.traceMeshes.length, journey: S.journey.slice(), journeyText: journeyText(),
       segments: W.path.segments, nodes: W.path.nodes, length: +W.total.toFixed(2), direct: DIRECT_M, ratio: +(W.total / DIRECT_M).toFixed(3), ratioTarget: +W.path.ratioTarget.toFixed(3),
       width: W.wB, height: W.hB, widthHere: +sz.w.toFixed(3), heightHere: +sz.h.toFixed(3), samples: W.samples.length,
       space: { A: spaceInfo(W.roomA, W.spA), B: spaceInfo(W.roomB, W.spB) }, eA: W.eA, eB: W.eB, enclosure: +eHere().toFixed(3), ceilingCover: +smoothstep(0.75, 1, eHere()).toFixed(3), skyOpen: sky.open, skyBright: sky.bright,
@@ -937,6 +1153,7 @@ window.__t3 = {
       snow: { total: snowCount(), meshes: W.snow.map((m) => ({ name: m.name, n: m.userData.base.length, visible: m.visible })) },
       zone: fp.zone, t: +fp.t.toFixed(3), mix: +curMix().toFixed(3), lateral: q ? +q.lat.toFixed(3) : 0,
       doors: { A: +W.doorA.userData.open.toFixed(3), B: +W.doorB.userData.open.toFixed(3), tcB: +W.doorB.userData.tc.toFixed(3), holdA: !!W.doorA.userData.hold, holdB: !!W.doorB.userData.hold, distB: +Math.hypot(fp.x - W.doorB.userData.pos.x, fp.z - W.doorB.userData.pos.z).toFixed(2) },
+      doorPos: { A: { x: +W.doorA.userData.pos.x.toFixed(2), z: +W.doorA.userData.pos.z.toFixed(2) }, B: { x: +W.doorB.userData.pos.x.toFixed(2), z: +W.doorB.userData.pos.z.toFixed(2) } },
       sound: audio.volumes(), fog: +SM.fog.toFixed(4), fogTarget: +SM_T.fog.toFixed(4), lightDist: +SM.dist.toFixed(2), lightY: +SM.lightY.toFixed(2), lightI: +SM.lightI.toFixed(3), lightColor: [SM.lightR, SM.lightG, SM.lightB].map((v) => +v.toFixed(3)), endLightI: +W.endLight.intensity.toFixed(3),
       tBack: +W.tBack.toFixed(3), objects: W.objects.length, symbols: W.nSymPlaced, smallDoors: W.smallDoorList.length, smallDoorList: W.smallDoorList, symScale: W.symScale,
       sameRoom: W.roomA === W.roomB, sideDoor: W.sideDoor, info: W.path.info, fp: { x: +fp.x.toFixed(2), z: +fp.z.toFixed(2), yaw: +fp.yaw.toFixed(3) },
@@ -946,6 +1163,7 @@ window.__t3 = {
   },
 };
 setPair(S.from, S.to);
+refreshNotes();
 frame();
 await loadConnectives();
 build();

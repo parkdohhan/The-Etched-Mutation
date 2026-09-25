@@ -13,6 +13,9 @@
  *  입력  A, B(핀 xz) · from/to(장면 17축 벡터) · pattern · alignment a(0..1)
  *        · bucket(HIGH/MID/LOW/FIXATED) · cont {d 발산, c 수렴, h 이질}
  *  델타  Δ = to − from (17축).  dom = |Δ| 최대 축.  side = sign(Δ[dom]) (0 이면 +1)
+ *        opts.softSide (260925 저녁, 기본 꺼짐): side = sign(Σ valence·Δ) (밝아짐 +1 왼쪽 / 어두워짐 −1 오른쪽),
+ *        sideK = |Σ valence·Δ| / Σ|Δ|, 옆 폭 배율 lat = 0.5 + 0.5·smoothstep(0, 0.3, sideK) — echo/bridge 진폭·contradiction 꺾임·
+ *        displacement 밀림·avoidance 비킴에 곱한다(fixation 은 부호만). T1 페이지는 옵션을 안 켜므로 종전 그대로.
  *        m = |Δ|₂,  mN = clamp(m / 1.4, 0, 1)   … 곡률·마디 수의 원료
  *        val = dom 축의 결(양성 +1 / 음성 −1)   … 되돌아가는 깊이·S자 비대칭의 원료
  *        sec = |Δ| 두 번째 축, r2 = Δ[sec] / |Δ[dom]| (−1..1) … 봉우리 치우침·고리 찌그러짐의 원료
@@ -115,7 +118,16 @@ export function deltaInfo(fromVec, toVec_) {
   const mN = Math.max(0, Math.min(1, m / 1.4));
   const side = d[dom] < 0 ? -1 : 1;
   const r2 = (sec >= 0 && best > 1e-6) ? Math.max(-1, Math.min(1, d[sec] / best)) : 0;
-  return { delta: d, dom, domKey: AXES[dom], sec, secKey: sec >= 0 ? AXES[sec] : null, side, m, mN, val: AXIS_VALENCE[dom], r2 };
+  // 260925 저녁(검토 반영) — 감정가 이동으로 정한 좌우. 지배 축 하나의 부호(side)는 두 기억의 축이 비슷한 크기로 하나는 오르고
+  // 하나는 내릴 때(거짓말→마당: 수치 −0.6 · 기쁨 +0.6) 동률 순서 하나로 뒤집혔다. 17축 전체의 감정가 이동 vs = Σ valence·Δ 는
+  // 그 합이라 한 축의 잔값에 안 흔들리고, 밝아짐(+1 · 왼쪽) / 어두워짐(−1 · 오른쪽) 이라는 뜻을 갖는다.
+  // sideK = |vs| / Σ|Δ| (0..1) = 감정가가 얼마나 또렷이 한쪽으로 움직였나. 같은 결 안의 이동(거짓말→병실 0.02)은 0 에 가깝고
+  // 결을 건너는 이동(마당→병실 1.0)은 1. buildPath(softSide) 는 sideK 가 작을수록 옆으로 휘는 폭을 줄인다(뒤집혀도 티가 덜 나게).
+  let vs = 0, va = 0;
+  for (let i = 0; i < AXES.length; i++) { vs += AXIS_VALENCE[i] * d[i]; va += Math.abs(d[i]); }
+  const sideVal = vs < 0 ? -1 : 1;
+  const sideK = va > 1e-9 ? Math.abs(vs) / va : 0;
+  return { delta: d, dom, domKey: AXES[dom], sec, secKey: sec >= 0 ? AXES[sec] : null, side, m, mN, val: AXIS_VALENCE[dom], r2, sideVal, sideK, valenceShift: vs };
 }
 
 function polyLength(pts) {
@@ -176,7 +188,13 @@ export function buildPath(opts) {
   const M = opts.gridMargin == null ? 56 : opts.gridMargin;
   const seedR = opts.seedR == null ? 6 : opts.seedR;     // 출발 자리 걷힘 반경 (contradiction 되돌림 바닥의 원료)
   const info = deltaInfo(from, to);
-  const { side, mN, val, dom, r2 } = info;
+  const { mN, val, dom, r2 } = info;
+  // softSide (260925 저녁, 기본 꺼짐 — T1 페이지는 종전대로): 좌우 = 감정가 이동 부호, 옆 폭 배율 lat = 0.5 + 0.5·smoothstep(0, 0.3, sideK).
+  // 같은 결 안의 이동은 반폭으로 휘고(뒤집혀도 절반 폭), 결을 건너는 이동은 종전 폭. fixation 고리는 부호만 쓴다(반지름은 길이 규칙).
+  const soft = !!opts.softSide;
+  const side = soft ? info.sideVal : info.side;
+  const kS = Math.max(0, Math.min(1, info.sideK / 0.3));
+  const lat = soft ? 0.5 + 0.5 * (kS * kS * (3 - 2 * kS)) : 1;
 
   const dx = B.x - A.x, dz = B.z - A.z;
   const L = Math.hypot(dx, dz) || 1;
@@ -194,7 +212,7 @@ export function buildPath(opts) {
       const peak = 0.5 + 0.1 * r2;                       // 봉우리 자리 (0.4..0.6)
       const gamma = Math.log(0.5) / Math.log(peak);      // t^γ 가 peak 에서 0.5 가 되게
       const build = (am) => sampleCurve(A, u, p, L, n, (t) => am * Math.sin(Math.PI * Math.pow(t, gamma)) * side);
-      amp = solveAmp(build, 0.04 * mN, Lt);
+      amp = solveAmp(build, 0.04 * mN, Lt) * lat;   // lat < 1 이면 길이가 목표에 못 미친다 (옆 폭이 곧 길이) — ratio 로 보고
       points = build(amp);
       break;
     }
@@ -202,7 +220,7 @@ export function buildPath(opts) {
       n = 4 + Math.round(6 * mN);
       const asym = 0.25 * val + 0.25 * r2;
       const build = (am) => sampleCurve(A, u, p, L, n, (t) => am * Math.sin(2 * Math.PI * t) * (1 + asym * Math.cos(Math.PI * t)) * side);
-      amp = solveAmp(build, 0.12 + 0.12 * mN, Lt);
+      amp = solveAmp(build, 0.12 + 0.12 * mN, Lt) * lat;
       points = build(amp);
       break;
     }
@@ -210,7 +228,7 @@ export function buildPath(opts) {
       n = 5 + Math.round(5 * mN);
       // 정렬도는 L* 를 통해서만 s 에 들어간다 (예전엔 backK 에도 (1−a) 가 곱해져 상한 1.6 을 넘겼다)
       const backK = 0.45 * (val < 0 ? 1 : 0.7);
-      const bendK = (0.25 + 0.35 * mN) * side;
+      const bendK = (0.25 + 0.35 * mN) * side * lat;
       const backFloor = seedR + w + 1;                   // 갈고리가 출발 걷힘 원 밖으로 w+1 이상 나온다 (형태상 최소 길이 ≈ ×1.5)
       const build = (s) => {
         const dBack = Math.max(backFloor, s * L * backK);
@@ -231,7 +249,7 @@ export function buildPath(opts) {
     }
     case 'displacement': {
       n = 3;
-      const shift = side * (6 + 10 * mN + 8 * (1 - a));
+      const shift = side * (6 + 10 * mN + 8 * (1 - a)) * lat;
       const hook = 4 + 4 * (1 + r2);
       const A2 = clampPt({ x: A.x + p.x * shift + u.x * 3, z: A.z + p.z * shift + u.z * 3 }, M);
       const B2 = clampPt({ x: B.x + p.x * shift * 0.5 - u.x * hook, z: B.z + p.z * shift * 0.5 - u.z * hook }, M);
@@ -244,7 +262,7 @@ export function buildPath(opts) {
     case 'avoidance': {
       n = 2;
       // 띠는 델타의 반대쪽(무감 쪽)으로 비켜 난다 — 깊이는 mN 과 (1−a) 가 정한다
-      const bend = -side * L * (0.08 + 0.2 * mN + 0.12 * (1 - a));
+      const bend = -side * L * (0.08 + 0.2 * mN + 0.12 * (1 - a)) * lat;
       const K = clampPt({ x: (A.x + B.x) / 2 + p.x * bend, z: (A.z + B.z) / 2 + p.z * bend }, M);
       points = [{ x: A.x, z: A.z }, K, { x: B.x, z: B.z }];
       thin = {
@@ -295,6 +313,6 @@ export function buildPath(opts) {
       grain: 0.16 + 0.5 * cont.d,
       hetero: cont.h,
     },
-    info: { dom: info.domKey, domIdx: dom, sec: info.secKey, r2: +r2.toFixed(3), side, mN: +mN.toFixed(3), m: +info.m.toFixed(3), val, alignment: a, bucket, cont },
+    info: { dom: info.domKey, domIdx: dom, sec: info.secKey, r2: +r2.toFixed(3), side, sideDom: info.side, sideVal: info.sideVal, sideK: +info.sideK.toFixed(3), valenceShift: +info.valenceShift.toFixed(3), lat: +lat.toFixed(3), softSide: soft, mN: +mN.toFixed(3), m: +info.m.toFixed(3), val, alignment: a, bucket, cont },
   };
 }
