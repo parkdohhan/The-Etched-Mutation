@@ -1,9 +1,11 @@
 /**
  * 통로 3D (T1′) — 합성 소리 (실험 전용, 본 코드 미반영) (2026-09-25)
  *
- * 목적: 외부 음원 없이 WebAudio 로 장면 소리 5종(비·웅웅·종·삐·벨 잔향) + 도착 드론·허밍 + 발소리 + 뒤쪽 저음을 낸다.
+ * 목적: 외부 음원 없이 WebAudio 로 장면 소리 5종(비·웅웅·바람·삐·벨 잔향) + 도착 드론·허밍 + 발소리 + 뒤쪽 저음을 낸다.
  *       헤드리스에선 들리지 않으므로 volumes() 로 현재 음량을 숫자로 낸다(캡처 검증용).
  * 결정론: 노이즈 버퍼는 고정 씨앗 LCG. 간헐 소리(종·삐·벨·저음)는 경과 시간의 정수 박자로만 울린다. Math.random 없음.
+ * 260925 오후 재설계(기억별 공간): 첫눈의 마당은 종 → 바람(노이즈 → 로패스 320 Hz, 0.08 Hz 로 돌풍처럼 커졌다 작아짐).
+ *       열린 땅의 소리는 벽이 없는 공간의 재료 — 통로에서 t 로 섞이는 규칙은 다른 소리와 같다.
  * 규칙(Among the Sleep 조사 항목 "소리가 전환을 잇는 방식"): 도착 소리는 남은 거리에 반비례로 커지고(= t 에 비례),
  *       발소리는 바닥재(출발/도착)를 t 로 섞고, 뒤쪽 사각지대에서 간헐 저음.
  * 소비자: test/corridor-3d-test.html 만.
@@ -55,11 +57,16 @@ export class CorridorAudio {
     // 웅웅: 55 + 55.7 Hz → 로패스 200
     const humG = ctx.createGain(); humG.gain.value = 0; humG.connect(out);
     for (const f of [55, 55.7]) { const o = ctx.createOscillator(); o.frequency.value = f; const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 200; o.connect(lp); lp.connect(humG); o.start(); }
+    // 바람: 노이즈 → 로패스 320 (Q 0.5) → 게인. 게인은 0.08 Hz 사인으로 ±(기본의 45 %) 흔들린다 — 돌풍 (결정론, 오실레이터)
+    const windSrc = ctx.createBufferSource(); windSrc.buffer = this.noiseBuf; windSrc.loop = true;
+    const windLp = ctx.createBiquadFilter(); windLp.type = 'lowpass'; windLp.frequency.value = 320; windLp.Q.value = 0.5;
+    const windG = ctx.createGain(); windG.gain.value = 0; windSrc.connect(windLp); windLp.connect(windG); windG.connect(out); windSrc.start();
+    const windLfo = ctx.createOscillator(); windLfo.frequency.value = 0.08; const windLfoG = ctx.createGain(); windLfoG.gain.value = 0; windLfo.connect(windLfoG); windLfoG.connect(windG.gain); windLfo.start();
     // 벨 잔향용 딜레이
     const evG = ctx.createGain(); evG.gain.value = 1; evG.connect(out);
     const dl = ctx.createDelay(1.0); dl.delayTime.value = 0.23; const fb = ctx.createGain(); fb.gain.value = 0.45; const dlG = ctx.createGain(); dlG.gain.value = 0;
     evG.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(dlG); dlG.connect(out);
-    return { name, out, rainG, humG, evG, dlG, kind: null };
+    return { name, out, rainG, humG, windG, windLfoG, evG, dlG, kind: null };
   }
   setPresets(a, b) { this.presetA = a; this.presetB = b; this._applyPresets(); }
   _applyPresets() {
@@ -69,6 +76,8 @@ export class CorridorAudio {
       ch.kind = p.sound;
       ch.rainG.gain.value = p.sound === 'rain' ? 0.35 : 0;
       ch.humG.gain.value = p.sound === 'hum' ? 0.5 : 0;
+      ch.windG.gain.value = p.sound === 'wind' ? 0.42 : 0;
+      ch.windLfoG.gain.value = p.sound === 'wind' ? 0.19 : 0;
       ch.dlG.gain.value = p.sound === 'ring' ? 0.6 : 0;
     }
   }
