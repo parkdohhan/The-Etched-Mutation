@@ -64,6 +64,7 @@
 - `docs/데이터계약_브릿지_v1-260412.md` — author/trajectory bridge
 - `docs/시각화_설계_v1-260412.md` — 뷰어 3뷰 분리
 - `docs/메모/Feedback.md` — 진행 상황 + 레퍼런스 + TODO
+- `docs/research-program/TEM_research_spec_v0.1-260926.md` — 연구 방향 명세(전승 모델+인지 모델 결합, 2026-09-26) + 부록 A 저장소 대조. 기억유전학 v0.3/v0.5/v0.6·연구 프로그램과 함께 읽을 것
 
 ### 3.5 쉬워 보이는 제안이 사실 덫
 ❌ "Stately 이식하자" — 학습 곡선 + 단일 궤적 모델이라 TEM 부적합
