@@ -1,0 +1,196 @@
+<!-- ═══════════════════════ VI부 · 엔진 읽기 (2026-10-19 추가) ═══════════════════════ -->
+<!-- 앞 18장과 문체가 다릅니다. 교재가 아니라 옆에 앉아서 말하는 투로 썼습니다. -->
+
+<!-- ═══════════════════════ 19장 ═══════════════════════ -->
+<section class="chapter" id="ch19">
+<h1><span class="chno">19장 · 엔진 읽기</span>엔진이 내놓는 네 가지</h1>
+
+<p class="goal"><b>목표</b> 엔진이 <b>무슨 질문</b>을 받고 <b>무슨 답</b>을 돌려주는지. 답은 네 개뿐이고, 그 네 개가 어디로 흘러가는지까지만 본다. 계산은 다음 장부터.</p>
+
+<h2>여기서부터는 속을 봅니다</h2>
+<p>앞의 18장에서 제가 계속 "속은 몰라도 된다"고 했죠. 경계만 보라고. 그건 지금도 맞아요. AI가 "고쳤어요" 할 때 진짜인지 확인하는 데는 경계만 보면 됩니다.</p>
+<p>그런데 10월에 질문이 바뀌었어요. "내 엔진이 어떤 원리로 도는지 나도 모른다. 인정받으려면 내가 설명할 수 있어야 한다." 이건 경계를 보는 눈으로는 답이 안 나와요. 속을 봐야 해요. 그래서 이 부(部)를 붙였습니다.</p>
+<p>미리 안심시켜 드릴게요. 속이라고 해 봐야 수학은 세 개예요. <b>평균</b>, <b>코사인</b>(두 화살표 사이 각도), <b>지수이동평균</b>(새 값 10%, 옛 값 90%). 미적분 없어요. 행렬 없어요. 이 셋을 모르는 사람은 없어요. 다만 코드 안에서 그 셋이 어떤 옷을 입고 있는지를 모를 뿐이에요. 그 옷을 벗기는 게 이 부의 일입니다.</p>
+
+<h2>엔진은 질문 하나에 답합니다</h2>
+<p>별이엔진이 받는 질문은 딱 하나예요. 설계 문서 첫 줄에 그대로 적혀 있어요.</p>
+<p style="margin:1em 1.5em; font-size:12pt;"><b>"A가 기억을 말했다. B가 그 기억을 읽고 반응했다. A와 B의 경험이 얼마나 비슷한가?"</b></p>
+<p>답은 0에서 1 사이 숫자 하나. 1이면 똑같이 겪은 것, 0이면 전혀 다르게 겪은 것. 이 숫자 이름이 <b>정렬도</b>(<code>alignment</code>)예요. 엔진이 하는 일은 이 숫자를 내는 것뿐이고, "그러니까 당신은 이런 사람이다"라든가 "다음엔 이렇게 하라" 같은 말은 절대 안 합니다. 설계 원칙에 "엔진은 판단하지 않는다, 관찰하고 보고할 뿐"이라고 박아 뒀어요. 7월 16일에 "높은 정렬 = 승리"라는 말을 걷어내고 "접촉"이라는 말로 바꾼 것도 같은 맥락이에요. 숫자가 높은 건 잘한 게 아니라 <em>일어난</em> 거예요.</p>
+
+<h2>답은 네 개가 한 묶음으로 나옵니다</h2>
+<p>엔진 파일 맨 아래쪽, 함수가 답을 돌려주는 자리를 먼저 보세요. 10장에서 배운 "묶음 하나를 답으로"의 모양이에요.</p>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 110~118</span>
+<pre class="code" data-hl="3,4,5,6">return {
+  affective_position: affectivePosition,
+  alignment_score: alignment,
+  alignment_bucket: bucket,
+  transition_pattern: transitionPattern,
+  mismatch_type: mismatchType,
+  current_scene_score: currentSceneScore,
+  debug
+};</pre></div>
+
+<p>노란 줄 넷이 "네 가지"예요. 하나씩 풀면 이래요.</p>
+<table>
+  <tr><th style="width:11em">이름</th><th>뭔가</th><th>생김새</th></tr>
+  <tr><td><code>alignment_score</code><br>정렬도</td><td>위의 질문에 대한 답. 얼마나 비슷한가.</td><td>0~1 숫자. 예: 0.52</td></tr>
+  <tr><td><code>alignment_bucket</code><br>등급</td><td>그 숫자를 네 칸으로 나눈 것. 연출이 "지금 어느 칸이냐"만 물을 때 씀.</td><td><code>HIGH</code> · <code>MID</code> · <code>LOW</code> · <code>FIXATED</code>(고착)</td></tr>
+  <tr><td><code>transition_pattern</code><br>전이 패턴</td><td>"비슷한가"가 아니라 "<em>어떻게</em> 움직였나". 다음에 어느 장면이 열릴지를 이게 정해요.</td><td><code>echo_follow</code> · <code>bridge</code> · <code>contradiction</code> · <code>displacement</code> · <code>avoidance</code> · <code>fixation</code> 중 하나</td></tr>
+  <tr><td><code>mismatch_type</code><br>어긋남 종류</td><td>안 비슷했다면 <em>뭐가</em> 안 비슷했나.</td><td><code>emotion_mismatch</code>(감정) · <code>attribution_mismatch</code>(탓) · <code>target_displacement</code>(대상) · <code>void_mismatch</code>(회피) · 없으면 <code>null</code></td></tr>
+</table>
+<p>나머지 셋은 곁다리예요. <code>affective_position</code>은 관객 감정을 지도 위 점으로 바꾼 것(지형 핀 자리용), <code>current_scene_score</code>는 "이번 장면 하나만" 봤을 때 점수, <code>debug</code>는 계산 과정을 다 풀어 적은 쪽지. <code>debug</code> 안에 <code>formula: "L0.73 × S0.71 × V1.00 = 0.52"</code> 같은 글자가 들어 있어요. 콘솔(14장)에서 이 글자를 보면 엔진이 그 순간 뭘 곱했는지 그대로 보이는 거예요. 저는 이게 이 파일에서 제일 친절한 줄이라고 생각해요.</p>
+
+<h2>그 네 개가 어디로 가나</h2>
+<p>이걸 알아야 "측정이 어디 남느냐"는 질문에 답할 수 있어요. 흐름은 이렇습니다.</p>
+<ol>
+  <li>관객이 장면 하나에서 감정을 입력해요. (장면마다 한 번.)</li>
+  <li>play-test 안의 <b>관문 함수</b>가 엔진을 불러요. 2,611번째 줄쯤에 있는 <code>byeoriCalculateStep</code>. 모든 엔진 호출이 이 한 자리를 지나요. 12장에서 본 "한 곳만 지나게 하는" 설계예요.</li>
+  <li>엔진이 네 가지를 돌려줘요.</li>
+  <li>play-test가 그중 둘을 <code>plays</code> 표(16장)에 한 행으로 넣어요.</li>
+</ol>
+
+<div class="codebox"><span class="file">play-test.html : 4708~4714 (plays 표에 넣는 행)</span>
+<pre class="code" data-hl="4,6,7">const row = {
+  memory_id: game.memoryId,
+  scene_id: scene.id,
+  user_emotion: vec,
+  user_reason: isVoid ? 'void' : (reasonLabel || ''),
+  alignment: result.alignment_score,
+  mismatch_type: isVoid ? 'void_mismatch' : (result.mismatch_type || null),</pre></div>
+
+<p>보이죠. 표에 남는 건 <code>alignment</code>(정렬도)와 <code>mismatch_type</code>(어긋남 종류) 둘이에요. 그리고 4번째 줄, 관객이 입력한 감정 <code>vec</code>가 <b>원시 그대로</b> 남아요. 등급과 전이 패턴은 그 순간 연출과 다음 장면 고르기에 쓰이고 표에는 안 남습니다.</p>
+
+<div class="warn">"표에 안 남는다"는 건 결함이 아니라 <b>선택</b>이에요. 정렬도와 원시 감정이 남아 있으면 등급과 패턴은 나중에 다시 계산할 수 있거든요. 다만 9월 26일 기록 공백 제안이 지적한 대로, "그때 엔진이 어떤 설정이었나"(문턱값, 손잡이 값)는 안 남아요. 그래서 설정을 바꾸면 과거 행을 같은 자로 못 재요. 이건 20장 뒤에서 다시 나옵니다.</div>
+
+<h2>한 가지만 미리</h2>
+<p>엔진은 <b>상태가 없어요</b>. 파일 21~23번째 줄에 <code>constructor() { // 상태 없음 }</code>이라고 적혀 있어요. 무슨 뜻이냐면, 엔진은 "지난번에 뭘 계산했는지" 기억하지 않아요. 매번 재료를 전부 받아서 처음부터 계산해요. 지금까지의 궤적, 지금까지의 점수, 이전 등급, 전부 부르는 쪽(play-test)이 들고 있다가 넘겨줘요. 그래서 같은 재료를 넣으면 언제 어디서 돌려도 같은 답이 나와요. 이게 "측정 장치"라고 부를 수 있는 이유예요. 측정 장치는 기분이 없어야 하니까요.</p>
+
+<div class="tip">엔진 = 질문 하나(얼마나 비슷한가), 답 네 개(정렬도 · 등급 · 전이 패턴 · 어긋남 종류). 표에 남는 건 정렬도와 어긋남 종류, 그리고 원시 감정. 엔진은 기억이 없다.</div>
+
+<div class="quiz"><h3>미니 시험 19</h3>
+<ol>
+  <li>콘솔에 <code>formula: "L0.40 × S1.00 × V0.70 = 0.280"</code>이 찍혔습니다. 이 관객은 지금 몇 번째 장면쯤에 있을 가능성이 높습니까? (힌트: S가 1.00인 이유.) 그리고 V가 0.70이라는 건 무슨 일이 있었다는 뜻입니까?</li>
+  <li><code>plays</code> 표에서 어떤 회차의 행들을 꺼내 봤더니 <code>alignment</code>는 있는데 등급(<code>HIGH</code>/<code>MID</code>…)은 없습니다. 고장입니까?</li>
+  <li>AI가 "엔진이 이전 회차의 결과를 기억하고 있어서 이번 결과가 이상해요"라고 말했습니다. 이 말은 성립합니까? 파일 어느 줄을 보여 주며 되묻겠습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 엔진이 받는 질문 한 줄, 돌려주는 네 가지 이름</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 20장 ═══════════════════════ -->
+<section class="chapter" id="ch20">
+<h1><span class="chno">20장 · 엔진 읽기</span>코사인: 두 화살표 사이 각도</h1>
+
+<p class="goal"><b>목표</b> 감정 하나가 코드 안에서 어떤 모양인지(17칸 묶음), "비슷하다"를 숫자로 바꾸는 코사인이 뭔지, 그리고 손으로 한 번 계산해 본다. 이 장을 넘기면 엔진의 수학 절반이 끝난다.</p>
+
+<h2>감정 하나 = 칸 17개짜리 묶음</h2>
+<p>엔진이 "감정"이라고 부르는 건 느낌이 아니라 <b>칸 17개에 숫자가 든 묶음</b>이에요. 10장에서 배운 그 객체요. 칸 이름은 공용 수학 파일에 목록으로 적혀 있어요.</p>
+
+<div class="codebox"><span class="file">js/shared/math.js : 19~25</span>
+<pre class="code" data-hl="3,4,6">export const DEFAULT_EMOTION_ANCHORS = [
+ // negative/pain
+  'fear', 'sadness', 'anger', 'guilt', 'shame',
+  'isolation', 'numbness', 'moral_pain', 'helplessness', 'despair',
+ // positive/recovery
+  'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort'
+];</pre></div>
+
+<p>고통 쪽 열 개(공포 · 슬픔 · 분노 · 죄책 · 수치 · 고립 · 무감 · 도덕적 고통 · 무력 · 절망), 회복 쪽 일곱 개(기쁨 · 희망 · 안도 · 감사 · 사랑 · 평화 · 위안). 그래서 관객이 어떤 장면에서 "무섭고 조금 슬펐다"고 하면 코드 안에선 이렇게 생긴 묶음이 돼요.</p>
+
+<div class="codebox"><span class="file">(예시 · 실제 저장되는 모양)</span>
+<pre class="code nofile">{ fear: 0.8, sadness: 0.3, joy: 0 }</pre></div>
+
+<p>안 쓴 칸은 그냥 없거나 0이에요. 이 목록을 "17축"이라고 불러요. 축이라는 말이 어렵게 들리면 "칸"이라고 읽으세요. 똑같은 뜻이에요.</p>
+
+<h2>왜 "벡터"라고 부르나</h2>
+<p>문서에 자꾸 "감정 벡터"라는 말이 나오죠. 벡터는 그냥 <b>칸마다 숫자가 든 묶음을 화살표로 보는 것</b>이에요. 칸이 두 개면 종이 위에 그릴 수 있어요. 가로가 공포, 세로가 기쁨이라고 치면, <code>{ fear: 0.8, joy: 0.2 }</code>는 원점에서 오른쪽으로 0.8, 위로 0.2 간 자리를 가리키는 화살표예요. 칸이 17개면 종이에 못 그리지만 수학은 똑같이 돌아가요. 그래서 저는 머릿속으로는 항상 두 칸짜리로 생각해요. 그걸로 충분해요.</p>
+
+<h2>"비슷하다"를 숫자로: 코사인</h2>
+<p>화살표 두 개가 있으면 "비슷하다"를 두 가지로 잴 수 있어요. 하나는 끝점 사이 <b>거리</b>. 다른 하나는 두 화살표 사이 <b>각도</b>. 엔진은 각도를 써요. 각도를 0~1 숫자로 바꾼 게 코사인이에요.</p>
+<ul>
+  <li>두 화살표가 <b>같은 쪽</b>을 가리키면 코사인 = 1.</li>
+  <li><b>직각</b>이면 0.</li>
+  <li><b>정반대</b>면 -1. (엔진은 음수가 나오면 0으로 깎아요. 이유는 22장.)</li>
+</ul>
+<p>왜 거리가 아니라 각도냐. 각도는 <b>세기를 무시</b>하거든요. <code>{ fear: 0.4, joy: 0.1 }</code>과 <code>{ fear: 0.8, joy: 0.2 }</code>는 길이는 두 배 차이지만 방향은 똑같아요. 코사인은 1. "덜 무서웠다"와 "많이 무서웠다"를 <em>같은 결</em>로 치는 거예요. 이건 설계 선택이에요. 결이 같으면 같은 경험으로 본다. 세기 차이는 안 본다. 좋다 나쁘다가 아니라, 이 엔진이 그렇게 정했다는 걸 아는 게 중요해요.</p>
+
+<h2>손으로 한 번</h2>
+<p>계산법은 세 줄이에요. 두 칸짜리로 해 볼게요.</p>
+<ol>
+  <li><b>칸끼리 곱해서 전부 더한다.</b> (이걸 내적이라고 불러요. 이름은 몰라도 돼요.)</li>
+  <li><b>각 화살표의 길이</b>를 구한다. 길이 = 칸마다 제곱해서 더한 뒤 제곱근.</li>
+  <li>1번을 2번 둘의 곱으로 나눈다.</li>
+</ol>
+
+<table>
+  <tr><th style="width:9em"></th><th>A = { fear 0.8, joy 0.2 }<br>B = { fear 0.7, joy 0.3 }</th><th>A = { fear 0.9, joy 0.1 }<br>C = { fear 0.1, joy 0.9 }</th><th>A = { fear 1, joy 0 }<br>D = { fear 0, joy 1 }</th></tr>
+  <tr><td>① 곱해서 더함</td><td>0.8×0.7 + 0.2×0.3 = 0.56 + 0.06 = <b>0.62</b></td><td>0.9×0.1 + 0.1×0.9 = 0.09 + 0.09 = <b>0.18</b></td><td>1×0 + 0×1 = <b>0</b></td></tr>
+  <tr><td>② 길이</td><td>A: √(0.64+0.04) = 0.825<br>B: √(0.49+0.09) = 0.762</td><td>A: √(0.81+0.01) = 0.906<br>C: 똑같이 0.906</td><td>A: 1<br>D: 1</td></tr>
+  <tr><td>③ 나눔</td><td>0.62 ÷ (0.825×0.762) = <b>0.99</b></td><td>0.18 ÷ (0.906×0.906) = <b>0.22</b></td><td>0 ÷ 1 = <b>0</b></td></tr>
+  <tr><td>읽으면</td><td>거의 같은 결</td><td>많이 다름</td><td>완전히 다른 결</td></tr>
+</table>
+
+<p>이게 다예요. 17칸이면 ①에서 17개를 곱해 더하고 ②에서 17개를 제곱해 더할 뿐, 나머지는 똑같아요.</p>
+
+<h2>그 세 줄이 코드에선 이렇게 생겼어요</h2>
+
+<div class="codebox"><span class="file">js/shared/math.js : 183~209 (cosineSimilarity)</span>
+<pre class="code" data-hl="4,6,10,11,12,13,14,15,19,20,22,23">export function cosineSimilarity(vec1, vec2, anchorEmotions = null) {
+  if (!vec1 || !vec2) return 0;
+
+  let keys;
+  if (anchorEmotions &amp;&amp; Array.isArray(anchorEmotions) &amp;&amp; anchorEmotions.length &gt; 0) {
+    keys = anchorEmotions.map(anchor =&gt; normalizeAnchor(String(anchor)));
+  } else {
+    keys = DEFAULT_EMOTION_ANCHORS;
+  }
+
+  let dotProduct = 0;
+  let mag1 = 0;
+  let mag2 = 0;
+
+  keys.forEach(key =&gt; {
+    const v1 = vec1[key] || 0;
+    const v2 = vec2[key] || 0;
+    dotProduct += v1 * v2;
+    mag1 += v1 * v1;
+    mag2 += v2 * v2;
+  });
+
+  mag1 = Math.sqrt(mag1);
+  mag2 = Math.sqrt(mag2);
+
+  if (mag1 === 0 || mag2 === 0) return 0;
+  return dotProduct / (mag1 * mag2);
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>4~9번째 줄: <b>어느 칸들로 잴지</b> 정해요. 셋째 재료(<code>anchorEmotions</code>)로 칸 목록이 들어오면 그걸 쓰고, 안 들어오면 기본 17칸. 이게 7월 27일에 정한 "기억별 좌표계"가 들어오는 자리예요. 기억마다 실제로 쓰는 감정 어휘만으로 재겠다는 결정. 그 결정이 코드 한 줄짜리 갈림길(4장)로 들어와 있는 거예요.</li>
+  <li>10~13번째 줄: 빈 통 세 개. 곱해서 더할 통, A 길이 통, B 길이 통.</li>
+  <li>15~21번째 줄: 칸 목록을 하나씩 돌며(7장) 세 통을 채워요. <code>vec1[key] || 0</code>은 8장의 "없으면 0" 모양. 그래서 <code>{ fear: 0.8 }</code>처럼 칸이 비어 있어도 안 터져요.</li>
+  <li>22~23번째 줄: 길이 = 제곱근. 위 표의 ②.</li>
+  <li>25번째 줄: 둘 중 하나라도 길이가 0이면(아무 감정도 없으면) 0을 답으로. 0으로 나누면 터지니까요.</li>
+  <li>26번째 줄: 표의 ③. 끝.</li>
+</ul></div>
+
+<p>27줄이 전부 위의 세 줄짜리 계산이에요. 코드가 길어 보이는 건 "없을 때" 대비(2 · 25번째 줄)와 "어느 칸으로" 고르기(4~9번째 줄)가 붙어서예요. 계산 자체는 15~26번째 줄, 열두 줄.</p>
+
+<div class="warn">"비슷하다"는 말이 코드에선 <b>항상 코사인</b>이에요. 장면 하나의 점수도 코사인, 궤적 모양 비교도 코사인(다음 장), 고착 감지도 코사인(최근 셋이 서로 얼마나 같은 결이냐). 그러니까 어떤 문서가 "유사도"라고 쓰면 "코사인이겠구나, 세기는 무시하겠구나"라고 읽으면 거의 맞아요. 안 맞는 자리가 하나 있는데, 지형 배치용 VAD 거리(<code>calculateVADSimilarity</code>)예요. 그건 판단에 안 쓰고 그림 그릴 때만 써요. 7월에 "VAD 안 쓰기로"라고 한 건 <em>정렬도 점수에</em> 안 쓴다는 뜻이었어요.</div>
+
+<div class="tip">감정 = 17칸 묶음. 비슷함 = 코사인 = 각도. 세기는 무시, 결만 본다. 계산은 "곱해서 더하고, 길이로 나눈다" 세 줄.</div>
+
+<div class="quiz"><h3>미니 시험 20</h3>
+<ol>
+  <li>A = { fear 0.6, sadness 0.8 }, B = { fear 0.8, sadness 0.6 }. 코사인을 손으로 구하세요. (길이가 둘 다 깔끔하게 떨어집니다.)</li>
+  <li>C = { fear 0, sadness 1 }, D = { fear 1, sadness 0 }. 코사인은? 이 둘은 "둘 다 고통"인데 왜 그 값이 나옵니까?</li>
+  <li><code>cosineSimilarity(a, b, ['fear', 'joy'])</code>처럼 셋째 재료를 넣으면 무엇이 달라집니까? 관객 감정에 <code>sadness: 0.9</code>가 들어 있었다면 그 값은 어떻게 됩니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 코사인 세 줄을 내 말로</div><div class="lines"></div></div>
+</section>

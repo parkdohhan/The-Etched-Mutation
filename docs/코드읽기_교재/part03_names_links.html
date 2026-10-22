@@ -1,0 +1,243 @@
+<!-- ═══════════════════════ 8장 ═══════════════════════ -->
+<section class="chapter" id="ch8">
+<h1><span class="chno">8장 · 이름과 연결</span>이름 읽기: 점 · 낙타 · 밑줄 · let / const / var</h1>
+
+<p class="goal"><b>목표</b> 영어투성이 이름에서 뜻을 뽑고, 점(<code>.</code>)을 "~의"로 읽고, 물음표 점(<code>?.</code>)과 세로줄 둘(<code>||</code>)의 "없으면" 뜻을 안다. (7월 6교시 확장)</p>
+
+<h2>이름을 자르는 세 가지 규칙</h2>
+<table>
+  <tr><th style="width:9em">규칙</th><th>실제 이름</th><th>잘라 읽기</th></tr>
+  <tr><td>낙타 등 (대문자에서 끊기)</td><td><code>emotionSimilarity</code><br><code>terrainTintLerp</code><br><code>getSupabaseClient</code></td><td>emotion + Similarity = 감정 유사도<br>terrain + Tint + Lerp = 지형 · 색조 · 보간(서서히 섞기)<br>get + Supabase + Client = Supabase 연결을 얻어라</td></tr>
+  <tr><td>밑줄 (밑줄에서 끊기)</td><td><code>cont_divergence</code><br><code>alignment_score</code><br><code>scene_order</code></td><td>cont(contamination 오염) + divergence(발산)<br>alignment(정렬) + score(점수)<br>scene(씬) + order(순서). 밑줄 이름은 데이터베이스 열 이름에 많음.</td></tr>
+  <tr><td>앞 밑줄 하나</td><td><code>_renderShelf</code><br><code>_temEnterSceneMode</code><br><code>_enabled</code></td><td>"안에서만 쓰는 것"이라는 관례. 밖에서 부르지 말라는 신호. 뜻은 밑줄 뗀 것과 같음.</td></tr>
+</table>
+<p>앞에 <code>is</code>, <code>has</code>, <code>can</code>이 붙으면 예/아니오 상자(<code>isEnabled</code>, <code>hasPast</code>). <code>get</code>이 붙으면 "얻어 오는 함수", <code>set</code>이면 "바꾸는 함수", <code>render</code>면 "그리는 함수", <code>fetch</code>/<code>load</code>면 "서버에서 가져오는 함수", <code>save</code>/<code>record</code>면 "저장하는 함수". 이 여섯 접두어만 알아도 이 프로젝트 함수의 절반은 이름으로 읽힙니다.</p>
+
+<h2>점은 "~의"</h2>
+<div class="codebox"><span class="file">play-test.html : 4896 · js/core/ContaminationTracker.js · js/app/archive.js : 809 · js/demo/demoFlow.js : 20</span>
+<pre class="code">game.terrainTintLerp = Math.min(1, game.terrainTintLerp + 0.032);
+next.cont_divergence = clamp01(next.cont_divergence + delta_div);
+const _uid = appStore.getState().currentUser.id;
+window.location.href = 'index.html?action=record';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>game.terrainTintLerp</code> = "game(회차 상태 묶음)<b>의</b> 지형 색조 보간값". 점은 큰 묶음에서 한 칸 꺼내는 것.</li>
+  <li>점이 여러 개면 왼쪽부터 차례로: <code>appStore.getState().currentUser.id</code> = "appStore <b>의</b> 현재 상태(를 얻어서) <b>의</b> 현재 사용자 <b>의</b> 번호". 중간에 <code>( )</code>가 있으면 그건 함수를 돌려 나온 답에 다시 점을 찍은 것.</li>
+  <li><code>window.location.href = '…'</code> = "창 <b>의</b> 주소 <b>의</b> 값을 이걸로 바꿔라" = <b>페이지 이동</b>. 이 한 줄이 나오면 다른 문(1장)으로 넘어가는 자리입니다.</li>
+  <li>1번째 줄처럼 <code>x = … x + …</code> 모양은 "x 를 조금 늘려 다시 x 에 담기". 애니메이션에서 매 프레임 조금씩 움직이는 전형(17장).</li>
+</ul></div>
+
+<h2>"없으면" 을 다루는 세 기호</h2>
+<div class="codebox"><span class="file">play-test.html : 5223 · js/lib/supabaseClient.js : 59 · test/e2e/playthrough.mjs : 36, 43</span>
+<pre class="code">const n = Number(m._depth) || 0;
+console.log(`[Auth] 상태 변경: ${event}`, session?.user?.email || 'no user');
+return data?.[0]?.id;
+return rt?.isFirstPerson?.();</pre></div>
+
+<table>
+  <tr><th style="width:6em">기호</th><th>뜻</th><th>위 코드에서</th></tr>
+  <tr><td><code>||</code></td><td>"왼쪽이 비어 있으면 오른쪽을 써라" (기본값)</td><td><code>Number(m._depth) || 0</code> = 깊이를 숫자로, 못 바꾸면 0</td></tr>
+  <tr><td><code>?.</code></td><td>"있으면 점 찍고, 없으면 조용히 비움" (안전한 점)</td><td><code>session?.user?.email</code> = 세션이 없거나 사용자가 없어도 오류 없이 빈 값. 그냥 <code>session.user.email</code>이면 세션이 없을 때 멈춤(14장의 TypeError)</td></tr>
+  <tr><td><code>??</code></td><td>"왼쪽이 <em>정말 없을 때만</em> 오른쪽" (0 이나 빈 글자는 그대로 둠)</td><td>이 프로젝트엔 드묾. <code>||</code>와의 차이만 기억: <code>0 || 5</code>는 5, <code>0 ?? 5</code>는 0</td></tr>
+</table>
+<p>4번째 줄 <code>rt?.isFirstPerson?.()</code>은 "rt 가 있으면 → 그 안에 isFirstPerson 함수가 있으면 → 돌려라". 없으면 어느 단계에서든 조용히 빈 값. 자동 검사 코드가 아직 준비 안 된 화면을 물을 때 쓰는 모양입니다.</p>
+
+<h2>뒤로 기운 따옴표: 글자 속에 값 끼우기</h2>
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 105</span>
+<pre class="code">formula: `L${level.toFixed(2)} × S${shapeResult.clamped.toFixed(2)} × V${voidMod.toFixed(2)} = ${alignment.toFixed(3)}`,</pre></div>
+<p><code>` … `</code> 안에서 <code>${ }</code>는 "여기에 이 값을 끼워라". 별이엔진이 콘솔에 <code>L0.72 × S0.91 × V1.00 = 0.655</code> 같은 공식 문장을 찍는 자리입니다. <code>.toFixed(2)</code>는 소수 둘째 자리까지. 14장에서 콘솔을 읽을 때 이 문장을 보게 됩니다.</p>
+
+<h2>let · const · var</h2>
+<table>
+  <tr><th style="width:6em">말</th><th>뜻</th><th>읽을 때 신호</th></tr>
+  <tr><td><code>const</code></td><td>한 번 담으면 다른 걸로 못 바꾸는 상자</td><td>"이 이름은 이 함수 안에서 계속 이 값". 안심하고 읽어도 됨.</td></tr>
+  <tr><td><code>let</code></td><td>나중에 값이 바뀔 상자</td><td><code>let delta_conv = 0</code> = "일단 0, 아래에서 바꿀 예정". 바뀌는 자리를 찾아 읽어야 함.</td></tr>
+  <tr><td><code>var</code></td><td><code>let</code>의 옛날 말</td><td>play-test.html, 지형 엔진, 데이터베이스 연결 코드에 많음. 오래된 코드라는 신호일 뿐 뜻은 <code>let</code>과 같다고 보면 됨.</td></tr>
+</table>
+<div class="warn"><code>const</code>는 "상자를 다른 것으로 못 바꾼다"이지, 상자 <em>안</em>의 묶음 내용은 바꿀 수 있습니다. <code>const game = {…}</code> 다음에 <code>game.terrainTintLerp = 0.5</code> 는 됩니다. 그래서 이 프로젝트의 <code>game</code> 묶음은 const 인데도 매 프레임 바뀝니다.</div>
+
+<div class="tip">모르는 이름은 ① 대문자 · 밑줄에서 자르고 ② 접두어(get/set/is/has/render/fetch/save)로 성격을 잡고 ③ 점은 "의"로 읽는다. <code>?.</code>와 <code>||</code>는 "없을 때 대비"라고만 읽고 넘어간다.</div>
+
+<div class="quiz"><h3>미니 시험 8</h3>
+<ol>
+  <li><code>next.lifetime_drift_sum += driftSignal;</code> (ContaminationTracker.js : 227) — 이름을 잘라 우리말로. <code>+=</code>는 "오른쪽만큼 늘려 담기"입니다.</li>
+  <li><code>game.terrainAnimRaf = requestAnimationFrame(tick);</code> (play-test.html : 4916) — 점 왼쪽은 무엇의 무엇입니까? Raf 는 requestAnimationFrame 의 머리글자입니다. 무슨 값이 담기는지 추측하세요.</li>
+  <li><code>const title = m.title || '(untitled)';</code> — 기억 제목이 비어 있으면 화면에 무엇이 뜹니까?</li>
+  <li><code>appStore.getState().currentStoryData?.scenes?.[0]</code> — 씬 목록이 아직 없으면 오류로 멈춥니까, 조용히 빕니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 접두어 여섯 개</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 9장 ═══════════════════════ -->
+<section class="chapter" id="ch9">
+<h1><span class="chno">9장 · 이름과 연결</span>만들기와 부르기: import / export</h1>
+
+<p class="goal"><b>목표</b> 같은 기능이 "만들어진 곳"(정의, 한 곳)과 "쓰이는 곳"(호출, 여러 곳)을 구별한다. 파일 첫머리의 <code>import</code> 줄만 읽고 <b>이 파일이 누구에게 기대는지</b> 지도를 그린다. (7월 7교시 확장)</p>
+
+<h2>정의는 하나, 호출은 여럿</h2>
+<div class="codebox"><span class="file">js/safety.js : 68 (정의) · 104 (호출) · js/app/opening.js : 17 (다른 파일에서 꺼내오기)</span>
+<pre class="code" data-hl="2,5,8">// 만든 곳 — 앞에 function
+function detectTense(originalText, keywordIndex) { ... }
+
+// 쓴 곳 — 이름 뒤에 바로 ( )
+const tense = detectTense(originalLower, matchIdx);
+
+// 다른 파일의 기능을 꺼내오는 곳
+import { getSupabaseClient } from '../lib/supabaseClient.js';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b>정의(만들기)</b>: 앞에 <code>function</code>이 있거나(2번째 줄), 묶음 안에서 <code>이름(재료) {</code> 모양. 보통 딱 한 곳.</li>
+  <li><b>호출(부르기)</b>: 이름 뒤에 바로 <code>( )</code>(5번째 줄). "그 기계를 지금 돌려라." 여러 곳에서 부를 수 있음. 재료를 괄호 안에 넣어 줌.</li>
+  <li><b>import</b>(8번째 줄): "저 파일에서 이 이름을 꺼내 온다". 짝은 그 파일 쪽의 <code>export</code>(3장에서 본 <code>export const</code>, <code>export function</code>).</li>
+</ul>
+<p>왜 중요한가: AI가 "어디서 일어나요?"에 답할 때 정의 자리를 말하기 쉽지만, <b>진짜 도는 자리는 호출 자리</b>입니다. 정의는 한 곳이라도 호출이 세 곳이면 세 곳 다 봐야 합니다(1장의 진입점 세 곳과 같은 얘기).</p></div>
+
+<h2>실제 코드: 파일의 의존 지도</h2>
+<div class="codebox"><span class="file">js/index.js : 1~10</span>
+<pre class="code" data-hl="2,4,8">import { initI18n, t, setLanguage, setBrightness, getBrightness, getCurrentLanguage } from './lib/i18n.js';
+import { getSupabaseClient, onAuthStateChange, getSession, getAccessToken } from './lib/supabaseClient.js';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_FUNCTION_URL } from './lib/config.js';
+import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from './safety.js';
+import { NPC_DIALOGUES } from './npc-dialogues.js';
+
+// Shared modules
+import { fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus } from './shared/api.js';
+import { playSound, stopSound, setVolume, SOUNDS } from './shared/audio.js';
+import { cosineSimilarity, normalizeVector, addVectors, getBucket, checkFixated, getDominantEmotion, normalizeAnchor, projectEmotionToVAD, emotionVectorToWaveStyle } from './shared/math.js';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>파일 첫머리의 import 줄들 = <b>이 파일이 남에게 빌려 쓰는 목록</b>. index.js 는 언어(i18n), 데이터베이스 연결, 설정, 안전 필터, 유령 대사, 서버 심부름, 소리, 수학을 빌립니다. 이 열 줄만 읽어도 index.js 가 무슨 일을 하는 파일인지 절반은 보입니다.</li>
+  <li><code>from './lib/i18n.js'</code>의 <code>./</code>는 "지금 파일과 같은 폴더에서", <code>../</code>는 "한 폴더 위에서". <code>'../lib/supabaseClient.js'</code>(opening.js 에서)는 "app 폴더에서 한 칸 올라가 lib 폴더로".</li>
+  <li>중괄호 안 이름들은 저쪽 파일이 <code>export</code>한 것 중 골라 온 것. 8번째 줄에서 <code>fetchMemories</code>를 가져왔으니, 4장 ③에서 본 그 함수가 index.js 안에서 불립니다.</li>
+</ul></div>
+
+<h2>세 가지 변형</h2>
+<table>
+  <tr><th style="width:12em">모양</th><th>실제 예</th><th>뜻</th></tr>
+  <tr><td>이름 없이 통째로</td><td><code>import './js/core/DriftPicker.js';</code><br><span class="small">play-test.html : 719</span></td><td>"저 파일을 돌리기만 해라". 꺼내 오는 이름이 없음. 그 파일이 스스로 <code>window.DriftPicker</code>를 달아 두는 방식(12장).</td></tr>
+  <tr><td>필요할 때 꺼내오기</td><td><code>_liveModule = await import('./app/live.js');</code><br><span class="small">js/index.js : 79</span></td><td>파일 첫머리가 아니라 <b>함수 안에서</b> 필요할 때 가져옴. 라이브 모드는 안 쓰니 처음엔 안 읽어 두는 것. <code>await</code>는 11장.</td></tr>
+  <tr><td>옛 방식 (node 도구)</td><td><code>const http = require('http');</code><br><span class="small">tools/serve.cjs : 4</span></td><td><code>require</code> = import 의 옛날 말. <code>.cjs</code> 파일과 도구 코드에서. 뜻은 같음.</td></tr>
+</table>
+
+<div class="warn">import 경로 끝에 <code>?v=260727</code>이 붙은 것(<code>from '../shared/math.js?v=260727'</code>)은 2장의 캐시버스터가 import 에도 붙은 것입니다. 파일을 고쳤는데 이 숫자를 안 올리면 <b>브라우저가 옛 math.js 를 씁니다.</b> 12장에서 전수 대조법을 배웁니다.</div>
+
+<div class="tip">이름 뒤에 <code>( )</code>가 붙어 있으면 "지금 돌리는 중"(호출). <code>function</code> 뒤에 붙어 있으면 "만드는 중"(정의). 파일을 열면 <b>import 줄부터 읽어</b> 의존 지도를 그린다.</div>
+
+<div class="quiz"><h3>미니 시험 9</h3>
+<div class="codebox"><span class="file">js/app/opening.js : 8~14</span>
+<pre class="code nofile">import { NPC_DIALOGUES } from '../npc-dialogues.js';
+import { setLanguage } from '../lib/i18n.js';
+import { setUserName, getUserName } from './userIdentity.js';
+import { isTesterMode, TESTER_MEMORY_CODE, TESTER_MEMORY_ID, testerMemoryFor } from './testerMode.js';
+import { buildDoor } from './confession.js';
+import { _pickTopMemoryForLumen } from './archive.js';
+import { pickTopMemory, pickGhostVariant } from '../core/SeekerMatchEngine.js';</pre></div>
+<ol>
+  <li>이 파일(오프닝)이 기대는 파일은 몇 개입니까?</li>
+  <li><code>'./testerMode.js'</code>와 <code>'../core/SeekerMatchEngine.js'</code>는 각각 어느 폴더에 있습니까? (opening.js 는 js/app 안에 있습니다.)</li>
+  <li><code>buildDoor</code>는 이 파일에서 만들어진 함수입니까, 빌려 온 함수입니까? 만들어진 곳은 어느 파일입니까?</li>
+  <li><code>getUserName()</code> 이라고 쓰인 줄을 만났습니다. 정의입니까 호출입니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 정의와 호출을 구별하는 표시</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 10장 ═══════════════════════ -->
+<section class="chapter" id="ch10">
+<h1><span class="chno">10장 · 이름과 연결</span>데이터 묶음: 객체와 JSON</h1>
+
+<p class="goal"><b>목표</b> <code>{ }</code>의 두 번째 뜻(이름표 달린 묶음)을 확실히 하고, 묶음을 풀어 꺼내는 세 가지 모양과 "묶음을 글자로 만든 것"(JSON)을 안다. TEM 의 기억 · 씬 · 회차 한 줄이 전부 이 모양이다. (7월 8교시 확장)</p>
+
+<h2>실제 코드: 회차의 상태 전부</h2>
+<div class="codebox"><span class="file">js/app/appStore.js : 3~15, 27~33 (일부)</span>
+<pre class="code" data-hl="1,4,12">export const appStore = createStore({
+    // Mode/Session
+    currentMode: null,
+    currentRole: null,
+    sessionCode: null,
+
+    // Memory/Scene
+    allMemoriesData: [],
+    currentMemory: null,
+    currentScene: 0,
+
+    // Alignment/Bucket
+    currentAlignment: 0,
+    currentBucket: null,
+    emotionHistory: [],
+    userEmotionTrajectory: [],
+});</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>{ }</code>가 두 가지 뜻: (6장) <b>코드 덩어리</b>, 안에 명령이 줄줄이. (10장) <b>데이터 묶음</b>, 안에 <code>이름: 값</code> 짝이 쉼표로. 구별법은 <b>쌍점(<code>:</code>)</b>. 안에 <code>이름: 값</code>이 보이면 묶음.</li>
+  <li>여기는 "회차 상태 묶음". 현재 모드는 아직 없음(<code>null</code>), 기억 목록은 빈 목록(<code>[]</code>), 현재 씬은 0번, 정렬도는 0. 프로그램이 켜질 때의 초기값입니다.</li>
+  <li><code>null</code>은 "값이 없음"을 뜻하는 특별한 값. 8장의 <code>?.</code>와 <code>||</code>는 이 null 을 만났을 때를 대비한 것.</li>
+  <li>목록 <code>[ ]</code>과의 차이: 목록은 <b>순서</b>로 꺼냄(<code>목록[0]</code>), 묶음은 <b>이름표</b>로 꺼냄(<code>묶음.이름</code>).</li>
+</ul></div>
+
+<h2>실제 코드: 함수가 묶음을 답으로</h2>
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 110~115 (calculateStep 의 답)</span>
+<pre class="code">return {
+  affective_position: affectivePosition,
+  alignment_score: alignment,
+  alignment_bucket: bucket,
+  transition_pattern: transitionPattern,
+  mismatch_type: mismatchType,</pre></div>
+<p>별이엔진은 숫자 하나를 답하지 않고 <b>묶음</b>을 답합니다. 정렬도 점수, 구간, 전이 패턴, 어긋남 종류가 한 묶음에. 부른 쪽은 <code>result.alignment_score</code>, <code>result.transition_pattern</code>으로 꺼냅니다. 설계 문서의 "엔진 출력"이 코드에서 이 모양입니다.</p>
+
+<h2>묶음을 푸는 세 가지 모양</h2>
+<table>
+  <tr><th style="width:11em">모양</th><th>실제 예</th><th>뜻</th></tr>
+  <tr><td>점으로 꺼내기</td><td><code>result.alignment_score</code></td><td>8장. "묶음의 그 칸".</td></tr>
+  <tr><td>한꺼번에 풀기</td><td><code>const { data, error } = await supabaseClient.from('memories').select('*');</code><br><span class="small">js/shared/api.js : 14</span><br><code>const { store, engine, ui, visualizer } = deps;</code><br><span class="small">js/app/bindEvents.js : 21</span></td><td>왼쪽 <code>{ }</code>는 만드는 게 아니라 <b>푸는 것</b>. "오른쪽 묶음에서 data 칸과 error 칸을 꺼내 같은 이름 상자에 담아라". 데이터베이스 호출 뒤에 거의 항상 이 모양(16장).</td></tr>
+  <tr><td>펼쳐서 새로 만들기</td><td><code>state = { ...state, ...partial };</code><br><span class="small">js/core/store.js : 31</span><br><code>{ ...m, is_live: !!m.is_live }</code><br><span class="small">js/app/archive.js</span></td><td>점 셋(<code>...</code>) = "이 묶음의 칸을 전부 펼쳐 넣어라". "옛 상태를 다 펼치고 그 위에 바뀐 칸을 덮어 새 묶음". 원본을 안 건드리고 복사본을 만드는 이 프로젝트의 습관.</td></tr>
+</table>
+
+<h2>JSON: 묶음을 글자로</h2>
+<div class="codebox"><span class="file">js/index.js : 128~131 (initApp 안)</span>
+<pre class="code" data-hl="3">let playTraces = [];
+try {
+    const raw = localStorage.getItem('tem_play_traces');
+    if (raw) playTraces = JSON.parse(raw);
+} catch (_e) {}</pre></div>
+<p>묶음이나 목록은 브라우저 저장소나 데이터베이스에 <b>글자</b>로만 넣을 수 있습니다. 그 글자 형식이 JSON 입니다. 생김새는 코드의 묶음과 거의 같고(<code>{"이름": 값}</code>, 이름에도 큰따옴표), <code>JSON.parse(글자)</code>가 글자를 다시 묶음으로, <code>JSON.stringify(묶음)</code>이 묶음을 글자로 바꿉니다. 4번째 줄은 "저장소에서 꺼낸 글자를 목록으로 되돌려라". 데이터베이스의 <code>meta</code>, <code>emotion_dist</code>, <code>height_delta</code> 열이 전부 JSON 을 담는 열(jsonb)입니다(16장).</p>
+
+<h2>TEM 의 묶음 세 가지 (참고 카드)</h2>
+<table>
+  <tr><th style="width:7em">묶음</th><th>주요 칸 (데이터베이스 열)</th><th>안에 또 묶음</th></tr>
+  <tr><td>기억 (memories)</td><td>id, code, title, description, status, is_public, cont_depth, cont_divergence, cont_convergence, cont_heterogeneity</td><td><code>meta</code> = { emotion_entries, key_scenes, author … }</td></tr>
+  <tr><td>씬 (scenes)</td><td>id, memory_id, scene_order, text, echo_words, original_emotion, anchor_emotions, text_stage_1~3</td><td><code>meta</code> = { scene_code, motif_tags, stage_position, sound_url, object_models … }</td></tr>
+  <tr><td>회차 (plays)</td><td>id, memory_id, user_id, run_id, alignment, user_reason, created_at</td><td>sky_stains, dialog_turns 등 jsonb</td></tr>
+</table>
+<p class="small">CLAUDE.md 7절과 docs/자료스키마_명세_v1-260717.md 가 정본. 이 표는 읽기용 요약입니다.</p>
+
+<div class="tip"><code>{ }</code> 안에 <b>쌍점</b>이 보이면 묶음. 왼쪽에 <code>const { a, b } =</code> 이 보이면 "푸는 중". <code>...</code>이 보이면 "펼치는 중". JSON 은 "묶음을 글자로 적은 것"이라고만 기억.</div>
+
+<div class="quiz"><h3>미니 시험 10</h3>
+<div class="codebox"><span class="file">js/demo/demoFlow.js : 29~32</span>
+<pre class="code nofile">const MONOLOGUES = [
+  { text: 'I shouldn\'t have done that', entryLine: 'I thought that was the right thing at the time.', vad: { v: -0.5, a: 0.2, d: -0.6 }, x: 0.3, y: 0.35 },
+  { text: 'I just wanted to run away', entryLine: 'That was the only thing I could do.', vad: { v: -0.6, a: 0.7, d: -0.4 }, x: 0.65, y: 0.45 },
+];</pre></div>
+<ol>
+  <li>바깥은 목록입니까 묶음입니까? 항목이 몇 개입니까?</li>
+  <li>항목 하나의 칸(이름표)은 몇 개입니까? 그중 <b>안에 또 묶음</b>인 칸은?</li>
+  <li>둘째 항목의 각성도(a)를 꺼내려면 어떻게 씁니까? (목록 번호는 0부터)</li>
+  <li><code>enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' })</code> — 괄호 안에 넘긴 것은 무엇입니까? 칸이 몇 개입니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 코드 덩어리 { } 와 묶음 { } 을 구별하는 표시</div><div class="lines"></div></div>
+</section>

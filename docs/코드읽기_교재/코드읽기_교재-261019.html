@@ -1,0 +1,3192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>TEM 코드 읽기 교재</title>
+<style>
+/* ───────── 종이 ───────── */
+@page {
+  size: A4;
+  /* 위 · 오른쪽(필기 여백, 넓게) · 아래 · 왼쪽 */
+  margin: 20mm 44mm 22mm 20mm;
+}
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Malgun Gothic', '맑은 고딕', 'NanumSquare', sans-serif;
+  font-size: 11pt;
+  line-height: 1.95;
+  color: #1b1b1b;
+  background: #fff;
+  word-break: keep-all;
+}
+p { margin: 0 0 0.9em 0; }
+b, strong { font-weight: 700; }
+em { font-style: normal; background: #fff5c2; padding: 0 2px; }
+code {
+  font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 9.6pt;
+  background: #f1f0ec;
+  border: 1px solid #e0ded8;
+  border-radius: 3px;
+  padding: 0 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+ul, ol { margin: 0 0 1em 0; padding-left: 1.4em; }
+li { margin-bottom: 0.35em; }
+li > ul { margin-top: 0.3em; }
+hr { border: 0; border-top: 1px solid #ccc; margin: 1.6em 0; }
+
+/* ───────── 제목 ───────── */
+h1 {
+  page-break-before: always;
+  font-size: 22pt;
+  line-height: 1.35;
+  margin: 0 0 0.35em 0;
+  padding-bottom: 0.35em;
+  border-bottom: 2.5px solid #1b1b1b;
+  letter-spacing: -0.01em;
+}
+h1 .chno {
+  display: block;
+  font-size: 11pt;
+  font-weight: 400;
+  color: #666;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.2em;
+}
+h2 {
+  font-size: 14.5pt;
+  margin: 1.6em 0 0.5em 0;
+  padding-left: 0.55em;
+  border-left: 4px solid #1b1b1b;
+  line-height: 1.4;
+  page-break-after: avoid;
+}
+h3 {
+  font-size: 12pt;
+  margin: 1.3em 0 0.4em 0;
+  page-break-after: avoid;
+}
+.goal {
+  background: #eef2f7;
+  border-left: 4px solid #4a6a95;
+  padding: 0.6em 0.9em;
+  margin: 1.1em 0 1.3em 0;
+}
+.goal b { color: #2f4b73; }
+
+/* ───────── 코드 상자 ───────── */
+.codebox {
+  margin: 0.9em 0 1.2em 0;
+  page-break-inside: auto;   /* 긴 상자는 줄 단위로 쪽을 넘긴다 (통째로 옮기면 빈 쪽이 생김) */
+}
+.codebox .file { page-break-after: avoid; }
+.codebox .file {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 8.6pt;
+  color: #444;
+  background: #e6e4df;
+  border: 1px solid #d3d0c9;
+  border-bottom: 0;
+  padding: 3px 10px;
+  border-radius: 4px 4px 0 0;
+  display: inline-block;
+}
+pre.code {
+  counter-reset: line;
+  font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 8.6pt;
+  line-height: 1.6;
+  background: #f7f6f3;
+  border: 1px solid #d3d0c9;
+  border-radius: 0 4px 4px 4px;
+  padding: 9px 10px 9px 8px;
+  margin: 0;
+  white-space: pre;
+  overflow: visible;
+  tab-size: 2;
+}
+pre.code.nofile { border-radius: 4px; }
+pre.code .l { display: block; padding-left: 2.6em; text-indent: -2.6em; white-space: pre-wrap; word-break: normal; overflow-wrap: anywhere; }
+pre.code .l::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 2.1em;
+  margin-right: 0.5em;
+  text-align: right;
+  color: #9a978f;
+  font-size: 8pt;
+  text-indent: 0;
+}
+pre.code .l.hit { background: #fff1a8; }
+pre.code .l.dim { color: #8b8880; }
+.tk-c { color: #6b7a55; font-style: italic; }
+.tk-s { color: #8a3b2d; }
+.tk-k { color: #1f4e9c; font-weight: 700; }
+.tk-n { color: #7a2f8a; }
+.tk-t { color: #1f6a5a; }
+pre.code .del { display:block; background: #fbe3e1; color:#7a1d16; }
+pre.code .add { display:block; background: #dff3de; color:#17521a; }
+pre.code .del::before, pre.code .add::before { content: ''; counter-increment: none; width: 0; margin: 0; }
+
+/* ───────── 설명 상자 ───────── */
+.read {
+  margin: 0.4em 0 1.2em 0;
+}
+.read .rt { font-weight: 700; margin-bottom: 0.3em; }
+.tip, .warn, .story {
+  border: 1px solid #cfcac0;
+  border-radius: 4px;
+  padding: 0.65em 0.95em;
+  margin: 1em 0 1.2em 0;
+  page-break-inside: avoid;
+}
+.tip { background: #f5f8ef; border-color: #b9c9a2; }
+.tip::before { content: '읽는 요령'; display: block; font-weight: 700; color: #4f6a2a; margin-bottom: 0.2em; font-size: 10pt; }
+.warn { background: #fdf3ec; border-color: #e5b892; }
+.warn::before { content: '함정'; display: block; font-weight: 700; color: #9a4b12; margin-bottom: 0.2em; font-size: 10pt; }
+.story { background: #f4f2f7; border-color: #bfb3d1; }
+.story::before { content: '실제로 있었던 일'; display: block; font-weight: 700; color: #5a3f86; margin-bottom: 0.2em; font-size: 10pt; }
+
+/* ───────── 표 ───────── */
+table { border-collapse: collapse; width: 100%; margin: 0.8em 0 1.3em 0; font-size: 10.2pt; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th, td { border: 1px solid #c9c5bc; padding: 0.4em 0.6em; vertical-align: top; text-align: left; line-height: 1.6; }
+th { background: #ecebe6; font-weight: 700; }
+td code { white-space: normal; }
+
+/* ───────── 미니 시험 ───────── */
+.quiz {
+  border: 2px dashed #8a8578;
+  border-radius: 6px;
+  padding: 0.7em 1em 0.4em 1em;
+  margin: 1.5em 0 1em 0;
+  page-break-inside: avoid;
+}
+.quiz h3 { margin: 0 0 0.4em 0; font-size: 11.5pt; }
+.quiz h3::before { content: '✎ '; }
+.quiz .ans-hint { font-size: 9.5pt; color: #666; margin: 0.3em 0 0 0; }
+.answer-space {
+  height: 5.5em;
+  margin: 0.5em 0 0.6em 0;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(2.2em - 1px), #cfcac0 calc(2.2em - 1px), #cfcac0 2.2em);
+}
+
+/* ───────── 필기 칸 ───────── */
+.notes {
+  margin: 1.6em 0 0 0;
+  page-break-inside: avoid;
+}
+.notes .nt { font-size: 9.5pt; color: #666; margin-bottom: 0.2em; }
+.notes .lines {
+  height: 12.5em;
+  border: 1px solid #cfcac0;
+  border-radius: 4px;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(2.5em - 1px), #dedbd3 calc(2.5em - 1px), #dedbd3 2.5em);
+}
+
+/* ───────── 표지 · 목차 ───────── */
+.cover { page-break-after: always; padding-top: 30mm; }
+.cover .kicker { font-size: 11pt; letter-spacing: 0.3em; color: #666; }
+.cover h1.title { border: 0; page-break-before: auto; font-size: 34pt; line-height: 1.25; margin: 0.3em 0 0.2em 0; }
+.cover .sub { font-size: 13pt; color: #333; margin-bottom: 3em; }
+.cover .meta { font-size: 10pt; color: #555; line-height: 1.9; border-top: 1px solid #999; padding-top: 1em; margin-top: 8em; }
+.toc h1 { }
+.toc ol { list-style: none; padding: 0; margin: 0.6em 0 0 0; }
+.toc li { display: flex; align-items: baseline; margin: 0; padding: 0.22em 0; border-bottom: 1px dotted #ccc; }
+.toc li .n { width: 3.2em; color: #666; flex: 0 0 auto; }
+.toc li .t { flex: 1 1 auto; }
+.toc li .pg { flex: 0 0 auto; padding-left: 1em; color: #333; font-variant-numeric: tabular-nums; }
+.toc li.part { font-weight: 700; border-bottom: 0; margin-top: 0.9em; }
+.toc li.part .n { color: #1b1b1b; }
+.toc li.sub { padding-left: 1.4em; }
+
+/* ───────── 부록 ───────── */
+.dict td:first-child { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 9.6pt; width: 10em; overflow-wrap: anywhere; }
+.words td:first-child { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 9.6pt; width: 10em; overflow-wrap: anywhere; }
+.words td, .dict td { overflow-wrap: anywhere; }
+.ans { margin: 0 0 1.1em 0; padding: 0.4em 0.8em; border-left: 3px solid #8a8578; background: #faf9f6; page-break-inside: avoid; }
+.ans .q { font-weight: 700; color: #444; }
+.chapter { }
+.small { font-size: 9.5pt; color: #555; }
+.center { text-align: center; }
+.kbd { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 9.4pt; border: 1px solid #aaa; border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; background: #fafafa; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ 표지 ═══════════════════════ -->
+<div class="cover">
+  <div class="kicker">THE ETCHED MUTATION</div>
+  <h1 class="title">TEM 코드 읽기 교재</h1>
+  <div class="sub">쓰지 않고, 읽어서 검사하는 사람이 되기 위한 책</div>
+  <p>이 책의 모든 예시는 <b>지금 이 프로젝트 저장소에 실제로 들어 있는 코드</b>에서 잘라 왔습니다. 남의 예제로 배우고 나서 내 코드에 적용하는 두 단계를, 처음부터 내 코드로 한 단계에 끝내기 위해서입니다.</p>
+  <p>목표는 하나입니다. AI가 <b>"고쳤어요"</b> 라고 말했을 때, 파일을 열어 <b>진짜인지 눈으로 확인</b>하는 것. 코드를 쓰는 법은 이 책에 없습니다. 그건 앞으로도 AI가 합니다.</p>
+  <div class="meta">
+    대상 · 박도한 (TEM 제작자)<br>
+    기준 저장소 · The Etched Mutation, 2026-09-25 시점 (커밋 b894eb1 + 작업 중인 변경분)<br>
+    구성 · 본문 24장(1~18장 코드 읽기 + 19~24장 엔진 편) + 부록 5편 · 장마다 미니 시험과 필기 칸<br>
+    엔진 편 · 2026-10-19 추가. 앞 18장은 코드의 <b>경계</b>를, 엔진 편은 별이엔진과 오염 추적기의 <b>속</b>을 본다. 문체가 다르다(옆에서 말하는 투).<br>
+    조판 · 오른쪽 여백은 일부러 넓게 비웠습니다. 손으로 쓰세요.<br>
+    전신 · docs/코드읽기_교재_읽기전용_10교시-260708.md (10교시 전부 이 책 3~10장·15장·18장에 흡수)
+  </div>
+</div>
+
+<!-- ═══════════════════════ 목차 ═══════════════════════ -->
+<section class="toc">
+<h1><span class="chno">차례</span>목차</h1>
+<ol>
+  <li><span class="n">0</span><span class="t">이 책을 읽는 법</span><span class="pg" data-ch="ch0">4</span></li>
+
+  <li class="part"><span class="n">I</span><span class="t">지형 익히기</span><span class="pg"></span></li>
+  <li><span class="n">1</span><span class="t">지도: 이 프로젝트는 어떻게 생겼나</span><span class="pg" data-ch="ch1">7</span></li>
+  <li><span class="n">2</span><span class="t">웹페이지의 세 겹: html · css · 자바스크립트</span><span class="pg" data-ch="ch2">11</span></li>
+
+  <li class="part"><span class="n">II</span><span class="t">코드의 세 가지 모양 (7월 10교시 1~5)</span><span class="pg"></span></li>
+  <li><span class="n">3</span><span class="t">상자 · 목록 · 메모 · 글자</span><span class="pg" data-ch="ch3">16</span></li>
+  <li><span class="n">4</span><span class="t">갈림길: if</span><span class="pg" data-ch="ch4">20</span></li>
+  <li><span class="n">5</span><span class="t">함수: 기능 한 덩어리</span><span class="pg" data-ch="ch5">24</span></li>
+  <li><span class="n">6</span><span class="t">들여쓰기: 목차처럼 훑기</span><span class="pg" data-ch="ch6">28</span></li>
+  <li><span class="n">7</span><span class="t">반복: for · forEach · map · filter</span><span class="pg" data-ch="ch7">32</span></li>
+
+  <li class="part"><span class="n">III</span><span class="t">이름과 연결 (7월 10교시 6~8)</span><span class="pg"></span></li>
+  <li><span class="n">8</span><span class="t">이름 읽기: 점 · 낙타 · 밑줄 · let / const / var</span><span class="pg" data-ch="ch8">35</span></li>
+  <li><span class="n">9</span><span class="t">만들기와 부르기: import / export</span><span class="pg" data-ch="ch9">40</span></li>
+  <li><span class="n">10</span><span class="t">데이터 묶음: 객체와 JSON</span><span class="pg" data-ch="ch10">44</span></li>
+
+  <li class="part"><span class="n">IV</span><span class="t">움직이는 것들</span><span class="pg"></span></li>
+  <li><span class="n">11</span><span class="t">기다림: async · await · setTimeout</span><span class="pg" data-ch="ch11">48</span></li>
+  <li><span class="n">12</span><span class="t">모듈과 전역: 진입점 세 곳과 캐시버스터</span><span class="pg" data-ch="ch12">52</span></li>
+  <li><span class="n">13</span><span class="t">화면과 사건: DOM과 이벤트</span><span class="pg" data-ch="ch13">57</span></li>
+
+  <li class="part"><span class="n">V</span><span class="t">검사하는 눈</span><span class="pg"></span></li>
+  <li><span class="n">14</span><span class="t">오류 읽기: 콘솔 · 네트워크 · 숫자</span><span class="pg" data-ch="ch14">62</span></li>
+  <li><span class="n">15</span><span class="t">비교표(diff) 읽기</span><span class="pg" data-ch="ch15">66</span></li>
+  <li><span class="n">16</span><span class="t">데이터베이스: 표 · SQL · 권한 · jsonb</span><span class="pg" data-ch="ch16">71</span></li>
+  <li><span class="n">17</span><span class="t">3D의 겉모양: Three.js</span><span class="pg" data-ch="ch17">76</span></li>
+  <li><span class="n">18</span><span class="t">큰 파일 지도 + "됐어요" 검사 순서</span><span class="pg" data-ch="ch18">81</span></li>
+
+  <li class="part"><span class="n">VI</span><span class="t">엔진 읽기 (10월 엔진 편 · 속을 본다)</span><span class="pg"></span></li>
+  <li><span class="n">19</span><span class="t">엔진이 내놓는 네 가지</span><span class="pg" data-ch="ch19">85</span></li>
+  <li><span class="n">20</span><span class="t">코사인: 두 화살표 사이 각도</span><span class="pg" data-ch="ch20">90</span></li>
+  <li><span class="n">21</span><span class="t">별이엔진 190줄, 한 덩어리씩</span><span class="pg" data-ch="ch21">95</span></li>
+  <li><span class="n">22</span><span class="t">왜 이 식인가: 이론에서 온 것과 직접 정한 것</span><span class="pg" data-ch="ch22">106</span></li>
+  <li><span class="n">23</span><span class="t">오염 추적기: 새 값 10%, 옛 값 90%</span><span class="pg" data-ch="ch23">112</span></li>
+  <li><span class="n">24</span><span class="t">다섯 문제: 돌리기 전에 맞히기</span><span class="pg" data-ch="ch24">119</span></li>
+
+  <li class="part"><span class="n">부록</span><span class="t"></span><span class="pg"></span></li>
+  <li><span class="n">A</span><span class="t">기호 사전</span><span class="pg" data-ch="apA">125</span></li>
+  <li><span class="n">B</span><span class="t">코드 영어 단어장</span><span class="pg" data-ch="apB">127</span></li>
+  <li><span class="n">C</span><span class="t">자주 보는 모양 카드</span><span class="pg" data-ch="apC">131</span></li>
+  <li><span class="n">D</span><span class="t">AI에게 시킬 문구 모음</span><span class="pg" data-ch="apD">134</span></li>
+  <li><span class="n">E</span><span class="t">미니 시험 정답</span><span class="pg" data-ch="apE">135</span></li>
+</ol>
+</section>
+
+<!-- ═══════════════════════ 0장 ═══════════════════════ -->
+<section class="chapter" id="ch0">
+<h1><span class="chno">0장</span>이 책을 읽는 법</h1>
+
+<p class="goal"><b>목표</b> 이 책이 무엇을 가르치고 무엇을 가르치지 않는지, 그리고 어떻게 읽어야 남는지를 먼저 정한다.</p>
+
+<h2>무엇을 배우는가</h2>
+<p>딱 하나입니다. <b>읽기.</b> 코드를 열어서 "이 파일은 무슨 일을 하는 덩어리들로 되어 있나", "AI가 고쳤다는 자리가 어디고, 정말 거기만 바뀌었나", "빨간 오류 글자가 무슨 뜻인가"를 눈으로 알아보는 것. 이걸 할 수 있으면 지금 프로젝트에서 가장 큰 틈, 즉 <em>"AI가 됐다고 말한 것"과 "진짜 된 것" 사이</em>가 닫힙니다.</p>
+
+<h2>무엇을 배우지 않는가</h2>
+<ul>
+  <li><b>코드 쓰기.</b> 이 책을 다 읽어도 코드는 못 씁니다. 그래도 됩니다. 쓰는 건 AI가 합니다.</li>
+  <li><b>문법 세부.</b> 세미콜론을 어디 찍나, 화살표 함수와 일반 함수의 차이가 뭔가 같은 건 안 다룹니다. 읽을 때 걸림돌이 되는 만큼만 짚습니다.</li>
+  <li><b>알고리즘, 성능, 라이브러리 내부.</b> Three.js가 어떻게 삼각형을 그리는지는 안 배웁니다. "이 줄이 3D 물체 하나를 만든다"까지만 봅니다.</li>
+</ul>
+
+<h2>규칙 세 가지</h2>
+<ol>
+  <li><b>모든 예시는 실제 TEM 코드다.</b> 파일 이름과 줄 번호가 상자 위에 적혀 있습니다. 책을 읽다가 실제 파일을 열어 같은 자리를 찾아보면 두 배로 남습니다. 줄 번호는 2026-09-25 기준이라 나중에 조금씩 밀릴 수 있습니다. 그럴 땐 <span class="kbd">Ctrl</span>+<span class="kbd">F</span>로 함수 이름을 찾으세요.</li>
+  <li><b>계산의 속은 몰라도 된다.</b> 이 책에서 "속은 지금 몰라도 됨"이라고 쓴 자리는 정말 몰라도 됩니다. 목표는 <em>경계</em>를 보는 것이지 수식을 푸는 게 아닙니다.</li>
+  <li><b>미니 시험은 안 가르친 코드로 낸다.</b> 각 장 끝의 시험은 그 장에서 안 보여준 진짜 코드입니다. 답은 부록 E에 모아 두었습니다. 먼저 풀고 나서 넘기세요.</li>
+</ol>
+
+<h2>책의 모양</h2>
+<table>
+  <tr><th style="width:9em">표시</th><th>뜻</th></tr>
+  <tr><td>회색 코드 상자</td><td>실제 코드. 왼쪽 작은 숫자는 상자 안 줄 번호(파일의 줄 번호가 아님). 상자 위 회색 꼬리표가 파일 경로와 파일 안 줄 번호.</td></tr>
+  <tr><td>노란 줄</td><td>지금 보라는 줄. 그 줄만 보면 됩니다.</td></tr>
+  <tr><td>연두 상자 "읽는 요령"</td><td>그 장의 기술을 한 줄로 줄인 것. 나중에 이것만 다시 봐도 됩니다.</td></tr>
+  <tr><td>주황 상자 "함정"</td><td>이 프로젝트에서 실제로 사람을 속였던 모양.</td></tr>
+  <tr><td>보라 상자 "실제로 있었던 일"</td><td>이 저장소의 기록에 남아 있는 사고. 왜 이 장을 배우는지의 증거.</td></tr>
+  <tr><td>점선 상자 "✎ 미니 시험"</td><td>처음 보는 실제 코드로 내는 문제. 빈칸에 직접 쓰세요.</td></tr>
+  <tr><td>줄 그어진 칸 "내 손으로 정리"</td><td>장 끝. 그 장을 내 말로 세 줄 쓰는 자리.</td></tr>
+</table>
+
+<h2>코드가 하는 일은 결국 세 모양뿐</h2>
+<p>미리 말해 둡니다. 5만 줄이든 50줄이든, 코드는 아래 세 가지의 조합입니다. 낯선 코드를 만나면 "이건 셋 중 뭐지?"만 물으면 됩니다.</p>
+<table>
+  <tr><th style="width:7em">모양</th><th>생김새</th><th>하는 일</th></tr>
+  <tr><td>① 저장</td><td><code>const 이름 = 값</code>, <code>[ ]</code>, <code>{ }</code></td><td>값을 이름 붙여 담아 둔다</td></tr>
+  <tr><td>② 갈림길</td><td><code>if (조건) { }</code></td><td>조건에 따라 다른 길로 간다</td></tr>
+  <tr><td>③ 반복</td><td><code>for (...) { }</code>, <code>.forEach(...)</code></td><td>같은 일을 목록 개수만큼 한다</td></tr>
+</table>
+<p>여기에 "기능 한 덩어리"(<code>function</code>)가 이 셋을 포장하고, "기다림"(<code>await</code>)이 시간을 다룹니다. 이 책의 2부와 3부, 4부가 정확히 그 순서입니다.</p>
+
+<h2>7월 교재와의 관계</h2>
+<p>7월 8일에 만든 "코드 읽기 전용 10교시"는 1~5교시까지 진행됐습니다. 그 열 교시는 이 책의 3장부터 10장, 15장, 18장에 전부 들어 있고, 예시와 설명을 늘렸습니다. 그때 본 코드가 다시 나오면 복습이라 생각하고 빨리 넘기세요.</p>
+
+<h2>10월에 붙인 엔진 편 (19~24장)</h2>
+<p>위의 규칙 2 "계산의 속은 몰라도 된다"는 1~18장에만 해당합니다. 10월 19일에 "내 엔진을 내가 설명할 수 있어야 한다"는 요구가 생겨서, 19장부터는 <b>속을 봅니다</b>. 별이엔진 190줄을 한 덩어리씩, 오염 추적기의 핵심 한 줄, 그리고 식의 어느 부분이 이론에서 왔고 어느 숫자가 직접 정한 값인지. 문체도 다릅니다. 교재가 아니라 옆에 앉아서 말하는 투로 썼습니다. 1~18장을 다 읽지 않았어도 3장(묶음) · 4장(갈림길) · 7장(반복) · 10장(객체)만 봤으면 19장으로 바로 가도 됩니다.</p>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 이 책에서 얻고 싶은 것 한 줄</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 1장 ═══════════════════════ -->
+<section class="chapter" id="ch1">
+<h1><span class="chno">1장 · 지형 익히기</span>지도: 이 프로젝트는 어떻게 생겼나</h1>
+
+<p class="goal"><b>목표</b> AI가 "어느 파일을 고쳤다"고 말하면, 그 파일 이름만 듣고 <b>어느 층의 일인지</b> 짐작할 수 있게 된다. 코드를 읽기 전에 지도를 먼저 갖는다.</p>
+
+<h2>폴더의 큰 그림</h2>
+<p>저장소 맨 위에는 파일이 아주 많지만(스크린샷 수십 장 포함), 실제로 작품을 이루는 건 아래 뼈대뿐입니다. 이것만 외우면 됩니다.</p>
+
+<div class="codebox"><span class="file">저장소 뼈대 (2026-09-25)</span>
+<pre class="code" data-lang="txt">The Etched Mutation/
+├─ index.html          ← 진입점 ①  오프닝 · 메뉴 · RECORD · 아카이브
+├─ play-test.html      ← 진입점 ②  상영 (1인칭 지형 · 유령 대화 · 봉인)   ※ 30만 바이트, 한 파일
+├─ demo-sequence.html  ← 진입점 ③  데모 (js/demo/demoFlow.js 가 두뇌)
+├─ admin.html          ← 작가용 편집기 (관객은 못 봄)
+├─ css/                ← 옷 (index.css · main-menu.css · tem_cursor.css …)
+├─ js/                 ← 신경 (110개 파일, 약 5만 3천 줄)
+│   ├─ index.js        ←   index.html 의 두뇌 (866줄)
+│   ├─ safety.js       ←   안전 필터
+│   ├─ app/            ←   화면 흐름 (opening · archive · confession · recordPlay …)
+│   ├─ core/           ←   엔진 (ByeoriEngine · ContaminationTracker · SceneNavigator …)
+│   ├─ shared/         ←   공용 계산·지형 (math · api · tem_variant_strata · tem_af_strata_terrain …)
+│   ├─ ui/             ←   연출 (lumen_* · strataView · notify …)
+│   ├─ lib/            ←   설정·연결 (config · supabaseClient · i18n · repo)
+│   ├─ services/       ←   서버 심부름 (NetworkService · AIService …)
+│   └─ demo/           ←   데모 전용
+├─ supabase/
+│   ├─ migrations/     ← 데이터베이스 표를 만들고 고친 기록 (SQL, 날짜순 39개)
+│   └─ functions/      ← 서버에서 도는 함수 (record-erosion · claude-scene … 19개)
+├─ docs/               ← 정본 문서 189개 (설계 · 결정 · 실험 기록)
+├─ test/  tests/       ← 실험 화면 · 자동 검사
+├─ tools/              ← 도구 (serve.cjs 로컬 서버 · qa.cjs 순찰 · 저작 자동화 …)
+├─ data/  sounds/  assets/  ← 씨앗 데이터 · 소리 · 모형
+└─ CLAUDE.md           ← AI 작업 규칙 (311줄)</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b>html 파일 = 문.</b> 관객이 브라우저로 여는 건 세 개의 html 뿐입니다. 그 뒤로 css와 js가 끌려 들어옵니다.</li>
+  <li><b>js 폴더 안은 "층"으로 나뉩니다.</b> <code>app</code>은 화면 흐름, <code>core</code>는 판단 엔진, <code>shared</code>는 여러 곳이 같이 쓰는 계산, <code>ui</code>는 눈에 보이는 연출, <code>lib</code>은 바깥 세상(데이터베이스, 언어)과의 연결. AI가 "<code>js/core/ByeoriEngine.js</code> 고쳤어요" 하면 <em>판단 엔진을 건드렸다</em>는 뜻이고, "<code>js/ui/lumen_footprints.js</code>" 면 <em>보이는 것만 바뀌었다</em>는 뜻입니다.</li>
+  <li><b>supabase 폴더는 서버 쪽.</b> 브라우저에서 도는 게 아니라 Supabase 회사 서버에서 돕니다. <code>migrations</code>는 표 설계도의 변경 이력이고, <code>functions</code>는 관객 브라우저가 직접 못 하는 일(권한 필요한 저장)을 대신 하는 함수들입니다.</li>
+  <li><b>docs 는 정본.</b> 코드보다 문서가 먼저입니다. 결정은 여기 남습니다.</li>
+</ul></div>
+
+<h2>진입점 세 곳</h2>
+<p>이 프로젝트에서 가장 자주 나오는 말이 "진입점 세 곳"입니다. 관객이 들어오는 문이 셋이라, 어떤 기능을 붙일 때 <b>세 문 모두에 붙였는지</b> 확인해야 합니다. 한 문에만 붙이고 "됐어요" 하는 게 이 저장소의 단골 사고였습니다.</p>
+
+<table>
+  <tr><th style="width:11em">문</th><th>두뇌 파일</th><th>무엇을 하나</th></tr>
+  <tr><td><code>index.html</code></td><td><code>js/index.js</code> (+ <code>js/app/*</code>)</td><td>오프닝 파동, 메뉴, RECORD(기억 채록), 아카이브, 로그인</td></tr>
+  <tr><td><code>play-test.html</code></td><td>파일 자기 자신 (안에 script 가 다 들어 있음)</td><td>상영. 1인칭으로 지형을 걷고 유령과 대화하고 봉인</td></tr>
+  <tr><td><code>demo-sequence.html</code></td><td><code>js/demo/demoFlow.js</code></td><td>데모 시연 흐름</td></tr>
+</table>
+
+<div class="story">2026-09-09, RECORD로 바로 가는 단축키(Ctrl+Shift+B)를 붙일 때 기록: "진입점 3곳(index / play-test / demoFlow) 동일 키". 세 문에 같은 키를 붙였다는 걸 코드 주석에 명시했습니다. 이 확인이 없으면 한 문에서만 열리는 단축키가 됩니다. 이 책 18장에서 세 문을 한꺼번에 검사하는 법을 배웁니다.</div>
+
+<h2>켜는 법: 바탕화면의 "TEM 켜기"가 하는 일</h2>
+<p>더블클릭하면 검은 창이 뜨고 브라우저가 열립니다. 그 사이에 일어나는 일은 딱 두 줄입니다.</p>
+
+<div class="codebox"><span class="file">TEM 켜기.bat</span>
+<pre class="code" data-lang="txt" data-hl="4">@echo off
+chcp 65001 > nul
+cd /d "%~dp0"
+node tools\serve.cjs index.html</pre></div>
+
+<div class="codebox"><span class="file">tools/serve.cjs : 1~3, 19~21</span>
+<pre class="code" data-hl="1,5">// TEM 로컬 서버 — 더블클릭 런처(.bat)에서 호출. 의존성 0 (node 내장 모듈만).
+// 사용: node tools/serve.cjs [열_페이지]   (기본 index.html)
+// 끄기: 실행된 콘솔 창을 닫으면 됨.
+
+const root = path.join(__dirname, '..'); // tools/ 의 상위 = 프로젝트 루트
+const PORT = 8777;
+const page = process.argv[2] || 'index.html';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b>node</b>는 자바스크립트를 브라우저 밖에서 돌려주는 프로그램입니다. 4번째 줄은 "node야, <code>tools/serve.cjs</code> 파일을 돌려라, 첫 페이지는 index.html 로" 라는 뜻.</li>
+  <li><b>서버</b>란 거창한 게 아닙니다. 브라우저가 "index.html 줘" 하면 폴더에서 찾아 건네주는 <em>심부름꾼</em>입니다. <code>PORT = 8777</code>은 그 심부름꾼이 서 있는 문 번호. 그래서 주소창이 <code>localhost:8777</code>로 시작합니다.</li>
+  <li>주석 1번째 줄의 "의존성 0"은 "남의 부품을 안 빌렸다"는 뜻. 이 파일은 node 만 있으면 돕니다.</li>
+</ul></div>
+
+<div class="tip">파일 이름을 들으면 폴더부터 봐라. <code>js/core/</code>면 판단, <code>js/ui/</code>면 연출, <code>supabase/</code>면 서버, <code>docs/</code>면 문서. 이 네 글자만 봐도 "무엇이 바뀌었을 수 있는가"의 범위가 정해진다.</div>
+
+<div class="quiz"><h3>미니 시험 1</h3>
+<ol>
+  <li>AI가 "<code>js/ui/lumen_scene_objects.js</code> 를 고쳤다"고 합니다. 판단 엔진이 바뀌었을 가능성이 있습니까? 폴더 이름으로 답하세요.</li>
+  <li>관객이 <code>play-test.html</code>을 열었습니다. 이때 <code>js/index.js</code>의 코드가 같이 돕니까?</li>
+  <li>"기억 표에 열을 하나 추가했다"는 기록은 어느 폴더에 남아야 합니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 폴더 다섯 개의 역할을 내 말로</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 2장 ═══════════════════════ -->
+<section class="chapter" id="ch2">
+<h1><span class="chno">2장 · 지형 익히기</span>웹페이지의 세 겹: html · css · 자바스크립트</h1>
+
+<p class="goal"><b>목표</b> 화면 하나가 세 종류의 파일로 이루어진다는 걸 알고, 세 겹이 <b>이름(id · class)</b>으로 서로를 찾는다는 것을 실제 메뉴 화면에서 본다.</p>
+
+<h2>비유 하나</h2>
+<table>
+  <tr><th style="width:8em">겹</th><th style="width:7em">비유</th><th>답하는 질문</th><th>이 프로젝트에서</th></tr>
+  <tr><td>html</td><td>뼈대</td><td>화면에 <b>무엇이</b> 있나</td><td><code>index.html</code>, <code>play-test.html</code></td></tr>
+  <tr><td>css</td><td>옷</td><td><b>어떻게 보이나</b> (색 · 크기 · 숨김)</td><td><code>css/index.css</code>, <code>css/main-menu.css</code></td></tr>
+  <tr><td>자바스크립트 (js)</td><td>신경</td><td>무엇을 <b>하나</b> (누르면 · 시간이 지나면)</td><td><code>js/</code> 전체</td></tr>
+</table>
+
+<h2>html: 상자 속 상자</h2>
+<p>메뉴 화면의 뼈대입니다. 실제 파일에서 그대로 잘라 왔습니다.</p>
+
+<div class="codebox"><span class="file">index.html : 144~152, 168~169</span>
+<pre class="code" data-lang="html" data-hl="1,9">&lt;div class="intro-screen main-menu-intro" id="introScreen"&gt;
+    &lt;div class="main-menu-wrap"&gt;
+        &lt;div class="bg-image"&gt;&lt;/div&gt;
+        &lt;div class="left-gradient"&gt;&lt;/div&gt;
+        &lt;div class="main-content"&gt;
+            &lt;div class="main-sidebar"&gt;
+                &lt;div class="main-header"&gt;
+                    &lt;h1&gt;THE ETCHED&lt;br&gt;&lt;span&gt;MUTATION&lt;/span&gt;&lt;/h1&gt;
+                &lt;div class="menu-list" id="mainMenuList"&gt;
+                    &lt;div class="menu-item active" data-menu-id="play" data-action="enterPlayInterview"&gt;</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b>꺾쇠 한 쌍이 상자 하나.</b> <code>&lt;div&gt;</code>로 열고 <code>&lt;/div&gt;</code>로 닫습니다. 사선(<code>/</code>)이 있으면 닫는 쪽. 안에 다른 상자가 들어가고, 들어갈수록 오른쪽으로 밀려 적힙니다(6장의 들여쓰기와 같은 원리).</li>
+  <li><b><code>id</code> = 이름표, 한 화면에 하나뿐.</b> <code>id="introScreen"</code>은 "이 상자 이름은 introScreen". 자바스크립트가 이 이름으로 찾아옵니다.</li>
+  <li><b><code>class</code> = 종류표, 여러 상자가 같이 가질 수 있음.</b> <code>class="menu-item active"</code>는 종류표 두 장("메뉴 항목"이면서 "켜진 상태"). css가 이 종류표를 보고 옷을 입힙니다.</li>
+  <li><b><code>data-…</code> = 자바스크립트에게 남긴 쪽지.</b> <code>data-action="enterPlayInterview"</code>는 "이걸 누르면 enterPlayInterview 를 하라"고 코드가 읽을 쪽지. 이 프로젝트 메뉴는 전부 이 방식입니다.</li>
+  <li><code>&lt;h1&gt;</code>은 큰 제목 상자, <code>&lt;br&gt;</code>은 줄바꿈(닫는 짝 없음), <code>&lt;span&gt;</code>은 글자 일부만 감싸는 작은 상자.</li>
+</ul></div>
+
+<h2>css: "누구에게" + "무엇을"</h2>
+<div class="codebox"><span class="file">css/index.css : 1~8, 4269~4271</span>
+<pre class="code" data-lang="css" data-hl="1,10">:root {
+  --bg-deep: #0a0a0c;
+  --bg-surface: #12121a;
+  --text-primary: #e8e4df;
+  --text-muted: #6b6b7b;
+  --accent-memory: #c4a882;
+  --accent-interpretation: #7b8fa8;
+}
+
+.hidden {
+  display: none !important
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>css 한 덩어리는 항상 <b>"누구에게 { 무엇을: 어떻게; }"</b> 모양입니다. 10번째 줄: <code>.hidden</code>(종류표가 hidden 인 상자들에게) <code>display: none</code>(보이지 마라).</li>
+  <li><b>앞의 점(<code>.</code>)은 class</b>, <b>앞의 우물 정(<code>#</code>)은 id</b>를 가리킵니다. <code>.hidden</code>은 종류표, <code>#selectScreen</code>은 이름표.</li>
+  <li><code>!important</code>는 "다른 규칙과 부딪혀도 이게 이긴다". 이 프로젝트에서 화면을 확실히 숨길 때 씁니다.</li>
+  <li>1번째 줄 <code>:root</code> 안의 <code>--이름: 값</code>은 <b>색 이름표</b>입니다. <code>--accent-memory</code>가 기억의 금색. 다른 곳에서 <code>var(--accent-memory)</code>라고 쓰면 이 색을 꺼내 씁니다. 색을 한 군데서 바꾸면 전체가 바뀌게 한 장치.</li>
+  <li><code>#0a0a0c</code> 같은 것은 색을 숫자로 적은 것. 앞 두 자리 빨강, 가운데 초록, 뒤 파랑. <code>#0a0a0c</code>는 거의 검정.</li>
+</ul></div>
+
+<h2>세 겹이 서로를 찾는 방법</h2>
+<p>이 프로젝트의 화면 전환은 거의 전부 한 가지 동작입니다. <b>자바스크립트가 id로 상자를 찾아 → class(종류표)를 붙이거나 떼면 → css 가 보이거나 숨긴다.</b> 실제 코드에서 그 세 줄을 보겠습니다.</p>
+
+<div class="codebox"><span class="file">js/index.js : 377 (restart 함수 안, 일부)</span>
+<pre class="code" data-hl="1,2,3">const introScreen = document.getElementById('introScreen');
+if (introScreen) { introScreen.classList.remove('hidden');
+                   introScreen.classList.add('visible'); }</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ol>
+  <li><code>document.getElementById('introScreen')</code> = "문서에서 이름표가 introScreen 인 상자를 찾아와". 2장 첫 코드의 1번째 줄, 바로 그 상자입니다.</li>
+  <li><code>if (introScreen)</code> = "찾았으면"(못 찾으면 아무것도 안 함). 이 프로젝트 코드에 이 문지기가 수백 번 나옵니다. 없으면 오류로 멈춥니다(14장).</li>
+  <li><code>classList.remove('hidden')</code> = 종류표 hidden 을 뗀다 → css 의 <code>.hidden</code> 규칙이 더 이상 안 붙음 → 보인다. <code>classList.add('visible')</code> = 종류표 visible 을 붙인다.</li>
+</ol>
+<p>즉 <b>html 이 이름을 달고, js 가 이름으로 찾아 종류표를 바꾸고, css 가 종류표를 보고 옷을 갈아입힙니다.</b> 이 삼각형만 알면 "메뉴가 안 사라져요" 같은 문제를 어느 겹에서 찾을지 정할 수 있습니다.</p></div>
+
+<h2>겹을 불러오는 줄: link 와 script</h2>
+<div class="codebox"><span class="file">index.html : 15, 17, 599, 612</span>
+<pre class="code" data-lang="html" data-hl="2,4">&lt;link rel="stylesheet" href="css/index.css?v=260714"&gt;
+&lt;link rel="stylesheet" href="css/tem_cursor.css?v=260809"&gt;
+&lt;script src="js/ui/strataSection.js?v=260714"&gt;&lt;/script&gt;
+&lt;script type="module" src="js/index.js?v=260909c"&gt;&lt;/script&gt;</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>&lt;link rel="stylesheet" href="…"&gt;</code> = "저 css 파일을 옷으로 입혀라". <code>&lt;script src="…"&gt;</code> = "저 js 파일을 신경으로 붙여라". html 파일이 다른 두 겹을 여기서 끌어옵니다.</li>
+  <li><code>?v=260809</code> 는 <b>캐시버스터</b>. 날짜를 적어 두고, 파일을 고치면 이 숫자도 올립니다. 안 올리면 브라우저가 "전에 받아둔 옛 파일"을 계속 씁니다. 이 저장소에서 여러 번 사고가 났고, 12장에서 따로 다룹니다.</li>
+  <li><code>type="module"</code> 이 붙은 script 와 안 붙은 script 는 <b>서로 이름을 못 봅니다.</b> 이것도 12장.</li>
+</ul></div>
+
+<div class="warn"><code>play-test.html</code> 은 세 겹이 한 파일에 다 들어 있습니다(안에 <code>&lt;style&gt;</code> 수백 줄, <code>&lt;script&gt;</code> 수천 줄). 그래서 30만 바이트, 8천 줄이 넘습니다. 파일 하나가 크다고 겁먹을 것 없습니다. 안에서도 세 겹은 그대로고, 18장의 "큰 파일 지도" 기술로 다룹니다.</div>
+
+<div class="quiz"><h3>미니 시험 2</h3>
+<ol>
+  <li><code>&lt;link rel="stylesheet" href="css/tem_cursor.css?v=260809"&gt;</code> 이 줄은 세 겹 중 어느 겹을 불러옵니까?</li>
+  <li>css 에 <code>.opening-screen.hidden { … }</code> 이 있습니다(점이 두 번). "종류표 opening-screen 을 가진 상자" 인가요, "종류표 opening-screen 과 hidden 을 <b>둘 다</b> 가진 상자" 인가요? 감으로 답하고 이유를 쓰세요.</li>
+  <li><code>document.getElementById('landingShelf')</code> 는 어느 겹이 어느 겹을 찾는 동작입니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · id 와 class 의 차이를 한 줄로</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 3장 ═══════════════════════ -->
+<section class="chapter" id="ch3">
+<h1><span class="chno">3장 · 코드의 세 가지 모양</span>상자 · 목록 · 메모 · 글자</h1>
+
+<p class="goal"><b>목표</b> 가만히 있는 데이터를 읽는다. 값을 담는 <b>상자</b>, 줄 세운 <b>목록</b>, 사람만 읽는 <b>메모</b>, 따옴표 안의 <b>글자</b>. (7월 1교시)</p>
+
+<h2>실제 코드: 안전 필터의 단어 목록</h2>
+<div class="codebox"><span class="file">js/safety.js : 1~19</span>
+<pre class="code" data-hl="1,3,4,10">// Safety system — crisis keyword detection and response
+
+export const SAFETY_KEYWORDS = {
+  block_high: [
+    "suicide", "kill myself", "want to die", "wanna die", "end my life",
+    "end it all", "jump off", "slit my wrist", "cut my wrist",
+    "self-harm", "self harm", "overdose", "hanging", "hang myself",
+    "murder", "kill someone", "stab", "arson", "bomb"
+  ],
+  block_mid: [
+    "gonna kill", "kill them", "beat to death", "blood gushing",
+    "school violence", "bullying", "ostracize"
+  ],
+  monitor_only: [
+    "depressed", "want to disappear", "suffering", "losing my mind", "feel empty"
+  ]
+};</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b><code>//</code> 뒤는 메모.</b> 컴퓨터는 무시하고 사람만 읽습니다. 막히면 <em>메모부터</em> 찾으세요. 제일 쉬운 단서입니다. 여러 줄 메모는 <code>/* … */</code>, 함수 설명용 메모는 <code>/** … */</code> 로 감쌉니다(모양만 다르고 다 메모).</li>
+  <li><b><code>const 이름 =</code> 는 상자에 이름표 붙이기.</b> "SAFETY_KEYWORDS 라는 상자를 만들고 <code>=</code> 오른쪽 것을 담아라." <code>export</code>는 "다른 파일도 이 상자를 쓰게 내놓는다"(9장).</li>
+  <li><b><code>[ … ]</code> 는 목록.</b> 쉼표로 줄 세운 값들. 4번째 줄부터 <code>]</code>까지가 "고위험 단어 목록".</li>
+  <li><b><code>" … "</code> 는 글자 그대로.</b> <code>"suicide"</code>는 계산이 아니라 그냥 그 단어. 따옴표는 큰따옴표 <code>"</code>, 작은따옴표 <code>'</code>, 뒤로 기운 따옴표 <code>`</code> 세 종류가 있고 뜻은 거의 같습니다(뒤로 기운 것은 8장).</li>
+  <li><b><code>{ 이름: 값, 이름: 값 }</code> 는 이름표 달린 묶음.</b> 3번째 줄의 <code>{</code>부터 마지막 <code>}</code>까지가 하나의 묶음이고, 안에 <code>block_high</code>, <code>block_mid</code>, <code>monitor_only</code> 세 칸이 있습니다. 목록과의 차이는 10장에서 자세히. 지금은 "이름표로 꺼내는 서랍장" 정도로.</li>
+</ul>
+<p>통째로 읽으면: <b>"안전 키워드 상자 안에 고위험 · 중위험 · 감시만 세 서랍이 있고, 각 서랍에 단어 목록이 들어 있다."</b> 설계 문서의 3계층이 코드에서 이 모양입니다.</p></div>
+
+<h2>숫자 상자와 글자 상자</h2>
+<div class="codebox"><span class="file">index.html : 29~31 (마스터 음량) · js/lib/supabaseClient.js : 7 · tools/serve.cjs : 20</span>
+<pre class="code">var VOL_KEY = 'tem_volume';
+var master = parseFloat(localStorage.getItem(VOL_KEY));
+if (isNaN(master)) master = 1;
+const MAX_WAIT_TIME = 10000; // 10초
+const PORT = 8777;</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>따옴표가 있으면 글자(<code>'tem_volume'</code>), 없으면 숫자(<code>10000</code>, <code>8777</code>). 숫자에는 따옴표를 안 씁니다.</li>
+  <li><code>var</code>는 <code>const</code>의 옛날 말입니다. 오래된 코드(play-test.html, 지형 엔진)에 많이 나옵니다. 뜻은 "상자 만들기"로 같습니다. 셋의 차이는 8장.</li>
+  <li><code>// 10초</code> 처럼 숫자 옆 메모는 단위를 알려 줍니다. <code>10000</code>이 밀리초(천분의 일 초)라 10초. 이런 메모가 없는 숫자를 만나면 AI에게 "단위가 뭐냐"고 물으세요.</li>
+  <li>대문자로만 된 이름(<code>MAX_WAIT_TIME</code>, <code>PORT</code>)은 관례상 <b>"안 바뀌는 설정값"</b>이라는 신호입니다.</li>
+</ul></div>
+
+<h2>목록 속 묶음</h2>
+<div class="codebox"><span class="file">js/safety.js : 56~60 (2026-09-09 추가분)</span>
+<pre class="code" data-hl="2">export const SAFETY_RESOURCES_KO = [
+  { name: "자살예방 상담전화", number: "109", desc: "24시간", action: "tel:109" },
+  { name: "정신건강 위기상담전화", number: "1577-0199", desc: "", action: "tel:15770199" },
+  { name: "청소년 상담", number: "1388", desc: "", action: "tel:1388" },
+];</pre></div>
+<p>바깥은 <code>[ ]</code> 목록, 안의 각 줄은 <code>{ }</code> 묶음. "상담 자원 목록, 항목 하나마다 이름 · 번호 · 설명 · 동작 네 칸." 데이터베이스에서 표를 읽어 오면 정확히 이 모양으로 옵니다(16장). 그러니 이 모양은 이 프로젝트에서 가장 자주 만나는 모양입니다.</p>
+
+<div class="tip">모르는 코드는 먼저 <b>메모(<code>//</code>)</b>를 찾고, 다음으로 <b>이름표(<code>const 이름</code>)</b>를 찾고, 그 다음에 오른쪽 값이 <b>글자인지 숫자인지 목록인지 묶음인지</b>만 본다. 그 값이 무엇에 쓰이는지는 다음 장부터.</div>
+
+<div class="quiz"><h3>미니 시험 3</h3>
+<p>처음 보는 코드입니다. 지형 엔진의 물리 상수.</p>
+<div class="codebox"><span class="file">js/shared/tem_variant_strata.js : 129~133</span>
+<pre class="code nofile">var PHYS = {
+  inertia: 0.08, capacity: 4, minSlope: 0.01,
+  erode: 0.06, deposit: 0.10, evaporate: 0.02,
+  gravity: 4, maxSteps: 48, radius: 3,
+};</pre></div>
+<ol>
+  <li>상자 이름은?</li>
+  <li>목록입니까, 이름표 달린 묶음입니까? 어떻게 알았습니까?</li>
+  <li>칸(이름표)이 몇 개입니까? 값들은 글자입니까 숫자입니까?</li>
+  <li>이름이 전부 대문자입니다. 무슨 신호입니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 목록 [ ] 과 묶음 { } 을 구별하는 내 방법</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 4장 ═══════════════════════ -->
+<section class="chapter" id="ch4">
+<h1><span class="chno">4장 · 코드의 세 가지 모양</span>갈림길: if</h1>
+
+<p class="goal"><b>목표</b> 코드가 "판단하고 나뉘는" 자리를 읽는다. <code>if</code>를 보면 두 가지만 묻는다. <b>무슨 질문인가</b>(괄호 안), <b>맞으면 뭘 하나</b>(뒤). (7월 2교시 확장)</p>
+
+<h2>실제 코드: "예전에" 인가 "지금" 인가</h2>
+<p>안전 필터는 "예전에 죽고 싶었다"(과거 이야기)와 "지금 죽고 싶다"(현재 의도)를 구분합니다. 그 판단이 이 세 줄입니다.</p>
+
+<div class="codebox"><span class="file">js/safety.js : 78~80 (detectTense 안)</span>
+<pre class="code" data-hl="1,2,3">if (hasIntent && !hasPast) return 'present';
+if (hasPast && !hasIntent) return 'past';
+return 'ambiguous';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>if ( … )</code> = "괄호 안이 맞으면 뒤엣것을 해라". 괄호 안은 항상 <b>예/아니오로 답할 수 있는 질문</b>입니다.</li>
+  <li><code>hasIntent</code>, <code>hasPast</code>는 안에 예/아니오만 든 상자("의도가 있나?", "과거 얘긴가?"). 영어로 has 가 앞에 붙은 이름은 대개 예/아니오 상자입니다(is, has, can, should 로 시작하면 의심하세요).</li>
+  <li><code>&&</code> = 그리고(둘 다 맞아야). <code>!</code> = 아니다(뒤집기). 그래서 1번째 줄은 "의도가 있고 <b>그리고</b> 과거 얘기가 <b>아니면</b> → 답을 '현재'로 정하고 끝".</li>
+  <li><code>return</code> = 답을 정해 돌려주고 <b>그 자리에서 함수를 끝냄</b>. 1번째 줄에서 return 했으면 2, 3번째 줄은 안 봅니다. 그래서 3번째 줄은 "앞의 두 질문에 다 안 걸리면 → 애매함".</li>
+</ul></div>
+
+<h2>갈림길의 네 가지 생김새</h2>
+<p>같은 갈림길인데 겉모양이 넷입니다. 다 실제 코드입니다.</p>
+
+<h3>① 여러 갈래: if · else if · else</h3>
+<div class="codebox"><span class="file">js/core/ContaminationTracker.js : 243~253</span>
+<pre class="code" data-hl="1,6,8">if (
+  next.cont_fixation &gt;= HYPERCOMPLETION_FIXATION &&
+  next.cont_fixation &gt; next.cont_drift
+) {
+  next.cont_stage = 'hypercompletion';
+} else if (next.cont_drift &gt;= BIASED_INCLINATION_DRIFT) {
+  next.cont_stage = 'biased_inclination';
+} else {
+  next.cont_stage = 'stable';
+}</pre></div>
+<p><code>if</code> → 아니면 <code>else if</code> → 그것도 아니면 <code>else</code>. 위에서부터 차례로 물어서 <b>처음 맞는 갈래 하나만</b> 갑니다. 여기서는 오염 단계 이름을 셋 중 하나로 정합니다. 질문이 길어서 괄호 안을 세 줄로 나눠 적었지만, 1~4번째 줄이 질문 하나입니다.</p>
+
+<h3>② 한 줄 갈림길: 물음표와 쌍점</h3>
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 81</span>
+<pre class="code">const voidMod = (userVoid && !origVoid) ? 0.7 : 1.0;</pre></div>
+<p><code>질문 ? 맞으면 : 아니면</code>. "관객이 회피했고 원본은 회피 안 했으면 0.7, 아니면 1.0". 별이엔진 공식의 void_mod 가 정확히 이 한 줄입니다. 값 하나를 고를 때 if 대신 자주 씁니다.</p>
+
+<h3>③ 문지기: 조건이 틀리면 바로 나가기</h3>
+<div class="codebox"><span class="file">js/shared/api.js : 8~13</span>
+<pre class="code" data-hl="3,5">export async function fetchMemories() {
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) {
+    console.error('fetchMemories: Supabase client not initialized');
+    return [];
+  }</pre></div>
+<p>"연결이 없으면 → 오류 메모 남기고 → 빈 목록 돌려주고 끝". 함수 첫머리에 서서 자격 없는 경우를 돌려보내는 <b>문지기</b>. 이 프로젝트에서 가장 흔한 if 모양이고, 문지기를 통과해야 아래 진짜 일이 시작됩니다. <code>return []</code>가 "빈 목록을 답으로"라는 것도 기억하세요. 화면에 "기억이 하나도 안 떠요"의 원인이 여기일 수 있습니다.</p>
+
+<h3>④ 있으면 한다: 짧은 문지기</h3>
+<div class="codebox"><span class="file">js/index.js : 354 (backToIntro 안)</span>
+<pre class="code">if (window.soundscape) window.soundscape.stop();</pre></div>
+<p>"소리 장치가 있으면 멈춰라". 중괄호 없이 한 줄이면 그 한 줄만 조건에 묶입니다. 2장에서 본 <code>if (introScreen) { … }</code>도 같은 모양.</p>
+
+<h2>질문에 쓰는 기호</h2>
+<table>
+  <tr><th style="width:8em">기호</th><th>뜻</th><th>실제 예</th></tr>
+  <tr><td><code>===</code></td><td>같다 (셋이 정확히 같은지)</td><td><code>tense === 'past'</code></td></tr>
+  <tr><td><code>!==</code></td><td>다르다</td><td><code>typeof text !== 'string'</code></td></tr>
+  <tr><td><code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code></td><td>작다 · 크다 · 작거나 같다 · 크거나 같다</td><td><code>elapsed &gt;= MAX_WAIT_TIME</code></td></tr>
+  <tr><td><code>&&</code></td><td>그리고 (둘 다)</td><td><code>hasIntent && !hasPast</code></td></tr>
+  <tr><td><code>||</code></td><td>또는 (하나라도)</td><td><code>!text || typeof text !== 'string'</code></td></tr>
+  <tr><td><code>!</code></td><td>아니다</td><td><code>!supabaseClient</code> (연결이 없으면)</td></tr>
+  <tr><td><code>==</code> (둘)</td><td>대충 같다 (옛 방식). <code>x != null</code>은 "비어 있지 않다"</td><td><code>_enabled != null</code></td></tr>
+</table>
+
+<div class="warn"><code>=</code> 하나는 "담아라"(3장), <code>===</code> 셋은 "같은가?"(질문). 완전히 다른 뜻입니다. if 괄호 안에 <code>=</code> 하나가 보이면 십중팔구 실수이니 AI에게 되물으세요.</div>
+
+<div class="tip">if 를 보면 ① 괄호 안 질문을 우리말로 옮기고 ② 맞으면 하는 일을 한 줄로 적는다. <code>return</code>이 보이면 "거기서 끝"이라는 것까지. 계산의 속은 몰라도 된다.</div>
+
+<div class="quiz"><h3>미니 시험 4</h3>
+<p>처음 보는 코드 둘입니다.</p>
+<div class="codebox"><span class="file">js/lib/supabaseClient.js : 40~46</span>
+<pre class="code nofile">const elapsed = now - initStartTime;
+if (elapsed &gt;= MAX_WAIT_TIME) {
+    console.error('Supabase CDN load timeout exceeded (10초)');
+    throw new Error('Supabase 클라이언트 초기화 실패: CDN 스크립트가 로드되지 않았습니다.');
+}</pre></div>
+<div class="codebox"><span class="file">tools/serve.cjs : 11~14</span>
+<pre class="code nofile">const cmd =
+  process.platform === 'darwin' ? `open "${url}"` :        // 맥
+  process.platform === 'win32'  ? `start "" "${url}"` :    // 윈도우
+                                  `xdg-open "${url}"`;      // 리눅스</pre></div>
+<ol>
+  <li>첫 코드의 질문을 우리말로. 맞으면 무슨 일이 일어납니까? (<code>throw</code>는 "오류를 던져 멈춘다"입니다.)</li>
+  <li>둘째 코드는 물음표 갈림길이 두 번 이어져 있습니다. 윈도우에서 실행하면 <code>cmd</code> 상자에 무엇이 담깁니까?</li>
+  <li>둘째 코드에서 <code>process.platform</code>이 'linux' 면?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 문지기 if 의 모양을 그려 보기</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 5장 ═══════════════════════ -->
+<section class="chapter" id="ch5">
+<h1><span class="chno">5장 · 코드의 세 가지 모양</span>함수: 기능 한 덩어리</h1>
+
+<p class="goal"><b>목표</b> "기능 하나"의 <b>이름 · 재료 · 몸통 · 답</b>을 본다. 검증의 단위가 함수다. AI가 "X 함수 고쳤어요" 하면 <b>그 <code>{</code>부터 <code>}</code>까지만</b> 보면 된다. (7월 3교시 확장)</p>
+
+<h2>실제 코드: 가장 작은 함수</h2>
+<div class="codebox"><span class="file">index.html : 32 (마스터 음량 안)</span>
+<pre class="code">function clamp01(x) { return Math.max(0, Math.min(1, x)); }</pre></div>
+
+<div class="read"><div class="rt">읽는 법: 네 부분</div>
+<table>
+  <tr><th style="width:6em">부분</th><th style="width:12em">여기서는</th><th>뜻</th></tr>
+  <tr><td>이름</td><td><code>clamp01</code></td><td>이 기능을 부를 때 쓰는 이름. clamp = 죄다, 01 = 0과 1 사이로.</td></tr>
+  <tr><td>재료</td><td><code>(x)</code></td><td>이 기능이 받는 것. 하나.</td></tr>
+  <tr><td>몸통</td><td><code>{ … }</code></td><td>여는 중괄호부터 닫는 중괄호까지가 이 기능의 전부. <b>그 밖은 남의 일.</b></td></tr>
+  <tr><td>답</td><td><code>return …</code></td><td>돌려주는 값. 여기서는 "x를 0~1 사이로 가둔 값".</td></tr>
+</table>
+<p>속(<code>Math.max</code>, <code>Math.min</code>)은 몰라도 됩니다. 이름과 메모가 "0~1로 가둔다"고 말해 주니까요. <code>Math.</code> 뒤에 붙는 것들은 전부 수학 도구(최대 · 최소 · 반올림 · 제곱근)입니다.</p></div>
+
+<h2>실제 코드: 재료가 둘, 답이 셋 중 하나</h2>
+<div class="codebox"><span class="file">js/safety.js : 68~81</span>
+<pre class="code" data-hl="1,9,11,12,13">function detectTense(originalText, keywordIndex) {
+  const before = originalText.substring(Math.max(0, keywordIndex - 40), keywordIndex).toLowerCase();
+  const after = originalText.substring(keywordIndex, Math.min(originalText.length, keywordIndex + 60)).toLowerCase();
+  const window = before + ' ' + after;
+
+  const hasPast = KO_PAST.test(window) || EN_PAST.test(window);
+  const hasIntent = KO_INTENT.test(window) || EN_INTENT.test(window);
+
+  if (hasIntent && !hasPast) return 'present';
+  if (hasPast && !hasIntent) return 'past';
+  return 'ambiguous';
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>이름 <code>detectTense</code>(시제 감지), 재료 둘(<code>originalText</code> 원문, <code>keywordIndex</code> 위험 단어가 있던 위치), 몸통은 1번째 줄 <code>{</code>부터 12번째 줄 <code>}</code>까지.</li>
+  <li>2~7번째 줄은 재료를 손질하는 자리(위험 단어 앞 40글자와 뒤 60글자를 잘라 창을 만들고, 그 창에 과거 표현과 의도 표현이 있는지 봄). 속은 지금 몰라도 됩니다.</li>
+  <li>9~11번째 줄이 4장에서 본 갈림길. <b>답은 세 글자 중 하나</b>: 'present', 'past', 'ambiguous'. 함수를 읽을 때 "답이 될 수 있는 값이 뭐뭐인가"를 세면 그 함수를 다 읽은 겁니다.</li>
+</ul></div>
+
+<h2>실제 코드: 답이 없는 함수</h2>
+<div class="codebox"><span class="file">tools/serve.cjs : 10~16</span>
+<pre class="code" data-hl="1,6">function openBrowser(url) {
+  const cmd =
+    process.platform === 'darwin' ? `open "${url}"` :
+    process.platform === 'win32'  ? `start "" "${url}"` :
+                                    `xdg-open "${url}"`;
+  exec(cmd);
+}</pre></div>
+<p><code>return</code>이 없습니다. 이 함수는 답을 돌려주는 게 아니라 <b>일을 하고 끝</b>(브라우저를 연다). 답 없는 함수는 "무엇을 <em>바꾸는가</em>"로 읽습니다. 화면을 바꾸거나, 저장하거나, 소리를 내거나. 이 프로젝트의 화면 함수 대부분이 이 모양입니다.</p>
+
+<h2>함수의 다른 생김새 세 가지</h2>
+<table>
+  <tr><th style="width:11em">생김새</th><th>실제 예</th><th>읽는 법</th></tr>
+  <tr><td>화살표 함수</td><td><code>m =&gt; ({ ...m, is_live: !!m.is_live })</code><br><span class="small">js/app/archive.js</span></td><td><code>재료 =&gt; 답</code>. "m 을 받아 → 오른쪽을 답으로". 이름 없는 짧은 함수. 7장의 반복 안에서 아주 자주 나옵니다.</td></tr>
+  <tr><td>이름 없는 함수</td><td><code>card.addEventListener('click', function () { … })</code><br><span class="small">play-test.html : 5230</span></td><td>"click 이 일어나면 이 몸통을 돌려라". 이름이 없고 그 자리에서 바로 넘겨줍니다(13장).</td></tr>
+  <tr><td>묶음 안의 함수 (메서드)</td><td><code>calculateStep(input, context = {}) { … }</code><br><span class="small">js/core/ByeoriEngine.js : 40</span></td><td><code>function</code> 글자가 없어도 <code>이름(재료) {</code> 면 함수. <code>context = {}</code>는 "안 주면 빈 묶음으로"라는 <b>기본값</b>.</td></tr>
+</table>
+
+<div class="story">7월 8일 교재에 남은 말: "play-test.html 이 6,965줄 된 게 '이 함수만 바뀌었나'를 안 물어서 생긴 일." 지금은 8,400줄이 넘습니다. 함수 단위로 경계를 묻는 습관이 파일이 불어나는 속도를 늦춥니다.</div>
+
+<div class="tip">AI가 "X 고쳤어요" 하면 <span class="kbd">Ctrl</span>+<span class="kbd">F</span> 로 <code>function X</code> 또는 <code>X(</code> 를 찾아, 여는 <code>{</code> 에서 닫는 <code>}</code> 까지만 본다. 답이 될 수 있는 값을 센다. 그 밖은 안 봐도 된다.</div>
+
+<div class="quiz"><h3>미니 시험 5</h3>
+<div class="codebox"><span class="file">js/shared/tem_variant_strata.js : 60~65</span>
+<pre class="code nofile">function seedFromString(s) {
+  var h = 5381;
+  s = String(s || 'tem');
+  for (var i = 0; i &lt; s.length; i++) h = ((h &lt;&lt; 5) + h + s.charCodeAt(i)) &gt;&gt;&gt; 0;
+  return h &gt;&gt;&gt; 0;
+}</pre></div>
+<ol>
+  <li>이름, 재료 개수, 몸통의 시작과 끝 줄은?</li>
+  <li>답을 돌려줍니까? 돌려준다면 숫자입니까 글자입니까? (힌트: 2번째 줄에서 <code>h</code>가 무엇으로 시작하나)</li>
+  <li>3번째 줄 <code>s || 'tem'</code>: 재료 <code>s</code>가 비어 있으면 무엇이 됩니까?</li>
+  <li>4번째 줄의 속(비트 연산)은 몰라도 됩니다. 그래도 이 함수가 "글자를 받아 숫자 하나로 바꾼다"는 걸 어디서 알 수 있습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 함수의 네 부분</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 6장 ═══════════════════════ -->
+<section class="chapter" id="ch6">
+<h1><span class="chno">6장 · 코드의 세 가지 모양</span>들여쓰기: 목차처럼 훑기</h1>
+
+<p class="goal"><b>목표</b> 큰 파일을 처음부터 읽지 않고, <b>왼쪽 끝만 보며</b> "여기 한 뭉치, 저기 다음 뭉치"를 그린다. 덩어리 속 덩어리를 본다. (7월 4교시 확장)</p>
+
+<h2>실제 코드: 문지기 안의 갈림길 셋</h2>
+<div class="codebox"><span class="file">js/core/ContaminationTracker.js : 236~ (수렴 오염 계산, 속은 생략)</span>
+<pre class="code" data-hl="1,2,4,6,8,9">if (depth &gt;= MIN_DEPTH_FOR_CONVERGENCE) {
+  if (fixation_level &gt;= FIXATION_THRESHOLD) {
+    delta_conv = ...
+  } else if (effectiveShape &gt;= 0.7 && level &gt;= 0.7) {
+    delta_conv = ...
+  } else if (alignment &gt;= 0.5) {
+    delta_conv = ...
+  }
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>{ }</code> 안에 또 <code>{ }</code>. <b>안에 든 것일수록 오른쪽으로 밀려 적힙니다.</b> 그게 들여쓰기입니다.</li>
+  <li>왼쪽 끝만 보면 목차가 보입니다: "바깥 조건 하나(1번째 줄) 안에, 갈림길 세 개(2 · 4 · 6번째 줄)가 나란히."</li>
+  <li><b>바깥 if 는 문지기.</b> 궤적이 충분히 깊지 않으면(1번째 줄 질문이 틀리면) 안쪽 세 갈래는 <em>구경도 못 합니다</em>. 그래서 "수렴 오염이 안 올라가요"의 첫 용의자는 안쪽 계산이 아니라 바깥 문지기입니다.</li>
+  <li>속(<code>delta_conv = ...</code>)은 몰라도 됩니다. 목표는 <b>어디부터 어디까지가 한 덩어리인가</b>뿐.</li>
+</ul></div>
+
+<h2>실제 코드: 네 겹 들여쓰기</h2>
+<p>15장에서 다시 볼 서가 카드 코드입니다. 이번엔 <b>계단</b>만 보세요.</p>
+<div class="codebox"><span class="file">play-test.html : 5209~5240 (일부 생략)</span>
+<pre class="code" data-hl="1,6,20,24">function _renderShelf() {
+  const shelf = document.getElementById('landingShelf');
+  const enter = document.getElementById('landingEnter');
+  if (!shelf) return;
+
+  game.memories.forEach(m =&gt; {
+    const card = document.createElement('div');
+    card.className = 'shelf-card';
+    ...
+    card.addEventListener('click', function () {
+      shelf.querySelectorAll('.shelf-card').forEach(c =&gt; c.classList.remove('chosen'));
+      card.classList.add('chosen');
+      document.getElementById('memorySelect').value = m.id;
+      if (enter) {
+        enter.classList.add('ready');
+        try { enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+      }
+    });
+    shelf.appendChild(card);
+  });
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<p>왼쪽 계단을 세면 이렇게 읽힙니다.</p>
+<ol>
+  <li>0계단: 함수 <code>_renderShelf</code>(서가 그리기). 1~21번째 줄 전체.</li>
+  <li>1계단: 서가 상자를 찾고, 없으면 나감(문지기). 그리고 <b>기억마다 반복</b>(6번째 줄 <code>forEach</code>).</li>
+  <li>2계단: 반복 한 번마다 카드 하나를 만들고, 카드에 "클릭되면" 사건을 붙이고(10번째 줄), 서가에 붙임(19번째 줄).</li>
+  <li>3계단: 클릭됐을 때 하는 일(11~17번째 줄). 다른 카드의 chosen 을 떼고, 이 카드에 붙이고, 숨은 값에 기억 번호를 넣고, 진입 문장이 있으면…</li>
+  <li>4계단: 진입 문장에 ready 를 붙이고, 그 줄까지 화면을 끌어내림.</li>
+</ol>
+<p><code>try { … } catch (_) {}</code>는 "해 보고, 안 되면 조용히 넘어가라"는 안전망(14장). 여기서는 오래된 브라우저에서 부드러운 스크롤이 안 되어도 멈추지 않게 한 것.</p></div>
+
+<h2>짝 찾기</h2>
+<p>여는 <code>{</code>의 짝은 <b>같은 계단</b>에 있는 <code>}</code>입니다. 편집기에서 여는 괄호에 커서를 두면 짝이 밝게 표시됩니다. VS Code 에서는 <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">\</span> 로 짝으로 점프합니다. 괄호 짝이 어긋나면 파일 전체가 죽습니다(14장의 SyntaxError).</p>
+
+<div class="tip">큰 파일은 처음부터 읽지 말고, 왼쪽 끝을 훑어 <b>0계단 줄(function, const, if 가 맨 왼쪽에 있는 줄)</b>만 세어 지도를 그린다. 바깥 if 가 틀리면 안쪽은 실행 안 된다는 것을 잊지 않는다.</div>
+
+<div class="quiz"><h3>미니 시험 6</h3>
+<div class="codebox"><span class="file">js/index.js : 124~127, 167 (initApp 안, 중간 생략)</span>
+<pre class="code nofile">if (urlParams.get('strata') === '1' && urlParams.get('memory')) {
+    const strataMemoryId = urlParams.get('memory');
+    ...
+    function _hideAllUI() { ... }
+    function _waitForStrata() { ... }
+    ...
+    return;
+}
+if (urlParams.get('demo') === '1' && urlParams.get('memory')) {</pre></div>
+<ol>
+  <li>바깥 if 의 질문을 우리말로 옮기세요. (<code>urlParams.get('strata')</code>는 "주소창의 strata 값".)</li>
+  <li>그 안에 함수 정의가 둘 들어 있습니다. 주소창에 strata=1 이 없으면 이 두 함수는 만들어집니까?</li>
+  <li>7번째 줄 <code>return;</code> 이 실행되면 9번째 줄(demo 검사)은 봅니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 계단 세는 법</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 7장 ═══════════════════════ -->
+<section class="chapter" id="ch7">
+<h1><span class="chno">7장 · 코드의 세 가지 모양</span>반복: for · forEach · map · filter</h1>
+
+<p class="goal"><b>목표</b> "목록 전체에 같은 일 다 하기"를 읽는다. 생김새가 다섯 가지지만 뜻은 하나다. <b>어떤 목록을 · 하나씩 뭐라 부르며 · 뭘 하나.</b> (7월 5교시 확장)</p>
+
+<h2>실제 코드: 단어를 하나씩 검사</h2>
+<div class="codebox"><span class="file">js/safety.js : 100~104 (detectCrisis 안)</span>
+<pre class="code" data-hl="1,4">for (const keyword of SAFETY_KEYWORDS.block_high) {
+  const normalizedKeyword = keyword.replace(/\s/g, '').toLowerCase();
+  const matchIdx = lowerText.indexOf(normalizedKeyword);
+  if (matchIdx &gt;= 0) {
+    const tense = detectTense(originalLower, matchIdx);
+    ...</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>for (const keyword of 목록)</code> = "목록에서 하나씩 꺼내 <code>keyword</code>라 부르며 <code>{ }</code>를 반복". 단어가 20개면 몸통이 20번 돕니다.</li>
+  <li>반복 <b>안에</b> 갈림길(4번째 줄)이 있습니다: "각 위험 단어마다 → 글에 있으면 → 시제를 판별". 3장 + 4장 + 5장(<code>detectTense</code> 호출)이 한자리에 모였습니다.</li>
+</ul></div>
+
+<h2>다섯 가지 생김새</h2>
+<table>
+  <tr><th style="width:9em">생김새</th><th>실제 예</th><th>읽는 법</th></tr>
+  <tr><td><code>for … of</code></td><td><code>for (const keyword of SAFETY_KEYWORDS.block_high) { … }</code></td><td>목록에서 하나씩 꺼내며 몸통 반복. 가장 읽기 쉬운 모양.</td></tr>
+  <tr><td><code>.forEach( )</code></td><td><code>game.memories.forEach(m =&gt; { … })</code><br><span class="small">play-test.html : 5214</span></td><td>같은 뜻. "기억마다 m 이라 부르며 몸통 반복". 목록 뒤에 점 찍고 붙임.</td></tr>
+  <tr><td><code>.map( )</code></td><td><code>fromSupabaseOther.map(m =&gt; ({ ...m, is_live: !!m.is_live }))</code><br><span class="small">js/app/archive.js : 804</span></td><td>반복하면서 <b>새 목록을 만든다</b>. 항목마다 화살표 오른쪽 값을 답으로 모아 같은 길이의 새 목록. "기억마다 is_live 칸을 보태 새 목록으로".</td></tr>
+  <tr><td><code>.filter( )</code></td><td><code>readdirSync('.').filter(f =&gt; f.endsWith('.html'))</code><br><span class="small">vite.config.js : 6</span></td><td>반복하면서 <b>골라낸다</b>. 화살표 오른쪽이 참인 것만 남긴 새 목록. "파일 중 이름이 .html 로 끝나는 것만".</td></tr>
+  <tr><td>옛날 for</td><td><code>for (let i = 0; i &lt; scenesData.length; i++) { const scene = scenesData[i]; … }</code><br><span class="small">js/index.js : 423</span></td><td>번호 <code>i</code>를 0부터 길이 직전까지 올리며 반복. <code>목록[i]</code>가 i 번째 항목. 오래된 코드에 많음. 뜻은 같음.</td></tr>
+</table>
+
+<div class="read"><div class="rt">for · forEach 와 map · filter 의 차이</div>
+<p>앞의 둘은 <b>일을 하고 끝</b>(화면에 카드를 붙이거나 저장). 뒤의 둘은 <b>새 목록을 답으로 돌려줌</b>. 그래서 <code>map</code>과 <code>filter</code>는 거의 항상 <code>const 새이름 = 목록.map(…)</code> 처럼 왼쪽에 상자가 있고, 뒤에 점을 더 찍어 이어 붙이기도 합니다: <code>목록.filter(…).map(…)</code> = "골라낸 다음 바꿔라".</p></div>
+
+<h2>실제 코드: 반복 속 반복</h2>
+<div class="codebox"><span class="file">js/shared/tem_variant_strata.js : 136~144 (붓 모양 만들기)</span>
+<pre class="code" data-hl="3">var BRUSH = (function () {
+  var r = PHYS.radius, arr = [], tw = 0, dx, dz, d, w;
+  for (dz = -r; dz &lt;= r; dz++) for (dx = -r; dx &lt;= r; dx++) {
+    d = Math.sqrt(dx * dx + dz * dz);
+    if (d &gt; r) continue;
+    w = 1 - d / r;
+    arr.push({ dx: dx, dz: dz, w: w });
+    tw += w;
+  }</pre></div>
+<p>3번째 줄에 for 가 두 개 붙어 있습니다. 바깥이 세로(dz), 안이 가로(dx). 격자를 한 칸씩 전부 훑는 모양이고, 지형 코드에 아주 많습니다. <code>continue</code>는 "이번 항목은 건너뛰고 다음으로", <code>arr.push(…)</code>는 "목록 끝에 하나 추가". 원 밖 칸은 버리고, 원 안 칸만 무게를 매겨 목록에 담는 붓입니다.</p>
+
+<div class="tip">반복을 보면 세 가지만 적는다. ① 어떤 목록을 ② 하나씩 뭐라 부르며 ③ 뭘 하나. <code>map</code>이면 "새 목록으로 무엇을 만드나", <code>filter</code>면 "무엇을 남기나"를 추가로.</div>
+
+<div class="quiz"><h3>미니 시험 7</h3>
+<ol>
+  <li>위 붓 코드에서 <code>PHYS.radius</code>가 3 이면(3장 시험 참고) 안쪽 몸통은 최대 몇 번 돕니까? (dz 가 -3부터 3까지, dx 도 -3부터 3까지)</li>
+  <li>처음 보는 코드입니다.
+<div class="codebox"><span class="file">js/core/store.js : 36~42</span>
+<pre class="code nofile">listeners.forEach(listener =&gt; {
+  try {
+    listener(state, prevState);
+  } catch (error) {
+    console.error('[Store] Listener error:', error);
+  }
+});</pre></div>
+어떤 목록을, 하나씩 뭐라 부르며, 뭘 합니까? 하나가 실패하면 나머지는 돕니까?</li>
+  <li><code>['matchingSelection', 'modeSelection', 'sessionSetup'].forEach(id =&gt; { const el = document.getElementById(id); if (el) el.style.display = 'none' })</code> — 우리말로 한 줄.</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · map 과 filter 를 내 말로</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 8장 ═══════════════════════ -->
+<section class="chapter" id="ch8">
+<h1><span class="chno">8장 · 이름과 연결</span>이름 읽기: 점 · 낙타 · 밑줄 · let / const / var</h1>
+
+<p class="goal"><b>목표</b> 영어투성이 이름에서 뜻을 뽑고, 점(<code>.</code>)을 "~의"로 읽고, 물음표 점(<code>?.</code>)과 세로줄 둘(<code>||</code>)의 "없으면" 뜻을 안다. (7월 6교시 확장)</p>
+
+<h2>이름을 자르는 세 가지 규칙</h2>
+<table>
+  <tr><th style="width:9em">규칙</th><th>실제 이름</th><th>잘라 읽기</th></tr>
+  <tr><td>낙타 등 (대문자에서 끊기)</td><td><code>emotionSimilarity</code><br><code>terrainTintLerp</code><br><code>getSupabaseClient</code></td><td>emotion + Similarity = 감정 유사도<br>terrain + Tint + Lerp = 지형 · 색조 · 보간(서서히 섞기)<br>get + Supabase + Client = Supabase 연결을 얻어라</td></tr>
+  <tr><td>밑줄 (밑줄에서 끊기)</td><td><code>cont_divergence</code><br><code>alignment_score</code><br><code>scene_order</code></td><td>cont(contamination 오염) + divergence(발산)<br>alignment(정렬) + score(점수)<br>scene(씬) + order(순서). 밑줄 이름은 데이터베이스 열 이름에 많음.</td></tr>
+  <tr><td>앞 밑줄 하나</td><td><code>_renderShelf</code><br><code>_temEnterSceneMode</code><br><code>_enabled</code></td><td>"안에서만 쓰는 것"이라는 관례. 밖에서 부르지 말라는 신호. 뜻은 밑줄 뗀 것과 같음.</td></tr>
+</table>
+<p>앞에 <code>is</code>, <code>has</code>, <code>can</code>이 붙으면 예/아니오 상자(<code>isEnabled</code>, <code>hasPast</code>). <code>get</code>이 붙으면 "얻어 오는 함수", <code>set</code>이면 "바꾸는 함수", <code>render</code>면 "그리는 함수", <code>fetch</code>/<code>load</code>면 "서버에서 가져오는 함수", <code>save</code>/<code>record</code>면 "저장하는 함수". 이 여섯 접두어만 알아도 이 프로젝트 함수의 절반은 이름으로 읽힙니다.</p>
+
+<h2>점은 "~의"</h2>
+<div class="codebox"><span class="file">play-test.html : 4896 · js/core/ContaminationTracker.js · js/app/archive.js : 809 · js/demo/demoFlow.js : 20</span>
+<pre class="code">game.terrainTintLerp = Math.min(1, game.terrainTintLerp + 0.032);
+next.cont_divergence = clamp01(next.cont_divergence + delta_div);
+const _uid = appStore.getState().currentUser.id;
+window.location.href = 'index.html?action=record';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>game.terrainTintLerp</code> = "game(회차 상태 묶음)<b>의</b> 지형 색조 보간값". 점은 큰 묶음에서 한 칸 꺼내는 것.</li>
+  <li>점이 여러 개면 왼쪽부터 차례로: <code>appStore.getState().currentUser.id</code> = "appStore <b>의</b> 현재 상태(를 얻어서) <b>의</b> 현재 사용자 <b>의</b> 번호". 중간에 <code>( )</code>가 있으면 그건 함수를 돌려 나온 답에 다시 점을 찍은 것.</li>
+  <li><code>window.location.href = '…'</code> = "창 <b>의</b> 주소 <b>의</b> 값을 이걸로 바꿔라" = <b>페이지 이동</b>. 이 한 줄이 나오면 다른 문(1장)으로 넘어가는 자리입니다.</li>
+  <li>1번째 줄처럼 <code>x = … x + …</code> 모양은 "x 를 조금 늘려 다시 x 에 담기". 애니메이션에서 매 프레임 조금씩 움직이는 전형(17장).</li>
+</ul></div>
+
+<h2>"없으면" 을 다루는 세 기호</h2>
+<div class="codebox"><span class="file">play-test.html : 5223 · js/lib/supabaseClient.js : 59 · test/e2e/playthrough.mjs : 36, 43</span>
+<pre class="code">const n = Number(m._depth) || 0;
+console.log(`[Auth] 상태 변경: ${event}`, session?.user?.email || 'no user');
+return data?.[0]?.id;
+return rt?.isFirstPerson?.();</pre></div>
+
+<table>
+  <tr><th style="width:6em">기호</th><th>뜻</th><th>위 코드에서</th></tr>
+  <tr><td><code>||</code></td><td>"왼쪽이 비어 있으면 오른쪽을 써라" (기본값)</td><td><code>Number(m._depth) || 0</code> = 깊이를 숫자로, 못 바꾸면 0</td></tr>
+  <tr><td><code>?.</code></td><td>"있으면 점 찍고, 없으면 조용히 비움" (안전한 점)</td><td><code>session?.user?.email</code> = 세션이 없거나 사용자가 없어도 오류 없이 빈 값. 그냥 <code>session.user.email</code>이면 세션이 없을 때 멈춤(14장의 TypeError)</td></tr>
+  <tr><td><code>??</code></td><td>"왼쪽이 <em>정말 없을 때만</em> 오른쪽" (0 이나 빈 글자는 그대로 둠)</td><td>이 프로젝트엔 드묾. <code>||</code>와의 차이만 기억: <code>0 || 5</code>는 5, <code>0 ?? 5</code>는 0</td></tr>
+</table>
+<p>4번째 줄 <code>rt?.isFirstPerson?.()</code>은 "rt 가 있으면 → 그 안에 isFirstPerson 함수가 있으면 → 돌려라". 없으면 어느 단계에서든 조용히 빈 값. 자동 검사 코드가 아직 준비 안 된 화면을 물을 때 쓰는 모양입니다.</p>
+
+<h2>뒤로 기운 따옴표: 글자 속에 값 끼우기</h2>
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 105</span>
+<pre class="code">formula: `L${level.toFixed(2)} × S${shapeResult.clamped.toFixed(2)} × V${voidMod.toFixed(2)} = ${alignment.toFixed(3)}`,</pre></div>
+<p><code>` … `</code> 안에서 <code>${ }</code>는 "여기에 이 값을 끼워라". 별이엔진이 콘솔에 <code>L0.72 × S0.91 × V1.00 = 0.655</code> 같은 공식 문장을 찍는 자리입니다. <code>.toFixed(2)</code>는 소수 둘째 자리까지. 14장에서 콘솔을 읽을 때 이 문장을 보게 됩니다.</p>
+
+<h2>let · const · var</h2>
+<table>
+  <tr><th style="width:6em">말</th><th>뜻</th><th>읽을 때 신호</th></tr>
+  <tr><td><code>const</code></td><td>한 번 담으면 다른 걸로 못 바꾸는 상자</td><td>"이 이름은 이 함수 안에서 계속 이 값". 안심하고 읽어도 됨.</td></tr>
+  <tr><td><code>let</code></td><td>나중에 값이 바뀔 상자</td><td><code>let delta_conv = 0</code> = "일단 0, 아래에서 바꿀 예정". 바뀌는 자리를 찾아 읽어야 함.</td></tr>
+  <tr><td><code>var</code></td><td><code>let</code>의 옛날 말</td><td>play-test.html, 지형 엔진, 데이터베이스 연결 코드에 많음. 오래된 코드라는 신호일 뿐 뜻은 <code>let</code>과 같다고 보면 됨.</td></tr>
+</table>
+<div class="warn"><code>const</code>는 "상자를 다른 것으로 못 바꾼다"이지, 상자 <em>안</em>의 묶음 내용은 바꿀 수 있습니다. <code>const game = {…}</code> 다음에 <code>game.terrainTintLerp = 0.5</code> 는 됩니다. 그래서 이 프로젝트의 <code>game</code> 묶음은 const 인데도 매 프레임 바뀝니다.</div>
+
+<div class="tip">모르는 이름은 ① 대문자 · 밑줄에서 자르고 ② 접두어(get/set/is/has/render/fetch/save)로 성격을 잡고 ③ 점은 "의"로 읽는다. <code>?.</code>와 <code>||</code>는 "없을 때 대비"라고만 읽고 넘어간다.</div>
+
+<div class="quiz"><h3>미니 시험 8</h3>
+<ol>
+  <li><code>next.lifetime_drift_sum += driftSignal;</code> (ContaminationTracker.js : 227) — 이름을 잘라 우리말로. <code>+=</code>는 "오른쪽만큼 늘려 담기"입니다.</li>
+  <li><code>game.terrainAnimRaf = requestAnimationFrame(tick);</code> (play-test.html : 4916) — 점 왼쪽은 무엇의 무엇입니까? Raf 는 requestAnimationFrame 의 머리글자입니다. 무슨 값이 담기는지 추측하세요.</li>
+  <li><code>const title = m.title || '(untitled)';</code> — 기억 제목이 비어 있으면 화면에 무엇이 뜹니까?</li>
+  <li><code>appStore.getState().currentStoryData?.scenes?.[0]</code> — 씬 목록이 아직 없으면 오류로 멈춥니까, 조용히 빕니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 접두어 여섯 개</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 9장 ═══════════════════════ -->
+<section class="chapter" id="ch9">
+<h1><span class="chno">9장 · 이름과 연결</span>만들기와 부르기: import / export</h1>
+
+<p class="goal"><b>목표</b> 같은 기능이 "만들어진 곳"(정의, 한 곳)과 "쓰이는 곳"(호출, 여러 곳)을 구별한다. 파일 첫머리의 <code>import</code> 줄만 읽고 <b>이 파일이 누구에게 기대는지</b> 지도를 그린다. (7월 7교시 확장)</p>
+
+<h2>정의는 하나, 호출은 여럿</h2>
+<div class="codebox"><span class="file">js/safety.js : 68 (정의) · 104 (호출) · js/app/opening.js : 17 (다른 파일에서 꺼내오기)</span>
+<pre class="code" data-hl="2,5,8">// 만든 곳 — 앞에 function
+function detectTense(originalText, keywordIndex) { ... }
+
+// 쓴 곳 — 이름 뒤에 바로 ( )
+const tense = detectTense(originalLower, matchIdx);
+
+// 다른 파일의 기능을 꺼내오는 곳
+import { getSupabaseClient } from '../lib/supabaseClient.js';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b>정의(만들기)</b>: 앞에 <code>function</code>이 있거나(2번째 줄), 묶음 안에서 <code>이름(재료) {</code> 모양. 보통 딱 한 곳.</li>
+  <li><b>호출(부르기)</b>: 이름 뒤에 바로 <code>( )</code>(5번째 줄). "그 기계를 지금 돌려라." 여러 곳에서 부를 수 있음. 재료를 괄호 안에 넣어 줌.</li>
+  <li><b>import</b>(8번째 줄): "저 파일에서 이 이름을 꺼내 온다". 짝은 그 파일 쪽의 <code>export</code>(3장에서 본 <code>export const</code>, <code>export function</code>).</li>
+</ul>
+<p>왜 중요한가: AI가 "어디서 일어나요?"에 답할 때 정의 자리를 말하기 쉽지만, <b>진짜 도는 자리는 호출 자리</b>입니다. 정의는 한 곳이라도 호출이 세 곳이면 세 곳 다 봐야 합니다(1장의 진입점 세 곳과 같은 얘기).</p></div>
+
+<h2>실제 코드: 파일의 의존 지도</h2>
+<div class="codebox"><span class="file">js/index.js : 1~10</span>
+<pre class="code" data-hl="2,4,8">import { initI18n, t, setLanguage, setBrightness, getBrightness, getCurrentLanguage } from './lib/i18n.js';
+import { getSupabaseClient, onAuthStateChange, getSession, getAccessToken } from './lib/supabaseClient.js';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, SUPABASE_FUNCTION_URL } from './lib/config.js';
+import { detectCrisis, getRandomDialogue, CRISIS_DIALOGUES, SAFETY_RESOURCES } from './safety.js';
+import { NPC_DIALOGUES } from './npc-dialogues.js';
+
+// Shared modules
+import { fetchMemories, fetchScenes, savePlay, saveNote, fetchNotes, activateMemoryIfFetus } from './shared/api.js';
+import { playSound, stopSound, setVolume, SOUNDS } from './shared/audio.js';
+import { cosineSimilarity, normalizeVector, addVectors, getBucket, checkFixated, getDominantEmotion, normalizeAnchor, projectEmotionToVAD, emotionVectorToWaveStyle } from './shared/math.js';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>파일 첫머리의 import 줄들 = <b>이 파일이 남에게 빌려 쓰는 목록</b>. index.js 는 언어(i18n), 데이터베이스 연결, 설정, 안전 필터, 유령 대사, 서버 심부름, 소리, 수학을 빌립니다. 이 열 줄만 읽어도 index.js 가 무슨 일을 하는 파일인지 절반은 보입니다.</li>
+  <li><code>from './lib/i18n.js'</code>의 <code>./</code>는 "지금 파일과 같은 폴더에서", <code>../</code>는 "한 폴더 위에서". <code>'../lib/supabaseClient.js'</code>(opening.js 에서)는 "app 폴더에서 한 칸 올라가 lib 폴더로".</li>
+  <li>중괄호 안 이름들은 저쪽 파일이 <code>export</code>한 것 중 골라 온 것. 8번째 줄에서 <code>fetchMemories</code>를 가져왔으니, 4장 ③에서 본 그 함수가 index.js 안에서 불립니다.</li>
+</ul></div>
+
+<h2>세 가지 변형</h2>
+<table>
+  <tr><th style="width:12em">모양</th><th>실제 예</th><th>뜻</th></tr>
+  <tr><td>이름 없이 통째로</td><td><code>import './js/core/DriftPicker.js';</code><br><span class="small">play-test.html : 719</span></td><td>"저 파일을 돌리기만 해라". 꺼내 오는 이름이 없음. 그 파일이 스스로 <code>window.DriftPicker</code>를 달아 두는 방식(12장).</td></tr>
+  <tr><td>필요할 때 꺼내오기</td><td><code>_liveModule = await import('./app/live.js');</code><br><span class="small">js/index.js : 79</span></td><td>파일 첫머리가 아니라 <b>함수 안에서</b> 필요할 때 가져옴. 라이브 모드는 안 쓰니 처음엔 안 읽어 두는 것. <code>await</code>는 11장.</td></tr>
+  <tr><td>옛 방식 (node 도구)</td><td><code>const http = require('http');</code><br><span class="small">tools/serve.cjs : 4</span></td><td><code>require</code> = import 의 옛날 말. <code>.cjs</code> 파일과 도구 코드에서. 뜻은 같음.</td></tr>
+</table>
+
+<div class="warn">import 경로 끝에 <code>?v=260727</code>이 붙은 것(<code>from '../shared/math.js?v=260727'</code>)은 2장의 캐시버스터가 import 에도 붙은 것입니다. 파일을 고쳤는데 이 숫자를 안 올리면 <b>브라우저가 옛 math.js 를 씁니다.</b> 12장에서 전수 대조법을 배웁니다.</div>
+
+<div class="tip">이름 뒤에 <code>( )</code>가 붙어 있으면 "지금 돌리는 중"(호출). <code>function</code> 뒤에 붙어 있으면 "만드는 중"(정의). 파일을 열면 <b>import 줄부터 읽어</b> 의존 지도를 그린다.</div>
+
+<div class="quiz"><h3>미니 시험 9</h3>
+<div class="codebox"><span class="file">js/app/opening.js : 8~14</span>
+<pre class="code nofile">import { NPC_DIALOGUES } from '../npc-dialogues.js';
+import { setLanguage } from '../lib/i18n.js';
+import { setUserName, getUserName } from './userIdentity.js';
+import { isTesterMode, TESTER_MEMORY_CODE, TESTER_MEMORY_ID, testerMemoryFor } from './testerMode.js';
+import { buildDoor } from './confession.js';
+import { _pickTopMemoryForLumen } from './archive.js';
+import { pickTopMemory, pickGhostVariant } from '../core/SeekerMatchEngine.js';</pre></div>
+<ol>
+  <li>이 파일(오프닝)이 기대는 파일은 몇 개입니까?</li>
+  <li><code>'./testerMode.js'</code>와 <code>'../core/SeekerMatchEngine.js'</code>는 각각 어느 폴더에 있습니까? (opening.js 는 js/app 안에 있습니다.)</li>
+  <li><code>buildDoor</code>는 이 파일에서 만들어진 함수입니까, 빌려 온 함수입니까? 만들어진 곳은 어느 파일입니까?</li>
+  <li><code>getUserName()</code> 이라고 쓰인 줄을 만났습니다. 정의입니까 호출입니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 정의와 호출을 구별하는 표시</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 10장 ═══════════════════════ -->
+<section class="chapter" id="ch10">
+<h1><span class="chno">10장 · 이름과 연결</span>데이터 묶음: 객체와 JSON</h1>
+
+<p class="goal"><b>목표</b> <code>{ }</code>의 두 번째 뜻(이름표 달린 묶음)을 확실히 하고, 묶음을 풀어 꺼내는 세 가지 모양과 "묶음을 글자로 만든 것"(JSON)을 안다. TEM 의 기억 · 씬 · 회차 한 줄이 전부 이 모양이다. (7월 8교시 확장)</p>
+
+<h2>실제 코드: 회차의 상태 전부</h2>
+<div class="codebox"><span class="file">js/app/appStore.js : 3~15, 27~33 (일부)</span>
+<pre class="code" data-hl="1,4,12">export const appStore = createStore({
+    // Mode/Session
+    currentMode: null,
+    currentRole: null,
+    sessionCode: null,
+
+    // Memory/Scene
+    allMemoriesData: [],
+    currentMemory: null,
+    currentScene: 0,
+
+    // Alignment/Bucket
+    currentAlignment: 0,
+    currentBucket: null,
+    emotionHistory: [],
+    userEmotionTrajectory: [],
+});</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>{ }</code>가 두 가지 뜻: (6장) <b>코드 덩어리</b>, 안에 명령이 줄줄이. (10장) <b>데이터 묶음</b>, 안에 <code>이름: 값</code> 짝이 쉼표로. 구별법은 <b>쌍점(<code>:</code>)</b>. 안에 <code>이름: 값</code>이 보이면 묶음.</li>
+  <li>여기는 "회차 상태 묶음". 현재 모드는 아직 없음(<code>null</code>), 기억 목록은 빈 목록(<code>[]</code>), 현재 씬은 0번, 정렬도는 0. 프로그램이 켜질 때의 초기값입니다.</li>
+  <li><code>null</code>은 "값이 없음"을 뜻하는 특별한 값. 8장의 <code>?.</code>와 <code>||</code>는 이 null 을 만났을 때를 대비한 것.</li>
+  <li>목록 <code>[ ]</code>과의 차이: 목록은 <b>순서</b>로 꺼냄(<code>목록[0]</code>), 묶음은 <b>이름표</b>로 꺼냄(<code>묶음.이름</code>).</li>
+</ul></div>
+
+<h2>실제 코드: 함수가 묶음을 답으로</h2>
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 110~115 (calculateStep 의 답)</span>
+<pre class="code">return {
+  affective_position: affectivePosition,
+  alignment_score: alignment,
+  alignment_bucket: bucket,
+  transition_pattern: transitionPattern,
+  mismatch_type: mismatchType,</pre></div>
+<p>별이엔진은 숫자 하나를 답하지 않고 <b>묶음</b>을 답합니다. 정렬도 점수, 구간, 전이 패턴, 어긋남 종류가 한 묶음에. 부른 쪽은 <code>result.alignment_score</code>, <code>result.transition_pattern</code>으로 꺼냅니다. 설계 문서의 "엔진 출력"이 코드에서 이 모양입니다.</p>
+
+<h2>묶음을 푸는 세 가지 모양</h2>
+<table>
+  <tr><th style="width:11em">모양</th><th>실제 예</th><th>뜻</th></tr>
+  <tr><td>점으로 꺼내기</td><td><code>result.alignment_score</code></td><td>8장. "묶음의 그 칸".</td></tr>
+  <tr><td>한꺼번에 풀기</td><td><code>const { data, error } = await supabaseClient.from('memories').select('*');</code><br><span class="small">js/shared/api.js : 14</span><br><code>const { store, engine, ui, visualizer } = deps;</code><br><span class="small">js/app/bindEvents.js : 21</span></td><td>왼쪽 <code>{ }</code>는 만드는 게 아니라 <b>푸는 것</b>. "오른쪽 묶음에서 data 칸과 error 칸을 꺼내 같은 이름 상자에 담아라". 데이터베이스 호출 뒤에 거의 항상 이 모양(16장).</td></tr>
+  <tr><td>펼쳐서 새로 만들기</td><td><code>state = { ...state, ...partial };</code><br><span class="small">js/core/store.js : 31</span><br><code>{ ...m, is_live: !!m.is_live }</code><br><span class="small">js/app/archive.js</span></td><td>점 셋(<code>...</code>) = "이 묶음의 칸을 전부 펼쳐 넣어라". "옛 상태를 다 펼치고 그 위에 바뀐 칸을 덮어 새 묶음". 원본을 안 건드리고 복사본을 만드는 이 프로젝트의 습관.</td></tr>
+</table>
+
+<h2>JSON: 묶음을 글자로</h2>
+<div class="codebox"><span class="file">js/index.js : 128~131 (initApp 안)</span>
+<pre class="code" data-hl="3">let playTraces = [];
+try {
+    const raw = localStorage.getItem('tem_play_traces');
+    if (raw) playTraces = JSON.parse(raw);
+} catch (_e) {}</pre></div>
+<p>묶음이나 목록은 브라우저 저장소나 데이터베이스에 <b>글자</b>로만 넣을 수 있습니다. 그 글자 형식이 JSON 입니다. 생김새는 코드의 묶음과 거의 같고(<code>{"이름": 값}</code>, 이름에도 큰따옴표), <code>JSON.parse(글자)</code>가 글자를 다시 묶음으로, <code>JSON.stringify(묶음)</code>이 묶음을 글자로 바꿉니다. 4번째 줄은 "저장소에서 꺼낸 글자를 목록으로 되돌려라". 데이터베이스의 <code>meta</code>, <code>emotion_dist</code>, <code>height_delta</code> 열이 전부 JSON 을 담는 열(jsonb)입니다(16장).</p>
+
+<h2>TEM 의 묶음 세 가지 (참고 카드)</h2>
+<table>
+  <tr><th style="width:7em">묶음</th><th>주요 칸 (데이터베이스 열)</th><th>안에 또 묶음</th></tr>
+  <tr><td>기억 (memories)</td><td>id, code, title, description, status, is_public, cont_depth, cont_divergence, cont_convergence, cont_heterogeneity</td><td><code>meta</code> = { emotion_entries, key_scenes, author … }</td></tr>
+  <tr><td>씬 (scenes)</td><td>id, memory_id, scene_order, text, echo_words, original_emotion, anchor_emotions, text_stage_1~3</td><td><code>meta</code> = { scene_code, motif_tags, stage_position, sound_url, object_models … }</td></tr>
+  <tr><td>회차 (plays)</td><td>id, memory_id, user_id, run_id, alignment, user_reason, created_at</td><td>sky_stains, dialog_turns 등 jsonb</td></tr>
+</table>
+<p class="small">CLAUDE.md 7절과 docs/자료스키마_명세_v1-260717.md 가 정본. 이 표는 읽기용 요약입니다.</p>
+
+<div class="tip"><code>{ }</code> 안에 <b>쌍점</b>이 보이면 묶음. 왼쪽에 <code>const { a, b } =</code> 이 보이면 "푸는 중". <code>...</code>이 보이면 "펼치는 중". JSON 은 "묶음을 글자로 적은 것"이라고만 기억.</div>
+
+<div class="quiz"><h3>미니 시험 10</h3>
+<div class="codebox"><span class="file">js/demo/demoFlow.js : 29~32</span>
+<pre class="code nofile">const MONOLOGUES = [
+  { text: 'I shouldn\'t have done that', entryLine: 'I thought that was the right thing at the time.', vad: { v: -0.5, a: 0.2, d: -0.6 }, x: 0.3, y: 0.35 },
+  { text: 'I just wanted to run away', entryLine: 'That was the only thing I could do.', vad: { v: -0.6, a: 0.7, d: -0.4 }, x: 0.65, y: 0.45 },
+];</pre></div>
+<ol>
+  <li>바깥은 목록입니까 묶음입니까? 항목이 몇 개입니까?</li>
+  <li>항목 하나의 칸(이름표)은 몇 개입니까? 그중 <b>안에 또 묶음</b>인 칸은?</li>
+  <li>둘째 항목의 각성도(a)를 꺼내려면 어떻게 씁니까? (목록 번호는 0부터)</li>
+  <li><code>enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' })</code> — 괄호 안에 넘긴 것은 무엇입니까? 칸이 몇 개입니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 코드 덩어리 { } 와 묶음 { } 을 구별하는 표시</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 11장 ═══════════════════════ -->
+<section class="chapter" id="ch11">
+<h1><span class="chno">11장 · 움직이는 것들</span>기다림: async · await · setTimeout</h1>
+
+<p class="goal"><b>목표</b> 코드에서 <b>시간이 걸리는 자리</b>를 알아본다. 서버에 물어보는 일, 몇 초 뒤에 하는 일, 매 프레임 하는 일. "저장이 안 됐어요"의 원인 절반이 여기 있다.</p>
+
+<h2>왜 기다림이 따로 있나</h2>
+<p>코드는 위에서 아래로 한 줄씩 돕니다. 그런데 어떤 줄은 <b>답이 바로 안 옵니다.</b> 데이터베이스에 "기억 목록 줘"라고 하면 인터넷 건너 서버가 답할 때까지 0.1초든 2초든 걸립니다. 그동안 화면이 멈추면 안 되니까, 자바스크립트는 "답 오면 이어서 해"라고 표시하고 다른 일을 합니다. 그 표시가 <code>await</code>입니다.</p>
+
+<h2>실제 코드: 서버에 물어보기</h2>
+<div class="codebox"><span class="file">js/shared/api.js : 8~26</span>
+<pre class="code" data-hl="1,8,9,10,11,12">export async function fetchMemories() {
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) {
+    console.error('fetchMemories: Supabase client not initialized');
+    return [];
+  }
+
+  const { data, error } = await supabaseClient
+    .from('memories')
+    .select('*')
+    .eq('is_public', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('fetchMemories error:', error);
+    return [];
+  }
+
+  return data || [];
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>1번째 줄 <code>async function</code> = "이 함수 안에는 기다리는 줄이 있다"는 선언. <code>await</code>는 <code>async</code> 붙은 함수 안에서만 쓸 수 있습니다.</li>
+  <li>8번째 줄 <code>await</code> = "오른쪽 일이 끝날 때까지 여기서 기다렸다가, 답을 왼쪽에 담아라". 8~12번째 줄은 점으로 이어진 한 문장: "memories 표에서 · 모든 열을 · is_public 이 참인 것만 · 만든 시각 내림차순으로" (16장에서 자세히).</li>
+  <li>답이 <code>{ data, error }</code> 묶음으로 오고(10장의 "한꺼번에 풀기"), 오류면 빈 목록, 아니면 <code>data</code>.</li>
+</ul></div>
+
+<div class="warn"><b>await 가 빠지면</b> 답 대신 "약속 상자"(Promise)라는 빈 껍데기가 옵니다. 오류도 안 나고 저장도 안 됩니다. "저장했다는데 데이터베이스에 없어요"를 들으면 첫 용의자는 <em>await 빠진 줄</em>입니다. AI에게 "그 호출 앞에 await 있어?"라고 물으세요. 반대로 <b>await 없이 부르는 게 의도인 경우</b>도 있습니다(기다리지 않고 뒤에서 저장). 그땐 보통 <code>// 비동기</code>, <code>_background…</code> 같은 표시가 있습니다.</div>
+
+<h2>실제 코드: 몇 초 기다리기</h2>
+<div class="codebox"><span class="file">js/app/opening.js : 84 (playNpcIntro, 줄 나눔)</span>
+<pre class="code" data-hl="3,5,6">async function playNpcIntro() {
+  ...
+  await new Promise(r =&gt; setTimeout(r, 2000));
+  centerWrapper.classList.add('lifted');
+  await new Promise(r =&gt; setTimeout(r, 1000));
+  await typeTextAsync(dialogue, NPC_DIALOGUES.intro.firstVisit, 100);
+  ...</pre></div>
+<p><code>await new Promise(r =&gt; setTimeout(r, 2000))</code>는 통째로 <b>"2초 기다려"</b>라고 읽으면 됩니다(속은 몰라도 됨). 오프닝이 2초 쉬고 → 가운데 상자를 띄우고 → 1초 쉬고 → 대사를 한 글자씩 치는 흐름이 위에서 아래로 그대로 읽힙니다. <code>await</code> 덕분에 시간 흐름이 줄 순서와 같습니다.</p>
+
+<h2>시간을 다루는 세 가지 도구</h2>
+<table>
+  <tr><th style="width:12em">도구</th><th>뜻</th><th>실제 예</th></tr>
+  <tr><td><code>setTimeout(함수, 밀리초)</code></td><td>그만큼 뒤에 <b>한 번</b> 함수를 돌려라</td><td><code>setTimeout(initSupabaseClient, 100);</code><br><span class="small">js/lib/supabaseClient.js : 48 — 0.1초 뒤 다시 연결 시도</span></td></tr>
+  <tr><td><code>setInterval(함수, 밀리초)</code></td><td>그 간격으로 <b>계속</b> 돌려라 (<code>clearInterval</code>로 멈춤)</td><td><code>const timer = setInterval(() =&gt; { … }, speed)</code><br><span class="small">js/app/opening.js : 67 — 글자 한 자씩 타이핑</span></td></tr>
+  <tr><td><code>requestAnimationFrame(함수)</code></td><td>다음 화면 그리기 직전에 <b>한 번</b>. 함수 안에서 또 부르면 <b>매 프레임</b> (초당 약 60번)</td><td><code>game.terrainAnimRaf = requestAnimationFrame(tick);</code><br><span class="small">play-test.html : 4916 — 지형 색이 서서히 바뀌는 애니메이션(17장)</span></td></tr>
+</table>
+<p>밀리초는 천분의 일 초. 1000 = 1초, 100 = 0.1초, 50 = 타이핑 한 글자 간격.</p>
+
+<h2>옛 모양: then 과 catch</h2>
+<div class="codebox"><span class="file">js/app/opening.js : 92 (fadeInSound 안, 줄 나눔)</span>
+<pre class="code">const playPromise = audio.play();
+playPromise.then(() =&gt; {
+    console.log('opening 사운드 재생 시작');
+    ...
+}).catch(e =&gt; {
+    console.error('opening 사운드 재생 Failed:', e);
+});</pre></div>
+<p><code>await</code>가 생기기 전 방식. <code>.then(함수)</code> = "성공하면 이걸 해", <code>.catch(함수)</code> = "실패하면 이걸 해". 뜻은 await + try/catch 와 같습니다. 브라우저가 소리 재생을 거부하면(사용자가 아직 화면을 안 눌렀을 때) catch 로 갑니다. 오프닝 소리가 안 나는 문제는 이 catch 의 콘솔 메모에서 시작됩니다.</p>
+
+<div class="tip"><code>async</code>는 "안에 기다림 있음", <code>await</code>는 "여기서 답 올 때까지". <code>await new Promise(r =&gt; setTimeout(r, N))</code>는 통째로 "N 밀리초 쉬기". 저장이 안 됐다는 말을 들으면 <b>await 부터</b> 의심.</div>
+
+<div class="quiz"><h3>미니 시험 11</h3>
+<ol>
+  <li><code>await new Promise(r =&gt; setTimeout(r, 1500));</code> — 우리말로.</li>
+  <li>자동 검사 코드입니다. 무엇을 기다려 <code>memId</code>에 담습니까?
+<div class="codebox"><span class="file">test/e2e/playthrough.mjs : 32~36</span>
+<pre class="code nofile">const memId = await page.evaluate(async () =&gt; {
+  const sb = await window.getSupabaseClient();
+  const { data } = await sb.from('memories').select('id').limit(1);
+  return data?.[0]?.id;
+});</pre></div></li>
+  <li><code>setTimeout(_waitForStrata, 200);</code> (js/index.js : 158) — 몇 초 뒤에 무엇을 합니까? 이 줄이 <code>_waitForStrata</code> 함수 <b>안에</b> 있다면 무슨 모양이 됩니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · await 가 빠지면 생기는 일</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 12장 ═══════════════════════ -->
+<section class="chapter" id="ch12">
+<h1><span class="chno">12장 · 움직이는 것들</span>모듈과 전역: 진입점 세 곳과 캐시버스터</h1>
+
+<p class="goal"><b>목표</b> 같은 페이지 안에서도 <b>서로 이름을 못 보는 방</b>이 있다는 것을 알고, 방 사이를 잇는 <code>window.</code>를 읽는다. 그리고 이 저장소 최다 사고 두 가지, <b>진입점 누락</b>과 <b>캐시버스터 미갱신</b>을 검사하는 법을 익힌다.</p>
+
+<h2>두 종류의 script: 방과 마당</h2>
+<p>2장에서 <code>&lt;script type="module"&gt;</code>과 그냥 <code>&lt;script&gt;</code>를 봤습니다. 차이는 이겁니다.</p>
+<table>
+  <tr><th style="width:11em"></th><th>일반 script (마당)</th><th>module script (방)</th></tr>
+  <tr><td>이름이 보이는 범위</td><td>거기서 만든 이름은 페이지 전체(<code>window</code>)에서 보임</td><td>그 파일 안에서만 보임. 밖에서 못 부름</td></tr>
+  <tr><td>import / export</td><td>못 씀</td><td>씀 (9장)</td></tr>
+  <tr><td>이 프로젝트에서</td><td><code>js/ui/lumen_*.js</code>, <code>js/shared/tem_*.js</code>, 지형 엔진 등 대부분의 연출 파일</td><td><code>js/index.js</code>, <code>js/app/*</code>, <code>js/core/*</code>, play-test.html 의 703번째 줄 script</td></tr>
+</table>
+
+<h2>실제 코드: 방에서 마당으로 내놓기</h2>
+<div class="codebox"><span class="file">play-test.html : 703, 724~731</span>
+<pre class="code" data-hl="3,6,9">&lt;script type="module"&gt;
+  ...
+  // Non-module 스크립트(fpAmbientWave 등)에서 접근 가능하게 전역 노출
+  window.sharedEmotionVectorToWaveStyle = sharedEmotionVectorToWaveStyle;
+  window.GHOST_PRESETS = GHOST_PRESETS;
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // strataView.js가 Supabase client를 찾을 수 있도록 HUB 쪽 API를 흉내낸다.
+  window.getSupabaseClient = function () { return sb; };
+  ...</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>window</code> = 브라우저 창 자체 = <b>마당</b>. <code>window.이름 = 값</code>은 "마당에 이 이름표를 꽂아 누구나 쓰게 하라".</li>
+  <li>4~5번째 줄: 방(module) 안에서 import 한 것들을 마당에 내놓습니다. 그래야 일반 script 로 된 연출 파일들이 씁니다. 메모(3번째 줄)가 정확히 그 이유를 적어 뒀습니다.</li>
+  <li>9번째 줄: 데이터베이스 연결(<code>sb</code>)을 돌려주는 함수를 마당에 꽂음. 그래서 다른 파일이 <code>window.getSupabaseClient()</code>라고 부를 수 있습니다(11장 시험의 검사 코드가 바로 그걸 씀).</li>
+  <li>반대로 마당의 것을 방에서 쓸 땐 그냥 <code>window.supabase</code>처럼 앞에 window 를 붙입니다(6번째 줄). 마당은 어디서나 보이니까요.</li>
+</ul></div>
+
+<div class="story">play-test.html 707~709번째 줄 메모: "calculateFixationLevel 은 이 파일이 이미 인라인 사본을 갖고 있다 — import 하면 이름 충돌로 모듈 전체가 SyntaxError 로 죽는다." 같은 방에 같은 이름이 두 번 생기면 그 방 전체가 안 열립니다. 화면이 통째로 검게 멈추는 사고의 한 종류(14장).</div>
+
+<div class="codebox"><span class="file">play-test.html : 3533, 5508</span>
+<pre class="code">window._temEnterSceneMode = enterSceneMode;
+// 260708 fix: 이 함수는 module 스코프라 뒤쪽 일반 &lt;script&gt; 블록에서 안 보임 — 전역 공유.</pre></div>
+<p>이런 줄이 이 프로젝트에 수십 개 있습니다. 읽는 법은 하나: <b>"방 안의 X 를 마당에 꽂음, 이유는 메모에".</b> 디버깅 때 콘솔에서 <code>window._temEnterSceneMode(…)</code>로 강제 진입할 수 있는 것도 이 줄 덕분입니다.</p>
+
+<h2>script 줄의 순서</h2>
+<div class="codebox"><span class="file">index.html : 598~612 (일부)</span>
+<pre class="code" data-lang="html" data-hl="1,7">&lt;script src="data/memories.js"&gt;&lt;/script&gt;
+&lt;script src="js/ui/strataSection.js?v=260714"&gt;&lt;/script&gt;
+&lt;script src="js/shared/tem_af_strata_terrain.js?v=260809a"&gt;&lt;/script&gt;
+&lt;script src="js/ui/strataView.js?v=260810a"&gt;&lt;/script&gt;
+&lt;script src="js/contamination.js?v=260714"&gt;&lt;/script&gt;
+&lt;script src="js/ui/lumen_dialog_phase1.js?v=260909a"&gt;&lt;/script&gt;
+&lt;script type="module" src="js/index.js?v=260909c"&gt;&lt;/script&gt;</pre></div>
+<p>위에서 아래로 읽힙니다. 아래 파일은 위 파일이 마당에 꽂은 이름을 쓸 수 있지만, 반대는 안 됩니다. <code>strataView.js</code>가 <code>tem_af_strata_terrain.js</code>보다 아래 있는 이유입니다. AI 가 "script 줄 순서를 바꿨다"고 하면 "아래 것이 위 것을 쓰나?"를 물으세요.</p>
+
+<h2>진입점 세 곳 검사</h2>
+<p>같은 부품이 세 문에서 각각 불립니다. 예를 들어 유령 대화 껍데기 파일은 두 문에 있습니다.</p>
+<div class="codebox"><span class="file">Ctrl+Shift+F 로 "lumen_dialog_phase1.js" 를 찾으면</span>
+<pre class="code" data-lang="txt">index.html:611      &lt;script src="js/ui/lumen_dialog_phase1.js?v=260909a"&gt;
+play-test.html:99   &lt;script src="js/ui/lumen_dialog_phase1.js?v=260909a"&gt;</pre></div>
+<p>이걸 <b>grep</b>(폴더 전체 글자 찾기)이라고 부릅니다. VS Code 에서는 <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">F</span>. 어떤 기능을 "붙였다"고 하면, 그 기능 이름이나 파일 이름으로 grep 해서 <b>세 문(index.html · play-test.html · js/demo/demoFlow.js)에 다 나오는지</b> 셉니다. 그 기능이 어느 문에 필요한지는 작품 판단이지만, "세 곳 중 몇 곳에 있나"는 눈으로 셀 수 있습니다.</p>
+
+<h2>캐시버스터 검사</h2>
+<p>위 grep 결과에서 하나 더 봅니다. <b><code>?v=</code> 뒤 숫자가 두 줄 모두 같은가.</b> 260909a 와 260909a, 같습니다. 만약 한쪽만 옛 숫자면 그 문의 관객은 옛 파일을 받습니다.</p>
+<table>
+  <tr><th style="width:11em">규칙</th><th>검사</th></tr>
+  <tr><td>파일을 고치면 <code>?v=</code>를 올린다 (날짜 + 글자)</td><td>AI 가 고쳤다는 파일 이름을 grep → 그 줄의 <code>?v=</code>가 오늘 날짜인가</td></tr>
+  <tr><td>같은 파일은 세 문에서 같은 <code>?v=</code></td><td>grep 결과 줄들의 <code>?v=</code>가 서로 같은가</td></tr>
+  <tr><td>import 경로의 <code>?v=</code>도 같은 규칙</td><td><code>from './js/shared/math.js?v=260727'</code> 처럼 붙은 것도 대상</td></tr>
+</table>
+
+<div class="story">2026-07-17 감수 실연 기록: "결함 2건 발견·봉합: 캐시버스터 미갱신 + 접촉-plays 시차 403." 캐시버스터를 안 올려서 지휘 세션이 옛 대화 파일을 보고 있었습니다. 그날 이후 "배포 전 캐시버스터 전수 확인(수정 파일 ↔ ?v= 대조)"이 체크리스트에 올랐고, 이 책 18장의 검사 순서 5번이 그것입니다.</div>
+
+<div class="tip"><code>window.X =</code> 는 "마당에 꽂기". 기능을 붙였다는 말을 들으면 파일 이름으로 <b>grep → 세 문에 있나 → ?v= 같나</b> 두 가지를 센다. 계산 없이 세는 것만으로 이 저장소 사고의 큰 두 종류를 막는다.</div>
+
+<div class="quiz"><h3>미니 시험 12</h3>
+<ol>
+  <li><code>window.QuiltDemoState = QuiltDemoState; // non-module 영역(footprints, mock test)에서 사용</code> (play-test.html : 718) — 무엇을 어디에 왜?</li>
+  <li>grep "strataView.js" 결과가 <code>index.html:603 …?v=260810a</code>, <code>play-test.html:6598 …?v=260810a</code> 입니다. 문제가 있습니까? 만약 한쪽이 260714 였다면 관객에게 무슨 일이 생깁니까?</li>
+  <li>play-test.html 94번째 줄은 <code>&lt;script type="module" src="js/safety.js"&gt;</code> 입니다(방). 그런데 일반 script 인 유령 대화 파일이 <code>detectCrisis</code>를 씁니다. 어떻게 가능합니까? (힌트: safety.js 의 맨 끝 열 줄을 열어 보세요. 열어 보는 것 자체가 답입니다.)</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 기능 붙였다는 말을 들으면 세는 두 가지</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 13장 ═══════════════════════ -->
+<section class="chapter" id="ch13">
+<h1><span class="chno">13장 · 움직이는 것들</span>화면과 사건: DOM과 이벤트</h1>
+
+<p class="goal"><b>목표</b> 자바스크립트가 화면을 <b>찾고 · 만들고 · 바꾸는</b> 네댓 개의 동사와, "눌렀을 때 · 키를 쳤을 때" 같은 <b>사건</b>을 붙이는 한 가지 모양을 읽는다. 2장의 삼각형을 완성한다.</p>
+
+<h2>DOM: 브라우저가 html 로 만든 나무</h2>
+<p>브라우저는 html 을 읽어 상자 나무를 만듭니다. 그 나무의 이름이 DOM 입니다. 자바스크립트가 "화면을 바꾼다"는 건 전부 이 나무의 상자를 찾아 만지는 일입니다. <code>document</code>가 나무의 뿌리.</p>
+
+<table>
+  <tr><th style="width:5em">동사</th><th style="width:20em">모양</th><th>실제 예</th></tr>
+  <tr><td>찾기</td><td><code>document.getElementById('이름표')</code><br><code>document.querySelector('.종류표')</code><br><code>상자.querySelectorAll('.종류표')</code></td><td><code>document.getElementById('landingShelf')</code> 하나 찾기<br><code>document.querySelector('.footer')</code> 첫 하나<br><code>shelf.querySelectorAll('.shelf-card')</code> 서가 안 카드 전부(목록)</td></tr>
+  <tr><td>만들기</td><td><code>document.createElement('div')</code></td><td>카드 상자 하나 새로 만듦(아직 나무에 안 붙음)</td></tr>
+  <tr><td>붙이기</td><td><code>부모.appendChild(자식)</code></td><td><code>shelf.appendChild(card)</code> 서가 끝에 카드 붙임</td></tr>
+  <tr><td>바꾸기</td><td><code>상자.textContent = '글'</code><br><code>상자.classList.add / remove / toggle</code><br><code>상자.style.display = 'none'</code><br><code>상자.value = 값</code><br><code>상자.innerHTML = '&lt;div&gt;…'</code></td><td>글자 바꾸기<br>종류표 붙이기 · 떼기 · 뒤집기 (2장)<br>직접 숨기기<br>입력칸 값 넣기<br>안쪽 html 통째로 갈아끼우기 (<code>= ''</code>는 비우기)</td></tr>
+  <tr><td>없애기</td><td><code>상자.remove()</code></td><td><code>modal.remove()</code> 창 닫기</td></tr>
+</table>
+
+<h2>실제 코드: 카드 만들기 (DOM 동사만 보기)</h2>
+<div class="codebox"><span class="file">play-test.html : 5210~5213, 5215~5228, 5239</span>
+<pre class="code" data-hl="1,5,6,7,9,11,12,13">const shelf = document.getElementById('landingShelf');
+...
+shelf.innerHTML = '';
+game.memories.forEach(m =&gt; {
+  const card = document.createElement('div');
+  card.className = 'shelf-card';
+  card.dataset.memoryId = m.id;
+  const title = document.createElement('span');
+  title.className = 'shelf-title';
+  title.textContent = m.title || '(untitled)';
+  ...
+  card.appendChild(title);
+  card.appendChild(depth);
+  card.addEventListener('click', function () { ... });
+  shelf.appendChild(card);
+});</pre></div>
+<p>찾고(1) → 비우고(3) → 기억마다 상자를 만들어(5) 종류표를 달고(6) 쪽지를 달고(7, 2장의 <code>data-</code>가 코드에서는 <code>dataset.</code>) → 안에 제목 상자를 만들어 글을 넣고(8~10) → 붙이고(12, 13) → 사건을 달고(14) → 서가에 붙임(15). <b>서가 화면 전체가 이 동사 여섯 개로 그려집니다.</b></p>
+
+<h2>사건 붙이기</h2>
+<div class="codebox"><span class="file">js/demo/demoFlow.js : 17~23</span>
+<pre class="code" data-hl="1,2,3,4,5,6">window.addEventListener('keydown', function (e) {
+  if (!(e.ctrlKey && e.shiftKey) || e.altKey || e.metaKey) return;
+  if ((e.code || '') !== 'KeyB' && String(e.key || '').toLowerCase() !== 'b') return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  window.location.href = 'index.html?action=record';
+}, true);</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>대상.addEventListener('사건이름', function (e) { … })</code> = "대상에서 그 사건이 일어나면 이 함수를 돌려라". 대상은 <code>window</code>(창 전체), 사건은 <code>keydown</code>(키 누름). 사건 이름은 <code>click</code>, <code>keydown</code>, <code>mousemove</code>, <code>timeupdate</code>(소리 재생 위치), <code>ended</code>, <code>DOMContentLoaded</code>(html 다 읽음) 등.</li>
+  <li><code>e</code> = 그 사건의 정보 묶음. <code>e.ctrlKey</code>(Ctrl 눌렸나), <code>e.key</code>(어떤 키), <code>e.target</code>(어디서 일어났나).</li>
+  <li>2~3번째 줄: 문지기 둘. "Ctrl+Shift 가 아니거나 Alt/Meta 가 섞였으면 나가", "B 키가 아니면 나가". 통과하면 Ctrl+Shift+B.</li>
+  <li><code>e.preventDefault()</code> = 브라우저가 원래 하려던 일(이 키 조합의 기본 동작) 막기. <code>e.stopImmediatePropagation()</code> = 같은 사건을 기다리는 다른 함수들에게 안 넘기기.</li>
+  <li>6번째 줄: 페이지 이동(8장). 마지막 <code>true</code>는 "남들보다 먼저 받겠다"는 옵션.</li>
+</ul>
+<p>이 일곱 줄이 세 문에 똑같이 있습니다(1장 · 12장). grep "KeyB" 로 셀 수 있습니다.</p></div>
+
+<h2>html 에 직접 적힌 사건</h2>
+<div class="codebox"><span class="file">js/index.js : 426 (showOriginalMemory 안, 일부)</span>
+<pre class="code" data-lang="html">&lt;button class="close-original-btn" onclick="this.closest('.original-memory-modal').remove()"&gt;Close&lt;/button&gt;</pre></div>
+<p>옛 방식. html 속성 <code>onclick="…"</code>에 코드를 바로 적음. 뜻은 같습니다("눌리면 가장 가까운 modal 상자를 없애라"). 그리고 2장의 <code>data-action="enterPlayInterview"</code> 방식은 <code>js/app/bindEvents.js</code>가 메뉴 항목 전체에 사건을 한 번에 붙이고, 눌린 항목의 쪽지를 읽어 무슨 함수를 부를지 정합니다. 메뉴가 안 눌리면 그 파일부터.</p>
+
+<h2>시작 사건</h2>
+<div class="codebox"><span class="file">js/index.js : 160~164</span>
+<pre class="code">if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _waitForStrata);
+} else {
+    _waitForStrata();
+}</pre></div>
+<p>"html 을 아직 읽는 중이면 다 읽은 뒤에, 이미 다 읽었으면 지금 바로." 상자를 찾기 전에 나무가 완성돼야 하니까요. <b>찾았는데 없다</b>(14장의 null 오류)의 원인 중 하나가 이 순서입니다.</p>
+
+<div class="warn">같은 상자에 같은 사건을 <b>두 번</b> 붙이면 두 번 실행됩니다. 이 프로젝트의 "누적 가드"(260731, 떨림 · 호흡 연출)가 그 사고의 흔적입니다. AI 가 "이벤트 붙였어요" 하면 "화면이 다시 그려질 때 또 붙나?"를 물으세요.</div>
+
+<div class="tip">DOM 동사는 여섯 개(찾기 · 만들기 · 붙이기 · 바꾸기 · 없애기 · 사건 붙이기). <code>addEventListener('X', function (e) {…})</code>를 보면 "X 가 일어나면 → 문지기 → 하는 일" 순으로 읽는다.</div>
+
+<div class="quiz"><h3>미니 시험 13</h3>
+<ol>
+  <li><code>modal.addEventListener('click', (e) =&gt; { if (e.target === modal) { modal.remove() } })</code> (js/index.js : 426) — 어디를 눌러야 창이 닫힙니까? 창 안의 글을 누르면?</li>
+  <li><code>const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible');</code> — 우리말로. <code>if (footer)</code>가 없으면 무슨 위험이 있습니까?</li>
+  <li>12장에서 본 <code>audio.addEventListener('timeupdate', crossfadeTimeUpdateHandler);</code> (js/app/opening.js) — 대상과 사건은? 이 사건은 언제 일어날 것 같습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 2장의 삼각형에 13장의 동사를 얹어 그리기</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 14장 ═══════════════════════ -->
+<section class="chapter" id="ch14">
+<h1><span class="chno">14장 · 검사하는 눈</span>오류 읽기: 콘솔 · 네트워크 · 숫자</h1>
+
+<p class="goal"><b>목표</b> <span class="kbd">F12</span>를 눌러 빨간 글자를 읽는다. 오류 문장의 <b>종류 · 내용 · 위치</b> 세 부분을 나누고, 네트워크 숫자(404 · 403 · 409)를 뜻으로 옮긴다. 7월 17일의 사고를 그날 잡을 수 있었던 눈을 만든다.</p>
+
+<h2>여는 법</h2>
+<p>브라우저에서 <span class="kbd">F12</span> (또는 <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">I</span>). 위쪽 탭에서 <b>Console</b>(코드가 남긴 말)과 <b>Network</b>(서버와 주고받은 기록)만 봅니다. 나머지 탭은 이 책 범위 밖.</p>
+
+<h2>콘솔의 네 가지 줄</h2>
+<table>
+  <tr><th style="width:9em">색</th><th style="width:11em">누가 만드나</th><th>뜻</th><th>실제 예</th></tr>
+  <tr><td>흰/검정</td><td><code>console.log</code></td><td>그냥 기록. 정상.</td><td><code>[variant-strata] ON (기본, 260802) — 이본 지층 경로 활성.</code></td></tr>
+  <tr><td>노랑</td><td><code>console.warn</code></td><td>경고. 돌긴 하는데 이상함.</td><td><code>[ByeoriEngine V4] userVector 또는 originalVector 없음</code></td></tr>
+  <tr><td>빨강</td><td><code>console.error</code></td><td>코드가 스스로 잡은 오류. 돌긴 함.</td><td><code>fetchScenes error: {…}</code></td></tr>
+  <tr><td>빨강 + Uncaught</td><td>브라우저</td><td>아무도 안 잡은 오류. <b>그 자리에서 멈춤.</b></td><td><code>Uncaught TypeError: …</code></td></tr>
+</table>
+<p>대괄호 접두어(<code>[variant-strata]</code>, <code>[Auth]</code>, <code>[Store]</code>, <code>[door]</code>)는 이 프로젝트 관례로 <b>어느 부품이 말하는지</b>입니다. 콘솔이 수백 줄이어도 대괄호만 훑으면 어느 부품이 시끄러운지 보입니다. 8장에서 본 별이엔진의 <code>L0.72 × S0.91 × V1.00 = 0.655</code> 문장도 여기 찍힙니다.</p>
+
+<h2>오류 문장 해부</h2>
+<p>아래는 이 프로젝트 코드 모양으로 만든 <b>예시</b>입니다(실제 기록된 문장이 아니라 형태 연습용).</p>
+<div class="codebox"><span class="file">콘솔 예시</span>
+<pre class="code nofile" data-lang="txt">Uncaught TypeError: Cannot read properties of null (reading 'classList')
+    at restart (index.js?v=260909c:377:23)
+    at HTMLDivElement.&lt;anonymous&gt; (bindEvents.js:212:9)</pre></div>
+<table>
+  <tr><th style="width:7em">부분</th><th style="width:16em">여기서는</th><th>읽는 법</th></tr>
+  <tr><td>종류</td><td><code>TypeError</code></td><td>"값의 종류가 안 맞음". 아래 표 참고.</td></tr>
+  <tr><td>내용</td><td><code>Cannot read properties of null (reading 'classList')</code></td><td>"null(없음)에서 classList 를 읽으려 했다" = <b>상자를 못 찾았는데 점을 찍었다</b>. 2장의 <code>if (introScreen)</code> 문지기가 빠진 자리.</td></tr>
+  <tr><td>위치</td><td><code>restart (index.js:377:23)</code></td><td>"restart 함수, index.js 파일 377번째 줄 23번째 칸". 첫 <code>at</code> 줄이 사고 현장, 그 아래는 거기까지 온 길(누가 불렀나).</td></tr>
+</table>
+
+<table>
+  <tr><th style="width:10em">종류</th><th>뜻</th><th>첫 용의자</th></tr>
+  <tr><td><code>TypeError … of null / undefined</code></td><td>없는 것에 점을 찍음</td><td>id 오타 · html 에 그 상자 없음 · 아직 안 만들어짐(13장 시작 사건) · 데이터베이스 답이 비었음</td></tr>
+  <tr><td><code>TypeError: X is not a function</code></td><td>함수가 아닌 것에 <code>( )</code>를 붙임</td><td>마당에 안 꽂힘(12장) · 이름 오타 · 옛 파일(캐시버스터)</td></tr>
+  <tr><td><code>ReferenceError: X is not defined</code></td><td>그런 이름이 없음</td><td>방/마당 경계(12장) · script 순서 · 오타</td></tr>
+  <tr><td><code>SyntaxError</code></td><td>문법이 깨짐. <b>그 파일 전체가 안 돎</b></td><td>괄호 짝 어긋남(6장) · 같은 이름 두 번(12장 실제 사례) · 따옴표 안 닫힘</td></tr>
+  <tr><td><code>Failed to load resource</code></td><td>파일을 못 받음</td><td>Network 탭으로 가서 숫자 확인</td></tr>
+</table>
+
+<h2>네트워크 탭의 숫자</h2>
+<p>Network 탭의 각 줄은 "무엇을 달라고 했고(Name) 뭐라고 답했나(Status)". 빨간 줄만 보면 됩니다.</p>
+<table>
+  <tr><th style="width:5em">숫자</th><th style="width:8em">뜻</th><th>이 프로젝트에서 흔한 원인</th></tr>
+  <tr><td>200</td><td>됐음</td><td>정상</td></tr>
+  <tr><td>304</td><td>전에 받은 것 그대로 써</td><td>정상. 단, 파일을 고쳤는데 304 면 <b>캐시버스터 미갱신</b>(12장)</td></tr>
+  <tr><td>404</td><td>그런 파일 없음</td><td>경로 · 파일 이름 오타, 파일 이동. <code>?v=</code> 뒤 숫자는 서버가 무시하므로 404 의 원인이 아님</td></tr>
+  <tr><td>401</td><td>누군지 몰라</td><td>로그인 만료, 키 없음</td></tr>
+  <tr><td>403</td><td>넌 이거 못 해</td><td><b>데이터베이스 권한(RLS)</b>이 거부. 16장. 7월 17일 사고</td></tr>
+  <tr><td>409</td><td>충돌</td><td>같은 것을 동시에 두 번 저장. <code>record-erosion</code> 함수가 세대 번호 역행을 일부러 409 로 거부(설계)</td></tr>
+  <tr><td>500 · 502</td><td>서버 쪽 고장</td><td>Edge Function 안 오류. 브라우저 코드로는 못 고침</td></tr>
+</table>
+
+<div class="story">2026-07-17: 접촉이 일어나 기록을 쓰려는데, 그 회차의 plays 행이 아직 저장되기 전이라 권한 규칙이 "네 회차가 아니네" 하고 <b>403</b>으로 거부했습니다. 콘솔에는 빨간 403 한 줄이 떴을 겁니다. 그날 지휘 세션이 실제 순서로 밟다가 발견해 "봉인 뒤 재시도"로 봉합(커밋 c850d6c). Network 탭에서 403 을 읽을 줄 알았다면 누구든 그날 잡을 수 있었던 사고입니다. 이 장이 있는 이유.</div>
+
+<h2>코드가 오류를 다루는 모양: try / catch</h2>
+<div class="codebox"><span class="file">js/index.js : 128~131 · play-test.html : 5236</span>
+<pre class="code" data-hl="4,6">try {
+    const raw = localStorage.getItem('tem_play_traces');
+    if (raw) playTraces = JSON.parse(raw);
+} catch (_e) {}
+
+try { enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}</pre></div>
+<p><code>try { 해 봐 } catch (오류) { 실패하면 이거 }</code>. <code>catch (_) {}</code>처럼 <b>비어 있으면 오류를 조용히 삼킵니다.</b> 멈추지는 않지만 콘솔에도 안 남습니다. 편리하지만 함정: "왜 안 되지?"의 원인이 빈 catch 안에 숨을 수 있습니다. AI 에게 "이 catch 가 삼키는 오류가 뭐냐"고 물을 수 있는 자리입니다. 반대로 <code>catch (e) { console.error('…', e) }</code>는 기록을 남기니 콘솔에서 보입니다.</p>
+
+<div class="tip">빨간 줄은 <b>종류 · 내용 · 첫 at 줄</b> 세 조각으로 자른다. null/undefined 면 "못 찾았는데 점 찍음", not defined 면 "이름 없음", SyntaxError 면 "파일 통째로 죽음". Network 는 404 = 없음, 403 = 권한, 409 = 충돌.</div>
+
+<div class="quiz"><h3>미니 시험 14</h3>
+<ol>
+  <li>콘솔에 <code>[Auth] 상태 변경: SIGNED_IN sojeong@…</code> 이 떴습니다. 어느 부품이, 무슨 말을 한 겁니까? 문제입니까?</li>
+  <li>콘솔에 빨간 <code>fetchScenes error: {code: '42501', message: 'permission denied for table scenes'}</code> 가 떴습니다. 어느 함수의 어느 갈래에서 나온 말입니까(4장 ③ 참고)? 화면에는 무엇이 보일 것 같습니까?</li>
+  <li>Network 탭에 <code>js/ui/strataView.js?v=260810a</code> 가 빨간 <b>404</b> 입니다. 원인 후보를 두 개 쓰고, <b>아닌</b> 원인 하나를 쓰세요.</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 403 과 404 의 차이를 내 말로</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 15장 ═══════════════════════ -->
+<section class="chapter" id="ch15">
+<h1><span class="chno">15장 · 검사하는 눈</span>비교표(diff) 읽기</h1>
+
+<p class="goal"><b>목표</b> AI 가 "고쳤다"고 할 때 <b>전과 후를 나란히</b> 본다. 비교표의 머리글 · 덩어리(hunk) · 빨강 · 초록을 읽고, "세 곳 고쳤다"가 정말 세 곳인지 <b>센다</b>. 이 책에서 가장 중요한 장. (7월 9교시 확장)</p>
+
+<h2>비교표의 생김새</h2>
+<p>아래는 9월 15일 커밋 하나의 실제 비교표 전문입니다. 서가가 창보다 길면 진입 문장이 잘리던 문제를 고친 것.</p>
+
+<div class="codebox"><span class="file">git show b894eb1 (play-test.html, 세 덩어리 전부)</span>
+<pre class="code nonum" data-lang="diff">diff --git a/play-test.html b/play-test.html
+--- a/play-test.html
++++ b/play-test.html
+@@ -111,14 +111,18 @@
+     * { box-sizing: border-box; }
+-    #selectScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0e; }
++    /* 260915: 서가가 화면보다 길어지면(기억 11개째부터 ~920px 창에서 발생) "Enter this memory" 줄이
++       body overflow:hidden 아래로 밀려 누를 수 없었다. 서가 화면만 스스로 스크롤하고, 세로 가운데는
++       justify-content:center 대신 첫/끝 자식의 margin:auto 로 — 넘치면 위에서부터 보이고 끝까지 스크롤된다. */
++    #selectScreen { height: 100vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: #0a0a0e; }
+
+     #selectScreen { gap: 0; padding: 6vh 24px; position: relative; }
+-    #landingHead { text-align: center; margin-bottom: clamp(2.4rem, 6vh, 4rem); }
++    #landingHead { text-align: center; margin-top: auto; margin-bottom: clamp(2.4rem, 6vh, 4rem); flex-shrink: 0; }
++    #landingShelf { flex-shrink: 0; }
+@@ -156,7 +160,7 @@
+     #landingEnter {
+-      margin-top: clamp(2rem, 5vh, 3.2rem); min-height: 2.6em;
++      margin-top: clamp(2rem, 5vh, 3.2rem); margin-bottom: auto; min-height: 2.6em; flex-shrink: 0;
+       display: flex; align-items: center;
+@@ -5225,7 +5229,11 @@
+         card.classList.add('chosen');
+         document.getElementById('memorySelect').value = m.id;
+-        if (enter) enter.classList.add('ready');
++        if (enter) {
++          enter.classList.add('ready');
++          // 260915: 서가가 화면보다 길면 진입 문장이 아래로 숨는다 — 고른 순간 그 줄까지 끌어내린다.
++          try { enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
++        }
+       });</pre></div>
+
+<div class="read"><div class="rt">읽는 법: 네 부분</div>
+<ol>
+  <li><b>머리글</b> <code>--- a/play-test.html</code> / <code>+++ b/play-test.html</code>: a 가 전, b 가 후. 어느 파일인지.</li>
+  <li><b>덩어리(hunk) 표시</b> <code>@@ -111,14 +111,18 @@</code>: "전 파일 111번째 줄부터 14줄 ↔ 후 파일 111번째 줄부터 18줄". 이 비교표엔 <code>@@</code>가 <b>세 개</b> = 세 자리를 고쳤다. 두 자리는 css 쪽(111, 156번째 줄 근처), 한 자리는 자바스크립트 쪽(5225번째 줄 근처).</li>
+  <li><b>빨강(<code>-</code>)</b> = 지운 줄, <b>초록(<code>+</code>)</b> = 새로 넣은 줄, 앞에 아무 표시 없는 줄 = 안 바뀐 문맥(어디인지 알려 주려고 같이 보여 줌).</li>
+  <li><b>초록만 읽으면 "새로 뭘 하기로 했나"</b>가 나옵니다. 첫 덩어리: 서가 화면 높이를 딱 화면만큼 하고 넘치면 스스로 스크롤(<code>overflow-y: auto</code>), 가운데 정렬을 위쪽 정렬로. 둘째: 진입 문장 아래 여백 자동. 셋째: 카드를 고르면 <code>ready</code>를 붙이는 한 줄이 <code>{ }</code> 블록이 되고, <b>그 줄까지 화면을 끌어내리는 한 줄이 추가</b>(6장에서 본 그 코드).</li>
+</ol>
+<p>빨강과 초록이 짝으로 있으면 "바꿈", 초록만 있으면 "추가", 빨강만 있으면 "삭제". 첫 덩어리의 <code>#selectScreen</code> 줄은 빨강 하나 초록 하나로 <b>바꿈</b>이고, 그 사이 초록 세 줄은 메모 <b>추가</b>.</p></div>
+
+<h2>요약 숫자: --stat</h2>
+<div class="codebox"><span class="file">git show --stat b894eb1</span>
+<pre class="code nofile" data-lang="txt">play-test.html | 16 ++++++++++++----
+1 file changed, 12 insertions(+), 4 deletions(-)</pre></div>
+<p>"파일 하나, 12줄 늘고 4줄 줄었다". <code>+</code>와 <code>-</code> 개수가 대략 비율. 이 숫자는 <b>양</b>만 말합니다. "한 줄 고쳤어요"라는 말에 stat 이 <code>+340 -2</code> 면 되물을 자리.</p>
+
+<h2>커밋 메시지 읽기</h2>
+<div class="codebox"><span class="file">git log --oneline (최근 4개)</span>
+<pre class="code nofile" data-lang="txt">b894eb1 fix(play-test): 서가가 창보다 길면 진입 문장이 잘리던 문제 — 서가 화면 자체 스크롤 + 카드 선택 시 자동 스크롤 (260915)
+4401fdf feat(authoring): 소설→기억 저작 파이프라인 v0.1 + 권역(GWON-001) 첫 실전 (260915)
+1afeee4 fix(reveal): 봉인 서사 이중 노출 제거 — 엔딩 후속 화면은 문장 생략 (260810)
+c7f99d2 feat(dialog): EN 연결사 8종 — 이어쓰기 선택지도 언어를 탄다 (260810)</pre></div>
+<p><code>번호 종류(범위): 요약 (날짜)</code>. 종류는 <code>fix</code>(고침) · <code>feat</code>(새 기능) · <code>docs</code>(문서) · <code>chore</code>(잡일) · <code>refactor</code>(정리, 동작 불변). 앞의 일곱 글자 번호(<code>b894eb1</code>)가 그 커밋의 이름이라 AI 에게 "b894eb1 비교표 보여줘"라고 할 수 있습니다.</p>
+
+<h2>아직 커밋 안 한 변경: git diff</h2>
+<p>오늘(9월 25일) 저장소에는 커밋 안 된 변경이 12개 파일에 있습니다. 그중 안전 필터 파일의 비교표입니다.</p>
+<div class="codebox"><span class="file">git diff js/safety.js (미커밋)</span>
+<pre class="code nonum" data-lang="diff">@@ -52,6 +52,18 @@ export const SAFETY_RESOURCES = [
+   }
+ ];
+
++// 260909 RECORD v4 §5-1 안전 단일화 — recordChat.js 에만 있던 한국 상담전화를 여기로 이관.
++export const SAFETY_RESOURCES_KO = [
++  { name: "자살예방 상담전화", number: "109", desc: "24시간", action: "tel:109" },
++  { name: "정신건강 위기상담전화", number: "1577-0199", desc: "", action: "tel:15770199" },
++  { name: "청소년 상담", number: "1388", desc: "", action: "tel:1388" },
++];
++
++/** 언어별 상담 자원 — ko 면 한국, 그 외 미국 목록. */
++export function getSafetyResources(lang) {
++  return String(lang || '').slice(0, 2) === 'ko' ? SAFETY_RESOURCES_KO : SAFETY_RESOURCES;
++}
++
+ // ── Tense detection (시제 판별) ──
+@@ -269,6 +281,8 @@ if (typeof window !== 'undefined') {
+     safetyForAbsorb,
+     detectCrisis,
+     ABSORB_GENERIC_KIN,
++    getSafetyResources,   // 260909 RECORD v4
++    resetSafetySession,
+   };
+ }</pre></div>
+<p>덩어리 둘. 첫째는 초록만(<b>추가</b>): 한국 상담전화 목록과, 언어에 따라 목록을 고르는 함수. 둘째도 초록만: 파일 끝의 "마당에 꽂는 묶음"(12장)에 두 이름 추가. <code>@@</code> 줄 오른쪽 끝에 <code>export const SAFETY_RESOURCES = [</code>, <code>if (typeof window …</code> 처럼 <b>그 덩어리가 어느 덩어리 안인지</b> 힌트가 붙습니다. 12장 시험 3번의 답이 여기 보입니다.</p>
+
+<h2>어디서 보나</h2>
+<ul>
+  <li>VS Code 왼쪽 <b>소스 제어</b> 아이콘(가지 모양) → 바뀐 파일 목록 → 파일을 누르면 전/후가 나란히. 빨강 · 초록 색도 같습니다.</li>
+  <li>AI 에게: "요약 말고 <code>git diff</code> 출력을 그대로 붙여 줘." 부록 D 에 문구를 모아 뒀습니다.</li>
+</ul>
+
+<h2>검증 다섯 질문</h2>
+<ol>
+  <li><b>바꾼 함수 이름이 뭐야?</b> (5장 · <code>@@</code> 줄 오른쪽 힌트)</li>
+  <li><b>덩어리(<code>@@</code>)가 몇 개야? 각각 어느 함수 안이야?</b> "세 곳 고쳤다" ↔ <code>@@</code> 세 개.</li>
+  <li><b>초록 줄이 새로 하는 일을 내 말로.</b> 못 하겠으면 AI 에게 한 줄씩 풀어 달라고.</li>
+  <li><b>그 함수 밖도 건드렸어?</b> 건드렸으면 왜.</li>
+  <li><b>stat 숫자가 말과 맞아?</b> "한 줄"인데 +340 이면 되묻기.</li>
+</ol>
+
+<div class="tip">비교표는 <code>@@</code> 개수부터 센다. 그다음 초록 줄만 읽어 "새로 하는 일"을 적는다. 빨강 · 초록 짝 = 바꿈, 초록만 = 추가. 속은 몰라도 세 모양(if · for · 이름)만 보면 성격이 잡힌다.</div>
+
+<div class="quiz"><h3>미니 시험 15</h3>
+<div class="codebox"><span class="file">git diff js/app/archive.js (미커밋)</span>
+<pre class="code nonum" data-lang="diff">@@ -804,7 +804,10 @@ async function loadMemoriesFromSupabase() {
+     console.log('[loadMemoriesFromSupabase] merged', merged.length, 'memories');
+-    appStore.setState({ allMemoriesData: merged });
++    // 260909 RECORD v4 §6-①: v4 기록 씨앗(Fetus)은 기록자 본인에게만 — PLAY 풀·ARCHIVE 목록 공통.
++    const { filterVisibleMemories } = await import('../shared/tem_record_visibility.js?v=260909a');
++    const _uid = (appStore.getState().currentUser && appStore.getState().currentUser.id) || null;
++    appStore.setState({ allMemoriesData: filterVisibleMemories(merged, { userId: _uid }) });
+     const state = appStore.getState();</pre></div>
+<ol>
+  <li>어느 함수 안입니까? 덩어리는 몇 개?</li>
+  <li>빨강 한 줄과 초록 네 줄. <b>전에는</b> 무엇을 했고 <b>지금은</b> 무엇을 합니까? (힌트: 9장의 "필요할 때 꺼내오기", 7장의 filter)</li>
+  <li>stat 에 <code>js/index.js | 44 ++++</code> 만 보입니다. 이 숫자만으로 알 수 있는 것과 없는 것을 하나씩.</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 검증 다섯 질문을 내 문장으로</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 16장 ═══════════════════════ -->
+<section class="chapter" id="ch16">
+<h1><span class="chno">16장 · 검사하는 눈</span>데이터베이스: 표 · SQL · 권한 · jsonb</h1>
+
+<p class="goal"><b>목표</b> 데이터베이스가 <b>표</b>라는 것, 표를 만들고 고치는 글(SQL)을 읽는 법, 코드가 표를 읽고 쓰는 한 문장, 403 의 근원인 <b>권한 규칙(RLS)</b>, 그리고 "저장돼 있다 ≠ 쓰인다"를 안다.</p>
+
+<h2>표 · 행 · 열</h2>
+<p>Supabase 의 데이터베이스는 엑셀과 같습니다. <b>표</b>(memories, scenes, plays …)가 있고, <b>행</b> 하나가 기억 하나 · 씬 하나 · 회차 하나, <b>열</b>이 칸(title, scene_order, alignment …). 행마다 <code>id</code>라는 주민번호가 있고 모양은 <code>8fe034ef-6db0-4ba1-b291-66954fea2e08</code> 같은 36글자(UUID). 코드에서 <code>memory_id</code>, <code>scene_id</code>는 전부 이 번호로 다른 표의 행을 가리키는 것.</p>
+
+<h2>실제 SQL: 표 만들기</h2>
+<div class="codebox"><span class="file">supabase/migrations/20250107000000_create_notes_table.sql : 4~14</span>
+<pre class="code" data-lang="sql" data-hl="1,2,3,6,9">CREATE TABLE IF NOT EXISTS notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  memory_id UUID REFERENCES memories(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  recipient_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  note_type TEXT DEFAULT 'player_to_author',
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>SQL 은 영어 문장에 가깝습니다. <code>CREATE TABLE IF NOT EXISTS notes ( … )</code> = "notes 표를 만들어라, 이미 있으면 말고". 괄호 안이 열 목록, 한 줄에 열 하나: <b>이름 · 종류 · 규칙</b>.</li>
+  <li>종류: <code>UUID</code>(주민번호), <code>TEXT</code>(글), <code>BOOLEAN</code>(참/거짓), <code>TIMESTAMP WITH TIME ZONE</code>(시각), <code>INT</code>(정수), <code>JSONB</code>(묶음을 통째로).</li>
+  <li><code>PRIMARY KEY</code> = 이 열이 주민번호. <code>DEFAULT …</code> = 안 주면 이 값(<code>gen_random_uuid()</code> 새 번호 자동, <code>now()</code> 지금 시각, <code>false</code>).</li>
+  <li><code>REFERENCES memories(id) ON DELETE CASCADE</code> = "이 칸은 memories 표의 id 를 가리킨다. 그 기억이 지워지면 이 쪽지도 같이 지워라". 표 사이의 끈. (2026-07-14 에 씬 삭제 때 이 끈이 회차까지 지우던 것을 끊는 마이그레이션이 있었습니다. 끈은 편리하지만 위험.)</li>
+  <li><code>NOT NULL</code> = 비워 둘 수 없음.</li>
+</ul></div>
+
+<h2>실제 SQL: 표 고치기와 권한</h2>
+<div class="codebox"><span class="file">supabase/migrations/20260716000000_terrain_layers_and_contact_cols.sql : 11~17, 24~31, 34~36</span>
+<pre class="code" data-lang="sql" data-hl="9,13,14,15,18">create table if not exists public.terrain_layers (
+  memory_id    uuid primary key references public.memories(id) on delete cascade,
+  height_delta jsonb       not null default '{}'::jsonb,
+  foot_map     jsonb       not null default '{}'::jsonb,
+  generation   int         not null default 0,
+  updated_at   timestamptz not null default now()
+);
+
+alter table public.terrain_layers enable row level security;
+
+-- SELECT 공개(anon/authenticated). INSERT/UPDATE/DELETE 정책은 두지 않는다.
+-- = 관객(anon)의 쓰기는 매칭 행 0개로 조용히 통과. Edge service_role 만 RLS 우회.
+create policy "terrain_layers public read"
+on public.terrain_layers for select
+to anon, authenticated
+using (true);
+
+alter table public.trajectory_bridges
+  add column if not exists contact_utterance text,
+  add column if not exists contact_turn      int;</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>대소문자는 상관없습니다(위 파일은 소문자, 앞 파일은 대문자). <code>--</code> 뒤는 메모(자바스크립트의 <code>//</code>).</li>
+  <li>9번째 줄 <b>RLS</b>(행 단위 권한) 켜기. 켜면 <b>정책이 허락한 것만</b> 됩니다. 13~16번째 줄 정책: "읽기(select)는 익명(anon)이든 로그인(authenticated)이든 누구나(using true)". <b>쓰기 정책이 없으니 관객은 못 씁니다.</b> 쓰려면 서버 함수(<code>supabase/functions/record-erosion</code>)가 관리자 열쇠(service_role)로 대신 씁니다. 메모(11~12번째 줄)가 그 설계를 적어 뒀습니다.</li>
+  <li>14장의 <b>403 이 태어나는 자리</b>가 바로 이 정책입니다. 정책이 "아니오" 하면 403. notes 표의 정책은 <code>auth.uid() = recipient_id</code>("지금 로그인한 사람이 받는 사람일 때만 읽기") 같은 모양.</li>
+  <li>18~20번째 줄 <code>alter table … add column if not exists</code> = "표에 열을 더해라, 이미 있으면 말고". 표 모양이 바뀌었다는 말은 <b>반드시</b> 이런 파일이 <code>migrations</code> 폴더에 새로 생겨야 합니다(1장 시험 3번). 파일 이름 앞 숫자가 날짜시각이고 그 순서로 적용됩니다.</li>
+</ul></div>
+
+<h2>코드에서 표를 읽고 쓰는 한 문장</h2>
+<div class="codebox"><span class="file">js/shared/api.js : 36~40, 59~63</span>
+<pre class="code">const { data, error } = await supabaseClient
+  .from('scenes')
+  .select('*, choices(*)')
+  .eq('memory_id', memoryId)
+  .order('scene_order');
+
+const { data, error } = await supabaseClient
+  .from('plays')
+  .insert(playData)
+  .select()
+  .single();</pre></div>
+<table>
+  <tr><th style="width:14em">조각</th><th>뜻</th></tr>
+  <tr><td><code>.from('scenes')</code></td><td>scenes 표에서</td></tr>
+  <tr><td><code>.select('*, choices(*)')</code></td><td>모든 열을, 그리고 끈으로 이어진 choices 표의 행들도 같이</td></tr>
+  <tr><td><code>.eq('memory_id', memoryId)</code></td><td>memory_id 가 이 값인 행만 (eq = equal). 비슷한 것: <code>.neq</code> 아닌, <code>.gt</code> 보다 큰, <code>.in</code> 목록 안</td></tr>
+  <tr><td><code>.order('scene_order')</code></td><td>scene_order 순으로 정렬</td></tr>
+  <tr><td><code>.insert(playData)</code></td><td>이 묶음을 새 행으로 넣어라</td></tr>
+  <tr><td><code>.select().single()</code></td><td>넣은 행을 돌려받되, 하나만</td></tr>
+  <tr><td><code>.update({…}).eq(…)</code></td><td>조건에 맞는 행의 칸을 고쳐라 (이 파일 다른 곳)</td></tr>
+</table>
+<p>답은 항상 <code>{ data, error }</code>(10장). <code>error</code>가 차 있으면 콘솔 빨간 줄(14장), 그 안의 <code>code: '42501'</code>은 "권한 거부"입니다.</p>
+
+<h2>jsonb: 열 안의 묶음</h2>
+<p><code>meta</code>, <code>emotion_dist</code>, <code>height_delta</code>처럼 종류가 <code>jsonb</code>인 열은 안에 묶음을 통째로 담습니다. 코드에서는 <code>scene.meta.stage_position</code>처럼 점 두 번. 장점은 열을 안 늘리고 칸을 더할 수 있다는 것. 단점은 <b>넣기만 하고 아무도 안 읽는 칸</b>이 생겨도 표에는 안 보인다는 것.</p>
+
+<div class="story">CLAUDE.md 4절, 죽은 레버 <code>pin_override</code>: 편집기에서 핀을 끌면 <code>meta.pin_override</code>에 저장은 됩니다. 그런데 상영 쪽에 그 칸을 <b>읽는 코드가 없습니다.</b> 진짜 핀 위치는 <code>meta.stage_position</code>. "데이터베이스에 저장된다"와 "쓰인다"는 다른 말입니다. 검사법: 칸 이름(<code>pin_override</code>)으로 grep 해서 <b>읽는 자리</b>(<code>meta.pin_override</code>가 <code>=</code> 오른쪽에 있는 줄)가 있는지 셉니다. 저장하는 자리(<code>=</code> 왼쪽)만 있으면 죽은 레버.</div>
+
+<h2>서버 함수(Edge Function)의 머리</h2>
+<div class="codebox"><span class="file">supabase/functions/record-erosion/index.ts : 1~6, 33~41</span>
+<pre class="code">// record-erosion — 이본 지층 W2-2 (2026-07-16): 봉인 시 변형층 저장 + 스냅샷 로깅.
+//
+// 배경: 회차 봉인 시 그 관객 몫의 침식(누적 변형층)을 굽고 저장한다.
+//   memories/terrain_layers RLS = 익명 관객 직접 쓰기 불가 → service_role Edge 경유가 유일한 길
+
+const MAX_BODY_BYTES = 512 * 1024;    // 스냅샷 포함분
+const HEIGHT_SCALE = 20;              // |height_delta 잎| ≤ 이 값
+
+interface RequestBody {
+  memoryId: string;
+  height_delta: unknown;
+  generation: number;
+}</pre></div>
+<p>파일 끝이 <code>.ts</code>(TypeScript) = 자바스크립트에 <b>종류 표시</b>를 더한 것. <code>memoryId: string</code>은 "memoryId 는 글자여야 한다". 읽는 법은 자바스크립트와 같고, 쌍점 뒤 종류만 덤으로 읽으면 됩니다. 머리 메모가 <b>왜 이 함수가 존재하는지</b>(관객은 못 쓰니 서버가 대신)를 적어 둔 좋은 예. 이 프로젝트 서버 함수 19개는 거의 다 이 이유로 존재합니다.</p>
+
+<div class="tip">표 모양이 바뀌었다 → <code>migrations</code>에 새 파일이 있나. 403 → 그 표의 <code>create policy</code>를 읽어 누가 무엇을 할 수 있는지 본다. 저장했다 → 그 칸을 <b>읽는</b> 코드가 있는지 grep.</div>
+
+<div class="quiz"><h3>미니 시험 16</h3>
+<ol>
+  <li>위 마이그레이션 18~20번째 줄은 어느 표에 어떤 열을 더합니까? 이미 있으면 어떻게 됩니까?</li>
+  <li><code>supabaseClient.from('plays').insert(playData).select().single()</code> — 우리말 한 문장으로.</li>
+  <li>notes 표 정책이 <code>ON notes FOR SELECT USING (auth.uid() = recipient_id)</code> 입니다. 내가 남에게 보낸 쪽지를 내가 다시 읽을 수 있습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · "저장된다"와 "쓰인다"의 차이</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 17장 ═══════════════════════ -->
+<section class="chapter" id="ch17">
+<h1><span class="chno">17장 · 검사하는 눈</span>3D의 겉모양: Three.js</h1>
+
+<p class="goal"><b>목표</b> 지형 · 문 · 유령을 그리는 코드의 <b>겉모양</b>만 읽는다. 무대 · 카메라 · 그리는 장치 세 가지, 물체 = 모양 + 재질, 그리고 매 프레임 도는 루프. 삼각형을 어떻게 그리는지는 안 배운다.</p>
+
+<h2>무대 세 가지</h2>
+<div class="codebox"><span class="file">js/shared/tem_af_strata_terrain.js : 1639, 1644, 1647</span>
+<pre class="code" data-hl="1,2,3">scene3 = new THREE.Scene();
+camera = new THREE.PerspectiveCamera(50, vp0.w / vp0.h, 0.1, 500);
+renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });</pre></div>
+
+<table>
+  <tr><th style="width:12em">것</th><th>비유</th><th>읽는 법</th></tr>
+  <tr><td><code>THREE.Scene</code></td><td>무대</td><td>물체를 올려놓는 곳. <code>scene.add(물체)</code>로 올림.</td></tr>
+  <tr><td><code>THREE.PerspectiveCamera</code></td><td>카메라</td><td>재료 넷: 시야각 50도 · 화면 비율 · 가장 가까운 거리 0.1 · 가장 먼 거리 500. 이 밖은 안 보임(지형 끝이 사라지면 여기 숫자).</td></tr>
+  <tr><td><code>THREE.WebGLRenderer</code></td><td>그리는 장치</td><td>무대를 카메라로 찍어 <code>canvas</code>(html 의 그림판 상자)에 냄. <code>antialias: true</code> = 테두리 부드럽게.</td></tr>
+</table>
+<p><code>new THREE.X(…)</code> = "X 를 하나 만든다". <code>THREE.</code> 뒤 이름만 읽으면 무엇을 만드는지 압니다. 이 프로젝트는 Three.js <b>r128</b>(2021년판)을 씁니다. 최신 예제 문법이 안 맞는 이유이고, 9월 23일 실험 기록에 "스플랫은 r128 위험"이라고 적힌 이유입니다.</p>
+
+<h2>물체 = 모양 + 재질</h2>
+<div class="codebox"><span class="file">play-test.html : 7422~7450 (출구 문, 일부)</span>
+<pre class="code" data-hl="1,5,6,7,8,20">var doorGrp = new THREE.Group();
+doorGrp.userData._exitDoor = true;
+
+// Door frame (two pillars + lintel)
+var frameMat = new THREE.MeshStandardMaterial({ color: 0x8a7a65, roughness: 0.9, metalness: 0.05 });
+var pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 0.15), frameMat);
+pillarL.position.set(-0.7, 1.6, 0);
+doorGrp.add(pillarL);
+var pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 0.15), frameMat);
+pillarR.position.set(0.7, 1.6, 0);
+doorGrp.add(pillarR);
+var lintel = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.15, 0.15), frameMat);
+lintel.position.set(0, 3.25, 0);
+doorGrp.add(lintel);
+
+// Door panel (slightly inset, darker)
+var panelMat = new THREE.MeshStandardMaterial({ color: 0x1a1518, roughness: 0.95, transparent: true, opacity: 0.85 });
+var panel = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 3.0), panelMat);
+
+var doorLight = new THREE.PointLight(0xc4a882, 0.3, 6, 2);
+doorLight.position.set(0, 3.5, 0.3);
+doorGrp.add(doorLight);</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>THREE.Group</code>(1번째 줄) = 물체 여러 개를 담는 <b>묶음</b>. 문 전체를 한 덩어리로 옮기려고. <code>userData._exitDoor = true</code>는 물체에 쪽지(html 의 <code>data-</code>, 13장의 <code>dataset</code>과 같은 발상). 나중에 "출구 문이냐?"를 이 쪽지로 묻습니다.</li>
+  <li><code>THREE.MeshStandardMaterial({ color, roughness, metalness })</code>(5번째 줄) = <b>재질</b>. 색 · 거칠기 · 금속성. <code>0x8a7a65</code>는 색을 16진수로 적은 것 = css 의 <code>#8a7a65</code>와 같은 색(2장). 흙빛 나무색.</li>
+  <li><code>THREE.Mesh(모양, 재질)</code>(6번째 줄) = <b>물체</b>. 모양은 <code>BoxGeometry(가로, 높이, 깊이)</code>: 가로 0.15 · 높이 3.2 · 깊이 0.15 = 가늘고 긴 기둥. <code>PlaneGeometry(가로, 높이)</code>는 판.</li>
+  <li><code>.position.set(x, y, z)</code>(7번째 줄) = 어디에 놓나. <b>y 가 위</b>. 왼쪽 기둥 x=-0.7, 오른쪽 기둥 x=0.7, 높이 1.6 은 기둥 가운데(3.2 의 절반). 상인방(lintel)은 y=3.25 로 위에 얹힘.</li>
+  <li><code>.add(물체)</code> = 묶음이나 무대에 올림.</li>
+  <li><code>THREE.PointLight(색, 세기, 거리, 감쇠)</code>(20번째 줄) = 전구. 색 <code>0xc4a882</code>… 2장의 <code>--accent-memory</code>와 같은 금색입니다. 문 위 3.5 에 떠서 6 거리까지 은은하게.</li>
+</ul>
+<p>이 스무 줄이 상영에서 보이는 그 문입니다. 기둥 둘, 상인방 하나, 어두운 판 하나, 금색 전구 하나. <b>3D 코드는 "무엇을 · 어떤 재질로 · 어디에" 세 가지의 반복</b>입니다.</p></div>
+
+<h2>자주 보는 이름표</h2>
+<table>
+  <tr><th style="width:15em">이름</th><th>뜻</th></tr>
+  <tr><td><code>BoxGeometry · PlaneGeometry · SphereGeometry · BufferGeometry</code></td><td>상자 · 판 · 공 · 직접 짠 모양(지형이 이것)</td></tr>
+  <tr><td><code>MeshStandardMaterial · MeshBasicMaterial · ShaderMaterial</code></td><td>빛 받는 재질 · 빛 무시 재질 · 직접 짠 재질(안개 · 하늘 얼룩)</td></tr>
+  <tr><td><code>AmbientLight · DirectionalLight · PointLight</code></td><td>사방 빛 · 햇빛(방향만) · 전구(위치 있음)</td></tr>
+  <tr><td><code>Fog · FogExp2</code></td><td>안개(거리 따라 흐려짐)</td></tr>
+  <tr><td><code>Vector3(x, y, z)</code></td><td>좌표 하나. 위치 · 방향 · 속도 다 이걸로</td></tr>
+  <tr><td><code>GLTFLoader · FBXLoader</code></td><td>바깥에서 만든 모형(.glb · .fbx) 불러오기. 사물 앵커 · 유령 몸</td></tr>
+  <tr><td><code>OrbitControls</code></td><td>마우스로 카메라 돌리기(편집기 · 지형 조감)</td></tr>
+  <tr><td><code>.traverse(o =&gt; …)</code></td><td>무대 위 모든 물체를 하나씩 방문(7장의 반복). 11장 시험의 검사 코드가 씬 핀을 이걸로 찾음</td></tr>
+</table>
+
+<h2>매 프레임 도는 루프</h2>
+<div class="codebox"><span class="file">play-test.html : 4893~4916 (지형 띠 애니메이션, 일부) · js/ui/strataView.js : 717</span>
+<pre class="code" data-hl="1,3,9,12,15">function tick() {
+  if (game.terrainTintFrom && game.terrainTintTo && game.terrainTintLerp &lt; 1) {
+    game.terrainTintLerp = Math.min(1, game.terrainTintLerp + 0.032);
+    tint = lerpRgb(game.terrainTintFrom, game.terrainTintTo, easeOutCubic(game.terrainTintLerp));
+  }
+  ...
+  renderTerrainBar(game.currentSceneIndex, tint, { rippleAmp: ripplePx, rippleTime: game.terrainRipplePhase });
+  const tintAnimating = game.terrainTintFrom && game.terrainTintTo && game.terrainTintLerp &lt; 1;
+  if (tintAnimating || game.terrainRipple &gt; 0.004) {
+    game.terrainAnimRaf = requestAnimationFrame(tick);
+  } else {
+    game.terrainAnimRaf = null;
+  }
+}
+game.terrainAnimRaf = requestAnimationFrame(tick);</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>애니메이션은 전부 이 모양입니다: <b>함수 하나(tick) 안에서 → 값을 조금 바꾸고(3번째 줄, 0.032 씩) → 그리고(7번째 줄) → 아직 덜 됐으면 다음 프레임에 자기를 다시 부른다(9~10번째 줄).</b> 15번째 줄이 첫 시동.</li>
+  <li><code>requestAnimationFrame(tick)</code>(11장) = "다음 그리기 직전에 tick 을 한 번". tick 안에서 또 부르니 초당 60번 돕니다. 다 되면(else) 안 부르니 멈춤. 12번째 줄 <code>null</code>은 "지금 도는 애니메이션 없음" 표시.</li>
+  <li><code>lerp</code>(8장의 Lerp)는 "두 값 사이를 비율만큼 섞기", <code>easeOutCubic</code>은 "처음엔 빠르고 끝은 천천히". 연출 코드에 늘 나오는 두 단어. 속은 몰라도 됨.</li>
+  <li>3D 무대라면 7번째 줄 자리에 <code>renderer.render(scene, camera)</code>("무대를 카메라로 찍어 내라")가 있습니다. strataView.js 717번째 줄의 <code>animId = requestAnimationFrame(animateLoop)</code>가 지형 뷰의 같은 자리.</li>
+</ul></div>
+
+<div class="warn">이 프로젝트 기록(디버깅 지름길 메모): 카메라를 콘솔에서 옮겨도 <code>_fpTick</code>이 매 프레임 되돌립니다. 루프가 도는 동안은 루프 밖에서 바꾼 값이 다음 프레임에 덮입니다. "값을 바꿨는데 안 바뀌어요"의 3D 판 원인. 루프 안을 봐야 합니다.</div>
+
+<div class="tip">3D 코드는 <code>new THREE.이름</code>의 이름만 읽는다. 물체는 "모양 + 재질 + 위치". 애니메이션은 "값 조금 바꿈 → 그림 → 자기 다시 부름". <code>0x</code> 색은 css <code>#</code> 색과 같다.</div>
+
+<div class="quiz"><h3>미니 시험 17</h3>
+<ol>
+  <li><code>var pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 0.15), frameMat); pillarR.position.set(0.7, 1.6, 0);</code> — 무엇을 어떤 재질로 어디에? 왼쪽 기둥과 다른 점 하나.</li>
+  <li><code>new THREE.PointLight(0xc4a882, 0.3, 6, 2)</code> — 이 색은 css 의 어느 색 이름표와 같습니까? (2장 <code>:root</code> 참고)</li>
+  <li>어떤 화면에서 "매 프레임 도는 함수"를 찾고 싶습니다. <span class="kbd">Ctrl</span>+<span class="kbd">F</span>에 무슨 글자를 넣겠습니까?</li>
+  <li><code>doorGrp.userData._exitDoor = true</code> — 나중에 무대 위 물체를 하나씩 돌며(<code>traverse</code>) 출구 문만 찾고 싶다면 무엇을 확인하면 됩니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 물체 하나를 그리는 세 줄</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 18장 ═══════════════════════ -->
+<section class="chapter" id="ch18">
+<h1><span class="chno">18장 · 검사하는 눈</span>큰 파일 지도 + "됐어요" 검사 순서</h1>
+
+<p class="goal"><b>목표</b> 8,400줄짜리 파일도 처음부터 안 읽는다. 세 가지 기술로 지도를 그리고, 이 책 전체를 <b>일곱 단계 검사 순서</b> 하나로 접는다. 졸업 장. (7월 10교시 확장)</p>
+
+<h2>큰 파일 읽는 세 가지 기술</h2>
+<ol>
+  <li><b>이름으로 점프.</b> <span class="kbd">Ctrl</span>+<span class="kbd">F</span>에 AI 가 말한 함수 이름을 넣고 <code>function 이름</code> 또는 <code>이름(</code> 를 찾습니다. 함수 이름이 이정표.</li>
+  <li><b>계단 훑기.</b> 6장. 왼쪽 끝만 보며 0계단 줄을 셉니다. VS Code 에서 <span class="kbd">Ctrl</span>+<span class="kbd">K</span> 다음 <span class="kbd">Ctrl</span>+<span class="kbd">0</span> 을 누르면 모든 덩어리가 접혀 목차만 남습니다(<span class="kbd">Ctrl</span>+<span class="kbd">K</span> <span class="kbd">Ctrl</span>+<span class="kbd">J</span> 로 다시 펼침).</li>
+  <li><b><code>function</code> 세기.</b> <span class="kbd">Ctrl</span>+<span class="kbd">F</span>에 "function " 을 넣으면 오른쪽에 "1/312" 처럼 개수가 뜹니다. 그 파일이 가진 기능 수. <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">O</span>는 함수 이름 목록을 띄웁니다(html 안 script 에서는 일부만).</li>
+</ol>
+
+<h2>실제 지도: play-test.html</h2>
+<table>
+  <tr><th style="width:7em">줄 근처</th><th>무엇</th><th>찾는 글자</th></tr>
+  <tr><td>14~102</td><td>부품 목록 (script 태그 약 40개, 캐시버스터 포함)</td><td><code>&lt;script src=</code></td></tr>
+  <tr><td>~100~530</td><td>옷 (style)</td><td><code>&lt;style&gt;</code></td></tr>
+  <tr><td>531</td><td>일반 script 시작 (마당)</td><td><code>&lt;script&gt;</code></td></tr>
+  <tr><td>703</td><td>module script 시작 (두뇌, 방). import 목록</td><td><code>&lt;script type="module"&gt;</code></td></tr>
+  <tr><td>730</td><td>데이터베이스 연결을 마당에 꽂음</td><td><code>window.getSupabaseClient</code></td></tr>
+  <tr><td>3533</td><td>씬 진입 함수를 마당에 꽂음 (디버깅 지름길)</td><td><code>_temEnterSceneMode</code></td></tr>
+  <tr><td>4893</td><td>지형 띠 애니메이션 루프</td><td><code>terrainAnimRaf</code></td></tr>
+  <tr><td>5209</td><td>서가 그리기</td><td><code>_renderShelf</code></td></tr>
+  <tr><td>7420</td><td>출구 문 만들기</td><td><code>_exitDoor</code></td></tr>
+  <tr><td>6598</td><td>지형 뷰 부품 (맨 아래)</td><td><code>strataView.js</code></td></tr>
+</table>
+<p class="small">줄 번호는 2026-09-25 기준. 밀리면 "찾는 글자"로 점프.</p>
+
+<h2>grep: 폴더 전체에서 찾기</h2>
+<p><span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">F</span>. 파일 하나가 아니라 저장소 전체에서 글자를 찾습니다. 이 책에서 grep 이 필요한 자리 셋:</p>
+<ul>
+  <li><b>진입점 세 곳</b>(12장): 기능 이름이나 파일 이름 → 세 문 중 몇 곳에 있나.</li>
+  <li><b>캐시버스터</b>(12장): 파일 이름 → 각 줄의 <code>?v=</code>가 같고 새로운가.</li>
+  <li><b>죽은 레버</b>(16장): 열 이름 → 읽는 자리(<code>=</code> 오른쪽)가 있나.</li>
+</ul>
+<p>검색 결과 창에서 파일별로 몇 개인지 숫자가 나옵니다. <b>세는 것</b>이 전부입니다.</p>
+
+<h2>"됐어요" 검사 순서</h2>
+<p>AI 가 작업을 마쳤다고 하면 <b>이 순서대로</b> 묻습니다. 각 단계가 이 책 어느 장인지 적어 뒀습니다. 문구는 부록 D 에 그대로 있습니다.</p>
+<table>
+  <tr><th style="width:3em">#</th><th style="width:14em">묻는 것</th><th>눈으로 확인하는 것</th><th style="width:5em">장</th></tr>
+  <tr><td>1</td><td>어느 파일, 어느 함수?</td><td>폴더로 층을 짐작. 함수 이름으로 점프해 <code>{ }</code> 경계 확인</td><td>1 · 5</td></tr>
+  <tr><td>2</td><td>비교표 그대로 보여줘</td><td><code>@@</code> 개수 = 말한 자리 수. 각 덩어리가 어느 함수 안인지</td><td>15</td></tr>
+  <tr><td>3</td><td>초록 줄이 새로 하는 일</td><td>if · for · 이름으로 내 말로 한 줄. 못 하면 한 줄씩 풀어 달라고</td><td>4 · 7 · 8</td></tr>
+  <tr><td>4</td><td>진입점 세 곳</td><td>grep → 세 문 중 몇 곳. 빠진 문이 의도인지</td><td>12</td></tr>
+  <tr><td>5</td><td>캐시버스터</td><td>고친 파일 이름 grep → <code>?v=</code> 오늘 날짜 · 세 문 동일</td><td>12</td></tr>
+  <tr><td>6</td><td>콘솔 · 네트워크 빨강 0</td><td>F12. 빨간 줄 없음. 있으면 종류 · 내용 · 위치 읽기</td><td>14</td></tr>
+  <tr><td>7</td><td>실제 순서로 한 번</td><td>콘솔에 값을 심어 놓고 보는 게 아니라, 관객이 밟는 순서(서가 → 진입 → 걷기 → 대화 → 봉인)로 끝까지. 각 단계 캡처</td><td>13 · 14</td></tr>
+</table>
+
+<div class="story">7단계가 있는 이유. 2026-07-17 기록: "console 세팅 · 심어둔 전제는 그 전제 깨지는 실전 타이밍 못 봄." 접촉 기록 403 은 콘솔에서 값을 심어 시험할 땐 안 났고, 실제 순서로 밟을 때만 났습니다(접촉이 회차 저장보다 먼저 일어나는 타이밍). 자동으로 밟아 주는 도구가 이미 있습니다: <code>npm run qa</code>(<code>tools/qa.cjs</code>, 스냅샷 찍고 → 풀 플레이 → 되돌림)와 <code>test/e2e/playthrough.mjs</code>. AI 에게 "qa 돌리고 캡처 붙여"라고 시킬 수 있습니다.</div>
+
+<h2>덧붙여: 죽은 코드를 만났을 때</h2>
+<p>이 저장소는 안 쓰는 레버를 <b>일부러 남겨 둡니다</b>(라이브 모드, 옛 archive 플레이, pin_override …). 읽다가 "이거 아무 데서도 안 부르는데?"를 발견하면 결함이라고 단정하지 말고 <b>의도를 먼저 묻습니다.</b> 2026-08-02 에 죽은 재진입 스킵을 "고쳤다가" 되돌린 사고가 있습니다. 읽는 눈이 생기면 이런 걸 발견하게 되고, 발견은 좋은 일이지만 <b>발견 → 질문 → 결정</b> 순서를 지킵니다.</p>
+
+<h2>졸업</h2>
+<p>여기까지 오면 당신은 <b>읽고 검사하는 사람</b>입니다. 코드를 쓰지는 못해도(계속 AI 가 씁니다), "됐어요"를 들었을 때 파일을 열어 <code>@@</code>를 세고, grep 으로 세 문을 세고, F12 의 빨강을 읽고, 실제 순서로 밟게 시킬 수 있습니다. 처음 목표가 정확히 그거였습니다.</p>
+<p>남은 건 반복입니다. 다음 작업부터 검사 순서 일곱 단계를 한 번씩 밟으세요. 4~6주면 비교표에서 "이상한데?"가 저절로 걸립니다. 그때 이 책의 장 번호가 손에 익어 있을 겁니다.</p>
+
+<div class="tip">큰 파일 = 이름 점프 · 계단 · function 세기. 됐어요 = 일곱 단계. 전부 <b>세는 일</b>이다. 계산이 아니라.</div>
+
+<div class="quiz"><h3>미니 시험 18 (졸업)</h3>
+<p>AI 가 이렇게만 말했습니다. <em>"오염 계산 로직 좀 고쳤어요. play-test 에서 잘 돼요."</em></p>
+<ol>
+  <li>검사 순서 일곱 단계로 되물을 질문을 <b>다섯 개</b> 만드세요. 각 질문 옆에 이 책 장 번호를 적으세요.</li>
+  <li>"play-test 에서 잘 돼요"라는 말에서 빠진 문이 있습니까? 있다면 무엇을 시킵니까?</li>
+  <li>비교표를 받았더니 <code>@@</code>가 다섯 개이고 그중 둘이 <code>js/ui/</code> 폴더 파일입니다. "오염 계산만 고쳤다"는 말과 맞습니까? 무엇을 묻습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<div class="answer-space"></div>
+<p class="ans-hint">정답 예시는 부록 E. 정답이 하나가 아닙니다.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 다음 작업에서 밟을 일곱 단계를 내 순서로</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ VI부 · 엔진 읽기 (2026-10-19 추가) ═══════════════════════ -->
+<!-- 앞 18장과 문체가 다릅니다. 교재가 아니라 옆에 앉아서 말하는 투로 썼습니다. -->
+
+<!-- ═══════════════════════ 19장 ═══════════════════════ -->
+<section class="chapter" id="ch19">
+<h1><span class="chno">19장 · 엔진 읽기</span>엔진이 내놓는 네 가지</h1>
+
+<p class="goal"><b>목표</b> 엔진이 <b>무슨 질문</b>을 받고 <b>무슨 답</b>을 돌려주는지. 답은 네 개뿐이고, 그 네 개가 어디로 흘러가는지까지만 본다. 계산은 다음 장부터.</p>
+
+<h2>여기서부터는 속을 봅니다</h2>
+<p>앞의 18장에서 제가 계속 "속은 몰라도 된다"고 했죠. 경계만 보라고. 그건 지금도 맞아요. AI가 "고쳤어요" 할 때 진짜인지 확인하는 데는 경계만 보면 됩니다.</p>
+<p>그런데 10월에 질문이 바뀌었어요. "내 엔진이 어떤 원리로 도는지 나도 모른다. 인정받으려면 내가 설명할 수 있어야 한다." 이건 경계를 보는 눈으로는 답이 안 나와요. 속을 봐야 해요. 그래서 이 부(部)를 붙였습니다.</p>
+<p>미리 안심시켜 드릴게요. 속이라고 해 봐야 수학은 세 개예요. <b>평균</b>, <b>코사인</b>(두 화살표 사이 각도), <b>지수이동평균</b>(새 값 10%, 옛 값 90%). 미적분 없어요. 행렬 없어요. 이 셋을 모르는 사람은 없어요. 다만 코드 안에서 그 셋이 어떤 옷을 입고 있는지를 모를 뿐이에요. 그 옷을 벗기는 게 이 부의 일입니다.</p>
+
+<h2>엔진은 질문 하나에 답합니다</h2>
+<p>별이엔진이 받는 질문은 딱 하나예요. 설계 문서 첫 줄에 그대로 적혀 있어요.</p>
+<p style="margin:1em 1.5em; font-size:12pt;"><b>"A가 기억을 말했다. B가 그 기억을 읽고 반응했다. A와 B의 경험이 얼마나 비슷한가?"</b></p>
+<p>답은 0에서 1 사이 숫자 하나. 1이면 똑같이 겪은 것, 0이면 전혀 다르게 겪은 것. 이 숫자 이름이 <b>정렬도</b>(<code>alignment</code>)예요. 엔진이 하는 일은 이 숫자를 내는 것뿐이고, "그러니까 당신은 이런 사람이다"라든가 "다음엔 이렇게 하라" 같은 말은 절대 안 합니다. 설계 원칙에 "엔진은 판단하지 않는다, 관찰하고 보고할 뿐"이라고 박아 뒀어요. 7월 16일에 "높은 정렬 = 승리"라는 말을 걷어내고 "접촉"이라는 말로 바꾼 것도 같은 맥락이에요. 숫자가 높은 건 잘한 게 아니라 <em>일어난</em> 거예요.</p>
+
+<h2>답은 네 개가 한 묶음으로 나옵니다</h2>
+<p>엔진 파일 맨 아래쪽, 함수가 답을 돌려주는 자리를 먼저 보세요. 10장에서 배운 "묶음 하나를 답으로"의 모양이에요.</p>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 110~118</span>
+<pre class="code" data-hl="3,4,5,6">return {
+  affective_position: affectivePosition,
+  alignment_score: alignment,
+  alignment_bucket: bucket,
+  transition_pattern: transitionPattern,
+  mismatch_type: mismatchType,
+  current_scene_score: currentSceneScore,
+  debug
+};</pre></div>
+
+<p>노란 줄 넷이 "네 가지"예요. 하나씩 풀면 이래요.</p>
+<table>
+  <tr><th style="width:11em">이름</th><th>뭔가</th><th>생김새</th></tr>
+  <tr><td><code>alignment_score</code><br>정렬도</td><td>위의 질문에 대한 답. 얼마나 비슷한가.</td><td>0~1 숫자. 예: 0.52</td></tr>
+  <tr><td><code>alignment_bucket</code><br>등급</td><td>그 숫자를 네 칸으로 나눈 것. 연출이 "지금 어느 칸이냐"만 물을 때 씀.</td><td><code>HIGH</code> · <code>MID</code> · <code>LOW</code> · <code>FIXATED</code>(고착)</td></tr>
+  <tr><td><code>transition_pattern</code><br>전이 패턴</td><td>"비슷한가"가 아니라 "<em>어떻게</em> 움직였나". 다음에 어느 장면이 열릴지를 이게 정해요.</td><td><code>echo_follow</code> · <code>bridge</code> · <code>contradiction</code> · <code>displacement</code> · <code>avoidance</code> · <code>fixation</code> 중 하나</td></tr>
+  <tr><td><code>mismatch_type</code><br>어긋남 종류</td><td>안 비슷했다면 <em>뭐가</em> 안 비슷했나.</td><td><code>emotion_mismatch</code>(감정) · <code>attribution_mismatch</code>(탓) · <code>target_displacement</code>(대상) · <code>void_mismatch</code>(회피) · 없으면 <code>null</code></td></tr>
+</table>
+<p>나머지 셋은 곁다리예요. <code>affective_position</code>은 관객 감정을 지도 위 점으로 바꾼 것(지형 핀 자리용), <code>current_scene_score</code>는 "이번 장면 하나만" 봤을 때 점수, <code>debug</code>는 계산 과정을 다 풀어 적은 쪽지. <code>debug</code> 안에 <code>formula: "L0.73 × S0.71 × V1.00 = 0.52"</code> 같은 글자가 들어 있어요. 콘솔(14장)에서 이 글자를 보면 엔진이 그 순간 뭘 곱했는지 그대로 보이는 거예요. 저는 이게 이 파일에서 제일 친절한 줄이라고 생각해요.</p>
+
+<h2>그 네 개가 어디로 가나</h2>
+<p>이걸 알아야 "측정이 어디 남느냐"는 질문에 답할 수 있어요. 흐름은 이렇습니다.</p>
+<ol>
+  <li>관객이 장면 하나에서 감정을 입력해요. (장면마다 한 번.)</li>
+  <li>play-test 안의 <b>관문 함수</b>가 엔진을 불러요. 2,611번째 줄쯤에 있는 <code>byeoriCalculateStep</code>. 모든 엔진 호출이 이 한 자리를 지나요. 12장에서 본 "한 곳만 지나게 하는" 설계예요.</li>
+  <li>엔진이 네 가지를 돌려줘요.</li>
+  <li>play-test가 그중 둘을 <code>plays</code> 표(16장)에 한 행으로 넣어요.</li>
+</ol>
+
+<div class="codebox"><span class="file">play-test.html : 4708~4714 (plays 표에 넣는 행)</span>
+<pre class="code" data-hl="4,6,7">const row = {
+  memory_id: game.memoryId,
+  scene_id: scene.id,
+  user_emotion: vec,
+  user_reason: isVoid ? 'void' : (reasonLabel || ''),
+  alignment: result.alignment_score,
+  mismatch_type: isVoid ? 'void_mismatch' : (result.mismatch_type || null),</pre></div>
+
+<p>보이죠. 표에 남는 건 <code>alignment</code>(정렬도)와 <code>mismatch_type</code>(어긋남 종류) 둘이에요. 그리고 4번째 줄, 관객이 입력한 감정 <code>vec</code>가 <b>원시 그대로</b> 남아요. 등급과 전이 패턴은 그 순간 연출과 다음 장면 고르기에 쓰이고 표에는 안 남습니다.</p>
+
+<div class="warn">"표에 안 남는다"는 건 결함이 아니라 <b>선택</b>이에요. 정렬도와 원시 감정이 남아 있으면 등급과 패턴은 나중에 다시 계산할 수 있거든요. 다만 9월 26일 기록 공백 제안이 지적한 대로, "그때 엔진이 어떤 설정이었나"(문턱값, 손잡이 값)는 안 남아요. 그래서 설정을 바꾸면 과거 행을 같은 자로 못 재요. 이건 20장 뒤에서 다시 나옵니다.</div>
+
+<h2>한 가지만 미리</h2>
+<p>엔진은 <b>상태가 없어요</b>. 파일 21~23번째 줄에 <code>constructor() { // 상태 없음 }</code>이라고 적혀 있어요. 무슨 뜻이냐면, 엔진은 "지난번에 뭘 계산했는지" 기억하지 않아요. 매번 재료를 전부 받아서 처음부터 계산해요. 지금까지의 궤적, 지금까지의 점수, 이전 등급, 전부 부르는 쪽(play-test)이 들고 있다가 넘겨줘요. 그래서 같은 재료를 넣으면 언제 어디서 돌려도 같은 답이 나와요. 이게 "측정 장치"라고 부를 수 있는 이유예요. 측정 장치는 기분이 없어야 하니까요.</p>
+
+<div class="tip">엔진 = 질문 하나(얼마나 비슷한가), 답 네 개(정렬도 · 등급 · 전이 패턴 · 어긋남 종류). 표에 남는 건 정렬도와 어긋남 종류, 그리고 원시 감정. 엔진은 기억이 없다.</div>
+
+<div class="quiz"><h3>미니 시험 19</h3>
+<ol>
+  <li>콘솔에 <code>formula: "L0.40 × S1.00 × V0.70 = 0.280"</code>이 찍혔습니다. 이 관객은 지금 몇 번째 장면쯤에 있을 가능성이 높습니까? (힌트: S가 1.00인 이유.) 그리고 V가 0.70이라는 건 무슨 일이 있었다는 뜻입니까?</li>
+  <li><code>plays</code> 표에서 어떤 회차의 행들을 꺼내 봤더니 <code>alignment</code>는 있는데 등급(<code>HIGH</code>/<code>MID</code>…)은 없습니다. 고장입니까?</li>
+  <li>AI가 "엔진이 이전 회차의 결과를 기억하고 있어서 이번 결과가 이상해요"라고 말했습니다. 이 말은 성립합니까? 파일 어느 줄을 보여 주며 되묻겠습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 엔진이 받는 질문 한 줄, 돌려주는 네 가지 이름</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 20장 ═══════════════════════ -->
+<section class="chapter" id="ch20">
+<h1><span class="chno">20장 · 엔진 읽기</span>코사인: 두 화살표 사이 각도</h1>
+
+<p class="goal"><b>목표</b> 감정 하나가 코드 안에서 어떤 모양인지(17칸 묶음), "비슷하다"를 숫자로 바꾸는 코사인이 뭔지, 그리고 손으로 한 번 계산해 본다. 이 장을 넘기면 엔진의 수학 절반이 끝난다.</p>
+
+<h2>감정 하나 = 칸 17개짜리 묶음</h2>
+<p>엔진이 "감정"이라고 부르는 건 느낌이 아니라 <b>칸 17개에 숫자가 든 묶음</b>이에요. 10장에서 배운 그 객체요. 칸 이름은 공용 수학 파일에 목록으로 적혀 있어요.</p>
+
+<div class="codebox"><span class="file">js/shared/math.js : 19~25</span>
+<pre class="code" data-hl="3,4,6">export const DEFAULT_EMOTION_ANCHORS = [
+ // negative/pain
+  'fear', 'sadness', 'anger', 'guilt', 'shame',
+  'isolation', 'numbness', 'moral_pain', 'helplessness', 'despair',
+ // positive/recovery
+  'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort'
+];</pre></div>
+
+<p>고통 쪽 열 개(공포 · 슬픔 · 분노 · 죄책 · 수치 · 고립 · 무감 · 도덕적 고통 · 무력 · 절망), 회복 쪽 일곱 개(기쁨 · 희망 · 안도 · 감사 · 사랑 · 평화 · 위안). 그래서 관객이 어떤 장면에서 "무섭고 조금 슬펐다"고 하면 코드 안에선 이렇게 생긴 묶음이 돼요.</p>
+
+<div class="codebox"><span class="file">(예시 · 실제 저장되는 모양)</span>
+<pre class="code nofile">{ fear: 0.8, sadness: 0.3, joy: 0 }</pre></div>
+
+<p>안 쓴 칸은 그냥 없거나 0이에요. 이 목록을 "17축"이라고 불러요. 축이라는 말이 어렵게 들리면 "칸"이라고 읽으세요. 똑같은 뜻이에요.</p>
+
+<h2>왜 "벡터"라고 부르나</h2>
+<p>문서에 자꾸 "감정 벡터"라는 말이 나오죠. 벡터는 그냥 <b>칸마다 숫자가 든 묶음을 화살표로 보는 것</b>이에요. 칸이 두 개면 종이 위에 그릴 수 있어요. 가로가 공포, 세로가 기쁨이라고 치면, <code>{ fear: 0.8, joy: 0.2 }</code>는 원점에서 오른쪽으로 0.8, 위로 0.2 간 자리를 가리키는 화살표예요. 칸이 17개면 종이에 못 그리지만 수학은 똑같이 돌아가요. 그래서 저는 머릿속으로는 항상 두 칸짜리로 생각해요. 그걸로 충분해요.</p>
+
+<h2>"비슷하다"를 숫자로: 코사인</h2>
+<p>화살표 두 개가 있으면 "비슷하다"를 두 가지로 잴 수 있어요. 하나는 끝점 사이 <b>거리</b>. 다른 하나는 두 화살표 사이 <b>각도</b>. 엔진은 각도를 써요. 각도를 0~1 숫자로 바꾼 게 코사인이에요.</p>
+<ul>
+  <li>두 화살표가 <b>같은 쪽</b>을 가리키면 코사인 = 1.</li>
+  <li><b>직각</b>이면 0.</li>
+  <li><b>정반대</b>면 -1. (엔진은 음수가 나오면 0으로 깎아요. 이유는 22장.)</li>
+</ul>
+<p>왜 거리가 아니라 각도냐. 각도는 <b>세기를 무시</b>하거든요. <code>{ fear: 0.4, joy: 0.1 }</code>과 <code>{ fear: 0.8, joy: 0.2 }</code>는 길이는 두 배 차이지만 방향은 똑같아요. 코사인은 1. "덜 무서웠다"와 "많이 무서웠다"를 <em>같은 결</em>로 치는 거예요. 이건 설계 선택이에요. 결이 같으면 같은 경험으로 본다. 세기 차이는 안 본다. 좋다 나쁘다가 아니라, 이 엔진이 그렇게 정했다는 걸 아는 게 중요해요.</p>
+
+<h2>손으로 한 번</h2>
+<p>계산법은 세 줄이에요. 두 칸짜리로 해 볼게요.</p>
+<ol>
+  <li><b>칸끼리 곱해서 전부 더한다.</b> (이걸 내적이라고 불러요. 이름은 몰라도 돼요.)</li>
+  <li><b>각 화살표의 길이</b>를 구한다. 길이 = 칸마다 제곱해서 더한 뒤 제곱근.</li>
+  <li>1번을 2번 둘의 곱으로 나눈다.</li>
+</ol>
+
+<table>
+  <tr><th style="width:9em"></th><th>A = { fear 0.8, joy 0.2 }<br>B = { fear 0.7, joy 0.3 }</th><th>A = { fear 0.9, joy 0.1 }<br>C = { fear 0.1, joy 0.9 }</th><th>A = { fear 1, joy 0 }<br>D = { fear 0, joy 1 }</th></tr>
+  <tr><td>① 곱해서 더함</td><td>0.8×0.7 + 0.2×0.3 = 0.56 + 0.06 = <b>0.62</b></td><td>0.9×0.1 + 0.1×0.9 = 0.09 + 0.09 = <b>0.18</b></td><td>1×0 + 0×1 = <b>0</b></td></tr>
+  <tr><td>② 길이</td><td>A: √(0.64+0.04) = 0.825<br>B: √(0.49+0.09) = 0.762</td><td>A: √(0.81+0.01) = 0.906<br>C: 똑같이 0.906</td><td>A: 1<br>D: 1</td></tr>
+  <tr><td>③ 나눔</td><td>0.62 ÷ (0.825×0.762) = <b>0.99</b></td><td>0.18 ÷ (0.906×0.906) = <b>0.22</b></td><td>0 ÷ 1 = <b>0</b></td></tr>
+  <tr><td>읽으면</td><td>거의 같은 결</td><td>많이 다름</td><td>완전히 다른 결</td></tr>
+</table>
+
+<p>이게 다예요. 17칸이면 ①에서 17개를 곱해 더하고 ②에서 17개를 제곱해 더할 뿐, 나머지는 똑같아요.</p>
+
+<h2>그 세 줄이 코드에선 이렇게 생겼어요</h2>
+
+<div class="codebox"><span class="file">js/shared/math.js : 183~209 (cosineSimilarity)</span>
+<pre class="code" data-hl="4,6,10,11,12,13,14,15,19,20,22,23">export function cosineSimilarity(vec1, vec2, anchorEmotions = null) {
+  if (!vec1 || !vec2) return 0;
+
+  let keys;
+  if (anchorEmotions &amp;&amp; Array.isArray(anchorEmotions) &amp;&amp; anchorEmotions.length &gt; 0) {
+    keys = anchorEmotions.map(anchor =&gt; normalizeAnchor(String(anchor)));
+  } else {
+    keys = DEFAULT_EMOTION_ANCHORS;
+  }
+
+  let dotProduct = 0;
+  let mag1 = 0;
+  let mag2 = 0;
+
+  keys.forEach(key =&gt; {
+    const v1 = vec1[key] || 0;
+    const v2 = vec2[key] || 0;
+    dotProduct += v1 * v2;
+    mag1 += v1 * v1;
+    mag2 += v2 * v2;
+  });
+
+  mag1 = Math.sqrt(mag1);
+  mag2 = Math.sqrt(mag2);
+
+  if (mag1 === 0 || mag2 === 0) return 0;
+  return dotProduct / (mag1 * mag2);
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>4~9번째 줄: <b>어느 칸들로 잴지</b> 정해요. 셋째 재료(<code>anchorEmotions</code>)로 칸 목록이 들어오면 그걸 쓰고, 안 들어오면 기본 17칸. 이게 7월 27일에 정한 "기억별 좌표계"가 들어오는 자리예요. 기억마다 실제로 쓰는 감정 어휘만으로 재겠다는 결정. 그 결정이 코드 한 줄짜리 갈림길(4장)로 들어와 있는 거예요.</li>
+  <li>10~13번째 줄: 빈 통 세 개. 곱해서 더할 통, A 길이 통, B 길이 통.</li>
+  <li>15~21번째 줄: 칸 목록을 하나씩 돌며(7장) 세 통을 채워요. <code>vec1[key] || 0</code>은 8장의 "없으면 0" 모양. 그래서 <code>{ fear: 0.8 }</code>처럼 칸이 비어 있어도 안 터져요.</li>
+  <li>22~23번째 줄: 길이 = 제곱근. 위 표의 ②.</li>
+  <li>25번째 줄: 둘 중 하나라도 길이가 0이면(아무 감정도 없으면) 0을 답으로. 0으로 나누면 터지니까요.</li>
+  <li>26번째 줄: 표의 ③. 끝.</li>
+</ul></div>
+
+<p>27줄이 전부 위의 세 줄짜리 계산이에요. 코드가 길어 보이는 건 "없을 때" 대비(2 · 25번째 줄)와 "어느 칸으로" 고르기(4~9번째 줄)가 붙어서예요. 계산 자체는 15~26번째 줄, 열두 줄.</p>
+
+<div class="warn">"비슷하다"는 말이 코드에선 <b>항상 코사인</b>이에요. 장면 하나의 점수도 코사인, 궤적 모양 비교도 코사인(다음 장), 고착 감지도 코사인(최근 셋이 서로 얼마나 같은 결이냐). 그러니까 어떤 문서가 "유사도"라고 쓰면 "코사인이겠구나, 세기는 무시하겠구나"라고 읽으면 거의 맞아요. 안 맞는 자리가 하나 있는데, 지형 배치용 VAD 거리(<code>calculateVADSimilarity</code>)예요. 그건 판단에 안 쓰고 그림 그릴 때만 써요. 7월에 "VAD 안 쓰기로"라고 한 건 <em>정렬도 점수에</em> 안 쓴다는 뜻이었어요.</div>
+
+<div class="tip">감정 = 17칸 묶음. 비슷함 = 코사인 = 각도. 세기는 무시, 결만 본다. 계산은 "곱해서 더하고, 길이로 나눈다" 세 줄.</div>
+
+<div class="quiz"><h3>미니 시험 20</h3>
+<ol>
+  <li>A = { fear 0.6, sadness 0.8 }, B = { fear 0.8, sadness 0.6 }. 코사인을 손으로 구하세요. (길이가 둘 다 깔끔하게 떨어집니다.)</li>
+  <li>C = { fear 0, sadness 1 }, D = { fear 1, sadness 0 }. 코사인은? 이 둘은 "둘 다 고통"인데 왜 그 값이 나옵니까?</li>
+  <li><code>cosineSimilarity(a, b, ['fear', 'joy'])</code>처럼 셋째 재료를 넣으면 무엇이 달라집니까? 관객 감정에 <code>sadness: 0.9</code>가 들어 있었다면 그 값은 어떻게 됩니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 코사인 세 줄을 내 말로</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 21장 ═══════════════════════ -->
+<section class="chapter" id="ch21">
+<h1><span class="chno">21장 · 엔진 읽기</span>별이엔진 190줄, 한 덩어리씩</h1>
+
+<p class="goal"><b>목표</b> <code>js/core/ByeoriEngine.js</code>의 중심 함수 <code>calculateStep</code>을 재료 받기부터 답 내보내기까지 아홉 덩어리로 끊어서 읽는다. 다 읽으면 "L × S × V"가 어디서 어떻게 나오는지 손가락으로 짚을 수 있다.</p>
+
+<h2>식부터 외워 두세요</h2>
+<p>파일 맨 위 주석에 식이 통째로 적혀 있어요. 이걸 먼저 외우고 코드를 읽으면, 코드는 이 식의 재료를 준비하는 과정일 뿐이라는 게 보여요.</p>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 4~7</span>
+<pre class="code" data-hl="1">// 공식: alignment = level × shape × void_mod
+// level = 장면별 감정 유사도 평균
+// shape = 감정 변화 궤적의 형태 유사도 (3장면 미만이면 1.0)
+// void_mod = 회피 보정 (기본 1.0, 회피 시 0.7)</pre></div>
+
+<p>한국어로 다시 쓰면 이래요.</p>
+<p style="margin:0.5em 1.5em 1em; font-size:12pt;"><b>정렬도 = 수준 × 형태 × 회피</b></p>
+<ul>
+  <li><b>수준</b>(level): 장면마다 "작가와 얼마나 같은 결이었나"를 코사인으로 재고, 지금까지 본 장면 전부의 <b>평균</b>.</li>
+  <li><b>형태</b>(shape): 장면에서 다음 장면으로 감정이 <b>어느 쪽으로 움직였나</b>를 작가의 움직임과 비교한 코사인. 장면이 셋 미만이면 비교할 게 없어서 1.</li>
+  <li><b>회피</b>(void_mod): 관객은 감정을 안 내놨는데 작가는 내놨으면 0.7을 곱해서 깎음. 아니면 1(그대로).</li>
+</ul>
+<p>셋을 곱해요. 더하는 게 아니라. 왜 곱이냐는 22장에서 말할게요. 지금은 "하나라도 0이면 전체가 0"이라는 성질만 기억하세요.</p>
+
+<h2>덩어리 ① 재료 받기 (40~51)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 40~51</span>
+<pre class="code" data-hl="1,2,3,4,5,6,9,10,11">calculateStep(input, context = {}) {
+  const {
+    userVector, originalVector, anchorEmotions = null,
+    userTrajectory = null, originalTrajectory = null,
+    sceneScores = null, emotionKeys = null
+  } = input;
+  const { previousBucket = null, emotionHistory = null } = context;
+
+  if (!userVector || !originalVector) {
+    console.warn('[ByeoriEngine V4] userVector 또는 originalVector 없음');
+    return this._createEmptyResult();
+  }</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>재료는 두 묶음이에요. <code>input</code>(이번 장면 것 + 지금까지 것)과 <code>context</code>(이전 등급, 감정 이력). 2~6번째 줄은 10장의 "묶음 풀기". 묶음에서 이름표대로 꺼내 변수로 만들어요. <code>= null</code>은 "안 들어왔으면 없음으로".</li>
+  <li>꺼낸 것 중 핵심 둘: <code>userVector</code>(관객이 이번 장면에서 느낀 것), <code>originalVector</code>(작가가 이 장면에 심어 둔 원본 감정). 나머지는 "지금까지"예요. <code>userTrajectory</code>는 관객이 지금까지 느낀 것들의 목록, <code>originalTrajectory</code>는 그 장면들의 원본 목록, <code>sceneScores</code>는 지금까지 장면마다 매긴 점수 목록.</li>
+  <li>9~11번째 줄: 핵심 둘 중 하나라도 없으면 콘솔에 경고 쓰고 빈 답(전부 0, 등급 LOW)을 돌려주고 끝. 4장의 "문지기" 모양.</li>
+</ul></div>
+
+<p>19장에서 "엔진은 기억이 없다"고 했죠. 여기서 보이죠. 지금까지의 궤적과 점수를 전부 <em>재료로 받아요</em>. 엔진이 들고 있지 않아요.</p>
+
+<h2>덩어리 ② 자 고르기 (53~58)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 53~58</span>
+<pre class="code" data-hl="4,5,6">// 판단 좌표계 (260727 기억별 좌표계 — docs/기억별_좌표계_결정-260727.md):
+// 씬 anchor(가장 구체) &gt; emotionKeys(기억의 저작 어휘) &gt; 판단 기본 17축.
+// level·shape·mismatch 가 전부 같은 자로 재야 V4 §9.1 (곱셈 결합의 동일 공간) 유지.
+const frameKeys = (anchorEmotions &amp;&amp; anchorEmotions.length)
+  ? anchorEmotions
+  : ((emotionKeys &amp;&amp; emotionKeys.length) ? emotionKeys : null);</pre></div>
+
+<p>20장 끝에서 "어느 칸들로 잴지"가 셋째 재료로 들어온다고 했죠. 여기서 그 칸 목록을 정해요. 우선순위가 셋이에요. 장면에 앵커 감정이 박혀 있으면 그것, 아니면 이 기억이 실제로 쓰는 감정 어휘(<code>emotionKeys</code>), 둘 다 없으면 <code>null</code>, 즉 기본 17칸. 4장의 "물음표 갈림길" 두 개가 겹친 모양이에요. 주석 세 줄에 결정 날짜와 문서 이름까지 적혀 있어요. 이런 주석이 있는 자리는 <b>설계 결정이 코드로 내려온 자리</b>예요. 그냥 지나치지 말고 "아, 7월 27일 결정이 여기구나" 하고 표시해 두세요.</p>
+
+<h2>덩어리 ③ 이번 장면 점수, 그리고 수준 (60~66)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 60~66</span>
+<pre class="code" data-hl="1,5,7">const currentSceneScore = calculateEmotionScore(
+  userVector, originalVector, frameKeys
+);
+
+const allSceneScores = sceneScores ? [...sceneScores, currentSceneScore] : [currentSceneScore];
+
+const level = calculateLevelSimilarity(allSceneScores);</pre></div>
+
+<ul>
+  <li>1번째 줄: 이번 장면 점수. <code>calculateEmotionScore</code>는 속을 열면 20장의 <code>cosineSimilarity</code>를 부르고 음수면 0으로 깎는 게 다예요. (임베딩이 둘 다 있으면 그걸 쓴다는 갈림길이 하나 있는데, 지금 상영 경로에선 임베딩을 안 넘겨서 항상 코사인 쪽으로 가요.)</li>
+  <li>5번째 줄: 지금까지 점수 목록 끝에 이번 점수를 붙여요. <code>[...sceneScores, x]</code>는 "목록을 복사해서 뒤에 x 하나 더"(10장). 목록이 없으면 이번 점수 하나짜리 목록.</li>
+  <li>7번째 줄: <b>수준 = 평균.</b> 함수 이름이 거창하지만 속은 이래요.</li>
+</ul>
+
+<div class="codebox"><span class="file">js/shared/math.js : 302~305</span>
+<pre class="code" data-hl="3">export function calculateLevelSimilarity(sceneScores) {
+  if (!sceneScores || sceneScores.length === 0) return 0;
+  return sceneScores.reduce((a, b) =&gt; a + b, 0) / sceneScores.length;
+}</pre></div>
+
+<p><code>reduce((a, b) =&gt; a + b, 0)</code>는 "0에서 시작해 전부 더해라"(7장의 반복 한 종류), 그걸 개수로 나누면 평균. 끝이에요. 장면 네 개 점수가 0.9 · 0.8 · 0.6 · 0.7이면 수준은 0.75.</p>
+
+<h2>덩어리 ④ 궤적, 그리고 형태 (68~75)</h2>
+<p>여기가 이 엔진의 <b>알맹이</b>예요. 다른 데는 다 평범한데 여기만 TEM 고유예요. 천천히 갈게요.</p>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 68~75</span>
+<pre class="code" data-hl="1,2,3,8">const userTraj = userTrajectory
+  ? [...userTrajectory, userVector.base || userVector]
+  : [userVector.base || userVector];
+const origTraj = originalTrajectory
+  ? [...originalTrajectory, originalVector.base || originalVector]
+  : [originalVector.base || originalVector];
+
+const shapeResult = calculateShapeSimilarity(userTraj, origTraj, frameKeys);</pre></div>
+
+<p>1~6번째 줄은 덩어리 ③의 5번째 줄과 같은 모양이에요. 지금까지 궤적 끝에 이번 감정을 붙여서 두 목록을 만들어요. 관객 목록과 원본 목록. <code>userVector.base || userVector</code>는 "묶음 안에 <code>base</code> 칸이 있으면 그걸, 없으면 묶음 자체를"(8장). 이 파일은 감정이 <code>{ base: {...}, reason_analysis: {...} }</code>로 포장돼 들어올 때도 있고 맨 묶음으로 들어올 때도 있어서 둘 다 받아요.</p>
+<p>중요한 건 <b>두 목록이 같은 순서</b>라는 거예요. 관객이 장면을 3번, 1번, 4번 순서로 봤으면 관객 목록도 그 순서, 원본 목록도 <em>그 순서로 재배열된</em> 원본이에요. 이 재배열은 엔진 밖(play-test)에서 해서 넘겨요. 문서 §2에 그림으로 있어요.</p>
+<p>8번째 줄에서 형태를 계산해요. 속을 보죠.</p>
+
+<div class="codebox"><span class="file">js/shared/math.js : 283~297 (calculateShapeSimilarity)</span>
+<pre class="code" data-hl="4,5,8,9,10,11,12,13,14">export function calculateShapeSimilarity(userTrajectory, originalTrajectory, emotionKeys = null) {
+  // emotionKeys (260727 기억별 좌표계): level 과 같은 자로 재도록 호출자가 축 목록을
+  // 넘길 수 있다. 생략 시 판단 기본 17축 — V4 §9.1 (level·shape 동일 좌표계) 유지.
+  if (!userTrajectory || !originalTrajectory || userTrajectory.length &lt; 3) {
+    return { raw: 1.0, clamped: 1.0, active: false };
+  }
+  const deltaUser = [];
+  const deltaOrig = [];
+  for (let i = 1; i &lt; userTrajectory.length; i++) {
+    deltaUser.push(subtractVectors(userTrajectory[i], userTrajectory[i - 1]));
+    deltaOrig.push(subtractVectors(originalTrajectory[i], originalTrajectory[i - 1]));
+  }
+  const raw = cosineFlat(flattenDeltas(deltaUser, emotionKeys), flattenDeltas(deltaOrig, emotionKeys));
+  return { raw, clamped: Math.max(0, raw), active: true };
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>4~6번째 줄: 장면이 <b>셋 미만이면 형태 = 1</b>, 그리고 <code>active: false</code>("형태는 아직 안 쟀음" 표시). 왜 셋이냐. 움직임을 하나 재려면 장면 둘이 필요하고, 움직임 둘을 비교하려면 장면 셋이 필요해요. 움직임이 하나뿐이면 "방향이 비슷한가"를 물을 수 없어요. 그래서 1을 돌려주면 정렬도 = 수준 × 1 × 회피가 되어 초반엔 수준만 반영돼요. 이게 19장 시험 1번의 답이에요.</li>
+  <li>9~12번째 줄: <b>움직임(delta) 만들기.</b> 둘째 장면부터 "이번 감정 빼기 직전 감정"을 구해 목록에 넣어요. <code>subtractVectors</code>는 칸마다 빼는 것. 관객 것 한 목록, 원본 것 한 목록.</li>
+  <li>13번째 줄: 움직임 목록을 <b>한 줄로 펴서</b>(<code>flattenDeltas</code>) 코사인(<code>cosineFlat</code>). 펴는 건 그냥 "움직임1의 17칸, 움직임2의 17칸, …"을 쭉 이어 붙이는 거예요. 그러면 긴 화살표 하나가 되고, 관객 것과 원본 것 두 화살표의 각도를 재요. 20장과 완전히 같은 계산.</li>
+  <li>14번째 줄: 날것(<code>raw</code>, -1~1)과 깎은 것(<code>clamped</code>, 음수면 0) 둘 다 돌려줘요. 엔진은 깎은 걸 식에 넣고 날것은 <code>debug</code>에만 남겨요.</li>
+</ul></div>
+
+<h3>손으로 한 번: 장면 셋</h3>
+<p>두 칸짜리로 해 볼게요. 관객이 장면 셋을 봤고, 갈수록 무서워졌어요. 작가도 그랬어요.</p>
+<table>
+  <tr><th></th><th>장면 1</th><th>장면 2</th><th>장면 3</th></tr>
+  <tr><td>관객</td><td>{ fear 0.2, joy 0.8 }</td><td>{ fear 0.6, joy 0.4 }</td><td>{ fear 0.9, joy 0.1 }</td></tr>
+  <tr><td>작가 원본</td><td>{ fear 0.3, joy 0.7 }</td><td>{ fear 0.7, joy 0.3 }</td><td>{ fear 0.8, joy 0.2 }</td></tr>
+  <tr><td>장면 점수(코사인)</td><td>0.99</td><td>0.98</td><td>0.99</td></tr>
+</table>
+<p><b>수준</b> = (0.99 + 0.98 + 0.99) ÷ 3 = <b>0.99</b>. 장면마다 거의 같은 결이었어요.</p>
+<p>이제 <b>움직임</b>. 둘째 빼기 첫째, 셋째 빼기 둘째.</p>
+<table>
+  <tr><th></th><th>움직임 1 (장면2 − 장면1)</th><th>움직임 2 (장면3 − 장면2)</th><th>한 줄로 편 것</th></tr>
+  <tr><td>관객</td><td>{ fear +0.4, joy −0.4 }</td><td>{ fear +0.3, joy −0.3 }</td><td>[0.4, −0.4, 0.3, −0.3]</td></tr>
+  <tr><td>작가</td><td>{ fear +0.4, joy −0.4 }</td><td>{ fear +0.1, joy −0.1 }</td><td>[0.4, −0.4, 0.1, −0.1]</td></tr>
+</table>
+<p>편 두 줄의 코사인: 곱해서 더하면 0.16 + 0.16 + 0.03 + 0.03 = 0.38. 길이는 √0.50 = 0.707과 √0.34 = 0.583. 나누면 0.38 ÷ 0.412 = <b>0.92</b>. 둘 다 공포 쪽으로 움직였고, 폭만 조금 달랐으니 높게 나와요.</p>
+<p><b>정렬도</b> = 0.99 × 0.92 × 1 = <b>0.91</b>. 등급은 HIGH, 패턴은 echo_follow가 될 거예요(덩어리 ⑦, ⑧에서 확인).</p>
+
+<h3>왜 "순서"가 아니라 "움직임"인가</h3>
+<p>자주 헷갈리는 데라서 짚고 갈게요. 관객이 장면을 어떤 순서로 보든, 원본 목록도 <em>같은 순서로</em> 재배열해서 비교해요. 그러니까 순서 자체는 점수를 떨어뜨리지 않아요. 떨어뜨리는 건 "그 순서로 봤을 때 감정이 <b>어느 쪽으로 움직였나</b>"가 작가와 다른 경우예요. 장면마다 감정은 비슷한데 움직인 방향이 반대면, 수준은 높고 형태는 0이 돼요. 24장 두 번째 문제가 정확히 이거예요.</p>
+
+<h2>덩어리 ⑤ 회피 (77~81)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 77~81</span>
+<pre class="code" data-hl="5">const userReason = userVector.reason_analysis || {};
+const origReason = originalVector.reason_analysis || {};
+const userVoid = !!userReason.is_void;
+const origVoid = !!origReason.is_void;
+const voidMod = (userVoid &amp;&amp; !origVoid) ? 0.7 : 1.0;</pre></div>
+
+<p><code>!!x</code>는 "x를 참/거짓으로 딱 떨어지게"(부록 A). 5번째 줄이 식의 셋째 항이에요. <b>관객은 회피했고 작가는 안 했을 때만</b> 0.7. 관객도 작가도 회피했으면 1. 작가만 회피했어도 1. 숫자 0.7은 이론에서 온 게 아니라 정한 값이에요. 22장에서 다시.</p>
+
+<h2>덩어리 ⑥ 곱하기 (83)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 83 · js/shared/math.js : 310~312</span>
+<pre class="code" data-hl="1,4">const alignment = calculateTrajectoryAlignment(level, shapeResult.clamped, voidMod);
+
+export function calculateTrajectoryAlignment(level, shape, voidMod = 1.0) {
+  return Math.max(0, Math.min(1, level * shape * voidMod));
+}</pre></div>
+
+<p>식 그대로예요. 셋을 곱하고, 0 아래면 0, 1 위면 1로 잘라요. 이 줄이 이 파일의 심장인데 한 줄이에요. 나머지 189줄은 이 한 줄의 재료를 만들고, 결과에 이름표를 붙이는 일이에요.</p>
+
+<h2>덩어리 ⑦ 등급 (85)</h2>
+
+<div class="codebox"><span class="file">js/shared/math.js : 362~380 (getBucket)</span>
+<pre class="code" data-hl="3,4,5,6,11,12,15,16,17">export function getBucket(alignment, previousBucket = null, emotionHistory = null) {
+ // FIXATED 체크 (bucket 판정보다 우선)
+  if (emotionHistory &amp;&amp; emotionHistory.length &gt;= 3) {
+    const fixLevel = calculateFixationLevel(emotionHistory);
+    if (fixLevel &gt;= 0.85) {
+      return 'FIXATED';
+    }
+  }
+
+ // 히스테리시스 적용
+  if (previousBucket === 'HIGH' &amp;&amp; alignment &gt;= 0.40) return 'HIGH';
+  if (previousBucket === 'LOW' &amp;&amp; alignment &lt;= 0.15) return 'LOW';
+
+ // 표준 판정
+  if (alignment &gt;= 0.50) return 'HIGH';
+  if (alignment &lt; 0.10) return 'LOW';
+  return 'MID';
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>3~8번째 줄: <b>고착 먼저.</b> 감정 이력이 셋 이상이면 최근 셋이 서로 얼마나 같은 결인지(세 쌍의 코사인 평균)를 재서 0.85 넘으면 무조건 FIXATED. 정렬도와 무관해요. "같은 감정에 갇혔다"는 정렬도가 높든 낮든 따로 보는 거예요. 설계 원칙 3번("고착은 횟수가 아니라 유사도로")이 이 줄이에요.</li>
+  <li>11~12번째 줄: <b>끈적임</b>(히스테리시스). 직전이 HIGH였으면 0.40까지는 HIGH로 봐 줘요. 직전이 LOW였으면 0.15까지는 LOW. 등급이 경계에서 깜빡깜빡 바뀌는 걸 막으려고. 이것도 정한 값.</li>
+  <li>15~17번째 줄: 기본 경계. <b>0.50 이상 HIGH, 0.10 미만 LOW, 사이는 MID.</b></li>
+</ul></div>
+
+<div class="warn"><b>문서와 코드가 다릅니다.</b> 시스템 매뉴얼 §8.5에는 "HIGH ≥ 0.7, MID 0.4~0.7, LOW &lt; 0.4"라고 적혀 있어요. 코드는 0.50 / 0.10이에요. 매뉴얼은 4월 10일 것이고, 코드 주석에 "V4 곱셈 분포 기준 (파일럿 후 재조정)"이라고 적혀 있으니 파일럿 뒤에 코드만 고치고 매뉴얼은 안 고친 거예요. <b>둘이 다르면 코드가 진실</b>이에요. 돌아가는 건 코드니까요. 이 책 전체가 하는 말이 이거예요. 문서를 읽고 끝내지 말고 코드를 열어라. 지금 당신이 그걸 했어요.</div>
+
+<h2>덩어리 ⑧ 어긋남 종류, 전이 패턴 (87~91, 121~171)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 121~150 (_getMismatchType)</span>
+<pre class="code" data-hl="7,9,10,12,13,19,26,27">_getMismatchType(userVector, originalVector, frameKeys = null) {
+  if (!userVector || !originalVector) return null;
+
+  const userReason = userVector.reason_analysis || {};
+  const origReason = originalVector.reason_analysis || {};
+
+  if (!!userReason.is_void !== !!origReason.is_void) return 'void_mismatch';
+
+  if (userReason.attribution &amp;&amp; origReason.attribution &amp;&amp;
+      userReason.attribution !== origReason.attribution) return 'attribution_mismatch';
+
+  if (userReason.target &amp;&amp; origReason.target &amp;&amp;
+      userReason.target !== origReason.target) {
+    const emotionSim = cosineSimilarity(
+      userVector.base || userVector,
+      originalVector.base || originalVector,
+      frameKeys
+    );
+    if (emotionSim &gt;= 0.5) return 'target_displacement';
+  }
+
+  const emotionSimilarity = cosineSimilarity(
+    userVector.base || userVector,
+    originalVector.base || originalVector,
+    frameKeys
+  );
+  if (emotionSimilarity &lt; 0.5) return 'emotion_mismatch';
+
+  return null;
+}</pre></div>
+
+<p>위에서 아래로 <b>먼저 걸리는 게 답</b>이에요. 4장의 "문지기 줄서기". 순서가 곧 우선순위예요.</p>
+<ol>
+  <li>한쪽만 회피했으면 → 회피 어긋남.</li>
+  <li>둘 다 "탓"(attribution)을 적었는데 다르면 → 탓 어긋남.</li>
+  <li>둘 다 "대상"(target)을 적었는데 다르고, <em>감정은 비슷하면</em>(코사인 0.5 이상) → 대상 옮김. "같은 감정인데 향한 데가 다르다."</li>
+  <li>감정 코사인이 0.5 미만이면 → 감정 어긋남.</li>
+  <li>다 통과하면 어긋남 없음(<code>null</code>).</li>
+</ol>
+<p>"탓"과 "대상"은 작가가 장면에 적어 둔 것과 관객이 이유 서술에서 뽑힌 것을 글자로 비교해요. 글자가 다르면 다른 거예요. 지금 상영 경로에선 관객 쪽 이 칸이 비어 있는 경우가 많아서, 실제론 1번과 4번이 주로 걸려요.</p>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 152~171 (_getTransitionPattern)</span>
+<pre class="code" data-hl="2,4,6,7,9,11,12,13,14">_getTransitionPattern(bucket, mismatchType, level, shape, userTraj, origTraj) {
+  if (bucket === 'FIXATED') return 'fixation';
+
+  if (level &gt;= 0.5 &amp;&amp; shape &lt; 0.3 &amp;&amp; userTraj.length &gt;= 3 &amp;&amp; origTraj.length &gt;= 3) return 'displacement';
+
+  if (bucket === 'HIGH') return 'echo_follow';
+  if (bucket === 'MID') return 'bridge';
+
+  if (bucket === 'LOW') {
+    switch (mismatchType) {
+      case 'void_mismatch': return 'avoidance';
+      case 'target_displacement': return 'displacement';
+      case 'emotion_mismatch': return 'contradiction';
+      case 'attribution_mismatch': return 'contradiction';
+      default: return 'bridge';
+    }
+  }
+
+  return null;
+}</pre></div>
+
+<p>역시 위에서 아래로. 이걸 한국어 문장으로 바꾸면 전이 패턴의 정의가 돼요. 외우지 말고 읽어 두세요.</p>
+<table>
+  <tr><th style="width:9em">패턴</th><th>언제</th><th>뜻</th></tr>
+  <tr><td>fixation</td><td>등급이 FIXATED</td><td>같은 감정에 갇힘</td></tr>
+  <tr><td>displacement</td><td>수준 ≥ 0.5인데 형태 &lt; 0.3, 장면 셋 이상</td><td>장면마다 감정은 비슷한데 움직인 방향이 다름. "같은 감정, 다른 이유"의 흔적</td></tr>
+  <tr><td>echo_follow</td><td>등급 HIGH</td><td>잔향처럼 따라감</td></tr>
+  <tr><td>bridge</td><td>등급 MID, 또는 LOW인데 어긋남 종류가 없음</td><td>중립적 연결</td></tr>
+  <tr><td>avoidance</td><td>등급 LOW + 회피 어긋남</td><td>감정 접근 회피</td></tr>
+  <tr><td>contradiction</td><td>등급 LOW + 감정 어긋남 또는 탓 어긋남</td><td>반대로 튕김</td></tr>
+</table>
+
+<div class="warn"><b>여기도 문서와 코드가 달라요.</b> 설계 문서 §5 표에는 "echo_follow = 직전 두 움직임 방향 일치", "contradiction = 직전 움직임 방향 반대"라고 적혀 있어요. 코드는 그런 계산을 안 해요. 그냥 <em>등급</em>으로 갈라요. HIGH면 echo_follow, LOW면 어긋남 종류를 봐요. 문서가 처음 그린 그림이고, 구현하면서 단순화한 거예요. 어느 쪽이 더 좋냐는 별개 문제고, <b>지금 돌아가는 건 코드 쪽</b>이에요. 논문에 "전이 패턴은 움직임 방향으로 판정한다"고 쓰면 틀린 말이 돼요.</div>
+
+<h2>덩어리 ⑨ 내보내기 (93~118)</h2>
+<p>19장에서 봤어요. 지도 위 점(<code>affective_position</code>)을 하나 더 만들고, <code>debug</code> 쪽지에 계산 과정을 다 적고, 묶음 하나로 돌려줘요. 끝.</p>
+
+<h2>190줄을 한 장으로</h2>
+<table>
+  <tr><th style="width:4em">덩어리</th><th style="width:7em">줄</th><th>하는 일</th><th>식의 어디</th></tr>
+  <tr><td>①</td><td>40~51</td><td>재료 받기, 없으면 빈 답</td><td>—</td></tr>
+  <tr><td>②</td><td>53~58</td><td>어느 칸으로 잴지</td><td>자</td></tr>
+  <tr><td>③</td><td>60~66</td><td>이번 장면 코사인 → 지금까지 평균</td><td><b>수준</b></td></tr>
+  <tr><td>④</td><td>68~75</td><td>궤적 두 목록 → 움직임 → 코사인</td><td><b>형태</b></td></tr>
+  <tr><td>⑤</td><td>77~81</td><td>관객만 회피했나</td><td><b>회피</b></td></tr>
+  <tr><td>⑥</td><td>83</td><td>셋을 곱함</td><td><b>= 정렬도</b></td></tr>
+  <tr><td>⑦</td><td>85</td><td>고착 · 끈적임 · 경계로 네 칸</td><td>등급</td></tr>
+  <tr><td>⑧</td><td>87~91</td><td>뭐가 어긋났나, 어떻게 움직였나</td><td>어긋남 · 패턴</td></tr>
+  <tr><td>⑨</td><td>93~118</td><td>묶음으로 내보내기</td><td>—</td></tr>
+</table>
+
+<div class="tip">190줄 = 재료 받기 → 자 고르기 → 코사인 평균(수준) → 움직임 코사인(형태) → 회피 0.7 → 곱 → 네 칸 → 이름표. 심장은 83번째 줄 한 줄.</div>
+
+<div class="quiz"><h3>미니 시험 21</h3>
+<ol>
+  <li>수준 0.8, 형태 날것 −0.2, 관객 회피 · 작가는 안 회피. 정렬도는? 형태 날것이 음수인데 정렬도가 음수가 안 되는 이유는 어느 줄 때문입니까?</li>
+  <li>직전 등급 HIGH, 이번 정렬도 0.42. 등급은? 직전 등급이 MID였다면?</li>
+  <li>관객 탓 = "self", 작가 탓 = "other", 감정 코사인 0.9. 어긋남 종류는? 왜 감정이 비슷한데도 그게 나옵니까?</li>
+  <li>장면 셋, 수준 0.6, 형태 0.2, 등급 HIGH. 전이 패턴은? (함수의 몇 번째 줄에서 걸립니까?)</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 아홉 덩어리 중 셋을 골라 내 말로</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 22장 ═══════════════════════ -->
+<section class="chapter" id="ch22">
+<h1><span class="chno">22장 · 엔진 읽기</span>왜 이 식인가: 이론에서 온 것과 직접 정한 것</h1>
+
+<p class="goal"><b>목표</b> 식의 모양(왜 곱인가, 왜 움직임인가)이 어디서 왔는지, 식 안의 숫자(0.7 · 0.85 · 0.50 · 셋 규칙)가 어디서 왔는지를 <b>둘로 나눠서</b> 말할 수 있게 된다. 이 둘을 섞어 말하면 심사위원이 바로 찌른다.</p>
+
+<h2>코드엔 "왜"가 없어요</h2>
+<p>21장을 다 읽으면 식은 읽혀요. 그런데 "왜 더하지 않고 곱하냐", "왜 0.7이냐"는 코드 어디에도 없어요. 그건 설계 문서 <code>docs/별이엔진_V4-궤적기반_정렬도-260327.md</code>에 있어요. §3이 "왜 이 공식이어야 했는가", §4가 "이론적 기반", §9가 "설계 결정 기록". 이 세 절이 이 장의 재료예요. 제가 여기서 하는 일은 그걸 "이론에서 온 것"과 "직접 정한 것"으로 가르는 거예요.</p>
+
+<h2>먼저 실패 이야기: V1에서 V4까지</h2>
+<p>이 식은 처음부터 이랬던 게 아니에요. 세 번 실패하고 네 번째예요. 실패 기록이 식의 모양을 설명해요.</p>
+<table>
+  <tr><th style="width:4em">판</th><th style="width:13em">식</th><th>뭐가 안 됐나</th></tr>
+  <tr><td>V1</td><td>감정 코사인 하나</td><td>"같은 감정이라도 이유가 다르면 다른 경험"을 못 담음. 둘 다 슬펐으면 끝.</td></tr>
+  <tr><td>V2</td><td>글 임베딩 코사인 + VAD 거리</td><td>"엄마한테 미안해서 울었다"와 "친구한테 미안해서 울었다"가 임베딩 공간에서 거의 같은 자리. 이유를 못 가름.</td></tr>
+  <tr><td>V3</td><td>감정 0.4 + 이유 0.4 + 태도 0.2</td><td>세 가지가 터짐. ① AI가 뽑는 이유 꼬리표가 같은 글에서도 흔들려 점수가 최대 0.14 널뜀. ② 이유 축이 15단계 꼬리표 맞추기라 해상도가 너무 낮음. ③ <b>더하기라서 한 축이 0이어도 다른 축이 메움.</b> 감정이 정반대(0)여도 이유 꼬리표가 우연히 같으면 0.54까지 올라감. 그리고 0.4/0.4/0.2라는 비율에 근거가 없었음.</td></tr>
+  <tr><td>V4</td><td>수준 × 형태 × 회피</td><td>이유를 <em>재지 않기로</em> 함. 대신 이유의 <em>결과</em>를 봄. 같은 감정이라도 이유가 다르면 다음 장면에서 다르게 움직일 테니, 움직임(형태)을 비교하면 이유 차이가 간접으로 드러남.</td></tr>
+</table>
+<p>여기서 V4의 핵심 전환을 한 문장으로 하면 이래요. <b>"이유를 직접 재는 대신 이유의 결과를 관찰한다."</b> 장면 1에서 둘 다 슬펐어도, "내 탓"이라 느낀 사람은 장면 2에서 죄책감 쪽으로, "그 사람 탓"이라 느낀 사람은 분노 쪽으로 움직여요. 궤적이 갈라지면 이유가 달랐다는 게 드러나요. AI가 이유를 뽑을 필요가 없어져요. 이게 V3의 세 문제를 한 번에 없앤 수였어요.</p>
+
+<h2>이론에서 온 것: 식의 모양</h2>
+<p>식의 <em>모양</em>을 정한 외부 이론은 사실상 하나예요. 나머지는 그 모양이 말이 된다는 뒷받침이에요.</p>
+
+<h3>① 왜 두 항인가, 왜 곱인가 → Butler의 TIES</h3>
+<p>Butler(2011, 2017)가 "감정은 시간에 걸쳐 펼쳐지는 대인 시스템"이라며 한 주장이 이거예요. <b>감정의 수준(level)과 감정의 움직임(dynamics)은 서로 독립이고, 둘 다 따로 관계의 질을 예측한다.</b> 별이엔진은 이 구분을 그대로 가져왔어요. 수준 따로, 형태 따로. 그리고 독립인 두 것을 결합할 때 더하면 V3의 ③ 문제(한쪽이 메움)가 다시 생기니까 곱했어요. 곱이면 한쪽이 0일 때 전체가 0. "감정이 비슷해도 궤적이 반대면 낮고, 궤적이 비슷해도 감정이 다르면 낮다"가 구조로 보장돼요. §9.1이 이 결정이에요.</p>
+<p>딱 하나만 읽으시겠다면 Butler 2017이에요. 여섯 쪽이에요. 이 식의 뼈대가 거기서 왔어요.</p>
+
+<h3>② 왜 감정을 코사인으로 재도 되나 → 정서 유사도 연구</h3>
+<p>"같은 상황에서 같은 감정을 느끼는 것"이 공감 · 조율 · 관계 만족과 연결된다는 연구 묶음(Locke &amp; Horowitz 1990, Preston &amp; de Waal 2002, Anderson 외 2003 등). 이건 "감정이 비슷하다는 게 의미 있는 양이다"라는 뒷받침이지, 코사인이라는 계산법을 준 건 아니에요. 코사인은 그냥 벡터 비슷함의 표준 도구예요.</p>
+
+<h3>③ 왜 움직임의 궤적을 비교하나 → 감정 궤적 그래프</h3>
+<p>서사 분석에서 이야기를 "시간순 감정 곡선"으로 만들어 비교하는 건 이미 있는 방법이에요(Reagan 외 2016, "이야기의 감정 곡선은 여섯 모양으로 수렴한다"). 별이엔진은 그 방법을 빌리되 <b>감정 값이 아니라 감정의 변화량</b>을 비교해요. 그래서 "얼마나 슬펐나"가 아니라 "어느 쪽으로 움직였나"가 잡혀요. 이건 빌린 방법 위에 얹은 TEM의 변형이에요.</p>
+
+<h3>④ 왜 이유를 안 재나 → 인지적 평가 이론의 측정 도구</h3>
+<p>Lazarus의 평가 이론은 "같은 사건도 사람마다 다르게 평가한다"고 해요. V3는 그 평가를 AI로 뽑으려 했죠. 그런데 심리학에서 평가를 재는 검증된 도구는 전부 자기보고 설문이에요. AI가 글에서 꼬리표를 뽑는 건 검증된 측정이 아니고 재현성도 확인 안 됐어요. 그래서 V4는 이 이론을 <em>버린 게 아니라</em>, 그 이론이 말하는 차이가 궤적에 나타날 거라 보고 간접으로 가요. §4.4가 이 얘기예요.</p>
+
+<h2>직접 정한 것: 식 안의 숫자</h2>
+<p>이제 반대편. 아래 숫자들은 <b>이론에서 유도된 게 아니에요.</b> 당신이(여러 세션에 걸쳐) 정한 값이에요. 이걸 "이론에서 왔다"고 말하면 틀린 말이고, 심사위원이 "어느 이론?"이라고 물으면 막혀요. 반대로 "정한 값이고, 이유는 이렇고, 바꾸면 기록한다"고 말하면 아무도 안 찔러요.</p>
+<table>
+  <tr><th style="width:11em">숫자</th><th style="width:6em">어디</th><th>왜 그 값인가 (문서에 적힌 이유)</th></tr>
+  <tr><td>회피 벌점 0.7</td><td>엔진 81</td><td>V3의 태도 축이 거의 항상 0.7로 고정돼 "상수 덧셈"처럼 굴던 걸, 회피가 일어났을 때만 곱하는 보정으로 강등(§9.4). 0.7이라는 값 자체의 근거는 V3에서 쓰던 값을 이어받은 것.</td></tr>
+  <tr><td>고착 문턱 0.85</td><td>등급 함수</td><td>"최근 셋이 서로 코사인 0.85 이상이면 같은 감정 반복"으로 정함. 근거 문장 없음. 7-28 페르소나 리트머스에서 "자 A는 병자"라고 한 수술 대상이 이 근처.</td></tr>
+  <tr><td>등급 경계 0.50 / 0.10</td><td>등급 함수</td><td>"V4 곱셈 분포 기준, 파일럿 후 재조정." 곱하면 값이 전체적으로 낮아지니 경계를 내린 것. 매뉴얼의 0.7/0.4는 조정 전 값.</td></tr>
+  <tr><td>끈적임 0.40 / 0.15</td><td>등급 함수</td><td>경계에서 등급이 깜빡이는 걸 막으려고. 폭은 정한 것.</td></tr>
+  <tr><td>displacement 조건 0.5 / 0.3</td><td>엔진 155</td><td>"수준은 높은데 형태는 낮다"의 높다 · 낮다 경계. 정한 것.</td></tr>
+  <tr><td>어긋남 문턱 0.5</td><td>엔진 139 · 147</td><td>"감정이 비슷하다 / 다르다"의 경계. 정한 것.</td></tr>
+  <tr><td>음수 형태 → 0</td><td>형태 함수 14</td><td>"반정렬"이라는 개념을 아직 안 정했으니 반대 방향은 그냥 0으로(§9.2). 나중에 (1+날것)/2로 부드럽게 바꿀 수 있다고 적어 둠.</td></tr>
+  <tr><td>17칸 목록</td><td>math.js 19</td><td>고통 10 + 회복 7. 어떤 감정 모델에서 가져온 게 아니라 TEM이 다루는 서사에 맞춰 고른 것. 7월 27일부터는 기억마다 실제 쓰는 칸만으로 좁힘.</td></tr>
+</table>
+<p>딱 하나, 숫자가 아니라 <b>수학적 필연</b>인 게 있어요. "장면 셋 미만이면 형태 = 1"(§9.3). 움직임 둘을 비교하려면 장면 셋이 필요하다는 건 정한 게 아니라 셀 수 있는 사실이에요. 이것만은 "왜요?"에 "세어 보세요"로 답하면 돼요.</p>
+
+<div class="warn">위 표의 값들이 지금 <b>어디에도 행마다 기록되지 않아요.</b> 손잡이를 바꾸면 그 뒤 행과 그 전 행이 다른 자로 잰 게 되는데, 어느 행이 어느 자인지 표에 안 남아요. 9월 26일 기록 공백 제안(회차 일지 표에 "출처 꼬리표" 한 열)이 정확히 이 구멍을 메우는 거예요. 이 장을 읽었으면 왜 그 제안이 "튜닝 전에" 들어가야 하는지도 보일 거예요.</div>
+
+<h2>"원본"이라는 말에 대해</h2>
+<p>하나 더 짚을게요. TEM 철학은 "순수한 원본은 없다"인데 식은 "원본 감정"과 비교해요. 모순 아니냐. 7월 4일에 이걸 봉합했어요. 식에서 "원본"이라 부르는 건 <b>작가가 처음 서술했을 때의 궤적</b>(<code>telling_trajectory</code>)이에요. 진짜 사건이 아니라 첫 말하기. 그러니까 정렬도는 "진실과 얼마나 같나"가 아니라 "<em>첫 서술</em>과 얼마나 같은 결로 겪었나"예요. 공식과 표는 안 바뀌었고 말만 바뀌었어요. 설계 원칙 7번("initial telling trajectory, not original")이 이거예요. 누가 "원본이 어딨냐"고 물으면 이렇게 답하면 돼요.</p>
+
+<h2>심사위원이 물으면</h2>
+<p>이 장을 한 문단으로 줄이면 면접 답이 돼요. 연습 삼아 적어 둘게요.</p>
+<p style="margin:0.5em 1.5em 1em; border-left:3px solid #8a8578; padding-left:0.8em;">"정렬도는 두 항의 곱입니다. 장면마다의 감정 유사도 평균과, 장면 사이 감정 변화 방향의 유사도. 두 항을 분리한 건 Butler의 TIES 이론, 감정의 수준과 역학이 독립이라는 주장에서 가져왔고, 더하지 않고 곱한 건 한 항이 다른 항을 메우는 걸 막기 위한 구조적 선택입니다. 변화량을 비교하는 건 감정 궤적 그래프 방법론의 변형입니다. 식 안의 문턱값들, 0.7 · 0.85 · 0.5는 이론 값이 아니라 설계 값이고, 파일럿 분포를 보고 조정했으며, 앞으로 바꿀 때는 회차마다 기록합니다."</p>
+<p>이 문단을 안 보고 말할 수 있으면 22장은 끝이에요.</p>
+
+<div class="tip">모양(두 항 · 곱 · 움직임)은 이론에서, 숫자(0.7 · 0.85 · 0.50 · 0.5)는 손에서. 둘을 갈라 말하라. "셋 규칙"만 수학적 필연.</div>
+
+<div class="quiz"><h3>미니 시험 22</h3>
+<ol>
+  <li>누가 "0.7은 어느 논문에서 왔나요?"라고 물었습니다. 뭐라고 답합니까?</li>
+  <li>식을 곱에서 더하기(수준 0.5 + 형태 0.5)로 바꾸면, 24장 두 번째 문제의 관객(수준 0.97, 형태 0)의 정렬도는 얼마가 됩니까? 그게 왜 문제입니까?</li>
+  <li>"TEM은 원본과 비교한다, 그런데 TEM은 원본이 없다고 한다"는 지적에 한 문장으로 답하세요.</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · "심사위원이 물으면" 문단을 안 보고 써 보기</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 23장 ═══════════════════════ -->
+<section class="chapter" id="ch23">
+<h1><span class="chno">23장 · 엔진 읽기</span>오염 추적기: 새 값 10%, 옛 값 90%</h1>
+
+<p class="goal"><b>목표</b> 회차가 끝날 때 한 번 도는 <code>js/core/ContaminationTracker.js</code>의 핵심인 지수이동평균을 손으로 굴려 보고, 그 값이 어떻게 "단계"로 바뀌는지, 3축이 뭔지 뼈대만 본다. 그리고 이게 측정이 아니라 <b>연출 제어</b>라는 걸 분명히 한다.</p>
+
+<h2>먼저 성격부터</h2>
+<p>별이엔진은 측정이에요. 오염 추적기는 아니에요. 명세 첫 줄에 이렇게 적혀 있어요. <b>"이것은 진실 모델이 아니라 연출 제어 모델이다. 오염 벡터의 값은 '틀릴' 수 없다. 표현 강도를 결정하는 제어 변수다."</b></p>
+<p>무슨 말이냐면, 오염 값은 "이 기억이 얼마나 변했나"의 참값이 아니에요. "지금 무대를 얼마나 흔들어 보여 줄까"를 정하는 손잡이예요. 그래서 이 파일의 숫자들은 전부 연출가가 정한 값이고, 그걸 두고 "맞다 틀리다"를 따지는 건 질문이 잘못된 거예요. 따질 건 "이 손잡이가 무대에서 어떻게 보이나"뿐이에요. 이 구분을 놓치면 논문에서 오염 값을 측정 결과처럼 쓰게 되고, 그건 ICIDS가 찌른 "제목은 궤적인데 증거는 순간"과 같은 종류의 실수예요.</p>
+<p>그리고 또 하나. 오염은 <b>엔진을 절대 건드리지 않아요.</b> 파일 13번째 줄에 "별이엔진 V4는 변경하지 않는다. 이 모듈은 V4 출력의 소비자이다"라고 박혀 있어요. 엔진이 답을 내면, 오염이 그 답을 <em>받아서</em> 자기 값을 굴려요. 반대 방향은 없어요.</p>
+
+<h2>언제 도나</h2>
+<p>장면마다가 아니라 <b>회차가 끝날 때 한 번</b>이에요. 함수 이름이 <code>updateContamination</code>이고, 재료는 "지금까지 오염 상태"와 "이번 회차 엔진 답"이에요. 돌려주는 건 "다음 오염 상태". 재료를 고치지 않고 새 묶음을 만들어 돌려줘요(185번째 줄 <code>const next = { ...state }</code>, 10장의 "복사해서 새로"). 그 결과가 <code>memories</code> 표의 <code>cont_</code>로 시작하는 열들에 저장돼요.</p>
+
+<h2>지수이동평균: 새 값 10%, 옛 값 90%</h2>
+<p>이 파일의 수학은 이 한 줄이에요.</p>
+
+<div class="codebox"><span class="file">js/core/ContaminationTracker.js : 221~224</span>
+<pre class="code" data-hl="3,4">// 3. EMA update (replaces cumulative + decay)
+//    axis = α * signal + (1 - α) * axis_old
+next.cont_drift = clamp01(α * driftSignal + (1 - α) * next.cont_drift);
+next.cont_fixation = clamp01(α * fixSignal + (1 - α) * next.cont_fixation);</pre></div>
+
+<p><code>α</code>(알파)는 27번째 줄에 0.10으로 정해져 있어요. 그러니까 식은 이거예요.</p>
+<p style="margin:0.5em 1.5em 1em; font-size:12pt;"><b>새 축값 = 이번 신호 × 0.1 + 옛 축값 × 0.9</b></p>
+<p>이름이 "지수이동평균"이라 어려워 보이는데, 뜻은 "<b>옛것을 90% 남기고 새것을 10% 섞는다</b>"예요. 그게 다예요. <code>clamp01</code>은 0~1 밖으로 나가면 잘라 주는 것.</p>
+
+<h3>손으로 굴려 보기</h3>
+<p>처음 오염이 0이고, 어긋나는 관객이 연달아 와서 이번 신호가 매번 0.6이라고 해 봐요.</p>
+<table>
+  <tr><th style="width:5em">회차</th><th>계산</th><th style="width:6em">표류 축</th></tr>
+  <tr><td>1</td><td>0.6 × 0.1 + 0 × 0.9</td><td>0.060</td></tr>
+  <tr><td>2</td><td>0.6 × 0.1 + 0.060 × 0.9</td><td>0.114</td></tr>
+  <tr><td>3</td><td>0.6 × 0.1 + 0.114 × 0.9</td><td>0.163</td></tr>
+  <tr><td>…</td><td></td><td></td></tr>
+  <tr><td>8</td><td></td><td>0.342</td></tr>
+  <tr><td>9</td><td></td><td><b>0.368</b></td></tr>
+</table>
+<p>보이죠. 한 명이 와서는 거의 안 움직여요. 같은 쪽으로 어긋나는 사람이 <b>아홉 명</b> 연달아 와야 0.35를 넘어요. 0.35가 뭐냐면, 아래에서 나올 "1단계 켜지는 문턱"이에요. 그러니까 이 설계는 "한 사람의 반응으로 기억 전체가 기우는 일은 없게, 여러 사람이 같은 쪽으로 밀어야 기울게"예요. 27번째 줄 주석에 "반감기 약 6.6회차, 최근 7회차가 축값을 지배"라고 적힌 게 이 뜻이에요. 반감기는 "옛 값의 힘이 절반으로 줄기까지 몇 번"이고, 0.9를 몇 번 곱해야 0.5가 되나를 세면 6.6번이에요.</p>
+<p>α를 0.5로 올리면 어떻게 되나는 24장 다섯 번째 문제예요. 미리 말하면, 두 명이면 넘어요.</p>
+
+<h2>신호는 어디서 오나</h2>
+<p>위 식의 "이번 신호"가 뭔지 봐야 하죠. 둘이에요. 표류 신호와 고착 신호.</p>
+
+<div class="codebox"><span class="file">js/core/ContaminationTracker.js : 211~219</span>
+<pre class="code" data-hl="1,2,3,4,6,7,8,9">const driftSignal =
+  CONTAMINATION.DRIFT_WEIGHTS.LEVEL * (1 - level) +
+  CONTAMINATION.DRIFT_WEIGHTS.SHAPE * (1 - effectiveShape) +
+  CONTAMINATION.DRIFT_WEIGHTS.MISMATCH * mismatchBonus;
+
+const fixSignal =
+  CONTAMINATION.FIX_WEIGHTS.FIXATION * fixation_level +
+  CONTAMINATION.FIX_WEIGHTS.ALIGNMENT * normalizeAlignmentBonus(alignment) +
+  CONTAMINATION.FIX_WEIGHTS.PATTERN * patternBonus;</pre></div>
+
+<p><b>표류 신호</b>는 "얼마나 어긋났나"예요. 엔진의 수준이 낮을수록(1 − 수준), 형태가 낮을수록(1 − 형태), 어긋남 종류가 무거울수록 커요. 비율은 29~33번째 줄에 0.45 · 0.35 · 0.20. 어긋남 종류마다 무게가 있어요(41~50번째 줄). 감정 어긋남 1.0, 회피 0.8, 탓 0.7, 대상 0.6, 흐릿함 0.5, 없음 0.</p>
+<p>예를 들어 수준 0.4, 형태 0.6, 감정 어긋남이면: 0.45 × 0.6 + 0.35 × 0.4 + 0.20 × 1.0 = 0.27 + 0.14 + 0.20 = <b>0.61</b>. 위 표의 0.6이 대충 이런 관객이에요.</p>
+<p><b>고착 신호</b>는 "얼마나 같은 데 갇혔나"예요. 엔진의 고착 수준(최근 셋의 코사인 평균)이 0.55, 정렬도가 0.55를 넘는 만큼이 0.25, 패턴이 fixation이면 1.0 · echo_follow면 0.5 · bridge면 0.2 하는 보너스가 0.20.</p>
+<p>이 비율들, 0.45 · 0.35 · 0.20과 0.55 · 0.25 · 0.20, 그리고 어긋남 무게표. 전부 22장 표 쪽, <b>직접 정한 값</b>이에요. 22장에서 "모양은 이론, 숫자는 손"이라고 했죠. 이 파일은 숫자가 더 많아요. 그만큼 "연출 제어"예요.</p>
+
+<div class="story">2026년 7월 14일. 대화 경로(유령과 말하는 상영)로 플레이한 행은 어긋남 종류를 <code>resonance</code> · <code>vague</code> · <code>dissonance</code>라는 <em>다른 단어</em>로 적고 있었어요. 그런데 무게표는 엔진 단어(<code>emotion_mismatch</code> 등)만 알았어요. 그래서 실제 관객이 걷는 경로에선 어긋남 보너스가 항상 0이었고, <b>표류가 한 번도 쌓이지 않았어요.</b> 오염이 안 생기는 게 아니라 못 생기고 있었던 거예요. 고친 자리가 110~118번째 줄 <code>normalizeMismatch</code>, 두 어휘를 한 어휘로 접는 함수. 주석에 사고 경위가 그대로 적혀 있어요. 이게 "숫자가 틀릴 수 없다"는 말의 뜻이에요. 값이 틀린 게 아니라 <em>안 흐르고</em> 있었던 거예요. 15장의 비교표 읽기가 이런 걸 잡아요.</div>
+
+<h2>값에서 단계로</h2>
+<p>축값 둘이 굴러가면 그걸로 "지금 무대가 어느 단계냐"를 정해요.</p>
+
+<div class="codebox"><span class="file">js/core/ContaminationTracker.js : 245~254</span>
+<pre class="code" data-hl="1,2,3,5,6,7,9">if (
+  next.cont_fixation &gt;= HYPERCOMPLETION_FIXATION &amp;&amp;
+  next.cont_fixation &gt; next.cont_drift
+) {
+  next.cont_stage = 'hypercompletion';
+} else if (next.cont_drift &gt;= BIASED_INCLINATION_DRIFT) {
+  next.cont_stage = 'biased_inclination';
+} else {
+  next.cont_stage = 'stable';
+}</pre></div>
+
+<p>문턱은 61~64번째 줄. 고착 0.65, 표류 0.35. 읽으면: <b>고착이 0.65 이상이고 표류보다 크면 과완결, 아니면 표류가 0.35 이상이면 편향 기울기, 둘 다 아니면 안정.</b> 4장의 문지기 셋. 위에서부터 먼저 걸리는 게 답. 과완결을 먼저 보니까, 고착도 높고 표류도 높으면 과완결이 이겨요.</p>
+<p>이 세 단어가 무대에서 뭐가 되냐면, 장면 글이 <code>text_stage_1/2/3</code> 중 뭘 보여 줄지, 안개와 색을 얼마나 흔들지를 정해요. 그런데 play-test 2,702번째 줄 주석에 이런 게 있어요. "관객이 120명 와도 2 · 3단계 글이 한 번도 표시되지 않았다." 위의 아홉 명 계산이 그 이유예요. 같은 쪽으로 미는 사람이 연달아 아홉이 있어야 하는데 실제 관객은 그렇게 안 오니까요. 이건 결함이 아니라 <em>지금 설정의 결과</em>예요. 10월 튜닝이 이 손잡이를 만질 거고, 그래서 그 전에 행마다 설정을 적어 두자는 거예요.</p>
+
+<div class="story">2026년 7월 9일. 관리자 화면이 단계를 <code>inclination</code>이라고 짧게 적어 넣고 있었는데, 연출 쪽은 <code>biased_inclination</code>이라는 긴 이름과 비교하고 있었어요. 글자가 안 맞으니 세기가 항상 0으로 나왔고, 작가가 써 둔 2 · 3단계 글이 한 번도 관객에게 닿지 않았어요. 고친 자리가 439~443번째 줄 <code>normalizeStage</code>. 두 철자를 하나로 접어요. 이 파일엔 이런 "접는 함수"가 둘 있는데(어긋남 하나, 단계 하나), 둘 다 사고 뒤에 생겼어요. 8장에서 "이름이 다르면 다른 것"이라고 했죠. 이게 그 비용이에요.</div>
+
+<h2>3축: 뼈대만</h2>
+<p>위의 두 축(표류 · 고착)은 "2축 MVP"예요. 그 뒤에 3축이 더 있어요. 256~303번째 줄. 지금은 모양만 보고 넘어가도 돼요. 10월 튜닝 뒤에 이 자리를 다시 열면 그때 자세히.</p>
+<table>
+  <tr><th style="width:9em">축</th><th>뭐를 쌓나</th><th>어떻게</th></tr>
+  <tr><td>갈라짐<br><code>divergence</code></td><td>원본에서 얼마나 멀어졌나</td><td>(1 − 형태) × (1 − 수준)을 더하되, 회차가 쌓일수록 더하는 양이 줄어듦(1 ÷ (1 + 깊이 × 0.05)). "처음 온 사람들이 더 크게 흔들고, 뒤로 갈수록 둔해짐."</td></tr>
+  <tr><td>수렴<br><code>convergence</code></td><td>자꾸 같은 쪽으로 모이나</td><td>깊이 3 이상부터만. 고착이 0.85 넘으면 정렬도 × 0.4, 수준 · 형태 둘 다 0.7 넘으면 × 0.15, 정렬도 0.5 넘으면 × 0.03을 더함.</td></tr>
+  <tr><td>다양성<br><code>heterogeneity</code></td><td>해석이 얼마나 갈리나</td><td>지금까지 정렬도들의 <b>분산</b>(흩어진 정도) × 4. 분산을 한 번에 다 안 들고 굴리는 요령(Welford)을 씀. 그래서 <code>_cont_align_mean</code> · <code>_cont_align_m2</code>라는 밑줄 시작 칸이 두 개 있어요(8장의 "밑줄 = 속사정").</td></tr>
+</table>
+<p>그리고 291~303번째 줄에서 이 셋을 섞어 "단계 비율" 셋을 만들어요. 1단계 = 갈라짐 × (1 − 수렴), 2단계 = 다양성 × (깊이 ÷ 5, 최대 1), 3단계 = 수렴 × (1 − 다양성). 셋을 합이 1이 되게 나눠요. 그래서 무대는 "지금 1단계냐 3단계냐"가 아니라 "1단계 0.6, 2단계 0.3, 3단계 0.1만큼 섞어서" 보여 줄 수 있어요. CLAUDE.md의 "Stage는 배타적 X, 섞어서 렌더링"이 이 줄들이에요.</p>
+
+<h2>바이러스 이야기에 대해</h2>
+<p>명세 §13이 이 3축을 HIV 바이러스 진화 추적법에 빗대 설명해요. 갈라짐은 "뿌리에서 끝까지 거리", 다양성은 "한 환자 안 변이체 구름의 폭", 수렴은 "면역 압력 아래 같은 변이로 모임", 깊이는 "계대 횟수". 문서는 "임의 설계가 아니다, 구조적으로 동일하다"고 꽤 세게 적었어요.</p>
+<p>제 말은 이거예요. 이건 <b>같은 수학 모양을 빌려왔다</b>는 뜻이지, 기억이 바이러스라는 증명이 아니에요. 분산을 "구름 폭"이라 부르고 둔화 곡선을 "분자시계 포화"라 부르는 건 이름 붙이기예요. 그 이름이 설계를 떠올리는 데 도움이 됐고, 논문에서 "참고한 틀"로 적을 수 있어요. 그런데 "생물학이 근거다"라고 쓰면 생물학자가 와서 "경쟁도 선택도 없는데 왜 준종이냐"고 물어요. 실제로 6월 10일 v0.6 개정초안이 그 지적을 스스로 했고, 9월 26일 연구 명세도 "생물학 비유는 유지하되 비유라고 명시"로 정리했어요. 그러니 이 장을 읽고 남길 문장은 이거예요. <b>"3축은 갈라짐 · 수렴 · 다양성이고, 계산은 누적 · 조건부 누적 · 분산이며, 바이러스 진화 측정법과 같은 모양이라 그 이름을 빌렸다."</b></p>
+
+<div class="tip">오염 = 연출 제어. 회차 끝 1번. 새 신호 10% + 옛 값 90%. 아홉 명이 같은 쪽으로 밀어야 1단계. 엔진은 안 건드린다. 바이러스는 비유.</div>
+
+<div class="quiz"><h3>미니 시험 23</h3>
+<ol>
+  <li>지금 표류 축이 0.30이고 이번 회차 표류 신호가 0.8입니다. 다음 표류 축은? 단계는?</li>
+  <li>그 회차에 고착 축이 0.70이 됐다면(표류는 1번 답 그대로) 단계는? 어느 줄에서 걸립니까?</li>
+  <li>AI가 "오염이 너무 느리게 쌓여서 엔진의 정렬도 계산을 좀 세게 바꿨어요"라고 했습니다. 이 문장에서 설계 원칙에 어긋나는 부분을 짚고, 어느 파일 몇 번째 줄 주석을 들이밀겠습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · "새 값 10% 옛 값 90%"가 무대에서 뭘 뜻하는지 한 줄</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 24장 ═══════════════════════ -->
+<section class="chapter" id="ch24">
+<h1><span class="chno">24장 · 엔진 읽기</span>다섯 문제: 돌리기 전에 맞히기</h1>
+
+<p class="goal"><b>목표</b> 측정을 이해했다는 시험은 하나다. <b>돌리기 전에 결과를 맞히는가.</b> 아래 다섯 문제를 코드 안 보고 답할 수 있으면 "설명 관문"을 통과한 것이다. 답은 바로 아래 붙였다. 먼저 쓰고 넘기라.</p>
+
+<h2>왜 이 시험인가</h2>
+<p>19~23장을 읽었다고 이해한 건 아니에요. 읽은 건 "따라갈 수 있다"이고, 이해한 건 "안 보고 예측할 수 있다"예요. 둘 사이가 설명 관문이에요. 심사위원도 면접관도 이 다섯 문제와 똑같은 종류의 걸 물어요. "그럼 이런 관객이 오면 숫자가 어떻게 나오죠?" 그때 코드를 열면 늦어요.</p>
+<p>다섯 문제는 각각 식의 다른 자리를 찔러요. 1번은 전체, 2번은 형태, 3번은 셋 규칙, 4번은 회피, 5번은 오염 알파. 순서대로 푸세요.</p>
+
+<hr>
+
+<h2>문제 1 · 관객이 모든 장면에서 작가와 똑같이 느꼈다</h2>
+<p>관객이 장면 다섯 개를 봤고, 다섯 장면 모두 작가가 심어 둔 원본 감정과 <em>완전히 똑같은</em> 감정을 입력했어요. 회피는 없었어요. 정렬도, 등급, 전이 패턴은?</p>
+<div class="answer-space"></div>
+
+<div class="ans" style="page-break-inside:auto"><div class="q">풀이</div>
+<p>장면마다 코사인은 똑같은 화살표끼리니까 전부 1. 수준 = 1의 평균 = <b>1</b>.</p>
+<p>움직임도 똑같아요. 관객 목록과 원본 목록이 같은 묶음들이니 빼면 같은 움직임이 나오고, 같은 걸 코사인하면 1. 형태 = <b>1</b>. 장면 다섯이라 셋 규칙은 안 걸려요.</p>
+<p>회피 없음 → 1.</p>
+<p>정렬도 = 1 × 1 × 1 = <b>1.0</b>. 등급: 고착 검사부터 하는데, 다섯 장면 감정이 서로 다르면(보통 그렇죠) 최근 셋 코사인이 0.85를 안 넘으니 FIXATED 아님. 0.50 이상이니 <b>HIGH</b>. 패턴: FIXATED 아니고, 형태 1이라 displacement 아니고, HIGH니까 <b>echo_follow</b>.</p>
+<p>단, 함정 하나. 작가 원본 다섯 장면이 <em>전부 비슷한 감정</em>이었다면(예: 다섯 장면 다 슬픔), 관객이 그걸 그대로 따라 느낀 것만으로 최근 셋 코사인이 0.85를 넘어 <b>FIXATED</b>가 돼요. 정렬도는 1인데 등급은 FIXATED, 패턴은 fixation. "완벽히 따라갔는데 갇혔다"가 나오는 거예요. 이게 7월 28일 페르소나 리트머스에서 "자 A는 병자"라고 한 자리예요. 고착 검사가 작가 쪽 궤적이 단조로운 걸 관객 탓으로 돌려요. 이 함정을 알면 문제 1은 만점이에요.</p></div>
+
+<h2>문제 2 · 장면마다 감정은 비슷한데, 움직인 방향이 반대</h2>
+<p>장면 셋. 작가는 장면 1에서 2로 갈 때 조금 더 무서워졌다가 3에서 돌아왔어요. 관객은 1에서 2로 갈 때 조금 <em>덜</em> 무서워졌다가 3에서 돌아왔어요. 장면마다 감정 자체는 거의 같아요. 두 칸짜리로 적으면:</p>
+<table>
+  <tr><th></th><th>장면 1</th><th>장면 2</th><th>장면 3</th></tr>
+  <tr><td>작가</td><td>{ fear 0.5, joy 0.5 }</td><td>{ fear 0.6, joy 0.4 }</td><td>{ fear 0.5, joy 0.5 }</td></tr>
+  <tr><td>관객</td><td>{ fear 0.5, joy 0.5 }</td><td>{ fear 0.4, joy 0.6 }</td><td>{ fear 0.5, joy 0.5 }</td></tr>
+</table>
+<p>수준, 형태, 정렬도, 패턴은? 그리고 "순서만 다르게 봤다면" 뭐가 달라집니까?</p>
+<div class="answer-space"></div>
+
+<div class="ans" style="page-break-inside:auto"><div class="q">풀이</div>
+<p>장면 점수: 1번 똑같으니 1. 2번은 { 0.6, 0.4 }와 { 0.4, 0.6 }의 코사인 = 0.48 ÷ 0.52 = 0.92. 3번 1. 수준 = (1 + 0.92 + 1) ÷ 3 = <b>0.97</b>. 높아요.</p>
+<p>움직임: 작가는 { +0.1, −0.1 } 다음 { −0.1, +0.1 }. 관객은 { −0.1, +0.1 } 다음 { +0.1, −0.1 }. 한 줄로 펴면 [0.1, −0.1, −0.1, 0.1]과 [−0.1, 0.1, 0.1, −0.1]. 칸마다 부호가 정반대. 곱해서 더하면 −0.04, 길이 둘 다 0.2, 나누면 <b>−1</b>. 완전히 반대. 깎으면 형태 = <b>0</b>.</p>
+<p>정렬도 = 0.97 × 0 × 1 = <b>0</b>. 수준이 아무리 높아도 곱이니까 0이에요. 이게 22장 "왜 곱인가"의 답이에요. 더했으면 0.49쯤 나와서 "그럭저럭 비슷"이 됐을 거예요.</p>
+<p>패턴: FIXATED 아님. 수준 0.97 ≥ 0.5이고 형태 0 &lt; 0.3이고 장면 셋 → 함수 둘째 갈림길에서 <b>displacement</b>. 등급은 정렬도 0이니 LOW인데, displacement 검사가 등급 검사보다 먼저라 LOW 쪽 갈림길까지 안 가요.</p>
+<p>"순서만 다르게"는 아무것도 안 바꿔요. 관객이 3 → 1 → 2로 봤으면 원본도 3 → 1 → 2로 재배열해서 비교하니까요. 떨어지는 건 순서가 아니라 <em>그 순서로 봤을 때의 움직임 방향</em>이에요. 21장 끝에서 말한 그 자리예요.</p></div>
+
+<h2>문제 3 · 장면이 두 개뿐</h2>
+<p>관객이 장면 둘만 보고 나갔어요. 수준은 0.6이었어요. 형태는? 정렬도는? <code>debug.shape_active</code>는 뭐라고 찍힙니까? 왜 그렇게 설계했습니까?</p>
+<div class="answer-space"></div>
+
+<div class="ans" style="page-break-inside:auto"><div class="q">풀이</div>
+<p>형태 = <b>1.0</b>, <code>shape_active: false</code>. 정렬도 = 0.6 × 1 × 1 = <b>0.6</b>, 즉 수준 그대로.</p>
+<p>왜냐. 장면 둘이면 움직임이 하나뿐이에요. 움직임 하나로는 "방향이 비슷한가"를 물을 수 없어요. 비교 대상이 둘은 있어야 하니까. 그래서 셋 미만이면 "형태 정보 없음"이고, 그걸 1로 놓으면 식이 정렬도 = 수준이 되어 갈림길 없이 한 식으로 다 덮여요(§9.3). 1 대신 0을 넣었으면 초반 정렬도가 항상 0이 됐을 거고, 0.5를 넣었으면 "형태가 반쯤 비슷하다"는 거짓말이 됐을 거예요. 1은 "곱해도 아무 영향 없음"이라 정직해요.</p>
+<p>이건 22장 표에서 유일하게 "정한 값"이 아니라 "셀 수 있는 사실"이었던 자리예요. 누가 "왜 셋이냐"고 물으면 "움직임 둘을 비교하려면 점이 셋 필요하니까요"로 끝.</p></div>
+
+<h2>문제 4 · 관객도 회피했고 작가도 회피했다</h2>
+<p>어떤 장면에서 작가가 감정을 안 적고 비워 뒀어요(작가 쪽 회피). 관객도 그 장면에서 회피를 골랐어요. 회피 항은? 어긋남 종류는?</p>
+<div class="answer-space"></div>
+
+<div class="ans" style="page-break-inside:auto"><div class="q">풀이</div>
+<p>회피 항 = <b>1.0</b>, 벌점 없음. 81번째 줄이 "관객 회피 <em>그리고</em> 작가 <em>비</em>회피"일 때만 0.7이니까, 둘 다 회피면 조건이 안 맞아요.</p>
+<p>어긋남 종류: 127번째 줄이 "한쪽만 회피"(<code>!!a !== !!b</code>)일 때 회피 어긋남인데, 둘 다 참이라 같음 → 통과. 그다음 탓 · 대상 · 감정 검사로 내려가요. 둘 다 감정이 비어 있으면 코사인은 길이 0이라 0이 나오고(20장 25번째 줄), 0 &lt; 0.5라 <b>감정 어긋남</b>이 찍힐 수 있어요. 이건 좀 이상하죠. "둘 다 아무 말 안 했는데 감정이 어긋났다"니까. 실제 코드가 그렇게 돼 있어요. 이 자리를 발견했으면 당신은 이미 코드를 "읽어서 검사"한 거예요. 고칠지 말지는 별개 결정이고(죽은 레버일 수도 있어요, 7월 2일 교훈), 지금은 "코드는 이렇게 돈다"를 아는 게 목표예요.</p></div>
+
+<h2>문제 5 · 오염 알파를 0.1에서 0.5로 올리면</h2>
+<p>23장의 "같은 쪽으로 어긋나는 관객, 신호 0.6"이 계속 온다고 할 때, α = 0.5면 몇 명째에 1단계(표류 0.35)가 켜집니까? 반감기는? 무대에서는 뭐가 달라집니까?</p>
+<div class="answer-space"></div>
+
+<div class="ans" style="page-break-inside:auto"><div class="q">풀이</div>
+<p>식이 "새 값 50% + 옛 값 50%"가 돼요. 1회차: 0.6 × 0.5 + 0 = 0.30. 2회차: 0.6 × 0.5 + 0.30 × 0.5 = 0.30 + 0.15 = <b>0.45</b>. 두 명째에 0.35를 넘어요. α 0.1일 땐 아홉 명이었죠.</p>
+<p>반감기: 0.5를 몇 번 곱해야 0.5가 되나 → <b>1번</b>. 옛 값의 힘이 한 회차 만에 절반으로 줄어요. α 0.1일 땐 6.6번.</p>
+<p>무대에서: 한두 사람의 반응이 기억 전체의 단계를 뒤집어요. 어긋나는 사람 둘 오면 1단계 글로 바뀌고, 다음에 맞는 사람 하나 오면 도로 안정으로 돌아와요. 들썩거려요. "여러 사람이 같은 쪽으로 밀어야 기운다"는 설계 의도가 없어져요. 대신 "2 · 3단계 글이 한 번도 안 보인다"는 지금 문제는 풀려요. 그러니 이건 좋다 나쁘다가 아니라 <b>어느 쪽 연출을 원하느냐</b>예요. 그게 23장 첫 문단, "오염은 연출 제어"의 뜻이에요. 10월 튜닝이 이 손잡이를 돌릴 거고, 돌리기 전에 "돌리면 이렇게 된다"를 지금처럼 손으로 먼저 굴려 보는 게 순서예요.</p></div>
+
+<hr>
+
+<h2>여기까지 왔으면</h2>
+<p>다섯 문제를 답 안 보고 맞혔다면 이런 말을 할 수 있어요.</p>
+<ul>
+  <li>정렬도는 수준 × 형태 × 회피이고, 수준은 장면별 코사인 평균, 형태는 움직임 코사인, 회피는 0.7 또는 1.</li>
+  <li>두 항을 나눈 건 Butler, 곱한 건 보상 차단, 움직임을 보는 건 이유를 재지 않기 위해서.</li>
+  <li>0.7 · 0.85 · 0.50 · 0.5는 정한 값이고, 셋 규칙만 필연.</li>
+  <li>오염은 측정이 아니라 연출 제어, 새 값 10% 옛 값 90%, 아홉 명이 밀어야 기운다.</li>
+  <li>문서와 코드가 다른 자리를 두 군데 알고 있고, 둘이 다르면 코드가 진실이다.</li>
+</ul>
+<p>이게 "내 엔진을 내가 설명할 수 있다"의 전부예요. 2년이 아니라 이 여섯 장이었어요. 남은 건 이걸 <em>남 앞에서 5분 안에</em> 말하는 연습이고, 그건 책으로 안 돼요. 22장 끝 문단을 소리 내서 읽는 걸로 시작하세요.</p>
+<p>다음은 23장에서 뼈대만 본 3축과, 이 책이 아예 안 다룬 지층 침식(977줄)이에요. 둘 다 10월 튜닝 뒤에 손잡이 값이 자리 잡으면 그때 같은 방식으로 한 줄씩 보면 돼요. 지금 보면 숫자가 바뀔 걸 외우게 되니까요.</p>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 다섯 문제 중 틀린 것과 왜 틀렸는지</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 부록 A ═══════════════════════ -->
+<section class="chapter" id="apA">
+<h1><span class="chno">부록 A</span>기호 사전</h1>
+<p>코드에서 만나는 기호를 <b>보이는 순서</b>가 아니라 <b>헷갈리는 짝</b>끼리 묶었습니다. 오른쪽 끝은 자세히 다룬 장.</p>
+<table class="dict">
+  <tr><th style="width:9em">기호</th><th>뜻</th><th style="width:4em">장</th></tr>
+  <tr><td>//</td><td>한 줄 메모. 컴퓨터는 무시</td><td>3</td></tr>
+  <tr><td>/* … */</td><td>여러 줄 메모</td><td>3</td></tr>
+  <tr><td>/** … */</td><td>함수 설명 메모(안에 @param 재료 설명, @returns 답 설명)</td><td>3</td></tr>
+  <tr><td>--</td><td>SQL 의 한 줄 메모</td><td>16</td></tr>
+  <tr><td>&lt;!-- … --&gt;</td><td>html 의 메모</td><td>2</td></tr>
+  <tr><td>=</td><td>담아라 (오른쪽을 왼쪽 상자에)</td><td>3</td></tr>
+  <tr><td>===  !==</td><td>같은가 · 다른가 (질문)</td><td>4</td></tr>
+  <tr><td>==  !=</td><td>대충 같은가 · 다른가 (옛 방식). <code>x != null</code> = 비어 있지 않다</td><td>4</td></tr>
+  <tr><td>+=  -=  *=</td><td>그만큼 늘려 · 줄여 · 곱해 다시 담기</td><td>8</td></tr>
+  <tr><td>++   --</td><td>1 늘리기 · 1 줄이기 (반복 번호에서)</td><td>7</td></tr>
+  <tr><td>&lt;  &gt;  &lt;=  &gt;=</td><td>작다 · 크다 · 작거나 같다 · 크거나 같다</td><td>4</td></tr>
+  <tr><td>&&  ||  !</td><td>그리고 · 또는 · 아니다</td><td>4</td></tr>
+  <tr><td>||  (값 자리에서)</td><td>왼쪽이 비면 오른쪽 (기본값)</td><td>8</td></tr>
+  <tr><td>??</td><td>왼쪽이 정말 없을 때만 오른쪽</td><td>8</td></tr>
+  <tr><td>?.</td><td>있으면 점, 없으면 조용히 빔 (안전한 점)</td><td>8</td></tr>
+  <tr><td>? :</td><td>한 줄 갈림길 (질문 ? 맞으면 : 아니면)</td><td>4</td></tr>
+  <tr><td>.</td><td>"~의" (묶음에서 한 칸 꺼내기 · 함수 붙이기)</td><td>8</td></tr>
+  <tr><td>...</td><td>펼치기 (묶음 · 목록의 내용을 전부 쏟기)</td><td>10</td></tr>
+  <tr><td>=&gt;</td><td>화살표 함수 (재료 =&gt; 답)</td><td>5</td></tr>
+  <tr><td>( )</td><td>재료 넣는 괄호. 이름 뒤에 붙으면 "돌려라"(호출)</td><td>5 · 9</td></tr>
+  <tr><td>[ ]</td><td>목록. <code>목록[0]</code> 은 첫 항목</td><td>3</td></tr>
+  <tr><td>{ }  (쌍점 있음)</td><td>이름표 달린 묶음 (객체)</td><td>10</td></tr>
+  <tr><td>{ }  (쌍점 없음)</td><td>코드 덩어리 (함수 몸통 · if 몸통 · 반복 몸통)</td><td>5 · 6</td></tr>
+  <tr><td>{ }  (= 왼쪽)</td><td>묶음 풀기 (const { a, b } = 묶음)</td><td>10</td></tr>
+  <tr><td>" "  ' '</td><td>글자 그대로</td><td>3</td></tr>
+  <tr><td>` `  ${ }</td><td>글자 속에 값 끼우기</td><td>8</td></tr>
+  <tr><td>;</td><td>문장 끝 (없어도 대개 됨)</td><td>—</td></tr>
+  <tr><td>,</td><td>항목 나누기 (목록 · 묶음 · 재료)</td><td>3</td></tr>
+  <tr><td>:</td><td>묶음의 이름표와 값 사이 · css 의 속성과 값 사이 · TypeScript 의 종류 표시</td><td>10 · 2 · 16</td></tr>
+  <tr><td>_이름</td><td>안에서만 쓰는 것 (관례)</td><td>8</td></tr>
+  <tr><td>대문자_이름</td><td>안 바뀌는 설정값 (관례)</td><td>3</td></tr>
+  <tr><td>0x…</td><td>16진수 숫자. 색에 씀 (css 의 # 과 같음)</td><td>17</td></tr>
+  <tr><td>/…/</td><td>정규식 (글자 무늬 찾기). <code>/[가-힣]/.test(t)</code> = 한글이 있나</td><td>5</td></tr>
+  <tr><td>#이름  (css)</td><td>id 가 이름인 상자에게</td><td>2</td></tr>
+  <tr><td>.이름  (css)</td><td>class 에 이름이 있는 상자에게</td><td>2</td></tr>
+  <tr><td>--이름  (css)</td><td>색 · 값 이름표. <code>var(--이름)</code> 으로 꺼냄</td><td>2</td></tr>
+  <tr><td>&lt;태그&gt; … &lt;/태그&gt;</td><td>html 상자 열고 닫기</td><td>2</td></tr>
+  <tr><td>?v=260909a</td><td>캐시버스터. 파일 고치면 올린다</td><td>12</td></tr>
+  <tr><td>?memory=…&lang=ko</td><td>주소창 값. <code>urlParams.get('lang')</code> 으로 읽음</td><td>6</td></tr>
+  <tr><td>@@ -a,b +c,d @@</td><td>비교표 덩어리 표시</td><td>15</td></tr>
+  <tr><td>-  +  (비교표)</td><td>지운 줄 · 넣은 줄</td><td>15</td></tr>
+  <tr><td>./  ../</td><td>같은 폴더 · 한 폴더 위</td><td>9</td></tr>
+</table>
+</section>
+
+
+<!-- ═══════════════════════ 부록 B ═══════════════════════ -->
+<section class="chapter" id="apB">
+<h1><span class="chno">부록 B</span>코드 영어 단어장</h1>
+<p>이 프로젝트 코드에 실제로 자주 나오는 단어만 골랐습니다. 동사부터 외우면 함수 이름의 절반이 읽힙니다.</p>
+
+<h2>동사 (함수 이름 앞에 붙는 것)</h2>
+<table class="words">
+  <tr><th>단어</th><th>뜻</th><th>실제 이름</th></tr>
+  <tr><td>get</td><td>얻어 오다</td><td>getSupabaseClient, getState, getBucket</td></tr>
+  <tr><td>set</td><td>정하다 · 바꾸다</td><td>setState, setLanguage, setEnabled</td></tr>
+  <tr><td>fetch / load</td><td>서버 · 파일에서 가져오다</td><td>fetchMemories, loadMemoriesFromSupabase</td></tr>
+  <tr><td>save / record / insert</td><td>저장하다</td><td>savePlay, record-erosion, saveNote</td></tr>
+  <tr><td>render / draw / show / hide</td><td>그리다 · 보이다 · 숨기다</td><td>_renderShelf, showEndScreen, hideAllScreens</td></tr>
+  <tr><td>init / setup / build</td><td>준비하다 · 짓다</td><td>initApp, _setupAuthListener, buildDoor, buildBase</td></tr>
+  <tr><td>detect / check / is / has</td><td>감지 · 확인 (예/아니오)</td><td>detectCrisis, checkFixated, isEnabled, hasPast</td></tr>
+  <tr><td>calculate / compute</td><td>계산하다</td><td>calculateStep, computeFields</td></tr>
+  <tr><td>pick / select / filter / sort</td><td>고르다 · 거르다 · 정렬하다</td><td>pickTopMemory, filterVisibleMemories, sortMemories</td></tr>
+  <tr><td>apply / update / merge</td><td>적용 · 갱신 · 합치기</td><td>applyVisitorErosion, updateContamination</td></tr>
+  <tr><td>enter / exit / start / stop / end</td><td>들어가다 · 나가다 · 시작 · 멈춤 · 끝</td><td>enterArchive, exitOpeningToMenu, startFlow, stopSound, endConfession</td></tr>
+  <tr><td>bind / handle / on</td><td>사건을 붙이다 · 다루다</td><td>bindEvents, handleLogin, onAuthStateChange</td></tr>
+  <tr><td>add / remove / push / clear</td><td>더하다 · 빼다 · 끝에 넣다 · 비우다</td><td>classList.add, modal.remove, arr.push, clearInterval</td></tr>
+  <tr><td>wait / resolve</td><td>기다리다 · (약속이) 이뤄지다</td><td>waitForSupabaseClient, resolve()</td></tr>
+  <tr><td>serialize / parse</td><td>글자로 만들다 · 글자를 풀다</td><td>serializeLayer, JSON.parse</td></tr>
+  <tr><td>rebuild / replay / reset / restart</td><td>다시 짓다 · 다시 돌리다 · 되돌리다</td><td>rebuildFromPlays, replayFromPlays, resetSafetySession</td></tr>
+</table>
+
+<h2>상태와 자료</h2>
+<table class="words">
+  <tr><th>단어</th><th>뜻</th><th>실제 이름</th></tr>
+  <tr><td>state / store</td><td>상태 · 상태 창고</td><td>appStore.getState()</td></tr>
+  <tr><td>current / prev / next / last</td><td>현재 · 이전 · 다음 · 마지막</td><td>currentScene, prevState, next.cont_stage, lastEngineResult</td></tr>
+  <tr><td>enabled / active / visible / hidden / ready</td><td>켜짐 · 활성 · 보임 · 숨김 · 준비됨</td><td>_enabled, 'active', 'visible', 'hidden', 'ready'</td></tr>
+  <tr><td>data / result / error / count / index / length</td><td>자료 · 결과 · 오류 · 개수 · 번호 · 길이</td><td>{ data, error }, scenes.length, currentSceneIndex</td></tr>
+  <tr><td>key / value / id / code / name / type</td><td>이름표 · 값 · 번호 · 코드 · 이름 · 종류</td><td>FLAG_KEY, memory.id, memory.code, scene_type</td></tr>
+  <tr><td>list / array / map / dist / vector</td><td>목록 · 배열 · 대응표 · 분포 · 벡터</td><td>memoriesDataArray, EMOTION_ANCHOR_MAP, emotion_dist, userVector</td></tr>
+  <tr><td>null / undefined / NaN / empty</td><td>없음 · 정해지지 않음 · 숫자 아님 · 빔</td><td>currentMode: null, isNaN(master), _createEmptyResult</td></tr>
+  <tr><td>true / false</td><td>참 · 거짓</td><td>is_public: true</td></tr>
+  <tr><td>default / fallback / option / flag</td><td>기본값 · 대비책 · 선택 · 깃발(켜고 끄기)</td><td>default '{}', pickFallbackString, opt, FLAG_KEY</td></tr>
+  <tr><td>threshold / scale / radius / weight / delta</td><td>문턱값 · 배율 · 반경 · 무게 · 변화량</td><td>FIXATION_THRESHOLD, HEIGHT_SCALE, PHYS.radius, w, delta_conv</td></tr>
+</table>
+
+<h2>TEM 의 사물</h2>
+<table class="words">
+  <tr><th>단어</th><th>뜻</th><th>비고</th></tr>
+  <tr><td>memory / scene / play / run</td><td>기억 · 씬 · 회차 · 회차(같은 뜻)</td><td>표 이름</td></tr>
+  <tr><td>user / session / auth / anon</td><td>사용자 · 세션 · 인증 · 익명</td><td>auth.uid(), to anon</td></tr>
+  <tr><td>client / server / request / response</td><td>손님 쪽(브라우저) · 서버 · 요청 · 응답</td><td>supabaseClient, RequestBody</td></tr>
+  <tr><td>event / listener / handler</td><td>사건 · 듣는 것 · 다루는 함수</td><td>addEventListener</td></tr>
+  <tr><td>element / node / document / window / canvas</td><td>상자 · 마디 · 문서 · 창 · 그림판</td><td>DOM</td></tr>
+  <tr><td>frame / tick / loop / raf</td><td>프레임 · 한 박 · 반복 · requestAnimationFrame</td><td>17장</td></tr>
+  <tr><td>terrain / layer / strata / erosion / uplift</td><td>지형 · 층 · 지층 · 침식 · 융기</td><td>tem_variant_strata</td></tr>
+  <tr><td>anchor / vector / emotion / valence / arousal</td><td>닻(기준 감정) · 벡터 · 감정 · 쾌/불쾌 · 각성</td><td>VAD 의 V · A</td></tr>
+  <tr><td>alignment / bucket / pattern / mismatch</td><td>정렬도 · 구간 · 전이 패턴 · 어긋남</td><td>별이엔진 출력</td></tr>
+  <tr><td>drift / fixation / contamination / stage</td><td>표류 · 고착 · 오염 · 단계</td><td>ContaminationTracker</td></tr>
+  <tr><td>ghost / variant / utterance / turn / seal</td><td>유령 · 변주 · 발화 · 턴 · 봉인</td><td>대화 · 이본</td></tr>
+  <tr><td>fog / pin / door / shelf / stain</td><td>안개 · 핀 · 문 · 서가 · 얼룩</td><td>상영 연출</td></tr>
+</table>
+
+<h2>오류 문장</h2>
+<table class="words">
+  <tr><th>단어</th><th>뜻</th></tr>
+  <tr><td>Uncaught</td><td>아무도 안 잡은 (멈춤)</td></tr>
+  <tr><td>Cannot read properties of null</td><td>없는 것에 점을 찍음</td></tr>
+  <tr><td>is not defined</td><td>그런 이름 없음</td></tr>
+  <tr><td>is not a function</td><td>함수가 아닌데 ( ) 붙임</td></tr>
+  <tr><td>already been declared</td><td>같은 이름 두 번</td></tr>
+  <tr><td>Unexpected token</td><td>문법 깨짐 (괄호 · 따옴표)</td></tr>
+  <tr><td>Failed to load resource</td><td>파일 못 받음 (Network 보라)</td></tr>
+  <tr><td>permission denied</td><td>권한 없음 (403 · RLS)</td></tr>
+  <tr><td>timeout</td><td>기다리다 포기</td></tr>
+  <tr><td>not found</td><td>없음 (404)</td></tr>
+</table>
+</section>
+
+
+<!-- ═══════════════════════ 부록 C ═══════════════════════ -->
+<section class="chapter" id="apC">
+<h1><span class="chno">부록 C</span>자주 보는 모양 카드</h1>
+<p>이 프로젝트에서 반복해서 나오는 모양 열 가지. 모양이 보이면 속을 안 읽어도 "무슨 종류의 일"인지 압니다.</p>
+
+<h3>카드 1 · 문지기</h3>
+<div class="codebox"><pre class="code nofile">const el = document.getElementById('x');
+if (!el) return;</pre></div>
+<p>없으면 나간다. 함수 첫머리. (4장)</p>
+
+<h3>카드 2 · 찾아서 종류표 바꾸기</h3>
+<div class="codebox"><pre class="code nofile">const s = document.getElementById('introScreen');
+if (s) { s.classList.remove('hidden'); s.classList.add('visible'); }</pre></div>
+<p>화면 전환의 거의 전부. css 가 종류표를 보고 옷을 갈아입힘. (2 · 13장)</p>
+
+<h3>카드 3 · 표 읽기</h3>
+<div class="codebox"><pre class="code nofile">const { data, error } = await sb.from('scenes').select('*').eq('memory_id', id).order('scene_order');
+if (error) { console.error('…', error); return []; }
+return data || [];</pre></div>
+<p>기다려서 · 묶음 풀고 · 오류면 빈 목록. (11 · 16장)</p>
+
+<h3>카드 4 · 저장하고 답 받기</h3>
+<div class="codebox"><pre class="code nofile">const { data, error } = await sb.from('plays').insert(row).select().single();</pre></div>
+<p>await 가 빠지면 저장 안 됨. (11장)</p>
+
+<h3>카드 5 · 반복하며 상자 만들기</h3>
+<div class="codebox"><pre class="code nofile">list.forEach(item =&gt; {
+  const el = document.createElement('div');
+  el.className = '…';
+  el.textContent = item.title;
+  el.addEventListener('click', function () { … });
+  parent.appendChild(el);
+});</pre></div>
+<p>목록 → 카드들. 서가 · 아카이브 · 상담 목록. (7 · 13장)</p>
+
+<h3>카드 6 · 매 프레임 루프</h3>
+<div class="codebox"><pre class="code nofile">function tick() {
+  값 = 값 + 조금;
+  그리기();
+  if (아직) requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);</pre></div>
+<p>모든 애니메이션. (11 · 17장)</p>
+
+<h3>카드 7 · 사건 붙이기</h3>
+<div class="codebox"><pre class="code nofile">대상.addEventListener('click', function (e) {
+  if (조건 아니면) return;
+  e.preventDefault();
+  하는 일;
+});</pre></div>
+<p>사건 → 문지기 → 하는 일. (13장)</p>
+
+<h3>카드 8 · 안전망</h3>
+<div class="codebox"><pre class="code nofile">try { 해 보기; } catch (e) { console.error('[부품] …', e); }
+try { 해 보기; } catch (_) {}     // 조용히 삼킴 — 원인이 숨는 자리</pre></div>
+<p>(14장)</p>
+
+<h3>카드 9 · 마당에 꽂기</h3>
+<div class="codebox"><pre class="code nofile">window.getSupabaseClient = function () { return sb; };
+window._temEnterSceneMode = enterSceneMode;   // 일반 script 에서 쓰게</pre></div>
+<p>방(module) → 마당(window). 메모에 이유. (12장)</p>
+
+<h3>카드 10 · 깃발 켜고 끄기</h3>
+<div class="codebox"><pre class="code nofile">if (/[?&]variant_strata=1/.test(location.search)) on = true;
+else if (/[?&]variant_strata=0/.test(location.search)) on = false;
+try { localStorage.setItem(FLAG_KEY, on ? '1' : '0'); } catch (_) {}</pre></div>
+<p>주소창 <code>?x=1</code> 로 켜고, 브라우저 저장소에 기억. 테스터 모드 · 이본 지층 · 디버그 스위치가 전부 이 모양. (tem_variant_strata.js isEnabled)</p>
+</section>
+
+
+<!-- ═══════════════════════ 부록 D ═══════════════════════ -->
+<section class="chapter" id="apD">
+<h1><span class="chno">부록 D</span>AI에게 시킬 문구 모음</h1>
+<p>그대로 복사해서 쓰세요. 18장 검사 순서 번호를 앞에 달았습니다.</p>
+<table>
+  <tr><th style="width:3em">#</th><th>문구</th></tr>
+  <tr><td>1</td><td>"고친 <b>파일 이름과 함수 이름</b>을 전부 나열해 줘. 함수마다 시작 줄과 끝 줄도."</td></tr>
+  <tr><td>2</td><td>"요약 말고 <b><code>git diff</code> 출력을 그대로</b> 붙여 줘. 덩어리(@@)가 몇 개인지 세고, 각 덩어리가 어느 함수 안인지 적어 줘."</td></tr>
+  <tr><td>2</td><td>"고친 함수를 <b><code>{</code> 부터 <code>}</code> 까지 통째로</b> 붙여 줘. 전과 후 둘 다."</td></tr>
+  <tr><td>3</td><td>"초록 줄을 <b>한 줄씩 한국어로</b> 풀어 줘. 계산 속은 빼고 '무엇을 하는가'만."</td></tr>
+  <tr><td>3</td><td>"이 숫자의 <b>단위</b>가 뭐야? (초 · 밀리초 · 픽셀 · 비율)"</td></tr>
+  <tr><td>4</td><td>"이 기능을 <b>진입점 세 곳</b>(index.html · play-test.html · demoFlow.js)에서 grep 한 결과를 붙여 줘. 빠진 문이 있으면 의도인지 말해 줘."</td></tr>
+  <tr><td>5</td><td>"고친 파일 이름을 전부 grep 해서 <b><code>?v=</code> 대조표</b>를 만들어 줘: 파일 · 나오는 html · 현재 ?v= · 오늘 날짜인지."</td></tr>
+  <tr><td>6</td><td>"화면을 열고 <b>콘솔과 네트워크 탭에 빨간 줄이 0개</b>인 캡처를 붙여 줘. 있으면 종류 · 내용 · 첫 at 줄을 적어 줘."</td></tr>
+  <tr><td>7</td><td>"콘솔에 값 심지 말고 <b>관객 순서 그대로</b>(서가 → 진입 → 걷기 → 대화 → 봉인) 끝까지 밟고, 단계마다 캡처를 붙여 줘. <code>npm run qa</code> 써도 돼."</td></tr>
+  <tr><td>—</td><td>"이 파일이 <b>몇 줄에서 몇 줄</b>로 바뀌었어? 다른 함수도 건드렸어?"</td></tr>
+  <tr><td>—</td><td>"이 열(칸)을 <b>읽는 코드</b>가 있어? grep 해서 <code>=</code> 오른쪽에 나오는 줄만 보여 줘." (죽은 레버 확인)</td></tr>
+  <tr><td>—</td><td>"이거 아무 데서도 안 부르는 것 같은데, <b>고치기 전에</b> 왜 남아 있는지 문서나 메모부터 찾아 줘." (죽은 코드 의도 확인)</td></tr>
+  <tr><td>—</td><td>"이 <code>catch</code>가 <b>삼키는 오류</b>가 뭐야? 콘솔에 남기게 바꾸면 무슨 위험이 있어?"</td></tr>
+  <tr><td>—</td><td>"이 호출 앞에 <b>await 있어?</b> 없으면 의도야?"</td></tr>
+</table>
+</section>
+
+
+<!-- ═══════════════════════ 부록 E ═══════════════════════ -->
+<section class="chapter" id="apE">
+<h1><span class="chno">부록 E</span>미니 시험 정답</h1>
+
+<div class="ans"><div class="q">시험 1</div>
+① <code>js/ui/</code> 는 연출 층. 판단 엔진(<code>js/core/</code>)은 안 바뀜. 단 연출은 엔진의 답을 <em>보여 주는</em> 자리라, "엔진 답을 잘못 보여 줄" 가능성은 있음.
+② 아니오. play-test.html 은 자기 안의 script 와 자기가 부른 js 만 돎. index.js 는 index.html 만 부름. 단 둘이 <em>같이 쓰는</em> 파일(math.js, ByeoriEngine.js, safety.js)은 양쪽에서 돎.
+③ <code>supabase/migrations/</code>. 날짜시각_이름.sql 파일이 새로 생겨야 함.</div>
+
+<div class="ans"><div class="q">시험 2</div>
+① css(옷). ② 둘 다 가진 상자. 점 사이에 공백이 없으면 "그리고"(둘 다), 공백이 있으면(<code>.a .b</code>) "a 안에 든 b". ③ 자바스크립트(신경)가 html(뼈대)의 상자를 찾는 동작.</div>
+
+<div class="ans"><div class="q">시험 3</div>
+① <code>PHYS</code>. ② 묶음. 안에 <code>이름: 값</code>(쌍점)이 있음. ③ 9칸(inertia, capacity, minSlope, erode, deposit, evaporate, gravity, maxSteps, radius). 전부 숫자. ④ 안 바뀌는 설정값이라는 관례.</div>
+
+<div class="ans"><div class="q">시험 4</div>
+① "지난 시간이 최대 대기 시간(10초) 이상이면" → 콘솔에 빨간 메모를 남기고 오류를 던져 멈춤(연결 포기). ② <code>start "" "주소"</code> (윈도우의 열기 명령). ③ 두 질문 다 아니오라서 맨 마지막 <code>xdg-open "주소"</code>.</div>
+
+<div class="ans"><div class="q">시험 5</div>
+① <code>seedFromString</code>, 재료 1개(<code>s</code>), 몸통은 1번째 줄 <code>{</code>부터 6번째 줄 <code>}</code>. ② 예. 숫자(<code>h</code>가 5381 이라는 숫자로 시작해 계속 숫자 계산). ③ <code>'tem'</code>. ④ 이름(seed From String = 글자에서 씨앗을), 3번째 줄에서 재료를 <code>String()</code>으로 글자 취급, 답 <code>h</code>가 숫자. 세 군데가 다 말해 줌.</div>
+
+<div class="ans"><div class="q">시험 6</div>
+① "주소창의 strata 값이 '1' 이고, memory 값이 있으면". ② 아니오. 바깥 몸통이 안 열리면 안의 정의도 생기지 않음. ③ 아니오. <code>return</code>으로 initApp 이 거기서 끝남.</div>
+
+<div class="ans"><div class="q">시험 7</div>
+① 7 × 7 = 49번 (dz 7가지 × dx 7가지). 그중 원 밖은 <code>continue</code>로 건너뜀. ② <code>listeners</code> 목록을, 하나씩 <code>listener</code>라 부르며, 각각을 (state, prevState) 재료로 돌림. 하나가 실패해도 <code>catch</code>가 받아 기록만 하고 다음으로 가니 나머지는 돎. ③ "이름표 세 개(matchingSelection, modeSelection, sessionSetup)의 상자를 차례로 찾아, 있으면 숨긴다."</div>
+
+<div class="ans"><div class="q">시험 8</div>
+① "next(다음 상태)의 평생 표류 합계를 driftSignal 만큼 늘려 담는다." ② <code>game</code>(회차 상태)의 지형 애니메이션 요청 번호. <code>requestAnimationFrame</code>이 돌려주는 번호가 담김(나중에 취소할 때 씀). ③ <code>(untitled)</code>. ④ 조용히 빔(<code>?.</code>가 두 번이라 어느 단계에서 없어도 멈추지 않음).</div>
+
+<div class="ans"><div class="q">시험 9</div>
+① 7개. ② testerMode.js = js/app (같은 폴더, <code>./</code>), SeekerMatchEngine.js = js/core (한 칸 위로 가서 core, <code>../core/</code>). ③ 빌려 온 것. <code>js/app/confession.js</code>. ④ 호출(이름 뒤에 바로 괄호).</div>
+
+<div class="ans"><div class="q">시험 10</div>
+① 목록. 2개. ② 5칸(text, entryLine, vad, x, y). <code>vad</code>가 안에 또 묶음(v, a, d). ③ <code>MONOLOGUES[1].vad.a</code> → 0.7. ④ 묶음 하나. 칸 2개(block, behavior). 함수에 "설정 묶음"을 재료로 넘기는 흔한 모양.</div>
+
+<div class="ans"><div class="q">시험 11</div>
+① "1.5초 기다린다(그동안 브라우저는 다른 일을 할 수 있음)." ② 브라우저 안에서 저 함수를 돌려 memories 표에서 id 한 개를 읽어 오고, 그 답이 올 때까지 기다렸다가 memId 에 담음. ③ 0.2초 뒤에 <code>_waitForStrata</code>를 부름. 그 줄이 <code>_waitForStrata</code> 안에 있으면 "준비될 때까지 0.2초마다 자기를 다시 부르는" 반복(실제로 그렇게 되어 있음, index.js 147~158).</div>
+
+<div class="ans"><div class="q">시험 12</div>
+① 방(module) 안에서 import 한 <code>QuiltDemoState</code>를 마당(window)에 꽂아, 일반 script 인 발자국 · 모의 시험 코드도 쓰게 함. ② 문제 없음(둘 다 260810a). 한쪽이 260714 였다면 그 문으로 들어온 관객은 옛 파일을 받아, 8월 10일 이후 고친 것(근접 문구 · 자막 확대)이 안 보임. ③ safety.js 맨 끝에 <code>if (typeof window !== 'undefined') { window.… = { detectCrisis, … } }</code> 모양으로 마당에 묶음을 꽂아 두었기 때문. 어떤 이름으로 꽂았는지는 파일 끝(약 269~283번째 줄)을 열면 보임. 15장의 safety.js 비교표 둘째 덩어리가 바로 그 자리.</div>
+
+<div class="ans"><div class="q">시험 13</div>
+① 어두운 배경(modal 상자 자체)을 눌렀을 때만(<code>e.target === modal</code>). 창 안의 글을 누르면 target 이 안쪽 상자라 안 닫힘. ② "종류표 footer 인 첫 상자를 찾아, 있으면 visible 을 떼어 숨긴다." <code>if (footer)</code>가 없으면 그 상자가 없는 화면에서 <code>null.classList</code> 가 되어 TypeError 로 멈춤. ③ 대상 = 소리(<code>audio</code>), 사건 = 재생 위치가 바뀔 때(<code>timeupdate</code>). 재생 중 계속(초에 몇 번씩) 일어남. 끝나기 직전 소리를 줄이는 데 씀.</div>
+
+<div class="ans"><div class="q">시험 14</div>
+① 인증 부품(<code>[Auth]</code>)이 "로그인 상태가 바뀌었다(SIGNED_IN), 이 사용자로"라고 알림. 정상 기록. ② <code>fetchScenes</code>의 <code>if (error)</code> 갈래(4장 ③의 두 번째 문지기). 데이터베이스가 scenes 표 읽기를 권한 거부(42501). 함수가 빈 목록을 돌려주니 화면에 씬이 하나도 안 뜸. ③ 후보: 경로 · 파일 이름 오타, 파일이 옮겨졌거나 지워짐. 아닌 원인: <code>?v=</code> 숫자. 서버는 물음표 뒤를 무시하므로 캐시버스터 값이 틀려도 404 는 안 남(304 나 옛 파일 문제는 나도).</div>
+
+<div class="ans"><div class="q">시험 15</div>
+① <code>loadMemoriesFromSupabase</code> 안. 덩어리 1개. ② 전에는 합친 목록(merged)을 그대로 상태에 넣음. 지금은 "보이는 기억만 거르는" 함수를 필요할 때 꺼내와, 현재 사용자 번호를 구한 뒤, 걸러진 목록을 상태에 넣음(v4 로 기록된 씨앗은 기록자 본인에게만 보이게). ③ 알 수 있는 것: 44줄 늘고 0줄 줄어 "추가만" 했다. 알 수 없는 것: 어느 함수에, 무슨 일을 하는 코드인지. 비교표를 봐야 함.</div>
+
+<div class="ans"><div class="q">시험 16</div>
+① <code>trajectory_bridges</code> 표에 <code>contact_utterance</code>(글) 열과 <code>contact_turn</code>(정수) 열을 더함. 이미 있으면 그 열은 건너뜀(오류 없음). ② "plays 표에 playData 묶음을 새 행으로 넣고, 넣은 그 행을 돌려받되 하나만." ③ 아니오. 정책이 <code>auth.uid() = recipient_id</code>(로그인한 사람 = 받는 사람)일 때만 읽기 허용이므로, 보낸 사람은 못 읽음(보낸 사람용 정책이 따로 없는 한).</div>
+
+<div class="ans"><div class="q">시험 17</div>
+① 가로 0.15 · 높이 3.2 · 깊이 0.15 인 상자 모양에, 나무색 재질(frameMat)로, 오른쪽 0.7 · 위 1.6 · 앞뒤 0 에 놓음. 왼쪽 기둥과 다른 점은 x 가 -0.7 이 아니라 0.7. ② <code>--accent-memory: #c4a882</code>. 기억의 금색. ③ <code>requestAnimationFrame</code>. (짧게 <code>Raf</code> 나 <code>tick</code> 도 단서.) ④ 물체마다 <code>o.userData._exitDoor</code> 가 참인지.</div>
+
+<div class="ans"><div class="q">시험 18 (예시)</div>
+① 다섯 질문 예: "어느 파일 어느 함수야?"(1 · 5장) / "git diff 그대로 붙여 줘, @@ 몇 개야?"(15장) / "초록 줄 한 줄씩 한국어로"(4 · 7장) / "오염 계산은 index.html 쪽 상영에서도 쓰이는데, 세 문 grep 결과는?"(12장) / "ContaminationTracker.js 의 ?v= 올렸어? index.html 과 play-test.html 둘 다?"(12장) / "콘솔 빨강 0 캡처"(14장) / "관객 순서로 끝까지 밟은 캡처"(18장).
+② 빠진 문: index.html(오프닝 → 상영 진입 경로)과 demoFlow. "잘 돼요"가 play-test 직접 열기만 뜻한다면 오프닝을 거쳐 들어가는 경로는 안 밟은 것. 그 경로로 한 번 더.
+③ 안 맞음. "계산만"인데 연출(<code>js/ui/</code>) 파일이 둘 바뀜. "왜 ui 파일을 건드렸어? 계산 결과를 보여 주는 자리라서야, 아니면 다른 것도 같이 고친 거야?" 를 묻고, 그 두 덩어리의 초록 줄을 따로 읽음.</div>
+
+<div class="ans"><div class="q">시험 19</div>
+① S가 1.00이면 형태를 아직 안 잰 것 = 장면 셋 미만, 즉 첫째나 둘째 장면. V 0.70은 그 장면에서 관객은 회피했고 작가는 감정을 적어 둔 경우. ② 고장 아님. <code>plays</code> 표에는 정렬도와 어긋남 종류, 원시 감정만 남기고 등급 · 패턴은 안 남기는 설계(19장). 정렬도가 있으니 등급은 다시 계산 가능. ③ 성립 안 함. <code>ByeoriEngine.js</code> 21~23번째 줄 <code>constructor() { // 상태 없음 }</code>. 지금까지 궤적 · 점수 · 이전 등급은 전부 부르는 쪽이 재료로 넘김. 이상하면 엔진이 아니라 <em>넘긴 재료</em>(play-test 의 <code>game.userEmotionTrajectory</code>, <code>game.sceneScores</code> 등)를 봐야 함.</div>
+
+<div class="ans"><div class="q">시험 20</div>
+① 곱해서 더함 0.6×0.8 + 0.8×0.6 = 0.96. 길이 둘 다 √(0.36+0.64) = 1. 코사인 <b>0.96</b>. ② <b>0</b>. 직각. 코사인은 "같은 칸에 같이 값이 있나"만 봄. 둘 다 고통이어도 칸이 다르면(공포 vs 슬픔) 90도. 17칸은 서로 독립이라 "고통끼리는 비슷"이라는 상위 묶음이 코사인엔 없음. ③ 그 두 칸만으로 잼. <code>sadness: 0.9</code>는 목록에 없으니 계산에서 통째로 빠짐(없는 칸 취급, 20장 코드 15~17번째 줄). 기억별 좌표계가 이렇게 작동 — 그 기억이 안 쓰는 감정은 안 잼.</div>
+
+<div class="ans"><div class="q">시험 21</div>
+① 형태 날것 −0.2 → 깎아서 0. 회피 0.7. 정렬도 = 0.8 × 0 × 0.7 = <b>0</b>. 음수가 안 되는 건 <code>calculateShapeSimilarity</code> 14번째 줄 <code>Math.max(0, raw)</code>와 <code>calculateTrajectoryAlignment</code>의 <code>Math.max(0, …)</code> 두 겹. ② <b>HIGH</b>(끈적임: 직전 HIGH 이고 0.42 ≥ 0.40). 직전이 MID 였다면 끈적임 없음 → 표준 판정 0.42 &lt; 0.50 → <b>MID</b>. ③ <b>attribution_mismatch</b>. 탓 검사(129~130)가 감정 검사(142~147)보다 위에 있어 먼저 걸림. 감정이 비슷해도 탓이 다르면 그게 답. ④ <b>displacement</b>. 155번째 줄(둘째 갈림길): 수준 0.6 ≥ 0.5, 형태 0.2 &lt; 0.3, 장면 셋. HIGH 검사(157)보다 위라 echo_follow 가 안 됨.</div>
+
+<div class="ans"><div class="q">시험 22</div>
+① "논문 값이 아니라 설계 값입니다. V3 의 태도 항이 거의 항상 0.7 로 고정돼 상수처럼 굴던 걸, 회피가 일어났을 때만 곱하는 보정으로 바꾸면서 이어받은 값이고, 파일럿 분포를 보고 조정하는 대상입니다." ② 0.5×0.97 + 0.5×0 = <b>0.485</b>. 움직임이 정반대인 관객이 "반쯤 비슷"으로 나옴. 한 항이 다른 항을 메움 — V3 의 ③ 문제가 그대로 돌아옴. ③ "식의 '원본'은 진실이 아니라 작가의 첫 서술 궤적이고, 정렬도는 그 첫 서술과 같은 결로 겪었는지를 잽니다."</div>
+
+<div class="ans"><div class="q">시험 23</div>
+① 0.1×0.8 + 0.9×0.30 = 0.08 + 0.27 = <b>0.35</b>. 0.35 ≥ 0.35 → <b>biased_inclination</b>(편향 기울기). ② <b>hypercompletion</b>(과완결). 245~248번째 줄: 고착 0.70 ≥ 0.65 이고 0.70 &gt; 표류 0.35. 과완결 검사가 먼저라 이김. ③ "엔진의 정렬도 계산을 바꿨다"가 위반. 오염은 엔진 출력의 <em>소비자</em>이고 엔진을 안 건드림 — <code>ContaminationTracker.js</code> 13번째 줄 "별이엔진 V4는 변경하지 않는다. 이 모듈은 V4 출력의 소비자이다". 오염이 느리면 α(27번째 줄)나 단계 문턱(61~64번째 줄)을 만져야지 <code>ByeoriEngine.js</code>를 만지면 안 됨. 그리고 바꿨으면 어느 손잡이를 얼마에서 얼마로 바꿨는지 기록(22장 끝 함정 상자).</div>
+
+<p class="center small" style="margin-top:3em">— 끝 —</p>
+</section>
+
+<style>
+pre.code.nonum .l::before { display: none; }
+pre.code.nonum .l { padding-left: 0; text-indent: 0; }
+pre.code .l.add { background: #dff3de; color: #17521a; }
+pre.code .l.del { background: #fbe3e1; color: #7a1d16; }
+pre.code .l.hunk { color: #5b4a9c; font-weight: 700; }
+pre.code .l.meta { color: #666; }
+</style>
+<script>
+(function () {
+  var JS_KW = new Set(('const let var function return if else for of in while do import export from async await new class this try catch finally throw typeof instanceof null undefined true false default switch case break continue delete void static extends super yield interface').split(' '));
+  var SQL_KW = new Set(('create table if not exists alter add column select insert into update delete from where on using with check references primary key default enable row level security policy for to drop comment is and or null index values set cascade unique constraint notify boolean text int uuid jsonb timestamptz timestamp time zone now as order by desc asc limit').split(' '));
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function wrap(cls, text) {
+    // 줄 경계를 넘지 않게: 줄마다 따로 감싼다
+    return text.split('\n').map(function (p) { return p ? '<span class="' + cls + '">' + esc(p) + '</span>' : ''; }).join('\n');
+  }
+  function tokenizeJs(src, lang) {
+    var kw = lang === 'sql' ? SQL_KW : JS_KW;
+    var re = lang === 'sql'
+      ? /(--[^\n]*)|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][\w]*)/g
+      : /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b0x[0-9a-fA-F]+\b|\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)/g;
+    var out = '', last = 0, m;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      if (m[1]) out += wrap('tk-c', m[1]);
+      else if (m[2]) out += wrap('tk-s', m[2]);
+      else if (m[3]) out += wrap('tk-n', m[3]);
+      else if (m[4]) {
+        var id = m[4], key = lang === 'sql' ? id.toLowerCase() : id;
+        out += kw.has(key) ? wrap('tk-k', id) : esc(id);
+      }
+      last = re.lastIndex;
+    }
+    return out + esc(src.slice(last));
+  }
+  function tokenizeHtml(src) {
+    var re = /(<!--[\s\S]*?-->)|(<\/?)([a-zA-Z][a-zA-Z0-9-]*)|("[^"]*")|([a-zA-Z-]+)(?==)/g;
+    var out = '', last = 0, m;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      if (m[1]) out += wrap('tk-c', m[1]);
+      else if (m[2]) out += esc(m[2]) + wrap('tk-t', m[3]);
+      else if (m[4]) out += wrap('tk-s', m[4]);
+      else if (m[5]) out += wrap('tk-n', m[5]);
+      last = re.lastIndex;
+    }
+    return out + esc(src.slice(last));
+  }
+  function tokenizeCss(src) {
+    return src.split('\n').map(function (line) {
+      var e = esc(line);
+      if (/^\s*\/\*/.test(line)) return '<span class="tk-c">' + e + '</span>';
+      e = e.replace(/^(\s*)([^{:;]+?)(\s*\{)/, '$1<span class="tk-t">$2</span>$3');
+      e = e.replace(/(^|\s)(--?[a-zA-Z-]+)(\s*:)/g, '$1<span class="tk-n">$2</span>$3');
+      e = e.replace(/(#[0-9a-fA-F]{3,8}\b)/g, '<span class="tk-s">$1</span>');
+      return e;
+    }).join('\n');
+  }
+  function parseHl(spec) {
+    var set = {};
+    if (!spec) return set;
+    spec.split(',').forEach(function (p) {
+      p = p.trim(); if (!p) return;
+      var r = p.split('-').map(Number);
+      if (r.length === 1) set[r[0]] = 1;
+      else for (var i = r[0]; i <= r[1]; i++) set[i] = 1;
+    });
+    return set;
+  }
+  var pres = document.querySelectorAll('pre.code');
+  for (var i = 0; i < pres.length; i++) {
+    var pre = pres[i];
+    var lang = pre.getAttribute('data-lang') || 'js';
+    var src = pre.textContent.replace(/\s+$/, '');
+    var html;
+    if (lang === 'txt') html = esc(src);
+    else if (lang === 'html') html = tokenizeHtml(src);
+    else if (lang === 'css') html = tokenizeCss(src);
+    else if (lang === 'diff') html = esc(src);
+    else html = tokenizeJs(src, lang);
+    var hl = parseHl(pre.getAttribute('data-hl'));
+    var lines = html.split('\n');
+    var rawLines = src.split('\n');
+    var out = [];
+    for (var j = 0; j < lines.length; j++) {
+      var cls = 'l';
+      if (hl[j + 1]) cls += ' hit';
+      if (lang === 'diff') {
+        var raw = rawLines[j] || '';
+        if (/^@@/.test(raw)) cls += ' hunk';
+        else if (/^\+\+\+|^---|^diff /.test(raw)) cls += ' meta';
+        else if (raw.charAt(0) === '+') cls += ' add';
+        else if (raw.charAt(0) === '-') cls += ' del';
+      }
+      out.push('<span class="' + cls + '">' + (lines[j] || ' ') + '</span>');
+    }
+    pre.innerHTML = out.join('');
+  }
+})();
+</script>
+</body>
+</html>

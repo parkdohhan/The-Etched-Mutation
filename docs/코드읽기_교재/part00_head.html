@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>TEM 코드 읽기 교재</title>
+<style>
+/* ───────── 종이 ───────── */
+@page {
+  size: A4;
+  /* 위 · 오른쪽(필기 여백, 넓게) · 아래 · 왼쪽 */
+  margin: 20mm 44mm 22mm 20mm;
+}
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Malgun Gothic', '맑은 고딕', 'NanumSquare', sans-serif;
+  font-size: 11pt;
+  line-height: 1.95;
+  color: #1b1b1b;
+  background: #fff;
+  word-break: keep-all;
+}
+p { margin: 0 0 0.9em 0; }
+b, strong { font-weight: 700; }
+em { font-style: normal; background: #fff5c2; padding: 0 2px; }
+code {
+  font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 9.6pt;
+  background: #f1f0ec;
+  border: 1px solid #e0ded8;
+  border-radius: 3px;
+  padding: 0 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+ul, ol { margin: 0 0 1em 0; padding-left: 1.4em; }
+li { margin-bottom: 0.35em; }
+li > ul { margin-top: 0.3em; }
+hr { border: 0; border-top: 1px solid #ccc; margin: 1.6em 0; }
+
+/* ───────── 제목 ───────── */
+h1 {
+  page-break-before: always;
+  font-size: 22pt;
+  line-height: 1.35;
+  margin: 0 0 0.35em 0;
+  padding-bottom: 0.35em;
+  border-bottom: 2.5px solid #1b1b1b;
+  letter-spacing: -0.01em;
+}
+h1 .chno {
+  display: block;
+  font-size: 11pt;
+  font-weight: 400;
+  color: #666;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.2em;
+}
+h2 {
+  font-size: 14.5pt;
+  margin: 1.6em 0 0.5em 0;
+  padding-left: 0.55em;
+  border-left: 4px solid #1b1b1b;
+  line-height: 1.4;
+  page-break-after: avoid;
+}
+h3 {
+  font-size: 12pt;
+  margin: 1.3em 0 0.4em 0;
+  page-break-after: avoid;
+}
+.goal {
+  background: #eef2f7;
+  border-left: 4px solid #4a6a95;
+  padding: 0.6em 0.9em;
+  margin: 1.1em 0 1.3em 0;
+}
+.goal b { color: #2f4b73; }
+
+/* ───────── 코드 상자 ───────── */
+.codebox {
+  margin: 0.9em 0 1.2em 0;
+  page-break-inside: auto;   /* 긴 상자는 줄 단위로 쪽을 넘긴다 (통째로 옮기면 빈 쪽이 생김) */
+}
+.codebox .file { page-break-after: avoid; }
+.codebox .file {
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 8.6pt;
+  color: #444;
+  background: #e6e4df;
+  border: 1px solid #d3d0c9;
+  border-bottom: 0;
+  padding: 3px 10px;
+  border-radius: 4px 4px 0 0;
+  display: inline-block;
+}
+pre.code {
+  counter-reset: line;
+  font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 8.6pt;
+  line-height: 1.6;
+  background: #f7f6f3;
+  border: 1px solid #d3d0c9;
+  border-radius: 0 4px 4px 4px;
+  padding: 9px 10px 9px 8px;
+  margin: 0;
+  white-space: pre;
+  overflow: visible;
+  tab-size: 2;
+}
+pre.code.nofile { border-radius: 4px; }
+pre.code .l { display: block; padding-left: 2.6em; text-indent: -2.6em; white-space: pre-wrap; word-break: normal; overflow-wrap: anywhere; }
+pre.code .l::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 2.1em;
+  margin-right: 0.5em;
+  text-align: right;
+  color: #9a978f;
+  font-size: 8pt;
+  text-indent: 0;
+}
+pre.code .l.hit { background: #fff1a8; }
+pre.code .l.dim { color: #8b8880; }
+.tk-c { color: #6b7a55; font-style: italic; }
+.tk-s { color: #8a3b2d; }
+.tk-k { color: #1f4e9c; font-weight: 700; }
+.tk-n { color: #7a2f8a; }
+.tk-t { color: #1f6a5a; }
+pre.code .del { display:block; background: #fbe3e1; color:#7a1d16; }
+pre.code .add { display:block; background: #dff3de; color:#17521a; }
+pre.code .del::before, pre.code .add::before { content: ''; counter-increment: none; width: 0; margin: 0; }
+
+/* ───────── 설명 상자 ───────── */
+.read {
+  margin: 0.4em 0 1.2em 0;
+}
+.read .rt { font-weight: 700; margin-bottom: 0.3em; }
+.tip, .warn, .story {
+  border: 1px solid #cfcac0;
+  border-radius: 4px;
+  padding: 0.65em 0.95em;
+  margin: 1em 0 1.2em 0;
+  page-break-inside: avoid;
+}
+.tip { background: #f5f8ef; border-color: #b9c9a2; }
+.tip::before { content: '읽는 요령'; display: block; font-weight: 700; color: #4f6a2a; margin-bottom: 0.2em; font-size: 10pt; }
+.warn { background: #fdf3ec; border-color: #e5b892; }
+.warn::before { content: '함정'; display: block; font-weight: 700; color: #9a4b12; margin-bottom: 0.2em; font-size: 10pt; }
+.story { background: #f4f2f7; border-color: #bfb3d1; }
+.story::before { content: '실제로 있었던 일'; display: block; font-weight: 700; color: #5a3f86; margin-bottom: 0.2em; font-size: 10pt; }
+
+/* ───────── 표 ───────── */
+table { border-collapse: collapse; width: 100%; margin: 0.8em 0 1.3em 0; font-size: 10.2pt; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th, td { border: 1px solid #c9c5bc; padding: 0.4em 0.6em; vertical-align: top; text-align: left; line-height: 1.6; }
+th { background: #ecebe6; font-weight: 700; }
+td code { white-space: normal; }
+
+/* ───────── 미니 시험 ───────── */
+.quiz {
+  border: 2px dashed #8a8578;
+  border-radius: 6px;
+  padding: 0.7em 1em 0.4em 1em;
+  margin: 1.5em 0 1em 0;
+  page-break-inside: avoid;
+}
+.quiz h3 { margin: 0 0 0.4em 0; font-size: 11.5pt; }
+.quiz h3::before { content: '✎ '; }
+.quiz .ans-hint { font-size: 9.5pt; color: #666; margin: 0.3em 0 0 0; }
+.answer-space {
+  height: 5.5em;
+  margin: 0.5em 0 0.6em 0;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(2.2em - 1px), #cfcac0 calc(2.2em - 1px), #cfcac0 2.2em);
+}
+
+/* ───────── 필기 칸 ───────── */
+.notes {
+  margin: 1.6em 0 0 0;
+  page-break-inside: avoid;
+}
+.notes .nt { font-size: 9.5pt; color: #666; margin-bottom: 0.2em; }
+.notes .lines {
+  height: 12.5em;
+  border: 1px solid #cfcac0;
+  border-radius: 4px;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(2.5em - 1px), #dedbd3 calc(2.5em - 1px), #dedbd3 2.5em);
+}
+
+/* ───────── 표지 · 목차 ───────── */
+.cover { page-break-after: always; padding-top: 30mm; }
+.cover .kicker { font-size: 11pt; letter-spacing: 0.3em; color: #666; }
+.cover h1.title { border: 0; page-break-before: auto; font-size: 34pt; line-height: 1.25; margin: 0.3em 0 0.2em 0; }
+.cover .sub { font-size: 13pt; color: #333; margin-bottom: 3em; }
+.cover .meta { font-size: 10pt; color: #555; line-height: 1.9; border-top: 1px solid #999; padding-top: 1em; margin-top: 8em; }
+.toc h1 { }
+.toc ol { list-style: none; padding: 0; margin: 0.6em 0 0 0; }
+.toc li { display: flex; align-items: baseline; margin: 0; padding: 0.22em 0; border-bottom: 1px dotted #ccc; }
+.toc li .n { width: 3.2em; color: #666; flex: 0 0 auto; }
+.toc li .t { flex: 1 1 auto; }
+.toc li .pg { flex: 0 0 auto; padding-left: 1em; color: #333; font-variant-numeric: tabular-nums; }
+.toc li.part { font-weight: 700; border-bottom: 0; margin-top: 0.9em; }
+.toc li.part .n { color: #1b1b1b; }
+.toc li.sub { padding-left: 1.4em; }
+
+/* ───────── 부록 ───────── */
+.dict td:first-child { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 9.6pt; width: 10em; overflow-wrap: anywhere; }
+.words td:first-child { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 9.6pt; width: 10em; overflow-wrap: anywhere; }
+.words td, .dict td { overflow-wrap: anywhere; }
+.ans { margin: 0 0 1.1em 0; padding: 0.4em 0.8em; border-left: 3px solid #8a8578; background: #faf9f6; page-break-inside: avoid; }
+.ans .q { font-weight: 700; color: #444; }
+.chapter { }
+.small { font-size: 9.5pt; color: #555; }
+.center { text-align: center; }
+.kbd { font-family: 'Cascadia Mono', Consolas, monospace; font-size: 9.4pt; border: 1px solid #aaa; border-bottom-width: 2px; border-radius: 3px; padding: 0 5px; background: #fafafa; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ 표지 ═══════════════════════ -->
+<div class="cover">
+  <div class="kicker">THE ETCHED MUTATION</div>
+  <h1 class="title">TEM 코드 읽기 교재</h1>
+  <div class="sub">쓰지 않고, 읽어서 검사하는 사람이 되기 위한 책</div>
+  <p>이 책의 모든 예시는 <b>지금 이 프로젝트 저장소에 실제로 들어 있는 코드</b>에서 잘라 왔습니다. 남의 예제로 배우고 나서 내 코드에 적용하는 두 단계를, 처음부터 내 코드로 한 단계에 끝내기 위해서입니다.</p>
+  <p>목표는 하나입니다. AI가 <b>"고쳤어요"</b> 라고 말했을 때, 파일을 열어 <b>진짜인지 눈으로 확인</b>하는 것. 코드를 쓰는 법은 이 책에 없습니다. 그건 앞으로도 AI가 합니다.</p>
+  <div class="meta">
+    대상 · 박도한 (TEM 제작자)<br>
+    기준 저장소 · The Etched Mutation, 2026-09-25 시점 (커밋 b894eb1 + 작업 중인 변경분)<br>
+    구성 · 본문 24장(1~18장 코드 읽기 + 19~24장 엔진 편) + 부록 5편 · 장마다 미니 시험과 필기 칸<br>
+    엔진 편 · 2026-10-19 추가. 앞 18장은 코드의 <b>경계</b>를, 엔진 편은 별이엔진과 오염 추적기의 <b>속</b>을 본다. 문체가 다르다(옆에서 말하는 투).<br>
+    조판 · 오른쪽 여백은 일부러 넓게 비웠습니다. 손으로 쓰세요.<br>
+    전신 · docs/코드읽기_교재_읽기전용_10교시-260708.md (10교시 전부 이 책 3~10장·15장·18장에 흡수)
+  </div>
+</div>
+
+<!-- ═══════════════════════ 목차 ═══════════════════════ -->
+<section class="toc">
+<h1><span class="chno">차례</span>목차</h1>
+<ol>
+  <li><span class="n">0</span><span class="t">이 책을 읽는 법</span><span class="pg" data-ch="ch0"></span></li>
+
+  <li class="part"><span class="n">I</span><span class="t">지형 익히기</span><span class="pg"></span></li>
+  <li><span class="n">1</span><span class="t">지도: 이 프로젝트는 어떻게 생겼나</span><span class="pg" data-ch="ch1"></span></li>
+  <li><span class="n">2</span><span class="t">웹페이지의 세 겹: html · css · 자바스크립트</span><span class="pg" data-ch="ch2"></span></li>
+
+  <li class="part"><span class="n">II</span><span class="t">코드의 세 가지 모양 (7월 10교시 1~5)</span><span class="pg"></span></li>
+  <li><span class="n">3</span><span class="t">상자 · 목록 · 메모 · 글자</span><span class="pg" data-ch="ch3"></span></li>
+  <li><span class="n">4</span><span class="t">갈림길: if</span><span class="pg" data-ch="ch4"></span></li>
+  <li><span class="n">5</span><span class="t">함수: 기능 한 덩어리</span><span class="pg" data-ch="ch5"></span></li>
+  <li><span class="n">6</span><span class="t">들여쓰기: 목차처럼 훑기</span><span class="pg" data-ch="ch6"></span></li>
+  <li><span class="n">7</span><span class="t">반복: for · forEach · map · filter</span><span class="pg" data-ch="ch7"></span></li>
+
+  <li class="part"><span class="n">III</span><span class="t">이름과 연결 (7월 10교시 6~8)</span><span class="pg"></span></li>
+  <li><span class="n">8</span><span class="t">이름 읽기: 점 · 낙타 · 밑줄 · let / const / var</span><span class="pg" data-ch="ch8"></span></li>
+  <li><span class="n">9</span><span class="t">만들기와 부르기: import / export</span><span class="pg" data-ch="ch9"></span></li>
+  <li><span class="n">10</span><span class="t">데이터 묶음: 객체와 JSON</span><span class="pg" data-ch="ch10"></span></li>
+
+  <li class="part"><span class="n">IV</span><span class="t">움직이는 것들</span><span class="pg"></span></li>
+  <li><span class="n">11</span><span class="t">기다림: async · await · setTimeout</span><span class="pg" data-ch="ch11"></span></li>
+  <li><span class="n">12</span><span class="t">모듈과 전역: 진입점 세 곳과 캐시버스터</span><span class="pg" data-ch="ch12"></span></li>
+  <li><span class="n">13</span><span class="t">화면과 사건: DOM과 이벤트</span><span class="pg" data-ch="ch13"></span></li>
+
+  <li class="part"><span class="n">V</span><span class="t">검사하는 눈</span><span class="pg"></span></li>
+  <li><span class="n">14</span><span class="t">오류 읽기: 콘솔 · 네트워크 · 숫자</span><span class="pg" data-ch="ch14"></span></li>
+  <li><span class="n">15</span><span class="t">비교표(diff) 읽기</span><span class="pg" data-ch="ch15"></span></li>
+  <li><span class="n">16</span><span class="t">데이터베이스: 표 · SQL · 권한 · jsonb</span><span class="pg" data-ch="ch16"></span></li>
+  <li><span class="n">17</span><span class="t">3D의 겉모양: Three.js</span><span class="pg" data-ch="ch17"></span></li>
+  <li><span class="n">18</span><span class="t">큰 파일 지도 + "됐어요" 검사 순서</span><span class="pg" data-ch="ch18"></span></li>
+
+  <li class="part"><span class="n">VI</span><span class="t">엔진 읽기 (10월 엔진 편 · 속을 본다)</span><span class="pg"></span></li>
+  <li><span class="n">19</span><span class="t">엔진이 내놓는 네 가지</span><span class="pg" data-ch="ch19"></span></li>
+  <li><span class="n">20</span><span class="t">코사인: 두 화살표 사이 각도</span><span class="pg" data-ch="ch20"></span></li>
+  <li><span class="n">21</span><span class="t">별이엔진 190줄, 한 덩어리씩</span><span class="pg" data-ch="ch21"></span></li>
+  <li><span class="n">22</span><span class="t">왜 이 식인가: 이론에서 온 것과 직접 정한 것</span><span class="pg" data-ch="ch22"></span></li>
+  <li><span class="n">23</span><span class="t">오염 추적기: 새 값 10%, 옛 값 90%</span><span class="pg" data-ch="ch23"></span></li>
+  <li><span class="n">24</span><span class="t">다섯 문제: 돌리기 전에 맞히기</span><span class="pg" data-ch="ch24"></span></li>
+
+  <li class="part"><span class="n">부록</span><span class="t"></span><span class="pg"></span></li>
+  <li><span class="n">A</span><span class="t">기호 사전</span><span class="pg" data-ch="apA"></span></li>
+  <li><span class="n">B</span><span class="t">코드 영어 단어장</span><span class="pg" data-ch="apB"></span></li>
+  <li><span class="n">C</span><span class="t">자주 보는 모양 카드</span><span class="pg" data-ch="apC"></span></li>
+  <li><span class="n">D</span><span class="t">AI에게 시킬 문구 모음</span><span class="pg" data-ch="apD"></span></li>
+  <li><span class="n">E</span><span class="t">미니 시험 정답</span><span class="pg" data-ch="apE"></span></li>
+</ol>
+</section>
+
+<!-- ═══════════════════════ 0장 ═══════════════════════ -->
+<section class="chapter" id="ch0">
+<h1><span class="chno">0장</span>이 책을 읽는 법</h1>
+
+<p class="goal"><b>목표</b> 이 책이 무엇을 가르치고 무엇을 가르치지 않는지, 그리고 어떻게 읽어야 남는지를 먼저 정한다.</p>
+
+<h2>무엇을 배우는가</h2>
+<p>딱 하나입니다. <b>읽기.</b> 코드를 열어서 "이 파일은 무슨 일을 하는 덩어리들로 되어 있나", "AI가 고쳤다는 자리가 어디고, 정말 거기만 바뀌었나", "빨간 오류 글자가 무슨 뜻인가"를 눈으로 알아보는 것. 이걸 할 수 있으면 지금 프로젝트에서 가장 큰 틈, 즉 <em>"AI가 됐다고 말한 것"과 "진짜 된 것" 사이</em>가 닫힙니다.</p>
+
+<h2>무엇을 배우지 않는가</h2>
+<ul>
+  <li><b>코드 쓰기.</b> 이 책을 다 읽어도 코드는 못 씁니다. 그래도 됩니다. 쓰는 건 AI가 합니다.</li>
+  <li><b>문법 세부.</b> 세미콜론을 어디 찍나, 화살표 함수와 일반 함수의 차이가 뭔가 같은 건 안 다룹니다. 읽을 때 걸림돌이 되는 만큼만 짚습니다.</li>
+  <li><b>알고리즘, 성능, 라이브러리 내부.</b> Three.js가 어떻게 삼각형을 그리는지는 안 배웁니다. "이 줄이 3D 물체 하나를 만든다"까지만 봅니다.</li>
+</ul>
+
+<h2>규칙 세 가지</h2>
+<ol>
+  <li><b>모든 예시는 실제 TEM 코드다.</b> 파일 이름과 줄 번호가 상자 위에 적혀 있습니다. 책을 읽다가 실제 파일을 열어 같은 자리를 찾아보면 두 배로 남습니다. 줄 번호는 2026-09-25 기준이라 나중에 조금씩 밀릴 수 있습니다. 그럴 땐 <span class="kbd">Ctrl</span>+<span class="kbd">F</span>로 함수 이름을 찾으세요.</li>
+  <li><b>계산의 속은 몰라도 된다.</b> 이 책에서 "속은 지금 몰라도 됨"이라고 쓴 자리는 정말 몰라도 됩니다. 목표는 <em>경계</em>를 보는 것이지 수식을 푸는 게 아닙니다.</li>
+  <li><b>미니 시험은 안 가르친 코드로 낸다.</b> 각 장 끝의 시험은 그 장에서 안 보여준 진짜 코드입니다. 답은 부록 E에 모아 두었습니다. 먼저 풀고 나서 넘기세요.</li>
+</ol>
+
+<h2>책의 모양</h2>
+<table>
+  <tr><th style="width:9em">표시</th><th>뜻</th></tr>
+  <tr><td>회색 코드 상자</td><td>실제 코드. 왼쪽 작은 숫자는 상자 안 줄 번호(파일의 줄 번호가 아님). 상자 위 회색 꼬리표가 파일 경로와 파일 안 줄 번호.</td></tr>
+  <tr><td>노란 줄</td><td>지금 보라는 줄. 그 줄만 보면 됩니다.</td></tr>
+  <tr><td>연두 상자 "읽는 요령"</td><td>그 장의 기술을 한 줄로 줄인 것. 나중에 이것만 다시 봐도 됩니다.</td></tr>
+  <tr><td>주황 상자 "함정"</td><td>이 프로젝트에서 실제로 사람을 속였던 모양.</td></tr>
+  <tr><td>보라 상자 "실제로 있었던 일"</td><td>이 저장소의 기록에 남아 있는 사고. 왜 이 장을 배우는지의 증거.</td></tr>
+  <tr><td>점선 상자 "✎ 미니 시험"</td><td>처음 보는 실제 코드로 내는 문제. 빈칸에 직접 쓰세요.</td></tr>
+  <tr><td>줄 그어진 칸 "내 손으로 정리"</td><td>장 끝. 그 장을 내 말로 세 줄 쓰는 자리.</td></tr>
+</table>
+
+<h2>코드가 하는 일은 결국 세 모양뿐</h2>
+<p>미리 말해 둡니다. 5만 줄이든 50줄이든, 코드는 아래 세 가지의 조합입니다. 낯선 코드를 만나면 "이건 셋 중 뭐지?"만 물으면 됩니다.</p>
+<table>
+  <tr><th style="width:7em">모양</th><th>생김새</th><th>하는 일</th></tr>
+  <tr><td>① 저장</td><td><code>const 이름 = 값</code>, <code>[ ]</code>, <code>{ }</code></td><td>값을 이름 붙여 담아 둔다</td></tr>
+  <tr><td>② 갈림길</td><td><code>if (조건) { }</code></td><td>조건에 따라 다른 길로 간다</td></tr>
+  <tr><td>③ 반복</td><td><code>for (...) { }</code>, <code>.forEach(...)</code></td><td>같은 일을 목록 개수만큼 한다</td></tr>
+</table>
+<p>여기에 "기능 한 덩어리"(<code>function</code>)가 이 셋을 포장하고, "기다림"(<code>await</code>)이 시간을 다룹니다. 이 책의 2부와 3부, 4부가 정확히 그 순서입니다.</p>
+
+<h2>7월 교재와의 관계</h2>
+<p>7월 8일에 만든 "코드 읽기 전용 10교시"는 1~5교시까지 진행됐습니다. 그 열 교시는 이 책의 3장부터 10장, 15장, 18장에 전부 들어 있고, 예시와 설명을 늘렸습니다. 그때 본 코드가 다시 나오면 복습이라 생각하고 빨리 넘기세요.</p>
+
+<h2>10월에 붙인 엔진 편 (19~24장)</h2>
+<p>위의 규칙 2 "계산의 속은 몰라도 된다"는 1~18장에만 해당합니다. 10월 19일에 "내 엔진을 내가 설명할 수 있어야 한다"는 요구가 생겨서, 19장부터는 <b>속을 봅니다</b>. 별이엔진 190줄을 한 덩어리씩, 오염 추적기의 핵심 한 줄, 그리고 식의 어느 부분이 이론에서 왔고 어느 숫자가 직접 정한 값인지. 문체도 다릅니다. 교재가 아니라 옆에 앉아서 말하는 투로 썼습니다. 1~18장을 다 읽지 않았어도 3장(묶음) · 4장(갈림길) · 7장(반복) · 10장(객체)만 봤으면 19장으로 바로 가도 됩니다.</p>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 이 책에서 얻고 싶은 것 한 줄</div><div class="lines"></div></div>
+</section>

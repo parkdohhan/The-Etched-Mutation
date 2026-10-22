@@ -1,0 +1,337 @@
+<!-- ═══════════════════════ 14장 ═══════════════════════ -->
+<section class="chapter" id="ch14">
+<h1><span class="chno">14장 · 검사하는 눈</span>오류 읽기: 콘솔 · 네트워크 · 숫자</h1>
+
+<p class="goal"><b>목표</b> <span class="kbd">F12</span>를 눌러 빨간 글자를 읽는다. 오류 문장의 <b>종류 · 내용 · 위치</b> 세 부분을 나누고, 네트워크 숫자(404 · 403 · 409)를 뜻으로 옮긴다. 7월 17일의 사고를 그날 잡을 수 있었던 눈을 만든다.</p>
+
+<h2>여는 법</h2>
+<p>브라우저에서 <span class="kbd">F12</span> (또는 <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">I</span>). 위쪽 탭에서 <b>Console</b>(코드가 남긴 말)과 <b>Network</b>(서버와 주고받은 기록)만 봅니다. 나머지 탭은 이 책 범위 밖.</p>
+
+<h2>콘솔의 네 가지 줄</h2>
+<table>
+  <tr><th style="width:9em">색</th><th style="width:11em">누가 만드나</th><th>뜻</th><th>실제 예</th></tr>
+  <tr><td>흰/검정</td><td><code>console.log</code></td><td>그냥 기록. 정상.</td><td><code>[variant-strata] ON (기본, 260802) — 이본 지층 경로 활성.</code></td></tr>
+  <tr><td>노랑</td><td><code>console.warn</code></td><td>경고. 돌긴 하는데 이상함.</td><td><code>[ByeoriEngine V4] userVector 또는 originalVector 없음</code></td></tr>
+  <tr><td>빨강</td><td><code>console.error</code></td><td>코드가 스스로 잡은 오류. 돌긴 함.</td><td><code>fetchScenes error: {…}</code></td></tr>
+  <tr><td>빨강 + Uncaught</td><td>브라우저</td><td>아무도 안 잡은 오류. <b>그 자리에서 멈춤.</b></td><td><code>Uncaught TypeError: …</code></td></tr>
+</table>
+<p>대괄호 접두어(<code>[variant-strata]</code>, <code>[Auth]</code>, <code>[Store]</code>, <code>[door]</code>)는 이 프로젝트 관례로 <b>어느 부품이 말하는지</b>입니다. 콘솔이 수백 줄이어도 대괄호만 훑으면 어느 부품이 시끄러운지 보입니다. 8장에서 본 별이엔진의 <code>L0.72 × S0.91 × V1.00 = 0.655</code> 문장도 여기 찍힙니다.</p>
+
+<h2>오류 문장 해부</h2>
+<p>아래는 이 프로젝트 코드 모양으로 만든 <b>예시</b>입니다(실제 기록된 문장이 아니라 형태 연습용).</p>
+<div class="codebox"><span class="file">콘솔 예시</span>
+<pre class="code nofile" data-lang="txt">Uncaught TypeError: Cannot read properties of null (reading 'classList')
+    at restart (index.js?v=260909c:377:23)
+    at HTMLDivElement.&lt;anonymous&gt; (bindEvents.js:212:9)</pre></div>
+<table>
+  <tr><th style="width:7em">부분</th><th style="width:16em">여기서는</th><th>읽는 법</th></tr>
+  <tr><td>종류</td><td><code>TypeError</code></td><td>"값의 종류가 안 맞음". 아래 표 참고.</td></tr>
+  <tr><td>내용</td><td><code>Cannot read properties of null (reading 'classList')</code></td><td>"null(없음)에서 classList 를 읽으려 했다" = <b>상자를 못 찾았는데 점을 찍었다</b>. 2장의 <code>if (introScreen)</code> 문지기가 빠진 자리.</td></tr>
+  <tr><td>위치</td><td><code>restart (index.js:377:23)</code></td><td>"restart 함수, index.js 파일 377번째 줄 23번째 칸". 첫 <code>at</code> 줄이 사고 현장, 그 아래는 거기까지 온 길(누가 불렀나).</td></tr>
+</table>
+
+<table>
+  <tr><th style="width:10em">종류</th><th>뜻</th><th>첫 용의자</th></tr>
+  <tr><td><code>TypeError … of null / undefined</code></td><td>없는 것에 점을 찍음</td><td>id 오타 · html 에 그 상자 없음 · 아직 안 만들어짐(13장 시작 사건) · 데이터베이스 답이 비었음</td></tr>
+  <tr><td><code>TypeError: X is not a function</code></td><td>함수가 아닌 것에 <code>( )</code>를 붙임</td><td>마당에 안 꽂힘(12장) · 이름 오타 · 옛 파일(캐시버스터)</td></tr>
+  <tr><td><code>ReferenceError: X is not defined</code></td><td>그런 이름이 없음</td><td>방/마당 경계(12장) · script 순서 · 오타</td></tr>
+  <tr><td><code>SyntaxError</code></td><td>문법이 깨짐. <b>그 파일 전체가 안 돎</b></td><td>괄호 짝 어긋남(6장) · 같은 이름 두 번(12장 실제 사례) · 따옴표 안 닫힘</td></tr>
+  <tr><td><code>Failed to load resource</code></td><td>파일을 못 받음</td><td>Network 탭으로 가서 숫자 확인</td></tr>
+</table>
+
+<h2>네트워크 탭의 숫자</h2>
+<p>Network 탭의 각 줄은 "무엇을 달라고 했고(Name) 뭐라고 답했나(Status)". 빨간 줄만 보면 됩니다.</p>
+<table>
+  <tr><th style="width:5em">숫자</th><th style="width:8em">뜻</th><th>이 프로젝트에서 흔한 원인</th></tr>
+  <tr><td>200</td><td>됐음</td><td>정상</td></tr>
+  <tr><td>304</td><td>전에 받은 것 그대로 써</td><td>정상. 단, 파일을 고쳤는데 304 면 <b>캐시버스터 미갱신</b>(12장)</td></tr>
+  <tr><td>404</td><td>그런 파일 없음</td><td>경로 · 파일 이름 오타, 파일 이동. <code>?v=</code> 뒤 숫자는 서버가 무시하므로 404 의 원인이 아님</td></tr>
+  <tr><td>401</td><td>누군지 몰라</td><td>로그인 만료, 키 없음</td></tr>
+  <tr><td>403</td><td>넌 이거 못 해</td><td><b>데이터베이스 권한(RLS)</b>이 거부. 16장. 7월 17일 사고</td></tr>
+  <tr><td>409</td><td>충돌</td><td>같은 것을 동시에 두 번 저장. <code>record-erosion</code> 함수가 세대 번호 역행을 일부러 409 로 거부(설계)</td></tr>
+  <tr><td>500 · 502</td><td>서버 쪽 고장</td><td>Edge Function 안 오류. 브라우저 코드로는 못 고침</td></tr>
+</table>
+
+<div class="story">2026-07-17: 접촉이 일어나 기록을 쓰려는데, 그 회차의 plays 행이 아직 저장되기 전이라 권한 규칙이 "네 회차가 아니네" 하고 <b>403</b>으로 거부했습니다. 콘솔에는 빨간 403 한 줄이 떴을 겁니다. 그날 지휘 세션이 실제 순서로 밟다가 발견해 "봉인 뒤 재시도"로 봉합(커밋 c850d6c). Network 탭에서 403 을 읽을 줄 알았다면 누구든 그날 잡을 수 있었던 사고입니다. 이 장이 있는 이유.</div>
+
+<h2>코드가 오류를 다루는 모양: try / catch</h2>
+<div class="codebox"><span class="file">js/index.js : 128~131 · play-test.html : 5236</span>
+<pre class="code" data-hl="4,6">try {
+    const raw = localStorage.getItem('tem_play_traces');
+    if (raw) playTraces = JSON.parse(raw);
+} catch (_e) {}
+
+try { enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}</pre></div>
+<p><code>try { 해 봐 } catch (오류) { 실패하면 이거 }</code>. <code>catch (_) {}</code>처럼 <b>비어 있으면 오류를 조용히 삼킵니다.</b> 멈추지는 않지만 콘솔에도 안 남습니다. 편리하지만 함정: "왜 안 되지?"의 원인이 빈 catch 안에 숨을 수 있습니다. AI 에게 "이 catch 가 삼키는 오류가 뭐냐"고 물을 수 있는 자리입니다. 반대로 <code>catch (e) { console.error('…', e) }</code>는 기록을 남기니 콘솔에서 보입니다.</p>
+
+<div class="tip">빨간 줄은 <b>종류 · 내용 · 첫 at 줄</b> 세 조각으로 자른다. null/undefined 면 "못 찾았는데 점 찍음", not defined 면 "이름 없음", SyntaxError 면 "파일 통째로 죽음". Network 는 404 = 없음, 403 = 권한, 409 = 충돌.</div>
+
+<div class="quiz"><h3>미니 시험 14</h3>
+<ol>
+  <li>콘솔에 <code>[Auth] 상태 변경: SIGNED_IN sojeong@…</code> 이 떴습니다. 어느 부품이, 무슨 말을 한 겁니까? 문제입니까?</li>
+  <li>콘솔에 빨간 <code>fetchScenes error: {code: '42501', message: 'permission denied for table scenes'}</code> 가 떴습니다. 어느 함수의 어느 갈래에서 나온 말입니까(4장 ③ 참고)? 화면에는 무엇이 보일 것 같습니까?</li>
+  <li>Network 탭에 <code>js/ui/strataView.js?v=260810a</code> 가 빨간 <b>404</b> 입니다. 원인 후보를 두 개 쓰고, <b>아닌</b> 원인 하나를 쓰세요.</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 403 과 404 의 차이를 내 말로</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 15장 ═══════════════════════ -->
+<section class="chapter" id="ch15">
+<h1><span class="chno">15장 · 검사하는 눈</span>비교표(diff) 읽기</h1>
+
+<p class="goal"><b>목표</b> AI 가 "고쳤다"고 할 때 <b>전과 후를 나란히</b> 본다. 비교표의 머리글 · 덩어리(hunk) · 빨강 · 초록을 읽고, "세 곳 고쳤다"가 정말 세 곳인지 <b>센다</b>. 이 책에서 가장 중요한 장. (7월 9교시 확장)</p>
+
+<h2>비교표의 생김새</h2>
+<p>아래는 9월 15일 커밋 하나의 실제 비교표 전문입니다. 서가가 창보다 길면 진입 문장이 잘리던 문제를 고친 것.</p>
+
+<div class="codebox"><span class="file">git show b894eb1 (play-test.html, 세 덩어리 전부)</span>
+<pre class="code nonum" data-lang="diff">diff --git a/play-test.html b/play-test.html
+--- a/play-test.html
++++ b/play-test.html
+@@ -111,14 +111,18 @@
+     * { box-sizing: border-box; }
+-    #selectScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0e; }
++    /* 260915: 서가가 화면보다 길어지면(기억 11개째부터 ~920px 창에서 발생) "Enter this memory" 줄이
++       body overflow:hidden 아래로 밀려 누를 수 없었다. 서가 화면만 스스로 스크롤하고, 세로 가운데는
++       justify-content:center 대신 첫/끝 자식의 margin:auto 로 — 넘치면 위에서부터 보이고 끝까지 스크롤된다. */
++    #selectScreen { height: 100vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; background: #0a0a0e; }
+
+     #selectScreen { gap: 0; padding: 6vh 24px; position: relative; }
+-    #landingHead { text-align: center; margin-bottom: clamp(2.4rem, 6vh, 4rem); }
++    #landingHead { text-align: center; margin-top: auto; margin-bottom: clamp(2.4rem, 6vh, 4rem); flex-shrink: 0; }
++    #landingShelf { flex-shrink: 0; }
+@@ -156,7 +160,7 @@
+     #landingEnter {
+-      margin-top: clamp(2rem, 5vh, 3.2rem); min-height: 2.6em;
++      margin-top: clamp(2rem, 5vh, 3.2rem); margin-bottom: auto; min-height: 2.6em; flex-shrink: 0;
+       display: flex; align-items: center;
+@@ -5225,7 +5229,11 @@
+         card.classList.add('chosen');
+         document.getElementById('memorySelect').value = m.id;
+-        if (enter) enter.classList.add('ready');
++        if (enter) {
++          enter.classList.add('ready');
++          // 260915: 서가가 화면보다 길면 진입 문장이 아래로 숨는다 — 고른 순간 그 줄까지 끌어내린다.
++          try { enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
++        }
+       });</pre></div>
+
+<div class="read"><div class="rt">읽는 법: 네 부분</div>
+<ol>
+  <li><b>머리글</b> <code>--- a/play-test.html</code> / <code>+++ b/play-test.html</code>: a 가 전, b 가 후. 어느 파일인지.</li>
+  <li><b>덩어리(hunk) 표시</b> <code>@@ -111,14 +111,18 @@</code>: "전 파일 111번째 줄부터 14줄 ↔ 후 파일 111번째 줄부터 18줄". 이 비교표엔 <code>@@</code>가 <b>세 개</b> = 세 자리를 고쳤다. 두 자리는 css 쪽(111, 156번째 줄 근처), 한 자리는 자바스크립트 쪽(5225번째 줄 근처).</li>
+  <li><b>빨강(<code>-</code>)</b> = 지운 줄, <b>초록(<code>+</code>)</b> = 새로 넣은 줄, 앞에 아무 표시 없는 줄 = 안 바뀐 문맥(어디인지 알려 주려고 같이 보여 줌).</li>
+  <li><b>초록만 읽으면 "새로 뭘 하기로 했나"</b>가 나옵니다. 첫 덩어리: 서가 화면 높이를 딱 화면만큼 하고 넘치면 스스로 스크롤(<code>overflow-y: auto</code>), 가운데 정렬을 위쪽 정렬로. 둘째: 진입 문장 아래 여백 자동. 셋째: 카드를 고르면 <code>ready</code>를 붙이는 한 줄이 <code>{ }</code> 블록이 되고, <b>그 줄까지 화면을 끌어내리는 한 줄이 추가</b>(6장에서 본 그 코드).</li>
+</ol>
+<p>빨강과 초록이 짝으로 있으면 "바꿈", 초록만 있으면 "추가", 빨강만 있으면 "삭제". 첫 덩어리의 <code>#selectScreen</code> 줄은 빨강 하나 초록 하나로 <b>바꿈</b>이고, 그 사이 초록 세 줄은 메모 <b>추가</b>.</p></div>
+
+<h2>요약 숫자: --stat</h2>
+<div class="codebox"><span class="file">git show --stat b894eb1</span>
+<pre class="code nofile" data-lang="txt">play-test.html | 16 ++++++++++++----
+1 file changed, 12 insertions(+), 4 deletions(-)</pre></div>
+<p>"파일 하나, 12줄 늘고 4줄 줄었다". <code>+</code>와 <code>-</code> 개수가 대략 비율. 이 숫자는 <b>양</b>만 말합니다. "한 줄 고쳤어요"라는 말에 stat 이 <code>+340 -2</code> 면 되물을 자리.</p>
+
+<h2>커밋 메시지 읽기</h2>
+<div class="codebox"><span class="file">git log --oneline (최근 4개)</span>
+<pre class="code nofile" data-lang="txt">b894eb1 fix(play-test): 서가가 창보다 길면 진입 문장이 잘리던 문제 — 서가 화면 자체 스크롤 + 카드 선택 시 자동 스크롤 (260915)
+4401fdf feat(authoring): 소설→기억 저작 파이프라인 v0.1 + 권역(GWON-001) 첫 실전 (260915)
+1afeee4 fix(reveal): 봉인 서사 이중 노출 제거 — 엔딩 후속 화면은 문장 생략 (260810)
+c7f99d2 feat(dialog): EN 연결사 8종 — 이어쓰기 선택지도 언어를 탄다 (260810)</pre></div>
+<p><code>번호 종류(범위): 요약 (날짜)</code>. 종류는 <code>fix</code>(고침) · <code>feat</code>(새 기능) · <code>docs</code>(문서) · <code>chore</code>(잡일) · <code>refactor</code>(정리, 동작 불변). 앞의 일곱 글자 번호(<code>b894eb1</code>)가 그 커밋의 이름이라 AI 에게 "b894eb1 비교표 보여줘"라고 할 수 있습니다.</p>
+
+<h2>아직 커밋 안 한 변경: git diff</h2>
+<p>오늘(9월 25일) 저장소에는 커밋 안 된 변경이 12개 파일에 있습니다. 그중 안전 필터 파일의 비교표입니다.</p>
+<div class="codebox"><span class="file">git diff js/safety.js (미커밋)</span>
+<pre class="code nonum" data-lang="diff">@@ -52,6 +52,18 @@ export const SAFETY_RESOURCES = [
+   }
+ ];
+
++// 260909 RECORD v4 §5-1 안전 단일화 — recordChat.js 에만 있던 한국 상담전화를 여기로 이관.
++export const SAFETY_RESOURCES_KO = [
++  { name: "자살예방 상담전화", number: "109", desc: "24시간", action: "tel:109" },
++  { name: "정신건강 위기상담전화", number: "1577-0199", desc: "", action: "tel:15770199" },
++  { name: "청소년 상담", number: "1388", desc: "", action: "tel:1388" },
++];
++
++/** 언어별 상담 자원 — ko 면 한국, 그 외 미국 목록. */
++export function getSafetyResources(lang) {
++  return String(lang || '').slice(0, 2) === 'ko' ? SAFETY_RESOURCES_KO : SAFETY_RESOURCES;
++}
++
+ // ── Tense detection (시제 판별) ──
+@@ -269,6 +281,8 @@ if (typeof window !== 'undefined') {
+     safetyForAbsorb,
+     detectCrisis,
+     ABSORB_GENERIC_KIN,
++    getSafetyResources,   // 260909 RECORD v4
++    resetSafetySession,
+   };
+ }</pre></div>
+<p>덩어리 둘. 첫째는 초록만(<b>추가</b>): 한국 상담전화 목록과, 언어에 따라 목록을 고르는 함수. 둘째도 초록만: 파일 끝의 "마당에 꽂는 묶음"(12장)에 두 이름 추가. <code>@@</code> 줄 오른쪽 끝에 <code>export const SAFETY_RESOURCES = [</code>, <code>if (typeof window …</code> 처럼 <b>그 덩어리가 어느 덩어리 안인지</b> 힌트가 붙습니다. 12장 시험 3번의 답이 여기 보입니다.</p>
+
+<h2>어디서 보나</h2>
+<ul>
+  <li>VS Code 왼쪽 <b>소스 제어</b> 아이콘(가지 모양) → 바뀐 파일 목록 → 파일을 누르면 전/후가 나란히. 빨강 · 초록 색도 같습니다.</li>
+  <li>AI 에게: "요약 말고 <code>git diff</code> 출력을 그대로 붙여 줘." 부록 D 에 문구를 모아 뒀습니다.</li>
+</ul>
+
+<h2>검증 다섯 질문</h2>
+<ol>
+  <li><b>바꾼 함수 이름이 뭐야?</b> (5장 · <code>@@</code> 줄 오른쪽 힌트)</li>
+  <li><b>덩어리(<code>@@</code>)가 몇 개야? 각각 어느 함수 안이야?</b> "세 곳 고쳤다" ↔ <code>@@</code> 세 개.</li>
+  <li><b>초록 줄이 새로 하는 일을 내 말로.</b> 못 하겠으면 AI 에게 한 줄씩 풀어 달라고.</li>
+  <li><b>그 함수 밖도 건드렸어?</b> 건드렸으면 왜.</li>
+  <li><b>stat 숫자가 말과 맞아?</b> "한 줄"인데 +340 이면 되묻기.</li>
+</ol>
+
+<div class="tip">비교표는 <code>@@</code> 개수부터 센다. 그다음 초록 줄만 읽어 "새로 하는 일"을 적는다. 빨강 · 초록 짝 = 바꿈, 초록만 = 추가. 속은 몰라도 세 모양(if · for · 이름)만 보면 성격이 잡힌다.</div>
+
+<div class="quiz"><h3>미니 시험 15</h3>
+<div class="codebox"><span class="file">git diff js/app/archive.js (미커밋)</span>
+<pre class="code nonum" data-lang="diff">@@ -804,7 +804,10 @@ async function loadMemoriesFromSupabase() {
+     console.log('[loadMemoriesFromSupabase] merged', merged.length, 'memories');
+-    appStore.setState({ allMemoriesData: merged });
++    // 260909 RECORD v4 §6-①: v4 기록 씨앗(Fetus)은 기록자 본인에게만 — PLAY 풀·ARCHIVE 목록 공통.
++    const { filterVisibleMemories } = await import('../shared/tem_record_visibility.js?v=260909a');
++    const _uid = (appStore.getState().currentUser && appStore.getState().currentUser.id) || null;
++    appStore.setState({ allMemoriesData: filterVisibleMemories(merged, { userId: _uid }) });
+     const state = appStore.getState();</pre></div>
+<ol>
+  <li>어느 함수 안입니까? 덩어리는 몇 개?</li>
+  <li>빨강 한 줄과 초록 네 줄. <b>전에는</b> 무엇을 했고 <b>지금은</b> 무엇을 합니까? (힌트: 9장의 "필요할 때 꺼내오기", 7장의 filter)</li>
+  <li>stat 에 <code>js/index.js | 44 ++++</code> 만 보입니다. 이 숫자만으로 알 수 있는 것과 없는 것을 하나씩.</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 검증 다섯 질문을 내 문장으로</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 16장 ═══════════════════════ -->
+<section class="chapter" id="ch16">
+<h1><span class="chno">16장 · 검사하는 눈</span>데이터베이스: 표 · SQL · 권한 · jsonb</h1>
+
+<p class="goal"><b>목표</b> 데이터베이스가 <b>표</b>라는 것, 표를 만들고 고치는 글(SQL)을 읽는 법, 코드가 표를 읽고 쓰는 한 문장, 403 의 근원인 <b>권한 규칙(RLS)</b>, 그리고 "저장돼 있다 ≠ 쓰인다"를 안다.</p>
+
+<h2>표 · 행 · 열</h2>
+<p>Supabase 의 데이터베이스는 엑셀과 같습니다. <b>표</b>(memories, scenes, plays …)가 있고, <b>행</b> 하나가 기억 하나 · 씬 하나 · 회차 하나, <b>열</b>이 칸(title, scene_order, alignment …). 행마다 <code>id</code>라는 주민번호가 있고 모양은 <code>8fe034ef-6db0-4ba1-b291-66954fea2e08</code> 같은 36글자(UUID). 코드에서 <code>memory_id</code>, <code>scene_id</code>는 전부 이 번호로 다른 표의 행을 가리키는 것.</p>
+
+<h2>실제 SQL: 표 만들기</h2>
+<div class="codebox"><span class="file">supabase/migrations/20250107000000_create_notes_table.sql : 4~14</span>
+<pre class="code" data-lang="sql" data-hl="1,2,3,6,9">CREATE TABLE IF NOT EXISTS notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  memory_id UUID REFERENCES memories(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  recipient_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  note_type TEXT DEFAULT 'player_to_author',
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>SQL 은 영어 문장에 가깝습니다. <code>CREATE TABLE IF NOT EXISTS notes ( … )</code> = "notes 표를 만들어라, 이미 있으면 말고". 괄호 안이 열 목록, 한 줄에 열 하나: <b>이름 · 종류 · 규칙</b>.</li>
+  <li>종류: <code>UUID</code>(주민번호), <code>TEXT</code>(글), <code>BOOLEAN</code>(참/거짓), <code>TIMESTAMP WITH TIME ZONE</code>(시각), <code>INT</code>(정수), <code>JSONB</code>(묶음을 통째로).</li>
+  <li><code>PRIMARY KEY</code> = 이 열이 주민번호. <code>DEFAULT …</code> = 안 주면 이 값(<code>gen_random_uuid()</code> 새 번호 자동, <code>now()</code> 지금 시각, <code>false</code>).</li>
+  <li><code>REFERENCES memories(id) ON DELETE CASCADE</code> = "이 칸은 memories 표의 id 를 가리킨다. 그 기억이 지워지면 이 쪽지도 같이 지워라". 표 사이의 끈. (2026-07-14 에 씬 삭제 때 이 끈이 회차까지 지우던 것을 끊는 마이그레이션이 있었습니다. 끈은 편리하지만 위험.)</li>
+  <li><code>NOT NULL</code> = 비워 둘 수 없음.</li>
+</ul></div>
+
+<h2>실제 SQL: 표 고치기와 권한</h2>
+<div class="codebox"><span class="file">supabase/migrations/20260716000000_terrain_layers_and_contact_cols.sql : 11~17, 24~31, 34~36</span>
+<pre class="code" data-lang="sql" data-hl="9,13,14,15,18">create table if not exists public.terrain_layers (
+  memory_id    uuid primary key references public.memories(id) on delete cascade,
+  height_delta jsonb       not null default '{}'::jsonb,
+  foot_map     jsonb       not null default '{}'::jsonb,
+  generation   int         not null default 0,
+  updated_at   timestamptz not null default now()
+);
+
+alter table public.terrain_layers enable row level security;
+
+-- SELECT 공개(anon/authenticated). INSERT/UPDATE/DELETE 정책은 두지 않는다.
+-- = 관객(anon)의 쓰기는 매칭 행 0개로 조용히 통과. Edge service_role 만 RLS 우회.
+create policy "terrain_layers public read"
+on public.terrain_layers for select
+to anon, authenticated
+using (true);
+
+alter table public.trajectory_bridges
+  add column if not exists contact_utterance text,
+  add column if not exists contact_turn      int;</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>대소문자는 상관없습니다(위 파일은 소문자, 앞 파일은 대문자). <code>--</code> 뒤는 메모(자바스크립트의 <code>//</code>).</li>
+  <li>9번째 줄 <b>RLS</b>(행 단위 권한) 켜기. 켜면 <b>정책이 허락한 것만</b> 됩니다. 13~16번째 줄 정책: "읽기(select)는 익명(anon)이든 로그인(authenticated)이든 누구나(using true)". <b>쓰기 정책이 없으니 관객은 못 씁니다.</b> 쓰려면 서버 함수(<code>supabase/functions/record-erosion</code>)가 관리자 열쇠(service_role)로 대신 씁니다. 메모(11~12번째 줄)가 그 설계를 적어 뒀습니다.</li>
+  <li>14장의 <b>403 이 태어나는 자리</b>가 바로 이 정책입니다. 정책이 "아니오" 하면 403. notes 표의 정책은 <code>auth.uid() = recipient_id</code>("지금 로그인한 사람이 받는 사람일 때만 읽기") 같은 모양.</li>
+  <li>18~20번째 줄 <code>alter table … add column if not exists</code> = "표에 열을 더해라, 이미 있으면 말고". 표 모양이 바뀌었다는 말은 <b>반드시</b> 이런 파일이 <code>migrations</code> 폴더에 새로 생겨야 합니다(1장 시험 3번). 파일 이름 앞 숫자가 날짜시각이고 그 순서로 적용됩니다.</li>
+</ul></div>
+
+<h2>코드에서 표를 읽고 쓰는 한 문장</h2>
+<div class="codebox"><span class="file">js/shared/api.js : 36~40, 59~63</span>
+<pre class="code">const { data, error } = await supabaseClient
+  .from('scenes')
+  .select('*, choices(*)')
+  .eq('memory_id', memoryId)
+  .order('scene_order');
+
+const { data, error } = await supabaseClient
+  .from('plays')
+  .insert(playData)
+  .select()
+  .single();</pre></div>
+<table>
+  <tr><th style="width:14em">조각</th><th>뜻</th></tr>
+  <tr><td><code>.from('scenes')</code></td><td>scenes 표에서</td></tr>
+  <tr><td><code>.select('*, choices(*)')</code></td><td>모든 열을, 그리고 끈으로 이어진 choices 표의 행들도 같이</td></tr>
+  <tr><td><code>.eq('memory_id', memoryId)</code></td><td>memory_id 가 이 값인 행만 (eq = equal). 비슷한 것: <code>.neq</code> 아닌, <code>.gt</code> 보다 큰, <code>.in</code> 목록 안</td></tr>
+  <tr><td><code>.order('scene_order')</code></td><td>scene_order 순으로 정렬</td></tr>
+  <tr><td><code>.insert(playData)</code></td><td>이 묶음을 새 행으로 넣어라</td></tr>
+  <tr><td><code>.select().single()</code></td><td>넣은 행을 돌려받되, 하나만</td></tr>
+  <tr><td><code>.update({…}).eq(…)</code></td><td>조건에 맞는 행의 칸을 고쳐라 (이 파일 다른 곳)</td></tr>
+</table>
+<p>답은 항상 <code>{ data, error }</code>(10장). <code>error</code>가 차 있으면 콘솔 빨간 줄(14장), 그 안의 <code>code: '42501'</code>은 "권한 거부"입니다.</p>
+
+<h2>jsonb: 열 안의 묶음</h2>
+<p><code>meta</code>, <code>emotion_dist</code>, <code>height_delta</code>처럼 종류가 <code>jsonb</code>인 열은 안에 묶음을 통째로 담습니다. 코드에서는 <code>scene.meta.stage_position</code>처럼 점 두 번. 장점은 열을 안 늘리고 칸을 더할 수 있다는 것. 단점은 <b>넣기만 하고 아무도 안 읽는 칸</b>이 생겨도 표에는 안 보인다는 것.</p>
+
+<div class="story">CLAUDE.md 4절, 죽은 레버 <code>pin_override</code>: 편집기에서 핀을 끌면 <code>meta.pin_override</code>에 저장은 됩니다. 그런데 상영 쪽에 그 칸을 <b>읽는 코드가 없습니다.</b> 진짜 핀 위치는 <code>meta.stage_position</code>. "데이터베이스에 저장된다"와 "쓰인다"는 다른 말입니다. 검사법: 칸 이름(<code>pin_override</code>)으로 grep 해서 <b>읽는 자리</b>(<code>meta.pin_override</code>가 <code>=</code> 오른쪽에 있는 줄)가 있는지 셉니다. 저장하는 자리(<code>=</code> 왼쪽)만 있으면 죽은 레버.</div>
+
+<h2>서버 함수(Edge Function)의 머리</h2>
+<div class="codebox"><span class="file">supabase/functions/record-erosion/index.ts : 1~6, 33~41</span>
+<pre class="code">// record-erosion — 이본 지층 W2-2 (2026-07-16): 봉인 시 변형층 저장 + 스냅샷 로깅.
+//
+// 배경: 회차 봉인 시 그 관객 몫의 침식(누적 변형층)을 굽고 저장한다.
+//   memories/terrain_layers RLS = 익명 관객 직접 쓰기 불가 → service_role Edge 경유가 유일한 길
+
+const MAX_BODY_BYTES = 512 * 1024;    // 스냅샷 포함분
+const HEIGHT_SCALE = 20;              // |height_delta 잎| ≤ 이 값
+
+interface RequestBody {
+  memoryId: string;
+  height_delta: unknown;
+  generation: number;
+}</pre></div>
+<p>파일 끝이 <code>.ts</code>(TypeScript) = 자바스크립트에 <b>종류 표시</b>를 더한 것. <code>memoryId: string</code>은 "memoryId 는 글자여야 한다". 읽는 법은 자바스크립트와 같고, 쌍점 뒤 종류만 덤으로 읽으면 됩니다. 머리 메모가 <b>왜 이 함수가 존재하는지</b>(관객은 못 쓰니 서버가 대신)를 적어 둔 좋은 예. 이 프로젝트 서버 함수 19개는 거의 다 이 이유로 존재합니다.</p>
+
+<div class="tip">표 모양이 바뀌었다 → <code>migrations</code>에 새 파일이 있나. 403 → 그 표의 <code>create policy</code>를 읽어 누가 무엇을 할 수 있는지 본다. 저장했다 → 그 칸을 <b>읽는</b> 코드가 있는지 grep.</div>
+
+<div class="quiz"><h3>미니 시험 16</h3>
+<ol>
+  <li>위 마이그레이션 18~20번째 줄은 어느 표에 어떤 열을 더합니까? 이미 있으면 어떻게 됩니까?</li>
+  <li><code>supabaseClient.from('plays').insert(playData).select().single()</code> — 우리말 한 문장으로.</li>
+  <li>notes 표 정책이 <code>ON notes FOR SELECT USING (auth.uid() = recipient_id)</code> 입니다. 내가 남에게 보낸 쪽지를 내가 다시 읽을 수 있습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · "저장된다"와 "쓰인다"의 차이</div><div class="lines"></div></div>
+</section>

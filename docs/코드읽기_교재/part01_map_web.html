@@ -1,0 +1,200 @@
+<!-- ═══════════════════════ 1장 ═══════════════════════ -->
+<section class="chapter" id="ch1">
+<h1><span class="chno">1장 · 지형 익히기</span>지도: 이 프로젝트는 어떻게 생겼나</h1>
+
+<p class="goal"><b>목표</b> AI가 "어느 파일을 고쳤다"고 말하면, 그 파일 이름만 듣고 <b>어느 층의 일인지</b> 짐작할 수 있게 된다. 코드를 읽기 전에 지도를 먼저 갖는다.</p>
+
+<h2>폴더의 큰 그림</h2>
+<p>저장소 맨 위에는 파일이 아주 많지만(스크린샷 수십 장 포함), 실제로 작품을 이루는 건 아래 뼈대뿐입니다. 이것만 외우면 됩니다.</p>
+
+<div class="codebox"><span class="file">저장소 뼈대 (2026-09-25)</span>
+<pre class="code" data-lang="txt">The Etched Mutation/
+├─ index.html          ← 진입점 ①  오프닝 · 메뉴 · RECORD · 아카이브
+├─ play-test.html      ← 진입점 ②  상영 (1인칭 지형 · 유령 대화 · 봉인)   ※ 30만 바이트, 한 파일
+├─ demo-sequence.html  ← 진입점 ③  데모 (js/demo/demoFlow.js 가 두뇌)
+├─ admin.html          ← 작가용 편집기 (관객은 못 봄)
+├─ css/                ← 옷 (index.css · main-menu.css · tem_cursor.css …)
+├─ js/                 ← 신경 (110개 파일, 약 5만 3천 줄)
+│   ├─ index.js        ←   index.html 의 두뇌 (866줄)
+│   ├─ safety.js       ←   안전 필터
+│   ├─ app/            ←   화면 흐름 (opening · archive · confession · recordPlay …)
+│   ├─ core/           ←   엔진 (ByeoriEngine · ContaminationTracker · SceneNavigator …)
+│   ├─ shared/         ←   공용 계산·지형 (math · api · tem_variant_strata · tem_af_strata_terrain …)
+│   ├─ ui/             ←   연출 (lumen_* · strataView · notify …)
+│   ├─ lib/            ←   설정·연결 (config · supabaseClient · i18n · repo)
+│   ├─ services/       ←   서버 심부름 (NetworkService · AIService …)
+│   └─ demo/           ←   데모 전용
+├─ supabase/
+│   ├─ migrations/     ← 데이터베이스 표를 만들고 고친 기록 (SQL, 날짜순 39개)
+│   └─ functions/      ← 서버에서 도는 함수 (record-erosion · claude-scene … 19개)
+├─ docs/               ← 정본 문서 189개 (설계 · 결정 · 실험 기록)
+├─ test/  tests/       ← 실험 화면 · 자동 검사
+├─ tools/              ← 도구 (serve.cjs 로컬 서버 · qa.cjs 순찰 · 저작 자동화 …)
+├─ data/  sounds/  assets/  ← 씨앗 데이터 · 소리 · 모형
+└─ CLAUDE.md           ← AI 작업 규칙 (311줄)</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b>html 파일 = 문.</b> 관객이 브라우저로 여는 건 세 개의 html 뿐입니다. 그 뒤로 css와 js가 끌려 들어옵니다.</li>
+  <li><b>js 폴더 안은 "층"으로 나뉩니다.</b> <code>app</code>은 화면 흐름, <code>core</code>는 판단 엔진, <code>shared</code>는 여러 곳이 같이 쓰는 계산, <code>ui</code>는 눈에 보이는 연출, <code>lib</code>은 바깥 세상(데이터베이스, 언어)과의 연결. AI가 "<code>js/core/ByeoriEngine.js</code> 고쳤어요" 하면 <em>판단 엔진을 건드렸다</em>는 뜻이고, "<code>js/ui/lumen_footprints.js</code>" 면 <em>보이는 것만 바뀌었다</em>는 뜻입니다.</li>
+  <li><b>supabase 폴더는 서버 쪽.</b> 브라우저에서 도는 게 아니라 Supabase 회사 서버에서 돕니다. <code>migrations</code>는 표 설계도의 변경 이력이고, <code>functions</code>는 관객 브라우저가 직접 못 하는 일(권한 필요한 저장)을 대신 하는 함수들입니다.</li>
+  <li><b>docs 는 정본.</b> 코드보다 문서가 먼저입니다. 결정은 여기 남습니다.</li>
+</ul></div>
+
+<h2>진입점 세 곳</h2>
+<p>이 프로젝트에서 가장 자주 나오는 말이 "진입점 세 곳"입니다. 관객이 들어오는 문이 셋이라, 어떤 기능을 붙일 때 <b>세 문 모두에 붙였는지</b> 확인해야 합니다. 한 문에만 붙이고 "됐어요" 하는 게 이 저장소의 단골 사고였습니다.</p>
+
+<table>
+  <tr><th style="width:11em">문</th><th>두뇌 파일</th><th>무엇을 하나</th></tr>
+  <tr><td><code>index.html</code></td><td><code>js/index.js</code> (+ <code>js/app/*</code>)</td><td>오프닝 파동, 메뉴, RECORD(기억 채록), 아카이브, 로그인</td></tr>
+  <tr><td><code>play-test.html</code></td><td>파일 자기 자신 (안에 script 가 다 들어 있음)</td><td>상영. 1인칭으로 지형을 걷고 유령과 대화하고 봉인</td></tr>
+  <tr><td><code>demo-sequence.html</code></td><td><code>js/demo/demoFlow.js</code></td><td>데모 시연 흐름</td></tr>
+</table>
+
+<div class="story">2026-09-09, RECORD로 바로 가는 단축키(Ctrl+Shift+B)를 붙일 때 기록: "진입점 3곳(index / play-test / demoFlow) 동일 키". 세 문에 같은 키를 붙였다는 걸 코드 주석에 명시했습니다. 이 확인이 없으면 한 문에서만 열리는 단축키가 됩니다. 이 책 18장에서 세 문을 한꺼번에 검사하는 법을 배웁니다.</div>
+
+<h2>켜는 법: 바탕화면의 "TEM 켜기"가 하는 일</h2>
+<p>더블클릭하면 검은 창이 뜨고 브라우저가 열립니다. 그 사이에 일어나는 일은 딱 두 줄입니다.</p>
+
+<div class="codebox"><span class="file">TEM 켜기.bat</span>
+<pre class="code" data-lang="txt" data-hl="4">@echo off
+chcp 65001 > nul
+cd /d "%~dp0"
+node tools\serve.cjs index.html</pre></div>
+
+<div class="codebox"><span class="file">tools/serve.cjs : 1~3, 19~21</span>
+<pre class="code" data-hl="1,5">// TEM 로컬 서버 — 더블클릭 런처(.bat)에서 호출. 의존성 0 (node 내장 모듈만).
+// 사용: node tools/serve.cjs [열_페이지]   (기본 index.html)
+// 끄기: 실행된 콘솔 창을 닫으면 됨.
+
+const root = path.join(__dirname, '..'); // tools/ 의 상위 = 프로젝트 루트
+const PORT = 8777;
+const page = process.argv[2] || 'index.html';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b>node</b>는 자바스크립트를 브라우저 밖에서 돌려주는 프로그램입니다. 4번째 줄은 "node야, <code>tools/serve.cjs</code> 파일을 돌려라, 첫 페이지는 index.html 로" 라는 뜻.</li>
+  <li><b>서버</b>란 거창한 게 아닙니다. 브라우저가 "index.html 줘" 하면 폴더에서 찾아 건네주는 <em>심부름꾼</em>입니다. <code>PORT = 8777</code>은 그 심부름꾼이 서 있는 문 번호. 그래서 주소창이 <code>localhost:8777</code>로 시작합니다.</li>
+  <li>주석 1번째 줄의 "의존성 0"은 "남의 부품을 안 빌렸다"는 뜻. 이 파일은 node 만 있으면 돕니다.</li>
+</ul></div>
+
+<div class="tip">파일 이름을 들으면 폴더부터 봐라. <code>js/core/</code>면 판단, <code>js/ui/</code>면 연출, <code>supabase/</code>면 서버, <code>docs/</code>면 문서. 이 네 글자만 봐도 "무엇이 바뀌었을 수 있는가"의 범위가 정해진다.</div>
+
+<div class="quiz"><h3>미니 시험 1</h3>
+<ol>
+  <li>AI가 "<code>js/ui/lumen_scene_objects.js</code> 를 고쳤다"고 합니다. 판단 엔진이 바뀌었을 가능성이 있습니까? 폴더 이름으로 답하세요.</li>
+  <li>관객이 <code>play-test.html</code>을 열었습니다. 이때 <code>js/index.js</code>의 코드가 같이 돕니까?</li>
+  <li>"기억 표에 열을 하나 추가했다"는 기록은 어느 폴더에 남아야 합니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 폴더 다섯 개의 역할을 내 말로</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 2장 ═══════════════════════ -->
+<section class="chapter" id="ch2">
+<h1><span class="chno">2장 · 지형 익히기</span>웹페이지의 세 겹: html · css · 자바스크립트</h1>
+
+<p class="goal"><b>목표</b> 화면 하나가 세 종류의 파일로 이루어진다는 걸 알고, 세 겹이 <b>이름(id · class)</b>으로 서로를 찾는다는 것을 실제 메뉴 화면에서 본다.</p>
+
+<h2>비유 하나</h2>
+<table>
+  <tr><th style="width:8em">겹</th><th style="width:7em">비유</th><th>답하는 질문</th><th>이 프로젝트에서</th></tr>
+  <tr><td>html</td><td>뼈대</td><td>화면에 <b>무엇이</b> 있나</td><td><code>index.html</code>, <code>play-test.html</code></td></tr>
+  <tr><td>css</td><td>옷</td><td><b>어떻게 보이나</b> (색 · 크기 · 숨김)</td><td><code>css/index.css</code>, <code>css/main-menu.css</code></td></tr>
+  <tr><td>자바스크립트 (js)</td><td>신경</td><td>무엇을 <b>하나</b> (누르면 · 시간이 지나면)</td><td><code>js/</code> 전체</td></tr>
+</table>
+
+<h2>html: 상자 속 상자</h2>
+<p>메뉴 화면의 뼈대입니다. 실제 파일에서 그대로 잘라 왔습니다.</p>
+
+<div class="codebox"><span class="file">index.html : 144~152, 168~169</span>
+<pre class="code" data-lang="html" data-hl="1,9">&lt;div class="intro-screen main-menu-intro" id="introScreen"&gt;
+    &lt;div class="main-menu-wrap"&gt;
+        &lt;div class="bg-image"&gt;&lt;/div&gt;
+        &lt;div class="left-gradient"&gt;&lt;/div&gt;
+        &lt;div class="main-content"&gt;
+            &lt;div class="main-sidebar"&gt;
+                &lt;div class="main-header"&gt;
+                    &lt;h1&gt;THE ETCHED&lt;br&gt;&lt;span&gt;MUTATION&lt;/span&gt;&lt;/h1&gt;
+                &lt;div class="menu-list" id="mainMenuList"&gt;
+                    &lt;div class="menu-item active" data-menu-id="play" data-action="enterPlayInterview"&gt;</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b>꺾쇠 한 쌍이 상자 하나.</b> <code>&lt;div&gt;</code>로 열고 <code>&lt;/div&gt;</code>로 닫습니다. 사선(<code>/</code>)이 있으면 닫는 쪽. 안에 다른 상자가 들어가고, 들어갈수록 오른쪽으로 밀려 적힙니다(6장의 들여쓰기와 같은 원리).</li>
+  <li><b><code>id</code> = 이름표, 한 화면에 하나뿐.</b> <code>id="introScreen"</code>은 "이 상자 이름은 introScreen". 자바스크립트가 이 이름으로 찾아옵니다.</li>
+  <li><b><code>class</code> = 종류표, 여러 상자가 같이 가질 수 있음.</b> <code>class="menu-item active"</code>는 종류표 두 장("메뉴 항목"이면서 "켜진 상태"). css가 이 종류표를 보고 옷을 입힙니다.</li>
+  <li><b><code>data-…</code> = 자바스크립트에게 남긴 쪽지.</b> <code>data-action="enterPlayInterview"</code>는 "이걸 누르면 enterPlayInterview 를 하라"고 코드가 읽을 쪽지. 이 프로젝트 메뉴는 전부 이 방식입니다.</li>
+  <li><code>&lt;h1&gt;</code>은 큰 제목 상자, <code>&lt;br&gt;</code>은 줄바꿈(닫는 짝 없음), <code>&lt;span&gt;</code>은 글자 일부만 감싸는 작은 상자.</li>
+</ul></div>
+
+<h2>css: "누구에게" + "무엇을"</h2>
+<div class="codebox"><span class="file">css/index.css : 1~8, 4269~4271</span>
+<pre class="code" data-lang="css" data-hl="1,10">:root {
+  --bg-deep: #0a0a0c;
+  --bg-surface: #12121a;
+  --text-primary: #e8e4df;
+  --text-muted: #6b6b7b;
+  --accent-memory: #c4a882;
+  --accent-interpretation: #7b8fa8;
+}
+
+.hidden {
+  display: none !important
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>css 한 덩어리는 항상 <b>"누구에게 { 무엇을: 어떻게; }"</b> 모양입니다. 10번째 줄: <code>.hidden</code>(종류표가 hidden 인 상자들에게) <code>display: none</code>(보이지 마라).</li>
+  <li><b>앞의 점(<code>.</code>)은 class</b>, <b>앞의 우물 정(<code>#</code>)은 id</b>를 가리킵니다. <code>.hidden</code>은 종류표, <code>#selectScreen</code>은 이름표.</li>
+  <li><code>!important</code>는 "다른 규칙과 부딪혀도 이게 이긴다". 이 프로젝트에서 화면을 확실히 숨길 때 씁니다.</li>
+  <li>1번째 줄 <code>:root</code> 안의 <code>--이름: 값</code>은 <b>색 이름표</b>입니다. <code>--accent-memory</code>가 기억의 금색. 다른 곳에서 <code>var(--accent-memory)</code>라고 쓰면 이 색을 꺼내 씁니다. 색을 한 군데서 바꾸면 전체가 바뀌게 한 장치.</li>
+  <li><code>#0a0a0c</code> 같은 것은 색을 숫자로 적은 것. 앞 두 자리 빨강, 가운데 초록, 뒤 파랑. <code>#0a0a0c</code>는 거의 검정.</li>
+</ul></div>
+
+<h2>세 겹이 서로를 찾는 방법</h2>
+<p>이 프로젝트의 화면 전환은 거의 전부 한 가지 동작입니다. <b>자바스크립트가 id로 상자를 찾아 → class(종류표)를 붙이거나 떼면 → css 가 보이거나 숨긴다.</b> 실제 코드에서 그 세 줄을 보겠습니다.</p>
+
+<div class="codebox"><span class="file">js/index.js : 377 (restart 함수 안, 일부)</span>
+<pre class="code" data-hl="1,2,3">const introScreen = document.getElementById('introScreen');
+if (introScreen) { introScreen.classList.remove('hidden');
+                   introScreen.classList.add('visible'); }</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ol>
+  <li><code>document.getElementById('introScreen')</code> = "문서에서 이름표가 introScreen 인 상자를 찾아와". 2장 첫 코드의 1번째 줄, 바로 그 상자입니다.</li>
+  <li><code>if (introScreen)</code> = "찾았으면"(못 찾으면 아무것도 안 함). 이 프로젝트 코드에 이 문지기가 수백 번 나옵니다. 없으면 오류로 멈춥니다(14장).</li>
+  <li><code>classList.remove('hidden')</code> = 종류표 hidden 을 뗀다 → css 의 <code>.hidden</code> 규칙이 더 이상 안 붙음 → 보인다. <code>classList.add('visible')</code> = 종류표 visible 을 붙인다.</li>
+</ol>
+<p>즉 <b>html 이 이름을 달고, js 가 이름으로 찾아 종류표를 바꾸고, css 가 종류표를 보고 옷을 갈아입힙니다.</b> 이 삼각형만 알면 "메뉴가 안 사라져요" 같은 문제를 어느 겹에서 찾을지 정할 수 있습니다.</p></div>
+
+<h2>겹을 불러오는 줄: link 와 script</h2>
+<div class="codebox"><span class="file">index.html : 15, 17, 599, 612</span>
+<pre class="code" data-lang="html" data-hl="2,4">&lt;link rel="stylesheet" href="css/index.css?v=260714"&gt;
+&lt;link rel="stylesheet" href="css/tem_cursor.css?v=260809"&gt;
+&lt;script src="js/ui/strataSection.js?v=260714"&gt;&lt;/script&gt;
+&lt;script type="module" src="js/index.js?v=260909c"&gt;&lt;/script&gt;</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>&lt;link rel="stylesheet" href="…"&gt;</code> = "저 css 파일을 옷으로 입혀라". <code>&lt;script src="…"&gt;</code> = "저 js 파일을 신경으로 붙여라". html 파일이 다른 두 겹을 여기서 끌어옵니다.</li>
+  <li><code>?v=260809</code> 는 <b>캐시버스터</b>. 날짜를 적어 두고, 파일을 고치면 이 숫자도 올립니다. 안 올리면 브라우저가 "전에 받아둔 옛 파일"을 계속 씁니다. 이 저장소에서 여러 번 사고가 났고, 12장에서 따로 다룹니다.</li>
+  <li><code>type="module"</code> 이 붙은 script 와 안 붙은 script 는 <b>서로 이름을 못 봅니다.</b> 이것도 12장.</li>
+</ul></div>
+
+<div class="warn"><code>play-test.html</code> 은 세 겹이 한 파일에 다 들어 있습니다(안에 <code>&lt;style&gt;</code> 수백 줄, <code>&lt;script&gt;</code> 수천 줄). 그래서 30만 바이트, 8천 줄이 넘습니다. 파일 하나가 크다고 겁먹을 것 없습니다. 안에서도 세 겹은 그대로고, 18장의 "큰 파일 지도" 기술로 다룹니다.</div>
+
+<div class="quiz"><h3>미니 시험 2</h3>
+<ol>
+  <li><code>&lt;link rel="stylesheet" href="css/tem_cursor.css?v=260809"&gt;</code> 이 줄은 세 겹 중 어느 겹을 불러옵니까?</li>
+  <li>css 에 <code>.opening-screen.hidden { … }</code> 이 있습니다(점이 두 번). "종류표 opening-screen 을 가진 상자" 인가요, "종류표 opening-screen 과 hidden 을 <b>둘 다</b> 가진 상자" 인가요? 감으로 답하고 이유를 쓰세요.</li>
+  <li><code>document.getElementById('landingShelf')</code> 는 어느 겹이 어느 겹을 찾는 동작입니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · id 와 class 의 차이를 한 줄로</div><div class="lines"></div></div>
+</section>

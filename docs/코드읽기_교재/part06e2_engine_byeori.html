@@ -1,0 +1,387 @@
+<!-- ═══════════════════════ 21장 ═══════════════════════ -->
+<section class="chapter" id="ch21">
+<h1><span class="chno">21장 · 엔진 읽기</span>별이엔진 190줄, 한 덩어리씩</h1>
+
+<p class="goal"><b>목표</b> <code>js/core/ByeoriEngine.js</code>의 중심 함수 <code>calculateStep</code>을 재료 받기부터 답 내보내기까지 아홉 덩어리로 끊어서 읽는다. 다 읽으면 "L × S × V"가 어디서 어떻게 나오는지 손가락으로 짚을 수 있다.</p>
+
+<h2>식부터 외워 두세요</h2>
+<p>파일 맨 위 주석에 식이 통째로 적혀 있어요. 이걸 먼저 외우고 코드를 읽으면, 코드는 이 식의 재료를 준비하는 과정일 뿐이라는 게 보여요.</p>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 4~7</span>
+<pre class="code" data-hl="1">// 공식: alignment = level × shape × void_mod
+// level = 장면별 감정 유사도 평균
+// shape = 감정 변화 궤적의 형태 유사도 (3장면 미만이면 1.0)
+// void_mod = 회피 보정 (기본 1.0, 회피 시 0.7)</pre></div>
+
+<p>한국어로 다시 쓰면 이래요.</p>
+<p style="margin:0.5em 1.5em 1em; font-size:12pt;"><b>정렬도 = 수준 × 형태 × 회피</b></p>
+<ul>
+  <li><b>수준</b>(level): 장면마다 "작가와 얼마나 같은 결이었나"를 코사인으로 재고, 지금까지 본 장면 전부의 <b>평균</b>.</li>
+  <li><b>형태</b>(shape): 장면에서 다음 장면으로 감정이 <b>어느 쪽으로 움직였나</b>를 작가의 움직임과 비교한 코사인. 장면이 셋 미만이면 비교할 게 없어서 1.</li>
+  <li><b>회피</b>(void_mod): 관객은 감정을 안 내놨는데 작가는 내놨으면 0.7을 곱해서 깎음. 아니면 1(그대로).</li>
+</ul>
+<p>셋을 곱해요. 더하는 게 아니라. 왜 곱이냐는 22장에서 말할게요. 지금은 "하나라도 0이면 전체가 0"이라는 성질만 기억하세요.</p>
+
+<h2>덩어리 ① 재료 받기 (40~51)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 40~51</span>
+<pre class="code" data-hl="1,2,3,4,5,6,9,10,11">calculateStep(input, context = {}) {
+  const {
+    userVector, originalVector, anchorEmotions = null,
+    userTrajectory = null, originalTrajectory = null,
+    sceneScores = null, emotionKeys = null
+  } = input;
+  const { previousBucket = null, emotionHistory = null } = context;
+
+  if (!userVector || !originalVector) {
+    console.warn('[ByeoriEngine V4] userVector 또는 originalVector 없음');
+    return this._createEmptyResult();
+  }</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>재료는 두 묶음이에요. <code>input</code>(이번 장면 것 + 지금까지 것)과 <code>context</code>(이전 등급, 감정 이력). 2~6번째 줄은 10장의 "묶음 풀기". 묶음에서 이름표대로 꺼내 변수로 만들어요. <code>= null</code>은 "안 들어왔으면 없음으로".</li>
+  <li>꺼낸 것 중 핵심 둘: <code>userVector</code>(관객이 이번 장면에서 느낀 것), <code>originalVector</code>(작가가 이 장면에 심어 둔 원본 감정). 나머지는 "지금까지"예요. <code>userTrajectory</code>는 관객이 지금까지 느낀 것들의 목록, <code>originalTrajectory</code>는 그 장면들의 원본 목록, <code>sceneScores</code>는 지금까지 장면마다 매긴 점수 목록.</li>
+  <li>9~11번째 줄: 핵심 둘 중 하나라도 없으면 콘솔에 경고 쓰고 빈 답(전부 0, 등급 LOW)을 돌려주고 끝. 4장의 "문지기" 모양.</li>
+</ul></div>
+
+<p>19장에서 "엔진은 기억이 없다"고 했죠. 여기서 보이죠. 지금까지의 궤적과 점수를 전부 <em>재료로 받아요</em>. 엔진이 들고 있지 않아요.</p>
+
+<h2>덩어리 ② 자 고르기 (53~58)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 53~58</span>
+<pre class="code" data-hl="4,5,6">// 판단 좌표계 (260727 기억별 좌표계 — docs/기억별_좌표계_결정-260727.md):
+// 씬 anchor(가장 구체) &gt; emotionKeys(기억의 저작 어휘) &gt; 판단 기본 17축.
+// level·shape·mismatch 가 전부 같은 자로 재야 V4 §9.1 (곱셈 결합의 동일 공간) 유지.
+const frameKeys = (anchorEmotions &amp;&amp; anchorEmotions.length)
+  ? anchorEmotions
+  : ((emotionKeys &amp;&amp; emotionKeys.length) ? emotionKeys : null);</pre></div>
+
+<p>20장 끝에서 "어느 칸들로 잴지"가 셋째 재료로 들어온다고 했죠. 여기서 그 칸 목록을 정해요. 우선순위가 셋이에요. 장면에 앵커 감정이 박혀 있으면 그것, 아니면 이 기억이 실제로 쓰는 감정 어휘(<code>emotionKeys</code>), 둘 다 없으면 <code>null</code>, 즉 기본 17칸. 4장의 "물음표 갈림길" 두 개가 겹친 모양이에요. 주석 세 줄에 결정 날짜와 문서 이름까지 적혀 있어요. 이런 주석이 있는 자리는 <b>설계 결정이 코드로 내려온 자리</b>예요. 그냥 지나치지 말고 "아, 7월 27일 결정이 여기구나" 하고 표시해 두세요.</p>
+
+<h2>덩어리 ③ 이번 장면 점수, 그리고 수준 (60~66)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 60~66</span>
+<pre class="code" data-hl="1,5,7">const currentSceneScore = calculateEmotionScore(
+  userVector, originalVector, frameKeys
+);
+
+const allSceneScores = sceneScores ? [...sceneScores, currentSceneScore] : [currentSceneScore];
+
+const level = calculateLevelSimilarity(allSceneScores);</pre></div>
+
+<ul>
+  <li>1번째 줄: 이번 장면 점수. <code>calculateEmotionScore</code>는 속을 열면 20장의 <code>cosineSimilarity</code>를 부르고 음수면 0으로 깎는 게 다예요. (임베딩이 둘 다 있으면 그걸 쓴다는 갈림길이 하나 있는데, 지금 상영 경로에선 임베딩을 안 넘겨서 항상 코사인 쪽으로 가요.)</li>
+  <li>5번째 줄: 지금까지 점수 목록 끝에 이번 점수를 붙여요. <code>[...sceneScores, x]</code>는 "목록을 복사해서 뒤에 x 하나 더"(10장). 목록이 없으면 이번 점수 하나짜리 목록.</li>
+  <li>7번째 줄: <b>수준 = 평균.</b> 함수 이름이 거창하지만 속은 이래요.</li>
+</ul>
+
+<div class="codebox"><span class="file">js/shared/math.js : 302~305</span>
+<pre class="code" data-hl="3">export function calculateLevelSimilarity(sceneScores) {
+  if (!sceneScores || sceneScores.length === 0) return 0;
+  return sceneScores.reduce((a, b) =&gt; a + b, 0) / sceneScores.length;
+}</pre></div>
+
+<p><code>reduce((a, b) =&gt; a + b, 0)</code>는 "0에서 시작해 전부 더해라"(7장의 반복 한 종류), 그걸 개수로 나누면 평균. 끝이에요. 장면 네 개 점수가 0.9 · 0.8 · 0.6 · 0.7이면 수준은 0.75.</p>
+
+<h2>덩어리 ④ 궤적, 그리고 형태 (68~75)</h2>
+<p>여기가 이 엔진의 <b>알맹이</b>예요. 다른 데는 다 평범한데 여기만 TEM 고유예요. 천천히 갈게요.</p>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 68~75</span>
+<pre class="code" data-hl="1,2,3,8">const userTraj = userTrajectory
+  ? [...userTrajectory, userVector.base || userVector]
+  : [userVector.base || userVector];
+const origTraj = originalTrajectory
+  ? [...originalTrajectory, originalVector.base || originalVector]
+  : [originalVector.base || originalVector];
+
+const shapeResult = calculateShapeSimilarity(userTraj, origTraj, frameKeys);</pre></div>
+
+<p>1~6번째 줄은 덩어리 ③의 5번째 줄과 같은 모양이에요. 지금까지 궤적 끝에 이번 감정을 붙여서 두 목록을 만들어요. 관객 목록과 원본 목록. <code>userVector.base || userVector</code>는 "묶음 안에 <code>base</code> 칸이 있으면 그걸, 없으면 묶음 자체를"(8장). 이 파일은 감정이 <code>{ base: {...}, reason_analysis: {...} }</code>로 포장돼 들어올 때도 있고 맨 묶음으로 들어올 때도 있어서 둘 다 받아요.</p>
+<p>중요한 건 <b>두 목록이 같은 순서</b>라는 거예요. 관객이 장면을 3번, 1번, 4번 순서로 봤으면 관객 목록도 그 순서, 원본 목록도 <em>그 순서로 재배열된</em> 원본이에요. 이 재배열은 엔진 밖(play-test)에서 해서 넘겨요. 문서 §2에 그림으로 있어요.</p>
+<p>8번째 줄에서 형태를 계산해요. 속을 보죠.</p>
+
+<div class="codebox"><span class="file">js/shared/math.js : 283~297 (calculateShapeSimilarity)</span>
+<pre class="code" data-hl="4,5,8,9,10,11,12,13,14">export function calculateShapeSimilarity(userTrajectory, originalTrajectory, emotionKeys = null) {
+  // emotionKeys (260727 기억별 좌표계): level 과 같은 자로 재도록 호출자가 축 목록을
+  // 넘길 수 있다. 생략 시 판단 기본 17축 — V4 §9.1 (level·shape 동일 좌표계) 유지.
+  if (!userTrajectory || !originalTrajectory || userTrajectory.length &lt; 3) {
+    return { raw: 1.0, clamped: 1.0, active: false };
+  }
+  const deltaUser = [];
+  const deltaOrig = [];
+  for (let i = 1; i &lt; userTrajectory.length; i++) {
+    deltaUser.push(subtractVectors(userTrajectory[i], userTrajectory[i - 1]));
+    deltaOrig.push(subtractVectors(originalTrajectory[i], originalTrajectory[i - 1]));
+  }
+  const raw = cosineFlat(flattenDeltas(deltaUser, emotionKeys), flattenDeltas(deltaOrig, emotionKeys));
+  return { raw, clamped: Math.max(0, raw), active: true };
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>4~6번째 줄: 장면이 <b>셋 미만이면 형태 = 1</b>, 그리고 <code>active: false</code>("형태는 아직 안 쟀음" 표시). 왜 셋이냐. 움직임을 하나 재려면 장면 둘이 필요하고, 움직임 둘을 비교하려면 장면 셋이 필요해요. 움직임이 하나뿐이면 "방향이 비슷한가"를 물을 수 없어요. 그래서 1을 돌려주면 정렬도 = 수준 × 1 × 회피가 되어 초반엔 수준만 반영돼요. 이게 19장 시험 1번의 답이에요.</li>
+  <li>9~12번째 줄: <b>움직임(delta) 만들기.</b> 둘째 장면부터 "이번 감정 빼기 직전 감정"을 구해 목록에 넣어요. <code>subtractVectors</code>는 칸마다 빼는 것. 관객 것 한 목록, 원본 것 한 목록.</li>
+  <li>13번째 줄: 움직임 목록을 <b>한 줄로 펴서</b>(<code>flattenDeltas</code>) 코사인(<code>cosineFlat</code>). 펴는 건 그냥 "움직임1의 17칸, 움직임2의 17칸, …"을 쭉 이어 붙이는 거예요. 그러면 긴 화살표 하나가 되고, 관객 것과 원본 것 두 화살표의 각도를 재요. 20장과 완전히 같은 계산.</li>
+  <li>14번째 줄: 날것(<code>raw</code>, -1~1)과 깎은 것(<code>clamped</code>, 음수면 0) 둘 다 돌려줘요. 엔진은 깎은 걸 식에 넣고 날것은 <code>debug</code>에만 남겨요.</li>
+</ul></div>
+
+<h3>손으로 한 번: 장면 셋</h3>
+<p>두 칸짜리로 해 볼게요. 관객이 장면 셋을 봤고, 갈수록 무서워졌어요. 작가도 그랬어요.</p>
+<table>
+  <tr><th></th><th>장면 1</th><th>장면 2</th><th>장면 3</th></tr>
+  <tr><td>관객</td><td>{ fear 0.2, joy 0.8 }</td><td>{ fear 0.6, joy 0.4 }</td><td>{ fear 0.9, joy 0.1 }</td></tr>
+  <tr><td>작가 원본</td><td>{ fear 0.3, joy 0.7 }</td><td>{ fear 0.7, joy 0.3 }</td><td>{ fear 0.8, joy 0.2 }</td></tr>
+  <tr><td>장면 점수(코사인)</td><td>0.99</td><td>0.98</td><td>0.99</td></tr>
+</table>
+<p><b>수준</b> = (0.99 + 0.98 + 0.99) ÷ 3 = <b>0.99</b>. 장면마다 거의 같은 결이었어요.</p>
+<p>이제 <b>움직임</b>. 둘째 빼기 첫째, 셋째 빼기 둘째.</p>
+<table>
+  <tr><th></th><th>움직임 1 (장면2 − 장면1)</th><th>움직임 2 (장면3 − 장면2)</th><th>한 줄로 편 것</th></tr>
+  <tr><td>관객</td><td>{ fear +0.4, joy −0.4 }</td><td>{ fear +0.3, joy −0.3 }</td><td>[0.4, −0.4, 0.3, −0.3]</td></tr>
+  <tr><td>작가</td><td>{ fear +0.4, joy −0.4 }</td><td>{ fear +0.1, joy −0.1 }</td><td>[0.4, −0.4, 0.1, −0.1]</td></tr>
+</table>
+<p>편 두 줄의 코사인: 곱해서 더하면 0.16 + 0.16 + 0.03 + 0.03 = 0.38. 길이는 √0.50 = 0.707과 √0.34 = 0.583. 나누면 0.38 ÷ 0.412 = <b>0.92</b>. 둘 다 공포 쪽으로 움직였고, 폭만 조금 달랐으니 높게 나와요.</p>
+<p><b>정렬도</b> = 0.99 × 0.92 × 1 = <b>0.91</b>. 등급은 HIGH, 패턴은 echo_follow가 될 거예요(덩어리 ⑦, ⑧에서 확인).</p>
+
+<h3>왜 "순서"가 아니라 "움직임"인가</h3>
+<p>자주 헷갈리는 데라서 짚고 갈게요. 관객이 장면을 어떤 순서로 보든, 원본 목록도 <em>같은 순서로</em> 재배열해서 비교해요. 그러니까 순서 자체는 점수를 떨어뜨리지 않아요. 떨어뜨리는 건 "그 순서로 봤을 때 감정이 <b>어느 쪽으로 움직였나</b>"가 작가와 다른 경우예요. 장면마다 감정은 비슷한데 움직인 방향이 반대면, 수준은 높고 형태는 0이 돼요. 24장 두 번째 문제가 정확히 이거예요.</p>
+
+<h2>덩어리 ⑤ 회피 (77~81)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 77~81</span>
+<pre class="code" data-hl="5">const userReason = userVector.reason_analysis || {};
+const origReason = originalVector.reason_analysis || {};
+const userVoid = !!userReason.is_void;
+const origVoid = !!origReason.is_void;
+const voidMod = (userVoid &amp;&amp; !origVoid) ? 0.7 : 1.0;</pre></div>
+
+<p><code>!!x</code>는 "x를 참/거짓으로 딱 떨어지게"(부록 A). 5번째 줄이 식의 셋째 항이에요. <b>관객은 회피했고 작가는 안 했을 때만</b> 0.7. 관객도 작가도 회피했으면 1. 작가만 회피했어도 1. 숫자 0.7은 이론에서 온 게 아니라 정한 값이에요. 22장에서 다시.</p>
+
+<h2>덩어리 ⑥ 곱하기 (83)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 83 · js/shared/math.js : 310~312</span>
+<pre class="code" data-hl="1,4">const alignment = calculateTrajectoryAlignment(level, shapeResult.clamped, voidMod);
+
+export function calculateTrajectoryAlignment(level, shape, voidMod = 1.0) {
+  return Math.max(0, Math.min(1, level * shape * voidMod));
+}</pre></div>
+
+<p>식 그대로예요. 셋을 곱하고, 0 아래면 0, 1 위면 1로 잘라요. 이 줄이 이 파일의 심장인데 한 줄이에요. 나머지 189줄은 이 한 줄의 재료를 만들고, 결과에 이름표를 붙이는 일이에요.</p>
+
+<h2>덩어리 ⑦ 등급 (85)</h2>
+
+<div class="codebox"><span class="file">js/shared/math.js : 362~380 (getBucket)</span>
+<pre class="code" data-hl="3,4,5,6,11,12,15,16,17">export function getBucket(alignment, previousBucket = null, emotionHistory = null) {
+ // FIXATED 체크 (bucket 판정보다 우선)
+  if (emotionHistory &amp;&amp; emotionHistory.length &gt;= 3) {
+    const fixLevel = calculateFixationLevel(emotionHistory);
+    if (fixLevel &gt;= 0.85) {
+      return 'FIXATED';
+    }
+  }
+
+ // 히스테리시스 적용
+  if (previousBucket === 'HIGH' &amp;&amp; alignment &gt;= 0.40) return 'HIGH';
+  if (previousBucket === 'LOW' &amp;&amp; alignment &lt;= 0.15) return 'LOW';
+
+ // 표준 판정
+  if (alignment &gt;= 0.50) return 'HIGH';
+  if (alignment &lt; 0.10) return 'LOW';
+  return 'MID';
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>3~8번째 줄: <b>고착 먼저.</b> 감정 이력이 셋 이상이면 최근 셋이 서로 얼마나 같은 결인지(세 쌍의 코사인 평균)를 재서 0.85 넘으면 무조건 FIXATED. 정렬도와 무관해요. "같은 감정에 갇혔다"는 정렬도가 높든 낮든 따로 보는 거예요. 설계 원칙 3번("고착은 횟수가 아니라 유사도로")이 이 줄이에요.</li>
+  <li>11~12번째 줄: <b>끈적임</b>(히스테리시스). 직전이 HIGH였으면 0.40까지는 HIGH로 봐 줘요. 직전이 LOW였으면 0.15까지는 LOW. 등급이 경계에서 깜빡깜빡 바뀌는 걸 막으려고. 이것도 정한 값.</li>
+  <li>15~17번째 줄: 기본 경계. <b>0.50 이상 HIGH, 0.10 미만 LOW, 사이는 MID.</b></li>
+</ul></div>
+
+<div class="warn"><b>문서와 코드가 다릅니다.</b> 시스템 매뉴얼 §8.5에는 "HIGH ≥ 0.7, MID 0.4~0.7, LOW &lt; 0.4"라고 적혀 있어요. 코드는 0.50 / 0.10이에요. 매뉴얼은 4월 10일 것이고, 코드 주석에 "V4 곱셈 분포 기준 (파일럿 후 재조정)"이라고 적혀 있으니 파일럿 뒤에 코드만 고치고 매뉴얼은 안 고친 거예요. <b>둘이 다르면 코드가 진실</b>이에요. 돌아가는 건 코드니까요. 이 책 전체가 하는 말이 이거예요. 문서를 읽고 끝내지 말고 코드를 열어라. 지금 당신이 그걸 했어요.</div>
+
+<h2>덩어리 ⑧ 어긋남 종류, 전이 패턴 (87~91, 121~171)</h2>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 121~150 (_getMismatchType)</span>
+<pre class="code" data-hl="7,9,10,12,13,19,26,27">_getMismatchType(userVector, originalVector, frameKeys = null) {
+  if (!userVector || !originalVector) return null;
+
+  const userReason = userVector.reason_analysis || {};
+  const origReason = originalVector.reason_analysis || {};
+
+  if (!!userReason.is_void !== !!origReason.is_void) return 'void_mismatch';
+
+  if (userReason.attribution &amp;&amp; origReason.attribution &amp;&amp;
+      userReason.attribution !== origReason.attribution) return 'attribution_mismatch';
+
+  if (userReason.target &amp;&amp; origReason.target &amp;&amp;
+      userReason.target !== origReason.target) {
+    const emotionSim = cosineSimilarity(
+      userVector.base || userVector,
+      originalVector.base || originalVector,
+      frameKeys
+    );
+    if (emotionSim &gt;= 0.5) return 'target_displacement';
+  }
+
+  const emotionSimilarity = cosineSimilarity(
+    userVector.base || userVector,
+    originalVector.base || originalVector,
+    frameKeys
+  );
+  if (emotionSimilarity &lt; 0.5) return 'emotion_mismatch';
+
+  return null;
+}</pre></div>
+
+<p>위에서 아래로 <b>먼저 걸리는 게 답</b>이에요. 4장의 "문지기 줄서기". 순서가 곧 우선순위예요.</p>
+<ol>
+  <li>한쪽만 회피했으면 → 회피 어긋남.</li>
+  <li>둘 다 "탓"(attribution)을 적었는데 다르면 → 탓 어긋남.</li>
+  <li>둘 다 "대상"(target)을 적었는데 다르고, <em>감정은 비슷하면</em>(코사인 0.5 이상) → 대상 옮김. "같은 감정인데 향한 데가 다르다."</li>
+  <li>감정 코사인이 0.5 미만이면 → 감정 어긋남.</li>
+  <li>다 통과하면 어긋남 없음(<code>null</code>).</li>
+</ol>
+<p>"탓"과 "대상"은 작가가 장면에 적어 둔 것과 관객이 이유 서술에서 뽑힌 것을 글자로 비교해요. 글자가 다르면 다른 거예요. 지금 상영 경로에선 관객 쪽 이 칸이 비어 있는 경우가 많아서, 실제론 1번과 4번이 주로 걸려요.</p>
+
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 152~171 (_getTransitionPattern)</span>
+<pre class="code" data-hl="2,4,6,7,9,11,12,13,14">_getTransitionPattern(bucket, mismatchType, level, shape, userTraj, origTraj) {
+  if (bucket === 'FIXATED') return 'fixation';
+
+  if (level &gt;= 0.5 &amp;&amp; shape &lt; 0.3 &amp;&amp; userTraj.length &gt;= 3 &amp;&amp; origTraj.length &gt;= 3) return 'displacement';
+
+  if (bucket === 'HIGH') return 'echo_follow';
+  if (bucket === 'MID') return 'bridge';
+
+  if (bucket === 'LOW') {
+    switch (mismatchType) {
+      case 'void_mismatch': return 'avoidance';
+      case 'target_displacement': return 'displacement';
+      case 'emotion_mismatch': return 'contradiction';
+      case 'attribution_mismatch': return 'contradiction';
+      default: return 'bridge';
+    }
+  }
+
+  return null;
+}</pre></div>
+
+<p>역시 위에서 아래로. 이걸 한국어 문장으로 바꾸면 전이 패턴의 정의가 돼요. 외우지 말고 읽어 두세요.</p>
+<table>
+  <tr><th style="width:9em">패턴</th><th>언제</th><th>뜻</th></tr>
+  <tr><td>fixation</td><td>등급이 FIXATED</td><td>같은 감정에 갇힘</td></tr>
+  <tr><td>displacement</td><td>수준 ≥ 0.5인데 형태 &lt; 0.3, 장면 셋 이상</td><td>장면마다 감정은 비슷한데 움직인 방향이 다름. "같은 감정, 다른 이유"의 흔적</td></tr>
+  <tr><td>echo_follow</td><td>등급 HIGH</td><td>잔향처럼 따라감</td></tr>
+  <tr><td>bridge</td><td>등급 MID, 또는 LOW인데 어긋남 종류가 없음</td><td>중립적 연결</td></tr>
+  <tr><td>avoidance</td><td>등급 LOW + 회피 어긋남</td><td>감정 접근 회피</td></tr>
+  <tr><td>contradiction</td><td>등급 LOW + 감정 어긋남 또는 탓 어긋남</td><td>반대로 튕김</td></tr>
+</table>
+
+<div class="warn"><b>여기도 문서와 코드가 달라요.</b> 설계 문서 §5 표에는 "echo_follow = 직전 두 움직임 방향 일치", "contradiction = 직전 움직임 방향 반대"라고 적혀 있어요. 코드는 그런 계산을 안 해요. 그냥 <em>등급</em>으로 갈라요. HIGH면 echo_follow, LOW면 어긋남 종류를 봐요. 문서가 처음 그린 그림이고, 구현하면서 단순화한 거예요. 어느 쪽이 더 좋냐는 별개 문제고, <b>지금 돌아가는 건 코드 쪽</b>이에요. 논문에 "전이 패턴은 움직임 방향으로 판정한다"고 쓰면 틀린 말이 돼요.</div>
+
+<h2>덩어리 ⑨ 내보내기 (93~118)</h2>
+<p>19장에서 봤어요. 지도 위 점(<code>affective_position</code>)을 하나 더 만들고, <code>debug</code> 쪽지에 계산 과정을 다 적고, 묶음 하나로 돌려줘요. 끝.</p>
+
+<h2>190줄을 한 장으로</h2>
+<table>
+  <tr><th style="width:4em">덩어리</th><th style="width:7em">줄</th><th>하는 일</th><th>식의 어디</th></tr>
+  <tr><td>①</td><td>40~51</td><td>재료 받기, 없으면 빈 답</td><td>—</td></tr>
+  <tr><td>②</td><td>53~58</td><td>어느 칸으로 잴지</td><td>자</td></tr>
+  <tr><td>③</td><td>60~66</td><td>이번 장면 코사인 → 지금까지 평균</td><td><b>수준</b></td></tr>
+  <tr><td>④</td><td>68~75</td><td>궤적 두 목록 → 움직임 → 코사인</td><td><b>형태</b></td></tr>
+  <tr><td>⑤</td><td>77~81</td><td>관객만 회피했나</td><td><b>회피</b></td></tr>
+  <tr><td>⑥</td><td>83</td><td>셋을 곱함</td><td><b>= 정렬도</b></td></tr>
+  <tr><td>⑦</td><td>85</td><td>고착 · 끈적임 · 경계로 네 칸</td><td>등급</td></tr>
+  <tr><td>⑧</td><td>87~91</td><td>뭐가 어긋났나, 어떻게 움직였나</td><td>어긋남 · 패턴</td></tr>
+  <tr><td>⑨</td><td>93~118</td><td>묶음으로 내보내기</td><td>—</td></tr>
+</table>
+
+<div class="tip">190줄 = 재료 받기 → 자 고르기 → 코사인 평균(수준) → 움직임 코사인(형태) → 회피 0.7 → 곱 → 네 칸 → 이름표. 심장은 83번째 줄 한 줄.</div>
+
+<div class="quiz"><h3>미니 시험 21</h3>
+<ol>
+  <li>수준 0.8, 형태 날것 −0.2, 관객 회피 · 작가는 안 회피. 정렬도는? 형태 날것이 음수인데 정렬도가 음수가 안 되는 이유는 어느 줄 때문입니까?</li>
+  <li>직전 등급 HIGH, 이번 정렬도 0.42. 등급은? 직전 등급이 MID였다면?</li>
+  <li>관객 탓 = "self", 작가 탓 = "other", 감정 코사인 0.9. 어긋남 종류는? 왜 감정이 비슷한데도 그게 나옵니까?</li>
+  <li>장면 셋, 수준 0.6, 형태 0.2, 등급 HIGH. 전이 패턴은? (함수의 몇 번째 줄에서 걸립니까?)</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 아홉 덩어리 중 셋을 골라 내 말로</div><div class="lines"></div></div>
+</section>
+
+<!-- ═══════════════════════ 22장 ═══════════════════════ -->
+<section class="chapter" id="ch22">
+<h1><span class="chno">22장 · 엔진 읽기</span>왜 이 식인가: 이론에서 온 것과 직접 정한 것</h1>
+
+<p class="goal"><b>목표</b> 식의 모양(왜 곱인가, 왜 움직임인가)이 어디서 왔는지, 식 안의 숫자(0.7 · 0.85 · 0.50 · 셋 규칙)가 어디서 왔는지를 <b>둘로 나눠서</b> 말할 수 있게 된다. 이 둘을 섞어 말하면 심사위원이 바로 찌른다.</p>
+
+<h2>코드엔 "왜"가 없어요</h2>
+<p>21장을 다 읽으면 식은 읽혀요. 그런데 "왜 더하지 않고 곱하냐", "왜 0.7이냐"는 코드 어디에도 없어요. 그건 설계 문서 <code>docs/별이엔진_V4-궤적기반_정렬도-260327.md</code>에 있어요. §3이 "왜 이 공식이어야 했는가", §4가 "이론적 기반", §9가 "설계 결정 기록". 이 세 절이 이 장의 재료예요. 제가 여기서 하는 일은 그걸 "이론에서 온 것"과 "직접 정한 것"으로 가르는 거예요.</p>
+
+<h2>먼저 실패 이야기: V1에서 V4까지</h2>
+<p>이 식은 처음부터 이랬던 게 아니에요. 세 번 실패하고 네 번째예요. 실패 기록이 식의 모양을 설명해요.</p>
+<table>
+  <tr><th style="width:4em">판</th><th style="width:13em">식</th><th>뭐가 안 됐나</th></tr>
+  <tr><td>V1</td><td>감정 코사인 하나</td><td>"같은 감정이라도 이유가 다르면 다른 경험"을 못 담음. 둘 다 슬펐으면 끝.</td></tr>
+  <tr><td>V2</td><td>글 임베딩 코사인 + VAD 거리</td><td>"엄마한테 미안해서 울었다"와 "친구한테 미안해서 울었다"가 임베딩 공간에서 거의 같은 자리. 이유를 못 가름.</td></tr>
+  <tr><td>V3</td><td>감정 0.4 + 이유 0.4 + 태도 0.2</td><td>세 가지가 터짐. ① AI가 뽑는 이유 꼬리표가 같은 글에서도 흔들려 점수가 최대 0.14 널뜀. ② 이유 축이 15단계 꼬리표 맞추기라 해상도가 너무 낮음. ③ <b>더하기라서 한 축이 0이어도 다른 축이 메움.</b> 감정이 정반대(0)여도 이유 꼬리표가 우연히 같으면 0.54까지 올라감. 그리고 0.4/0.4/0.2라는 비율에 근거가 없었음.</td></tr>
+  <tr><td>V4</td><td>수준 × 형태 × 회피</td><td>이유를 <em>재지 않기로</em> 함. 대신 이유의 <em>결과</em>를 봄. 같은 감정이라도 이유가 다르면 다음 장면에서 다르게 움직일 테니, 움직임(형태)을 비교하면 이유 차이가 간접으로 드러남.</td></tr>
+</table>
+<p>여기서 V4의 핵심 전환을 한 문장으로 하면 이래요. <b>"이유를 직접 재는 대신 이유의 결과를 관찰한다."</b> 장면 1에서 둘 다 슬펐어도, "내 탓"이라 느낀 사람은 장면 2에서 죄책감 쪽으로, "그 사람 탓"이라 느낀 사람은 분노 쪽으로 움직여요. 궤적이 갈라지면 이유가 달랐다는 게 드러나요. AI가 이유를 뽑을 필요가 없어져요. 이게 V3의 세 문제를 한 번에 없앤 수였어요.</p>
+
+<h2>이론에서 온 것: 식의 모양</h2>
+<p>식의 <em>모양</em>을 정한 외부 이론은 사실상 하나예요. 나머지는 그 모양이 말이 된다는 뒷받침이에요.</p>
+
+<h3>① 왜 두 항인가, 왜 곱인가 → Butler의 TIES</h3>
+<p>Butler(2011, 2017)가 "감정은 시간에 걸쳐 펼쳐지는 대인 시스템"이라며 한 주장이 이거예요. <b>감정의 수준(level)과 감정의 움직임(dynamics)은 서로 독립이고, 둘 다 따로 관계의 질을 예측한다.</b> 별이엔진은 이 구분을 그대로 가져왔어요. 수준 따로, 형태 따로. 그리고 독립인 두 것을 결합할 때 더하면 V3의 ③ 문제(한쪽이 메움)가 다시 생기니까 곱했어요. 곱이면 한쪽이 0일 때 전체가 0. "감정이 비슷해도 궤적이 반대면 낮고, 궤적이 비슷해도 감정이 다르면 낮다"가 구조로 보장돼요. §9.1이 이 결정이에요.</p>
+<p>딱 하나만 읽으시겠다면 Butler 2017이에요. 여섯 쪽이에요. 이 식의 뼈대가 거기서 왔어요.</p>
+
+<h3>② 왜 감정을 코사인으로 재도 되나 → 정서 유사도 연구</h3>
+<p>"같은 상황에서 같은 감정을 느끼는 것"이 공감 · 조율 · 관계 만족과 연결된다는 연구 묶음(Locke &amp; Horowitz 1990, Preston &amp; de Waal 2002, Anderson 외 2003 등). 이건 "감정이 비슷하다는 게 의미 있는 양이다"라는 뒷받침이지, 코사인이라는 계산법을 준 건 아니에요. 코사인은 그냥 벡터 비슷함의 표준 도구예요.</p>
+
+<h3>③ 왜 움직임의 궤적을 비교하나 → 감정 궤적 그래프</h3>
+<p>서사 분석에서 이야기를 "시간순 감정 곡선"으로 만들어 비교하는 건 이미 있는 방법이에요(Reagan 외 2016, "이야기의 감정 곡선은 여섯 모양으로 수렴한다"). 별이엔진은 그 방법을 빌리되 <b>감정 값이 아니라 감정의 변화량</b>을 비교해요. 그래서 "얼마나 슬펐나"가 아니라 "어느 쪽으로 움직였나"가 잡혀요. 이건 빌린 방법 위에 얹은 TEM의 변형이에요.</p>
+
+<h3>④ 왜 이유를 안 재나 → 인지적 평가 이론의 측정 도구</h3>
+<p>Lazarus의 평가 이론은 "같은 사건도 사람마다 다르게 평가한다"고 해요. V3는 그 평가를 AI로 뽑으려 했죠. 그런데 심리학에서 평가를 재는 검증된 도구는 전부 자기보고 설문이에요. AI가 글에서 꼬리표를 뽑는 건 검증된 측정이 아니고 재현성도 확인 안 됐어요. 그래서 V4는 이 이론을 <em>버린 게 아니라</em>, 그 이론이 말하는 차이가 궤적에 나타날 거라 보고 간접으로 가요. §4.4가 이 얘기예요.</p>
+
+<h2>직접 정한 것: 식 안의 숫자</h2>
+<p>이제 반대편. 아래 숫자들은 <b>이론에서 유도된 게 아니에요.</b> 당신이(여러 세션에 걸쳐) 정한 값이에요. 이걸 "이론에서 왔다"고 말하면 틀린 말이고, 심사위원이 "어느 이론?"이라고 물으면 막혀요. 반대로 "정한 값이고, 이유는 이렇고, 바꾸면 기록한다"고 말하면 아무도 안 찔러요.</p>
+<table>
+  <tr><th style="width:11em">숫자</th><th style="width:6em">어디</th><th>왜 그 값인가 (문서에 적힌 이유)</th></tr>
+  <tr><td>회피 벌점 0.7</td><td>엔진 81</td><td>V3의 태도 축이 거의 항상 0.7로 고정돼 "상수 덧셈"처럼 굴던 걸, 회피가 일어났을 때만 곱하는 보정으로 강등(§9.4). 0.7이라는 값 자체의 근거는 V3에서 쓰던 값을 이어받은 것.</td></tr>
+  <tr><td>고착 문턱 0.85</td><td>등급 함수</td><td>"최근 셋이 서로 코사인 0.85 이상이면 같은 감정 반복"으로 정함. 근거 문장 없음. 7-28 페르소나 리트머스에서 "자 A는 병자"라고 한 수술 대상이 이 근처.</td></tr>
+  <tr><td>등급 경계 0.50 / 0.10</td><td>등급 함수</td><td>"V4 곱셈 분포 기준, 파일럿 후 재조정." 곱하면 값이 전체적으로 낮아지니 경계를 내린 것. 매뉴얼의 0.7/0.4는 조정 전 값.</td></tr>
+  <tr><td>끈적임 0.40 / 0.15</td><td>등급 함수</td><td>경계에서 등급이 깜빡이는 걸 막으려고. 폭은 정한 것.</td></tr>
+  <tr><td>displacement 조건 0.5 / 0.3</td><td>엔진 155</td><td>"수준은 높은데 형태는 낮다"의 높다 · 낮다 경계. 정한 것.</td></tr>
+  <tr><td>어긋남 문턱 0.5</td><td>엔진 139 · 147</td><td>"감정이 비슷하다 / 다르다"의 경계. 정한 것.</td></tr>
+  <tr><td>음수 형태 → 0</td><td>형태 함수 14</td><td>"반정렬"이라는 개념을 아직 안 정했으니 반대 방향은 그냥 0으로(§9.2). 나중에 (1+날것)/2로 부드럽게 바꿀 수 있다고 적어 둠.</td></tr>
+  <tr><td>17칸 목록</td><td>math.js 19</td><td>고통 10 + 회복 7. 어떤 감정 모델에서 가져온 게 아니라 TEM이 다루는 서사에 맞춰 고른 것. 7월 27일부터는 기억마다 실제 쓰는 칸만으로 좁힘.</td></tr>
+</table>
+<p>딱 하나, 숫자가 아니라 <b>수학적 필연</b>인 게 있어요. "장면 셋 미만이면 형태 = 1"(§9.3). 움직임 둘을 비교하려면 장면 셋이 필요하다는 건 정한 게 아니라 셀 수 있는 사실이에요. 이것만은 "왜요?"에 "세어 보세요"로 답하면 돼요.</p>
+
+<div class="warn">위 표의 값들이 지금 <b>어디에도 행마다 기록되지 않아요.</b> 손잡이를 바꾸면 그 뒤 행과 그 전 행이 다른 자로 잰 게 되는데, 어느 행이 어느 자인지 표에 안 남아요. 9월 26일 기록 공백 제안(회차 일지 표에 "출처 꼬리표" 한 열)이 정확히 이 구멍을 메우는 거예요. 이 장을 읽었으면 왜 그 제안이 "튜닝 전에" 들어가야 하는지도 보일 거예요.</div>
+
+<h2>"원본"이라는 말에 대해</h2>
+<p>하나 더 짚을게요. TEM 철학은 "순수한 원본은 없다"인데 식은 "원본 감정"과 비교해요. 모순 아니냐. 7월 4일에 이걸 봉합했어요. 식에서 "원본"이라 부르는 건 <b>작가가 처음 서술했을 때의 궤적</b>(<code>telling_trajectory</code>)이에요. 진짜 사건이 아니라 첫 말하기. 그러니까 정렬도는 "진실과 얼마나 같나"가 아니라 "<em>첫 서술</em>과 얼마나 같은 결로 겪었나"예요. 공식과 표는 안 바뀌었고 말만 바뀌었어요. 설계 원칙 7번("initial telling trajectory, not original")이 이거예요. 누가 "원본이 어딨냐"고 물으면 이렇게 답하면 돼요.</p>
+
+<h2>심사위원이 물으면</h2>
+<p>이 장을 한 문단으로 줄이면 면접 답이 돼요. 연습 삼아 적어 둘게요.</p>
+<p style="margin:0.5em 1.5em 1em; border-left:3px solid #8a8578; padding-left:0.8em;">"정렬도는 두 항의 곱입니다. 장면마다의 감정 유사도 평균과, 장면 사이 감정 변화 방향의 유사도. 두 항을 분리한 건 Butler의 TIES 이론, 감정의 수준과 역학이 독립이라는 주장에서 가져왔고, 더하지 않고 곱한 건 한 항이 다른 항을 메우는 걸 막기 위한 구조적 선택입니다. 변화량을 비교하는 건 감정 궤적 그래프 방법론의 변형입니다. 식 안의 문턱값들, 0.7 · 0.85 · 0.5는 이론 값이 아니라 설계 값이고, 파일럿 분포를 보고 조정했으며, 앞으로 바꿀 때는 회차마다 기록합니다."</p>
+<p>이 문단을 안 보고 말할 수 있으면 22장은 끝이에요.</p>
+
+<div class="tip">모양(두 항 · 곱 · 움직임)은 이론에서, 숫자(0.7 · 0.85 · 0.50 · 0.5)는 손에서. 둘을 갈라 말하라. "셋 규칙"만 수학적 필연.</div>
+
+<div class="quiz"><h3>미니 시험 22</h3>
+<ol>
+  <li>누가 "0.7은 어느 논문에서 왔나요?"라고 물었습니다. 뭐라고 답합니까?</li>
+  <li>식을 곱에서 더하기(수준 0.5 + 형태 0.5)로 바꾸면, 24장 두 번째 문제의 관객(수준 0.97, 형태 0)의 정렬도는 얼마가 됩니까? 그게 왜 문제입니까?</li>
+  <li>"TEM은 원본과 비교한다, 그런데 TEM은 원본이 없다고 한다"는 지적에 한 문장으로 답하세요.</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · "심사위원이 물으면" 문단을 안 보고 써 보기</div><div class="lines"></div></div>
+</section>

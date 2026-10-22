@@ -1,0 +1,429 @@
+<!-- ═══════════════════════ 3장 ═══════════════════════ -->
+<section class="chapter" id="ch3">
+<h1><span class="chno">3장 · 코드의 세 가지 모양</span>상자 · 목록 · 메모 · 글자</h1>
+
+<p class="goal"><b>목표</b> 가만히 있는 데이터를 읽는다. 값을 담는 <b>상자</b>, 줄 세운 <b>목록</b>, 사람만 읽는 <b>메모</b>, 따옴표 안의 <b>글자</b>. (7월 1교시)</p>
+
+<h2>실제 코드: 안전 필터의 단어 목록</h2>
+<div class="codebox"><span class="file">js/safety.js : 1~19</span>
+<pre class="code" data-hl="1,3,4,10">// Safety system — crisis keyword detection and response
+
+export const SAFETY_KEYWORDS = {
+  block_high: [
+    "suicide", "kill myself", "want to die", "wanna die", "end my life",
+    "end it all", "jump off", "slit my wrist", "cut my wrist",
+    "self-harm", "self harm", "overdose", "hanging", "hang myself",
+    "murder", "kill someone", "stab", "arson", "bomb"
+  ],
+  block_mid: [
+    "gonna kill", "kill them", "beat to death", "blood gushing",
+    "school violence", "bullying", "ostracize"
+  ],
+  monitor_only: [
+    "depressed", "want to disappear", "suffering", "losing my mind", "feel empty"
+  ]
+};</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><b><code>//</code> 뒤는 메모.</b> 컴퓨터는 무시하고 사람만 읽습니다. 막히면 <em>메모부터</em> 찾으세요. 제일 쉬운 단서입니다. 여러 줄 메모는 <code>/* … */</code>, 함수 설명용 메모는 <code>/** … */</code> 로 감쌉니다(모양만 다르고 다 메모).</li>
+  <li><b><code>const 이름 =</code> 는 상자에 이름표 붙이기.</b> "SAFETY_KEYWORDS 라는 상자를 만들고 <code>=</code> 오른쪽 것을 담아라." <code>export</code>는 "다른 파일도 이 상자를 쓰게 내놓는다"(9장).</li>
+  <li><b><code>[ … ]</code> 는 목록.</b> 쉼표로 줄 세운 값들. 4번째 줄부터 <code>]</code>까지가 "고위험 단어 목록".</li>
+  <li><b><code>" … "</code> 는 글자 그대로.</b> <code>"suicide"</code>는 계산이 아니라 그냥 그 단어. 따옴표는 큰따옴표 <code>"</code>, 작은따옴표 <code>'</code>, 뒤로 기운 따옴표 <code>`</code> 세 종류가 있고 뜻은 거의 같습니다(뒤로 기운 것은 8장).</li>
+  <li><b><code>{ 이름: 값, 이름: 값 }</code> 는 이름표 달린 묶음.</b> 3번째 줄의 <code>{</code>부터 마지막 <code>}</code>까지가 하나의 묶음이고, 안에 <code>block_high</code>, <code>block_mid</code>, <code>monitor_only</code> 세 칸이 있습니다. 목록과의 차이는 10장에서 자세히. 지금은 "이름표로 꺼내는 서랍장" 정도로.</li>
+</ul>
+<p>통째로 읽으면: <b>"안전 키워드 상자 안에 고위험 · 중위험 · 감시만 세 서랍이 있고, 각 서랍에 단어 목록이 들어 있다."</b> 설계 문서의 3계층이 코드에서 이 모양입니다.</p></div>
+
+<h2>숫자 상자와 글자 상자</h2>
+<div class="codebox"><span class="file">index.html : 29~31 (마스터 음량) · js/lib/supabaseClient.js : 7 · tools/serve.cjs : 20</span>
+<pre class="code">var VOL_KEY = 'tem_volume';
+var master = parseFloat(localStorage.getItem(VOL_KEY));
+if (isNaN(master)) master = 1;
+const MAX_WAIT_TIME = 10000; // 10초
+const PORT = 8777;</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>따옴표가 있으면 글자(<code>'tem_volume'</code>), 없으면 숫자(<code>10000</code>, <code>8777</code>). 숫자에는 따옴표를 안 씁니다.</li>
+  <li><code>var</code>는 <code>const</code>의 옛날 말입니다. 오래된 코드(play-test.html, 지형 엔진)에 많이 나옵니다. 뜻은 "상자 만들기"로 같습니다. 셋의 차이는 8장.</li>
+  <li><code>// 10초</code> 처럼 숫자 옆 메모는 단위를 알려 줍니다. <code>10000</code>이 밀리초(천분의 일 초)라 10초. 이런 메모가 없는 숫자를 만나면 AI에게 "단위가 뭐냐"고 물으세요.</li>
+  <li>대문자로만 된 이름(<code>MAX_WAIT_TIME</code>, <code>PORT</code>)은 관례상 <b>"안 바뀌는 설정값"</b>이라는 신호입니다.</li>
+</ul></div>
+
+<h2>목록 속 묶음</h2>
+<div class="codebox"><span class="file">js/safety.js : 56~60 (2026-09-09 추가분)</span>
+<pre class="code" data-hl="2">export const SAFETY_RESOURCES_KO = [
+  { name: "자살예방 상담전화", number: "109", desc: "24시간", action: "tel:109" },
+  { name: "정신건강 위기상담전화", number: "1577-0199", desc: "", action: "tel:15770199" },
+  { name: "청소년 상담", number: "1388", desc: "", action: "tel:1388" },
+];</pre></div>
+<p>바깥은 <code>[ ]</code> 목록, 안의 각 줄은 <code>{ }</code> 묶음. "상담 자원 목록, 항목 하나마다 이름 · 번호 · 설명 · 동작 네 칸." 데이터베이스에서 표를 읽어 오면 정확히 이 모양으로 옵니다(16장). 그러니 이 모양은 이 프로젝트에서 가장 자주 만나는 모양입니다.</p>
+
+<div class="tip">모르는 코드는 먼저 <b>메모(<code>//</code>)</b>를 찾고, 다음으로 <b>이름표(<code>const 이름</code>)</b>를 찾고, 그 다음에 오른쪽 값이 <b>글자인지 숫자인지 목록인지 묶음인지</b>만 본다. 그 값이 무엇에 쓰이는지는 다음 장부터.</div>
+
+<div class="quiz"><h3>미니 시험 3</h3>
+<p>처음 보는 코드입니다. 지형 엔진의 물리 상수.</p>
+<div class="codebox"><span class="file">js/shared/tem_variant_strata.js : 129~133</span>
+<pre class="code nofile">var PHYS = {
+  inertia: 0.08, capacity: 4, minSlope: 0.01,
+  erode: 0.06, deposit: 0.10, evaporate: 0.02,
+  gravity: 4, maxSteps: 48, radius: 3,
+};</pre></div>
+<ol>
+  <li>상자 이름은?</li>
+  <li>목록입니까, 이름표 달린 묶음입니까? 어떻게 알았습니까?</li>
+  <li>칸(이름표)이 몇 개입니까? 값들은 글자입니까 숫자입니까?</li>
+  <li>이름이 전부 대문자입니다. 무슨 신호입니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 목록 [ ] 과 묶음 { } 을 구별하는 내 방법</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 4장 ═══════════════════════ -->
+<section class="chapter" id="ch4">
+<h1><span class="chno">4장 · 코드의 세 가지 모양</span>갈림길: if</h1>
+
+<p class="goal"><b>목표</b> 코드가 "판단하고 나뉘는" 자리를 읽는다. <code>if</code>를 보면 두 가지만 묻는다. <b>무슨 질문인가</b>(괄호 안), <b>맞으면 뭘 하나</b>(뒤). (7월 2교시 확장)</p>
+
+<h2>실제 코드: "예전에" 인가 "지금" 인가</h2>
+<p>안전 필터는 "예전에 죽고 싶었다"(과거 이야기)와 "지금 죽고 싶다"(현재 의도)를 구분합니다. 그 판단이 이 세 줄입니다.</p>
+
+<div class="codebox"><span class="file">js/safety.js : 78~80 (detectTense 안)</span>
+<pre class="code" data-hl="1,2,3">if (hasIntent && !hasPast) return 'present';
+if (hasPast && !hasIntent) return 'past';
+return 'ambiguous';</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>if ( … )</code> = "괄호 안이 맞으면 뒤엣것을 해라". 괄호 안은 항상 <b>예/아니오로 답할 수 있는 질문</b>입니다.</li>
+  <li><code>hasIntent</code>, <code>hasPast</code>는 안에 예/아니오만 든 상자("의도가 있나?", "과거 얘긴가?"). 영어로 has 가 앞에 붙은 이름은 대개 예/아니오 상자입니다(is, has, can, should 로 시작하면 의심하세요).</li>
+  <li><code>&&</code> = 그리고(둘 다 맞아야). <code>!</code> = 아니다(뒤집기). 그래서 1번째 줄은 "의도가 있고 <b>그리고</b> 과거 얘기가 <b>아니면</b> → 답을 '현재'로 정하고 끝".</li>
+  <li><code>return</code> = 답을 정해 돌려주고 <b>그 자리에서 함수를 끝냄</b>. 1번째 줄에서 return 했으면 2, 3번째 줄은 안 봅니다. 그래서 3번째 줄은 "앞의 두 질문에 다 안 걸리면 → 애매함".</li>
+</ul></div>
+
+<h2>갈림길의 네 가지 생김새</h2>
+<p>같은 갈림길인데 겉모양이 넷입니다. 다 실제 코드입니다.</p>
+
+<h3>① 여러 갈래: if · else if · else</h3>
+<div class="codebox"><span class="file">js/core/ContaminationTracker.js : 243~253</span>
+<pre class="code" data-hl="1,6,8">if (
+  next.cont_fixation &gt;= HYPERCOMPLETION_FIXATION &&
+  next.cont_fixation &gt; next.cont_drift
+) {
+  next.cont_stage = 'hypercompletion';
+} else if (next.cont_drift &gt;= BIASED_INCLINATION_DRIFT) {
+  next.cont_stage = 'biased_inclination';
+} else {
+  next.cont_stage = 'stable';
+}</pre></div>
+<p><code>if</code> → 아니면 <code>else if</code> → 그것도 아니면 <code>else</code>. 위에서부터 차례로 물어서 <b>처음 맞는 갈래 하나만</b> 갑니다. 여기서는 오염 단계 이름을 셋 중 하나로 정합니다. 질문이 길어서 괄호 안을 세 줄로 나눠 적었지만, 1~4번째 줄이 질문 하나입니다.</p>
+
+<h3>② 한 줄 갈림길: 물음표와 쌍점</h3>
+<div class="codebox"><span class="file">js/core/ByeoriEngine.js : 81</span>
+<pre class="code">const voidMod = (userVoid && !origVoid) ? 0.7 : 1.0;</pre></div>
+<p><code>질문 ? 맞으면 : 아니면</code>. "관객이 회피했고 원본은 회피 안 했으면 0.7, 아니면 1.0". 별이엔진 공식의 void_mod 가 정확히 이 한 줄입니다. 값 하나를 고를 때 if 대신 자주 씁니다.</p>
+
+<h3>③ 문지기: 조건이 틀리면 바로 나가기</h3>
+<div class="codebox"><span class="file">js/shared/api.js : 8~13</span>
+<pre class="code" data-hl="3,5">export async function fetchMemories() {
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) {
+    console.error('fetchMemories: Supabase client not initialized');
+    return [];
+  }</pre></div>
+<p>"연결이 없으면 → 오류 메모 남기고 → 빈 목록 돌려주고 끝". 함수 첫머리에 서서 자격 없는 경우를 돌려보내는 <b>문지기</b>. 이 프로젝트에서 가장 흔한 if 모양이고, 문지기를 통과해야 아래 진짜 일이 시작됩니다. <code>return []</code>가 "빈 목록을 답으로"라는 것도 기억하세요. 화면에 "기억이 하나도 안 떠요"의 원인이 여기일 수 있습니다.</p>
+
+<h3>④ 있으면 한다: 짧은 문지기</h3>
+<div class="codebox"><span class="file">js/index.js : 354 (backToIntro 안)</span>
+<pre class="code">if (window.soundscape) window.soundscape.stop();</pre></div>
+<p>"소리 장치가 있으면 멈춰라". 중괄호 없이 한 줄이면 그 한 줄만 조건에 묶입니다. 2장에서 본 <code>if (introScreen) { … }</code>도 같은 모양.</p>
+
+<h2>질문에 쓰는 기호</h2>
+<table>
+  <tr><th style="width:8em">기호</th><th>뜻</th><th>실제 예</th></tr>
+  <tr><td><code>===</code></td><td>같다 (셋이 정확히 같은지)</td><td><code>tense === 'past'</code></td></tr>
+  <tr><td><code>!==</code></td><td>다르다</td><td><code>typeof text !== 'string'</code></td></tr>
+  <tr><td><code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code></td><td>작다 · 크다 · 작거나 같다 · 크거나 같다</td><td><code>elapsed &gt;= MAX_WAIT_TIME</code></td></tr>
+  <tr><td><code>&&</code></td><td>그리고 (둘 다)</td><td><code>hasIntent && !hasPast</code></td></tr>
+  <tr><td><code>||</code></td><td>또는 (하나라도)</td><td><code>!text || typeof text !== 'string'</code></td></tr>
+  <tr><td><code>!</code></td><td>아니다</td><td><code>!supabaseClient</code> (연결이 없으면)</td></tr>
+  <tr><td><code>==</code> (둘)</td><td>대충 같다 (옛 방식). <code>x != null</code>은 "비어 있지 않다"</td><td><code>_enabled != null</code></td></tr>
+</table>
+
+<div class="warn"><code>=</code> 하나는 "담아라"(3장), <code>===</code> 셋은 "같은가?"(질문). 완전히 다른 뜻입니다. if 괄호 안에 <code>=</code> 하나가 보이면 십중팔구 실수이니 AI에게 되물으세요.</div>
+
+<div class="tip">if 를 보면 ① 괄호 안 질문을 우리말로 옮기고 ② 맞으면 하는 일을 한 줄로 적는다. <code>return</code>이 보이면 "거기서 끝"이라는 것까지. 계산의 속은 몰라도 된다.</div>
+
+<div class="quiz"><h3>미니 시험 4</h3>
+<p>처음 보는 코드 둘입니다.</p>
+<div class="codebox"><span class="file">js/lib/supabaseClient.js : 40~46</span>
+<pre class="code nofile">const elapsed = now - initStartTime;
+if (elapsed &gt;= MAX_WAIT_TIME) {
+    console.error('Supabase CDN load timeout exceeded (10초)');
+    throw new Error('Supabase 클라이언트 초기화 실패: CDN 스크립트가 로드되지 않았습니다.');
+}</pre></div>
+<div class="codebox"><span class="file">tools/serve.cjs : 11~14</span>
+<pre class="code nofile">const cmd =
+  process.platform === 'darwin' ? `open "${url}"` :        // 맥
+  process.platform === 'win32'  ? `start "" "${url}"` :    // 윈도우
+                                  `xdg-open "${url}"`;      // 리눅스</pre></div>
+<ol>
+  <li>첫 코드의 질문을 우리말로. 맞으면 무슨 일이 일어납니까? (<code>throw</code>는 "오류를 던져 멈춘다"입니다.)</li>
+  <li>둘째 코드는 물음표 갈림길이 두 번 이어져 있습니다. 윈도우에서 실행하면 <code>cmd</code> 상자에 무엇이 담깁니까?</li>
+  <li>둘째 코드에서 <code>process.platform</code>이 'linux' 면?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 문지기 if 의 모양을 그려 보기</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 5장 ═══════════════════════ -->
+<section class="chapter" id="ch5">
+<h1><span class="chno">5장 · 코드의 세 가지 모양</span>함수: 기능 한 덩어리</h1>
+
+<p class="goal"><b>목표</b> "기능 하나"의 <b>이름 · 재료 · 몸통 · 답</b>을 본다. 검증의 단위가 함수다. AI가 "X 함수 고쳤어요" 하면 <b>그 <code>{</code>부터 <code>}</code>까지만</b> 보면 된다. (7월 3교시 확장)</p>
+
+<h2>실제 코드: 가장 작은 함수</h2>
+<div class="codebox"><span class="file">index.html : 32 (마스터 음량 안)</span>
+<pre class="code">function clamp01(x) { return Math.max(0, Math.min(1, x)); }</pre></div>
+
+<div class="read"><div class="rt">읽는 법: 네 부분</div>
+<table>
+  <tr><th style="width:6em">부분</th><th style="width:12em">여기서는</th><th>뜻</th></tr>
+  <tr><td>이름</td><td><code>clamp01</code></td><td>이 기능을 부를 때 쓰는 이름. clamp = 죄다, 01 = 0과 1 사이로.</td></tr>
+  <tr><td>재료</td><td><code>(x)</code></td><td>이 기능이 받는 것. 하나.</td></tr>
+  <tr><td>몸통</td><td><code>{ … }</code></td><td>여는 중괄호부터 닫는 중괄호까지가 이 기능의 전부. <b>그 밖은 남의 일.</b></td></tr>
+  <tr><td>답</td><td><code>return …</code></td><td>돌려주는 값. 여기서는 "x를 0~1 사이로 가둔 값".</td></tr>
+</table>
+<p>속(<code>Math.max</code>, <code>Math.min</code>)은 몰라도 됩니다. 이름과 메모가 "0~1로 가둔다"고 말해 주니까요. <code>Math.</code> 뒤에 붙는 것들은 전부 수학 도구(최대 · 최소 · 반올림 · 제곱근)입니다.</p></div>
+
+<h2>실제 코드: 재료가 둘, 답이 셋 중 하나</h2>
+<div class="codebox"><span class="file">js/safety.js : 68~81</span>
+<pre class="code" data-hl="1,9,11,12,13">function detectTense(originalText, keywordIndex) {
+  const before = originalText.substring(Math.max(0, keywordIndex - 40), keywordIndex).toLowerCase();
+  const after = originalText.substring(keywordIndex, Math.min(originalText.length, keywordIndex + 60)).toLowerCase();
+  const window = before + ' ' + after;
+
+  const hasPast = KO_PAST.test(window) || EN_PAST.test(window);
+  const hasIntent = KO_INTENT.test(window) || EN_INTENT.test(window);
+
+  if (hasIntent && !hasPast) return 'present';
+  if (hasPast && !hasIntent) return 'past';
+  return 'ambiguous';
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>이름 <code>detectTense</code>(시제 감지), 재료 둘(<code>originalText</code> 원문, <code>keywordIndex</code> 위험 단어가 있던 위치), 몸통은 1번째 줄 <code>{</code>부터 12번째 줄 <code>}</code>까지.</li>
+  <li>2~7번째 줄은 재료를 손질하는 자리(위험 단어 앞 40글자와 뒤 60글자를 잘라 창을 만들고, 그 창에 과거 표현과 의도 표현이 있는지 봄). 속은 지금 몰라도 됩니다.</li>
+  <li>9~11번째 줄이 4장에서 본 갈림길. <b>답은 세 글자 중 하나</b>: 'present', 'past', 'ambiguous'. 함수를 읽을 때 "답이 될 수 있는 값이 뭐뭐인가"를 세면 그 함수를 다 읽은 겁니다.</li>
+</ul></div>
+
+<h2>실제 코드: 답이 없는 함수</h2>
+<div class="codebox"><span class="file">tools/serve.cjs : 10~16</span>
+<pre class="code" data-hl="1,6">function openBrowser(url) {
+  const cmd =
+    process.platform === 'darwin' ? `open "${url}"` :
+    process.platform === 'win32'  ? `start "" "${url}"` :
+                                    `xdg-open "${url}"`;
+  exec(cmd);
+}</pre></div>
+<p><code>return</code>이 없습니다. 이 함수는 답을 돌려주는 게 아니라 <b>일을 하고 끝</b>(브라우저를 연다). 답 없는 함수는 "무엇을 <em>바꾸는가</em>"로 읽습니다. 화면을 바꾸거나, 저장하거나, 소리를 내거나. 이 프로젝트의 화면 함수 대부분이 이 모양입니다.</p>
+
+<h2>함수의 다른 생김새 세 가지</h2>
+<table>
+  <tr><th style="width:11em">생김새</th><th>실제 예</th><th>읽는 법</th></tr>
+  <tr><td>화살표 함수</td><td><code>m =&gt; ({ ...m, is_live: !!m.is_live })</code><br><span class="small">js/app/archive.js</span></td><td><code>재료 =&gt; 답</code>. "m 을 받아 → 오른쪽을 답으로". 이름 없는 짧은 함수. 7장의 반복 안에서 아주 자주 나옵니다.</td></tr>
+  <tr><td>이름 없는 함수</td><td><code>card.addEventListener('click', function () { … })</code><br><span class="small">play-test.html : 5230</span></td><td>"click 이 일어나면 이 몸통을 돌려라". 이름이 없고 그 자리에서 바로 넘겨줍니다(13장).</td></tr>
+  <tr><td>묶음 안의 함수 (메서드)</td><td><code>calculateStep(input, context = {}) { … }</code><br><span class="small">js/core/ByeoriEngine.js : 40</span></td><td><code>function</code> 글자가 없어도 <code>이름(재료) {</code> 면 함수. <code>context = {}</code>는 "안 주면 빈 묶음으로"라는 <b>기본값</b>.</td></tr>
+</table>
+
+<div class="story">7월 8일 교재에 남은 말: "play-test.html 이 6,965줄 된 게 '이 함수만 바뀌었나'를 안 물어서 생긴 일." 지금은 8,400줄이 넘습니다. 함수 단위로 경계를 묻는 습관이 파일이 불어나는 속도를 늦춥니다.</div>
+
+<div class="tip">AI가 "X 고쳤어요" 하면 <span class="kbd">Ctrl</span>+<span class="kbd">F</span> 로 <code>function X</code> 또는 <code>X(</code> 를 찾아, 여는 <code>{</code> 에서 닫는 <code>}</code> 까지만 본다. 답이 될 수 있는 값을 센다. 그 밖은 안 봐도 된다.</div>
+
+<div class="quiz"><h3>미니 시험 5</h3>
+<div class="codebox"><span class="file">js/shared/tem_variant_strata.js : 60~65</span>
+<pre class="code nofile">function seedFromString(s) {
+  var h = 5381;
+  s = String(s || 'tem');
+  for (var i = 0; i &lt; s.length; i++) h = ((h &lt;&lt; 5) + h + s.charCodeAt(i)) &gt;&gt;&gt; 0;
+  return h &gt;&gt;&gt; 0;
+}</pre></div>
+<ol>
+  <li>이름, 재료 개수, 몸통의 시작과 끝 줄은?</li>
+  <li>답을 돌려줍니까? 돌려준다면 숫자입니까 글자입니까? (힌트: 2번째 줄에서 <code>h</code>가 무엇으로 시작하나)</li>
+  <li>3번째 줄 <code>s || 'tem'</code>: 재료 <code>s</code>가 비어 있으면 무엇이 됩니까?</li>
+  <li>4번째 줄의 속(비트 연산)은 몰라도 됩니다. 그래도 이 함수가 "글자를 받아 숫자 하나로 바꾼다"는 걸 어디서 알 수 있습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 함수의 네 부분</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 6장 ═══════════════════════ -->
+<section class="chapter" id="ch6">
+<h1><span class="chno">6장 · 코드의 세 가지 모양</span>들여쓰기: 목차처럼 훑기</h1>
+
+<p class="goal"><b>목표</b> 큰 파일을 처음부터 읽지 않고, <b>왼쪽 끝만 보며</b> "여기 한 뭉치, 저기 다음 뭉치"를 그린다. 덩어리 속 덩어리를 본다. (7월 4교시 확장)</p>
+
+<h2>실제 코드: 문지기 안의 갈림길 셋</h2>
+<div class="codebox"><span class="file">js/core/ContaminationTracker.js : 236~ (수렴 오염 계산, 속은 생략)</span>
+<pre class="code" data-hl="1,2,4,6,8,9">if (depth &gt;= MIN_DEPTH_FOR_CONVERGENCE) {
+  if (fixation_level &gt;= FIXATION_THRESHOLD) {
+    delta_conv = ...
+  } else if (effectiveShape &gt;= 0.7 && level &gt;= 0.7) {
+    delta_conv = ...
+  } else if (alignment &gt;= 0.5) {
+    delta_conv = ...
+  }
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>{ }</code> 안에 또 <code>{ }</code>. <b>안에 든 것일수록 오른쪽으로 밀려 적힙니다.</b> 그게 들여쓰기입니다.</li>
+  <li>왼쪽 끝만 보면 목차가 보입니다: "바깥 조건 하나(1번째 줄) 안에, 갈림길 세 개(2 · 4 · 6번째 줄)가 나란히."</li>
+  <li><b>바깥 if 는 문지기.</b> 궤적이 충분히 깊지 않으면(1번째 줄 질문이 틀리면) 안쪽 세 갈래는 <em>구경도 못 합니다</em>. 그래서 "수렴 오염이 안 올라가요"의 첫 용의자는 안쪽 계산이 아니라 바깥 문지기입니다.</li>
+  <li>속(<code>delta_conv = ...</code>)은 몰라도 됩니다. 목표는 <b>어디부터 어디까지가 한 덩어리인가</b>뿐.</li>
+</ul></div>
+
+<h2>실제 코드: 네 겹 들여쓰기</h2>
+<p>15장에서 다시 볼 서가 카드 코드입니다. 이번엔 <b>계단</b>만 보세요.</p>
+<div class="codebox"><span class="file">play-test.html : 5209~5240 (일부 생략)</span>
+<pre class="code" data-hl="1,6,20,24">function _renderShelf() {
+  const shelf = document.getElementById('landingShelf');
+  const enter = document.getElementById('landingEnter');
+  if (!shelf) return;
+
+  game.memories.forEach(m =&gt; {
+    const card = document.createElement('div');
+    card.className = 'shelf-card';
+    ...
+    card.addEventListener('click', function () {
+      shelf.querySelectorAll('.shelf-card').forEach(c =&gt; c.classList.remove('chosen'));
+      card.classList.add('chosen');
+      document.getElementById('memorySelect').value = m.id;
+      if (enter) {
+        enter.classList.add('ready');
+        try { enter.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+      }
+    });
+    shelf.appendChild(card);
+  });
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<p>왼쪽 계단을 세면 이렇게 읽힙니다.</p>
+<ol>
+  <li>0계단: 함수 <code>_renderShelf</code>(서가 그리기). 1~21번째 줄 전체.</li>
+  <li>1계단: 서가 상자를 찾고, 없으면 나감(문지기). 그리고 <b>기억마다 반복</b>(6번째 줄 <code>forEach</code>).</li>
+  <li>2계단: 반복 한 번마다 카드 하나를 만들고, 카드에 "클릭되면" 사건을 붙이고(10번째 줄), 서가에 붙임(19번째 줄).</li>
+  <li>3계단: 클릭됐을 때 하는 일(11~17번째 줄). 다른 카드의 chosen 을 떼고, 이 카드에 붙이고, 숨은 값에 기억 번호를 넣고, 진입 문장이 있으면…</li>
+  <li>4계단: 진입 문장에 ready 를 붙이고, 그 줄까지 화면을 끌어내림.</li>
+</ol>
+<p><code>try { … } catch (_) {}</code>는 "해 보고, 안 되면 조용히 넘어가라"는 안전망(14장). 여기서는 오래된 브라우저에서 부드러운 스크롤이 안 되어도 멈추지 않게 한 것.</p></div>
+
+<h2>짝 찾기</h2>
+<p>여는 <code>{</code>의 짝은 <b>같은 계단</b>에 있는 <code>}</code>입니다. 편집기에서 여는 괄호에 커서를 두면 짝이 밝게 표시됩니다. VS Code 에서는 <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">\</span> 로 짝으로 점프합니다. 괄호 짝이 어긋나면 파일 전체가 죽습니다(14장의 SyntaxError).</p>
+
+<div class="tip">큰 파일은 처음부터 읽지 말고, 왼쪽 끝을 훑어 <b>0계단 줄(function, const, if 가 맨 왼쪽에 있는 줄)</b>만 세어 지도를 그린다. 바깥 if 가 틀리면 안쪽은 실행 안 된다는 것을 잊지 않는다.</div>
+
+<div class="quiz"><h3>미니 시험 6</h3>
+<div class="codebox"><span class="file">js/index.js : 124~127, 167 (initApp 안, 중간 생략)</span>
+<pre class="code nofile">if (urlParams.get('strata') === '1' && urlParams.get('memory')) {
+    const strataMemoryId = urlParams.get('memory');
+    ...
+    function _hideAllUI() { ... }
+    function _waitForStrata() { ... }
+    ...
+    return;
+}
+if (urlParams.get('demo') === '1' && urlParams.get('memory')) {</pre></div>
+<ol>
+  <li>바깥 if 의 질문을 우리말로 옮기세요. (<code>urlParams.get('strata')</code>는 "주소창의 strata 값".)</li>
+  <li>그 안에 함수 정의가 둘 들어 있습니다. 주소창에 strata=1 이 없으면 이 두 함수는 만들어집니까?</li>
+  <li>7번째 줄 <code>return;</code> 이 실행되면 9번째 줄(demo 검사)은 봅니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 계단 세는 법</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 7장 ═══════════════════════ -->
+<section class="chapter" id="ch7">
+<h1><span class="chno">7장 · 코드의 세 가지 모양</span>반복: for · forEach · map · filter</h1>
+
+<p class="goal"><b>목표</b> "목록 전체에 같은 일 다 하기"를 읽는다. 생김새가 다섯 가지지만 뜻은 하나다. <b>어떤 목록을 · 하나씩 뭐라 부르며 · 뭘 하나.</b> (7월 5교시 확장)</p>
+
+<h2>실제 코드: 단어를 하나씩 검사</h2>
+<div class="codebox"><span class="file">js/safety.js : 100~104 (detectCrisis 안)</span>
+<pre class="code" data-hl="1,4">for (const keyword of SAFETY_KEYWORDS.block_high) {
+  const normalizedKeyword = keyword.replace(/\s/g, '').toLowerCase();
+  const matchIdx = lowerText.indexOf(normalizedKeyword);
+  if (matchIdx &gt;= 0) {
+    const tense = detectTense(originalLower, matchIdx);
+    ...</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>for (const keyword of 목록)</code> = "목록에서 하나씩 꺼내 <code>keyword</code>라 부르며 <code>{ }</code>를 반복". 단어가 20개면 몸통이 20번 돕니다.</li>
+  <li>반복 <b>안에</b> 갈림길(4번째 줄)이 있습니다: "각 위험 단어마다 → 글에 있으면 → 시제를 판별". 3장 + 4장 + 5장(<code>detectTense</code> 호출)이 한자리에 모였습니다.</li>
+</ul></div>
+
+<h2>다섯 가지 생김새</h2>
+<table>
+  <tr><th style="width:9em">생김새</th><th>실제 예</th><th>읽는 법</th></tr>
+  <tr><td><code>for … of</code></td><td><code>for (const keyword of SAFETY_KEYWORDS.block_high) { … }</code></td><td>목록에서 하나씩 꺼내며 몸통 반복. 가장 읽기 쉬운 모양.</td></tr>
+  <tr><td><code>.forEach( )</code></td><td><code>game.memories.forEach(m =&gt; { … })</code><br><span class="small">play-test.html : 5214</span></td><td>같은 뜻. "기억마다 m 이라 부르며 몸통 반복". 목록 뒤에 점 찍고 붙임.</td></tr>
+  <tr><td><code>.map( )</code></td><td><code>fromSupabaseOther.map(m =&gt; ({ ...m, is_live: !!m.is_live }))</code><br><span class="small">js/app/archive.js : 804</span></td><td>반복하면서 <b>새 목록을 만든다</b>. 항목마다 화살표 오른쪽 값을 답으로 모아 같은 길이의 새 목록. "기억마다 is_live 칸을 보태 새 목록으로".</td></tr>
+  <tr><td><code>.filter( )</code></td><td><code>readdirSync('.').filter(f =&gt; f.endsWith('.html'))</code><br><span class="small">vite.config.js : 6</span></td><td>반복하면서 <b>골라낸다</b>. 화살표 오른쪽이 참인 것만 남긴 새 목록. "파일 중 이름이 .html 로 끝나는 것만".</td></tr>
+  <tr><td>옛날 for</td><td><code>for (let i = 0; i &lt; scenesData.length; i++) { const scene = scenesData[i]; … }</code><br><span class="small">js/index.js : 423</span></td><td>번호 <code>i</code>를 0부터 길이 직전까지 올리며 반복. <code>목록[i]</code>가 i 번째 항목. 오래된 코드에 많음. 뜻은 같음.</td></tr>
+</table>
+
+<div class="read"><div class="rt">for · forEach 와 map · filter 의 차이</div>
+<p>앞의 둘은 <b>일을 하고 끝</b>(화면에 카드를 붙이거나 저장). 뒤의 둘은 <b>새 목록을 답으로 돌려줌</b>. 그래서 <code>map</code>과 <code>filter</code>는 거의 항상 <code>const 새이름 = 목록.map(…)</code> 처럼 왼쪽에 상자가 있고, 뒤에 점을 더 찍어 이어 붙이기도 합니다: <code>목록.filter(…).map(…)</code> = "골라낸 다음 바꿔라".</p></div>
+
+<h2>실제 코드: 반복 속 반복</h2>
+<div class="codebox"><span class="file">js/shared/tem_variant_strata.js : 136~144 (붓 모양 만들기)</span>
+<pre class="code" data-hl="3">var BRUSH = (function () {
+  var r = PHYS.radius, arr = [], tw = 0, dx, dz, d, w;
+  for (dz = -r; dz &lt;= r; dz++) for (dx = -r; dx &lt;= r; dx++) {
+    d = Math.sqrt(dx * dx + dz * dz);
+    if (d &gt; r) continue;
+    w = 1 - d / r;
+    arr.push({ dx: dx, dz: dz, w: w });
+    tw += w;
+  }</pre></div>
+<p>3번째 줄에 for 가 두 개 붙어 있습니다. 바깥이 세로(dz), 안이 가로(dx). 격자를 한 칸씩 전부 훑는 모양이고, 지형 코드에 아주 많습니다. <code>continue</code>는 "이번 항목은 건너뛰고 다음으로", <code>arr.push(…)</code>는 "목록 끝에 하나 추가". 원 밖 칸은 버리고, 원 안 칸만 무게를 매겨 목록에 담는 붓입니다.</p>
+
+<div class="tip">반복을 보면 세 가지만 적는다. ① 어떤 목록을 ② 하나씩 뭐라 부르며 ③ 뭘 하나. <code>map</code>이면 "새 목록으로 무엇을 만드나", <code>filter</code>면 "무엇을 남기나"를 추가로.</div>
+
+<div class="quiz"><h3>미니 시험 7</h3>
+<ol>
+  <li>위 붓 코드에서 <code>PHYS.radius</code>가 3 이면(3장 시험 참고) 안쪽 몸통은 최대 몇 번 돕니까? (dz 가 -3부터 3까지, dx 도 -3부터 3까지)</li>
+  <li>처음 보는 코드입니다.
+<div class="codebox"><span class="file">js/core/store.js : 36~42</span>
+<pre class="code nofile">listeners.forEach(listener =&gt; {
+  try {
+    listener(state, prevState);
+  } catch (error) {
+    console.error('[Store] Listener error:', error);
+  }
+});</pre></div>
+어떤 목록을, 하나씩 뭐라 부르며, 뭘 합니까? 하나가 실패하면 나머지는 돕니까?</li>
+  <li><code>['matchingSelection', 'modeSelection', 'sessionSetup'].forEach(id =&gt; { const el = document.getElementById(id); if (el) el.style.display = 'none' })</code> — 우리말로 한 줄.</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · map 과 filter 를 내 말로</div><div class="lines"></div></div>
+</section>

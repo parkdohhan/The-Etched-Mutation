@@ -1,0 +1,188 @@
+<!-- ═══════════════════════ 17장 ═══════════════════════ -->
+<section class="chapter" id="ch17">
+<h1><span class="chno">17장 · 검사하는 눈</span>3D의 겉모양: Three.js</h1>
+
+<p class="goal"><b>목표</b> 지형 · 문 · 유령을 그리는 코드의 <b>겉모양</b>만 읽는다. 무대 · 카메라 · 그리는 장치 세 가지, 물체 = 모양 + 재질, 그리고 매 프레임 도는 루프. 삼각형을 어떻게 그리는지는 안 배운다.</p>
+
+<h2>무대 세 가지</h2>
+<div class="codebox"><span class="file">js/shared/tem_af_strata_terrain.js : 1639, 1644, 1647</span>
+<pre class="code" data-hl="1,2,3">scene3 = new THREE.Scene();
+camera = new THREE.PerspectiveCamera(50, vp0.w / vp0.h, 0.1, 500);
+renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });</pre></div>
+
+<table>
+  <tr><th style="width:12em">것</th><th>비유</th><th>읽는 법</th></tr>
+  <tr><td><code>THREE.Scene</code></td><td>무대</td><td>물체를 올려놓는 곳. <code>scene.add(물체)</code>로 올림.</td></tr>
+  <tr><td><code>THREE.PerspectiveCamera</code></td><td>카메라</td><td>재료 넷: 시야각 50도 · 화면 비율 · 가장 가까운 거리 0.1 · 가장 먼 거리 500. 이 밖은 안 보임(지형 끝이 사라지면 여기 숫자).</td></tr>
+  <tr><td><code>THREE.WebGLRenderer</code></td><td>그리는 장치</td><td>무대를 카메라로 찍어 <code>canvas</code>(html 의 그림판 상자)에 냄. <code>antialias: true</code> = 테두리 부드럽게.</td></tr>
+</table>
+<p><code>new THREE.X(…)</code> = "X 를 하나 만든다". <code>THREE.</code> 뒤 이름만 읽으면 무엇을 만드는지 압니다. 이 프로젝트는 Three.js <b>r128</b>(2021년판)을 씁니다. 최신 예제 문법이 안 맞는 이유이고, 9월 23일 실험 기록에 "스플랫은 r128 위험"이라고 적힌 이유입니다.</p>
+
+<h2>물체 = 모양 + 재질</h2>
+<div class="codebox"><span class="file">play-test.html : 7422~7450 (출구 문, 일부)</span>
+<pre class="code" data-hl="1,5,6,7,8,20">var doorGrp = new THREE.Group();
+doorGrp.userData._exitDoor = true;
+
+// Door frame (two pillars + lintel)
+var frameMat = new THREE.MeshStandardMaterial({ color: 0x8a7a65, roughness: 0.9, metalness: 0.05 });
+var pillarL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 0.15), frameMat);
+pillarL.position.set(-0.7, 1.6, 0);
+doorGrp.add(pillarL);
+var pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 0.15), frameMat);
+pillarR.position.set(0.7, 1.6, 0);
+doorGrp.add(pillarR);
+var lintel = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.15, 0.15), frameMat);
+lintel.position.set(0, 3.25, 0);
+doorGrp.add(lintel);
+
+// Door panel (slightly inset, darker)
+var panelMat = new THREE.MeshStandardMaterial({ color: 0x1a1518, roughness: 0.95, transparent: true, opacity: 0.85 });
+var panel = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 3.0), panelMat);
+
+var doorLight = new THREE.PointLight(0xc4a882, 0.3, 6, 2);
+doorLight.position.set(0, 3.5, 0.3);
+doorGrp.add(doorLight);</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>THREE.Group</code>(1번째 줄) = 물체 여러 개를 담는 <b>묶음</b>. 문 전체를 한 덩어리로 옮기려고. <code>userData._exitDoor = true</code>는 물체에 쪽지(html 의 <code>data-</code>, 13장의 <code>dataset</code>과 같은 발상). 나중에 "출구 문이냐?"를 이 쪽지로 묻습니다.</li>
+  <li><code>THREE.MeshStandardMaterial({ color, roughness, metalness })</code>(5번째 줄) = <b>재질</b>. 색 · 거칠기 · 금속성. <code>0x8a7a65</code>는 색을 16진수로 적은 것 = css 의 <code>#8a7a65</code>와 같은 색(2장). 흙빛 나무색.</li>
+  <li><code>THREE.Mesh(모양, 재질)</code>(6번째 줄) = <b>물체</b>. 모양은 <code>BoxGeometry(가로, 높이, 깊이)</code>: 가로 0.15 · 높이 3.2 · 깊이 0.15 = 가늘고 긴 기둥. <code>PlaneGeometry(가로, 높이)</code>는 판.</li>
+  <li><code>.position.set(x, y, z)</code>(7번째 줄) = 어디에 놓나. <b>y 가 위</b>. 왼쪽 기둥 x=-0.7, 오른쪽 기둥 x=0.7, 높이 1.6 은 기둥 가운데(3.2 의 절반). 상인방(lintel)은 y=3.25 로 위에 얹힘.</li>
+  <li><code>.add(물체)</code> = 묶음이나 무대에 올림.</li>
+  <li><code>THREE.PointLight(색, 세기, 거리, 감쇠)</code>(20번째 줄) = 전구. 색 <code>0xc4a882</code>… 2장의 <code>--accent-memory</code>와 같은 금색입니다. 문 위 3.5 에 떠서 6 거리까지 은은하게.</li>
+</ul>
+<p>이 스무 줄이 상영에서 보이는 그 문입니다. 기둥 둘, 상인방 하나, 어두운 판 하나, 금색 전구 하나. <b>3D 코드는 "무엇을 · 어떤 재질로 · 어디에" 세 가지의 반복</b>입니다.</p></div>
+
+<h2>자주 보는 이름표</h2>
+<table>
+  <tr><th style="width:15em">이름</th><th>뜻</th></tr>
+  <tr><td><code>BoxGeometry · PlaneGeometry · SphereGeometry · BufferGeometry</code></td><td>상자 · 판 · 공 · 직접 짠 모양(지형이 이것)</td></tr>
+  <tr><td><code>MeshStandardMaterial · MeshBasicMaterial · ShaderMaterial</code></td><td>빛 받는 재질 · 빛 무시 재질 · 직접 짠 재질(안개 · 하늘 얼룩)</td></tr>
+  <tr><td><code>AmbientLight · DirectionalLight · PointLight</code></td><td>사방 빛 · 햇빛(방향만) · 전구(위치 있음)</td></tr>
+  <tr><td><code>Fog · FogExp2</code></td><td>안개(거리 따라 흐려짐)</td></tr>
+  <tr><td><code>Vector3(x, y, z)</code></td><td>좌표 하나. 위치 · 방향 · 속도 다 이걸로</td></tr>
+  <tr><td><code>GLTFLoader · FBXLoader</code></td><td>바깥에서 만든 모형(.glb · .fbx) 불러오기. 사물 앵커 · 유령 몸</td></tr>
+  <tr><td><code>OrbitControls</code></td><td>마우스로 카메라 돌리기(편집기 · 지형 조감)</td></tr>
+  <tr><td><code>.traverse(o =&gt; …)</code></td><td>무대 위 모든 물체를 하나씩 방문(7장의 반복). 11장 시험의 검사 코드가 씬 핀을 이걸로 찾음</td></tr>
+</table>
+
+<h2>매 프레임 도는 루프</h2>
+<div class="codebox"><span class="file">play-test.html : 4893~4916 (지형 띠 애니메이션, 일부) · js/ui/strataView.js : 717</span>
+<pre class="code" data-hl="1,3,9,12,15">function tick() {
+  if (game.terrainTintFrom && game.terrainTintTo && game.terrainTintLerp &lt; 1) {
+    game.terrainTintLerp = Math.min(1, game.terrainTintLerp + 0.032);
+    tint = lerpRgb(game.terrainTintFrom, game.terrainTintTo, easeOutCubic(game.terrainTintLerp));
+  }
+  ...
+  renderTerrainBar(game.currentSceneIndex, tint, { rippleAmp: ripplePx, rippleTime: game.terrainRipplePhase });
+  const tintAnimating = game.terrainTintFrom && game.terrainTintTo && game.terrainTintLerp &lt; 1;
+  if (tintAnimating || game.terrainRipple &gt; 0.004) {
+    game.terrainAnimRaf = requestAnimationFrame(tick);
+  } else {
+    game.terrainAnimRaf = null;
+  }
+}
+game.terrainAnimRaf = requestAnimationFrame(tick);</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>애니메이션은 전부 이 모양입니다: <b>함수 하나(tick) 안에서 → 값을 조금 바꾸고(3번째 줄, 0.032 씩) → 그리고(7번째 줄) → 아직 덜 됐으면 다음 프레임에 자기를 다시 부른다(9~10번째 줄).</b> 15번째 줄이 첫 시동.</li>
+  <li><code>requestAnimationFrame(tick)</code>(11장) = "다음 그리기 직전에 tick 을 한 번". tick 안에서 또 부르니 초당 60번 돕니다. 다 되면(else) 안 부르니 멈춤. 12번째 줄 <code>null</code>은 "지금 도는 애니메이션 없음" 표시.</li>
+  <li><code>lerp</code>(8장의 Lerp)는 "두 값 사이를 비율만큼 섞기", <code>easeOutCubic</code>은 "처음엔 빠르고 끝은 천천히". 연출 코드에 늘 나오는 두 단어. 속은 몰라도 됨.</li>
+  <li>3D 무대라면 7번째 줄 자리에 <code>renderer.render(scene, camera)</code>("무대를 카메라로 찍어 내라")가 있습니다. strataView.js 717번째 줄의 <code>animId = requestAnimationFrame(animateLoop)</code>가 지형 뷰의 같은 자리.</li>
+</ul></div>
+
+<div class="warn">이 프로젝트 기록(디버깅 지름길 메모): 카메라를 콘솔에서 옮겨도 <code>_fpTick</code>이 매 프레임 되돌립니다. 루프가 도는 동안은 루프 밖에서 바꾼 값이 다음 프레임에 덮입니다. "값을 바꿨는데 안 바뀌어요"의 3D 판 원인. 루프 안을 봐야 합니다.</div>
+
+<div class="tip">3D 코드는 <code>new THREE.이름</code>의 이름만 읽는다. 물체는 "모양 + 재질 + 위치". 애니메이션은 "값 조금 바꿈 → 그림 → 자기 다시 부름". <code>0x</code> 색은 css <code>#</code> 색과 같다.</div>
+
+<div class="quiz"><h3>미니 시험 17</h3>
+<ol>
+  <li><code>var pillarR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 0.15), frameMat); pillarR.position.set(0.7, 1.6, 0);</code> — 무엇을 어떤 재질로 어디에? 왼쪽 기둥과 다른 점 하나.</li>
+  <li><code>new THREE.PointLight(0xc4a882, 0.3, 6, 2)</code> — 이 색은 css 의 어느 색 이름표와 같습니까? (2장 <code>:root</code> 참고)</li>
+  <li>어떤 화면에서 "매 프레임 도는 함수"를 찾고 싶습니다. <span class="kbd">Ctrl</span>+<span class="kbd">F</span>에 무슨 글자를 넣겠습니까?</li>
+  <li><code>doorGrp.userData._exitDoor = true</code> — 나중에 무대 위 물체를 하나씩 돌며(<code>traverse</code>) 출구 문만 찾고 싶다면 무엇을 확인하면 됩니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 물체 하나를 그리는 세 줄</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 18장 ═══════════════════════ -->
+<section class="chapter" id="ch18">
+<h1><span class="chno">18장 · 검사하는 눈</span>큰 파일 지도 + "됐어요" 검사 순서</h1>
+
+<p class="goal"><b>목표</b> 8,400줄짜리 파일도 처음부터 안 읽는다. 세 가지 기술로 지도를 그리고, 이 책 전체를 <b>일곱 단계 검사 순서</b> 하나로 접는다. 졸업 장. (7월 10교시 확장)</p>
+
+<h2>큰 파일 읽는 세 가지 기술</h2>
+<ol>
+  <li><b>이름으로 점프.</b> <span class="kbd">Ctrl</span>+<span class="kbd">F</span>에 AI 가 말한 함수 이름을 넣고 <code>function 이름</code> 또는 <code>이름(</code> 를 찾습니다. 함수 이름이 이정표.</li>
+  <li><b>계단 훑기.</b> 6장. 왼쪽 끝만 보며 0계단 줄을 셉니다. VS Code 에서 <span class="kbd">Ctrl</span>+<span class="kbd">K</span> 다음 <span class="kbd">Ctrl</span>+<span class="kbd">0</span> 을 누르면 모든 덩어리가 접혀 목차만 남습니다(<span class="kbd">Ctrl</span>+<span class="kbd">K</span> <span class="kbd">Ctrl</span>+<span class="kbd">J</span> 로 다시 펼침).</li>
+  <li><b><code>function</code> 세기.</b> <span class="kbd">Ctrl</span>+<span class="kbd">F</span>에 "function " 을 넣으면 오른쪽에 "1/312" 처럼 개수가 뜹니다. 그 파일이 가진 기능 수. <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">O</span>는 함수 이름 목록을 띄웁니다(html 안 script 에서는 일부만).</li>
+</ol>
+
+<h2>실제 지도: play-test.html</h2>
+<table>
+  <tr><th style="width:7em">줄 근처</th><th>무엇</th><th>찾는 글자</th></tr>
+  <tr><td>14~102</td><td>부품 목록 (script 태그 약 40개, 캐시버스터 포함)</td><td><code>&lt;script src=</code></td></tr>
+  <tr><td>~100~530</td><td>옷 (style)</td><td><code>&lt;style&gt;</code></td></tr>
+  <tr><td>531</td><td>일반 script 시작 (마당)</td><td><code>&lt;script&gt;</code></td></tr>
+  <tr><td>703</td><td>module script 시작 (두뇌, 방). import 목록</td><td><code>&lt;script type="module"&gt;</code></td></tr>
+  <tr><td>730</td><td>데이터베이스 연결을 마당에 꽂음</td><td><code>window.getSupabaseClient</code></td></tr>
+  <tr><td>3533</td><td>씬 진입 함수를 마당에 꽂음 (디버깅 지름길)</td><td><code>_temEnterSceneMode</code></td></tr>
+  <tr><td>4893</td><td>지형 띠 애니메이션 루프</td><td><code>terrainAnimRaf</code></td></tr>
+  <tr><td>5209</td><td>서가 그리기</td><td><code>_renderShelf</code></td></tr>
+  <tr><td>7420</td><td>출구 문 만들기</td><td><code>_exitDoor</code></td></tr>
+  <tr><td>6598</td><td>지형 뷰 부품 (맨 아래)</td><td><code>strataView.js</code></td></tr>
+</table>
+<p class="small">줄 번호는 2026-09-25 기준. 밀리면 "찾는 글자"로 점프.</p>
+
+<h2>grep: 폴더 전체에서 찾기</h2>
+<p><span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">F</span>. 파일 하나가 아니라 저장소 전체에서 글자를 찾습니다. 이 책에서 grep 이 필요한 자리 셋:</p>
+<ul>
+  <li><b>진입점 세 곳</b>(12장): 기능 이름이나 파일 이름 → 세 문 중 몇 곳에 있나.</li>
+  <li><b>캐시버스터</b>(12장): 파일 이름 → 각 줄의 <code>?v=</code>가 같고 새로운가.</li>
+  <li><b>죽은 레버</b>(16장): 열 이름 → 읽는 자리(<code>=</code> 오른쪽)가 있나.</li>
+</ul>
+<p>검색 결과 창에서 파일별로 몇 개인지 숫자가 나옵니다. <b>세는 것</b>이 전부입니다.</p>
+
+<h2>"됐어요" 검사 순서</h2>
+<p>AI 가 작업을 마쳤다고 하면 <b>이 순서대로</b> 묻습니다. 각 단계가 이 책 어느 장인지 적어 뒀습니다. 문구는 부록 D 에 그대로 있습니다.</p>
+<table>
+  <tr><th style="width:3em">#</th><th style="width:14em">묻는 것</th><th>눈으로 확인하는 것</th><th style="width:5em">장</th></tr>
+  <tr><td>1</td><td>어느 파일, 어느 함수?</td><td>폴더로 층을 짐작. 함수 이름으로 점프해 <code>{ }</code> 경계 확인</td><td>1 · 5</td></tr>
+  <tr><td>2</td><td>비교표 그대로 보여줘</td><td><code>@@</code> 개수 = 말한 자리 수. 각 덩어리가 어느 함수 안인지</td><td>15</td></tr>
+  <tr><td>3</td><td>초록 줄이 새로 하는 일</td><td>if · for · 이름으로 내 말로 한 줄. 못 하면 한 줄씩 풀어 달라고</td><td>4 · 7 · 8</td></tr>
+  <tr><td>4</td><td>진입점 세 곳</td><td>grep → 세 문 중 몇 곳. 빠진 문이 의도인지</td><td>12</td></tr>
+  <tr><td>5</td><td>캐시버스터</td><td>고친 파일 이름 grep → <code>?v=</code> 오늘 날짜 · 세 문 동일</td><td>12</td></tr>
+  <tr><td>6</td><td>콘솔 · 네트워크 빨강 0</td><td>F12. 빨간 줄 없음. 있으면 종류 · 내용 · 위치 읽기</td><td>14</td></tr>
+  <tr><td>7</td><td>실제 순서로 한 번</td><td>콘솔에 값을 심어 놓고 보는 게 아니라, 관객이 밟는 순서(서가 → 진입 → 걷기 → 대화 → 봉인)로 끝까지. 각 단계 캡처</td><td>13 · 14</td></tr>
+</table>
+
+<div class="story">7단계가 있는 이유. 2026-07-17 기록: "console 세팅 · 심어둔 전제는 그 전제 깨지는 실전 타이밍 못 봄." 접촉 기록 403 은 콘솔에서 값을 심어 시험할 땐 안 났고, 실제 순서로 밟을 때만 났습니다(접촉이 회차 저장보다 먼저 일어나는 타이밍). 자동으로 밟아 주는 도구가 이미 있습니다: <code>npm run qa</code>(<code>tools/qa.cjs</code>, 스냅샷 찍고 → 풀 플레이 → 되돌림)와 <code>test/e2e/playthrough.mjs</code>. AI 에게 "qa 돌리고 캡처 붙여"라고 시킬 수 있습니다.</div>
+
+<h2>덧붙여: 죽은 코드를 만났을 때</h2>
+<p>이 저장소는 안 쓰는 레버를 <b>일부러 남겨 둡니다</b>(라이브 모드, 옛 archive 플레이, pin_override …). 읽다가 "이거 아무 데서도 안 부르는데?"를 발견하면 결함이라고 단정하지 말고 <b>의도를 먼저 묻습니다.</b> 2026-08-02 에 죽은 재진입 스킵을 "고쳤다가" 되돌린 사고가 있습니다. 읽는 눈이 생기면 이런 걸 발견하게 되고, 발견은 좋은 일이지만 <b>발견 → 질문 → 결정</b> 순서를 지킵니다.</p>
+
+<h2>졸업</h2>
+<p>여기까지 오면 당신은 <b>읽고 검사하는 사람</b>입니다. 코드를 쓰지는 못해도(계속 AI 가 씁니다), "됐어요"를 들었을 때 파일을 열어 <code>@@</code>를 세고, grep 으로 세 문을 세고, F12 의 빨강을 읽고, 실제 순서로 밟게 시킬 수 있습니다. 처음 목표가 정확히 그거였습니다.</p>
+<p>남은 건 반복입니다. 다음 작업부터 검사 순서 일곱 단계를 한 번씩 밟으세요. 4~6주면 비교표에서 "이상한데?"가 저절로 걸립니다. 그때 이 책의 장 번호가 손에 익어 있을 겁니다.</p>
+
+<div class="tip">큰 파일 = 이름 점프 · 계단 · function 세기. 됐어요 = 일곱 단계. 전부 <b>세는 일</b>이다. 계산이 아니라.</div>
+
+<div class="quiz"><h3>미니 시험 18 (졸업)</h3>
+<p>AI 가 이렇게만 말했습니다. <em>"오염 계산 로직 좀 고쳤어요. play-test 에서 잘 돼요."</em></p>
+<ol>
+  <li>검사 순서 일곱 단계로 되물을 질문을 <b>다섯 개</b> 만드세요. 각 질문 옆에 이 책 장 번호를 적으세요.</li>
+  <li>"play-test 에서 잘 돼요"라는 말에서 빠진 문이 있습니까? 있다면 무엇을 시킵니까?</li>
+  <li>비교표를 받았더니 <code>@@</code>가 다섯 개이고 그중 둘이 <code>js/ui/</code> 폴더 파일입니다. "오염 계산만 고쳤다"는 말과 맞습니까? 무엇을 묻습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<div class="answer-space"></div>
+<p class="ans-hint">정답 예시는 부록 E. 정답이 하나가 아닙니다.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 다음 작업에서 밟을 일곱 단계를 내 순서로</div><div class="lines"></div></div>
+</section>

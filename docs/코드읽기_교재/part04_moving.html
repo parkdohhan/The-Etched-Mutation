@@ -1,0 +1,266 @@
+<!-- ═══════════════════════ 11장 ═══════════════════════ -->
+<section class="chapter" id="ch11">
+<h1><span class="chno">11장 · 움직이는 것들</span>기다림: async · await · setTimeout</h1>
+
+<p class="goal"><b>목표</b> 코드에서 <b>시간이 걸리는 자리</b>를 알아본다. 서버에 물어보는 일, 몇 초 뒤에 하는 일, 매 프레임 하는 일. "저장이 안 됐어요"의 원인 절반이 여기 있다.</p>
+
+<h2>왜 기다림이 따로 있나</h2>
+<p>코드는 위에서 아래로 한 줄씩 돕니다. 그런데 어떤 줄은 <b>답이 바로 안 옵니다.</b> 데이터베이스에 "기억 목록 줘"라고 하면 인터넷 건너 서버가 답할 때까지 0.1초든 2초든 걸립니다. 그동안 화면이 멈추면 안 되니까, 자바스크립트는 "답 오면 이어서 해"라고 표시하고 다른 일을 합니다. 그 표시가 <code>await</code>입니다.</p>
+
+<h2>실제 코드: 서버에 물어보기</h2>
+<div class="codebox"><span class="file">js/shared/api.js : 8~26</span>
+<pre class="code" data-hl="1,8,9,10,11,12">export async function fetchMemories() {
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) {
+    console.error('fetchMemories: Supabase client not initialized');
+    return [];
+  }
+
+  const { data, error } = await supabaseClient
+    .from('memories')
+    .select('*')
+    .eq('is_public', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('fetchMemories error:', error);
+    return [];
+  }
+
+  return data || [];
+}</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li>1번째 줄 <code>async function</code> = "이 함수 안에는 기다리는 줄이 있다"는 선언. <code>await</code>는 <code>async</code> 붙은 함수 안에서만 쓸 수 있습니다.</li>
+  <li>8번째 줄 <code>await</code> = "오른쪽 일이 끝날 때까지 여기서 기다렸다가, 답을 왼쪽에 담아라". 8~12번째 줄은 점으로 이어진 한 문장: "memories 표에서 · 모든 열을 · is_public 이 참인 것만 · 만든 시각 내림차순으로" (16장에서 자세히).</li>
+  <li>답이 <code>{ data, error }</code> 묶음으로 오고(10장의 "한꺼번에 풀기"), 오류면 빈 목록, 아니면 <code>data</code>.</li>
+</ul></div>
+
+<div class="warn"><b>await 가 빠지면</b> 답 대신 "약속 상자"(Promise)라는 빈 껍데기가 옵니다. 오류도 안 나고 저장도 안 됩니다. "저장했다는데 데이터베이스에 없어요"를 들으면 첫 용의자는 <em>await 빠진 줄</em>입니다. AI에게 "그 호출 앞에 await 있어?"라고 물으세요. 반대로 <b>await 없이 부르는 게 의도인 경우</b>도 있습니다(기다리지 않고 뒤에서 저장). 그땐 보통 <code>// 비동기</code>, <code>_background…</code> 같은 표시가 있습니다.</div>
+
+<h2>실제 코드: 몇 초 기다리기</h2>
+<div class="codebox"><span class="file">js/app/opening.js : 84 (playNpcIntro, 줄 나눔)</span>
+<pre class="code" data-hl="3,5,6">async function playNpcIntro() {
+  ...
+  await new Promise(r =&gt; setTimeout(r, 2000));
+  centerWrapper.classList.add('lifted');
+  await new Promise(r =&gt; setTimeout(r, 1000));
+  await typeTextAsync(dialogue, NPC_DIALOGUES.intro.firstVisit, 100);
+  ...</pre></div>
+<p><code>await new Promise(r =&gt; setTimeout(r, 2000))</code>는 통째로 <b>"2초 기다려"</b>라고 읽으면 됩니다(속은 몰라도 됨). 오프닝이 2초 쉬고 → 가운데 상자를 띄우고 → 1초 쉬고 → 대사를 한 글자씩 치는 흐름이 위에서 아래로 그대로 읽힙니다. <code>await</code> 덕분에 시간 흐름이 줄 순서와 같습니다.</p>
+
+<h2>시간을 다루는 세 가지 도구</h2>
+<table>
+  <tr><th style="width:12em">도구</th><th>뜻</th><th>실제 예</th></tr>
+  <tr><td><code>setTimeout(함수, 밀리초)</code></td><td>그만큼 뒤에 <b>한 번</b> 함수를 돌려라</td><td><code>setTimeout(initSupabaseClient, 100);</code><br><span class="small">js/lib/supabaseClient.js : 48 — 0.1초 뒤 다시 연결 시도</span></td></tr>
+  <tr><td><code>setInterval(함수, 밀리초)</code></td><td>그 간격으로 <b>계속</b> 돌려라 (<code>clearInterval</code>로 멈춤)</td><td><code>const timer = setInterval(() =&gt; { … }, speed)</code><br><span class="small">js/app/opening.js : 67 — 글자 한 자씩 타이핑</span></td></tr>
+  <tr><td><code>requestAnimationFrame(함수)</code></td><td>다음 화면 그리기 직전에 <b>한 번</b>. 함수 안에서 또 부르면 <b>매 프레임</b> (초당 약 60번)</td><td><code>game.terrainAnimRaf = requestAnimationFrame(tick);</code><br><span class="small">play-test.html : 4916 — 지형 색이 서서히 바뀌는 애니메이션(17장)</span></td></tr>
+</table>
+<p>밀리초는 천분의 일 초. 1000 = 1초, 100 = 0.1초, 50 = 타이핑 한 글자 간격.</p>
+
+<h2>옛 모양: then 과 catch</h2>
+<div class="codebox"><span class="file">js/app/opening.js : 92 (fadeInSound 안, 줄 나눔)</span>
+<pre class="code">const playPromise = audio.play();
+playPromise.then(() =&gt; {
+    console.log('opening 사운드 재생 시작');
+    ...
+}).catch(e =&gt; {
+    console.error('opening 사운드 재생 Failed:', e);
+});</pre></div>
+<p><code>await</code>가 생기기 전 방식. <code>.then(함수)</code> = "성공하면 이걸 해", <code>.catch(함수)</code> = "실패하면 이걸 해". 뜻은 await + try/catch 와 같습니다. 브라우저가 소리 재생을 거부하면(사용자가 아직 화면을 안 눌렀을 때) catch 로 갑니다. 오프닝 소리가 안 나는 문제는 이 catch 의 콘솔 메모에서 시작됩니다.</p>
+
+<div class="tip"><code>async</code>는 "안에 기다림 있음", <code>await</code>는 "여기서 답 올 때까지". <code>await new Promise(r =&gt; setTimeout(r, N))</code>는 통째로 "N 밀리초 쉬기". 저장이 안 됐다는 말을 들으면 <b>await 부터</b> 의심.</div>
+
+<div class="quiz"><h3>미니 시험 11</h3>
+<ol>
+  <li><code>await new Promise(r =&gt; setTimeout(r, 1500));</code> — 우리말로.</li>
+  <li>자동 검사 코드입니다. 무엇을 기다려 <code>memId</code>에 담습니까?
+<div class="codebox"><span class="file">test/e2e/playthrough.mjs : 32~36</span>
+<pre class="code nofile">const memId = await page.evaluate(async () =&gt; {
+  const sb = await window.getSupabaseClient();
+  const { data } = await sb.from('memories').select('id').limit(1);
+  return data?.[0]?.id;
+});</pre></div></li>
+  <li><code>setTimeout(_waitForStrata, 200);</code> (js/index.js : 158) — 몇 초 뒤에 무엇을 합니까? 이 줄이 <code>_waitForStrata</code> 함수 <b>안에</b> 있다면 무슨 모양이 됩니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · await 가 빠지면 생기는 일</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 12장 ═══════════════════════ -->
+<section class="chapter" id="ch12">
+<h1><span class="chno">12장 · 움직이는 것들</span>모듈과 전역: 진입점 세 곳과 캐시버스터</h1>
+
+<p class="goal"><b>목표</b> 같은 페이지 안에서도 <b>서로 이름을 못 보는 방</b>이 있다는 것을 알고, 방 사이를 잇는 <code>window.</code>를 읽는다. 그리고 이 저장소 최다 사고 두 가지, <b>진입점 누락</b>과 <b>캐시버스터 미갱신</b>을 검사하는 법을 익힌다.</p>
+
+<h2>두 종류의 script: 방과 마당</h2>
+<p>2장에서 <code>&lt;script type="module"&gt;</code>과 그냥 <code>&lt;script&gt;</code>를 봤습니다. 차이는 이겁니다.</p>
+<table>
+  <tr><th style="width:11em"></th><th>일반 script (마당)</th><th>module script (방)</th></tr>
+  <tr><td>이름이 보이는 범위</td><td>거기서 만든 이름은 페이지 전체(<code>window</code>)에서 보임</td><td>그 파일 안에서만 보임. 밖에서 못 부름</td></tr>
+  <tr><td>import / export</td><td>못 씀</td><td>씀 (9장)</td></tr>
+  <tr><td>이 프로젝트에서</td><td><code>js/ui/lumen_*.js</code>, <code>js/shared/tem_*.js</code>, 지형 엔진 등 대부분의 연출 파일</td><td><code>js/index.js</code>, <code>js/app/*</code>, <code>js/core/*</code>, play-test.html 의 703번째 줄 script</td></tr>
+</table>
+
+<h2>실제 코드: 방에서 마당으로 내놓기</h2>
+<div class="codebox"><span class="file">play-test.html : 703, 724~731</span>
+<pre class="code" data-hl="3,6,9">&lt;script type="module"&gt;
+  ...
+  // Non-module 스크립트(fpAmbientWave 등)에서 접근 가능하게 전역 노출
+  window.sharedEmotionVectorToWaveStyle = sharedEmotionVectorToWaveStyle;
+  window.GHOST_PRESETS = GHOST_PRESETS;
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // strataView.js가 Supabase client를 찾을 수 있도록 HUB 쪽 API를 흉내낸다.
+  window.getSupabaseClient = function () { return sb; };
+  ...</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>window</code> = 브라우저 창 자체 = <b>마당</b>. <code>window.이름 = 값</code>은 "마당에 이 이름표를 꽂아 누구나 쓰게 하라".</li>
+  <li>4~5번째 줄: 방(module) 안에서 import 한 것들을 마당에 내놓습니다. 그래야 일반 script 로 된 연출 파일들이 씁니다. 메모(3번째 줄)가 정확히 그 이유를 적어 뒀습니다.</li>
+  <li>9번째 줄: 데이터베이스 연결(<code>sb</code>)을 돌려주는 함수를 마당에 꽂음. 그래서 다른 파일이 <code>window.getSupabaseClient()</code>라고 부를 수 있습니다(11장 시험의 검사 코드가 바로 그걸 씀).</li>
+  <li>반대로 마당의 것을 방에서 쓸 땐 그냥 <code>window.supabase</code>처럼 앞에 window 를 붙입니다(6번째 줄). 마당은 어디서나 보이니까요.</li>
+</ul></div>
+
+<div class="story">play-test.html 707~709번째 줄 메모: "calculateFixationLevel 은 이 파일이 이미 인라인 사본을 갖고 있다 — import 하면 이름 충돌로 모듈 전체가 SyntaxError 로 죽는다." 같은 방에 같은 이름이 두 번 생기면 그 방 전체가 안 열립니다. 화면이 통째로 검게 멈추는 사고의 한 종류(14장).</div>
+
+<div class="codebox"><span class="file">play-test.html : 3533, 5508</span>
+<pre class="code">window._temEnterSceneMode = enterSceneMode;
+// 260708 fix: 이 함수는 module 스코프라 뒤쪽 일반 &lt;script&gt; 블록에서 안 보임 — 전역 공유.</pre></div>
+<p>이런 줄이 이 프로젝트에 수십 개 있습니다. 읽는 법은 하나: <b>"방 안의 X 를 마당에 꽂음, 이유는 메모에".</b> 디버깅 때 콘솔에서 <code>window._temEnterSceneMode(…)</code>로 강제 진입할 수 있는 것도 이 줄 덕분입니다.</p>
+
+<h2>script 줄의 순서</h2>
+<div class="codebox"><span class="file">index.html : 598~612 (일부)</span>
+<pre class="code" data-lang="html" data-hl="1,7">&lt;script src="data/memories.js"&gt;&lt;/script&gt;
+&lt;script src="js/ui/strataSection.js?v=260714"&gt;&lt;/script&gt;
+&lt;script src="js/shared/tem_af_strata_terrain.js?v=260809a"&gt;&lt;/script&gt;
+&lt;script src="js/ui/strataView.js?v=260810a"&gt;&lt;/script&gt;
+&lt;script src="js/contamination.js?v=260714"&gt;&lt;/script&gt;
+&lt;script src="js/ui/lumen_dialog_phase1.js?v=260909a"&gt;&lt;/script&gt;
+&lt;script type="module" src="js/index.js?v=260909c"&gt;&lt;/script&gt;</pre></div>
+<p>위에서 아래로 읽힙니다. 아래 파일은 위 파일이 마당에 꽂은 이름을 쓸 수 있지만, 반대는 안 됩니다. <code>strataView.js</code>가 <code>tem_af_strata_terrain.js</code>보다 아래 있는 이유입니다. AI 가 "script 줄 순서를 바꿨다"고 하면 "아래 것이 위 것을 쓰나?"를 물으세요.</p>
+
+<h2>진입점 세 곳 검사</h2>
+<p>같은 부품이 세 문에서 각각 불립니다. 예를 들어 유령 대화 껍데기 파일은 두 문에 있습니다.</p>
+<div class="codebox"><span class="file">Ctrl+Shift+F 로 "lumen_dialog_phase1.js" 를 찾으면</span>
+<pre class="code" data-lang="txt">index.html:611      &lt;script src="js/ui/lumen_dialog_phase1.js?v=260909a"&gt;
+play-test.html:99   &lt;script src="js/ui/lumen_dialog_phase1.js?v=260909a"&gt;</pre></div>
+<p>이걸 <b>grep</b>(폴더 전체 글자 찾기)이라고 부릅니다. VS Code 에서는 <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">F</span>. 어떤 기능을 "붙였다"고 하면, 그 기능 이름이나 파일 이름으로 grep 해서 <b>세 문(index.html · play-test.html · js/demo/demoFlow.js)에 다 나오는지</b> 셉니다. 그 기능이 어느 문에 필요한지는 작품 판단이지만, "세 곳 중 몇 곳에 있나"는 눈으로 셀 수 있습니다.</p>
+
+<h2>캐시버스터 검사</h2>
+<p>위 grep 결과에서 하나 더 봅니다. <b><code>?v=</code> 뒤 숫자가 두 줄 모두 같은가.</b> 260909a 와 260909a, 같습니다. 만약 한쪽만 옛 숫자면 그 문의 관객은 옛 파일을 받습니다.</p>
+<table>
+  <tr><th style="width:11em">규칙</th><th>검사</th></tr>
+  <tr><td>파일을 고치면 <code>?v=</code>를 올린다 (날짜 + 글자)</td><td>AI 가 고쳤다는 파일 이름을 grep → 그 줄의 <code>?v=</code>가 오늘 날짜인가</td></tr>
+  <tr><td>같은 파일은 세 문에서 같은 <code>?v=</code></td><td>grep 결과 줄들의 <code>?v=</code>가 서로 같은가</td></tr>
+  <tr><td>import 경로의 <code>?v=</code>도 같은 규칙</td><td><code>from './js/shared/math.js?v=260727'</code> 처럼 붙은 것도 대상</td></tr>
+</table>
+
+<div class="story">2026-07-17 감수 실연 기록: "결함 2건 발견·봉합: 캐시버스터 미갱신 + 접촉-plays 시차 403." 캐시버스터를 안 올려서 지휘 세션이 옛 대화 파일을 보고 있었습니다. 그날 이후 "배포 전 캐시버스터 전수 확인(수정 파일 ↔ ?v= 대조)"이 체크리스트에 올랐고, 이 책 18장의 검사 순서 5번이 그것입니다.</div>
+
+<div class="tip"><code>window.X =</code> 는 "마당에 꽂기". 기능을 붙였다는 말을 들으면 파일 이름으로 <b>grep → 세 문에 있나 → ?v= 같나</b> 두 가지를 센다. 계산 없이 세는 것만으로 이 저장소 사고의 큰 두 종류를 막는다.</div>
+
+<div class="quiz"><h3>미니 시험 12</h3>
+<ol>
+  <li><code>window.QuiltDemoState = QuiltDemoState; // non-module 영역(footprints, mock test)에서 사용</code> (play-test.html : 718) — 무엇을 어디에 왜?</li>
+  <li>grep "strataView.js" 결과가 <code>index.html:603 …?v=260810a</code>, <code>play-test.html:6598 …?v=260810a</code> 입니다. 문제가 있습니까? 만약 한쪽이 260714 였다면 관객에게 무슨 일이 생깁니까?</li>
+  <li>play-test.html 94번째 줄은 <code>&lt;script type="module" src="js/safety.js"&gt;</code> 입니다(방). 그런데 일반 script 인 유령 대화 파일이 <code>detectCrisis</code>를 씁니다. 어떻게 가능합니까? (힌트: safety.js 의 맨 끝 열 줄을 열어 보세요. 열어 보는 것 자체가 답입니다.)</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 기능 붙였다는 말을 들으면 세는 두 가지</div><div class="lines"></div></div>
+</section>
+
+
+<!-- ═══════════════════════ 13장 ═══════════════════════ -->
+<section class="chapter" id="ch13">
+<h1><span class="chno">13장 · 움직이는 것들</span>화면과 사건: DOM과 이벤트</h1>
+
+<p class="goal"><b>목표</b> 자바스크립트가 화면을 <b>찾고 · 만들고 · 바꾸는</b> 네댓 개의 동사와, "눌렀을 때 · 키를 쳤을 때" 같은 <b>사건</b>을 붙이는 한 가지 모양을 읽는다. 2장의 삼각형을 완성한다.</p>
+
+<h2>DOM: 브라우저가 html 로 만든 나무</h2>
+<p>브라우저는 html 을 읽어 상자 나무를 만듭니다. 그 나무의 이름이 DOM 입니다. 자바스크립트가 "화면을 바꾼다"는 건 전부 이 나무의 상자를 찾아 만지는 일입니다. <code>document</code>가 나무의 뿌리.</p>
+
+<table>
+  <tr><th style="width:5em">동사</th><th style="width:20em">모양</th><th>실제 예</th></tr>
+  <tr><td>찾기</td><td><code>document.getElementById('이름표')</code><br><code>document.querySelector('.종류표')</code><br><code>상자.querySelectorAll('.종류표')</code></td><td><code>document.getElementById('landingShelf')</code> 하나 찾기<br><code>document.querySelector('.footer')</code> 첫 하나<br><code>shelf.querySelectorAll('.shelf-card')</code> 서가 안 카드 전부(목록)</td></tr>
+  <tr><td>만들기</td><td><code>document.createElement('div')</code></td><td>카드 상자 하나 새로 만듦(아직 나무에 안 붙음)</td></tr>
+  <tr><td>붙이기</td><td><code>부모.appendChild(자식)</code></td><td><code>shelf.appendChild(card)</code> 서가 끝에 카드 붙임</td></tr>
+  <tr><td>바꾸기</td><td><code>상자.textContent = '글'</code><br><code>상자.classList.add / remove / toggle</code><br><code>상자.style.display = 'none'</code><br><code>상자.value = 값</code><br><code>상자.innerHTML = '&lt;div&gt;…'</code></td><td>글자 바꾸기<br>종류표 붙이기 · 떼기 · 뒤집기 (2장)<br>직접 숨기기<br>입력칸 값 넣기<br>안쪽 html 통째로 갈아끼우기 (<code>= ''</code>는 비우기)</td></tr>
+  <tr><td>없애기</td><td><code>상자.remove()</code></td><td><code>modal.remove()</code> 창 닫기</td></tr>
+</table>
+
+<h2>실제 코드: 카드 만들기 (DOM 동사만 보기)</h2>
+<div class="codebox"><span class="file">play-test.html : 5210~5213, 5215~5228, 5239</span>
+<pre class="code" data-hl="1,5,6,7,9,11,12,13">const shelf = document.getElementById('landingShelf');
+...
+shelf.innerHTML = '';
+game.memories.forEach(m =&gt; {
+  const card = document.createElement('div');
+  card.className = 'shelf-card';
+  card.dataset.memoryId = m.id;
+  const title = document.createElement('span');
+  title.className = 'shelf-title';
+  title.textContent = m.title || '(untitled)';
+  ...
+  card.appendChild(title);
+  card.appendChild(depth);
+  card.addEventListener('click', function () { ... });
+  shelf.appendChild(card);
+});</pre></div>
+<p>찾고(1) → 비우고(3) → 기억마다 상자를 만들어(5) 종류표를 달고(6) 쪽지를 달고(7, 2장의 <code>data-</code>가 코드에서는 <code>dataset.</code>) → 안에 제목 상자를 만들어 글을 넣고(8~10) → 붙이고(12, 13) → 사건을 달고(14) → 서가에 붙임(15). <b>서가 화면 전체가 이 동사 여섯 개로 그려집니다.</b></p>
+
+<h2>사건 붙이기</h2>
+<div class="codebox"><span class="file">js/demo/demoFlow.js : 17~23</span>
+<pre class="code" data-hl="1,2,3,4,5,6">window.addEventListener('keydown', function (e) {
+  if (!(e.ctrlKey && e.shiftKey) || e.altKey || e.metaKey) return;
+  if ((e.code || '') !== 'KeyB' && String(e.key || '').toLowerCase() !== 'b') return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  window.location.href = 'index.html?action=record';
+}, true);</pre></div>
+
+<div class="read"><div class="rt">읽는 법</div>
+<ul>
+  <li><code>대상.addEventListener('사건이름', function (e) { … })</code> = "대상에서 그 사건이 일어나면 이 함수를 돌려라". 대상은 <code>window</code>(창 전체), 사건은 <code>keydown</code>(키 누름). 사건 이름은 <code>click</code>, <code>keydown</code>, <code>mousemove</code>, <code>timeupdate</code>(소리 재생 위치), <code>ended</code>, <code>DOMContentLoaded</code>(html 다 읽음) 등.</li>
+  <li><code>e</code> = 그 사건의 정보 묶음. <code>e.ctrlKey</code>(Ctrl 눌렸나), <code>e.key</code>(어떤 키), <code>e.target</code>(어디서 일어났나).</li>
+  <li>2~3번째 줄: 문지기 둘. "Ctrl+Shift 가 아니거나 Alt/Meta 가 섞였으면 나가", "B 키가 아니면 나가". 통과하면 Ctrl+Shift+B.</li>
+  <li><code>e.preventDefault()</code> = 브라우저가 원래 하려던 일(이 키 조합의 기본 동작) 막기. <code>e.stopImmediatePropagation()</code> = 같은 사건을 기다리는 다른 함수들에게 안 넘기기.</li>
+  <li>6번째 줄: 페이지 이동(8장). 마지막 <code>true</code>는 "남들보다 먼저 받겠다"는 옵션.</li>
+</ul>
+<p>이 일곱 줄이 세 문에 똑같이 있습니다(1장 · 12장). grep "KeyB" 로 셀 수 있습니다.</p></div>
+
+<h2>html 에 직접 적힌 사건</h2>
+<div class="codebox"><span class="file">js/index.js : 426 (showOriginalMemory 안, 일부)</span>
+<pre class="code" data-lang="html">&lt;button class="close-original-btn" onclick="this.closest('.original-memory-modal').remove()"&gt;Close&lt;/button&gt;</pre></div>
+<p>옛 방식. html 속성 <code>onclick="…"</code>에 코드를 바로 적음. 뜻은 같습니다("눌리면 가장 가까운 modal 상자를 없애라"). 그리고 2장의 <code>data-action="enterPlayInterview"</code> 방식은 <code>js/app/bindEvents.js</code>가 메뉴 항목 전체에 사건을 한 번에 붙이고, 눌린 항목의 쪽지를 읽어 무슨 함수를 부를지 정합니다. 메뉴가 안 눌리면 그 파일부터.</p>
+
+<h2>시작 사건</h2>
+<div class="codebox"><span class="file">js/index.js : 160~164</span>
+<pre class="code">if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _waitForStrata);
+} else {
+    _waitForStrata();
+}</pre></div>
+<p>"html 을 아직 읽는 중이면 다 읽은 뒤에, 이미 다 읽었으면 지금 바로." 상자를 찾기 전에 나무가 완성돼야 하니까요. <b>찾았는데 없다</b>(14장의 null 오류)의 원인 중 하나가 이 순서입니다.</p>
+
+<div class="warn">같은 상자에 같은 사건을 <b>두 번</b> 붙이면 두 번 실행됩니다. 이 프로젝트의 "누적 가드"(260731, 떨림 · 호흡 연출)가 그 사고의 흔적입니다. AI 가 "이벤트 붙였어요" 하면 "화면이 다시 그려질 때 또 붙나?"를 물으세요.</div>
+
+<div class="tip">DOM 동사는 여섯 개(찾기 · 만들기 · 붙이기 · 바꾸기 · 없애기 · 사건 붙이기). <code>addEventListener('X', function (e) {…})</code>를 보면 "X 가 일어나면 → 문지기 → 하는 일" 순으로 읽는다.</div>
+
+<div class="quiz"><h3>미니 시험 13</h3>
+<ol>
+  <li><code>modal.addEventListener('click', (e) =&gt; { if (e.target === modal) { modal.remove() } })</code> (js/index.js : 426) — 어디를 눌러야 창이 닫힙니까? 창 안의 글을 누르면?</li>
+  <li><code>const footer = document.querySelector('.footer'); if (footer) footer.classList.remove('visible');</code> — 우리말로. <code>if (footer)</code>가 없으면 무슨 위험이 있습니까?</li>
+  <li>12장에서 본 <code>audio.addEventListener('timeupdate', crossfadeTimeUpdateHandler);</code> (js/app/opening.js) — 대상과 사건은? 이 사건은 언제 일어날 것 같습니까?</li>
+</ol>
+<div class="answer-space"></div>
+<p class="ans-hint">정답은 부록 E.</p></div>
+
+<div class="notes"><div class="nt">내 손으로 정리 · 2장의 삼각형에 13장의 동사를 얹어 그리기</div><div class="lines"></div></div>
+</section>
