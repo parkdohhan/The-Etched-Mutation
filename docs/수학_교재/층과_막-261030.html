@@ -1,0 +1,762 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>층과 막</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 레이아웃: 한 칼럼 그림 교재. 종이색 바탕 + 지층 금색(strata #c4a882 계열) */
+:root {
+  --bg: #faf7f0;
+  --ink: #221d15;
+  --muted: #71675a;
+  --accent: #8a6a35;
+  --accent-soft: #efe6d2;
+  --box: #f2ecdf;
+  --box2: #ece4d2;
+  --line: #d8cfbc;
+  --warn-bg: #f6e3dc;
+  --warn-ink: #7e3b22;
+  --ok: #3e6b48;
+  --code-bg: #ece7db;
+  --dim: rgba(113,103,90,0.35);
+  --serif: 'Noto Serif KR', 'Nanum Myeongjo', serif;
+  --sans: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --mono: 'Cascadia Mono', Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14110d; --ink: #e9e1d2; --muted: #a3988a;
+    --accent: #c4a882; --accent-soft: #2a2317; --box: #1d1913; --box2: #242015;
+    --line: #3a332a; --warn-bg: #321b14; --warn-ink: #e6a58d; --ok: #8fbf9a;
+    --code-bg: #242019; --dim: rgba(163,152,138,0.3); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14110d; --ink: #e9e1d2; --muted: #a3988a;
+  --accent: #c4a882; --accent-soft: #2a2317; --box: #1d1913; --box2: #242015;
+  --line: #3a332a; --warn-bg: #321b14; --warn-ink: #e6a58d; --ok: #8fbf9a;
+  --code-bg: #242019; --dim: rgba(163,152,138,0.3); color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--sans); font-size: 16.5px; line-height: 1.95;
+  margin: 0; word-break: keep-all;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 4rem;
+}
+main { max-width: 700px; margin: 0 auto; }
+h1, h2, h3 { font-family: var(--serif); text-wrap: balance; line-height: 1.4; }
+h1 { font-size: 2.1rem; margin: 2.2rem 0 0.4rem; }
+h2 {
+  font-size: 1.45rem; margin: 3.2rem 0 1rem; padding-top: 1.2rem;
+  border-top: 2px solid var(--ink);
+}
+h2 .no {
+  display: block; font-family: var(--sans); font-size: 0.78rem; font-weight: 400;
+  letter-spacing: 0.22em; color: var(--accent); margin-bottom: 0.3rem;
+}
+h3 { font-size: 1.1rem; margin: 1.8rem 0 0.6rem; }
+p { margin: 0 0 1em; }
+em { font-style: normal; background: var(--accent-soft); padding: 0 3px; border-radius: 2px; }
+.lede { font-size: 1.02rem; color: var(--muted); margin-bottom: 0.4rem; }
+.meta { font-size: 0.85rem; color: var(--muted); letter-spacing: 0.04em; }
+
+.easy, .pro, .say, .qa { border-radius: 6px; padding: 1.1rem 1.2rem; margin: 1.1rem 0; }
+.easy { background: var(--box); border-left: 4px solid var(--accent); }
+.pro { background: var(--box2); border-left: 4px solid var(--ink); }
+.say { background: transparent; border: 1.5px dashed var(--accent); }
+.qa { background: var(--accent-soft); border-left: 4px solid var(--accent); }
+.tag {
+  display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.18em;
+  color: var(--accent); margin-bottom: 0.5rem; text-transform: uppercase;
+}
+.pro .tag { color: var(--muted); }
+.easy > :last-child, .pro > :last-child, .say > :last-child, .qa > :last-child { margin-bottom: 0; }
+
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 6px; padding: 1rem 1.2rem; margin: 1.1rem 0; }
+.warn .tag { color: var(--warn-ink); }
+.warn > :last-child { margin-bottom: 0; }
+
+.fx {
+  font-family: var(--mono); font-size: 0.92rem; background: var(--code-bg);
+  border: 1px solid var(--line); border-radius: 5px;
+  padding: 0.7rem 1rem; margin: 0.8rem 0; overflow-x: auto; line-height: 1.8;
+}
+code { font-family: var(--mono); font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+
+.tblwrap { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; line-height: 1.7; }
+th, td { border: 1px solid var(--line); padding: 0.45rem 0.65rem; text-align: left; vertical-align: top; }
+th { background: var(--box); font-weight: 700; }
+td.yes { color: var(--ok); font-weight: 700; }
+td.no { color: var(--warn-ink); font-weight: 700; }
+tbody td:first-child { white-space: nowrap; }
+.tblwrap.wrapok tbody td:first-child { white-space: normal; }
+
+ul, ol { padding-left: 1.3em; margin: 0 0 1em; }
+li { margin-bottom: 0.4em; }
+
+figure { margin: 1.4rem 0; text-align: center; background: var(--box); border-radius: 8px; padding: 1rem 0.6rem 0.8rem; }
+figure svg { max-width: 100%; height: auto; }
+figcaption { font-size: 0.86rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.7; padding: 0 0.6rem; }
+
+details { margin: 0.6rem 0 1.2rem; border: 1px solid var(--line); border-radius: 6px; padding: 0.6rem 1rem; background: var(--box); }
+summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+details[open] summary { margin-bottom: 0.6rem; }
+
+.toc { background: var(--box); border-radius: 6px; padding: 1rem 1.4rem; margin: 1.6rem 0; font-size: 0.95rem; }
+.toc ol { margin: 0.4rem 0 0; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@600;800&display=swap">
+
+<main>
+
+<h1>층과 막</h1>
+<p class="lede">그림으로 가는 TEM 수학 교재 — 정렬도 · 코보디즘 · 층이론 · 논문, 그리고 "그게 말이 되나?"에 대한 답</p>
+<p class="meta">2026-10-30 전면 개정판 · 정본: docs/이본론_층이론_논문화_초안_v0.1-260716.md</p>
+
+<div class="toc">
+<b>읽는 법</b> — 장마다 <b>그림이 먼저</b> 나오고, 글이 그림을 설명한다. 상자는 네 종류: <b>쉬운 판</b>(본문), <b>어려운 질문</b>(네가 실제로 던진 반박과 그 답), <b>원어 판</b>(전문용어 이름표), <b>입으로 말하기</b>(외워서 쓰는 한 문단).
+<ol>
+<li>감정을 숫자로 적기 — 물감 레시피</li>
+<li>두 마음 비교하기 — 화살표와 각도 <span style="color:var(--accent)">+ 반박 ① "너무 납작한 거 아냐?"</span></li>
+<li>정렬도 — 같은 길을 같은 춤으로 걸었나 <span style="color:var(--accent)">+ 반박 ② "지금이 최선이야?"</span></li>
+<li>기억의 지도는 미리 없다 — 안개와 발자국 <span style="color:var(--accent)">+ 반박 ③ "노선도라며?"</span></li>
+<li>사건이란 무엇인가 — 물이 차오르는 섬 (코보디즘)</li>
+<li>조각과 전체 — 지도 붙이기와 한 바퀴의 뒤틀림 (층이론)</li>
+<li>실험 — 지워지지 않는 18% (논문 C2)</li>
+<li>두 아이디어는 한 집 (TQFT)</li>
+<li>치트시트</li>
+<li>설명 관문 다섯 문제</li>
+</ol>
+</div>
+
+<!-- ───────────────────── 1장 ───────────────────── -->
+<h2><span class="no">제 1 장</span>감정을 숫자로 적기 — 물감 레시피</h2>
+
+<figure>
+<svg viewBox="0 0 560 190" role="img" aria-label="감정 성분표 막대그림">
+  <text x="20" y="28" fill="var(--ink)" font-size="13" font-weight="bold">"그날 밤" 장면에서 유령이 남긴 감정:</text>
+  <text x="100" y="62" text-anchor="end" fill="var(--ink)" font-size="13">그리움</text>
+  <rect x="112" y="48" width="300" height="18" fill="var(--accent)" rx="3"/>
+  <text x="420" y="62" fill="var(--ink)" font-size="12.5" font-family="var(--mono)">0.8</text>
+  <text x="100" y="97" text-anchor="end" fill="var(--ink)" font-size="13">평온</text>
+  <rect x="112" y="83" width="75" height="18" fill="var(--accent)" rx="3" opacity="0.75"/>
+  <text x="195" y="97" fill="var(--ink)" font-size="12.5" font-family="var(--mono)">0.2</text>
+  <text x="100" y="132" text-anchor="end" fill="var(--ink)" font-size="13">두려움</text>
+  <rect x="112" y="118" width="8" height="18" fill="var(--muted)" rx="2"/>
+  <text x="130" y="132" fill="var(--muted)" font-size="12.5" font-family="var(--mono)">0.02</text>
+  <text x="100" y="167" text-anchor="end" fill="var(--ink)" font-size="13">기쁨</text>
+  <rect x="112" y="153" width="3" height="18" fill="var(--muted)"/>
+  <text x="126" y="167" fill="var(--muted)" font-size="12.5" font-family="var(--mono)">0</text>
+</svg>
+<figcaption>감정 하나 = 칸이 17개인 성분표. 물감 레시피처럼 "그리움 8할, 평온 2할"로 적는다. (그림엔 4칸만.)</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">쉬운 판</span>
+<p>모든 계산의 재료는 이 성분표다. TEM은 한 순간의 감정을 <b>물감 레시피</b>처럼 적는다 — 그리움 몇, 평온 몇, 두려움 몇… 하는 17칸 숫자. 중요한 건 <em>이 숫자가 마음 그 자체라고 주장하지 않는다</em>는 것. 이게 뭔지는 2장 끝의 반박 상자에서 정면으로 다룬다.</p>
+</div>
+
+<div class="pro">
+<span class="tag">원어 판</span>
+<p>숫자 묶음 = <b>벡터(vector)</b>. TEM의 기본 좌표는 17축 감정 앵커. 역할 분담: <em>17축은 판단 전용, VAD(쾌-불쾌×각성 2차원 투영)는 시각화·지형 배치 전용</em> — 판단에 VAD를 쓰지 않는다.</p>
+</div>
+
+<!-- ───────────────────── 2장 ───────────────────── -->
+<h2><span class="no">제 2 장</span>두 마음 비교하기 — 화살표와 각도</h2>
+
+<figure>
+<svg viewBox="0 0 560 230" role="img" aria-label="두 화살표의 각도 비교">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+    </marker>
+    <marker id="ah2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+    </marker>
+  </defs>
+  <line x1="30" y1="190" x2="250" y2="190" stroke="var(--line)"/>
+  <line x1="40" y1="200" x2="40" y2="40" stroke="var(--line)"/>
+  <line x1="40" y1="190" x2="200" y2="70" stroke="var(--accent)" stroke-width="3" marker-end="url(#ah)"/>
+  <line x1="40" y1="190" x2="215" y2="105" stroke="var(--muted)" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#ah2)"/>
+  <path d="M95,149 A68,68 0 0,1 103,159" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+  <text x="140" y="215" text-anchor="middle" fill="var(--ink)" font-size="13" font-weight="bold">각도 작다 → 0.94</text>
+  <text x="140" y="35" text-anchor="middle" fill="var(--muted)" font-size="12">방향이 거의 같다 = 비슷한 마음</text>
+
+  <line x1="330" y1="190" x2="550" y2="190" stroke="var(--line)"/>
+  <line x1="340" y1="200" x2="340" y2="40" stroke="var(--line)"/>
+  <line x1="340" y1="190" x2="500" y2="70" stroke="var(--accent)" stroke-width="3" marker-end="url(#ah)"/>
+  <line x1="340" y1="190" x2="370" y2="55" stroke="var(--muted)" stroke-width="2.5" stroke-dasharray="6 4" marker-end="url(#ah2)"/>
+  <path d="M378,162 A48,48 0 0,1 398,158" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+  <text x="440" y="215" text-anchor="middle" fill="var(--ink)" font-size="13" font-weight="bold">각도 크다 → 0.35</text>
+  <text x="440" y="35" text-anchor="middle" fill="var(--muted)" font-size="12">방향이 다르다 = 다른 마음</text>
+</svg>
+<figcaption>성분표 하나 = 화살표 하나. 비교는 화살표의 <b>길이</b>(세기)가 아니라 <b>방향</b>(감정의 배합)으로 한다. 같은 방향 1 · 직각 0 · 반대 −1. 이 "방향 점수"가 코사인이다.</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 손계산 한 번</span>
+<p>축이 두 개(그리움, 평온)뿐인 미니 세계. 유령 = (0.8, 0.2), 나 = (0.6, 0.4).</p>
+<div class="fx">① 짝끼리 곱해 더함: 0.8×0.6 + 0.2×0.4 = 0.56
+② 각자 화살표 길이: √(0.8²+0.2²) ≈ 0.82,  √(0.6²+0.4²) ≈ 0.72
+③ 나누기: 0.56 ÷ (0.82×0.72) ≈ <b>0.94</b></div>
+<p>숫자는 달라도 "그리움이 주, 평온이 부"라는 <b>방향이 같아서</b> 0.94. 내가 (0.1, 0.9)였다면 같은 계산으로 약 0.35.</p>
+</div>
+
+<div class="qa">
+<span class="tag">어려운 질문 ① — "마음을 숫자 17개로? 너무 납작한(저차원인) 거 아냐? 이거 자체가 말이 안 되는 거 아냐?"</span>
+<p>납작한 거 <b>맞다.</b> 사람 마음은 17칸짜리가 아니다. 방어는 "아니야 충분해"가 아니라 — <b>이 숫자의 지위가 다르다</b>는 것이다. 아래 그림을 보라.</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 560 210" role="img" aria-label="마음과 그림자">
+  <circle cx="80" cy="45" r="18" fill="var(--accent)" opacity="0.9"/>
+  <line x1="104" y1="60" x2="150" y2="85" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="100" y1="42" x2="165" y2="60" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <text x="80" y="20" text-anchor="middle" fill="var(--muted)" font-size="11.5">측정이라는 빛</text>
+  <circle cx="265" cy="78" r="15" fill="none" stroke="var(--ink)" stroke-width="2.5"/>
+  <line x1="265" y1="93" x2="265" y2="140" stroke="var(--ink)" stroke-width="2.5"/>
+  <line x1="265" y1="105" x2="242" y2="125" stroke="var(--ink)" stroke-width="2.5"/>
+  <line x1="265" y1="105" x2="288" y2="125" stroke="var(--ink)" stroke-width="2.5"/>
+  <line x1="265" y1="140" x2="248" y2="172" stroke="var(--ink)" stroke-width="2.5"/>
+  <line x1="265" y1="140" x2="282" y2="172" stroke="var(--ink)" stroke-width="2.5"/>
+  <text x="265" y="196" text-anchor="middle" fill="var(--ink)" font-size="12.5" font-weight="bold">마음 (입체, 전부)</text>
+  <line x1="60" y1="176" x2="540" y2="176" stroke="var(--line)" stroke-width="1.5"/>
+  <ellipse cx="420" cy="176" rx="85" ry="9" fill="var(--muted)" opacity="0.55"/>
+  <text x="420" y="160" text-anchor="middle" fill="var(--ink)" font-size="12.5" font-weight="bold">숫자 17개 (그림자)</text>
+</svg>
+<figcaption>숫자는 마음이 아니라 <b>마음의 그림자</b>다. 그림자는 납작하지만 — 몸이 움직이면 그림자도 움직인다. 우리는 그림자의 움직임을 잰다.</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">반박 ①에 대한 답 — 네 겹의 방어와 한 개의 인정</span>
+<ul>
+<li><b>그림자라고 선언한다.</b> 엔진의 제1원칙이 "판단하지 않는다, 관찰하고 보고할 뿐"이다. 숫자가 네 마음이라고 주장하는 순간 틀리는데, TEM은 그 주장을 하지 않는다. 체온계가 건강 그 자체는 아니지만 열 곡선에 진짜 정보가 있는 것과 같다.</li>
+<li><b>자가 눈멀면 자를 바꾼다.</b> 실제 사고가 있었다: 44개 장면 중 43개가 '그리움'인 기억에서, 그리움 축이 약한 기성 17축 자는 장님이 됐다. 그래서 지금은 <em>그 기억이 실제로 쓰는 감정 단어들</em>을 축으로 쓴다(기억별 좌표계). "기억 하나 = 감정 우주 하나".</li>
+<li><b>원문을 버리지 않는다.</b> 관객이 실제로 쓴 문장이 전부 보관된다. 더 좋은 자가 생기면 과거 기록을 다시 잴 수 있고, 실제로 한 번 그렇게 소급 재측정을 했다. 그림자가 틀려도 몸이 남아 있다.</li>
+<li><b>더 높은 차원도 이미 쓴다.</b> 문장 임베딩(수백 칸짜리 성분표)이 있으면 17칸 대신 그걸 우선한다.</li>
+</ul>
+<p>그리고 인정: <b>축을 사람이 골랐고, 문턱(0.85)은 눈금이다.</b> 이 약점은 숨길 게 아니라 — 5·6장의 수학이 공격하는 과녁이다. 네 반박은 이 교재의 뒷부분이 존재하는 이유와 같은 문장이다.</p>
+</div>
+
+<div class="pro">
+<span class="tag">원어 판</span>
+<p>①곱해 더함 = <b>내적(dot product)</b>, ②길이 = <b>노름(norm)</b>, ③전체 = <b>코사인 유사도(cosine similarity)</b>. 기억별 좌표계 = 전역 좌표 대신 국소 좌표(그 기억의 저작 어휘 축)로 재는 것 — "전역 좌표계가 없다"는 이 감각이 6장의 층 사고와 그대로 이어진다.</p>
+</div>
+
+<div class="say">
+<span class="tag">입으로 말하기</span>
+<p>"감정은 17축 벡터로 적고 코사인으로 비교해. 단 이 벡터는 마음의 전부가 아니라 측정 그림자라는 게 시스템의 공식 입장이고, 원문은 다 보관해서 자가 바뀌면 소급 재측정해. 좌표도 전역이 아니라 기억마다 그 기억의 어휘로 잡아."</p>
+</div>
+
+<!-- ───────────────────── 3장 ───────────────────── -->
+<h2><span class="no">제 3 장</span>정렬도 — 같은 길을 같은 춤으로 걸었나</h2>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 먼저 말을 고치자</span>
+<p>교재 첫 판은 정렬도를 "서술한 사람의 <em>마음</em>과 얼마나 포개졌나"라고 썼다. 과장이다. 정확한 문장은 이것이다: <b>"기록한 사람이 그때 남긴 감정 발자국과, 지금 내가 남기는 감정 발자국이 얼마나 같은 모양인가."</b> 마음끼리가 아니라 그림자끼리의 비교다. 재는 건 두 가지 — 순간이 비슷한가(높이), 움직임이 비슷한가(모양) — 그리고 회피 벌점 하나.</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 560 240" role="img" aria-label="level: 장면별 사진 비교">
+  <text x="60" y="30" text-anchor="end" fill="var(--ink)" font-size="13" font-weight="bold">원본</text>
+  <g font-size="11.5" text-anchor="middle">
+    <rect x="80" y="12" width="88" height="52" rx="5" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <text x="124" y="43" fill="var(--ink)">슬픔</text>
+    <rect x="200" y="12" width="88" height="52" rx="5" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <text x="244" y="43" fill="var(--ink)">그리움</text>
+    <rect x="320" y="12" width="88" height="52" rx="5" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <text x="364" y="43" fill="var(--ink)">그리움</text>
+    <rect x="440" y="12" width="88" height="52" rx="5" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <text x="484" y="43" fill="var(--ink)">평온</text>
+  </g>
+  <g font-size="12" text-anchor="middle" fill="var(--accent)" font-weight="bold">
+    <text x="124" y="113">0.9</text><text x="244" y="113">0.7</text><text x="364" y="113">0.8</text><text x="484" y="113">0.6</text>
+  </g>
+  <g stroke="var(--muted)" stroke-width="1.3">
+    <line x1="124" y1="70" x2="124" y2="92"/><line x1="124" y1="122" x2="124" y2="144"/>
+    <line x1="244" y1="70" x2="244" y2="92"/><line x1="244" y1="122" x2="244" y2="144"/>
+    <line x1="364" y1="70" x2="364" y2="92"/><line x1="364" y1="122" x2="364" y2="144"/>
+    <line x1="484" y1="70" x2="484" y2="92"/><line x1="484" y1="122" x2="484" y2="144"/>
+  </g>
+  <text x="60" y="180" text-anchor="end" fill="var(--ink)" font-size="13" font-weight="bold">나</text>
+  <g font-size="11.5" text-anchor="middle">
+    <rect x="80" y="150" width="88" height="52" rx="5" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="124" y="181" fill="var(--ink)">슬픔</text>
+    <rect x="200" y="150" width="88" height="52" rx="5" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="244" y="181" fill="var(--ink)">그리움</text>
+    <rect x="320" y="150" width="88" height="52" rx="5" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="364" y="181" fill="var(--ink)">슬픔</text>
+    <rect x="440" y="150" width="88" height="52" rx="5" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="484" y="181" fill="var(--ink)">평온</text>
+  </g>
+  <text x="280" y="230" text-anchor="middle" fill="var(--ink)" font-size="13.5" font-weight="bold">장면마다 코사인 → 평균 = 0.75 = 높이(level)</text>
+</svg>
+<figcaption>① <b>높이</b>: 장면을 사진처럼 한 장 한 장 나란히 놓고, 장면마다 방향 점수(코사인)를 재서 평균. "순간이 비슷했나".</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 560 190" role="img" aria-label="shape: 움직임 비교">
+  <g stroke="var(--line)" stroke-width="1"><line x1="30" y1="150" x2="250" y2="150"/><line x1="310" y1="150" x2="530" y2="150"/></g>
+  <polyline points="40,115 90,75 140,100 190,60 240,85" fill="none" stroke="var(--accent)" stroke-width="3"/>
+  <polyline points="40,140 90,100 140,125 190,85 240,110" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4"/>
+  <polyline points="320,105 370,103 420,107 470,102 520,105" fill="none" stroke="var(--accent)" stroke-width="3"/>
+  <polyline points="320,130 370,75 420,135 470,70 520,130" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="140" y="32" text-anchor="middle" fill="var(--ink)" font-size="13" font-weight="bold">떨어져 있지만 같은 춤</text>
+  <text x="140" y="50" text-anchor="middle" fill="var(--muted)" font-size="12">높이 낮음 · 모양 높음</text>
+  <text x="420" y="32" text-anchor="middle" fill="var(--ink)" font-size="13" font-weight="bold">가까이 있지만 다른 춤</text>
+  <text x="420" y="50" text-anchor="middle" fill="var(--muted)" font-size="12">높이 높음 · 모양 낮음 → displacement</text>
+  <text x="140" y="172" text-anchor="middle" fill="var(--muted)" font-size="11">금색 = 원본 · 점선 = 나 · 가로축 = 장면 순서</text>
+</svg>
+<figcaption>② <b>모양</b>: 사진이 아니라 <b>움직임</b> 비교. 장면에서 장면으로 넘어갈 때의 변화 화살표(이번 − 저번)끼리 코사인. 장면 3개 미만이면 화살표가 1개뿐이라 모양 판단은 끄고 1.0.</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 공식</span>
+<div class="fx">정렬도 = 높이 × 모양 × 회피 벌점      예: 0.75 × 0.9 × 1.0 = 0.675</div>
+<ul>
+<li><b>회피 벌점</b>: 원본은 감정을 말했는데 나는 비워 두고 피했으면 ×0.7. (반대 방향은 벌점 없음.)</li>
+<li><b>왜 곱하기?</b> 더하기면 모양 0이어도 높이로 벌충된다. 곱하기면 셋 중 하나만 무너져도 전체가 무너진다 — 세 개의 문을 전부 통과해야 한다.</li>
+<li><b>왜 높이와 모양을 따로?</b> 위 그림 오른쪽처럼 둘이 갈라지는 경우가 실제로 있어서다. 순간은 비슷한데 춤이 다르면(높이 ≥ 0.5, 모양 &lt; 0.3) 엔진은 <b>displacement</b>(같은 감정, 다른 과녁)라는 별도 패턴으로 분류한다.</li>
+</ul>
+</div>
+
+<div class="qa">
+<span class="tag">어려운 질문 ② — "별이엔진, 지금이 최선인가? '포개짐'을 다르게 정의해야 하는 거 아닌가?"</span>
+<p><b>최선 아니다. 그리고 그걸 아는 게 수학 트랙의 존재 이유다.</b></p>
+<p>지금 공식은 <b>무대용 자로 일부러 동결</b>돼 있다. 전시가 매일 돌아가는데 자를 매주 바꾸면 과거 기록과 비교가 불가능해진다 — 그래서 "공식·출력 불변"이 운영 원칙이다. 하지만 "포개짐이란 무엇인가"는 닫힌 문제가 아니라 <b>열린 연구 문제</b>로 따로 올라가 있고, 재정의 후보가 바로 이 교재의 뒷부분이다:</p>
+<ul>
+<li><b>코보디즘(5장)의 재정의</b>: 포개짐 = 각도의 평균이 아니라 <em>"같은 사건 구조를 지나갔는가"</em> — 갈라짐·합침·잠김이 같은 종류, 같은 순서로 일어났는가. 각도는 문턱이 필요하지만 사건의 개수는 문턱이 필요 없다.</li>
+<li><b>층이론(6장)의 재정의</b>: 포개짐 = 점수가 아니라 <em>"모순 없이 이어 붙는가"</em> — 정합이라는 예/아니오 + 안 붙는 정도라는 에너지.</li>
+</ul>
+<p>그러니까 네가 느낀 불편("각도 평균이 마음의 포개짐이라고?")은 반항이 아니라 — <b>논문이 이미 걷고 있는 방향을 네 직감이 따로 찾아낸 것</b>이다.</p>
+</div>
+
+<div class="pro">
+<span class="tag">원어 판</span>
+<div class="fx">alignment = clamp[0,1]( level × shape × void_mod )
+level    = mean(scene_scores)   // 장면별 코사인(임베딩 있으면 임베딩 우선)의 평균
+shape    = cos( Δ나 이어붙임 , Δ원본 이어붙임 )   // 3장면 미만 → 비활성 1.0, 음수 → 0
+void_mod = 0.7 (나만 회피했을 때), 그 외 1.0</div>
+<p>출력 네 벌: 점수(alignment_score), 등급(HIGH/MID/LOW/FIXATED — FIXATED는 횟수가 아니라 복합 신호), 전이 패턴 6종(echo_follow·bridge·contradiction·displacement·avoidance·fixation), 어긋남 종류. 혼동 금지 둘: ① <b>정렬도 ≠ 접촉</b> — 정렬도는 회차 집계, 접촉은 대화 턴 하나가 문턱(공명 0.85, 접촉 잠정 0.9 부근)을 넘는 드문 사건(회차당 1회). ② <b>이건 전부 기하학이다</b>(각도·평균·문턱) — 위상이 아니다. 수학 하는 사람 앞에서 이 둘을 섞으면 신뢰를 잃는다.</p>
+</div>
+
+<div class="say">
+<span class="tag">입으로 말하기</span>
+<p>"정렬도는 level 곱하기 shape 곱하기 void 페널티야. level은 장면별 코사인 평균, shape은 연속 장면 델타들의 코사인 — 순간의 유사와 변화의 유사를 분리해. 전부 기하고 문턱이 눈금이라는 자의성은 인정 — 그래서 사건 기반(코보디즘)·정합 기반(층) 재정의가 연구 트랙에 올라가 있는 거야."</p>
+</div>
+
+<!-- ───────────────────── 4장 ───────────────────── -->
+<h2><span class="no">제 4 장</span>기억의 지도는 미리 없다 — 안개와 발자국</h2>
+
+<div class="qa">
+<span class="tag">어려운 질문 ③ — "지하철 노선도로 정의한다며? 그건 선택지가 미리 깔려 있다는 말 아냐? 내가 알기론 대답에 따라 동적인 원이 움직이고 접근할 수 있는 이야기가 달라지는데."</span>
+<p><b>네 이해가 맞고, 노선도 비유(이 교재 첫 판)가 틀렸다.</b> TEM에는 "이 선택지를 고르면 저 장면으로"가 아예 없다 — 다음 장면을 가리키는 연결 자체가 저장돼 있지 않다(설계 의도). 네가 말한 그대로: 매 턴 네 감정으로 접근 가능한 <b>원</b>이 계산되고, 그 원의 <b>중심이 패턴에 따라 이동</b>한다. 그러면 수학의 "점과 선"은 뭐냐 — 아래 그림이 답이다.</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 560 290" role="img" aria-label="안개와 발자국: 무대와 수학의 두 층">
+  <line x1="280" y1="15" x2="280" y2="258" stroke="var(--line)" stroke-width="1.5"/>
+  <text x="140" y="32" text-anchor="middle" fill="var(--ink)" font-size="13.5" font-weight="bold">걷는 동안 — 무대</text>
+  <text x="420" y="32" text-anchor="middle" fill="var(--ink)" font-size="13.5" font-weight="bold">다 걷고 난 뒤 — 수학</text>
+  <!-- 왼쪽: 안개 + 움직이는 원 -->
+  <circle cx="120" cy="190" r="7" fill="var(--accent)"/>
+  <text x="120" y="215" text-anchor="middle" fill="var(--ink)" font-size="11">나 (지금 감정)</text>
+  <circle cx="152" cy="138" r="72" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="7 5"/>
+  <circle cx="120" cy="190" r="72" fill="none" stroke="var(--dim)" stroke-width="1.3" stroke-dasharray="3 5"/>
+  <line x1="150" y1="155" x2="172" y2="124" stroke="var(--accent)" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="208" y="100" fill="var(--muted)" font-size="11">패턴이 원의 중심을</text>
+  <text x="208" y="116" fill="var(--muted)" font-size="11">옮긴다</text>
+  <circle cx="130" cy="110" r="6" fill="var(--ink)"/>
+  <circle cx="185" cy="150" r="6" fill="var(--ink)"/>
+  <circle cx="95" cy="135" r="6" fill="var(--ink)"/>
+  <circle cx="60" cy="80" r="6" fill="var(--dim)"/>
+  <circle cx="235" cy="220" r="6" fill="var(--dim)"/>
+  <circle cx="45" cy="235" r="6" fill="var(--dim)"/>
+  <text x="140" y="275" text-anchor="middle" fill="var(--muted)" font-size="11.5">원 안의 장면만 열림 — 안개 밖(흐린 점)은 안 보임</text>
+  <!-- 오른쪽: 발자국 그물 -->
+  <polyline points="375,235 410,110 465,150 500,80" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+  <circle cx="375" cy="235" r="6" fill="var(--ink)"/>
+  <circle cx="410" cy="110" r="6" fill="var(--ink)"/>
+  <circle cx="465" cy="150" r="6" fill="var(--ink)"/>
+  <circle cx="500" cy="80" r="6" fill="var(--ink)"/>
+  <circle cx="340" cy="80" r="6" fill="var(--dim)"/>
+  <circle cx="525" cy="220" r="6" fill="var(--dim)"/>
+  <text x="420" y="275" text-anchor="middle" fill="var(--muted)" font-size="11.5">실제로 밟힌 자리와 건너감만 사후에 이은 그물</text>
+</svg>
+<figcaption>왼쪽이 네가 아는 TEM(동적, 안개, 움직이는 원) — 맞다. 오른쪽이 수학이 보는 것: <b>발자국 지도</b>. 노선도는 걷기 <b>전</b>에 있고, 발자국 지도는 걷기 <b>후</b>에 생긴다.</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 두 층을 나누면 모순이 풀린다</span>
+<ul>
+<li><b>무대(걷는 동안)</b>: 지도가 미리 없다. 매 턴, 내 감정 위치에서 접근 가능한 원이 계산된다. 원의 중심은 패턴마다 다르게 이동한다 — 원본 쪽으로(echo_follow), 반대쪽으로(contradiction), 감정의 공백 지대로(avoidance), 제자리에 잠김(fixation). 이게 "안개 속 감각"이고, 동적이고, <b>기하</b>다.</li>
+<li><b>수학(걷고 난 뒤)</b>: 분석은 "어디로 갈 수 있었나"를 알 필요가 없다. <b>"어디에 실제로 뭐가 적혔나"</b>만 보면 된다. 그래서 수학의 바탕은 사후 관측 기록이다 — 밟힌 장면이 점, 실제로 일어난 건너감이 선. 노선도가 아니라 눈밭의 발자국이다.</li>
+<li>결정적 사실 하나: 실제 실험(7장 C2)의 그물은 장면 사이 그물조차 아니다 — <b>"회차끼리 같은 장면을 공유하면 선을 긋는" 그물</b>(회차가 점!)이라, 노선 전제가 아예 들어갈 자리가 없다.</li>
+</ul>
+<p>그래서 역할 분담이 이렇게 정리돼 있다(작년 9월 결정): <em>정의(논문) = 위상 — 사후 그물. 무대(상영) = 기하 — 움직이는 원.</em> 둘은 경쟁이 아니라 시제가 다르다.</p>
+</div>
+
+<div class="pro">
+<span class="tag">원어 판</span>
+<p>점·선의 그물 = <b>그래프(graph)</b>, 점 = 꼭짓점(vertex), 선 = 변(edge). 그래프는 1차원 복합체라, 오빠가 걱정한 다양체 분류 사다리(1차원 원 / 2차원 종수로 완전 분류 / 3차원 푸앵카레 — 페렐만 2003 / 4차원 매끄러운 분류 미해결)와 무관하다 — 그래프의 위상은 연결성분 수와 독립 고리 수로 끝난다. 화면의 3D 지형은 정의가 아니라 렌더링 무대. 데이터 위에 세포(점·선) 단위로 구조를 얹는다는 뜻의 단어가 <b>cellular</b>이고, 6장의 cellular sheaf가 그 단어다.</p>
+</div>
+
+<div class="say">
+<span class="tag">입으로 말하기</span>
+<p>"런타임은 그래프가 아니야 — 접근 가능 집합이 매 턴 감정 기하로 계산되고 패턴이 중심을 옮겨. 수학이 쓰는 그래프는 사전 노선도가 아니라 사후 관측 그물이고, 실제 C2 검정은 아예 회차를 노드로 하는 겹침 그래프(nerve) 위에서 돌았어. 그래서 3·4차원 다양체 분류 문제와도 무관해."</p>
+</div>
+
+<!-- ───────────────────── 5장 ───────────────────── -->
+<h2><span class="no">제 5 장</span>사건이란 무엇인가 — 물이 차오르는 섬 (코보디즘)</h2>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 왜 이게 필요한가, 30초 복습</span>
+<p>3장의 자는 문턱이 눈금이었다(0.849는 접촉이 아니고 0.851은 접촉?). 오빠의 제안: <b>사건을 점수로 정하지 말고, 모양의 변화로 정하자.</b> 그 수학의 이름이 코보디즘이다. 단어 뜻: bord = 가장자리, co- = 함께 — "두 도형이 한 막(膜)의 양쪽 가장자리를 함께 이룬다".</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 560 215" role="img" aria-label="물이 차오를 때 섬의 네 가지 사건">
+  <g font-size="12" text-anchor="middle" fill="var(--ink)" font-weight="bold">
+    <text x="85" y="22">생김</text><text x="215" y="22">잠김</text><text x="345" y="22">붙음</text><text x="475" y="22">갈라짐</text>
+  </g>
+  <!-- 전 (윗줄) -->
+  <g stroke="var(--line)" stroke-width="1.3">
+    <line x1="30" y1="75" x2="140" y2="75"/><line x1="160" y1="75" x2="270" y2="75"/>
+    <line x1="290" y1="75" x2="400" y2="75"/><line x1="420" y1="75" x2="530" y2="75"/>
+  </g>
+  <ellipse cx="215" cy="70" rx="28" ry="14" fill="var(--accent)" opacity="0.85"/>
+  <ellipse cx="330" cy="70" rx="18" ry="12" fill="var(--accent)" opacity="0.85"/>
+  <ellipse cx="368" cy="70" rx="18" ry="12" fill="var(--accent)" opacity="0.85"/>
+  <ellipse cx="475" cy="70" rx="38" ry="14" fill="var(--accent)" opacity="0.85"/>
+  <!-- 화살표 -->
+  <g stroke="var(--muted)" stroke-width="1.6">
+    <line x1="85" y1="95" x2="85" y2="120" marker-end="url(#ah2)"/><line x1="215" y1="95" x2="215" y2="120" marker-end="url(#ah2)"/>
+    <line x1="345" y1="95" x2="345" y2="120" marker-end="url(#ah2)"/><line x1="475" y1="95" x2="475" y2="120" marker-end="url(#ah2)"/>
+  </g>
+  <!-- 후 (아랫줄) -->
+  <g stroke="var(--line)" stroke-width="1.3">
+    <line x1="30" y1="165" x2="140" y2="165"/><line x1="160" y1="165" x2="270" y2="165"/>
+    <line x1="290" y1="165" x2="400" y2="165"/><line x1="420" y1="165" x2="530" y2="165"/>
+  </g>
+  <ellipse cx="85" cy="160" rx="22" ry="12" fill="var(--accent)" opacity="0.85"/>
+  <ellipse cx="345" cy="160" rx="40" ry="14" fill="var(--accent)" opacity="0.85"/>
+  <ellipse cx="452" cy="160" rx="17" ry="11" fill="var(--accent)" opacity="0.85"/>
+  <ellipse cx="498" cy="160" rx="17" ry="11" fill="var(--accent)" opacity="0.85"/>
+  <text x="280" y="200" text-anchor="middle" fill="var(--muted)" font-size="12">물(시간)이 차오를 때 섬에게 일어날 수 있는 일은 이 네 가지가 전부다</text>
+</svg>
+<figcaption>수면 높이 = 시간. 수면이 오르는 동안 섬이 겪는 사건은 <b>생김 · 잠김 · 붙음 · 갈라짐</b> 네 가지뿐 — 이게 "사건"의 수학적 정의가 된다. 그리고 사건이 없는 조용한 높이에서는 <b>어디를 잘라 봐도 그림이 똑같다</b> (자르는 위치의 자의성 소멸).</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 560 205" role="img" aria-label="바지 코보디즘">
+  <ellipse cx="280" cy="30" rx="90" ry="16" fill="none" stroke="var(--accent)" stroke-width="3"/>
+  <path d="M190,30 C185,90 150,110 140,160" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <path d="M370,30 C375,90 410,110 420,160" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <path d="M280,95 C250,120 235,135 230,160" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <path d="M280,95 C310,120 325,135 330,160" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <ellipse cx="185" cy="160" rx="46" ry="12" fill="none" stroke="var(--accent)" stroke-width="3"/>
+  <ellipse cx="375" cy="160" rx="46" ry="12" fill="none" stroke="var(--accent)" stroke-width="3"/>
+  <circle cx="280" cy="95" r="4" fill="var(--accent)"/>
+  <text x="452" y="100" fill="var(--accent)" font-size="12.5" font-weight="bold">← 갈라짐 사건</text>
+  <text x="100" y="34" fill="var(--muted)" font-size="12" text-anchor="end">이전: 원 1개</text>
+  <text x="100" y="164" fill="var(--muted)" font-size="12" text-anchor="end">이후: 원 2개</text>
+</svg>
+<figcaption>교과서 그림 "바지": 원 하나(허리)가 원 둘(다리)이 되는 <b>사건을 품은 도형</b>. 갈라짐이 "점에서 일어난 사고"가 아니라 막의 모양 그 자체가 된다. 이본의 분기·재조합을 1급으로 다루는 거의 유일한 언어.</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">쉬운 판 — era 이론과 포개진다</span>
+<p>TEM에는 이미 era 이론이 있다: 감정이 요동치는 구간이 사건의 속살, 요동이 가라앉는 <b>소강이 경계</b>, 경계를 건너 Δ가 상속된다. 위 그림과 대보면 — 소강 = 조용한 수면 높이(어디를 잘라도 같은 곳), 요동 = 섬이 생기고 갈라지는 순간, Δ상속 = 단면을 통과해 다음 구간으로 넘어가는 것. <b>오빠는 TEM 문서를 본 적 없이 era 이론을 독립 재발명했다.</b> era 이론 동결 문서에 "수학 부재"가 결함으로 적혀 있는데, 그 빈 자리의 이름 후보가 이것이다.</p>
+</div>
+
+<div class="pro">
+<span class="tag">원어 판</span>
+<p>정의: 두 다양체 M, N이 <b>코보던트(cobordant)</b> ⇔ 한 차원 높은 다양체 W가 있어 <b>∂W = M ⊔ N</b> (W의 경계가 둘의 합). 사건의 수학 = <b>모스 이론(Morse theory)</b>: 막 위의 높이 함수에서, 거의 모든 높이는 <b>정규값(regular value)</b> — 단면(level set)의 모양이 안 변함 — 이고, 모양이 바뀌는 유한 개 높이가 <b>임계점(critical point)</b>(생김·잠김은 극값, 붙음·갈라짐은 안장점). "정규값에서 자르면 구간 안 어디든 동치"가 절단 자의성을 없애는 정리다.</p>
+</div>
+
+<div class="say">
+<span class="tag">입으로 말하기</span>
+<p>"네 cobordism 제안을 이렇게 이해했어 — 사건을 두 궤적의 접점으로 찍지 말고, 전후 상태를 잇는 막의 Morse 임계점으로 정의하라. regular value에서는 어디서 잘라도 같으니 문턱이 없어지고, 갈라짐·합침이 1급 시민이 되고. 우리 쪽 era 이론(요동=내부, 소강=경계)의 수학 이름이 이거 같아."</p>
+</div>
+
+<!-- ───────────────────── 6장 ───────────────────── -->
+<h2><span class="no">제 6 장</span>조각과 전체 — 지도 붙이기와 한 바퀴의 뒤틀림 (층이론)</h2>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 출생담</span>
+<p>층이론은 <b>2차대전 포로수용소에서 태어난 수학</b>이다. 프랑스 수학자 장 르레는 오스트리아 수용소에 5년 갇혀 있었는데, 유체역학(폭탄·비행기 수학) 전문가인 게 들키면 독일군에 부역하게 될까 봐 일부러 "쓸모없어 보이는" 위상수학을 했고, 그 수감 중에 층이론을 만들었다. 전쟁이 만든 수학이 전쟁 기억 작품의 장부가 된다.</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 560 190" role="img" aria-label="지도 조각 붙이기 세 단계">
+  <rect x="25" y="45" width="95" height="75" rx="6" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <rect x="85" y="70" width="95" height="75" rx="6" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="102" y="35" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="bold">① 동네 지도 두 장</text>
+  <line x1="200" y1="95" x2="230" y2="95" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ah2)"/>
+  <rect x="245" y="45" width="95" height="75" rx="6" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <rect x="305" y="70" width="95" height="75" rx="6" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="6 4"/>
+  <rect x="305" y="70" width="35" height="50" fill="var(--accent)" opacity="0.4"/>
+  <text x="322" y="35" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="bold">② 겹침에서 맞나 확인</text>
+  <line x1="420" y1="95" x2="450" y2="95" stroke="var(--muted)" stroke-width="1.6" marker-end="url(#ah2)"/>
+  <rect x="462" y="45" width="85" height="100" rx="6" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+  <text x="504" y="35" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="bold">③ 한 장으로</text>
+  <text x="280" y="175" text-anchor="middle" fill="var(--muted)" font-size="12">층이론의 전부: 조각이 언제 한 장으로 붙는가 · 안 붙으면 안 붙는 정도를 어떻게 재는가</text>
+</svg>
+<figcaption>지도 세 규칙: 동네마다 조각(국소 데이터) → 겹치는 곳에서 비교(제한) → 맞으면 한 장(붙이기). 층이론만 "조각과 전체 사이의 간극" 자체를 연구 대상으로 삼는다.</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 할머니 이야기 (논문 1절의 비유)</span>
+<p>형제들이 돌아가신 할머니를 각자 기억한다. 형의 기억 조각, 동생의 기억 조각 = 동네 지도들. 둘 다 기억하는 부엌 장면 = 겹침. 그런데 형은 "싸움 <b>다음에</b> 용서", 동생은 "용서 <b>다음에</b> 싸움" — 장면 내용은 비슷한데 <b>잇는 방향이 어긋난다.</b> 질문: 조각을 다 붙이면 "진짜 할머니"가 나오는가? 이본론의 대답은 "안 나온다"였고, 층이론은 그 대답을 계산으로 바꾼다. 측정기는 둘:</p>
+<ul>
+<li><b>불일치 에너지</b> — 모든 조각이 "하나의 전역 서술"에서 떨어진 정도의 총점. <b>0이면 원본이 수학적으로 존재. 0보다 크면 부재 + 그 크기.</b></li>
+<li><b>모노드로미</b> — 한 바퀴 돌았을 때의 뒤틀림. 아래 그림.</li>
+</ul>
+</div>
+
+<figure>
+<svg viewBox="0 0 560 205" role="img" aria-label="한 바퀴의 뒤틀림">
+  <circle cx="280" cy="48" r="22" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <circle cx="170" cy="150" r="22" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <circle cx="390" cy="150" r="22" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <text x="280" y="53" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="bold">A</text>
+  <text x="170" y="155" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="bold">B</text>
+  <text x="390" y="155" text-anchor="middle" fill="var(--ink)" font-size="14" font-weight="bold">C</text>
+  <line x1="258" y1="63" x2="190" y2="133" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah)"/>
+  <line x1="192" y1="150" x2="365" y2="150" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah)"/>
+  <line x1="372" y1="133" x2="304" y2="63" stroke="var(--accent)" stroke-width="2.5" marker-end="url(#ah)"/>
+  <text x="196" y="92" text-anchor="end" fill="var(--muted)" font-size="12">계단 +10cm ✓</text>
+  <text x="280" y="172" text-anchor="middle" fill="var(--muted)" font-size="12">계단 +10cm ✓</text>
+  <text x="366" y="92" text-anchor="start" fill="var(--muted)" font-size="12">계단 +10cm ✓</text>
+  <text x="280" y="120" text-anchor="middle" fill="var(--accent)" font-size="13.5" font-weight="bold">한 바퀴 = +30cm?!</text>
+  <text x="280" y="138" text-anchor="middle" fill="var(--accent)" font-size="12">출발점으로 돌아왔는데</text>
+</svg>
+<figcaption>펜로즈 계단: 한 칸 한 칸은 전부 멀쩡한 오르막인데, 한 바퀴 돌면 출발점인데 더 높이 있다. 기억도 같다 — A↔B 맞고, B↔C 맞고, C↔A 맞는데 셋을 한 바퀴 모으면 안 모인다. 그 누적 뒤틀림이 <b>모노드로미</b>.</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 560 150" role="img" aria-label="전화 게임">
+  <g font-size="12" text-anchor="middle" fill="var(--ink)">
+    <circle cx="80" cy="85" r="20" fill="none" stroke="var(--ink)" stroke-width="2"/>
+    <circle cx="215" cy="85" r="20" fill="none" stroke="var(--ink)" stroke-width="2"/>
+    <circle cx="350" cy="85" r="20" fill="none" stroke="var(--ink)" stroke-width="2"/>
+    <circle cx="485" cy="85" r="20" fill="none" stroke="var(--ink)" stroke-width="2"/>
+    <text x="80" y="45" font-weight="bold">"보리쌀"</text>
+    <text x="215" y="45" font-weight="bold">"보리살"</text>
+    <text x="350" y="45" font-weight="bold">"버리살"</text>
+    <text x="485" y="45" font-weight="bold">"버렸어"</text>
+  </g>
+  <g stroke="var(--accent)" stroke-width="2">
+    <line x1="104" y1="85" x2="188" y2="85" marker-end="url(#ah)"/>
+    <line x1="239" y1="85" x2="323" y2="85" marker-end="url(#ah)"/>
+    <line x1="374" y1="85" x2="458" y2="85" marker-end="url(#ah)"/>
+  </g>
+  <path d="M485,110 C485,138 110,138 85,112" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#ah2)"/>
+  <text x="285" y="128" text-anchor="middle" fill="var(--muted)" font-size="11.5">첫 사람에게 돌아오면 — 다른 말</text>
+</svg>
+<figcaption>전화 게임이 모노드로미의 생활 판이다. 옆 사람끼리는 그럭저럭 맞는데(쌍별 정합), 한 바퀴 돌면 처음과 다르다.</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 왜 이게 층의 "밥값"인가</span>
+<p><b>둘씩 비교하는 방법으로는 이 뒤틀림을 원리적으로 못 본다.</b> 이웃끼리는 전부 "정상"이라고 보고하니까 — 뫼비우스 띠의 어느 토막을 잘라 봐도 평범한 띠인 것과 같다. 꼬임은 한 바퀴를 돌아야만 보이고, 한 바퀴를 도는 계산이 바로 층이다. 그리고 함정 하나: 조각에 장면의 <b>값만</b> 얹으면 뭐든 다 붙어버린다(원본이 공짜로 존재해서 이본론이 무의미해짐). 그래서 조각에는 값만이 아니라 <b>이음</b>(장면→장면 넘어갈 때의 변화)까지 넣어야 한다 — 형제의 부엌 기억이 내용은 같고 <b>순서</b>가 어긋났듯, 어긋남은 이음에 산다.</p>
+</div>
+
+<div class="warn">
+<span class="tag">틀리면 안 되는 말 (논문이 실제로 정정한 두 곳)</span>
+<p>① 두 측정기를 <b>"H¹"이라 부르지 말 것</b> — 라벨을 잘못 썼다 정정한 이력이 있다. 정확한 말: <em>"불일치 에너지(층 라플라시안)와 모노드로미, 두 도구".</em><br>
+② <b>"전역 절편이 없다"고 말하지 말 것</b> — 0으로 채운 절편은 항상 존재한다. 정확한 말: <em>"관측 데이터와 정합하는 전역 절편이 없다".</em></p>
+</div>
+
+<div class="pro">
+<span class="tag">원어 판</span>
+<p>층 = <b>sheaf</b>(볏단). 조각 위의 데이터 한 벌 = <b>절편(section)</b>, 전체에서 모순 없는 한 벌 = <b>전역 절편(global section)</b> — "원본"의 수학 이름. 줄이는 규칙 = <b>제한 사상(restriction map)</b>, 3규칙 = <b>붙이기 공리(gluing axiom)</b>. TEM이 쓰는 건 <b>셀룰러 층(cellular sheaf)</b>(Hansen &amp; Ghrist 2019): 유한 그래프의 꼭짓점마다 벡터공간(그 씬의 감정 공간), 변마다 벡터공간 + 양끝에서 변으로 가는 <b>선형사상</b>(전이 제약). 양끝에서 보낸 값이 변 위에서 일치하면 정합이고, <b>불일치 에너지 = 모든 변의 (한쪽 − 반대쪽)² 총합</b> — 이 이차형식의 행렬이 <b>층 라플라시안</b>. 전부 유한 차원 선형대수. 모노드로미는 고리를 따라 번역을 합성해 돌아온 누적 변환이 항등이 아닌 것(local system의 언어). 관객 한 회차 = 자기가 걸은 부분 위의 국소 절편 — 플레이 기록 그 자체.</p>
+</div>
+
+<div class="say">
+<span class="tag">입으로 말하기</span>
+<p>"유한 그래프 위 cellular sheaf야. 꼭짓점마다 감정 벡터공간, 변마다 전이 제약 선형사상. 측정기는 둘 — 라플라시안 이차형식인 불일치 에너지(0이면 정합하는 전역 절편 존재)와 고리의 모노드로미. 쌍별 거리는 모노드로미를 원리적으로 못 봐, 이웃은 전부 정합이라고 보고하니까. 그게 층의 밥값이야."</p>
+</div>
+
+<!-- ───────────────────── 7장 ───────────────────── -->
+<h2><span class="no">제 7 장</span>실험 — 지워지지 않는 18% (논문 C2)</h2>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 논문의 생사 조건</span>
+<p>심사위원의 필살기가 뻔히 보인다: <em>"둘씩 거리 재면 다 되는데, 층은 장식 아닌가?"</em> 그래서 논문은 자기 목에 칼을 겨눴다 — <b>층만 볼 수 있는 신호(한 바퀴 뒤틀림)가 실제 데이터에 있는가?</b> 없으면 이론 에세이로 강등(그것도 논문에 미리 적어둠). 이 검정이 C2이고, 7월에 실제로 돌렸다.</p>
+<ol>
+<li><b>재료</b>: AI 페르소나 독자들이 기억 하나(장면 10개)를 통과한 39회차.</li>
+<li><b>그물</b>: 같은 장면 2개 이상 공유하는 회차끼리 선 긋기(회차가 점!).</li>
+<li><b>어긋남 재기</b>: 선이 그어진 두 회차가 공유 장면에서 어긋난 평균.</li>
+<li><b>버릇 보정</b>: "각자 자기 버릇만큼 평행이동했을 뿐"이라고 최대한 설명해 봄.</li>
+<li><b>잔여</b>: 그래도 안 지워지는 비율 = <b>ρ(로)</b>. 아래 그림.</li>
+</ol>
+</div>
+
+<figure>
+<svg viewBox="0 0 560 130" role="img" aria-label="로: 보정으로 지워지지 않는 비율">
+  <rect x="40" y="35" width="394" height="40" fill="var(--box2)" stroke="var(--line)"/>
+  <rect x="434" y="35" width="86" height="40" fill="var(--accent)"/>
+  <text x="237" y="60" text-anchor="middle" fill="var(--muted)" font-size="12.5">버릇 보정으로 지워짐 — 82%</text>
+  <text x="477" y="60" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">18%</text>
+  <text x="280" y="105" text-anchor="middle" fill="var(--ink)" font-size="13" font-weight="bold">ρ = 0.1837 — 어떤 개인 보정으로도 안 지워지는, 한 바퀴 돌아야 보이는 성분</text>
+</svg>
+<figcaption>어긋남의 82%는 "개인 버릇"으로 설명되지만, <b>18%는 고리의 뒤틀림</b> — 쌍별 방법으로 환원 불가능한 성분이다.</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 560 190" role="img" aria-label="가짜 세계 1000개와 진짜 데이터">
+  <line x1="40" y1="145" x2="530" y2="145" stroke="var(--line)" stroke-width="1.5"/>
+  <g fill="var(--muted)" opacity="0.75">
+    <rect x="60" y="120" width="22" height="25"/><rect x="86" y="85" width="22" height="60"/>
+    <rect x="112" y="55" width="22" height="90"/><rect x="138" y="70" width="22" height="75"/>
+    <rect x="164" y="100" width="22" height="45"/><rect x="190" y="125" width="22" height="20"/>
+    <rect x="216" y="138" width="22" height="7"/>
+  </g>
+  <text x="145" y="40" text-anchor="middle" fill="var(--muted)" font-size="12">"원본이 존재하는" 가짜 세계 1,000개의 ρ</text>
+  <line x1="455" y1="50" x2="455" y2="145" stroke="var(--accent)" stroke-width="3.5"/>
+  <text x="455" y="38" text-anchor="middle" fill="var(--accent)" font-size="12.5" font-weight="bold">진짜 데이터 ρ=0.18</text>
+  <text x="340" y="170" text-anchor="middle" fill="var(--ink)" font-size="12">가짜 세계 1,000개 중 여기 닿은 것 0개 → p = 0</text>
+</svg>
+<figcaption>대조 실험(영모형): "원본이 있는 세계"를 1,000개 합성해 같은 계산을 돌림 — 단 한 번도 0.18에 못 미침. 원본이 있다면 1,000번 중 0번 나올 값이라는 뜻.</figcaption>
+</figure>
+
+<div class="easy">
+<span class="tag">쉬운 판 — 판정</span>
+<p>다만 극적인 "펜로즈 계단 한 장면"(모든 변이 정합인데 혼자 크게 뒤틀린 단일 고리)은 <b>0건</b> — 가장 센 고리가 문턱의 0.996배로 아슬아슬 미달. 그래서 판정은 <b>WEAK-GO</b>(절반 통과): 누적 신호는 실재, 전시용 한 방은 부재. AI 데이터에서 뽑을 답은 소진 — <b>실관객 데이터가 들어오면 즉시 재판정하는 장비가 대기 중.</b> 논문의 서사는 이걸 뒤집어 쓴다: "일관되게 훈련된 AI조차 18%를 남긴다 — 실제 인간은 더 클 것"을 <b>미리 등록한 예측</b>으로.</p>
+</div>
+
+<div class="pro">
+<span class="tag">원어 판</span>
+<p>그물 = <b>nerve</b>(공유 씬 ≥ 2인 회차 쌍이 변). 버릇 보정 = 회차별 오프셋 h의 <b>최소제곱</b>(그래프 라플라시안 선형계, 39×39 — 자명한 규모). <b>ρ = 보정 후 잔여 에너지 / 전체 에너지.</b> 영모형(null model) 셋: N1 씬 셔플 / N2 "전역 절편 + 회차 보정 + 잡음" 합성(주 대조군, 구성상 뒤틀림 0인 세계) / N3 잔차 부트스트랩(감정 분포 합=1 제약 보존). 각 1,000회, p = null의 ρ ≥ 관측 ρ 비율 → N2·N3 모두 p=0. 전시 고리(Exhibit A) 기준 = 기본 고리(fundamental cycle)의 뒤틀림이 영모형 분포 P99 초과 — 0건. 판정 좌표 = 데이터 실측 12축(A12). 정직 한계: LLM 페르소나 ≠ 실관객 / 39회차 통계력 / 지금은 값 수준(Level-V), 이음(델타) 수준은 실관객 데이터에서.</p>
+</div>
+
+<div class="say">
+<span class="tag">입으로 말하기</span>
+<p>"'쌍별로 다 되는 거 아니냐'가 우리 생사 조건이라 그 검정부터 했어. 회차별 보정을 최소제곱으로 빼고 남는 순환 성분이 ρ=0.18, '원본 있는' 합성 영모형 1,000개에서 한 번도 안 나와서 p=0. 단일 전시 고리는 P99의 0.996배로 미달 0건이라 WEAK-GO — 실관객 재판정 대기. 영모형 설계가 충분한지 봐주면 그게 공짜 심사평이야."</p>
+</div>
+
+<!-- ───────────────────── 8장 ───────────────────── -->
+<h2><span class="no">제 8 장</span>두 아이디어는 한 집 (TQFT)</h2>
+
+<figure>
+<svg viewBox="0 0 560 230" role="img" aria-label="한 집: 1층 코보디즘, 2층 층이론, 지붕 TQFT">
+  <polygon points="280,22 140,75 420,75" fill="var(--accent)" opacity="0.85"/>
+  <text x="280" y="62" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="bold">지붕: TQFT</text>
+  <rect x="160" y="75" width="240" height="60" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <text x="280" y="100" text-anchor="middle" fill="var(--ink)" font-size="13" font-weight="bold">2층: 층이론</text>
+  <text x="280" y="121" text-anchor="middle" fill="var(--muted)" font-size="11.5">공간 방향 — 조각이 붙는가 (정합의 장부)</text>
+  <rect x="160" y="135" width="240" height="60" fill="none" stroke="var(--ink)" stroke-width="2"/>
+  <text x="280" y="160" text-anchor="middle" fill="var(--ink)" font-size="13" font-weight="bold">1층: 코보디즘</text>
+  <text x="280" y="181" text-anchor="middle" fill="var(--muted)" font-size="11.5">시간 방향 — 사건의 문법 (갈라짐·합침)</text>
+  <text x="280" y="218" text-anchor="middle" fill="var(--muted)" font-size="12">지붕 = "막(코보디즘)마다 장부(벡터공간)를 다는 이론"</text>
+</svg>
+<figcaption>오빠의 제안(1층)과 논문의 틀(2층)은 경쟁이 아니다 — 수학이 이미 TQFT라는 이름으로 결혼시켜 놓았다.</figcaption>
+</figure>
+
+<div class="pro">
+<span class="tag">원어 판 — 한 문장만</span>
+<p>Atiyah의 공리화: <b>TQFT = 코보디즘 범주에서 벡터공간 범주로 가는 함수자</b> — 경계 다양체마다 벡터공간을, 코보디즘마다 선형사상을 할당. 이 한 문장이면 충분하고, 그 이상은 아는 척하지 않는 게 안전하다.</p>
+</div>
+
+<div class="say">
+<span class="tag">입으로 말하기</span>
+<p>"네 cobordism이 사건의 문법이고 내 sheaf가 정합의 장부인데, 그 둘을 붙인 게 TQFT잖아 — 코보디즘 범주에서 벡터공간으로 가는 함수자. 네 제안과 내 논문은 한 집의 두 층 같아."</p>
+</div>
+
+<!-- ───────────────────── 9장 ───────────────────── -->
+<h2><span class="no">제 9 장</span>치트시트</h2>
+
+<h3>용어표</h3>
+<div class="tblwrap">
+<table>
+<thead><tr><th>용어</th><th>영어</th><th>그림 한 줄</th></tr></thead>
+<tbody>
+<tr><td>벡터</td><td>vector</td><td>물감 레시피 = 화살표 하나 (1장)</td></tr>
+<tr><td>코사인 유사도</td><td>cosine similarity</td><td>두 화살표의 각도 점수: 같은 쪽 1 · 직각 0 · 반대 −1 (2장)</td></tr>
+<tr><td>궤적 / 델타</td><td>trajectory / Δ</td><td>장면마다 찍힌 점들 / 점에서 점으로 움직인 화살표 (3장)</td></tr>
+<tr><td>그래프</td><td>graph</td><td>발자국 지도 — 점(꼭짓점)과 선(변). 사후 관측 그물 (4장)</td></tr>
+<tr><td>다양체 / 경계</td><td>manifold / ∂</td><td>매끈한 도형 / 그 가장자리. ∂(바지)=원 셋 (5장)</td></tr>
+<tr><td>코보디즘</td><td>cobordism</td><td>전·후를 잇는 막. 사건을 품은 도형 (5장)</td></tr>
+<tr><td>모스 임계점 / 정규값</td><td>critical point / regular value</td><td>섬이 생기고·잠기고·붙고·갈라지는 높이 / 아무 일 없는 높이 (5장)</td></tr>
+<tr><td>층</td><td>sheaf</td><td>지도 조각 + 겹침 비교 + 붙이기 (6장)</td></tr>
+<tr><td>셀룰러 층</td><td>cellular sheaf</td><td>유한 그래프 판 층 — 행렬 계산으로 끝남 (Hansen–Ghrist)</td></tr>
+<tr><td>절편 / 전역 절편</td><td>section / global section</td><td>조각 위에 적힌 한 벌(= 한 회차) / 전체에서 모순 없는 한 벌(= "원본")</td></tr>
+<tr><td>층 라플라시안</td><td>sheaf Laplacian</td><td>모든 변의 어긋남 제곱합(불일치 에너지)을 만드는 행렬</td></tr>
+<tr><td>모노드로미</td><td>monodromy</td><td>펜로즈 계단 — 한 바퀴 돌아오면 +30cm (6장)</td></tr>
+<tr><td>nerve</td><td>nerve</td><td>회차끼리 공유 장면 ≥ 2면 선 긋는 그물 (7장)</td></tr>
+<tr><td>영모형</td><td>null model</td><td>"원본이 존재하는" 가짜 세계 1,000개 — 대조군 (7장)</td></tr>
+<tr><td>ρ (로)</td><td>cyclic ratio</td><td>버릇 보정으로 안 지워지는 18% (7장)</td></tr>
+<tr><td>TQFT</td><td>—</td><td>1층(코보디즘)+2층(층)의 집 — 막마다 장부를 다는 함수자 (8장)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>맞는 말 / 틀린 말</h3>
+<div class="tblwrap wrapok">
+<table>
+<thead><tr><th>이렇게 말하면 틀림</th><th>이렇게 말해야 맞음</th></tr></thead>
+<tbody>
+<tr><td class="no">"기억은 지하철 노선도다 (선택지가 미리 있다)"</td><td class="yes">"무대는 매 턴 계산되는 동적 기하(중심이 움직이는 원), 수학의 그래프는 사후 발자국 그물"</td></tr>
+<tr><td class="no">"오염이 H¹이다"</td><td class="yes">"불일치 에너지와 모노드로미, 두 측정기" (라벨 정정 이력 있음)</td></tr>
+<tr><td class="no">"전역 절편이 없다"</td><td class="yes">"관측 데이터와 <b>정합하는</b> 전역 절편이 없다" (0-절편은 항상 존재)</td></tr>
+<tr><td class="no">"기억은 3차원 도형이다"</td><td class="yes">"정의는 유한 그래프 위 셀룰러 층, 3D는 무대"</td></tr>
+<tr><td class="no">"이 벡터가 마음이다"</td><td class="yes">"벡터는 마음의 그림자 — 원문은 보관되고 자는 교체·소급 가능"</td></tr>
+<tr><td class="no">"실데이터로 증명했다"</td><td class="yes">"AI 페르소나 시뮬의 예비 신호 — 실관객 재판정 대기, 그걸 사전 등록 예측으로"</td></tr>
+<tr><td class="no">"접촉 = 정렬도 높음"</td><td class="yes">"정렬도는 회차 집계, 접촉은 턴 하나의 문턱 사건(회차 1회)"</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>숫자 카드</h3>
+<ul>
+<li>정렬도 = 높이 × 모양 × 회피벌점(<b>0.7</b>) · 3장면 미만이면 모양 비활성</li>
+<li>공명 문턱 <b>0.85</b> · 접촉 승격 잠정 <b>0.9 부근</b>(재추정 대기) · 접촉은 회차당 <b>1회</b></li>
+<li>C2: <b>39회차</b> · 장면 <b>10</b> · 공유 ≥ <b>2</b> · <b>ρ = 0.1837</b> · 영모형 <b>1,000회</b> 중 0회(p=0) · 전시 고리 <b>0건</b>(P99의 0.996배) → <b>WEAK-GO</b> · 판정 좌표 = 실측 <b>12축</b></li>
+</ul>
+
+<h3>오빠에게 던질 질문 셋</h3>
+<ol>
+<li>"유한 그래프 위 cellular sheaf면, 네가 걱정한 3·4차원 분류 문제와 무관한 게 맞지?"</li>
+<li>"사건을 접점이 아니라 Morse 임계점으로 정의하면 문턱 자의성이 사라진다 — 네 cobordism이 이 뜻이었나?"</li>
+<li>"쌍별 정합인데 순환 성분 ρ≈0.18 — '구조적'이라 부르기에 영모형(셔플·합성·부트스트랩)이 충분한가?" ← 이 답이 공짜 심사평</li>
+</ol>
+
+<!-- ───────────────────── 10장 ───────────────────── -->
+<h2><span class="no">제 10 장</span>설명 관문 — 거울 앞 다섯 문제</h2>
+<p>소리 내어 말해 보고, 막히면 모범답을 펼친다. 다섯을 통과하면 끝.</p>
+
+<h3>관문 1 — "원본이 없다"를 어떻게 숫자로 재는지, 1분.</h3>
+<details><summary>모범답 펼치기</summary>
+<p>"원본이 존재한다면 꼭 성립해야 하는 성질을 정한다 — 모든 기억 조각이 모순 없이 한 장으로 붙는 것(정합하는 전역 절편의 존재). 층 라플라시안으로 조각들이 그 상태에서 떨어진 총점(불일치 에너지)을 재면, 0이면 존재, 0보다 크면 부재와 그 정도다. 실제 데이터에서 이 값은 0이 아니었고, 개인 보정으로 설명 안 되는 순환 성분이 18% 남았다."</p>
+</details>
+
+<h3>관문 2 — 펜로즈 계단으로 모노드로미, 30초.</h3>
+<details><summary>모범답 펼치기</summary>
+<p>"한 칸 한 칸은 전부 멀쩡한 오르막인데 한 바퀴 돌면 출발점에서 30cm 위에 있는 계단이다. 기억도 같다 — A와 B가 맞고 B와 C가 맞고 C와 A가 맞는데, 셋을 한 바퀴 돌려 모으면 안 모인다. 그 누적 뒤틀림이 모노드로미다."</p>
+</details>
+
+<h3>관문 3 — 왜 둘씩 비교로는 못 보나, 30초.</h3>
+<details><summary>모범답 펼치기</summary>
+<p>"뒤틀림은 쌍 안에 있지 않고 고리의 합에 있다. 뫼비우스 띠의 어느 토막을 잘라도 평범한 띠인 것처럼, 이웃끼리 비교하면 전부 '정상'이라고 보고한다. 꼬임은 한 바퀴를 돌아야 보이고, 그래서 쌍별 거리 행렬로는 원리적으로 재구성이 안 된다. 이게 층의 밥값이고 논문의 생사 조건이다."</p>
+</details>
+
+<h3>관문 4 — 정렬도 세 조각, 그리고 "이게 최선이냐"에 대한 답, 1분.</h3>
+<details><summary>모범답 펼치기</summary>
+<p>"높이는 장면별 코사인 평균(순간의 비슷함), 모양은 변화 화살표끼리의 코사인(움직임의 비슷함), 회피하면 0.7 벌점 — 셋의 곱이다. 곱인 이유는 하나만 무너져도 정렬이 아니라서. 그리고 이게 최선이냐면 아니다 — 무대용으로 동결된 기하학 자이고, '포개짐'의 재정의(사건 구조의 일치, 정합)가 바로 수학 트랙의 연구 질문이다."</p>
+</details>
+
+<h3>관문 5 — ρ=0.18이 뭐고 왜 WEAK-GO인지, 1분.</h3>
+<details><summary>모범답 펼치기</summary>
+<p>"회차 간 어긋남을 '각자의 버릇만큼 평행이동'으로 최대한 설명하고 남는, 고리를 돌아야만 보이는 성분의 비율이 ρ다. 측정값 0.1837. '원본이 존재하는' 합성 세계 1,000개에서 한 번도 안 나오는 크기라 p=0 — 누적 신호는 실재. 그런데 극적인 단일 고리는 문턱의 0.996배로 미달 0건. 그래서 절반 통과 = WEAK-GO이고, 실관객 데이터로 재판정한다. 논문엔 'AI조차 0.18을 남긴다, 인간은 더 클 것'을 사전 등록 예측으로 적는다."</p>
+</details>
+
+<hr>
+<p class="meta">정본: 논문 초안 docs/이본론_층이론_논문화_초안_v0.1-260716.md · 수학자용 대본 docs/paper/TrackB_세미나_대본_한국어-260717.md · 실험 docs/실험/C2_결과-260716.md · era 이론 docs/era이론_v1_동결-260722.md · 엔진 js/core/ByeoriEngine.js + js/shared/math.js</p>
+
+</main>
+
+</body></html>
