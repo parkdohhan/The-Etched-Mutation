@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>데이터 복구 도구 — The Etched Mutation</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Noto Serif KR', serif;
+            background: #0a0a0c;
+            color: #e8e4df;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .recovery-section {
+            background: #12121a;
+            border: 1px solid rgba(196, 168, 130, .2);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        h1 {
+            color: #c4a882;
+            margin-bottom: 1rem;
+        }
+        h2 {
+            color: #c4a882;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        button {
+            background: transparent;
+            border: 1px solid #c4a882;
+            color: #c4a882;
+            padding: 0.8rem 2rem;
+            font-family: 'Noto Serif KR', serif;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+        button:hover {
+            background: #c4a882;
+            color: #0a0a0c;
+        }
+        pre {
+            background: #0a0a0c;
+            padding: 1rem;
+            overflow-x: auto;
+            border: 1px solid rgba(196, 168, 130, .1);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #7a9a7a;
+        }
+        .error {
+            color: #a87b7b;
+        }
+        .info {
+            color: #7b8fa8;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 데이터 복구 도구</h1>
+    
+    <div class="recovery-section">
+        <h2>1. localStorage 백업 확인</h2>
+        <button onclick="checkLocalStorage()">localStorage 백업 확인</button>
+        <div id="localStorageResult"></div>
+    </div>
+
+    <div class="recovery-section">
+        <h2>2. Supabase 데이터 확인</h2>
+        <button onclick="checkSupabase()">Supabase에서 메모리 확인</button>
+        <div id="supabaseResult"></div>
+    </div>
+
+    <div class="recovery-section">
+        <h2>3. 데이터 복구</h2>
+        <p class="info">localStorage 백업이 있다면 아래 버튼으로 복구할 수 있습니다.</p>
+        <button onclick="recoverFromLocalStorage()">localStorage에서 복구</button>
+        <div id="recoveryResult"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://bxmppaxpzbkwebfbgpsm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ4bXBwYXhwemJrd2ViZmJncHNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwMTcyMTEsImV4cCI6MjA4MDU5MzIxMX0.vv6Bmi2rZdx_HzLcxuw1wxfN_fvQYiigQz11KPNxH2M';
+
+        let supabaseClient = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.supabase) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        });
+
+        function checkLocalStorage() {
+            const resultDiv = document.getElementById('localStorageResult');
+            const stored = localStorage.getItem('adminMemories');
+            
+            if (!stored) {
+                resultDiv.innerHTML = '<p class="error">localStorage에 백업 데이터가 없습니다.</p>';
+                return;
+            }
+
+            try {
+                const memories = JSON.parse(stored);
+                const testMemory = memories.find(m => m.title && m.title.includes('테스트'));
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✅ localStorage 백업 발견!</p>
+                    <p>총 ${memories.length}개의 메모리</p>
+                    ${testMemory ? `<p class="success">✅ "테스트" 관련 메모리 발견: "${testMemory.title}"</p>
+                    <p>장면 개수: ${testMemory.scenes ? testMemory.scenes.length : 0}개</p>
+                    <details>
+                        <summary>상세 데이터 보기</summary>
+                        <pre>${JSON.stringify(testMemory, null, 2)}</pre>
+                    </details>` : '<p class="error">"테스트" 관련 메모리를 찾을 수 없습니다.</p>'}
+                    <details>
+                        <summary>전체 메모리 목록</summary>
+                        <pre>${JSON.stringify(memories.map(m => ({ title: m.title, code: m.code, scenesCount: m.scenes?.length || 0 })), null, 2)}</pre>
+                    </details>
+                `;
+            } catch (e) {
+                resultDiv.innerHTML = `<p class="error">데이터 파싱 오류: ${e.message}</p>`;
+            }
+        }
+
+        async function checkSupabase() {
+            const resultDiv = document.getElementById('supabaseResult');
+            
+            if (!supabaseClient) {
+                resultDiv.innerHTML = '<p class="error">Supabase 클라이언트가 초기화되지 않았습니다.</p>';
+                return;
+            }
+
+            try {
+                // 메모리 확인
+                const { data: memories, error: memError } = await supabaseClient
+                    .from('memories')
+                    .select('*')
+                    .order('id', { ascending: true });
+
+                if (memError) throw memError;
+
+                const testMemory = memories.find(m => m.title && m.title.includes('테스트'));
+                
+                if (testMemory) {
+                    // 해당 메모리의 scenes 확인
+                    const { data: scenes, error: scenesError } = await supabaseClient
+                        .from('scenes')
+                        .select('*')
+                        .eq('memory_id', testMemory.id)
+                        .order('scene_order', { ascending: true });
+
+                    if (scenesError) throw scenesError;
+
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Supabase에서 "테스트" 메모리 발견!</p>
+                        <p>메모리 ID: ${testMemory.id}</p>
+                        <p>제목: ${testMemory.title}</p>
+                        <p>코드: ${testMemory.code}</p>
+                        <p class="${scenes && scenes.length > 0 ? 'success' : 'error'}">장면 개수: ${scenes ? scenes.length : 0}개</p>
+                        ${scenes && scenes.length === 0 ? '<p class="error">⚠️ 장면이 모두 삭제되었습니다!</p>' : ''}
+                        ${scenes && scenes.length > 0 ? `
+                            <details>
+                                <summary>장면 목록 보기</summary>
+                                <pre>${JSON.stringify(scenes.map(s => ({ 
+                                    id: s.id, 
+                                    scene_order: s.scene_order, 
+                                    text: s.text?.substring(0, 50) + '...',
+                                    scene_type: s.scene_type 
+                                })), null, 2)}</pre>
+                            </details>
+                        ` : ''}
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">Supabase에서 "테스트" 관련 메모리를 찾을 수 없습니다.</p>
+                        <p>전체 메모리 개수: ${memories.length}개</p>
+                        <details>
+                            <summary>전체 메모리 목록</summary>
+                            <pre>${JSON.stringify(memories.map(m => ({ id: m.id, title: m.title, code: m.code })), null, 2)}</pre>
+                        </details>
+                    `;
+                }
+            } catch (e) {
+                resultDiv.innerHTML = `<p class="error">오류 발생: ${e.message}</p>`;
+            }
+        }
+
+        async function recoverFromLocalStorage() {
+            const resultDiv = document.getElementById('recoveryResult');
+            const stored = localStorage.getItem('adminMemories');
+            
+            if (!stored) {
+                resultDiv.innerHTML = '<p class="error">localStorage에 백업 데이터가 없습니다.</p>';
+                return;
+            }
+
+            if (!supabaseClient) {
+                resultDiv.innerHTML = '<p class="error">Supabase 클라이언트가 초기화되지 않았습니다.</p>';
+                return;
+            }
+
+            try {
+                const memories = JSON.parse(stored);
+                const testMemory = memories.find(m => m.title && m.title.includes('테스트'));
+                
+                if (!testMemory) {
+                    resultDiv.innerHTML = '<p class="error">"테스트" 관련 메모리를 찾을 수 없습니다.</p>';
+                    return;
+                }
+
+                if (!testMemory.scenes || testMemory.scenes.length === 0) {
+                    resultDiv.innerHTML = '<p class="error">복구할 장면이 없습니다.</p>';
+                    return;
+                }
+
+                // Supabase에서 해당 메모리 찾기
+                const { data: existingMemories, error: memError } = await supabaseClient
+                    .from('memories')
+                    .select('id')
+                    .eq('code', testMemory.code)
+                    .limit(1);
+
+                if (memError) throw memError;
+
+                if (!existingMemories || existingMemories.length === 0) {
+                    resultDiv.innerHTML = '<p class="error">Supabase에서 해당 메모리를 찾을 수 없습니다. 먼저 admin.html에서 메모리를 저장하세요.</p>';
+                    return;
+                }
+
+                const memoryId = existingMemories[0].id;
+
+                resultDiv.innerHTML = '<p class="info">복구 중... (장면 개수: ' + testMemory.scenes.length + '개)</p>';
+
+                // 기존 scenes 삭제
+                const { error: deleteError } = await supabaseClient
+                    .from('scenes')
+                    .delete()
+                    .eq('memory_id', memoryId);
+
+                if (deleteError) throw deleteError;
+
+                // 장면 복구
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (let i = 0; i < testMemory.scenes.length; i++) {
+                    const scene = testMemory.scenes[i];
+                    
+                    try {
+                        // emotionDist 계산
+                        const emotionDist = {
+                            fear: 0, sadness: 0, guilt: 0, anger: 0,
+                            longing: 0, isolation: 0, numbness: 0, moralPain: 0
+                        };
+                        
+                        if (scene.choices && scene.choices.length > 0) {
+                            scene.choices.forEach(choice => {
+                                const intensity = (choice.intensity || 5) / 10;
+                                if (emotionDist.hasOwnProperty(choice.emotion)) {
+                                    emotionDist[choice.emotion] += intensity;
+                                }
+                            });
+                        }
+                        
+                        const total = Object.values(emotionDist).reduce((sum, val) => sum + val, 0);
+                        if (total > 0) {
+                            Object.keys(emotionDist).forEach(key => {
+                                emotionDist[key] = Math.round((emotionDist[key] / total) * 100);
+                            });
+                        }
+
+                        const { data: sceneData, error: sceneError } = await supabaseClient
+                            .from('scenes')
+                            .insert({
+                                memory_id: memoryId,
+                                scene_order: i,
+                                text: scene.text || '',
+                                echo_words: scene.echoWords || [],
+                                emotion_dist: emotionDist,
+                                scene_type: scene.sceneType || 'normal',
+                                void_info: scene.voidInfo || null
+                            })
+                            .select()
+                            .single();
+
+                        if (sceneError) throw sceneError;
+
+                        // Choices 복구
+                        if (scene.choices && scene.choices.length > 0) {
+                            for (let j = 0; j < scene.choices.length; j++) {
+                                const choice = scene.choices[j];
+                                await supabaseClient
+                                    .from('choices')
+                                    .insert({
+                                        scene_id: sceneData.id,
+                                        choice_order: j,
+                                        text: choice.text || '',
+                                        emotion: choice.emotion || 'fear',
+                                        intensity: choice.intensity || 5
+                                    });
+                            }
+                        }
+
+                        successCount++;
+                    } catch (e) {
+                        console.error(`장면 ${i + 1} 복구 실패:`, e);
+                        errorCount++;
+                    }
+                }
+
+                resultDiv.innerHTML = `
+                    <p class="success">✅ 복구 완료!</p>
+                    <p>성공: ${successCount}개</p>
+                    ${errorCount > 0 ? `<p class="error">실패: ${errorCount}개</p>` : ''}
+                    <p>이제 admin.html을 새로고침하여 확인하세요.</p>
+                `;
+            } catch (e) {
+                resultDiv.innerHTML = `<p class="error">복구 중 오류 발생: ${e.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
+
+
