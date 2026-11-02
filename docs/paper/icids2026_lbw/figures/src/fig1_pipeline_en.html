@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#ffffff;overflow:hidden;}
+  .viz-root{
+    color-scheme: light;
+    width:1700px; height:1060px; background:#ffffff;
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  }
+  text{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;}
+</style></head>
+<body><div class="viz-root"><svg id="fig" width="1700" height="1060" viewBox="0 0 1700 1060">
+<defs>
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#52514e"/>
+  </marker>
+  <marker id="arrm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#898781"/>
+  </marker>
+</defs>
+</svg></div>
+<script>
+(function(){
+  const svg = document.getElementById('fig');
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!=null) e.textContent=text; svg.appendChild(e); return e; }
+
+  const BW=500, BH=170, GAP=60, X0=40, Y1=110, Y2=440;
+  const box = (x,y,title,sub)=>{
+    el('rect',{x:x, y:y, width:BW, height:BH, rx:14, fill:'#ffffff', stroke:'#52514e','stroke-width':3});
+    el('text',{x:x+BW/2, y:y+72, 'text-anchor':'middle','font-size':40,'font-weight':'bold',fill:'#0b0b0b'}, title);
+    el('text',{x:x+BW/2, y:y+124, 'text-anchor':'middle','font-size':26, fill:'#52514e'}, sub);
+  };
+  const hArrow = (x1,x2,y)=> el('line',{x1:x1, y1:y, x2:x2, y2:y, stroke:'#52514e','stroke-width':4,'marker-end':'url(#arr)'});
+
+  // Row 1
+  const xA=X0, xB=X0+(BW+GAP), xC=X0+2*(BW+GAP);
+  box(xA,Y1,'Participant input','each turn: continuation / choice');
+  box(xB,Y1,'Alignment engine','alignment = level × shape × void');
+  box(xC,Y1,'Contamination tracker','updates drift · fixation');
+  hArrow(xA+BW+8, xB-12, Y1+BH/2);
+  hArrow(xB+BW+8, xC-12, Y1+BH/2);
+
+  // Row 2
+  box(xB,Y2,'Scene navigator','computes accessible scene set');
+  box(xC,Y2,'Renderer','stage text · afterimage · audio');
+  hArrow(xB+BW+8, xC-12, Y2+BH/2);
+
+  // elbow: Contamination tracker (row 1, right) -> Scene navigator (row 2, middle)
+  const cx1 = xC+BW/2, cx2 = xB+BW/2, ymid = (Y1+BH+Y2)/2;
+  el('path',{d:`M ${cx1} ${Y1+BH+8} L ${cx1} ${ymid} L ${cx2} ${ymid} L ${cx2} ${Y2-12}`, fill:'none', stroke:'#52514e','stroke-width':4,'stroke-linejoin':'round','marker-end':'url(#arr)'});
+
+  // annotation above row 1
+  el('text',{x:850, y:66, 'text-anchor':'middle','font-size':28, fill:'#898781'}, 'The engine does not judge; it observes and reports (Sect. 4)');
+
+  // trajectory bridge box (dashed), return loop
+  const loopY=865, bw2=1000, bx=850-bw2/2, by=780, bh=170;
+  el('rect',{x:bx, y:by, width:bw2, height:bh, rx:14, fill:'#ffffff', stroke:'#898781','stroke-width':3,'stroke-dasharray':'12 10'});
+  el('text',{x:850, y:by+52, 'text-anchor':'middle','font-size':38,'font-weight':'bold', fill:'#0b0b0b'}, 'trajectory bridge');
+  el('text',{x:850, y:by+98, 'text-anchor':'middle','font-size':26, fill:'#52514e'}, 'contact runs are converted automatically;');
+  el('text',{x:850, y:by+138, 'text-anchor':'middle','font-size':26, fill:'#52514e'}, 'exposed by alignment, not popularity (Sect. 3.3)');
+
+  // Renderer -> bridge
+  const rx = xC+BW/2;
+  el('path',{d:`M ${rx} ${Y2+BH+8} L ${rx} ${loopY} L ${bx+bw2+12} ${loopY}`, fill:'none', stroke:'#898781','stroke-width':4,'stroke-dasharray':'12 10','stroke-linejoin':'round','marker-end':'url(#arrm)'});
+  // bridge -> next participant input
+  const px = xA+BW/2;
+  el('path',{d:`M ${bx-12} ${loopY} L ${px} ${loopY} L ${px} ${Y1+BH+16}`, fill:'none', stroke:'#898781','stroke-width':4,'stroke-dasharray':'12 10','stroke-linejoin':'round','marker-end':'url(#arrm)'});
+  el('text',{x:px+18, y:loopY-100, 'font-size':26, fill:'#898781'}, 'to the next participant');
+})();
+</script>
+</body></html>

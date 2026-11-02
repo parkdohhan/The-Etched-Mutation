@@ -1,0 +1,791 @@
+<title>지평선 안개 파동</title>
+<!--
+  TEM 실험 페이지 — 지평선 안개띠 파동 (2026-09-15, 4판: 부피 안개)
+  본 코드(play-test.html / tem_af_strata_terrain.js) 미반영. 보고 괜찮으면 이식.
+  선례: test/fog-reveal-test.html → lumen_spatial_fog.js 이식.
+  하늘 0x18203a · 안개 0x12121a/0.008 · 조명(ambient 0x1a1828 1.3 / key 0xc4a882 0.7 / fill 0x3a4a80 0.3)은
+  tem_af_strata_terrain.js 의 실제 값 그대로. 감정색은 js/shared/math.js 표 그대로.
+
+  4판 구성 (3D 로 읽히게):
+    1) 골짜기 안개 — 지형 재질에 높이 안개(운해). 띠가 그 위에 얹힌다 (아래 빈 자리 없음)
+    2) 띠 여러 겹 — 거리 다른 원통 2~4겹, 걸으면 앞뒤가 어긋남(시차)
+    3) 솜뭉치 — 카메라를 향한 입자(Points) 수백 개를 마루·골짜기에 흩뿌려 부피
+    4) 빛 방향 음영 — 주광 쪽은 밝고 반대쪽은 어둡게
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap">
+<style>
+  :root{
+    --ground:#0b0b12;
+    --panel:rgba(11,11,18,0.86);
+    --line:rgba(214,201,173,0.14);
+    --ink:#d6c9ad;
+    --ink-2:#8f8797;
+    --accent:#c4a882;
+    --accent-dim:rgba(196,168,130,0.35);
+    --serif:'Cormorant Garamond','Noto Serif KR','Gowun Batang',serif;
+    --kr:'Noto Serif KR','Cormorant Garamond',serif;
+  }
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--kr);font-weight:300;overflow:hidden;-webkit-font-smoothing:antialiased}
+  #stage{position:fixed;inset:0}
+  #gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+  #gl.dragging{cursor:grabbing}
+  #strip{position:absolute;left:0;right:0;bottom:0;width:100%;height:280px;pointer-events:none}
+  #strip[hidden]{display:none}
+  #hint{position:fixed;top:18px;left:20px;font-family:var(--serif);font-size:15px;letter-spacing:0.14em;color:var(--ink-2);pointer-events:none;line-height:1.7}
+  #hint b{color:var(--ink);font-weight:400}
+
+  #panel{position:fixed;top:0;right:0;bottom:0;width:300px;max-width:88vw;background:var(--panel);backdrop-filter:blur(10px);border-left:1px solid var(--line);display:flex;flex-direction:column;padding-block:22px;padding-inline:22px;box-sizing:border-box;overflow-y:auto;gap:22px;transition:transform .5s cubic-bezier(.2,.7,.2,1)}
+  #panel.closed{transform:translateX(100%)}
+  #panel h1{font-family:var(--serif);font-weight:400;font-size:22px;letter-spacing:0.12em;margin:0;color:var(--ink);text-wrap:balance}
+  #panel .sub{font-size:12px;color:var(--ink-2);letter-spacing:0.06em;margin-top:4px}
+  .grp{display:flex;flex-direction:column;gap:10px;padding-top:16px;border-top:1px solid var(--line)}
+  .grp:first-of-type{border-top:0;padding-top:0}
+  .grp h2{font-family:var(--serif);font-weight:400;font-size:12px;letter-spacing:0.28em;text-transform:uppercase;color:var(--accent);margin:0}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13.5px}
+  .row label{flex:1;color:var(--ink)}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--ink-2);min-width:3.2em;text-align:right;font-family:var(--serif);font-size:15px}
+  .slider{display:flex;flex-direction:column;gap:4px}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:0;height:22px}
+  input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
+  .note{font-size:12px;color:var(--ink-2);line-height:1.6;margin:0}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1px solid var(--line);background:transparent;color:var(--ink-2);font-family:var(--kr);font-size:12px;padding:5px 9px;border-radius:2px;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .chip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .chip.on{border-color:var(--accent-dim);color:var(--ink)}
+  .chip:focus-visible,button:focus-visible,input:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+  .btn{border:1px solid var(--line);background:transparent;color:var(--ink);font-family:var(--serif);font-size:14px;letter-spacing:0.14em;padding:9px 12px;cursor:pointer;border-radius:2px}
+  .btn:hover{border-color:var(--accent-dim)}
+  #toggle{position:fixed;top:14px;right:314px;z-index:5;transition:right .5s cubic-bezier(.2,.7,.2,1);border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--serif);font-size:13px;letter-spacing:0.16em;padding:8px 12px;cursor:pointer;border-radius:2px}
+  body.panel-closed #toggle{right:14px}
+  @media (max-width:640px){
+    #toggle{right:14px}
+    #panel{top:auto;left:0;right:0;width:auto;max-width:none;max-height:46vh;border-left:0;border-top:1px solid var(--line);padding-block:16px;gap:16px}
+    #panel.closed{transform:translateY(100%)}
+    #strip{height:132px}
+    #hint{font-size:13px;top:14px;left:16px}
+  }
+  @media (prefers-reduced-motion:reduce){#panel,#toggle{transition:none}}
+</style>
+
+<div id="stage">
+  <canvas id="gl"></canvas>
+  <canvas id="strip" hidden></canvas>
+</div>
+<div id="hint"><b>끌어서</b> 둘러보기 · <b>W A S D</b> 걷기</div>
+<button id="toggle" type="button" aria-controls="panel">조절판</button>
+
+<aside id="panel" aria-label="실험 조절판">
+  <div>
+    <h1>지평선 안개 파동</h1>
+    <div class="sub">실험 페이지 4판 · 본 코드에는 반영 안 됨</div>
+  </div>
+
+  <section class="grp">
+    <h2>정렬</h2>
+    <div class="slider">
+      <div class="row"><label for="align">정렬도</label><span class="val" id="alignV">0.55</span></div>
+      <input type="range" id="align" min="0" max="1" step="0.01" value="0.55">
+    </div>
+    <p class="note">1이면 작가 층과 내 층이 한 겹으로 겹치고, 0으로 갈수록 내 층이 제 모양을 찾아 위로 뜨면서 틈이 벌어집니다.</p>
+    <div class="row"><label for="authorOn">작가 층 켜기 (대화 중 상태)</label><input type="checkbox" id="authorOn" checked></div>
+  </section>
+
+  <section class="grp">
+    <h2>비교</h2>
+    <div class="row"><label for="bandOn">안개띠 (제안)</label><input type="checkbox" id="bandOn" checked></div>
+    <div class="row"><label for="stripOn">종이띠 (현행 화면 아래 파동)</label><input type="checkbox" id="stripOn"></div>
+  </section>
+
+  <section class="grp">
+    <h2>골짜기 안개</h2>
+    <div class="row"><label for="valleyOn">골짜기에 안개 깔기 (운해)</label><input type="checkbox" id="valleyOn" checked></div>
+    <div class="slider"><div class="row"><label for="valleyTop">안개 윗면 높이</label><span class="val" id="valleyTopV">3.0</span></div><input type="range" id="valleyTop" min="-2" max="10" step="0.5" value="3"></div>
+    <div class="slider"><div class="row"><label for="valleyDens">짙기</label><span class="val" id="valleyDensV">0.80</span></div><input type="range" id="valleyDens" min="0" max="1" step="0.01" value="0.8"></div>
+    <div class="slider"><div class="row"><label for="valleyPuffs">골짜기 솜뭉치 수</label><span class="val" id="valleyPuffsV">320</span></div><input type="range" id="valleyPuffs" min="0" max="900" step="20" value="320"></div>
+    <p class="note">지형 자체가 낮은 곳부터 안개색으로 잠깁니다. 띠는 그 위에 얹혀서 아래가 비지 않습니다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>띠</h2>
+    <div class="slider"><div class="row"><label for="shells">앞뒤 겹수</label><span class="val" id="shellsV">3</span></div><input type="range" id="shells" min="1" max="4" step="1" value="3"></div>
+    <div class="slider"><div class="row"><label for="radius">가장 먼 겹 거리</label><span class="val" id="radiusV">130</span></div><input type="range" id="radius" min="60" max="220" step="5" value="130"></div>
+    <div class="slider"><div class="row"><label for="height">띠 높이</label><span class="val" id="heightV">36</span></div><input type="range" id="height" min="10" max="60" step="1" value="36"></div>
+    <div class="slider"><div class="row"><label for="dens">몸통 짙기</label><span class="val" id="densV">0.35</span></div><input type="range" id="dens" min="0" max="1" step="0.01" value="0.35"></div>
+    <div class="slider"><div class="row"><label for="soft">가장자리 부드러움</label><span class="val" id="softV">0.07</span></div><input type="range" id="soft" min="0.02" max="0.2" step="0.005" value="0.07"></div>
+    <div class="slider"><div class="row"><label for="gap">틈 색 세기</label><span class="val" id="gapV">0.60</span></div><input type="range" id="gap" min="0" max="1" step="0.01" value="0.6"></div>
+    <p class="note">겹마다 거리가 달라 걸으면 가까운 겹이 먼 겹보다 빨리 흐릅니다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>실과 솜뭉치</h2>
+    <div class="slider"><div class="row"><label for="strands">실 가닥 수 (겹·묶음당)</label><span class="val" id="strandsV">40</span></div><input type="range" id="strands" min="0" max="120" step="4" value="40"></div>
+    <div class="slider"><div class="row"><label for="width">가닥 폭</label><span class="val" id="widthV">0.05</span></div><input type="range" id="width" min="0.01" max="0.2" step="0.005" value="0.05"></div>
+    <div class="slider"><div class="row"><label for="glow">가닥 짙기</label><span class="val" id="glowV">0.10</span></div><input type="range" id="glow" min="0" max="0.5" step="0.01" value="0.1"></div>
+    <div class="slider"><div class="row"><label for="puffs">솜털 수 (겹·묶음당)</label><span class="val" id="puffsV">60</span></div><input type="range" id="puffs" min="0" max="400" step="10" value="60"></div>
+    <div class="slider"><div class="row"><label for="puffSize">솜털 크기</label><span class="val" id="puffSizeV">2.20</span></div><input type="range" id="puffSize" min="0.3" max="4" step="0.05" value="2.2"></div>
+    <div class="slider"><div class="row"><label for="puffAlpha">솜털 짙기</label><span class="val" id="puffAlphaV">0.07</span></div><input type="range" id="puffAlpha" min="0" max="0.4" step="0.01" value="0.07"></div>
+    <div class="slider"><div class="row"><label for="wisp">흩어짐 (솜털)</label><span class="val" id="wispV">0.70</span></div><input type="range" id="wisp" min="0" max="1" step="0.01" value="0.7"></div>
+    <div class="slider"><div class="row"><label for="spread">마루 아래로 퍼짐</label><span class="val" id="spreadV">0.16</span></div><input type="range" id="spread" min="0" max="0.4" step="0.01" value="0.16"></div>
+    <div class="slider"><div class="row"><label for="depth">앞뒤 깊이</label><span class="val" id="depthV">14</span></div><input type="range" id="depth" min="0" max="40" step="1" value="14"></div>
+    <div class="slider"><div class="row"><label for="weave">꼬임</label><span class="val" id="weaveV">1.00</span></div><input type="range" id="weave" min="0" max="3" step="0.05" value="1"></div>
+    <p class="note">솜털은 마루 가장자리에만 붙는 크고 옅은 입자입니다. 몸통은 아래만 짙고 마루 쪽은 옅어서 벽이 되지 않습니다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>물결</h2>
+    <div class="slider"><div class="row"><label for="amp">크기</label><span class="val" id="ampV">0.09</span></div><input type="range" id="amp" min="0.03" max="0.2" step="0.005" value="0.09"></div>
+    <div class="slider"><div class="row"><label for="cycles">한 바퀴에 몇 굽이</label><span class="val" id="cyclesV">4</span></div><input type="range" id="cycles" min="2" max="8" step="1" value="4"></div>
+    <div class="slider"><div class="row"><label for="speed">속도</label><span class="val" id="speedV">0.60</span></div><input type="range" id="speed" min="0.1" max="2" step="0.05" value="0.6"></div>
+  </section>
+
+  <section class="grp">
+    <h2>색</h2>
+    <div class="row"><label>작가 층</label></div>
+    <div class="chips" id="chipsA"></div>
+    <div class="row"><label>내 층</label></div>
+    <div class="chips" id="chipsP"></div>
+    <p class="note">감정색은 본 코드 표(math.js) 그대로입니다.</p>
+  </section>
+
+  <section class="grp">
+    <h2>세계</h2>
+    <div class="row"><label for="tone">톤매핑 (필름 현상)</label><input type="checkbox" id="tone" checked></div>
+    <div class="slider"><div class="row"><label for="exposure">노출</label><span class="val" id="exposureV">1.00</span></div><input type="range" id="exposure" min="0.5" max="2" step="0.05" value="1"></div>
+    <div class="row"><label for="lowSun">주광 눕히기 (긴 그림자)</label><input type="checkbox" id="lowSun" checked></div>
+    <div class="slider"><div class="row"><label for="lit">안개 빛 방향 음영</label><span class="val" id="litV">0.60</span></div><input type="range" id="lit" min="0" max="1" step="0.01" value="0.6"></div>
+    <div class="row"><label for="matchFog">안개색을 하늘에 맞춤</label><input type="checkbox" id="matchFog" checked></div>
+  </section>
+
+  <section class="grp">
+    <button class="btn" id="resetView" type="button">시점 처음으로</button>
+  </section>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  if (!window.THREE) { document.getElementById('hint').textContent = 'three.js 를 불러오지 못했습니다. 인터넷 연결을 확인하세요.'; return; }
+
+  // ─── 감정색 (js/shared/math.js 표) ───
+  var EMO = {
+    fear:    { name: '두려움', r: 100, g: 80,  b: 180 },
+    sadness: { name: '슬픔',   r: 80,  g: 100, b: 160 },
+    anger:   { name: '분노',   r: 200, g: 80,  b: 80  },
+    joy:     { name: '기쁨',   r: 200, g: 180, b: 100 },
+    longing: { name: '그리움', r: 80,  g: 180, b: 180 },
+  };
+  var SKY_BASE = 0x18203a, FOG_BASE = 0x12121a, FOG_MATCH = 0x151b30;
+
+  // ─── 상태 ───
+  var S = {
+    align: 0.55, authorOn: true, bandOn: true, stripOn: false, matchFog: true,
+    valleyOn: true, valleyTop: 3, valleyDens: 0.8, valleyPuffs: 320,
+    shells: 3, radius: 130, height: 36, dens: 0.35, soft: 0.07, gap: 0.6,
+    strands: 40, width: 0.05, glow: 0.10, puffs: 60, puffSize: 2.2, puffAlpha: 0.07, wisp: 0.7, spread: 0.16, depth: 14, weave: 1.0,
+    amp: 0.09, cycles: 4, speed: 0.6,
+    colA: 'sadness', colP: 'joy',
+    tone: true, exposure: 1.0, lowSun: true, lit: 0.6,
+  };
+
+  // ─── 지형 높이 (값 노이즈 fbm + 봉우리) ───
+  function hash2(x, y) { var s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); }
+  function vnoise(x, y) {
+    var ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    var a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1);
+    return (a + (b - a) * fx) + (c - a) * fy * (1 - fx) + (d - b) * fx * fy;
+  }
+  function fbm2(x, y) { var v = 0, a = 0.5; for (var i = 0; i < 5; i++) { v += a * vnoise(x, y); x *= 2.03; y *= 2.03; a *= 0.5; } return v; }
+  var MOUNDS = [
+    { x: -22, z: -18, h: 13, s: 11 }, { x: 18, z: -30, h: 9, s: 9 }, { x: 30, z: 12, h: 11, s: 12 },
+    { x: -34, z: 20, h: 7, s: 10 }, { x: 4, z: 34, h: 8, s: 9 }, { x: -6, z: -44, h: 10, s: 8 },
+  ];
+  function terrainH(x, z) {
+    var h = fbm2(x * 0.045 + 3.1, z * 0.045 + 7.7) * 7 - 2.2;
+    for (var i = 0; i < MOUNDS.length; i++) {
+      var m = MOUNDS[i], dx = x - m.x, dz = z - m.z;
+      h += m.h * Math.exp(-(dx * dx + dz * dz) / (2 * m.s * m.s));
+    }
+    return h;
+  }
+
+  // ─── 공용 셰이더 조각 ───
+  var NOISE_GLSL = [
+    'float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7))) * 43758.5453); }',
+    'float n3(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);',
+    '  return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x), mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),',
+    '             mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x), mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y),f.z); }',
+    'float fbm(vec3 p){ float v=0.0, a=0.5; for(int i=0;i<4;i++){ v+=a*n3(p); p*=2.05; a*=0.5; } return v; }',
+    'float fbm3(vec3 p){ float v=0.0, a=0.5; for(int i=0;i<3;i++){ v+=a*n3(p); p*=2.1; a*=0.5; } return v; }',
+  ].join('\n');
+
+  // ─── 장면 ───
+  var canvas = document.getElementById('gl');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(FOG_BASE, 0.008);
+  var camera = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+
+  scene.add(new THREE.AmbientLight(0x1a1828, 1.3));
+  var key = new THREE.DirectionalLight(0xc4a882, 0.7);
+  key.position.set(40, 60, 30); key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -75; key.shadow.camera.right = 75; key.shadow.camera.top = 75; key.shadow.camera.bottom = -75;
+  key.shadow.camera.near = 10; key.shadow.camera.far = 220; key.shadow.bias = -0.0002; key.shadow.normalBias = 0.5;
+  scene.add(key);
+  var fill = new THREE.DirectionalLight(0x3a4a80, 0.3); fill.position.set(-30, 40, -20); scene.add(fill);
+  var lightDir = new THREE.Vector3(1, 0, 0);
+
+  // 공용 uniform: 안개색·빛 방향·음영 세기 (모든 안개 재질이 같은 객체를 바인딩)
+  var uFog = { value: new THREE.Color(FOG_MATCH) };
+  var uLightDir = { value: lightDir };
+  var uLit = { value: S.lit };
+  var uTime = { value: 0 };
+
+  // 지형 + 골짜기 높이 안개 (재질 셰이더 패치: 낮은 곳부터 안개색으로 잠김)
+  var SZ = 112, SEG = 160;
+  var geo = new THREE.PlaneGeometry(SZ, SZ, SEG, SEG);
+  geo.rotateX(-Math.PI / 2);
+  var pos = geo.attributes.position, cols = new Float32Array(pos.count * 3);
+  for (var i = 0; i < pos.count; i++) {
+    var x = pos.getX(i), z = pos.getZ(i), h = terrainH(x, z);
+    pos.setY(i, h);
+    var sl = Math.min(1, Math.abs(terrainH(x + 0.7, z) - h) + Math.abs(terrainH(x, z + 0.7) - h));
+    var k = 0.72 + sl * 0.5;
+    cols[i * 3] = 0.207 * k; cols[i * 3 + 1] = 0.2 * k; cols[i * 3 + 2] = 0.236 * k;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  geo.computeVertexNormals();
+  var uVal = { uOn: { value: 1 }, uTop: { value: S.valleyTop }, uDens: { value: S.valleyDens } };
+  function patchHeightFog(shader) {
+    shader.uniforms.uHFogOn = uVal.uOn; shader.uniforms.uHFogTop = uVal.uTop; shader.uniforms.uHFogDens = uVal.uDens;
+    shader.uniforms.uHFogCol = uFog; shader.uniforms.uHFogTime = uTime;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nuniform float uHFogOn, uHFogTop, uHFogDens, uHFogTime; uniform vec3 uHFogCol;\n' + NOISE_GLSL)
+      .replace('#include <fog_fragment>', [
+        '#include <fog_fragment>',
+        // 윗면은 노이즈로 울렁이고(운해 표면), 아래로 갈수록 짙다.
+        'float _top = uHFogTop + (fbm3(vec3(vWPos.x * 0.06, uHFogTime * 0.02, vWPos.z * 0.06)) - 0.5) * 3.0;',
+        'float _hf = smoothstep(_top, _top - 5.0, vWPos.y) * uHFogDens * uHFogOn;',
+        'gl_FragColor.rgb = mix(gl_FragColor.rgb, uHFogCol * 1.7, _hf);',
+      ].join('\n'));
+  }
+  var terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.06 });
+  terrainMat.onBeforeCompile = patchHeightFog;
+  var terrain = new THREE.Mesh(geo, terrainMat);
+  terrain.castShadow = true; terrain.receiveShadow = true;
+  scene.add(terrain);
+  var bpMat = new THREE.MeshStandardMaterial({ color: 0x050509, roughness: 1 });
+  bpMat.onBeforeCompile = patchHeightFog;
+  var bp = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), bpMat);
+  bp.rotation.x = -Math.PI / 2; bp.position.y = -10; scene.add(bp);
+
+  // 핀(씬) 불빛 몇 개
+  var PINS = [[-22, -18], [18, -30], [30, 12], [-34, 20], [4, 34], [-6, -44]];
+  var pinLights = [];
+  PINS.forEach(function (p, idx) {
+    var y = terrainH(p[0], p[1]) + 1.2;
+    var m = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), new THREE.MeshBasicMaterial({ color: 0xe6d2a6 }));
+    m.position.set(p[0], y, p[1]); scene.add(m);
+    var l = new THREE.PointLight(0xc4a882, 0.55, 20, 2); l.position.copy(m.position); scene.add(l);
+    pinLights.push({ l: l, ph: idx * 1.3 });
+  });
+
+  // 하늘 돔 + 별 (카메라를 따라다님)
+  var skyGrp = new THREE.Group(); scene.add(skyGrp);
+  var skyUni = { uBase: { value: new THREE.Color(SKY_BASE) } };
+  var sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 24), new THREE.ShaderMaterial({
+    uniforms: skyUni, side: THREE.BackSide, depthWrite: false, fog: false,
+    vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'uniform vec3 uBase; varying vec3 vDir; void main(){ vec3 d = normalize(vDir); float h = clamp(d.y*0.5+0.5,0.0,1.0); vec3 col = mix(uBase*1.10, uBase*0.90, h); gl_FragColor = vec4(col,1.0);\n#include <tonemapping_fragment>\n}',
+  }));
+  sky.renderOrder = -1; sky.frustumCulled = false; skyGrp.add(sky);
+  var sg = new THREE.BufferGeometry(), sp = new Float32Array(420 * 3);
+  for (var s = 0; s < 420; s++) {
+    var th = Math.random() * Math.PI * 2, ph = Math.acos(0.05 + Math.random() * 0.95);
+    sp[s * 3] = Math.sin(ph) * Math.cos(th) * 380; sp[s * 3 + 1] = Math.cos(ph) * 380; sp[s * 3 + 2] = Math.sin(ph) * Math.sin(th) * 380;
+  }
+  sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  skyGrp.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0x9aa3c8, size: 1.4, transparent: true, opacity: 0.55, sizeAttenuation: true, fog: false })));
+
+  // ─── 파동 높이 표 (작가 hA / 나 hP) — 모든 겹·실·솜뭉치가 같은 표를 읽는다 ───
+  var N = 256;
+  var texData = new Uint8Array(N * 4);
+  var tex = new THREE.DataTexture(texData, N, 1, THREE.RGBAFormat);
+  tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.wrapS = THREE.RepeatWrapping;
+  var TAU = Math.PI * 2, wt = 0;
+  function shapeA(u, t, a, Nc) {
+    return a * Math.sin(TAU * Nc * u + t) + a * 0.42 * Math.sin(TAU * (Nc * 2 + 1) * u - t * 0.7 + 1.3) + a * 0.33 * Math.sin(TAU * Math.max(1, Nc - 1) * u + t * 0.4 + 2.1);
+  }
+  function shapeP(u, t, a, Nc) {
+    return a * Math.sin(TAU * (Nc + 1) * u - t * 0.9 + 0.7) + a * 0.42 * Math.sin(TAU * (Nc * 2 + 3) * u + t * 0.6) + a * 0.33 * Math.sin(TAU * Nc * u - t * 0.5 + 1.1);
+  }
+  var BASE = 0.40, LIFT = 0.14;
+  function heightsAt(u) {
+    var sa = shapeA(u, wt, S.amp, S.cycles), sp2 = shapeP(u, wt, S.amp, S.cycles);
+    var hA = BASE + sa;
+    var hP = S.authorOn ? (BASE + sp2 * (1 - S.align) + sa * S.align + (1 - S.align) * LIFT) : (BASE + sp2);
+    return [hA, hP];
+  }
+  function updateTex() {
+    for (var i = 0; i < N; i++) {
+      var hh = heightsAt(i / N);
+      texData[i * 4] = Math.max(0, Math.min(255, hh[0] * 255));
+      texData[i * 4 + 1] = Math.max(0, Math.min(255, hh[1] * 255));
+      texData[i * 4 + 2] = S.authorOn ? 255 : 0;
+      texData[i * 4 + 3] = 255;
+    }
+    tex.needsUpdate = true;
+  }
+
+  // ─── 겹(shell) 하나 = 안개 몸통 + 실 리본 2묶음 + 솜뭉치 2묶음 ───
+  var colA = { value: new THREE.Color() }, colP = { value: new THREE.Color() };
+  var M = 256;
+
+  var mistFS = [
+    'uniform sampler2D uTex; uniform float uTime; uniform vec3 uFog, uColA, uColP, uLightDir;',
+    'uniform float uAlign, uSoft, uDens, uGap, uLit, uK;',
+    'varying vec2 vUv;', NOISE_GLSL,
+    'void main(){',
+    '  float u = vUv.x, v = vUv.y;',
+    '  vec4 s = texture2D(uTex, vec2(u, 0.5));',
+    '  float hA = s.r, hP = s.g, onA = s.b;',
+    '  float ang = u * 6.2831853;',
+    '  vec3 dir = vec3(sin(ang), 0.0, cos(ang));',
+    '  vec3 p = vec3(cos(ang)*3.2, v*2.4 - uTime*0.02, sin(ang)*3.2);',
+    '  float n  = fbm(p);',
+    '  float n2 = fbm(p*1.7 + vec3(5.2, uTime*0.015, 1.3));',
+    '  float misal = 1.0 - uAlign;',
+    '  float wobA = (n - 0.5) * 0.08;',
+    '  float wobP = mix((n2 - 0.5) * 0.06, wobA, uAlign);',
+    '  float hAw = hA + wobA, hPw = hP + wobP;',
+    '  float soft = uSoft;',
+    '  float mistA = (1.0 - smoothstep(hAw - soft, hAw + soft, v)) * onA;',
+    '  float mistP = (1.0 - smoothstep(hPw - soft*0.8, hPw + soft*0.8, v));',
+    '  float cloud = 0.78 + 0.44 * (n2 - 0.5);',
+    // 아래만 짙고 마루로 갈수록 옅게 — 세 겹이 쌓여도 벽이 되지 않는다
+    '  float gradA = mix(1.0, 0.22, clamp(v / max(hAw, 0.001), 0.0, 1.0));',
+    '  float gradP = mix(1.0, 0.22, clamp(v / max(hPw, 0.001), 0.0, 1.0));',
+    '  vec3 cA = mix(uFog * 1.6, uColA, 0.45);',
+    '  vec3 cP = mix(uFog * 1.6, uColP, 0.60);',
+    '  float aP = mistP * uDens * (0.28 + 0.62*misal) * cloud * gradP;',
+    '  float aA = mistA * uDens * cloud * gradA;',
+    '  float gap = clamp(mistP - mistA, 0.0, 1.0) * onA;',
+    '  vec3 col = cP; float a = aP;',
+    '  col = mix(col, cA, aA); a = aA + a * (1.0 - aA);',
+    '  col = mix(col, uColP, gap * uGap * misal * 0.7);',
+    '  a += gap * uGap * misal * 0.25;',
+    '  float crestA = smoothstep(hAw - soft*0.9, hAw, v) * (1.0 - smoothstep(hAw, hAw + soft*0.35, v)) * onA;',
+    '  float crestP = smoothstep(hPw - soft*0.9, hPw, v) * (1.0 - smoothstep(hPw, hPw + soft*0.35, v));',
+    '  col += uColA * crestA * 0.30 + uColP * crestP * (0.20 + 0.3*misal);',
+    // 빛 방향 음영: 주광 쪽 밝고 반대쪽 어둡게
+    '  float lit = 0.5 + 0.5 * dot(dir, uLightDir);',
+    '  col *= mix(1.0, 0.62 + 0.75 * lit, uLit);',
+    // 아래는 지우지 않는다 — 바닥 안개와 이어진다. 맨 밑 4% 만 살짝.
+    '  a *= smoothstep(0.0, 0.04, v) * uK;',
+    '  gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));',
+    '#include <tonemapping_fragment>',
+    '}',
+  ].join('\n');
+
+  var ribbonVS = [
+    'uniform sampler2D uTex; uniform float uTime, uWhich, uR, uH, uSpread, uDepth, uWeave, uWidth;',
+    'attribute float aU, aSide; attribute vec3 aRnd;',
+    'varying float vSide, vU, vOn; varying vec3 vRnd;',
+    'void main(){',
+    '  vec4 s = texture2D(uTex, vec2(aU, 0.5));',
+    '  float h = uWhich < 0.5 ? s.r : s.g;',
+    '  vOn = uWhich < 0.5 ? s.b : 1.0;',
+    '  float ang = aU * 6.2831853;',
+    '  float weave = (sin(ang*3.0 + aRnd.z*6.2831853 + uTime*0.22) * 0.012 + sin(ang*7.0 - aRnd.z*9.0 + uTime*0.16) * 0.006) * uWeave;',
+    // 마루 아래로 쌓인다 (위로는 살짝만) — 안개 둑의 윗면이 마루
+    '  float hv = h - aRnd.y * uSpread + 0.15 * uSpread + weave;',
+    '  float r = uR + (aRnd.x * 2.0 - 1.0) * uDepth - 1.5;',
+    '  float y = (hv - 0.5) * uH + aSide * uWidth * uH * 0.5;',
+    '  vec3 p = vec3(sin(ang) * r, y, cos(ang) * r);',
+    '  vSide = aSide; vU = aU; vRnd = aRnd;',
+    '  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);',
+    '}',
+  ].join('\n');
+  var ribbonFS = [
+    'uniform vec3 uCol, uFog, uLightDir; uniform float uAlpha, uTime, uWisp, uLit, uK;',
+    'varying float vSide, vU, vOn; varying vec3 vRnd;', NOISE_GLSL,
+    'void main(){',
+    '  float soft = pow(max(0.0, 1.0 - vSide*vSide), 1.6);',
+    '  float ang = vU * 6.2831853;',
+    '  vec3 q = vec3(cos(ang)*9.0, vRnd.z*17.0 + uTime*0.05, sin(ang)*9.0);',
+    '  float n = fbm3(q);',
+    '  float wisp = mix(1.0, smoothstep(0.35, 0.75, n), uWisp);',
+    '  float depthK = mix(1.0, 0.45, vRnd.x);',
+    '  float a = uAlpha * soft * wisp * (0.5 + 0.5*fract(vRnd.z*7.31)) * depthK * vOn * uK;',
+    '  vec3 col = mix(uFog * 1.7, uCol, 0.5);',
+    '  float lit = 0.5 + 0.5 * dot(vec3(sin(ang), 0.0, cos(ang)), uLightDir);',
+    '  col *= mix(1.0, 0.62 + 0.75 * lit, uLit);',
+    '  gl_FragColor = vec4(col, a);',
+    '#include <tonemapping_fragment>',
+    '}',
+  ].join('\n');
+
+  var puffVS = [
+    'uniform sampler2D uTex; uniform float uTime, uWhich, uR, uH, uSpread, uDepth, uSize;',
+    'attribute float aU, aSize; attribute vec3 aRnd;',
+    'varying float vOn, vAng, vNear; varying vec3 vRnd;',
+    'void main(){',
+    '  vec4 s = texture2D(uTex, vec2(aU, 0.5));',
+    '  float h = uWhich < 0.5 ? s.r : s.g;',
+    '  vOn = uWhich < 0.5 ? s.b : 1.0;',
+    '  float ang = aU * 6.2831853;',
+    '  float drift = sin(uTime * 0.11 + aRnd.z * 6.2831853) * 0.01;',
+    // 마루 가장자리에만 — 몸통 위가 아니라 마루 언저리에서 솜털처럼 번진다
+    '  float hv = h + (aRnd.y - 0.35) * uSpread * 0.8 + drift;',
+    '  float r = uR + (aRnd.x * 2.0 - 1.0) * uDepth;',
+    '  vec3 p = vec3(sin(ang) * r, (hv - 0.5) * uH, cos(ang) * r);',
+    '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+    '  gl_PointSize = min(420.0, aSize * uSize * uH * 0.9 * (260.0 / max(1.0, -mv.z)));',
+    '  vNear = smoothstep(4.0, 16.0, -mv.z);',
+    '  vAng = ang; vRnd = aRnd;',
+    '  gl_Position = projectionMatrix * mv;',
+    '}',
+  ].join('\n');
+  var puffFS = [
+    'uniform vec3 uCol, uFog, uLightDir; uniform float uAlpha, uTime, uWisp, uLit, uK;',
+    'varying float vOn, vAng, vNear; varying vec3 vRnd;', NOISE_GLSL,
+    'void main(){',
+    '  vec2 c = gl_PointCoord - 0.5;',
+    '  float d = length(c) * 2.0;',
+    // 가장자리 없는 종 모양 — 겹치면 하나로 녹는다 (구멍 얼룩 없음)
+    '  float disc = pow(max(0.0, 1.0 - d), 2.2);',
+    '  float n = fbm3(vec3(gl_PointCoord * 2.0 + vRnd.xy * 10.0, uTime * 0.03 + vRnd.z));',
+    '  float body = mix(1.0, 0.6 + 0.4 * n, uWisp);',
+    '  float depthK = mix(1.0, 0.5, vRnd.x);',
+    '  float a = uAlpha * disc * body * depthK * vOn * vNear * uK;',
+    '  vec3 col = mix(uFog * 1.7, uCol, 0.45);',
+    '  float lit = 0.5 + 0.5 * dot(vec3(sin(vAng), 0.0, cos(vAng)), uLightDir);',
+    '  col *= mix(1.0, 0.62 + 0.75 * lit, uLit);',
+    '  gl_FragColor = vec4(col, a);',
+    '#include <tonemapping_fragment>',
+    '}',
+  ].join('\n');
+
+  function buildRibbonGeo(count) {
+    var vPer = (M + 1) * 2, nV = count * vPer;
+    var aU = new Float32Array(nV), aSide = new Float32Array(nV), aRnd = new Float32Array(nV * 3);
+    var idx = new Uint32Array(count * M * 6);
+    var k = 0, ii = 0;
+    for (var si = 0; si < count; si++) {
+      var rx = Math.random(), ry = Math.random(), rz = Math.random(), base = si * vPer;
+      for (var m = 0; m <= M; m++) {
+        for (var side = 0; side < 2; side++) {
+          aU[k] = m / M; aSide[k] = side ? 1 : -1;
+          aRnd[k * 3] = rx; aRnd[k * 3 + 1] = ry; aRnd[k * 3 + 2] = rz; k++;
+        }
+        if (m < M) {
+          var a0 = base + m * 2, b0 = a0 + 2;
+          idx[ii++] = a0; idx[ii++] = a0 + 1; idx[ii++] = b0;
+          idx[ii++] = a0 + 1; idx[ii++] = b0 + 1; idx[ii++] = b0;
+        }
+      }
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nV * 3), 3));
+    g.setAttribute('aU', new THREE.BufferAttribute(aU, 1));
+    g.setAttribute('aSide', new THREE.BufferAttribute(aSide, 1));
+    g.setAttribute('aRnd', new THREE.BufferAttribute(aRnd, 3));
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    return g;
+  }
+  function buildPuffGeo(count) {
+    var aU = new Float32Array(count), aSize = new Float32Array(count), aRnd = new Float32Array(count * 3);
+    for (var i = 0; i < count; i++) {
+      aU[i] = Math.random(); aSize[i] = 0.25 + Math.random() * 0.45;
+      aRnd[i * 3] = Math.random(); aRnd[i * 3 + 1] = Math.random(); aRnd[i * 3 + 2] = Math.random();
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    g.setAttribute('aU', new THREE.BufferAttribute(aU, 1));
+    g.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
+    g.setAttribute('aRnd', new THREE.BufferAttribute(aRnd, 3));
+    return g;
+  }
+
+  var shells = [];
+  function makeShell(radius, k) {
+    var grp = new THREE.Group();
+    var mistUni = {
+      uTex: { value: tex }, uTime: uTime, uFog: uFog, uColA: colA, uColP: colP, uLightDir: uLightDir, uLit: uLit,
+      uAlign: { value: S.align }, uSoft: { value: S.soft }, uDens: { value: S.dens }, uGap: { value: S.gap }, uK: { value: k },
+    };
+    var mist = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, S.height, 256, 1, true), new THREE.ShaderMaterial({
+      uniforms: mistUni, side: THREE.BackSide, transparent: true, depthWrite: false, fog: false,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: mistFS,
+    }));
+    mist.renderOrder = 5; mist.frustumCulled = false; grp.add(mist);
+
+    function bundle(which, col) {
+      var common = { uTex: { value: tex }, uTime: uTime, uWhich: { value: which }, uR: { value: radius }, uH: { value: S.height },
+        uSpread: { value: S.spread }, uDepth: { value: S.depth }, uWeave: { value: S.weave }, uWidth: { value: S.width },
+        uAlpha: { value: S.glow }, uWisp: { value: S.wisp }, uCol: col, uFog: uFog, uLightDir: uLightDir, uLit: uLit, uK: { value: k } };
+      var ribbon = new THREE.Mesh(buildRibbonGeo(S.strands), new THREE.ShaderMaterial({ uniforms: common, vertexShader: ribbonVS, fragmentShader: ribbonFS,
+        transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+      ribbon.renderOrder = 6; ribbon.frustumCulled = false; grp.add(ribbon);
+      var puffUni = Object.assign({}, common, { uAlpha: { value: S.puffAlpha }, uSize: { value: S.puffSize } });
+      var puff = new THREE.Points(buildPuffGeo(S.puffs), new THREE.ShaderMaterial({ uniforms: puffUni, vertexShader: puffVS, fragmentShader: puffFS,
+        transparent: true, depthWrite: false, fog: false }));
+      puff.renderOrder = 7; puff.frustumCulled = false; grp.add(puff);
+      return { ribbon: ribbon, puff: puff, uni: common, puffUni: puffUni };
+    }
+    var A = bundle(0, colA), P2 = bundle(1, colP);
+    scene.add(grp);
+    return { grp: grp, mist: mist, mistUni: mistUni, A: A, P: P2, radius: radius, y: null };
+  }
+  function disposeShell(sh) {
+    scene.remove(sh.grp);
+    sh.mist.geometry.dispose(); sh.mist.material.dispose();
+    [sh.A, sh.P].forEach(function (b) { b.ribbon.geometry.dispose(); b.ribbon.material.dispose(); b.puff.geometry.dispose(); b.puff.material.dispose(); });
+  }
+  function buildShells() {
+    shells.forEach(disposeShell); shells = [];
+    var n = S.shells;
+    for (var i = 0; i < n; i++) {
+      // 가장 먼 겹 = radius, 안쪽 겹은 0.55 배까지. 안쪽일수록 옅게(k).
+      var t = n === 1 ? 1 : i / (n - 1);
+      var r = S.radius * (0.55 + 0.45 * t);
+      var k = n === 1 ? 1 : (0.5 + 0.5 * t);
+      shells.push(makeShell(r, k));
+    }
+  }
+  buildShells();
+  function eachUni(fn) { shells.forEach(function (sh) { fn(sh.mistUni, 'mist'); fn(sh.A.uni, 'bundle'); fn(sh.P.uni, 'bundle'); fn(sh.A.puffUni, 'puff'); fn(sh.P.puffUni, 'puff'); }); }
+
+  // ─── 골짜기 솜뭉치 (지형 위 고정, 느리게 표류) ───
+  var valleyPuff = null;
+  var vPuffVS = [
+    'uniform float uTime, uSize; attribute float aSize; attribute vec3 aRnd;',
+    'varying float vNear; varying vec3 vRnd;',
+    'void main(){',
+    '  vec3 p = position + vec3(sin(uTime * 0.07 + aRnd.z * 6.2831853), sin(uTime * 0.05 + aRnd.x * 6.2831853) * 0.3, cos(uTime * 0.06 + aRnd.y * 6.2831853)) * 1.5;',
+    '  vec4 mv = modelViewMatrix * vec4(p, 1.0);',
+    '  gl_PointSize = min(420.0, aSize * uSize * 30.0 * (260.0 / max(1.0, -mv.z)));',
+    '  vNear = smoothstep(3.0, 14.0, -mv.z);',
+    '  vRnd = aRnd;',
+    '  gl_Position = projectionMatrix * mv;',
+    '}',
+  ].join('\n');
+  var vPuffFS = [
+    'uniform vec3 uFog; uniform float uAlpha, uTime, uWisp;',
+    'varying float vNear; varying vec3 vRnd;', NOISE_GLSL,
+    'void main(){',
+    '  vec2 c = gl_PointCoord - 0.5;',
+    '  float d = length(c) * 2.0;',
+    '  float disc = pow(max(0.0, 1.0 - d), 2.2);',
+    '  float n = fbm3(vec3(gl_PointCoord * 2.0 + vRnd.xy * 10.0, uTime * 0.025 + vRnd.z));',
+    '  float body = mix(1.0, 0.6 + 0.4 * n, uWisp);',
+    '  float a = uAlpha * disc * body * vNear;',
+    '  gl_FragColor = vec4(uFog * 1.7, a);',
+    '#include <tonemapping_fragment>',
+    '}',
+  ].join('\n');
+  var vPuffUni = { uTime: uTime, uSize: { value: 1.6 }, uFog: uFog, uAlpha: { value: 0.10 }, uWisp: { value: S.wisp } };
+  function buildValleyPuffs() {
+    if (valleyPuff) { scene.remove(valleyPuff); valleyPuff.geometry.dispose(); }
+    var want = S.valleyPuffs, got = 0, tries = 0;
+    var P3 = [], sz = [], rnd = [];
+    while (got < want && tries < want * 30) {
+      tries++;
+      var x = (Math.random() * 2 - 1) * 54, z = (Math.random() * 2 - 1) * 54, h = terrainH(x, z);
+      if (h > S.valleyTop - 0.5) continue;
+      P3.push(x, h + 0.8 + Math.random() * (S.valleyTop - h) * 0.7, z);
+      sz.push(0.35 + Math.random() * 0.65); rnd.push(Math.random(), Math.random(), Math.random()); got++;
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(P3), 3));
+    g.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(sz), 1));
+    g.setAttribute('aRnd', new THREE.BufferAttribute(new Float32Array(rnd), 3));
+    valleyPuff = new THREE.Points(g, new THREE.ShaderMaterial({ uniforms: vPuffUni, vertexShader: vPuffVS, fragmentShader: vPuffFS, transparent: true, depthWrite: false, fog: false }));
+    valleyPuff.renderOrder = 4; valleyPuff.frustumCulled = false;
+    scene.add(valleyPuff);
+  }
+  buildValleyPuffs();
+
+  // ─── 종이띠 (현행 화면 아래 파동의 근사) ───
+  var strip = document.getElementById('strip'), sctx = strip.getContext('2d');
+  function drawStrip() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = strip.clientWidth, h = strip.clientHeight;
+    if (strip.width !== Math.round(w * dpr) || strip.height !== Math.round(h * dpr)) { strip.width = Math.round(w * dpr); strip.height = Math.round(h * dpr); }
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sctx.clearRect(0, 0, w, h);
+    var fovFrac = 0.22, cA = EMO[S.colA], cP = EMO[S.colP];
+    function line(slotY, ampPx, col, lw, fn) {
+      sctx.beginPath();
+      for (var x = 0; x <= w; x += 2) {
+        var u = (x / w) * fovFrac, y = slotY - fn(u) * ampPx;
+        if (x === 0) sctx.moveTo(x, y); else sctx.lineTo(x, y);
+      }
+      sctx.strokeStyle = col; sctx.lineWidth = lw; sctx.shadowColor = col; sctx.shadowBlur = 16; sctx.stroke();
+    }
+    var mixW = function (c, k) { return 'rgba(' + Math.round(c.r + (255 - c.r) * k) + ',' + Math.round(c.g + (255 - c.g) * k) + ',' + Math.round(c.b + (255 - c.b) * k) + ',0.9)'; };
+    if (S.authorOn) line(h * 0.3, h * 0.55, mixW(cA, 0.5), 2, function (u) { return shapeA(u, wt, S.amp, S.cycles) * 1.6; });
+    line(h * 0.7, h * 0.55, mixW(cP, 0.6), 2.5, function (u) { return shapeP(u, wt, S.amp, S.cycles) * 1.6; });
+  }
+
+  // ─── 1인칭 시점 ───
+  var EYE = 1.6, P = { x: 0, z: 22, yaw: 0, pitch: 0 }, keys = {};
+  // 시작 자리 = 서쪽 봉우리 어깨. 낮은 골짜기에서 시작하면 앞산이 띠를 가려 골짜기 틈으로만 보인다.
+  function resetView() { P.x = -20; P.z = -14; P.yaw = -2.18; P.pitch = 0.0; }
+  resetView();
+  var drag = null;
+  canvas.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); canvas.classList.add('dragging'); });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    P.yaw -= (e.clientX - drag.x) * 0.0028; P.pitch -= (e.clientY - drag.y) * 0.0028;
+    P.pitch = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, P.pitch));
+    drag = { x: e.clientX, y: e.clientY };
+  });
+  function endDrag() { drag = null; canvas.classList.remove('dragging'); }
+  canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
+  window.addEventListener('keydown', function (e) { if (e.target && e.target.tagName === 'INPUT') return; keys[e.code] = true; });
+  window.addEventListener('keyup', function (e) { keys[e.code] = false; });
+
+  var bandY = null;
+  function step(dt) {
+    var fw = { x: -Math.sin(P.yaw), z: -Math.cos(P.yaw) }, rt = { x: Math.cos(P.yaw), z: -Math.sin(P.yaw) };
+    var mx = 0, mz = 0;
+    if (keys.KeyW || keys.ArrowUp) { mx += fw.x; mz += fw.z; }
+    if (keys.KeyS || keys.ArrowDown) { mx -= fw.x; mz -= fw.z; }
+    if (keys.KeyA || keys.ArrowLeft) { mx -= rt.x; mz -= rt.z; }
+    if (keys.KeyD || keys.ArrowRight) { mx += rt.x; mz += rt.z; }
+    var len = Math.hypot(mx, mz); if (len > 1) { mx /= len; mz /= len; }
+    P.x = Math.max(-54, Math.min(54, P.x + mx * 6 * dt));
+    P.z = Math.max(-54, Math.min(54, P.z + mz * 6 * dt));
+    var ey = terrainH(P.x, P.z) + EYE;
+    camera.position.set(P.x, ey, P.z);
+    camera.rotation.order = 'YXZ'; camera.rotation.set(P.pitch, P.yaw, 0);
+    skyGrp.position.copy(camera.position);
+
+    // 띠 중심을 눈높이보다 위에 둬서 마루가 눈높이 조금 위에 온다. 앞산에 다 가려지지 않게.
+    var targetY = ey + 0.22 * S.height;
+    if (bandY === null) bandY = targetY; else bandY += (targetY - bandY) * 0.04;
+    shells.forEach(function (sh) { sh.grp.position.set(P.x, bandY, P.z); sh.grp.visible = S.bandOn; });
+    if (valleyPuff) valleyPuff.visible = S.valleyOn;
+  }
+
+  // ─── 루프 ───
+  var last = performance.now(), tAcc = 0;
+  function frame(now) {
+    var dt = Math.min((now - last) / 1000, 0.1); last = now;
+    tAcc += dt; wt += dt * S.speed * 0.35;
+    step(dt);
+    updateTex();
+    uTime.value = tAcc;
+    pinLights.forEach(function (p) { p.l.intensity = 0.45 + 0.2 * Math.sin(tAcc * 0.6 + p.ph); });
+    renderer.render(scene, camera);
+    if (S.stripOn) drawStrip();
+    requestAnimationFrame(frame);
+  }
+
+  function resize() {
+    var w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize); resize();
+
+  // ─── 조절판 배선 ───
+  function $(id) { return document.getElementById(id); }
+  var f2 = function (x) { return x.toFixed(2); }, f0 = function (x) { return String(Math.round(x)); }, f1 = function (x) { return x.toFixed(1); }, f3 = function (x) { return x.toFixed(3).replace(/0$/, ''); };
+  var REBUILD = { shells: 1, radius: 1, height: 1, strands: 1, puffs: 1 };
+  function bindRange(id, key, fmt) {
+    var el = $(id), v = $(id + 'V');
+    el.addEventListener('input', function () {
+      S[key] = parseFloat(el.value); v.textContent = fmt(S[key]);
+      if (REBUILD[key]) { buildShells(); return; }
+      if (key === 'valleyTop') { uVal.uTop.value = S.valleyTop; buildValleyPuffs(); }
+      if (key === 'valleyDens') uVal.uDens.value = S.valleyDens;
+      if (key === 'valleyPuffs') buildValleyPuffs();
+      if (key === 'lit') uLit.value = S.lit;
+      if (key === 'exposure') renderer.toneMappingExposure = S.exposure;
+      if (key === 'wisp') vPuffUni.uWisp.value = S.wisp;
+      eachUni(function (u, kind) {
+        if (kind === 'mist') {
+          if (key === 'align') u.uAlign.value = S.align;
+          if (key === 'soft') u.uSoft.value = S.soft;
+          if (key === 'dens') u.uDens.value = S.dens;
+          if (key === 'gap') u.uGap.value = S.gap;
+        } else {
+          if (key === 'spread') u.uSpread.value = S.spread;
+          if (key === 'depth') u.uDepth.value = S.depth;
+          if (key === 'weave' && u.uWeave) u.uWeave.value = S.weave;
+          if (key === 'width' && u.uWidth) u.uWidth.value = S.width;
+          if (key === 'wisp') u.uWisp.value = S.wisp;
+          if (key === 'glow' && kind === 'bundle') u.uAlpha.value = S.glow;
+          if (key === 'puffAlpha' && kind === 'puff') u.uAlpha.value = S.puffAlpha;
+          if (key === 'puffSize' && kind === 'puff') u.uSize.value = S.puffSize;
+        }
+      });
+    });
+    v.textContent = fmt(S[key]);
+  }
+  bindRange('align', 'align', f2);
+  bindRange('valleyTop', 'valleyTop', f1); bindRange('valleyDens', 'valleyDens', f2); bindRange('valleyPuffs', 'valleyPuffs', f0);
+  bindRange('shells', 'shells', f0); bindRange('radius', 'radius', f0); bindRange('height', 'height', f0);
+  bindRange('dens', 'dens', f2); bindRange('soft', 'soft', f3); bindRange('gap', 'gap', f2);
+  bindRange('strands', 'strands', f0); bindRange('width', 'width', f3); bindRange('glow', 'glow', f2);
+  bindRange('puffs', 'puffs', f0); bindRange('puffSize', 'puffSize', f2); bindRange('puffAlpha', 'puffAlpha', f2);
+  bindRange('wisp', 'wisp', f2); bindRange('spread', 'spread', f2); bindRange('depth', 'depth', f0); bindRange('weave', 'weave', f2);
+  bindRange('amp', 'amp', f3); bindRange('cycles', 'cycles', f0); bindRange('speed', 'speed', f2);
+  bindRange('exposure', 'exposure', f2); bindRange('lit', 'lit', f2);
+
+  $('authorOn').addEventListener('change', function () { S.authorOn = this.checked; });
+  $('bandOn').addEventListener('change', function () { S.bandOn = this.checked; });
+  $('stripOn').addEventListener('change', function () { S.stripOn = this.checked; strip.hidden = !S.stripOn; });
+  $('valleyOn').addEventListener('change', function () { S.valleyOn = this.checked; uVal.uOn.value = S.valleyOn ? 1 : 0; });
+  function applyFog() {
+    var c = S.matchFog ? FOG_MATCH : FOG_BASE;
+    scene.fog.color.setHex(c); uFog.value.setHex(c);
+  }
+  $('matchFog').addEventListener('change', function () { S.matchFog = this.checked; applyFog(); });
+  applyFog();
+  function applyWorld() {
+    renderer.toneMapping = S.tone ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    renderer.toneMappingExposure = S.exposure;
+    scene.traverse(function (o) { if (o.material) o.material.needsUpdate = true; });
+    if (S.lowSun) key.position.set(60, 14, 30); else key.position.set(40, 60, 30);
+    lightDir.set(key.position.x, 0, key.position.z).normalize();
+  }
+  $('tone').addEventListener('change', function () { S.tone = this.checked; applyWorld(); });
+  $('lowSun').addEventListener('change', function () { S.lowSun = this.checked; applyWorld(); });
+  applyWorld();
+  $('resetView').addEventListener('click', resetView);
+  var panel = $('panel');
+  $('toggle').addEventListener('click', function () { panel.classList.toggle('closed'); document.body.classList.toggle('panel-closed', panel.classList.contains('closed')); });
+  if (window.innerWidth < 640) { panel.classList.add('closed'); document.body.classList.add('panel-closed'); }
+
+  function makeChips(holder, key, uni) {
+    var wrap = $(holder);
+    Object.keys(EMO).forEach(function (k) {
+      var e = EMO[k], b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip' + (S[key] === k ? ' on' : ''); b.setAttribute('data-k', k);
+      b.innerHTML = '<i style="background:rgb(' + e.r + ',' + e.g + ',' + e.b + ')"></i>' + e.name;
+      b.addEventListener('click', function () {
+        S[key] = k; uni.value.setRGB(e.r / 255, e.g / 255, e.b / 255);
+        Array.prototype.forEach.call(wrap.children, function (c) { c.classList.toggle('on', c.getAttribute('data-k') === k); });
+      });
+      wrap.appendChild(b);
+    });
+    var e0 = EMO[S[key]]; uni.value.setRGB(e0.r / 255, e0.g / 255, e0.b / 255);
+  }
+  makeChips('chipsA', 'colA', colA);
+  makeChips('chipsP', 'colP', colP);
+
+  requestAnimationFrame(frame);
+})();
+</script>

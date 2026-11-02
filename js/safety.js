@@ -52,6 +52,18 @@ export const SAFETY_RESOURCES = [
   }
 ];
 
+// 260909 RECORD v4 §5-1 안전 단일화 — recordChat.js 에만 있던 한국 상담전화를 여기로 이관.
+export const SAFETY_RESOURCES_KO = [
+  { name: "자살예방 상담전화", number: "109", desc: "24시간", action: "tel:109" },
+  { name: "정신건강 위기상담전화", number: "1577-0199", desc: "", action: "tel:15770199" },
+  { name: "청소년 상담", number: "1388", desc: "", action: "tel:1388" },
+];
+
+/** 언어별 상담 자원 — ko 면 한국, 그 외 미국 목록. */
+export function getSafetyResources(lang) {
+  return String(lang || '').slice(0, 2) === 'ko' ? SAFETY_RESOURCES_KO : SAFETY_RESOURCES;
+}
+
 // ── Tense detection (시제 판별) ──
 // 키워드 주변 텍스트에서 과거/현재·미래 의도를 판별
 const KO_PAST = /했었|했다|었다|였다|한 적|적이 있|그때|예전에|그날|어렸을|과거에|돌아보|기억이|기억에/;
@@ -269,6 +281,8 @@ if (typeof window !== 'undefined') {
     safetyForAbsorb,
     detectCrisis,
     ABSORB_GENERIC_KIN,
+    getSafetyResources,   // 260909 RECORD v4
+    resetSafetySession,
   };
 }
 

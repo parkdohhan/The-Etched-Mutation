@@ -12,6 +12,17 @@ import { emotionVectorToWaveStyle } from '../shared/math.js';
 const engine = new ByeoriEngine();
 const visualizer = new Visualizer();
 
+// ─── RECORD 직행 단축키 Ctrl+Shift+B (260909) ─────────────────────────
+// index.html?action=record 로 이동 — index.js 가 오프닝을 끊고 RECORD 문을 연다.
+// 진입점 3곳(index / play-test / demoFlow) 동일 키. 관객 UI 노출 없음.
+window.addEventListener('keydown', function (e) {
+  if (!(e.ctrlKey && e.shiftKey) || e.altKey || e.metaKey) return;
+  if ((e.code || '') !== 'KeyB' && String(e.key || '').toLowerCase() !== 'b') return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  window.location.href = 'index.html?action=record';
+}, true);
+
 
 const MONOLOGUES = [
   { text: 'I shouldn\'t have done that', entryLine: 'I thought that was the right thing at the time.', vad: { v: -0.5, a: 0.2, d: -0.6 }, x: 0.3, y: 0.35 },

@@ -608,6 +608,7 @@
          (#sceneViewer / .scene-main / .scene-content) no longer exists in this shell.
          Scene play lives in play-test.html. -->
     <!-- confessionV3.js removed — replaced by js/app/recordChat.js (ES module, loaded from index.js) -->
-    <script type="module" src="js/index.js?v=260809f"></script><!-- 260809f 테스터 오프닝 = 기본값 (testerMode.js 기본 ON, 끄기 ?tester=0) -->
+    <script src="js/ui/lumen_dialog_phase1.js?v=260909a"></script><!-- 260909 RECORD v4: 플레이 대화 껍데기(자막 상자·타이핑·입력칸)를 recordPlay.js 가 shell 로 빌려 쓴다. 전역 정의만 하고 스스로 아무것도 띄우지 않는다 -->
+    <script type="module" src="js/index.js?v=260909c"></script><!-- 260909c 오염 기준선 record-seal 이관(confession.js autoCreateFirstPlay skip) / 260909b RECORD v4 새 회로(recordPlay.js) + 씨앗 공개 규칙 / 260909a Ctrl+Shift+B RECORD 직행 뒷문 + ?action=record -->
 </body>
 </html>

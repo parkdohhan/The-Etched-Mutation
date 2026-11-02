@@ -2173,5 +2173,27 @@
       maxFreeDialogTurns: DEFAULTS.maxFreeDialogTurns,
       sceneCycleWarnMs: DEFAULTS.sceneCycleWarnMs,
     },
+    // 260909 RECORD v4 §5-1 — 화면 껍데기(자막 상자·타이핑·입력칸)만 빌려주는 창구.
+    //   소비자 = js/app/recordPlay.js ("또다른 나" 대화, 씬 없는 진입). 플레이 흐름(start)은 불변 —
+    //   여기 묶은 함수들은 전부 기존 내부 함수의 참조일 뿐 동작 변경 0. 롤백 = 이 블록 삭제.
+    shell: {
+      buildOverlay: _buildOverlay,          // (id) → overlay 요소 (없으면 생성, 있으면 재사용)
+      playLine: _playLine,                  // (overlay, text, who:'ghost'|'player') → Promise (다 읽힐 때까지)
+      enqueueLine: _enqueueLine,            // 큐에 이어 붙이기
+      subtitleIdle: _subtitleIdle,          // 큐가 빌 때까지의 Promise
+      renderTextInput: _renderTextInput,    // (overlay, {placeholder, submitLabel}, onSubmit)
+      showLoading: _showLoadingBubble,      // (overlay) → { stop }
+      addSystemMeta: _addSystemMeta,        // (overlay, text) 메타 존 한 줄
+      isNarrow: _mq,
+      setGhostLabel: function (label) {     // 이름표 — record 에선 '또다른 나'
+        _sub.ghostLabel = String(label || '');
+        _sub.ghostTrueName = ''; _sub.nameRevealed = false; _sub.justRevealed = false;
+      },
+      resetChain: function () { _sub.chain = Promise.resolve(); _sub.advance = null; _sub.ff = false; },
+      clearInputArea: function (overlay) {
+        var a = overlay && overlay.querySelector('[id$="-input-area"]');
+        if (a) a.innerHTML = '';
+      },
+    },
   };
 })(typeof window !== 'undefined' ? window : globalThis);

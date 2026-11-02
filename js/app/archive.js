@@ -804,7 +804,10 @@ async function loadMemoriesFromSupabase() {
       ...fromSupabaseOther.map(m => ({ ...m, live_session_id: m.live_session_id || null, is_live: !!m.is_live }))
     ];
     console.log('[loadMemoriesFromSupabase] merged', merged.length, 'memories (local E-001/E-002/E-003 + Supabase others)');
-    appStore.setState({ allMemoriesData: merged });
+    // 260909 RECORD v4 §6-①: v4 기록 씨앗(Fetus)은 기록자 본인에게만 — PLAY 풀·ARCHIVE 목록 공통.
+    const { filterVisibleMemories } = await import('../shared/tem_record_visibility.js?v=260909a');
+    const _uid = (appStore.getState().currentUser && appStore.getState().currentUser.id) || null;
+    appStore.setState({ allMemoriesData: filterVisibleMemories(merged, { userId: _uid }) });
     const state = appStore.getState();
     sortMemories(state.currentSort);
   } catch (error) {

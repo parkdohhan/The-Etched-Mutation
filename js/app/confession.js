@@ -1190,6 +1190,19 @@ async function startBeginner() {
     // 로그인 없이 대화 허용 — 저장 시점에만 로그인 요구
     appStore.setState({ currentMode: 'record' });
 
+    // 260909 RECORD v4 — 기본 = 새 회로(js/app/recordPlay.js: 또다른 나 + 17축 + era 절단 + 씨앗 + 무대 진입).
+    //   옛 대화 화면(recordChat.js)은 지우지 않았다: ?record_old=1 또는 localStorage tem_record_old=1 로 연다 (롤백 한 줄).
+    let _useOldRecord = false;
+    try {
+        const _q = new URLSearchParams(location.search);
+        _useOldRecord = _q.get('record_old') === '1' || localStorage.getItem('tem_record_old') === '1';
+    } catch (_) {}
+    if (!_useOldRecord) {
+        const { startRecordPlay } = await import('./recordPlay.js?v=260909b');
+        await startRecordPlay({ lang: getCurrentLanguage(), onCancel: () => showConfessionHub() });
+        return;
+    }
+
     const container = document.getElementById('recordChatContainer');
     if (!container) return;
     container.classList.remove('hidden');
@@ -1465,7 +1478,7 @@ if (typeof window !== 'undefined') window.temRequestObjectModels = requestObject
  * 기록자의 감정 = 원본 감정이므로 alignment = 1.0 (자기 자신과의 완전한 정렬).
  * 이 play가 depth=1, 오염의 시작점을 만든다.
  */
-async function _autoCreateFirstPlay(memoryId, sceneData) {
+async function _autoCreateFirstPlay(memoryId, sceneData, opts = {}) {
     try {
         const supabase = getSupabaseClient();
         if (!supabase || !memoryId) return;
@@ -1513,10 +1526,14 @@ async function _autoCreateFirstPlay(memoryId, sceneData) {
         });
 
         // Persist contamination (depth=1 established)
-        const { networkService } = await import('../services/NetworkService.js');
-        await networkService.updateMemoryContamination(memoryId, nextCont);
+        // 260909 RECORD v4: record-seal 이 service_role 로 기준선을 이미 썼으면 건너뛴다.
+        //   (anon 은 memories UPDATE RLS 에 막혀 42501 — 옛 흐름부터 있던 소음. 실측 260909)
+        if (!opts.skipContamination) {
+            const { networkService } = await import('../services/NetworkService.js');
+            await networkService.updateMemoryContamination(memoryId, nextCont);
+        }
 
-        console.log('[Record] First Play created for memory', memoryId, '— depth:', nextCont.cont_depth);
+        console.log('[Record] First Play created for memory', memoryId, '— depth:', nextCont.cont_depth, opts.skipContamination ? '(baseline written by record-seal)' : '');
     } catch (e) {
         console.warn('[Record] First Play creation failed (non-fatal):', e.message);
     }
@@ -2034,6 +2051,7 @@ export {
     handleRecordComplete,
     saveRecordMemory,
     endRecordChat,
+    _autoCreateFirstPlay as autoCreateFirstPlay,   // 260909 RECORD v4 — recordPlay.js 후단 재사용 (기록 = 첫 플레이, alignment 1.0)
 
     // Ritual
     startRitual,

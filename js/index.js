@@ -28,6 +28,7 @@ import {
     fadeInSound, fadeOutSound, setupLoopWithCrossfade,
     startOpeningSequence, startOpeningWaveAnimation,
     skipToIntro, handleOpeningKeydown, playNpcIntro,
+    exitOpeningToMenu,
 } from './app/opening.js';
 import {
     getPendingSaveAction, setPendingSaveAction,
@@ -299,6 +300,12 @@ async function initApp() {
         memory: MemoryService,
         ai: AIService
     });
+    // 260909: ?action=record (play-test / demo 에서 Ctrl+Shift+B) — 오프닝이 막 켜진 직후에 끊고 RECORD 문으로.
+    //   bindEvents 가 오프닝을 동기적으로 띄운 뒤라야 끊을 대상이 있으므로 여기(바로 아래)에서 처리.
+    if (window.__temPendingRecordEntry) {
+        window.__temPendingRecordEntry = false;
+        setTimeout(enterRecordByShortcut, 50);
+    }
     if (fromDemo) {
         window.openingSkipped = true;
         if (window.openingWaveAnimationId) { cancelAnimationFrame(window.openingWaveAnimationId); window.openingWaveAnimationId = null; }
@@ -806,9 +813,46 @@ window.handleOpeningKeydown = handleOpeningKeydown;
           if (usernameInput) usernameInput.focus();
         }
       }, 500);
+    } else if (params.get('action') === 'record') {
+      // 260909: play-test / demo-sequence 의 Ctrl+Shift+B 가 여기로 보낸다.
+      //   실제 진입은 initApp 이 bindEvents(오프닝 기동)를 마친 직후 — 플래그만 세운다.
+      params.delete('action');
+      var cleanR = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (cleanR ? '?' + cleanR : ''));
+      window.__temPendingRecordEntry = true;
     }
   } catch (_) {}
 })();
+
+// ─── RECORD 직행 단축키 Ctrl+Shift+B (260909) ────────────────────────────
+// 테스터 오프닝이 기본값(260809)이라 맨 주소로 열면 메뉴(RECORD 버튼)를 거치지 않고
+// 대표 기억 무대로 직행한다. 작가가 기록 화면에 들어갈 뒷문 — 관객 UI 에는 노출 없음.
+// 오프닝 진행 중이면 ← 메뉴 버튼과 같은 경로로 끊고(play-test 점프 예약 취소), RECORD 문 화면을 띄운다.
+function _isShown(id) {
+    var el = document.getElementById(id);
+    if (!el) return false;
+    try { return getComputedStyle(el).display !== 'none'; } catch (_) { return false; }
+}
+function enterRecordByShortcut() {
+    // 이미 RECORD 안(문 화면·대화 화면·v4 회로)이면 아무것도 안 한다 — 대화 도중 재초기화 방지.
+    if (_isShown('recordChatContainer') || _isShown('confessionHub') || document.getElementById('temRecordPlay')) return;
+    try { exitOpeningToMenu(); } catch (e) { console.warn('[record-shortcut] 오프닝 중단 실패 (무시)', e); }
+    try {
+        var s = document.getElementById('openingSound');
+        if (s && !s.paused) fadeOutSound(s, 500);
+    } catch (_) {}
+    console.info('[record-shortcut] Ctrl+Shift+B → RECORD 문');
+    if (typeof showConfessionHub === 'function') showConfessionHub();
+}
+window.enterRecordByShortcut = enterRecordByShortcut;
+window.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey && e.shiftKey) || e.altKey || e.metaKey) return;
+    // e.code = 물리 키(자판 언어 무관). e.key 는 한/영·대소문자에 따라 흔들려 보조로만.
+    if ((e.code || '') !== 'KeyB' && String(e.key || '').toLowerCase() !== 'b') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    enterRecordByShortcut();
+}, true); // capture: 오프닝·캐러셀 등 다른 keydown 리스너보다 먼저
 
 
 // global 스코프 노출

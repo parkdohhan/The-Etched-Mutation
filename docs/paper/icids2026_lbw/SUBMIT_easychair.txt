@@ -1,0 +1,32 @@
+ICIDS 2026 Late-Breaking Works — EasyChair 붙여넣기용 (2026-09-15 갱신, 익명화판)
+제출처: https://easychair.org/my/conference?conf=icids2026
+마감: 2026-09-15 (14일에서 연장 확인). 시간대 미표기. 안전선 = 방콕 15일 자정 = 한국 16일 01:59.
+업로드 파일: ICIDS2026_LBW_anonymous.pdf (11쪽, 본문 약 2,500단어, 저자·시스템명 모두 익명)
+※ OLD_named_260909_DO_NOT_SUBMIT.pdf 는 실명판. 올리지 말 것.
+
+=== Title ===
+Measuring Emotional Trajectory Divergence in Interactive Narrative: Alignment and Contamination Metrics in Project M
+
+=== Abstract ===
+Interactive narratives promise every participant a different experience, yet that difference is almost always described as a difference in plot branches. We present Project M (PM), a working browser-based interactive narrative in which the participant's emotional trajectory, not a branching graph, determines which scenes become accessible each turn, together with two computable metrics for how that trajectory departs from the author's: a real-time alignment score that compares the shape of emotional change independently of its level, and a two-axis contamination vector that separates directional drift from single-point fixation. Trajectories that reach contact with the author's are converted automatically into interpretive fragments for later participants. A 193-play persona simulation shows that the alignment metric discriminates personality profiles (r = 0.55–0.63) while exposing a ceiling bias in LLM-simulated readers; a three-participant human pilot (21 scene-plays) exhibits the low tail the simulation lacked and shows three readers diverging onto distinct scene sequences without any authored branch.
+
+=== Keywords (한 줄에 하나씩) ===
+Interactive narrative
+Emotional trajectory
+Affective computing
+Reader modelling
+Drama management
+
+=== Authors 칸 ===
+First name / Last name: 실명
+Email: 본인 이메일
+Country: Korea, Republic of
+Organization: Independent Researcher   (소속 기관 없을 때 학회 표준 표기. "Student"는 기관명이 아니라서 부적합)
+Web page: 비워도 됨
+Corresponding author: 체크
+※ 이 칸은 심사위원에게 안 보임. 채택 시 최종본(camera-ready) 저자줄은
+   "Dohan Park, Independent Researcher, Seoul, Republic of Korea" 형태로 넣으면 됨.
+
+=== ORCID (2026-09-15 생성) ===
+https://orcid.org/0009-0002-1385-8260
+이름 표기 = ORCID 기록의 Names 칸과 동일하게 맞출 것 (대소문자 포함). 채택 시 camera-ready 저자줄에 \orcidID{0009-0002-1385-8260} 로 삽입.

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;padding:0;background:#ffffff;overflow:hidden;}
+  .viz-root{
+    color-scheme: light;
+    width:2400px; height:1560px; background:#ffffff;
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  }
+  text{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif; font-variant-numeric:tabular-nums;}
+</style></head>
+<body><div class="viz-root"><svg id="fig" width="2400" height="1560" viewBox="0 0 2400 1560"></svg></div>
+<script>
+(function(){
+  const svg = document.getElementById('fig');
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, text){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!=null) e.textContent=text; svg.appendChild(e); return e; }
+
+  // bins: index 1..20, each [ (i-1)*0.05, i*0.05 )
+  const simN = {6:2,7:1,8:2,9:4,10:3,11:2,12:4,13:4,14:10,15:19,16:29,17:16,18:33,19:47,20:17}; // n=193
+  const humN = {3:2,4:1,7:2,8:1,9:1,10:1,11:1,12:1,13:4,14:3,15:3,16:1};                        // n=21
+  const SIM_TOT=193, HUM_TOT=21;
+
+  const ML=190, MR=90, plotW=2400-ML-MR;
+  const panels=[
+    {y0:160, h:500, data:simN, tot:SIM_TOT, color:'#2a78d6', label:'Persona simulation', n:'n = 193', mean:0.809,
+     tailNote:'0 of 193 below 0.25', meanLabel:'mean 0.809'},
+    {y0:890, h:500, data:humN, tot:HUM_TOT, color:'#eb6834', label:'Human pilot (closed alpha, 3 runs)', n:'n = 21', mean:0.517,
+     tailNote:'3 of 21 (14.3%) below 0.25', meanLabel:'mean 0.517'},
+  ];
+  const YMAX=25; // percent
+  const xPos = v => ML + v*plotW;
+
+  panels.forEach(p=>{
+    const yPos = pct => p.y0 + p.h - (pct/YMAX)*p.h;
+    // panel header: color chip + label (identity not by color alone)
+    el('rect',{x:ML, y:p.y0-88, width:40, height:40, rx:8, fill:p.color});
+    el('text',{x:ML+58, y:p.y0-54, 'font-size':52, 'font-weight':'bold', fill:'#0b0b0b'}, p.label);
+    el('text',{x:ML+58+(p.label.length*27)+40, y:p.y0-54, 'font-size':46, fill:'#52514e'}, p.n);
+
+    // gridlines every 5%
+    for(let g=0; g<=YMAX; g+=5){
+      el('line',{x1:ML, y1:yPos(g), x2:ML+plotW, y2:yPos(g), stroke: g===0 ? '#c3c2b7' : '#e1e0d9', 'stroke-width': g===0?3:1.5});
+      el('text',{x:ML-18, y:yPos(g)+14, 'text-anchor':'end','font-size':40, fill:'#898781'}, g+'%');
+    }
+    // bars
+    for(let b=1;b<=20;b++){
+      const n = p.data[b]||0; if(!n) continue;
+      const pct = 100*n/p.tot;
+      const x0=xPos((b-1)*0.05)+3, x1=xPos(b*0.05)-3;
+      const yTop=yPos(pct), yBase=yPos(0);
+      const r=Math.min(8,(yBase-yTop)/2);
+      el('path',{d:`M ${x0} ${yBase} L ${x0} ${yTop+r} Q ${x0} ${yTop} ${x0+r} ${yTop} L ${x1-r} ${yTop} Q ${x1} ${yTop} ${x1} ${yTop+r} L ${x1} ${yBase} Z`, fill:p.color});
+    }
+    // x ticks
+    [0,0.25,0.5,0.75,1].forEach(t=>{
+      el('line',{x1:xPos(t), y1:yPos(0), x2:xPos(t), y2:yPos(0)+14, stroke:'#c3c2b7','stroke-width':3});
+      el('text',{x:xPos(t), y:yPos(0)+62, 'text-anchor':'middle','font-size':42, fill:'#898781'}, t.toFixed(2));
+    });
+    // threshold 0.25 dashed
+    el('line',{x1:xPos(0.25), y1:p.y0-14, x2:xPos(0.25), y2:yPos(0), stroke:'#898781','stroke-width':3,'stroke-dasharray':'12 10'});
+    // mean line
+    el('line',{x1:xPos(p.mean), y1:p.y0+30, x2:xPos(p.mean), y2:yPos(0), stroke:'#0b0b0b','stroke-width':3});
+    el('text',{x:xPos(p.mean), y:p.y0+10, 'text-anchor':'middle','font-size':42, 'font-weight':'bold', fill:'#0b0b0b'}, p.meanLabel);
+    // tail annotation near threshold
+    el('text',{x:xPos(0.25)+16, y:p.y0+84, 'font-size':42, fill:'#52514e'}, p.tailNote);
+  });
+
+  // shared threshold label at very top
+  el('text',{x:xPos(0.25), y:56, 'text-anchor':'middle','font-size':44, fill:'#52514e'}, 'low-tail boundary 0.25');
+  // x axis title bottom
+  el('text',{x:ML+plotW/2, y:1535, 'text-anchor':'middle','font-size':46, fill:'#52514e'}, 'Per-scene alignment (cosine similarity, participant vs. original emotion distribution)');
+})();
+</script>
+</body></html>

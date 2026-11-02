@@ -395,6 +395,13 @@ async function _runV2Sequence() {
     console.info('[opening] 테스터 모드 — finder 인터뷰 생략, 대표 기억 직행');
     await _typeLinesSequential(dialogue, [D.testerIntro]);
     await new Promise(r => setTimeout(r, 2200));
+    // 260909: 대사가 흐르는 동안 Ctrl+Shift+B(RECORD 직행)로 오프닝이 끊겼으면 자동 제출 금지.
+    //   _handleOpeningSubmit 의 세션 가드는 "제출 시작 후" 끊김만 잡는다 — 시작 전 끊김은 여기서.
+    //   (openingSkipped 는 테스터 정상 흐름에서 문 연출 끝(8단계)까지 false 로 유지된다.)
+    if (openingSkipped) {
+      console.info('[opening] 테스터 모드 — 오프닝이 먼저 끊김(RECORD 직행 등), 자동 제출 생략');
+      return;
+    }
     // 입력 단계는 아예 띄우지 않는다 (inputPhase 는 기본 opacity 0 / pointerEvents none).
     await _handleOpeningSubmit(null, '');
     return;
@@ -1479,6 +1486,9 @@ export {
     skipToIntro,
     handleOpeningKeydown,
     enterPlayReplaySequence,
+    // 260909: Ctrl+Shift+B RECORD 직행이 오프닝(테스터 직행 포함)을 끊을 때 쓴다.
+    //   ← 메뉴 버튼과 같은 함수 — in-flight 시퀀스 무효화 + play-test 점프 취소 + 오프닝 화면 숨김.
+    _exitFinderToMenu as exitOpeningToMenu,
 
     // NPC
     playNpcIntro,

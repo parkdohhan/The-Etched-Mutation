@@ -96,7 +96,7 @@
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
   <script src="js/shared/tem_stem_cuts.js?v=260915b"></script><!-- 260915b GWON-001(권역) 지문 14 (15씬 절삭판, text 기준 재도출) / 260915a 첫 도출 / 260810b KO 지문 재도출 + EN 지문 미러 갱신 -->
-  <script src="js/ui/lumen_dialog_phase1.js?v=260810a"></script><!-- 260810a EN 연결사 8종 (KO 결 대응) -->
+  <script src="js/ui/lumen_dialog_phase1.js?v=260909a"></script><!-- 260909a RECORD v4 shell 내보내기(참조만, 플레이 동작 0 변경) / 260810a EN 연결사 8종 (KO 결 대응) -->
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260806"></script><!-- 260806 낭독 띠 회피 -->
   <script src="js/ui/lumen_recalled_anchors.js?v=260806"></script><!-- 260806 낭독 띠 회피 -->
@@ -712,6 +712,8 @@
   import { emotionVectorToWaveStyle as sharedEmotionVectorToWaveStyle,
            projectEmotionToVAD } from './js/shared/math.js?v=260727';
   import { GHOST_PRESETS } from './js/shared/ghost_presets.js';
+  // 260909 RECORD v4 §6-①: v4 로 기록된 씨앗(Fetus)은 작가가 무대를 설치하기 전까지 기록자에게만 보인다
+  import { filterVisibleMemories } from './js/shared/tem_record_visibility.js?v=260909a';
   // V2-6 drift 픽 — DriftPicker 는 self-attach (window.DriftPicker), 폴백 문구는 여기서 노출 (dialog_phase1.js non-module 이 사용)
   import './js/core/DriftPicker.js';
   import { pickFallbackString as _pickFallbackStringV26 } from './js/content/narrative_fallback_strings.js';
@@ -5162,9 +5164,10 @@
     .filter(p => DEMO_MEMORY_IDS.includes(memoryId) ? isVisitorPlay(p) : true).length;
 
   async function loadMemories() {
-    const { data, error } = await sb.from('memories').select('id, title').order('id');
+    const { data, error } = await sb.from('memories').select('id, title, status, meta, curator_id').order('id');
     if (error) throw error;
-    const all = data || [];
+    // 260909 RECORD v4 §6-①: 새 기록 씨앗은 기록자 본인(같은 브라우저 표식·curator)에게만. 옛 기억은 그대로.
+    const all = filterVisibleMemories(data || []);
     // 260728: 상영작 제한 해제 (사용자 요청) — 서가에 모든 기억 노출.
     // 상영작(DEMO_MEMORY_IDS)은 적힌 순서대로 맨 위, 나머지는 그 아래.
     // 오염 깊이 규칙(상영작=관객 판만 센다)은 id 기준이라 그대로 유효.
@@ -6474,6 +6477,19 @@
     var btn = document.getElementById('backToMenu');
     if (btn) btn.addEventListener('click', function () { window.location.href = temMenuHref(); });
   })();
+
+  // ─── RECORD 직행 단축키 Ctrl+Shift+B (260909) ─────────────────────────
+  // 상영 중 어디서든 → index.html?action=record. index.js 가 오프닝을 끊고 RECORD 문을 연다.
+  // 작가용 뒷문 — 관객 UI 노출 없음. 진입점 3곳(index / play-test / demoFlow) 동일 키.
+  window.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey && e.shiftKey) || e.altKey || e.metaKey) return;
+    if ((e.code || '') !== 'KeyB' && String(e.key || '').toLowerCase() !== 'b') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var base = temMenuHref();
+    console.info('[record-shortcut] Ctrl+Shift+B → ' + base + '?action=record');
+    window.location.href = base + (base.indexOf('?') >= 0 ? '&' : '?') + 'action=record';
+  }, true);
 
   // ── Strata 퇴장 플로우: 로그인 안내 ──
   (function bindStrataExit() {
