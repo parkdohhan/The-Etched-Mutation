@@ -187,14 +187,14 @@ function dial() {
   return out.join("");
 }
 
-const needleAt = (turn) => {
+const needleAt = (turn, len = DIAL_R - 2.3) => {
   const a = turn * Math.PI * 2; const [x, y] = DIAL;
-  return k.lineOnTop([x - Math.sin(a) * 3.4, y + Math.cos(a) * 3.4], [x + Math.sin(a) * (DIAL_R - 4), y - Math.cos(a) * (DIAL_R - 4)], DIAL_TOP + 0.2, P);
+  return k.lineOnTop([x - Math.sin(a) * 3.4, y + Math.cos(a) * 3.4], [x + Math.sin(a) * len, y - Math.cos(a) * len], DIAL_TOP + 0.2, P);
 };
-// 틈 호: 영점에서 바늘까지 다이얼 위 호 (붉은색 = 갈라진 틈)
-const gapArc = (turn) => {
-  const [x, y] = DIAL; const r = DIAL_R - 6.5; const n = Math.max(2, Math.ceil(Math.abs(turn) * 40));
-  const pts = []; for (let i = 0; i <= n; i++) { const a = (turn * i / n) * Math.PI * 2; pts.push([x + Math.sin(a) * r, y - Math.cos(a) * r]); }
+// 틈 호: 흰 바늘(실제)에서 붉은 바늘(약속)까지 다이얼 위 호
+const gapArc = (t0, t1) => {
+  const [x, y] = DIAL; const r = DIAL_R - 7; const n = Math.max(2, Math.ceil(Math.abs(t1 - t0) * 40));
+  const pts = []; for (let i = 0; i <= n; i++) { const a = (t0 + (t1 - t0) * i / n) * Math.PI * 2; pts.push([x + Math.sin(a) * r, y - Math.cos(a) * r]); }
   return k.onTop(pts, DIAL_TOP + 0.25, P);
 };
 
@@ -207,7 +207,8 @@ const svg = k.figureSvg({
     `<g data-part="carriage" transform="${k.translateAlong(P, [startX, 0, 0])}">${carriage()}</g>`,
     `<g data-part="plunger" transform="${k.translateAlong(P, [0, 0, CARRIAGE_TOP + heightOf(ROOMS[0])])}">${plunger()}</g>`,
     dial(),
-    `<path data-part="gap" class="iso-line" data-tone="red" data-free="both" d="" style="stroke-width:1.4;opacity:0"/>`,
+    `<path data-part="gap" class="iso-line" data-tone="red" d="" style="stroke-width:1.4;opacity:0"/>`,
+    `<path data-part="promise" class="iso-line" data-tone="red" data-free="start" d="${needleAt(0)}" style="stroke-width:1.2"/>`,
     `<path data-part="needle" class="iso-line" data-tone="lit" data-free="start" d="${needleAt(0)}" style="stroke-width:1.1"/>`,
   ],
 });
@@ -220,31 +221,33 @@ const DIAL = ${JSON.stringify(DIAL)}, DIAL_R = ${DIAL_R}, DIAL_TOP = ${DIAL_TOP}
 const STOPS = ${JSON.stringify(STOPS)}, REACH = ${JSON.stringify(REACH)};
 const stage = document.querySelector(".iso-stage"); const svg = stage.querySelector("svg");
 const carriage = svg.querySelector('[data-part="carriage"]'), plunger = svg.querySelector('[data-part="plunger"]');
-const needle = svg.querySelector('[data-part="needle"]'), gap = svg.querySelector('[data-part="gap"]');
+const needle = svg.querySelector('[data-part="needle"]'), promise = svg.querySelector('[data-part="promise"]'), gap = svg.querySelector('[data-part="gap"]');
 const readout = document.querySelector("[data-readout]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const fmt = (v) => (v >= 0 ? "+" : "") + v.toFixed(2);
 const heightOf = (room) => H_BASE + room.hz * H_SCALE;
 const needleAt = ${needleAt.toString().replace("k.lineOnTop", "lineOnTop")};
 const gapArc = ${gapArc.toString().replace("k.onTop", "onTop")};
-// 게이지 밑(세계 x=0)에 어느 받침대가 있나, 어느 손잡이를 지났나
 const heightUnder = (cx) => { let top = BASE; ROOMS.forEach((room, i) => { const from = cx + PED_CX[i] - PED_W / 2, to = from + PED_W; if (to > -TIP_R && from < TIP_R) top = Math.max(top, BASE + heightOf(room)); }); return top; };
 const roomUnder = (cx) => ROOMS.findIndex((_, i) => { const from = cx + PED_CX[i] - PED_W / 2; return 0 >= from && 0 <= from + PED_W; });
-const sumPassed = (cx) => TRANS.reduce((s, t, i) => s + (cx + COLLAR_CX[i] < 0 ? t : 0), 0); // 손잡이가 게이지를 지나 왼쪽으로 가면 더함
-let x = ${startX}, target = x, tip = { at: BASE + heightOf(ROOMS[0]), rate: 0 }, turn = 0;
+const sumPassed = (cx) => TRANS.reduce((s, t, i) => s + (cx + COLLAR_CX[i] < 0 ? t : 0), 0);
+const TIP0 = BASE + heightOf(ROOMS[0]);
+let x = ${startX}, target = x, tip = { at: TIP0, rate: 0 }, turnP = 0;
 let frame = 0, last = 0, clock = 0, touring = true, visible = false, idleTimer = 0;
-const tourAt = (t) => STOPS[Math.floor(t / 2.6) % STOPS.length];
+const tourAt = (t) => STOPS[Math.floor(t / 2.8) % STOPS.length];
 function draw() {
   carriage.setAttribute("transform", translateAlong(P, [x, 0, 0]));
   plunger.setAttribute("transform", translateAlong(P, [0, 0, tip.at]));
-  needle.setAttribute("d", needleAt(turn));
-  const showGap = Math.abs(turn) > 0.002; gap.setAttribute("d", showGap ? gapArc(turn) : ""); gap.style.opacity = showGap ? "0.9" : "0";
+  const turnA = (tip.at - TIP0) / H_SCALE / PER_TURN;
+  needle.setAttribute("d", needleAt(turnA));
+  promise.setAttribute("d", needleAt(turnP));
+  const showGap = Math.abs(turnP - turnA) > 0.004;
+  gap.setAttribute("d", showGap ? gapArc(turnA, turnP) : ""); gap.style.opacity = showGap ? "0.9" : "0";
   const i = roomUnder(x); const sum = sumPassed(x);
   let text;
-  if (i < 0) text = "받침대 사이 · 통역 합 " + sum.toFixed(2);
-  else if (i === 0) text = "방 4 매달림 · 장부 +0.46 · 바늘 영점";
-  else if (i === 3) text = "다시 방 4 · 장부 +0.46 · 통역 합 " + sum.toFixed(2) + " · 틈 " + Math.abs(sum).toFixed(2);
-  else text = "방 " + ROOMS[i].id + " · 장부 " + (ROOMS[i].hz >= 0 ? "+" : "") + ROOMS[i].hz.toFixed(2) + " · 통역 합 " + sum.toFixed(2);
+  if (i < 0) text = "받침대 사이 · 약속 합 " + fmt(sum);
+  else { const actual = ROOMS[i].hz - ROOMS[0].hz; text = (i === 3 ? "다시 방 4" : "방 " + ROOMS[i].id) + " · 실제 " + fmt(actual) + " · 약속 " + fmt(sum) + " · 틈 " + Math.abs(actual - sum).toFixed(2); }
   if (readout.textContent !== text) readout.textContent = text;
   stage.setAttribute("aria-valuenow", String(Math.round(sum * 100)));
   stage.setAttribute("aria-valuetext", text);
@@ -259,15 +262,15 @@ function tick(now) {
   const stiff = 420, drag = calm ? 2 * Math.sqrt(420) : 26;
   for (let i = 0; i < 4; i++) { tip.rate += ((want - tip.at) * stiff - tip.rate * drag) * dt / 4; tip.at += tip.rate * dt / 4; }
   if (Math.abs(want - tip.at) < 0.005 && Math.abs(tip.rate) < 0.005) { tip.at = want; tip.rate = 0; }
-  const wantTurn = sumPassed(x) / PER_TURN;
-  turn = calm ? wantTurn : turn + (wantTurn - turn) * (1 - Math.exp(-dt / 0.22));
-  if (Math.abs(wantTurn - turn) < 0.0005) turn = wantTurn;
+  const wantP = sumPassed(x) / PER_TURN;
+  turnP = calm ? wantP : turnP + (wantP - turnP) * (1 - Math.exp(-dt / 0.22));
+  if (Math.abs(wantP - turnP) < 0.0005) turnP = wantP;
   draw();
-  const settled = !touring && x === target && tip.rate === 0 && tip.at === want && turn === wantTurn;
+  const settled = !touring && x === target && tip.rate === 0 && tip.at === want && turnP === wantP;
   frame = visible && !settled ? requestAnimationFrame(tick) : 0;
 }
 const run = () => { if (!frame && visible) { last = 0; frame = requestAnimationFrame(tick); } };
-const steer = (next) => { touring = false; target = clamp(next, REACH[0], REACH[1]); clearTimeout(idleTimer); idleTimer = setTimeout(() => { touring = !still.matches; clock = 0; run(); }, 4000); run(); };
+const steer = (next) => { touring = false; target = clamp(next, REACH[0], REACH[1]); clearTimeout(idleTimer); idleTimer = setTimeout(() => { touring = !still.matches; clock = 0; run(); }, 6000); run(); };
 new IntersectionObserver((entries) => { visible = entries[entries.length - 1].isIntersecting; if (visible) run(); }, { rootMargin: "120px 0px" }).observe(stage);
 if (still.matches) touring = false;
 stage.addEventListener("pointermove", (event) => {
@@ -287,22 +290,42 @@ stage.addEventListener("keydown", (event) => {
 draw();
 `;
 
-const body = k.plateHtml({
+const plate_ = k.plateHtml({
   fig: "Fig 3",
   title: "장부와 통역사",
-  hint: "마우스를 옆으로 움직여 손수레 밀기 · 방향키",
-  readout: "방 4 매달림 · 장부 +0.46 · 바늘 영점",
+  hint: "마우스를 옆으로 움직이면 손수레가 밀림 · 방향키로 한 방씩",
+  readout: "방 4 · 실제 +0.00 · 약속 +0.00 · 틈 0.00",
   keys: [
-    { mark: "lit", label: "플런저와 바늘: 플런저는 받침대의 실제 높이(장부)를 짚고, 바늘은 통역사가 정한 만큼만 돈다" },
-    { mark: "raised", label: "받침대 넷 = 방 4 · 6 · 8 · 다시 4. 높이 = 그 방의 장부 값(+0.46, +0.10, +0.39, +0.46)" },
-    { mark: "edge", label: "통역사 손잡이 셋 = 실의 통역: 4→6 −0.09, 6→8 −1.57, 8→4 −0.61" },
-    { mark: "red", label: "갈라진 틈: 같은 방으로 돌아왔는데 바늘이 영점에서 2.27만큼 떨어져 있음" },
+    { mark: "lit", label: "흰 바늘 = 실제. 플런저가 짚은 받침대 높이(그 방의 장부)가 출발 방에서 얼마나 달라졌나" },
+    { mark: "red", label: "붉은 바늘 = 약속. 지나온 통역사 손잡이들이 말한 변화의 합. 두 바늘 사이 호 = 틈" },
+    { mark: "raised", label: "받침대 넷 = 방 4 → 6 → 8 → 다시 4. 높이 = 장부 +0.46, +0.10, +0.39, +0.46" },
+    { mark: "edge", label: "손잡이 셋 = 통역사. 4→6 −0.09, 6→8 −1.57, 8→4 −0.61 (꼭대기 눈금선 각도)" },
   ],
-  caption:
-    "UNDW-001 실관객 37회차의 고리 4→6→8→4 실측. 실마다 '지나면 감정이 이만큼 바뀐다'는 통역이 붙어 있고, 방마다 하나의 장부 높이를 주려 해도 세 통역을 다 만족하는 높이는 없다. 한 바퀴 돌아 같은 방에 서면 통역 합이 0이어야 하는데 −2.27이 남는다. 이 남는 각도가 갈라진 틈이고, 이본이 사는 자리다. 숫자는 높이 투영(u, 설명 비율 36%) 기준.",
+  caption: "같은 방으로 돌아오면 흰 바늘은 반드시 영점으로 돌아온다(같은 높이니까). 붉은 바늘은 세 약속을 더한 만큼 돌아 −2.27에 멈춘다. 그 차이 2.27이 갈라진 틈이다. UNDW-001 실관객 37회차, 고리 4→6→8→4, 높이 투영 기준.",
   body: `<div class="iso-stage" tabindex="0" role="slider" aria-label="장부와 통역사: 방향키로 방을 넘긴다" aria-valuemin="-227" aria-valuemax="0" aria-valuenow="0">${svg}</div>`,
 });
 
+// ── 카드 아래 해설 (그림 밖, 글로) ──
+const row = (cells) => `<tr>${cells.map((c, i) => `<td style="padding:6px 10px;border-bottom:1px solid var(--anatomy-faint,#444);text-align:${i ? "right" : "left"};white-space:${i ? "normal" : "nowrap"}">${c}</td>`).join("")}</tr>`;
+const steps = [
+  ["출발: 방 4 매달림", "+0.46", "—", "—", "0.00", "0.00", "0.00"],
+  ["4 → 6 제물의 얼굴", "+0.10", "−0.36", "−0.09", "−0.36", "−0.09", "0.28"],
+  ["6 → 8 서랍", "+0.39", "+0.29", "−1.57", "−0.07", "−1.66", "1.58"],
+  ["8 → 4 다시 매달림", "+0.46", "+0.07", "−0.61", "0.00", "−2.27", "2.27"],
+];
+const guide = `
+<section style="max-width:720px;margin:28px auto 48px;padding:0 16px;font-size:14px;line-height:1.75;color:var(--anatomy-mid,#bbb)">
+<h2 style="font-size:16px;margin:0 0 10px">이 기계가 보여주는 것, 한 걸음씩</h2>
+<p><b>무엇이 무엇인가.</b> 받침대 하나가 방(씬) 하나다. 받침대의 <b>높이</b>가 그 방의 장부 값이다. 장부란 "모든 사람의 걸음을 한 줄로 가장 잘 설명하는 값"을 방마다 하나씩 준 것이고, 여기서는 19개 감정 축을 한 방향(높이)으로 눌러 숫자 하나로 보였다. 받침대 사이의 손잡이가 <b>통역사</b>다. 통역사는 실 하나에 붙어 있고, "이 길을 지나면 감정이 이만큼 변한다"는 약속을 품고 있다. 그 약속은 실제로 그 길을 걸은 사람의 기록에서 나온 숫자다. 손수레가 움직이는 것이 <b>걷기</b>다.</p>
+<p><b>두 바늘.</b> 흰 바늘은 플런저를 따라간다. 플런저는 지금 밑에 있는 받침대의 실제 높이를 짚으므로, 흰 바늘은 "출발 방보다 지금 방의 장부가 얼마나 다른가"를 가리킨다. 붉은 바늘은 지나온 손잡이의 약속을 차례로 더한 만큼 돈다. 두 바늘이 처음엔 겹쳐 있다가 걸을수록 벌어진다. 그 사이 호가 틈이다.</p>
+<table style="border-collapse:collapse;width:100%;margin:12px 0;font-variant-numeric:tabular-nums">
+<thead><tr>${["걸음", "장부", "실제 차", "약속", "흰 바늘(실제 누적)", "붉은 바늘(약속 누적)", "틈"].map((h, i) => `<th style="padding:6px 10px;text-align:${i ? "right" : "left"};border-bottom:2px solid var(--anatomy-mid,#888);font-weight:600">${h}</th>`).join("")}</tr></thead>
+<tbody>${steps.map(row).join("")}</tbody></table>
+<p><b>왜 틈이 생기나.</b> 실제 차이 셋은 더하면 반드시 0이다(같은 방으로 돌아왔으니). 통역 약속 셋은 더하면 −2.27이다. 약속의 합이 0이 아니면, 방마다 높이를 어떻게 정해도 세 약속을 전부 지킬 수 없다. 장부는 그 어긋남을 셋에 나눠 떠안은 타협이고, 한 바퀴 돌면 나눠 담았던 어긋남이 도로 합쳐져 2.27로 나타난다. 이것이 "장부 하나로 안 꿰매진다"의 뜻이다.</p>
+<p><b>TEM에서는.</b> 실 54개와 고리 42개 전체로 이 계산을 하면 어긋남 비율 ρ = 0.50이 나온다(기억의 정의 v1 §4). 이 고리 4→6→8→4는 그중 어긋남이 가장 큰 고리이고, 세 실 모두 한 사람씩만 밟았다. 이본론이 말하는 "이본이 사는 자리"가 바로 이 틈이다. 틈이 0이면 모두가 같은 기억을 베낀 것이고, 틈이 있으면 같은 방들 위에 다른 길이 놓인 것이다.</p>
+<p><b>조작.</b> 카드 위에서 마우스를 오른쪽으로 끌면 손수레가 왼쪽으로 밀려 방 4 → 6 → 8 → 4 순서로 게이지 밑을 지난다. 방향키로 한 방씩 넘길 수 있다. 가만 두면 스스로 한 바퀴씩 돈다. 아래 판독은 지금 방의 실제 누적·약속 누적·틈을 숫자로 보여준다.</p>
+</section>`;
+
 const name = theme === "light" ? "장부와통역사-261108-light.html" : "장부와통역사-261108.html";
-writeFileSync(join(HERE, "..", name), k.pageHtml({ title: "장부와 통역사", theme, body, script: kitScript() + live }));
+writeFileSync(join(HERE, "..", name), k.pageHtml({ title: "장부와 통역사", theme, body: plate_ + guide, script: kitScript() + live }));
 console.log("wrote", name);
