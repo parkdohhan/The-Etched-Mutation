@@ -31,12 +31,17 @@ def run(cmd: list[str]) -> str:
     return (p.stdout or "").strip()
 
 
+FIXED_NAMES = {"CLAUDE.md", "README.md", "AGENTS.md", "SKILL.md", "LICENSE.md", "CHANGELOG.md", "CONTRIBUTING.md"}  # (261108) 도구·관례가 이름을 고정하는 파일 — 날짜 접미사 금지
+
+
 def staged_markdown_paths() -> list[Path]:
     out = run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"])
     files = [line.strip() for line in out.splitlines() if line.strip().endswith(".md")]
     paths: list[Path] = []
     for rel in files:
         p = ROOT / rel
+        if p.name in FIXED_NAMES:
+            continue
         if p.exists() and p.is_file():
             paths.append(p)
     return paths
@@ -98,7 +103,7 @@ def replace_refs(rename_map: dict[Path, Path]) -> int:
             old_rel = old.relative_to(ROOT).as_posix()
             new_rel = new.relative_to(ROOT).as_posix()
             s = s.replace(old_rel, new_rel)
-            s = s.replace(old.name, new.name)
+            # (261108) 파일명만으로는 치환하지 않는다 — 같은 이름의 다른 파일(README.md 등) 참조를 깨뜨렸음
         if s != orig:
             f.write_text(s, encoding="utf-8")
             changed += 1

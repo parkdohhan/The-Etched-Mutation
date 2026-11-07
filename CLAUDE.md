@@ -21,7 +21,7 @@
 
 ### 1.2 "실험개시" 한마디 규칙 (2026-11-07 신설)
 
-사용자가 **"실험개시"** 라고만 치면, 질문 없이 `docs/실험/개연성_사전등록_v1-261107.md` **§9 실행 절차**를 그대로 밟는다: 사전 등록 본문 수정 금지 → `tools/plausibility/README-261108.md` 준비물 확인(.env 없으면 그 파일만 요청하고 멈춤) → `node --test tools/plausibility/test/models.test.mjs` → `node tools/plausibility/pull.mjs` → `node tools/plausibility/run_backtest.mjs --raw <추출 파일>` → 결과 md의 판정을 사전 등록 §10에 추기 → 커밋·푸시 → 표 한 장 + 판정 한 줄 보고. **데이터를 본 뒤 식·영모형·판정 기준을 바꾸지 않는다.** 오류가 나면 식을 고치지 말고 오류 원문과 함께 멈춘다. 다른 사전 등록 실험이 생기면 이 규칙에 줄을 추가한다(가장 최근 것이 기본).
+사용자가 **"실험개시"** 라고만 치면, 질문 없이 `docs/실험/개연성_사전등록_v1-261107.md` **§9 실행 절차**를 그대로 밟는다: 사전 등록 본문 수정 금지 → `tools/plausibility/README.md` 준비물 확인(.env 없으면 그 파일만 요청하고 멈춤) → `node --test tools/plausibility/test/models.test.mjs` → `node tools/plausibility/pull.mjs` → `node tools/plausibility/run_backtest.mjs --raw <추출 파일>` → 결과 md의 판정을 사전 등록 §10에 추기 → 커밋·푸시 → 표 한 장 + 판정 한 줄 보고. **데이터를 본 뒤 식·영모형·판정 기준을 바꾸지 않는다.** 오류가 나면 식을 고치지 말고 오류 원문과 함께 멈춘다. 다른 사전 등록 실험이 생기면 이 규칙에 줄을 추가한다(가장 최근 것이 기본).
 
 ## 2. 시한부 규칙 (유효: ~2026-05-19) — (폐기됨 — 사용자 결정 2026-05-14)
 
