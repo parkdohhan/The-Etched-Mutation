@@ -123,9 +123,7 @@ def strata_pct(fn):
         c=s["omega"]
         if s["j"] not in c or len(c)<4: continue
         d={k:1-cos(O[s["i"]],O[k]) for k in c}; srt=sorted(c,key=lambda k:d[k]); n=len(srt)
-        groups=[srt[:n//3] if n>=6 else srt[:max(2,n//3)], srt[n//3:2*n//3], srt[2*n//3:]]
-        # 단순 3등분 (앞·중·뒤)
-        q=n//3; groups=[srt[:q],srt[q:2*q],srt[2*q:]]
+        q=n//3; groups=[srt[:q],srt[q:2*q],srt[2*q:]]   # 3등분, 나머지는 '먼' 층에 붙음 → 층 크기 불균등 (아래 기대치로 보정)
         g=next((grp for grp in groups if s["j"] in grp),None)
         if not g or len(g)<2: continue
         p=pct(fn(s,g),g,s["j"])
@@ -134,13 +132,25 @@ def strata_pct(fn):
 for name,fn in MODELS.items():
     m,n=strata_pct(fn); print(f"  {name:<10} 층 안 백분위 {m:.3f} (n={n})")
 # 어느 층에 실제 다음 씬이 드나 (가까운/중간/먼)
-cnt=[0,0,0]
+cnt=[0,0,0]; exp=[0.0,0.0,0.0]; sizes=[]
 for s in steps:
     c=s["omega"]
     if s["j"] not in c or len(c)<4: continue
     d={k:1-cos(O[s["i"]],O[k]) for k in c}; srt=sorted(c,key=lambda k:d[k]); q=len(srt)//3
-    g=0 if s["j"] in srt[:q] else (1 if s["j"] in srt[q:2*q] else 2); cnt[g]+=1
-print(f"  실제 다음 씬이 든 층: 가까운 {cnt[0]} · 중간 {cnt[1]} · 먼 {cnt[2]}  (균등이면 약 {sum(cnt)/3:.0f}씩)")
+    gs=[srt[:q],srt[q:2*q],srt[2*q:]]; sizes.append([len(g) for g in gs])
+    g=0 if s["j"] in gs[0] else (1 if s["j"] in gs[1] else 2); cnt[g]+=1
+    for t in range(3): exp[t]+=len(gs[t])/len(srt)
+# 균등 무작위 선택 시뮬로 '가까운 > 중간' 과 '중간이 기대보다 적음' 의 p
+rng=random.Random(261107); more_near=0; mid_low=0; R=4000
+for _ in range(R):
+    sim=[0,0,0]
+    for sz in sizes:
+        x=rng.randrange(sum(sz)); sim[0 if x<sz[0] else (1 if x<sz[0]+sz[1] else 2)]+=1
+    if sim[0]-sim[1]>=cnt[0]-cnt[1]: more_near+=1
+    if sim[1]<=cnt[1]: mid_low+=1
+print(f"  실제 다음 씬이 든 층: 가까운 {cnt[0]} · 중간 {cnt[1]} · 먼 {cnt[2]}")
+print(f"  층 크기를 반영한 균등 선택 기대치: 가까운 {exp[0]:.0f} · 중간 {exp[1]:.0f} · 먼 {exp[2]:.0f}  (먼 층이 나머지를 받아 크다)")
+print(f"  균등 선택 시뮬 {R}회: 가까운−중간 ≥ 관측({cnt[0]-cnt[1]}) 비율 {more_near/R:.3f} · 중간 ≤ 관측({cnt[1]}) 비율 {mid_low/R:.3f}")
 # ── 구획 A2 이항검정 (봉인 결과값 재사용) ──
 print()
 print("## ④ 구획 A2(열린 문 2개 중 j 가 높은 비율, n=118) — 0.5 대비 양측 이항검정 (봉인 결과 metrics 재사용)")
