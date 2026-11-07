@@ -52,3 +52,6 @@ private/
 Tem - underware/
 # 미발표 소설 원고 — 권역 (GWON-001 기억 원천·스펙, 공개 금지)
 Tem - gwonyeok/
+
+# 개연성 백테스트 원시 추출 (발화 원문은 없지만 회차 자료 — 커밋 안 함)
+tools/plausibility/out/raw-*.json
