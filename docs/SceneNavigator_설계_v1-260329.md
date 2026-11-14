@@ -274,7 +274,7 @@ fixation은 "패턴의 지속"이지, "숫자의 도달"이 아니다.
 
 ### 2.1 기존 오염벡터 v2와의 관계
 
-오염벡터 v2 (`docs/오염벡터_계산_구현_명세_v2-260327.md`)의 `updateContaminationVector()` 함수는 이미 축별 계산을 수행한다:
+오염벡터 v2 ([[오염벡터_계산_구현_명세_v2-260327]])의 `updateContaminationVector()` 함수는 이미 축별 계산을 수행한다:
 - `cont_divergence`: (1-shape) × (1-level) × decay
 - `cont_convergence`: alignment × weight (fixation/HIGH/MID 조건별) × decay
 - `cont_heterogeneity`: Welford 온라인 분산

@@ -365,6 +365,6 @@ velocity     = baseVelocity
 
 - 원본 아이디어 정리: 이번 대화 턴 (2026-04-20)
 - IMA 비평 평가: [.claude/plans/interactive-media-arts-hidden-biscuit.md](/Users/parksojung/.claude/plans/interactive-media-arts-hidden-biscuit.md)
-- 선행 로드맵: [docs/업그레이드_로드맵-260410.md](docs/업그레이드_로드맵-260410.md)
+- 선행 로드맵: [[[업그레이드_로드맵-260410]]](docs/업그레이드_로드맵-260410.md)
 - 기존 지형 구현: [js/shared/tem_af_strata_terrain.js](js/shared/tem_af_strata_terrain.js), [js/ui/strataView.js](js/ui/strataView.js)
 - Admin 현황: [js/admin.js](js/admin.js), [js/admin-trajectory.js](js/admin-trajectory.js)

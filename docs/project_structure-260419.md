@@ -142,37 +142,37 @@ test/       # 기타 실험 테스트
 ## 6. 문서 ([docs/](../docs/))
 
 **시스템/엔진**
-- [TEM_시스템_매뉴얼-260410.md](TEM_시스템_매뉴얼-260410.md) — 전체 시스템
-- [TEM_PROJECT_MANUAL-260404.md](TEM_PROJECT_MANUAL-260404.md)
-- [별이엔진_V4-궤적기반_정렬도-260327.md](별이엔진_V4-궤적기반_정렬도-260327.md)
-- [SceneNavigator_설계_v1-260329.md](SceneNavigator_설계_v1-260329.md)
-- [play-test-지도_핀_접근규칙-260325.md](play-test-지도_핀_접근규칙-260325.md)
+- [[[TEM_시스템_매뉴얼-260410]]](TEM_시스템_매뉴얼-260410.md) — 전체 시스템
+- [[[TEM_PROJECT_MANUAL-260404]]](TEM_PROJECT_MANUAL-260404.md)
+- [[[별이엔진_V4-궤적기반_정렬도-260327]]](별이엔진_V4-궤적기반_정렬도-260327.md)
+- [[[SceneNavigator_설계_v1-260329]]](SceneNavigator_설계_v1-260329.md)
+- [[[play-test-지도_핀_접근규칙-260325]]](play-test-지도_핀_접근규칙-260325.md)
 
 **오염/전이**
 - [contamination/](contamination/) — MVP v3 · presentation v1 · vNext 노트
-- [오염벡터_계산_구현_명세_v2-260327.md](오염벡터_계산_구현_명세_v2-260327.md)
-- [전이_규칙_구현_문서-260324.md](전이_규칙_구현_문서-260324.md)
+- [[[오염벡터_계산_구현_명세_v2-260327]]](오염벡터_계산_구현_명세_v2-260327.md)
+- [[[전이_규칙_구현_문서-260324]]](전이_규칙_구현_문서-260324.md)
 
 **지형/시각화**
-- [Strata 3d-260325.md](Strata%203d-260325.md) / [strata-3d-rendering-260401.md](strata-3d-rendering-260401.md)
-- [tem-af-coordinate-integration-260325.md](tem-af-coordinate-integration-260325.md)
-- [기억집단유전학_v0.4_지형설계-260405.md](기억집단유전학_v0.4_지형설계-260405.md)
-- [시각화_설계_v1-260412.md](시각화_설계_v1-260412.md)
+- [Strata 3d-260325.md](Strata%203d-260325.md) / [[[strata-3d-rendering-260401]]](strata-3d-rendering-260401.md)
+- [[[tem-af-coordinate-integration-260325]]](tem-af-coordinate-integration-260325.md)
+- [[[기억집단유전학_v0.4_지형설계-260405]]](기억집단유전학_v0.4_지형설계-260405.md)
+- [[[시각화_설계_v1-260412]]](시각화_설계_v1-260412.md)
 
 **브릿지/잔상/흐름**
-- [데이터계약_브릿지_v1-260412.md](데이터계약_브릿지_v1-260412.md)
-- [잔상_시스템_설계-260409.md](잔상_시스템_설계-260409.md)
-- [Record_flow_v3-260405.md](Record_flow_v3-260405.md)
-- [Archive_mode-260325.md](Archive_mode-260325.md) / [Live_mode-260325.md](Live_mode-260325.md)
+- [[[데이터계약_브릿지_v1-260412]]](데이터계약_브릿지_v1-260412.md)
+- [[[잔상_시스템_설계-260409]]](잔상_시스템_설계-260409.md)
+- [[[Record_flow_v3-260405]]](Record_flow_v3-260405.md)
+- [[[Archive_mode-260325]]](Archive_mode-260325.md) / [[[Live_mode-260325]]](Live_mode-260325.md)
 
 **철학/연구**
-- [기억유전학_v0.3.md](기억유전학_v0.3.md) / [mnemonic-genetics-요약-260325.md](mnemonic-genetics-요약-260325.md)
+- [[[기억유전학_v0.3]]](기억유전학_v0.3.md) / [[[mnemonic-genetics-요약-260325]]](mnemonic-genetics-요약-260325.md)
 - [paper/](paper/) — main.tex / main.pdf / references.bib / 한국어 초안
-- [프로젝트 정의-260324.md](프로젝트%20정의-260324.md) / [안전_설계-260324.md](안전_설계-260324.md)
-- [업그레이드_로드맵-260410.md](업그레이드_로드맵-260410.md)
+- [프로젝트 정의-260324.md](프로젝트%20정의-260324.md) / [[[안전_설계-260324]]](안전_설계-260324.md)
+- [[[업그레이드_로드맵-260410]]](업그레이드_로드맵-260410.md)
 
 **진행/메타**
-- [메모/Feedback.md](메모/Feedback.md) — 진행 상황 + TODO (핵심)
+- [[[Feedback]]](메모/Feedback.md) — 진행 상황 + TODO (핵심)
 - [메모/](메모/) — 엔진 마이그레이션 기록 · 플로우 메모
 
 ---

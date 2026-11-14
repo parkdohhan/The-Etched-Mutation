@@ -53,4 +53,4 @@ VAD 기반 지형 시각화에 더해 **AF(Attribution × Core Fear)** 좌표를
 
 ## 관련 문서
 
-- `docs/strata-3d-rendering-260401.md` — Strata 3D(AF 기반) 렌더링/동기화 정리
+- [[strata-3d-rendering-260401]] — Strata 3D(AF 기반) 렌더링/동기화 정리
