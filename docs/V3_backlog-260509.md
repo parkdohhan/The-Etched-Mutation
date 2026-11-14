@@ -121,7 +121,7 @@ paper 매핑: *플레이어가 자기 sheaf section 에 이름을 부여함으�
 - `docs/LUMEN_DEMO_SCOPE-260506.md` — V2.1 SCOPE
 - `~/.claude/projects/d--The-Etched-Mutation/memory/project_lumen_unified_form_v2.md` — 다섯 비전 통합 (여섯번째 차원 추가 갱신 필요)
 - `~/.claude/projects/d--The-Etched-Mutation/memory/project_lumen_topological_vision.md` — §14 위상 quilt
-- `docs/paper/TEM_paper_draft_v0.1-260419.md` — paper 17D anchor 정합 검토 대상
+- [[TEM_paper_draft_v0.1-260419]] — paper 17D anchor 정합 검토 대상
 
 ---
 

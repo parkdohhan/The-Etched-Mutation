@@ -55,3 +55,8 @@ Tem - gwonyeok/
 
 # 개연성 백테스트 원시 추출 (발화 원문은 없지만 회차 자료 — 커밋 안 함)
 tools/plausibility/out/raw-*.json
+
+# Obsidian personal window layout / cache (vault settings in app.json stay tracked)
+docs/.obsidian/workspace*.json
+docs/.obsidian/cache
+docs/.trash/

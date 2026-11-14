@@ -1,0 +1,10 @@
+{
+  "userIgnoreFilters": [
+    "_merged/",
+    "_print/",
+    "_print_merged/"
+  ],
+  "alwaysUpdateLinks": true,
+  "newLinkFormat": "shortest",
+  "showUnsupportedFiles": false
+}

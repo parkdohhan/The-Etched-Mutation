@@ -1,14 +1,14 @@
 # Lumen 메모리 스토리 워크시트
 
-> ⚠️ **2026-07-27 대체됨** — 현행 정본은 [기억저작_워크시트_v2-260727.md](기억저작_워크시트_v2-260727.md).
+> ⚠️ **2026-07-27 대체됨** — 현행 정본은 [[[기억저작_워크시트_v2-260727]]](기억저작_워크시트_v2-260727.md).
 > 이 문서는 SQL 시절(4월) 기준. 부록의 편지(E-004) 예시 값만 견본으로 계속 유효.
 
 이 문서는 **한 기억(memory) 하나 작성할 때 쓰는 빈칸**이다. 작성 순서대로 채우면 SQL 템플릿(`supabase/seeds/lumen_memory_template.sql`)으로 변환 가능한 값이 나온다.
 
 **관련**:
-- 레퍼런스 (각 필드 의미): [lumen_memory_authoring_checklist-260421.md](lumen_memory_authoring_checklist-260421.md)
+- 레퍼런스 (각 필드 의미): [[[lumen_memory_authoring_checklist-260421]]](lumen_memory_authoring_checklist-260421.md)
 - 실행 예시: 편지(E-004) 채움 — [supabase/seeds/lumen_mem_E-004_fills.sql](../supabase/seeds/lumen_mem_E-004_fills.sql)
-- SCOPE: [LUMEN_DEMO_SCOPE-260427.md §4 작업 7](LUMEN_DEMO_SCOPE-260427.md)
+- SCOPE: [[[LUMEN_DEMO_SCOPE-260427]] §4 작업 7](LUMEN_DEMO_SCOPE-260427.md)
 
 **사용법**: 이 파일을 `docs/stories/<code>_<short_title>.md`로 복사 → 빈칸 채움 → 값을 SQL로 옮겨 실행.
 

@@ -4,7 +4,7 @@
 > 상태: 결정 초안. 5-2 사용자 본인 결정 (`maxFreeDialogTurns: 1`) 의 5-4 번복.
 > 관련 코드: [js/ui/lumen_dialog_phase1.js](../js/ui/lumen_dialog_phase1.js)
 > 관련 SCOPE: [docs/LUMEN_DEMO_SCOPE-260506.md](LUMEN_DEMO_SCOPE-260506.md) V2.1
-> 관련 기존 자산: [docs/유령시스템_확정_v1-260418.md](유령시스템_확정_v1-260418.md)
+> 관련 기존 자산: [[[유령시스템_확정_v1-260418]]](유령시스템_확정_v1-260418.md)
 
 ---
 
@@ -313,7 +313,7 @@ SCOPE 갱신 시 본 문서 링크 박음.
 
 1. [x] 본 문서 확정 ← **2026-05-04**
 2. [ ] SCOPE V2.1 §0-A 에 "V2.1.1 ego-state turn-taking 차용" 한 단락 + 본 문서 링크
-3. [x] V2-10 콘텐츠 가이드 신규 — [docs/유령응답풀_가이드_v1-260504.md](유령응답풀_가이드_v1-260504.md) (2026-05-04 완료, 세션 2)
+3. [x] V2-10 콘텐츠 가이드 신규 — [[[유령응답풀_가이드_v1-260504]]](유령응답풀_가이드_v1-260504.md) (2026-05-04 완료, 세션 2)
    - 핸드오프 표현 "12 슬롯 (4 유령 × HIGH/MID/LOW)" 정정 = 코드 시그니처와 안 맞음
    - 실제 차원 = *유령 정체성 (메모리당 N마리) × 3결 (resonance/vague/dissonance) × 변주 4~5*
    - "4종 (Core/Contaminated/Echo/Bridge-deferred)" = 씬 핀 표시 + 변주 톤 hint 자리, 응답 풀 차원 X
@@ -352,9 +352,9 @@ SCOPE 갱신 시 본 문서 링크 박음.
 ## 8. 관련 문서
 
 - [docs/LUMEN_DEMO_SCOPE-260506.md](LUMEN_DEMO_SCOPE-260506.md) — V2.1 SCOPE
-- [docs/유령시스템_확정_v1-260418.md](유령시스템_확정_v1-260418.md) — 유령 4종 화법 §4
+- [[[유령시스템_확정_v1-260418]]](유령시스템_확정_v1-260418.md) — 유령 4종 화법 §4
 - [CLAUDE.md](../CLAUDE.md) §6.5 — 8 critical design principles (특히 #3 fixation, #6 Record=first Play)
-- [기억유전학_v0.3.md](기억유전학_v0.3.md) — destructive replication, biased mutation
+- [[[기억유전학_v0.3]]](기억유전학_v0.3.md) — destructive replication, biased mutation
 - 메모리 [feedback_avoid_authorial_control_framing] — 임상/통제 프레이밍 거부 근거
 - 메모리 [Career Goal — MIT Media Lab] — 박사 framing 자료 자리
 

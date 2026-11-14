@@ -3,7 +3,7 @@
 **제출 마감**: 2026-05-23
 **안전 마감**: 2026-05-19 (buffer 4일)
 **작성**: 2026-04-21
-**기반 문서**: `docs/update_lumen-260420.md`, IMA 비평 판정 (2026-04-20, 83점 B+)
+**기반 문서**: [[update_lumen-260420]], IMA 비평 판정 (2026-04-20, 83점 B+)
 **최근 갱신**: 2026-04-26 — 작업 15 (Admin 두 레이어 분리 + 시뮬 동기화) scope change 추가 + **당일 구현 완료** (smoke 11/11). v1 은 SVG 탑다운, 3D 터레인 렌더는 v2 로 이월. V2 의 "Canvas 지형 모드" 회수 후 완수.
 
 ---
@@ -119,8 +119,8 @@
 - 파일럿 n=5~7 반복 재생 견딜 감정 톤
 
 **관련 문서**:
-- [docs/lumen_memory_story_worksheet-260421.md](lumen_memory_story_worksheet-260421.md) — 워크시트 (Admin UI 실패 시 백업 경로)
-- [docs/lumen_memory_authoring_checklist-260421.md](lumen_memory_authoring_checklist-260421.md) — 레버 레퍼런스
+- [[[lumen_memory_story_worksheet-260421]]](lumen_memory_story_worksheet-260421.md) — 워크시트 (Admin UI 실패 시 백업 경로)
+- [[[lumen_memory_authoring_checklist-260421]]](lumen_memory_authoring_checklist-260421.md) — 레버 레퍼런스
 - [supabase/seeds/lumen_memory_template.sql](../supabase/seeds/lumen_memory_template.sql) — SQL 템플릿 (백업)
 
 ### 작업 10 — 파일럿 n=5~7 [별도, 5-09~13]
@@ -298,11 +298,11 @@ computeAfTerrainFields
 
 ## 12. 관련 문서
 
-- `docs/update_lumen-260420.md` — 계획 원본
-- `docs/V2_backlog.md` — 연기 항목 전부 (md-date 훅이 `V2_backlog-260421.md`로 리네임함)
+- [[update_lumen-260420]] — 계획 원본
+- `docs/V2_backlog.md` — 연기 항목 전부 (md-date 훅이 [[V2_backlog-260421]]로 리네임함)
 - `CLAUDE.md` — Claude Code 세션 가드레일 (단일 통합 파일, 2026-05-03)
 - `prompt/critic.md` — critic v3 프롬프트. TEM 83점 B+ 판정 좌표계 기준점 (2026-04-20).
-- `docs/LUMEN_return_components-260421.md` — 귀환 8개 컴포넌트 최소 작동 정의 (작성 예정, 5-01 전)
+- [[LUMEN_return_components-260421]] — 귀환 8개 컴포넌트 최소 작동 정의 (작성 예정, 5-01 전)
 - `docs/pilot/*.md` — 파일럿 관찰 기록 템플릿 (작성 예정, 5-07 전)
 
 ---
@@ -483,7 +483,7 @@ computeAfTerrainFields
 
 ## 14. Post-demo 비전 — 위상적 quilt (2026-04-27 발견, 박사 거리)
 
-> ⚠️ 2026-06-13 정정: §14-2 "모양 변형(부풀음/수축/회전/반전)" 은 **폐기**됨. 확정 모델은 "장면=고유 지형, 크기·배치만 변형, 생김새 불변". 최신본 → `지형quilt_확정모델_v1-260613.md` 참조.
+> ⚠️ 2026-06-13 정정: §14-2 "모양 변형(부풀음/수축/회전/반전)" 은 **폐기**됨. 확정 모델은 "장면=고유 지형, 크기·배치만 변형, 생김새 불변". 최신본 → [[지형quilt_확정모델_v1-260613]] 참조.
 
 §0 계약서 원칙에 따라 본 데모(5-19) **스코프 밖**. 별도 추적용 기록.
 데모 진행 중 본 §14 가 stretch 욕심으로 작용하지 않게 가드.

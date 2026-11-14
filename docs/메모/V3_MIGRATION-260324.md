@@ -378,7 +378,7 @@ var erosion = deviation * 0.6 + (1 - (raw.emb_score_raw || 0.5)) * 0.4;
 ## 참고 자료
 
 - 기획서 원본: 정렬도 3축 시스템 명세
-- V2 마이그레이션 문서: `docs/V2_MIGRATION_SUMMARY-260324.md`
+- V2 마이그레이션 문서: [[V2_MIGRATION_SUMMARY-260324]]
 - 테스트 파일: `tests/byeori_v3_scoring.test.js`
 
 ---

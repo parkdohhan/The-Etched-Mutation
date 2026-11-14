@@ -27,8 +27,8 @@
 
 | 문서 | 관계 |
 |---|---|
-| 이론 논문 ([docs/기억유전학_v0.3.md](../기억유전학_v0.3.md), [docs/paper/mnemonic_genetics_paper_draft_ko-260403.md](../paper/mnemonic_genetics_paper_draft_ko-260403.md)) | 6연산·오염 벡터의 이론적 정의를 제공. 본 문서는 이를 조작적 규칙으로 환원하는 작업의 일정과 산출물만 관리 |
-| TEM 시스템 매뉴얼 ([docs/TEM_시스템_매뉴얼-260410.md](../TEM_시스템_매뉴얼-260410.md), [docs/LUMEN_DEMO_SCOPE.md](../LUMEN_DEMO_SCOPE.md), [docs/V2_backlog-260421.md](../V2_backlog-260421.md)) | 작품·시스템 구현의 정규 출처. 본 문서는 TEM을 "데이터 생성 인프라"로만 참조 |
+| 이론 논문 ([[[기억유전학_v0.3]]](../기억유전학_v0.3.md), [[[mnemonic_genetics_paper_draft_ko-260403]]](../paper/mnemonic_genetics_paper_draft_ko-260403.md)) | 6연산·오염 벡터의 이론적 정의를 제공. 본 문서는 이를 조작적 규칙으로 환원하는 작업의 일정과 산출물만 관리 |
+| TEM 시스템 매뉴얼 ([[[TEM_시스템_매뉴얼-260410]]](../TEM_시스템_매뉴얼-260410.md), [docs/LUMEN_DEMO_SCOPE.md](../LUMEN_DEMO_SCOPE.md), [[[V2_backlog-260421]]](../V2_backlog-260421.md)) | 작품·시스템 구현의 정규 출처. 본 문서는 TEM을 "데이터 생성 인프라"로만 참조 |
 | 유학 계획 문서 | 본 문서에서 다루지 않음. 자원 매핑(§3)에 진학 시점을 자원 가용 시점으로만 참조 |
 
 ### 0.3 개정 규칙
@@ -59,7 +59,7 @@
 
 최종 목표가 "달성됐다"는 판정은 다음 둘 중 하나 이상이 충족될 때 성립한다.
 
-1. **함수 패밀리 일치**: 수집된 인간 기억 체험 서열의 주요 분포 속성(heterogeneity 누적 곡선, divergence 포화 곡선, convergence 스케일링) 중 3개 이상이 quasispecies 이론이 예측하는 함수 패밀리와 일치한다(95% CI 내 기각되지 않음). 비교 기준: [docs/기억유전학_v0.3.md](../기억유전학_v0.3.md) §12.2, §13.4의 기질-비의존적 속성 4종.
+1. **함수 패밀리 일치**: 수집된 인간 기억 체험 서열의 주요 분포 속성(heterogeneity 누적 곡선, divergence 포화 곡선, convergence 스케일링) 중 3개 이상이 quasispecies 이론이 예측하는 함수 패밀리와 일치한다(95% CI 내 기각되지 않음). 비교 기준: [[[기억유전학_v0.3]]](../기억유전학_v0.3.md) §12.2, §13.4의 기질-비의존적 속성 4종.
 2. **생성물의 외부 판정**: 파이프라인이 합성한 서열이 제3자 평가(패널 또는 기계 판정)에서 인간 생성 서열과 구분되지 않는 비율이 우연 수준을 넘는다. 비율과 패널 구성은 §6 Q12 참조.
 
 이 문서는 "증명"이라는 표현을 사용하지 않는다. 위 두 조건은 반증 실패 조건이다.
@@ -81,13 +81,13 @@
 
 - **목표**: 6연산 각각을 TEM `plays` 테이블의 결정 규칙(decision rule)으로 환원한 규칙집과, 이 규칙의 자동 판정 출력이 수동 레이블과 일치함을 보인 검증 세트
 - **측정 가능한 산출물**:
-  - 규칙 문서: 각 연산당 (a) 입력 필드, (b) 임계, (c) 예외 처리, (d) 근거 인용([docs/기억유전학_v0.3.md](../기억유전학_v0.3.md) §2, [docs/TEM_시스템_매뉴얼-260410.md](../TEM_시스템_매뉴얼-260410.md) 해당 절)
+  - 규칙 문서: 각 연산당 (a) 입력 필드, (b) 임계, (c) 예외 처리, (d) 근거 인용([[[기억유전학_v0.3]]](../기억유전학_v0.3.md) §2, [[[TEM_시스템_매뉴얼-260410]]](../TEM_시스템_매뉴얼-260410.md) 해당 절)
   - 자동 판정 스크립트: 기존 `ContaminationTracker`·`ByeoriEngine`의 출력에서 6연산 레이블을 생성
   - 검증 세트: 최소 30개 plays에 대한 수동 레이블, 자동 판정과의 Cohen's κ ≥ 0.7(목표치)
   - 한계 문서: 현재 데이터로 구별 불가능한 연산 쌍을 명시(예: Op 1과 Op 5의 초기 시그널은 동일 가능, v0.3 §2 논의)
 - **선행 조건**:
-  - TEM `plays` 스키마가 현재 수준으로 안정화되어 있음 ([docs/데이터계약_브릿지_v1-260412.md](../데이터계약_브릿지_v1-260412.md) 기준)
-  - 페르소나 시뮬 293 plays ([docs/paper/TEM_paper_draft_v0.1-260419.md](../paper/TEM_paper_draft_v0.1-260419.md) §6.1) 또는 파일럿 데이터
+  - TEM `plays` 스키마가 현재 수준으로 안정화되어 있음 ([[[데이터계약_브릿지_v1-260412]]](../데이터계약_브릿지_v1-260412.md) 기준)
+  - 페르소나 시뮬 293 plays ([[[TEM_paper_draft_v0.1-260419]]](../paper/TEM_paper_draft_v0.1-260419.md) §6.1) 또는 파일럿 데이터
 - **예상 소요**: 6–12개월. 학부 잔여 기간 내 수행 가능.
 
 ### 2.2 단계 2 — 측정 도구
@@ -106,7 +106,7 @@
 - **측정 가능한 산출물**:
   - IRB 승인서 (소속 기관 결정 후 — §6 Q3 참조)
   - 프로토콜 문서: 최소 N, 재방문 간격, 중도 이탈 처리, PII 필터링 규칙
-  - 수집 시스템: 기존 TEM 인프라 위의 종단 인덱스(session_id 체인, 재방문 식별), [docs/안전_설계-260324.md](../안전_설계-260324.md)의 block_high/mid 규칙 유지
+  - 수집 시스템: 기존 TEM 인프라 위의 종단 인덱스(session_id 체인, 재방문 식별), [[[안전_설계-260324]]](../안전_설계-260324.md)의 block_high/mid 규칙 유지
   - 최종 데이터셋: N≥30, 최소 6개월 관찰 (§6 Q4의 N 결정 기준 참조)
 - **선행 조건**: 단계 2의 측정 도구가 안정화되어 있어야 스키마를 고정할 수 있다. IRB 심사에는 측정할 양의 정의가 요구되므로 단계 2의 검증 리포트가 사실상 심사 자료.
 - **예상 소요**: 18–36개월. 박사 과정 내 수행. IRB 심사·모집·관찰 기간이 소요의 대부분.
@@ -116,7 +116,7 @@
 - **목표**: 기억 서열과 비교 가능한 분자적 레퍼런스 데이터의 확보, 합성 사용자 파이프라인의 외적 타당성 보강 결과, 두 경로의 교차 검증 문서
 - **측정 가능한 산출물**:
   - 분자 레퍼런스: BLOSUM 치환 행렬, HIV 계통역학 공개 데이터(LANL 가용성은 §6 Q5) 또는 대체 레퍼런스(§6 Q6), 분자시계 공개 데이터셋 — 각각 TEM 데이터와의 매핑 테이블
-  - 합성 사용자 보강: 페르소나 파이프라인(IPIP-NEO-300 기반, 현 293 plays)을 단계 3의 실제 인간 데이터와 교차 비교한 보정 리포트, LLM 편향 감사 프로토콜([docs/paper/TEM_paper_draft_v0.1-260419.md](../paper/TEM_paper_draft_v0.1-260419.md) §7.2 후속)
+  - 합성 사용자 보강: 페르소나 파이프라인(IPIP-NEO-300 기반, 현 293 plays)을 단계 3의 실제 인간 데이터와 교차 비교한 보정 리포트, LLM 편향 감사 프로토콜([[[TEM_paper_draft_v0.1-260419]]](../paper/TEM_paper_draft_v0.1-260419.md) §7.2 후속)
   - 교차 검증: 분자 레퍼런스와 TEM 실제 데이터, 합성 데이터 세 축의 함수 패밀리 일치도 리포트
 - **선행 조건**: 단계 3의 실제 인간 데이터. 이 데이터 없이 합성 파이프라인만으로 레퍼런스 비교를 하면 LLM 편향이 비교 대상에 이미 주입된다.
 - **예상 소요**: 24–48개월. 박사 중후반. 분자 데이터 전처리·재현이 주요 병목.
@@ -166,7 +166,7 @@
 
 ### 4.2 R2 — LLM 에코 챔버
 
-- **설명**: 이론 작성·규칙 초안·페르소나 시뮬이 모두 단일 LLM 세션군으로 이뤄지면, 이론이 외부 반증 없이 자기 일관되게 정교화된다. 현존 문서에서도 LLM 편향이 페르소나 시뮬의 한계로 명시됨([docs/paper/TEM_paper_draft_v0.1-260419.md](../paper/TEM_paper_draft_v0.1-260419.md) §7.2, [docs/paper/TrackA_TEM_system_paper_outline-260419.md](../paper/TrackA_TEM_system_paper_outline-260419.md) §199).
+- **설명**: 이론 작성·규칙 초안·페르소나 시뮬이 모두 단일 LLM 세션군으로 이뤄지면, 이론이 외부 반증 없이 자기 일관되게 정교화된다. 현존 문서에서도 LLM 편향이 페르소나 시뮬의 한계로 명시됨([[[TEM_paper_draft_v0.1-260419]]](../paper/TEM_paper_draft_v0.1-260419.md) §7.2, [[[TrackA_TEM_system_paper_outline-260419]]](../paper/TrackA_TEM_system_paper_outline-260419.md) §199).
 - **탐지 지표**: (a) 단계 1·2 산출물 중 외부 검토(외부 연구자, 저널 리뷰, 다른 LLM 가족) 거친 항목의 수, (b) 규칙 초안의 주장 중 비-LLM 원본(논문·교과서·실험 로그) 인용 비율.
 - **완화 행동**: 박소정이 2026-10-21(제2회 분기 감사) 이전에 최소 1개의 외부 검토 경로를 확보(Leonardo 투고 또는 지도교수 후보 접촉). 확보 실패 시 본 문서 §6 Q7로 이관.
 
@@ -274,32 +274,32 @@
 
 ### A.1 이론
 
-- **[docs/기억유전학_v0.3.md](../기억유전학_v0.3.md)**: v0.2의 4연산을 6연산으로 확장, 단일 스칼라 오염도를 4축 벡터(depth·divergence·convergence·heterogeneity)로 재정의한 이론 프레임워크. §11에서 HIV-1 생활사와의 구조적 대응, §12–13에서 기질-비의존적 속성 4종과 quasispecies 마스터 방정식 매핑, §13.4에서 TEM 데이터 기반 검증 파이프라인 제안. 약 730줄, 작업 논문 수준. 본 프로그램의 단계 1·2가 §13.4 실행을 직접 상속한다.
-- **[docs/기억집단유전학_v0.4_지형설계-260405.md](../기억집단유전학_v0.4_지형설계-260405.md)**: v0.3의 개별 기억 수준을 집단 수준으로 확장. Retrieval-Induced Forgetting을 시스템 수준 간섭식으로, 양방향 임계(오류 파국·경직 파국)와 6개 지질학적 힘과의 대응을 제시. "변수는 시간이 아닌 생태계 활동"이 핵심 명제. 본 프로그램의 단계 3 스키마 설계에 간접 기여.
-- **[docs/mnemonic-genetics-요약-260325.md](../mnemonic-genetics-요약-260325.md)**: v0.2 요약. 4연산·3스테이지 모델이 v0.3에서 대체됨. 참조용으로만 유지.
+- **[[[기억유전학_v0.3]]](../기억유전학_v0.3.md)**: v0.2의 4연산을 6연산으로 확장, 단일 스칼라 오염도를 4축 벡터(depth·divergence·convergence·heterogeneity)로 재정의한 이론 프레임워크. §11에서 HIV-1 생활사와의 구조적 대응, §12–13에서 기질-비의존적 속성 4종과 quasispecies 마스터 방정식 매핑, §13.4에서 TEM 데이터 기반 검증 파이프라인 제안. 약 730줄, 작업 논문 수준. 본 프로그램의 단계 1·2가 §13.4 실행을 직접 상속한다.
+- **[[[기억집단유전학_v0.4_지형설계-260405]]](../기억집단유전학_v0.4_지형설계-260405.md)**: v0.3의 개별 기억 수준을 집단 수준으로 확장. Retrieval-Induced Forgetting을 시스템 수준 간섭식으로, 양방향 임계(오류 파국·경직 파국)와 6개 지질학적 힘과의 대응을 제시. "변수는 시간이 아닌 생태계 활동"이 핵심 명제. 본 프로그램의 단계 3 스키마 설계에 간접 기여.
+- **[[[mnemonic-genetics-요약-260325]]](../mnemonic-genetics-요약-260325.md)**: v0.2 요약. 4연산·3스테이지 모델이 v0.3에서 대체됨. 참조용으로만 유지.
 
 ### A.2 논문 드래프트
 
-- **[docs/paper/mnemonic_genetics_paper_draft_ko-260403.md](../paper/mnemonic_genetics_paper_draft_ko-260403.md)**: 이론+시스템+메트릭 통합 초안(약 60쪽). 이후 Track A(시스템)/Track B(이론)로 분리 결정.
-- **[docs/paper/TEM_paper_draft_v0.1-260419.md](../paper/TEM_paper_draft_v0.1-260419.md)**: Track A 드래프트 v0.1. 기억유전학 이론 제거, 별이엔진 V4 정렬도·Drift/Fixation 2축 메트릭·페르소나 시뮬 293 plays만 포함. §7.2에 LLM 편향 한계 명시. §7.3에서 quasispecies 이론을 "별도 트랙/박사 작업"으로 명시(본 프로그램이 그 별도 트랙).
-- **[docs/paper/TrackA_TEM_system_paper_outline-260419.md](../paper/TrackA_TEM_system_paper_outline-260419.md)**: Track A 아웃라인. §Scope 경계선에서 레트로바이러스/HIV/6연산/Quasispecies/AlphaFold/기억유전학 주장을 명시적 제외. 본 프로그램은 이 제외 목록의 반대편(Track B 전체)을 담당.
+- **[[[mnemonic_genetics_paper_draft_ko-260403]]](../paper/mnemonic_genetics_paper_draft_ko-260403.md)**: 이론+시스템+메트릭 통합 초안(약 60쪽). 이후 Track A(시스템)/Track B(이론)로 분리 결정.
+- **[[[TEM_paper_draft_v0.1-260419]]](../paper/TEM_paper_draft_v0.1-260419.md)**: Track A 드래프트 v0.1. 기억유전학 이론 제거, 별이엔진 V4 정렬도·Drift/Fixation 2축 메트릭·페르소나 시뮬 293 plays만 포함. §7.2에 LLM 편향 한계 명시. §7.3에서 quasispecies 이론을 "별도 트랙/박사 작업"으로 명시(본 프로그램이 그 별도 트랙).
+- **[[[TrackA_TEM_system_paper_outline-260419]]](../paper/TrackA_TEM_system_paper_outline-260419.md)**: Track A 아웃라인. §Scope 경계선에서 레트로바이러스/HIV/6연산/Quasispecies/AlphaFold/기억유전학 주장을 명시적 제외. 본 프로그램은 이 제외 목록의 반대편(Track B 전체)을 담당.
 
 ### A.3 시스템·엔진·오염
 
-- **[docs/TEM_시스템_매뉴얼-260410.md](../TEM_시스템_매뉴얼-260410.md)**: 2026-04-10 채택 정규 단일 출처. 6연산 요약 정의, 오염 3축 코드 변수(`cont_depth`·`cont_divergence`·`cont_convergence`·`cont_heterogeneity`), Stage 혼합 비율, ContaminationTracker 호출 시점 포함. 본 프로그램은 이 매뉴얼을 "데이터 생성 인프라 스펙"으로만 참조.
-- **[docs/별이엔진_V4-궤적기반_정렬도-260327.md](../별이엔진_V4-궤적기반_정렬도-260327.md)**: 정렬도 = level × shape × void_mod. transition_pattern 6종. 본 프로그램의 단계 1에서 shape·transition_pattern을 Op 1·2의 신호 후보로 사용.
-- **[docs/오염벡터_계산_구현_명세_v2-260327.md](../오염벡터_계산_구현_명세_v2-260327.md)**: 3축 증분 공식(EMA α=0.10, Welford 분산). 세션 종료 시 1회 호출. depth ≥ 3 게이트.
-- **[docs/contamination/contamination_mvp_spec_v3.md](../contamination/contamination_mvp_spec_v3.md)**: MVP 구현 스펙. Drift/Fixation 2축 EMA + drift direction vector. Stage 1/3만 구현, Stage 2 보류. v0.3의 4축을 축소한 현재 실제 구현.
-- **[docs/contamination/contamination_vnext_notes.md](../contamination/contamination_vnext_notes.md)**: MVP 제외 항목(heterogeneity, Stage 2, 재조합, genealogy 등) 보류 이유 기록.
+- **[[[TEM_시스템_매뉴얼-260410]]](../TEM_시스템_매뉴얼-260410.md)**: 2026-04-10 채택 정규 단일 출처. 6연산 요약 정의, 오염 3축 코드 변수(`cont_depth`·`cont_divergence`·`cont_convergence`·`cont_heterogeneity`), Stage 혼합 비율, ContaminationTracker 호출 시점 포함. 본 프로그램은 이 매뉴얼을 "데이터 생성 인프라 스펙"으로만 참조.
+- **[[[별이엔진_V4-궤적기반_정렬도-260327]]](../별이엔진_V4-궤적기반_정렬도-260327.md)**: 정렬도 = level × shape × void_mod. transition_pattern 6종. 본 프로그램의 단계 1에서 shape·transition_pattern을 Op 1·2의 신호 후보로 사용.
+- **[[[오염벡터_계산_구현_명세_v2-260327]]](../오염벡터_계산_구현_명세_v2-260327.md)**: 3축 증분 공식(EMA α=0.10, Welford 분산). 세션 종료 시 1회 호출. depth ≥ 3 게이트.
+- **[[[contamination_mvp_spec_v3]]](../contamination/contamination_mvp_spec_v3.md)**: MVP 구현 스펙. Drift/Fixation 2축 EMA + drift direction vector. Stage 1/3만 구현, Stage 2 보류. v0.3의 4축을 축소한 현재 실제 구현.
+- **[[[contamination_vnext_notes]]](../contamination/contamination_vnext_notes.md)**: MVP 제외 항목(heterogeneity, Stage 2, 재조합, genealogy 등) 보류 이유 기록.
 
 ### A.4 종단·반복·안전·데이터 계약
 
-- **[docs/Record_flow_v3-260405.md](../Record_flow_v3-260405.md)**: 기억 기록을 무대-공명-침전 3단계로 구조화. Phase A/B/C 스키마. 본 프로그램의 단계 3에서 재방문 시 telling_trajectory 갱신 구조로 재사용.
-- **[docs/SceneNavigator_설계_v1-260329.md](../SceneNavigator_설계_v1-260329.md)**: 씬 단위 sceneHistory 기록. 반복 방문 시 pattern 변화 감지로 fixation 복합신호 추출. 단계 1의 Op 5 판정 규칙 후보.
-- **[docs/안전_설계-260324.md](../안전_설계-260324.md)**: block_high/mid 위기 감지, VOID 데이터화, 다국어 리소스. 단계 3의 IRB 절차에서 기존 안전 계약을 계승.
-- **[docs/데이터계약_브릿지_v1-260412.md](../데이터계약_브릿지_v1-260412.md)**: 공명(alignment ≥ 0.65) 도달 시 Trajectory Bridge 자동 생성. 단계 3 스키마 참조점.
-- **[docs/Archive_mode-260325.md](../Archive_mode-260325.md)**: 현재 비어있음. 부록 A에 반영.
-- **[docs/Live_mode-260325.md](../Live_mode-260325.md)**: 현재 비어있음. 부록 A에 반영.
+- **[[[Record_flow_v3-260405]]](../Record_flow_v3-260405.md)**: 기억 기록을 무대-공명-침전 3단계로 구조화. Phase A/B/C 스키마. 본 프로그램의 단계 3에서 재방문 시 telling_trajectory 갱신 구조로 재사용.
+- **[[[SceneNavigator_설계_v1-260329]]](../SceneNavigator_설계_v1-260329.md)**: 씬 단위 sceneHistory 기록. 반복 방문 시 pattern 변화 감지로 fixation 복합신호 추출. 단계 1의 Op 5 판정 규칙 후보.
+- **[[[안전_설계-260324]]](../안전_설계-260324.md)**: block_high/mid 위기 감지, VOID 데이터화, 다국어 리소스. 단계 3의 IRB 절차에서 기존 안전 계약을 계승.
+- **[[[데이터계약_브릿지_v1-260412]]](../데이터계약_브릿지_v1-260412.md)**: 공명(alignment ≥ 0.65) 도달 시 Trajectory Bridge 자동 생성. 단계 3 스키마 참조점.
+- **[[[Archive_mode-260325]]](../Archive_mode-260325.md)**: 현재 비어있음. 부록 A에 반영.
+- **[[[Live_mode-260325]]](../Live_mode-260325.md)**: 현재 비어있음. 부록 A에 반영.
 
 ### A.5 합성 사용자 파이프라인
 
@@ -317,7 +317,7 @@
 
 ## 부록 B — 용어
 
-본 문서는 6연산·오염 벡터 등 이론 용어를 재정의하지 않는다. 용어의 정규 출처는 [docs/기억유전학_v0.3.md](../기억유전학_v0.3.md)와 [docs/TEM_시스템_매뉴얼-260410.md](../TEM_시스템_매뉴얼-260410.md), 혼동 용어 원자료는 [docs/용어_전수조사_원자료-260415.md](../용어_전수조사_원자료-260415.md).
+본 문서는 6연산·오염 벡터 등 이론 용어를 재정의하지 않는다. 용어의 정규 출처는 [[[기억유전학_v0.3]]](../기억유전학_v0.3.md)와 [[[TEM_시스템_매뉴얼-260410]]](../TEM_시스템_매뉴얼-260410.md), 혼동 용어 원자료는 [[[용어_전수조사_원자료-260415]]](../용어_전수조사_원자료-260415.md).
 
 ---
 
