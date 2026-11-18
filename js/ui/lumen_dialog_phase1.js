@@ -71,6 +71,62 @@
   // 좁은 화면 여부 — 터치 기기이면서 세로가 짧을 때만 축소한다(태블릿 세로는 그대로).
   function _mq() { return _isTouchUI() && global.innerHeight < 560; }
 
+  // ─── 261118 글 방 모양 (표류 무대 ?drift=1 에서만) ─────────────────
+  // 대화창을 RPG 자막 상자 대신 room-play 의 글 기둥으로 보여 준다: 화면 가운데 세로 기둥,
+  // 글이 문장 단위로 줄을 바꿔 천천히 떠오르고, 지나간 줄은 지워지지 않고 위로 흐려지며 쌓인다.
+  // 직전 만남의 끝 두 줄(유령의 끊긴 문장 + 내가 이은 말)이 다음 만남 맨 위에 남는다.
+  // 흐름(지문 → 연결사 → 한 번 제출)·측정·기록은 한 글자도 안 바뀐다 — 보이는 모양만.
+  function _textRoom() { return !!(global.TemDrift && global.TemDrift.on); }
+  var _trCarry = [];        // 직전 만남에서 넘어오는 줄 [{ who, text }]
+  var _trNow = [];          // 이번 만남에서 지나간 줄
+  function _trBreak(t) { return String(t == null ? '' : t).replace(/([.!?。]["'”’]?)[ \t]+/g, '$1\n'); }
+  function _trSubject(w) {
+    var ch = String(w).charCodeAt(String(w).length - 1);
+    if (ch < 0xAC00 || ch > 0xD7A3) return '이(가)';
+    return ((ch - 0xAC00) % 28) ? '이' : '가';
+  }
+  function _trObjectLine(meta) {
+    try {
+      var tags = Array.isArray(meta.object_tags) ? meta.object_tags : [];
+      var w = String(tags[0] || '').trim();
+      if (!w) return '';
+      var lines = meta.object_lines;
+      if (lines && typeof lines === 'object' && lines[w]) return String(lines[w]);
+      return _dialogLang() === 'ko' ? (w + _trSubject(w) + ' 보인다.') : ('You see ' + w + '.');
+    } catch (_) { return ''; }
+  }
+  // 글 방에 띄울 글: 긴 판본(text_stage_1 — 같은 토막의 원문 문장이 더 들어간 판)에서
+  // 지문의 절단 문장이 나오는 자리까지. 절단 문장 자체와 측정용 지문(_contStem)은 불변.
+  // 긴 판본에 절단 문장이 없거나 얻는 게 없으면 지문 그대로.
+  function _trPassage(sceneData, stem) {
+    try {
+      var long = sceneData && sceneData.text_stage_1;
+      if (!long) return stem;
+      var norm = function (s) { return String(s).replace(/[\s.!?…。"'“”‘’]/g, ''); };
+      var st = String(stem).split(/(?<=[.!?。…])\s+/).filter(function (s) { return s.trim(); });
+      var cut = norm(st[st.length - 1]);
+      if (!cut) return stem;
+      var ls = String(long).split(/(?<=[.!?。])\s+/).filter(function (s) { return s.trim(); });
+      for (var i = 0; i < ls.length; i++) {
+        if (norm(ls[i]).indexOf(cut) === 0) {
+          if (i <= st.length - 1) return stem;
+          return ls.slice(0, i).concat([st[st.length - 1]]).join(' ');
+        }
+      }
+    } catch (_) {}
+    return stem;
+  }
+  function _trLogLine(overlay, who, text, carried) {
+    var log = overlay.querySelector('.ldp-log');
+    if (!log || !text) return;
+    var d = document.createElement('div');
+    d.textContent = text;
+    d.style.cssText = 'white-space:pre-wrap;margin-top:0.9em;transition:opacity 1600ms ease;opacity:0;'
+      + 'color:' + (who === 'player' ? 'rgba(214,188,150,1)' : 'rgba(232,224,246,1)') + ';';
+    log.appendChild(d);
+    requestAnimationFrame(function () { d.style.opacity = carried ? '0.42' : '0.64'; });
+  }
+
   var DEFAULTS = {
     overlayId: 'lumenDialogPhase1',
     maxFreeDialogTurns: 3,    // 2026-05-04 ego-state turn-taking 차용 (5-2 단일턴 결정 번복). docs/유령대화_egostate_차용-260504.md
@@ -322,6 +378,16 @@
         }
       }
       textEl.style.color = who === 'player' ? 'rgba(214,188,150,0.92)' : 'rgba(240,232,254,0.96)';
+      var _tr = _textRoom();
+      if (_tr) {
+        // 글 방: 지나간 줄은 지우지 않고 위 기록으로 올린다. 새 줄은 문장마다 줄을 바꾼다.
+        if (_sub.trShown) { _trLogLine(overlay, _sub.trShown.who, _sub.trShown.text, false); _trNow.push(_sub.trShown); }
+        text = _trBreak(text);
+        _sub.trShown = { who: who, text: text };
+        // 내가 한 말은 화면에 떠다닌다 (표류 무대)
+        if (who === 'player' && global.TemDrift && typeof global.TemDrift.said === 'function') { try { global.TemDrift.said(text); } catch (_) {} }
+        if (who === 'player' && global.TemPieceProps && typeof global.TemPieceProps.noteSaid === 'function') { try { global.TemPieceProps.noteSaid(text); } catch (_) {} }
+      }
       textEl.innerHTML = '';
       if (indEl) indEl.style.display = 'none';
       // 대사 재생 중엔 스킵 버튼 = 빨리감기 모드
@@ -337,7 +403,9 @@
       var tokens = String(text == null ? '' : text).split(/(\s+)/);
       var words = tokens.filter(function (t) { return t.trim().length; });
       var stepMs = who === 'player' ? 40 : 90;
-      if (words.length * stepMs > 2700) stepMs = Math.max(24, Math.floor(2700 / words.length));
+      var _capMs = 2700;
+      if (_tr && who !== 'player') { stepMs = 190; _capMs = 9000; }   // 글 방: 읽는 속도로 느리게
+      if (words.length * stepMs > _capMs) stepMs = Math.max(24, Math.floor(_capMs / words.length));
       var fadeMs = 480;
       var holdMs = who === 'player' ? 260 : 420;
       var spans = [];
@@ -630,6 +698,56 @@
     inputArea.id = id + '-input-area';
     inputArea.style.cssText = 'width:min(820px,94vw);min-height:' + (_mq() ? '44px' : '64px') + ';flex-shrink:0;margin-top:' + (_mq() ? '6px' : '10px') + ';pointer-events:auto;';
     ov.appendChild(inputArea);
+
+    // 261118 글 방 모양 — 같은 요소를 기둥으로 다시 입힌다 (요소·id·class 불변 → 나머지 코드 무수정).
+    if (_textRoom()) {
+      var _colW = _mq() ? '92vw' : 'min(640px,90vw)';
+      // 가운데만 어두운 세로 장막: 양옆으로 유령·사물·지형이 비친다.
+      ov.style.background = 'linear-gradient(90deg, rgba(5,5,9,0) 0%, rgba(5,5,9,0.62) 24%, rgba(5,5,9,0.84) 38%, rgba(5,5,9,0.84) 62%, rgba(5,5,9,0.62) 76%, rgba(5,5,9,0) 100%)';
+      ov.style.padding = _mq() ? '0 10px 6vh 10px' : '0 24px 13vh 24px';   // 아래 감정선이 없어졌으므로 그 자리를 비우지 않는다
+      ov.style.opacity = '0';
+      ov.style.transition = 'opacity 1400ms ease';
+      requestAnimationFrame(function () { ov.style.opacity = '1'; });
+      sub.style.width = _colW;
+      sub.style.flex = '1 1 auto';
+      sub.style.minHeight = '0';
+      metaZone.style.width = _colW;
+      inputArea.style.width = _colW;
+      var log = document.createElement('div');
+      log.className = 'ldp-log';
+      log.style.cssText = [
+        'flex:1 1 auto', 'min-height:0', 'overflow:hidden',
+        'display:flex', 'flex-direction:column', 'justify-content:flex-end',
+        _mq() ? 'font-size:0.95rem' : 'font-size:1.12rem',
+        _mq() ? 'line-height:1.7' : 'line-height:2.0',
+        'padding:0 6px 0.4em 6px',
+        '-webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 34%)',
+        'mask-image:linear-gradient(180deg, transparent 0%, #000 34%)',
+      ].join(';');
+      sub.insertBefore(log, box);
+      box.style.background = 'transparent';
+      box.style.border = 'none';
+      box.style.boxShadow = 'none';
+      box.style.padding = '1.1em 6px 1.2em 6px';
+      box.style.borderTop = '1px solid rgba(196,168,130,0.16)';
+      box.style.borderRadius = '0';
+      box.style.flexShrink = '0';
+      nameTag.style.position = 'static';
+      nameTag.style.display = 'inline-block';
+      nameTag.style.background = 'transparent';
+      nameTag.style.border = 'none';
+      nameTag.style.padding = '0';
+      nameTag.style.marginBottom = '0.5em';
+      nameTag.style.fontSize = '0.8rem';
+      nameTag.style.letterSpacing = '0.3em';
+      nameTag.style.opacity = '0.55';
+      textEl.style.fontSize = _mq() ? '1.05rem' : '1.28rem';
+      textEl.style.lineHeight = _mq() ? '1.75' : '2.05';
+      // 직전 만남의 끝 두 줄을 맨 위에 흐리게 — 걸음 사이의 맥락
+      _sub.trShown = null;
+      _trNow = [];
+      for (var _ci = 0; _ci < _trCarry.length; _ci++) _trLogLine(ov, _trCarry[_ci].who, _trCarry[_ci].text, true);
+    }
 
     document.body.appendChild(ov);
     return ov;
@@ -1577,6 +1695,16 @@
         if (_sc0 && _sc0.text) { _contStem = String(_sc0.text); _contMode = true; }
       }
     } catch (_) {}
+    // 261118 조각 방: 다시 온 유령(판본이 바뀐 글 + 내가 전에 이은 말) 또는 작가가 조각에 세운
+    //   대화 마네킹의 대사 — 조각 쪽이 글을 정해 준다. 없으면 기존 지문 그대로.
+    var _piecePass = null;
+    try {
+      if (_textRoom() && global.TemPieceProps && typeof global.TemPieceProps.passageFor === 'function') {
+        _piecePass = global.TemPieceProps.passageFor(sceneId, sceneData);
+        if (_piecePass && _piecePass.passage) { _contStem = String(_piecePass.passage); _contMode = true; }
+        else _piecePass = null;
+      }
+    } catch (_) { _piecePass = null; }
     if (_contMode) console.log('[phase1] cont_v1 ON — 지문 절단 이어받기 (sceneId=' + String(sceneId).slice(0, 8) + '…)');
 
     // T3: 다른 기억으로 갈아타면 유령별 재대화 카운트(층 진행)·풀 캐시 초기화 (stale 방지).
@@ -1743,7 +1871,21 @@
 
     // 260730 cont_v1: 유령의 발화 = era 를 요동에서 찢은 지문. 이것 하나가 인트로·혼잣말 전부를 대체.
     if (_contMode && _contStem) {
-      _addMessage(overlay, _contStem, { who: 'ghost' });
+      // 261118 글 방(표류 무대): 지문 앞에 "○○가 보인다" 한 줄 — 무엇 앞에 서 있는지부터.
+      //   측정에 들어가는 지문(dialogHistory 의 _contStem)은 그대로다. 화면 줄만 하나 더 뜬다.
+      //   261118b: 순서를 글 방과 같게 — 글 → "○○가 보인다" → 이어 쓰기 (한 덩어리로 떠서 같이 남는다).
+      //   글은 긴 판본(text_stage_1)에서 같은 절단 문장까지 — 끊는 자리는 그대로, 앞 맥락만 길어진다.
+      if (_textRoom()) {
+        var _trObj = _trObjectLine(meta);
+        if (_piecePass) {
+          // 조각 방: 본문 전체(끝 문장만 끊김) 아래에 "… 가 보인다" 줄 — 이 씬의 유령에게 처음 말을 걸 때만
+          var _see = (_piecePass.main && !_piecePass.again) ? (_piecePass.seeLine || _trObj) : '';
+          _addMessage(overlay, _contStem + (_see ? '\n\n' + _see : ''), { who: 'ghost' });
+        }
+        else _addMessage(overlay, _trPassage(sceneData, _contStem) + (_trObj ? '\n\n' + _trObj : ''), { who: 'ghost' });
+      } else {
+        _addMessage(overlay, _contStem, { who: 'ghost' });
+      }
       await _sleep(DEFAULTS.pacingDelays.afterIntroMs);
     }
 
@@ -2147,6 +2289,21 @@
     // 260708: 자막 큐 리셋 (다음 씬 잔류 방지) + 260709: 넘김 키 리스너 해제
     _sub.chain = Promise.resolve();
     _sub.advance = null;
+    // 261118 글 방: 이번 만남의 "끊긴 문장 끝 줄 + 내가 이은 말"을 다음 만남으로 넘긴다.
+    if (_textRoom()) {
+      try {
+        var _all = _trNow.concat(_sub.trShown ? [_sub.trShown] : []);
+        var _pi = -1;
+        for (var _k = 0; _k < _all.length; _k++) { if (_all[_k].who === 'player') { _pi = _k; break; } }
+        if (_pi > 0) {
+          var _tail = String(_all[_pi - 1].text).split('\n').filter(function (s) { return s.trim(); }).pop() || '';
+          _trCarry = [{ who: 'ghost', text: _tail }, { who: 'player', text: _all[_pi].text }];
+        }
+      } catch (_) {}
+      _sub.trShown = null;
+      _trNow = [];
+      try { if (global.TemPieceProps && global.TemPieceProps.talkEnded) global.TemPieceProps.talkEnded(); } catch (_) {}
+    }
     var ov = document.getElementById(opts.mountId || DEFAULTS.overlayId);
     if (ov) {
       if (ov._ldpKeyHandler) document.removeEventListener('keydown', ov._ldpKeyHandler);

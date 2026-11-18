@@ -448,6 +448,9 @@
       var anchors = OA.layout(pins, {
         maxPerScene: opts.maxPerScene,
         segT: opts.segT, perpMin: opts.perpMin, perpMax: opts.perpMax,
+        // 261118 표류 무대(?drift=1)에서만: 작가 고정 좌표를 쓰지 않고 제 유령 곁에 세운다
+        ignorePinned: !!(global.TemDrift && global.TemDrift.on),
+        maxSeg: (global.TemDrift && global.TemDrift.on) ? 9 : 0,
       });
       // 260802 노출 게이트 + 심볼 중복 제외 — 자리는 전체 계산 그대로, 거르기만 한다.
       if (typeof opts.sceneGate === 'function' || typeof opts.excludeWordForScene === 'function') {

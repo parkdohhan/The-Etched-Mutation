@@ -8,6 +8,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="css/admin.css?v=260727a">
+<style>
+/* 261118: 조각 방 무대에서 안 쓰는 칸·도구 = 풀버전 편집에서만 (Canvas 판). 기존 .adv-only(옛 폼)와 같은 뜻 */
+body:not(.tv-full) .tv-adv { display: none !important; }
+</style>
+<script>
+(function(){ try { if (localStorage.getItem("tem_tv_full")==="1") document.documentElement.classList.add("tv-full-pending"); } catch(_){}
+  document.addEventListener("DOMContentLoaded", function(){
+    var on = false; try { on = localStorage.getItem("tem_tv_full")==="1"; } catch(_){}
+    function apply(){ document.body.classList.toggle("tv-full", on); var b=document.getElementById("tvFullToggle"); if(b) b.textContent = on ? "간단 편집으로" : "풀버전 편집"; }
+    apply();
+    document.addEventListener("click", function(e){ if (e.target && e.target.id === "tvFullToggle") { on = !on; try { localStorage.setItem("tem_tv_full", on ? "1" : "0"); } catch(_){} apply(); } });
+  });
+})();
+</script>
 </head>
 <body>
     <div class="password-screen" id="passwordScreen">
@@ -409,7 +423,7 @@
                 <div style="display:flex;gap:6px;margin-bottom:6px;">
                     <button class="tv-toggle" id="tvAddSceneBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="원본(Anchor) 씬 추가">+ 원본 씬</button>
                     <!-- 2026-05-16 — 잔상 유령 추가. 3D 무대에서 회색 마커로 떠서 드래그 편집. -->
-                    <button class="tv-toggle" id="tvAddGhostBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(200,200,208,0.1);border-color:rgba(200,200,208,0.35);" title="잔상 유령 추가 — memories.ghost_condensation_points. 3D 무대에서 밝은 회색 마커로 드래그.">+ 잔상 유령</button>
+                    <button class="tv-toggle tv-adv" id="tvAddGhostBtn" style="flex:1;padding:6px;font-size:0.72rem;background:rgba(200,200,208,0.1);border-color:rgba(200,200,208,0.35);" title="잔상 유령 추가 — memories.ghost_condensation_points. 3D 무대에서 밝은 회색 마커로 드래그.">+ 잔상 유령</button>
                 </div>
                 <!-- 260730 사물 3D 모델 — 서버(generate-object-model)에 주문/수확을 시킨다.
                      RECORD 가 자동으로 부르지만, 작가가 즉시 돌리고 결과를 보고 싶을 때. -->
@@ -417,15 +431,15 @@
                         title="이 기억의 사물 단어에 3D 모델을 주문하고, 완성된 것을 거둬온다. 이미 있는 건 건너뛴다(추가 비용 0).">사물 3D 모델 뽑기</button>
                 <div id="tvObjectModelsStatus" style="font-size:0.66rem;color:#7c7466;line-height:1.5;margin-bottom:6px;min-height:1em;"></div>
                 <!-- 큐레이터 시뮬 (2026-07-27): 실전과 같은 함수로 접근(불빛) 이동을 보는 play-test 작가 모드 -->
-                <button class="tv-toggle" id="tvCuratorSimBtn" style="width:100%;padding:6px;font-size:0.72rem;margin-bottom:6px;" title="실전 접근 기하 그대로 — 가상 감정을 한 걸음씩 밟으며 열림 뭉텅이 이동 관찰"
+                <button class="tv-toggle tv-adv" id="tvCuratorSimBtn" style="width:100%;padding:6px;font-size:0.72rem;margin-bottom:6px;" title="실전 접근 기하 그대로 — 가상 감정을 한 걸음씩 밟으며 열림 뭉텅이 이동 관찰"
                         onclick="(function(){var s=document.getElementById('tvMemorySelect');var id=s&&s.value;if(!id){alert('기억을 먼저 선택하세요');return;}window.open('play-test.html?memory='+id+'&variant_strata=1&curator=1','_blank');})()">실전 시뮬 열기 (불빛 관찰)</button>
                 <!-- 260730 검수: 감정 진입점 필터(emotion_entries 상영 소비자 소멸)·핀 모드(trajectory_targets
                      죽은 레버 — SceneNavigator 를 부르는 상영 경로 없음) 은퇴. -->
                 <!-- 260730 검수 B안: 표시 옵션 줄(전체 표시/모든 브릿지/감정 지형 모드/레이아웃 초기화) 은퇴
                      — 전부 궤적 2D SVG 전용이었음. -->
-                <button class="tv-toggle" id="tvStrataPreviewBtn" style="width:100%;padding:6px;font-size:0.72rem;" title="현재 기억의 Strata 3D 지형 열기 (공간음향 테스트)">🌐 Strata 미리보기</button>
+                <button class="tv-toggle tv-adv" id="tvStrataPreviewBtn" style="width:100%;padding:6px;font-size:0.72rem;" title="현재 기억의 Strata 3D 지형 열기 (공간음향 테스트)">🌐 Strata 미리보기</button>
 
-                <div class="tv-section-label">페르소나 step</div>
+                <div class="tv-adv"><div class="tv-section-label">페르소나 step</div>
                 <select id="tvPersonaSelect" style="width:100%;padding:6px 8px;background:rgba(20,20,28,0.8);border:1px solid rgba(196,168,130,0.2);color:#e0d8c4;font-family:inherit;font-size:0.78rem;border-radius:2px;margin-bottom:6px;">
                     <option value="">— 페르소나 로드 중 —</option>
                 </select>
@@ -433,7 +447,7 @@
                     <button class="tv-toggle" id="tvPersonaPrevBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="이전 step" disabled>◀ 이전</button>
                     <button class="tv-toggle" id="tvPersonaNextBtn" style="flex:1;padding:6px;font-size:0.72rem;" title="다음 step" disabled>다음 ▶</button>
                 </div>
-                <div id="tvPersonaInfo" style="font-size:0.7rem;color:#7c7466;margin-top:6px;line-height:1.5;"></div>
+                <div id="tvPersonaInfo" style="font-size:0.7rem;color:#7c7466;margin-top:6px;line-height:1.5;"></div></div><!-- /tv-adv 페르소나 -->
 
                 <!-- W3-K: 판본 이력 — 260730: 옛 폼에서 이 자리로 물리 이동 -->
                 <div class="tv-section-label" style="cursor:pointer;" onclick="tvToggleSection('tvVersionsBox', this)"><span class="tv-caret">▶</span> 판본 이력</div>
@@ -451,6 +465,8 @@
 
                 <!-- 260730 검수: 분기 시뮬(작업 12-4) 은퇴 — 6축 옛 자(기억별 좌표계 위반) +
                      "실전 시뮬 열기(불빛 관찰)"(7-27, 실전 동일 함수)가 완전 대체. -->
+                <button class="tv-toggle" id="tvFullToggle" style="width:100%;padding:6px;font-size:0.72rem;margin:10px 0 4px;" title="이 무대(조각 방)에서 안 쓰는 칸과 옛 지형 도구를 보이거나 숨긴다">풀버전 편집</button>
+                <div style="font-size:0.64rem;color:#7c7466;line-height:1.5;margin-bottom:10px;">지금 무대에서 안 쓰는 칸·도구는 여기를 켜야 보입니다. 옛 지형 화면은 주소 끝에 ?oldstage=1.</div>
                 <div class="tv-section-label">통계</div>
                 <div id="tvStats" class="tv-emo-meta" style="line-height: 1.6;"></div>
             </aside>
@@ -690,13 +706,13 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <!-- 260730 검수 B안: dagre 로드 제거 — 유일 소비자였던 궤적 2D 그래프 렌더 은퇴 -->
     <script src="js/shared/tem_af_strata_terrain.js?v=260809a"></script>
-    <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (플레이 공용) -->
+    <script src="js/shared/tem_object_anchors.js?v=261118a"></script><!-- 260730 사물 자리 계산 (플레이 공용) -->
     <script src="js/shared/spatialAudio.js"></script>
     <script src="js/ui/strataView.js"></script>
     <script src="js/ui/lumen_admin_scene_terrain_preview.js"></script>
     <script type="module" src="js/admin.js?v=260730e"></script>
     <script type="module" src="js/admin/ghost_variants_editor.js?v=260730e"></script>
-    <script type="module" src="js/admin-trajectory.js?v=260810a"></script><!-- 260810a 소리 반경 도움말 = 들리는 한계 (linear 감쇠와 동기) -->
+    <script type="module" src="js/admin-trajectory.js?v=261118c"></script><!-- 260810a 소리 반경 도움말 = 들리는 한계 (linear 감쇠와 동기) -->
     <script src="js/contamination.js"></script>
 
     <script>

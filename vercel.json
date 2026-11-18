@@ -4,7 +4,8 @@
   "framework": null,
   "rewrites": [
     { "source": "/demo", "destination": "/test/demo2.html" },
-    { "source": "/play", "destination": "/play-test.html" }
+    { "source": "/play", "destination": "/play-test.html" },
+    { "source": "/room", "destination": "/room-play.html" }
   ],
   "redirects": [
     { "source": "/", "destination": "/index.html", "permanent": false }

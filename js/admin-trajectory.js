@@ -49,8 +49,33 @@ async function initTrajectoryViewer(memoryId) {
   bindToggles();
   loadPersonasForMemory();
 
-  // 260730 B안 — 위치 stage 뷰 상시 마운트 (레이어 탭 은퇴, 단독 표시). idempotent.
-  if (!state._stageMounted) {
+  // 261118 — 가운데 화면 = 위상 모형(조각 꾸미기). 옛 지형 무대 뷰는 싣지 않는다(파일·코드 보존).
+  //   되돌리기: 주소에 ?oldstage=1 또는 localStorage.tem_admin_old_stage='1'.
+  let _oldStage = false;
+  try { _oldStage = /[?&]oldstage=1/.test(location.search) || localStorage.getItem('tem_admin_old_stage') === '1'; } catch (_) {}
+  state._oldStage = _oldStage;
+  if (!_oldStage) {
+    const host = document.getElementById('tvLayerPosition');
+    ['tvStageRoot', 'tvStageStatus', 'tvStageLegend'].forEach((id) => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+    let fr = document.getElementById('tvPieceFrame');
+    if (!fr && host) {
+      fr = document.createElement('iframe');
+      fr.id = 'tvPieceFrame';
+      fr.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;background:#0c0c12;';
+      host.appendChild(fr);
+      // 모형에서 씬 안으로 들어가면 오른쪽에 그 씬의 옛 편집 칸(감정 값 등 측정 쪽)도 같이 연다
+      window.addEventListener('message', (ev) => {
+        const d = ev && ev.data;
+        if (!d || d.type !== 'tem-piece-scene') return;
+        const sc = state.scenes.find((x) => x.id === d.sceneId);
+        if (sc) selectScene(sc);
+      });
+    }
+    const want = 'piece-editor.html?embed=1&memory=' + encodeURIComponent(state.memory.id);
+    if (fr && fr.dataset.src !== want) { fr.dataset.src = want; fr.src = want; }
+  }
+  // 260730 B안 — 위치 stage 뷰 상시 마운트 (레이어 탭 은퇴, 단독 표시). idempotent. (261118: 옛 화면을 켰을 때만)
+  if (_oldStage && !state._stageMounted) {
     LumenAdminStageView.mount('tvStageRoot');
     // 장면 유령(핀) 클릭(드래그 X) → 우측 씬 편집 패널
     if (typeof LumenAdminStageView.setSceneClickHandler === 'function') {
@@ -68,7 +93,7 @@ async function initTrajectoryViewer(memoryId) {
     state._stageMounted = true;
   }
   // terrain mesh 는 메모리 단위로 로드 (idempotent — 같은 id 재호출 시 재로드 안 함)
-  if (state.memory && state.memory.id) {
+  if (_oldStage && state.memory && state.memory.id) {
     LumenAdminStageView.setMemoryId(state.memory.id);
   }
   syncStageView();
@@ -655,7 +680,7 @@ function bindToggles() {
   const addGhostBtn = document.getElementById('tvAddGhostBtn');
   if (addGhostBtn) addGhostBtn.addEventListener('click', () => {
     if (!state.memory || !state.memory.id) { alert('기억이 선택되지 않았습니다.'); return; }
-    if (typeof LumenAdminStageView.addGhostPoint === 'function') {
+    if (state._oldStage && typeof LumenAdminStageView.addGhostPoint === 'function') {
       LumenAdminStageView.addGhostPoint();
     }
   });
@@ -851,13 +876,13 @@ function updatePersonaStepButtons() {
 
 // 260730 검수 B안: 2D SVG 노드 테두리 강조 → 위치 stage 3D 핀 강조로 이식.
 function highlightSceneNode(sceneId) {
-  if (typeof LumenAdminStageView.highlightPersonaScene === 'function') {
+  if (state._oldStage && typeof LumenAdminStageView.highlightPersonaScene === 'function') {
     LumenAdminStageView.highlightPersonaScene(sceneId);
   }
 }
 
 function clearSceneHighlight() {
-  if (typeof LumenAdminStageView.clearPersonaHighlight === 'function') {
+  if (state._oldStage && typeof LumenAdminStageView.clearPersonaHighlight === 'function') {
     LumenAdminStageView.clearPersonaHighlight();
   }
 }
@@ -972,6 +997,9 @@ function bindDetailFormEvents(s) {
   if (saveBtn) saveBtn.addEventListener('click', () => saveScene(s));
 
   // 삭제 버튼
+  // 261118 조각 꾸미기 — 이 씬의 땅에 사물·마네킹을 세우는 편집 화면 (piece-editor.html)
+  const pieceBtn = document.getElementById('scenePieceBtn');
+  if (pieceBtn) pieceBtn.addEventListener('click', () => { window.open('piece-editor.html?memory=' + encodeURIComponent(s.memory_id) + '&scene=' + encodeURIComponent(s.id), '_blank'); });
   const delBtn = document.getElementById('sceneDeleteBtn');
   if (delBtn) delBtn.addEventListener('click', () => deleteScene(s));
 
@@ -1203,7 +1231,18 @@ async function saveScene(s) {
 
   try {
     const sb = await getSupabaseClient();
-    const newMeta = { ...(s.meta || {}) };
+    // 261118: 최신 meta 에서 출발한다. 화면에 들고 있던 옛 사본(s.meta)으로 덮으면 다른 화면이
+    //   쓴 키(조각 꾸미기의 meta.piece 등)가 지워진다.
+    let _freshMeta = s.meta || {};
+    try {
+      const fr = await sb.from('scenes').select('meta').eq('id', s.id).maybeSingle();
+      if (fr && fr.data && fr.data.meta && typeof fr.data.meta === 'object') _freshMeta = fr.data.meta;
+    } catch (_) {}
+    const _full = document.body.classList.contains('tv-full');   // 풀버전 편집이 켜졌을 때만 숨긴 칸을 쓴다
+    const _keep = {};
+    if (!_full) ['motif_tags', 'author_bridges', 'object_lines', 'sound_url', 'sound_volume', 'sound_radius', 'sound_prompt', 'ghost_name']
+      .forEach((k) => { if (k in _freshMeta) _keep[k] = _freshMeta[k]; else _keep[k] = undefined; });
+    const newMeta = { ..._freshMeta };
     newMeta.motif_tags = motifs;
     newMeta.author_bridges = bridges;
     // 260730 사물 전용 목록·문장. null 이면 키 자체를 지워 모티프 태그 폴백으로 되돌린다.
@@ -1230,6 +1269,8 @@ async function saveScene(s) {
     // 260730: 잠금은 scenes.exclusions 컬럼에 저장 (상영이 읽는 정본).
     // meta.exclusions 에 쓰던 결함 경로 폐기 — 남은 레거시 키는 저장 시 청소.
     delete newMeta.exclusions;
+    // 간단 보기: 숨겨진 칸은 최신 값을 그대로 둔다 (가운데 씬 안 편집이 그 값의 주인)
+    if (!_full) Object.keys(_keep).forEach((k) => { if (_keep[k] === undefined) delete newMeta[k]; else newMeta[k] = _keep[k]; });
 
     const patch = {
       text,
@@ -1250,6 +1291,7 @@ async function saveScene(s) {
       original_reason: originalReason || null,
       meta: newMeta,
     };
+    if (!_full) { delete patch.text; delete patch.echo_words; delete patch.text_stage_1; delete patch.text_stage_2; delete patch.text_stage_3; }
     const { error } = await sb.from('scenes').update(patch).eq('id', s.id);
     if (error) throw error;
 
@@ -1313,12 +1355,14 @@ function renderDetailTab(s) {
       <option value="residual"${roleVal === 'residual' ? ' selected' : ''}>잔상 (residual)</option>
     </select>
 
+    <div class="tv-adv">
     <label style="${labelStyle}">유령 이름 (접촉 시 드러남)</label>
     <input type="text" id="sceneGhostName" value="${escapeHtml(s.meta?.ghost_name || '')}" placeholder="예: 준호, 엄마, 그 사람" style="${inputStyle}" />
     <div style="${helpStyle}">비워도 됨.</div>
 
     <label style="${labelStyle}">본문</label>
     <textarea id="sceneText" rows="6" style="${inputStyle}resize:vertical;line-height:1.5;">${escapeHtml(s.text || '')}</textarea>
+    </div><!-- /tv-adv -->
 
     <label style="${labelStyle}">감정 분포 (0~1)</label>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
@@ -1330,9 +1374,11 @@ function renderDetailTab(s) {
       `).join('')}
     </div>
 
+    <div class="tv-adv">
     <label style="${labelStyle}">잔향 단어 (쉼표 구분)</label>
     <input type="text" id="sceneEchoWords" value="${escapeHtml(echoStr)}" placeholder="무서웠어, 미안해, 후회했어" style="${inputStyle}" />
     <div style="${helpStyle}">이 씬 주변에 떠오르는 낱말 (echo_words).</div>
+    </div><!-- /tv-adv -->
 
     <label style="${labelStyle}">앵커 감정 (쉼표 구분)</label>
     <input type="text" id="sceneAnchorEmotions" value="${escapeHtml(anchorStr)}" placeholder="fear, guilt, longing" style="${inputStyle}" />
@@ -1350,6 +1396,7 @@ function renderDetailTab(s) {
     <input type="text" id="sceneOriginalReason" value="${escapeHtml(s.original_reason || '')}" placeholder="예: 내가 살릴 수 있었는데…" style="${inputStyle}" />
     <div style="${helpStyle}">작가가 기록한 이유 문장. 귀인 대조에 쓰임 (original_reason).</div>
 
+    <div class="tv-adv">
     <div class="tv-section-label" style="cursor:pointer;margin:14px 0 6px;" onclick="tvToggleSection('sceneStageBody', this)"><span class="tv-caret">${stageOpen ? '▼' : '▶'}</span> 오염 버전 텍스트 (stage 1/2/3)</div>
     <div id="sceneStageBody" style="display:${stageOpen ? '' : 'none'};">
       <div style="${helpStyle}margin-bottom:6px;">관객 오염도가 오르면 본문 대신 이 문장이 뜬다. 비우면 원문 유지. 재생성은 풀버전 편집기(백업)에서.</div>
@@ -1364,6 +1411,7 @@ function renderDetailTab(s) {
     <label style="${labelStyle}">모티프 태그 (쉼표 구분)</label>
     <input type="text" id="sceneMotifs" value="${escapeHtml(motifs.join(', '))}" style="${inputStyle}" />
     <div style="${helpStyle}">되새김 판정·대화 재료·아카이브 검색이 함께 쓰는 목록. 지형에 세울 물건만 따로 정하려면 아래 칸을 쓸 것.</div>
+    </div><!-- /tv-adv -->
 
     <label style="${labelStyle}">사물 태그 — 지형에 세울 물건만 (쉼표 구분)</label>
     <input type="text" id="sceneObjectTags" value="${escapeHtml(objTagStr)}" style="${inputStyle}" ${hasObjTagsKey && !objTagStr ? 'disabled' : ''} />
@@ -1374,13 +1422,16 @@ function renderDetailTab(s) {
     </label>
     <div style="${helpStyle}">비워두면 위의 모티프 태그를 그대로 사용. 여기에 적으면 지형 사물은 이 목록만 따르고, 모티프 태그는 되새김·대화·검색에만 쓰인다.</div>
 
+    <div class="tv-adv">
     <label style="${labelStyle}">사물 문장 지정 (한 줄에 <b>단어: 문장</b>)</label>
     <textarea id="sceneObjectLines" rows="3" style="${inputStyle}resize:vertical;" placeholder="팬티: 레이스가 허벅지를 긁었고, 뛰면 비즈가 살을 눌렀다.">${escapeHtml(objLinesStr)}</textarea>
     <div style="${helpStyle}">사물을 길게 눌러 들여다볼 때 뜨는 문장. 안 적으면 씬 본문에서 그 단어가 든 문장을 자동으로 골라 쓴다. 반전급 문장을 콕 집을 때만 사용.</div>
+    </div><!-- /tv-adv -->
 
     <label style="${labelStyle}">씬 코드 (A, B, C…)</label>
     <input type="text" id="sceneCode" value="${escapeHtml(s.meta?.scene_code || '')}" maxlength="4" style="${inputStyle}width:80px;" />
 
+    <div class="tv-adv">
     <label style="${labelStyle}">사운드 (공간음향)</label>
     <select id="sceneSoundSelect" style="${inputStyle}">
       <option value="">— 없음 —</option>
@@ -1406,6 +1457,7 @@ function renderDetailTab(s) {
         <span id="sceneSoundGenStatus" style="font-size:0.68rem;color:#7c7466;"></span>
       </div>
     </div>
+    </div><!-- /tv-adv -->
 
     <label style="${labelStyle}">이 씬이 뜨지 않을 조건</label>
     <div style="font-size:0.68rem;color:#7c7466;margin-bottom:6px;line-height:1.4;">
@@ -1424,15 +1476,18 @@ function renderDetailTab(s) {
     <div style="display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap;">
       <button class="tv-toggle" id="sceneSaveBtn" style="padding:6px 14px;font-size:0.78rem;">저장</button>
       <button class="tv-toggle" id="sceneDeleteBtn" style="padding:6px 14px;font-size:0.78rem;color:#b85540;border-color:rgba(184,85,64,0.3);">씬 삭제</button>
+      <button class="tv-toggle" id="scenePieceBtn" style="padding:6px 14px;font-size:0.78rem;">이 씬의 조각 꾸미기</button>
       <button class="tv-toggle" id="sceneMoveUpBtn" style="padding:6px 10px;font-size:0.78rem;" title="한 칸 앞으로"${canUp ? '' : ' disabled'}>▲</button>
       <button class="tv-toggle" id="sceneMoveDownBtn" style="padding:6px 10px;font-size:0.78rem;" title="한 칸 뒤로"${canDown ? '' : ' disabled'}>▼</button>
       <span id="sceneSaveStatus" style="font-size:0.7rem;color:#7c7466;"></span>
     </div>
     <div style="font-size:0.66rem;color:#5c544a;line-height:1.6;margin-top:10px;padding-top:8px;border-top:1px solid rgba(196,168,130,0.06);">
+      글·소리·세울 것은 가운데 모형에서 씬 안으로 들어가 고친다. 이 무대에서 안 쓰는 칸(모티프 태그·사물 문장·작가 브릿지 등)은 왼쪽 아래 [풀버전 편집]을 켜면 여기 다시 나온다.<br>
       이 외 레거시 칸(선택지·유령 대사·이유 벡터·씬 타입)은 네비바 [풀버전 편집기] 백업에서 편집.
       원본 파동·3D 모양 미리보기는 가운데 3D 무대와 겹쳐 옮기지 않음.
     </div>
 
+    <div class="tv-adv">
     <div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(196,168,130,0.08);">
       <div style="font-size:0.7rem;color:#7c7466;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">🔗 작가 브릿지 (${authorBridges.length})</div>
       <div id="authorBridgesList">
@@ -1446,6 +1501,7 @@ function renderDetailTab(s) {
       </div>
       <button class="tv-toggle" id="bridgeAddBtn" style="padding:4px 10px;font-size:0.7rem;margin-top:4px;">+ 작가 브릿지 추가</button>
     </div>
+    </div><!-- /tv-adv -->
 
     ${trajBridges.length ? `
     <div style="margin-top:20px;padding-top:14px;border-top:1px solid rgba(196,168,130,0.08);">

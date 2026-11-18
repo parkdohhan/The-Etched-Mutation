@@ -84,8 +84,11 @@
   <script src="js/ui/lumen_audio_space.js?v=260810b"></script><!-- 260810b 씬 소리 = linear 감쇠: 반경에서 0 (inverse 는 온 맵에 샘) -->
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260802e"></script><!-- 260802e 목격 v2 시네마틱 몸 -->
-  <script src="js/shared/tem_object_anchors.js?v=260731a"></script><!-- 260730 사물 자리 계산 (admin 공용) -->
-  <script src="js/ui/lumen_scene_objects.js?v=260810a"></script><!-- 260810a 자막 확대 (대화창 지문 크기) + 하단 스택 재배치 -->
+  <script src="js/ui/tem_drift_stage.js?v=261118j"></script><!-- 261118 표류 무대 실험 스위치 (?drift=1) — 꺼져 있으면 무동작 -->
+  <script src="js/ui/tem_piece_stage.js?v=261118d"></script>
+  <script src="js/ui/tem_piece_props.js?v=261118d"></script><!-- 261118 조각 꾸밈(작가가 세운 사물·마네킹)과 다시 오기 --><!-- 261118 조각 방 (표류 스위치 위에서만 동작, &piece=0 으로 끔) -->
+  <script src="js/shared/tem_object_anchors.js?v=261118a"></script><!-- 260730 사물 자리 계산 (admin 공용) · 261118a 표류 옵션(기본 무동작) -->
+  <script src="js/ui/lumen_scene_objects.js?v=261118a"></script><!-- 260810a 자막 확대 (대화창 지문 크기) + 하단 스택 재배치 -->
   <script src="js/ui/tem_mobile_controls.js?v=260806"></script><!-- 260806 모바일 1인칭: 십자 패드 + 화면 쓸기 + 길게 누르기 -->
   <script src="js/ui/lumen_run_outro.js?v=260714"></script>
   <script src="js/ui/lumen_footprints.js?v=260714"></script>
@@ -95,8 +98,8 @@
   <script src="js/ui/lumen_ghost_response.js?v=260714"></script>
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
-  <script src="js/shared/tem_stem_cuts.js?v=260915b"></script><!-- 260915b GWON-001(권역) 지문 14 (15씬 절삭판, text 기준 재도출) / 260915a 첫 도출 / 260810b KO 지문 재도출 + EN 지문 미러 갱신 -->
-  <script src="js/ui/lumen_dialog_phase1.js?v=260909a"></script><!-- 260909a RECORD v4 shell 내보내기(참조만, 플레이 동작 0 변경) / 260810a EN 연결사 8종 (KO 결 대응) -->
+  <script src="js/shared/tem_stem_cuts.js?v=261117a"></script><!-- 261117a DANG-001(당신입니까, 임시 제목) 지문 8 추가 / 260915b GWON-001(권역) 지문 14 (15씬 절삭판, text 기준 재도출) / 260915a 첫 도출 / 260810b KO 지문 재도출 + EN 지문 미러 갱신 -->
+  <script src="js/ui/lumen_dialog_phase1.js?v=261118f"></script><!-- 260909a RECORD v4 shell 내보내기(참조만, 플레이 동작 0 변경) / 260810a EN 연결사 8종 (KO 결 대응) -->
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260806"></script><!-- 260806 낭독 띠 회피 -->
   <script src="js/ui/lumen_recalled_anchors.js?v=260806"></script><!-- 260806 낭독 띠 회피 -->
@@ -2152,7 +2155,13 @@
     // 선택 풀 = 미방문 핀만 (260727 0.5단계). 방문한 핀은 syncPinStateFlags 가
     // 항상 active 로 두므로 여기 넣으면 좁아진 반경을 원점 핀이 독차지한다 —
     // 실측: echo_follow 중심이 원본 쪽으로 끌리며 "이미 가 본 씬 1개만 열림" 붕괴.
-    const pool = cores.filter(p => !game.visitedCore[p.sceneId]);
+    // 261118 표류 무대(?drift=1): 한 번에 하나만 나타나므로, 유령이 없는 첫 씬(프롤로그 —
+    //   사물만 서는 씬, 260802c)은 "다음에 나타날 것" 후보에서 뺀다. 안 빼면 엔진이 그 씬을
+    //   골랐을 때 만날 상대가 0이 된다. 프롤로그는 시작 때 이미 자리를 받아 계속 서 있다.
+    const _driftOn = !!(window.TemDrift && window.TemDrift.on);
+    const _firstOrder = _driftOn ? Math.min.apply(null, cores.map(p => (p.sceneOrder != null ? p.sceneOrder : 1e9))) : null;
+    const _pieceOn = !!(window.TemPiece && window.TemPiece.on);   // 조각 방: 모든 씬에 유령이 선다 — 첫 씬 제외 불필요
+    const pool = cores.filter(p => !game.visitedCore[p.sceneId] && !(_driftOn && !_pieceOn && p.sceneOrder === _firstOrder));
     let withDist = pool.map(p => ({
       pin: p,
       d: distMap(center, { x: p.mapX, y: p.mapY }),
@@ -2186,7 +2195,8 @@
     // ─── 접근 가능 핀 상한 — center에서 가까운 순으로 컷 ───
     // 260727 0.5단계: 4→2. 6씬 기억에서 4개 열림 = "거의 다 열림"이라 어느 패턴이
     // 와도 결과가 같아 보였다. 턴당 한두 갈래여야 열림/닫힘이 정보가 된다.
-    const MAX_ACCESSIBLE = 2;
+    // 261118 표류 무대(?drift=1): 한 번에 하나만 나타난다 (관객이 고르지 않는다).
+    const MAX_ACCESSIBLE = _driftOn ? 1 : 2;
     if (selected.length > MAX_ACCESSIBLE) {
       const keepSet = new Set(selected.map(p => p.id));
       const ranked = withDist
@@ -2198,16 +2208,21 @@
     }
 
     const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
-    if (voidScene && (pattern === 'avoidance' || pattern === 'contradiction')) {
+    if (voidScene && !_driftOn && (pattern === 'avoidance' || pattern === 'contradiction')) {
       const vp = game.pins.find(p => p.type === 'voidPin');
       if (vp && !selected.includes(vp)) selected.push(vp);
     }
 
     game.accessiblePinIds = new Set(selected.map(p => p.id));
     // 큐레이터 모드 오버레이용 — 이번 턴 불빛의 기하(중심·반경·패턴·잠긴 씬) 기록. 소비자 없으면 무해.
+    // 261118: 표류 무대가 읽는 값 3개 추가(원점 씬·원점의 지도 좌표·핀 산포). 기존 소비자엔 무해.
+    const _originPin = game.pins.find(p => (p.type === 'core' || p.type === 'bridge') && p.sceneId === originSceneId);
     game._lastAccessGeom = {
       pattern,
       center,
+      originSceneId,
+      originMap: _originPin && _originPin.mapX != null ? { x: _originPin.mapX, y: _originPin.mapY } : null,
+      spread,
       radius: rule.radius,
       lockedSceneIds: game.pins
         .filter(p => (p.type === 'core' || p.type === 'bridge') && _sceneLockedByExclusions(p))
@@ -2280,7 +2295,7 @@
     const sorted = pool.slice().sort((a, b) => (a.sceneOrder || 0) - (b.sceneOrder || 0));
     // 260802c: 시작 = 첫 두 씬 (사용자 결정). 첫 씬은 프롤로그 — 유령 없이 사물(욕조·피)만
     // 열리고, 첫 대화 상대(유령)는 둘째 씬. 이후는 궤적 엔진 그대로 (게임북 환원 아님).
-    const initialCount = Math.min(2, sorted.length);
+    const initialCount = Math.min((window.TemPiece && window.TemPiece.on) ? 1 : 2, sorted.length);   // 조각 방: 첫 조각 하나
     const picked = sorted.slice(0, initialCount);
     game.accessiblePinIds = new Set(picked.map(p => p.id));
     const voidScene = game.scenes.find(s => s.void_info && s.void_info.sceneVoid);
@@ -5271,7 +5286,7 @@
     if (scenesRes.error) throw scenesRes.error;
     if (playsRes.error) throw playsRes.error;
     game.scenes = scenesRes.data || [];
-    game.plays = (playsRes.data || []).filter(function (p) { return p.persona_id !== 'author-seed'; });
+    game.plays = (playsRes.data || []).filter(function (p) { return p.persona_id !== 'author-seed' && p.persona_id !== 'piece-move'; });   // piece-move = 조각 방의 '지도로 돌아가기' 이동 기록(감정 없음)
 
     // Extract memory row for cont_* fields
     let memRow = (!memRes.error && memRes.data && memRes.data.length > 0) ? memRes.data[0] : null;
@@ -6861,7 +6876,10 @@
             // 1단계 셰이더 마스크 + 3단계 유령 게이팅 + 2단계 unlock 연결(입장 시드는
             // 아래, 턴 연결은 newPins 계산부). 콘솔 디버그:
             //   window._temSpatialFog.openAt(x,z,r) / .liftAll() / .revealAt(x,z)
+            // 261118 표류 무대(?drift=1)도 안개 벽·회랑을 그대로 쓴다 (사용자 지시: 장면이 열리면
+            //   통로가 생겨 그리로 걸어간다 — 첫 판에서 껐다가 복구). 회랑 끝점만 표류 자리로 바뀐다.
             if (window.LumenSpatialFog && window.LumenSpatialFog.isEnabled() &&
+                !(window.TemPiece && window.TemPiece.on) &&   // 조각 방: 한 조각 안에는 안개 벽이 없다(테두리가 경계)
                 typeof window.LumenSpatialFog.attach === 'function') {
               try {
                 window._temSpatialFog = window.LumenSpatialFog.attach(rt);
@@ -7123,6 +7141,7 @@
               return isFinite(min) ? min : 1;
             }
             function _temIsPrologueScene(sc) {
+              if (window.TemPiece && window.TemPiece.on) return false;   // 조각 방: 첫 씬도 제 조각에 유령이 선다
               if (!sc) return false;
               var o = (sc.scene_order != null ? sc.scene_order : sc.sceneOrder);
               return o === _temFirstSceneOrder();
@@ -7135,6 +7154,7 @@
                 getScenePins: function () { return _fpScenePins; },
                 // 260802 유령 외관=사물 — p.scene 의 상징 사물 GLB 를 몸으로
                 bodyForPin: function (p) {
+                  if (p && p._prop) return window.TemPieceProps ? window.TemPieceProps.bodyFor(p._prop) : null;   // 조각 꾸밈 마네킹
                   return _temSymbolForScene((p && p.scene) || null);
                 },
                 // 260802c 프롤로그 씬(첫 씬)엔 유령 없음 — 욕조·피는 그냥 큰 사물
@@ -7208,9 +7228,13 @@
                 // 260802 노출 게이트 — 그 사물의 소속 씬이 열려 있거나 방문됐을 때만
                 sceneGate: function (sc) {
                   if (!sc) return true;
+                  // 조각 방: 이 씬의 사물을 작가가 조각 안으로 옮겨 저장했으면, 옛 자동 배치 사물은 세우지 않는다(겹침 방지)
+                  if (window.TemPiece && window.TemPiece.on && window.TemPiece.pieceMeta(sc.id).objects_in_piece) return false;
                   for (var gi = 0; gi < _fpScenePins.length; gi++) {
                     var sp = _fpScenePins[gi];
                     var sid = (sp.scene && sp.scene.id) || (sp.pin && sp.pin.sceneId);
+                    // 261118 표류 무대: 한 번 나타난 씬의 사물은 그 자리에 계속 선다
+                    if (sid === sc.id && window.TemDrift && window.TemDrift.on && window.TemDrift.has(sid)) return true;
                     if (sid === sc.id) return !!(sp.accessible || sp.visited);
                   }
                   return false;
@@ -7260,6 +7284,9 @@
           }
 
           _buildPlayScenePins();
+          // 261118 표류 무대: 두꺼운 안개 + 밝은 하늘 (능선 실루엣만 남긴다)
+          if (window.TemDrift && window.TemDrift.on) { try { window.TemDrift.installAtmosphere(rt); } catch (eDr) { console.warn('[drift] 안개 설치 실패', eDr); } }
+          if (window.TemPiece && window.TemPiece.on) { try { window.TemPiece.start(rt); } catch (ePc) { console.warn('[piece] 시작 실패', ePc); } }
 
           // ── W4-1: 이본 지층 진입 로드 — 저장된 변형층(terrain_layers)을 불러와 물려받은 땅을 렌더. ──
           //   flag ON + 층 존재 시에만. 층 없으면 바닥(제0판)만. loadLayer 는 _base(바닥) 가 필요한데,
@@ -7847,6 +7874,20 @@
       onRecall: _cdOnRecall,
     };
 
+    // 261118 조각 방: 조각이 바뀌면 핀·유령·사물·소리를 새 땅에 다시 세운다 (응결·지층 로드 블록과 같은 순서).
+    window._temRebuildScenePins = function () {
+      var rtR = window.TemAfStrataTerrain && window.TemAfStrataTerrain._lastRuntime;
+      var sc3R = rtR && rtR.getScene && rtR.getScene();
+      if (!sc3R) return;
+      var rmR = [];
+      sc3R.traverse(function (o) { if (o.userData._fpPin) rmR.push(o); });
+      rmR.forEach(function (o) { sc3R.remove(o); if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      _fpScenePins = [];
+      _buildPlayScenePins();
+      try { if (rtR.__lumenSceneMannequins && rtR.__lumenSceneMannequins.rebuild) rtR.__lumenSceneMannequins.rebuild(); } catch (_) {}
+      try { if (rtR.__lumenSceneObjects && rtR.__lumenSceneObjects.rebuild) rtR.__lumenSceneObjects.rebuild(); } catch (_) {}
+      try { if (rtR.__lumenAudioSpace && rtR.__lumenAudioSpace.rebuildSceneVoices) rtR.__lumenAudioSpace.rebuildSceneVoices(); } catch (_) {}
+    };
     function _buildPlayScenePins() {
       var rt = window.TemAfStrataTerrain._lastRuntime;
       if (!rt) return;
@@ -7896,8 +7937,32 @@
         //   (설계 §9: 핀 표류는 10월 옵션). 옛 replay 의 getPiecePos 조각-배치 우선순위 블록 제거. ──
         var _qp = null;
 
+        // ── 261118 표류 무대 (?drift=1) — 위 W4 "핀 고정" 을 이 모드에서만 뒤집는다.
+        //   아직 열린 적 없는 씬은 세상에 없다. 엔진이 여는 순간, 엔진 중심에서 나온 자리에
+        //   나타나고, 한 번 나타난 자리에 머문다. 계산 = js/ui/tem_drift_stage.js.
+        var _drift = (window.TemDrift && window.TemDrift.on) ? window.TemDrift : null;
+        var _piece = (_drift && window.TemPiece && window.TemPiece.on) ? window.TemPiece : null;
+        if (_piece) {
+          // 조각 방: 지금 조각의 씬 하나만 세상에 있다. 자리는 그 조각 안의 정해진 곳.
+          if (scene.id !== _piece.current()) return;
+          var _pp = _piece.ghostPos(scene.id);
+          _qp = { x: _pp.x, z: _pp.z };
+        } else if (_drift) {
+          var _dAcc = accessible.has ? accessible.has(pin.id) : false;
+          if (!_drift.has(scene.id) && !_dAcc && !visited[scene.id]) return;
+          var _dCam = rt.getCamera && rt.getCamera();
+          var _dp = _drift.place(scene.id, {
+            geom: game._lastAccessGeom || null,
+            cam: _dCam ? { x: _dCam.position.x, z: _dCam.position.z } : null,
+          });
+          _qp = { x: _dp.x, z: _dp.z };
+        }
+
         var wx, wz;
-        if (_cdP && _cdP.condensed) {
+        if (_drift && _qp) {
+          wx = _qp.x;
+          wz = _qp.z;
+        } else if (_cdP && _cdP.condensed) {
           // 260804 응결점 v2 — 응결한 사람은 작가가 찍은 응결점 좌표에 선다
           wx = _cdP.x;
           wz = _cdP.z;
@@ -7933,6 +7998,8 @@
 
         var isAccessible = accessible.has ? accessible.has(pin.id) : true;
         var isVisited = !!visited[scene.id];
+        // 조각 방: 이 조각의 유령은 다시 와도 서 있고 다시 말을 걸 수 있다 (다시 오면 글이 바뀐다)
+        if (_piece) { isAccessible = true; isVisited = false; }
 
         // Create 3D pin mesh
         var geo = new THREE.OctahedronGeometry(0.25, 0);
@@ -7961,6 +8028,10 @@
         }));
         line.userData._fpPin = true;
         scene3.add(line);
+        // 표류 무대: 지금 열린 씬 위에 옅은 빛기둥 하나 (안개 속 길잡이)
+        if (_drift && isAccessible && !isVisited) { try { _drift.addBeacon(scene3, wx, wh, wz); } catch (_) {} }
+        // 표류 무대: 나타난 씬은 제 감정 색 불빛과 제 말(잔향 단어)을 그 자리로 데려온다 (씬당 1회)
+        if (_drift) { try { _drift.dress(rt, scene, wx, wz); } catch (_) {} }
 
         _fpScenePins.push({
           mesh: mesh,
@@ -7973,6 +8044,17 @@
         });
       });
 
+      // 조각 방: 작가가 이 조각에 세운 마네킹들 — 핀 목록에 얹으면 마네킹 모듈이 세운다. 대화 가능한 것 위에만 빛기둥.
+      if (window.TemPiece && window.TemPiece.on && window.TemPieceProps && _fpScenePins.length) {
+        try {
+          var _base = _fpScenePins[0];
+          var _extra = window.TemPieceProps.entries(rt, _base.scene, _base.pin, function (bx, by, bz) {
+            try { window.TemDrift.addBeacon(scene3, bx, by, bz); } catch (_) {}
+          });
+          for (var _ei = 0; _ei < _extra.length; _ei++) _fpScenePins.push(_extra[_ei]);
+        } catch (eEx) { console.warn('[piece] 마네킹 얹기 실패', eEx); }
+      }
+      if (window.TemPiece && window.TemPiece.on) { try { window.TemPiece.afterPins(); } catch (_) {} }   // 조각 방: 다음 씬이 열려 있으면 문을 세운다
       console.log('[FP Play] Built scene pins:', _fpScenePins.length,
         'accessible:', _fpScenePins.filter(function (p) { return p.accessible; }).length);
     }
@@ -8421,6 +8503,7 @@
             if (_fpProxEl) _fpProxEl.style.opacity = '0';
             if (_fpHintEl) _fpHintEl.style.opacity = '0';
             if (window._temEnterSceneMode) {
+              if (window.TemPieceProps) { try { window.TemPieceProps.setTalkTarget(targetPin._prop || null); } catch (_) {} }   // 조각 꾸밈: 어느 마네킹에게 말을 거는가
               window._temEnterSceneMode(targetPin.pin);
             }
             // Clear transition flag after scene mode is active
@@ -8748,6 +8831,8 @@
             var allVisited = _fpScenePins.every(function (sp) {
               return sp.visited || _exclEnd.indexOf(sp.pin.sceneId) !== -1;
             });
+            // 조각 방: 지금 조각에는 씬이 하나뿐이라 위 판정이 늘 참이 된다 — 다음 씬(문)이 남아 있으면 끝이 아니다.
+            if (allVisited && window.TemPiece && window.TemPiece.on && window.TemPiece.pending()) allVisited = false;
             var _sealReady = (window._temGame && window._temGame.coreVisitCount >= 3)
               || (window._temGame && window._temGame._exitDoorUsed);
             if (allVisited && _fpScenePins.length > 0 && _sealReady) {

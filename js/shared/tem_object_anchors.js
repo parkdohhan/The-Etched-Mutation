@@ -129,6 +129,11 @@
         dz = Math.sin(ang0) * 8;
         len = 8;
       }
+      // 261118 표류 무대 옵션 (기본 미지정 = 종전 그대로): 길목 선분을 maxSeg 로 줄여
+      //   사물이 제 유령 곁(몇 걸음)에 서게 한다 — 유령 자리가 회차마다 달라지므로.
+      if (o.maxSeg && len > o.maxSeg) {
+        dx = dx / len * o.maxSeg; dz = dz / len * o.maxSeg; len = o.maxSeg;
+      }
       var ux = dx / len, uz = dz / len;             // 선분 방향
       var px = -uz, pz = ux;                        // 수직 방향
       var posMap = (sMeta.object_pos && typeof sMeta.object_pos === 'object') ? sMeta.object_pos : null;
@@ -146,7 +151,7 @@
 
         // 작가 지정이 있으면 자동 좌표를 덮는다 (회전은 자동 유지)
         var pinned = false;
-        if (posMap) {
+        if (posMap && !o.ignorePinned) {   // ignorePinned = 표류 무대 (작가 고정 좌표 미사용)
           var ov = posMap[word];
           if (ov && isFinite(ov.x) && isFinite(ov.z)) {
             cx = Number(ov.x); cz = Number(ov.z); pinned = true;

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TEM — 조각 꾸미기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0c0c12; --panel:#13131b; --line:rgba(196,168,130,0.18); --ink:#e6dccb; --dim:rgba(230,220,203,0.55); --warm:#c4a882; --red:#c8705c; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:14px/1.6 "Gowun Batang","Noto Serif KR",serif; }
+  #app { display:grid; grid-template-columns:250px 1fr 380px; height:100vh; }
+  .side { background:var(--panel); border-right:1px solid var(--line); overflow:auto; padding:16px 14px; }
+  .right { border-right:none; border-left:1px solid var(--line); }
+  h1 { font-size:15px; letter-spacing:2px; margin:0 0 4px; font-weight:400; color:var(--warm); }
+  h2 { font-size:12px; letter-spacing:3px; margin:20px 0 8px; font-weight:400; color:var(--dim); }
+  .sub { color:var(--dim); font-size:12px; margin-bottom:12px; }
+  .scene { padding:8px 9px; border:1px solid transparent; border-radius:3px; cursor:pointer; margin-bottom:3px; }
+  .scene:hover { border-color:var(--line); }
+  .scene.on { border-color:var(--warm); background:rgba(196,168,130,0.07); }
+  .scene b { color:var(--warm); font-weight:400; margin-right:6px; }
+  .scene small { display:block; color:var(--dim); font-size:11.5px; line-height:1.55; white-space:pre-wrap; }
+  #stage { position:relative; overflow:hidden; }
+  #cv { width:100%; height:100%; display:block; }
+  #tip { position:absolute; left:16px; bottom:14px; color:var(--dim); font-size:12.5px; letter-spacing:1px; pointer-events:none; text-shadow:0 0 8px #000; }
+  #mode { position:absolute; left:50%; top:16px; transform:translateX(-50%); padding:6px 14px; background:rgba(196,168,130,0.16); border:1px solid var(--warm); border-radius:3px; display:none; letter-spacing:1px; }
+  #crumb { position:absolute; left:16px; top:14px; display:flex; gap:10px; align-items:center; }
+  #crumb span { color:var(--dim); letter-spacing:1px; }
+  button, select, input, textarea { font:inherit; color:var(--ink); background:#0b0b10; border:1px solid var(--line); border-radius:3px; padding:6px 8px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--warm); }
+  button.primary { background:rgba(196,168,130,0.16); border-color:var(--warm); width:100%; padding:9px; letter-spacing:2px; }
+  button.danger { color:var(--red); border-color:rgba(200,112,92,0.35); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .add small { display:block; color:var(--dim); font-size:11px; }
+  label { display:block; color:var(--dim); font-size:12px; margin:10px 0 3px; }
+  label i { font-style:normal; font-size:11px; opacity:0.8; }
+  input[type=text], select, textarea { width:100%; }
+  textarea { min-height:86px; resize:vertical; line-height:1.75; }
+  textarea.tall { min-height:170px; }
+  input[type=range] { width:100%; padding:0; }
+  .row { display:flex; gap:6px; align-items:center; }
+  .row button { white-space:nowrap; }
+  details { border-top:1px solid var(--line); padding:10px 0 12px; }
+  details:first-of-type { border-top:none; }
+  summary { cursor:pointer; letter-spacing:3px; font-size:12px; color:var(--warm); list-style:none; }
+  summary::before { content:'▸ '; } details[open] summary::before { content:'▾ '; }
+  .prop { padding:6px 8px; border:1px solid transparent; border-radius:3px; cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
+  .prop:hover { border-color:var(--line); }
+  .prop.on { border-color:var(--warm); }
+  .prop em { font-style:normal; color:var(--dim); font-size:11.5px; white-space:nowrap; }
+  .box { border:1px solid var(--line); border-radius:3px; padding:2px 10px 10px; margin-top:10px; }
+  .box > b { display:block; font-weight:400; color:var(--warm); font-size:12px; letter-spacing:2px; margin-top:8px; }
+  #status { margin-top:8px; font-size:12.5px; color:var(--dim); min-height:1.6em; }
+  #status.err { color:var(--red); }
+  #login { position:fixed; inset:0; background:rgba(8,8,12,0.94); display:none; align-items:center; justify-content:center; z-index:10; }
+  #login .lbox { width:300px; }
+  .hidden { display:none !important; }
+  a { color:var(--warm); }
+  body.embed #app { grid-template-columns:1fr 340px; }
+  body.embed #app > .side:first-child { display:none; }
+  .legend span { display:inline-block; width:22px; height:2px; vertical-align:middle; margin-right:6px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="side">
+    <h1>조각 꾸미기</h1>
+    <div class="sub" id="memTitle">불러오는 중…</div>
+    <button id="toNet" style="width:100%">위상 모형 보기</button>
+    <h2>씬 (하나가 땅 하나)</h2>
+    <div id="scenes"></div>
+    <h2>&nbsp;</h2>
+    <div class="sub"><a href="admin.html">← 관리 화면</a></div>
+  </div>
+
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="crumb"><button id="back" class="hidden">← 위상 모형으로</button><span id="where"></span></div>
+    <div id="mode"></div>
+    <div id="tip"></div>
+  </div>
+
+  <div class="side right">
+    <!-- overview -->
+    <div id="ovPanel">
+      <h2 style="margin-top:0">위상 모형</h2>
+      <div class="sub">점 하나가 씬 하나입니다. 선은 관객이 실제로 걸은 길입니다. 자리에는 뜻이 없고, 누가 누구와 이어졌는지만 뜻이 있습니다.</div>
+      <div class="sub legend">
+        <div><span style="background:#d8c4a0"></span>한쪽으로만 걸은 길</div>
+        <div><span style="background:#8fd0a0"></span>오고 간 길</div>
+        <div><span style="background:#59606e"></span>아직 아무도 안 걸음 (씬 순서만 잇는 점선)</div>
+      </div>
+      <div class="sub" id="ovStat"></div>
+      <div class="sub"><b style="color:var(--warm);font-weight:400">점을 누르면 그 씬 안으로 들어갑니다.</b><br>거기서 글, 소리, 세울 것, 땅 크기를 정합니다.</div>
+    </div>
+
+    <!-- inside one scene -->
+    <div id="scPanel" class="hidden">
+      <details open>
+        <summary>이 씬의 글</summary>
+        <label>본문 <i>— 끝까지 다 나오고, 마지막 문장에서 끊겨 관객이 이어 씁니다</i></label>
+        <textarea id="sText" class="tall"></textarea>
+        <label>끊는 자리</label>
+        <select id="sCut"><option value="end">본문 끝 (마지막 문장)</option><option value="stem">도구가 고른 자리 (본문이 중간에서 끊김)</option></select>
+        <label>본문 아래 한 줄 <i>— 비우면 "○○가 보인다"</i></label>
+        <input type="text" id="sSee" maxlength="80">
+        <label>다시 왔을 때의 글 · 첫 번째</label><textarea id="sSt1"></textarea>
+        <label>다시 왔을 때의 글 · 두 번째 <i>— 비우면 앞의 것</i></label><textarea id="sSt2"></textarea>
+        <label>다시 왔을 때의 글 · 세 번째 <i>— 비우면 앞의 것</i></label><textarea id="sSt3"></textarea>
+        <label>땅 위에 떠 있는 말 <i>— 쉼표로 나눔</i></label><input type="text" id="sEcho">
+        <label>유령 이름 <i>— 접촉했을 때 드러남</i></label><input type="text" id="sGhost" maxlength="40">
+      </details>
+
+      <details>
+        <summary>이 씬의 바탕 소리</summary>
+        <div class="sub" style="margin:8px 0 0">유령이 선 자리에서 계속 나는 소리입니다. 가까이 가면 커집니다.</div>
+        <select id="sSndSel"></select>
+        <div class="row" style="margin-top:6px"><input type="text" id="sSnd" placeholder="소리 파일 주소"><button data-test="sSnd">듣기</button></div>
+        <div class="grid2">
+          <div><label>크기 <span id="sSndVolV"></span></label><input type="range" id="sSndVol" min="0" max="2" step="0.05"></div>
+          <div><label>들리는 거리 <span id="sSndRadV"></span></label><input type="range" id="sSndRad" min="4" max="60" step="1"></div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>땅과 세울 것</summary>
+        <label>이 조각의 크기 <span id="sizeV">1.00</span></label>
+        <input type="range" id="size" min="0.5" max="1.2" step="0.01" value="1">
+        <label>세우기 <i>— 고른 뒤 땅을 누르세요</i></label>
+        <div class="grid2 add">
+          <button data-add="object:speaking">글이 든 사물<small>들여다보면 글이 뜸</small></button>
+          <button data-add="object:scenery">환경 사물<small>자리를 만들 뿐</small></button>
+          <button data-add="figure:speaking">말 거는 마네킹<small>흰 빛기둥 · 대사를 이어 씀</small></button>
+          <button data-add="figure:scenery">서 있는 마네킹<small>빛 없음 · 말 못 검</small></button>
+          <button data-add="sound:scenery" style="grid-column:1 / 3">소리 자리<small>보이지 않음 · 그 자리에서 소리가 계속 남</small></button>
+        </div>
+        <label>세운 것</label>
+        <div id="props"><div class="sub">아직 없습니다.</div></div>
+
+        <div id="form" class="hidden">
+          <label>이름</label><input type="text" id="fName" maxlength="24">
+          <div class="grid2" id="kindRow">
+            <div><label>종류</label><select id="fKind"><option value="object">사물</option><option value="figure">마네킹</option><option value="sound">소리 자리</option></select></div>
+            <div><label>쓰임</label><select id="fRole"><option value="speaking">글·말이 있음</option><option value="scenery">배경</option></select></div>
+          </div>
+          <div id="shapeWrap">
+            <label>모형 <i>(이 기억에 만들어 둔 3D 모형)</i></label><select id="fModel"></select>
+            <div class="grid2">
+              <div><label>크기 <span id="fScaleV"></span></label><input type="range" id="fScale" min="0.3" max="3" step="0.05"></div>
+              <div><label>방향 <span id="fRotV"></span></label><input type="range" id="fRot" min="0" max="360" step="5"></div>
+            </div>
+          </div>
+          <div id="textWrap">
+            <label id="fTextL">글</label><textarea id="fText"></textarea>
+            <div id="againWrap"><label>다시 말을 걸었을 때의 대사 <i>(비우면 같은 대사에 내 말이 이어짐)</i></label><textarea id="fAgain"></textarea></div>
+          </div>
+          <div class="box">
+            <b>이 자리에서 계속 나는 소리</b>
+            <div class="sub" style="margin:4px 0 6px">가까이 가면 커지고, 어느 쪽에서 나는지 들립니다.</div>
+            <select id="fSndSel"></select>
+            <div class="row" style="margin-top:6px"><input type="text" id="fSnd" placeholder="소리 파일 주소"><button data-test="fSnd">듣기</button></div>
+            <div class="grid2">
+              <div><label>크기 <span id="fSndVolV"></span></label><input type="range" id="fSndVol" min="0" max="1" step="0.05"></div>
+              <div><label>들리는 거리 <span id="fSndRadV"></span></label><input type="range" id="fSndRad" min="4" max="60" step="1"></div>
+            </div>
+          </div>
+          <div class="box" id="clickBox">
+            <b>건드렸을 때 한 번 나는 소리</b>
+            <div class="sub" style="margin:4px 0 6px" id="clickHelp"></div>
+            <select id="fClkSel"></select>
+            <div class="row" style="margin-top:6px"><input type="text" id="fClk" placeholder="소리 파일 주소"><button data-test="fClk">듣기</button></div>
+            <label>크기 <span id="fClkVolV"></span></label><input type="range" id="fClkVol" min="0" max="1" step="0.05">
+          </div>
+          <div style="margin-top:14px"><button class="danger" id="fDel">이것 지우기</button></div>
+        </div>
+      </details>
+
+      <div style="margin-top:14px"><button class="primary" id="save">이 씬 저장</button></div>
+      <div id="status"></div>
+      <div class="sub" style="margin-top:10px"><a id="walk" href="#" target="_blank">이 조각에서 걸어 보기 (연습 · 장부에 안 남음)</a></div>
+    </div>
+  </div>
+</div>
+
+<div id="login"><div class="lbox">
+  <h1>관리자 로그인</h1>
+  <div class="sub">저장하려면 로그인이 필요합니다.</div>
+  <label>이메일</label><input type="text" id="lEmail" autocomplete="username">
+  <label>비밀번호</label><input type="password" id="lPw" style="width:100%" autocomplete="current-password">
+  <div style="margin-top:12px"><button class="primary" id="lGo">로그인</button></div>
+  <div id="lMsg" class="sub" style="margin-top:8px"></div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="js/shared/tem_af_strata_terrain.js?v=260809a"></script>
+<script src="js/ui/tem_piece_stage.js?v=261118d"></script>
+<script type="module" src="js/admin/piece_editor.js?v=261118d"></script>
+</body>
+</html>
