@@ -18,6 +18,18 @@
  *   figure + speaking  = a mannequin you can talk to: `text` is its line, the walker continues it
  *   figure + scenery   = a mannequin that only stands there
  *   sound              = nothing to see: a spot the sound comes from
+ *   word               = words hanging in the air at that spot (`text`)
+ *   buried             = words under the ground: a low mound; hold / E three times digs them up,
+ *                        and they rise and stay in the air for the rest of the walk
+ *   build              = a piece of a room (wall, floor, doorway, furniture of the building kit): stood at the
+ *                        kit's own proportions (x KIT), origin at its corner, turned in quarter turns; `lift` raises
+ *                        it (ceiling lamp), `light` puts a lamp's light there. Models whose key starts with
+ *                        "벽" stop the walker (a "벽 문틀" leaves its opening free).  meta.piece.flat = level ground.
+ *   A thing (object) with no 3D model is NOT stood at all — no stand-in blocks (author's rule, 261119).
+ *
+ * meta.piece.cue = { line, sound_url, volume, end }   (261119)
+ *   When the scene's own text reaches `line`, `sound_url` plays once. With end:true nothing is
+ *   written there: the walk closes when the sound has finished.
  *   The white column of light stands over what can be talked to, and over nothing else.
  *
  * Sound: spatial sounds are WebAudio panners at the prop's spot (direction + distance are heard).
@@ -39,11 +51,17 @@
   var target = null;         // the prop being talked to (null = the piece's own ghost)
   var activeKey = null, saidNow = 0;
   var reading = null;
+  var dug = {};              // sceneId#propId -> digs so far (3 = out of the ground)
+  var cuePlayed = {};
+  var DIGS = 3;
+  var KIT = 2.4;             // building-kit unit -> world (a wall: 2.4 wide, 3.1 high)
+  var walls = [];            // solid segments of the current piece [{ ax, az, bx, bz }]
 
   function ko() { return (document.documentElement.lang || 'en').slice(0, 2) === 'ko'; }
   function propsOf(id) {
     var list = TP.pieceMeta(id).props;
-    return Array.isArray(list) ? list.filter(function (p) { return p && p.id; }) : [];
+    var own = Array.isArray(list) ? list.filter(function (p) { return p && p.id; }) : [];
+    return (TP.roomProps ? TP.roomProps(id) : []).concat(own);          // the room's walls and floor first, then what stands in it
   }
   function models() { var mm = global.__temMemoryMeta; return (mm && mm.object_models) || {}; }
   function clampIn(id, x, z) {
@@ -118,24 +136,68 @@
     return _glb[path];
   }
   function hashN(s) { var h = 2166136261 >>> 0; s = String(s); for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
-  function blockBody(seed) {
-    var THREE = global.THREE, g = new THREE.Group(), n = 3 + (seed % 3);
-    for (var i = 0; i < n; i++) {
-      var s = 0.35 + ((seed >> (i * 3)) % 5) * 0.09;
-      var m = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), new THREE.MeshStandardMaterial({ color: 0x8a7f92, roughness: 0.85 }));
-      m.position.set((i - n / 2) * 0.28, s / 2 + i * 0.02, ((seed >> i) % 3 - 1) * 0.22);
-      m.rotation.y = i * 0.7;
-      g.add(m);
-    }
-    return g;
+  // ── words in the air / under the ground ─────────────────────────────────
+  var _dot = null;
+  function dotTex() {
+    if (_dot) return _dot;
+    var c = document.createElement('canvas'); c.width = c.height = 64;
+    var x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(236,224,200,1)'); g.addColorStop(0.35, 'rgba(236,224,200,0.35)'); g.addColorStop(1, 'rgba(236,224,200,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    return (_dot = new global.THREE.CanvasTexture(c));
   }
+  function wordSprite(text, scale) {
+    var THREE = global.THREE, c = document.createElement('canvas'), x = c.getContext('2d');
+    var font = '500 46px "Gowun Batang","Noto Serif KR",serif';
+    x.font = font;
+    var w = Math.ceil(x.measureText(text).width) + 56;
+    c.width = w; c.height = 84;
+    x = c.getContext('2d'); x.font = font; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.shadowColor = 'rgba(8,8,14,0.9)'; x.shadowBlur = 12;
+    x.fillStyle = 'rgba(236,228,250,0.96)';
+    x.fillText(text, w / 2, 44);
+    var tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.86, depthWrite: false, fog: false }));
+    var h = 1.25 * (scale || 1);
+    sp.scale.set(h * w / 84, h, 1);
+    sp.userData.sx = h * w / 84; sp.userData.sy = h;
+    return sp;
+  }
+  function settle(rec) {                                   // how far the mound has been dug away
+    var n = dug[rec.key] || 0, m = rec.group && rec.group.getObjectByName('mound');
+    if (m) { m.scale.set(1 + n * 0.22, 0.22 * (1 - n / DIGS * 0.8), 1 + n * 0.22); }
+  }
+  function raise(rec, already) {                           // the words come out of the ground
+    var scene3 = rt.getScene();
+    if (rec.group && rec.group.parent) rec.group.parent.remove(rec.group);
+    rec.group = wordSprite(rec.prop.text, (Number(rec.prop.scale) || 1) * 0.3);   // read from 2-3 m away: smaller than words in the air
+    rec.baseY = rec.gy + 1.55;
+    rec.group.position.set(rec.x, already ? rec.baseY : rec.gy - 0.2, rec.z);
+    rec.riseT = already ? null : performance.now();
+    scene3.add(rec.group);
+  }
+  function dig(rec) {
+    var n = (dug[rec.key] || 0) + 1; dug[rec.key] = n;
+    if (n >= DIGS) { raise(rec, false); clickSound(rec.prop); }
+    else settle(rec);
+  }
+  function blocked(x, z) {
+    for (var i = 0; i < walls.length; i++) {
+      var w = walls[i], dx = w.bx - w.ax, dz = w.bz - w.az, L2 = dx * dx + dz * dz;
+      var t = L2 ? Math.max(0, Math.min(1, ((x - w.ax) * dx + (z - w.az) * dz) / L2)) : 0;
+      var px = w.ax + dx * t - x, pz = w.az + dz * t - z;
+      if (px * px + pz * pz < 0.1) return true;             // 0.32 from the wall line
+    }
+    return false;
+  }
+  function unburied(p, key) { return p.kind === 'buried' && has(p.text) && (dug[key] || 0) < DIGS; }
 
   function clear() {
     built.forEach(function (b) {
       try { if (b.group && b.group.parent) b.group.parent.remove(b.group); } catch (_) {}
       try { if (b.loop) b.loop.stop(); } catch (_) {}
     });
-    built = [];
+    built = []; walls = [];
     closeReading();
   }
 
@@ -159,11 +221,64 @@
             o.scale.setScalar((Number(entry.scale) || 1) * sc * (1.4 / Math.max(0.001, Math.max(size.x, size.y, size.z))));
             var b2 = new THREE.Box3().setFromObject(o); o.position.y = -b2.min.y;
             group.add(o);
-          }).catch(function () { var bb = blockBody(hashN(prop.id)); bb.scale.setScalar(sc); group.add(bb); });
-        } else { var bb = blockBody(hashN(prop.id)); bb.scale.setScalar(sc); group.add(bb); }
-        group.userData._pieceProp = true;
-        scene3.add(group);
-        rec.group = group;
+          }).catch(function () { try { scene3.remove(group); } catch (_) {} rec.group = null; });
+          group.userData._pieceProp = true;
+          scene3.add(group);
+          rec.group = group;
+        }
+        // no model = not stood (no stand-in blocks). A sound set on it still comes from the spot.
+      } else if (prop.kind === 'build') {
+        var be = models()[prop.model];
+        if (be && be.path) {
+          var bx = Number(prop.x) || 0, bz = Number(prop.z) || 0, th = Number(prop.rot) || 0;
+          var bg = new THREE.Group();
+          bg.position.set(bx, rt.gH(bx, bz) + (Number(prop.lift) || 0), bz);
+          bg.rotation.y = th;
+          rec.x = bx; rec.z = bz;
+          (function (grp, entry, scl, tint) {
+            loadModel(entry.path).then(function (tpl) {
+              var o = tpl.clone(true); o.scale.setScalar(KIT * scl);
+              o.traverse(function (m) {                      // the kit is toy-bright: bring it down into the fog's tone
+                if (!m.isMesh || !m.material) return;
+                var dim = function (mt) { var c = mt.clone(); if (c.color) { if (tint) c.color.set(tint); else c.color.multiplyScalar(0.5); } c.fog = true; if ('roughness' in c) c.roughness = 0.95; if ('metalness' in c) c.metalness = 0; return c; };
+                m.material = Array.isArray(m.material) ? m.material.map(dim) : dim(m.material);
+              });
+              grp.add(o);
+            }).catch(function () {});
+          })(bg, be, Number(prop.scale) || 1, prop.tint || null);
+          if (Number(prop.light) > 0) {
+            var pl = new THREE.PointLight(0xe9eef4, Number(prop.light), 13, 1.8);
+            pl.position.set(0.15, -0.3, -0.15); bg.add(pl);
+          }
+          bg.userData._pieceProp = true;
+          scene3.add(bg); rec.group = bg;
+          if (/^벽/.test(prop.model)) {                       // what stops the walker
+            var cx = Math.cos(th), sx = -Math.sin(th);
+            var seg = function (a, b) { walls.push({ ax: bx + cx * KIT * a, az: bz + sx * KIT * a, bx: bx + cx * KIT * b, bz: bz + sx * KIT * b }); };
+            if (/문틀/.test(prop.model)) { seg(0, 0.24); seg(0.76, 1); } else if (/반/.test(prop.model)) seg(0, 0.5); else seg(0, 1);
+          }
+        }
+      } else if (prop.kind === 'word' && has(prop.text)) {
+        rec.group = wordSprite(prop.text, Number(prop.scale) || 1);
+        rec.baseY = y + 1.5 + (hashN(prop.id) % 17) / 10;
+        rec.phase = (hashN(prop.id) % 628) / 100;
+        rec.group.position.set(p.x, rec.baseY, p.z);
+        scene3.add(rec.group);
+      } else if (prop.kind === 'buried' && has(prop.text)) {
+        rec.key = id + '#' + prop.id; rec.gy = y;
+        rec.phase = (hashN(prop.id) % 628) / 100;
+        if ((dug[rec.key] || 0) >= DIGS) raise(rec, true);
+        else {
+          var g2 = new THREE.Group();
+          var mound = new THREE.Mesh(new THREE.SphereGeometry(0.62, 28, 14), new THREE.MeshStandardMaterial({ color: 0x1d1c23, roughness: 1 }));
+          mound.scale.set(1, 0.22, 1); mound.name = 'mound';
+          var glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex(), transparent: true, opacity: 0.4, depthWrite: false, fog: true }));
+          glint.scale.set(0.5, 0.5, 1); glint.position.y = 0.42; glint.name = 'glint';
+          g2.add(mound); g2.add(glint);
+          g2.position.set(p.x, y, p.z);
+          scene3.add(g2); rec.group = g2;
+          settle(rec);
+        }
       }
       if (has(prop.sound_url)) rec.loop = loopAt(prop.sound_url, rec.x, rec.y, rec.z, prop.sound_volume, prop.sound_radius);
       built.push(rec);
@@ -197,6 +312,11 @@
     var e = prop && prop.model ? models()[prop.model] : null;
     return (e && e.path) ? { word: prop.model, path: e.path, scale: (Number(e.scale) || 1) * (Number(prop.scale) || 1) } : null;
   }
+  /** The scene's own ghost can stand as a thing of the room (meta.piece.ghost_body = model key). */
+  function ghostBody(id) {
+    var k = TP.pieceMeta(id).ghost_body, e = k ? models()[k] : null;
+    return (e && e.path) ? { word: k, path: e.path, scale: (Number(e.scale) || 1) * (Number(TP.pieceMeta(id).ghost_scale) || 1) } : null;
+  }
   function recOf(prop) { for (var i = 0; i < built.length; i++) if (built[i].prop.id === prop.id) return built[i]; return null; }
   function clickSound(prop) {
     if (!prop || !has(prop.click_sound_url)) return;
@@ -220,6 +340,11 @@
       key = id; n = talks[key] || 0;
       activeKey = key;
       if (n === 0) {
+        var cue = cueOf(id), body = String(sd.text || ''), at = cue ? body.indexOf(cue.line) : -1;
+        if (at > 0 && has(body.slice(0, at))) {              // the text up to the line; the line itself comes with its sound
+          return { passage: sentences(body.slice(0, at)).join(' '), cueText: sentences(body.slice(at)).join(' '),
+            cue: true, cueEnd: cue.end !== false, again: 0, main: true, seeLine: '' };
+        }
         if (pm.cut === 'stem') return null;                // author chose the derived cut for this scene
         text = sd.text || '';                              // the whole body; only its last sentence hangs
       } else {
@@ -234,6 +359,22 @@
     if (prior.length && !authoredAgain) lines = lines.concat(prior.map(closed));
     lines.push(hang(lines.pop()));
     return { passage: lines.join(' '), again: n, main: main, seeLine: main && n === 0 ? String(pm.see_line || '').trim() : '' };
+  }
+  function cueOf(id) { var c = TP.pieceMeta(id).cue; return (c && has(c.line) && has(c.sound_url)) ? c : null; }
+  /** Plays the scene's cue sound once (not from a spot — it is the scene's own). Resolves when it has finished. */
+  function playCue(id) {
+    var c = cueOf(id);
+    return new Promise(function (res) {
+      var over = false; function fin() { if (!over) { over = true; res(); } }
+      if (!c || cuePlayed[id]) { setTimeout(fin, 3000); return; }
+      cuePlayed[id] = true;
+      buffer(c.sound_url).then(function (b) {
+        var cx = ctx(), src = cx.createBufferSource(), g = cx.createGain();
+        src.buffer = b; g.gain.value = vol01(c.volume, 0.9);
+        src.connect(g); g.connect(cx.destination); src.onended = fin; src.start();
+        setTimeout(fin, (b.duration + 1.5) * 1000);
+      }).catch(function (e) { console.warn('[piece] 끝 소리 실패', c.sound_url, e && e.message); setTimeout(fin, 6000); });
+    });
   }
   function noteSaid(text) {
     if (!activeKey) return;
@@ -286,6 +427,13 @@
     requestAnimationFrame(function () { if (reading) reading.style.opacity = '1'; });
   }
   function readable(p) { return p.kind === 'object' && p.role === 'speaking' && has(p.text); }
+  function canTouch(b) {
+    var p = b.prop;
+    if (p.kind === 'word' || p.kind === 'build') return false;
+    if (p.kind === 'buried') return unburied(p, b.key);
+    if (p.kind === 'object' && !b.group) return false;     // not stood (no model)
+    return touchable(p);
+  }
   // can the walker do something to it directly? (talkable mannequins go through the long press on the figure)
   function touchable(p) {
     if (p.kind === 'sound') return false;
@@ -294,6 +442,7 @@
   }
   function interact() {
     if (!nearRec || reading || TP.busy() || document.getElementById('lumenDialogPhase1') || global.__temGhostAimed) return;
+    if (nearRec.prop.kind === 'buried') { dig(nearRec); nearRec = null; hint(''); return; }   // the loop re-reads what is near
     clickSound(nearRec.prop);                              // one shot: only because the walker touched it
     if (readable(nearRec.prop)) openReading(nearRec);
   }
@@ -302,8 +451,20 @@
     if (e.key === 'e' || e.key === 'E' || e.key === 'ㄷ') interact();
     else if (e.key === 'Escape') closeReading();
   });
-  global.addEventListener('pointerdown', function () { if (nearRec && !reading) pressT = setTimeout(interact, 750); });
-  global.addEventListener('pointerup', function () { clearTimeout(pressT); });
+  // holding keeps digging (one dig per beat); for everything else the first beat is the whole act
+  var holding = false, holdRec = null;
+  function holdBeat() {
+    if (!holding) return;                                  // only while the press lasts
+    if (!nearRec && holdRec && unburied(holdRec.prop, holdRec.key)) nearRec = holdRec;   // same spot, next beat
+    if (!nearRec || (holdRec && nearRec !== holdRec)) return;
+    var wasDig = nearRec.prop.kind === 'buried'; holdRec = nearRec;
+    interact();
+    if (wasDig) pressT = setTimeout(holdBeat, 700);
+  }
+  function release() { holding = false; holdRec = null; clearTimeout(pressT); }
+  global.addEventListener('pointerdown', function () { clearTimeout(pressT); holdRec = null; holding = true; if (nearRec && !reading) pressT = setTimeout(holdBeat, 750); });
+  global.addEventListener('pointercancel', release); global.addEventListener('blur', release);
+  global.addEventListener('pointerup', release);
 
   (function loop() {
     requestAnimationFrame(loop);
@@ -311,23 +472,46 @@
     var c = rt.getCamera();
     if (actx && c && _fwd) listen(c);
     if (!built.length) { if (nearRec) { nearRec = null; hint(''); } return; }
+    var now = performance.now();
+    for (var j = 0; j < built.length; j++) {               // words drift a little; dug words rise
+      var w = built[j]; if (!w.group) continue;
+      if (w.prop.kind === 'word' || (w.prop.kind === 'buried' && w.baseY != null)) {
+        var bob = Math.sin(now / 2600 + (w.phase || 0)) * 0.13, yy = w.baseY + bob;
+        if (w.riseT != null) {
+          var k = Math.min(1, (now - w.riseT) / 3800), e = 1 - Math.pow(1 - k, 3);
+          yy = (w.gy - 0.2) + (w.baseY - (w.gy - 0.2)) * e + bob * e;
+          w.group.material.opacity = 0.86 * Math.min(1, k * 2.2);
+          if (k >= 1) w.riseT = null;
+        }
+        w.group.position.y = yy;
+        if (w.riseT == null) {                               // near = clear, far = a trace in the fog
+          var dd = Math.hypot(c.position.x - w.x, c.position.z - w.z);
+          w.group.material.opacity = 0.9 - 0.68 * Math.max(0, Math.min(1, (dd - 9) / 26));
+          if (w.prop.kind === 'word') { var nf = Math.max(0.32, Math.min(1, dd / 10)); w.group.scale.set(w.group.userData.sx * nf, w.group.userData.sy * nf, 1); }
+        }
+      } else if (w.prop.kind === 'buried') {
+        var gl = w.group.getObjectByName('glint');
+        if (gl) gl.material.opacity = 0.3 + 0.22 * Math.sin(now / 1500 + (w.phase || 0));
+      }
+    }
     var best = null, bd = 3.6;
     for (var i = 0; i < built.length; i++) {
       var b = built[i];
-      if (!touchable(b.prop)) continue;
+      if (!canTouch(b)) continue;
       var d = Math.hypot(c.position.x - b.x, c.position.z - b.z);
       if (d < bd) { bd = d; best = b; }
     }
     var quiet = !!document.getElementById('lumenDialogPhase1') || !!reading || TP.busy();
     if (best !== nearRec || quiet) {
       nearRec = quiet ? null : best;
-      hint(nearRec ? (readable(nearRec.prop) ? (ko() ? '길게 누르거나 E — 들여다보기' : 'hold, or E — look closer') : (ko() ? '길게 누르거나 E' : 'hold, or E')) : '');
+      hint(nearRec ? (nearRec.prop.kind === 'buried' ? (ko() ? '길게 누르거나 E — 파내기' : 'hold, or E — dig')
+        : readable(nearRec.prop) ? (ko() ? '길게 누르거나 E — 들여다보기' : 'hold, or E — look closer') : (ko() ? '길게 누르거나 E' : 'hold, or E')) : '');
     }
   })();
 
   global.TemPieceProps = {
     build: build, clear: clear, entries: entries, bodyFor: bodyFor, propsOf: propsOf,
-    setTalkTarget: setTalkTarget, passageFor: passageFor, noteSaid: noteSaid, talkEnded: talkEnded,
+    blocked: blocked, KIT: KIT, ghostBody: ghostBody, setTalkTarget: setTalkTarget, passageFor: passageFor, playCue: playCue, dug: function () { return Object.assign({}, dug); }, noteSaid: noteSaid, talkEnded: talkEnded,
     talks: function () { return Object.assign({}, talks); },
     _audio: { loopAt: loopAt, shotAt: shotAt },
   };

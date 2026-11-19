@@ -207,6 +207,10 @@ function bodyOf(prop) {
     g.add(b); g.add(h);
   } else if (prop.kind === 'sound') {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.45, 14, 10), new THREE.MeshBasicMaterial({ color: 0x86c6d8, transparent: true, opacity: 0.85 })); b.position.y = 1.2; g.add(b);
+  } else if (prop.kind === 'word') {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), new THREE.MeshBasicMaterial({ color: 0xe8e0f6, transparent: true, opacity: 0.9 })); b.position.y = 1.9; g.add(b);
+  } else if (prop.kind === 'buried') {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 10), new THREE.MeshStandardMaterial({ color: 0x5a4f46, roughness: 1 })); b.scale.set(1, 0.3, 1); g.add(b);
   } else {
     const mat = new THREE.MeshStandardMaterial({ color: speaking ? 0xd9b98a : 0x77808c, roughness: 0.8 });
     const b = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.1, 1.1), mat); b.position.y = 0.55; g.add(b);
@@ -215,15 +219,22 @@ function bodyOf(prop) {
 }
 const glb = {};
 function loadGlb(path) { return glb[path] || (glb[path] = new Promise((res, rej) => new THREE.GLTFLoader().load(path, (g) => res(g.scene), undefined, rej))); }
-const KIND = { 'object:speaking': '글이 든 사물', 'object:scenery': '환경 사물', 'figure:speaking': '말 거는 마네킹', 'figure:scenery': '서 있는 마네킹', 'sound:scenery': '소리 자리', 'sound:speaking': '소리 자리' };
+const KIND = { 'object:speaking': '글이 든 사물', 'object:scenery': '환경 사물', 'figure:speaking': '말 거는 마네킹', 'figure:scenery': '서 있는 마네킹', 'sound:scenery': '소리 자리', 'sound:speaking': '소리 자리',
+  'word:scenery': '떠 있는 말', 'word:speaking': '떠 있는 말', 'buried:scenery': '묻힌 말', 'buried:speaking': '묻힌 말' };
+KIND['build:scenery'] = KIND['build:speaking'] = '방 조각';
+const KIT = 2.4, SNAP = 0.6;   // building kit: unit -> world; positions snap to a quarter of a wall
+const snapBuild = (p) => { if (p.kind !== 'build') return; p.x = +(Math.round(p.x / SNAP) * SNAP).toFixed(2); p.z = +(Math.round(p.z / SNAP) * SNAP).toFixed(2); p.rot = +(Math.round((Number(p.rot) || 0) / (Math.PI / 2)) * (Math.PI / 2)).toFixed(4); };
+const isWordKind = (p) => p.kind === 'word' || p.kind === 'buried';
 function kindName(p) { return KIND[p.kind + ':' + p.role] || p.kind; }
 function makeMarker(prop) {
   const old = st.markers.get(prop.id); if (old) propGroup.remove(old);
   const g = new THREE.Group(); g.userData.propId = prop.id;
   const inner = new THREE.Group(); inner.name = 'inner'; g.add(inner);
   const stand = bodyOf(prop); inner.add(stand);
-  const entry = prop.kind !== 'sound' && prop.model && st.memory.meta.object_models && st.memory.meta.object_models[prop.model];
-  if (entry && entry.path) {
+  const entry = prop.kind !== 'sound' && !isWordKind(prop) && prop.model && st.memory.meta.object_models && st.memory.meta.object_models[prop.model];
+  if (entry && entry.path && prop.kind === 'build') {
+    loadGlb(entry.path).then((tpl) => { const o = tpl.clone(true); o.scale.setScalar(KIT); o.position.y = Number(prop.lift) || 0; inner.remove(stand); inner.add(o); }).catch(() => {});
+  } else if (entry && entry.path) {
     loadGlb(entry.path).then((tpl) => {
       const o = tpl.clone(true), box = new THREE.Box3().setFromObject(o), s = box.getSize(new THREE.Vector3());
       o.scale.setScalar((Number(entry.scale) || 1) * (prop.kind === 'figure' ? 1.8 : 1.4) / Math.max(0.001, Math.max(s.x, s.y, s.z)));
@@ -237,7 +248,7 @@ function makeMarker(prop) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.12, r, 64), new THREE.MeshBasicMaterial({ color: 0x86c6d8, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.3; g.add(ring);
   }
-  const lb = label((prop.name || kindName(prop)) + (prop.click_sound_url ? ' ♪' : ''), prop.kind === 'sound' ? '#a9dbe8' : (prop.role === 'speaking' ? '#ffe9c4' : '#aeb6c4'));
+  const lb = label((isWordKind(prop) ? (prop.text || kindName(prop)) : (prop.name || kindName(prop))) + (prop.click_sound_url ? ' ♪' : ''), prop.kind === 'sound' ? '#a9dbe8' : (prop.role === 'speaking' ? '#ffe9c4' : '#aeb6c4'));
   lb.position.y = prop.kind === 'figure' ? 3.1 : 2.5; g.add(lb);
   const sel = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.16, 32), new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0, side: THREE.DoubleSide, depthTest: false }));
   sel.rotation.x = -Math.PI / 2; sel.position.y = 0.06; sel.name = 'ring'; g.add(sel);
@@ -255,6 +266,11 @@ function seat(prop) {
 function buildFixed() {
   while (fixedGroup.children.length) fixedGroup.remove(fixedGroup.children[0]);
   if (!st.scene) return;
+  (TP.roomProps ? TP.roomProps(st.scene.id) : []).forEach((rp) => {
+    const e = st.memory.meta.object_models && st.memory.meta.object_models[rp.model]; if (!e || !e.path) return;
+    const g = new THREE.Group(); g.position.set(rp.x, heightAt(rp.x, rp.z) + (Number(rp.lift) || 0), rp.z); g.rotation.y = rp.rot; fixedGroup.add(g);
+    loadGlb(e.path).then((tpl) => { const o = tpl.clone(true); o.scale.setScalar(KIT * (Number(rp.scale) || 1)); g.add(o); }).catch(() => {});
+  });
   const gp = TP.ghostPos(st.scene.id);
   const g = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, transparent: true, opacity: 0.75 });
@@ -291,7 +307,7 @@ canvas.addEventListener('pointerdown', (e) => {
 canvas.addEventListener('pointermove', (e) => {
   if (!drag) return;
   const p = groundHit(e); if (!p || !TP.inside(st.scene.id, p.x, p.z, 2)) return;
-  const prop = st.props.find((x) => x.id === drag); prop.x = +p.x.toFixed(2); prop.z = +p.z.toFixed(2);
+  const prop = st.props.find((x) => x.id === drag); prop.x = +p.x.toFixed(2); prop.z = +p.z.toFixed(2); snapBuild(prop);
   seat(prop); touch();
 });
 canvas.addEventListener('pointerup', (e) => {
@@ -344,24 +360,25 @@ function soundOptions(sel, value) {
 }
 function fillForm() {
   const p = cur(); $('form').classList.toggle('hidden', !p); if (!p) return;
-  const isSound = p.kind === 'sound', speaking = p.role === 'speaking' && !isSound;
+  const isSound = p.kind === 'sound', isWord = isWordKind(p), speaking = isWord || (p.role === 'speaking' && !isSound);
   $('fName').value = p.name || ''; $('fKind').value = p.kind; $('fRole').value = p.role;
-  $('fRole').parentElement.classList.toggle('hidden', isSound);
-  $('shapeWrap').classList.toggle('hidden', isSound);
+  $('fRole').parentElement.classList.toggle('hidden', isSound || isWord || p.kind === 'build');
+  $('shapeWrap').classList.toggle('hidden', isSound || isWord);
   const models = Object.keys(st.memory.meta.object_models || {});
-  $('fModel').innerHTML = '<option value="">' + (p.kind === 'figure' ? '기본 마네킹' : '블록 (모형 없음)') + '</option>' + models.map((m) => `<option value="${m}">${m}</option>`).join('');
+  $('fModel').innerHTML = '<option value="">' + (p.kind === 'figure' ? '기본 마네킹' : '모형 없음 — 무대에 안 나옴') + '</option>' + models.map((m) => `<option value="${m}">${m}</option>`).join('');
   $('fModel').value = models.includes(p.model) ? p.model : '';
   $('fScale').value = p.scale || 1; $('fScaleV').textContent = (+p.scale || 1).toFixed(2);
   const deg = Math.round(((Number(p.rot) || 0) * 180 / Math.PI + 360) % 360); $('fRot').value = deg; $('fRotV').textContent = deg + '°';
   $('textWrap').classList.toggle('hidden', !speaking);
   $('againWrap').classList.toggle('hidden', !(speaking && p.kind === 'figure'));
-  $('fTextL').textContent = p.kind === 'figure' ? '대사 — 끝까지 다 나오고, 마지막 문장에서 끊겨 관객이 이어 씁니다' : '들여다보면 뜨는 글';
+  $('fTextL').textContent = p.kind === 'figure' ? '대사 — 끝까지 다 나오고, 마지막 문장에서 끊겨 관객이 이어 씁니다'
+    : p.kind === 'word' ? '공중에 떠 있는 말' : p.kind === 'buried' ? '땅에 묻힌 말 — 관객이 그 자리에서 세 번 파내면 올라옵니다' : '들여다보면 뜨는 글';
   $('fText').value = p.text || ''; $('fAgain').value = p.text_again || '';
   soundOptions($('fSndSel'), p.sound_url); $('fSnd').value = p.sound_url || '';
   $('fSndVol').value = p.sound_volume != null ? p.sound_volume : 0.7; $('fSndVolV').textContent = (+$('fSndVol').value).toFixed(2);
   $('fSndRad').value = p.sound_radius || 22; $('fSndRadV').textContent = $('fSndRad').value;
-  $('clickBox').classList.toggle('hidden', isSound);
-  $('clickHelp').textContent = p.kind === 'figure'
+  $('clickBox').classList.toggle('hidden', isSound || p.kind === 'word');
+  $('clickHelp').textContent = p.kind === 'buried' ? '말이 땅에서 올라오는 순간 한 번 납니다.' : p.kind === 'figure'
     ? (speaking ? '관객이 이 마네킹에게 말을 걸 때마다 한 번 납니다.' : '관객이 이 마네킹 곁에서 길게 누르거나 E 를 누르면 한 번 납니다.')
     : (speaking ? '관객이 이 사물을 들여다볼 때마다 한 번 납니다.' : '관객이 이 사물 곁에서 길게 누르거나 E 를 누르면 한 번 납니다.');
   soundOptions($('fClkSel'), p.click_sound_url); $('fClk').value = p.click_sound_url || '';
@@ -373,7 +390,7 @@ bind('fKind', 'change', (p) => { p.kind = $('fKind').value; if (p.kind === 'soun
 bind('fRole', 'change', (p) => { p.role = $('fRole').value; makeMarker(p); renderList(); fillForm(); });
 bind('fModel', 'change', (p) => { p.model = $('fModel').value; makeMarker(p); });
 bind('fScale', 'input', (p) => { p.scale = +$('fScale').value; $('fScaleV').textContent = p.scale.toFixed(2); seat(p); });
-bind('fRot', 'input', (p) => { p.rot = +(+$('fRot').value * Math.PI / 180).toFixed(3); $('fRotV').textContent = $('fRot').value + '°'; seat(p); });
+bind('fRot', 'input', (p) => { p.rot = +(+$('fRot').value * Math.PI / 180).toFixed(3); snapBuild(p); $('fRotV').textContent = $('fRot').value + '°'; seat(p); });
 bind('fText', 'input', (p) => { p.text = $('fText').value; });
 bind('fAgain', 'input', (p) => { p.text_again = $('fAgain').value; });
 bind('fSndSel', 'change', (p) => { const v = $('fSndSel').value; if (v !== '__custom__') { p.sound_url = v; $('fSnd').value = v; } makeMarker(p); renderList(); });
@@ -394,11 +411,11 @@ document.querySelectorAll('[data-test]').forEach((b) => { b.onclick = () => {
 $('size').addEventListener('input', () => {
   st.size = +$('size').value; $('sizeV').textContent = st.size.toFixed(2); buildLand();
   // things left outside a smaller piece come back in
-  st.props.forEach((p) => { if (!TP.inside(st.scene.id, p.x, p.z, 2)) { const q = TP.polar(st.scene.id, Math.atan2(p.z, p.x), 0.9); p.x = +q.x.toFixed(2); p.z = +q.z.toFixed(2); seat(p); } });
+  st.props.forEach((p) => { if (p.kind !== 'build' && !TP.inside(st.scene.id, p.x, p.z, 2)) { const q = TP.polar(st.scene.id, Math.atan2(p.z, p.x), 0.9); p.x = +q.x.toFixed(2); p.z = +q.z.toFixed(2); seat(p); } });
   touch();
 });
 // scene-level fields
-['sText', 'sCut', 'sSee', 'sSt1', 'sSt2', 'sSt3', 'sEcho', 'sGhost', 'sSnd'].forEach((id) => $(id).addEventListener('input', touch));
+['sText', 'sCut', 'sSee', 'sCueLine', 'sCueSnd', 'sCueEnd', 'sSt1', 'sSt2', 'sSt3', 'sEcho', 'sGhost', 'sSnd'].forEach((id) => $(id).addEventListener('input', touch));
 $('sCut').addEventListener('change', touch);
 $('sSndSel').addEventListener('change', () => { const v = $('sSndSel').value; if (v !== '__custom__') $('sSnd').value = v; touch(); });
 $('sSndVol').addEventListener('input', () => { $('sSndVolV').textContent = (+$('sSndVol').value).toFixed(2); touch(); });
@@ -451,6 +468,7 @@ function openScene(sc) {
   st.imported = imported;
   $('size').value = st.size; $('sizeV').textContent = st.size.toFixed(2);
   $('sText').value = sc.text || ''; $('sCut').value = piece.cut === 'stem' ? 'stem' : 'end'; $('sSee').value = piece.see_line || '';
+  { const cu = piece.cue || {}; $('sCueLine').value = cu.line || ''; $('sCueSnd').value = cu.sound_url || ''; $('sCueEnd').checked = cu.end !== false && !!cu.line; }
   $('sSt1').value = sc.text_stage_1 || ''; $('sSt2').value = sc.text_stage_2 || ''; $('sSt3').value = sc.text_stage_3 || '';
   $('sEcho').value = echoList(sc.echo_words).join(', '); $('sGhost').value = meta.ghost_name || '';
   soundOptions($('sSndSel'), meta.sound_url); $('sSnd').value = meta.sound_url || '';
@@ -481,20 +499,25 @@ async function save() {
   const snd = $('sSnd').value.trim();
   if (snd) { meta.sound_url = snd; meta.sound_volume = +$('sSndVol').value; meta.sound_radius = +$('sSndRad').value; }
   else { delete meta.sound_url; delete meta.sound_volume; delete meta.sound_radius; }
-  meta.piece = {
+  const cueLine = $('sCueLine').value.trim(), cueSnd = $('sCueSnd').value.trim();
+  const prevCue = (meta.piece && meta.piece.cue) || {};
+  const _keepPiece = {}; ['ghost', 'spawn', 'ghost_body', 'ghost_scale', 'room'].forEach((k) => { if (meta.piece && meta.piece[k] != null) _keepPiece[k] = meta.piece[k]; });
+  meta.piece = Object.assign(_keepPiece, (cueLine && cueSnd) ? { cue: Object.assign({}, prevCue, { line: cueLine, sound_url: cueSnd, end: $('sCueEnd').checked }) } : {}, {
+    flat: !!(parseMeta(fresh.data && fresh.data.meta).piece || {}).flat || st.props.some((p) => p.kind === 'build'),   // a room stands on level ground
     objects_in_piece: true,   // this scene's things now live in the piece; the old scattered ones are not stood
     size: +st.size.toFixed(2), cut: $('sCut').value === 'stem' ? 'stem' : 'end', see_line: $('sSee').value.trim(),
     props: st.props.map((p) => {
-      const isSound = p.kind === 'sound', speaking = p.role === 'speaking' && !isSound;
+      const isSound = p.kind === 'sound', isWord = isWordKind(p), speaking = isWord || (p.role === 'speaking' && !isSound);
       return {
-        id: p.id, kind: p.kind, role: isSound ? 'scenery' : p.role, name: p.name || '', model: isSound ? '' : (p.model || ''),
+        id: p.id, kind: p.kind, role: (isSound || isWord) ? 'scenery' : p.role, name: p.name || '', model: (isSound || isWord) ? '' : (p.model || ''),
         x: p.x, z: p.z, rot: Number(p.rot) || 0, scale: Number(p.scale) || 1,
         text: speaking ? (p.text || '') : '', text_again: (speaking && p.kind === 'figure') ? (p.text_again || '') : '',
         sound_url: p.sound_url || '', sound_volume: Number(p.sound_volume), sound_radius: Number(p.sound_radius) || 22,
         click_sound_url: isSound ? '' : (p.click_sound_url || ''), click_sound_volume: Number(p.click_sound_volume),
+        ...(p.kind === 'build' ? { lift: Number(p.lift) || 0, light: Number(p.light) || 0, ...(p.tint ? { tint: p.tint } : {}) } : {}),
       };
     }),
-  };
+  });
   const patch = {
     text, text_stage_1: $('sSt1').value.trim() || null, text_stage_2: $('sSt2').value.trim() || null, text_stage_3: $('sSt3').value.trim() || null,
     echo_words: $('sEcho').value.split(',').map((x) => x.trim()).filter(Boolean), meta,

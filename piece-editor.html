@@ -106,6 +106,10 @@
         <select id="sCut"><option value="end">본문 끝 (마지막 문장)</option><option value="stem">도구가 고른 자리 (본문이 중간에서 끊김)</option></select>
         <label>본문 아래 한 줄 <i>— 비우면 "○○가 보인다"</i></label>
         <input type="text" id="sSee" maxlength="80">
+        <label style="margin-top:10px">이 줄에서 소리 한 번 (끝 장면용) — 본문 속 그 줄을 그대로 적기</label>
+        <input type="text" id="sCueLine" maxlength="80" placeholder="비워 두면 안 씀">
+        <div class="row" style="margin-top:6px"><input type="text" id="sCueSnd" placeholder="소리 파일 주소"><button data-test="sCueSnd">듣기</button></div>
+        <label style="margin-top:6px"><input type="checkbox" id="sCueEnd" style="width:auto"> 그 소리가 끝나면 걸음을 끝낸다 (이 장면에서는 이어 쓰지 않음)</label>
         <label>다시 왔을 때의 글 · 첫 번째</label><textarea id="sSt1"></textarea>
         <label>다시 왔을 때의 글 · 두 번째 <i>— 비우면 앞의 것</i></label><textarea id="sSt2"></textarea>
         <label>다시 왔을 때의 글 · 세 번째 <i>— 비우면 앞의 것</i></label><textarea id="sSt3"></textarea>
@@ -142,7 +146,7 @@
         <div id="form" class="hidden">
           <label>이름</label><input type="text" id="fName" maxlength="24">
           <div class="grid2" id="kindRow">
-            <div><label>종류</label><select id="fKind"><option value="object">사물</option><option value="figure">마네킹</option><option value="sound">소리 자리</option></select></div>
+            <div><label>종류</label><select id="fKind"><option value="object">사물</option><option value="figure">마네킹</option><option value="sound">소리 자리</option><option value="build">방 짓기 (벽·바닥·가구)</option><option value="word">떠 있는 말</option><option value="buried">묻힌 말 (파내야 나옴)</option></select></div>
             <div><label>쓰임</label><select id="fRole"><option value="speaking">글·말이 있음</option><option value="scenery">배경</option></select></div>
           </div>
           <div id="shapeWrap">
@@ -198,7 +202,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="js/shared/tem_af_strata_terrain.js?v=260809a"></script>
-<script src="js/ui/tem_piece_stage.js?v=261118d"></script>
-<script type="module" src="js/admin/piece_editor.js?v=261118d"></script>
+<script src="js/ui/tem_piece_stage.js?v=261119g"></script>
+<script type="module" src="js/admin/piece_editor.js?v=261119d"></script>
 </body>
 </html>

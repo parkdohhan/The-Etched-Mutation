@@ -104,8 +104,50 @@
   }
   function current() { if (!cur) cur = firstScene(); return cur; }
   function sceneOf(id) { return (game().scenes || []).find(function (s) { return s.id === id; }) || null; }
-  function ghostPos(sceneId) { return polar(sceneId, rnd01(sceneId + '|g') * Math.PI * 2, P.GHOST_R); }
+  // 261119 방 한 칸을 몇 숫자로 짓는다: meta.piece.room = { w, d, cx, cz, door: 's0', floor, wall, lamp }
+  //   w·d = 가로·세로(1.2 의 배수), cx·cz = 방 한가운데, door = 문틀이 설 면(n|s|e|w) + 그 면의 몇 번째 벽 조각,
+  //   floor·wall = 색, lamp = 천장 전등 빛 세기(0 = 전등 없음). 벽·바닥 조각(kind 'build')으로 풀어 준다.
+  var ROOM_U = 2.4;
+  function roomProps(sceneId) {
+    var r = pieceMeta(sceneId).room;
+    if (!r || !(Number(r.w) > 0) || !(Number(r.d) > 0)) return [];
+    var W = Number(r.w), Dp = Number(r.d), X0 = (Number(r.cx) || 0) - W / 2, Z0 = (Number(r.cz) || 0) - Dp / 2, X1 = X0 + W, Z1 = Z0 + Dp;
+    var out = [], n = 0, H = Math.PI / 2, U = ROOM_U, door = String(r.door || 's0');
+    var add = function (model, x, z, rot, extra) {
+      var p = { id: 'room' + (n++), kind: 'build', role: 'scenery', name: model, model: model, x: +x.toFixed(3), z: +z.toFixed(3), rot: rot, _room: true };
+      if (extra) for (var k in extra) p[k] = extra[k];
+      out.push(p);
+    };
+    var x, z;
+    for (x = 0; x < W - 0.01; x += U) for (z = 0; z < Dp - 0.01; z += U) {
+      var wx = Math.min(U, W - x), wz = Math.min(U, Dp - z), fx = wx > U - 0.01, fz = wz > U - 0.01, t = { tint: r.floor || null };
+      if (fx && fz) add('바닥', X0 + x, Z0 + z + U, 0, t);
+      else if (!fx && fz) add('바닥 반', X0 + x, Z0 + z + U, 0, t);
+      else if (fx && !fz) add('바닥 반', X0 + x + U, Z0 + z + U / 2, H, t);
+      else add('바닥', X0 + x, Z0 + z + U / 2, 0, { tint: r.floor || null, scale: 0.5 });
+    }
+    var run = function (side, L) {
+      var u = 0, i = 0;
+      while (u < L - 0.01) {
+        var len = Math.min(U, L - u), full = len > U - 0.01;
+        var model = !full ? '벽 반' : (door === side + i ? '벽 문틀' : '벽'), tw = { tint: r.wall || null };
+        if (side === 'n') add(model, X0 + u, Z0, 0, tw);
+        else if (side === 's') add(model, X0 + u + len, Z1, Math.PI, tw);
+        else if (side === 'w') add(model, X0, Z0 + u + len, H, tw);
+        else add(model, X1, Z0 + u, -H, tw);
+        u += len; i++;
+      }
+    };
+    run('n', W); run('s', W); run('w', Dp); run('e', Dp);
+    if (Number(r.lamp) > 0) add('백색 전등', (X0 + X1) / 2 - 0.15, (Z0 + Z1) / 2 + 0.15, 0, { lift: 2.55, light: Number(r.lamp), tint: '#d8dcdc' });
+    return out;
+  }
+  function isRoom(sceneId) { var m = pieceMeta(sceneId); return !!(m.flat || m.room); }
+  // 261119 방을 지은 조각: 작가가 유령 자리(meta.piece.ghost)와 출발 자리(meta.piece.spawn)를 정할 수 있다.
+  function _spot(v) { return (v && isFinite(Number(v.x)) && isFinite(Number(v.z))) ? { x: Number(v.x), z: Number(v.z) } : null; }
+  function ghostPos(sceneId) { var gs = _spot(pieceMeta(sceneId).ghost); if (gs) return gs; return polar(sceneId, rnd01(sceneId + '|g') * Math.PI * 2, P.GHOST_R); }
   function spawnPos(sceneId, fromId) {
+    var ss = _spot(pieceMeta(sceneId).spawn); if (ss) return ss;
     var ga = rnd01(sceneId + '|g') * Math.PI * 2;
     return polar(sceneId, ga + Math.PI + (rnd01(sceneId + '|s' + (fromId || '')) - 0.5) * 1.2, P.SPAWN_R);
   }
@@ -138,6 +180,16 @@
     try { f = T.computeAfTerrainFields(one, filterIdx, opt); } finally { _reent = false; }
     if (!f || !f.hts) return f;
     var G = f.G, SZ = f.SZ, minH = Infinity, maxH = -Infinity;
+    // 261119 방을 지은 조각(meta.piece.flat): 땅을 한 높이로 편다 — 벽·바닥이 땅에 묻히거나 뜨지 않게.
+    if (isRoom(cur)) {
+      var sum = 0, cnt = 0, R1 = rim(cur, 0) * 0.5;
+      for (var jz = 0; jz < G; jz++) for (var jx = 0; jx < G; jx++) {
+        var qx = (jx / (G - 1) - 0.5) * SZ, qz = (jz / (G - 1) - 0.5) * SZ;
+        if (qx * qx + qz * qz < R1 * R1) { sum += f.hts[jz * G + jx]; cnt++; }
+      }
+      var level = cnt ? sum / cnt : 0;
+      for (var q = 0; q < G * G; q++) f.hts[q] = level;
+    }
     for (var iz = 0; iz < G; iz++) {
       for (var ix = 0; ix < G; ix++) {
         var i = iz * G + ix;
@@ -234,11 +286,12 @@
   function loadMods() {
     if (_mods) return _mods;
     _mods = Promise.all([
-      import('/js/roomplay/corridor.js'), import('/js/roomplay/looks.js'), import('/js/roomplay/engine.js'),
+      import('/js/roomplay/corridor.js?v=261119c'), import('/js/roomplay/looks.js'), import('/js/roomplay/engine.js'),
     ]).then(function (m) { return { corridor: m[0], looks: m[1], engine: m[2] }; });
     return _mods;
   }
   function c01(v) { v = Number(v) || 0; return Math.max(0, Math.min(1, v)); }
+  var _corDot = null;
   async function runCorridor(fromId, toId) {
     var m = await loadMods();
     if (!_corCanvas) {
@@ -246,8 +299,12 @@
       _corCanvas.id = 'temPieceCorridor';
       _corCanvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:3900;display:none;background:#050508;touch-action:none;';
       document.body.appendChild(_corCanvas);
-      // walking speed = 0.75 x the terrain's walking speed (user decision 261118; terrain _fpSpeed = 5.175)
-      _cor = m.corridor.createCorridor({ canvas: _corCanvas, onProgress: function () {}, speed: api.corridorSpeed || 1, walkSpeed: 5.175 * 0.75 });
+      // 261119 (user): the 0.75 slow-down is taken out — the corridor is walked like the terrain:
+      // same speed (_fpSpeed = 5.175), same stride (0.85 m per footstep), same look (pointer held, crosshair).
+      _cor = m.corridor.createCorridor({ canvas: _corCanvas, onProgress: function () {}, speed: api.corridorSpeed || 1, walkSpeed: 5.175, stride: 0.85, lockLook: true });
+      _corDot = document.createElement('div');
+      _corDot.style.cssText = 'position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(255,246,228,0.85);box-shadow:0 0 0 1.5px rgba(40,34,26,0.7);z-index:3901;pointer-events:none;display:none;';
+      document.body.appendChild(_corDot);
     }
     var g = game(), from = sceneOf(fromId), to = sceneOf(toId);
     var al = (g.inFlightAlignments && g.inFlightAlignments.length) ? Number(g.inFlightAlignments[g.inFlightAlignments.length - 1]) : 0.5;
@@ -262,19 +319,22 @@
       lookA: m.looks.lookFor(mem, from), lookB: m.looks.lookFor(mem, to),
       seedA: from.scene_order, seedB: to.scene_order,
     };
-    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
-    _corCanvas.style.display = 'block';
+    // keep the pointer held (the terrain already holds it): the corridor reads the same mouse
+    _corCanvas.style.display = 'block'; _corCanvas.style.cursor = 'none';
+    if (_corDot) _corDot.style.display = 'block';
+    try { if (!document.pointerLockElement && _corCanvas.requestPointerLock) _corCanvas.requestPointerLock(); } catch (_) {}
     try { _cor.resize(); } catch (_) {}
     try { _cor.ensureAudio(); } catch (_) {}
     _cor.resume();
     var arrived = _cor.start(spec);
     await veil(false);
-    whisper(ko() ? 'W 또는 ↑ 로 걷습니다 · 마우스로 끌어 둘러봅니다' : 'W or ↑ to walk · drag to look', 8000);
+    whisper(ko() ? 'W 또는 ↑ 로 걷습니다 · 마우스로 둘러봅니다' : 'W or ↑ to walk · mouse to look', 8000);
     var st = {}; try { st = _cor.state() || {}; } catch (_) {}
     await arrived;
     await veil(true);
     _cor.stop();
     _corCanvas.style.display = 'none';
+    if (_corDot) _corDot.style.display = 'none';
     return { pattern: spec.pattern, length: st.length };
   }
 
@@ -511,7 +571,15 @@
     global.__temSpatialFogConstrain = function (x, z, nx, nz) {
       if (teleport) { var t = teleport; teleport = null; return t; }
       if (busy || map.isOpen()) return { x: x, z: z };
-      if (inside(cur, nx, nz, P.WALK_MARGIN)) return { x: nx, z: nz };
+      if (inside(cur, nx, nz, P.WALK_MARGIN)) {
+        var PP = global.TemPieceProps;
+        if (PP && PP.blocked && PP.blocked(nx, nz)) {          // a wall: slide along it if one axis is free
+          if (!PP.blocked(nx, z)) return { x: nx, z: z };
+          if (!PP.blocked(x, nz)) return { x: x, z: nz };
+          return { x: x, z: z };
+        }
+        return { x: nx, z: nz };
+      }
       if (!inside(cur, x, z, 0)) { var s = spawnPos(cur); return { x: s.x, z: s.z }; }   // somehow off the piece
       return { x: x, z: z };
     };
@@ -539,8 +607,25 @@
     try { global.TemVariantStrata.isEnabled = function () { return false; }; } catch (_) {}
   }
 
+  // 261119 끝 장면(meta.piece.cue.end): 천천히 어두워진 뒤 걸음을 닫는다 (출구문과 같은 끝맺음).
+  var finished = false;
+  function finish() {
+    if (finished) return; finished = true; busy = true;
+    try { map.isOpen() && map.toggle(); } catch (_) {}
+    var veil = document.createElement('div');
+    veil.id = 'temPieceEndVeil';
+    veil.style.cssText = 'position:fixed;inset:0;z-index:2795;background:#050509;opacity:0;transition:opacity 4200ms ease;pointer-events:none;';
+    document.body.appendChild(veil);
+    requestAnimationFrame(function () { veil.style.opacity = '1'; });
+    setTimeout(function () {
+      try { if (typeof global._temEndRun === 'function') global._temEndRun(); } catch (e) { console.warn('[piece] 끝맺음 실패', e && e.message); }
+      veil.style.transition = 'opacity 2600ms ease'; veil.style.opacity = '0';
+      setTimeout(function () { if (veil.parentNode) veil.parentNode.removeChild(veil); }, 2800);
+    }, 4600);
+  }
+
   var api = {
-    on: ON, P: P,
+    on: ON, P: P, roomProps: roomProps, isRoom: isRoom, finish: finish, finished: function () { return finished; },
     fieldsFor: fieldsFor, sizeOf: sizeOf, pieceMeta: pieceMeta, polar: polar,
     setSize: function (id, v) { _sizeOverride[id] = v; }, setScenes: function (list) { _sceneSrc = list; },
     runtime: function () { return rt; }, busy: function () { return busy; }, whisper: whisper,

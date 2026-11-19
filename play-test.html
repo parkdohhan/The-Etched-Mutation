@@ -84,9 +84,9 @@
   <script src="js/ui/lumen_audio_space.js?v=260810b"></script><!-- 260810b 씬 소리 = linear 감쇠: 반경에서 0 (inverse 는 온 맵에 샘) -->
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260802e"></script><!-- 260802e 목격 v2 시네마틱 몸 -->
-  <script src="js/ui/tem_drift_stage.js?v=261118j"></script><!-- 261118 표류 무대 실험 스위치 (?drift=1) — 꺼져 있으면 무동작 -->
-  <script src="js/ui/tem_piece_stage.js?v=261118d"></script>
-  <script src="js/ui/tem_piece_props.js?v=261118d"></script><!-- 261118 조각 꾸밈(작가가 세운 사물·마네킹)과 다시 오기 --><!-- 261118 조각 방 (표류 스위치 위에서만 동작, &piece=0 으로 끔) -->
+  <script src="js/ui/tem_drift_stage.js?v=261119b"></script><!-- 261118 표류 무대 실험 스위치 (?drift=1) — 꺼져 있으면 무동작 -->
+  <script src="js/ui/tem_piece_stage.js?v=261119g"></script>
+  <script src="js/ui/tem_piece_props.js?v=261119m"></script><!-- 261118 조각 꾸밈(작가가 세운 사물·마네킹)과 다시 오기 --><!-- 261118 조각 방 (표류 스위치 위에서만 동작, &piece=0 으로 끔) -->
   <script src="js/shared/tem_object_anchors.js?v=261118a"></script><!-- 260730 사물 자리 계산 (admin 공용) · 261118a 표류 옵션(기본 무동작) -->
   <script src="js/ui/lumen_scene_objects.js?v=261118a"></script><!-- 260810a 자막 확대 (대화창 지문 크기) + 하단 스택 재배치 -->
   <script src="js/ui/tem_mobile_controls.js?v=260806"></script><!-- 260806 모바일 1인칭: 십자 패드 + 화면 쓸기 + 길게 누르기 -->
@@ -99,7 +99,7 @@
   <script src="js/core/SlotAbsorber.js?v=260714"></script>
   <script src="js/ui/lumen_drift_visualizer.js?v=260714"></script>
   <script src="js/shared/tem_stem_cuts.js?v=261117a"></script><!-- 261117a DANG-001(당신입니까, 임시 제목) 지문 8 추가 / 260915b GWON-001(권역) 지문 14 (15씬 절삭판, text 기준 재도출) / 260915a 첫 도출 / 260810b KO 지문 재도출 + EN 지문 미러 갱신 -->
-  <script src="js/ui/lumen_dialog_phase1.js?v=261118f"></script><!-- 260909a RECORD v4 shell 내보내기(참조만, 플레이 동작 0 변경) / 260810a EN 연결사 8종 (KO 결 대응) -->
+  <script src="js/ui/lumen_dialog_phase1.js?v=261119a"></script><!-- 260909a RECORD v4 shell 내보내기(참조만, 플레이 동작 0 변경) / 260810a EN 연결사 8종 (KO 결 대응) -->
   <script src="js/ui/strataSection.js?v=260714"></script>
   <script src="js/ui/floatingAnchor.js?v=260806"></script><!-- 260806 낭독 띠 회피 -->
   <script src="js/ui/lumen_recalled_anchors.js?v=260806"></script><!-- 260806 낭독 띠 회피 -->
@@ -2161,7 +2161,13 @@
     const _driftOn = !!(window.TemDrift && window.TemDrift.on);
     const _firstOrder = _driftOn ? Math.min.apply(null, cores.map(p => (p.sceneOrder != null ? p.sceneOrder : 1e9))) : null;
     const _pieceOn = !!(window.TemPiece && window.TemPiece.on);   // 조각 방: 모든 씬에 유령이 선다 — 첫 씬 제외 불필요
-    const pool = cores.filter(p => !game.visitedCore[p.sceneId] && !(_driftOn && !_pieceOn && p.sceneOrder === _firstOrder));
+    let pool = cores.filter(p => !game.visitedCore[p.sceneId] && !(_driftOn && !_pieceOn && p.sceneOrder === _firstOrder));
+    // 261119 조각 방: 걸음을 닫는 장면(meta.piece.cue.end)은 다른 장면이 남아 있는 동안 고르지 않는다 — 끝은 끝에.
+    if (_pieceOn) {
+      const _closes = (pp) => { try { const c = window.TemPiece.pieceMeta(pp.sceneId).cue; return !!(c && c.line && c.end !== false); } catch (_) { return false; } };
+      const _open = pool.filter(pp => !_closes(pp));
+      if (_open.length) pool = _open;
+    }
     let withDist = pool.map(p => ({
       pin: p,
       d: distMap(center, { x: p.mapX, y: p.mapY }),
@@ -7155,6 +7161,10 @@
                 // 260802 유령 외관=사물 — p.scene 의 상징 사물 GLB 를 몸으로
                 bodyForPin: function (p) {
                   if (p && p._prop) return window.TemPieceProps ? window.TemPieceProps.bodyFor(p._prop) : null;   // 조각 꾸밈 마네킹
+                  if (window.TemPiece && window.TemPiece.on && window.TemPieceProps && window.TemPieceProps.ghostBody && p && p.scene) {
+                    var _gb = window.TemPieceProps.ghostBody(p.scene.id);   // 261119 방 조각: 방 안의 사물이 유령의 몸
+                    if (_gb) return _gb;
+                  }
                   return _temSymbolForScene((p && p.scene) || null);
                 },
                 // 260802c 프롤로그 씬(첫 씬)엔 유령 없음 — 욕조·피는 그냥 큰 사물
@@ -8062,6 +8072,28 @@
     // ─── Crosshair ─────────────────────────────────────────────
     var _crosshairEl = null;
     var _crosshairRingEl = null;
+    // 261119 조각 방: 끝 장면이 스스로 걸음을 닫는다 — 출구문 끝맺음(V1 archive flow)과 같은 길.
+    window._temEndRun = function () {
+      var g = window._temGame;
+      if (g) g._exitDoorUsed = true;
+      _fpPlayActive = false; window._fpPlayActive = false;
+      if (document.pointerLockElement) { try { document.exitPointerLock(); } catch (_) {} }
+      if (_crosshairEl) _crosshairEl.style.display = 'none';
+      if (_crosshairRingEl) _crosshairRingEl.style.display = 'none';
+      try { _destroyAmbientWave(); } catch (_) {}
+      if (window.LumenRecalledAnchors) { try { window.LumenRecalledAnchors.clear(); } catch (_) {} }
+      if (window.LumenSceneObjects) { try { window.LumenSceneObjects.clear(); } catch (_) {} }
+      if (window._fpRuntime && window._fpRuntime.__lumenSceneObjects) { try { window._fpRuntime.__lumenSceneObjects.clear(); } catch (_) {} }
+      if (window.TemPieceProps) { try { window.TemPieceProps.clear(); } catch (_) {} }
+      var rtE = window.TemAfStrataTerrain._lastRuntime;
+      if (rtE) rtE.exitFirstPerson();
+      var svE = document.getElementById('strataView');
+      if (svE) svE.style.display = 'none';
+      if (_fpProxEl) _fpProxEl.style.opacity = '0';
+      if (_fpHintEl) _fpHintEl.style.opacity = '0';
+      var sealE = document.getElementById('sealBtn');
+      if (sealE) { sealE.disabled = false; sealE.click(); }
+    };
     var _aimedPin = null;
 
     function _ensureCrosshair() {

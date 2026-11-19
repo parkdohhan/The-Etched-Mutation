@@ -197,6 +197,7 @@
   var _beaconTex = null;
 
   /** A faint column of light over the open scene; removed with the pins (userData._fpPin). */
+  function _inRoom() { try { var TPc = global.TemPiece; return !!(TPc && TPc.on && TPc.isRoom(TPc.current())); } catch (_) { return false; } }
   function addBeacon(scene3, x, groundY, z) {
     var THREE = global.THREE;
     if (!THREE || !scene3) return null;
@@ -206,7 +207,7 @@
       depthWrite: false, blending: THREE.AdditiveBlending,
     });
     var sp = new THREE.Sprite(mat);
-    sp.scale.set(3.4, P.BEACON_H, 1);
+    sp.scale.set(_inRoom() ? 0.9 : 3.4, P.BEACON_H, 1);
     sp.position.set(x, groundY + P.BEACON_H / 2, z);
     sp.userData._fpPin = true;
     sp.userData._driftBeacon = true;
@@ -333,7 +334,7 @@
     _dressed[scene.id] = true;
     var gy = (typeof rt.gH === 'function') ? rt.gH(x, z) : 0;
     try {
-      var light = new THREE.PointLight(_domColor(scene.original_emotion), P.LIGHT_INTENSITY, P.LIGHT_REACH, 1.6);
+      var light = new THREE.PointLight(_domColor(scene.original_emotion), _inRoom() ? P.LIGHT_INTENSITY * 0.25 : P.LIGHT_INTENSITY, _inRoom() ? 6 : P.LIGHT_REACH, 1.6);
       light.position.set(x, gy + 2.6, z);
       light.userData._driftLight = true;
       scene3.add(light);

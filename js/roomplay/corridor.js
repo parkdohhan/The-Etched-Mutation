@@ -52,6 +52,7 @@ export function normLook(look) { return Object.assign({}, DEFAULT_LOOK, look || 
 
 export function createCorridor(opts) {
   const THREE = window.THREE;
+  const STRIDE = opts.stride || STEP_M;   // metres per footstep (piece rooms pass the terrain's stride)
   const SPEED = opts.speed || 1;   // 1 for every walker; only test runs may pass more
   // 261118: walking speed may be given in absolute units/s (piece rooms pass 0.75 x the terrain's
   // walking speed). Default = the corridor's own 1.15 m/s.
@@ -348,12 +349,21 @@ export function createCorridor(opts) {
   function moveTo(tx, tz) {
     const ox = fp.x, oz = fp.z;
     if (canStand(tx, tz)) { fp.x = tx; fp.z = tz; return; }
+    // 261119: the open door B takes the walker in even when they come at it off-centre — the doorway
+    // funnels them (before, a walker beside the centreline stood against the frame and never arrived).
+    {
+      const qe = nearest(tx, tz, fp.idx), lastE = W.samples.length - 1;
+      if (qe.i === lastE && qe.along > 0.05 && qe.along < ARRIVE_PAST + 0.6 && W.doorB.userData.open >= 0.6 && Math.abs(qe.lat) <= qe.s.w / 2) {
+        const lt = Math.max(-0.3, Math.min(0.3, qe.lat));
+        fp.x = qe.s.x + qe.nx * lt + qe.s.tx * qe.along; fp.z = qe.s.z + qe.nz * lt + qe.s.tz * qe.along; return;
+      }
+    }
     const q = nearest(ox, oz, fp.idx);
     const mv = (tx - ox) * q.s.tx + (tz - oz) * q.s.tz;
     const sx = ox + q.s.tx * mv, sz = oz + q.s.tz * mv;                    // slide along the wall
     if (canStand(sx, sz)) { fp.x = sx; fp.z = sz; return; }
     const q2 = nearest(sx, sz, fp.idx);
-    const lim = Math.max(0, q2.s.w / 2 - 0.2), lat = Math.max(-lim, Math.min(lim, q2.lat));
+    const lim = Math.max(0, q2.s.w / 2 - 0.24), lat = Math.max(-lim, Math.min(lim, q2.lat));   // 261119: a hair inside the wall line, so the clamped spot always stands (a walker pushing into a bend slides on instead of stopping)
     const al = Math.max(-0.05, Math.min(0.05, q2.along));
     const cx = q2.s.x + q2.nx * lat + q2.s.tx * al, cz = q2.s.z + q2.nz * lat + q2.s.tz * al;
     if (canStand(cx, cz) && Math.hypot(cx - ox, cz - oz) < 0.6) { fp.x = cx; fp.z = cz; }
@@ -382,7 +392,7 @@ export function createCorridor(opts) {
     moveTo(fp.x + (sy * f - cy * s) * WALK_MPS * SPEED * dt, fp.z + (cy * f + sy * s) * WALK_MPS * SPEED * dt);
     const moved = Math.hypot(fp.x - ox, fp.z - oz);
     fp.stepAcc += moved;
-    if (fp.stepAcc >= STEP_M) { fp.stepAcc -= STEP_M; step2.ensure(); step2.sound(); step2.print(fp.x, fp.z, fp.yaw); }   // was audio.step(W.LA.step, W.LB.step) — synthesized per-surface step, replaced 261118
+    if (fp.stepAcc >= STRIDE) { fp.stepAcc -= STRIDE; step2.ensure(); step2.sound(); step2.print(fp.x, fp.z, fp.yaw); }   // was audio.step(W.LA.step, W.LB.step) — synthesized per-surface step, replaced 261118
     if (moved < 1e-4) fp.moving = false;
   }
 
@@ -441,17 +451,27 @@ export function createCorridor(opts) {
     }
   }
 
+  const keyOf = (e) => (/^Key[A-Z]$/.test(e.code || '') ? e.code.slice(3).toLowerCase() : String(e.key).toLowerCase());
   // input — drag to look, WASD / arrows to walk
+  // 261119 opts.lockLook (piece rooms): look the way the terrain does — the pointer is held, moving the
+  // mouse turns the view, no cursor. A click takes the pointer back if it was let go (Esc).
+  if (opts.lockLook) {
+    document.addEventListener('mousemove', (e) => {
+      if (!active || !document.pointerLockElement) return;
+      fp.yaw -= (e.movementX || 0) * 0.0022; fp.pitch = Math.max(-0.8, Math.min(0.6, fp.pitch - (e.movementY || 0) * 0.0018));
+    });
+    canvas.addEventListener('click', () => { if (active && !document.pointerLockElement && canvas.requestPointerLock) { try { canvas.requestPointerLock(); } catch (_) {} } });
+  }
   let drag = null;
   canvas.addEventListener('pointerdown', (e) => { if (!active) return; drag = { x: e.clientX, y: e.clientY }; audio.ensure(); });
   window.addEventListener('pointerup', () => { drag = null; });
   window.addEventListener('pointermove', (e) => {
-    if (!drag || !active) return;
+    if (!drag || !active || (opts.lockLook && document.pointerLockElement)) return;
     fp.yaw -= (e.clientX - drag.x) * 0.004; fp.pitch = Math.max(-0.8, Math.min(0.6, fp.pitch - (e.clientY - drag.y) * 0.003));
     drag = { x: e.clientX, y: e.clientY };
   });
-  window.addEventListener('keydown', (e) => { if (!active) return; if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; fp.keys[e.key.toLowerCase()] = true; audio.ensure(); });
-  window.addEventListener('keyup', (e) => { fp.keys[e.key.toLowerCase()] = false; });
+  window.addEventListener('keydown', (e) => { if (!active) return; if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; fp.keys[keyOf(e)] = true; audio.ensure(); });
+  window.addEventListener('keyup', (e) => { fp.keys[keyOf(e)] = false; fp.keys[String(e.key).toLowerCase()] = false; });
   window.addEventListener('resize', resize);
 
   return {

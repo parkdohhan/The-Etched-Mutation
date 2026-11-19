@@ -1697,7 +1697,8 @@
     } catch (_) {}
     // 261118 조각 방: 다시 온 유령(판본이 바뀐 글 + 내가 전에 이은 말) 또는 작가가 조각에 세운
     //   대화 마네킹의 대사 — 조각 쪽이 글을 정해 준다. 없으면 기존 지문 그대로.
-    var _piecePass = null;
+    var _piecePass = null, _cueMode = false, _cueStart = null;
+    var _cueStarted = new Promise(function (res) { _cueStart = res; });
     try {
       if (_textRoom() && global.TemPieceProps && typeof global.TemPieceProps.passageFor === 'function') {
         _piecePass = global.TemPieceProps.passageFor(sceneId, sceneData);
@@ -1880,7 +1881,16 @@
         if (_piecePass) {
           // 조각 방: 본문 전체(끝 문장만 끊김) 아래에 "… 가 보인다" 줄 — 이 씬의 유령에게 처음 말을 걸 때만
           var _see = (_piecePass.main && !_piecePass.again) ? (_piecePass.seeLine || _trObj) : '';
-          _addMessage(overlay, _contStem + (_see ? '\n\n' + _see : ''), { who: 'ghost' });
+          if (_piecePass.cue) {
+            // 261119 끝 장면: 글이 그 줄에 닿는 순간 소리가 한 번 난다. 이어 쓰지 않는다.
+            _addMessage(overlay, _contStem, { who: 'ghost' });
+            _sub.chain = _sub.chain.then(function () {
+              try { _cueStart(global.TemPieceProps.playCue(sceneId)); } catch (_) { _cueStart(null); }
+            });
+            _addMessage(overlay, _piecePass.cueText, { who: 'ghost' });
+            _cueMode = true;
+          }
+          else _addMessage(overlay, _contStem + (_see ? '\n\n' + _see : ''), { who: 'ghost' });
         }
         else _addMessage(overlay, _trPassage(sceneData, _contStem) + (_trObj ? '\n\n' + _trObj : ''), { who: 'ghost' });
       } else {
@@ -1938,6 +1948,7 @@
     await _poolsPromise;
 
     for (var turn = 1; turn <= totalTurns; turn++) {
+      if (_cueMode) break;   // 261119 끝 장면 — 쓰는 자리 없음
       // 입력 자리 받음 자리. turn 1 = 선택지 + 자유 동시. turn 2-3 = 자유.
       var playerInput;
       var _left = false;  // 260709 '나가기 ▸' 로 대화를 뜬 경우
@@ -2240,14 +2251,19 @@
     var urgeRes = ghosts && typeof ghosts.pickUrge === 'function'
       ? ghosts.pickUrge({ memoryId: memoryId, sceneId: sceneId, alignment: lastAlignment })
       : { resonance: lastResonance, urge: '...' };
-    _addMessage(overlay, urgeRes.urge, { who: 'ghost' });
+    if (!_cueMode) _addMessage(overlay, urgeRes.urge, { who: 'ghost' });
 
     // 7. scene_link "한 줄 남기기" — 260709 전면 삭제 (사용자 결정).
     //    onSceneEnd 계약 유지를 위해 scene_link_input 은 빈 문자열 고정
     //    (play-test 의 traces/plays/quilt 는 '' 허용 — `|| ''` 가드 확인됨).
     //    복원 시: pickSceneLinkPrompt + _renderTextInput 자리, 커밋 3bc3868 이전 참조.
     var sceneLinkInput = '';
-    await _subtitleIdle(); // urge 라인을 플레이어가 넘길 때까지 대기 (RPG 넘김)
+    if (_cueMode) {
+      // 그 줄이 뜨고 소리가 끝날 때까지 — 넘김 입력을 기다리지 않는다
+      var _cueDone = await _cueStarted;
+      await Promise.all([_cueDone || _sleep(3000), _sleep(7000)]);
+    }
+    else await _subtitleIdle(); // urge 라인을 플레이어가 넘길 때까지 대기 (RPG 넘김)
 
     // 8. transitioning — DOM cleanup
     cleanup({ mountId: overlay.id });
@@ -2274,6 +2290,9 @@
       dialogTurns: dialogTurns,
     };
     if (typeof input.onSceneEnd === 'function') input.onSceneEnd(result);
+    if (_cueMode && _piecePass && _piecePass.cueEnd && global.TemPiece && typeof global.TemPiece.finish === 'function') {
+      try { global.TemPiece.finish(); } catch (_) {}
+    }
     return result;
   }
 
