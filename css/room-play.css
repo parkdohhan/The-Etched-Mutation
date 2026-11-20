@@ -39,8 +39,6 @@ canvas.rp-canvas.on { opacity: 1; pointer-events: auto; }
 .rp-body::-webkit-scrollbar { display: none; }
 .rp-line { font-size: clamp(1.02rem, 1.9vw, 1.16rem); line-height: 2.25; font-weight: 300; margin: 0; word-break: keep-all; }
 .rp-line + .rp-line.rp-gap { margin-top: 1.9rem; }
-.rp-line .w { opacity: 0; transition: opacity 1400ms ease; }
-.rp-line .w.in { opacity: 1; }
 .rp-line.rp-object { color: #f3efe9; }
 .rp-line.rp-mine { color: var(--rp-accent); }
 .rp-line.rp-ghost { color: #9c98a4; font-style: italic; }
@@ -156,3 +154,8 @@ canvas#rpWay { transition: opacity 900ms ease; }
 .rp-door.new .rp-leaf.ascii canvas { height: 210px; opacity: 1; animation: rpAsciiBreath 6s ease-in-out infinite; }
 .rp-door:hover .rp-leaf.ascii canvas { opacity: 1; }
 @keyframes rpAsciiBreath { 0%, 100% { filter: drop-shadow(0 0 6px rgba(196,168,130,0.18)); } 50% { filter: drop-shadow(0 0 16px rgba(196,168,130,0.42)); } }
+
+/* ── typing (261120): text is typed, never faded in. The boxes that hold typed text appear at once. ── */
+.rp-f.rp-f-word, .rp-f.rp-f-ghost:not(.to-center) { transition: none; }
+#rpCaption, #rpHint, #rpEndText, #rpTrace, #rpToast { transition: none; }
+#rpPass { position: fixed; inset: 0; z-index: 61; display: flex; align-items: center; justify-content: center; pointer-events: none; font-size: 1.15rem; letter-spacing: 0.3em; color: var(--rp-text); }

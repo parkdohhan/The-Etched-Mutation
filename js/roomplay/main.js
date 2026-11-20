@@ -13,7 +13,7 @@
  */
 import * as data from './data.js';
 import { createEngine, parseEmotion, resonanceOf, foldTo17 } from './engine.js';
-import { createRoom, createFloaters, wordEl, ghostEl, doorEl, sentences, cutLast, hang, closed, subjectParticle } from './room.js';
+import { createRoom, createFloaters, typeText, wordEl, ghostEl, doorEl, sentences, cutLast, hang, closed, subjectParticle } from './room.js';
 import { createCorridor, normLook, DEFAULT_LOOK } from './corridor.js';
 import { createSound } from './sound.js';
 import { createWay } from './way.js';
@@ -46,7 +46,7 @@ const DEPTH_STAGE_2 = 5, DEPTH_STAGE_3 = 15;                                    
 
 const veilEl = $('rpVeil');
 function veil(on) { veilEl.classList.toggle('clear', !on); return wait(2300); }
-function toast(msg) { const t = $('rpToast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 6000); }
+function toast(msg) { const t = $('rpToast'); typeText(t, msg, { per: 30 }); t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 6000); }
 
 const run = {
   id: (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()),
@@ -86,11 +86,12 @@ async function boot() {
   corridor = createCorridor({ canvas: $('rpCorridor'), onProgress: onCorridorProgress, speed: FAST });
   if (WAY) way = createWay({ canvas: $('rpWay') });
   Object.assign(window.__room, { corridor, sound, floaters, way, room });
-  $('rpEntryTitle').textContent = run.memory.title || '';
-  $('rpEntryLead').textContent = LANG === 'en'
+  const entryLead = LANG === 'en'
     ? 'You are about to walk through someone else\'s memory.\nBefore you go in — what is on your mind right now?'
     : '지금부터 다른 사람의 기억 속을 걷습니다.\n들어가기 전에 — 지금 무엇이 마음에 걸려 있습니까.';
-  $('rpEntryNote').textContent = MODE === 'author' ? '작가의 첫 걸음으로 기록됩니다' : MODE === 'test' ? '시험 걸음 — 다른 사람에게 남지 않습니다' : '';
+  const entryNote = MODE === 'author' ? '작가의 첫 걸음으로 기록됩니다' : MODE === 'test' ? '시험 걸음 — 다른 사람에게 남지 않습니다' : '';
+  $('rpEntryTitle').textContent = ''; $('rpEntryLead').textContent = ''; $('rpEntryNote').textContent = '';
+  const typeEntry = async () => { await wait(1200 / FAST); await typeText($('rpEntryTitle'), run.memory.title || '', { per: 90, pace: 1 / FAST }); await wait(400 / FAST); await typeText($('rpEntryLead'), entryLead, { pace: 1 / FAST }); typeText($('rpEntryNote'), entryNote, { per: 30 }); };
   const go = $('rpEnter'); go.disabled = false;
   const enter = async () => {
     if (go.disabled) return; go.disabled = true;
@@ -111,6 +112,7 @@ async function boot() {
     if (run.path.length) { $('rpEntry').classList.add('gone'); return finish(); }
   }
   veil(false);
+  typeEntry();
 }
 
 // ── which text does this visit read ─────────────────────────────────────────
@@ -459,12 +461,12 @@ async function takeWay(from, el) {
   const done = way.start({ door: { cx: lr.left + lr.width / 2, bottom: lr.bottom, h: lr.height }, frame: { left: col.left, right: col.right, bottom: col.bottom },
     floor: look.floor, speed: FAST, things: thingsOf(from) }, {
     onReady() {
-      hint.textContent = isTouch() ? (LANG === 'en' ? 'hold the circle to walk · drag to look' : '동그라미를 누르고 있으면 걷습니다 · 화면을 끌어 둘러봅니다') : (LANG === 'en' ? 'W or ↑ to walk · drag to look' : 'W 또는 ↑ 로 걷습니다 · 마우스로 끌어 둘러봅니다');
+      typeText(hint, isTouch() ? (LANG === 'en' ? 'hold the circle to walk · drag to look' : '동그라미를 누르고 있으면 걷습니다 · 화면을 끌어 둘러봅니다') : (LANG === 'en' ? 'W or ↑ to walk · drag to look' : 'W 또는 ↑ 로 걷습니다 · 마우스로 끌어 둘러봅니다'), { per: 30 });
       hint.classList.add('on'); if (isTouch()) $('rpWalk').classList.add('on');
     },
     on3d() { el.style.transition = 'opacity 1200ms ease'; el.classList.remove('in'); setTimeout(() => hint.classList.remove('on'), 5000); },
     onLine(t) {
-      $('rpCapLine').textContent = t.line; $('rpCapSrc').textContent = t.name;
+      $('rpCapSrc').textContent = ''; typeText($('rpCapLine'), t.line).then((ok) => { if (ok) typeText($('rpCapSrc'), t.name); });
       cap.classList.add('on', 'way'); clearTimeout(takeWay._t); takeWay._t = setTimeout(() => cap.classList.remove('on'), 9000);
     },
   });
@@ -481,6 +483,19 @@ function nearestGhost(userEmotion, pool) {
 function cosObj(a, b) { let d = 0, na = 0, nb = 0; const keys = new Set(Object.keys(a).concat(Object.keys(b))); for (const k of keys) { const x = Number(a[k]) || 0, y = Number(b[k]) || 0; d += x * y; na += x * x; nb += y * y; } return na && nb ? d / Math.sqrt(na * nb) : 0; }
 
 // ── the corridor ───────────────────────────────────────────────────────────
+// 261120 (author): the walked corridor is put away for now. Between the way and the next room there is only a word
+// for what kind of passage it was ("맴돈다."), typed on the dark. The corridor itself is kept: ?corridor=1 (or ?tune=1).
+// The word is a plain verb for the movement, never the engine's name for the pattern. A memory may bring its own:
+// memories.meta.pass_words = { echo_follow, bridge, contradiction, displacement, avoidance, fixation, old }.
+const CORRIDOR = qs.get('corridor') === '1' || TUNE;
+const PASS = LANG === 'en'
+  ? { echo_follow: 'It follows.', bridge: 'It crosses over.', contradiction: 'It turns against.', displacement: 'It slips aside.', avoidance: 'It goes around.', fixation: 'It circles.', old: 'It goes back.' }
+  : { echo_follow: '따라간다.', bridge: '건너간다.', contradiction: '거슬러 간다.', displacement: '비켜 간다.', avoidance: '피해 간다.', fixation: '맴돈다.', old: '되돌아간다.' };
+function passWord(kind, pattern) {
+  const own = (run.memory.meta && run.memory.meta.pass_words) || {};
+  const key = kind === 'old' ? 'old' : kind === 'same' ? 'fixation' : (pattern === 'fixation' ? 'bridge' : pattern);   // circling is said only when the door really leads back into the same room
+  return own[key] || PASS[key] || PASS.bridge;
+}
 let tuneCtx = null;
 async function walk(from, to, kind, connective, doorEl) {
   const leg = { from: from.scene_order, to: to.scene_order, kind, pattern: run.last.pattern, alignment: +run.last.alignment.toFixed(4), bucket: run.last.bucket, cont: run.cont };
@@ -490,6 +505,17 @@ async function walk(from, to, kind, connective, doorEl) {
   room.hide(); floaters.clear(0); floaters.stop();
   const sB = soundOf(to);
   sound.prepare(sB.url, sB.vol);
+  if (!CORRIDOR) {                                                          // 261120: no walked corridor for now — its kind is said in a word, typed on the dark
+    leg.corridor = false; leg.said = passWord(kind, leg.pattern);
+    const pass = $('rpPass');
+    await wait(500 / FAST);
+    await typeText(pass, leg.said, { per: 110, pace: 1 / FAST });
+    await wait(2000 / FAST);
+    pass.textContent = '';
+    run.legs.push(leg);
+    floaters.start();
+    return enterRoom(to, kind);
+  }
   const spec = {
     pattern: leg.pattern, alignment: Math.max(0, Math.min(1, run.last.alignment)), bucket: ['HIGH', 'MID', 'LOW', 'FIXATED'].includes(run.last.bucket) ? run.last.bucket : 'MID', cont: run.cont,
     fromVec: foldTo17(from.original_emotion), toVec: foldTo17(to.original_emotion),
@@ -540,7 +566,7 @@ async function finish() {
   const endText = $('rpEndText'), btns = $('rpEndBtns'), trace = $('rpTrace');
   const ui = {
     veil,
-    text(line, sub) { const on = !!(line || sub); endText.classList.toggle('on', false); setTimeout(() => { $('rpEndLine').textContent = line || ''; $('rpEndSub').textContent = sub || ''; endText.classList.toggle('on', on); }, on ? 500 : 0); },
+    text(line, sub) { const on = !!(line || sub); $('rpEndLine').textContent = ''; $('rpEndSub').textContent = ''; endText.classList.toggle('on', on); if (on) typeText($('rpEndLine'), line || '', { per: 70 }).then((ok) => { if (ok) typeText($('rpEndSub'), sub || '', { per: 35 }); }); },
     buttons(list) {
       return new Promise((resolve) => {
         btns.innerHTML = '';
@@ -553,7 +579,8 @@ async function finish() {
       if (trace.dataset.key === key) return; trace.dataset.key = key;
       trace.classList.remove('on');
       if (!word) return;
-      setTimeout(() => { $('rpTraceWord').textContent = word; $('rpTraceLine').textContent = line; $('rpTraceSrc').textContent = src; trace.classList.add('on'); }, 600);
+      $('rpTraceWord').textContent = ''; $('rpTraceLine').textContent = ''; $('rpTraceSrc').textContent = ''; trace.classList.add('on');
+      typeText($('rpTraceWord'), word, { per: 60 }).then((ok) => ok && typeText($('rpTraceLine'), line)).then((ok) => ok && typeText($('rpTraceSrc'), src, { per: 30 }));
     },
   };
   const lines = new Map();

@@ -19,7 +19,7 @@ const t0 = Date.now();
 while (Date.now() - t0 < 520000) {
   const st = await page.evaluate(() => {
     const vis = (el) => !!el && getComputedStyle(el).opacity !== '0' && el.offsetParent !== null;
-    const field = document.querySelector('.rp-write input[type=text]'), box = field && field.closest('.on');
+    const field = document.querySelector('.rp-input.on .rp-write input[type=text]'), box = field;   // the input box itself must be open (#rpRoom also carries .on)
     const door = document.querySelector('.rp-door.new');
     const r = window.__room || {};
     const end = document.getElementById('rpEndText');
@@ -30,9 +30,9 @@ while (Date.now() - t0 < 520000) {
   if (st.ask) {
     const silentOnly = await page.evaluate(() => !document.querySelector('.rp-conn'));
     if (!silentOnly) await page.click('.rp-conn').catch(() => {});
-    await page.fill('.rp-write input[type=text]', LINES[n++ % LINES.length]);
-    await page.click('.rp-send');
-    await page.waitForTimeout(900);
+    await page.fill('.rp-input.on .rp-write input[type=text]', LINES[n++ % LINES.length], { timeout: 5000 }).catch(() => {});
+    await page.click('.rp-input.on .rp-send', { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(1300);
     continue;
   }
   if (st.way) { await page.evaluate(() => window.__room.way.walk(20)); await page.waitForTimeout(1200); continue; }
@@ -44,5 +44,7 @@ const out = await page.evaluate(() => { const r = window.__room && window.__room
 await page.screenshot({ path: '/private/tmp/claude-501/-Users-parksojung-The-Etched-Mutation/40aade99-78af-497d-ac87-e22791861699/scratchpad/rig-end' + (WAY ? '-way' : '') + '.png' }).catch(() => {});
 console.log(WAY ? '[way=1]' : '[기본 화면]', 'ended:', ended, '· seconds', Math.round((Date.now() - t0) / 1000), '· order', out && out.order.join('→'));
 if (out) for (const r of out.rooms) console.log('  #' + r.o, 'stage', r.stage, '|', r.res, r.pat, '| 문', r.door, r.rig ? '(고정)' : '', '| 턴', r.turns);
+const legs = await page.evaluate(() => (window.__room && window.__room.run ? window.__room.run.legs.map((l) => l.from + '→' + l.to + ' ' + (l.said || '(통로)')) : [])).catch(() => []);
+console.log('사이 글자:', legs.join(' | '));
 console.log('errors', errors.length, errors.slice(0, 6));
 await browser.close();

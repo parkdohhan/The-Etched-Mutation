@@ -32,6 +32,28 @@ export function subjectParticle(word) {
 function hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// ── typing ──────────────────────────────────────────────────────────────────
+// Every text on this stage is typed, never faded in (author, 261120: "모든 글자연출은 typing 으로 통일 — 오프닝처럼").
+// Rhythm = the opening's typeWrite (js/app/confession.js): a letter every 40 ms, a breath after . ? , and at a line break.
+const typingOf = new WeakMap();
+/** @param o { per, pace, skip:()=>boolean }  Resolves true when the text stands whole, false if another text took the element. */
+export function typeText(el, text, o) {
+  text = String(text == null ? '' : text);
+  const per = (o && o.per) || 40, pace = (o && o.pace) || 1, skip = o && o.skip;
+  const token = {}; typingOf.set(el, token);
+  el.textContent = '';
+  return new Promise((resolve) => {
+    let i = 0;
+    (function tick() {
+      if (typingOf.get(el) !== token) return resolve(false);
+      if (skip && skip()) { el.textContent = text; return resolve(true); }
+      if (i >= text.length) return resolve(true);
+      const ch = text.charAt(i++); el.textContent += ch;
+      setTimeout(tick, (ch === '.' || ch === '?' || ch === ',' ? 250 : ch === '\n' ? 350 : per) * pace);
+    })();
+  });
+}
+
 // ── floaters ────────────────────────────────────────────────────────────────
 export function createFloaters(layer, columnEl, seed) {
   const items = [];
@@ -70,7 +92,9 @@ export function createFloaters(layer, columnEl, seed) {
     }
     items.push(it);
     relayout();
-    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
+    if (el.classList.contains('rp-f-word') || el.classList.contains('rp-f-ghost')) {   // words are typed where they float (doors are pictures: they still come in)
+      const full = el.textContent; el.classList.add('in'); typeText(el, full, { per: 55 });
+    } else requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
     if (!running) { running = true; tick(); }
     return it;
   }
@@ -127,7 +151,7 @@ export function createRoom(root, lang, pace) {
   function clear() { body.innerHTML = ''; inputBox.innerHTML = ''; inputBox.classList.remove('on'); }
   function scrollDown() { body.scrollTop = body.scrollHeight; }
 
-  /** One line, word by word. Resolves when the last word has started to appear. */
+  /** One line, typed. Resolves when it stands whole and its hold has passed. A click or a key finishes the typing at once. */
   async function say(text, cls, o) {
     text = String(text);
     // a cut can leave a quotation open ("누구 있어요…) — close it so the line does not look broken
@@ -135,17 +159,13 @@ export function createRoom(root, lang, pace) {
     if ((text.match(/“/g) || []).length > (text.match(/”/g) || []).length) text += '”';
     const p = document.createElement('p');
     p.className = 'rp-line' + (cls ? ' ' + cls : '') + (o && o.gap ? ' rp-gap' : '');
-    const words = String(text).split(/(\s+)/);
-    const spans = [];
-    for (const w of words) {
-      if (/^\s+$/.test(w)) { p.appendChild(document.createTextNode(' ')); continue; }
-      const s = document.createElement('span'); s.className = 'w'; s.textContent = w; p.appendChild(s); spans.push(s);
-    }
-    if (o && o.src) { const s = document.createElement('span'); s.className = 'rp-src w'; s.textContent = o.src; p.appendChild(s); spans.push(s); }
+    const t = document.createElement('span'); p.appendChild(t);
     body.appendChild(p); scrollDown();
     hurry = false;
-    const per = ((o && o.per) || 150) * PACE;
-    for (const s of spans) { s.classList.add('in'); if (!hurry) await wait(per); }
+    const skip = () => hurry;
+    await typeText(t, text, { per: (o && o.per) || 40, pace: PACE, skip });
+    if (o && o.src) { const s = document.createElement('span'); s.className = 'rp-src'; p.appendChild(s); await typeText(s, o.src, { per: 40, pace: PACE, skip }); }
+    scrollDown();
     if (!hurry) await wait(((o && o.hold) || 900) * PACE);
     scrollDown();
     return p;
@@ -166,8 +186,9 @@ export function createRoom(root, lang, pace) {
     const conns = o.connectives;
     inputBox.innerHTML = '';
     const guide = document.createElement('div'); guide.className = 'rp-guide';
-    guide.textContent = o.guide ? o.guide : o.voidScene ? (ko ? '아무 말도 없습니다 — 무엇이든 적거나, 말없이 있을 수 있습니다.' : 'Nothing is said — write anything, or stay silent.')
+    const guideText = o.guide ? o.guide : o.voidScene ? (ko ? '아무 말도 없습니다 — 무엇이든 적거나, 말없이 있을 수 있습니다.' : 'Nothing is said — write anything, or stay silent.')
                                     : (ko ? '문장이 끊겼습니다 — 연결사를 고르고, 뒤를 이어서 써 주세요.' : 'The sentence broke off — pick a connective and continue it.');
+    typeText(guide, guideText, { per: 30 });
     const row = document.createElement('div'); row.className = 'rp-conns';
     let chosen = '';
     const free = document.createElement('input'); free.className = 'rp-conn-free'; free.maxLength = 14; free.placeholder = ko ? '직접 입력' : 'your own';
