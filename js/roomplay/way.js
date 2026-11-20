@@ -16,7 +16,7 @@ import { drawAsciiDoor, DOOR_ASPECT } from './asciidoor.js';
 
 // staging values (free parameters — not definitions; tuned on screen)
 const FOV = 50, EYE = 1.6;
-const WALK = 1.15, STRIDE = 0.72;      // = the corridor's own pace
+const WALK = 1.9, STRIDE = 1.0;        // 261120: brisker than the corridor (1.15 / 0.72) — the way is short; the door is not moved, so the same picture is crossed sooner
 const DOOR_H = 2.3;                    // the drawn door, frame included
 const END_HALF = 0.62;                 // half width of the way where it meets the door
 const SWING = 0.46;                    // how far the curve's handles reach (share of the straight distance)
@@ -266,7 +266,7 @@ export function createWay(opts) {
       const ns = Math.min(limit, fp.s + WALK * speed * dt);
       moved = Math.max(0, ns - fp.s); fp.s = Math.max(fp.s, ns);
     }
-    if (moved > 1e-5) { fp.bob += moved * 8.7; fp.stepAcc += moved; if (fp.stepAcc >= STRIDE) { fp.stepAcc -= STRIDE; steps.play(); } }
+    if (moved > 1e-5) { fp.bob += moved * (2 * Math.PI / STRIDE); fp.stepAcc += moved; if (fp.stepAcc >= STRIDE) { fp.stepAcc -= STRIDE; steps.play(); } }
     // the first step turns the drawing into a place
     if (W.started) W.k3d = smooth(0, COME_S, (now - W.started) / 1000 * speed);
     ambient.intensity = 0.85 * W.k3d; walkerLight.intensity = 1.0 * W.k3d;

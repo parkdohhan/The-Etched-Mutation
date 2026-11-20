@@ -67,6 +67,10 @@ export async function analyzeEmotion(text, axes, context) {
     let base = data && data.analysis && data.analysis.base;
     if (typeof base === 'string') { try { base = JSON.parse(base); } catch (_) { base = null; } }
     if (!base || typeof base !== 'object' || Array.isArray(base) || !Object.keys(base).length) return null;
+    // 261120: when the model call behind claude-scene fails (seen: the API account out of credit), the function answers
+    // 200 with every axis at 0 and is_void = true. That is not a measurement — taking it as one sends every walker to the
+    // void and writes empty emotions into the ledger. An all-zero answer is treated as a failed measurement.
+    if (!Object.values(base).some((v) => Number(v) > 0)) { console.warn('[room] claude-scene answered with an empty vector — treated as a failed measurement'); return null; }
     const ra = (data.reason_analysis && typeof data.reason_analysis === 'object' && !Array.isArray(data.reason_analysis)) ? data.reason_analysis : null;
     return { base, reason_analysis: ra };
   } catch (e) { console.warn('[room] claude-scene exception', e); return null; }

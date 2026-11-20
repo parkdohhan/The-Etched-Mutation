@@ -18,6 +18,7 @@ import { createCorridor, normLook, DEFAULT_LOOK } from './corridor.js';
 import { createSound } from './sound.js';
 import { createWay } from './way.js';
 import { drawAsciiDoor } from './asciidoor.js';
+import { rigOf, riggedDoor, riggedStage } from './rig.js';
 import { lookFor, saveLook, storedLooks } from './looks.js';
 import { runEnding } from './ending.js';
 import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
@@ -34,10 +35,12 @@ const CONNECTIVES = LANG === 'en'
   : ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];   // = lumen_dialog_phase1 CONT_CONNECTIVES
 const WAY = qs.get('way') === '1';
 // Plain words the room may say that are not in the manuscript (author, 261120: "really plain words are fine").
-// A memory can bring its own: memories.meta.plain_words = { nod: [...], odd: [...] }.
+// Rare (at most one in a stay, in about half the stays), and only ever a nod: the room does not tell the
+// walker their line was odd (author, 261120 later the same day) — its next part of the manuscript is its answer.
+// A memory can bring its own: memories.meta.plain_words = { nod: [...] }.
 const PLAIN = LANG === 'en'
-  ? { nod: ['Yes.', 'I see.', '…yes.', 'Go on.'], odd: ['…what?', 'I am not sure I follow.', 'I do not know about that.'] }
-  : { nod: ['네.', '그래요.', '…네.', '그랬군요.'], odd: ['…네?', '잘 모르겠습니다.', '무슨 말인지 모르겠습니다.'] };
+  ? { nod: ['Yes.', 'I see.', '…yes.', 'Go on.'] }
+  : { nod: ['네.', '그래요.', '…네.', '그랬군요.'] };
 const DEFAULT_MEMORY = 'DANG-001';   // the flagship memory of this stage (2026-11-17). 권역 = ?memory=GWON-001
 const DEPTH_STAGE_2 = 5, DEPTH_STAGE_3 = 15;                                                  // = play-test applyStageText
 
@@ -71,6 +74,7 @@ async function boot() {
   if (!run.scenes.length) { $('rpEntryLead').textContent = '이 기억에는 장면이 없습니다.'; return; }
   run.engine = createEngine(run.scenes, { frame: qs.get('frame') });   // ?frame=memory = comparison only (see engine.js)
   [run.ghosts, run.others] = await Promise.all([data.loadGhostLines(run.memory.id), data.loadRoomPlays(run.memory.id)]);
+  { const rg = rigOf(run.memory, qs), n = rg && Number(rg.ghost_min_len); if (n > 0) run.ghosts = run.ghosts.filter((g) => String(g.utterance).trim().length >= n); }   // a rigged showing floats no throwaway lines
   // corridor grain / narrowing / patchwork come from what earlier walkers did to this memory
   if (run.others.length) {
     const p = getPresentationState(replayFromPlays(run.others.map((x) => ({ alignment: x.alignment, mismatch_type: x.mismatch_type, user_emotion: x.user_emotion }))));
@@ -114,6 +118,8 @@ function stageText(scene, visitN) {
   const depth = Number(run.memory.cont_depth) || 0;
   let st = depth <= 0 ? 0 : (depth >= DEPTH_STAGE_3 && scene.text_stage_3) ? 3 : (depth >= DEPTH_STAGE_2 && scene.text_stage_2) ? 2 : scene.text_stage_1 ? 1 : 0;
   st = Math.min(3, st + (visitN - 1));                       // every return reads one layer further from the first telling
+  const rs = riggedStage(rigOf(run.memory, qs), visitN);     // a rigged showing names the layer per visit (rig.js)
+  if (rs != null) st = rs;
   while (st > 0 && !scene['text_stage_' + st]) st--;
   return { stage: st, text: st ? scene['text_stage_' + st] : scene.text };
 }
@@ -216,7 +222,9 @@ async function enterRoom(scene, via) {
   // reading for the door and the corridor
   const pattern = eng ? eng.transition_pattern : answer.silent ? (isVoid ? 'echo_follow' : 'avoidance') : ((run.last && run.last.pattern) || 'bridge');
   run.last = { pattern, alignment: eng ? eng.alignment_score : (answer.silent && isVoid ? 0.7 : 0.4), bucket: eng ? eng.alignment_bucket : 'MID', turnAlignment: alignment };
-  const next = run.engine.pickNext({ origin: scene, pattern, userEmotion, isVoid: userVoid, visited: run.visited });
+  const rig = rigOf(run.memory, qs);
+  const next = rig ? riggedDoor({ rig, engine: run.engine, scenes: run.scenes, origin: scene, pattern, userEmotion, isVoid: userVoid, visited: run.visited })
+                   : run.engine.pickNext({ origin: scene, pattern, userEmotion, isVoid: userVoid, visited: run.visited });
 
   // the ledger row (a silent stay leaves no emotion — it goes to the journal, as on the terrain stage)
   const turn = { turn: 1, raw_text: raw, alignment, resonance, ghost_reply: '', via: 'cont_form', ts: Date.now(), input_form: 'cont_v1', connective: answer.connective || '',
@@ -229,7 +237,7 @@ async function enterRoom(scene, via) {
     silent: !!answer.silent, user_emotion: userEmotion, turn_alignment: +alignment.toFixed(4), resonance,
     turns: conv ? conv.turns.map((t) => ({ text: t.raw_text, alignment: +t.alignment.toFixed(4), resonance: t.resonance, reply: t.ghost_reply, touched: t.object })) : null,
     engine: eng ? { alignment: eng.alignment_score, bucket: eng.alignment_bucket, pattern: eng.transition_pattern, mismatch: eng.mismatch_type } : null,
-    door: next.scene ? { to: next.scene.scene_order, mode: next.mode, pattern } : null, ranked: next.ranked.slice(0, 5), shadow: next.shadow });
+    door: next.scene ? { to: next.scene.scene_order, mode: next.mode, pattern, rig: !!next.rig } : (next.mode === 'end' ? { to: null, mode: 'end', rig: true } : null), ranked: next.ranked.slice(0, 5), shadow: next.shadow });
   room.waiting(false);
 
   // contact — a rare event, once per run: a line someone left comes in from the side
@@ -245,6 +253,9 @@ async function enterRoom(scene, via) {
     if (MODE !== 'test') data.recordContact({ memoryId: run.memory.id, sceneId: scene.id, utterance: raw.slice(0, 300), turn: 1, runId: run.id });
   }
   if (!answer.silent && MODE !== 'test' && !isVoid) data.absorbLine({ memoryId: run.memory.id, utterance: raw, motifTags: ((scene.meta && scene.meta.motif_tags) || []).slice(0, 3) });
+
+  // a rigged showing closes on its last room: no door, the ending
+  if (next.mode === 'end') { await wait(3200); return finish(); }
 
   // the door
   let newDoor = null;
@@ -313,34 +324,56 @@ async function askSafely(o) {
 }
 
 // ── several exchanges in one room (way=1) ───────────────────────────────────
-// The scene's text comes in parts. After each part the walker continues it; the room answers with a
-// plain word and goes on with its own next part — nothing the room says about the scene is outside
+// The scene's text comes in parts. After each part the walker continues it; the room goes on with its
+// own next part (now and then a plain nod first) — nothing the room says about the scene is outside
 // the manuscript. When the last part has been answered, the door appears (as before).
 //   · the door and the corridor are read from the whole stay: the mean of the turns' emotions,
 //     one engine step per room, one ledger row per room (its turns inside dialog_turns).
-//   · a turn the classifier reads as empty of the scene (void) is answered in words as such —
-//     by a plain word, never by the name of a pattern. A contrary feeling is not "odd".
-//   · each turn reaches one thing of the scene: the nearest of those not reached yet (shared letters
-//     with its name and line; ties = authored order). Reached things answer a click on the way.
+//   · a turn the classifier reads as empty of the scene (void) is marked in the ledger (odd) and gets
+//     no word from the room. A contrary feeling is not "odd".
+//   · a turn reaches at most one thing of the scene: of those not reached yet, the one that shares the
+//     most words with the line (its name, or a word of its own line; ties = authored order). No shared
+//     word = nothing is reached. Reached things answer a click on the way.
 function speakingThings(scene) {
   const props = (scene.meta && scene.meta.piece && Array.isArray(scene.meta.piece.props)) ? scene.meta.piece.props : [];
   return props.filter((p) => p && p.kind === 'object' && p.role === 'speaking' && p.text);
 }
-function bigrams(str) { const t = String(str || '').replace(/[\s.,!?…"'“”‘’·-]/g, ''), out = new Set(); for (let i = 0; i < t.length - 1; i++) out.add(t.slice(i, i + 2)); return out; }
-function nearestThing(text, things) {
-  const a = bigrams(text); let best = null, bs = -1;
-  for (const p of things) {
-    const b = bigrams(p.name + ' ' + p.text); let n = 0;
-    for (const g of a) if (b.has(g)) n++;
-    const sc = b.size ? n / Math.sqrt(b.size) : 0;
-    if (sc > bs) { bs = sc; best = p; }
+// Words are compared by their heads: Korean puts the meaning at the front of a word and the grammar at its
+// end, so whole-line letter pairs matched on endings alone ("…었다", "…습니다") and every line reached something.
+//   a word of 3+ letters -> its first two; a 2-letter word -> itself, unless it is one letter + a particle
+//   (나는, 그가: too common to mean anything); Latin words of 4+ letters -> the word.
+const PARTICLES = '은는이가을를에의도로과와만';
+// heads that carry grammar, not meaning (to be / to do / thing / like / linking words). A staging list, not a definition: add to it when a line reaches a thing it never named.
+const EMPTY_HEADS = new Set(['있었', '있다', '있는', '있습', '있어', '없었', '없다', '없는', '없습', '없어', '했다', '했습', '했는', '하고', '하는', '한다', '합니', '되었', '됐다', '되는', '것이', '것은', '것을', '같았', '같다', '같은', '그런', '그리', '그래', '그러', '하지', '순간', 'that', 'this', 'there', 'were', 'have', 'with']);
+function words(str) { return String(str || '').toLowerCase().split(/[\s.,!?…"'“”‘’·\-—()]+/).filter(Boolean); }
+function stems(str) {
+  const out = new Set();
+  for (const w of words(str)) {
+    if (/[가-힣]/.test(w)) { if (w.length >= 3 || (w.length === 2 && !PARTICLES.includes(w[1]))) out.add(w.slice(0, 2)); }
+    else if (w.length >= 4) out.add(w);
   }
-  return best;
+  for (const e of EMPTY_HEADS) out.delete(e);
+  return out;
 }
-function plainWord(kind, key, i) {
-  const own = run.memory.meta && run.memory.meta.plain_words && run.memory.meta.plain_words[kind];
-  const list = Array.isArray(own) && own.length ? own : PLAIN[kind];
-  return list[(Math.floor(hashStr(run.id + key) * list.length) + i) % list.length];   // a different word each turn of one stay
+/** The thing's own name said in the line: as a word's beginning, or (one-letter names) as the word itself, with or without a particle. */
+function namesIt(text, name) {
+  const n = String(name || '').trim().toLowerCase();
+  if (!n) return false;
+  return words(text).some((w) => (n.length >= 2 ? w.startsWith(n) : (w === n || (w.length === 2 && w[0] === n && PARTICLES.includes(w[1])))));
+}
+function nearestThing(text, things) {
+  const a = stems(text); let best = null, bs = 0;
+  for (const p of things) {
+    const b = stems(p.name + ' ' + p.text); let n = namesIt(text, p.name) ? 2 : 0;   // its name counts double
+    for (const g of a) if (b.has(g)) n++;
+    if (n > bs) { bs = n; best = p; }
+  }
+  return best;                                                              // null = the line shares no word with any thing
+}
+function plainWord(key) {
+  const own = run.memory.meta && run.memory.meta.plain_words && run.memory.meta.plain_words.nod;
+  const list = Array.isArray(own) && own.length ? own : PLAIN.nod;
+  return list[Math.floor(hashStr(run.id + key) * list.length) % list.length];
 }
 async function converse(scene, tv, prior, nthVisit, via) {
   const body = sentences(tv.text);
@@ -350,11 +383,14 @@ async function converse(scene, tv, prior, nthVisit, via) {
   const touched = run.touched.get(scene.id), things = speakingThings(scene);
   const shown = [], turns = [], emos = [];
   let answer = null, anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5;
+  // the nod: in about half the stays, after one of the turns (fixed by the run and the stay, so a replay reads the same)
+  const stayKey = scene.id + '|' + nthVisit, nodAt = hashStr(run.id + stayKey + '|nod') < 0.5 ? Math.floor(hashStr(run.id + stayKey + '|at') * K) : -1;
   for (let i = 0; i < K; i++) {
     const lines = parts[i].slice();
     if (i === K - 1) prior.forEach((p) => lines.push(lineOf(p)));          // what I said here before is part of the text now
-    // the last line of a part is left hanging — but a question or a cry in the manuscript keeps its own mark
-    const out = lines.map((l, j) => (j === lines.length - 1 && !/[?!]["”’']?$/.test(String(l).trim()) ? hang(l) : closed(l)));
+    // the last line of a part is left hanging — but a question or a cry in the manuscript keeps its own mark,
+    // and the scene's own last part ends as the manuscript ends it (author, 261120: each scene must clearly end).
+    const out = lines.map((l, j) => (j === lines.length - 1 && i < K - 1 && !/[?!]["”’']?$/.test(String(l).trim()) ? hang(l) : closed(l)));
     await room.sayAll(out, '', { gap: i > 0 });
     shown.push(...out);
     answer = await askSafely({ connectives: CONNECTIVES, optionalConn: i > 0,
@@ -370,12 +406,12 @@ async function converse(scene, tv, prior, nthVisit, via) {
       align = a > 0 ? a : lastAlign; res = resonanceOf(align); lastAlign = align;
       emos.push(emo); if (isVoid) anyVoid++;
     }
-    const left = things.filter((p) => !touched.has(p.id)), reach = left.length ? nearestThing(raw, left) : null;
+    const left = things.filter((p) => !touched.has(p.id)), reach = left.length ? nearestThing(answer.text, left) : null;   // the walker's own words, without the connective they picked
     if (reach) { touched.add(reach.id); floaters.add(wordEl(reach.name), { key: 't' + reach.id, opacity: 0.62 }); }
     room.waiting(false);
-    const odd = !!an && isVoid;                                            // off the scene altogether — a contrary feeling is not odd (261120: a sincere line got "I do not follow")
-    const reply = plainWord(odd ? 'odd' : 'nod', scene.id + '|' + nthVisit, i);
-    await room.say(reply, 'rp-narr', { gap: true, hold: 700 });
+    const odd = !!an && isVoid;                                            // off the scene altogether (ledger only; a contrary feeling is not odd). The room says nothing to it.
+    const reply = (!odd && i === nodAt) ? plainWord(stayKey) : '';
+    if (reply) await room.say(reply, 'rp-narr', { gap: true, hold: 700 });
     if (!run.said.has(scene.id)) run.said.set(scene.id, []);
     run.said.get(scene.id).push({ connective: answer.connective, text: answer.text });
     turns.push({ turn: i + 1, raw_text: raw, alignment: align, resonance: res, ghost_reply: reply, via: 'cont_form', ts: Date.now(), input_form: 'cont_v1', connective: answer.connective || '',
