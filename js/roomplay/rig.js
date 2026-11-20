@@ -25,10 +25,18 @@ export function rigOf(memory, qs) {
   return r;
 }
 
-/** Which layer of the scene's text this visit reads, if the rig says so (else null = the stage's own rule). */
-export function riggedStage(rig, visitN) {
-  if (!rig || !Array.isArray(rig.stages) || !rig.stages.length) return null;
-  return Math.max(0, Math.min(3, Number(rig.stages[Math.min(visitN, rig.stages.length) - 1]) || 0));
+/**
+ * Which layer of the scene's text this visit reads, if the rig says so (else null = the stage's own rule).
+ * rig.stages = layers by visit for the spine; rig.rib_stages = for the rooms of the past (261121: the past has
+ * been through other hands — its first reading may already carry what earlier walkers left; the walk itself is
+ * read as written).
+ */
+export function riggedStage(rig, visitN, scene) {
+  if (!rig) return null;
+  const onSpine = !scene || rig.spine.includes(scene.scene_order);
+  const list = (!onSpine && Array.isArray(rig.rib_stages) && rig.rib_stages.length) ? rig.rib_stages : rig.stages;
+  if (!Array.isArray(list) || !list.length) return null;
+  return Math.max(0, Math.min(3, Number(list[Math.min(visitN, list.length) - 1]) || 0));
 }
 
 /**

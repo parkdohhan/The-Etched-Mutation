@@ -19,6 +19,7 @@ import { createSound } from './sound.js';
 import { createWay } from './way.js';
 import { drawAsciiDoor, DOOR_ASPECT } from './asciidoor.js';
 import { rigOf, riggedDoor, riggedStage } from './rig.js';
+import { showVariant } from './variant.js';
 import { lookFor, saveLook, storedLooks } from './looks.js';
 import { runEnding } from './ending.js';
 import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
@@ -54,7 +55,7 @@ const run = {
   visited: new Set(), said: new Map(),      // scene id → [{ connective, text }] this run
   touched: new Map(),                       // scene id → Set(prop id): the things the talk reached (way=1)
   doorAt: new Map(),                        // scene id → { x, y } (fractions of the screen): where the door to that scene stands. Never changes once given (way=1)
-  path: [], legs: [], rooms: [],
+  path: [], legs: [], rooms: [], script: [],   // script = what was read and written, line by line, for the ending (variant.js)
   last: null,                               // last engine reading { pattern, alignment, bucket }
   contact: false, ghosts: [], others: [], cont: { d: 0, c: 0, h: 0 },
   preEntry: '', startedAt: Date.now(),
@@ -126,11 +127,22 @@ function stageText(scene, visitN) {
   const depth = Number(run.memory.cont_depth) || 0;
   let st = depth <= 0 ? 0 : (depth >= DEPTH_STAGE_3 && layerOf(scene, 3)) ? 3 : (depth >= DEPTH_STAGE_2 && layerOf(scene, 2)) ? 2 : layerOf(scene, 1) ? 1 : 0;
   st = Math.min(3, st + (visitN - 1));                       // every return reads one layer further from the first telling
-  const rs = riggedStage(rigOf(run.memory, qs), visitN);     // a rigged showing names the layer per visit (rig.js)
-  if (rs != null) st = rs;
+  const rs = riggedStage(rigOf(run.memory, qs), visitN, scene);   // a rigged showing names the layer per visit (rig.js)
+  if (rs != null) { st = rs; if (visitN === 1 && !layerOf(scene, st)) st = 0; }   // no such layer yet on a first reading: the text as written, not a half-way layer
   while (st > 0 && !layerOf(scene, st)) st--;
   return { stage: st, text: st ? layerOf(scene, st) : scene.text };
 }
+// ── whose line is it (for the ending's own-version text) ────────────────────
+// A shown line is the text's (it is a sentence of the scene as written, or of its authored first layer), the walker's
+// own (said here on an earlier visit), someone else's (it stands in layer 2 and is neither), or changed (layer 3
+// rewrites sentences, so they are no one's as written). Read off the texts themselves — no model, no judgement.
+const normLine = (l) => String(l).replace(/[\s.!?…"“”'’]+$/g, '').replace(/\s+/g, ' ').trim();
+function lineOwner(scene, stage, prior) {
+  const author = new Set(sentences(scene.text).concat(sentences(scene.text_stage_1 || '')).map(normLine));
+  const mine = new Set((prior || []).map((p) => normLine(lineOf(p))));
+  return (l) => { const n = normLine(l); if (!n) return 'text'; if (mine.has(n)) return 'mine'; if (author.has(n)) return 'text'; return stage === 2 ? 'other' : stage >= 3 ? 'changed' : 'text'; };
+}
+const asRead = (l) => (/^[…\s.]*$/.test(l) ? '…' : closed(String(l).replace(/…$/, '')));   // a line left hanging on the page is read whole afterwards
 function sceneLabel(scene) {
   const e = Array.isArray(scene.echo_words) ? scene.echo_words : [];
   return String(e[0] || (scene.meta && scene.meta.scene_code) || scene.scene_order);
@@ -206,6 +218,9 @@ async function enterRoom(scene, via) {
   }
   let userEmotion = {}, userVoid = false, alignment = 0.5, resonance = 'vague', eng = null;
   const raw = answer.silent ? '' : lineOf(answer);
+  { const own = lineOwner(scene, tv.stage, prior);
+    const lines = conv ? conv.script : shown.map((l) => ({ t: asRead(l), who: own(l) })).concat(answer.silent ? [] : [{ t: closed(raw), who: 'mine' }]);
+    run.script.push({ scene_id: scene.id, order: scene.scene_order, visit: nthVisit, stage: tv.stage, lines }); }
   if (conv) {
     ({ userEmotion, userVoid, alignment, resonance, eng } = conv);
     analysis = conv.analysed ? {} : null;
@@ -243,6 +258,7 @@ async function enterRoom(scene, via) {
   }
   run.rooms.push({ order: run.rooms.length + 1, scene_id: scene.id, scene_order: scene.scene_order, visit: nthVisit, text_stage: tv.stage, seen_text: shown.join(' '), object: objLine,
     silent: !!answer.silent, user_emotion: userEmotion, turn_alignment: +alignment.toFixed(4), resonance,
+    owners: run.script[run.script.length - 1].lines.map((l) => l.who),
     turns: conv ? conv.turns.map((t) => ({ text: t.raw_text, alignment: +t.alignment.toFixed(4), resonance: t.resonance, reply: t.ghost_reply, touched: t.object })) : null,
     engine: eng ? { alignment: eng.alignment_score, bucket: eng.alignment_bucket, pattern: eng.transition_pattern, mismatch: eng.mismatch_type } : null,
     door: next.scene ? { to: next.scene.scene_order, mode: next.mode, pattern, rig: !!next.rig } : (next.mode === 'end' ? { to: null, mode: 'end', rig: true } : null), ranked: next.ranked.slice(0, 5), shadow: next.shadow });
@@ -389,7 +405,7 @@ async function converse(scene, tv, prior, nthVisit, via) {
   const parts = []; for (let i = 0, at = 0; i < K; i++) { const n = base + (i < rem ? 1 : 0); parts.push(body.slice(at, at + n)); at += n; }
   if (!run.touched.has(scene.id)) run.touched.set(scene.id, new Set());
   const touched = run.touched.get(scene.id), things = speakingThings(scene);
-  const shown = [], turns = [], emos = [];
+  const shown = [], turns = [], emos = [], script = [], own = lineOwner(scene, tv.stage, prior);
   let answer = null, anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5;
   // the nod: in about half the stays, after one of the turns (fixed by the run and the stay, so a replay reads the same)
   const stayKey = scene.id + '|' + nthVisit, nodAt = hashStr(run.id + stayKey + '|nod') < 0.5 ? Math.floor(hashStr(run.id + stayKey + '|at') * K) : -1;
@@ -400,10 +416,11 @@ async function converse(scene, tv, prior, nthVisit, via) {
     // and the scene's own last part ends as the manuscript ends it (author, 261120: each scene must clearly end).
     const out = lines.map((l, j) => (j === lines.length - 1 && i < K - 1 && !/[?!]["”’']?$/.test(String(l).trim()) ? hang(l) : closed(l)));
     await room.sayAll(out, '', { gap: i > 0 });
-    shown.push(...out);
+    shown.push(...out); script.push(...out.map((l) => ({ t: asRead(l), who: own(l) })));
     answer = await askSafely({ connectives: CONNECTIVES, optionalConn: i > 0,
       guide: i > 0 ? (LANG === 'en' ? 'Go on — a connective if you want one.' : '이어서 써 주세요 — 연결사는 골라도 되고 안 골라도 됩니다.') : null });
     const raw = lineOf(answer);
+    script.push({ t: closed(raw), who: 'mine' });
     await room.say(closed(raw), 'rp-mine', { gap: true, hold: 500 });
     room.waiting(true);
     const an = await data.analyzeEmotion(raw, run.engine.axes, { scene_text: shown.join(' ').slice(-400), ghost_line: out[out.length - 1].slice(0, 200) });
@@ -435,7 +452,7 @@ async function converse(scene, tv, prior, nthVisit, via) {
     alignment = a > 0 ? a : lastAlign;
     eng = run.engine.step(scene, mean, userVoid);
   }
-  return { shown, answer, turns, userEmotion: mean, userVoid, alignment, resonance: resonanceOf(alignment), eng, analysed: emos.length > 0 };
+  return { shown, answer, turns, script, userEmotion: mean, userVoid, alignment, resonance: resonanceOf(alignment), eng, analysed: emos.length > 0 };
 }
 
 // ── the way (way=1): from the text frame to the door ────────────────────────
@@ -626,6 +643,22 @@ async function finish() {
       typeText($('rpTraceWord'), word, { per: 60 }).then((ok) => ok && typeText($('rpTraceLine'), line)).then((ok) => ok && typeText($('rpTraceSrc'), src, { per: 30 }));
     },
   };
+  // the walker's own version of the memory, then whose lines they were (variant.js) — before the net of walks
+  {
+    let script = run.script;
+    if (!script.length && run.path.length) {                               // ?path= preview: no rooms were read; show what each visit would have read
+      const seenN = new Map(); script = [];
+      for (const id of run.path) { const sc = run.scenes.find((s) => s.id === id), v = (seenN.get(id) || 0) + 1; seenN.set(id, v); const tv = stageText(sc, v), own = lineOwner(sc, tv.stage, []); script.push({ lines: sentences(tv.text).map((l) => ({ t: asRead(l), who: own(l) })) }); }
+    }
+    if (script.length) {
+      const box = $('rpVariant');
+      const shownV = showVariant({ el: box, title: run.memory.title || '', lang: LANG, rooms: script, typeText, wait, buttons: ui.buttons, pace: 1 / FAST });
+      await veil(false);
+      try { window.__room.variant = await shownV; } catch (e) { console.error('[room] variant', e); }
+      await veil(true);
+      box.classList.remove('on'); box.innerHTML = '';
+    }
+  }
   const lines = new Map();
   const push = (id, text, mine) => { if (!lines.has(id)) lines.set(id, []); lines.get(id).push({ text, mine }); };
   for (const [id, arr] of run.said) arr.forEach((p) => push(id, lineOf(p), true));

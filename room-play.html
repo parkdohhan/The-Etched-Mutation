@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/room-play.css?v=261121a" />
+  <link rel="stylesheet" href="css/room-play.css?v=261121b" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -45,6 +45,7 @@
   <button id="rpWalk" type="button">걷기</button>
   <div id="rpTune"></div>
 
+  <div id="rpVariant" aria-live="polite"></div><!-- 261121 끝 화면 첫 두 박자: 당신이 읽은 판본 → 누구의 말이었나 -->
   <div id="rpEndText"><div class="rp-end-line" id="rpEndLine"></div><div class="rp-end-sub" id="rpEndSub"></div></div>
   <div id="rpTrace"><div class="rp-trace-word" id="rpTraceWord"></div><div class="rp-trace-line" id="rpTraceLine"></div><div class="rp-trace-src" id="rpTraceSrc"></div></div>
   <div id="rpEndBtns"></div>
@@ -62,6 +63,6 @@
   <div id="rpPass" aria-live="polite"></div><!-- 261120 통로 대신 한 줄: 어떤 옮겨 감이었는지 -->
   <div id="rpToast"></div>
 
-  <script type="module" src="js/roomplay/main.js?v=261121c"></script>
+  <script type="module" src="js/roomplay/main.js?v=261121d"></script>
 </body>
 </html>

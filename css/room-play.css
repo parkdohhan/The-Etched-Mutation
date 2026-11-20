@@ -161,3 +161,13 @@ canvas#rpWay { transition: opacity 900ms ease; }
 #rpPassMap { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 61; pointer-events: none; display: none; }
 #rpPassMap.on { display: block; }
 #rpPass { position: fixed; inset: 0; z-index: 62; display: flex; align-items: center; justify-content: center; pointer-events: none; font-size: 1.15rem; letter-spacing: 0.3em; color: var(--rp-text); }
+
+/* ── the walker's own version (261121, variant.js) ── */
+#rpVariant { position: fixed; inset: 0; z-index: 30; display: none; overflow-y: auto; background: var(--rp-bg); padding: 11vh 1.5rem 24vh; -webkit-overflow-scrolling: touch; }
+#rpVariant.on { display: block; }
+.rp-variant-inner { max-width: 34rem; margin: 0 auto; }
+.rp-variant-title { font-size: 1.05rem; letter-spacing: 0.22em; color: var(--rp-dim); margin: 0 0 2.6rem; }
+#rpVariant .rp-line.v-mine { color: var(--rp-accent); }
+#rpVariant .rp-line.v-other { color: #8f8b99; font-style: italic; }
+#rpVariant .rp-line.v-changed { color: #b9b4c6; text-decoration: underline dotted rgba(185,180,198,0.45); text-underline-offset: 0.35em; }
+.rp-variant-sum { margin: 3rem 0 0; font-size: 0.86rem; letter-spacing: 0.1em; line-height: 2; color: #9a96a2; }

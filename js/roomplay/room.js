@@ -36,10 +36,10 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Every text on this stage is typed, never faded in (author, 261120: "모든 글자연출은 typing 으로 통일 — 오프닝처럼").
 // Rhythm = the opening's typeWrite (js/app/confession.js): a letter every 40 ms, a breath after . ? , and at a line break.
 const typingOf = new WeakMap();
-/** @param o { per, pace, skip:()=>boolean }  Resolves true when the text stands whole, false if another text took the element. */
+/** @param o { per, rest, pace, skip:()=>boolean }  Resolves true when the text stands whole, false if another text took the element. */
 export function typeText(el, text, o) {
   text = String(text == null ? '' : text);
-  const per = (o && o.per) || 40, pace = (o && o.pace) || 1, skip = o && o.skip;
+  const per = (o && o.per) || 40, pace = (o && o.pace) || 1, skip = o && o.skip, rest = (o && o.rest) || 250;   // rest = the breath after . ? ,
   const token = {}; typingOf.set(el, token);
   el.textContent = '';
   return new Promise((resolve) => {
@@ -49,7 +49,7 @@ export function typeText(el, text, o) {
       if (skip && skip()) { el.textContent = text; return resolve(true); }
       if (i >= text.length) return resolve(true);
       const ch = text.charAt(i++); el.textContent += ch;
-      setTimeout(tick, (ch === '.' || ch === '?' || ch === ',' ? 250 : ch === '\n' ? 350 : per) * pace);
+      setTimeout(tick, (ch === '.' || ch === '?' || ch === ',' ? rest : ch === '\n' ? rest + 100 : per) * pace);
     })();
   });
 }
