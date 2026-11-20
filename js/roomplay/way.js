@@ -19,10 +19,12 @@ const FOV = 50, EYE = 1.6;
 const WALK = 1.9, STRIDE = 1.0;        // 261120: brisker than the corridor (1.15 / 0.72) — the way is short; the door is not moved, so the same picture is crossed sooner
 const DOOR_H = 2.3;                    // the drawn door, frame included
 const END_HALF = 0.62;                 // half width of the way where it meets the door
-const SWING = 0.46;                    // how far the curve's handles reach (share of the straight distance)
+const SWING = 0.46, SWING_EDGE = 0.32; // how far the curve's handles reach (share of the straight distance); the second for a door at the page's edge or top
 const EDGE_W = 0.15, FLOOR_TILE = 0.21;
 const SEG = 64;
-const DRAW_S = 3.0, FLOOR_S = [1.6, 4.4], COME_S = 1.6;   // edges, floor, the turn into a place
+const DRAW_S = 3.0, REPEAT_DRAW_S = 1.5, COME_S = 1.6;
+const FLOOR_START = 1.6 / DRAW_S;       // the floor starts later but finishes with the edges
+const FIRST_STEP_S = 0.35, FIRST_STEP_MIN = 0.65;
 const BG = 0x050507;                   // = --rp-bg, so the canvas has no edge against the page
 const AMBER = 'rgba(196,168,130,0.95)';
 
@@ -46,6 +48,7 @@ export function createWay(opts) {
   const ray = new THREE.Raycaster();
 
   let W = null, spec = null, cb = {}, active = false, raf = 0, last = 0, resolveArrive = null;
+  let hasDrawnWay = false;              // per instance; an unfinished first drawing can be retried
   const fp = { s: 0, yaw: 0, tilt: 0, yawOff: 0, pitch: 0, keys: {}, forward: false, walkUntil: 0, stepAcc: 0, bob: 0 };
 
   // one letter as a repeating tile (the way is written in the door's letters)
@@ -79,7 +82,7 @@ export function createWay(opts) {
       const third = buf.duration / 3, k = n % 3, rate = [0.95, 1.02, 0.98, 1.05, 1.0][n % 5]; n++;
       const src = ctx.createBufferSource(); src.buffer = buf; src.playbackRate.value = rate;
       const g = ctx.createGain(), now = ctx.currentTime, dur = Math.max(0.08, third / rate * 0.95);
-      g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(0.42, now + 0.008); g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(0.30, now + 0.008); g.gain.exponentialRampToValueAtTime(0.001, now + dur);
       src.connect(g); g.connect(ctx.destination); src.start(now, k * third, dur + 0.02);
     }
     return { ensure, play };
@@ -121,21 +124,33 @@ export function createWay(opts) {
     const m = new THREE.Mesh(g, mat); m.frustumCulled = false;
     return m;
   }
+  // A name or a word standing by the way. It is typed (261121, Manus audit + author's rule: no text fades in):
+  // the plane is there from the start at its own fixed brightness, and its letters are written from the walker's
+  // first step, one every 40 ms, on a canvas sized for the whole text so nothing shifts while it is written.
   function textPlane(text, size) {
     const c = document.createElement('canvas'), x = c.getContext('2d'), px = 72;
     const font = '300 ' + px + 'px "Noto Serif KR", serif';
     x.font = font;
     const tw = Math.ceil(x.measureText(text).width) + 24;
     c.width = Math.min(2048, tw); c.height = px * 1.5;
-    x.font = font; x.fillStyle = '#fff'; x.textBaseline = 'middle'; x.textAlign = 'center';
-    x.fillText(text, c.width / 2, c.height / 2, c.width - 12);
     const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
     const hM = size, wM = hM * (c.width / c.height);
-    return new THREE.Mesh(new THREE.PlaneGeometry(wM, hM), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(wM, hM), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+    m.userData.typed = { text: String(text), n: -1, c, x, font, tex, x0: Math.max(6, (c.width - (tw - 24)) / 2) };
+    writeText(m, 0);
+    return m;
+  }
+  function writeText(m, n) {
+    const t = m.userData.typed; n = Math.max(0, Math.min(t.text.length, n));
+    if (n === t.n) return;
+    t.n = n; t.x.clearRect(0, 0, t.c.width, t.c.height);
+    t.x.font = t.font; t.x.fillStyle = '#fff'; t.x.textBaseline = 'middle'; t.x.textAlign = 'left';
+    t.x.fillText(t.text.slice(0, n), t.x0, t.c.height / 2, t.c.width - 12);
+    t.tex.needsUpdate = true;
   }
   function setOpacity(obj, o, tint) {
     obj.traverse((n) => {
-      if (!n.material || n.userData.pickOnly) return;
+      if (!n.material || n.userData.pickOnly || n.userData.typed) return;                 // typed text keeps its own fixed brightness
       const ms = Array.isArray(n.material) ? n.material : [n.material];
       for (const m of ms) { m.transparent = true; m.opacity = o; if (tint != null && m.userData.base) m.color.copy(m.userData.base).multiplyScalar(tint); }
     });
@@ -157,7 +172,8 @@ export function createWay(opts) {
     const e = new THREE.Vector3(D.x, 0, D.z).normalize();                     // the door faces the reader's seat, as it did on the page
     // the centre line: straight out from under the frame, swinging to the side, rising or sinking, straightening into the door
     const L = D.clone().sub(N).length();
-    const curve = new THREE.CubicBezierCurve3(N, N.clone().add(new THREE.Vector3(0, 0, -L * SWING)), D.clone().addScaledVector(e, -L * SWING * 0.62), D);
+    const edgy = dr.cx < w * 0.2 || dr.cx > w * 0.8 || dr.bottom < h * 0.3, sw = edgy ? SWING_EDGE : SWING;   // 261121: far to a side or high up, the curve turned in too sharply at the door
+    const curve = new THREE.CubicBezierCurve3(N, N.clone().add(new THREE.Vector3(0, 0, -L * sw)), D.clone().addScaledVector(e, -L * sw * 0.62), D);
     const pts = curve.getSpacedPoints(SEG), tan = [], slopes = [], along = [0], left = [], right = [], eL = [], eR = [], hws = [];
     for (let i = 0; i <= SEG; i++) {
       const t3 = curve.getTangentAt(i / SEG), t = new THREE.Vector3(t3.x, 0, t3.z).normalize();
@@ -168,7 +184,7 @@ export function createWay(opts) {
       eL.push(pts[i].clone().addScaledVector(r, -hw - EDGE_W)); eR.push(pts[i].clone().addScaledVector(r, hw + EDGE_W));
     }
     // the floor (░) and its two edges (═), in the door's letters and the door's colour
-    const floorMat = new THREE.MeshBasicMaterial({ map: tile('░', 'rgba(226,214,196,1)'), vertexColors: true, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+    const floorMat = new THREE.MeshBasicMaterial({ map: tile('░', 'rgba(226,214,196,1)'), vertexColors: true, transparent: true, opacity: 0.78, side: THREE.DoubleSide, depthWrite: false });
     const edgeMat = new THREE.MeshBasicMaterial({ map: tile('═', AMBER), transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false });
     const floor = strip(left, right, floorMat, 0, (i) => ({ u: along[i] / FLOOR_TILE, va: 0.5 - hws[i] / FLOOR_TILE, vb: 0.5 + hws[i] / FLOOR_TILE }), (u) => 1 - 0.45 * u);
     const edges = [strip(eL, left, edgeMat, 0.012, (i) => ({ u: along[i] / EDGE_W, va: 0, vb: 1 })), strip(right, eR, edgeMat, 0.012, (i) => ({ u: along[i] / EDGE_W, va: 0, vb: 1 }))];
@@ -176,7 +192,13 @@ export function createWay(opts) {
     world.add(floor, edges[0], edges[1]);
     // behind the frame's edge (under the reader's feet): off screen until they look down
     const B = (x, z) => new THREE.Vector3(x, 0, z), bz = [1.6, -zN], bu = (i) => (i ? 0 : -(zN + 1.6));
-    world.add(strip([B(NL.x, bz[0]), B(NL.x, bz[1])], [B(NR.x, bz[0]), B(NR.x, bz[1])], floorMat, 0, (i) => ({ u: bu(i) / FLOOR_TILE, va: 0.5 - wN / FLOOR_TILE, vb: 0.5 + wN / FLOOR_TILE }), () => 1));
+    const backL = [], backR = [];
+    for (let i = 0; i <= SEG; i++) {
+      const z = bz[1] + (bz[0] - bz[1]) * i / SEG;
+      backL.push(B(NL.x, z)); backR.push(B(NR.x, z));
+    }
+    const backFloor = strip(backL, backR, floorMat, 0, (i) => ({ u: bu(0) * i / SEG / FLOOR_TILE, va: 0.5 - wN / FLOOR_TILE, vb: 0.5 + wN / FLOOR_TILE }), () => 1);
+    backFloor.geometry.setDrawRange(0, 0); world.add(backFloor);
     world.add(strip([B(NL.x - EDGE_W, bz[0]), B(NL.x - EDGE_W, bz[1])], [B(NL.x, bz[0]), B(NL.x, bz[1])], edgeMat, 0.012, (i) => ({ u: bu(i) / EDGE_W, va: 0, vb: 1 })));
     world.add(strip([B(NR.x, bz[0]), B(NR.x, bz[1])], [B(NR.x + EDGE_W, bz[0]), B(NR.x + EDGE_W, bz[1])], edgeMat, 0.012, (i) => ({ u: bu(i) / EDGE_W, va: 0, vb: 1 })));
 
@@ -191,7 +213,7 @@ export function createWay(opts) {
     // the rail the walker goes along: straight to the frame's edge, then the curve
     const rail = [{ p: new THREE.Vector3(0, 0, 0), t: new THREE.Vector3(0, 0, -1), slope: 0, s: 0 }];
     for (let i = 0; i <= SEG; i++) rail.push({ p: pts[i], t: tan[i], slope: slopes[i], s: zN + along[i] });
-    W = { N, D, e, rail, total: zN + along[SEG], floor, floorMat, edges, door, things: [], t0: performance.now(), k3d: 0, ready: false, arrived: false, clicked: [], started: 0 };
+    W = { N, D, e, rail, total: zN + along[SEG], floor, floorMat, backFloor, edges, door, things: [], drawS: hasDrawnWay ? REPEAT_DRAW_S : DRAW_S, t0: performance.now(), k3d: 0, ready: false, arrived: false, clicked: [], started: 0 };
 
     // the things of the scene, on both sides of the way
     const at = (u) => { const i = Math.max(0, Math.min(SEG, Math.round(u * SEG))); return { p: pts[i], r: new THREE.Vector3(-tan[i].z, 0, tan[i].x), hw: hws[i] }; };
@@ -202,7 +224,12 @@ export function createWay(opts) {
       const pos = q.p.clone().addScaledVector(q.r, side * (q.hw + 1.25 + 0.8 * h01(t.id + 'l')));
       const g = new THREE.Group(); g.position.copy(pos); world.add(g);
       const th = { t, group: g, pick: null, billboard: false, phase: h01(t.id) * 6.28 };
-      const label = () => { const m = textPlane(t.name, 0.34); m.position.y = 1.32; g.add(m); th.pick = m; th.billboard = true; };
+      const label = () => {                                                  // no picture, no model: the thing's name stands, in letters
+        const m = textPlane(t.name, 0.45); m.position.y = 1.32; g.add(m); th.text = m; th.billboard = true;
+        m.material.opacity = t.unlocked ? 0.85 : 0.24;                       // reached / not reached — fixed, no breathing
+        const pg = m.geometry.parameters, pick = new THREE.Mesh(new THREE.PlaneGeometry(pg.width * 1.5, pg.height * 1.5), new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }));
+        pick.userData.pickOnly = true; pick.position.y = 1.32; g.add(pick); th.pick = pick;   // a wider place to press; nothing is drawn for it
+      };
       if (t.image) {
         new THREE.TextureLoader().load(t.image, (tex) => {
           const hM = 1.3, wM = hM * (tex.image.width / tex.image.height);
@@ -227,8 +254,8 @@ export function createWay(opts) {
     words.forEach((t, i) => {
       const q = at(0.08 + 0.84 * ((i + 0.5) / words.length)), side = (i % 2 ? -1 : 1) * side0;
       const pos = q.p.clone().addScaledVector(q.r, side * (q.hw + 3.1 + 2.2 * h01(t.id + 'w')));
-      const m = textPlane(t.name, 0.24); m.position.set(pos.x, pos.y + 1.15 + 1.3 * h01(t.id + 'y'), pos.z); world.add(m);
-      W.things.push({ t, group: m, pick: null, billboard: true, phase: 0, scenery: true });
+      const m = textPlane(t.name, 0.24); m.position.set(pos.x, pos.y + 1.15 + 1.3 * h01(t.id + 'y'), pos.z); m.material.opacity = 0.3; world.add(m);
+      W.things.push({ t, group: m, text: m, pick: null, billboard: true, phase: 0, scenery: true });
     });
     return W;
   }
@@ -242,7 +269,7 @@ export function createWay(opts) {
     const ease = 1 - Math.exp(-dt / 0.7);                                     // the head follows the way, late and heavy
     let d = Math.atan2(-tx, -tz) - fp.yaw; d = Math.atan2(Math.sin(d), Math.cos(d));
     fp.yaw += d * ease; fp.tilt += (Math.atan(slope) * 0.55 - fp.tilt) * ease;
-    cam.position.set(x, y + EYE + Math.sin(fp.bob) * 0.022, z);
+    cam.position.set(x, y + EYE + Math.sin(fp.bob) * 0.012, z);
     cam.rotation.set(fp.pitch + fp.tilt, fp.yaw + fp.yawOff, 0);
     walkerLight.position.copy(cam.position);
   }
@@ -253,17 +280,18 @@ export function createWay(opts) {
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
     const speed = spec.speed || 1, age = (now - W.t0) / 1000 * speed;
     // the edges are written out toward the door, the floor follows them
-    W.edges.forEach((m) => m.geometry.setDrawRange(0, Math.floor(smooth(0, DRAW_S, age) * SEG) * 6));
-    W.floor.geometry.setDrawRange(0, Math.floor(smooth(FLOOR_S[0], FLOOR_S[1], age) * SEG) * 6);
-    W.floorMat.opacity = 0.78 * smooth(FLOOR_S[0], FLOOR_S[0] + 1.2, age);
-    if (!W.ready && age >= DRAW_S) { W.ready = true; if (cb.onReady) cb.onReady(); }
+    W.edges.forEach((m) => m.geometry.setDrawRange(0, Math.floor(smooth(0, W.drawS, age) * SEG) * 6));
+    const floorCount = Math.floor(smooth(W.drawS * FLOOR_START, W.drawS, age) * SEG) * 6;
+    W.floor.geometry.setDrawRange(0, floorCount); W.backFloor.geometry.setDrawRange(0, floorCount);
+    if (!W.ready && age >= W.drawS) { W.ready = true; hasDrawnWay = true; if (cb.onReady) cb.onReady(); }
     // walking: forward only
     const want = W.ready && (fp.keys.w || fp.keys.arrowup || fp.forward || now < fp.walkUntil);
     let moved = 0;
     if (want) {
       if (!W.started) { W.started = now; steps.ensure(); if (cb.on3d) cb.on3d(); }
       const limit = W.door.userData.open >= 0.6 ? W.total + 0.7 : W.total - 0.6;
-      const ns = Math.min(limit, fp.s + WALK * speed * dt);
+      const firstStep = FIRST_STEP_MIN + (1 - FIRST_STEP_MIN) * smooth(0, FIRST_STEP_S, (now - W.started) / 1000 * speed);
+      const ns = Math.min(limit, fp.s + WALK * firstStep * speed * dt);
       moved = Math.max(0, ns - fp.s); fp.s = Math.max(fp.s, ns);
     }
     if (moved > 1e-5) { fp.bob += moved * (2 * Math.PI / STRIDE); fp.stepAcc += moved; if (fp.stepAcc >= STRIDE) { fp.stepAcc -= STRIDE; steps.play(); } }
@@ -272,20 +300,21 @@ export function createWay(opts) {
     ambient.intensity = 0.85 * W.k3d; walkerLight.intensity = 1.0 * W.k3d;
     // the door stands in the picture once the walker moves (until then the page's own door is shown, in the same place), and opens when they are near
     const d = W.door, du = d.userData;
-    d.material.opacity = W.k3d;
+    d.material.opacity = W.started ? 1 : 0;                                    // 261121: the letter door does not fade in — it takes over from the page's door at the first step
     if (W.total - fp.s < 2.2) du.target = 1;
     du.open += (du.target - du.open) * (1 - Math.exp(-dt * speed / 0.9));
     const q = Math.round(du.open * 24) / 24;
     if (q !== du.drawn) { du.drawn = q; drawAsciiDoor(du.canvas, q, { px: 30, tone: true }); du.tex.needsUpdate = true; }
     place(dt * speed);
-    // things: the ones the talk reached stand lit, the others stay dim and silent
+    // things: the ones the talk reached stand lit, the others stay dim and silent.
+    // Letters are typed from the first step; pictures and models come in with the place.
+    const typedN = W.started ? Math.floor((now - W.started) / 40 * speed) : 0;
     for (const th of W.things) {
-      const lit = th.scenery ? 0.3 : th.t.unlocked ? 1 : 0.24;
-      const breath = (!th.scenery && th.t.unlocked) ? 0.9 + 0.1 * Math.sin(now / 2600 + th.phase) : 1;
-      setOpacity(th.group, lit * breath * W.k3d, th.t.unlocked || th.scenery ? 1 : 0.4);
+      if (th.text) writeText(th.text, typedN);
+      if (!th.scenery && !th.text) setOpacity(th.group, (th.t.unlocked ? 1 : 0.24) * W.k3d, th.t.unlocked ? 1 : 0.4);
       if (th.billboard) {
-        const o = th.scenery ? th.group : th.pick, c = th.group.position;
-        if (o) o.rotation.y = Math.atan2(cam.position.x - c.x, cam.position.z - c.z);
+        const c = th.group.position, ry = Math.atan2(cam.position.x - c.x, cam.position.z - c.z);
+        if (th.scenery) th.group.rotation.y = ry; else { if (th.text) th.text.rotation.y = ry; if (th.pick) th.pick.rotation.y = ry; }
       }
     }
     renderer.render(scene, cam);
@@ -323,7 +352,7 @@ export function createWay(opts) {
     if (!drag) { canvas.style.cursor = thingAt(e) ? 'pointer' : ''; return; }
     const mx = e.clientX - drag.x, my = e.clientY - drag.y;
     drag.moved += Math.abs(mx) + Math.abs(my);
-    fp.yawOff = Math.max(-2.7, Math.min(2.7, fp.yawOff - mx * 0.004)); fp.pitch = Math.max(-0.8, Math.min(0.6, fp.pitch - my * 0.003));
+    if (W && W.started) { fp.yawOff = Math.max(-2.7, Math.min(2.7, fp.yawOff - mx * 0.004)); fp.pitch = Math.max(-0.8, Math.min(0.6, fp.pitch - my * 0.003)); }   // 261121: no looking around before the first step
     drag.x = e.clientX; drag.y = e.clientY;
   });
   window.addEventListener('keydown', (e) => { if (!active) return; if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return; fp.keys[keyOf(e)] = true; steps.ensure(); });

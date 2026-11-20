@@ -17,7 +17,7 @@ import { createRoom, createFloaters, typeText, wordEl, ghostEl, doorEl, sentence
 import { createCorridor, normLook, DEFAULT_LOOK } from './corridor.js';
 import { createSound } from './sound.js';
 import { createWay } from './way.js';
-import { drawAsciiDoor } from './asciidoor.js';
+import { drawAsciiDoor, DOOR_ASPECT } from './asciidoor.js';
 import { rigOf, riggedDoor, riggedStage } from './rig.js';
 import { lookFor, saveLook, storedLooks } from './looks.js';
 import { runEnding } from './ending.js';
@@ -297,11 +297,11 @@ function dressDoor(el) {
  */
 function doorPlace(sceneId, isNew) {
   if (run.doorAt.has(sceneId)) return run.doorAt.get(sceneId);
-  const W = innerWidth, H = innerHeight, bs = floaters.bands(), dh = isNew ? 210 : 150, dw = dh * 0.4;
+  const W = innerWidth, H = innerHeight, bs = floaters.bands(), dh = isNew ? 210 : 150, dw = dh * Math.max(0.4, DOOR_ASPECT) + 12, pad = 8;   // 261121: the door's real width, and 8 px kept clear of the screen's edge
   let best = null, bd = -1;
   for (let n = 0; n < 40; n++) {
     const b = bs[Math.floor(Math.random() * bs.length)];
-    const x = b.x0 + Math.random() * Math.max(1, b.x1 - b.x0 - dw), y = b.y0 + Math.random() * Math.max(1, b.y1 - b.y0 - dh - 30);
+    const x = Math.max(pad, Math.min(W - dw - pad, b.x0 + Math.random() * Math.max(1, b.x1 - b.x0 - dw))), y = Math.max(pad, b.y0 + Math.random() * Math.max(1, b.y1 - b.y0 - dh - 30));
     let d = Infinity; for (const p of run.doorAt.values()) d = Math.min(d, Math.hypot(p.x * W - x, p.y * H - y));
     if (d > bd) { bd = d; best = { x: x / W, y: y / H }; }
     if (d > 260) break;
@@ -464,7 +464,7 @@ async function takeWay(from, el) {
       typeText(hint, isTouch() ? (LANG === 'en' ? 'hold the circle to walk · drag to look' : '동그라미를 누르고 있으면 걷습니다 · 화면을 끌어 둘러봅니다') : (LANG === 'en' ? 'W or ↑ to walk · drag to look' : 'W 또는 ↑ 로 걷습니다 · 마우스로 끌어 둘러봅니다'), { per: 30 });
       hint.classList.add('on'); if (isTouch()) $('rpWalk').classList.add('on');
     },
-    on3d() { el.style.transition = 'opacity 1200ms ease'; el.classList.remove('in'); setTimeout(() => hint.classList.remove('on'), 5000); },
+    on3d() { el.style.transition = 'none'; el.classList.remove('in'); setTimeout(() => hint.classList.remove('on'), 5000); },   // the page's door hands over to the place's door at once (letters do not fade)
     onLine(t) {
       $('rpCapSrc').textContent = ''; typeText($('rpCapLine'), t.line).then((ok) => { if (ok) typeText($('rpCapSrc'), t.name); });
       cap.classList.add('on', 'way'); clearTimeout(takeWay._t); takeWay._t = setTimeout(() => cap.classList.remove('on'), 9000);
@@ -547,12 +547,13 @@ async function walk(from, to, kind, connective, doorEl) {
   return enterRoom(to, kind);
 }
 function onCorridorProgress(p) { sound.mix(p.amb); }
-function isTouch() { return window.__temForceTouch === true || (('ontouchstart' in window) && matchMedia('(pointer: coarse)').matches); }
+function isTouch() { return window.__temForceTouch === true || ((('ontouchstart' in window) || navigator.maxTouchPoints > 0) && matchMedia('(pointer: coarse)').matches); }   // 261121: touch points count too (a browser may report no ontouchstart)
 function setupWalkButton() {
   const b = $('rpWalk');
-  const down = (e) => { e.preventDefault(); b.classList.add('down'); corridor.setForward(true); if (way) way.setForward(true); };
+  const down = (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) {} b.classList.add('down'); corridor.setForward(true); if (way) way.setForward(true); };
   const up = () => { b.classList.remove('down'); corridor.setForward(false); if (way) way.setForward(false); };
-  b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
+  // 261121: the press is held even if the finger slides off the circle; it ends when the finger lifts
+  b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
 }
 
 // ── the end ────────────────────────────────────────────────────────────────
