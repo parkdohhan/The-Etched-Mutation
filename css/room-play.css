@@ -158,4 +158,6 @@ canvas#rpWay { transition: opacity 900ms ease; }
 /* ── typing (261120): text is typed, never faded in. The boxes that hold typed text appear at once. ── */
 .rp-f.rp-f-word, .rp-f.rp-f-ghost:not(.to-center) { transition: none; }
 #rpCaption, #rpHint, #rpEndText, #rpTrace, #rpToast { transition: none; }
-#rpPass { position: fixed; inset: 0; z-index: 61; display: flex; align-items: center; justify-content: center; pointer-events: none; font-size: 1.15rem; letter-spacing: 0.3em; color: var(--rp-text); }
+#rpPassMap { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 61; pointer-events: none; display: none; }
+#rpPassMap.on { display: block; }
+#rpPass { position: fixed; inset: 0; z-index: 62; display: flex; align-items: center; justify-content: center; pointer-events: none; font-size: 1.15rem; letter-spacing: 0.3em; color: var(--rp-text); }

@@ -496,6 +496,41 @@ function passWord(kind, pattern) {
   const key = kind === 'old' ? 'old' : kind === 'same' ? 'fixation' : (pattern === 'fixation' ? 'bridge' : pattern);   // circling is said only when the door really leads back into the same room
   return own[key] || PASS[key] || PASS.bridge;
 }
+// ── the walk so far, shown between two rooms (261121) ──────────────────────
+// Only on the dark between rooms, never over the text: a dot for each room the walker has been in, a line for each
+// crossing, and the crossing just made drawn last. A room's dot sits where its door stands in the margins (doorPlace),
+// so the map and the doors are one picture. Own walk only — the others' threads are the ending's to show. No names:
+// a name on the room ahead would be a notice at the door.
+function passMap(from, to) {
+  const cv = $('rpPassMap'), dpr = Math.min(window.devicePixelRatio || 1, 2), W = innerWidth, H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const at = (id) => { const p = doorPlace(id, false); return { x: p.x * W + 150 * DOOR_ASPECT / 2, y: p.y * H + 75 }; };
+  const ids = run.path.slice(), seen = new Map();
+  for (let i = 0; i < ids.length - 1; i++) { if (ids[i] === ids[i + 1]) continue; const k = [ids[i], ids[i + 1]].sort().join('|'); seen.set(k, (seen.get(k) || 0) + 1); }
+  c.lineCap = 'round';
+  for (const [k, n] of seen) {                                             // crossings already made: dim, thicker where walked again
+    const [a, b] = k.split('|').map(at);
+    c.strokeStyle = 'rgba(150,146,160,0.38)'; c.lineWidth = 0.8 + 0.7 * (n - 1);
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+  }
+  const dot = (p, r, col) => { c.fillStyle = col; c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fill(); };
+  new Set(ids).forEach((id) => dot(at(id), id === from.id ? 3.4 : 2.6, id === from.id ? 'rgba(232,228,223,0.95)' : 'rgba(170,166,178,0.8)'));
+  cv.classList.add('on');
+  if (to.id === from.id) return wait(600 / FAST);                          // staying: nothing is crossed
+  const A = at(from.id), B = at(to.id), dur = 1100 / FAST, t0 = performance.now(), known = ids.includes(to.id);
+  return new Promise((resolve) => {
+    let px = A.x, py = A.y;
+    (function step() {
+      const k = Math.min(1, (performance.now() - t0) / dur), e = k * k * (3 - 2 * k), x = A.x + (B.x - A.x) * e, y = A.y + (B.y - A.y) * e;
+      c.strokeStyle = 'rgba(196,168,130,0.95)'; c.lineWidth = 1.4;
+      c.beginPath(); c.moveTo(px, py); c.lineTo(x, y); c.stroke(); px = x; py = y;
+      if (k < 1) return requestAnimationFrame(step);
+      dot(B, known ? 3 : 3.4, 'rgba(196,168,130,1)');                      // the room arrived at: it is there the moment the line reaches it
+      resolve();
+    })();
+  });
+}
 let tuneCtx = null;
 async function walk(from, to, kind, connective, doorEl) {
   const leg = { from: from.scene_order, to: to.scene_order, kind, pattern: run.last.pattern, alignment: +run.last.alignment.toFixed(4), bucket: run.last.bucket, cont: run.cont };
@@ -509,9 +544,10 @@ async function walk(from, to, kind, connective, doorEl) {
     leg.corridor = false; leg.said = passWord(kind, leg.pattern);
     const pass = $('rpPass');
     await wait(500 / FAST);
+    await passMap(from, to);                                                // the walk so far, and the line just crossed (261121)
     await typeText(pass, leg.said, { per: 110, pace: 1 / FAST });
     await wait(2000 / FAST);
-    pass.textContent = '';
+    pass.textContent = ''; $('rpPassMap').classList.remove('on');
     run.legs.push(leg);
     floaters.start();
     return enterRoom(to, kind);
