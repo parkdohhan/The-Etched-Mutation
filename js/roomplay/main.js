@@ -4,8 +4,8 @@
  *   entry → [ room (text + sound) → continuation → one door → 3D corridor ]* → the piece → flat → ground → leave
  *
  * Decision record: docs/글방_통로_무대_결정-261117.md
- * URL: ?memory=<uuid|code> (default DANG-001) · ?as=author|test · ?tune=1 · ?lang=ko|en · ?way=1
- *   way=1      261120 trial (decision record §8): several exchanges in a room (the scene answers with its own
+ * URL: ?memory=<uuid|code> (default DANG-001) · ?as=author|test · ?tune=1 · ?lang=ko|en · ?way=0 · ?rig=0
+ *   way        on by default since 261120 (way=0 = the older single-continuation room). 261120 trial (decision record §8): several exchanges in a room (the scene answers with its own
  *              next lines, and with a plain word), then the way — two lines from the text frame to the door,
  *              walked in 3D, the scene's things beside it — and past the door the corridor as before.
  *   as=author  the author's first walk (the first thread). Counted in the ground, marked in the ledger.
@@ -33,7 +33,7 @@ const LANG = (qs.get('lang') || 'ko').slice(0, 2) === 'en' ? 'en' : 'ko';
 const CONNECTIVES = LANG === 'en'
   ? ['but then', 'but', 'and', 'even so', 'so', 'and then', 'at that', 'in that moment']
   : ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];   // = lumen_dialog_phase1 CONT_CONNECTIVES
-const WAY = qs.get('way') === '1';
+const WAY = qs.get('way') !== '0';   // 261120 (author): the way is the stage — on unless ?way=0
 // Plain words the room may say that are not in the manuscript (author, 261120: "really plain words are fine").
 // Rare (at most one in a stay, in about half the stays), and only ever a nod: the room does not tell the
 // walker their line was odd (author, 261120 later the same day) — its next part of the manuscript is its answer.

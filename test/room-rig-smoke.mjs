@@ -9,7 +9,8 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push('pageerror: ' + String(e.message).slice(0, 200)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text().slice(0, 200)); });
-await page.goto(`http://127.0.0.1:5199/room-play.html?memory=${MEM}&as=test&fast=8${WAY ? '&way=1' : ''}`);
+const BASE = process.env.BASE || 'http://127.0.0.1:5199';   // BASE=https://… to walk the deployed site
+await page.goto(`${BASE}/room-play.html?memory=${MEM}&as=test&fast=8${WAY ? '' : '&way=0'}`);
 await page.waitForFunction(() => { const b = document.getElementById('rpEnter'); return b && !b.disabled; }, null, { timeout: 30000 });
 await page.fill('#rpEntryInput', '시험 걸음');
 await page.click('#rpEnter');
