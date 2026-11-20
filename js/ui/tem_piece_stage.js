@@ -107,8 +107,13 @@
   // 261119 방 한 칸을 몇 숫자로 짓는다: meta.piece.room = { w, d, cx, cz, door: 's0', floor, wall, lamp }
   //   w·d = 가로·세로(1.2 의 배수), cx·cz = 방 한가운데, door = 문틀이 설 면(n|s|e|w) + 그 면의 몇 번째 벽 조각,
   //   floor·wall = 색, lamp = 천장 전등 빛 세기(0 = 전등 없음). 벽·바닥 조각(kind 'build')으로 풀어 준다.
+  // 261120 (작가): 방은 쓰지 않는다 — 모든 장면이 땅 조각. 지은 방 자료는 지우지 않고 남겨 두며,
+  //   주소에 rooms=1 을 붙이면 다시 볼 수 있다.
+  var ROOMS = false;
+  try { ROOMS = /[?&]rooms=1/.test(global.location.search || ''); } catch (_) {}
   var ROOM_U = 2.4;
   function roomProps(sceneId) {
+    if (!ROOMS) return [];
     var r = pieceMeta(sceneId).room;
     if (!r || !(Number(r.w) > 0) || !(Number(r.d) > 0)) return [];
     var W = Number(r.w), Dp = Number(r.d), X0 = (Number(r.cx) || 0) - W / 2, Z0 = (Number(r.cz) || 0) - Dp / 2, X1 = X0 + W, Z1 = Z0 + Dp;
@@ -130,7 +135,7 @@
       var u = 0, i = 0;
       while (u < L - 0.01) {
         var len = Math.min(U, L - u), full = len > U - 0.01;
-        var model = !full ? '벽 반' : (door === side + i ? '벽 문틀' : '벽'), tw = { tint: r.wall || null };
+        var model = !full ? '벽 반' : ((r.open && door === side + i) ? '벽 문틀' : '벽'), tw = { tint: r.wall || null };
         if (side === 'n') add(model, X0 + u, Z0, 0, tw);
         else if (side === 's') add(model, X0 + u + len, Z1, Math.PI, tw);
         else if (side === 'w') add(model, X0, Z0 + u + len, H, tw);
@@ -142,12 +147,31 @@
     if (Number(r.lamp) > 0) add('백색 전등', (X0 + X1) / 2 - 0.15, (Z0 + Z1) / 2 + 0.15, 0, { lift: 2.55, light: Number(r.lamp), tint: '#d8dcdc' });
     return out;
   }
-  function isRoom(sceneId) { var m = pieceMeta(sceneId); return !!(m.flat || m.room); }
+  // 261120 (작가): 실내 장면은 방 안에서만 진행된다. room.open 이 참일 때만 문틀이 나고 밖(섬)으로 나갈 수 있다.
+  //   닫힌 방에서는 다음 장면의 문이 방 안쪽 벽에 뜨고, 방 밖에 놓인 말·사물은 방 안으로 들어온다.
+  function roomRect(sceneId) {
+    if (!ROOMS) return null;
+    var r = pieceMeta(sceneId).room;
+    if (!r || !(Number(r.w) > 0) || !(Number(r.d) > 0)) return null;
+    var W = Number(r.w), Dp = Number(r.d), cx = Number(r.cx) || 0, cz = Number(r.cz) || 0;
+    return { x0: cx - W / 2, z0: cz - Dp / 2, x1: cx + W / 2, z1: cz + Dp / 2, cx: cx, cz: cz, closed: !r.open };
+  }
+  function intoRoom(sceneId, x, z) {
+    var q = roomRect(sceneId);
+    if (!q || !q.closed) return { x: x, z: z };
+    var m = 0.5, hx = (q.x1 - q.x0) / 2 - m, hz = (q.z1 - q.z0) / 2 - m, dx = x - q.cx, dz = z - q.cz;
+    if (Math.abs(dx) <= hx && Math.abs(dz) <= hz) return { x: x, z: z };
+    var t = Math.min(Math.abs(dx) > 1e-6 ? hx / Math.abs(dx) : 1e9, Math.abs(dz) > 1e-6 ? hz / Math.abs(dz) : 1e9);
+    var far = Math.min(1, Math.hypot(dx, dz) / 20);                    // what stood farther out lands nearer the wall
+    t *= 0.45 + 0.55 * far;
+    return { x: q.cx + dx * t, z: q.cz + dz * t };
+  }
+  function isRoom(sceneId) { if (!ROOMS) return false; var m = pieceMeta(sceneId); return !!(m.flat || m.room); }
   // 261119 방을 지은 조각: 작가가 유령 자리(meta.piece.ghost)와 출발 자리(meta.piece.spawn)를 정할 수 있다.
   function _spot(v) { return (v && isFinite(Number(v.x)) && isFinite(Number(v.z))) ? { x: Number(v.x), z: Number(v.z) } : null; }
-  function ghostPos(sceneId) { var gs = _spot(pieceMeta(sceneId).ghost); if (gs) return gs; return polar(sceneId, rnd01(sceneId + '|g') * Math.PI * 2, P.GHOST_R); }
+  function ghostPos(sceneId) { var gs = ROOMS ? _spot(pieceMeta(sceneId).ghost) : null; if (gs) return gs; return polar(sceneId, rnd01(sceneId + '|g') * Math.PI * 2, P.GHOST_R); }
   function spawnPos(sceneId, fromId) {
-    var ss = _spot(pieceMeta(sceneId).spawn); if (ss) return ss;
+    var ss = ROOMS ? _spot(pieceMeta(sceneId).spawn) : null; if (ss) return ss;
     var ga = rnd01(sceneId + '|g') * Math.PI * 2;
     return polar(sceneId, ga + Math.PI + (rnd01(sceneId + '|s' + (fromId || '')) - 0.5) * 1.2, P.SPAWN_R);
   }
@@ -159,6 +183,95 @@
         && !(g.visitedCore && g.visitedCore[p.sceneId]) && p.sceneId !== cur;
     });
     return pin ? pin.sceneId : null;
+  }
+
+  // ── what the scene has been through shapes its land (261120, author) ──────
+  // Definition (what): three numbers per scene, read from the walk ledger (plays) and the scene itself.
+  //   worn  0..1 = how often the scene was passed, relative to the most-passed scene of this memory
+  //                (0 = nobody has come; 1 = the most trodden).  sqrt, so a few visits already show.
+  //   rough 0..1 = how far what walkers wrote there lay from the scene's own feeling
+  //                (mean of 1 - alignment over its ledger rows; 0 = no rows or all in step).
+  //   pit        = the scene is a silence (void_info.sceneVoid, or a body of only "…").
+  // Staging (how it shows): worn -> the ground is pressed flatter and trails are trodden in from the
+  //   middle; rough -> cracks and broken ground; pit -> the land falls away in the middle.
+  // The engine never reads this: destinations are still judged on the emotion axes only.
+  var _plays = null;
+  function setPlays(rows) { _plays = Array.isArray(rows) ? rows : null; _statCache = null; }
+  var _statCache = null;
+  function stats() {
+    var rows = _plays || game().plays || [];
+    if (_statCache && _statCache.n === rows.length) return _statCache;
+    var by = {}, maxN = 0;
+    rows.forEach(function (p) {
+      if (!p || !p.scene_id) return;
+      var e = by[p.scene_id] || (by[p.scene_id] = { n: 0, mis: 0, k: 0 });
+      e.n++;
+      if (p.alignment != null && isFinite(Number(p.alignment))) { e.mis += 1 - Math.max(0, Math.min(1, Number(p.alignment))); e.k++; }
+      if (e.n > maxN) maxN = e.n;
+    });
+    return (_statCache = { n: rows.length, by: by, maxN: maxN });
+  }
+  function landOf(sceneId) {
+    var st = stats(), e = st.by[sceneId] || { n: 0, mis: 0, k: 0 };
+    var sc = _scenes().find(function (x) { return x.id === sceneId; }) || {};
+    var vi = sc.void_info; if (typeof vi === 'string') { try { vi = JSON.parse(vi); } catch (_) { vi = null; } }
+    var body = String(sc.text == null ? '' : sc.text).replace(/[\s.…·]/g, '');
+    return {
+      visits: e.n,
+      worn: st.maxN ? Math.sqrt(e.n / st.maxN) : 0,
+      rough: e.k ? Math.max(0, Math.min(1, (e.mis / e.k - 0.15) / 0.6)) : 0,
+      pit: !!((vi && vi.sceneVoid) || (sc.id && !body.length)),
+    };
+  }
+  function vnoise(x, z, seed) {                             // smooth value noise, 0..1
+    var xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
+    var h = function (a, b) { var n = Math.sin(a * 127.1 + b * 311.7 + seed * 74.7) * 43758.5453; return n - Math.floor(n); };
+    var u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
+    return (h(xi, zi) * (1 - u) + h(xi + 1, zi) * u) * (1 - v) + (h(xi, zi + 1) * (1 - u) + h(xi + 1, zi + 1) * u) * v;
+  }
+  function shapeLand(f, id) {
+    var L = landOf(id);
+    if (!(L.worn > 0) && !(L.rough > 0) && !L.pit) return;
+    var G = f.G, SZ = f.SZ, seed = (hash(id) % 1000) / 10, R = rim(id, 0);
+    var sum = 0, cnt = 0, i, ix, iz, gx, gz;
+    for (i = 0; i < G * G; i++) { sum += f.hts[i]; cnt++; }
+    var mean = cnt ? sum / cnt : 0;
+    // trails: from the middle outwards, more of them the more the scene was passed
+    var nT = L.worn > 0 ? 2 + Math.round(L.worn * 3) : 0, trails = [];
+    for (var t = 0; t < nT; t++) {
+      var a = rnd01(id + '|trail' + t) * Math.PI * 2, len = R * (0.45 + 0.35 * rnd01(id + '|len' + t)), bend = (rnd01(id + '|bend' + t) - 0.5) * 0.9;
+      trails.push({ a: a, len: len, bend: bend });
+    }
+    for (iz = 0; iz < G; iz++) for (ix = 0; ix < G; ix++) {
+      i = iz * G + ix;
+      gx = (ix / (G - 1) - 0.5) * SZ; gz = (iz / (G - 1) - 0.5) * SZ;
+      var r = Math.sqrt(gx * gx + gz * gz), h = f.hts[i], dark = 0;
+      if (L.worn > 0) {
+        h += (mean - h) * 0.4 * L.worn;                      // pressed flatter
+        var th = Math.atan2(gz, gx), g = 0;
+        for (var k = 0; k < trails.length; k++) {
+          var T = trails[k]; if (r > T.len) continue;
+          var da = th - (T.a + T.bend * (r / T.len)); da = Math.atan2(Math.sin(da), Math.cos(da));
+          var d = Math.abs(da) * r, w = 0.9 + 0.5 * L.worn;  // metres off the trail's line
+          var gg = Math.exp(-(d * d) / (w * w)) * Math.min(1, r / 2.5);
+          if (gg > g) g = gg;
+        }
+        h -= g * (0.35 + 0.75 * L.worn); dark = Math.max(dark, g * 0.3);
+      }
+      if (L.rough > 0) {
+        var n1 = vnoise(gx * 0.12, gz * 0.12, seed), ridge = 1 - Math.abs(2 * n1 - 1);
+        var crack = Math.max(0, ridge - 0.86) / 0.14;        // thin lines where the noise turns
+        h -= crack * 1.5 * L.rough;
+        h += (vnoise(gx * 0.42, gz * 0.42, seed + 9) - 0.5) * 1.1 * L.rough;
+        dark = Math.max(dark, crack * 0.45 * L.rough);
+      }
+      if (L.pit) {
+        var q = Math.max(0, 1 - r / (R * 0.55)); q = q * q * (3 - 2 * q);
+        h -= 8 * q; dark = Math.max(dark, q * 0.5);
+      }
+      f.hts[i] = h;
+      if (dark > 0) { var c3 = i * 3, kd = 1 - dark; f.cls[c3] *= kd; f.cls[c3 + 1] *= kd; f.cls[c3 + 2] *= kd; }
+    }
   }
 
   // ── land: original metric on this one scene, cut to the outline ───────────
@@ -179,6 +292,7 @@
     _reent = true;
     try { f = T.computeAfTerrainFields(one, filterIdx, opt); } finally { _reent = false; }
     if (!f || !f.hts) return f;
+    try { shapeLand(f, cur); } catch (eS) { console.warn('[piece] 땅 다듬기 실패', eS && eS.message); }
     var G = f.G, SZ = f.SZ, minH = Infinity, maxH = -Infinity;
     // 261119 방을 지은 조각(meta.piece.flat): 땅을 한 높이로 편다 — 벽·바닥이 땅에 묻히거나 뜨지 않게.
     if (isRoom(cur)) {
@@ -223,8 +337,20 @@
     removeDoor();
     var THREE = global.THREE, scene3 = rt.getScene();
     // the only random part: where on the piece the door stands (not near the walker, not on the ghost)
-    var cam = rt.getCamera(), gp = ghostPos(cur), pos = null;
-    for (var n = 0; n < 24; n++) {
+    var cam = rt.getCamera(), gp = ghostPos(cur), pos = null, wallRot = null;
+    var rq = roomRect(cur);
+    if (rq && rq.closed) {                                   // on an inner wall of the room
+      for (var w = 0; w < 40; w++) {
+        var side = Math.floor(Math.random() * 4), u = 0.9 + Math.random() * ((side < 2 ? rq.x1 - rq.x0 : rq.z1 - rq.z0) - 1.8), pw, rot;
+        if (side === 0) { pw = { x: rq.x0 + u, z: rq.z0 + 0.1 }; rot = 0; }
+        else if (side === 1) { pw = { x: rq.x0 + u, z: rq.z1 - 0.1 }; rot = Math.PI; }
+        else if (side === 2) { pw = { x: rq.x0 + 0.1, z: rq.z0 + u }; rot = Math.PI / 2; }
+        else { pw = { x: rq.x1 - 0.1, z: rq.z0 + u }; rot = -Math.PI / 2; }
+        if (!pos) { pos = pw; wallRot = rot; }
+        if (Math.hypot(pw.x - cam.position.x, pw.z - cam.position.z) > 1.7 && Math.hypot(pw.x - gp.x, pw.z - gp.z) > 1.3) { pos = pw; wallRot = rot; break; }
+      }
+    }
+    for (var n = 0; n < 24 && wallRot === null; n++) {
       var a = Math.random() * Math.PI * 2;
       var p = polar(cur, a, P.DOOR_R[0] + Math.random() * (P.DOOR_R[1] - P.DOOR_R[0]));
       var dc = Math.hypot(p.x - cam.position.x, p.z - cam.position.z), dg = Math.hypot(p.x - gp.x, p.z - gp.z);
@@ -243,12 +369,13 @@
     leaf.position.set(0, 1.4, 0);
     grp.add(l); grp.add(r); grp.add(top); grp.add(leaf);
     grp.position.set(pos.x, y - 0.05, pos.z);
-    grp.rotation.y = Math.atan2(-pos.x, -pos.z);          // faces the middle of the piece
+    grp.rotation.y = wallRot !== null ? wallRot : Math.atan2(-pos.x, -pos.z);          // on a wall: along it; on the land: faces the middle of the piece
+    if (wallRot !== null) grp.scale.set(0.72, 0.86, 0.72);                              // a room's door is a house door
     grp.userData._pieceDoor = true;
     scene3.add(grp);
     var beacon = null;
     // no light column on the door: the white light marks who can be talked to (user decision 261118)
-    doorObj = { group: grp, leaf: leaf, x: pos.x, z: pos.z, to: to, on: cur, beacon: beacon, born: performance.now() };
+    doorObj = { group: grp, leaf: leaf, x: pos.x, z: pos.z, to: to, on: cur, beacon: beacon, born: performance.now(), near: wallRot !== null ? 0.95 : null };
     whisper(ko() ? '……문이 하나 생겼다.' : '……a door has appeared.');
     console.log('[piece] 문 —', (sceneOf(cur) || {}).scene_order, '→', (sceneOf(to) || {}).scene_order, '자리', pos.x.toFixed(1), pos.z.toFixed(1));
   }
@@ -286,7 +413,7 @@
   function loadMods() {
     if (_mods) return _mods;
     _mods = Promise.all([
-      import('/js/roomplay/corridor.js?v=261119c'), import('/js/roomplay/looks.js'), import('/js/roomplay/engine.js'),
+      import('/js/roomplay/corridor.js?v=261120a'), import('/js/roomplay/looks.js'), import('/js/roomplay/engine.js'),
     ]).then(function (m) { return { corridor: m[0], looks: m[1], engine: m[2] }; });
     return _mods;
   }
@@ -299,9 +426,10 @@
       _corCanvas.id = 'temPieceCorridor';
       _corCanvas.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:3900;display:none;background:#050508;touch-action:none;';
       document.body.appendChild(_corCanvas);
-      // 261119 (user): the 0.75 slow-down is taken out — the corridor is walked like the terrain:
-      // same speed (_fpSpeed = 5.175), same stride (0.85 m per footstep), same look (pointer held, crosshair).
-      _cor = m.corridor.createCorridor({ canvas: _corCanvas, onProgress: function () {}, speed: api.corridorSpeed || 1, walkSpeed: 5.175, stride: 0.85, lockLook: true });
+      // 261120 (author): the corridor is walked at a walking pace — 1.6 a second (the terrain's 5.175 crossed a
+      // 14-long corridor in 3 seconds, and made the footsteps rattle). One footstep every 0.72. The look is the
+      // terrain's (pointer held, crosshair).
+      _cor = m.corridor.createCorridor({ canvas: _corCanvas, onProgress: function () {}, speed: api.corridorSpeed || 1, walkSpeed: 1.6, stride: 0.72, lockLook: true });
       _corDot = document.createElement('div');
       _corDot.style.cssText = 'position:fixed;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(255,246,228,0.85);box-shadow:0 0 0 1.5px rgba(40,34,26,0.7);z-index:3901;pointer-events:none;display:none;';
       document.body.appendChild(_corDot);
@@ -320,7 +448,7 @@
       seedA: from.scene_order, seedB: to.scene_order,
     };
     // keep the pointer held (the terrain already holds it): the corridor reads the same mouse
-    _corCanvas.style.display = 'block'; _corCanvas.style.cursor = 'none';
+    _corCanvas.style.display = 'block'; _corCanvas.style.setProperty('cursor', 'none', 'important');
     if (_corDot) _corDot.style.display = 'block';
     try { if (!document.pointerLockElement && _corCanvas.requestPointerLock) _corCanvas.requestPointerLock(); } catch (_) {}
     try { _cor.resize(); } catch (_) {}
@@ -390,15 +518,63 @@
     return true;
   }
 
-  // the way out stands on every piece (it must always be reachable)
+  // 261120 (작가): 조각 방에는 나가는 문이 없다 — 문은 말을 이은 뒤 생겨나는 문 하나뿐.
+  //   옛 출구문은 보이지 않게 하고, 다가가서 걸릴 일이 없도록 자리도 멀리 치운다.
   function placeExit() {
     try {
       var d = global._temExitDoor;
       if (!d || !d.group) return;
-      var p = polar(cur, rnd01(cur + '|x') * Math.PI * 2, 0.7);
-      d.x = p.x; d.z = p.z;
-      d.group.position.set(p.x, rt.gH(p.x, p.z), p.z);
+      d.group.visible = false;
+      d.x = 1e6; d.z = 1e6;
+      d.group.position.set(1e6, -1e4, 1e6);
     } catch (_) {}
+  }
+
+  // ── this piece from above (261120, author): the walker as an arrow, and the door once it has appeared ──
+  // The old play's map had both (the acute triangle for the walker, a mark for the way out). The way
+  // out is gone; the door that appears takes its place on the map. It sits under the net of scenes.
+  var _radar = null, _rctx = null, _rimPts = null, _rimFor = null;
+  function radar() {
+    if (!rt) return;
+    if (!_radar) {
+      _radar = document.createElement('canvas'); _radar.id = 'temPieceRadar'; _radar.width = 360; _radar.height = 360;
+      _radar.style.cssText = 'position:fixed;top:330px;left:20px;width:180px;height:180px;z-index:2750;border:1px solid rgba(196,168,130,0.22);background:rgba(8,8,13,0.42);border-radius:3px;pointer-events:none;transition:opacity 600ms;';
+      document.body.appendChild(_radar); _rctx = _radar.getContext('2d');
+    }
+    var hide = busy || map.isOpen() || finished || !!document.getElementById('lumenDialogPhase1');
+    _radar.style.opacity = hide ? '0' : '1';
+    if (hide) return;
+    var W = _radar.width, c = _rctx, cam = rt.getCamera();
+    if (_rimFor !== cur) {                                   // the outline of this piece
+      _rimPts = []; var mx = 0;
+      for (var i = 0; i < 96; i++) { var th = i / 96 * Math.PI * 2, r = rim(cur, th); _rimPts.push([Math.cos(th) * r, Math.sin(th) * r]); if (r > mx) mx = r; }
+      _rimPts.max = mx; _rimFor = cur;
+    }
+    var k = (W / 2 - 14) / _rimPts.max, X = function (x) { return W / 2 + x * k; }, Y = function (z) { return W / 2 + z * k; };
+    c.clearRect(0, 0, W, W);
+    c.beginPath(); _rimPts.forEach(function (p, i) { if (i) c.lineTo(X(p[0]), Y(p[1])); else c.moveTo(X(p[0]), Y(p[1])); }); c.closePath();
+    c.fillStyle = 'rgba(120,134,170,0.16)'; c.fill(); c.strokeStyle = 'rgba(206,196,176,0.5)'; c.lineWidth = 2; c.stroke();
+    var g = game(), now = performance.now();
+    if (!(g.visitedCore && g.visitedCore[cur])) {            // who can be talked to here (not met yet)
+      var gp = ghostPos(cur);
+      c.beginPath(); c.arc(X(gp.x), Y(gp.z), 9, 0, Math.PI * 2); c.fillStyle = 'rgba(232,236,255,0.9)'; c.fill();
+    }
+    if (doorObj && doorObj.on === cur) {                     // the door that appeared: a door-shaped mark, breathing
+      var age = (now - doorObj.born) / 1000, pulse = age < 12 ? 1 + 0.5 * Math.abs(Math.sin(age * 2.2)) : 1 + 0.12 * Math.sin(now / 900);
+      c.save(); c.translate(X(doorObj.x), Y(doorObj.z)); c.scale(pulse, pulse);
+      c.fillStyle = 'rgba(214,184,138,0.95)'; c.fillRect(-9, -15, 18, 30);
+      c.strokeStyle = 'rgba(250,236,206,1)'; c.lineWidth = 2.5; c.strokeRect(-9, -15, 18, 30);
+      c.restore();
+    }
+    // the walker: an acute triangle pointing where they look, with the cone of sight (as in the old play's map)
+    var yaw = (typeof rt.getYaw === "function") ? rt.getYaw() : cam.rotation.y, t = 30;   // the runtime's own heading (the camera's Euler y is not it once the view is pitched)
+    c.save(); c.translate(X(cam.position.x), Y(cam.position.z)); c.rotate(-yaw);
+    var half = (cam.fov / 2) * Math.PI / 180, len = 58;
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.sin(-half) * len, -Math.cos(-half) * len); c.lineTo(Math.sin(half) * len, -Math.cos(half) * len); c.closePath();
+    c.fillStyle = 'rgba(220,60,60,0.10)'; c.fill();
+    c.beginPath(); c.moveTo(0, -t); c.lineTo(-t * 0.42, t * 0.6); c.lineTo(t * 0.42, t * 0.6); c.closePath();
+    c.fillStyle = 'rgba(226,66,66,0.95)'; c.fill(); c.strokeStyle = 'rgba(255,236,226,0.9)'; c.lineWidth = 2; c.stroke();
+    c.restore();
   }
 
   // ── the map: a 3D net grown by this run ──────────────────────────────────
@@ -590,15 +766,19 @@
     } catch (_) {}
     route.push({ from: null, to: cur, via: 'start', at: Date.now() });
     arrive(cur, null);
+    // the first-person start-up sets its own heading after this: face the ghost again once it has settled
+    [1200, 3200].forEach(function (ms) { setTimeout(function () { try { if (!busy && route.length <= 1) { var g0 = ghostPos(cur), c0 = rt.getCamera(); rt.setYaw(Math.atan2(-(g0.x - c0.position.x), -(g0.z - c0.position.z))); } } catch (_) {} }, ms); });
     loadMods().catch(function () {});
     (function loop() {
       requestAnimationFrame(loop);
+      try { radar(); } catch (_) {}
+      if (rt) { var _xd = global._temExitDoor; if (_xd && _xd.group && _xd.group.visible) placeExit(); }   // the old way-out is made late: put it away as soon as it exists
       if (!rt || busy || !doorObj) return;
       var k = Math.min(1, (performance.now() - doorObj.born) / 5000);
       doorObj.leaf.material.opacity = 0.5 * k * (0.85 + 0.15 * Math.sin(performance.now() / 1000 * (2 * Math.PI / 6)));
       if (document.getElementById('lumenDialogPhase1') || map.isOpen()) return;
       var c = rt.getCamera();
-      if (Math.hypot(c.position.x - doorObj.x, c.position.z - doorObj.z) < P.DOOR_NEAR) go(doorObj.to, 'door');
+      if (Math.hypot(c.position.x - doorObj.x, c.position.z - doorObj.z) < (doorObj.near || P.DOOR_NEAR)) go(doorObj.to, 'door');
     })();
     console.log('[piece] 조각 방 ON — 첫 조각', (sceneOf(cur) || {}).scene_order);
   }
@@ -625,7 +805,7 @@
   }
 
   var api = {
-    on: ON, P: P, roomProps: roomProps, isRoom: isRoom, finish: finish, finished: function () { return finished; },
+    on: ON, P: P, setPlays: setPlays, landOf: landOf, roomsOn: ROOMS, roomProps: roomProps, isRoom: isRoom, roomRect: roomRect, intoRoom: intoRoom, finish: finish, finished: function () { return finished; },
     fieldsFor: fieldsFor, sizeOf: sizeOf, pieceMeta: pieceMeta, polar: polar,
     setSize: function (id, v) { _sizeOverride[id] = v; }, setScenes: function (list) { _sceneSrc = list; },
     runtime: function () { return rt; }, busy: function () { return busy; }, whisper: whisper,

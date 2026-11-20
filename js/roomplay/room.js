@@ -45,7 +45,7 @@ export function createFloaters(layer, columnEl, seed) {
   function relayout() {
     const bs = bands();
     for (let b = 0; b < bs.length; b++) {
-      const mine = items.filter((it) => it.band % bs.length === b);
+      const mine = items.filter((it) => !it.still && it.band % bs.length === b);
       mine.forEach((it, i) => { it.slot = (i + 0.5) / mine.length; it.n = mine.length; });
     }
   }
@@ -54,7 +54,7 @@ export function createFloaters(layer, columnEl, seed) {
     layer.appendChild(el);
     el.classList.add('rp-f');
     const bs = bands();
-    const counts = bs.map((_, b) => items.filter((it) => it.band % bs.length === b).length);
+    const counts = bs.map((_, b) => items.filter((it) => !it.still && it.band % bs.length === b).length);
     let band = o && o.band != null ? o.band : (counts.length > 1 && counts[1] < counts[0] ? 1 : counts.length > 1 && counts[0] < counts[1] ? 0 : Math.floor(hash(seed + key) * bs.length));
     const it = {
       el, key, band, slot: 0.5, n: 1, y: null,
@@ -64,6 +64,10 @@ export function createFloaters(layer, columnEl, seed) {
       o: (o && o.opacity) || 0.5,
     };
     el.style.setProperty('--o', String(it.o));
+    if (o && o.at) {                                   // 261120: stands still at a fraction of the layer (x, y = its top-left); never moved again
+      it.still = true;
+      el.style.transform = 'translate3d(' + (o.at.x * layer.clientWidth).toFixed(1) + 'px,' + (o.at.y * layer.clientHeight).toFixed(1) + 'px,0)';
+    }
     items.push(it);
     relayout();
     requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
@@ -85,6 +89,7 @@ export function createFloaters(layer, columnEl, seed) {
     raf = requestAnimationFrame(tick);
     const t = (performance.now() - t0) / 1000, bs = bands();
     for (const it of items) {
+      if (it.still) continue;
       const b = bs[it.band % bs.length], w = it.el.offsetWidth, h = it.el.offsetHeight;
       const bw = Math.max(0, b.x1 - b.x0 - w), bh = Math.max(0, b.y1 - b.y0 - h);
       const cy = b.y0 + it.slot * bh;
@@ -97,7 +102,7 @@ export function createFloaters(layer, columnEl, seed) {
   }
   function stop() { running = false; cancelAnimationFrame(raf); }
   function start() { if (!running && items.length) { running = true; tick(); } }
-  return { add, remove, clear, setOpacity, stop, start, items };
+  return { add, remove, clear, setOpacity, stop, start, items, bands };
 }
 
 export function wordEl(text) { const d = document.createElement('div'); d.className = 'rp-f-word'; d.textContent = text; return d; }
@@ -161,7 +166,7 @@ export function createRoom(root, lang, pace) {
     const conns = o.connectives;
     inputBox.innerHTML = '';
     const guide = document.createElement('div'); guide.className = 'rp-guide';
-    guide.textContent = o.voidScene ? (ko ? '아무 말도 없습니다 — 무엇이든 적거나, 말없이 있을 수 있습니다.' : 'Nothing is said — write anything, or stay silent.')
+    guide.textContent = o.guide ? o.guide : o.voidScene ? (ko ? '아무 말도 없습니다 — 무엇이든 적거나, 말없이 있을 수 있습니다.' : 'Nothing is said — write anything, or stay silent.')
                                     : (ko ? '문장이 끊겼습니다 — 연결사를 고르고, 뒤를 이어서 써 주세요.' : 'The sentence broke off — pick a connective and continue it.');
     const row = document.createElement('div'); row.className = 'rp-conns';
     let chosen = '';
@@ -192,7 +197,7 @@ export function createRoom(root, lang, pace) {
       const submit = () => {
         const text = field.value.trim();
         if (!text) { field.focus(); return; }
-        if (!chosen && !o.voidScene) { guide.classList.add('warn'); setTimeout(() => guide.classList.remove('warn'), 1400); return; }
+        if (!chosen && !o.voidScene && !o.optionalConn) { guide.classList.add('warn'); setTimeout(() => guide.classList.remove('warn'), 1400); return; }
         done({ connective: chosen, text });
       };
       send.addEventListener('click', submit);

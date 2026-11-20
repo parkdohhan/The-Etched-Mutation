@@ -68,8 +68,9 @@
     KEEP_APART: 7,          // from other already-placed scenes
     KEEP_FROM_WALKER: 8,
     FOG_DENSITY: 0.125,
-    FOG_COLOR: 0x3b4558,
-    SKY_COLOR: 0x5d6a85,
+    FOG_COLOR: 0x5d6a84,       // 261120 brighter (user: too dark to see)
+    SKY_COLOR: 0x93a3c0,
+    AMBIENT: 0.9,              // extra sky light on the ground and on what stands on it
     BEACON_H: 20,
     LIGHT_INTENSITY: 1.5,   // scene-colour ground light at an appeared scene
     LIGHT_REACH: 17,
@@ -198,6 +199,7 @@
 
   /** A faint column of light over the open scene; removed with the pins (userData._fpPin). */
   function _inRoom() { try { var TPc = global.TemPiece; return !!(TPc && TPc.on && TPc.isRoom(TPc.current())); } catch (_) { return false; } }
+  var _ambient = null;
   function addBeacon(scene3, x, groundY, z) {
     var THREE = global.THREE;
     if (!THREE || !scene3) return null;
@@ -224,6 +226,12 @@
     if (!renderer || !scene3 || !THREE) return;
     var fogCol = new THREE.Color(P.FOG_COLOR);
     var skyCol = new THREE.Color(P.SKY_COLOR);
+    try {
+      var hemi = new THREE.HemisphereLight(0xc3cee4, 0x4a4f5c, P.AMBIENT);
+      hemi.userData._driftAmbient = true;
+      scene3.add(hemi);
+      _ambient = hemi;
+    } catch (_) {}
     var skyMat = null;
     scene3.traverse(function (o) {
       if (!skyMat && o.isMesh && o.material && o.material.uniforms && o.material.uniforms.uBase) skyMat = o.material;
@@ -247,6 +255,7 @@
     renderer.render = function (s, c) {
       if (s === scene3) {
         fogCol.setHex(P.FOG_COLOR); skyCol.setHex(P.SKY_COLOR);   // live-tunable from the console
+        if (_ambient) _ambient.intensity = P.AMBIENT;
         if (s.fog) s.fog.color.copy(fogCol);
         // fog walls (unopened ground) take the fog colour, darker than the horizon, so the
         // unopened ridges stay as silhouettes instead of melting into the sky.
@@ -275,6 +284,9 @@
           var wrise = Math.min(1, (now - q.born) / 5000);
           q.sprite.position.y = q.y + Math.sin(now / 1000 * (2 * Math.PI / q.period) + q.phase) * 0.35;
           q.sprite.material.opacity = 0.62 * wn * wrise;
+          if (!q.sx) { q.sx = q.sprite.scale.x; q.sy = q.sprite.scale.y; }
+          var wk = Math.max(0.3, Math.min(1, wd / 9));       // near = smaller on screen, so it can be read from beside it
+          q.sprite.scale.set(q.sx * wk, q.sy * wk, 1);
         }
       }
       orig(s, c);
@@ -345,10 +357,13 @@
     if (Array.isArray(ew)) ew.forEach(function (w) { w = String(w || '').trim(); if (w && /[가-힣A-Za-z0-9]/.test(w)) words.push(w); });
     var a0 = _hashAngle(scene.id);
     words.slice(0, 4).forEach(function (w, i) {
-      var a = a0 + i * 1.7, r = 3.2 + (i % 2) * 1.8;
+      var inR = _inRoom();                                   // in a built room the scene's words stay inside it, smaller
+      var a = a0 + i * 1.7, r = inR ? 1.0 + (i % 2) * 0.5 : 3.2 + (i % 2) * 1.8;
       var sx = x + Math.cos(a) * r, sz = z + Math.sin(a) * r;
+      if (inR && global.TemPiece.intoRoom) { var ir = global.TemPiece.intoRoom(scene.id, sx, sz); sx = ir.x; sz = ir.z; }
       var sy = ((typeof rt.gH === 'function') ? rt.gH(sx, sz) : gy) + 1.5 + (i % 3) * 0.55;
       var sp = _wordSprite(w);
+      if (inR) sp.scale.multiplyScalar(0.5);
       sp.position.set(sx, sy, sz);
       sp.userData._driftWord = true;
       scene3.add(sp);

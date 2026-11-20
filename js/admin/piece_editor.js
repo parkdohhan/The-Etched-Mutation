@@ -562,6 +562,7 @@ async function boot() {
   st.scenes = sc.data || [];
   st.plays = pl.data || [];
   TP.setScenes(st.scenes);
+  if (TP.setPlays) TP.setPlays(st.plays.filter((p) => p.persona_id !== 'piece-move'));   // the land of each piece is shaped by its walks
   st.P = T.buildMemoryItems([st.memory], { [st.memory.id]: st.plays.filter((p) => p.persona_id !== 'piece-move') }, { [st.memory.id]: st.scenes });
   $('memTitle').textContent = (st.memory.code ? st.memory.code + ' · ' : '') + (st.memory.title || '');
   const seen = new Set();

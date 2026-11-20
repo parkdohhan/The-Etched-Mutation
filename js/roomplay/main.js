@@ -4,7 +4,10 @@
  *   entry → [ room (text + sound) → continuation → one door → 3D corridor ]* → the piece → flat → ground → leave
  *
  * Decision record: docs/글방_통로_무대_결정-261117.md
- * URL: ?memory=<uuid|code> (default GWON-001) · ?as=author|test · ?tune=1 · ?lang=ko|en
+ * URL: ?memory=<uuid|code> (default DANG-001) · ?as=author|test · ?tune=1 · ?lang=ko|en · ?way=1
+ *   way=1      261120 trial (decision record §8): several exchanges in a room (the scene answers with its own
+ *              next lines, and with a plain word), then the way — two lines from the text frame to the door,
+ *              walked in 3D, the scene's things beside it — and past the door the corridor as before.
  *   as=author  the author's first walk (the first thread). Counted in the ground, marked in the ledger.
  *   as=test    nothing is shared: no ghost-line absorption, no contact record, rows marked and excluded.
  */
@@ -13,6 +16,8 @@ import { createEngine, parseEmotion, resonanceOf, foldTo17 } from './engine.js';
 import { createRoom, createFloaters, wordEl, ghostEl, doorEl, sentences, cutLast, hang, closed, subjectParticle } from './room.js';
 import { createCorridor, normLook, DEFAULT_LOOK } from './corridor.js';
 import { createSound } from './sound.js';
+import { createWay } from './way.js';
+import { drawAsciiDoor } from './asciidoor.js';
 import { lookFor, saveLook, storedLooks } from './looks.js';
 import { runEnding } from './ending.js';
 import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
@@ -27,6 +32,12 @@ const LANG = (qs.get('lang') || 'ko').slice(0, 2) === 'en' ? 'en' : 'ko';
 const CONNECTIVES = LANG === 'en'
   ? ['but then', 'but', 'and', 'even so', 'so', 'and then', 'at that', 'in that moment']
   : ['그런데', '하지만', '그리고', '그럼에도 불구하고', '그래서', '그러다가', '그러자', '그 순간'];   // = lumen_dialog_phase1 CONT_CONNECTIVES
+const WAY = qs.get('way') === '1';
+// Plain words the room may say that are not in the manuscript (author, 261120: "really plain words are fine").
+// A memory can bring its own: memories.meta.plain_words = { nod: [...], odd: [...] }.
+const PLAIN = LANG === 'en'
+  ? { nod: ['Yes.', 'I see.', '…yes.', 'Go on.'], odd: ['…what?', 'I am not sure I follow.', 'I do not know about that.'] }
+  : { nod: ['네.', '그래요.', '…네.', '그랬군요.'], odd: ['…네?', '잘 모르겠습니다.', '무슨 말인지 모르겠습니다.'] };
 const DEFAULT_MEMORY = 'DANG-001';   // the flagship memory of this stage (2026-11-17). 권역 = ?memory=GWON-001
 const DEPTH_STAGE_2 = 5, DEPTH_STAGE_3 = 15;                                                  // = play-test applyStageText
 
@@ -38,6 +49,8 @@ const run = {
   id: (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()),
   memory: null, scenes: [], engine: null,
   visited: new Set(), said: new Map(),      // scene id → [{ connective, text }] this run
+  touched: new Map(),                       // scene id → Set(prop id): the things the talk reached (way=1)
+  doorAt: new Map(),                        // scene id → { x, y } (fractions of the screen): where the door to that scene stands. Never changes once given (way=1)
   path: [], legs: [], rooms: [],
   last: null,                               // last engine reading { pattern, alignment, bucket }
   contact: false, ghosts: [], others: [], cont: { d: 0, c: 0, h: 0 },
@@ -46,7 +59,7 @@ const run = {
 window.__room = { run, mode: MODE };       // automation / inspection hook
 
 const sound = createSound();
-let room, floaters, corridor;
+let room, floaters, corridor, way = null;
 
 // ── boot ───────────────────────────────────────────────────────────────────
 async function boot() {
@@ -67,7 +80,8 @@ async function boot() {
   room = createRoom($('rpRoom'), LANG, 1 / FAST);
   floaters = createFloaters($('rpFloat'), document.querySelector('.rp-column'), run.id);
   corridor = createCorridor({ canvas: $('rpCorridor'), onProgress: onCorridorProgress, speed: FAST });
-  Object.assign(window.__room, { corridor, sound, floaters });
+  if (WAY) way = createWay({ canvas: $('rpWay') });
+  Object.assign(window.__room, { corridor, sound, floaters, way, room });
   $('rpEntryTitle').textContent = run.memory.title || '';
   $('rpEntryLead').textContent = LANG === 'en'
     ? 'You are about to walk through someone else\'s memory.\nBefore you go in — what is on your mind right now?'
@@ -143,12 +157,16 @@ async function enterRoom(scene, via) {
   const oldDoors = [];
   for (const s of run.scenes) {
     if (!run.visited.has(s.id) || s.id === scene.id) continue;
-    const el = doorEl(sceneLabel(s), false); el.classList.add('locked');
-    floaters.add(el, { key: 'd' + s.id, opacity: 0.2 }); oldDoors.push({ el, scene: s });
+    const el = dressDoor(doorEl(sceneLabel(s), false)); el.classList.add('locked');
+    floaters.add(el, { key: 'd' + s.id, opacity: 0.2, at: WAY ? doorPlace(s.id, false) : null }); oldDoors.push({ el, scene: s });
   }
 
   // the text
-  let shown;
+  let shown, objLine = null, answer, analysis = null, conv = null;
+  if (WAY && !isVoid) {
+    conv = await converse(scene, tv, prior, nthVisit, via);
+    shown = conv.shown; answer = conv.answer;
+  } else {
   if (isVoid) { shown = ['…']; await room.say('…', 'rp-void', { hold: 2600 }); }
   else if (nthVisit === 1 && tv.stage === 0 && window.TemStemCuts && window.TemStemCuts[scene.id] && window.TemStemCuts[scene.id].text) {
     shown = sentences(window.TemStemCuts[scene.id].text);                 // the authored cut (trigger-power-v1)
@@ -163,7 +181,6 @@ async function enterRoom(scene, via) {
   }
   // what is seen
   const objs = objectWords(scene);
-  let objLine = null;
   if (objs.length && !isVoid) {
     const w = objs[(nthVisit - 1) % objs.length], authored = scene.meta && scene.meta.object_lines && scene.meta.object_lines[w];
     objLine = authored || (LANG === 'en' ? 'There is ' + w + '.' : w + subjectParticle(w) + ' 보인다.');
@@ -171,23 +188,15 @@ async function enterRoom(scene, via) {
   }
 
   // the continuation
-  let answer, analysis = null;
-  for (;;) {
-    answer = await room.ask({ connectives: CONNECTIVES, voidScene: isVoid, allowSilence: isVoid });
-    if (answer.silent) break;
-    const S = window.LumenSafety;
-    const crisis = S && S.detectCrisis ? S.detectCrisis(answer.connective + ' ' + answer.text) : { level: 'safe' };
-    if (crisis.level === 'high') {                                         // the scene does not take this in; help is shown
-      await room.say(LANG === 'en' ? '……no. That is too sharp to carry in here.' : '……아냐, 이건 너무 날카로워.', 'rp-narr', { gap: true });
-      const res = (S.getSafetyResources ? S.getSafetyResources(LANG) : []).map((r) => r.name + ' ' + r.number).join(' · ');
-      if (res) await room.say(res, 'rp-narr', {});
-      continue;
-    }
-    break;
+  answer = await askSafely({ connectives: CONNECTIVES, voidScene: isVoid, allowSilence: isVoid });
   }
   let userEmotion = {}, userVoid = false, alignment = 0.5, resonance = 'vague', eng = null;
   const raw = answer.silent ? '' : lineOf(answer);
-  if (!answer.silent) {
+  if (conv) {
+    ({ userEmotion, userVoid, alignment, resonance, eng } = conv);
+    analysis = conv.analysed ? {} : null;
+    if (!conv.analysed) toast('감정 측정에 실패했습니다 — 이 걸음은 직전 결로 이어집니다');
+  } else if (!answer.silent) {
     await room.say(closed(raw), 'rp-mine', { gap: !objLine, hold: 500 });
     room.waiting(true);
     analysis = await data.analyzeEmotion(raw, run.engine.axes, { scene_text: shown.join(' ').slice(0, 400), ghost_line: (objLine || shown[shown.length - 1] || '').slice(0, 200) });
@@ -214,10 +223,11 @@ async function enterRoom(scene, via) {
                  stage: data.STAGE_TAG, visit: nthVisit, text_stage: tv.stage, object: objLine, arrived: via, analysed: !!analysis };
   if (!answer.silent) {
     await data.insertPlay({ memory_id: run.memory.id, scene_id: scene.id, user_emotion: userEmotion, alignment, mismatch_type: resonance, run_id: run.id,
-      ghost_variant_id: null, dialog_turns: [turn], persona_id: MODE === 'test' ? data.TEST_PERSONA : MODE === 'author' ? data.AUTHOR_PERSONA : null });
+      ghost_variant_id: null, dialog_turns: conv ? conv.turns : [turn], persona_id: MODE === 'test' ? data.TEST_PERSONA : MODE === 'author' ? data.AUTHOR_PERSONA : null });
   }
   run.rooms.push({ order: run.rooms.length + 1, scene_id: scene.id, scene_order: scene.scene_order, visit: nthVisit, text_stage: tv.stage, seen_text: shown.join(' '), object: objLine,
     silent: !!answer.silent, user_emotion: userEmotion, turn_alignment: +alignment.toFixed(4), resonance,
+    turns: conv ? conv.turns.map((t) => ({ text: t.raw_text, alignment: +t.alignment.toFixed(4), resonance: t.resonance, reply: t.ghost_reply, touched: t.object })) : null,
     engine: eng ? { alignment: eng.alignment_score, bucket: eng.alignment_bucket, pattern: eng.transition_pattern, mismatch: eng.mismatch_type } : null,
     door: next.scene ? { to: next.scene.scene_order, mode: next.mode, pattern } : null, ranked: next.ranked.slice(0, 5), shadow: next.shadow });
   room.waiting(false);
@@ -241,8 +251,8 @@ async function enterRoom(scene, via) {
   if (next.mode === 'fallback') await room.say(LANG === 'en' ? 'A gap in the memory pulls another scene toward you.' : '기억의 빈틈이 다른 장면을 끌어당긴다.', 'rp-narr', { gap: true });
   if (next.scene) {
     await wait(1600);
-    newDoor = doorEl('', true);
-    floaters.add(newDoor, { key: 'new', opacity: 1 });
+    newDoor = dressDoor(doorEl('', true));
+    floaters.add(newDoor, { key: 'new', opacity: 1, at: WAY ? doorPlace(next.scene.id, true) : null });
   } else await room.say(LANG === 'en' ? 'No new door opens. The closest echo is one you have already heard.' : '새 문은 열리지 않는다. 가장 가까운 잔향은 이미 들은 것이다.', 'rp-narr', { gap: true });
   oldDoors.forEach((d) => { d.el.classList.remove('locked'); floaters.setOpacity('d' + d.scene.id, 0.46); });
   $('rpLeave').classList.add('on');
@@ -250,13 +260,181 @@ async function enterRoom(scene, via) {
   const choice = await new Promise((resolve) => {
     leaveResolver = resolve;
     const on = (el, v) => { el.addEventListener('click', () => resolve(v)); el.addEventListener('keydown', (e) => { if (e.key === 'Enter') resolve(v); }); };
-    if (newDoor) on(newDoor, { kind: next.mode === 'same' ? 'same' : 'new', scene: next.scene });
-    oldDoors.forEach((d) => on(d.el, { kind: 'old', scene: d.scene }));
+    if (newDoor) on(newDoor, { kind: next.mode === 'same' ? 'same' : 'new', scene: next.scene, el: newDoor });
+    oldDoors.forEach((d) => on(d.el, { kind: 'old', scene: d.scene, el: d.el }));
   });
   leaveResolver = null;
   $('rpLeave').classList.remove('on');
   if (choice.kind === 'leave') return finish();
-  return walk(scene, choice.scene, choice.kind, answer.silent ? '' : answer.connective);
+  return walk(scene, choice.scene, choice.kind, answer.silent ? '' : answer.connective, choice.el);
+}
+
+/** way=1: the room's doors are the ASCII door of the opening (same drawing as the door at the end of the way). */
+function dressDoor(el) {
+  if (!WAY) return el;
+  const leaf = el.querySelector('.rp-leaf');
+  if (leaf) { leaf.classList.add('ascii'); leaf.appendChild(drawAsciiDoor(document.createElement('canvas'), 0, { px: 16, tone: true })); }
+  return el;
+}
+
+/**
+ * way=1: where the door to a scene stands on the screen. Chosen once ("random is only where the door appears"),
+ * in the empty sides, clear of the doors already standing — and then it is that door's place for the whole walk:
+ * it does not drift, it is not moved when the way is drawn, and the same door stands there in every later room.
+ */
+function doorPlace(sceneId, isNew) {
+  if (run.doorAt.has(sceneId)) return run.doorAt.get(sceneId);
+  const W = innerWidth, H = innerHeight, bs = floaters.bands(), dh = isNew ? 210 : 150, dw = dh * 0.4;
+  let best = null, bd = -1;
+  for (let n = 0; n < 40; n++) {
+    const b = bs[Math.floor(Math.random() * bs.length)];
+    const x = b.x0 + Math.random() * Math.max(1, b.x1 - b.x0 - dw), y = b.y0 + Math.random() * Math.max(1, b.y1 - b.y0 - dh - 30);
+    let d = Infinity; for (const p of run.doorAt.values()) d = Math.min(d, Math.hypot(p.x * W - x, p.y * H - y));
+    if (d > bd) { bd = d; best = { x: x / W, y: y / H }; }
+    if (d > 260) break;
+  }
+  run.doorAt.set(sceneId, best);
+  return best;
+}
+
+/** One continuation, with the crisis check the room has always had. */
+async function askSafely(o) {
+  for (;;) {
+    const answer = await room.ask(o);
+    if (answer.silent) return answer;
+    const S = window.LumenSafety;
+    const crisis = S && S.detectCrisis ? S.detectCrisis(answer.connective + ' ' + answer.text) : { level: 'safe' };
+    if (crisis.level !== 'high') return answer;
+    // the scene does not take this in; help is shown
+    await room.say(LANG === 'en' ? '……no. That is too sharp to carry in here.' : '……아냐, 이건 너무 날카로워.', 'rp-narr', { gap: true });
+    const res = (S.getSafetyResources ? S.getSafetyResources(LANG) : []).map((r) => r.name + ' ' + r.number).join(' · ');
+    if (res) await room.say(res, 'rp-narr', {});
+  }
+}
+
+// ── several exchanges in one room (way=1) ───────────────────────────────────
+// The scene's text comes in parts. After each part the walker continues it; the room answers with a
+// plain word and goes on with its own next part — nothing the room says about the scene is outside
+// the manuscript. When the last part has been answered, the door appears (as before).
+//   · the door and the corridor are read from the whole stay: the mean of the turns' emotions,
+//     one engine step per room, one ledger row per room (its turns inside dialog_turns).
+//   · a turn the classifier reads as empty of the scene (void) is answered in words as such —
+//     by a plain word, never by the name of a pattern. A contrary feeling is not "odd".
+//   · each turn reaches one thing of the scene: the nearest of those not reached yet (shared letters
+//     with its name and line; ties = authored order). Reached things answer a click on the way.
+function speakingThings(scene) {
+  const props = (scene.meta && scene.meta.piece && Array.isArray(scene.meta.piece.props)) ? scene.meta.piece.props : [];
+  return props.filter((p) => p && p.kind === 'object' && p.role === 'speaking' && p.text);
+}
+function bigrams(str) { const t = String(str || '').replace(/[\s.,!?…"'“”‘’·-]/g, ''), out = new Set(); for (let i = 0; i < t.length - 1; i++) out.add(t.slice(i, i + 2)); return out; }
+function nearestThing(text, things) {
+  const a = bigrams(text); let best = null, bs = -1;
+  for (const p of things) {
+    const b = bigrams(p.name + ' ' + p.text); let n = 0;
+    for (const g of a) if (b.has(g)) n++;
+    const sc = b.size ? n / Math.sqrt(b.size) : 0;
+    if (sc > bs) { bs = sc; best = p; }
+  }
+  return best;
+}
+function plainWord(kind, key, i) {
+  const own = run.memory.meta && run.memory.meta.plain_words && run.memory.meta.plain_words[kind];
+  const list = Array.isArray(own) && own.length ? own : PLAIN[kind];
+  return list[(Math.floor(hashStr(run.id + key) * list.length) + i) % list.length];   // a different word each turn of one stay
+}
+async function converse(scene, tv, prior, nthVisit, via) {
+  const body = sentences(tv.text);
+  const K = Math.max(1, Math.min(3, body.length)), base = Math.floor(body.length / K), rem = body.length % K;
+  const parts = []; for (let i = 0, at = 0; i < K; i++) { const n = base + (i < rem ? 1 : 0); parts.push(body.slice(at, at + n)); at += n; }
+  if (!run.touched.has(scene.id)) run.touched.set(scene.id, new Set());
+  const touched = run.touched.get(scene.id), things = speakingThings(scene);
+  const shown = [], turns = [], emos = [];
+  let answer = null, anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5;
+  for (let i = 0; i < K; i++) {
+    const lines = parts[i].slice();
+    if (i === K - 1) prior.forEach((p) => lines.push(lineOf(p)));          // what I said here before is part of the text now
+    // the last line of a part is left hanging — but a question or a cry in the manuscript keeps its own mark
+    const out = lines.map((l, j) => (j === lines.length - 1 && !/[?!]["”’']?$/.test(String(l).trim()) ? hang(l) : closed(l)));
+    await room.sayAll(out, '', { gap: i > 0 });
+    shown.push(...out);
+    answer = await askSafely({ connectives: CONNECTIVES, optionalConn: i > 0,
+      guide: i > 0 ? (LANG === 'en' ? 'Go on — a connective if you want one.' : '이어서 써 주세요 — 연결사는 골라도 되고 안 골라도 됩니다.') : null });
+    const raw = lineOf(answer);
+    await room.say(closed(raw), 'rp-mine', { gap: true, hold: 500 });
+    room.waiting(true);
+    const an = await data.analyzeEmotion(raw, run.engine.axes, { scene_text: shown.join(' ').slice(-400), ghost_line: out[out.length - 1].slice(0, 200) });
+    let align = lastAlign, res = 'vague', isVoid = false, emo = null;
+    if (an) {
+      emo = parseEmotion(an.base); isVoid = !!(an.reason_analysis && an.reason_analysis.is_void);
+      const a = run.engine.alignmentTo(scene, emo);
+      align = a > 0 ? a : lastAlign; res = resonanceOf(align); lastAlign = align;
+      emos.push(emo); if (isVoid) anyVoid++;
+    }
+    const left = things.filter((p) => !touched.has(p.id)), reach = left.length ? nearestThing(raw, left) : null;
+    if (reach) { touched.add(reach.id); floaters.add(wordEl(reach.name), { key: 't' + reach.id, opacity: 0.62 }); }
+    room.waiting(false);
+    const odd = !!an && isVoid;                                            // off the scene altogether — a contrary feeling is not odd (261120: a sincere line got "I do not follow")
+    const reply = plainWord(odd ? 'odd' : 'nod', scene.id + '|' + nthVisit, i);
+    await room.say(reply, 'rp-narr', { gap: true, hold: 700 });
+    if (!run.said.has(scene.id)) run.said.set(scene.id, []);
+    run.said.get(scene.id).push({ connective: answer.connective, text: answer.text });
+    turns.push({ turn: i + 1, raw_text: raw, alignment: align, resonance: res, ghost_reply: reply, via: 'cont_form', ts: Date.now(), input_form: 'cont_v1', connective: answer.connective || '',
+      stage: data.STAGE_TAG, form: 'turns_v1', visit: nthVisit, text_stage: tv.stage, object: reach ? reach.name : null, arrived: via, analysed: !!an, odd });
+  }
+  // the whole stay, read once
+  const mean = {};
+  for (const e of emos) for (const k in e) mean[k] = (mean[k] || 0) + (Number(e[k]) || 0) / emos.length;
+  const userVoid = emos.length > 0 && anyVoid === emos.length;
+  let alignment = lastAlign, eng = null;
+  if (emos.length) {
+    const a = run.engine.alignmentTo(scene, mean);
+    alignment = a > 0 ? a : lastAlign;
+    eng = run.engine.step(scene, mean, userVoid);
+  }
+  return { shown, answer, turns, userEmotion: mean, userVoid, alignment, resonance: resonanceOf(alignment), eng, analysed: emos.length > 0 };
+}
+
+// ── the way (way=1): from the text frame to the door ────────────────────────
+function thingsOf(scene) {
+  const props = (scene.meta && scene.meta.piece && Array.isArray(scene.meta.piece.props)) ? scene.meta.piece.props : [];
+  const mm = run.memory.meta || {}, models = mm.object_models || {}, images = mm.object_images || {};
+  const touched = run.touched.get(scene.id) || new Set(), out = [];
+  for (const p of props) {
+    if (!p) continue;
+    if (p.kind === 'object') {
+      const m = models[p.model || p.name], speaking = p.role === 'speaking' && !!p.text;
+      const model = (m && m.path) || null, image = p.image || (images[p.name] && (images[p.name].path || images[p.name])) || null;
+      if (!speaking && !model && !image) continue;                         // scenery with nothing to show is not stood
+      out.push({ id: p.id, name: p.name, kind: 'object', line: speaking ? p.text : '', unlocked: speaking && touched.has(p.id), model, image });
+    } else if (p.kind === 'word' && p.text) out.push({ id: p.id, name: p.text, kind: 'word' });
+  }
+  return out;
+}
+async function takeWay(from, el) {
+  const roomEl = $('rpRoom'), hint = $('rpHint'), cap = $('rpCaption');
+  floaters.stop();
+  floaters.items.forEach((it) => { if (it.el !== el) it.el.classList.remove('in'); });
+  roomEl.classList.add('way');                                             // the text goes; the door stays where it appeared
+  const look = normLook(lookFor(run.memory, from));
+  const col = document.querySelector('.rp-column').getBoundingClientRect();
+  const lr = (el.querySelector('.rp-leaf') || el).getBoundingClientRect();   // the door, where it has stood since it appeared
+  $('rpWay').classList.add('on');
+  await wait(900 / FAST);
+  const done = way.start({ door: { cx: lr.left + lr.width / 2, bottom: lr.bottom, h: lr.height }, frame: { left: col.left, right: col.right, bottom: col.bottom },
+    floor: look.floor, speed: FAST, things: thingsOf(from) }, {
+    onReady() {
+      hint.textContent = isTouch() ? (LANG === 'en' ? 'hold the circle to walk · drag to look' : '동그라미를 누르고 있으면 걷습니다 · 화면을 끌어 둘러봅니다') : (LANG === 'en' ? 'W or ↑ to walk · drag to look' : 'W 또는 ↑ 로 걷습니다 · 마우스로 끌어 둘러봅니다');
+      hint.classList.add('on'); if (isTouch()) $('rpWalk').classList.add('on');
+    },
+    on3d() { el.style.transition = 'opacity 1200ms ease'; el.classList.remove('in'); setTimeout(() => hint.classList.remove('on'), 5000); },
+    onLine(t) {
+      $('rpCapLine').textContent = t.line; $('rpCapSrc').textContent = t.name;
+      cap.classList.add('on', 'way'); clearTimeout(takeWay._t); takeWay._t = setTimeout(() => cap.classList.remove('on'), 9000);
+    },
+  });
+  const res = await done;
+  clearTimeout(takeWay._t); cap.classList.remove('on'); hint.classList.remove('on'); $('rpWalk').classList.remove('on');
+  return res;
 }
 function lineOf(p) { return (p.connective ? p.connective + ' ' : '') + p.text; }
 function nearestGhost(userEmotion, pool) {
@@ -268,9 +446,11 @@ function cosObj(a, b) { let d = 0, na = 0, nb = 0; const keys = new Set(Object.k
 
 // ── the corridor ───────────────────────────────────────────────────────────
 let tuneCtx = null;
-async function walk(from, to, kind, connective) {
+async function walk(from, to, kind, connective, doorEl) {
   const leg = { from: from.scene_order, to: to.scene_order, kind, pattern: run.last.pattern, alignment: +run.last.alignment.toFixed(4), bucket: run.last.bucket, cont: run.cont };
+  if (WAY && way && doorEl) leg.way = await takeWay(from, doorEl);
   await veil(true);
+  if (WAY && way) { way.stop(); $('rpWay').classList.remove('on'); $('rpRoom').classList.remove('way'); $('rpCaption').classList.remove('way'); }
   room.hide(); floaters.clear(0); floaters.stop();
   const sB = soundOf(to);
   sound.prepare(sB.url, sB.vol);
@@ -308,8 +488,8 @@ function onCorridorProgress(p) { sound.mix(p.amb); }
 function isTouch() { return window.__temForceTouch === true || (('ontouchstart' in window) && matchMedia('(pointer: coarse)').matches); }
 function setupWalkButton() {
   const b = $('rpWalk');
-  const down = (e) => { e.preventDefault(); b.classList.add('down'); corridor.setForward(true); };
-  const up = () => { b.classList.remove('down'); corridor.setForward(false); };
+  const down = (e) => { e.preventDefault(); b.classList.add('down'); corridor.setForward(true); if (way) way.setForward(true); };
+  const up = () => { b.classList.remove('down'); corridor.setForward(false); if (way) way.setForward(false); };
   b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
 }
 

@@ -84,9 +84,9 @@
   <script src="js/ui/lumen_audio_space.js?v=260810b"></script><!-- 260810b 씬 소리 = linear 감쇠: 반경에서 0 (inverse 는 온 맵에 샘) -->
   <script src="js/ui/lumen_scene_ghosts.js?v=260714"></script>
   <script src="js/ui/lumen_scene_mannequins.js?v=260802e"></script><!-- 260802e 목격 v2 시네마틱 몸 -->
-  <script src="js/ui/tem_drift_stage.js?v=261119b"></script><!-- 261118 표류 무대 실험 스위치 (?drift=1) — 꺼져 있으면 무동작 -->
-  <script src="js/ui/tem_piece_stage.js?v=261119g"></script>
-  <script src="js/ui/tem_piece_props.js?v=261119m"></script><!-- 261118 조각 꾸밈(작가가 세운 사물·마네킹)과 다시 오기 --><!-- 261118 조각 방 (표류 스위치 위에서만 동작, &piece=0 으로 끔) -->
+  <script src="js/ui/tem_drift_stage.js?v=261120c"></script><!-- 261118 표류 무대 실험 스위치 (?drift=1) — 꺼져 있으면 무동작 -->
+  <script src="js/ui/tem_piece_stage.js?v=261120j"></script>
+  <script src="js/ui/tem_piece_props.js?v=261120c"></script><!-- 261118 조각 꾸밈(작가가 세운 사물·마네킹)과 다시 오기 --><!-- 261118 조각 방 (표류 스위치 위에서만 동작, &piece=0 으로 끔) -->
   <script src="js/shared/tem_object_anchors.js?v=261118a"></script><!-- 260730 사물 자리 계산 (admin 공용) · 261118a 표류 옵션(기본 무동작) -->
   <script src="js/ui/lumen_scene_objects.js?v=261118a"></script><!-- 260810a 자막 확대 (대화창 지문 크기) + 하단 스택 재배치 -->
   <script src="js/ui/tem_mobile_controls.js?v=260806"></script><!-- 260806 모바일 1인칭: 십자 패드 + 화면 쓸기 + 길게 누르기 -->
@@ -7535,7 +7535,7 @@
 
           // ─── Door look-back sequence (after mono2 fades) ─────
           var _doorSeqDone = false;
-          var _doorSeqSkipped = false;
+          var _doorSeqSkipped = !!(window.TemPiece && window.TemPiece.on);   // 261120 조각 방: 출구문도, 그 안내도 없다
           var mono3 = lang === 'ko' ? '나갈 땐, 저기로 나가는 게 좋겠어.' : 'When it\'s time to leave, that\'s the way out.';
 
           function _skipDoorSeq() {

@@ -61,3 +61,6 @@ tools/plausibility/out/raw-*.json
 docs/.obsidian/workspace*.json
 docs/.obsidian/cache
 docs/.trash/
+
+# 순회 검수 보고서·화면 사진 (원고 문장이 찍힘 — 공개 저장소에 올리지 않음)
+.walk-critic/

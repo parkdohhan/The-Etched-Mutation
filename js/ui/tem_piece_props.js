@@ -206,7 +206,9 @@
     clear();
     var THREE = global.THREE, scene3 = rt.getScene();
     propsOf(id).forEach(function (prop) {
-      var p = clampIn(id, Number(prop.x) || 0, Number(prop.z) || 0), y = rt.gH(p.x, p.z);
+      var p = clampIn(id, Number(prop.x) || 0, Number(prop.z) || 0);
+      if (prop.kind !== 'build' && TP.intoRoom) p = TP.intoRoom(id, p.x, p.z);     // a closed room keeps its things inside
+      var y = rt.gH(p.x, p.z);
       var rec = { prop: prop, group: null, x: p.x, y: y + 1.2, z: p.z, loop: null };
       if (prop.kind === 'object') {                        // figures are stood by the mannequin module (see entries())
         var group = new THREE.Group();
@@ -228,7 +230,7 @@
         }
         // no model = not stood (no stand-in blocks). A sound set on it still comes from the spot.
       } else if (prop.kind === 'build') {
-        var be = models()[prop.model];
+        var be = TP.roomsOn ? models()[prop.model] : null;       // rooms are off: walls, floors and room furniture are not stood
         if (be && be.path) {
           var bx = Number(prop.x) || 0, bz = Number(prop.z) || 0, th = Number(prop.rot) || 0;
           var bg = new THREE.Group();
@@ -270,7 +272,7 @@
         if ((dug[rec.key] || 0) >= DIGS) raise(rec, true);
         else {
           var g2 = new THREE.Group();
-          var mound = new THREE.Mesh(new THREE.SphereGeometry(0.62, 28, 14), new THREE.MeshStandardMaterial({ color: 0x1d1c23, roughness: 1 }));
+          var mound = new THREE.Mesh(new THREE.SphereGeometry(0.62, 28, 14), new THREE.MeshStandardMaterial({ color: 0x0b1030, roughness: 1 }));
           mound.scale.set(1, 0.22, 1); mound.name = 'mound';
           var glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex(), transparent: true, opacity: 0.4, depthWrite: false, fog: true }));
           glint.scale.set(0.5, 0.5, 1); glint.position.y = 0.42; glint.name = 'glint';

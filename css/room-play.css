@@ -142,3 +142,17 @@ canvas.rp-canvas.on { opacity: 1; pointer-events: auto; }
 @media (prefers-reduced-motion: reduce) {
   .rp-door.new .rp-leaf, .rp-wait { animation: none; }
 }
+
+/* ── the way (261120, ?way=1): the text goes, the door stays, the canvas underneath takes the clicks ── */
+.rp-column { transition: opacity 1800ms ease; }
+#rpRoom.way { pointer-events: none; }
+#rpRoom.way .rp-column { opacity: 0; }
+#rpRoom.way .rp-door { pointer-events: none; }
+canvas#rpWay { transition: opacity 900ms ease; }
+#rpCaption.way .rp-cap-line { font-size: 1rem; letter-spacing: 0.06em; line-height: 2; max-width: 34rem; margin: 0 auto; padding: 0 1.4rem; word-break: keep-all; }
+.rp-door .rp-leaf.ascii { width: auto !important; height: auto !important; border: 0 !important; background: none !important; box-shadow: none !important; animation: none !important; transform: none !important; }
+.rp-door .rp-leaf.ascii::before, .rp-door .rp-leaf.ascii::after { display: none !important; }
+.rp-door .rp-leaf.ascii canvas { display: block; height: 150px; width: auto; opacity: 0.75; transition: opacity 900ms ease; }
+.rp-door.new .rp-leaf.ascii canvas { height: 210px; opacity: 1; animation: rpAsciiBreath 6s ease-in-out infinite; }
+.rp-door:hover .rp-leaf.ascii canvas { opacity: 1; }
+@keyframes rpAsciiBreath { 0%, 100% { filter: drop-shadow(0 0 6px rgba(196,168,130,0.18)); } 50% { filter: drop-shadow(0 0 16px rgba(196,168,130,0.42)); } }
