@@ -36,6 +36,25 @@ const APPLY = process.argv.includes('--apply');
 // --min-len N : a line is used only if it has at least N letters after its connective (0 = any). Staging, not definition:
 // the alignment value cannot tell a careless line from a meant one, so a showing may keep the short ones out.
 const MIN_LEN = Number(arg('min-len', 0));
+// --source room (default) | audience : whose lines. 'audience' = every row a person left on this memory on any stage
+//   (persona_id empty), for a memory with real walks on the terrain stage and none yet on the room stage.
+// --to columns (default) | meta : where the layers go. 'meta' = scenes.meta.room_text {"2","3"}, read only by the
+//   room stage — the terrain stage keeps reading text_stage_N, so a memory shown on both is not changed there.
+const SOURCE = arg('source', 'room'), TO = arg('to', 'columns');
+globalThis.window = globalThis.window || {};
+const Safety = await import('../../js/safety.js').then(() => globalThis.window.LumenSafety).catch(() => null);
+/** A person's line may enter a scene's text only through the stage's own absorb filter, and never if it reads as a crisis. */
+function cleared(text) {
+  if (CRISIS.test(text)) return null;
+  if (!Safety) return SOURCE === 'audience' ? null : text;                 // no filter, no real people's words
+  const c = Safety.detectCrisis ? Safety.detectCrisis(text) : { level: 'safe' };
+  if (c && (c.level === 'high' || c.level === 'mid')) return null;
+  const v = Safety.safetyForAbsorb(text);
+  if (!v || !v.ok) return null;
+  if (v.sanitized && v.sanitized !== text) return null;                    // the filter had to replace a word: the line is left out rather than shown altered
+  if (/[ㄱ-ㅎㅏ-ㅣ]/.test(text)) return null;                                  // a stray half-typed letter: not set into a scene's text
+  return text.replace(/^(그런데|하지만|그리고|그럼에도 불구하고|그래서|그러다가|그러자|그 순간)\s+\1\s+/, '$1 ');
+}
 const applied = [];
 const cfg = fs.readFileSync(path.join(ROOT, 'js', 'lib', 'config.js'), 'utf8');
 const SB = cfg.match(/'(https:\/\/[a-z0-9]+\.supabase\.co)'/)[1], KEY = cfg.match(/'(eyJ[A-Za-z0-9_\-.]+)'/)[1];
@@ -51,7 +70,9 @@ const mem = (await get('memories?' + (/^[0-9a-f]{8}-/.test(MEMORY) ? 'id' : 'cod
 if (!mem) throw new Error('memory not found');
 const scenes = await get('scenes?memory_id=eq.' + mem.id + '&select=id,scene_order,text,text_stage_1,void_info&order=scene_order');
 const all = await get('plays?memory_id=eq.' + mem.id + '&select=run_id,scene_id,created_at,persona_id,alignment,mismatch_type,user_emotion,dialog_turns&run_id=not.is.null&order=created_at&limit=5000');
-const rows = all.filter((p) => p.persona_id !== 'room-test' && Array.isArray(p.dialog_turns) && p.dialog_turns[0] && p.dialog_turns[0].stage === 'room_v1');
+const rows = SOURCE === 'audience'
+  ? all.filter((p) => !p.persona_id && Array.isArray(p.dialog_turns) && p.dialog_turns.length)
+  : all.filter((p) => p.persona_id !== 'room-test' && Array.isArray(p.dialog_turns) && p.dialog_turns[0] && p.dialog_turns[0].stage === 'room_v1');
 const runs = new Set(rows.map((r) => r.run_id));
 const by = {}; for (const r of rows) (by[r.persona_id || '(audience)'] = by[r.persona_id || '(audience)'] || new Set()).add(r.run_id);
 console.log(mem.code, '— room rows', rows.length, '· runs', runs.size, '·', Object.entries(by).map(([k, v]) => k + ' ' + v.size).join(', '));
@@ -66,7 +87,7 @@ for (const s of scenes) {
   if ((s.void_info && s.void_info.sceneVoid) || /^[…\s.]*$/.test(s.text || '')) continue;
   const lines = [];
   for (const r of rows.filter((x) => x.scene_id === s.id)) for (const t of r.dialog_turns) {
-    const text = String(t.raw_text || '').trim();
+    const text0 = String(t.raw_text || '').trim().replace(/\s+/g, ' '), text = text0 && text0.length <= 60 ? (cleared(text0) || '') : '';   // one line's length; through the safety filter
     if (text && !CRISIS.test(text) && text.replace(/^(그런데|하지만|그리고|그럼에도 불구하고|그래서|그러다가|그러자|그 순간)\s*/, '').length >= MIN_LEN) lines.push({ run: r.run_id, text, a: Number(t.alignment != null ? t.alignment : r.alignment) || 0, who: r.persona_id || 'audience' });
   }
   if (!lines.length) { report.push({ order: s.scene_order, rows: 0 }); continue; }
@@ -82,8 +103,9 @@ for (const s of scenes) {
     layer3 = r.ok && r.data && typeof r.data.text_stage_3 === 'string' && r.data.text_stage_3.trim() ? r.data.text_stage_3.trim() : null;
     if (!layer3) console.warn('  layer 3 failed for scene', s.scene_order, r.status, JSON.stringify(r.data).slice(0, 160));
   }
-  const prov = { at: new Date().toISOString(), rule: 'juxtaposition_v1: highest + lowest alignment line of the scene, before its last sentence', runs: runs.size, lines: picked.map((l) => ({ run_id: l.run, alignment: +l.a.toFixed(4), who: l.who })), layer3: layer3 ? 'contaminate-text hypercompletion' : null };
-  sql.push(`update scenes set text_stage_2 = ${dq(layer2)}, ${layer3 ? 'text_stage_3 = ' + dq(layer3) + ', ' : ''}meta = meta || jsonb_build_object('stage_bake', ${dq(JSON.stringify(prov))}::jsonb) where id = '${s.id}'; -- #${s.scene_order}`);
+  const prov = { at: new Date().toISOString(), source: SOURCE, to: TO, rule: 'juxtaposition_v1: highest + lowest alignment line of the scene, before its last sentence', runs: runs.size, lines: picked.map((l) => ({ run_id: l.run, alignment: +l.a.toFixed(4), who: l.who })), layer3: layer3 ? 'contaminate-text hypercompletion' : null };
+  if (TO === 'meta') sql.push(`update scenes set meta = meta || jsonb_build_object('room_text', ${dq(JSON.stringify(Object.assign({}, layer3 ? { 3: layer3 } : {}, { 2: layer2 })))}::jsonb, 'stage_bake', ${dq(JSON.stringify(prov))}::jsonb) where id = '${s.id}'; -- #${s.scene_order}`);
+  else sql.push(`update scenes set text_stage_2 = ${dq(layer2)}, ${layer3 ? 'text_stage_3 = ' + dq(layer3) + ', ' : ''}meta = meta || jsonb_build_object('stage_bake', ${dq(JSON.stringify(prov))}::jsonb) where id = '${s.id}'; -- #${s.scene_order}`);
   applied.push({ id: s.id, order: s.scene_order, text_stage_2: layer2, text_stage_3: layer3, prov });
   report.push({ order: s.scene_order, rows: lines.length, hi: hi.a.toFixed(2) + ' ' + hi.text, lo: lo ? lo.a.toFixed(2) + ' ' + lo.text : null, layer2, layer3 });
 }
@@ -102,7 +124,8 @@ if (APPLY) {
     const cur = await sb.from('scenes').select('meta').eq('id', a.id).single();
     if (cur.error) { console.warn('  apply: read failed #' + a.order, cur.error.message); continue; }
     const patch = { text_stage_2: a.text_stage_2, meta: Object.assign({}, cur.data.meta, { stage_bake: a.prov }) };
-    if (a.text_stage_3) patch.text_stage_3 = a.text_stage_3;
+    if (TO === 'meta') { delete patch.text_stage_2; patch.meta.room_text = Object.assign({}, a.text_stage_3 ? { 3: a.text_stage_3 } : {}, { 2: a.text_stage_2 }); }
+    else if (a.text_stage_3) patch.text_stage_3 = a.text_stage_3;
     const u = await sb.from('scenes').update(patch).eq('id', a.id).select('id');
     if (u.error || !u.data || !u.data.length) console.warn('  apply: write failed #' + a.order, u.error ? u.error.message : '0 rows'); else ok++;
   }

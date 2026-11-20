@@ -116,14 +116,20 @@ async function boot() {
 }
 
 // ── which text does this visit read ─────────────────────────────────────────
+// A layer of a scene's text. meta.room_text = { "2": …, "3": … } is the room stage's own copy of the later layers
+// (261121: a memory that also lives on the terrain stage keeps its text_stage_N columns for that stage untouched).
+function layerOf(scene, n) {
+  const own = scene.meta && scene.meta.room_text && scene.meta.room_text[String(n)];
+  return (typeof own === 'string' && own.trim()) ? own : scene['text_stage_' + n];
+}
 function stageText(scene, visitN) {
   const depth = Number(run.memory.cont_depth) || 0;
-  let st = depth <= 0 ? 0 : (depth >= DEPTH_STAGE_3 && scene.text_stage_3) ? 3 : (depth >= DEPTH_STAGE_2 && scene.text_stage_2) ? 2 : scene.text_stage_1 ? 1 : 0;
+  let st = depth <= 0 ? 0 : (depth >= DEPTH_STAGE_3 && layerOf(scene, 3)) ? 3 : (depth >= DEPTH_STAGE_2 && layerOf(scene, 2)) ? 2 : layerOf(scene, 1) ? 1 : 0;
   st = Math.min(3, st + (visitN - 1));                       // every return reads one layer further from the first telling
   const rs = riggedStage(rigOf(run.memory, qs), visitN);     // a rigged showing names the layer per visit (rig.js)
   if (rs != null) st = rs;
-  while (st > 0 && !scene['text_stage_' + st]) st--;
-  return { stage: st, text: st ? scene['text_stage_' + st] : scene.text };
+  while (st > 0 && !layerOf(scene, st)) st--;
+  return { stage: st, text: st ? layerOf(scene, st) : scene.text };
 }
 function sceneLabel(scene) {
   const e = Array.isArray(scene.echo_words) ? scene.echo_words : [];

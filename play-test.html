@@ -4787,6 +4787,7 @@
     const { data, error } = await sb.from('plays')
       .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id')
       .eq('memory_id', game.memoryId)
+      .or('dialog_turns->0->>stage.is.null,dialog_turns->0->>stage.neq.room_v1')   // 261121: no room-stage rows here (see the first load)
       .order('created_at');
     if (!error) game.plays = data || [];
   }
@@ -5284,6 +5285,9 @@
         // — 오염도 평균·터치수·재생에 섞이면 "인구 격리" 약속(자료스키마 §5)이 깨진다.
         .select('user_emotion, user_reason, alignment, mismatch_type, created_at, scene_id, persona_id')
         .eq('memory_id', memoryId)
+        // 261121: 글 방(room-play)의 걸음 줄은 이 무대에 섞지 않는다 — 시험·가짜 관객 줄까지 지형과 재생에 들어오고 있었다
+        // (js/roomplay/data.js 의 약속: room_v1 줄은 지형 무대의 걸음과 섞이지 않는다).
+        .or('dialog_turns->0->>stage.is.null,dialog_turns->0->>stage.neq.room_v1')
         .order('created_at'),
       sb.from('memories')
         .select('id, title, layers, cont_stage, cont_drift, cont_fixation, cont_depth, cont_last_mismatch, ghost_condensation_points, terrain_shape, meta')

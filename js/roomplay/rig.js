@@ -1,7 +1,8 @@
 /**
  * Room-play rig (2026-11-20) — an authored route laid over the engine, for a showing that must not fail.
  *
- * Switch: memories.meta.rig = { spine: [scene_order…], stages: [stage on visit 1, 2, 3…], ghost_min_len }.
+ * Switch: memories.meta.rig = { spine: [scene_order…], rib_every, stages: [stage on visit 1, 2, 3…], ghost_min_len }.
+ *   rib_every (default 1): a room of the past after every N-th spine room (2 = walk, walk, past, walk, walk, past …).
  * No such key (or ?rig=0) = the stage as it was: the engine alone names the door.
  *
  * What it fixes (measured with 30 simulated walks on GWON-001, docs/글방_가짜관객_변이굽기-261120.md §8): the door
@@ -42,6 +43,8 @@ export function riggedDoor(o) {
   const ahead = spine.filter((s) => !o.visited.has(s.id));
   const toSpine = () => ({ scene: ahead[0] || end, mode: 'new', pattern: o.pattern, ranked: [], shadow: null, rig: true });
   if (!spineIds.has(o.origin.id)) return toSpine();                       // from the past: back to the walk
+  const every = Math.max(1, Number(o.rig.rib_every) || 1), walked = spine.filter((s) => o.visited.has(s.id)).length;
+  if (walked % every !== 0) return toSpine();                             // not yet time for a room of the past
   // from the walk: one room of the past, the engine's own choice among the rooms off the spine
   const closed = new Set(o.visited); spineIds.forEach((id) => closed.add(id));
   const pick = o.engine.pickNext({ origin: o.origin, pattern: o.pattern === 'fixation' ? 'bridge' : o.pattern, userEmotion: o.userEmotion, isVoid: o.isVoid, visited: closed });
