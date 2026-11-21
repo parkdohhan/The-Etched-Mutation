@@ -68,38 +68,56 @@ let cosmos, talk, map, air;
 const V3 = (a) => new window.THREE.Vector3(a[0], a[1], a[2]);
 const sceneById = (id) => run.scenes.find((s) => s.id === id);
 
-// ── sound: the memory's own sound underneath, a scene's sound when near its thing ──────────
+// ── sound: a scene's sound belongs to that scene alone ─────────────────────
+// A sound assigned to a scene (scenes.meta.sound_url) is heard only where that scene is: under its text, and near
+// its thing — loudest there, gone at a distance. It is never a bed under the whole walk: between scenes, on the way,
+// at another scene, in the black passage and in the ending there is none of it (author, 261121: "the bell keeps
+// ringing"). One audio element per scene; nothing is shared. Nothing is played for the memory as a whole.
+const SOUND_FULL = 13, SOUND_REACH = 42;          // staging (free values): full inside · gone beyond, in the place's units; the reach is scaled by the scene's own sound_radius (15 = as is)
+const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const soundOf = (scene) => { const m = scene.meta || {}; return { url: m.sound_url || null, vol: m.sound_volume != null ? Number(m.sound_volume) : 0.5 }; };
 function createAir() {
-  const mk = () => { const el = new Audio(); el.loop = true; el.preload = 'auto'; el.volume = 0; return { el, url: null, target: 0, level: 0, base: 0.5 }; };
-  const bed = mk(), near = mk(); let last = performance.now();
-  const load = (c, url, base) => { c.base = base == null ? 0.5 : base; if (c.url === url) return; c.url = url; c.level = 0; c.el.volume = 0; if (!url) { c.el.pause(); c.el.removeAttribute('src'); return; } c.el.src = url; const p = c.el.play(); if (p && p.catch) p.catch(() => {}); };
+  const chans = new Map();                        // scene id → { o, el, url, base, level, target, retry }
+  let focusId = null, hushed = false, last = performance.now();
+  function make(scene) {
+    const s = soundOf(scene); if (!s.url) return null;
+    const el = new Audio(); el.loop = true; el.preload = 'auto'; el.volume = 0; el.src = s.url;
+    const c = { o: scene.scene_order, el, url: s.url, base: s.vol, level: 0, target: 0, retry: 0 };
+    chans.set(scene.id, c);
+    return c;
+  }
+  const play = (c, now) => { if (now < c.retry) return; c.retry = now + 600; const p = c.el.play(); if (p && p.catch) p.catch(() => {}); };   // a browser may hold sound back until the first touch
   (function tick() {
     requestAnimationFrame(tick);
-    const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; const k = 1 - Math.exp(-dt / 1.4);
-    for (const c of [bed, near]) { c.level += (c.target - c.level) * k; const v = Math.max(0, Math.min(1, c.level * c.base)); if (Math.abs(c.el.volume - v) > 0.002) c.el.volume = v; }
+    const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
+    for (const c of chans.values()) {
+      if (hushed) c.target = 0;
+      c.level += (c.target - c.level) * (1 - Math.exp(-dt / (c.target > c.level ? 1.4 : hushed ? 0.22 : 0.6)));   // it comes in slowly, goes out quicker, and is cut short when a passage begins
+      if (c.target < 0.002 && c.level < 0.004) c.level = 0;
+      const v = Math.max(0, Math.min(1, c.level * c.base)); if (Math.abs(c.el.volume - v) > 0.002) c.el.volume = v;
+      if (c.level > 0 && c.el.paused) play(c, now);
+      else if (c.level === 0 && !c.el.paused) c.el.pause();                                  // out of hearing it does not run at all
+    }
   })();
-  const kick = () => { for (const c of [bed, near]) if (c.url && c.el.paused) { const p = c.el.play(); if (p && p.catch) p.catch(() => {}); } };
-  window.addEventListener('pointerdown', kick); window.addEventListener('keydown', kick);   // a browser may hold sound back until the first touch
+  const kick = () => { const now = performance.now(); for (const c of chans.values()) if (c.level > 0 && c.el.paused) play(c, now); };
+  window.addEventListener('pointerdown', kick); window.addEventListener('keydown', kick);
   return {
-    bed(url, base, level) { load(bed, url, base); bed.target = url ? (level == null ? 1 : level) : 0; },
-    bedLevel(v) { bed.target = bed.url ? v : 0; },
-    near(url, base) { load(near, url, base); },
-    nearLevel(v) { near.target = near.url ? v : 0; },
-    fade() { bed.target = 0; near.target = 0; },
-    bedUrl: () => bed.url,
-    state: () => [bed, near].map((c) => ({ url: c.url ? c.url.split('/').pop() : null, target: +c.target.toFixed(2), level: +c.level.toFixed(2), paused: c.el.paused })),
+    /** The walker is `d` from this scene's thing: its sound is that loud (and only its own). */
+    hear(scene, d) {
+      let t;
+      if (hushed) t = 0;
+      else if (focusId === scene.id) t = 1;
+      else { const rad = Number(scene.meta && scene.meta.sound_radius) || 15, reach = SOUND_REACH * Math.max(0.6, Math.min(1.4, rad / 15)), k = 1 - smooth(SOUND_FULL, reach, d); t = k * k; }
+      const c = chans.get(scene.id) || (t > 0.001 ? make(scene) : null);
+      if (c) c.target = t;
+    },
+    /** Before its thing stands anywhere (the first text on the dark): this scene's sound at full, if it has one. Returns whether it has. */
+    focus(scene) { focusId = scene ? scene.id : null; if (!scene) return false; const c = chans.get(scene.id) || make(scene); if (c) c.target = 1; return !!c; },
+    /** A passage between scenes, and the ending: silence. */
+    hush(on) { hushed = !!on; },
+    fade() { hushed = true; },
+    state: () => Array.from(chans.values()).map((c) => ({ o: c.o, url: c.url.split('/').pop(), level: +c.level.toFixed(2), target: +c.target.toFixed(2), volume: +c.el.volume.toFixed(2), paused: c.el.paused })),
   };
-}
-const soundOf = (scene) => { const m = scene.meta || {}; return { url: m.sound_url || null, vol: m.sound_volume != null ? Number(m.sound_volume) : 0.5 }; };
-/** The memory's own sound: named by the memory, else the sound of the scene that holds its closing sentence, else the first scene that has one. */
-function repSound() {
-  const mm = run.memory.meta || {};
-  if (mm.rep_sound_url) return { url: mm.rep_sound_url, vol: mm.rep_sound_volume != null ? Number(mm.rep_sound_volume) : 0.6 };
-  const key = String(run.memory.completed_sentence || '').replace(/\s+/g, '');
-  const withSound = run.scenes.filter((s) => soundOf(s).url);
-  const hit = key && withSound.find((s) => String(s.text || '').replace(/\s+/g, '').includes(key));
-  const s = hit || withSound[0];
-  return s ? soundOf(s) : { url: null, vol: 0 };
 }
 
 // ── which text does a visit read (the room stage's rules, js/roomplay/main.js) ─────────────
@@ -240,7 +258,6 @@ async function boot() {
   let loaded;
   try { loaded = await data.loadMemory(ref); } catch (e) { line.textContent = ko ? '기억을 불러오지 못했습니다.' : 'The memory could not be loaded.'; veil(false); console.error(e); return; }
   run.memory = loaded.memory; run.scenes = loaded.scenes;
-  try { const r = await data.client().from('memories').select('completed_sentence').eq('id', run.memory.id).maybeSingle(); if (r.data) run.memory.completed_sentence = r.data.completed_sentence; } catch (_) {}   // names the memory's own sound (repSound)
   if (!run.scenes.length) { line.textContent = ko ? '이 기억에는 장면이 없습니다.' : 'This memory has no scenes.'; veil(false); return; }
   run.engine = createEngine(run.scenes, { frame: qs.get('frame') });
   [run.ghosts, run.rows] = await Promise.all([data.loadGhostLines(run.memory.id), loadLedger(run.memory.id)]);
@@ -262,9 +279,8 @@ async function boot() {
   const begin = async () => {
     $('spEntry').classList.add('gone');
     cosmos.ensureAudio();
-    const rep = repSound();
-    air.bed(rep.url, rep.vol, 0.85);                                        // the memory's own sound comes first
-    await wait(2600);
+    const has = air.focus(first);                                           // the first scene's own sound (if it has one) comes in under its text
+    await wait(has ? 2600 : 900);
     if (AT === 'end') return fakeWalk().then(finish);
     if (AT === 'space') { fakeStay(first); }
     else {
@@ -447,6 +463,7 @@ async function openEyes(first) {
   const at = new T.Vector3(0, 2.6, 9.5);                                  // a little above it: a thing is read from its top as much as its side
   cosmos.placeThing(first, V3(run.Q.get(first.id)), at);
   cosmos.teleport(at, 0, 0); cosmos.face(V3(run.Q.get(first.id)));
+  air.focus(null);                                                        // from here on, the distance to a thing decides what is heard
   cosmos.setMode('held'); cosmos.start();
   dress(first, run.firstLeft);
   if (run.firstRes) afterSpeech(first, run.firstRes);
@@ -506,6 +523,7 @@ async function cross(from, to, way, kind) {
   kind = kind || (first ? 'new' : 'old');
   const leg = { from: from.scene_order, to: to.scene_order, kind, pattern: run.last ? run.last.pattern : null, said: passWord(kind, run.last ? run.last.pattern : 'bridge'), place: run.place.get(to.id) ? { d: run.place.get(to.id).d, shift: run.place.get(to.id).shift, compared: run.place.get(to.id).compared } : null };
   hint(''); nearLine(null); map.close(); $('rpWalk').classList.remove('on');
+  air.hush(true);                                                         // the passage between two scenes has no sound of either
   const fromPos = cosmos.pl.pos.clone();
   await veil(true);
   const pass = $('rpPass');
@@ -533,9 +551,9 @@ async function cross(from, to, way, kind) {
     if (run.visited.has(to.id)) { run.returns.set(to.id, (run.returns.get(to.id) || 0) + 1); run.returnDue = to.id; }   // only a scene that was read can be found changed
     if (kind !== 'new') logMove(from, to, kind === 'map' ? 'map_return' : 'door_return');
   }
-  setNearSound(to);
   syncMap();
   await veil(false);
+  air.hush(false);                                                        // the new place sounds for itself, by distance
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
   if (!run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 6000); }
   run.crossing = false;
@@ -546,7 +564,6 @@ function logMove(from, to, how) {
   data.insertPlay({ memory_id: run.memory.id, scene_id: to.id, user_emotion: null, alignment: null, mismatch_type: null, run_id: run.id, ghost_variant_id: null, persona_id: MOVE_PERSONA,
     dialog_turns: [{ stage: 'piece_v1', place: PLACE_TAG, move: how, from_scene_id: from.id, to_scene_id: to.id, at: new Date().toISOString() }] });
 }
-function setNearSound(scene) { const s = soundOf(scene); air.near(s.url && s.url !== air.bedUrl() ? s.url : null, s.vol); }
 
 // ── near a thing ────────────────────────────────────────────────────────────
 function onNear(id) {
@@ -556,7 +573,7 @@ function onNear(id) {
     const from = sceneById(run.here);
     run.legs.push({ from: from ? from.scene_order : null, to: scene.scene_order, kind: 'flight', pattern: null, said: '' });
     run.path.push(id); if (from) logMove(from, scene, 'flight');
-    run.here = id; if (run.visited.has(id)) { run.returns.set(id, (run.returns.get(id) || 0) + 1); run.returnDue = id; } setNearSound(scene); syncMap();
+    run.here = id; if (run.visited.has(id)) { run.returns.set(id, (run.returns.get(id) || 0) + 1); run.returnDue = id; } syncMap();
   }
   if (run.pending === id) { run.pending = null; if (run.returnDue === id) run.returnDue = null; stay(scene, 'door').then((res) => { cosmos.setMode('fly'); cosmos.relock(); if (cosmos.isTouch()) $('rpWalk').classList.add('on'); return afterStay(res); })
       .catch((e) => { console.error('[space] stay', e); run.busy = false; talk.hide(); if (!run.ended) { cosmos.setMode('fly'); run.pending = id; toast(ko ? '장면을 읽지 못했습니다 — 다시 다가가 주세요' : 'The scene could not be read — come near it again'); } });
@@ -599,12 +616,9 @@ async function nearLine(lines) {
 // ── the frame: sound by distance, the map ───────────────────────────────────
 let mapTick = 0;
 function onFrame(dt, time) {
-  const r = run.here && cosmos.things.get(run.here);
-  if (r && air) {
-    const d = r.pos.distanceTo(cosmos.pl.pos), k = 1 - Math.max(0, Math.min(1, (d - 6) / 40));
-    air.nearLevel(k * k);
-    const s = soundOf(r.scene);
-    air.bedLevel(run.ended ? 0 : (s.url && s.url === air.bedUrl() ? 0.35 + 0.65 * k : 0.34));
+  if (air) {
+    if (run.ended) air.fade();                                              // the ending is silent
+    else for (const r of cosmos.things.values()) air.hear(r.scene, r.pos.distanceTo(cosmos.pl.pos));
   }
   mapTick += dt;
   if (map && mapTick > 0.08) { mapTick = 0; map.walker(cosmos.pl.pos, cosmos.pl.yaw); }
