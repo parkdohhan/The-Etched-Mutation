@@ -78,9 +78,20 @@ function bindOpeningEvents() {
             v213SkipOpening = true;
         }
     } catch (_) {}
+    // 261121 우주 무대(space-play.html): 엔딩이 끝나면 오프닝이 아니라 메인 화면(메뉴)으로 간다 (작가 지시).
+    // 엔딩이 세운 표시 한 번만 따른다(읽고 바로 지운다). 아래 테스터 모드 무효화도 이 한 번은 받지 않는다.
+    // 옛 `tem_skip_opening_once`(옛 지형 무대의 메뉴 복귀)는 그대로 — 그쪽 동작은 바꾸지 않았다.
+    let menuAfterEnding = false;
+    try {
+        if (sessionStorage.getItem('tem_menu_after_ending') === '1') {
+            menuAfterEnding = true;
+            sessionStorage.removeItem('tem_menu_after_ending');
+        }
+    } catch (_) {}
+    if (menuAfterEnding) v213SkipOpening = true;
     // 260802 테스터 모드 — 재방문이든 뭐든 오프닝을 매번 처음부터 보여준다.
     // (테스터마다 같은 진입을 겪어야 반응을 비교할 수 있다. 풀버전은 위 규칙 그대로.)
-    if (isTesterMode() && v213SkipOpening) {
+    if (isTesterMode() && v213SkipOpening && !menuAfterEnding) {
         v213SkipOpening = false;
         console.info('[opening] 테스터 모드 — 재방문 오프닝 skip 무시, 오프닝 강제 표시');
     }

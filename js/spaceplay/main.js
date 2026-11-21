@@ -665,7 +665,10 @@ async function finish() {
       others: othersWalks(), title: run.memory.title || '', scroll: $('spScroll'), scrollInner: $('spScrollInner') });
   } catch (e) { console.error('[space] finale', e); toast(ko ? '끝 화면을 그리지 못했습니다' : 'The ending could not be drawn'); await wait(2500); }
   await veil(true);
-  location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './');   // the site's front page (a dev server may answer '/index.html' with nothing; '/' is served everywhere)
+  // after the ending: the main screen (the menu), not the opening (author, 261121). index.html reads this once and skips the opening (js/app/bindEvents.js)
+  const back = qs.get('back');
+  if (!back) { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} }
+  location.href = back || (location.protocol === 'file:' ? 'index.html' : './');   // the site's front page (a dev server may answer '/index.html' with nothing; '/' is served everywhere)
 }
 /** The walks of everyone before, as scene sequences (for the ending's other threads). */
 function othersWalks() {
