@@ -60,6 +60,12 @@ let _finderSessionSeq = 0;
 //
 // 스위치 본체는 ./testerMode.js (bindEvents.js 도 같은 스위치를 본다).
 
+// === 우주 무대 (2026-11-21) ===
+// 이 코드의 기억은 오프닝 문을 지나면 옛 지형 무대(play-test) 대신 떠 있는 장면 무대(space-play.html)로 간다.
+// 오프닝 자체(대사·문)는 한 줄도 바꾸지 않았다 — 마지막 이동 주소만 갈린다.
+// 되돌리기 = 이 배열을 비우거나, 주소에 ?stage=terrain 을 붙여 연다. 결정 기록: docs/우주무대_결정-261121.md
+const SPACE_STAGE_CODES = ['UNDW-001'];
+
 // ─────────────────────────────────────
 // === Text Utilities ===
 // ─────────────────────────────────────
@@ -852,6 +858,13 @@ async function _handleOpeningSubmit(emotion, text) {
   // 도어 연출 도중 메뉴 복귀를 눌렀다면 페이지 강제 이동 금지.
   if (_finderSessionSeq !== mySession) {
     console.info('[opening:dialog] finder 세션 무효화(메뉴 복귀) — play-test 점프 취소');
+    return;
+  }
+  // 261121 우주 무대: 대표 기억은 떠 있는 장면 무대로 (위 SPACE_STAGE_CODES). from=opening = 이 화면의 첫 대사를 다시 묻지 않는다.
+  let _terrainOnly = false;
+  try { _terrainOnly = new URLSearchParams(location.search).get('stage') === 'terrain'; } catch (_) {}
+  if (!_terrainOnly && memory.code && SPACE_STAGE_CODES.includes(memory.code)) {
+    window.location.href = `space-play.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening`;
     return;
   }
   window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}`;
