@@ -76,9 +76,9 @@ body.sp #rpWalk { bottom: 5.5rem; }
 }
 
 /* ── how to move, said once: large, in the middle, then gone (261123) ── */
-#spGuide { position: fixed; left: 50%; top: 62%; transform: translate(-50%, -50%); z-index: 26; display: grid; gap: 1.05rem; pointer-events: none; opacity: 0; transition: opacity 2200ms ease; text-shadow: 0 0 16px #000, 0 0 30px #000; }
+#spGuide { position: fixed; left: 50%; top: 62%; transform: translate(-50%, -50%); z-index: 26; display: grid; grid-template-columns: max-content max-content; row-gap: 1.05rem; column-gap: 1.6rem; align-items: baseline; pointer-events: none; opacity: 0; transition: opacity 2200ms ease; text-shadow: 0 0 16px #000, 0 0 30px #000; }
 #spGuide.on { opacity: 1; }
-#spGuide .row { display: grid; grid-template-columns: 13.5rem auto; column-gap: 1.6rem; align-items: baseline; }
+#spGuide .row { display: contents; }   /* 261124: the key column takes the width of its longest key (an English key ran into its text) */
 #spGuide .k { text-align: right; font-size: 1.22rem; letter-spacing: 0.2em; color: var(--rp-accent); white-space: nowrap; }
 #spGuide .t { font-size: 1.12rem; letter-spacing: 0.08em; font-weight: 300; color: #d9d5dd; white-space: nowrap; }
-@media (max-width: 760px) { #spGuide { width: 88vw; gap: 0.9rem; } #spGuide .row { grid-template-columns: 1fr; row-gap: 0.15rem; text-align: center; } #spGuide .k { text-align: center; font-size: 1rem; } #spGuide .t { font-size: 0.95rem; white-space: normal; } }
+@media (max-width: 760px) { #spGuide { width: 88vw; grid-template-columns: 1fr; row-gap: 0.15rem; } #spGuide .row { display: contents; } #spGuide .k { text-align: center; font-size: 1rem; margin-top: 0.75rem; white-space: normal; } #spGuide .row:first-child .k { margin-top: 0; } #spGuide .t { text-align: center; } #spGuide .t { font-size: 0.95rem; white-space: normal; } }
