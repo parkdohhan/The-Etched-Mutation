@@ -30,6 +30,7 @@ function markedOf(core) {
 }
 
 // ── letters ─────────────────────────────────────────────────────────────────
+const h01 = (s) => { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
 const isHangul = (ch) => { const c = (ch || '').charCodeAt(0); return c >= 0xac00 && c <= 0xd7a3; };
 const jong = (ch) => (isHangul(ch) ? (ch.charCodeAt(0) - 0xac00) % 28 : -1);   // 0 = open syllable · 8 = ㄹ
 export const normLine = (l) => plain(l).replace(/[\s.!?…"“”'’]+$/g, '').replace(/\s+/g, ' ').trim();
@@ -106,7 +107,9 @@ export function createLexicon(ko, nouns) {
    * this walk, and the hole itself, do not.
    */
   function pressable(core) {
-    if (!core || core === HOLE || markedOf(core)) return null;
+    if (!core || core === HOLE) return null;
+    const mk = markedOf(core);
+    if (mk) return mk.owner === 'mine' ? null : { stem: mk.stem, josa: mk.rest };   // a word an earlier walker put in can go out again; one this walker put in cannot
     if (!ko) return /[A-Za-z]/.test(core) ? { stem: core, josa: '' } : null;
     const sp = splitJosa(core);
     if (sp && sp.stem.length === 1 && !known.has(sp.stem) && !PRON.has(sp.stem)) return { stem: core, josa: '' };   // 오는 · 가는 · 보는: one syllable before 는 is a verb, not a thing — the whole word goes
@@ -172,14 +175,44 @@ export function findHole(now, seen, last, own, lex) {
 
 // ── a text after words were taken out of it ─────────────────────────────────
 /** swaps: [{ old, neu, owner }] — every token whose word is `old` reads `neu` (its particle fitted). `neu` null = the place is empty. */
+/** A word changed, then changed again (an earlier walker's word taken out by this one): the last change is what reads. */
+function follow(swaps, s) {
+  for (let i = 0; i < 4 && s.neu != null; i++) { const n = swaps.find((t) => t !== s && t.old === s.neu); if (!n) break; s = n; }
+  return s;
+}
 export function swapCore(core, swaps) {
-  if (markedOf(core)) return null;                                      // a word that came in is not swapped again
-  for (const s of swaps) {
-    if (core === s.old) return { stem: s.neu, josa: '', swap: s };
+  const mk = markedOf(core);
+  if (mk && mk.owner === 'mine') return null;                           // a word this walker put in is not swapped again
+  for (let s of swaps) {
+    if (mk) { if (mk.stem === s.old) { s = follow(swaps, s); return { stem: s.neu, josa: s.neu == null ? '' : fitJosa(mk.rest, s.neu), swap: s }; } continue; }
+    if (core === s.old) { s = follow(swaps, s); return { stem: s.neu, josa: '', swap: s }; }
     const sp = splitJosa(core);
-    if (sp && sp.stem === s.old) return { stem: s.neu, josa: s.neu == null ? '' : fitJosa(sp.josa, s.neu), swap: s };
+    if (sp && sp.stem === s.old) { s = follow(swaps, s); return { stem: s.neu, josa: s.neu == null ? '' : fitJosa(sp.josa, s.neu), swap: s }; }
   }
   return null;
+}
+/**
+ * What earlier walkers changed, as the next walker reads it (author, 261123: "pass it on — for now, three changed → two arrive").
+ * Of each earlier run's own changes, KEEP of them stay (ceil(n·KEEP), chosen by a fixed lottery on the run id: the memory
+ * keeps most, not all). A word changed twice reads as the later change; a change of a word that itself came in collapses
+ * onto the first. Returns swaps with owner 'other'.
+ * @param journals [{ run_id, swaps: [{ out, in }] }] oldest first
+ */
+export const KEEP = 2 / 3;   // free parameter (not a definition)
+export function inheritSwaps(journals) {
+  const out = [];
+  for (const j of journals || []) {
+    const own = (j.swaps || []).filter((s) => s && s.out);
+    const n = Math.ceil(own.length * KEEP);
+    const kept = own.map((s, i) => ({ s, h: h01(j.run_id + ':' + i) })).sort((a, b) => a.h - b.h).slice(0, n).map((x) => x.s);
+    for (const s of kept) {
+      const neu = s.in == null ? null : String(s.in);
+      for (const e of out) if (e.neu != null && e.neu === s.out) e.neu = neu;
+      const dup = out.findIndex((e) => e.old === s.out); if (dup >= 0) out.splice(dup, 1);
+      out.push({ old: String(s.out), neu, owner: 'other', inherited: true, run: j.run_id });
+    }
+  }
+  return out;
 }
 export function vary(text, swaps) {
   if (!swaps || !swaps.length || !text) return text;
@@ -235,7 +268,7 @@ export function tokenise(p, lex) {
     const s = document.createElement('span'), j = document.createElement('span'); s.className = 'sb-s'; j.className = 'sb-j';
     if (t.hole) { s.textContent = HOLE; s.classList.add('sb-hole'); el.classList.add('sb-holed'); }
     else {
-      const mk = markedOf(t.core), can = mk ? null : lex.pressable(t.core);
+      const mk = markedOf(t.core), can = lex.pressable(t.core);          // (pressable refuses the hole and a word this walker put in)
       const cut = mk ? { stem: mk.stem, josa: mk.rest } : (can || { stem: t.core, josa: '' });
       s.textContent = cut.stem; j.textContent = cut.josa;
       if (mk) s.classList.add(mk.owner === 'mine' ? 'sb-mine' : 'sb-other');
@@ -301,40 +334,53 @@ export function createTyping(pace) {
 
 // ── the hole that follows ───────────────────────────────────────────────────
 /**
- * One hole, carried. Where the cursor is free it keeps beside it; where the walker looks round (no cursor) it
- * keeps under the aim point. Slow, wide, heavy: it arrives late and does not tremble.
+ * The holes carried — as many as were made (author, 261123: "let them add up"), one under another, the oldest on top
+ * and used first. Where the cursor is free they keep beside it; where the walker looks round (no cursor) they keep
+ * under the aim point. Slow, wide, heavy: they arrive late and do not tremble.
  * @param o { locked: () => boolean }
  */
 export function createHand(o) {
-  const el = document.createElement('div'); el.id = 'sbHand'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el);
-  let held = null, x = innerWidth / 2, y = innerHeight / 2, mx = null, my = null, last = performance.now(), t = 0;
+  const wrap = document.createElement('div'); wrap.id = 'sbHand'; wrap.setAttribute('aria-hidden', 'true'); document.body.appendChild(wrap);
+  const held = [];                                                    // [{ info, el }] oldest first
+  let x = innerWidth / 2, y = innerHeight / 2, mx = null, my = null, last = performance.now(), t = 0;
   window.addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; }, { passive: true });
   (function tick(now) {
     requestAnimationFrame(tick);
     const dt = Math.min(0.1, (now - last) / 1000 || 0.016); last = now; t += dt;
-    if (!held) return;
+    if (!held.length && !wrap.classList.contains('on')) return;
     const free = !(o && o.locked && o.locked()) && mx != null && !('ontouchstart' in window && matchMedia('(pointer: coarse)').matches);
     const tx = free ? mx + 22 : innerWidth / 2 + 26, ty = free ? my + 26 : innerHeight / 2 + 34;
     const k = 1 - Math.exp(-dt / 0.42);
     x += (tx - x) * k; y += (ty - y) * k;
-    el.style.transform = 'translate3d(' + (x + 3 * Math.sin(t * 0.9)).toFixed(1) + 'px,' + (y + 2.2 * Math.sin(t * 0.62 + 1.3)).toFixed(1) + 'px,0)';
+    wrap.style.transform = 'translate3d(' + (x + 3 * Math.sin(t * 0.9)).toFixed(1) + 'px,' + (y + 2.2 * Math.sin(t * 0.62 + 1.3)).toFixed(1) + 'px,0)';
   })(performance.now());
+  const erase = async (el) => { while (el.textContent.length) { el.textContent = el.textContent.slice(0, -1); await new Promise((r) => setTimeout(r, 70)); } el.remove(); };
   return {
-    el,
-    held: () => held,
+    el: wrap,
+    /** The hole that will be used next (the oldest), or null. */
+    held: () => (held.length ? held[0].info : null),
+    count: () => held.length,
     /** @param info what the hole carries (where it was made, what was said there)  @param from a rect it comes loose from */
     async give(info, from) {
-      held = info;
-      if (from) { x = from.left; y = from.top; }
-      el.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)';
-      el.classList.add('on'); document.body.classList.add('sb-held');
+      const el = document.createElement('div'); el.className = 'sb-h'; wrap.appendChild(el);
+      held.push({ info, el });
+      if (from && held.length === 1) { x = from.left; y = from.top; wrap.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)'; }
+      wrap.classList.add('on'); document.body.classList.add('sb-held');
       await typeText(el, HOLE, { per: 120 });
     },
-    /** It is used up (or the walk ends): its letters go out. */
+    /** The oldest hole is used up: its letters go out. Returns what it carried. */
+    take() {
+      const h = held.shift(); if (!h) return null;
+      erase(h.el);
+      if (!held.length) { document.body.classList.remove('sb-held'); setTimeout(() => { if (!held.length) wrap.classList.remove('on'); }, 600); }
+      return h.info;
+    },
+    /** The walk ends: every hole goes out. */
     async drop() {
-      if (!held) return; held = null; document.body.classList.remove('sb-held');
-      while (el.textContent.length) { el.textContent = el.textContent.slice(0, -1); await new Promise((r) => setTimeout(r, 70)); }
-      el.classList.remove('on');
+      if (!held.length) return;
+      const all = held.splice(0); document.body.classList.remove('sb-held');
+      await Promise.all(all.map((h) => erase(h.el)));
+      wrap.classList.remove('on');
     },
   };
 }

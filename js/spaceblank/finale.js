@@ -223,17 +223,19 @@ export async function runFinale(o) {
       n.total++; if (n[l.who] != null) n[l.who]++;
     });
   }
-  const swaps = o.swaps || [], nOut = swaps.length, nIn = swaps.filter((w) => w.neu != null).length;
+  const swaps = o.swaps || [], nOut = swaps.length, nIn = swaps.filter((w) => w.neu != null).length, nMine = swaps.filter((w) => w.neu != null && w.owner === 'mine').length, nOth = nIn - nMine;
   let sum;
   if (ko) {
     const parts = [];
     if (n.mine) parts.push(n.mine + '줄은 당신이 썼' + (n.other ? '고' : '습니다'));
     if (n.other) parts.push(n.other + '줄은 먼저 걸은 사람이 썼습니다');
     sum = n.total + '줄 가운데 ' + (parts.length ? parts.join(', ') : '당신이 쓴 줄은 없습니다') + '.' + (n.changed ? ' ' + n.changed + '줄은 여러 번 읽히는 사이에 달라진 문장입니다.' : '');
-    if (nOut) sum += ' 낱말 ' + nOut + '개가 빠졌고, ' + (nIn ? nIn + '개 자리에 당신이 한 말이 들어갔습니다.' : '그 자리는 비어 있습니다.');
+    if (nOut) sum += ' 낱말 ' + nOut + '개가 빠졌고, ' + (!nIn ? '그 자리는 비어 있습니다.' : [nMine ? nMine + '개 자리에 당신이 한 말이' : '', nOth ? nOth + '개 자리에 먼저 걸은 사람의 말이' : ''].filter(Boolean).join(', ') + ' 들어갔습니다.');
+    if (o.inherited) sum += ' 먼저 걸은 사람이 바꾼 낱말 ' + o.inherited + '개는 바뀐 채로 읽혔습니다.';
   } else {
     sum = 'Of ' + n.total + ' lines, ' + (n.mine ? n.mine + ' are yours' : 'none are yours') + (n.other ? ', ' + n.other + ' were left by someone who walked before you' : '') + '.' + (n.changed ? ' ' + n.changed + ' changed while being read again and again.' : '');
-    if (nOut) sum += ' ' + nOut + (nOut === 1 ? ' word went out' : ' words went out') + (nIn ? ', and what you had said came into ' + nIn + (nIn === 1 ? ' place.' : ' places.') : '; the places stay empty.');
+    if (nOut) sum += ' ' + nOut + (nOut === 1 ? ' word went out' : ' words went out') + (!nIn ? '; the places stay empty.' : '; ' + [nMine ? 'what you had said came into ' + nMine + (nMine === 1 ? ' place' : ' places') : '', nOth ? 'what someone before you said came into ' + nOth + (nOth === 1 ? ' place' : ' places') : ''].filter(Boolean).join(', ') + '.');
+    if (o.inherited) sum += ' ' + o.inherited + (o.inherited === 1 ? ' word someone before you changed was read as changed.' : ' words people before you changed were read as changed.');
   }
   add('sum', sum);
   const key = add('key', '');

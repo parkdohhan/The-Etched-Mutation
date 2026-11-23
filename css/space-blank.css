@@ -21,10 +21,22 @@ body.sb-held .sb-t.sb-can:hover .sb-s::after { content: ''; display: block; heig
 /* the walker's own earlier line standing in a scene come back to */
 .rp-line.sb-old { opacity: 0.78; }
 
-/* ── the hole that follows ── */
+/* ── the holes that follow (one under another, the oldest on top) ── */
 #sbHand { position: fixed; left: 0; top: 0; z-index: 40; pointer-events: none; font-size: clamp(1.02rem, 1.9vw, 1.16rem); font-weight: 300; color: var(--rp-accent);
   letter-spacing: 0.02em; text-shadow: 0 0 16px #000, 0 0 4px #000, 0 0 22px rgba(196,168,130,0.25); opacity: 0; transition: opacity 1800ms ease; will-change: transform; white-space: nowrap; }
 #sbHand.on { opacity: 0.92; }
+#sbHand .sb-h { display: block; line-height: 1.55; min-height: 1em; }
+#sbHand .sb-h + .sb-h { opacity: 0.78; }
+#sbHand .sb-h + .sb-h + .sb-h { opacity: 0.6; }
+
+/* ── the back door: the line said beside it, and the step in (a phone's button) ── */
+#sbDoorLine { position: fixed; left: 0; right: 0; bottom: 15vh; z-index: 22; text-align: center; pointer-events: none; padding: 0 1.5rem; font-size: 1.02rem; line-height: 2.1; font-weight: 300;
+  text-shadow: 0 0 16px #000, 0 0 4px #000; word-break: keep-all; opacity: 0; transition: opacity 1400ms ease; }
+#sbDoorLine.on { opacity: 1; }
+#sbDoorLine p { margin: 0; min-height: 1em; color: var(--rp-text); }
+#sbDoorLine .k { display: block; margin-top: 0.3rem; font-size: 0.72rem; letter-spacing: 0.14em; color: #6f6c78; min-height: 1em; }
+#sbDoorGo { position: fixed; left: 50%; bottom: 10.5rem; transform: translateX(-50%); z-index: 23; display: none; }
+#sbDoorGo.on { display: inline-block; }
 
 /* ── the ending: whose each changed word is ── */
 .sp-scroll-inner p span.sb-mine { color: var(--rp-accent); }

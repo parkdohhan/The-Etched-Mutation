@@ -36,8 +36,9 @@ import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { createStarMap } from '../spaceplay/starmap.js?v=261123a';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261123a';
-import { runFinale } from './finale.js?v=261123b2';
-import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine } from './blank.js?v=261123b2';
+import { runFinale } from './finale.js?v=261123b3';
+import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261123b3';
+import { createBackDoors } from './backdoor.js?v=261123b3';
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -81,8 +82,10 @@ const run = {
   stays: new Map(),                         // scene id → times read (a return is read in full: the 2nd, 3rd reading)
   lastA: new Map(),                         // scene id → the lines of its text as read last time (before any hole)
   holes: new Map(),                         // scene id → [word] that went out of its text there (the place stays empty)
-  swaps: [],                                // [{ old, neu, owner, at, from }] words the walker took out of the memory, and what came in
+  swaps: [],                                // [{ old, neu, owner, at, from }] words taken out of the memory and what came in — earlier walkers' (inherited) first, then this walker's
+  inherited: [],                            // the earlier walkers' changes this walker reads (blank.js inheritSwaps: two in three of each run's)
   blanks: [],                               // the journal of it: every hole made, every hole used
+  backs: new Map(), backLog: [],            // scene id → its back door (a door onto a scene already read); where each stood and where it gave onto
   Q: new Map(), place: new Map(),           // the walker's model: scene id → [x,y,z]; how each place was reached (topo.placeNext)
   doors: new Map(),                         // scene id → { way, to }
   path: [], legs: [], rooms: [], script: [],
@@ -92,7 +95,8 @@ const run = {
 window.__space = { run, mode: MODE };       // automation / inspection hook
 
 let cosmos, talk, map, air, pause, letGo = false;
-let lex, typing, hand, pressing = false, stayCtx = null;   // the blank: which words can go, how letters go and come, the hole in hand, the stay now up
+let lex, typing, hand, backs, pressing = false, stayCtx = null;   // the blank: which words can go, how letters go and come, the holes in hand, the back doors, the stay now up
+const BACK_DIST = 17;                                       // the back door stands this far from the scene (staging)
 const letGoMark = () => { letGo = true; };
 const V3 = (a) => new window.THREE.Vector3(a[0], a[1], a[2]);
 const sceneById = (id) => run.scenes.find((s) => s.id === id);
@@ -305,6 +309,7 @@ async function boot() {
   [run.ghosts, run.rows] = await Promise.all([data.loadGhostLines(run.memory.id), loadLedger(run.memory.id)]);
   { const rg = rigOf(run.memory, qs), n = rg && Number(rg.ghost_min_len); if (n > 0) run.ghosts = run.ghosts.filter((g) => String(g.utterance).trim().length >= n); }
   run.acc = accumulate(run.scenes, run.rows, run.engine.axes, [data.TEST_PERSONA]);
+  run.inherited = inheritSwaps(await loadBlankJournals(run.memory.id)); run.swaps = run.inherited.slice();   // what earlier walkers changed is read as changed (two in three)
   try { await Promise.race([document.fonts.load('300 64px "Noto Serif KR"', '기억'), new Promise((r) => setTimeout(r, 2500))]); } catch (_) {}   // letters drawn in the place use the page's serif, not a system fallback
 
   air = createAir();
@@ -316,12 +321,15 @@ async function boot() {
   cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
   map = createStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
+  // the back doors (a door onto a scene already read) live in the place, so they come after it
+  backs = createBackDoors({ cosmos, ko, canEnter: () => !run.busy && !run.crossing && !run.ended && !map.isOpen() && !(pause && pause.isOpen()),
+    onEnter: (d) => { const from = sceneById(d.from), to = sceneById(d.to); if (from && to && !run.crossing && !run.busy) { run.backLog.push({ entered: from.scene_order, to: to.scene_order }); cross(from, to, null, 'old'); } } });
   // Esc, at any time: the pause sheet (brightness · volume · leave). The browser keeps the Esc that lets the cursor go, so cosmos tells us (onEscape) too.
   pause = createEscMenu({ ko, setVolume: (v) => { air.setMaster(v); cosmos.setVolume(v); }, busy: () => map.isOpen(),
     onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
     onClose: (byHand) => { letGo = false; if (byHand && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !map.isOpen()) cosmos.relock(); },
     onLeave: () => { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); } });
-  Object.assign(window.__space, { cosmos, talk, map, air, finish, pause, hand, lex, useBlank, HOLE });
+  Object.assign(window.__space, { cosmos, talk, map, air, finish, pause, hand, lex, useBlank, HOLE, backs });
   setupFlyButton();
   // the map without first letting the cursor go: the right mouse button (author, 261123 — Esc, then a press, was one step too many)
   window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly') map.open(); });
@@ -363,6 +371,14 @@ async function loadLedger(memoryId) {
   }
   return out;
 }
+/** Earlier walks of this stage on this memory, oldest first, with the words each took out and what came in (run_journals.run_traces.swaps). */
+async function loadBlankJournals(memoryId) {
+  try {
+    const r = await data.client().from('run_journals').select('run_id, created_at, run_traces').eq('memory_id', memoryId).eq('input_form', data.STAGE_TAG).order('created_at');
+    if (r.error) { console.warn('[blank] journals', r.error); return []; }
+    return (r.data || []).filter((j) => j.run_traces && j.run_traces.blank_form === 'blank_v1' && Array.isArray(j.run_traces.swaps)).map((j) => ({ run_id: j.run_id, swaps: j.run_traces.swaps }));
+  } catch (e) { console.warn('[blank] journals', e); return []; }
+}
 function firstScene() {
   const rig = rigOf(run.memory, qs);
   return (rig && run.scenes.find((s) => s.scene_order === rig.spine[0])) || run.scenes[0];
@@ -386,7 +402,7 @@ async function stay(scene, via, o) {
   const A = silent ? [] : sentences(vary(tv.text, run.swaps)).map(closed);    // the text as it stands now, with the words this walker took out of the memory
   const pb = (silent || back) ? { lines: [], authored: false, left: [] } : partB(scene);
   // the mismatch: a line stands now that is not what was read here → one word of it will go out (blank.js findHole). Only one hole is carried at a time.
-  const hole = (back && !silent && !hand.held()) ? findHole(A, before, run.lastA.get(scene.id) || [], own, lex) : null;
+  const hole = (back && !silent) ? findHole(A, before, run.lastA.get(scene.id) || [], own, lex) : null;   // every return can leave one more hole; they add up in the hand
   const Ashow = withHoles(A, run.holes.get(scene.id));                        // the places emptied here before stay empty
   const partA = A.map((l, k) => ({ t: Ashow[k], raw: l, who: own(l), cls: '' }));
   const partTwo = back ? partBack(scene) : pb.lines.map((l) => vary(l, run.swaps)).map((l) => ({ t: l, raw: l, who: 'text', cls: '' }));
@@ -528,7 +544,7 @@ async function useBlank(tok) {
   try {
     const old = tok.querySelector('.sb-s').textContent, fill = fillOf(lex, held, old), n = run.swaps.length;
     const swap = { old, neu: fill ? fill.stem : null, owner: fill ? fill.owner : null, at: ctx.scene.id, from: held.from };
-    hand.drop();
+    hand.take();                                                             // the oldest hole is used
     await typing.fill(tok, fill, false);
     run.swaps.push(swap);
     for (const other of Array.from(talk.body.querySelectorAll('.sb-t'))) {     // the same word, wherever else it stands in what is up
@@ -612,6 +628,7 @@ async function afterStay(res) {
   if (next.mode === 'fallback') hint(ko ? '기억의 빈틈이 다른 장면을 끌어당긴다.' : 'A gap in the memory pulls another scene toward you.', 7000);
   await wait(1500);
   raiseDoor(scene, next.scene);
+  raiseBackDoor(scene, next.scene);
   if (run.visited.size === 2 && !run.backHinted) {                         // said once: there is a reason to go back
     run.backHinted = true;
     setTimeout(() => { if (!run.ended && !run.busy && !run.crossing) hint(cosmos.isTouch() ? (ko ? '지나온 장면은 읽은 그대로 있지 않습니다 — 왼쪽 위 지도로 돌아가 볼 수 있습니다.' : 'A scene you passed does not stay as you read it — the map, top left, takes you back.') : (ko ? '지나온 장면은 읽은 그대로 있지 않습니다 — 지도(M)로 돌아가 볼 수 있습니다.' : 'A scene you passed does not stay as you read it — the map (M) takes you back.'), 11000); }, 9000 / FAST);
@@ -635,6 +652,26 @@ function raiseDoor(from, to) {
   syncMap();
   cosmos.lookToward(way.N.clone().lerp(door, 0.5).setY(door.y + 1.2), 2800);   // the eyes are turned to where it is being written
   return way;
+}
+
+/**
+ * The back door: beside the door forward, about a hundred degrees round, a door standing open onto one of the scenes
+ * already read (a fixed lottery on the run — never a scene not yet read). Through it that scene's figure is seen.
+ * One per scene, for the whole walk. None at the first scene (nothing to go back to).
+ */
+function raiseBackDoor(scene, forward) {
+  if (!backs || run.backs.has(scene.id)) return;
+  const cands = Array.from(run.visited).filter((id) => id !== scene.id && (!forward || id !== forward.id) && cosmos.things.has(id)).sort();
+  if (!cands.length) return;
+  const to = sceneById(cands[Math.floor(hashStr(run.id + scene.id + 'back') * cands.length)]);
+  const T = window.THREE, Qf = V3(run.Q.get(scene.id)), fd = run.doors.get(scene.id);
+  const f = fd && fd.way.live ? fd.way.e.clone() : horiz(new T.Vector3(1, 0, 0), run.id + scene.id);
+  const ang = (hashStr(run.id + scene.id + 'bs') < 0.5 ? -1 : 1) * Math.PI * 0.58;
+  const dir = new T.Vector3(f.x * Math.cos(ang) - f.z * Math.sin(ang), 0, f.x * Math.sin(ang) + f.z * Math.cos(ang)).normalize();
+  const at = Qf.clone().addScaledVector(dir, BACK_DIST); at.y = Qf.y - FOOT_DROP;
+  const rec = backs.raise({ from: scene.id, to: to.id, at, dir, key: run.id + scene.id + 'back', thing: cosmos.things.get(to.id) });
+  run.backs.set(scene.id, rec);
+  run.backLog.push({ at: scene.scene_order, onto: to.scene_order });
 }
 
 // ── through a door ──────────────────────────────────────────────────────────
@@ -741,6 +778,7 @@ function onFrame(dt, time) {
   }
   mapTick += dt;
   if (map && mapTick > 0.08) { mapTick = 0; map.walker(cosmos.pl.pos, cosmos.pl.yaw); }
+  if (backs) backs.tick(dt);
 }
 function onLand() { $('rpWalk').textContent = ko ? '걷기' : 'walk'; if (run.landHinted) return; run.landHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 5000); }
 function syncMap() {
@@ -770,18 +808,20 @@ function setupFlyButton() {
 async function finish() {
   if (run.ended) return; run.ended = true;
   hint(''); nearLine(null); map.close(); $('spMapWrap').classList.remove('on'); $('rpWalk').classList.remove('on'); talk.hide();
-  if (hand.held()) run.blanks.push({ unused: true, made_at: hand.held().order });
+  if (hand.count()) run.blanks.push({ unused: hand.count() });
   hand.drop();                                                              // a hole never held against anything goes out with the walk
+  if (backs) backs.hideAll();
   for (const room of run.script) for (const l of room.lines || []) if (l.who !== 'mine') { const sg = segsOf(l.t); if (sg) l.segs = sg; else l.t = plain(l.t); }   // the ending shows whose each changed word is
   if (MODE !== 'test') {
     data.writeJournal(run.memory.id, run.id, { stage: data.STAGE_TAG, place: PLACE_TAG, mode: MODE, visit_order: run.path.map((id) => sceneById(id).scene_order),
-      scenes: run.rooms, legs: run.legs, contact: run.contact, blank_form: 'blank_v1', blanks: run.blanks,
-      swaps: run.swaps.map((w) => ({ out: w.old, in: w.neu, whose: w.owner, at: sceneById(w.at).scene_order, from: sceneById(w.from).scene_order })), model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift })),
+      scenes: run.rooms, legs: run.legs, contact: run.contact, blank_form: 'blank_v1', blanks: run.blanks, back_doors: run.backLog,
+      inherited: run.inherited.map((w) => ({ out: w.old, in: w.neu, run: w.run })),   // what this walker read already changed
+      swaps: run.swaps.filter((w) => !w.inherited).map((w) => ({ out: w.old, in: w.neu, whose: w.owner, at: sceneById(w.at).scene_order, from: sceneById(w.from).scene_order })), model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift })),
       seconds: Math.round((Date.now() - run.startedAt) / 1000) });
   }
   try {
     window.__space.finale = await runFinale({ cosmos, run, lang: LANG, fast: FAST, air, typeText, wait, sceneById,
-      others: othersWalks(), title: run.memory.title || '', scroll: $('spScroll'), scrollInner: $('spScrollInner'), swaps: run.swaps });
+      others: othersWalks(), title: run.memory.title || '', scroll: $('spScroll'), scrollInner: $('spScrollInner'), swaps: run.swaps.filter((w) => !w.inherited), inherited: run.inherited.length });
   } catch (e) { console.error('[space] finale', e); toast(ko ? '끝 화면을 그리지 못했습니다' : 'The ending could not be drawn'); await wait(2500); }
   await veil(true);
   // after the ending: the main screen (the menu), not the opening (author, 261121). index.html reads this once and skips the opening (js/app/bindEvents.js)
