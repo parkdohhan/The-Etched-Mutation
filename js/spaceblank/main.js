@@ -2,15 +2,14 @@
  * Space-blank — orchestrator (2026-11-23). A copy of js/spaceplay/main.js on its own branch, with one thing added:
  *
  *   · a scene come back to is read in full again (its text as it stands now, and two exchanges) — not only "what is different"
- *   · where a line stands that is not what the walker read there, the black paper over it has lifted: a torn end hangs and sways
- *   · pressed, the black strip comes off (into the walker's hand, the words still on it) and the parchment under it is bare: the walker writes on it (Enter seals)
- *   · a strip in hand can be laid over any line of any other scene: that line is covered and the strip's sentence stands there
- *   · what was written and what was moved stays for the walk, and two in three of it reach the next walker (paper.js)
- *   (the first form — word holes, [   ] — is js/spaceblank/blank.js, retired 261123 for this one)
+ *   · where the text that stands now is not what the walker read there, one word goes out and a hole stays: [   ]
+ *   · leaving, the hole follows the walker (one at a time, kept in no list)
+ *   · held against any word of another scene's text (the walker chooses which), that word goes out; what the walker said back there comes in by itself
+ *   · from then on, in this walk, that word stands changed wherever the memory has it
  *
  * Decision record: docs/우주무대_빈칸_실험-261123.md (and docs/우주무대_결정-261121.md for everything else).
  * The place, the things, the map and the pause sheet are js/spaceplay/'s own files, unchanged.
- * test runs only: &strip=<a line> = start with a torn strip already in hand carrying that line.
+ * test runs only: &blank=<a line> = start with a hole already in hand (as if that line had been said back at the first scene).
  *
  * ── below: the space stage's own header ──
  * Space play — orchestrator (2026-11-21).
@@ -33,14 +32,13 @@ import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed } from '../roomplay/room.js';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
 import { createCosmos } from '../spaceplay/cosmos.js?v=261123a';
-import { isSilent } from '../spaceplay/things.js?v=261123c';
+import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
-import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
 import { createStarMap } from '../spaceplay/starmap.js?v=261123a';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261123a';
-import { runFinale } from './finale.js?v=261123c1';
-import { normLine, createEdits, inheritEdits, hangTab, tearLine, layStrip, dressEdit, createStrips } from './paper.js?v=261123c3';
-import { createBackDoors } from './backdoor.js?v=261123c1';
+import { runFinale } from './finale.js?v=261123b3';
+import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261123b3';
+import { createBackDoors } from './backdoor.js?v=261123b3';
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -82,10 +80,11 @@ const run = {
   shown: new Map(),                         // scene id → Set(normalised lines already read there)
   returns: new Map(),                       // scene id → times come back to
   stays: new Map(),                         // scene id → times read (a return is read in full: the 2nd, 3rd reading)
-  edits: null,                              // paper.js createEdits: what stands in place of a line — earlier walkers' (inherited) and this walker's
-  inherited: [],                            // the earlier walkers' edits this walker reads (two in three of each run's)
-  paper: [],                                // the journal of it: every strip torn, every line written, every strip laid
-  torn: [],                                 // lines torn in the stay now up (sealed when it closes)
+  lastA: new Map(),                         // scene id → the lines of its text as read last time (before any hole)
+  holes: new Map(),                         // scene id → [word] that went out of its text there (the place stays empty)
+  swaps: [],                                // [{ old, neu, owner, at, from }] words taken out of the memory and what came in — earlier walkers' (inherited) first, then this walker's
+  inherited: [],                            // the earlier walkers' changes this walker reads (blank.js inheritSwaps: two in three of each run's)
+  blanks: [],                               // the journal of it: every hole made, every hole used
   backs: new Map(), backLog: [],            // scene id → its back door (a door onto a scene already read); where each stood and where it gave onto
   Q: new Map(), place: new Map(),           // the walker's model: scene id → [x,y,z]; how each place was reached (topo.placeNext)
   doors: new Map(),                         // scene id → { way, to }
@@ -96,7 +95,7 @@ const run = {
 window.__space = { run, mode: MODE };       // automation / inspection hook
 
 let cosmos, talk, map, air, pause, letGo = false;
-let strips, backs, laying = false, stayCtx = null;         // the paper: the strips in hand, the back doors, the stay now up
+let lex, typing, hand, backs, pressing = false, stayCtx = null;   // the blank: which words can go, how letters go and come, the holes in hand, the back doors, the stay now up
 const BACK_DIST = 17;                                       // the back door stands this far from the scene (staging)
 const letGoMark = () => { letGo = true; };
 const V3 = (a) => new window.THREE.Vector3(a[0], a[1], a[2]);
@@ -165,8 +164,6 @@ function stageText(scene, visitN) {
   const depth = Number(run.memory.cont_depth) || 0;
   let st = depth <= 0 ? 0 : (depth >= DEPTH_STAGE_3 && layerOf(scene, 3)) ? 3 : (depth >= DEPTH_STAGE_2 && layerOf(scene, 2)) ? 2 : layerOf(scene, 1) ? 1 : 0;
   st = Math.min(3, st + (visitN - 1));
-  // a memory made in record-space.html has no layer 1 of its own: a return visit climbs to the next layer that exists (2, then 3) instead of falling back to the text as written (261123)
-  if (visitN > 1 && st > 0 && !layerOf(scene, st)) { let up = st; while (up < 3 && !layerOf(scene, up)) up++; if (layerOf(scene, up)) st = up; }
   const rs = riggedStage(rigOf(run.memory, qs), visitN, scene);
   if (rs != null) { st = rs; if (visitN === 1 && !layerOf(scene, st)) st = 0; }
   while (st > 0 && !layerOf(scene, st)) st--;
@@ -206,7 +203,7 @@ function partB(scene) {
 function partBack(scene) {
   const seen = run.shown.get(scene.id) || new Set(), pl = pieceLines(scene);
   const mine = (run.said.get(scene.id) || []).slice(-2).map((t) => ({ t, raw: t, who: 'mine', cls: 'rp-mine sb-old' }));
-  const rest = pl.words.concat(pl.deep).filter((l) => !seen.has(normLine(l))).slice(0, 3).map((t) => ({ t, raw: t, who: 'text', cls: '' }));
+  const rest = pl.words.concat(pl.deep).map((l) => vary(l, run.swaps)).filter((l) => !seen.has(normLine(l))).slice(0, 3).map((t) => ({ t, raw: t, who: 'text', cls: '' }));
   return mine.concat(rest);
 }
 
@@ -312,13 +309,15 @@ async function boot() {
   [run.ghosts, run.rows] = await Promise.all([data.loadGhostLines(run.memory.id), loadLedger(run.memory.id)]);
   { const rg = rigOf(run.memory, qs), n = rg && Number(rg.ghost_min_len); if (n > 0) run.ghosts = run.ghosts.filter((g) => String(g.utterance).trim().length >= n); }
   run.acc = accumulate(run.scenes, run.rows, run.engine.axes, [data.TEST_PERSONA]);
-  run.inherited = inheritEdits(await loadPaperJournals(run.memory.id)); run.edits = createEdits(run.inherited);   // what earlier walkers wrote and moved is read so (two in three)
+  run.inherited = inheritSwaps(await loadBlankJournals(run.memory.id)); run.swaps = run.inherited.slice();   // what earlier walkers changed is read as changed (two in three)
   try { await Promise.race([document.fonts.load('300 64px "Noto Serif KR"', '기억'), new Promise((r) => setTimeout(r, 2500))]); } catch (_) {}   // letters drawn in the place use the page's serif, not a system fallback
 
   air = createAir();
   talk = createTalk();
-  strips = createStrips({ locked: () => !!(cosmos && cosmos.locked()) });
-  talk.body.addEventListener('click', (e) => { const p = e.target.closest && e.target.closest('p.rp-line.sb-can'); if (p && strips.held()) lay(p); });   // a strip in hand is laid on any line the walker chooses
+  { const nouns = new Set(); for (const sc of run.scenes) for (const w of [].concat((sc.meta && sc.meta.motif_tags) || [], (sc.meta && sc.meta.object_tags) || [])) nouns.add(w); lex = createLexicon(ko, nouns); }   // the memory's own names for its things
+  typing = createTyping(1 / FAST);
+  hand = createHand({ locked: () => !!(cosmos && cosmos.locked()) });
+  talk.body.addEventListener('click', (e) => { const tok = e.target.closest && e.target.closest('.sb-t.sb-can'); if (tok && hand.held()) useBlank(tok); });   // any word of the text: the walker chooses where the hole goes
   cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
   map = createStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
@@ -330,7 +329,7 @@ async function boot() {
     onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
     onClose: (byHand) => { letGo = false; if (byHand && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !map.isOpen()) cosmos.relock(); },
     onLeave: () => { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); } });
-  Object.assign(window.__space, { cosmos, talk, map, air, finish, pause, strips, backs, tear, lay });
+  Object.assign(window.__space, { cosmos, talk, map, air, finish, pause, hand, lex, useBlank, HOLE, backs });
   setupFlyButton();
   // the map without first letting the cursor go: the right mouse button (author, 261123 — Esc, then a press, was one step too many)
   window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly') map.open(); });
@@ -350,7 +349,7 @@ async function boot() {
       catch (e) { console.error('[space] first stay', e); run.busy = false; talk.hide(); toast(ko ? '첫 장면을 읽지 못했습니다' : 'The first scene could not be read'); fakeStay(first); }   // the place still opens
     }
     await openEyes(first);
-    if (MODE === 'test' && qs.get('strip')) strips.give({ from: first.id, order: first.scene_order, text: qs.get('strip') }, null);   // practice: a strip already in hand
+    if (MODE === 'test' && qs.get('blank')) hand.give({ from: first.id, order: first.scene_order, word: '', was: null, said: [qs.get('blank')], others: [] }, null);   // practice: a hole already in hand
   };
   if (qs.get('from') === 'opening' || AT) { $('spEntry').classList.add('gone'); veil(false); return begin(); }
   // opened on its own: the opening's one line, and a touch (a browser gives no sound before one)
@@ -372,15 +371,13 @@ async function loadLedger(memoryId) {
   }
   return out;
 }
-/** Earlier walks of this stage on this memory, oldest first, with what each wrote and moved (run_journals.run_traces.edits; scenes by order → id). */
-async function loadPaperJournals(memoryId) {
+/** Earlier walks of this stage on this memory, oldest first, with the words each took out and what came in (run_journals.run_traces.swaps). */
+async function loadBlankJournals(memoryId) {
   try {
     const r = await data.client().from('run_journals').select('run_id, created_at, run_traces').eq('memory_id', memoryId).eq('input_form', data.STAGE_TAG).order('created_at');
-    if (r.error) { console.warn('[paper] journals', r.error); return []; }
-    const idOf = (order) => { const sc = run.scenes.find((x) => x.scene_order === order); return sc ? sc.id : null; };
-    return (r.data || []).filter((j) => j.run_traces && j.run_traces.blank_form === 'paper_v1' && Array.isArray(j.run_traces.edits))
-      .map((j) => ({ run_id: j.run_id, edits: j.run_traces.edits.map((e) => ({ scene: idOf(e.scene), line: e.line, kind: e.kind, text: e.text, from: e.from ? idOf(e.from) : null })).filter((e) => e.scene) }));
-  } catch (e) { console.warn('[paper] journals', e); return []; }
+    if (r.error) { console.warn('[blank] journals', r.error); return []; }
+    return (r.data || []).filter((j) => j.run_traces && j.run_traces.blank_form === 'blank_v1' && Array.isArray(j.run_traces.swaps)).map((j) => ({ run_id: j.run_id, swaps: j.run_traces.swaps }));
+  } catch (e) { console.warn('[blank] journals', e); return []; }
 }
 function firstScene() {
   const rig = rigOf(run.memory, qs);
@@ -402,27 +399,25 @@ async function stay(scene, via, o) {
   run.stays.set(scene.id, visitN);
   const silent = isSilent(scene), tv = stageText(scene, visitN), own = lineOwner(scene, tv.stage);
   const before = run.shown.get(scene.id) || new Set();
-  // the lines as they stand now: the manuscript's, or what stands in their place (written on parchment, or a laid strip)
-  const rawA = silent ? [] : sentences(tv.text).map(closed), matched = run.edits.match(scene.id, rawA);   // an edit stays on its line when a later layer rewrote the sentence (word overlap)
-  const partA = rawA.map((raw, i) => {
-    const e = matched[i];
-    return e ? { t: e.text, raw: e.key, who: e.owner === 'mine' ? 'mine' : 'other', edit: e, cls: '' } : { t: raw, raw, who: own(raw), edit: null, cls: '' };
-  });
+  const A = silent ? [] : sentences(vary(tv.text, run.swaps)).map(closed);    // the text as it stands now, with the words this walker took out of the memory
   const pb = (silent || back) ? { lines: [], authored: false, left: [] } : partB(scene);
-  const partTwo = back ? partBack(scene) : pb.lines.map((l) => ({ t: l, raw: l, who: 'text', edit: null, cls: '' }));
+  // the mismatch: a line stands now that is not what was read here → one word of it will go out (blank.js findHole). Only one hole is carried at a time.
+  const hole = (back && !silent) ? findHole(A, before, run.lastA.get(scene.id) || [], own, lex) : null;   // every return can leave one more hole; they add up in the hand
+  const Ashow = withHoles(A, run.holes.get(scene.id));                        // the places emptied here before stay empty
+  const partA = A.map((l, k) => ({ t: Ashow[k], raw: l, who: own(l), cls: '' }));
+  const partTwo = back ? partBack(scene) : pb.lines.map((l) => vary(l, run.swaps)).map((l) => ({ t: l, raw: l, who: 'text', cls: '' }));
   const parts = [partA, partTwo].filter((p) => p.length);
-  // the mismatch: the first line standing now that is not one the walker read here (no edit, not theirs) — its black paper has lifted
-  const looseAt = (back && !silent) ? partA.findIndex((ln) => !ln.edit && ln.who !== 'mine' && !before.has(normLine(ln.t))) : -1;
-  const shown = [], script = [], turns = [], emos = [], history = [], seen = new Set(before);
+  const shown = [], script = [], turns = [], emos = [], history = [], seen = new Set(before), usedHere = [];
+  let holeTok = null;
+  stayCtx = { scene, usedHere };
   let anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5, lastReply = '';
-  stayCtx = { scene, laid: [], torn: [] };
   talk.clear(); talk.show();
   if (!dark) await wait(1500);
 
   const exchange = async (i, allowSilence) => {
     let answer;
     for (;;) {
-      answer = await talk.ask({ allowSilence, guide: strips.count() ? (ko ? '말하거나 물을 수 있습니다 — 떼어낸 종이를 글의 아무 문장 위에나 대면, 그 문장을 덮습니다.' : 'Say something, or ask — or lay the strip you carry over any line of the text: it covers that line.') : null });
+      answer = await talk.ask({ allowSilence, guide: hand.held() ? (ko ? '말하거나 물을 수 있습니다 — 들고 온 빈 자리를 글의 아무 낱말에나 대면, 그 낱말이 빠집니다.' : 'Say something, or ask — or hold the empty place you carry against any word of the text: the word goes out.') : null });
       if (answer.silent) return null;
       const g = guard(answer.text);
       if (g.ok) break;
@@ -462,20 +457,25 @@ async function stay(scene, via, o) {
   } else {
     for (let i = 0; i < parts.length; i++) {
       for (let k = 0; k < parts[i].length; k++) {
-        const ln = parts[i][k], p = await talk.say(ln.t || '\u00a0', ln.cls, { gap: i > 0 && k === 0 });
-        const entry = { t: asRead(ln.t || ''), who: ln.who }; if (ln.edit) entry.paper = ln.edit.kind; script.push(entry);
-        shown.push(ln.t); seen.add(normLine(ln.raw)); if (ln.t) seen.add(normLine(ln.t));
-        p._sb = { entry, scene, raw: ln.raw, edit: ln.edit, who: ln.who };
-        if (ln.edit) dressEdit(p, ln.edit);
-        else if (ln.who !== 'mine') p.classList.add('sb-can');            // a strip in hand can be laid on it
-        if (i === 0 && k === looseAt) hangTab(p, { ko, onTear: () => tear(p) });   // the two tellings do not fit here: the paper has lifted
+        const ln = parts[i][k], p = await talk.say(ln.t, ln.cls, { gap: i > 0 && k === 0 });
+        const entry = { t: asRead(ln.t), who: ln.who }; script.push(entry);
+        shown.push(plain(ln.t)); seen.add(normLine(ln.raw)); seen.add(normLine(ln.t));
+        if (ln.who === 'mine') continue;                                      // the walker's own line standing in the scene: not a text to take words out of
+        const toks = tokenise(p, lex); p._sb = { entry, scene };
+        if (hole && i === 0 && k === hole.line && toks[hole.tok]) {           // the two tellings do not fit here: the word goes out, a hole stays
+          await typing.fall(toks[hole.tok], hole.was);
+          holeTok = toks[hole.tok]; entry.t = asRead(lineText(p)); seen.add(normLine(lineText(p)));
+          if (!run.holes.has(scene.id)) run.holes.set(scene.id, []);
+          run.holes.get(scene.id).push(hole.word);
+          await wait(900);
+        }
       }
       await exchange(i, back);                                                // back at a scene one may stay silent
     }
   }
-  while (laying) await wait(120);                                             // a strip still being laid is let finish
-  for (const p of stayCtx.torn) if (p._sb && p._sb.ctl && !p._sb.ctl.isDone()) p._sb.ctl.seal();   // torn and not written: the parchment stays bare
   run.shown.set(scene.id, seen);
+  run.lastA.set(scene.id, A);
+  while (pressing) await wait(120);                                           // a word still going out of this text is let finish
 
   // the whole stay, read once (the room stage's rule: the mean of the turns, one engine step, one ledger row)
   const mean = {};
@@ -496,8 +496,15 @@ async function stay(scene, via, o) {
     if (g) await talk.say(g.utterance, 'rp-ghost rp-left', { gap: true, src: name ? '— ' + name : (ko ? '— 누군가 여기 두고 간 말' : '— something someone left here'), hold: 1800 });   // italic + tag: a person's line, never the scene's answer
     if (MODE !== 'test') data.recordContact({ memoryId: run.memory.id, sceneId: scene.id, utterance: turns[turns.length - 1].raw_text.slice(0, 300), turn: turns.length, runId: run.id });
   }
-  const paperHere = { torn: stayCtx.torn.length, laid: stayCtx.laid.slice() };
-  if (turns.length && (paperHere.torn || paperHere.laid.length)) turns[0].paper = paperHere;
+
+  // the hole comes loose and follows the walker; it carries what was said here (what will come into the place it is held against)
+  if (holeTok) {
+    const info = { from: scene.id, order: scene.scene_order, word: hole.word, was: hole.was, said: turns.filter((t) => t.via !== 'not_sent').map((t) => t.raw_text), others: ghostsFor(scene, 3).map((g) => g.utterance) };
+    run.blanks.push({ made_at: scene.scene_order, visit: visitN, text_stage: tv.stage, word: hole.word, was: hole.was, said: info.said.length });
+    await hand.give(info, holeTok.getBoundingClientRect());
+    await wait(1400);
+  }
+  if (turns.length && (holeTok || usedHere.length)) turns[0].blank = { made: holeTok ? { word: hole.word, was: hole.was } : null, used: usedHere.slice() };
 
   // a return gives no new door: the scene's own door still stands where it was written (the walker goes on by it, or by the map)
   const rig = rigOf(run.memory, qs);
@@ -512,7 +519,7 @@ async function stay(scene, via, o) {
       persona_id: MODE === 'author' ? data.AUTHOR_PERSONA : null });
   }
   run.rooms.push({ order: run.rooms.length + 1, scene_id: scene.id, scene_order: scene.scene_order, visit: visitN, back, text_stage: tv.stage, part_b: back ? 'back' : pb.authored ? 'authored' : 'from_piece', seen_text: shown.join(' '),
-    paper: paperHere,
+    hole: holeTok ? { word: hole.word, was: hole.was } : null, used: usedHere.slice(),
     silent: !turns.length, user_emotion: mean, turn_alignment: +alignment.toFixed(4), resonance,
     turns: turns.map((t) => ({ text: t.raw_text, alignment: +t.alignment.toFixed(4), resonance: t.resonance, reply: t.ghost_reply, via: t.via, question: t.question })),
     engine: eng ? { alignment: eng.alignment_score, bucket: eng.alignment_bucket, pattern: eng.transition_pattern, mismatch: eng.mismatch_type } : null,
@@ -522,51 +529,37 @@ async function stay(scene, via, o) {
   talk.hide();
   stayCtx = null;
   run.busy = false;
+  if (holeTok && !run.blankHinted) { run.blankHinted = true; setTimeout(() => { if (!run.ended) hint(ko ? '어긋난 자리에서 빈 자리 하나가 떨어져 나와, 따라옵니다.' : 'Where it did not fit, an empty place came loose. It follows you.', 10000); }, 1600 / FAST); }
   return { scene, next, pattern, mean, left: pb.left || [], turns, back };
 }
-
-// ── the paper ───────────────────────────────────────────────────────────────
-/** The black paper over a line is torn off: the strip (with the line's words) goes into the hand; the parchment under it is bare, to be written on. */
-function tear(p) {
-  if (!p || !p._sb || p.classList.contains('sb-torn') || run.ended) return;
-  const { scene, raw } = p._sb, holder = p.querySelector(':scope > span');
-  const text = holder ? holder.textContent : raw, rect = holder ? holder.getBoundingClientRect() : null;
-  p.classList.remove('sb-can');
-  const ctl = tearLine(p, { ko, guard, sendable,
-    onRefused: (kind) => { talk.say(ko ? '……아냐, 이건 너무 날카로워.' : '……no. this one cuts too sharp.', 'rp-narr', { gap: true }); if (kind === 'help') { const S = window.LumenSafety, res = (S && S.getSafetyResources ? S.getSafetyResources(LANG) : []).map((r) => r.name + ' ' + r.number).join(' · '); if (res) talk.say(res, 'rp-narr', {}); } },
-    onSeal: (written) => seal(p, written) });
-  p._sb.ctl = ctl;
-  if (stayCtx && stayCtx.scene.id === scene.id) stayCtx.torn.push(p); else run.torn.push(p);
-  strips.give({ from: scene.id, order: scene.scene_order, text }, rect);
-  run.paper.push({ torn_at: scene.scene_order, line: normLine(raw), text });
-  if (!run.paperHinted) { run.paperHinted = true; hint(ko ? '검은 종이가 떨어져 나왔다. 양피지에 쓸 수 있다 — 떼어낸 종이는 따라온다.' : 'The black paper came off. You can write on the parchment — the strip follows you.', 11000); }
-}
-/** What was written on the parchment stands in place of the line, for this walk and (two in three) for the next walker. '' = nothing: the parchment stays bare. */
-function seal(p, written) {
-  const { scene, raw, entry } = p._sb;
-  const e = run.edits.set({ scene: scene.id, key: normLine(raw), kind: 'typed', text: written || '', owner: 'mine', from: null });
-  p._sb.edit = e; entry.t = written || ''; entry.who = 'mine'; entry.paper = 'typed';
-  run.paper.push({ wrote_at: scene.scene_order, line: normLine(raw), text: written || '' });
-  const seen = run.shown.get(scene.id); if (seen && written) seen.add(normLine(written));
-  if (written && MODE !== 'test' && sendable(written)) data.absorbLine({ memoryId: run.memory.id, utterance: written, motifTags: ((scene.meta && scene.meta.motif_tags) || []).slice(0, 3) });
-}
-/** The oldest strip in hand is laid over this line: the line is covered, the strip's sentence stands there. */
-async function lay(p) {
-  const info = strips.held();
-  if (!info || !p || !p._sb || laying || run.ended || p.classList.contains('sb-torn') || p.classList.contains('sb-loose')) return;
-  laying = true;
+/**
+ * The hole in hand is held against a word of the text that is up. The word goes out. Nothing is written by the walker:
+ * a word they said back where the hole was made comes in (theirs, amber) — failing that an earlier walker's word from
+ * there (grey) — failing that the place stays empty. From now on, in this walk, that word reads so wherever the memory has it.
+ */
+async function useBlank(tok) {
+  const held = hand.held(), p = tok.closest('p'), ctx = p && p._sb;
+  if (!held || !ctx || pressing || run.ended) return;
+  pressing = true;
   try {
-    strips.take();
-    await layStrip(p, info);
-    const { scene, raw, entry } = p._sb;
-    const e = run.edits.set({ scene: scene.id, key: normLine(raw), kind: 'pasted', text: info.text, owner: 'mine', from: info.from });
-    p._sb.edit = e; entry.t = info.text; entry.who = 'mine'; entry.paper = 'pasted'; p.classList.remove('sb-can');
-    const seen = run.shown.get(scene.id); if (seen) seen.add(normLine(info.text));
-    const rec = { laid_at: scene.scene_order, line: normLine(raw), from: info.order, text: info.text };
-    run.paper.push(rec); if (stayCtx && stayCtx.scene.id === scene.id) stayCtx.laid.push(rec);
-    cosmos.addWords(scene.id, [{ key: 'laid' + run.paper.length, text: info.text, kind: 'mine' }]);
-  } catch (e) { console.error('[paper] lay', e); }
-  laying = false;
+    const old = tok.querySelector('.sb-s').textContent, fill = fillOf(lex, held, old), n = run.swaps.length;
+    const swap = { old, neu: fill ? fill.stem : null, owner: fill ? fill.owner : null, at: ctx.scene.id, from: held.from };
+    hand.take();                                                             // the oldest hole is used
+    await typing.fill(tok, fill, false);
+    run.swaps.push(swap);
+    for (const other of Array.from(talk.body.querySelectorAll('.sb-t'))) {     // the same word, wherever else it stands in what is up
+      const os = other.querySelector('.sb-s'), op = other.closest('p');
+      if (other !== tok && os && os.textContent === old && !other.classList.contains('sb-holed') && op && op._sb) await typing.fill(other, fill, true);
+    }
+    const seen = run.shown.get(ctx.scene.id);
+    for (const q of Array.from(talk.body.querySelectorAll('p'))) if (q._sb) { q._sb.entry.t = asRead(lineText(q)); if (seen) seen.add(normLine(lineText(q))); }
+    // in the place: the word that went out hangs where the hole was made; the word that came in hangs here
+    cosmos.addWords(held.from, [{ key: 'fell' + n, text: old, kind: 'echo' }]);
+    if (fill) cosmos.addWords(ctx.scene.id, [{ key: 'came' + n, text: fill.stem, kind: fill.owner === 'mine' ? 'mine' : 'ghost' }]);
+    const rec = { used_at: ctx.scene.scene_order, made_at: held.order, out: old, in: swap.neu, whose: swap.owner };
+    run.blanks.push(rec); if (stayCtx && stayCtx.scene.id === ctx.scene.id) stayCtx.usedHere.push(rec);
+  } catch (e) { console.error('[blank] use', e); }
+  pressing = false;
 }
 
 function nearestGhost(userEmotion, pool) {
@@ -812,36 +805,23 @@ function setupFlyButton() {
 }
 
 // ── the end ────────────────────────────────────────────────────────────────
-/** A memory made in record-space.html: after each finished walk the server bakes the next layers of every scene's text from
- *  the ledger (bake-room-layers = tools/room-sim/bake_stage.mjs's rule, run on the server; docs/우주무대_기억만들기_결정-261123.md §굽기). Nothing waits for it. */
-async function bakeLayers() {
-  if (MODE === 'test' || !run.memory || !run.memory.meta || !run.memory.meta.space_record) return;
-  try {
-    const rows = await data.loadRoomPlays(run.memory.id);
-    const st = replayFromPlays(rows.map((x) => ({ alignment: x.alignment, mismatch_type: x.mismatch_type, user_emotion: x.user_emotion })));
-    const pres = getPresentationState(st);
-    const contState = { cont_drift: st.cont_drift || 0, cont_fixation: st.cont_fixation || 0, drift_dir_v: st.drift_dir_v || 0, drift_dir_a: st.drift_dir_a || 0, drift_dir_d: st.drift_dir_d || 0, band: pres.band === 'weak' ? 'medium' : pres.band, stage: pres.stage };
-    const r = await data.client().functions.invoke('bake-room-layers', { body: { memoryId: run.memory.id, contState } });
-    if (r.error) console.warn('[space] bake', r.error); else console.info('[space] bake', r.data);
-  } catch (e) { console.warn('[space] bake failed', e); }
-}
 async function finish() {
   if (run.ended) return; run.ended = true;
   hint(''); nearLine(null); map.close(); $('spMapWrap').classList.remove('on'); $('rpWalk').classList.remove('on'); talk.hide();
-  if (strips.count()) run.paper.push({ unused: strips.count() });
-  strips.drop();                                                            // a strip never laid down goes out with the walk
+  if (hand.count()) run.blanks.push({ unused: hand.count() });
+  hand.drop();                                                              // a hole never held against anything goes out with the walk
   if (backs) backs.hideAll();
+  for (const room of run.script) for (const l of room.lines || []) if (l.who !== 'mine') { const sg = segsOf(l.t); if (sg) l.segs = sg; else l.t = plain(l.t); }   // the ending shows whose each changed word is
   if (MODE !== 'test') {
     data.writeJournal(run.memory.id, run.id, { stage: data.STAGE_TAG, place: PLACE_TAG, mode: MODE, visit_order: run.path.map((id) => sceneById(id).scene_order),
-      scenes: run.rooms, legs: run.legs, contact: run.contact, blank_form: 'paper_v1', paper: run.paper, back_doors: run.backLog,
-      inherited: run.inherited.map((e) => ({ scene: sceneById(e.scene).scene_order, line: e.key, kind: e.kind, run: e.run })),   // what this walker read already changed
-      edits: run.edits.own().map((e) => ({ scene: sceneById(e.scene).scene_order, line: e.key, kind: e.kind, text: e.text, from: e.from ? sceneById(e.from).scene_order : null })), model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift })),
+      scenes: run.rooms, legs: run.legs, contact: run.contact, blank_form: 'blank_v1', blanks: run.blanks, back_doors: run.backLog,
+      inherited: run.inherited.map((w) => ({ out: w.old, in: w.neu, run: w.run })),   // what this walker read already changed
+      swaps: run.swaps.filter((w) => !w.inherited).map((w) => ({ out: w.old, in: w.neu, whose: w.owner, at: sceneById(w.at).scene_order, from: sceneById(w.from).scene_order })), model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift })),
       seconds: Math.round((Date.now() - run.startedAt) / 1000) });
-    bakeLayers();                                             // a memory made in record-space.html: the next layers of its texts, from the ledger (fire and forget)
   }
   try {
     window.__space.finale = await runFinale({ cosmos, run, lang: LANG, fast: FAST, air, typeText, wait, sceneById,
-      others: othersWalks(), title: run.memory.title || '', scroll: $('spScroll'), scrollInner: $('spScrollInner'), edits: run.edits.own(), inherited: run.inherited.length });
+      others: othersWalks(), title: run.memory.title || '', scroll: $('spScroll'), scrollInner: $('spScrollInner'), swaps: run.swaps.filter((w) => !w.inherited), inherited: run.inherited.length });
   } catch (e) { console.error('[space] finale', e); toast(ko ? '끝 화면을 그리지 못했습니다' : 'The ending could not be drawn'); await wait(2500); }
   await veil(true);
   // after the ending: the main screen (the menu), not the opening (author, 261121). index.html reads this once and skips the opening (js/app/bindEvents.js)
@@ -869,7 +849,7 @@ function fakeStay(scene) {
   const tv = stageText(scene, 1), own = lineOwner(scene, tv.stage), pb = partB(scene), seen = new Set();
   const lines = sentences(tv.text).map((l) => ({ t: asRead(l), who: own(l) })).concat(pb.lines.map((l) => ({ t: l, who: 'text' })));
   lines.forEach((l) => seen.add(normLine(l.t))); run.shown.set(scene.id, seen);
-  run.stays.set(scene.id, 1);
+  run.stays.set(scene.id, 1); run.lastA.set(scene.id, sentences(tv.text).map(closed));
   run.script.push({ scene_id: scene.id, order: scene.scene_order, visit: 1, stage: tv.stage, lines });
   const rig = rigOf(run.memory, qs), mean = {};
   run.last = { pattern: 'bridge', alignment: 0.5, bucket: 'MID', turnAlignment: 0.5 };

@@ -206,43 +206,42 @@ export async function runFinale(o) {
   // ── the version that was read, going up by itself ─────────────────────────
   const n = { total: 0, mine: 0, other: 0, changed: 0 }, inner = o.scrollInner, box = o.scroll;
   inner.innerHTML = '';
-  // space-blank: a line written on parchment, or a strip laid over a line, shows as such (l.paper = 'typed' | 'pasted'; l.who = whose)
-  const add = (cls, text, paper) => {
+  // space-blank: a line whose words were changed in this walk shows whose each word is (l.segs, from blank.js segsOf)
+  const add = (cls, text, segs) => {
     const p = document.createElement('p'); if (cls) p.className = cls;
-    if (paper) p.classList.add('sb-' + paper);
-    p.textContent = text || (paper ? ' ' : '');
+    if (segs) for (const sg of segs) { const sp = document.createElement('span'); if (sg.who) sp.className = 'sb-' + sg.who; sp.textContent = sg.t; p.appendChild(sp); }
+    else p.textContent = String(text == null ? '' : text).replace(/[⁠﻿]/g, '');   // a changed word's no-width mark is not a letter to show
     inner.appendChild(p); return p;
   };
   add('title', ko ? '당신이 읽은 「' + o.title + '」' : 'The "' + o.title + '" you read');
   const blocks = [];
   for (const room of run.script) {
-    const lines = (room.lines || []).filter((l) => l && (String(l.t).trim() || l.paper));
+    const lines = (room.lines || []).filter((l) => l && String(l.t).trim());
     lines.forEach((l, i) => {
-      const p = add(((l.who && l.who !== 'text') ? l.who : '') + (i === 0 ? ' gap' : ''), l.t, l.paper);
+      const p = add(((l.who && l.who !== 'text') ? l.who : '') + (i === 0 ? ' gap' : ''), l.t, l.segs);
       if (i === 0) blocks.push({ el: p, u: rs.uOf(room.at == null ? 0 : room.at) });
       n.total++; if (n[l.who] != null) n[l.who]++;
     });
   }
-  const edits = o.edits || [], nTyped = edits.filter((e) => e.kind === 'typed' && e.text).length, nBare = edits.filter((e) => e.kind === 'typed' && !e.text).length, nPasted = edits.filter((e) => e.kind === 'pasted').length, nOut = edits.length;
+  const swaps = o.swaps || [], nOut = swaps.length, nIn = swaps.filter((w) => w.neu != null).length, nMine = swaps.filter((w) => w.neu != null && w.owner === 'mine').length, nOth = nIn - nMine;
   let sum;
   if (ko) {
     const parts = [];
     if (n.mine) parts.push(n.mine + '줄은 당신이 썼' + (n.other ? '고' : '습니다'));
     if (n.other) parts.push(n.other + '줄은 먼저 걸은 사람이 썼습니다');
     sum = n.total + '줄 가운데 ' + (parts.length ? parts.join(', ') : '당신이 쓴 줄은 없습니다') + '.' + (n.changed ? ' ' + n.changed + '줄은 여러 번 읽히는 사이에 달라진 문장입니다.' : '');
-    if (nOut) sum += ' ' + [nTyped ? '문장 ' + nTyped + '개를 종이를 떼어내고 직접 썼' : '', nBare ? nBare + '개는 떼어내고 비워 두었' : '', nPasted ? '떼어낸 문장 ' + nPasted + '개를 다른 장면에 붙였' : ''].filter(Boolean).join('고, ') + '습니다.';
-    if (o.inherited) sum += ' 먼저 걸은 사람이 바꾼 문장 ' + o.inherited + '개는 바뀐 채로 읽혔습니다.';
+    if (nOut) sum += ' 낱말 ' + nOut + '개가 빠졌고, ' + (!nIn ? '그 자리는 비어 있습니다.' : [nMine ? nMine + '개 자리에 당신이 한 말이' : '', nOth ? nOth + '개 자리에 먼저 걸은 사람의 말이' : ''].filter(Boolean).join(', ') + ' 들어갔습니다.');
+    if (o.inherited) sum += ' 먼저 걸은 사람이 바꾼 낱말 ' + o.inherited + '개는 바뀐 채로 읽혔습니다.';
   } else {
     sum = 'Of ' + n.total + ' lines, ' + (n.mine ? n.mine + ' are yours' : 'none are yours') + (n.other ? ', ' + n.other + ' were left by someone who walked before you' : '') + '.' + (n.changed ? ' ' + n.changed + ' changed while being read again and again.' : '');
-    if (nOut) sum += ' ' + [nTyped ? 'You tore the paper off ' + nTyped + (nTyped === 1 ? ' line and wrote it yourself' : ' lines and wrote them yourself') : '', nBare ? nBare + (nBare === 1 ? ' was torn off and left bare' : ' were torn off and left bare') : '', nPasted ? nPasted + (nPasted === 1 ? ' torn strip was laid over a line of another scene' : ' torn strips were laid over lines of other scenes') : ''].filter(Boolean).join('; ') + '.';
-    if (o.inherited) sum += ' ' + o.inherited + (o.inherited === 1 ? ' line someone before you changed was read as changed.' : ' lines people before you changed were read as changed.');
+    if (nOut) sum += ' ' + nOut + (nOut === 1 ? ' word went out' : ' words went out') + (!nIn ? '; the places stay empty.' : '; ' + [nMine ? 'what you had said came into ' + nMine + (nMine === 1 ? ' place' : ' places') : '', nOth ? 'what someone before you said came into ' + nOth + (nOth === 1 ? ' place' : ' places') : ''].filter(Boolean).join(', ') + '.');
+    if (o.inherited) sum += ' ' + o.inherited + (o.inherited === 1 ? ' word someone before you changed was read as changed.' : ' words people before you changed were read as changed.');
   }
   add('sum', sum);
   const key = add('key', '');
   [['', ko ? '처음 쓰인 대로' : 'as first written'], ['mine', ko ? '당신' : 'you'], ['other', ko ? '먼저 걸은 사람' : 'someone before you'], ['changed', ko ? '달라진 문장' : 'changed']]
     .forEach(([cls, t]) => { if (cls && !n[cls]) return; const sp = document.createElement('span'); if (cls) sp.className = cls; sp.textContent = t; key.appendChild(sp); });
-  if (nTyped || nBare) { const sp = document.createElement('span'); sp.className = 'sb-typed'; sp.textContent = ko ? '양피지에 쓴 것' : 'written on parchment'; key.appendChild(sp); }
-  if (nPasted) { const sp = document.createElement('span'); sp.className = 'sb-pasted'; sp.textContent = ko ? '다른 장면에서 옮겨 붙인 문장' : 'a strip laid from another scene'; key.appendChild(sp); }
+  if (nOut) { const sp = document.createElement('span'); sp.className = 'sb-hole'; sp.textContent = (ko ? '빠진 자리 ' : 'a place emptied ') + '[   ]'; key.appendChild(sp); }
   key.querySelectorAll('span.mine').forEach((s) => { s.style.color = 'var(--rp-accent)'; });
   key.querySelectorAll('span.other').forEach((s) => { s.style.cssText = 'color:#8f8b99;font-style:italic'; });
   key.querySelectorAll('span.changed').forEach((s) => { s.style.cssText = 'color:#b9b4c6;text-decoration:underline dotted rgba(185,180,198,0.45);text-underline-offset:0.35em'; });
