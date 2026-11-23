@@ -1,4 +1,8 @@
 /**
+ * ⚠ RETIRED (261123, same day): the first form of the experiment — word holes [   ]. The author chose the paper form
+ *   (js/spaceblank/paper.js: tear the black strip off a line, write on the parchment, lay the strip elsewhere). Nothing
+ *   imports this file any more; it is kept so the first form can be read (commits 6a848c3 … f037885).
+ *
  * Space-blank — the hole a mismatch leaves, and what it does to a text (2026-11-23; an experiment on its own branch).
  * Decision record: docs/우주무대_빈칸_실험-261123.md
  *

@@ -16,10 +16,65 @@ body.sp .rp-line.rp-ghost.rp-left .rp-src { font-style: normal; }
    stays as it was and nothing beyond the column is covered. Left edge = the same image mirrored. ── */
 body.sp .rp-column { overflow: visible; }
 body.sp .rp-column::before, body.sp .rp-column::after { content: ''; position: absolute; top: -2vh; bottom: -2vh; width: 11rem; pointer-events: none; z-index: 0;
-  background: url('../img/scroll-edge.png') center / auto 100% no-repeat; mix-blend-mode: lighten; opacity: 0.55; }
+  background: url('../img/scroll-edge.png') center / auto 100% no-repeat; mix-blend-mode: lighten; opacity: 0.4; }
 body.sp .rp-column::after { right: -5.2rem; }
 body.sp .rp-column::before { left: -5.2rem; transform: scaleX(-1); }
 body.sp .rp-column > * { position: relative; z-index: 1; }
+
+/* ═══ paper (the second form, 261123 — author's choice (나): tear the black strip, write on the parchment) ═══
+   img/scroll-strip.png  = the author's torn black strip (white keyed out, laid level)
+   img/parchment.png     = yellow parchment (when the author's image arrives; until then the gradient below) */
+:root { --sb-parch: #c8b78a; --sb-ink: #3b2a16; --sb-ink-other: #5e564c; }
+/* a line whose black paper has lifted: a torn end hangs off it and sways (slow, wide, heavy) */
+body.sp .rp-line.sb-loose { position: relative; cursor: pointer; }
+body.sp .rp-line.sb-loose > span { position: relative; z-index: 1; }
+body.sp .rp-line.sb-loose::before { content: ''; position: absolute; left: -0.6em; right: -0.6em; top: 0.18em; bottom: 0.18em; z-index: 0; border-radius: 2px;
+  background: var(--sb-parch); opacity: 0; transition: opacity 1600ms ease; }
+body.sp .rp-line.sb-loose:hover::before { opacity: 0.22; }                                   /* the parchment behind, a sliver */
+.sb-tab { position: absolute; right: -3.6rem; top: 50%; width: 4.4rem; height: 1.25rem; margin-top: -0.62rem; border: 0; padding: 0; background: url('../img/scroll-strip.png') right center / 240% 100% no-repeat;
+  transform-origin: 0 50%; cursor: pointer; opacity: 0.95; filter: brightness(2.2) drop-shadow(0 0 1px rgba(226,214,196,0.55));
+  animation: sb-sway var(--sway, 7s) ease-in-out infinite alternate; animation-delay: var(--ph, 0s); }
+.sb-tab::after { content: ''; position: absolute; left: 0.3rem; right: -0.25rem; top: 0.3rem; bottom: -0.2rem; background: var(--sb-parch); opacity: 0.62; z-index: -1; border-radius: 1px; }   /* the parchment under the lifted end */
+@keyframes sb-sway { from { transform: rotate(-3deg) translateY(-1px); } to { transform: rotate(5.5deg) translateY(2px); } }
+/* the strip coming off, with the words still on it */
+body.sp .rp-line.sb-torn { position: relative; }
+.sb-off { position: absolute; z-index: 5; pointer-events: none; white-space: nowrap; overflow: hidden; color: #e8e4df; padding: 0 0.55em; box-sizing: border-box;
+  background: url('../img/scroll-strip.png') center / 100% 100% no-repeat; transform-origin: 0 50%; filter: brightness(2.2) drop-shadow(0 0 1px rgba(226,214,196,0.5));
+  transition: transform 1700ms cubic-bezier(.3,.1,.2,1), opacity 1700ms ease; }
+.sb-off.go { transform: translate(8%, 0.35em) rotate(-2.4deg); opacity: 0; }
+/* the parchment, bare, and the ink */
+.sb-band { display: inline-block; min-width: 9em; max-width: 100%; padding: 0.12em 0.6em; border-radius: 1px; vertical-align: baseline; box-sizing: border-box;
+  background: var(--sb-parch) url('../img/parchment.png') center / cover; background-image: url('../img/parchment.png'), linear-gradient(90deg, #c2b083, #cdbd90 40%, #c6b588 70%, #bfae80);
+  box-shadow: inset 0 0 14px rgba(70,50,20,0.25), 0 0 18px rgba(200,183,138,0.12); color: var(--sb-ink); }
+.sb-ink { width: 100%; min-width: 9em; background: transparent; border: 0; outline: none; color: var(--sb-ink); font: inherit; letter-spacing: inherit; padding: 0; caret-color: var(--sb-ink); }
+.sb-ink.sb-refused { color: #8a3b2a; }
+.sb-written { color: var(--sb-ink); }
+/* a line that stands as an edit on a later reading */
+body.sp .rp-line.sb-typed > span .sb-band, body.sp .rp-line.sb-typed.sb-dressed > span { background: var(--sb-parch); color: var(--sb-ink); padding: 0.12em 0.6em; border-radius: 1px; box-shadow: inset 0 0 14px rgba(70,50,20,0.25); }
+body.sp .rp-line.sb-typed.sb-other > span, body.sp .rp-line.sb-typed.sb-other .sb-written { color: var(--sb-ink-other); font-style: italic; }
+body.sp .rp-line.sb-bare > span { display: inline-block; min-width: 9em; min-height: 1.4em; }
+body.sp .rp-line.sb-pasted > span { display: inline-block; color: #e8e4df; padding: 0.1em 0.75em; background: url('../img/scroll-strip.png') center / 100% 100% no-repeat; filter: brightness(2.2) drop-shadow(0 0 1px rgba(226,214,196,0.5)); }   /* black paper on the black scroll: lifted a shade so its torn edge is seen */
+body.sp .rp-line.sb-pasted.sb-other > span { color: #b9b4c6; font-style: italic; }
+/* while a strip is in hand: a line it can be laid on */
+body.sb-carrying .rp-line.sb-can { cursor: pointer; transition: opacity 900ms ease; }
+body.sb-carrying .rp-line.sb-can:hover { opacity: 0.6; }
+body.sp .rp-line.sb-laying > span { opacity: 0; transition: opacity 1200ms ease; }
+/* the strips carried: one under another, slightly tilted */
+#sbStrips { position: fixed; left: 0; top: 0; z-index: 40; pointer-events: none; opacity: 0; transition: opacity 1800ms ease; will-change: transform; }
+#sbStrips.on { opacity: 1; }
+.sb-strip { width: 11rem; height: 1.45rem; margin-bottom: 0.25rem; box-sizing: border-box; padding: 0 0.7rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  color: #e8e4df; font-size: 0.68rem; line-height: 1.45rem; letter-spacing: 0.02em; background: url('../img/scroll-strip.png') center / 100% 100% no-repeat;
+  transform: rotate(var(--tilt, 0deg)) translateX(-30px); opacity: 0; transition: transform 1500ms cubic-bezier(.3,.1,.2,1), opacity 1500ms ease; filter: brightness(2.2) drop-shadow(0 0 1px rgba(226,214,196,0.5)) drop-shadow(0 0 8px rgba(0,0,0,0.9)); }
+.sb-strip.in { transform: rotate(var(--tilt, 0deg)) translateX(0); opacity: 1; }
+.sb-strip.out { transform: rotate(var(--tilt, 0deg)) translate(40px, 10px); opacity: 0; }
+.sb-strip + .sb-strip { opacity: 0.85; }
+/* the ending: whose each line is */
+.sp-scroll-inner p.sb-typed { color: var(--sb-ink); background: var(--sb-parch); display: table; padding: 0 0.6em; border-radius: 1px; }
+.sp-scroll-inner p.sb-typed.other { color: var(--sb-ink-other); font-style: italic; }
+.sp-scroll-inner p.sb-pasted { color: #e8e4df; display: table; padding: 0 0.75em; background: url('../img/scroll-strip.png') center / 100% 100% no-repeat; }
+.sp-scroll-inner p.sb-pasted.other { color: #b9b4c6; font-style: italic; }
+.sp-scroll-inner p.key span.sb-typed { color: var(--sb-ink); background: var(--sb-parch); padding: 0 0.4em; }
+.sp-scroll-inner p.key span.sb-pasted { color: #e8e4df; background: #0b0b0d; padding: 0 0.4em; }
 
 /* ── words of a text that is up ── */
 .sb-t { display: inline; white-space: nowrap; transition: color 1400ms ease, opacity 1400ms ease; }
