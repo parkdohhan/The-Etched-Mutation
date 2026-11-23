@@ -58,7 +58,7 @@ export function createCosmos(opts) {
   // mode: 'held' (a text is up, or a cut) · 'fly' · 'walk' (on a way) · 'cine' (the ending moves the eye)
   const pl = { pos: V(), vel: V(), yaw: 0, pitch: 0, tyaw: 0, tpitch: 0, mode: 'held', way: null, s: 0, bob: 0, stepAcc: 0, heading: 0, blend: 0, forward: false, walkUntil: 0, landed: 0 };
   const keys = new Set();
-  let locked = false, wasLocked = false, drag = null, time = 0, last = 0, raf = 0, running = false;
+  let locked = false, wasLocked = false, byCode = false, stepGain = 1, drag = null, time = 0, last = 0, raf = 0, running = false;
   const fwd = (out) => out.set(-Math.sin(pl.yaw) * Math.cos(pl.pitch), Math.sin(pl.pitch), -Math.cos(pl.yaw) * Math.cos(pl.pitch));
   const feet = (out) => out.copy(pl.pos).addScaledVector(UP, -EYE);
 
@@ -142,12 +142,34 @@ export function createCosmos(opts) {
       const kind = it.kind || 'echo', key = it.key || (kind + r.words.length);
       const m = textPlane(String(it.text).trim(), kind === 'ghost' ? 0.27 : kind === 'mine' ? 0.3 : 0.33,
         { italic: kind === 'ghost', wrap: kind === 'ghost' ? 620 : 900, color: kind === 'mine' ? C.amber : kind === 'ghost' ? 0x8a8794 : 0xa9a6b4 });
-      const a = h01(id + key + 'a') * Math.PI * 2, el = (h01(id + key + 'e') - 0.5) * 1.5, rad = 5.2 + h01(id + key + 'r') * 6.5;
+      // each word takes the next place round the thing — a golden-angle turn on, another height, another distance — so no two hang in one spot
+      // (they were hung by chance, and chance heaped them: author, 261123)
+      const slot = r.words.length, fr = (x) => x - Math.floor(x);
+      const a = h01(id + 'wa') * Math.PI * 2 + slot * 2.399963, el = Math.asin(fr(h01(id + 'wy') + slot * 0.618034) * 2 - 1) * 0.62, rad = 6.4 + fr(h01(id + 'wr') + slot * 0.381966) * 6.2;
       const w = { key, kind, m, base: V().set(Math.cos(a) * Math.cos(el) * rad, Math.sin(el) * rad * 0.8, Math.sin(a) * Math.cos(el) * rad),
         px: h01(key + 'px') * 6.28, py: h01(key + 'py') * 6.28, tx: 58 + h01(key + 'tx') * 46, ty: 74 + h01(key + 'ty') * 52, amp: 1.1 + h01(key + 'am') * 1.5,
-        o: kind === 'mine' ? 0.72 : kind === 'ghost' ? 0.42 : 0.5, lean: 1, born: time };
+        o: kind === 'mine' ? 0.72 : kind === 'ghost' ? 0.42 : 0.5, lean: 1, born: time, show: 1, showTo: 1, dist: 0 };
       m.material.opacity = w.o; m.renderOrder = 6;
       world.add(m); r.words.push(w);
+    }
+  }
+  // From where the walker stands two words can still fall on one spot of the screen. Then only one is read:
+  // the walker's own before the scene's, the scene's before an earlier walker's, the nearer before the farther;
+  // the other goes out slowly and comes back when they part. (Looked at on the screen, not in the place.)
+  const _pv = new THREE.Vector3(), RANK = { mine: 3, echo: 2, ghost: 1 };
+  function unheap(words) {
+    if (words.length < 2) { for (const w of words) w.showTo = 1; return; }
+    const th = Math.tan((FOV * Math.PI) / 360), boxes = [];
+    words.sort((p, q) => ((RANK[q.kind] || 0) - (RANK[p.kind] || 0)) || (p.dist - q.dist));
+    for (const w of words) {
+      _pv.copy(w.m.position).project(cam);
+      if (_pv.z > 1 || w.dist < 0.5) { w.showTo = 1; continue; }             // behind the eye: nothing to cover
+      const g = w.m.geometry.parameters, hw = (g.width / 2) / (w.dist * th * cam.aspect), hh = (g.height / 2) / (w.dist * th);
+      const slack = w.showTo === 0 ? 1.15 : 0.96;                            // once out, it waits until there is clearly room
+      let hit = false;
+      for (const b of boxes) if (Math.abs(_pv.x - b.x) < (hw + b.hw) * slack && Math.abs(_pv.y - b.y) < (hh + b.hh) * slack) { hit = true; break; }
+      w.showTo = hit ? 0 : 1;
+      if (!hit) boxes.push({ x: _pv.x, y: _pv.y, hw, hh });
     }
   }
   /** Earlier lines nearer to what the walker said come closer and stand out; the others recede. fn(key) → 0..1 */
@@ -324,7 +346,7 @@ export function createCosmos(opts) {
       const third = buf.duration / 3, k = n % 3, rate = [0.95, 1.02, 0.98, 1.05, 1.0][n % 5]; n++;
       const src = ctx.createBufferSource(); src.buffer = buf; src.playbackRate.value = rate;
       const g = ctx.createGain(), now = ctx.currentTime, dur = Math.max(0.08, third / rate * 0.95);
-      g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(vol || 0.30, now + 0.008); g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(Math.max(0.0002, (vol || 0.30) * stepGain), now + 0.008); g.gain.exponentialRampToValueAtTime(0.001, now + dur);
       src.connect(g); g.connect(ctx.destination); src.start(now, k * third, dur + 0.02);
     }
     return { ensure, play, count: () => n };
@@ -510,7 +532,7 @@ export function createCosmos(opts) {
       } else { pl.vel.multiplyScalar(Math.exp(-dt / 0.6)); pl.pos.addScaledVector(pl.vel, dt); }
     }
 
-    cam.position.copy(pl.pos); cam.rotation.set(pl.pitch, pl.yaw, 0); cam.updateMatrixWorld();
+    cam.position.copy(pl.pos); cam.rotation.set(pl.pitch, pl.yaw, pl.roll || 0); cam.updateMatrixWorld();   // roll: only the prologue's fall tilts the head (0 otherwise)
 
     // ways are written out toward their doors; doors open and close
     for (const w of ways.slice()) {
@@ -527,7 +549,7 @@ export function createCosmos(opts) {
     }
 
     // things: their own slow movement; far away they are small lights
-    let nearest = null, nd = Infinity;
+    let nearest = null, nd = Infinity; const seen = [];
     for (const r of things.values()) {
       r.thing.tick(time, dt);
       r.wrap.rotation.y = r.facing + 0.22 * Math.sin(time * 0.045 + r.ph);
@@ -536,15 +558,18 @@ export function createCosmos(opts) {
       r.glint.material.opacity = 0.5 * smooth(30, 90, d);
       if (d < nd) { nd = d; nearest = r; }
       if (d > NEAR_R * 1.7) r.armed = true;
+      if (d < 75) for (const w of r.words) seen.push(w);
       for (const w of r.words) {
         const t = time, k = w.lean;
         w.m.position.set(r.pos.x + w.base.x / k + w.amp * Math.sin((2 * Math.PI * t) / w.tx + w.px), r.pos.y + w.base.y / k + w.amp * 0.6 * Math.sin((2 * Math.PI * t) / w.ty + w.py), r.pos.z + w.base.z / k + w.amp * Math.cos((2 * Math.PI * t) / (w.tx * 1.3) + w.py));
         w.m.quaternion.copy(cam.quaternion);
         writeText(w.m, (time - w.born) / 0.055);
         const dw = w.m.position.distanceTo(pl.pos);
-        w.m.material.opacity = w.o * Math.min(1.25, 0.6 + 0.5 * k) * smooth(2.6, 7.5, dw) * (1 - smooth(34, 60, dw));   // a word that drifts up to the eye goes out before it fills the view
+        w.dist = dw; w.show += (w.showTo - w.show) * (1 - Math.exp(-dt / 0.9));
+        w.m.material.opacity = w.o * Math.min(1.25, 0.6 + 0.5 * k) * smooth(2.6, 7.5, dw) * (1 - smooth(34, 60, dw)) * w.show;   // a word that drifts up to the eye goes out before it fills the view
       }
     }
+    unheap(seen);
     if (nearest && nd < NEAR_R && nearest.armed && pl.mode === 'fly') { nearest.armed = false; if (cb.onNear) cb.onNear(nearest.id, nd); }
     clouds.tick(dt);
     trail.tick();
@@ -568,7 +593,11 @@ export function createCosmos(opts) {
   window.addEventListener('keyup', (e) => keys.delete(e.code));
   window.addEventListener('blur', () => keys.clear());
   canvas.addEventListener('click', () => { if (canMove() && !locked && !isTouch() && canvas.requestPointerLock) { try { canvas.requestPointerLock(); } catch (_) {} } });
-  document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === canvas; if (cb.onLock) cb.onLock(locked); });
+  document.addEventListener('pointerlockchange', () => {
+    const was = locked; locked = document.pointerLockElement === canvas; if (cb.onLock) cb.onLock(locked);
+    if (was && !locked && !byCode && cb.onEscape) cb.onEscape();           // the walker let the cursor go (Esc — the browser keeps that key to itself — or another window)
+    byCode = false;
+  });
   document.addEventListener('mousemove', (e) => { if (locked) turn(e.movementX || 0, e.movementY || 0, 0.0021); });
   canvas.addEventListener('pointerdown', (e) => { if (locked) return; drag = { x: e.clientX, y: e.clientY }; steps.ensure(); try { canvas.setPointerCapture(e.pointerId); } catch (_) {} });
   canvas.addEventListener('pointermove', (e) => { if (!drag || locked) return; turn(e.clientX - drag.x, e.clientY - drag.y, 0.0042); drag = { x: e.clientX, y: e.clientY }; });
@@ -583,12 +612,15 @@ export function createCosmos(opts) {
     time: () => time,
     /** Test runs: advance by hand (a hidden tab draws no frames). */
     step(dt, n) { for (let i = 0; i < (n || 1); i++) update(dt); },
-    setMode(m) { pl.mode = m; if (m !== 'walk') pl.way = null; if (m === 'held' || m === 'cine') { keys.clear(); if (locked) { wasLocked = m === 'held'; if (document.exitPointerLock) document.exitPointerLock(); } } },
+    setMode(m) { pl.mode = m; if (m !== 'walk') pl.way = null; if (m === 'held' || m === 'cine') { keys.clear(); if (locked) { wasLocked = m === 'held'; byCode = true; if (document.exitPointerLock) document.exitPointerLock(); } } },
     /** The page let the cursor go itself (a text came up, the map was opened): the look is taken back without another press, where the browser allows it. */
     relock() { if (!wasLocked || locked || isTouch() || !canvas.requestPointerLock) return; wasLocked = false; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (_) {} },
     mode: () => pl.mode,
     locked: () => locked,
-    unlock() { if (locked && document.exitPointerLock) { wasLocked = true; document.exitPointerLock(); } },
+    unlock() { if (locked && document.exitPointerLock) { wasLocked = true; byCode = true; document.exitPointerLock(); } },
+    /** The pause sheet: the cursor was let go by the walker; take the look back on the press that closes the sheet. */
+    hold(lookBack) { if (lookBack) wasLocked = true; keys.clear(); },
+    setVolume(v) { stepGain = Math.max(0, Math.min(1, Number(v))); if (isNaN(stepGain)) stepGain = 1; },
     teleport(pos, yaw, pitch) { pl.pos.copy(pos); pl.vel.set(0, 0, 0); if (yaw != null) pl.yaw = pl.tyaw = yaw; if (pitch != null) pl.pitch = pl.tpitch = pitch; trail.cut(); },
     /** Mark a carry (through a door) in the walk's record: it is part of the line the ending draws. */
     carry(from, to) { track.push({ x: from.x, y: from.y - EYE, z: from.z, t: time, k: 2 }, { x: to.x, y: to.y - EYE, z: to.z, t: time, k: 2 }); },
@@ -629,6 +661,8 @@ export function createCosmos(opts) {
     /** Automation: hold "forward" for `seconds`. */
     go(seconds) { pl.walkUntil = time + seconds; },
     ensureAudio() { steps.ensure(); },
+    /** One footstep, by hand (the prologue's one step on a floor that was not there). */
+    footstep(vol) { steps.ensure(); steps.play(vol || 0.30); },
     stepCount: () => steps.count(),
     EYE, NEAR_R, DOOR_H,
   };

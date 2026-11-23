@@ -1,0 +1,43 @@
+/* Profile (2026-11-23 restyle) — the mypage screen in the room stage's grammar: black, one column, Noto Serif KR 300,
+   amber for what is the walker's own. Loaded after css/index.css; everything here is scoped to #mypageScreen so the
+   old rules keep serving the login/signup boxes. Decision record: docs/우주무대_기억만들기_결정-261123.md §PROFILE.
+   Motion rule (260809): slow, wide, heavy. Rollback = remove this file's link in index.html and restore the old markup. */
+#mypageScreen.mypage-screen { background: #000; color: #e8e4df; font-family: 'Noto Serif KR', 'Cormorant Garamond', serif; font-weight: 300; align-items: stretch; justify-content: flex-start; overflow-y: auto; }
+#mypageScreen .mp-back { position: fixed; left: 1.4rem; top: 1.2rem; z-index: 5; background: transparent; border: 0; color: #77747f; font: inherit; font-size: 0.78rem; letter-spacing: 0.16em; cursor: pointer; padding: 0.5rem 0.2rem; border-bottom: 1px solid transparent; transition: color 700ms ease, border-color 700ms ease; }
+#mypageScreen .mp-back:hover { color: #e8e4df; border-bottom-color: rgba(232,228,223,0.3); }
+#mypageScreen .mp-column { width: min(38rem, 92vw); margin: 0 auto; padding: 13vh 1.2rem 14vh; opacity: 0; transform: translateY(10px); animation: mpIn 1600ms cubic-bezier(.3,.1,.2,1) forwards; }
+@keyframes mpIn { to { opacity: 1; transform: none; } }
+
+#mypageScreen .mp-head { margin-bottom: 3.6rem; }
+#mypageScreen .mp-kicker { font-size: 0.72rem; letter-spacing: 0.22em; color: #77747f; }
+#mypageScreen .mp-name { font-size: clamp(1.5rem, 4vw, 2.1rem); letter-spacing: 0.24em; font-weight: 300; margin: 0.8rem 0 1rem; color: #e8e4df; }
+#mypageScreen .mp-meta { font-size: 0.82rem; color: #8f8b99; letter-spacing: 0.04em; line-height: 2; display: flex; flex-wrap: wrap; gap: 0 0.6rem; align-items: baseline; }
+#mypageScreen .mp-meta .mp-dot { color: #45424c; }
+
+#mypageScreen .mp-counts { display: flex; gap: 3.2rem; margin-bottom: 3.6rem; }
+#mypageScreen .mp-count .mp-num { font-family: 'Cormorant Garamond', serif; font-size: 2.3rem; line-height: 1; color: #e8e4df; }
+#mypageScreen .mp-count .mp-label { font-size: 0.72rem; letter-spacing: 0.18em; color: #77747f; margin-top: 0.5rem; }
+
+#mypageScreen .mp-section { border-top: 1px solid rgba(232,228,223,0.12); padding: 2rem 0 1.4rem; }
+#mypageScreen .mp-title { font-size: 0.74rem; letter-spacing: 0.22em; color: #77747f; font-weight: 300; margin: 0 0 1.2rem; }
+#mypageScreen .mp-list { display: flex; flex-direction: column; }
+#mypageScreen .mp-empty { font-size: 0.9rem; color: #5d5a64; font-style: italic; line-height: 2; }
+#mypageScreen .mp-row { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 'title go' 'meta go'; align-items: center; column-gap: 1.2rem; width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid rgba(232,228,223,0.06); padding: 0.9rem 0.2rem; color: inherit; font: inherit; cursor: pointer; transition: background 900ms ease; }
+#mypageScreen .mp-row:hover { background: rgba(232,228,223,0.03); }
+#mypageScreen .mp-row-title { grid-area: title; font-size: 1.02rem; color: #e8e4df; word-break: keep-all; transition: color 700ms ease; }
+#mypageScreen .mp-row:hover .mp-row-title { color: #c4a882; }
+#mypageScreen .mp-row-meta { grid-area: meta; font-size: 0.74rem; letter-spacing: 0.06em; color: #6f6c78; margin-top: 0.2rem; }
+#mypageScreen .mp-row-go { grid-area: go; font-size: 0.74rem; letter-spacing: 0.14em; color: #77747f; white-space: nowrap; transition: color 700ms ease; }
+#mypageScreen .mp-row:hover .mp-row-go { color: #c4a882; }
+
+#mypageScreen .mp-note { border-bottom: 1px solid rgba(232,228,223,0.06); padding: 0.9rem 0.2rem; cursor: pointer; transition: background 900ms ease; }
+#mypageScreen .mp-note:hover { background: rgba(232,228,223,0.03); }
+#mypageScreen .mp-note-from { font-size: 0.72rem; letter-spacing: 0.1em; color: #6f6c78; margin: 0 0 0.3rem; }
+#mypageScreen .mp-note-from .mp-new { color: #c4a882; margin-left: 0.6rem; letter-spacing: 0.16em; }
+#mypageScreen .mp-note-text { font-size: 1rem; line-height: 2; color: #a39fab; font-style: italic; margin: 0; word-break: keep-all; }
+#mypageScreen .mp-note.unread .mp-note-text { color: #e8e4df; font-style: normal; }
+#mypageScreen .mp-note-date { font-size: 0.72rem; color: #5d5a64; margin: 0.3rem 0 0; }
+
+#mypageScreen .mp-foot { margin-top: 3rem; display: flex; gap: 2rem; }
+#mypageScreen .mp-link { background: transparent; border: 0; color: #77747f; font: inherit; font-size: 0.8rem; letter-spacing: 0.16em; cursor: pointer; padding: 0.5rem 0.2rem; border-bottom: 1px solid transparent; transition: color 700ms ease, border-color 700ms ease; }
+#mypageScreen .mp-link:hover { color: #e8e4df; border-bottom-color: rgba(232,228,223,0.3); }

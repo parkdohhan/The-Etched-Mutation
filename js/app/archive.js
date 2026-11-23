@@ -747,6 +747,9 @@ async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const 
   if (memoryListEl) memoryListEl.style.display = 'grid';
   if (archiveControlsEl) archiveControlsEl.style.display = 'block';
   if (archiveHeaderEl) archiveHeaderEl.style.display = 'block';
+  // 261123: 목록 칸에는 시작할 때 그려 둔 옛 견본 카드(E-001 "The Jacket on the Chair" 등)가 남아 있다.
+  // 서버에서 기억을 받아 오는 몇 초 동안 그것이 그대로 보이다가 사라졌다(작가 보고). 받아 오기 전에 칸을 비운다.
+  if (memoryListEl) memoryListEl.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">…</div>';
   try {
     await loadMemoriesFromSupabase();
     sortMemories('all');
@@ -1207,6 +1210,11 @@ function selectMemory(index) {
     else sessionStorage.removeItem('tem_replay');
   } catch (_) {}
 
+  // 261123 기억 만들기(record-space.html)로 만든 기억은 옛 지형이 아니라 우주 무대(space-play.html)로 (docs/우주무대_기억만들기_결정-261123.md)
+  if (memory.meta && memory.meta.space_record) {
+    window.location.href = `space-play.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
+    return;
+  }
   const isLocal = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const base = isLocal ? 'play-test.html' : '/play';
   const url = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}${_isReplay ? '&replay=1' : ''}`;

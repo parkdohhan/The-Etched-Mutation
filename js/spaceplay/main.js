@@ -16,13 +16,18 @@
  */
 import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
-import { createRoom, typeText, sentences, closed } from '../roomplay/room.js';
+import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
-import { createCosmos } from './cosmos.js';
-import { isSilent } from './things.js';
+import { createCosmos } from './cosmos.js?v=261123d';
+import { isSilent } from './things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from './topo.js';
-import { createStarMap } from './starmap.js';
-import { runFinale } from './finale.js';
+import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
+import { createStarMap } from './starmap.js?v=261123a';
+import { runFinale } from './finale.js?v=261123d';
+import { runPrologue } from './prologue.js?v=261124a';
+import { packTrack } from './thread.js?v=261123d';
+import { createEscMenu } from './escmenu.js?v=261123a';
+import { createTypeVoice } from './typevoice.js?v=261124a';
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -44,6 +49,13 @@ const veilEl = $('rpVeil');
 function veil(on) { veilEl.classList.toggle('clear', !on); return new Promise((r) => setTimeout(r, 2300 / Math.min(FAST, 3))); }
 function toast(msg) { const t = $('rpToast'); typeText(t, msg, { per: 30 }); t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 6000); }
 function hint(msg, ms) { const h = $('rpHint'); clearTimeout(hint._t); if (!msg) { h.classList.remove('on'); return; } typeText(h, msg, { per: 30 }); h.classList.add('on'); hint._t = setTimeout(() => h.classList.remove('on'), ms || 9000); }
+/** How to move, said once, large, in the middle (author, 261123: the small line at the bottom was not seen). */
+function guide(rows, ms) {
+  let g = $('spGuide'); if (!g) { g = document.createElement('div'); g.id = 'spGuide'; g.setAttribute('aria-live', 'polite'); document.body.appendChild(g); }
+  g.innerHTML = ''; for (const [k, t] of rows) { const r = document.createElement('div'); r.className = 'row'; const a = document.createElement('span'); a.className = 'k'; a.textContent = k; const b = document.createElement('span'); b.className = 't'; b.textContent = t; r.appendChild(a); r.appendChild(b); g.appendChild(r); }
+  requestAnimationFrame(() => g.classList.add('on'));
+  clearTimeout(guide._t); guide._t = setTimeout(() => g.classList.remove('on'), ms || 12000);
+}
 function hashStr(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
 
 const run = {
@@ -64,7 +76,8 @@ const run = {
 };
 window.__space = { run, mode: MODE };       // automation / inspection hook
 
-let cosmos, talk, map, air;
+let cosmos, talk, map, air, pause, typeVoice, letGo = false;
+const letGoMark = () => { letGo = true; };
 const V3 = (a) => new window.THREE.Vector3(a[0], a[1], a[2]);
 const sceneById = (id) => run.scenes.find((s) => s.id === id);
 
@@ -78,7 +91,7 @@ const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a
 const soundOf = (scene) => { const m = scene.meta || {}; return { url: m.sound_url || null, vol: m.sound_volume != null ? Number(m.sound_volume) : 0.5 }; };
 function createAir() {
   const chans = new Map();                        // scene id → { o, el, url, base, level, target, retry }
-  let focusId = null, hushed = false, last = performance.now();
+  let focusId = null, hushed = false, master = 1, last = performance.now();
   function make(scene) {
     const s = soundOf(scene); if (!s.url) return null;
     const el = new Audio(); el.loop = true; el.preload = 'auto'; el.volume = 0; el.src = s.url;
@@ -94,7 +107,7 @@ function createAir() {
       if (hushed) c.target = 0;
       c.level += (c.target - c.level) * (1 - Math.exp(-dt / (c.target > c.level ? 1.4 : hushed ? 0.22 : 0.6)));   // it comes in slowly, goes out quicker, and is cut short when a passage begins
       if (c.target < 0.002 && c.level < 0.004) c.level = 0;
-      const v = Math.max(0, Math.min(1, c.level * c.base)); if (Math.abs(c.el.volume - v) > 0.002) c.el.volume = v;
+      const v = Math.max(0, Math.min(1, c.level * c.base * master)); if (Math.abs(c.el.volume - v) > 0.002) c.el.volume = v;
       if (c.level > 0 && c.el.paused) play(c, now);
       else if (c.level === 0 && !c.el.paused) c.el.pause();                                  // out of hearing it does not run at all
     }
@@ -116,6 +129,8 @@ function createAir() {
     /** A passage between scenes, and the ending: silence. */
     hush(on) { hushed = !!on; },
     fade() { hushed = true; },
+    /** The pause sheet's volume: everything is that much quieter. */
+    setMaster(v) { master = Math.max(0, Math.min(1, Number(v))); if (isNaN(master)) master = 1; },
     state: () => Array.from(chans.values()).map((c) => ({ o: c.o, url: c.url.split('/').pop(), level: +c.level.toFixed(2), target: +c.target.toFixed(2), volume: +c.el.volume.toFixed(2), paused: c.el.paused })),
   };
 }
@@ -129,6 +144,8 @@ function stageText(scene, visitN) {
   const depth = Number(run.memory.cont_depth) || 0;
   let st = depth <= 0 ? 0 : (depth >= DEPTH_STAGE_3 && layerOf(scene, 3)) ? 3 : (depth >= DEPTH_STAGE_2 && layerOf(scene, 2)) ? 2 : layerOf(scene, 1) ? 1 : 0;
   st = Math.min(3, st + (visitN - 1));
+  // a memory made in record-space.html has no layer 1 of its own: a return visit climbs to the next layer that exists (2, then 3) instead of falling back to the text as written (261123)
+  if (visitN > 1 && st > 0 && !layerOf(scene, st)) { let up = st; while (up < 3 && !layerOf(scene, up)) up++; if (layerOf(scene, up)) st = up; }
   const rs = riggedStage(rigOf(run.memory, qs), visitN, scene);
   if (rs != null) { st = rs; if (visitN === 1 && !layerOf(scene, st)) st = 0; }
   while (st > 0 && !layerOf(scene, st)) st--;
@@ -149,6 +166,8 @@ const asRead = (l) => (/^[…\s.]*$/.test(l) ? '…' : String(l).trim());
 // manuscript lines already stored with it (the words set afloat, the words buried, what its things say:
 // scenes.meta.piece.props). Nothing is composed here.
 function pieceLines(scene) {
+  const sp = scene.meta && scene.meta.space;                                // written for this stage: { words:[…], deep:[…] } (the English copy — it has no piece-stage props)
+  if (sp && (Array.isArray(sp.words) || Array.isArray(sp.deep))) return { words: (sp.words || []).map((t) => String(t).trim()).filter(Boolean), deep: (sp.deep || []).map((t) => String(t).trim()).filter(Boolean) };
   const props = (scene.meta && scene.meta.piece && Array.isArray(scene.meta.piece.props)) ? scene.meta.piece.props : [];
   const words = props.filter((p) => p && p.kind === 'word' && p.text).map((p) => String(p.text).trim());
   const deep = props.filter((p) => p && (p.kind === 'buried' || (p.kind === 'object' && p.role === 'speaking')) && p.text).map((p) => String(p.text).trim());
@@ -253,6 +272,7 @@ function createTalk() {
 // ── boot ───────────────────────────────────────────────────────────────────
 async function boot() {
   document.documentElement.lang = LANG;
+  if (!ko) { document.title = 'TEM — scenes afloat'; const mc = $('spMap'); if (mc) mc.setAttribute('aria-label', 'the scenes passed'); }
   const ref = qs.get('memory') || DEFAULT_MEMORY;
   const line = $('spEntryLine'), btn = $('spEnter'), note = $('spEntryNote');
   let loaded;
@@ -266,12 +286,20 @@ async function boot() {
   try { await Promise.race([document.fonts.load('300 64px "Noto Serif KR"', '기억'), new Promise((r) => setTimeout(r, 2500))]); } catch (_) {}   // letters drawn in the place use the page's serif, not a system fallback
 
   air = createAir();
+  typeVoice = createTypeVoice(); setTypeVoice(typeVoice.tap);             // 261124: a tap for each typed letter of the scenes' texts
   talk = createTalk();
-  cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l) } });
+  cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
   map = createStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
-  Object.assign(window.__space, { cosmos, talk, map, air, finish });
+  // Esc, at any time: the pause sheet (brightness · volume · leave). The browser keeps the Esc that lets the cursor go, so cosmos tells us (onEscape) too.
+  pause = createEscMenu({ ko, setVolume: (v) => { air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
+    onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
+    onClose: (byHand) => { letGo = false; if (byHand && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !map.isOpen()) cosmos.relock(); },
+    onLeave: () => { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); } });
+  Object.assign(window.__space, { cosmos, talk, map, air, finish, pause });
   setupFlyButton();
+  // the map without first letting the cursor go: the right mouse button (author, 261123 — Esc, then a press, was one step too many)
+  window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly') map.open(); });
   window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && cosmos.mode() === 'fly') map.toggle(); });
 
   if (PEEK) return peek();
@@ -279,6 +307,10 @@ async function boot() {
   const begin = async () => {
     $('spEntry').classList.add('gone');
     cosmos.ensureAudio();
+    if (!AT && qs.get('prologue') !== '0') {                            // 261123: the one who walked before, from afar; one step; the fall (prologue.js). ?prologue=0 skips it
+      try { run.prologue = await runPrologue({ cosmos, run, data, lang: LANG, fast: FAST, hint, auto: MODE === 'test' }); }
+      catch (e) { console.error('[space] prologue', e); cosmos.setCine(null); cosmos.setMode('held'); $('spCosmos').classList.remove('on'); }
+    }
     const has = air.focus(first);                                           // the first scene's own sound (if it has one) comes in under its text
     await wait(has ? 2600 : 900);
     if (AT === 'end') return fakeWalk().then(finish);
@@ -472,8 +504,11 @@ async function openEyes(first) {
   $('spMapWrap').classList.add('on'); syncMap();
   await wait(1400);
   cosmos.setMode('fly');
-  hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 나아갑니다 · 화면을 끌어 둘러봅니다' : 'hold the circle to move · drag to look')
-                        : (ko ? 'W A S D 로 나아갑니다 · 화면을 누르면 마우스로 둘러봅니다' : 'W A S D to move · click, then look with the mouse'), 11000);
+  guide(cosmos.isTouch()
+    ? (ko ? [['동그라미', '누르고 있으면 나아갑니다'], ['화면', '끌어서 둘러봅니다'], ['왼쪽 위 지도', '누르면 지나온 장면으로 갑니다']]
+          : [['the circle', 'hold it to move'], ['the screen', 'drag to look around'], ['the map, top left', 'press it to go back to a scene']])
+    : (ko ? [['W A S D', '나아갑니다'], ['화면을 누르면', '마우스로 둘러봅니다'], ['M · 마우스 오른쪽', '지도 — 지나온 장면으로 갑니다'], ['ESC', '멈춤 · 밝기 · 소리']]
+          : [['W A S D', 'move'], ['click', 'then look with the mouse'], ['M · right mouse button', 'the map — go back to a scene'], ['ESC', 'pause · brightness · volume']]), 13000);
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
   if (run.firstRes) await afterStay(run.firstRes);
 }
@@ -521,30 +556,33 @@ async function cross(from, to, way, kind) {
   run.crossing = true;
   const T = window.THREE, first = !run.arrived.has(to.id);
   kind = kind || (first ? 'new' : 'old');
-  const leg = { from: from.scene_order, to: to.scene_order, kind, pattern: run.last ? run.last.pattern : null, said: passWord(kind, run.last ? run.last.pattern : 'bridge'), place: run.place.get(to.id) ? { d: run.place.get(to.id).d, shift: run.place.get(to.id).shift, compared: run.place.get(to.id).compared } : null };
+  const leg = { from: from.scene_order, to: to.scene_order, kind, pattern: run.last ? run.last.pattern : null, said: kind === 'map' ? '' : passWord(kind, run.last ? run.last.pattern : 'bridge'), place: run.place.get(to.id) ? { d: run.place.get(to.id).d, shift: run.place.get(to.id).shift, compared: run.place.get(to.id).compared } : null };
   hint(''); nearLine(null); map.close(); $('rpWalk').classList.remove('on');
   air.hush(true);                                                         // the passage between two scenes has no sound of either
   const fromPos = cosmos.pl.pos.clone();
   await veil(true);
-  const pass = $('rpPass');
-  await wait(400);
-  await typeText(pass, leg.said, { per: 110, pace: 1 / FAST });
-  await wait(1700);
-  pass.textContent = '';
+  if (kind === 'map') await wait(350);                                     // picked on the map: dark, then there — no door, no line said
+  else {
+    const pass = $('rpPass');
+    await wait(400);
+    await typeText(pass, leg.said, { per: 110, pace: 1 / FAST, voice: true });
+    await wait(1700);
+    pass.textContent = '';
+  }
   if (run.ended) return;
 
   const Qf = V3(run.Q.get(from.id)), Qt = V3(run.Q.get(to.id));
-  const dir = from.id === to.id ? way.e.clone() : horiz(Qt.clone().sub(Qf), run.id + from.id + to.id);
+  const dir = from.id === to.id && way ? way.e.clone() : horiz(Qt.clone().sub(Qf), run.id + from.id + to.id);
   const X = Qt.clone().addScaledVector(dir, -ARRIVE_DIST); X.y = Qt.y - FOOT_DROP;
   cosmos.placeThing(to, Qt, X);
   cosmos.link(from.id, to.id);
   if (run.stub && run.stub.live) cosmos.removeWay(run.stub);
-  if (way.kind === 'back' && way.live) cosmos.removeWay(way);              // a door called from the map is there for one crossing
-  run.stub = cosmos.openStub({ at: X, dir, key: run.id + 'stub' + run.legs.length });
+  if (way && way.kind === 'back' && way.live) cosmos.removeWay(way);
+  run.stub = kind === 'map' ? null : cosmos.openStub({ at: X, dir, key: run.id + 'stub' + run.legs.length });   // a door's far side: a short floor. From the map there is no door, so none
   const start = X.clone().addScaledVector(dir, 0.5).add(new T.Vector3(0, cosmos.EYE, 0));
   cosmos.carry(fromPos, start);
   cosmos.teleport(start, Math.atan2(-dir.x, -dir.z), 0);
-  cosmos.land(run.stub, 0.5);
+  if (run.stub) cosmos.land(run.stub, 0.5);
   run.here = to.id; run.arrived.add(to.id); run.path.push(to.id); run.legs.push(leg);
   if (first) { run.pending = to.id; dress(to, partB(to).left); }
   else {
@@ -555,7 +593,7 @@ async function cross(from, to, way, kind) {
   await veil(false);
   air.hush(false);                                                        // the new place sounds for itself, by distance
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
-  if (!run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 6000); }
+  if (run.stub && !run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 6000); }
   run.crossing = false;
 }
 /** A move that is not a stay is a walk all the same: it goes in the ledger (the piece stage's mark; no emotion, no alignment). */
@@ -606,7 +644,7 @@ async function nearLine(lines) {
   for (const l of lines) {
     if (token !== nearToken) return;
     const p = document.createElement('p'); if (l.who !== 'text') p.className = l.who; box.appendChild(p);
-    await typeText(p, l.t, { pace: 1 / FAST });
+    await typeText(p, l.t, { pace: 1 / FAST, voice: true });
     await wait(700);
   }
   await wait(9000);
@@ -632,17 +670,13 @@ function syncMap() {
   map.set(nodes, edges, d && d.way.live ? { pos: [d.way.D.x, d.way.D.y, d.way.D.z] } : null);
 }
 /** From the map: the scene pressed. A door stands at the very place on the screen that was pressed. */
-function returnBy(id, sx, sy) {
+function returnBy(id) {
   if (run.busy || run.crossing || run.ended || cosmos.mode() !== 'fly') return;
   const to = sceneById(id), from = sceneById(run.here);
   if (!to || !from || id === run.here) { map.close(); return; }
   map.close();
-  const T = window.THREE, ray = cosmos.screenRay(sx, sy, 12.5), f = cosmos.forward();
-  let dir = new T.Vector3(ray.dir.x, 0, ray.dir.z); if (dir.lengthSq() < 0.02) dir.set(f.x, 0, f.z); if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); dir.normalize();
-  const door = ray.at.clone(); door.y -= cosmos.DOOR_H / 2;                 // the door's middle is the pressed point
-  const feet = cosmos.feet(), start = feet.clone().addScaledVector(dir, 1.3);
-  if (run.backWay && run.backWay.live) cosmos.removeWay(run.backWay);
-  run.backWay = cosmos.openWay({ door, dir, start, startDir: dir, key: run.id + 'back' + run.legs.length, kind: 'back', from: from.id, to: id, onPass: (w) => cross(sceneById(run.here) || from, to, w, 'map') });
+  if (run.backWay && run.backWay.live) cosmos.removeWay(run.backWay);       // (a door left from before this change)
+  cross(from, to, null, 'map');
 }
 function setupFlyButton() {
   const b = $('rpWalk');
@@ -652,13 +686,28 @@ function setupFlyButton() {
 }
 
 // ── the end ────────────────────────────────────────────────────────────────
+/** A memory made in record-space.html: after each finished walk the server bakes the next layers of every scene's text from
+ *  the ledger (bake-room-layers = tools/room-sim/bake_stage.mjs's rule, run on the server; docs/우주무대_기억만들기_결정-261123.md §굽기).
+ *  The contamination state goes with the call, replayed from the ledger here (as the room stage reads it). Nothing waits for it. */
+async function bakeLayers() {
+  if (MODE === 'test' || !run.memory || !run.memory.meta || !run.memory.meta.space_record) return;
+  try {
+    const rows = await data.loadRoomPlays(run.memory.id);
+    const st = replayFromPlays(rows.map((x) => ({ alignment: x.alignment, mismatch_type: x.mismatch_type, user_emotion: x.user_emotion })));
+    const pres = getPresentationState(st);
+    const contState = { cont_drift: st.cont_drift || 0, cont_fixation: st.cont_fixation || 0, drift_dir_v: st.drift_dir_v || 0, drift_dir_a: st.drift_dir_a || 0, drift_dir_d: st.drift_dir_d || 0, band: pres.band === 'weak' ? 'medium' : pres.band, stage: pres.stage };
+    const r = await data.client().functions.invoke('bake-room-layers', { body: { memoryId: run.memory.id, contState } });
+    if (r.error) console.warn('[space] bake', r.error); else console.info('[space] bake', r.data);
+  } catch (e) { console.warn('[space] bake failed', e); }
+}
 async function finish() {
   if (run.ended) return; run.ended = true;
   hint(''); nearLine(null); map.close(); $('spMapWrap').classList.remove('on'); $('rpWalk').classList.remove('on'); talk.hide();
   if (MODE !== 'test') {
     data.writeJournal(run.memory.id, run.id, { stage: data.STAGE_TAG, place: PLACE_TAG, mode: MODE, visit_order: run.path.map((id) => sceneById(id).scene_order),
-      scenes: run.rooms, legs: run.legs, contact: run.contact, model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift })),
-      seconds: Math.round((Date.now() - run.startedAt) / 1000) });
+      scenes: run.rooms, legs: run.legs, contact: run.contact, model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift, pos: run.Q.get(id) || null })),
+      seconds: Math.round((Date.now() - run.startedAt) / 1000), track: packTrack(cosmos.track) });   // 261123: the walk's line, for the next walker's prologue
+    bakeLayers();                                             // a memory made in record-space.html: the next layers of its texts, from the ledger (fire and forget)
   }
   try {
     window.__space.finale = await runFinale({ cosmos, run, lang: LANG, fast: FAST, air, typeText, wait, sceneById,
@@ -730,7 +779,7 @@ async function peek() {
   cosmos.teleport(q.clone().add(new window.THREE.Vector3(0, 2.6, 9.5)), 0, 0); cosmos.face(q); cosmos.start(); cosmos.setMode('fly');
   $('spCosmos').classList.add('on'); $('spMapWrap').classList.add('on'); syncMap();
   await veil(false);
-  hint('W A S D · 화면을 누르면 마우스로 둘러봅니다 · M = 지도', 9000);
+  hint(ko ? 'W A S D · 화면을 누르면 마우스로 둘러봅니다 · M = 지도' : 'W A S D · click, then look with the mouse · M = map', 9000);
 }
 
 boot();

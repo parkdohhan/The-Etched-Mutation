@@ -300,10 +300,10 @@ export function lineText(p) {
   return out;
 }
 
-export function createTyping(pace) {
+export function createTyping(pace, voice) {                                // voice: a tap for each letter typed in (261124; none for letters taken out)
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms * (pace || 1)));
   async function back(el, per) { while (el.textContent.length) { el.textContent = Array.from(el.textContent).slice(0, -1).join(''); await sleep(per || 70); } }
-  async function type(el, text, per) { for (const ch of Array.from(text)) { el.textContent += ch; await sleep(per || 85); } }
+  async function type(el, text, per) { for (const ch of Array.from(text)) { el.textContent += ch; if (voice) voice(ch); await sleep(per || 85); } }
   /** A word goes out of a line and a hole stays. `was` = the word the walker read in its place before: it is typed once more, and goes too. */
   async function fall(tok, was) {
     const s = tok.querySelector('.sb-s'), j = tok.querySelector('.sb-j');

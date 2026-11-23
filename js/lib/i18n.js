@@ -24,6 +24,25 @@ const STRINGS = {
         'menu.desc.profile':   'Manage personal profile and synchronization settings.',
         'menu.desc.portfolio': 'Explore the origin and architect of The Etched Mutation. (Opens in a new tab)',
 
+        // ── Profile (261123 restyle; markup in index.html #mypageScreen, rows in js/app/auth.js) ──
+        'profile.back':        '← back',
+        'profile.kicker':      'what stays here',
+        'profile.joined':      'first came',
+        'profile.memories':    'memories walked',
+        'profile.steps':       'steps left',
+        'profile.mine':        'memories I made',
+        'profile.notes':       'words received',
+        'profile.signout':     'sign out',
+        'profile.empty.mine':  'no memory made yet.',
+        'profile.empty.notes': 'no words yet.',
+        'profile.go.space':    'into the space →',
+        'profile.go.terrain':  'into the terrain →',
+        'profile.walks':       '{n} walks',
+        'profile.private':     'unlisted',
+        'profile.untitled':    'untitled',
+        'profile.note.from':   'from the memory',
+        'profile.note.new':    'new',
+
         // ── Auth ──────────────────────────────────────────────────
         'auth.signin.helper': 'Signing in lets your traces stay with this memory. You can keep wandering without it.',
 
@@ -149,6 +168,25 @@ const STRINGS = {
         'menu.desc.record':    '새 기억을 기록하고 변이의 흔적을 남긴다.',
         'menu.desc.profile':   '프로필과 동기화 설정을 관리한다.',
         'menu.desc.portfolio': 'The Etched Mutation의 기원과 제작자를 탐색한다. (새 탭으로 열림)',
+
+        // ── Profile (261123 재단장) ──
+        'profile.back':        '← 돌아가기',
+        'profile.kicker':      '이 자리에 남은 것',
+        'profile.joined':      '처음 온 날',
+        'profile.memories':    '걸은 기억',
+        'profile.steps':       '남긴 걸음',
+        'profile.mine':        '내가 만든 기억',
+        'profile.notes':       '받은 말',
+        'profile.signout':     '나가기',
+        'profile.empty.mine':  '아직 만든 기억이 없다.',
+        'profile.empty.notes': '아직 받은 말이 없다.',
+        'profile.go.space':    '우주로 →',
+        'profile.go.terrain':  '지형으로 →',
+        'profile.walks':       '걸음 {n}',
+        'profile.private':     '비공개',
+        'profile.untitled':    '제목 없음',
+        'profile.note.from':   '어느 기억에서',
+        'profile.note.new':    '새',
 
         // ── Auth ──────────────────────────────────────────────────
         'auth.signin.helper': '당신의 흔적을 이 기억에 잇기 위해서야. 로그인 안 해도 작품은 둘러볼 수 있어.',

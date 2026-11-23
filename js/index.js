@@ -18,7 +18,7 @@ import { AIService } from './services/AIService.js';
 import { MemoryService } from './services/MemoryService.js';
 import { uiManager } from './ui/UIManager.js';
 import { visualizer } from './ui/Visualizer.js';
-import { bindEvents } from './app/bindEvents.js';
+import { bindEvents } from './app/bindEvents.js?v=261123a';
 import { showNotification, showNpcDialogue } from './ui/notify.js';
 // Live mode: dynamic import — only loaded when live session is actually started.
 // This keeps ~2,900 LOC out of the initial bundle.

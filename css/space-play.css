@@ -1,5 +1,9 @@
 /* Space play — scenes afloat in a black place (2026-11-21). Decision record: docs/우주무대_결정-261121.md
    Loaded after css/room-play.css: the text column, its lines, the veil and the hint are the room stage's own. */
+/* 261123 (author: "too small on my monitor — 1.25 times"): every size on this page is in rem, so the page's base
+   size grows with the window. Up to a 1600px-wide window it is the browser's 16px as before; at 2000px it is 20px
+   (1.25 times); it stops at 24px. A phone is unchanged. */
+html { font-size: clamp(16px, 1vw, 24px); }
 body.sp, body.sp html { background: #000; }
 body.sp { --rp-bg: #000; }
 
@@ -70,3 +74,11 @@ body.sp #rpWalk { bottom: 5.5rem; }
   #spMapWrap.open { left: 4vw; top: calc(50vh - 46vw); width: 92vw; height: 92vw; }
   body.sp .rp-column { padding: 30vh 1.1rem 4vh; background: linear-gradient(180deg, rgba(0,0,0,0) 0, rgba(0,0,0,0) 22%, rgba(0,0,0,0.88) 34%, rgba(0,0,0,0.88) 100%); }
 }
+
+/* ── how to move, said once: large, in the middle, then gone (261123) ── */
+#spGuide { position: fixed; left: 50%; top: 62%; transform: translate(-50%, -50%); z-index: 26; display: grid; gap: 1.05rem; pointer-events: none; opacity: 0; transition: opacity 2200ms ease; text-shadow: 0 0 16px #000, 0 0 30px #000; }
+#spGuide.on { opacity: 1; }
+#spGuide .row { display: grid; grid-template-columns: 13.5rem auto; column-gap: 1.6rem; align-items: baseline; }
+#spGuide .k { text-align: right; font-size: 1.22rem; letter-spacing: 0.2em; color: var(--rp-accent); white-space: nowrap; }
+#spGuide .t { font-size: 1.12rem; letter-spacing: 0.08em; font-weight: 300; color: #d9d5dd; white-space: nowrap; }
+@media (max-width: 760px) { #spGuide { width: 88vw; gap: 0.9rem; } #spGuide .row { grid-template-columns: 1fr; row-gap: 0.15rem; text-align: center; } #spGuide .k { text-align: center; font-size: 1rem; } #spGuide .t { font-size: 0.95rem; white-space: normal; } }

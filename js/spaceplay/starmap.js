@@ -4,8 +4,10 @@
  * What it shows is the walker's own model (topo.js Q): each scene reached is its own thing, small (the same
  * line sculpture as in the place — no beads, no captions), joined by the crossings made. The walker is an
  * acute triangle pointing where they look; a door that has appeared is on it too.
- * Pressed (or M), it opens to a size that can be read. Pressing a scene there calls `onPick(id, x, y)` with the
- * very point of the screen that was pressed — the door back to that scene is stood at that point.
+ * Pressed (or M), it opens to a size that can be read. Pressing a scene there calls `onPick(id, x, y)`; the place
+ * goes dark and comes back at that scene (261123 — no door is stood any more).
+ * The scene the walker is at is told apart on the map only: the lines of its small thing glisten, slowly, each in
+ * its own time (261123 — no larger star, no added light).
  *
  * Position on the map means what it means in the model: only who stands where relative to whom.
  * Requires the three.js r128 global build (window.THREE).
@@ -13,6 +15,7 @@
 import { makeThing, glowTexture, C } from './things.js';
 
 const TILT = 0.52, FIT = 0.7, MIN_SPAN = 64;
+const GLISTEN = 0xfffaf0;                       // what a line of the present scene's thing brightens to
 const THING_SMALL = 0.21, THING_OPEN = 0.135;   // a thing's height on the map: closed (it must still be a figure at a few pixels) · open (room between them)
 
 // a star: a soft point with four thin rays
@@ -54,6 +57,19 @@ export function createStarMap(o) {
   const doorMark = new THREE.Line(new THREE.BufferGeometry().setFromPoints([[-0.022, 0, 0], [-0.022, 0.075, 0], [0.022, 0.075, 0], [0.022, 0, 0], [-0.022, 0, 0]].map((p) => new THREE.Vector3(p[0], p[1], p[2]))), new THREE.LineBasicMaterial({ color: 0xc4a882, transparent: true, opacity: 0.95, depthTest: false }));
   doorMark.visible = false; doorMark.renderOrder = 8; model.add(doorMark);
 
+  // the present scene's thing: its lines get materials of their own (the things share theirs, with the place too) and glisten
+  function glistenOff(n) { if (!n.sh) return; for (const s of n.sh) { s.o.material = s.was; s.m.dispose(); } n.sh = null; }
+  function glistenOn(n) {
+    glistenOff(n); n.sh = [];
+    n.thing.g.traverse((ob) => {
+      if (!ob.isLine) return;
+      const m = ob.material.clone(); m.transparent = true;
+      n.sh.push({ o: ob, was: ob.material, m, c0: ob.material.color.clone(), ph: Math.random() * 6.283, per: 2.6 + Math.random() * 2.2 });
+      ob.material = m;
+    });
+  }
+  const WHITE = new THREE.Color(GLISTEN);
+
   function refit() {
     const list = Array.from(nodes.values());
     if (!list.length) return;
@@ -64,7 +80,7 @@ export function createStarMap(o) {
   }
   function set(list, edges, door) {
     const keep = new Set(list.map((n) => n.id));
-    for (const [id, n] of nodes) if (!keep.has(id)) { model.remove(n.g); nodes.delete(id); }
+    for (const [id, n] of nodes) if (!keep.has(id)) { glistenOff(n); model.remove(n.g); nodes.delete(id); }
     for (const it of list) {
       let n = nodes.get(it.id);
       if (!n) {
@@ -76,8 +92,9 @@ export function createStarMap(o) {
         n = { id: it.id, g, holder, thing: th, glint, w: it.pos.slice(), here: false };
         nodes.set(it.id, n);
       }
-      n.w = it.pos.slice(); n.here = !!it.here; n.thing.setAsked(!!it.asked);
-      n.base = n.here ? 0.7 : 0.34; n.glint.scale.setScalar(n.here ? 0.3 : 0.2);
+      n.w = it.pos.slice(); n.here = !!it.here;
+      glistenOff(n); n.thing.setAsked(!!it.asked); if (n.here) glistenOn(n);   // (setAsked swaps the shared materials: ours go on after it)
+      n.base = 0.34;
     }
     refit();
     if (edgeLines) { model.remove(edgeLines); edgeLines.geometry.dispose(); edgeLines = null; }
@@ -109,6 +126,10 @@ export function createStarMap(o) {
     for (const n of nodes.values()) {
       n.thing.tick(now / 1000, dt); n.holder.scale.setScalar(size);
       n.glint.material.opacity = (n.base || 0.34) * (0.86 + 0.14 * Math.sin(now / 1000 * 0.7 + n.glint.userData.ph));   // a star's slow breath, not a twinkle
+      if (n.sh) for (const s of n.sh) {                                     // slow and wide: a line dims, then catches the light, a few seconds a turn
+        const w = 0.5 + 0.5 * Math.sin((now / 1000) * (6.283 / s.per) + s.ph), k = w * w * w;
+        s.m.color.copy(s.c0).lerp(WHITE, k); s.m.opacity = 0.42 + 0.58 * Math.pow(w, 0.8);
+      }
     }
     doorMark.visible = !!doorAt;
     if (doorAt) {

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>TEM — 기억 만들기</title>
+  <!--
+    기억 만들기 (2026-11-23) — 우주 무대(space-play.html)에 올라갈 기억을 관객이 직접 만드는 화면.
+    결정 기록: docs/우주무대_기억만들기_결정-261123.md
+    제목·한 줄 설명 → 장면(앞 토막·뒷 토막·떠 있는 말·묻힌 말) → 장면마다 감정 뽑기(또다른 나와 대화 → 17축 막대) · 조형물 만들기(조리법 → 미리보기) · 소리 만들기(초안 → 소리)
+    → 순서(카드 ↑↓, 첫 카드 = 첫 장면) → 올리기 전 동의 한 장(공개·남의 걸음·"니 순서대로 플레이 안 됨 ㅋ 첫 번째 실일 뿐임"·첫 실) → record-space-seal → 우주 무대.
+    메뉴에는 없다(작가 261123: 시기상조). 주소로 연다. ?lang=ko|en · ?test=1 (연습: 저장하지 않음, 내용은 콘솔에)
+    되돌리기 = 이 파일 + css/record-space.css + js/recordspace/ 삭제 (서버 장치 generate-scene-thing · record-space-seal · bake-room-layers 는 따로).
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/room-play.css?v=261121b" />
+  <link rel="stylesheet" href="css/record-space.css?v=261123c" />
+  <link rel="stylesheet" href="css/tem_cursor.css?v=260809" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body class="rs">
+  <div class="rs-test" id="rsTestTag"></div>
+  <main class="rs-column" id="rs">
+    <header class="rs-head">
+      <div class="rs-kicker" id="rsKicker"></div>
+      <h1 class="rs-title" id="rsTitle"></h1>
+      <p class="rs-lead" id="rsLead"></p>
+    </header>
+
+    <section class="rs-block">
+      <label class="rs-label" id="rsLabelTitle" for="rsMemTitle"></label>
+      <input id="rsMemTitle" class="rs-input" maxlength="60" autocomplete="off" />
+      <label class="rs-label" id="rsLabelDesc" for="rsMemDesc"></label>
+      <input id="rsMemDesc" class="rs-input" maxlength="120" autocomplete="off" />
+    </section>
+
+    <section class="rs-scenes" id="rsScenes" aria-live="polite"></section>
+
+    <div class="rs-actions">
+      <button class="rp-btn" id="rsAddScene" type="button"></button>
+    </div>
+
+    <div class="rs-order-line" id="rsOrderLine"></div>
+    <div class="rs-actions rs-final">
+      <button class="rp-btn rs-primary" id="rsPublish" type="button" disabled></button>
+      <div class="rs-note" id="rsPublishNote"></div>
+    </div>
+  </main>
+
+  <div class="rs-sheet" id="rsConsent" hidden>
+    <div class="rs-sheet-box">
+      <h2 class="rs-sheet-title" id="rsConsentTitle"></h2>
+      <ul id="rsConsentList"></ul>
+      <label class="rs-sheet-check"><input type="checkbox" id="rsConsentCheck" /><span id="rsConsentCheckLabel"></span></label>
+      <div class="rs-sheet-btns">
+        <button class="rp-btn rs-primary" id="rsConsentGo" type="button" disabled></button>
+        <button class="rs-small" id="rsConsentNo" type="button"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rsVeil" class="on"><div id="rsVeilLine"></div><div id="rsVeilNote"></div></div>
+  <div id="rsToast"></div>
+
+  <template id="rsSceneTpl">
+    <article class="rs-scene">
+      <header class="rs-scene-head">
+        <div class="rs-scene-no"><span class="n">1</span><span class="first-tag"></span></div>
+        <div class="rs-scene-tools">
+          <button class="rs-icon up" type="button">↑</button>
+          <button class="rs-icon down" type="button">↓</button>
+          <button class="rs-icon del" type="button">×</button>
+        </div>
+      </header>
+      <div class="rs-field">
+        <label class="rs-label l-a"></label>
+        <textarea class="rs-text f-text" rows="3" maxlength="600"></textarea>
+        <div class="rs-meter"><span class="chars"></span> · <span class="sents"></span><span class="rule"></span></div>
+      </div>
+      <div class="rs-field">
+        <label class="rs-label l-b"></label>
+        <textarea class="rs-text f-b" rows="3" maxlength="900"></textarea>
+        <div class="rs-meter"><span class="chars-b"></span></div>
+      </div>
+      <div class="rs-field rs-field-row">
+        <label class="rs-label l-words"></label>
+        <input class="rs-input f-words" maxlength="300" autocomplete="off" />
+      </div>
+      <div class="rs-field rs-field-row">
+        <label class="rs-label l-deep"></label>
+        <input class="rs-input f-deep" maxlength="300" autocomplete="off" />
+      </div>
+
+      <div class="rs-sub">
+        <div class="rs-sub-head"><span class="rs-sub-title t-emotion"></span><span class="rs-status s-emotion"></span></div>
+        <div class="rs-talk" hidden>
+          <div class="rs-talk-lines"></div>
+          <div class="rs-talk-input"><input class="rs-input f-answer" maxlength="300" autocomplete="off" disabled /><button class="rs-small t-send" type="button"></button><button class="rs-small t-done" type="button" hidden></button></div>
+        </div>
+        <div class="rs-axes" hidden></div>
+        <div class="rs-row-btns e"><button class="rp-btn b-talk" type="button"></button><button class="rs-small b-manual" type="button"></button></div>
+      </div>
+
+      <div class="rs-sub rs-thing">
+        <div class="rs-sub-head"><span class="rs-sub-title t-thing"></span><span class="rs-status s-thing"></span></div>
+        <canvas class="rs-preview" hidden></canvas>
+        <div class="rs-thing-note"></div>
+        <div class="rs-row-btns"><button class="rp-btn b-thing" type="button"></button><button class="rs-small b-thing-again" type="button" hidden></button><button class="rs-small b-thing-drop" type="button" hidden></button></div>
+      </div>
+
+      <div class="rs-sub">
+        <div class="rs-sub-head"><span class="rs-sub-title t-sound"></span><span class="rs-status s-sound"></span></div>
+        <textarea class="rs-text f-sound-prompt" rows="2" maxlength="400" hidden></textarea>
+        <audio class="rs-audio" controls hidden></audio>
+        <div class="rs-row-btns"><button class="rp-btn b-sound-draft" type="button"></button><button class="rs-small b-sound-gen" type="button" hidden></button><button class="rs-small b-sound-clear" type="button" hidden></button></div>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="js/recordspace/main.js?v=261123c"></script>
+</body>
+</html>

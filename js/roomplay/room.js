@@ -37,9 +37,12 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Rhythm = the opening's typeWrite (js/app/confession.js): a letter every 40 ms, a breath after . ? , and at a line break.
 const typingOf = new WeakMap();
 /** @param o { per, rest, pace, skip:()=>boolean }  Resolves true when the text stands whole, false if another text took the element. */
+// 261124: a voice for typed letters (the space stage registers one; texts typed with { voice: true } sound)
+let typeVoice = null;
+export function setTypeVoice(fn) { typeVoice = typeof fn === 'function' ? fn : null; }
 export function typeText(el, text, o) {
   text = String(text == null ? '' : text);
-  const per = (o && o.per) || 40, pace = (o && o.pace) || 1, skip = o && o.skip, rest = (o && o.rest) || 250;   // rest = the breath after . ? ,
+  const per = (o && o.per) || 40, pace = (o && o.pace) || 1, skip = o && o.skip, rest = (o && o.rest) || 250, voice = !!(o && o.voice);   // rest = the breath after . ? ,
   const token = {}; typingOf.set(el, token);
   el.textContent = '';
   return new Promise((resolve) => {
@@ -48,7 +51,7 @@ export function typeText(el, text, o) {
       if (typingOf.get(el) !== token) return resolve(false);
       if (skip && skip()) { el.textContent = text; return resolve(true); }
       if (i >= text.length) return resolve(true);
-      const ch = text.charAt(i++); el.textContent += ch;
+      const ch = text.charAt(i++); el.textContent += ch; if (voice && typeVoice) typeVoice(ch);
       setTimeout(tick, (ch === '.' || ch === '?' || ch === ',' ? rest : ch === '\n' ? rest + 100 : per) * pace);
     })();
   });
@@ -163,7 +166,7 @@ export function createRoom(root, lang, pace) {
     body.appendChild(p); scrollDown();
     hurry = false;
     const skip = () => hurry;
-    await typeText(t, text, { per: (o && o.per) || 40, pace: PACE, skip });
+    await typeText(t, text, { per: (o && o.per) || 40, pace: PACE, skip, voice: true });
     if (o && o.src) { const s = document.createElement('span'); s.className = 'rp-src'; p.appendChild(s); await typeText(s, o.src, { per: 40, pace: PACE, skip }); }
     scrollDown();
     if (!hurry) await wait(((o && o.hold) || 900) * PACE);

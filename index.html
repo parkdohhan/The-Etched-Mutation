@@ -15,6 +15,8 @@
     <link rel="stylesheet" href="css/index.css?v=260714">
     <!-- confessionV3.css removed — styles now in css/index.css -->
     <link rel="stylesheet" href="css/main-menu.css?v=260714">
+    <!-- 261123: PROFILE 화면 재단장 (글 방 결, #mypageScreen 안에서만) — docs/우주무대_기억만들기_결정-261123.md -->
+    <link rel="stylesheet" href="css/profile.css?v=261123c">
     <!-- 260809: 아스키 커서 — 오프닝·메뉴도 상영과 같은 포인터 (단일 출처 css/tem_cursor.css) -->
     <link rel="stylesheet" href="css/tem_cursor.css?v=260809">
 </head>
@@ -172,10 +174,11 @@
                         <div class="menu-item inactive" data-menu-id="archive" data-action="enterMyArchive">
                             <span class="menu-label" data-i18n="menu.archive">ARCHIVE</span>
                         </div>
-                        <div class="menu-item inactive" data-menu-id="record" data-action="showConfessionHub">
+                        <!-- 261123 작가 결정: RECORD·PROFILE 은 지금 할 것이 없어 메뉴에서 숨긴다(지우지 않음 — style 만 빼면 돌아온다). -->
+                        <div class="menu-item inactive" data-menu-id="record" data-action="showConfessionHub" style="display:none" aria-hidden="true">
                             <span class="menu-label" data-i18n="menu.record">RECORD</span>
                         </div>
-                        <div class="menu-item inactive" data-menu-id="profile" data-action="openMypage">
+                        <div class="menu-item inactive" data-menu-id="profile" data-action="openMypage" style="display:none" aria-hidden="true">
                             <span class="menu-label" data-i18n="menu.profile">PROFILE</span>
                         </div>
                         <div class="menu-item inactive" data-menu-id="settings" data-action="openSettings">
@@ -261,38 +264,35 @@
             <div class="auth-switch-link" onclick="switchToLogin()">Already have an account? Sign In</div>
         </div>
     </div>
+    <!-- 261123 PROFILE 재단장: 검은 한 열, 글 방 결. 채우는 코드(js/app/auth.js · js/ui/UIManager.js)가 보는 id 는 그대로 — displayUsername · displayEmail · displayJoinDate · displayLoginMethod/loginMethodText · displayMemories · displayInterpretations · myMemoriesList · mypageNotesList -->
     <div class="mypage-screen" id="mypageScreen">
-        <button onclick="showMainMenu()" style="position:absolute;top:20px;left:20px;background:none;border:1px solid rgba(196,168,130,0.3);color:rgba(196,168,130,0.7);font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:2px;padding:8px 18px;cursor:pointer;transition:all 0.3s;z-index:10;">← Back</button>
-        <div class="mypage-box">
-            <h2 class="mypage-title">PROFILE</h2>
-            <div class="mypage-content">
-                <div class="mypage-section">
-                    <h3 class="mypage-section-title">User Info</h3>
-                    <div class="mypage-info" id="mypageUsername">Username: <span id="displayUsername">—</span></div>
-                    <div class="mypage-info">Email: <span id="displayEmail">—</span></div>
-                    <div class="mypage-info">Joined: <span id="displayJoinDate">—</span></div>
-                    <div class="mypage-info" id="displayLoginMethod" style="display:none">Sign-in method: <span id="loginMethodText">—</span></div>
+        <button class="mp-back" type="button" onclick="closeMypage()" data-i18n="profile.back">← 돌아가기</button>
+        <div class="mp-column">
+            <header class="mp-head">
+                <div class="mp-kicker" data-i18n="profile.kicker">이 자리에 남은 것</div>
+                <h2 class="mp-name" id="displayUsername">—</h2>
+                <div class="mp-meta">
+                    <span id="displayEmail">—</span>
+                    <span class="mp-dot">·</span>
+                    <span><span data-i18n="profile.joined">처음 온 날</span> <span id="displayJoinDate">—</span></span>
+                    <span id="displayLoginMethod" style="display:none"><span class="mp-dot">·</span> <span id="loginMethodText">—</span></span>
                 </div>
-                <div class="mypage-section">
-                    <h3 class="mypage-section-title">Activity Stats</h3>
-                    <div class="mypage-info">Memories experienced: <span id="displayMemories">0</span></div>
-                    <div class="mypage-info">Interpretations left: <span id="displayInterpretations">0</span></div>
-                </div>
-                <div class="mypage-section">
-                    <h3 class="mypage-section-title">My Memories</h3>
-                    <div id="myMemoriesList" style="max-height:300px;overflow-y:auto">
-                        <div class="mypage-info" style="color:var(--text-ghost);font-style:italic">Loading...</div>
-                    </div>
-                </div>
-                <div class="mypage-section">
-                    <h3 class="mypage-section-title">Messages Received</h3>
-                    <div id="mypageNotesList" style="max-height:300px;overflow-y:auto">
-                        <div class="mypage-info" style="color:var(--text-ghost);font-style:italic">Loading...</div>
-                    </div>
-                </div>
-            </div>
-            <button class="mypage-logout-btn" onclick="handleLogout()">Sign Out</button>
-            <button class="back-btn-simple" onclick="closeMypage()" style="margin-top:1rem">← Back</button>
+            </header>
+            <section class="mp-counts">
+                <div class="mp-count"><div class="mp-num" id="displayMemories">0</div><div class="mp-label" data-i18n="profile.memories">걸은 기억</div></div>
+                <div class="mp-count"><div class="mp-num" id="displayInterpretations">0</div><div class="mp-label" data-i18n="profile.steps">남긴 걸음</div></div>
+            </section>
+            <section class="mp-section">
+                <h3 class="mp-title" data-i18n="profile.mine">내가 만든 기억</h3>
+                <div id="myMemoriesList" class="mp-list"><div class="mp-empty">…</div></div>
+            </section>
+            <section class="mp-section">
+                <h3 class="mp-title" data-i18n="profile.notes">받은 말</h3>
+                <div id="mypageNotesList" class="mp-list"><div class="mp-empty">…</div></div>
+            </section>
+            <footer class="mp-foot">
+                <button class="mp-link" type="button" onclick="handleLogout()" data-i18n="profile.signout">나가기</button>
+            </footer>
         </div>
     </div>
     <div class="confession-hub hidden" id="confessionHub">
@@ -609,6 +609,6 @@
          Scene play lives in play-test.html. -->
     <!-- confessionV3.js removed — replaced by js/app/recordChat.js (ES module, loaded from index.js) -->
     <script src="js/ui/lumen_dialog_phase1.js?v=261118f"></script><!-- 260909 RECORD v4: 플레이 대화 껍데기(자막 상자·타이핑·입력칸)를 recordPlay.js 가 shell 로 빌려 쓴다. 전역 정의만 하고 스스로 아무것도 띄우지 않는다 -->
-    <script type="module" src="js/index.js?v=261121a"></script><!-- 261121a 대표 기억은 오프닝 문 뒤 우주 무대(space-play.html)로 / 260909c 오염 기준선 record-seal 이관(confession.js autoCreateFirstPlay skip) / 260909b RECORD v4 새 회로(recordPlay.js) + 씨앗 공개 규칙 / 260909a Ctrl+Shift+B RECORD 직행 뒷문 + ?action=record -->
+    <script type="module" src="js/index.js?v=261124a"></script><!-- 261123c PROFILE 재단장 + 기억 만들기(record-space) 기억은 아카이브·오프닝에서 우주 무대로 / 261123a 메뉴에서 RECORD·PROFILE 숨김 + 오프닝 소리 조절 막대 / 261121a 대표 기억은 오프닝 문 뒤 우주 무대(space-play.html)로 / 260909c 오염 기준선 record-seal 이관(confession.js autoCreateFirstPlay skip) / 260909b RECORD v4 새 회로(recordPlay.js) + 씨앗 공개 규칙 / 260909a Ctrl+Shift+B RECORD 직행 뒷문 + ?action=record -->
 </body>
 </html>

@@ -113,17 +113,54 @@ function bindOpeningEvents() {
         openingSound.load();
     }
 
-    // 오프닝 mute 토글: localStorage에 상태 유지, 오프닝 화면이 사라지면 버튼도 같이 사라짐.
+    // 오프닝 소리: 둥근 버튼을 누르면 옆에 조절 막대 + 끄기/켜기가 나온다 (261123 작가 지시 — 예전엔 끄기/켜기뿐이라 "모 아니면 도").
+    // 막대 = 작품 전체 음량(설정·멈춤 화면과 같은 값, localStorage 'tem_volume'). 끄기/켜기 = 오프닝 소리만('tem_opening_muted'). 오프닝 화면이 사라지면 같이 사라짐.
     const openingMuteBtn = document.getElementById('openingMuteBtn');
     const openingMuteIcon = document.getElementById('openingMuteIcon');
     if (openingMuteBtn && openingSound) {
         const ICON_ON = '<path d="M11 5 L6 9 H3 v6 h3 l5 4 z"/><path d="M15.5 9 a4 4 0 0 1 0 6"/><path d="M18.5 6.5 a8 8 0 0 1 0 11"/>';
         const ICON_OFF = '<path d="M11 5 L6 9 H3 v6 h3 l5 4 z"/><line x1="16" y1="9" x2="22" y2="15"/><line x1="22" y1="9" x2="16" y2="15"/>';
+        const _volNow = () => (typeof window._temGetMasterVolume === 'function' ? window._temGetMasterVolume() : 1);
+        // the panel: a slider, and beside it the on/off — it comes out to the left of the round button
+        const _panel = document.createElement('div');
+        _panel.className = 'opening-mute-btn opening-sound-panel';           // (the class keeps the opening's own click handler off it)
+        _panel.style.cssText = 'position:absolute;top:24px;right:92px;height:56px;padding:0 10px 0 20px;display:flex;align-items:center;gap:14px;background:rgba(10,10,12,0.85);border:1px solid rgba(220,196,160,0.45);border-radius:28px;z-index:10;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:0;transform:translateX(14px);pointer-events:none;transition:opacity .45s ease,transform .45s ease;';
+        const _slider = document.createElement('input');
+        _slider.type = 'range'; _slider.min = '0'; _slider.max = '1'; _slider.step = '0.02'; _slider.value = String(_volNow());
+        _slider.setAttribute('aria-label', '소리 크기 / Volume');
+        _slider.style.cssText = 'width:150px;accent-color:#c4a882;cursor:pointer;';
+        const _panelMute = document.createElement('button');
+        _panelMute.type = 'button';
+        _panelMute.style.cssText = 'width:38px;height:38px;border-radius:50%;background:none;border:1px solid rgba(220,196,160,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:all .25s ease;';
+        _panelMute.innerHTML = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></svg>';
+        const _panelIcon = _panelMute.firstChild;
+        _panel.appendChild(_slider); _panel.appendChild(_panelMute);
+        openingMuteBtn.parentNode.insertBefore(_panel, openingMuteBtn);
+        let _panelOpen = false;
+        function _showPanel(on) { _panelOpen = on; _panel.style.opacity = on ? '1' : '0'; _panel.style.transform = on ? 'translateX(0)' : 'translateX(14px)'; _panel.style.pointerEvents = on ? 'auto' : 'none'; openingMuteBtn.setAttribute('aria-expanded', on ? 'true' : 'false'); }
+        _panel.addEventListener('click', function (e) { e.stopPropagation(); });
+        _slider.addEventListener('input', function () {
+            const v = Math.max(0, Math.min(1, parseFloat(_slider.value) || 0));
+            if (typeof window._temSetMasterVolume === 'function') window._temSetMasterVolume(v);
+            try { openingSound.volume = openingSound.volume; } catch (_) {}   // (re-applies this element's own level under the new master)
+            if (v > 0.001 && openingSound.muted) { try { localStorage.setItem('tem_opening_muted', '0'); } catch (_) {} _applyOpeningMute(false); }   // moving the slider up is asking for sound
+            else _applyOpeningMute(openingSound.muted);
+        });
+        _panelMute.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const next = !openingSound.muted;
+            _applyOpeningMute(next);
+            try { localStorage.setItem('tem_opening_muted', next ? '1' : '0'); } catch (_) {}
+        });
+        document.addEventListener('pointerdown', function (e) { if (_panelOpen && !_panel.contains(e.target) && !openingMuteBtn.contains(e.target)) _showPanel(false); });
         function _applyOpeningMute(muted) {
             openingSound.muted = muted;
-            if (openingMuteIcon) openingMuteIcon.innerHTML = muted ? ICON_OFF : ICON_ON;
-            openingMuteBtn.setAttribute('aria-label', muted ? 'Unmute opening sound' : 'Mute opening sound');
-            openingMuteBtn.title = muted ? 'Unmute opening sound' : 'Mute opening sound';
+            const _quiet = muted || _volNow() <= 0.001;
+            if (openingMuteIcon) openingMuteIcon.innerHTML = _quiet ? ICON_OFF : ICON_ON;
+            if (_panelIcon) _panelIcon.innerHTML = muted ? ICON_OFF : ICON_ON;
+            if (_panelMute) { _panelMute.title = muted ? '소리 켜기 / Unmute' : '소리 끄기 / Mute'; _panelMute.setAttribute('aria-label', _panelMute.title); _panelMute.style.color = muted ? 'rgba(220,180,140,0.6)' : 'rgba(245,222,189,1)'; }
+            openingMuteBtn.setAttribute('aria-label', '소리 조절 / Sound');
+            openingMuteBtn.title = '소리 조절 / Sound';
             openingMuteBtn.style.color = muted ? 'rgba(220,180,140,0.75)' : 'rgba(240,216,180,0.95)';
             openingMuteBtn.style.borderColor = muted ? 'rgba(220,196,160,0.45)' : 'rgba(220,196,160,0.7)';
         }
@@ -132,9 +169,8 @@ function bindOpeningEvents() {
         _applyOpeningMute(_initialMuted);
         openingMuteBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            const next = !openingSound.muted;
-            _applyOpeningMute(next);
-            try { localStorage.setItem('tem_opening_muted', next ? '1' : '0'); } catch (_) {}
+            _slider.value = String(_volNow());
+            _showPanel(!_panelOpen);                                         // the round button no longer mutes: it brings the slider out
         });
         openingMuteBtn.addEventListener('mouseenter', function () {
             openingMuteBtn.style.borderColor = 'rgba(240,216,180,0.95)';

@@ -76,6 +76,101 @@ function profile(scale, mirror, mat) {
 const GARMENT = [[-0.42, 0.57], [0.42, 0.57], [0.36, 0.32], [0.12, 0.12], [0.07, 0], [-0.07, 0], [-0.12, 0.12], [-0.36, 0.32]];
 const garment = (mat, y) => stroke(GARMENT.map((p) => [p[0], p[1] + y, 0]), mat, true);
 
+// ── a thing drawn from a recipe (2026-11-23) ────────────────────────────────
+// A memory made in record-space.html has no hand-drawn set here: its scene carries a recipe in scenes.meta.space.thing,
+// written by the generate-scene-thing function in this file's own grammar (decision: docs/우주무대_기억만들기_결정-261123.md).
+// Recipe v1 = { v:1, h, note, parts:[…], motion:[…] }. Every number is clamped here as well as on the server, so a
+// broken recipe gives a plain thing and never a broken stage. The same rules live in the function (sanitizeRecipe).
+const R_MATS = new Set(['line', 'dim', 'amber', 'blue', 'rust']);
+const R_GLOW = { amber: C.amber, blue: C.blue, line: C.line, rust: C.rust, white: 0xffffff, dim: C.dimline };
+const R_MAX_PARTS = 28, R_MAX_PTS = 64, R_MAX_MOTION = 12;
+const rNum = (x, lo, hi, d) => { const n = Number(x); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
+const rVec = (x, lo, hi, yLo) => { const a = Array.isArray(x) ? x : []; return [rNum(a[0], lo, hi, 0), rNum(a[1], yLo === undefined ? lo : yLo, hi, 0), rNum(a[2], lo, hi, 0)]; };
+const rMat = (x) => (typeof x === 'string' && R_MATS.has(x) ? x : 'line');
+/** The recipe with every value inside its bounds, or null when nothing in it can be drawn. */
+export function sanitizeRecipe(r) {
+  if (!r || typeof r !== 'object' || !Array.isArray(r.parts)) return null;
+  const parts = [];
+  for (const p of r.parts.slice(0, R_MAX_PARTS)) {
+    if (!p || typeof p !== 'object' || typeof p.k !== 'string') continue;
+    const at = rVec(p.at, -5, 5, -0.5), rot = rVec(p.rot, -7, 7), m = rMat(p.m);
+    switch (p.k) {
+      case 'box': { const s = Array.isArray(p.size) ? p.size : []; parts.push({ k: 'box', size: [rNum(s[0], 0.03, 4.5, 0.5), rNum(s[1], 0.03, 4.5, 0.5), rNum(s[2], 0.03, 4.5, 0.5)], at, rot, m }); break; }
+      case 'cyl': { const rr = Array.isArray(p.r) ? p.r : [p.r, p.r]; parts.push({ k: 'cyl', r: [rNum(rr[0], 0, 2.5, 0.2), rNum(rr[1], 0, 2.5, 0.3)], h: rNum(p.h, 0.05, 4.5, 1), n: Math.round(rNum(p.n, 3, 24, 8)), at, rot, m }); break; }
+      case 'ico': { const sc = Array.isArray(p.scale) ? p.scale : [1, 1, 1]; parts.push({ k: 'ico', r: rNum(p.r, 0.03, 2.5, 0.3), detail: rNum(p.detail, 0, 1, 0) >= 0.5 ? 1 : 0, scale: [rNum(sc[0], 0.05, 4, 1), rNum(sc[1], 0.05, 4, 1), rNum(sc[2], 0.05, 4, 1)], at, rot, m }); break; }
+      case 'cone': parts.push({ k: 'cone', r: rNum(p.r, 0.03, 2.5, 0.2), h: rNum(p.h, 0.05, 4.5, 0.5), n: Math.round(rNum(p.n, 3, 24, 6)), at, rot, m }); break;
+      case 'stroke': { const pts = (Array.isArray(p.pts) ? p.pts : []).slice(0, R_MAX_PTS).map((q) => rVec(q, -5, 5, -0.5)); if (pts.length >= 2) parts.push({ k: 'stroke', pts, closed: !!p.closed, m }); break; }
+      case 'oval': { const rr = Array.isArray(p.r) ? p.r : [p.r, p.r]; parts.push({ k: 'oval', r: [rNum(rr[0], 0.03, 3, 0.5), rNum(rr[1], 0.03, 3, 0.5)], n: Math.round(rNum(p.n, 8, 80, 40)), at, rot, m }); break; }
+      case 'glow': parts.push({ k: 'glow', c: typeof p.c === 'string' && p.c in R_GLOW ? p.c : 'amber', size: rNum(p.size, 0.2, 3.5, 1.2), o: rNum(p.o, 0.05, 0.9, 0.5), at }); break;
+      case 'profile': parts.push({ k: 'profile', s: rNum(p.s, 0.5, 3.5, 2), mirror: !!p.mirror, at, m }); break;
+      case 'garment': parts.push({ k: 'garment', y: rNum(p.y, -0.5, 4, 1), m }); break;
+      default: break;
+    }
+  }
+  if (!parts.length) return null;
+  const motion = [];
+  for (const mo of (Array.isArray(r.motion) ? r.motion : []).slice(0, R_MAX_MOTION)) {
+    if (!mo || typeof mo !== 'object') continue;
+    const i = Math.round(rNum(mo.i, 0, parts.length - 1, -1));
+    if (i < 0 || i >= parts.length || !['spin', 'bob', 'sway', 'ring', 'pulse', 'drift'].includes(mo.k)) continue;
+    motion.push({ i, k: mo.k, v: rNum(mo.v, 0.01, 3, 0.4), amp: rNum(mo.amp, 0.005, 0.6, 0.08), axis: ['x', 'y', 'z'].includes(mo.axis) ? mo.axis : 'y', lo: rNum(mo.lo, 0, 1, 0.25), hi: rNum(mo.hi, 0, 1, 0.6) });
+  }
+  let top = 0;
+  for (const p of parts) {
+    if (p.k === 'stroke') for (const q of p.pts) top = Math.max(top, q[1]);
+    else if (p.k === 'box') top = Math.max(top, p.at[1] + p.size[1] / 2);
+    else if (p.k === 'cyl' || p.k === 'cone') top = Math.max(top, p.at[1] + p.h / 2);
+    else if (p.k === 'ico') top = Math.max(top, p.at[1] + p.r * p.scale[1]);
+    else if (p.k === 'profile') top = Math.max(top, p.at[1] + 1.3 * p.s);
+    else if (p.k === 'garment') top = Math.max(top, p.y + 0.6);
+    else top = Math.max(top, p.at[1]);
+  }
+  return { v: 1, h: rNum(r.h, 0.5, 4.5, Math.max(0.6, Math.min(4.5, top || 2.2))), note: String(r.note || '').slice(0, 120), parts, motion };
+}
+/** The thing a sanitized recipe describes: { g, h, tick? } — the same shape the hand-drawn makers return. */
+export function fromRecipe(r) {
+  const g = new THREE.Group(), objs = [], motions = [];
+  const matOf = (m) => M[m] || M.line;
+  for (const p of r.parts) {
+    let o = null;
+    switch (p.k) {
+      case 'box': o = box(p.size[0], p.size[1], p.size[2], matOf(p.m)); break;
+      case 'cyl': o = solid(new THREE.CylinderGeometry(p.r[0], p.r[1], p.h, p.n), matOf(p.m)); break;
+      case 'ico': o = solid(new THREE.IcosahedronGeometry(p.r, p.detail), matOf(p.m), 1); o.scale.set(p.scale[0], p.scale[1], p.scale[2]); break;
+      case 'cone': o = solid(new THREE.ConeGeometry(p.r, p.h, p.n), matOf(p.m), 1); break;
+      case 'stroke': o = stroke(p.pts, matOf(p.m), p.closed); break;
+      case 'oval': o = oval(p.r[0], p.r[1], matOf(p.m), p.n); break;
+      case 'glow': o = glow(R_GLOW[p.c] === undefined ? C.amber : R_GLOW[p.c], p.size, p.o); break;
+      case 'profile': o = profile(p.s, p.mirror, matOf(p.m)); break;
+      case 'garment': o = garment(matOf(p.m), p.y); break;
+      default: break;
+    }
+    objs.push(o);
+    if (!o) continue;
+    if (p.k !== 'stroke' && p.k !== 'garment') { put(o, p.at[0], p.at[1], p.at[2]); if (p.k !== 'glow') o.rotation.set(p.rot[0], p.rot[1], p.rot[2]); }
+    g.add(o);
+  }
+  for (const mo of r.motion) {
+    const o = objs[mo.i]; if (!o) continue;
+    const m = { mo, o, p0: o.position.clone(), r0: o.rotation.clone(), ph: mo.i * 1.3, rad: Math.hypot(o.position.x, o.position.z), ang: Math.atan2(o.position.z, o.position.x), mats: [] };
+    // a pulse brightens and dims this part only: its materials are its own copies (the M.* materials are shared by every thing)
+    if (mo.k === 'pulse') o.traverse((c) => { if ((c.isSprite || c.isLine) && c.material) { c.material = c.material.clone(); c.material.transparent = true; m.mats.push(c.material); } });
+    motions.push(m);
+  }
+  const tick = motions.length ? (t, dt) => {
+    for (const m of motions) {
+      const mo = m.mo, o = m.o;
+      if (mo.k === 'spin') o.rotation[mo.axis] += dt * mo.v;
+      else if (mo.k === 'bob') o.position.y = m.p0.y + Math.sin(t * mo.v + m.ph) * mo.amp;
+      else if (mo.k === 'sway') o.rotation[mo.axis] = m.r0[mo.axis] + Math.sin(t * mo.v + m.ph) * mo.amp;
+      else if (mo.k === 'ring') o.rotation.z = m.r0.z + (ringing(t) ? Math.sin(t * 70) * mo.amp : 0);
+      else if (mo.k === 'pulse') { const v = ringing(t) ? mo.hi : mo.lo; for (const mt of m.mats) mt.opacity += (v - mt.opacity) * Math.min(1, dt * 3); }
+      else if (mo.k === 'drift') { m.ang += dt * mo.v; o.position.x = Math.cos(m.ang) * m.rad; o.position.z = Math.sin(m.ang) * m.rad; }
+    }
+  } : undefined;
+  return { g, h: r.h, tick };
+}
+
 // ── UNDW-001 ────────────────────────────────────────────────────────────────
 // keyed by scene_order. Each returns { g, h, tick? }.
 const UNDW = {
@@ -216,7 +311,8 @@ export function isSilent(scene) { return !!(scene.void_info && scene.void_info.s
 /** @returns { g, h, tick(time, dt), setAsked(on), asked } */
 export function makeThing(memoryCode, scene) {
   const set = SETS[memoryCode] || {};
-  const make = isSilent(scene) ? COMMON.silent : (set[scene.scene_order] || COMMON.other);
+  const own = sanitizeRecipe(scene.meta && scene.meta.space && scene.meta.space.thing);   // a memory made in record-space.html: its thing is a recipe
+  const make = isSilent(scene) ? COMMON.silent : (set[scene.scene_order] || (own ? () => fromRecipe(own) : COMMON.other));
   const th = make();
   const lines = [];
   th.g.traverse((o) => { if (o.isLine) { o.userData.solid = o.material; lines.push(o); } });

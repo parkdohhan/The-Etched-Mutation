@@ -29,15 +29,18 @@
  */
 import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
-import { createRoom, typeText, sentences, closed } from '../roomplay/room.js';
+import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261123a';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261124a';
 import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { createStarMap } from '../spaceplay/starmap.js?v=261123a';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261123a';
-import { runFinale } from './finale.js?v=261123b3';
-import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261123b3';
+import { runFinale } from './finale.js?v=261124a';
+import { runPrologue } from '../spaceplay/prologue.js?v=261124a';
+import { packTrack } from '../spaceplay/thread.js?v=261123d';
+import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
+import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261124a';
 import { createBackDoors } from './backdoor.js?v=261123b3';
 
 const $ = (id) => document.getElementById(id);
@@ -94,7 +97,7 @@ const run = {
 };
 window.__space = { run, mode: MODE };       // automation / inspection hook
 
-let cosmos, talk, map, air, pause, letGo = false;
+let cosmos, talk, map, air, pause, typeVoice, letGo = false;
 let lex, typing, hand, backs, pressing = false, stayCtx = null;   // the blank: which words can go, how letters go and come, the holes in hand, the back doors, the stay now up
 const BACK_DIST = 17;                                       // the back door stands this far from the scene (staging)
 const letGoMark = () => { letGo = true; };
@@ -313,9 +316,10 @@ async function boot() {
   try { await Promise.race([document.fonts.load('300 64px "Noto Serif KR"', '기억'), new Promise((r) => setTimeout(r, 2500))]); } catch (_) {}   // letters drawn in the place use the page's serif, not a system fallback
 
   air = createAir();
+  typeVoice = createTypeVoice(); setTypeVoice(typeVoice.tap);             // 261124: a tap for each typed letter of the scenes' texts
   talk = createTalk();
   { const nouns = new Set(); for (const sc of run.scenes) for (const w of [].concat((sc.meta && sc.meta.motif_tags) || [], (sc.meta && sc.meta.object_tags) || [])) nouns.add(w); lex = createLexicon(ko, nouns); }   // the memory's own names for its things
-  typing = createTyping(1 / FAST);
+  typing = createTyping(1 / FAST, typeVoice.tap);
   hand = createHand({ locked: () => !!(cosmos && cosmos.locked()) });
   talk.body.addEventListener('click', (e) => { const tok = e.target.closest && e.target.closest('.sb-t.sb-can'); if (tok && hand.held()) useBlank(tok); });   // any word of the text: the walker chooses where the hole goes
   cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
@@ -325,7 +329,7 @@ async function boot() {
   backs = createBackDoors({ cosmos, ko, canEnter: () => !run.busy && !run.crossing && !run.ended && !map.isOpen() && !(pause && pause.isOpen()),
     onEnter: (d) => { const from = sceneById(d.from), to = sceneById(d.to); if (from && to && !run.crossing && !run.busy) { run.backLog.push({ entered: from.scene_order, to: to.scene_order }); cross(from, to, null, 'old'); } } });
   // Esc, at any time: the pause sheet (brightness · volume · leave). The browser keeps the Esc that lets the cursor go, so cosmos tells us (onEscape) too.
-  pause = createEscMenu({ ko, setVolume: (v) => { air.setMaster(v); cosmos.setVolume(v); }, busy: () => map.isOpen(),
+  pause = createEscMenu({ ko, setVolume: (v) => { air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
     onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
     onClose: (byHand) => { letGo = false; if (byHand && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !map.isOpen()) cosmos.relock(); },
     onLeave: () => { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); } });
@@ -340,6 +344,10 @@ async function boot() {
   const begin = async () => {
     $('spEntry').classList.add('gone');
     cosmos.ensureAudio();
+    if (!AT && qs.get('prologue') !== '0') {                            // 261124: the prologue of the space stage (spaceplay/prologue.js). ?prologue=0 skips it
+      try { run.prologue = await runPrologue({ cosmos, run, data, lang: LANG, fast: FAST, hint, auto: MODE === 'test' }); }
+      catch (e) { console.error('[space] prologue', e); cosmos.setCine(null); cosmos.setMode('held'); $('spCosmos').classList.remove('on'); }
+    }
     const has = air.focus(first);                                           // the first scene's own sound (if it has one) comes in under its text
     await wait(has ? 2600 : 900);
     if (AT === 'end') return fakeWalk().then(finish);
@@ -697,7 +705,7 @@ async function cross(from, to, way, kind) {
   else {
     const pass = $('rpPass');
     await wait(400);
-    await typeText(pass, leg.said, { per: 110, pace: 1 / FAST });
+    await typeText(pass, leg.said, { per: 110, pace: 1 / FAST, voice: true });
     await wait(1700);
     pass.textContent = '';
   }
@@ -762,7 +770,7 @@ async function nearLine(lines) {
   for (const l of lines) {
     if (token !== nearToken) return;
     const p = document.createElement('p'); if (l.who !== 'text') p.className = l.who; box.appendChild(p);
-    await typeText(p, l.t, { pace: 1 / FAST });
+    await typeText(p, l.t, { pace: 1 / FAST, voice: true });
     await wait(700);
   }
   await wait(9000);
@@ -817,7 +825,7 @@ async function finish() {
       scenes: run.rooms, legs: run.legs, contact: run.contact, blank_form: 'blank_v1', blanks: run.blanks, back_doors: run.backLog,
       inherited: run.inherited.map((w) => ({ out: w.old, in: w.neu, run: w.run })),   // what this walker read already changed
       swaps: run.swaps.filter((w) => !w.inherited).map((w) => ({ out: w.old, in: w.neu, whose: w.owner, at: sceneById(w.at).scene_order, from: sceneById(w.from).scene_order })), model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift })),
-      seconds: Math.round((Date.now() - run.startedAt) / 1000) });
+      seconds: Math.round((Date.now() - run.startedAt) / 1000), track: packTrack(cosmos.track) });   // 261124: the walk's line, for the next walker's prologue
   }
   try {
     window.__space.finale = await runFinale({ cosmos, run, lang: LANG, fast: FAST, air, typeText, wait, sceneById,

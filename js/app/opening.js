@@ -64,7 +64,7 @@ let _finderSessionSeq = 0;
 // 이 코드의 기억은 오프닝 문을 지나면 옛 지형 무대(play-test) 대신 떠 있는 장면 무대(space-play.html)로 간다.
 // 오프닝 자체(대사·문)는 한 줄도 바꾸지 않았다 — 마지막 이동 주소만 갈린다.
 // 되돌리기 = 이 배열을 비우거나, 주소에 ?stage=terrain 을 붙여 연다. 결정 기록: docs/우주무대_결정-261121.md
-const SPACE_STAGE_CODES = ['UNDW-001'];
+const SPACE_STAGE_CODES = ['UNDW-001', 'UNDW-001-EN'];   // 261123: 영어 사본도 같은 무대로 (영어 설정에서 한국어가 보이지 않게 — 둘째 토막·글 겹은 scenes.meta.space / room_text 에 영어로)
 
 // ─────────────────────────────────────
 // === Text Utilities ===
@@ -487,6 +487,18 @@ function _collapseOpeningWave(durationMs = 1800) {
   });
 }
 
+// 261123 우주 무대: 문 대신 어두워지기만 한다 (1400ms). 문·한 발·낙하는 우주 화면 쪽 서막이 맡는다.
+function _fadeToBlackForSpace() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.id = 'lumenDoorOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:3000;background:#000;opacity:0;transition:opacity 1.4s ease;pointer-events:none;';
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+    setTimeout(resolve, 1900);
+  });
+}
+
 // Lumen 오프닝: confession.js의 ASCII 문(buildDoor) 재사용.
 // phase 1(열림 1200ms) → 300ms 정적 → phase 2(빨려들어감 1600ms) → 블랙아웃.
 function _runLumenDoorSequence() {
@@ -838,8 +850,11 @@ async function _handleOpeningSubmit(emotion, text) {
     return;
   }
 
-  // 7) ASCII 문 열림 + 빨려들어감
-  await _runLumenDoorSequence();
+  // 7) ASCII 문 열림 + 빨려들어감 — 우주 무대로 가는 기억(아래 9의 같은 조건)은 문 없이 어두워지기만 한다.
+  //    261123 서막: 우주 화면이 멀리 앞사람의 위상 → 한 발 → 낙하로 연다 (js/spaceplay/prologue.js, docs/우주무대_결정-261121.md U13). 장면 사이의 길·문은 그대로.
+  let _toSpace = false;
+  try { _toSpace = new URLSearchParams(location.search).get('stage') !== 'terrain' && ((memory.code && SPACE_STAGE_CODES.includes(memory.code)) || !!(memory.meta && memory.meta.space_record)); } catch (_) {}
+  if (_toSpace) await _fadeToBlackForSpace(); else await _runLumenDoorSequence();
 
   // 8) wave anim 정지
   openingSkipped = true;
@@ -863,8 +878,10 @@ async function _handleOpeningSubmit(emotion, text) {
   // 261121 우주 무대: 대표 기억은 떠 있는 장면 무대로 (위 SPACE_STAGE_CODES). from=opening = 이 화면의 첫 대사를 다시 묻지 않는다.
   let _terrainOnly = false;
   try { _terrainOnly = new URLSearchParams(location.search).get('stage') === 'terrain'; } catch (_) {}
-  if (!_terrainOnly && memory.code && SPACE_STAGE_CODES.includes(memory.code)) {
-    window.location.href = `space-play.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening`;
+  // 261123: 기억 만들기(record-space.html)로 만든 기억(meta.space_record)도 같은 무대로
+  if (!_terrainOnly && ((memory.code && SPACE_STAGE_CODES.includes(memory.code)) || (memory.meta && memory.meta.space_record))) {
+    // 261124 작가: 오프닝에서 빈 자리 화면(space-blank.html — 서막·뒷문·빈칸·타자 소리)으로. 옛 우주 화면만 보려면 주소로 space-play.html
+    window.location.href = `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening`;
     return;
   }
   window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}`;

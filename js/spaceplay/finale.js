@@ -1,20 +1,20 @@
 /**
- * Space-play finale (2026-11-21) — the skein, then the version that was read.
+ * Space-play finale (2026-11-21; 2026-11-23 the ball taken out, and the last scene's figure) — the walked line and its
+ * loose threads, then the version that was read.
  *
  * It happens in the place itself, without a cut:
- *   1. the eye is taken up and back until every scene the walker reached is in view, small, like a constellation,
- *      and the whole line they left — every drift, every walked way, every carry through a door — is drawn
- *      again from its beginning, in amber. (In the walk it went out behind them; here all of it is seen once.)
+ *   1. the eye is taken up and back until the whole line the walker left is in view — every drift, every walked
+ *      way, every carry through a door — and it is drawn again from its beginning, in amber. (In the walk it went
+ *      out behind them; here all of it is seen once.) The scenes stand where they stood, small figures along it —
+ *      except the one the walker stood at when it ended, which goes out at once (it filled the view).
  *   2. the one line opens into seven: the seven threads of the opening, with the opening's own movement
- *      (the same sum of slow sines, the same colours). Six are the opening's; the seventh, the one that keeps
- *      closest to the path, is the walker's and stays amber.
- *   3. the threads are wound, from the walk's first step to its last, into a loose round ball. The scenes ride
- *      in on the thread at the points where they were read, and sit in the ball as small figures: a scene come
- *      back to is passed twice. Over it lie the crossings of everyone who walked before, thin and pale.
+ *      (the same sum of slow sines, the same colours). Six are the opening's, pale, rising off the line like
+ *      fluff; the seventh, the one that keeps closest to the path, is the walker's and stays amber.
+ *   3. it stays like that, in the shape it was walked. (Author, 261123: no winding into a ball.)
  *   4. the version of the memory this walker read goes up by itself (no typing), each line in the colour of
- *      whose it was; a light moves along the thread to the place each part was read.
+ *      whose it was; a light moves along the amber thread to the place each part was read.
  *
- * Nothing is scored or named. Staging only: the ball's shape carries no meaning beyond order along the thread.
+ * Nothing is scored or named. Staging only.
  * Requires the three.js r128 global build.
  */
 // the opening's seven threads (js/app/opening.js startOpeningWaveAnimation): colour, opacity, speed, amplitude, phase, frequency
@@ -83,29 +83,10 @@ export async function runFinale(o) {
   for (let i = 0; i < N; i++) C.add(new THREE.Vector3(Wp[i * 3], Wp[i * 3 + 1], Wp[i * 3 + 2]).multiplyScalar(1 / N));
   for (let i = 0; i < N; i++) Rm = Math.max(Rm, Math.hypot(Wp[i * 3] - C.x, Wp[i * 3 + 1] - C.y, Wp[i * 3 + 2] - C.z));
   for (const r of things) Rm = Math.max(Rm, r.pos.distanceTo(C) + 6);
+  // the scene the walker stood at when it ended (the nearest thing): it goes out of the ending
+  let last = null; { let bd = Infinity; for (const r of things) { const d = r.pos.distanceTo(pl.pos); if (d < bd) { bd = d; last = r; } } }
   const tanHalf = Math.tan((cosmos.FOV * Math.PI) / 360), aspect = cosmos.cam.aspect, fit = 1 / Math.min(tanHalf, tanHalf * aspect);
-  const R0 = clamp(Rm * 0.2, 16, 70);                                       // the ball
-  const distReveal = Rm * fit * 1.18 + 20, distBall = R0 * fit * 2.05;
-
-  // the ball's winding: a great circle whose plane tips and turns as it goes; the first step lies deepest
-  const TURNS = clamp(Math.round(N / 105), 7, 15), Bp = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) {
-    const u = i / (N - 1), phi = 2 * Math.PI * TURNS * u, psi = 2 * Math.PI * (TURNS / 7.31) * u + 0.6, tilt = 1.05 * Math.sin(2 * Math.PI * (TURNS / 11.7) * u + 1.1);
-    const R = R0 * (0.42 + 0.58 * Math.pow(u, 0.62)) * (0.93 + 0.07 * Math.sin(phi * 0.37 + 2.0));
-    const x = Math.cos(phi), y = Math.sin(phi) * Math.cos(tilt), z = Math.sin(phi) * Math.sin(tilt);
-    Bp[i * 3] = (x * Math.cos(psi) + z * Math.sin(psi)) * R; Bp[i * 3 + 1] = y * R; Bp[i * 3 + 2] = (-x * Math.sin(psi) + z * Math.cos(psi)) * R;
-  }
-  // where on the thread each scene was read (its first reading); the things ride in at those points
-  const idxOf = new Map();
-  for (const s of run.script) { if (s.scene_id && !idxOf.has(s.scene_id)) idxOf.set(s.scene_id, clamp(Math.round(rs.uOf(s.at == null ? 0 : s.at) * (N - 1)), 0, N - 1)); }
-  for (const r of things) {
-    if (idxOf.has(r.id)) continue;                                          // reached but not read: the point of the line nearest to it
-    let bi = 0, bd = Infinity; for (let i = 0; i < N; i += 3) { const d = Math.hypot(Wp[i * 3] - r.pos.x, Wp[i * 3 + 1] - r.pos.y, Wp[i * 3 + 2] - r.pos.z); if (d < bd) { bd = d; bi = i; } }
-    idxOf.set(r.id, bi);
-  }
-  // a scene read in the same stretch of the thread as another would sit inside it: each is given its own place along the thread
-  { const used = []; for (const r of things) { let i = idxOf.get(r.id); while (used.some((q) => Math.abs(q - i) < N * 0.012)) i = Math.min(N - 1, i + Math.ceil(N * 0.012)); used.push(i); idxOf.set(r.id, i); } }
-  const home = new Map(things.map((r) => [r.id, r.pos.clone()]));
+  const distReveal = Rm * fit * 1.18 + 20;
 
   // ── what is drawn ─────────────────────────────────────────────────────────
   const group = new THREE.Group(); scene.add(group);
@@ -130,53 +111,30 @@ export async function runFinale(o) {
   const glowTex = (() => { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, 'rgba(255,255,255,.4)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(cv); })();
   const reader = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffe2bd, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false, sizeAttenuation: false }));
   reader.scale.set(0.05, 0.05, 1); reader.renderOrder = 40; group.add(reader);
-  // the crossings of those who walked before, laid over the ball
-  const others = (() => {
-    const dirOf = new Map(); for (const [id, i] of idxOf) { const v = new THREE.Vector3(Bp[i * 3], Bp[i * 3 + 1], Bp[i * 3 + 2]); if (v.lengthSq() > 1e-6) dirOf.set(id, v.normalize()); }
-    const pts = [], seqs = (o.others || []).slice(-36);
-    seqs.forEach((seq, n) => {
-      const lift = 1.03 + 0.07 * h01('ol' + n);
-      for (let k = 1; k < seq.length; k++) {
-        const a = dirOf.get(seq[k - 1]), b = dirOf.get(seq[k]); if (!a || !b || seq[k - 1] === seq[k]) continue;
-        const ang = a.angleTo(b); if (ang < 1e-3) continue;
-        const axis = new THREE.Vector3().crossVectors(a, b); if (axis.lengthSq() < 1e-8) continue; axis.normalize();
-        const S = 14; let prev = null;
-        for (let s = 0; s <= S; s++) { const v = a.clone().applyAxisAngle(axis, ang * s / S).multiplyScalar(R0 * (lift + 0.05 * Math.sin(Math.PI * s / S))); if (prev) pts.push(prev, v); prev = v; }
-      }
-    });
-    const g = new THREE.BufferGeometry().setFromPoints(pts.length ? pts : [new THREE.Vector3(), new THREE.Vector3()]);
-    const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: new THREE.Color(140 / 255, 165 / 255, 185 / 255), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false }));
-    l.frustumCulled = false; l.renderOrder = 18; l.position.copy(C); group.add(l);
-    return { l, n: seqs.length, has: pts.length > 0 };
-  })();
-
   // what belonged to the walk goes: ways, doors, words, the model's own threads
   for (const w of cosmos.ways.slice()) cosmos.removeWay(w);
   const wordsFade = things.flatMap((r) => r.words);
   const thread0 = cosmos.threadMat.opacity, fog0 = scene.fog.density;
 
   // ── the frame ─────────────────────────────────────────────────────────────
-  let T = 0, wind = 0, spin = 0, readU = 1, readOn = 0, side = 0, sideTo = 0, dim = 1, dimTo = 1, out = 0, alive = true;
+  let T = 0, readU = 1, readOn = 0, side = 0, sideTo = 0, dim = 1, dimTo = 1, out = 0, alive = true, hurry = false;
+  const hand = { az: 0, el: 0, on: null };                                 // 261123: the hand turns the line (a drag; the eye goes round it)
   const S0 = pl.pos.clone(), F0 = cosmos.forward(), az0 = Math.atan2(S0.x - C.x, S0.z - C.z);
   const tmp = new THREE.Vector3(), look = new THREE.Vector3(), cpos = new THREE.Vector3();
-  const TL = { pull: [1.2, 12.5], draw: [2.6, 12.2], open: [12.2, 18.5], wind: [18.5, 34], hold: [34, 38] };
+  const TL = { gone: [0, 0.8], pull: [1.2, 12.5], draw: [2.6, 12.2], open: [12.2, 18.5], hold: [18.5, 23] };
 
   function tick(dt) {
     if (!alive) return;
     T += dt * FAST;
     const kPull = ease(seg(T, TL.pull[0], TL.pull[1])), kDraw = seg(T, TL.draw[0], TL.draw[1]), kOpen = ease(seg(T, TL.open[0], TL.open[1]));
-    wind = seg(T, TL.wind[0], TL.wind[1]);
-    const kW = ease(wind), kHold = ease(seg(T, TL.hold[0], TL.hold[1]));
-    spin += dt * FAST * 0.05 * kW;                                          // once wound, the ball turns, slowly
     side += (sideTo - side) * (1 - Math.exp(-dt * FAST / 1.6)); dim += (dimTo - dim) * (1 - Math.exp(-dt * FAST / 1.6));
-    const breath = 1 + 0.035 * Math.sin(T * 0.62) * kW, cs = Math.cos(spin), sn = Math.sin(spin);
 
-    // the eye
-    const dist = distReveal + (distBall - distReveal) * ease(seg(T, TL.wind[0] + 1, TL.wind[1] - 0.5));
-    const az = az0 + 0.03 * T, el = 0.46 + (0.2 - 0.46) * kW;
+    // the eye: far enough for the whole line; a little further while the text is up beside it
+    const dist = distReveal * (1 + 0.36 * side);
+    const az = az0 + 0.03 * T + hand.az, el = clamp(0.46 + hand.el, -0.3, 1.25);
     cpos.set(C.x + dist * Math.sin(az) * Math.cos(el), C.y + dist * Math.sin(el), C.z + dist * Math.cos(az) * Math.cos(el));
     pl.pos.lerpVectors(S0, cpos, kPull);
-    // the ball stands to one side while the text goes up (side = share of the half-screen); the eye looks past it
+    // the line stands to one side while the text goes up (side = share of the half-screen); the eye looks past it
     tmp.set(Math.cos(az), 0, -Math.sin(az));                                // the eye's right
     look.copy(C).addScaledVector(tmp, -side * dist * tanHalf * aspect);
     const kl = ease(seg(T, 0.4, 6.5)); tmp.copy(S0).addScaledVector(F0, 24); look.lerpVectors(tmp, look, kl);
@@ -186,13 +144,9 @@ export async function runFinale(o) {
     cosmos.threadMat.opacity = thread0 * (1 - ease(seg(T, 10, 16)));
     for (const w of wordsFade) w.o *= Math.exp(-dt * FAST / 0.8);
 
-    // the thread: each point between where it was walked and where it lies in the ball (the first steps are wound first)
-    const camD = pl.pos.distanceTo(C), SIG = 0.36, lead = wind * (1 + SIG);
-    for (let i = 0; i < N; i++) {
-      const u = i / (N - 1), m = ease(clamp((lead - u) / SIG, 0, 1)), j = i * 3;
-      const bx = (Bp[j] * cs + Bp[j + 2] * sn) * breath, by = Bp[j + 1] * breath, bz = (-Bp[j] * sn + Bp[j + 2] * cs) * breath;
-      P[j] = Wp[j] + (C.x + bx - Wp[j]) * m; P[j + 1] = Wp[j + 1] + (C.y + by - Wp[j + 1]) * m; P[j + 2] = Wp[j + 2] + (C.z + bz - Wp[j + 2]) * m;
-    }
+    // the thread lies where it was walked
+    const camD = pl.pos.distanceTo(C);
+    P.set(Wp);
     // a frame along it: across the thread (n), and outward from the middle (b)
     let lx = 1, ly = 0, lz = 0;
     for (let i = 0; i < N; i++) {
@@ -206,7 +160,7 @@ export async function runFinale(o) {
       Bn[j] = ny * tz - nz * ty; Bn[j + 1] = nz * tx - nx * tz; Bn[j + 2] = nx * ty - ny * tx;
     }
     // seven threads, moving as the opening's do
-    const amp = kOpen * ((1 - kW) * camD * 0.026 + kW * R0 * 0.15) * (0.82 + 0.18 * Math.sin(T * 0.045 * TICK * 0.33)), tt = T * TICK;
+    const amp = kOpen * camD * 0.026 * (0.82 + 0.18 * Math.sin(T * 0.045 * TICK * 0.33)), tt = T * TICK;
     const drawn = Math.floor(kDraw * N), fade = (1 - out) * dim;
     strands.forEach((s, sj) => {
       const w = s.w, A = (w.a / 80) * amp, pos = s.pos;
@@ -221,7 +175,7 @@ export async function runFinale(o) {
       s.mat.opacity = (sj === MINE ? 0.95 : Math.min(0.85, w.o * 1.55) * kOpen) * fade;
     });
     // the ribbon: the walker's thread and a second edge beside it
-    const mine = strands[MINE].pos, wr = (1 - kW) * camD * 0.0042 + kW * R0 * 0.028;
+    const mine = strands[MINE].pos, wr = camD * 0.0042;
     for (let i = 0; i < N; i++) {
       const j = i * 3, k = i * 6, x = mine[j] + Nn[j] * wr, y = mine[j + 1] + Nn[j + 1] * wr, z = mine[j + 2] + Nn[j + 2] * wr;
       rib.pos[k] = mine[j]; rib.pos[k + 1] = mine[j + 1]; rib.pos[k + 2] = mine[j + 2]; rib.pos[k + 3] = x; rib.pos[k + 4] = y; rib.pos[k + 5] = z;
@@ -230,23 +184,25 @@ export async function runFinale(o) {
     rib.g.attributes.position.needsUpdate = true; rib.g.setDrawRange(0, Math.max(0, drawn - 1) * 6); rib.m.material.opacity = 0.2 * fade;
     rib.g2.attributes.position.needsUpdate = true; rib.g2.setDrawRange(0, drawn); rib.l2.material.opacity = 0.55 * fade;
 
-    // the scenes: small lights at first (the eye is far), then carried in on the thread to sit in the ball
-    const far = 1 + (clamp(camD / 80, 1, 15) - 1) * kPull;                  // seen from far off, a scene is shown larger than it is: a figure, not a speck
+    // the scenes stay where they stand (the eye is far: each is shown larger than it is — a figure, not a speck).
+    // Only the one the walker stood at when it ended goes out: it filled the view and stood in front of the line
+    // (author, 261123 — "the face out, the scenes' figures back").
+    const far = 1 + (clamp(camD / 80, 1, 15) - 1) * kPull, left = 1 - ease(seg(T, TL.gone[0], TL.gone[1]));
     for (const r of things) {
-      const i = idxOf.get(r.id), u = i / (N - 1), m = ease(clamp((lead - u) / SIG, 0, 1)), h = home.get(r.id), j = i * 3;
-      const bead = (R0 * 0.19) / Math.max(1.2, r.thing.h);
-      r.pos.set(h.x + (P[j] - h.x) * m, h.y + (P[j + 1] - h.y) * m, h.z + (P[j + 2] - h.z) * m);
-      r.wrap.position.x = r.pos.x; r.wrap.position.z = r.pos.z; r.glint.position.copy(r.pos);
-      r.wrap.scale.setScalar((far + (bead - far) * m) * (1 - 0.6 * out));
+      if (r === last) { r.wrap.scale.setScalar(Math.max(left, 1e-4)); r.glint.scale.setScalar(0.02 * left); if (left <= 0) { r.wrap.visible = false; r.glint.visible = false; } }
+      else r.wrap.scale.setScalar(far * (1 - 0.6 * out));
       r.armed = false;
     }
-    others.l.rotation.y = spin; others.l.scale.setScalar(breath); others.l.material.opacity = 0.13 * kHold * fade;
     // the light on the thread
     const ri = clamp(Math.round(readU * (N - 1)), 0, N - 1) * 3;
     reader.position.set(mine[ri], mine[ri + 1], mine[ri + 2]); reader.material.opacity = 0.9 * readOn * fade;
-    if (cosmos.clouds) cosmos.clouds.level = 1 - 0.55 * kW;
   }
   cosmos.setCine(tick);
+  // the hand: a drag turns the line (so what was seen on the way in — the one before — can be held against this); a press without a drag still hurries the text (below)
+  const hDown = (e) => { hand.on = { x: e.clientX, y: e.clientY, moved: false }; };
+  const hMove = (e) => { if (!hand.on) return; const dx = e.clientX - hand.on.x, dy = e.clientY - hand.on.y; if (!hand.on.moved && Math.hypot(dx, dy) < 6) return; hand.on.moved = true; hand.az += dx * 0.0045; hand.el = clamp(hand.el + dy * 0.0032, -0.7, 0.7); hand.on.x = e.clientX; hand.on.y = e.clientY; hurry = false; };
+  const hUp = () => { hand.on = null; };
+  window.addEventListener('pointerdown', hDown); window.addEventListener('pointermove', hMove); window.addEventListener('pointerup', hUp); window.addEventListener('pointercancel', hUp);
 
   await new Promise((res) => { const iv = setInterval(() => { if (T >= TL.hold[1]) { clearInterval(iv); res(); } }, 120); });
 
@@ -281,11 +237,11 @@ export async function runFinale(o) {
   key.querySelectorAll('span.other').forEach((s) => { s.style.cssText = 'color:#8f8b99;font-style:italic'; });
   key.querySelectorAll('span.changed').forEach((s) => { s.style.cssText = 'color:#b9b4c6;text-decoration:underline dotted rgba(185,180,198,0.45);text-underline-offset:0.35em'; });
 
-  if (innerWidth < 900) dimTo = 0.4; else sideTo = 0.5;                     // the text goes up on the left, the ball stands on the right; on a narrow screen it stays behind the text, dimmer
+  if (innerWidth < 900) dimTo = 0.4; else sideTo = 0.5;                     // the text goes up on the left, the line stands on the right; on a narrow screen it stays behind the text, dimmer
   box.classList.add('on');
   await wait(900);
   const H = innerHeight, full = inner.scrollHeight, endY = H * 0.42 - full;   // it stops with its last lines near the middle
-  let y = H * 0.86, hurry = false, lastT = performance.now(), done = false;
+  let y = H * 0.86, lastT = performance.now(), done = false; hurry = false;
   const onDown = () => { hurry = true; }, onUp = () => { hurry = false; };
   const onKey = (e) => { if (e.code === 'Space' || e.code === 'Enter') hurry = e.type === 'keydown'; };
   window.addEventListener('pointerdown', onDown); window.addEventListener('pointerup', onUp); window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKey);
@@ -312,5 +268,6 @@ export async function runFinale(o) {
   box.style.transition = 'opacity 2600ms ease'; box.style.opacity = '0';
   await new Promise((res) => { const t0 = performance.now(), dur = 4200 / FAST; (function step() { out = ease((performance.now() - t0) / dur); if (out < 1) requestAnimationFrame(step); else res(); })(); });
   alive = false; cosmos.setCine(null);
-  return { points: N, turns: TURNS, lines: n, others: others.n, scenes: things.length };
+  window.removeEventListener('pointerdown', hDown); window.removeEventListener('pointermove', hMove); window.removeEventListener('pointerup', hUp); window.removeEventListener('pointercancel', hUp);
+  return { points: N, lines: n, scenes: things.length };
 }

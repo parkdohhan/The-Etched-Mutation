@@ -120,7 +120,8 @@ export async function runFinale(o) {
   const thread0 = cosmos.threadMat.opacity, fog0 = scene.fog.density;
 
   // ── the frame ─────────────────────────────────────────────────────────────
-  let T = 0, readU = 1, readOn = 0, side = 0, sideTo = 0, dim = 1, dimTo = 1, out = 0, alive = true;
+  let T = 0, readU = 1, readOn = 0, side = 0, sideTo = 0, dim = 1, dimTo = 1, out = 0, alive = true, hurry = false;
+  const hand = { az: 0, el: 0, on: null };                                 // 261124: the hand turns the line (a drag; the eye goes round it) — as in spaceplay/finale.js
   const S0 = pl.pos.clone(), F0 = cosmos.forward(), az0 = Math.atan2(S0.x - C.x, S0.z - C.z);
   const tmp = new THREE.Vector3(), look = new THREE.Vector3(), cpos = new THREE.Vector3();
   const TL = { gone: [0, 0.8], pull: [1.2, 12.5], draw: [2.6, 12.2], open: [12.2, 18.5], hold: [18.5, 23] };
@@ -133,7 +134,7 @@ export async function runFinale(o) {
 
     // the eye: far enough for the whole line; a little further while the text is up beside it
     const dist = distReveal * (1 + 0.36 * side);
-    const az = az0 + 0.03 * T, el = 0.46;
+    const az = az0 + 0.03 * T + hand.az, el = clamp(0.46 + hand.el, -0.3, 1.25);
     cpos.set(C.x + dist * Math.sin(az) * Math.cos(el), C.y + dist * Math.sin(el), C.z + dist * Math.cos(az) * Math.cos(el));
     pl.pos.lerpVectors(S0, cpos, kPull);
     // the line stands to one side while the text goes up (side = share of the half-screen); the eye looks past it
@@ -200,6 +201,10 @@ export async function runFinale(o) {
     reader.position.set(mine[ri], mine[ri + 1], mine[ri + 2]); reader.material.opacity = 0.9 * readOn * fade;
   }
   cosmos.setCine(tick);
+  const hDown = (e) => { hand.on = { x: e.clientX, y: e.clientY, moved: false }; };
+  const hMove = (e) => { if (!hand.on) return; const dx = e.clientX - hand.on.x, dy = e.clientY - hand.on.y; if (!hand.on.moved && Math.hypot(dx, dy) < 6) return; hand.on.moved = true; hand.az += dx * 0.0045; hand.el = clamp(hand.el + dy * 0.0032, -0.7, 0.7); hand.on.x = e.clientX; hand.on.y = e.clientY; hurry = false; };
+  const hUp = () => { hand.on = null; };
+  window.addEventListener('pointerdown', hDown); window.addEventListener('pointermove', hMove); window.addEventListener('pointerup', hUp); window.addEventListener('pointercancel', hUp);
 
   await new Promise((res) => { const iv = setInterval(() => { if (T >= TL.hold[1]) { clearInterval(iv); res(); } }, 120); });
 
@@ -250,7 +255,7 @@ export async function runFinale(o) {
   box.classList.add('on');
   await wait(900);
   const H = innerHeight, full = inner.scrollHeight, endY = H * 0.42 - full;   // it stops with its last lines near the middle
-  let y = H * 0.86, hurry = false, lastT = performance.now(), done = false;
+  let y = H * 0.86, lastT = performance.now(), done = false; hurry = false;
   const onDown = () => { hurry = true; }, onUp = () => { hurry = false; };
   const onKey = (e) => { if (e.code === 'Space' || e.code === 'Enter') hurry = e.type === 'keydown'; };
   window.addEventListener('pointerdown', onDown); window.addEventListener('pointerup', onUp); window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKey);
@@ -277,5 +282,6 @@ export async function runFinale(o) {
   box.style.transition = 'opacity 2600ms ease'; box.style.opacity = '0';
   await new Promise((res) => { const t0 = performance.now(), dur = 4200 / FAST; (function step() { out = ease((performance.now() - t0) / dur); if (out < 1) requestAnimationFrame(step); else res(); })(); });
   alive = false; cosmos.setCine(null);
+  window.removeEventListener('pointerdown', hDown); window.removeEventListener('pointermove', hMove); window.removeEventListener('pointerup', hUp); window.removeEventListener('pointercancel', hUp);
   return { points: N, lines: n, scenes: things.length };
 }
