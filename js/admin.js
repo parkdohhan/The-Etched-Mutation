@@ -142,14 +142,20 @@ async function checkPassword() {
 
 // 페 지 load 시 existing session check
 async function checkExistingSession() {
+    // 261121: the page opens on "checking…" and the login form appears only when no saved login
+    // is found, so a refresh while logged in no longer flashes the form.
+    const showLoginForm = () => {
+        const f = document.getElementById('adminLoginForm'), l = document.getElementById('adminAuthLoading');
+        if (l) l.style.display = 'none';
+        if (f) f.style.display = 'block';
+    };
     try {
-        const supabaseClient = getSupabaseClient();
-        if (!supabaseClient) return;
+        const supabaseClient = await waitForSupabaseClient(5000);
+        if (!supabaseClient) { showLoginForm(); return; }
 
         const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session?.user) return;
+        if (!session?.user) { showLoginForm(); return; }
 
- // profile 서 role check
         const { data: profile } = await supabaseClient
             .from('profiles')
             .select('role')
@@ -163,9 +169,12 @@ async function checkExistingSession() {
             if (window.showAdminNav) window.showAdminNav();
             loadMemories();
             loadAllSessions();
+        } else {
+            showLoginForm();
         }
     } catch (e) {
         console.warn('[Admin] 기존 세션 확인 실패:', e.message);
+        showLoginForm();
     }
 }
 
@@ -209,7 +218,7 @@ async function logout() {
 }
 
 // init 시 existing session check
-setTimeout(() => checkExistingSession(), 500);
+checkExistingSession();
 
 // memory list load
 async function loadMemories() {

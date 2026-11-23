@@ -49,6 +49,7 @@ function resize() {
   requestAnimationFrame(loop); resize(); controls.update();
   if (st.view === 'net' && !netDrag) netGroup.rotation.y += 0.0012;      // slow: one turn in about 90 s
   renderer.render(scene3, cam);
+  if (st.view === 'net' && !$('labels').classList.contains('hidden')) placeLabels();
 })();
 
 function label(text, color, size) {
@@ -64,26 +65,55 @@ function parseMeta(m) { if (typeof m === 'string') { try { return JSON.parse(m);
 function hash01(s) { let h = 2166136261 >>> 0; s = String(s); for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return ((h >>> 0) % 100000) / 100000; }
 
 // ── overview: the net ──────────────────────────────────────────────────────
-const net = { edges: {}, visits: {}, pos: {}, meshes: new Map(), runs: 0 };
+const net = { edges: {}, visits: {}, arrivals: {}, walkers: {}, maxArr: 0, maxVis: 0, pos: {}, pull: {}, tubes: new Map(), shells: new Map(), labels: new Map(), hl: null, lit: null, hover: null, meshes: new Map(), runs: 0 };
 function buildNetData() {
-  net.edges = {}; net.visits = {}; net.runs = 0;
+  // per scene, three counts from the same ledger rows (261121):
+  //   visits   = rows left there (a move made by pressing a map point is not a row "left there")
+  //   arrivals = times a walk entered the scene (first row of a walk, or the scene changed)
+  //   walkers  = walks that were there at least once
+  net.edges = {}; net.visits = {}; net.arrivals = {}; net.walkers = {}; net.runs = 0; net.dropped = 0; net.runList = [];
   const byRun = new Map();
-  st.plays.forEach((p) => { if (!p.run_id || !p.scene_id) return; if (!byRun.has(p.run_id)) byRun.set(p.run_id, []); byRun.get(p.run_id).push(p); });
+  st.plays.forEach((p) => { if (!p.run_id || !p.scene_id) { net.dropped++; return; } if (!byRun.has(p.run_id)) byRun.set(p.run_id, []); byRun.get(p.run_id).push(p); });
+  // rows of one walk stamped with the very same time (a batch written at once, e.g. the author's seed)
+  // carry no order of their own; they are lined up by scene order so the result does not change from load to load.
+  const ordOf = {}; st.scenes.forEach((s) => { ordOf[s.id] = Number(s.scene_order) || 0; });
+  net.tied = 0;
   byRun.forEach((rows) => {
-    rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    let prev = null, moved = false;
+    rows.sort((a, b) => (new Date(a.created_at) - new Date(b.created_at)) || ((ordOf[a.scene_id] || 0) - (ordOf[b.scene_id] || 0)));
+    const seenT = {}; rows.forEach((r) => { seenT[r.created_at] = (seenT[r.created_at] || 0) + 1; });
+    Object.values(seenT).forEach((c) => { if (c > 1) net.tied += c; });
+    let prev = null, moved = false; const been = new Set();
     rows.forEach((r) => {
       if (r.persona_id !== 'piece-move') net.visits[r.scene_id] = (net.visits[r.scene_id] || 0) + 1;
+      if (prev !== r.scene_id) { net.arrivals[r.scene_id] = (net.arrivals[r.scene_id] || 0) + 1; been.add(r.scene_id); }
       if (prev && prev !== r.scene_id) { const k = prev + '|' + r.scene_id; net.edges[k] = (net.edges[k] || 0) + 1; moved = true; }
       prev = r.scene_id;
     });
+    been.forEach((id) => { net.walkers[id] = (net.walkers[id] || 0) + 1; });
     if (moved) net.runs++;
+    net.runList.push({ id: rows[0].run_id, rows, moved });
   });
+  net.maxArr = Math.max(0, ...st.scenes.map((s) => net.arrivals[s.id] || 0));
+  net.maxVis = Math.max(0, ...st.scenes.map((s) => net.visits[s.id] || 0));
 }
+// the point of a scene: a solid core sized by arrivals, inside a faint shell sized by rows left.
+// Both are relative to the largest value in this memory (no fixed scale).
+function dotSize(id) {
+  const a = net.arrivals[id] || 0, v = net.visits[id] || 0;
+  const core = 1.0 + (net.maxArr ? 1.4 * a / net.maxArr : 0);
+  return { a, v, core, shell: v ? core + 0.25 + 1.0 * v / net.maxVis : 0 };
+}
+const pairKey = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
 function layoutNet() {
   const ids = st.scenes.map((s) => s.id), n = ids.length, pos = {};
   ids.forEach((id) => { const a = hash01(id + '|la') * Math.PI * 2, b = Math.acos(2 * hash01(id + '|lb') - 1); pos[id] = [Math.sin(b) * Math.cos(a), Math.cos(b), Math.sin(b) * Math.sin(a)]; });
-  let E = Object.keys(net.edges).map((k) => k.split('|')).filter((e) => pos[e[0]] && pos[e[1]]);
+  // 261121: one spring per pair of scenes; its strength = (walks there + walks back) / the mean of
+  // that number over this memory's pairs. No fixed scale: the average pair pulls with 1.
+  const und = {};
+  Object.keys(net.edges).forEach((k) => { const [a, b] = k.split('|'); if (!pos[a] || !pos[b]) return; const u = a < b ? a + '|' + b : b + '|' + a; und[u] = (und[u] || 0) + net.edges[k]; });
+  const uk = Object.keys(und), meanW = uk.reduce((t, k) => t + und[k], 0) / (uk.length || 1);
+  net.pull = {}; uk.forEach((k) => { net.pull[k] = und[k] / meanW; });
+  const E = uk.map((k) => k.split('|'));
   // nobody has walked yet: let the scene order hold the points loosely, so the model is not a cloud
   const soft = []; for (let i = 0; i + 1 < n; i++) soft.push([ids[i], ids[i + 1]]);
   const K = 1.0;
@@ -99,7 +129,7 @@ function layoutNet() {
       disp[e[0]][0] -= dx / d * f; disp[e[0]][1] -= dy / d * f; disp[e[0]][2] -= dz / d * f;
       disp[e[1]][0] += dx / d * f; disp[e[1]][1] += dy / d * f; disp[e[1]][2] += dz / d * f;
     };
-    E.forEach((e) => pull(e, 1)); soft.forEach((e) => pull(e, 0.18));
+    E.forEach((e) => pull(e, net.pull[e[0] + '|' + e[1]])); soft.forEach((e) => pull(e, 0.18));
     ids.forEach((id) => { const v = disp[id], l = Math.hypot(v[0], v[1], v[2]) || 0.01, s = Math.min(l, temp) / l; pos[id][0] += v[0] * s; pos[id][1] += v[1] * s; pos[id][2] += v[2] * s; });
   }
   let cx = 0, cy = 0, cz = 0, r = 0.01; ids.forEach((id) => { cx += pos[id][0]; cy += pos[id][1]; cz += pos[id][2]; });
@@ -109,7 +139,7 @@ function layoutNet() {
 }
 function buildNet() {
   while (netGroup.children.length) netGroup.remove(netGroup.children[0]);
-  net.meshes.clear();
+  net.meshes.clear(); net.tubes.clear(); net.shells.clear(); net.labels.clear(); $('labels').innerHTML = '';
   layoutNet();
   const P3 = (id) => new THREE.Vector3(net.pos[id][0], net.pos[id][1], net.pos[id][2]);
   const done = new Set();
@@ -121,7 +151,7 @@ function buildNet() {
     const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.1 + Math.min(0.6, 0.07 * cnt), 0.1 + Math.min(0.6, 0.07 * cnt), len, 8),
       new THREE.MeshStandardMaterial({ color: back ? 0x8fd0a0 : 0xd8c4a0, roughness: 0.6, transparent: true, opacity: 0.85 }));
     tube.position.copy(mid); tube.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
-    netGroup.add(tube);
+    netGroup.add(tube); net.tubes.set(pairKey(a, b), tube);
   });
   if (!Object.keys(net.edges).length) {
     for (let i = 0; i + 1 < st.scenes.length; i++) {
@@ -130,17 +160,87 @@ function buildNet() {
     }
   }
   st.scenes.forEach((s) => {
-    const v = net.visits[s.id] || 0;
-    const m = new THREE.Mesh(new THREE.SphereGeometry(1.0 + Math.min(1.4, v * 0.06), 22, 16),
-      new THREE.MeshStandardMaterial({ color: v ? 0xf2dfbc : 0x7d8492, roughness: 0.5, emissive: v ? 0x3a2f1c : 0x000000 }));
+    const d = dotSize(s.id);
+    const m = new THREE.Mesh(new THREE.SphereGeometry(d.core, 22, 16),
+      new THREE.MeshStandardMaterial({ color: d.a ? 0xf2dfbc : 0x7d8492, roughness: 0.5, emissive: d.a ? 0x3a2f1c : 0x000000 }));
     m.position.copy(P3(s.id)); m.userData.sceneId = s.id; netGroup.add(m); net.meshes.set(s.id, m);
-    const cnt = (parseMeta(s.meta).piece || {}).props;
-    const lb = label(s.scene_order + '  ' + String(s.text || '').slice(0, 14) + (Array.isArray(cnt) && cnt.length ? '  · 세운 것 ' + cnt.length : ''), '#e9dfcc', 1.7);
-    lb.position.copy(P3(s.id)).add(new THREE.Vector3(0, 2.6, 0)); netGroup.add(lb);
+    if (d.shell) {
+      const sh = new THREE.Mesh(new THREE.SphereGeometry(d.shell, 22, 16), new THREE.MeshBasicMaterial({ color: 0xf2dfbc, transparent: true, opacity: 0.13, depthWrite: false }));
+      sh.position.copy(m.position); netGroup.add(sh); net.shells.set(s.id, sh);
+    }
+    // name tag = a page element laid over the picture, so tags can step aside for one another (placeLabels)
+    const cnt = (parseMeta(s.meta).piece || {}).props, el = document.createElement('div'), b = document.createElement('b'), sp = document.createElement('span');
+    b.textContent = s.scene_order; sp.textContent = ' ' + String(s.text || '').slice(0, 14) + (Array.isArray(cnt) && cnt.length ? ' · 세운 것 ' + cnt.length : '');
+    el.appendChild(b); el.appendChild(sp); $('labels').appendChild(el);
+    net.labels.set(s.id, { el, r: Math.max(d.core, d.shell), wFull: 0, wShort: 0, h: 0 });
   });
+  measureLabels();
   const walks = Object.values(net.edges).reduce((a, b) => a + b, 0);
   $('ovStat').textContent = walks ? `지금까지 ${net.runs}번의 걸음에서 씬 사이 이동 ${walks}번.` : '아직 씬 사이를 걸은 기록이 없습니다. 점선은 씬 순서만 보여 줍니다.';
+  applyHl();
 }
+function measureLabels() {
+  const box = $('labels'), was = box.classList.contains('hidden'); box.classList.remove('hidden');
+  net.labels.forEach((L) => { L.el.classList.remove('short'); L.wFull = L.el.offsetWidth; L.h = L.el.offsetHeight; L.wShort = L.el.firstChild.offsetWidth; });
+  if (was) box.classList.add('hidden');
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(measureLabels);
+// Every frame: put each name tag above its point. Nearest points first; a tag that would cover one
+// already placed shrinks to its number. The point under the mouse always shows its whole tag.
+const _lv = new THREE.Vector3();
+function placeLabels() {
+  const w = canvas.clientWidth, h = canvas.clientHeight, f = (h / 2) / Math.tan(cam.fov * Math.PI / 360), items = [];
+  net.labels.forEach((L, id) => {
+    const m = net.meshes.get(id); if (!m) return;
+    m.getWorldPosition(_lv); const dist = _lv.distanceTo(cam.position); _lv.project(cam);
+    if (_lv.z > 1 || _lv.z < -1) { L.el.style.display = 'none'; return; }
+    items.push({ id, L, x: (_lv.x + 1) / 2 * w, cy: (1 - _lv.y) / 2 * h, rp: L.r / dist * f + 3, dist, pri: id === net.hover ? 0 : (net.lit && net.lit.S.has(id) ? 1 : 2) });
+  });
+  items.sort((a, b) => a.pri - b.pri || a.dist - b.dist);
+  const placed = [];
+  items.forEach((it) => {
+    // try, in order: whole tag above, whole tag below, number above, number below
+    const L = it.L, rect = (W, below) => { const y1 = below ? it.cy + it.rp + L.h : it.cy - it.rp; return { x0: it.x - W / 2 - 3, x1: it.x + W / 2 + 3, y0: y1 - L.h, y1 }; };
+    const hits = (r) => placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0);
+    let full = true, r = rect(L.wFull, false);
+    if (it.pri !== 0 && hits(r)) {
+      const tries = [[true, true], [false, false], [false, true]]; let ok = false;
+      for (const [fl, below] of tries) { const c = rect(fl ? L.wFull : L.wShort, below); if (!hits(c)) { full = fl; r = c; ok = true; break; } }
+      if (!ok) { full = false; r = rect(L.wShort, false); }
+    }
+    placed.push(r);
+    L.el.classList.toggle('short', !full); L.el.style.display = 'block';
+    L.el.style.transform = 'translate(' + Math.round(r.x0 + 3) + 'px,' + Math.round(r.y0) + 'px)';
+    L.el.style.opacity = net.lit && !net.lit.S.has(it.id) && it.pri ? 0.22 : 1;
+    L.el.style.zIndex = it.pri === 0 ? 2 : 1;
+  });
+}
+// ── one thing picked out (from a table row): it stays bright, the rest goes faint ──
+function litSets() {
+  const h = net.hl; if (!h) return null;
+  const S = new Set(), T = new Set();
+  if (h.type === 'scene') { S.add(h.id); net.tubes.forEach((m, k) => { const [a, b] = k.split('|'); if (a === h.id || b === h.id) { T.add(k); S.add(a); S.add(b); } }); }
+  else if (h.type === 'pair') { S.add(h.a); S.add(h.b); T.add(pairKey(h.a, h.b)); }
+  else if (h.type === 'run') { const r = net.runList.find((x) => String(x.id) === h.id); let prev = null; (r ? r.rows : []).forEach((x) => { S.add(x.scene_id); if (prev && prev !== x.scene_id) T.add(pairKey(prev, x.scene_id)); prev = x.scene_id; }); }
+  return { S, T };
+}
+function hlKey(h) { return !h ? '' : h.type === 'pair' ? 'pair:' + pairKey(h.a, h.b) : h.type + ':' + h.id; }
+function applyHl() {
+  const L = net.lit = litSets();
+  net.meshes.forEach((m, id) => { const on = !L || L.S.has(id); m.material.transparent = !on; m.material.opacity = on ? 1 : 0.1; m.material.needsUpdate = true; const sh = net.shells.get(id); if (sh) sh.material.opacity = on ? 0.13 : 0.02; });
+  net.tubes.forEach((m, k) => { m.material.opacity = !L ? 0.85 : (L.T.has(k) ? 1 : 0.05); });
+  const bar = $('hlBar'), h = net.hl;
+  bar.classList.toggle('hidden', !h || st.view !== 'net' || !$('dataView').classList.contains('hidden'));
+  if (!h) return;
+  const ord = {}; st.scenes.forEach((s) => { ord[s.id] = s.scene_order; });
+  const nm = (id) => (id in ord ? ord[id] + '번' : '(지워진 씬)');
+  let t = '';
+  if (h.type === 'scene') { const d = dotSize(h.id); t = nm(h.id) + ' 씬 — 찾아온 횟수 ' + d.a + ' · 머문 줄 ' + d.v + ' · 이어진 씬 ' + (L.S.size - 1) + '곳'; }
+  else if (h.type === 'pair') t = nm(h.a) + ' ↔ ' + nm(h.b) + ' — ' + nm(h.a) + ' → ' + nm(h.b) + ' ' + (net.edges[h.a + '|' + h.b] || 0) + '번 · ' + nm(h.b) + ' → ' + nm(h.a) + ' ' + (net.edges[h.b + '|' + h.a] || 0) + '번';
+  else { const r = net.runList.find((x) => String(x.id) === h.id); t = '걸음 ' + String(h.id).slice(0, 8) + (r ? ' (' + when(r.rows[0].created_at) + ') — ' + r.rows.map((x) => nm(x.scene_id).replace('번', '')).join(' → ') : ''); }
+  $('hlText').textContent = t;
+}
+function setHl(h) { net.hl = h; applyHl(); }
 function showNet() {
   if (st.dirty && !confirm('저장하지 않은 것이 있습니다. 버리고 위상 모형으로 갈까요?')) return;
   st.dirty = false; st.view = 'net'; st.scene = null; st.sel = null; setPlacing(null);
@@ -151,7 +251,112 @@ function showNet() {
   document.querySelectorAll('.scene').forEach((el) => el.classList.remove('on'));
   history.replaceState(null, '', `?${EMBED ? 'embed=1&' : ''}memory=${st.memory.id}`);
   buildNet();
+  $('tabs').classList.remove('hidden'); setTab('model');
 }
+
+// ── overview, second tab: what the net is made from ─────────────────────────
+// Read-only. Shows the same numbers buildNetData/layoutNet/buildNet just used, nothing recomputed
+// by a second rule: ledger rows -> runs -> visits (points) + moves (lines) -> positions.
+const escH = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function setTab(which) {
+  const data = which === 'data';
+  $('tabModel').classList.toggle('on', !data); $('tabData').classList.toggle('on', data);
+  $('dataView').classList.toggle('hidden', !data); $('tip').classList.toggle('hidden', data); $('labels').classList.toggle('hidden', data);
+  if (data) renderData();
+  applyHl();
+}
+function who(pid) { return pid === 'piece-move' ? '지도 점을 눌러 옮김' : pid === 'author-seed' ? '작가가 심은 줄' : pid ? '가짜 관객 (' + pid + ')' : '관객'; }
+function when(t) { const d = new Date(t); return isNaN(d) ? '' : d.toLocaleString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+function renderData() {
+  const ord = {}; st.scenes.forEach((s) => { ord[s.id] = s.scene_order; });
+  const nm = (id) => (id in ord ? ord[id] + '번' : '(지워진 씬)');
+  const f2 = (n) => Number(n).toFixed(2);
+  const kept = st.plays.length - net.dropped;
+  const byWho = {}; st.plays.forEach((p) => { const k = who(p.persona_id); byWho[k] = (byWho[k] || 0) + 1; });
+  const edgeKeys = Object.keys(net.edges), pairs = [], seen = new Set();
+  edgeKeys.forEach((k) => {
+    const [a, b] = k.split('|'); if (seen.has(b + '|' + a)) return; seen.add(k);
+    const go = net.edges[k], back = net.edges[b + '|' + a] || 0, drawn = !!(net.pos[a] && net.pos[b]);
+    pairs.push({ a, b, go, back, sum: go + back, drawn });
+  });
+  pairs.sort((x, y) => y.sum - x.sum);
+  const runs = net.runList.slice().sort((x, y) => new Date(y.rows[0].created_at) - new Date(x.rows[0].created_at));
+  const RUN_MAX = 300, ROW_MAX = 500, cur = hlKey(net.hl);
+  let h = '';
+  h += '<h3>1. 재료 — 걸음 장부</h3>';
+  h += '<p>이 기억에 남은 장부 줄을 읽어 옵니다. 한 줄은 "어느 걸음에서, 어느 씬에, 언제 있었나"입니다. 모형은 이 줄들만으로 만들어집니다. 감정 숫자는 쓰지 않습니다.</p>';
+  h += '<p>표의 줄(씬, 씬 짝, 걸음)을 누르면 모형에서 그것만 밝게 보입니다.</p>';
+  h += '<table><tr><th>무엇</th><th>수</th></tr>'
+    + '<tr><td>읽어 온 장부 줄</td><td class="num">' + st.plays.length + '</td></tr>'
+    + '<tr><td>그중 쓴 줄</td><td class="num">' + kept + '</td></tr>'
+    + '<tr><td>버린 줄 (걸음 번호나 씬이 비어 있음)</td><td class="num">' + net.dropped + '</td></tr>'
+    + '<tr><td>같은 걸음 안에서 시각이 똑같아 순서를 알 수 없는 줄 (씬 순서대로 세움)</td><td class="num">' + net.tied + '</td></tr>'
+    + '<tr><td>걸음 수 (걸음 번호가 같은 줄끼리 한 묶음)</td><td class="num">' + net.runList.length + '</td></tr>'
+    + '<tr><td>그중 씬을 한 번이라도 옮긴 걸음</td><td class="num">' + net.runs + '</td></tr>'
+    + '<tr><td>씬 (점) 수</td><td class="num">' + st.scenes.length + '</td></tr>'
+    + '<tr><td>이어진 씬 짝 (선) 수</td><td class="num">' + pairs.filter((p) => p.drawn).length + '</td></tr></table>';
+  h += '<p style="margin-top:12px">누가 남긴 줄인가 — 지금 모형은 아래 줄을 가리지 않고 전부 셉니다.</p><table><tr><th>남긴 쪽</th><th>줄 수</th></tr>'
+    + Object.keys(byWho).sort((a, b) => byWho[b] - byWho[a]).map((k) => '<tr><td>' + escH(k) + '</td><td class="num">' + byWho[k] + '</td></tr>').join('') + '</table>';
+
+  h += '<h3>2. 점 — 씬마다 찾아온 횟수와 머문 줄 수</h3>';
+  h += '<p>걸음마다 줄을 시간 순으로 세우고 두 가지를 따로 셉니다. <b>찾아온 횟수</b> = 그 씬에 들어온 횟수(걸음의 첫 줄이거나, 바로 앞 줄과 씬이 다를 때 1번. 같은 걸음이 나갔다가 다시 오면 또 1번). <b>머문 줄 수</b> = 그 씬에서 남긴 줄 수(같은 씬에서 말을 세 번 이으면 3. 지도 점을 눌러 옮긴 줄은 넣지 않음). 모형에서 속 구슬 크기 = 1.0 + 1.4 × (찾아온 횟수 ÷ 이 기억에서 가장 큰 찾아온 횟수), 겉 껍질 크기 = 속 구슬 + 0.25 + 1.0 × (머문 줄 수 ÷ 이 기억에서 가장 큰 머문 줄 수). 한 번도 안 찾아온 씬은 회색이고 껍질이 없습니다.</p>';
+  h += '<table><tr><th>씬</th><th>글 앞머리</th><th>찾아온 걸음 수</th><th>찾아온 횟수</th><th>머문 줄 수</th><th>한 번 올 때 평균 줄</th><th>속 구슬</th><th>겉 껍질</th><th>색</th><th>세운 것</th><th>자리 (가로, 높이, 깊이)</th></tr>'
+    + st.scenes.map((s) => {
+      const d = dotSize(s.id), pr = (parseMeta(s.meta).piece || {}).props, P = net.pos[s.id] || [0, 0, 0];
+      return '<tr class="lk' + (cur === 'scene:' + s.id ? ' on' : '') + '" data-hl="scene:' + escH(s.id) + '"><td>' + escH(s.scene_order) + '번</td><td class="txt">' + escH(String(s.text || '').slice(0, 14)) + '</td><td class="num">' + (net.walkers[s.id] || 0) + '</td><td class="num">' + d.a + '</td><td class="num">' + d.v + '</td><td class="num">' + (d.a ? f2(d.v / d.a) : '–') + '</td><td class="num">' + f2(d.core) + '</td><td class="num">' + (d.shell ? f2(d.shell) : '–') + '</td>'
+        + '<td><span class="sw" style="background:' + (d.a ? '#f2dfbc' : '#7d8492') + '"></span>' + (d.a ? '밝음' : '회색') + '</td><td class="num">' + (Array.isArray(pr) ? pr.length : 0) + '</td>'
+        + '<td class="num">' + P.map((x) => x.toFixed(1)).join(', ') + '</td></tr>';
+    }).join('') + '</table>';
+
+  h += '<h3>3. 선 — 씬 사이를 옮긴 횟수</h3>';
+  h += '<p>같은 걸음 안에서 바로 앞 줄과 씬이 다르면 "옮김 1번"입니다. 지도 점을 눌러 옮긴 것도 여기에는 셉니다. 선 굵기 = 0.1 + (가는 횟수 + 오는 횟수) × 0.07 (가장 굵을 때 0.7). 양쪽으로 다 걸었으면 초록, 한쪽으로만 걸었으면 베이지입니다.</p>';
+  if (!pairs.length) h += '<p>아직 씬 사이를 옮긴 줄이 없습니다. 그래서 모형에는 씬 순서대로 이은 점선만 그려져 있습니다.</p>';
+  else h += '<table><tr><th>씬 짝</th><th>한쪽 방향</th><th>반대 방향</th><th>합</th><th>당기는 세기</th><th>점 사이 거리</th><th>선 굵기</th><th>색</th></tr>'
+    + pairs.map((p) => '<tr class="lk' + (cur === 'pair:' + pairKey(p.a, p.b) ? ' on' : '') + '" data-hl="pair:' + escH(p.a + '|' + p.b) + '"><td>' + escH(nm(p.a)) + ' ↔ ' + escH(nm(p.b)) + '</td><td>' + escH(nm(p.a)) + ' → ' + escH(nm(p.b)) + ': <b>' + p.go + '</b></td><td>' + escH(nm(p.b)) + ' → ' + escH(nm(p.a)) + ': <b>' + p.back + '</b></td><td class="num">' + p.sum + '</td>'
+      + (p.drawn ? '<td class="num">' + f2(net.pull[p.a < p.b ? p.a + '|' + p.b : p.b + '|' + p.a] || 0) + '</td><td class="num">' + Math.hypot(net.pos[p.a][0] - net.pos[p.b][0], net.pos[p.a][1] - net.pos[p.b][1], net.pos[p.a][2] - net.pos[p.b][2]).toFixed(1) + '</td><td class="num">' + f2(0.1 + Math.min(0.6, 0.07 * p.sum)) + '</td><td><span class="sw" style="background:' + (p.back ? '#8fd0a0' : '#d8c4a0') + '"></span>' + (p.back ? '오고 간 길' : '한쪽 길') + '</td>'
+        : '<td colspan="4" class="warn">그리지 않음 (지워진 씬이 끼어 있음)</td>') + '</tr>').join('') + '</table>';
+
+  h += '<h3>4. 자리 — 어떻게 놓이나</h3>';
+  h += '<p>위·아래·좌우에는 뜻이 없고, 가까움에만 뜻이 있습니다. 정하는 순서는 이렇습니다. ① 씬마다 고유 번호로 공 위의 처음 자리를 정합니다(같은 기억이면 늘 같은 자리에서 시작). ② 모든 점이 서로를 밀어냅니다. ③ 걸은 길로 이어진 두 점은 서로 당깁니다. 당기는 세기 = 그 짝이 오간 횟수(가는 횟수 + 오는 횟수) ÷ 이 기억의 짝들이 오간 횟수의 평균. 평균만큼 오간 짝은 세기 1, 평균의 두 배 오간 짝은 세기 2입니다. 그래서 많이 오간 씬일수록 가까이 붙습니다. ④ 씬 순서가 이웃인 두 점도 약하게 당깁니다(세기 0.18) — 아무도 안 걸었을 때 점이 흩어지지 않게 하려는 것입니다. ⑤ 이것을 260번 되풀이한 뒤 한가운데로 옮기고, 가장 먼 점이 26만큼 떨어지도록 크기를 맞춥니다. 다만 점 하나가 여러 길에 동시에 당겨지기 때문에, 거리가 횟수 순서와 꼭 맞아떨어지지는 않습니다. 위 3번 표의 "점 사이 거리"에서 실제 값을 볼 수 있습니다.</p>';
+
+  h += '<h3>5. 걸음별 기록</h3>';
+  h += '<p>걸음 하나가 지나간 씬을 시간 순으로 적은 것입니다. 위 2번과 3번의 수는 전부 여기서 센 것입니다. <span class="mv">파란 숫자</span>는 지도 점을 눌러 옮긴 줄입니다.' + (runs.length > RUN_MAX ? ' 최근 ' + RUN_MAX + '개만 보입니다 (전체 ' + runs.length + '개).' : '') + '</p>';
+  h += '<table><tr><th>시작</th><th>남긴 쪽</th><th>줄 수</th><th>지나간 씬</th><th>걸음 번호</th></tr>'
+    + runs.slice(0, RUN_MAX).map((r) => {
+      const first = r.rows.find((x) => x.persona_id !== 'piece-move') || r.rows[0];
+      return '<tr class="lk' + (cur === 'run:' + r.id ? ' on' : '') + '" data-hl="run:' + escH(r.id) + '"><td>' + escH(when(r.rows[0].created_at)) + '</td><td>' + escH(who(first.persona_id)) + '</td><td class="num">' + r.rows.length + '</td><td class="seq">'
+        + r.rows.map((x) => '<span' + (x.persona_id === 'piece-move' ? ' class="mv"' : '') + '>' + escH(nm(x.scene_id).replace('번', '')) + '</span>').join(' → ') + '</td><td style="color:var(--dim)">' + escH(String(r.id).slice(0, 8)) + '</td></tr>';
+    }).join('') + '</table>';
+
+  const raw = st.plays.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  h += '<h3>6. 장부 원본 줄</h3>';
+  h += '<details><summary>펼쳐 보기 (' + raw.length + '줄' + (raw.length > ROW_MAX ? ' 가운데 최근 ' + ROW_MAX + '줄' : '') + ')</summary>'
+    + '<table><tr><th>시각</th><th>걸음 번호</th><th>씬</th><th>남긴 쪽</th><th>쓰임</th></tr>'
+    + raw.slice(0, ROW_MAX).map((p) => '<tr><td>' + escH(when(p.created_at)) + '</td><td style="color:var(--dim)">' + escH(p.run_id ? String(p.run_id).slice(0, 8) : '없음') + '</td><td>' + escH(p.scene_id ? nm(p.scene_id) : '없음') + '</td><td>' + escH(who(p.persona_id)) + '</td>'
+      + '<td>' + (!p.run_id || !p.scene_id ? '<span class="warn">버림</span>' : p.persona_id === 'piece-move' ? '선에만' : '점과 선') + '</td></tr>').join('') + '</table></details>';
+  h += '<p style="margin-top:18px"><button id="dataCopy">표에 쓴 수 전부 복사</button> <span id="dataCopyMsg"></span></p>';
+  $('dataView').innerHTML = h;
+  $('dataCopy').onclick = () => {
+    const out = {
+      memory: st.memory.code || st.memory.id, rows_read: st.plays.length, rows_dropped: net.dropped,
+      points: st.scenes.map((s) => ({ scene_id: s.id, scene_order: s.scene_order, walks_that_came: net.walkers[s.id] || 0, arrivals: net.arrivals[s.id] || 0, rows_left: net.visits[s.id] || 0, position: net.pos[s.id] || null })),
+      lines: pairs.map((p) => ({ from: p.a, to: p.b, forward: p.go, backward: p.back, drawn: p.drawn })),
+      runs: runs.map((r) => ({ run_id: r.id, rows: r.rows.map((x) => ({ scene_id: x.scene_id, created_at: x.created_at, persona_id: x.persona_id || null })) })),
+    };
+    navigator.clipboard.writeText(JSON.stringify(out, null, 2)).then(() => { $('dataCopyMsg').textContent = '복사했습니다.'; }, () => { $('dataCopyMsg').textContent = '복사하지 못했습니다.'; });
+  };
+}
+$('tabModel').onclick = () => setTab('model'); $('tabData').onclick = () => setTab('data');
+$('dataView').addEventListener('click', (e) => {
+  const tr = e.target.closest && e.target.closest('tr[data-hl]'); if (!tr) return;
+  const v = tr.dataset.hl, i = v.indexOf(':'), type = v.slice(0, i), rest = v.slice(i + 1);
+  if (type === 'pair') { const [a, b] = rest.split('|'); setHl({ type, a, b }); } else setHl({ type, id: rest });
+  setTab('model');
+});
+$('hlClear').onclick = () => setHl(null);
+$('hlToTable').onclick = () => { setTab('data'); const row = $('dataView').querySelector('tr.on'); if (row) row.scrollIntoView({ block: 'center' }); };
+canvas.addEventListener('pointermove', (e) => { if (st.view !== 'net') return; net.hover = netDrag ? null : nodeHit(e); canvas.style.cursor = net.hover ? 'pointer' : ''; });
+canvas.addEventListener('pointerleave', () => { net.hover = null; });
 
 // ── one scene: land ────────────────────────────────────────────────────────
 function heightAt(x, z) {
@@ -432,6 +637,7 @@ function openScene(sc) {
   if (st.dirty && !confirm('저장하지 않은 것이 있습니다. 버리고 다른 씬으로 갈까요?')) return;
   st.view = 'scene'; st.scene = sc; st.sel = null; st.dirty = false; setPlacing(null);
   netGroup.visible = false; landGroup.visible = true;
+  $('tabs').classList.add('hidden'); $('dataView').classList.add('hidden'); $('tip').classList.remove('hidden'); $('labels').classList.add('hidden'); $('hlBar').classList.add('hidden'); canvas.style.cursor = '';
   cam.position.set(0, 74, 78); controls.target.set(0, 0, 0); controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 12; controls.maxDistance = 220;
   $('ovPanel').classList.add('hidden'); $('scPanel').classList.remove('hidden'); $('back').classList.remove('hidden');
   $('where').textContent = sc.scene_order + '번 씬 안';
@@ -548,6 +754,19 @@ function renderSceneList() {
   });
 }
 
+// The server hands back a limited number of rows per request, so read the ledger page by page
+// until a page comes back empty (261121 — before this, a memory with more rows than one page lost the rest).
+async function fetchAllPlays(memoryId) {
+  const PAGE = Math.max(1, Number(qs.get('page_rows')) || 1000), out = [];
+  for (;;) {
+    const r = await sb.from('plays').select('id, memory_id, scene_id, user_emotion, alignment, mismatch_type, created_at, user_id, persona_id, run_id')
+      .eq('memory_id', memoryId).order('created_at', { ascending: true }).order('id', { ascending: true }).range(out.length, out.length + PAGE - 1);
+    if (r.error) throw new Error('걸음 장부를 읽지 못했습니다 — ' + r.error.message);
+    if (!r.data || !r.data.length) break;
+    out.push(...r.data);
+  }
+  return out;
+}
 async function boot() {
   const ref = qs.get('memory');
   if (!ref) { $('memTitle').textContent = '주소에 기억이 없습니다 (?memory=…).'; return; }
@@ -557,10 +776,10 @@ async function boot() {
   st.memory = mem.data; st.memory.meta = parseMeta(st.memory.meta);
   const [sc, pl] = await Promise.all([
     sb.from('scenes').select('*').eq('memory_id', st.memory.id).order('scene_order', { ascending: true }),
-    sb.from('plays').select('id, memory_id, scene_id, user_emotion, alignment, mismatch_type, created_at, user_id, persona_id, run_id').eq('memory_id', st.memory.id),
+    fetchAllPlays(st.memory.id),
   ]);
   st.scenes = sc.data || [];
-  st.plays = pl.data || [];
+  st.plays = pl;
   TP.setScenes(st.scenes);
   if (TP.setPlays) TP.setPlays(st.plays.filter((p) => p.persona_id !== 'piece-move'));   // the land of each piece is shaped by its walks
   st.P = T.buildMemoryItems([st.memory], { [st.memory.id]: st.plays.filter((p) => p.persona_id !== 'piece-move') }, { [st.memory.id]: st.scenes });

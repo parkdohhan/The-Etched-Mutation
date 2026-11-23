@@ -60,6 +60,35 @@
   a { color:var(--warm); }
   body.embed #app { grid-template-columns:1fr 340px; }
   body.embed #app > .side:first-child { display:none; }
+  #tabs { position:absolute; left:50%; top:12px; transform:translateX(-50%); display:flex; gap:0; z-index:3; }
+  #tabs button { border-radius:0; padding:6px 16px; letter-spacing:2px; font-size:12.5px; background:#0b0b10; }
+  #tabs button:first-child { border-radius:3px 0 0 3px; } #tabs button:last-child { border-radius:0 3px 3px 0; border-left:none; }
+  #tabs button.on { border-color:var(--warm); background:#2a241d; color:var(--warm); }
+  #dataView { position:absolute; inset:0; overflow:auto; background:var(--bg); padding:58px 22px 40px; z-index:2; }
+  #dataView h3 { font-size:13px; letter-spacing:3px; font-weight:400; color:var(--warm); margin:26px 0 4px; }
+  #dataView h3:first-child { margin-top:0; }
+  #dataView p { color:var(--dim); font-size:12.5px; margin:2px 0 8px; max-width:760px; }
+  #dataView table { border-collapse:collapse; font-size:12.5px; min-width:420px; }
+  #dataView th, #dataView td { border-bottom:1px solid var(--line); padding:4px 12px 4px 0; text-align:left; vertical-align:top; white-space:nowrap; }
+  #dataView th { color:var(--dim); font-weight:400; font-size:11.5px; }
+  #dataView td.txt { white-space:normal; max-width:260px; color:var(--dim); }
+  #dataView td.num { text-align:right; font-variant-numeric:tabular-nums; }
+  #dataView .sw { display:inline-block; width:10px; height:10px; border-radius:50%; vertical-align:middle; margin-right:6px; }
+  #dataView .warn { color:var(--red); }
+  #dataView .seq { white-space:normal; max-width:520px; line-height:1.9; }
+  #dataView .mv { color:#86c6d8; }
+  #dataView tr.lk { cursor:pointer; } #dataView tr.lk:hover td { background:rgba(196,168,130,0.07); }
+  #dataView tr.lk.on td { background:rgba(196,168,130,0.16); }
+  #dataView p b { font-weight:400; color:var(--ink); }
+  #labels { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:1; }
+  #labels div { position:absolute; left:0; top:0; white-space:nowrap; font-size:12.5px; line-height:1.5; color:#e9dfcc; background:rgba(12,14,20,0.78); padding:0 6px; border-radius:3px; will-change:transform; }
+  #labels div b { font-weight:400; color:#ffd9a0; font-size:14.5px; }
+  #labels div.short span { display:none; }
+  #hlBar { position:absolute; left:50%; top:52px; transform:translateX(-50%); z-index:3; display:flex; gap:8px; align-items:center; max-width:86%; padding:6px 8px 6px 14px; background:#0b0b10; border:1px solid var(--warm); border-radius:3px; font-size:12.5px; }
+  #hlBar span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #hlBar button { white-space:nowrap; padding:3px 9px; font-size:12px; }
+  #dataView details { border-top:none; padding:0; }
+  #dataView summary { font-size:12.5px; letter-spacing:1px; margin:6px 0; }
   .legend span { display:inline-block; width:22px; height:2px; vertical-align:middle; margin-right:6px; }
 </style>
 </head>
@@ -78,6 +107,10 @@
   <div id="stage">
     <canvas id="cv"></canvas>
     <div id="crumb"><button id="back" class="hidden">← 위상 모형으로</button><span id="where"></span></div>
+    <div id="tabs" class="hidden"><button id="tabModel" class="on">위상 모형</button><button id="tabData">만드는 재료</button></div>
+    <div id="labels" class="hidden"></div>
+    <div id="hlBar" class="hidden"><span id="hlText"></span><button id="hlToTable">표에서 보기</button><button id="hlClear">전체 보기</button></div>
+    <div id="dataView" class="hidden"></div>
     <div id="mode"></div>
     <div id="tip"></div>
   </div>
@@ -86,12 +119,13 @@
     <!-- overview -->
     <div id="ovPanel">
       <h2 style="margin-top:0">위상 모형</h2>
-      <div class="sub">점 하나가 씬 하나입니다. 선은 관객이 실제로 걸은 길입니다. 자리에는 뜻이 없고, 누가 누구와 이어졌는지만 뜻이 있습니다.</div>
+      <div class="sub">점 하나가 씬 하나입니다. 선은 관객이 실제로 걸은 길입니다. 위·아래·좌우에는 뜻이 없습니다. 누가 누구와 이어졌는지, 그리고 많이 오간 씬일수록 가까이 붙는다는 것만 뜻이 있습니다.</div>
       <div class="sub legend">
         <div><span style="background:#d8c4a0"></span>한쪽으로만 걸은 길</div>
         <div><span style="background:#8fd0a0"></span>오고 간 길</div>
         <div><span style="background:#59606e"></span>아직 아무도 안 걸음 (씬 순서만 잇는 점선)</div>
       </div>
+      <div class="sub">속 구슬이 클수록 많이 찾아온 씬, 겉의 옅은 껍질이 클수록 거기서 말을 많이 남긴 씬입니다. 이름표가 겹치면 번호만 남습니다. 점에 마우스를 올리면 글이 다 보입니다.</div>
       <div class="sub" id="ovStat"></div>
       <div class="sub"><b style="color:var(--warm);font-weight:400">점을 누르면 그 씬 안으로 들어갑니다.</b><br>거기서 글, 소리, 세울 것, 땅 크기를 정합니다.</div>
     </div>
@@ -203,6 +237,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="js/shared/tem_af_strata_terrain.js?v=260809a"></script>
 <script src="js/ui/tem_piece_stage.js?v=261120j"></script>
-<script type="module" src="js/admin/piece_editor.js?v=261120a"></script>
+<script type="module" src="js/admin/piece_editor.js?v=261121d"></script>
 </body>
 </html>
