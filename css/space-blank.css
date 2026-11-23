@@ -11,16 +11,6 @@ body.sp .rp-line.rp-ghost { color: #b3aebe; font-style: normal; }               
 body.sp .rp-line.rp-ghost.rp-left { color: #9c98a4; font-style: italic; }         /* a line someone left here (contact): italic, tagged */
 body.sp .rp-line.rp-ghost.rp-left .rp-src { font-style: normal; }
 
-/* ── the black scroll's edges: paper (author's generated image img/scroll-edge.png — black paper, a lit seam, frayed fibres)
-   The image is black on black, so it is laid on with `lighten`: only its seam and fibres add light; the column's own dark
-   stays as it was and nothing beyond the column is covered. Left edge = the same image mirrored. ── */
-body.sp .rp-column { overflow: visible; }
-body.sp .rp-column::before, body.sp .rp-column::after { content: ''; position: absolute; top: -2vh; bottom: -2vh; width: 11rem; pointer-events: none; z-index: 0;
-  background: url('../img/scroll-edge.png') center / auto 100% no-repeat; mix-blend-mode: lighten; opacity: 0.55; }
-body.sp .rp-column::after { right: -5.2rem; }
-body.sp .rp-column::before { left: -5.2rem; transform: scaleX(-1); }
-body.sp .rp-column > * { position: relative; z-index: 1; }
-
 /* ── words of a text that is up ── */
 .sb-t { display: inline; white-space: nowrap; transition: color 1400ms ease, opacity 1400ms ease; }
 .sb-s, .sb-j { display: inline; }
