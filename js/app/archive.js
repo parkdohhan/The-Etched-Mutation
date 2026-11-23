@@ -725,6 +725,13 @@ function _showFinderResults(matched, lang) {
   }, 900);
 }
 
+// 261124 작가: 대표 기억(UNDW-001·영어 사본)은 어느 길로 들어와도 빈 자리 화면(서막·뒷문·빈칸·타자 소리)으로. 기억 만들기 기억은 우주 화면.
+const SPACE_BLANK_CODES = ['UNDW-001', 'UNDW-001-EN'];
+function _spaceStageUrl(memory, lang) {
+  if (memory && memory.code && SPACE_BLANK_CODES.includes(memory.code)) return `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}&from=opening`;
+  if (memory && memory.meta && memory.meta.space_record) return `space-play.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
+  return null;
+}
 function _navigateToPlayFromFinder(memory) {
   const lang = getCurrentLanguage();
   const isLocal = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) || location.hostname.endsWith('.local');
@@ -734,6 +741,7 @@ function _navigateToPlayFromFinder(memory) {
     sessionStorage.setItem('tem_archive_memory_id', String(memory.id || ''));
     sessionStorage.setItem('tem_archive_lang', lang);
   } catch (_) {}
+  const space = _spaceStageUrl(memory, lang); if (space) { window.location.href = space; return; }
   window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
 }
 async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const introScreen = document.getElementById('introScreen'); const archiveContainer = document.getElementById('archiveContainer'); if (introScreen) { introScreen.classList.add('hidden'); introScreen.style.cssText = 'display:none !important;opacity:0 !important;visibility:hidden !important;pointer-events:none !important;z-index:-1 !important' } ['modeSelection', 'endScreen', 'liveContainer', 'sceneViewer'].forEach(id => { const el = document.getElementById(id); if (el) { el.classList.remove('active'); el.style.display = 'none' } }); if (archiveContainer) { archiveContainer.classList.add('active'); archiveContainer.style.cssText = 'display:block !important;z-index:1900 !important' + (fromDemo ? ';visibility:hidden;opacity:0' : ''); }
@@ -1211,10 +1219,7 @@ function selectMemory(index) {
   } catch (_) {}
 
   // 261123 기억 만들기(record-space.html)로 만든 기억은 옛 지형이 아니라 우주 무대(space-play.html)로 (docs/우주무대_기억만들기_결정-261123.md)
-  if (memory.meta && memory.meta.space_record) {
-    window.location.href = `space-play.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
-    return;
-  }
+  { const space = _spaceStageUrl(memory, lang); if (space) { window.location.href = space; return; } }
   const isLocal = location.protocol === 'file:' || ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const base = isLocal ? 'play-test.html' : '/play';
   const url = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}${_isReplay ? '&replay=1' : ''}`;
