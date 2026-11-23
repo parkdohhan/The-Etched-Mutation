@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>TEM — 떠 있는 장면 (빈 자리)</title>
+  <!--
+    우주 무대 + 빈 자리 (2026-11-23, 가지 space-blank 의 실험). 결정 기록: docs/우주무대_빈칸_실험-261123.md
+    원래 우주 무대(space-play.html)는 손대지 않는다. 다른 점: 돌아간 장면은 풀로 다시 읽힌다 / 처음 읽은 줄과 다른 줄에서 낱말 하나가
+    빠져 [   ] 가 남는다 / 그 빈 자리가 관객을 따라오고, 다른 장면의 낱말에 대면 그 낱말이 빠지고 관객이 한 말이 들어온다 /
+    그 뒤 이 걸음 안에서는 모든 장면의 그 낱말이 바뀐다. 연습 전용: &blank=<한 줄> (빈 자리를 든 채 시작).
+    되돌리기 = 이 파일 + css/space-blank.css + js/spaceblank/ 삭제 (가지째 버리면 끝).
+
+    우주 무대 (2026-11-21). 결정 기록: docs/우주무대_결정-261121.md
+    첫 장면 = 검은 화면의 글과 소리 / 그 뒤 = 검은 우주에 장면마다 조형물 하나, 중력 없이 날아다님 /
+    장면이 끝나면 아스키 길과 문(길에 닿으면 중력·발소리) / 끝 = 실뭉치 → 읽은 판본이 올라감 → 메인.
+    주소: ?memory=<기억 id 또는 코드> (기본 UNDW-001) · ?as=test (연습 걸음, 남지 않음) · ?as=author · ?lang=ko|en
+          as=test = 측정과 대답은 실제로 하되 장부에는 아무것도 쓰지 않는다.
+          시험 전용(as=test 일 때만): &fast=4 · &dry=1 (서버에 묻지도 않음) · &at=space|end (그 대목부터) · &peek=1 (조형물 전부 놓고 둘러보기)
+    글 방(room-play.html)·옛 지형(play-test.html)·한 걸음(one-walk.html)은 건드리지 않는다.
+    되돌리기 = 이 파일 + css/space-play.css + js/spaceplay/ 삭제 (+ js/app/opening.js 의 이동 주소 한 줄).
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/room-play.css?v=261121b" />
+  <link rel="stylesheet" href="css/space-play.css?v=261123a" />
+  <link rel="stylesheet" href="css/space-blank.css?v=261123b2" />
+  <!-- 261123: 아스키 커서 (단일 출처 css/tem_cursor.css) — 무대 안에서는 기본 커서가 나오지 않는다 -->
+  <link rel="stylesheet" href="css/tem_cursor.css?v=260809" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>try { var _t = new URLSearchParams(location.search).get('touch'); if (_t === '1') window.__temForceTouch = true; } catch (_) {}</script>
+  <script type="module" src="js/safety.js"></script>
+</head>
+<body class="sp">
+  <canvas id="spCosmos"></canvas>
+
+  <div id="rpRoom">
+    <main class="rp-column">
+      <div class="rp-body" aria-live="polite"></div>
+      <div class="rp-input"></div>
+    </main>
+  </div>
+
+  <div id="spAim" aria-hidden="true"></div>
+  <div id="spMapWrap"><canvas id="spMap" aria-label="지나온 장면"></canvas></div>
+  <div id="spNear" aria-live="polite"></div>
+  <div id="rpHint"></div>
+  <button id="rpWalk" type="button">날기</button>
+
+  <div id="spScroll" aria-live="off"><div class="sp-scroll-inner" id="spScrollInner"></div></div>
+
+  <div id="spEntry">
+    <div class="sp-entry-line" id="spEntryLine"></div>
+    <button class="rp-btn" id="spEnter" type="button" disabled></button>
+    <div class="rp-note" id="spEntryNote"></div>
+  </div>
+
+  <div id="rpVeil"></div>
+  <div id="rpPass" aria-live="polite"></div>
+  <div id="rpToast"></div>
+
+  <script type="module" src="js/spaceblank/main.js?v=261123b2"></script>
+</body>
+</html>

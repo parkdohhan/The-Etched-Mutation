@@ -1,0 +1,35 @@
+/* Space-blank — the hole a mismatch leaves, and the words it moves (2026-11-23; an experiment on its own branch).
+   Loaded after css/room-play.css and css/space-play.css: everything else on the page is theirs.
+   Decision record: docs/우주무대_빈칸_실험-261123.md
+   Motion rule (260809): slow, wide, heavy — nothing here flickers, bounces or snaps. */
+
+/* ── words of a text that is up ── */
+.sb-t { display: inline; white-space: nowrap; transition: color 1400ms ease, opacity 1400ms ease; }
+.sb-s, .sb-j { display: inline; }
+/* a word a hole can be held against: nothing is shown until a hole is in hand; then, on hovering, it lifts a little */
+body.sb-held .sb-t.sb-can { cursor: pointer; transition: color 900ms ease, text-shadow 900ms ease; }
+body.sb-held .sb-t.sb-can:hover .sb-s { color: #efe9e0; text-shadow: 0 0 14px rgba(196,168,130,0.35); }
+body.sb-held .sb-t.sb-can:hover .sb-s::after { content: ''; display: block; height: 1px; margin-top: -0.1em; background: rgba(196,168,130,0.45); }
+.sb-t.sb-going .sb-s { color: #efe9e0; }
+.sb-s.sb-was { color: #8f8b99; font-style: italic; }
+/* the hole itself: the same letters wherever it is */
+.sb-hole, .sb-s.sb-hole { color: var(--rp-accent); letter-spacing: 0.02em; font-style: normal; opacity: 0.85; }
+.sb-holed .sb-s { color: var(--rp-accent); }
+/* a word that came in: the walker's (amber) · an earlier walker's (grey, leaning) */
+.sb-s.sb-mine { color: var(--rp-accent); }
+.sb-s.sb-other { color: #9c98a4; font-style: italic; }
+/* the walker's own earlier line standing in a scene come back to */
+.rp-line.sb-old { opacity: 0.78; }
+
+/* ── the hole that follows ── */
+#sbHand { position: fixed; left: 0; top: 0; z-index: 40; pointer-events: none; font-size: clamp(1.02rem, 1.9vw, 1.16rem); font-weight: 300; color: var(--rp-accent);
+  letter-spacing: 0.02em; text-shadow: 0 0 16px #000, 0 0 4px #000, 0 0 22px rgba(196,168,130,0.25); opacity: 0; transition: opacity 1800ms ease; will-change: transform; white-space: nowrap; }
+#sbHand.on { opacity: 0.92; }
+
+/* ── the ending: whose each changed word is ── */
+.sp-scroll-inner p span.sb-mine { color: var(--rp-accent); }
+.sp-scroll-inner p span.sb-other { color: #8f8b99; font-style: italic; }
+.sp-scroll-inner p span.sb-hole { color: var(--rp-accent); opacity: 0.85; }
+.sp-scroll-inner p.key span.sb-hole { color: var(--rp-accent); }
+
+@media (pointer: coarse) { #sbHand { font-size: 1rem; } }
