@@ -492,10 +492,10 @@ function _fadeToBlackForSpace() {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.id = 'lumenDoorOverlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:3000;background:#000;opacity:0;transition:opacity 1.4s ease;pointer-events:none;';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:3000;background:#000;opacity:0;transition:opacity 0.9s ease;pointer-events:none;';
     document.body.appendChild(overlay);
     requestAnimationFrame(() => { overlay.style.opacity = '1'; });
-    setTimeout(resolve, 1900);
+    setTimeout(resolve, 1000);
   });
 }
 
@@ -658,6 +658,24 @@ async function _handleOpeningSubmit(emotion, text) {
     sessionStorage.setItem('tem_seeker_fp', JSON.stringify(fp));
   } catch (_) {}
   try { setLanguage(_openingLang); } catch (_) {}
+
+  // 261124 작가: "...저기로 가봐" 다음엔 곧바로 서막. 대표 기억은 테스터 모드에서 이미 정해져 있으니
+  // 기억 목록 기다리기(최대 15초)·파동 흡수·매칭을 건너뛰고, 어두워지자마자 빈 자리 화면(서막부터)으로 간다.
+  // 되돌리기 = 이 블록 삭제 (아래 원래 흐름은 그대로).
+  if (isTesterMode()) {
+    let _terrain = false; try { _terrain = new URLSearchParams(location.search).get('stage') === 'terrain'; } catch (_) {}
+    const want = testerMemoryFor(_openingLang);
+    if (!_terrain && want && SPACE_STAGE_CODES.includes(want.code)) {
+      if (_finderSessionSeq !== mySession) return;
+      try { sessionStorage.setItem('demoMemoryId', String(want.id)); sessionStorage.setItem('tem_archive_memory_id', String(want.id)); sessionStorage.setItem('tem_archive_lang', _openingLang); } catch (_) {}
+      await _fadeToBlackForSpace();
+      openingSkipped = true;
+      if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
+      if (_finderSessionSeq !== mySession) return;
+      window.location.href = `space-blank.html?memory=${encodeURIComponent(want.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening`;
+      return;
+    }
+  }
 
   // 4) 메모리 로드 트리거 + 대기 (최대 15초 폴링)
   // 2026-05-08: 자료 §6.1 자리 fix.
