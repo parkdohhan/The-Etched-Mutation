@@ -493,7 +493,7 @@ async function stay(scene, via, o) {
   if (turns.length && resonance === 'resonance' && !run.contact && !silent) {
     run.contact = true;
     const g = nearestGhost(mean, run.ghosts), name = scene.meta && scene.meta.ghost_name;
-    if (g) await talk.say(g.utterance, 'rp-ghost', { gap: true, src: name ? '— ' + name : (ko ? '— 누군가 여기 두고 간 말' : '— something someone left here'), hold: 1800 });
+    if (g) await talk.say(g.utterance, 'rp-ghost rp-left', { gap: true, src: name ? '— ' + name : (ko ? '— 누군가 여기 두고 간 말' : '— something someone left here'), hold: 1800 });   // italic + tag: a person's line, never the scene's answer
     if (MODE !== 'test') data.recordContact({ memoryId: run.memory.id, sceneId: scene.id, utterance: turns[turns.length - 1].raw_text.slice(0, 300), turn: turns.length, runId: run.id });
   }
 

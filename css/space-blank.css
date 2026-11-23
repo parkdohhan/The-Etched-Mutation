@@ -3,6 +3,14 @@
    Decision record: docs/우주무대_빈칸_실험-261123.md
    Motion rule (260809): slow, wide, heavy — nothing here flickers, bounces or snaps. */
 
+/* ── whose line is it: one rule for the whole stage (author, 261123 — "a demo audience will ask whose words these are")
+   upright = the text, or the scene answering (the regulated reply: a machine, from inside the scene's text, never a person)
+   italic  = a person who walked before (in the column it also carries its tag "— 누군가 여기 두고 간 말")
+   amber   = the walker */
+body.sp .rp-line.rp-ghost { color: #b3aebe; font-style: normal; }                 /* the scene's answer: upright, a shade dimmer than the text */
+body.sp .rp-line.rp-ghost.rp-left { color: #9c98a4; font-style: italic; }         /* a line someone left here (contact): italic, tagged */
+body.sp .rp-line.rp-ghost.rp-left .rp-src { font-style: normal; }
+
 /* ── words of a text that is up ── */
 .sb-t { display: inline; white-space: nowrap; transition: color 1400ms ease, opacity 1400ms ease; }
 .sb-s, .sb-j { display: inline; }
