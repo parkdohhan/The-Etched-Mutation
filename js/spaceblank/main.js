@@ -34,10 +34,10 @@ import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
 import { createCosmos } from '../spaceplay/cosmos.js?v=261124a';
 import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
-import { createStarMap } from '../spaceplay/starmap.js?v=261123a';
+import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261123a';
 import { runFinale } from './finale.js?v=261124a';
-import { runPrologue } from '../spaceplay/prologue.js?v=261124a';
+import { runPrologue } from '../spaceplay/prologue.js?v=261124b';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261124a';
@@ -323,7 +323,7 @@ async function boot() {
   hand = createHand({ locked: () => !!(cosmos && cosmos.locked()) });
   talk.body.addEventListener('click', (e) => { const tok = e.target.closest && e.target.closest('.sb-t.sb-can'); if (tok && hand.held()) useBlank(tok); });   // any word of the text: the walker chooses where the hole goes
   cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
-  map = createStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
+  map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
   // the back doors (a door onto a scene already read) live in the place, so they come after it
   backs = createBackDoors({ cosmos, ko, canEnter: () => !run.busy && !run.crossing && !run.ended && !map.isOpen() && !(pause && pause.isOpen()),
@@ -345,9 +345,10 @@ async function boot() {
     $('spEntry').classList.add('gone');
     cosmos.ensureAudio();
     if (!AT && qs.get('prologue') !== '0') {                            // 261124: the prologue of the space stage (spaceplay/prologue.js). ?prologue=0 skips it
-      try { run.prologue = await runPrologue({ cosmos, run, data, lang: LANG, fast: FAST, hint, auto: MODE === 'test' }); }
+      try { run.prologue = await runPrologue({ cosmos, run, data, lang: LANG, fast: FAST, hint, auto: MODE === 'test', onDark: () => map.make() }); }
       catch (e) { console.error('[space] prologue', e); cosmos.setCine(null); cosmos.setMode('held'); $('spCosmos').classList.remove('on'); }
     }
+    map.make();                                                             // no-op if the prologue already made it in its dark pause
     const has = air.focus(first);                                           // the first scene's own sound (if it has one) comes in under its text
     await wait(has ? 2600 : 900);
     if (AT === 'end') return fakeWalk().then(finish);

@@ -169,3 +169,21 @@ export function createStarMap(o) {
     pick(id) { const p = this.screenOf(id); if (p && o.onPick) o.onPick(id, p.x, p.y); return p; },
   };
 }
+
+/**
+ * The same map, made only when asked (261124). Its own WebGL context, opened in the same moment as the place's, could
+ * hold the whole page for seconds right after a page change (measured 9.2 s coming from the opening) — the prologue
+ * waited behind it. Until make() the map does nothing and reads closed; make() is called in the prologue's dark pause.
+ */
+export function lazyStarMap(o) {
+  let real = null;
+  return {
+    make() { if (!real) { try { real = createStarMap(o); } catch (e) { console.error('[space] map', e); } } return real; },
+    made: () => !!real,
+    set: (...a) => real && real.set(...a),
+    walker: (...a) => real && real.walker(...a),
+    open: () => real && real.open(), close: () => real && real.close(), toggle: () => real && real.toggle(),
+    isOpen: () => !!(real && real.isOpen()),
+    screenOf: (id) => (real ? real.screenOf(id) : null), pick: (id) => (real ? real.pick(id) : null),
+  };
+}

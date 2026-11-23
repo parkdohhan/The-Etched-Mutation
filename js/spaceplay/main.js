@@ -22,9 +22,9 @@ import { createCosmos } from './cosmos.js?v=261123d';
 import { isSilent } from './things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from './topo.js';
 import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
-import { createStarMap } from './starmap.js?v=261123a';
+import { lazyStarMap } from './starmap.js?v=261124b';
 import { runFinale } from './finale.js?v=261123d';
-import { runPrologue } from './prologue.js?v=261124a';
+import { runPrologue } from './prologue.js?v=261124b';
 import { packTrack } from './thread.js?v=261123d';
 import { createEscMenu } from './escmenu.js?v=261123a';
 import { createTypeVoice } from './typevoice.js?v=261124a';
@@ -289,7 +289,7 @@ async function boot() {
   typeVoice = createTypeVoice(); setTypeVoice(typeVoice.tap);             // 261124: a tap for each typed letter of the scenes' texts
   talk = createTalk();
   cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
-  map = createStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
+  map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
   // Esc, at any time: the pause sheet (brightness · volume · leave). The browser keeps the Esc that lets the cursor go, so cosmos tells us (onEscape) too.
   pause = createEscMenu({ ko, setVolume: (v) => { air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
@@ -308,9 +308,10 @@ async function boot() {
     $('spEntry').classList.add('gone');
     cosmos.ensureAudio();
     if (!AT && qs.get('prologue') !== '0') {                            // 261123: the one who walked before, from afar; one step; the fall (prologue.js). ?prologue=0 skips it
-      try { run.prologue = await runPrologue({ cosmos, run, data, lang: LANG, fast: FAST, hint, auto: MODE === 'test' }); }
+      try { run.prologue = await runPrologue({ cosmos, run, data, lang: LANG, fast: FAST, hint, auto: MODE === 'test', onDark: () => map.make() }); }
       catch (e) { console.error('[space] prologue', e); cosmos.setCine(null); cosmos.setMode('held'); $('spCosmos').classList.remove('on'); }
     }
+    map.make();                                                             // no-op if the prologue already made it in its dark pause
     const has = air.focus(first);                                           // the first scene's own sound (if it has one) comes in under its text
     await wait(has ? 2600 : 900);
     if (AT === 'end') return fakeWalk().then(finish);

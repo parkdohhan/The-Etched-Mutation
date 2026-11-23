@@ -198,6 +198,7 @@ export async function runPrologue(o) {
   phase = 'step'; pt = 0;
 
   await over;
+  if (o.onDark) { try { o.onDark(); } catch (e) { console.error('[prologue] onDark', e); } }   // the screen is dark and still: heavy making-ready goes here (the map's renderer)
   await wait(AFTER * 1000);                                                  // black, silent: a breath before the first scene
   // ── nothing of this stays ─────────────────────────────────────────────────
   for (const p of passers) unstand(p);
