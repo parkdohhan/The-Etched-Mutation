@@ -39,7 +39,7 @@ import { replayFromPlays, getPresentationState } from '../core/ContaminationTrac
 import { createStarMap } from '../spaceplay/starmap.js?v=261123a';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261123a';
 import { runFinale } from './finale.js?v=261123c1';
-import { normLine, createEdits, inheritEdits, hangTab, tearLine, layStrip, dressEdit, createStrips } from './paper.js?v=261123c2';
+import { normLine, createEdits, inheritEdits, hangTab, tearLine, layStrip, dressEdit, createStrips } from './paper.js?v=261123c3';
 import { createBackDoors } from './backdoor.js?v=261123c1';
 
 const $ = (id) => document.getElementById(id);

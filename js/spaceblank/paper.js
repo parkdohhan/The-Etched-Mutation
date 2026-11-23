@@ -77,7 +77,7 @@ const holderOf = (p) => p.querySelector(':scope > span') || p.firstElementChild;
 /** A line that stands as an edit already (this walk's, or an earlier walker's): shown as parchment with ink, or as a laid strip. */
 export function dressEdit(p, edit) {
   const s = holderOf(p); if (!s) return;
-  p.classList.add(edit.kind === 'pasted' ? 'sb-pasted' : 'sb-typed', edit.owner === 'mine' ? 'sb-mine' : 'sb-other');
+  p.classList.add(edit.kind === 'pasted' ? 'sb-pasted' : 'sb-typed', 'sb-dressed', edit.owner === 'mine' ? 'sb-mine' : 'sb-other');
   if (edit.kind === 'typed' && !edit.text) { p.classList.add('sb-bare'); s.textContent = ' '; }
 }
 
