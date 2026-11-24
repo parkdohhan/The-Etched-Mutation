@@ -40,7 +40,7 @@ const L = {
     kicker: '한 기억을 놓아 두는 자리', title: '기억 만들기',
     lead: '장면을 쓰고, 그 장면의 감정을 뽑고, 조형물과 소리를 붙인다. 올리면 곧 그 기억의 우주로 들어간다.',
     gate: '기억을 만들려면 먼저 들어와야 해. 아이디 하나면 돼.', gateGo: '들어가기 · 가입하기', needLogin: '들어온 상태가 풀렸어. 다시 들어와 줘.',
-    leave: '나가기', draftSave: '임시저장', draftSaved: '임시저장했어.', draftSaveFail: '임시저장이 안 됐어. 저장 공간이 꽉 찬 것 같아.',
+    leave: '나가기', draftSave: '임시저장', draftSaved: '임시저장했어.', draftSaveFail: '임시저장이 안 됐어. 잠시 뒤에 다시 해 줘.', draftLocalOnly: '이 브라우저에만 임시저장했어. 서버에 닿지 않았어.',
     leaveAsk: '쓰던 걸 임시저장할까?', leaveSave: '임시저장하고 나가기', leaveNoSave: '그냥 나가기', leaveStay: '계속 쓰기',
     draftAsk: (t, d) => '임시저장한 기억이 있어' + (t ? ' — 「' + t + '」' : '') + '. ' + d + '에 저장했어. 이어서 쓸까?', draftResume: '이어서 쓰기', draftNew: '새로 쓰기',
     memTitle: '제목', memDesc: '한 줄 설명', phTitle: '이 기억의 이름', phDesc: '한 줄로',
@@ -68,7 +68,7 @@ const L = {
     kicker: 'a place to set one memory down', title: 'make a memory',
     lead: 'Write the scenes, draw out each one\'s emotion, give it a thing and a sound. When it goes up you step into its space.',
     gate: 'To make a memory, sign in first. An ID is enough.', gateGo: 'sign in · sign up', needLogin: 'You were signed out. Please sign in again.',
-    leave: 'leave', draftSave: 'save draft', draftSaved: 'draft saved.', draftSaveFail: 'could not save the draft. the storage may be full.',
+    leave: 'leave', draftSave: 'save draft', draftSaved: 'draft saved.', draftSaveFail: 'could not save the draft. try again in a moment.', draftLocalOnly: 'saved in this browser only — the server could not be reached.',
     leaveAsk: 'save what you wrote as a draft?', leaveSave: 'save and leave', leaveNoSave: 'leave without saving', leaveStay: 'keep writing',
     draftAsk: (t, d) => 'there is a saved draft' + (t ? ' — "' + t + '"' : '') + ', saved ' + d + '. continue it?', draftResume: 'continue', draftNew: 'start new',
     memTitle: 'title', memDesc: 'one line', phTitle: 'the name of this memory', phDesc: 'in one line',
@@ -404,26 +404,48 @@ async function seal() {
 }
 
 // ── draft and leaving (261124, author: "임시저장 하시겠습니까? 물어봐 주고, 실제로 임시저장 기능도") ──────────────
-// The draft lives in this browser (localStorage), one per account. Nothing goes to the server until 올리기.
+// The draft lives on the server (public.record_drafts — one row per account, only that account can read or write it;
+// supabase/migrations/20261124000200_record_drafts.sql) and, as a fallback, in this browser (localStorage). The newer
+// of the two is the one offered back. Practice mode (?test=1) keeps it in the browser only.
 // What is kept: title, line, and every card as written — its four parts, the emotion bars and how they were set, the
 // talk's lines and readings (the talk is not reopened), the sculpture recipe, the sound sentence and the made sound's address.
 let ME = null;                                   // the signed-in account id (null in practice mode)
 let leaving = false;
 const draftKey = () => 'tem_record_draft:' + (ME || (TEST ? 'practice' : 'anon'));
 const hasWriting = () => !!(S.title.trim() || S.desc.trim() || S.scenes.some((s) => (s.text + s.b + s.words + s.deep).trim()));
+const isDraft = (d) => !!(d && d.v === 1 && Array.isArray(d.scenes));
 function draftNow() {
   return { v: 1, savedAt: new Date().toISOString(), lang: LANG, title: S.title, desc: S.desc,
     scenes: S.scenes.map((s) => ({ text: s.text, b: s.b, words: s.words, deep: s.deep, emotion: s.emotion, emotionHow: s.emotionHow,
       measured: s.measured.slice(0, 12), dialog: s.dialog.slice(0, 40), talkAnswers: s.talk.answers, thing: s.thing, thingNote: s.thingNote,
       sound: { url: s.sound.url, prompt: s.sound.prompt, volume: s.sound.volume } })) };
 }
-function saveDraft() {
-  try { localStorage.setItem(draftKey(), JSON.stringify(draftNow())); return true; } catch (e) { console.warn('[record-space] draft save', e); return false; }
+/** @returns 'server' (saved there, and here) | 'local' (here only) | null (nowhere) */
+async function saveDraft() {
+  const d = draftNow();
+  let local = false;
+  try { localStorage.setItem(draftKey(), JSON.stringify(d)); local = true; } catch (e) { console.warn('[record-space] draft local', e); }
+  if (!ME) return local ? 'local' : null;
+  try {
+    const { error } = await sb().from('record_drafts').upsert({ user_id: ME, payload: d, updated_at: d.savedAt }, { onConflict: 'user_id' });
+    if (error) throw error;
+    return 'server';
+  } catch (e) { console.warn('[record-space] draft server', e); return local ? 'local' : null; }
 }
-function readDraft() {
-  try { const d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); return d && d.v === 1 && Array.isArray(d.scenes) ? d : null; } catch (_) { return null; }
+async function readDraft() {
+  let local = null, server = null;
+  try { const d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); if (isDraft(d)) local = d; } catch (_) { /* none */ }
+  if (ME) {
+    try { const { data, error } = await sb().from('record_drafts').select('payload').eq('user_id', ME).maybeSingle(); if (!error && data && isDraft(data.payload)) server = data.payload; } catch (e) { console.warn('[record-space] draft read', e); }
+  }
+  if (local && server) return String(local.savedAt) > String(server.savedAt) ? local : server;
+  return server || local;
 }
-function dropDraft() { try { localStorage.removeItem(draftKey()); } catch (_) { /* none */ } }
+async function dropDraft() {
+  try { localStorage.removeItem(draftKey()); } catch (_) { /* none */ }
+  if (ME) { try { await sb().from('record_drafts').delete().eq('user_id', ME); } catch (e) { console.warn('[record-space] draft drop', e); } }
+}
+const savedNote = (r) => (r === 'server' ? T.draftSaved : r === 'local' ? T.draftLocalOnly : T.draftSaveFail);
 /** A small sheet with a typed question and buttons. Resolves with the chosen id (null if closed by Escape). */
 function askSheet(question, buttons) {
   return new Promise((resolve) => {
@@ -450,7 +472,7 @@ async function leave() {
   if (S.busy) return;
   if (!hasWriting()) return goMenu();
   const c = await askSheet(T.leaveAsk, [{ id: 'save', label: T.leaveSave, primary: true }, { id: 'drop', label: T.leaveNoSave }, { id: 'stay', label: T.leaveStay }]);
-  if (c === 'save') { if (!saveDraft()) { toast(T.draftSaveFail); return; } return goMenu(); }
+  if (c === 'save') { const r = await saveDraft(); if (!r) { toast(T.draftSaveFail); return; } if (r === 'local') { toast(T.draftLocalOnly); await wait(1600); } return goMenu(); }
   if (c === 'drop') return goMenu();
 }
 function draftDate(iso) {
@@ -489,7 +511,7 @@ async function boot() {
   $('rsMemTitle').placeholder = T.phTitle; $('rsMemDesc').placeholder = T.phDesc;
   $('rsAddScene').textContent = T.addScene; $('rsPublish').textContent = T.publish;
   $('rsLeave').textContent = T.leave; $('rsLeave').addEventListener('click', leave);
-  $('rsDraft').textContent = T.draftSave; $('rsDraft').addEventListener('click', () => { toast(saveDraft() ? T.draftSaved : T.draftSaveFail); });
+  $('rsDraft').textContent = T.draftSave; $('rsDraft').addEventListener('click', async () => { const btn = $('rsDraft'); btn.disabled = true; toast(savedNote(await saveDraft())); btn.disabled = false; });
   $('rsConsentTitle').textContent = T.consentTitle;
   const ul = $('rsConsentList'); ul.innerHTML = ''; for (const c of T.consent) { const li = document.createElement('li'); li.textContent = c; ul.appendChild(li); }
   $('rsConsentCheckLabel').textContent = T.consentCheck; $('rsConsentGo').textContent = T.consentGo; $('rsConsentNo').textContent = T.consentNo;
@@ -514,7 +536,7 @@ async function boot() {
   await typeText($('rsTitle'), T.title, { per: 70 });
   await typeText($('rsLead'), T.lead, { per: 18 });
   $('rs').classList.add('on');
-  const draft = readDraft();
+  const draft = await readDraft();
   let resumed = false;
   if (draft && (draft.title || draft.scenes.length)) {
     const c = await askSheet(T.draftAsk((draft.title || '').trim(), draftDate(draft.savedAt)), [{ id: 'resume', label: T.draftResume, primary: true }, { id: 'new', label: T.draftNew }]);
@@ -522,7 +544,7 @@ async function boot() {
       S.title = draft.title || ''; S.desc = draft.desc || ''; $('rsMemTitle').value = S.title; $('rsMemDesc').value = S.desc;
       for (const d of draft.scenes.slice(0, MAX_SCENES)) addScene(d);
       resumed = S.scenes.length > 0;
-    } else if (c === 'new') dropDraft();
+    } else if (c === 'new') await dropDraft();
   }
   if (!resumed) addScene();
   check();
