@@ -188,6 +188,11 @@ const V2_DIALOGUES = {
     replayIntro: '...다른 걸 찾고있어?',
     transition: '...저기로 가봐.',
     testerIntro: '지금부터 너는 한 기억을 떠올리게될거야',   // 테스터 모드 전용 (260802)
+    // 261124 작가: 언어를 고른 뒤 처음 온 사람인지 묻는다 (첫 진입에서만 — 메뉴의 PLAY 재진입은 묻지 않음)
+    visitAsk: '여기가 뭐 하는 곳인지 알아?',
+    visitFirst: '처음이야.',
+    visitBack: '와 본 적 있어.',
+    visitBackLine: '이제 이런 거 가지고 안 놀라는 거 알아.',
     placeholder: '단어 하나, 감정 하나...',
     chips: [
       { label: '슬픔', emotion: 'sadness' },
@@ -205,6 +210,10 @@ const V2_DIALOGUES = {
     replayIntro: '...looking for something else?',
     transition: '...you can go there.',
     testerIntro: 'you are about to remember something',   // 테스터 모드 전용 (260802)
+    visitAsk: 'do you know what this place is?',
+    visitFirst: 'first time.',
+    visitBack: "i've been here.",
+    visitBackLine: "i know this doesn't surprise you anymore.",
     placeholder: 'A word, a feeling...',
     chips: [
       { label: 'sadness', emotion: 'sadness' },
@@ -375,7 +384,44 @@ function _fadeOutDialogue(element, duration = 800) {
   });
 }
 
-async function _runV2Sequence() {
+// 261124 작가: 처음 온 사람인가. 질문은 타자로, 대답은 버튼 둘. → 'first' | 'back'
+function _askVisited(dialogue, D) {
+  return new Promise(async (resolve) => {
+    await _typeLinesSequential(dialogue, [D.visitAsk]);
+    await new Promise(r => setTimeout(r, 500));
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:14px;justify-content:center;margin-top:1.4em;';
+    const mk = (label, val) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label;
+      b.style.cssText = 'background:none;border:1px solid rgba(196,168,130,0.35);color:rgba(196,168,130,0.8);font-family:inherit;font-size:14px;letter-spacing:1px;padding:7px 20px;cursor:pointer;transition:border-color 0.3s,color 0.3s;border-radius:2px;';
+      b.addEventListener('mouseenter', () => { b.style.borderColor = 'rgba(240,216,170,0.85)'; b.style.color = 'rgba(240,216,170,1)'; });
+      b.addEventListener('mouseleave', () => { b.style.borderColor = 'rgba(196,168,130,0.35)'; b.style.color = 'rgba(196,168,130,0.8)'; });
+      b.addEventListener('click', (e) => { e.stopPropagation(); row.querySelectorAll('button').forEach(x => { x.disabled = true; }); resolve(val); });
+      return b;
+    };
+    row.append(mk(D.visitFirst, 'first'), mk(D.visitBack, 'back'));
+    dialogue.appendChild(row);
+  });
+}
+
+// 261124 작가: "와 본 적 있어" — 한 줄 뒤 오프닝을 팍 밀어내고 곧바로 메인 메뉴. (skipOpening 과 같은 정리, 기다림 없이)
+async function _shoveToMenu() {
+  openingSkipped = true;
+  if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
+  const sound = openingSound || document.getElementById('openingSound');
+  if (sound) {
+    if (crossfadeTimeUpdateHandler) { sound.removeEventListener('timeupdate', crossfadeTimeUpdateHandler); crossfadeTimeUpdateHandler = null; }
+    if (crossfadeEndedHandler) { sound.removeEventListener('ended', crossfadeEndedHandler); crossfadeEndedHandler = null; }
+    fadeOutSound(sound, 500);
+  }
+  const screen = document.getElementById('openingScreen');
+  if (screen) { screen.style.transition = 'transform 360ms cubic-bezier(0.7, 0, 0.84, 0)'; screen.style.transform = 'translateX(-110%)'; }
+  await new Promise(r => setTimeout(r, 380));
+  finishOpeningSequence();
+}
+
+async function _runV2Sequence(opts) {
   const dialogue = document.getElementById('openingDialogue');
   const inputPhase = document.getElementById('openingInputPhase');
   const langGate = document.getElementById('openingLangGate');
@@ -393,6 +439,23 @@ async function _runV2Sequence() {
   // 기존 "...Come in." 대사 부드럽게 페이드아웃 (갑자기 지워지지 않도록)
   await _fadeOutDialogue(dialogue, 1100);
   await new Promise(r => setTimeout(r, 900)); // 정적 여백
+
+  // 261124: 첫 진입(언어 고르고 시작)에서만 — 처음 온 사람인가
+  if (opts && opts.askVisited) {
+    const visit = await _askVisited(dialogue, D);
+    if (openingSkipped) return;
+    if (visit === 'back') {
+      await _fadeOutDialogue(dialogue, 300);
+      await _typeLinesSequential(dialogue, [D.visitBackLine]);
+      await new Promise(r => setTimeout(r, 1300));
+      if (openingSkipped) return;
+      await _shoveToMenu();
+      return;
+    }
+    await _fadeOutDialogue(dialogue, 600);
+    await new Promise(r => setTimeout(r, 500));
+  }
+
 
   // ─── 테스터 모드 (260802): 인터뷰 통째로 건너뛰고 대사 한 줄 → 문 ───
   // 닉네임 · intro 질문 · 감정 칩 · 멀티턴 질문 전부 미표시.
@@ -942,7 +1005,7 @@ function _initOpeningLangGate() {
       // i18n 캐시 + localStorage 동시 갱신 (getCurrentLanguage stale 방지)
       try { setLanguage(lang); } catch (_) { try { localStorage.setItem('tem_language', lang); } catch (__) {} }
       console.log('[opening] Start clicked. lang =', lang);
-      _runV2Sequence();
+      _runV2Sequence({ askVisited: true });
     });
   }
 
