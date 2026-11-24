@@ -9,20 +9,21 @@
     결정 기록: docs/우주무대_기억만들기_결정-261123.md
     제목·한 줄 설명 → 장면(앞 토막·뒷 토막·떠 있는 말·묻힌 말) → 장면마다 감정 뽑기(또다른 나와 대화 → 17축 막대) · 조형물 만들기(조리법 → 미리보기) · 소리 만들기(초안 → 소리)
     → 순서(카드 ↑↓, 첫 카드 = 첫 장면) → 올리기 전 동의 한 장(공개·남의 걸음·"니 순서대로 플레이 안 됨 ㅋ 첫 번째 실일 뿐임"·첫 실) → record-space-seal → 우주 무대.
-    메뉴에는 없다(작가 261123: 시기상조). 주소로 연다. ?lang=ko|en · ?test=1 (연습: 저장하지 않음, 내용은 콘솔에)
+    261124 밤부터 메뉴의 RECORD 가 여기로 온다(그 전엔 주소로만). ?lang=ko|en · ?test=1 (연습: 저장하지 않음, 내용은 콘솔에)
     되돌리기 = 이 파일 + css/record-space.css + js/recordspace/ 삭제 (서버 장치 generate-scene-thing · record-space-seal · bake-room-layers 는 따로).
   -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/room-play.css?v=261121b" />
-  <link rel="stylesheet" href="css/record-space.css?v=261124a" />
+  <link rel="stylesheet" href="css/record-space.css?v=261124b" />
   <link rel="stylesheet" href="css/tem_cursor.css?v=260809" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body class="rs">
   <div class="rs-test" id="rsTestTag"></div>
+  <button class="rs-leave" id="rsLeave" type="button"></button><!-- 261124 나가기: 쓰던 게 있으면 임시저장할지 묻고 메인 메뉴로 -->
   <main class="rs-column" id="rs">
     <header class="rs-head">
       <div class="rs-kicker" id="rsKicker"></div>
@@ -46,6 +47,7 @@
     <div class="rs-order-line" id="rsOrderLine"></div>
     <div class="rs-actions rs-final">
       <button class="rp-btn rs-primary" id="rsPublish" type="button" disabled></button>
+      <button class="rs-small" id="rsDraft" type="button"></button>
       <div class="rs-note" id="rsPublishNote"></div>
     </div>
   </main>

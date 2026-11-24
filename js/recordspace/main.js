@@ -40,6 +40,9 @@ const L = {
     kicker: '한 기억을 놓아 두는 자리', title: '기억 만들기',
     lead: '장면을 쓰고, 그 장면의 감정을 뽑고, 조형물과 소리를 붙인다. 올리면 곧 그 기억의 우주로 들어간다.',
     gate: '기억을 만들려면 먼저 들어와야 해. 아이디 하나면 돼.', gateGo: '들어가기 · 가입하기', needLogin: '들어온 상태가 풀렸어. 다시 들어와 줘.',
+    leave: '나가기', draftSave: '임시저장', draftSaved: '임시저장했어.', draftSaveFail: '임시저장이 안 됐어. 저장 공간이 꽉 찬 것 같아.',
+    leaveAsk: '쓰던 걸 임시저장할까?', leaveSave: '임시저장하고 나가기', leaveNoSave: '그냥 나가기', leaveStay: '계속 쓰기',
+    draftAsk: (t, d) => '임시저장한 기억이 있어' + (t ? ' — 「' + t + '」' : '') + '. ' + d + '에 저장했어. 이어서 쓸까?', draftResume: '이어서 쓰기', draftNew: '새로 쓰기',
     memTitle: '제목', memDesc: '한 줄 설명', phTitle: '이 기억의 이름', phDesc: '한 줄로',
     scene: '장면', first: '첫 장면', up: '위로', down: '아래로', del: '지우기',
     a: '앞 토막', aPh: '장면이 열리는 글. 두세 문장.', b: '뒷 토막', bPh: '말 한 번 뒤에 읽히는 글. 다섯 줄 안팎. 비우면 떠 있는 말로 엮는다.',
@@ -65,6 +68,9 @@ const L = {
     kicker: 'a place to set one memory down', title: 'make a memory',
     lead: 'Write the scenes, draw out each one\'s emotion, give it a thing and a sound. When it goes up you step into its space.',
     gate: 'To make a memory, sign in first. An ID is enough.', gateGo: 'sign in · sign up', needLogin: 'You were signed out. Please sign in again.',
+    leave: 'leave', draftSave: 'save draft', draftSaved: 'draft saved.', draftSaveFail: 'could not save the draft. the storage may be full.',
+    leaveAsk: 'save what you wrote as a draft?', leaveSave: 'save and leave', leaveNoSave: 'leave without saving', leaveStay: 'keep writing',
+    draftAsk: (t, d) => 'there is a saved draft' + (t ? ' — "' + t + '"' : '') + ', saved ' + d + '. continue it?', draftResume: 'continue', draftNew: 'start new',
     memTitle: 'title', memDesc: 'one line', phTitle: 'the name of this memory', phDesc: 'in one line',
     scene: 'scene', first: 'first scene', up: 'up', down: 'down', del: 'remove',
     a: 'first part', aPh: 'the text the scene opens with. two or three sentences.', b: 'second part', bPh: 'read after the first exchange. about five lines. left empty, the words afloat are read instead.',
@@ -120,7 +126,7 @@ function meanVec(list) {
 }
 
 // ── one scene card ──────────────────────────────────────────────────────────
-function addScene() {
+function addScene(init) {
   if (S.scenes.length >= MAX_SCENES) { toast(T.sceneMax); return null; }
   const tpl = $('rsSceneTpl').content.firstElementChild.cloneNode(true);
   const sc = { id: (crypto.randomUUID && crypto.randomUUID()) || String(Date.now() + Math.random()), el: tpl, text: '', b: '', words: '', deep: '',
@@ -288,9 +294,40 @@ function addScene() {
   bClear.addEventListener('click', () => { sc.sound.url = null; audio.pause(); audio.removeAttribute('src'); audio.hidden = true; bClear.hidden = true; status(sSound, '', null); });
 
   $('rsScenes').appendChild(tpl);
+  if (init) restoreInto(init);
   renumber(); check();
   tpl.classList.add('in'); requestAnimationFrame(() => tpl.classList.add('on'));
   return sc;
+
+  // a draft scene back into this card (261124 — the talk itself is not reopened: its lines and readings are kept)
+  function restoreInto(d) {
+    sc.text = d.text || ''; sc.b = d.b || ''; sc.words = d.words || ''; sc.deep = d.deep || '';
+    q('.f-text').value = sc.text; q('.f-b').value = sc.b; q('.f-words').value = sc.words; q('.f-deep').value = sc.deep;
+    q('.chars-b').textContent = T.chars(sc.b.trim().replace(/\s+/g, ' ').length);
+    meter();
+    sc.measured = Array.isArray(d.measured) ? d.measured : []; sc.dialog = Array.isArray(d.dialog) ? d.dialog : [];
+    sc.talk.answers = Number(d.talkAnswers) || 0;
+    if (d.emotion && Object.keys(d.emotion).length) {
+      sc.emotion = d.emotion; sc.emotionHow = d.emotionHow || 'manual';
+      showAxes();
+      status(sEmotion, sc.emotionHow === 'manual' ? T.emotionManual : T.emotionDone(sc.talk.answers), 'ok');
+      if (sc.talk.answers) q('.b-talk').textContent = T.again;
+    }
+    if (d.thing) {
+      try {
+        sc.preview = sc.preview || createPreview(canvas); canvas.hidden = false;
+        if (sc.preview.show(d.thing)) {
+          sc.thing = d.thing; sc.thingNote = d.thingNote || ''; note.textContent = sc.thingNote;
+          status(sThing, `${(d.thing.parts || []).length}`, 'ok'); bAgain.hidden = false; bDrop.hidden = false; bThing.hidden = true;
+        } else canvas.hidden = true;
+      } catch (e) { console.warn('[record-space] draft thing', e); canvas.hidden = true; }
+    }
+    if (d.sound) {
+      sc.sound.volume = d.sound.volume != null ? d.sound.volume : 0.5;
+      if (d.sound.prompt) { sc.sound.prompt = d.sound.prompt; prompt.value = d.sound.prompt; prompt.hidden = false; bGen.hidden = false; }
+      if (d.sound.url) { sc.sound.url = d.sound.url; audio.src = d.sound.url; audio.hidden = false; bClear.hidden = false; status(sSound, T.soundDone, 'ok'); }
+    }
+  }
 }
 function move(sc, d) {
   const i = S.scenes.indexOf(sc), j = i + d; if (i < 0 || j < 0 || j >= S.scenes.length) return;
@@ -354,6 +391,7 @@ async function seal() {
     if (!resp || resp.error || !d || !d.ok) throw new Error((d && d.error) || (resp && resp.error && resp.error.message) || 'seal');
     try { localStorage.setItem('tem_first_play:' + d.memoryId, String(Date.now())); localStorage.setItem('tem_space_record:' + d.memoryId, S.title.trim()); } catch (_) {}
     console.info('[record-space] sealed', d);
+    dropDraft();
     await typeText(line, T.sealed, { per: 60 });
     $('rsVeilNote').textContent = d.thread ? T.thread : T.noThread;
     await wait(2800);
@@ -363,6 +401,60 @@ async function seal() {
     await typeText(line, /login required/.test(String(e && e.message)) ? T.needLogin : T.sealFail, { per: 40 }); await wait(2600);
     veil.classList.remove('on'); S.busy = false; check();
   }
+}
+
+// ── draft and leaving (261124, author: "임시저장 하시겠습니까? 물어봐 주고, 실제로 임시저장 기능도") ──────────────
+// The draft lives in this browser (localStorage), one per account. Nothing goes to the server until 올리기.
+// What is kept: title, line, and every card as written — its four parts, the emotion bars and how they were set, the
+// talk's lines and readings (the talk is not reopened), the sculpture recipe, the sound sentence and the made sound's address.
+let ME = null;                                   // the signed-in account id (null in practice mode)
+let leaving = false;
+const draftKey = () => 'tem_record_draft:' + (ME || (TEST ? 'practice' : 'anon'));
+const hasWriting = () => !!(S.title.trim() || S.desc.trim() || S.scenes.some((s) => (s.text + s.b + s.words + s.deep).trim()));
+function draftNow() {
+  return { v: 1, savedAt: new Date().toISOString(), lang: LANG, title: S.title, desc: S.desc,
+    scenes: S.scenes.map((s) => ({ text: s.text, b: s.b, words: s.words, deep: s.deep, emotion: s.emotion, emotionHow: s.emotionHow,
+      measured: s.measured.slice(0, 12), dialog: s.dialog.slice(0, 40), talkAnswers: s.talk.answers, thing: s.thing, thingNote: s.thingNote,
+      sound: { url: s.sound.url, prompt: s.sound.prompt, volume: s.sound.volume } })) };
+}
+function saveDraft() {
+  try { localStorage.setItem(draftKey(), JSON.stringify(draftNow())); return true; } catch (e) { console.warn('[record-space] draft save', e); return false; }
+}
+function readDraft() {
+  try { const d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); return d && d.v === 1 && Array.isArray(d.scenes) ? d : null; } catch (_) { return null; }
+}
+function dropDraft() { try { localStorage.removeItem(draftKey()); } catch (_) { /* none */ } }
+/** A small sheet with a typed question and buttons. Resolves with the chosen id (null if closed by Escape). */
+function askSheet(question, buttons) {
+  return new Promise((resolve) => {
+    const sh = document.createElement('div'); sh.className = 'rs-sheet rs-ask';
+    const box = document.createElement('div'); box.className = 'rs-sheet-box';
+    const qEl = document.createElement('p'); qEl.className = 'rs-ask-q';
+    const row = document.createElement('div'); row.className = 'rs-sheet-btns';
+    const finish = (v) => { document.removeEventListener('keydown', onKey); sh.classList.remove('on'); setTimeout(() => sh.remove(), 700); resolve(v); };
+    const onKey = (e) => { if (e.key === 'Escape') finish(null); };
+    for (const b of buttons) { const el = document.createElement('button'); el.type = 'button'; el.className = b.primary ? 'rp-btn rs-primary' : 'rs-small'; el.textContent = b.label; el.addEventListener('click', () => finish(b.id)); row.appendChild(el); }
+    box.appendChild(qEl); box.appendChild(row); sh.appendChild(box); document.body.appendChild(sh);
+    document.addEventListener('keydown', onKey);
+    requestAnimationFrame(() => sh.classList.add('on'));
+    typeText(qEl, question, { per: 30 });
+  });
+}
+/** Back to the main menu, past the opening (the flag js/app/bindEvents.js reads once). */
+function goMenu() {
+  leaving = true;
+  try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) { /* none */ }
+  location.href = './';
+}
+async function leave() {
+  if (S.busy) return;
+  if (!hasWriting()) return goMenu();
+  const c = await askSheet(T.leaveAsk, [{ id: 'save', label: T.leaveSave, primary: true }, { id: 'drop', label: T.leaveNoSave }, { id: 'stay', label: T.leaveStay }]);
+  if (c === 'save') { if (!saveDraft()) { toast(T.draftSaveFail); return; } return goMenu(); }
+  if (c === 'drop') return goMenu();
+}
+function draftDate(iso) {
+  try { return new Date(iso).toLocaleString(ko ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; }
 }
 
 // ── the login gate (261124) ─────────────────────────────────────────────────
@@ -378,7 +470,7 @@ async function showGate() {
   go.textContent = T.gateGo;
   // the main page reads its language from tem_language (js/lib/i18n.js) and falls back to English: carry this page's
   // language over only when none was ever chosen, so the sign-in form speaks the same language as this gate
-  go.addEventListener('click', () => { try { if (!localStorage.getItem('tem_language')) localStorage.setItem('tem_language', LANG); } catch (_) { /* none */ } });
+  go.addEventListener('click', () => { try { if (!localStorage.getItem('tem_language')) localStorage.setItem('tem_language', LANG); sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) { /* none */ } });   // 261124: the sign-in form over the menu, not over the opening (the opening's threads flashed behind it)
   const row = document.createElement('div'); row.className = 'rs-actions rs-gate'; row.appendChild(go);
   $('rs').appendChild(row);
   $('rsVeil').classList.remove('on');
@@ -396,6 +488,8 @@ async function boot() {
   $('rsLabelTitle').textContent = T.memTitle; $('rsLabelDesc').textContent = T.memDesc;
   $('rsMemTitle').placeholder = T.phTitle; $('rsMemDesc').placeholder = T.phDesc;
   $('rsAddScene').textContent = T.addScene; $('rsPublish').textContent = T.publish;
+  $('rsLeave').textContent = T.leave; $('rsLeave').addEventListener('click', leave);
+  $('rsDraft').textContent = T.draftSave; $('rsDraft').addEventListener('click', () => { toast(saveDraft() ? T.draftSaved : T.draftSaveFail); });
   $('rsConsentTitle').textContent = T.consentTitle;
   const ul = $('rsConsentList'); ul.innerHTML = ''; for (const c of T.consent) { const li = document.createElement('li'); li.textContent = c; ul.appendChild(li); }
   $('rsConsentCheckLabel').textContent = T.consentCheck; $('rsConsentGo').textContent = T.consentGo; $('rsConsentNo').textContent = T.consentNo;
@@ -408,10 +502,11 @@ async function boot() {
   $('rsConsentCheck').addEventListener('change', (e) => { $('rsConsentGo').disabled = !e.target.checked; });
   $('rsConsentGo').addEventListener('click', seal);
   $('rsConsentNo').addEventListener('click', closeConsent);
-  window.addEventListener('beforeunload', (e) => { if (!S.busy && (S.title.trim() || S.scenes.some((s) => s.text.trim()))) { e.preventDefault(); e.returnValue = ''; } });
+  window.addEventListener('beforeunload', (e) => { if (!leaving && !S.busy && (S.title.trim() || S.scenes.some((s) => s.text.trim()))) { e.preventDefault(); e.returnValue = ''; } });
 
   // 261124: making a memory needs a login (the seal refuses without one). Practice mode (?test=1) saves nothing and skips it.
-  if (!TEST && !(await signedIn())) { await showGate(); return; }
+  if (!TEST && !(await signedIn())) { $('rsDraft').hidden = true; await showGate(); return; }
+  try { const { data } = await sb().auth.getSession(); ME = (data && data.session && data.session.user && data.session.user.id) || null; } catch (_) { ME = null; }
 
   $('rsVeil').classList.remove('on');
   await wait(600);
@@ -419,8 +514,18 @@ async function boot() {
   await typeText($('rsTitle'), T.title, { per: 70 });
   await typeText($('rsLead'), T.lead, { per: 18 });
   $('rs').classList.add('on');
-  addScene();
+  const draft = readDraft();
+  let resumed = false;
+  if (draft && (draft.title || draft.scenes.length)) {
+    const c = await askSheet(T.draftAsk((draft.title || '').trim(), draftDate(draft.savedAt)), [{ id: 'resume', label: T.draftResume, primary: true }, { id: 'new', label: T.draftNew }]);
+    if (c === 'resume') {
+      S.title = draft.title || ''; S.desc = draft.desc || ''; $('rsMemTitle').value = S.title; $('rsMemDesc').value = S.desc;
+      for (const d of draft.scenes.slice(0, MAX_SCENES)) addScene(d);
+      resumed = S.scenes.length > 0;
+    } else if (c === 'new') dropDraft();
+  }
+  if (!resumed) addScene();
   check();
-  window.__recordSpace = { S, addScene, payload };           // automation / inspection hook
+  window.__recordSpace = { S, addScene, payload, saveDraft, readDraft, dropDraft };           // automation / inspection hook
 }
 boot();

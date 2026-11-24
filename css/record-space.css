@@ -125,3 +125,10 @@ body.rs::-webkit-scrollbar { width: 6px; } body.rs::-webkit-scrollbar-thumb { ba
 .rs-gate { margin-top: 2.4rem; }
 a.rs-gate-go { display: inline-block; color: inherit; text-decoration: none; }
 html { background: #000; }   /* 261124: below a short page (the gate) the html background showed as a lighter band */
+
+/* 261124: leaving, and the small question sheet (draft) */
+.rs-leave { position: fixed; top: 1.2rem; left: 1.4rem; z-index: 40; background: none; border: 0; color: #77737f; font: inherit; font-size: 0.78rem; letter-spacing: 0.22em; cursor: pointer; padding: 0.4rem 0.2rem; transition: color 300ms ease; }
+.rs-leave:hover { color: var(--rp-text); }
+.rs-ask { z-index: 60; }
+.rs-ask-q { font-size: 1.04rem; line-height: 2; color: var(--rp-text); margin: 0 0 2rem; word-break: keep-all; min-height: 2em; }
+.rs-ask .rs-sheet-btns { flex-wrap: wrap; }
