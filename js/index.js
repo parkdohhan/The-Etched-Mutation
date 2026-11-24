@@ -799,6 +799,10 @@ window.handleOpeningKeydown = handleOpeningKeydown;
   try {
     var params = new URLSearchParams(window.location.search);
     if (params.get('action') === 'login') {
+      // 261124: &next=record-space.html… — 들어간 뒤 돌아갈 곳 (기억 만들기는 로그인이 필요). js/app/auth.js takeAuthNext 가 같은 모양만 받는다.
+      var next = params.get('next');
+      if (next && /^record-space\.html(\?[A-Za-z0-9=&_.%-]*)?$/.test(next)) { try { sessionStorage.setItem('tem_auth_next', next); } catch (_) {} }
+      params.delete('next');
       // 파라미터 제거 (뒤로가기 시 재트리거 방지)
       params.delete('action');
       var clean = params.toString();

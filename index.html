@@ -174,11 +174,11 @@
                         <div class="menu-item inactive" data-menu-id="archive" data-action="enterMyArchive">
                             <span class="menu-label" data-i18n="menu.archive">ARCHIVE</span>
                         </div>
-                        <!-- 261123 작가 결정: RECORD·PROFILE 은 지금 할 것이 없어 메뉴에서 숨긴다(지우지 않음 — style 만 빼면 돌아온다). -->
+                        <!-- 261123 작가 결정: RECORD·PROFILE 은 지금 할 것이 없어 메뉴에서 숨긴다(지우지 않음 — style 만 빼면 돌아온다). 261124: PROFILE 은 다시 보임 — '건네진 걸음'(내 걸음이 다음 사람의 서막에 나온 횟수) -->
                         <div class="menu-item inactive" data-menu-id="record" data-action="showConfessionHub" style="display:none" aria-hidden="true">
                             <span class="menu-label" data-i18n="menu.record">RECORD</span>
                         </div>
-                        <div class="menu-item inactive" data-menu-id="profile" data-action="openMypage" style="display:none" aria-hidden="true">
+                        <div class="menu-item inactive" data-menu-id="profile" data-action="openMypage">
                             <span class="menu-label" data-i18n="menu.profile">PROFILE</span>
                         </div>
                         <div class="menu-item inactive" data-menu-id="settings" data-action="openSettings">
@@ -217,9 +217,10 @@
     </div>
     <div class="login-modal" id="loginModal">
         <div class="login-box">
-            <h2 class="login-title">Sign In</h2>
+            <h2 class="login-title" data-i18n="auth.title.signin">Sign In</h2>
             <p class="login-helper" data-i18n="auth.signin.helper" style="margin:-4px 0 18px;color:rgba(196,168,130,0.78);font-family:'Cormorant Garamond',serif;font-size:14px;line-height:1.55;letter-spacing:0.4px;text-align:center;font-style:italic;">Signing in lets your traces stay with this memory. You can keep wandering without it.</p>
-            <div class="social-login-buttons">
+            <!-- 261124: SNS 로그인은 나중에(사용자 결정). hidden 만 빼면 돌아온다. -->
+            <div class="social-login-buttons" hidden style="display:none">
                 <button class="social-btn google" onclick="handleSocialLogin('google')">
                     <span class="social-btn-icon">🔍</span>
                     <span>Continue with Google</span>
@@ -229,20 +230,22 @@
                     <span>Continue with Facebook</span>
                 </button>
             </div>
-            <div class="social-login-divider"><span>or</span></div>
-            <input type="text" class="login-input" id="loginUsername" placeholder="Email" autocomplete="email">
-            <input type="password" class="login-input" id="loginPassword" placeholder="Password" autocomplete="current-password">
+            <div class="social-login-divider" hidden style="display:none"><span>or</span></div>
+            <!-- 261124: 아이디 또는 이메일 하나로 들어간다 (js/app/auth.js handleLogin) -->
+            <input type="text" class="login-input" id="loginUsername" data-i18n="auth.ph.idOrEmail" placeholder="ID or email" autocomplete="username" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()">
+            <input type="password" class="login-input" id="loginPassword" data-i18n="auth.ph.password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')handleLogin()">
             <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
-                <button class="login-btn" onclick="handleLogin()">Sign In</button>
-                <button class="login-close-btn" onclick="closeLogin()">Cancel</button>
+                <button class="login-btn" onclick="handleLogin()" data-i18n="auth.btn.signin">Sign In</button>
+                <button class="login-close-btn" onclick="closeLogin()" data-i18n="auth.btn.cancel">Cancel</button>
             </div>
-            <div class="auth-switch-link" onclick="switchToSignup()">Don't have an account? Sign Up</div>
+            <div class="auth-switch-link" onclick="switchToSignup()" data-i18n="auth.to.signup">Don't have an account? Sign Up</div>
         </div>
     </div>
     <div class="signup-modal" id="signupModal">
         <div class="signup-box">
-            <h2 class="signup-title">Sign Up</h2>
-            <div class="social-login-buttons">
+            <h2 class="signup-title" data-i18n="auth.title.signup">Sign Up</h2>
+            <!-- 261124: SNS 가입은 나중에(사용자 결정). hidden 만 빼면 돌아온다. -->
+            <div class="social-login-buttons" hidden style="display:none">
                 <button class="social-btn google" onclick="handleSocialLogin('google')">
                     <span class="social-btn-icon">🔍</span>
                     <span>Continue with Google</span>
@@ -252,16 +255,17 @@
                     <span>Continue with Facebook</span>
                 </button>
             </div>
-            <div class="social-login-divider"><span>or</span></div>
-            <input type="text" class="signup-input" id="signupUsername" placeholder="Username" autocomplete="username">
-            <input type="email" class="signup-input" id="signupEmail" placeholder="Email" autocomplete="email">
-            <input type="password" class="signup-input" id="signupPassword" placeholder="Password" autocomplete="new-password">
-            <input type="password" class="signup-input" id="signupPasswordConfirm" placeholder="Confirm Password" autocomplete="new-password">
+            <div class="social-login-divider" hidden style="display:none"><span>or</span></div>
+            <!-- 261124: 아이디·이메일 따로. 아이디 = 영어·숫자·_ 3~20자, 비밀번호 = 영어·숫자 7자 이상 (js/app/auth.js handleSignup) -->
+            <input type="text" class="signup-input" id="signupUsername" data-i18n="auth.ph.id" placeholder="ID (3–20 letters or numbers)" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="20">
+            <input type="email" class="signup-input" id="signupEmail" data-i18n="auth.ph.email" placeholder="Email" autocomplete="email" autocapitalize="off" spellcheck="false">
+            <input type="password" class="signup-input" id="signupPassword" data-i18n="auth.ph.newPassword" placeholder="Password (7+ letters or numbers)" autocomplete="new-password" maxlength="72">
+            <input type="password" class="signup-input" id="signupPasswordConfirm" data-i18n="auth.ph.passwordAgain" placeholder="Password again" autocomplete="new-password" maxlength="72" onkeydown="if(event.key==='Enter')handleSignup()">
             <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap">
-                <button class="signup-btn" onclick="handleSignup()">Sign Up</button>
-                <button class="signup-close-btn" onclick="closeSignup()">Cancel</button>
+                <button class="signup-btn" onclick="handleSignup()" data-i18n="auth.btn.signup">Sign Up</button>
+                <button class="signup-close-btn" onclick="closeSignup()" data-i18n="auth.btn.cancel">Cancel</button>
             </div>
-            <div class="auth-switch-link" onclick="switchToLogin()">Already have an account? Sign In</div>
+            <div class="auth-switch-link" onclick="switchToLogin()" data-i18n="auth.to.signin">Already have an account? Sign In</div>
         </div>
     </div>
     <!-- 261123 PROFILE 재단장: 검은 한 열, 글 방 결. 채우는 코드(js/app/auth.js · js/ui/UIManager.js)가 보는 id 는 그대로 — displayUsername · displayEmail · displayJoinDate · displayLoginMethod/loginMethodText · displayMemories · displayInterpretations · myMemoriesList · mypageNotesList -->
@@ -281,6 +285,7 @@
             <section class="mp-counts">
                 <div class="mp-count"><div class="mp-num" id="displayMemories">0</div><div class="mp-label" data-i18n="profile.memories">걸은 기억</div></div>
                 <div class="mp-count"><div class="mp-num" id="displayInterpretations">0</div><div class="mp-label" data-i18n="profile.steps">남긴 걸음</div></div>
+                <div class="mp-count" title="내 걸음이 다음 사람의 서막에 나온 횟수"><div class="mp-num" id="displayPassedOn">0</div><div class="mp-label" data-i18n="profile.passedOn">건네진 걸음</div></div>
             </section>
             <section class="mp-section">
                 <h3 class="mp-title" data-i18n="profile.mine">내가 만든 기억</h3>
@@ -609,6 +614,6 @@
          Scene play lives in play-test.html. -->
     <!-- confessionV3.js removed — replaced by js/app/recordChat.js (ES module, loaded from index.js) -->
     <script src="js/ui/lumen_dialog_phase1.js?v=261118f"></script><!-- 260909 RECORD v4: 플레이 대화 껍데기(자막 상자·타이핑·입력칸)를 recordPlay.js 가 shell 로 빌려 쓴다. 전역 정의만 하고 스스로 아무것도 띄우지 않는다 -->
-    <script type="module" src="js/index.js?v=261124c"></script><!-- 261123c PROFILE 재단장 + 기억 만들기(record-space) 기억은 아카이브·오프닝에서 우주 무대로 / 261123a 메뉴에서 RECORD·PROFILE 숨김 + 오프닝 소리 조절 막대 / 261121a 대표 기억은 오프닝 문 뒤 우주 무대(space-play.html)로 / 260909c 오염 기준선 record-seal 이관(confession.js autoCreateFirstPlay skip) / 260909b RECORD v4 새 회로(recordPlay.js) + 씨앗 공개 규칙 / 260909a Ctrl+Shift+B RECORD 직행 뒷문 + ?action=record -->
+    <script type="module" src="js/index.js?v=261124d"></script><!-- 261124d 아이디로 가입·들어가기 + 로그인 뒤 돌아갈 곳(next) --><!-- 261123c PROFILE 재단장 + 기억 만들기(record-space) 기억은 아카이브·오프닝에서 우주 무대로 / 261123a 메뉴에서 RECORD·PROFILE 숨김 + 오프닝 소리 조절 막대 / 261121a 대표 기억은 오프닝 문 뒤 우주 무대(space-play.html)로 / 260909c 오염 기준선 record-seal 이관(confession.js autoCreateFirstPlay skip) / 260909b RECORD v4 새 회로(recordPlay.js) + 씨앗 공개 규칙 / 260909a Ctrl+Shift+B RECORD 직행 뒷문 + ?action=record -->
 </body>
 </html>

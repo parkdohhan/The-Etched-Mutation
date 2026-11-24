@@ -37,8 +37,9 @@ import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261123a';
 import { runFinale } from './finale.js?v=261124a';
-import { runPrologue } from '../spaceplay/prologue.js?v=261124b';
+import { runPrologue } from '../spaceplay/prologue.js?v=261124c';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
+import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261124a';
 import { createBackDoors } from './backdoor.js?v=261123b3';
@@ -50,6 +51,13 @@ const FAST = MODE === 'test' ? Math.max(1, Math.min(8, Number(qs.get('fast')) ||
 const DRY = MODE === 'test' && qs.get('dry') === '1';
 const AT = MODE === 'test' ? (qs.get('at') || '') : '';
 const PEEK = MODE === 'test' && qs.get('peek') === '1';
+// 261124 demo link (?demo=1): a short written route for a filmed showing. The scenes come in a fixed order (the engine chooses
+// no room of the past), and nothing of the walk is written anywhere — so every take starts from the same world.
+// &route=1,2,3,6,7 names the order (scene numbers). Everything else — the answers, the back door, the hole, the map, the ending — runs for real.
+// Staging, openly: not a walk anyone took by themselves, which is why it is not kept. Undo = delete DEMO / KEPT and the block in boot().
+const DEMO = qs.get('demo') === '1';
+const DEMO_ROUTE = [1, 2, 3, 6, 7];
+const KEPT = MODE !== 'test' && !DEMO;                       // is this walk written down (ledger rows, lines left for others, contact, journal)?
 const LANG = (qs.get('lang') || sessionStorage.getItem('tem_archive_lang') || 'ko').slice(0, 2) === 'en' ? 'en' : 'ko';
 const ko = LANG !== 'en';
 const DEFAULT_MEMORY = 'UNDW-001';
@@ -95,7 +103,7 @@ const run = {
   here: null, pending: null, last: null, contact: false, ghosts: [], rows: [], crossing: false, busy: false, ended: false,
   startedAt: Date.now(),
 };
-window.__space = { run, mode: MODE };       // automation / inspection hook
+window.__space = { run, mode: MODE, demo: DEMO };       // automation / inspection hook
 
 let cosmos, talk, map, air, pause, typeVoice, letGo = false;
 let lex, typing, hand, backs, pressing = false, stayCtx = null;   // the blank: which words can go, how letters go and come, the holes in hand, the back doors, the stay now up
@@ -167,6 +175,9 @@ function stageText(scene, visitN) {
   const depth = Number(run.memory.cont_depth) || 0;
   let st = depth <= 0 ? 0 : (depth >= DEPTH_STAGE_3 && layerOf(scene, 3)) ? 3 : (depth >= DEPTH_STAGE_2 && layerOf(scene, 2)) ? 2 : layerOf(scene, 1) ? 1 : 0;
   st = Math.min(3, st + (visitN - 1));
+  // a memory made in record-space.html has no layer 1 of its own: a return visit climbs to the next layer that exists (2, then 3)
+  // instead of falling back to the text as written (= spaceplay/main.js, 261123; this copy had branched off before it — ported 261124)
+  if (visitN > 1 && st > 0 && !layerOf(scene, st)) { let up = st; while (up < 3 && !layerOf(scene, up)) up++; if (layerOf(scene, up)) st = up; }
   const rs = riggedStage(rigOf(run.memory, qs), visitN, scene);
   if (rs != null) { st = rs; if (visitN === 1 && !layerOf(scene, st)) st = 0; }
   while (st > 0 && !layerOf(scene, st)) st--;
@@ -308,6 +319,13 @@ async function boot() {
   try { loaded = await data.loadMemory(ref); } catch (e) { line.textContent = ko ? '기억을 불러오지 못했습니다.' : 'The memory could not be loaded.'; veil(false); console.error(e); return; }
   run.memory = loaded.memory; run.scenes = loaded.scenes;
   if (!run.scenes.length) { line.textContent = ko ? '이 기억에는 장면이 없습니다.' : 'This memory has no scenes.'; veil(false); return; }
+  if (DEMO) {                                                              // the demo link's route is laid over the memory as read here (the stored memory is not touched)
+    const have = new Set(run.scenes.map((s) => s.scene_order)), once = new Set();
+    let route = String(qs.get('route') || '').split(',').map((n) => parseInt(n, 10)).filter((n) => have.has(n) && !once.has(n) && once.add(n));
+    if (route.length < 2) route = DEMO_ROUTE.filter((n) => have.has(n));
+    if (route.length >= 2) run.memory.meta = Object.assign({}, run.memory.meta, { rig: Object.assign({ stages: [0, 2, 3], ghost_min_len: 10 }, (run.memory.meta && run.memory.meta.rig) || {}, { spine: route, rib_every: 9999, demo: true }) });   // rib_every beyond any walk = no room of the past: the route alone (roomplay/rig.js)
+    console.info('[space] demo link — nothing is kept · route ' + route.join(' → '));
+  }
   run.engine = createEngine(run.scenes, { frame: qs.get('frame') });
   [run.ghosts, run.rows] = await Promise.all([data.loadGhostLines(run.memory.id), loadLedger(run.memory.id)]);
   { const rg = rigOf(run.memory, qs), n = rg && Number(rg.ghost_min_len); if (n > 0) run.ghosts = run.ghosts.filter((g) => String(g.utterance).trim().length >= n); }
@@ -365,7 +383,7 @@ async function boot() {
   veil(false);
   await wait(900);
   await typeText(line, ko ? '지금부터 너는 한 기억을 떠올리게될거야' : 'you are about to remember something', { per: 70, pace: 1 / FAST });
-  typeText(note, MODE === 'author' ? (ko ? '작가의 걸음으로 기록됩니다' : 'recorded as the author\'s walk') : MODE === 'test' ? (ko ? '연습 걸음 — 남지 않습니다' : 'practice — nothing is kept') : '', { per: 30 });
+  typeText(note, DEMO ? '' : MODE === 'author' ? (ko ? '작가의 걸음으로 기록됩니다' : 'recorded as the author\'s walk') : MODE === 'test' ? (ko ? '연습 걸음 — 남지 않습니다' : 'practice — nothing is kept') : '', { per: 30 });
   btn.textContent = ko ? '떠올린다' : 'remember'; btn.disabled = false;
   btn.addEventListener('click', () => { if (btn.disabled) return; btn.disabled = true; begin(); });
 }
@@ -455,7 +473,7 @@ async function stay(scene, via, o) {
     if (question) { if (!run.asked.has(scene.id)) run.asked.set(scene.id, []); run.asked.get(scene.id).push(raw); }
     turns.push({ turn: i + 1, raw_text: raw, alignment: align, resonance: res, ghost_reply: rep || '', via: rep ? 'dialog_turn' : (ok ? 'no_reply' : 'not_sent'), ts: Date.now(),
       input_form: 'talk_v1', stage: data.STAGE_TAG, place: PLACE_TAG, form: 'talk2_v1', visit: visitN, text_stage: tv.stage, arrived: via, analysed: !!an, odd: !!an && isVoid, question });
-    if (MODE !== 'test' && !silent && ok) data.absorbLine({ memoryId: run.memory.id, utterance: raw, motifTags: ((scene.meta && scene.meta.motif_tags) || []).slice(0, 3) });
+    if (KEPT && !silent && ok) data.absorbLine({ memoryId: run.memory.id, utterance: raw, motifTags: ((scene.meta && scene.meta.motif_tags) || []).slice(0, 3) });
     return { raw, emo };
   };
 
@@ -503,7 +521,7 @@ async function stay(scene, via, o) {
     run.contact = true;
     const g = nearestGhost(mean, run.ghosts), name = scene.meta && scene.meta.ghost_name;
     if (g) await talk.say(g.utterance, 'rp-ghost rp-left', { gap: true, src: name ? '— ' + name : (ko ? '— 누군가 여기 두고 간 말' : '— something someone left here'), hold: 1800 });   // italic + tag: a person's line, never the scene's answer
-    if (MODE !== 'test') data.recordContact({ memoryId: run.memory.id, sceneId: scene.id, utterance: turns[turns.length - 1].raw_text.slice(0, 300), turn: turns.length, runId: run.id });
+    if (KEPT) data.recordContact({ memoryId: run.memory.id, sceneId: scene.id, utterance: turns[turns.length - 1].raw_text.slice(0, 300), turn: turns.length, runId: run.id });
   }
 
   // the hole comes loose and follows the walker; it carries what was said here (what will come into the place it is held against)
@@ -523,7 +541,7 @@ async function stay(scene, via, o) {
   // a door back into the same scene is not given on this stage yet: the nearest scene not yet seen, as for a crossing
   if (next.mode === 'same') next = Object.assign(run.engine.pickNext({ origin: scene, pattern: 'bridge', userEmotion: mean, isVoid: userVoid, visited: run.visited }), { was: 'same' });
 
-  if (turns.length && MODE !== 'test') {                                    // a practice walk leaves no row at all (261121: its rows were being counted by the admin's model)
+  if (turns.length && KEPT) {                                    // a practice walk leaves no row at all (261121: its rows were being counted by the admin's model)
     await data.insertPlay({ memory_id: run.memory.id, scene_id: scene.id, user_emotion: mean, alignment, mismatch_type: resonance, run_id: run.id, ghost_variant_id: null, dialog_turns: turns,
       persona_id: MODE === 'author' ? data.AUTHOR_PERSONA : null });
   }
@@ -739,7 +757,7 @@ async function cross(from, to, way, kind) {
 }
 /** A move that is not a stay is a walk all the same: it goes in the ledger (the piece stage's mark; no emotion, no alignment). */
 function logMove(from, to, how) {
-  if (MODE === 'test') return;
+  if (!KEPT) return;
   data.insertPlay({ memory_id: run.memory.id, scene_id: to.id, user_emotion: null, alignment: null, mismatch_type: null, run_id: run.id, ghost_variant_id: null, persona_id: MOVE_PERSONA,
     dialog_turns: [{ stage: 'piece_v1', place: PLACE_TAG, move: how, from_scene_id: from.id, to_scene_id: to.id, at: new Date().toISOString() }] });
 }
@@ -814,6 +832,22 @@ function setupFlyButton() {
 }
 
 // ── the end ────────────────────────────────────────────────────────────────
+/**
+ * A memory made in record-space.html: after a finished walk the server bakes the next layers of its scenes' texts from
+ * the ledger (bake-room-layers). = spaceplay/main.js bakeLayers (this copy had branched off before it — ported 261124).
+ * Not for a walk that is not kept (practice, the demo link): nothing of it is in the ledger to bake from.
+ */
+async function bakeLayers() {
+  if (!KEPT || !run.memory || !run.memory.meta || !run.memory.meta.space_record) return;
+  try {
+    const rows = await data.loadRoomPlays(run.memory.id);
+    const st = replayFromPlays(rows.map((x) => ({ alignment: x.alignment, mismatch_type: x.mismatch_type, user_emotion: x.user_emotion })));
+    const pres = getPresentationState(st);
+    const contState = { cont_drift: st.cont_drift || 0, cont_fixation: st.cont_fixation || 0, drift_dir_v: st.drift_dir_v || 0, drift_dir_a: st.drift_dir_a || 0, drift_dir_d: st.drift_dir_d || 0, band: pres.band === 'weak' ? 'medium' : pres.band, stage: pres.stage };
+    const r = await data.client().functions.invoke('bake-room-layers', { body: { memoryId: run.memory.id, contState } });
+    if (r.error) console.warn('[space] bake', r.error); else console.info('[space] bake', r.data);
+  } catch (e) { console.warn('[space] bake failed', e); }
+}
 async function finish() {
   if (run.ended) return; run.ended = true;
   hint(''); nearLine(null); map.close(); $('spMapWrap').classList.remove('on'); $('rpWalk').classList.remove('on'); talk.hide();
@@ -821,12 +855,14 @@ async function finish() {
   hand.drop();                                                              // a hole never held against anything goes out with the walk
   if (backs) backs.hideAll();
   for (const room of run.script) for (const l of room.lines || []) if (l.who !== 'mine') { const sg = segsOf(l.t); if (sg) l.segs = sg; else l.t = plain(l.t); }   // the ending shows whose each changed word is
-  if (MODE !== 'test') {
+  if (KEPT) {
     data.writeJournal(run.memory.id, run.id, { stage: data.STAGE_TAG, place: PLACE_TAG, mode: MODE, visit_order: run.path.map((id) => sceneById(id).scene_order),
       scenes: run.rooms, legs: run.legs, contact: run.contact, blank_form: 'blank_v1', blanks: run.blanks, back_doors: run.backLog,
       inherited: run.inherited.map((w) => ({ out: w.old, in: w.neu, run: w.run })),   // what this walker read already changed
       swaps: run.swaps.filter((w) => !w.inherited).map((w) => ({ out: w.old, in: w.neu, whose: w.owner, at: sceneById(w.at).scene_order, from: sceneById(w.from).scene_order })), model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift })),
-      seconds: Math.round((Date.now() - run.startedAt) / 1000), track: packTrack(cosmos.track) });   // 261124: the walk's line, for the next walker's prologue
+      seconds: Math.round((Date.now() - run.startedAt) / 1000), track: packTrack(cosmos.track),
+      prologue_of: run.prologue ? (run.prologue.from || 'ledger') : 'none' });   // 261124: whose walk this walker's prologue showed (PROFILE: "내 걸음이 서막에 나온 횟수")   // 261124: the walk's line, for the next walker's prologue
+    bakeLayers();                                                           // a memory made in record-space.html: the next layers of its texts, from the ledger (fire and forget)
   }
   try {
     window.__space.finale = await runFinale({ cosmos, run, lang: LANG, fast: FAST, air, typeText, wait, sceneById,

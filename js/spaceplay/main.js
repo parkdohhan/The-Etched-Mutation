@@ -24,7 +24,7 @@ import { accumulate, placeNext, TOPO } from './topo.js';
 import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
 import { lazyStarMap } from './starmap.js?v=261124b';
 import { runFinale } from './finale.js?v=261123d';
-import { runPrologue } from './prologue.js?v=261124b';
+import { runPrologue } from './prologue.js?v=261124c';
 import { packTrack } from './thread.js?v=261123d';
 import { createEscMenu } from './escmenu.js?v=261123a';
 import { createTypeVoice } from './typevoice.js?v=261124a';
@@ -707,7 +707,8 @@ async function finish() {
   if (MODE !== 'test') {
     data.writeJournal(run.memory.id, run.id, { stage: data.STAGE_TAG, place: PLACE_TAG, mode: MODE, visit_order: run.path.map((id) => sceneById(id).scene_order),
       scenes: run.rooms, legs: run.legs, contact: run.contact, model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift, pos: run.Q.get(id) || null })),
-      seconds: Math.round((Date.now() - run.startedAt) / 1000), track: packTrack(cosmos.track) });   // 261123: the walk's line, for the next walker's prologue
+      seconds: Math.round((Date.now() - run.startedAt) / 1000), track: packTrack(cosmos.track),
+      prologue_of: run.prologue ? (run.prologue.from || 'ledger') : 'none' });   // 261124: whose walk this walker's prologue showed (PROFILE: "내 걸음이 서막에 나온 횟수")   // 261123: the walk's line, for the next walker's prologue
     bakeLayers();                                             // a memory made in record-space.html: the next layers of its texts, from the ledger (fire and forget)
   }
   try {

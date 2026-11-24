@@ -8,7 +8,7 @@
  *     · its sound (generate-scene-sound: a draft sentence, then the sound)
  *   → the order (↑ ↓ on the cards; the first card is the first scene)
  *   → before it goes up, one sheet asks for everything at once (public · others' walks change the text · "니 순서대로 플레이
- *     안 됨 ㅋ 첫 번째 실일 뿐임" · the order is written as the first thread) → record-space-seal → space-play.html
+ *     안 됨 ㅋ 첫 번째 실일 뿐임" · the order is written as the first thread) → record-space-seal → space-blank.html (261124: the same stage every walker gets)
  *
  * Not on the menu (author, 261123: too early) — opened by its address. ?lang=ko|en · ?test=1 = nothing is saved (the payload
  * goes to the console; the talks, things and sounds are still asked of the server).
@@ -39,6 +39,7 @@ const L = {
   ko: {
     kicker: '한 기억을 놓아 두는 자리', title: '기억 만들기',
     lead: '장면을 쓰고, 그 장면의 감정을 뽑고, 조형물과 소리를 붙인다. 올리면 곧 그 기억의 우주로 들어간다.',
+    gate: '기억을 만들려면 먼저 들어와야 해. 아이디 하나면 돼.', gateGo: '들어가기 · 가입하기', needLogin: '들어온 상태가 풀렸어. 다시 들어와 줘.',
     memTitle: '제목', memDesc: '한 줄 설명', phTitle: '이 기억의 이름', phDesc: '한 줄로',
     scene: '장면', first: '첫 장면', up: '위로', down: '아래로', del: '지우기',
     a: '앞 토막', aPh: '장면이 열리는 글. 두세 문장.', b: '뒷 토막', bPh: '말 한 번 뒤에 읽히는 글. 다섯 줄 안팎. 비우면 떠 있는 말로 엮는다.',
@@ -63,6 +64,7 @@ const L = {
   en: {
     kicker: 'a place to set one memory down', title: 'make a memory',
     lead: 'Write the scenes, draw out each one\'s emotion, give it a thing and a sound. When it goes up you step into its space.',
+    gate: 'To make a memory, sign in first. An ID is enough.', gateGo: 'sign in · sign up', needLogin: 'You were signed out. Please sign in again.',
     memTitle: 'title', memDesc: 'one line', phTitle: 'the name of this memory', phDesc: 'in one line',
     scene: 'scene', first: 'first scene', up: 'up', down: 'down', del: 'remove',
     a: 'first part', aPh: 'the text the scene opens with. two or three sentences.', b: 'second part', bPh: 'read after the first exchange. about five lines. left empty, the words afloat are read instead.',
@@ -355,12 +357,36 @@ async function seal() {
     await typeText(line, T.sealed, { per: 60 });
     $('rsVeilNote').textContent = d.thread ? T.thread : T.noThread;
     await wait(2800);
-    location.href = `space-play.html?memory=${encodeURIComponent(d.memoryId)}&lang=${encodeURIComponent(LANG)}&from=record`;
+    location.href = `space-blank.html?memory=${encodeURIComponent(d.memoryId)}&lang=${encodeURIComponent(LANG)}&from=record`;   // 261124 작가: 만든 사람도 다른 관객과 같은 판(빈 자리) — 원래 우주 화면이 아님
   } catch (e) {
     console.error('[record-space] seal failed', e);
-    await typeText(line, T.sealFail, { per: 40 }); await wait(2600);
+    await typeText(line, /login required/.test(String(e && e.message)) ? T.needLogin : T.sealFail, { per: 40 }); await wait(2600);
     veil.classList.remove('on'); S.busy = false; check();
   }
+}
+
+// ── the login gate (261124) ─────────────────────────────────────────────────
+async function signedIn() {
+  try { const { data } = await sb().auth.getSession(); return !!(data && data.session); } catch (_) { return false; }
+}
+async function showGate() {
+  for (const el of $('rs').children) if (!el.classList.contains('rs-head')) el.hidden = true;
+  const back = 'record-space.html' + location.search;
+  const go = document.createElement('a');
+  go.className = 'rp-btn rs-primary rs-gate-go';
+  go.href = './?action=login&next=' + encodeURIComponent(back);   // the site root, not index.html (some servers answer /index.html empty)
+  go.textContent = T.gateGo;
+  // the main page reads its language from tem_language (js/lib/i18n.js) and falls back to English: carry this page's
+  // language over only when none was ever chosen, so the sign-in form speaks the same language as this gate
+  go.addEventListener('click', () => { try { if (!localStorage.getItem('tem_language')) localStorage.setItem('tem_language', LANG); } catch (_) { /* none */ } });
+  const row = document.createElement('div'); row.className = 'rs-actions rs-gate'; row.appendChild(go);
+  $('rs').appendChild(row);
+  $('rsVeil').classList.remove('on');
+  await wait(600);
+  await typeText($('rsKicker'), T.kicker, { per: 34 });
+  await typeText($('rsTitle'), T.title, { per: 70 });
+  await typeText($('rsLead'), T.gate, { per: 22 });
+  $('rs').classList.add('on');
 }
 
 // ── boot ────────────────────────────────────────────────────────────────────
@@ -383,6 +409,9 @@ async function boot() {
   $('rsConsentGo').addEventListener('click', seal);
   $('rsConsentNo').addEventListener('click', closeConsent);
   window.addEventListener('beforeunload', (e) => { if (!S.busy && (S.title.trim() || S.scenes.some((s) => s.text.trim()))) { e.preventDefault(); e.returnValue = ''; } });
+
+  // 261124: making a memory needs a login (the seal refuses without one). Practice mode (?test=1) saves nothing and skips it.
+  if (!TEST && !(await signedIn())) { await showGate(); return; }
 
   $('rsVeil').classList.remove('on');
   await wait(600);

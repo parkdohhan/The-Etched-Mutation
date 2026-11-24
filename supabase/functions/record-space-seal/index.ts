@@ -160,6 +160,10 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json(cors, 405, { ok: false, error: "Method not allowed" });
 
+  // 261124: making a memory needs a login (user request). Checked first, before any paid call.
+  const user = await optionalUser(req);
+  if (!user) return json(cors, 401, { ok: false, error: "login required" });
+
   let body: any;
   try { body = await req.json(); } catch { return json(cors, 400, { ok: false, error: "Invalid JSON body" }); }
 
@@ -196,7 +200,6 @@ serve(async (req: Request) => {
   if (noEmotion.length) return json(cors, 400, { ok: false, error: "every scene needs an emotion", scenes: noEmotion });
 
   const admin = createClient(supabaseUrl, serviceKey);
-  const user = await optionalUser(req);
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY") || "";
   const tags = apiKey ? await extractTags(apiKey, scenes.map((s) => s.text), lang) : scenes.map(() => ({ motifs: [], objects: [] }));
   const allMotifs = Array.from(new Set(tags.flatMap((t) => t.motifs)));

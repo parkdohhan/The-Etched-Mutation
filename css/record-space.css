@@ -120,3 +120,8 @@ body.rs::-webkit-scrollbar { width: 6px; } body.rs::-webkit-scrollbar-thumb { ba
 #rsVeilNote { font-size: 0.74rem; letter-spacing: 0.1em; color: #6f6c78; min-height: 1em; }
 #rsToast { position: fixed; left: 50%; bottom: 2.4rem; transform: translateX(-50%); z-index: 55; font-size: 0.86rem; letter-spacing: 0.08em; color: var(--rp-text); background: rgba(0,0,0,0.85); border: 1px solid rgba(232,228,223,0.12); padding: 0.7rem 1.4rem; opacity: 0; transition: opacity 900ms ease; pointer-events: none; }
 #rsToast.on { opacity: 1; }
+
+/* 261124: the login gate — a link styled as the button */
+.rs-gate { margin-top: 2.4rem; }
+a.rs-gate-go { display: inline-block; color: inherit; text-decoration: none; }
+html { background: #000; }   /* 261124: below a short page (the gate) the html background showed as a lighter band */

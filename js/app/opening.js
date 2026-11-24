@@ -65,6 +65,9 @@ let _finderSessionSeq = 0;
 // 오프닝 자체(대사·문)는 한 줄도 바꾸지 않았다 — 마지막 이동 주소만 갈린다.
 // 되돌리기 = 이 배열을 비우거나, 주소에 ?stage=terrain 을 붙여 연다. 결정 기록: docs/우주무대_결정-261121.md
 const SPACE_STAGE_CODES = ['UNDW-001', 'UNDW-001-EN'];   // 261123: 영어 사본도 같은 무대로 (영어 설정에서 한국어가 보이지 않게 — 둘째 토막·글 겹은 scenes.meta.space / room_text 에 영어로)
+// 261124 데모 주소: 첫 화면을 ?demo=1 (&route=1,2,3,6,7) 로 열면 그 표시를 우주 화면까지 그대로 넘긴다 (js/spaceblank/main.js DEMO — 정해 둔 순서·저장 안 함).
+// 모듈을 읽는 순간에 잡아 둔다(나중에 주소가 정리돼도 남도록). 되돌리기 = 이 상수와 아래 두 곳의 `${_DEMO_TAIL}` 삭제.
+const _DEMO_TAIL = (() => { try { const q = new URLSearchParams(location.search); if (q.get('demo') !== '1' || q.get('memory')) return ''; const r = q.get('route'); return '&demo=1' + (r ? '&route=' + encodeURIComponent(r) : ''); } catch (_) { return ''; } })();
 
 // ─────────────────────────────────────
 // === Text Utilities ===
@@ -456,7 +459,6 @@ async function _runV2Sequence(opts) {
     await new Promise(r => setTimeout(r, 500));
   }
 
-
   // ─── 테스터 모드 (260802): 인터뷰 통째로 건너뛰고 대사 한 줄 → 문 ───
   // 닉네임 · intro 질문 · 감정 칩 · 멀티턴 질문 전부 미표시.
   // 아래 원본 흐름(else 이하)은 손대지 않았다 — 스위치 끄면 그대로 돌아온다.
@@ -735,7 +737,7 @@ async function _handleOpeningSubmit(emotion, text) {
       openingSkipped = true;
       if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
       if (_finderSessionSeq !== mySession) return;
-      window.location.href = `space-blank.html?memory=${encodeURIComponent(want.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening`;
+      window.location.href = `space-blank.html?memory=${encodeURIComponent(want.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening${_DEMO_TAIL}`;
       return;
     }
   }
@@ -962,7 +964,7 @@ async function _handleOpeningSubmit(emotion, text) {
   // 261123: 기억 만들기(record-space.html)로 만든 기억(meta.space_record)도 같은 무대로
   if (!_terrainOnly && ((memory.code && SPACE_STAGE_CODES.includes(memory.code)) || (memory.meta && memory.meta.space_record))) {
     // 261124 작가: 오프닝에서 빈 자리 화면(space-blank.html — 서막·뒷문·빈칸·타자 소리)으로. 옛 우주 화면만 보려면 주소로 space-play.html
-    window.location.href = `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening`;
+    window.location.href = `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening${_DEMO_TAIL}`;
     return;
   }
   window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}`;

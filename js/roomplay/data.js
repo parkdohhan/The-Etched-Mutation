@@ -103,9 +103,19 @@ export async function absorbLine(o) {
   } catch (e) { console.warn('[room] absorb', e); return null; }
 }
 
+/** A random key for this browser, kept in localStorage — not a person, not an account; just "the same browser again". */
+export function walkerKey() {
+  try {
+    let k = localStorage.getItem('tem_walker_key');
+    if (!k) { k = (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36) + Math.random().toString(36).slice(2)); localStorage.setItem('tem_walker_key', k); }
+    return k;
+  } catch (_) { return null; }
+}
+
 /** One journal row per run (visit order, what was shown, the engine's readings, shadow scores). */
 export async function writeJournal(memoryId, runId, traces) {
   const c = client();
+  traces = Object.assign({ walker: walkerKey() }, traces);   // 261124: which browser walked (PROFILE "건네진 걸음" counts anonymous walks by it)
   const r = await c.from('run_journals').insert({ memory_id: memoryId, run_id: runId, input_form: STAGE_TAG, run_traces: traces });
   if (r.error) console.warn('[room] journal', r.error);
 }

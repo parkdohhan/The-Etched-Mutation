@@ -147,7 +147,7 @@ export function fromRecipe(r) {
     }
     objs.push(o);
     if (!o) continue;
-    if (p.k !== 'stroke' && p.k !== 'garment') { put(o, p.at[0], p.at[1], p.at[2]); if (p.k !== 'glow') o.rotation.set(p.rot[0], p.rot[1], p.rot[2]); }
+    if (p.k !== 'stroke' && p.k !== 'garment') { put(o, p.at[0], p.at[1], p.at[2]); if (p.k !== 'glow' && Array.isArray(p.rot)) o.rotation.set(p.rot[0], p.rot[1], p.rot[2]); }   // a profile has no rotation of its own (sanitizeRecipe keeps none) — 261124: this threw and the whole thing was not drawn
     g.add(o);
   }
   for (const mo of r.motion) {

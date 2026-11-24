@@ -26,7 +26,7 @@ function setPendingSaveAction(val) { pendingSaveAction = val; }
 // === Core Auth Functions ===
 // ─────────────────────────────────────
 
-function openMypage() { const state = appStore.getState(); if (!state.isLoggedIn) { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('loginUsername').focus() } else { showMypage() } }
+function openMypage() { const state = appStore.getState(); if (!state.isLoggedIn) { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:3100 !important' } document.getElementById('loginUsername').focus() } else { showMypage() } }
 async function showMypage() {
     const state = appStore.getState();
     if (!state.isLoggedIn) return;
@@ -63,12 +63,83 @@ function tryOAuthPostLoginNavigation() {
         showMypage();
     }
 }
-async function handleLogin() { const email = document.getElementById('loginUsername').value.trim(); const password = document.getElementById('loginPassword').value.trim(); if (!email || !password) { showNotification('Please enter email and password'); return } supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } const { data, error } = await supabaseClient.auth.signInWithPassword({ email: email, password: password }); if (error) { showNotification('Sign in failed: ' + error.message); return } appStore.setState({ isLoggedIn: true, currentUser: { id: data.user.id, username: data.user.user_metadata?.username || email.split('@')[0], email: email, joinDate: new Date(data.user.created_at).toLocaleDateString('en-US'), liveSessions: 0, memories: 0, interpretations: 0, visitedMemories: [], sessionHistory: [] } }); const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' } document.getElementById('loginUsername').value = ''; document.getElementById('loginPassword').value = ''; showNotification('Signed in successfully'); document.dispatchEvent(new CustomEvent('tem:login-success')); if (pendingSaveAction === 'save') { pendingSaveAction = null; setTimeout(() => { window.saveMemory() }, 300) } else { showMypage() } }
-function closeLogin() { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' } document.getElementById('loginUsername').value = ''; document.getElementById('loginPassword').value = ''; pendingSaveAction = null }
-function switchToSignup() { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' } const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.add('active'); signupModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('signupUsername').focus() }
-function switchToLogin() { const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:2100 !important' } document.getElementById('loginUsername').focus() }
-async function handleSignup() { const username = document.getElementById('signupUsername').value.trim(); const email = document.getElementById('signupEmail').value.trim(); const password = document.getElementById('signupPassword').value.trim(); const passwordConfirm = document.getElementById('signupPasswordConfirm').value.trim(); if (!username || !email || !password || !passwordConfirm) { showNotification('Please fill in all fields'); return } if (password !== passwordConfirm) { showNotification('Passwords do not match'); return } if (password.length < 6) { showNotification('Password must be at least 6 characters'); return } supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } const { data, error } = await supabaseClient.auth.signUp({ email: email, password: password, options: { data: { username: username } } }); if (error) { showNotification('Sign up failed: ' + error.message); return } appStore.setState({ isLoggedIn: true, currentUser: { id: data.user.id, username: username, email: email, joinDate: new Date().toLocaleDateString('en-US'), liveSessions: 0, memories: 0, interpretations: 0, visitedMemories: [], sessionHistory: [] } }); const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } document.getElementById('signupUsername').value = ''; document.getElementById('signupEmail').value = ''; document.getElementById('signupPassword').value = ''; document.getElementById('signupPasswordConfirm').value = ''; showNotification('Sign up complete'); if (pendingSaveAction === 'save') { pendingSaveAction = null; setTimeout(() => { window.saveMemory() }, 300) } else { showMypage() } }
-function closeSignup() { const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } document.getElementById('signupUsername').value = ''; document.getElementById('signupEmail').value = ''; document.getElementById('signupPassword').value = ''; document.getElementById('signupPasswordConfirm').value = '' }
+// 261124: one field takes an ID or an email. An ID is turned into the account email by the database
+// (public.login_email — only when the password matches; supabase/migrations/20261124000000_login_by_id_and_profiles_lock.sql).
+const AUTH_NEXT_KEY = 'tem_auth_next';   // where to go after signing in (set by index.js ?action=login&next=…)
+function takeAuthNext() {
+    let v = null;
+    try { v = sessionStorage.getItem(AUTH_NEXT_KEY); sessionStorage.removeItem(AUTH_NEXT_KEY); } catch (_) { /* none */ }
+    return (typeof v === 'string' && /^record-space\.html(\?[A-Za-z0-9=&_.%-]*)?$/.test(v)) ? v : null;
+}
+function forgetAuthNext() { try { sessionStorage.removeItem(AUTH_NEXT_KEY); } catch (_) { /* none */ } }
+function signedInState(user) {
+    return { isLoggedIn: true, currentUser: { id: user.id, username: user.user_metadata?.username || (user.email || '').split('@')[0], email: user.email, joinDate: new Date(user.created_at || Date.now()).toLocaleDateString('en-US'), liveSessions: 0, memories: 0, interpretations: 0, visitedMemories: [], sessionHistory: [] } };
+}
+function afterSignedIn() {
+    document.dispatchEvent(new CustomEvent('tem:login-success'));
+    const next = takeAuthNext();
+    if (next) { window.location.href = next; return; }
+    if (pendingSaveAction === 'save') { pendingSaveAction = null; setTimeout(() => { window.saveMemory() }, 300) } else { showMypage() }
+}
+async function handleLogin() {
+    const login = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+    if (!login || !password) { showNotification(t('auth.msg.fillLogin')); return }
+    supabaseClient = getSupabaseClient();
+    if (!supabaseClient) { showNotification(t('auth.msg.noClient')); return }
+    let email = login;
+    if (!login.includes('@')) {
+        const { data: found, error: lookupError } = await supabaseClient.rpc('login_email', { p_login: login, p_password: password });
+        if (lookupError) { console.warn('[auth] login_email', lookupError); showNotification(/too_many_attempts/.test(lookupError.message || '') ? t('auth.msg.tooMany') : t('auth.msg.loginFail')); return }
+        if (!found) { showNotification(t('auth.msg.loginFail')); return }
+        email = found;
+    }
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) { console.warn('[auth] sign in', error.message); showNotification(t('auth.msg.loginFail')); return }
+    appStore.setState(signedInState(data.user));
+    const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' }
+    document.getElementById('loginUsername').value = ''; document.getElementById('loginPassword').value = '';
+    showNotification(t('auth.msg.loginOk'));
+    afterSignedIn();
+}
+function closeLogin() { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' } document.getElementById('loginUsername').value = ''; document.getElementById('loginPassword').value = ''; pendingSaveAction = null; forgetAuthNext() }
+function switchToSignup() { const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.remove('active'); loginModal.style.display = 'none' } const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.add('active'); signupModal.style.cssText = 'display:flex !important;z-index:3100 !important' } document.getElementById('signupUsername').focus() }
+function switchToLogin() { const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } const loginModal = document.getElementById('loginModal'); if (loginModal) { loginModal.classList.add('active'); loginModal.style.cssText = 'display:flex !important;z-index:3100 !important' } document.getElementById('loginUsername').focus() }
+// 261124: ID and email are asked separately. ID = letters, numbers, _ (3–20). Password = letters and numbers, 7 or more.
+// The ID rides in user metadata; the sign-up trigger refuses a taken one (meta tem_signup).
+async function handleSignup() {
+    const username = document.getElementById('signupUsername').value.trim();
+    const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+    const password = document.getElementById('signupPassword').value;
+    const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+    if (!username || !email || !password || !passwordConfirm) { showNotification(t('auth.msg.fillAll')); return }
+    if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) { showNotification(t('auth.msg.badId')); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showNotification(t('auth.msg.badEmail')); return }
+    if (!/^[A-Za-z0-9]{7,72}$/.test(password)) { showNotification(t('auth.msg.badPassword')); return }
+    if (password !== passwordConfirm) { showNotification(t('auth.msg.mismatch')); return }
+    supabaseClient = getSupabaseClient();
+    if (!supabaseClient) { showNotification(t('auth.msg.noClient')); return }
+    const { data: taken, error: takenError } = await supabaseClient.rpc('username_taken', { p_login: username });
+    if (!takenError && taken) { showNotification(t('auth.msg.idTaken')); return }
+    const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { username, tem_signup: true } } });
+    if (error) {
+        const msg = error.message || '';
+        console.warn('[auth] sign up', msg);
+        if (/already (been )?registered|already exists/i.test(msg)) showNotification(t('auth.msg.emailTaken'));
+        else if (/database error/i.test(msg)) showNotification(t('auth.msg.idTaken'));      // the trigger refused a taken ID (a race with another sign-up)
+        else if (/password/i.test(msg)) showNotification(t('auth.msg.badPassword'));
+        else showNotification(t('auth.msg.signupFail'));
+        return;
+    }
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) { showNotification(t('auth.msg.emailTaken')); return }
+    const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' }
+    document.getElementById('signupUsername').value = ''; document.getElementById('signupEmail').value = ''; document.getElementById('signupPassword').value = ''; document.getElementById('signupPasswordConfirm').value = '';
+    if (!data.session) { showNotification(t('auth.msg.signupCheck')); switchToLogin(); return }   // if email confirmation is ever switched on
+    appStore.setState(signedInState(data.user));
+    showNotification(t('auth.msg.signupOk'));
+    afterSignedIn();
+}
+function closeSignup() { const signupModal = document.getElementById('signupModal'); if (signupModal) { signupModal.classList.remove('active'); signupModal.style.display = 'none' } document.getElementById('signupUsername').value = ''; document.getElementById('signupEmail').value = ''; document.getElementById('signupPassword').value = ''; document.getElementById('signupPasswordConfirm').value = ''; forgetAuthNext() }
 async function handleSocialLogin(provider) { if (provider === 'google') { supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } const redirectTo = `${window.location.origin}${window.location.pathname || '/'}`; const { data, error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } }); if (error) { showNotification('Google sign in failed: ' + error.message) } } else { showNotification('Coming soon') } }
 async function handleLogout() { if (confirm('Are you sure you want to sign out?')) { supabaseClient = getSupabaseClient(); if (!supabaseClient) { showNotification('Supabase client not initialized'); return } await supabaseClient.auth.signOut(); appStore.setState({ isLoggedIn: false, currentUser: null }); closeMypage(); showNotification('Signed out successfully') } }
 function updateUserStats(type, value = 1) { const state = appStore.getState(); if (!state.isLoggedIn || !state.currentUser) return; const currentUser = state.currentUser; if (type === 'liveSession') { currentUser.liveSessions = (currentUser.liveSessions || 0) + value } else if (type === 'memory') { if (!currentUser.visitedMemories) currentUser.visitedMemories = []; if (!currentUser.visitedMemories.includes(value)) { currentUser.visitedMemories.push(value); currentUser.memories = (currentUser.memories || 0) + 1 } } else if (type === 'interpretation') { currentUser.interpretations = (currentUser.interpretations || 0) + value } appStore.setState({ currentUser: currentUser }); if (document.getElementById('mypageScreen') && document.getElementById('mypageScreen').classList.contains('active')) { showMypage() } }
@@ -101,13 +172,55 @@ async function loadMyMemoriesFromDB() {
         return [];
     }
 }
+// 261124: how many later walkers' prologues (space stage, js/spaceplay/prologue.js) showed one of this user's walks.
+// Journals written from 261124 carry run_traces.prologue_of (the run shown, 'ledger', or 'none' when the prologue was
+// skipped). Journals from the prologue's first day (before that key) are inferred the way the prologue chose: the latest
+// kept walk of the same memory that ended before that walker began. Only finished, non-test walks of other runs count.
+const PROLOGUE_SINCE = '2026-11-23T16:50:00Z';   // the prologue went live (commit 257bf9e, 261124 01:50 KST)
+async function countWalksPassedOn(client, userId) {
+    if (!client || !userId) return 0;
+    const mine = new Set();
+    for (let from = 0; ; from += 1000) {
+        const { data, error } = await client.from('plays').select('run_id').eq('user_id', userId).not('run_id', 'is', null).range(from, from + 999);
+        if (error) { console.warn('[profile] my runs', error); break; }
+        for (const r of data || []) mine.add(r.run_id);
+        if (!data || data.length < 1000) break;
+    }
+    let key = null; try { key = localStorage.getItem('tem_walker_key'); } catch (_) { /* none */ }
+    const rows = [];
+    for (let from = 0; ; from += 1000) {
+        const { data, error } = await client.from('run_journals')
+            .select('run_id, memory_id, created_at, who:run_traces->>walker, pof:run_traces->>prologue_of, place:run_traces->>place, mode:run_traces->>mode, secs:run_traces->>seconds, vo:run_traces->visit_order')
+            .eq('input_form', 'room_v1').order('created_at').range(from, from + 999);
+        if (error) { console.warn('[profile] journals', error); return 0; }
+        rows.push(...(data || []));
+        if (!data || data.length < 1000) break;
+    }
+    if (key) for (const j of rows) if (j.who === key) mine.add(j.run_id);   // walks from this browser, logged in or not (js/roomplay/data.js walkerKey)
+    if (!mine.size) return 0;
+    const space = rows.filter((j) => j.place === 'space_v1' && j.mode !== 'test');
+    const kept = space.filter((j) => Array.isArray(j.vo) && j.vo.length >= 2);   // what a prologue may show (same filter as prologue.js lastWalk)
+    let n = 0;
+    for (const k of space) {
+        if (mine.has(k.run_id)) continue;                       // one's own walk shown to oneself is not passed on
+        let shown = k.pof;
+        if (shown == null && k.created_at >= PROLOGUE_SINCE) {
+            const began = new Date(k.created_at).getTime() - (Number(k.secs) || 0) * 1000;
+            let best = null;
+            for (const j of kept) if (j.memory_id === k.memory_id && j.run_id !== k.run_id && new Date(j.created_at).getTime() < began) best = j;
+            shown = best ? best.run_id : null;
+        }
+        if (shown && mine.has(shown)) n++;
+    }
+    return n;
+}
 async function loadUserStatsFromDB() {
     const state = appStore.getState();
     if (!state.currentUser?.id) return { sessions: 0, memories: 0, interpretations: 0 };
     const userId = state.currentUser.id;
     const client = networkService._getClient ? networkService._getClient() : null;
     try {
-        const [sessionsResult, playsCountResult, curatedMemoriesResult] = await Promise.allSettled([
+        const [sessionsResult, playsCountResult, curatedMemoriesResult, passedOnResult] = await Promise.allSettled([
             networkService.getUserSessionIds(userId),
             (async () => {
                 if (!client) return 0;
@@ -125,6 +238,7 @@ async function loadUserStatsFromDB() {
                     .eq('curator_id', userId);
                 return (!error && count != null) ? count : 0;
             })(),
+            countWalksPassedOn(client, userId),
         ]);
         const sessionIds = (sessionsResult.status === 'fulfilled' && sessionsResult.value.ok && sessionsResult.value.data)
             ? sessionsResult.value.data.map(s => s.id) : [];
@@ -139,6 +253,7 @@ async function loadUserStatsFromDB() {
             sessions: sessionIds.length,
             memories: Math.max(liveMemoriesCount, curatedCount),
             interpretations: playsCount,
+            passedOn: passedOnResult.status === 'fulfilled' ? passedOnResult.value : 0,
         };
     } catch (e) {
         console.error('loadUserStatsFromDB error:', e);
@@ -163,11 +278,11 @@ function renderMyMemoriesList(memories) {
         const meta = document.createElement('span'); meta.className = 'mp-row-meta'; meta.textContent = date + ' · ' + t('profile.walks').replace('{n}', String(depth)) + (memory.is_public === false ? ' · ' + t('profile.private') : '');
         const go = document.createElement('span'); go.className = 'mp-row-go'; go.textContent = isSpace ? t('profile.go.space') : t('profile.go.terrain');
         row.appendChild(title); row.appendChild(meta); row.appendChild(go);
-        row.onclick = () => { closeMypage(); if (isSpace) { window.location.href = `space-play.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`; return } viewMemoryFromArchive(memory.id) };
+        row.onclick = () => { closeMypage(); if (isSpace) { window.location.href = `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`; return } viewMemoryFromArchive(memory.id) };
         listEl.appendChild(row);
     });
 }
-function updateMypageStats(stats) { document.getElementById('displayMemories').textContent = stats.memories || 0; document.getElementById('displayInterpretations').textContent = stats.interpretations || 0 }
+function updateMypageStats(stats) { document.getElementById('displayMemories').textContent = stats.memories || 0; document.getElementById('displayInterpretations').textContent = stats.interpretations || 0; const po = document.getElementById('displayPassedOn'); if (po) po.textContent = stats.passedOn || 0 }
 // True ending note UI
 function showTrueEndingNoteUI(authorNote, authorId, memoryId) { const endContent = document.getElementById('endContent'); if (!endContent) return; const endButtons = endContent.querySelector('.end-buttons'); if (!endButtons) return; const existingNoteSection = endContent.querySelector('.note-section'); if (existingNoteSection) existingNoteSection.remove(); const noteSection = document.createElement('div'); noteSection.className = 'note-section'; noteSection.innerHTML = (authorNote ? `<div class="author-note-box"><p class="note-label">Note from the experiencer</p><p class="note-content">${authorNote}</p></div>` : '') + `<div class="reply-section"><p class="reply-label">You can leave a message for the memory author</p><textarea class="reply-input" id="replyInput" maxlength="100" placeholder="Please write within 100 characters..."></textarea><div class="reply-counter"><span id="replyCount">0</span>/100</div><div class="reply-buttons"><button class="reply-submit-btn" id="replySubmitBtn">Send Note</button><button class="reply-skip-btn" id="replySkipBtn">건너뛰기</button></div></div>`; endContent.insertBefore(noteSection, endButtons); const replyInput = document.getElementById('replyInput'); const replyCount = document.getElementById('replyCount'); if (replyInput && replyCount) { replyInput.addEventListener('input', () => { replyCount.textContent = replyInput.value.length }) } const replySubmitBtn = document.getElementById('replySubmitBtn'); if (replySubmitBtn) { replySubmitBtn.addEventListener('click', async () => { const message = replyInput.value.trim(); if (!message) { alert('메시지를 입력 please.'); return } const safetyResult = detectCrisis(message); if (safetyResult.level === 'high') { window.handleCrisis('high', replyInput); return } await sendNoteToAuthor(authorId, memoryId, message) }) } const replySkipBtn = document.getElementById('replySkipBtn'); if (replySkipBtn) { replySkipBtn.addEventListener('click', () => { noteSection.remove() }) } }
 async function sendNoteToAuthor(authorId, memoryId, message) { try { const client = networkService.getClient(); if (!client) { alert('Supabase client not initialized.'); return } const { data: { user } } = await client.auth.getUser(); if (!user) { alert('Login required to send a note.'); return } const result = await networkService.sendNote({ memory_id: memoryId, sender_id: user.id, recipient_id: authorId, message: message, note_type: 'player_to_author' }); if (!result.ok) { console.error('쪽지 전송 error:', result.error); alert('Note send failed.'); return } const noteSection = document.querySelector('.note-section'); if (noteSection) { noteSection.innerHTML = '<div class="note-sent-message"><p>Delivered to the memory author.</p></div>' } console.log('=== Note sent ===') } catch (e) { console.error('sendNoteToAuthor error:', e); alert('An error occurred while sending the note.') } }

@@ -207,7 +207,7 @@ export async function runPrologue(o) {
   sound.stop();
   cosmos.setCine(null); cosmos.setMode('held'); pl.roll = 0;
   cosmos.teleport(new THREE.Vector3(0, EYE, 0), 0, 0);
-  return { whose: prev.whose, scenes: n, seconds: +T.toFixed(1) };
+  return { whose: prev.whose, from: prev.from || null, scenes: n, seconds: +T.toFixed(1) };   // from = the run whose walk was shown (261124: PROFILE counts it)
 
   // ── a scene, standing in its place down the fall ─────────────────────────
   function stand(p) {
@@ -289,15 +289,16 @@ function sayPlane(THREE, text) {
 
 /**
  * The last complete walk of this memory (run_journals, this stage, not practice), or the ledger alone.
- * @returns { whose: 'walker' | 'ledger', order: [scene] (first reached first), said: Map(scene id → one line), track: cosmos.track points }
+ * @returns { whose: 'walker' | 'ledger', from: run_id of the walk shown (walker only), order: [scene] (first reached first), said: Map(scene id → one line), track: cosmos.track points }
  */
 async function lastWalk(data, run) {
   const byOrder = new Map(run.scenes.map((s) => [Number(s.scene_order), s]));
-  let j = null;
+  let j = null, from = null;
   try {
     const r = await data.client().from('run_journals').select('run_id, created_at, run_traces').eq('memory_id', run.memory.id).eq('input_form', data.STAGE_TAG).order('created_at', { ascending: false }).limit(40);
     if (r.error) throw r.error;
-    j = (r.data || []).map((x) => x.run_traces).find((t) => t && t.place === 'space_v1' && t.mode !== 'test' && Array.isArray(t.visit_order) && t.visit_order.length >= 2);
+    const row = (r.data || []).find((x) => { const t = x.run_traces; return t && t.place === 'space_v1' && t.mode !== 'test' && Array.isArray(t.visit_order) && t.visit_order.length >= 2; });
+    if (row) { j = row.run_traces; from = row.run_id || null; }
   } catch (e) { console.warn('[prologue] journals', e); }
   if (!j) {
     const order = run.scenes.slice().sort((a, b) => a.scene_order - b.scene_order);
@@ -314,7 +315,7 @@ async function lastWalk(data, run) {
   }
   let track = j.track ? unpackTrack(j.track) : null;
   if (!track || track.length < 2) track = splineThrough(modelOf(run.acc, path.length >= 2 ? path : order, (id) => reading.get(id) || null));
-  return { whose: 'walker', order: order.length ? order : run.scenes.slice(), said, track };
+  return { whose: 'walker', from, order: order.length ? order : run.scenes.slice(), said, track };
 }
 
 /** A walker's model replayed along their path (topo.placeNext, their reading at each scene they left): the places of the path, in order. */

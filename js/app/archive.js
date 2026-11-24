@@ -725,11 +725,12 @@ function _showFinderResults(matched, lang) {
   }, 900);
 }
 
-// 261124 작가: 대표 기억(UNDW-001·영어 사본)은 어느 길로 들어와도 빈 자리 화면(서막·뒷문·빈칸·타자 소리)으로. 기억 만들기 기억은 우주 화면.
+// 261124 작가: 대표 기억(UNDW-001·영어 사본)은 어느 길로 들어와도 빈 자리 화면(서막·뒷문·빈칸·타자 소리)으로.
+// 261124 작가(같은 날 나중): 기억 만들기 기억도 빈 자리 화면 — 만든 사람만 다른 판을 보면 "첫 실일 뿐"(이본론)·원칙 6(기록 = 첫 플레이)과 어긋난다. 오프닝·올린 직후·PROFILE 과 같은 판.
 const SPACE_BLANK_CODES = ['UNDW-001', 'UNDW-001-EN'];
 function _spaceStageUrl(memory, lang) {
   if (memory && memory.code && SPACE_BLANK_CODES.includes(memory.code)) return `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}&from=opening`;
-  if (memory && memory.meta && memory.meta.space_record) return `space-play.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
+  if (memory && memory.meta && memory.meta.space_record) return `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
   return null;
 }
 function _navigateToPlayFromFinder(memory) {

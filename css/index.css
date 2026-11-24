@@ -3016,7 +3016,7 @@ body::before {
   opacity: 0;
   transform: translateX(100%);
   transition: all .5s;
-  z-index: 3000
+  z-index: 3200   /* 261124: above the sign-in / sign-up modals (3100) and the opening (3000) */
 }
 
 .notification.visible {
