@@ -432,7 +432,7 @@ let carouselCurrentIndex = 0;
 const carouselItems = [
     { action: 'enterPlayInterview', label: 'PLAY' },
     { action: 'enterMyArchive', label: 'ARCHIVE' },
-    { action: 'showConfessionHub', label: 'RECORD' },
+    { action: 'openRecordSpace', label: 'RECORD' },
     { action: 'openMypage', label: 'PROFILE' },
     { action: 'openSettings', label: 'SETTINGS' },
     { action: 'openPortfolio', label: 'MORE PORTFOLIO' }
@@ -564,6 +564,9 @@ function activateCurrentCarouselItem() {
             if (typeof showConfessionHub === 'function') {
                 showConfessionHub();
             }
+            break;
+        case 'openRecordSpace':
+            openRecordSpace();
             break;
         case 'openMypage':
             if (typeof openMypage === 'function') {
@@ -861,6 +864,9 @@ window.addEventListener('keydown', function (e) {
 
 // global 스코프 노출
 window.showConfessionHub = showConfessionHub;
+// 261124 작가: 메뉴의 RECORD = 기억 만들기 (로그인 안 했으면 그 화면이 관문을 띄운다). 메뉴 클릭은 window[data-action] 을 부른다.
+function openRecordSpace() { window.location.href = 'record-space.html?lang=' + encodeURIComponent(getCurrentLanguage()); }
+window.openRecordSpace = openRecordSpace;
 window.startBeginner = startBeginner;
 window.startRitual = startRitual;
 window.showArchitectLocked = showArchitectLocked;

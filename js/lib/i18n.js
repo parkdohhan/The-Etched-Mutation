@@ -20,7 +20,7 @@ const STRINGS = {
 
         'menu.desc.play':      'Look for another memory.',
         'menu.desc.archive':   'The memories you have entered.',
-        'menu.desc.record':    'Document new memories and leave traces of mutation.',
+        'menu.desc.record':    'A place to set down a memory — make one.',
         'menu.desc.profile':   'Manage personal profile and synchronization settings.',
         'menu.desc.portfolio': 'Explore the origin and architect of The Etched Mutation. (Opens in a new tab)',
 
@@ -186,16 +186,17 @@ const STRINGS = {
 
     ko: {
         // ── Opening / Menu ────────────────────────────────────────
-        'menu.play':      '다른 기억을 찾아서',
-        'menu.archive':   '내 기억',
-        'menu.record':    '기록',
+        // 261124 작가: 메뉴 이름은 풀어 쓰지 않고 영어 이름을 한글로 ("나의 기억" 말고 "아카이브")
+        'menu.play':      '플레이',
+        'menu.archive':   '아카이브',
+        'menu.record':    '레코드',
         'menu.profile':   '프로필',
         'menu.portfolio': '포트폴리오 ↗',
-        'menu.settings':  '설정',
+        'menu.settings':  '세팅',
 
         'menu.desc.play':      '다른 기억을 찾아서 — 새 결을 만난다.',
         'menu.desc.archive':   '내가 들어간 기억의 결.',
-        'menu.desc.record':    '새 기억을 기록하고 변이의 흔적을 남긴다.',
+        'menu.desc.record':    '한 기억을 놓아 두는 자리 — 기억 만들기.',
         'menu.desc.profile':   '프로필과 동기화 설정을 관리한다.',
         'menu.desc.portfolio': 'The Etched Mutation의 기원과 제작자를 탐색한다. (새 탭으로 열림)',
 
