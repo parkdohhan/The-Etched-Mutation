@@ -185,8 +185,8 @@ export class UIManager {
         list.innerHTML = '';
         if (sortedMemories.length === 0) {
             const emptyMsg = playedOnly
-                ? (_archiveLang === 'ko' ? '아직 박은 기억이 없어. 새 기억을 찾아봐.' : 'No memories yet. Look for a new one.')
-                : (_archiveLang === 'ko' ? '이 결에 박힌 기억이 없어.' : 'No memories found in this category.');
+                ? (_archiveLang === 'ko' ? '아직 들어간 기억이 없어. 새 기억을 찾아봐.' : 'No memories yet. Look for a new one.')
+                : (_archiveLang === 'ko' ? '이 결의 기억은 아직 없어.' : 'No memories found in this category.');
             list.innerHTML = `<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">${emptyMsg}</div>`;
             return;
         }
