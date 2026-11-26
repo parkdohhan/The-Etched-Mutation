@@ -555,9 +555,9 @@ function activateCurrentCarouselItem() {
             break;
         case 'enterMyArchive':
             // V2-13 (γ-full): ARCHIVE 메뉴 = 내가 박은 메모리만. window.__archivePlayedOnly + enterArchive.
-            window.__archivePlayedOnly = true;
+            // 261124: ARCHIVE = the shelves of the people whose memories I have walked (docs/아카이브_사람칸_결정-261124.md)
             if (typeof enterArchive === 'function') {
-                enterArchive();
+                enterArchive({ shelves: true });
             }
             break;
         case 'showConfessionHub':
@@ -642,8 +642,7 @@ window.enterPlayIntro = enterPlayIntro;
 // V2-13 (γ-full): 메뉴 자리 click handler 박은 자리 = window 자리. 두 자리 박음.
 window.enterPlayInterview = function() { if (typeof enterPlayIntro === 'function') enterPlayIntro(); };
 window.enterMyArchive = function() {
-  window.__archivePlayedOnly = true;
-  if (typeof enterArchive === 'function') enterArchive();
+  if (typeof enterArchive === 'function') enterArchive({ shelves: true });   // 261124: people's shelves
 };
 // v2: 오프닝 시퀀스가 직접 매칭 호출
 window._finderMatch = _finderMatch;

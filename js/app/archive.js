@@ -36,6 +36,7 @@ import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
 import { computeArchiveWaveData } from '../shared/math.js';
 import { enterPlayReplaySequence } from './opening.js';
+import { buildShelves, startChain, clearChain, AUTHOR_CODES } from '../shared/person_shelf.js?v=261124a';   // 261124: ARCHIVE = people's shelves
 
 // V2-13 (γ-full, 5-11): 메뉴 → "다른 기억을 찾아서" 자리.
 // 옛 자리 = _initMemoryFinder (memoryFinderContainer DOM + 두 줄 멘트 + 결과 도어 6개 늘어선 자리).
@@ -759,6 +760,8 @@ async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const 
   // 261123: 목록 칸에는 시작할 때 그려 둔 옛 견본 카드(E-001 "The Jacket on the Chair" 등)가 남아 있다.
   // 서버에서 기억을 받아 오는 몇 초 동안 그것이 그대로 보이다가 사라졌다(작가 보고). 받아 오기 전에 칸을 비운다.
   if (memoryListEl) memoryListEl.innerHTML = '<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">…</div>';
+  clearChain();                                                             // a shelf's chain left half-walked does not follow into another walk
+  if (opts && opts.shelves) { if (archiveControlsEl) archiveControlsEl.style.display = 'none'; await renderShelves(memoryListEl); appStore.setState({ currentMode: 'archive' }); stopArchiveWaveAnimation(); const f = document.querySelector('.footer'); if (f) f.classList.add('visible'); return; }
   try {
     await loadMemoriesFromSupabase();
     sortMemories('all');
@@ -770,6 +773,52 @@ async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const 
   const footer = document.querySelector('.footer');
   if (footer) footer.classList.add('visible');
   setTimeout(() => { showNpcDialogue(t('archive.enterNotice'), 6000, t('anotherme.label')); }, 600);
+}
+// 261124 (docs/아카이브_사람칸_결정-261124.md): the ARCHIVE menu shows people, not memories — "가명 · 기억 N",
+// only the people whose memory this browser has walked. A shelf opened = that person's memories, first one first.
+async function renderShelves(listEl) {
+  if (!listEl) return;
+  const lang = getCurrentLanguage() === 'en' ? 'en' : 'ko';
+  const ko = lang === 'ko';
+  let rows = [];
+  try {
+    await waitForSupabaseClient(8000);
+    const client = getSupabaseClient();
+    const cols = 'id, code, title, curator_id, created_at, is_public, meta';
+    const [own, author] = await Promise.all([
+      client.from('memories').select(cols).not('meta->space_record', 'is', null).eq('is_public', true),
+      client.from('memories').select(cols).eq('code', AUTHOR_CODES[lang]),
+    ]);
+    if (own.error) throw own.error;
+    rows = (own.data || []).concat(author.data || []);
+  } catch (e) {
+    console.warn('[archive] shelves', e);
+    listEl.innerHTML = `<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">${ko ? '지금은 불러오지 못했어.' : 'It could not be loaded right now.'}</div>`;
+    return;
+  }
+  const shelves = buildShelves(rows, lang);
+  listEl.innerHTML = '';
+  if (!shelves.length) {
+    listEl.innerHTML = `<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">${ko ? '아직 걸어 본 기억이 없어.' : 'No memory walked yet.'}</div>`;
+    return;
+  }
+  for (const sh of shelves) {
+    const card = document.createElement('div');
+    card.className = 'memory-card person-card';
+    const name = document.createElement('div'); name.className = 'memory-card-title'; name.textContent = sh.name;
+    const count = document.createElement('div'); count.className = 'memory-card-meta'; count.textContent = ko ? `기억 ${sh.memories.length}` : (sh.memories.length === 1 ? '1 memory' : `${sh.memories.length} memories`);
+    card.appendChild(name); card.appendChild(count);
+    card.addEventListener('click', () => openShelf(sh, lang));
+    listEl.appendChild(card);
+  }
+}
+function openShelf(shelf, lang) {
+  const ids = shelf.memories.map((m) => m.id);
+  if (!ids.length) return;
+  startChain(ids);
+  try { sessionStorage.setItem('tem_archive_memory_id', String(ids[0])); sessionStorage.setItem('tem_archive_lang', lang); } catch (_) {}
+  const first = shelf.memories[0];
+  window.location.href = _spaceStageUrl(first, lang) || `space-blank.html?memory=${encodeURIComponent(first.id)}&lang=${encodeURIComponent(lang)}`;
 }
 function filterByCategory(category, btnElement) {
     if (!category) return;

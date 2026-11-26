@@ -43,6 +43,7 @@ import { replayFromPlays, getPresentationState } from '../core/ContaminationTrac
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261124a';
 import { createBackDoors } from './backdoor.js?v=261123b3';
+import { markWalked, chainNext, clearChain } from '../shared/person_shelf.js?v=261124a';   // 261124: ARCHIVE = people's shelves (docs/아카이브_사람칸_결정-261124.md)
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -350,7 +351,7 @@ async function boot() {
   pause = createEscMenu({ ko, setVolume: (v) => { air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
     onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
     onClose: (byHand) => { letGo = false; if (byHand && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !map.isOpen()) cosmos.relock(); },
-    onLeave: () => { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); } });
+    onLeave: () => { clearChain(); try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); } });
   Object.assign(window.__space, { cosmos, talk, map, air, finish, pause, hand, lex, useBlank, HOLE, backs });
   setupFlyButton();
   // the map without first letting the cursor go: the right mouse button (author, 261123 — Esc, then a press, was one step too many)
@@ -361,6 +362,7 @@ async function boot() {
   const first = firstScene();
   const begin = async () => {
     $('spEntry').classList.add('gone');
+    if (KEPT) markWalked(run.memory.id);                                   // 261124: this browser has walked this memory → its owner's shelf shows in ARCHIVE
     cosmos.ensureAudio();
     if (!AT && qs.get('prologue') !== '0') {                            // 261124: the prologue of the space stage (spaceplay/prologue.js). ?prologue=0 skips it
       try { run.prologue = await runPrologue({ cosmos, run, data, lang: LANG, fast: FAST, hint, auto: MODE === 'test', onDark: () => map.make() }); }
@@ -869,6 +871,8 @@ async function finish() {
       others: othersWalks(), title: run.memory.title || '', scroll: $('spScroll'), scrollInner: $('spScrollInner'), swaps: run.swaps.filter((w) => !w.inherited), inherited: run.inherited.length });
   } catch (e) { console.error('[space] finale', e); toast(ko ? '끝 화면을 그리지 못했습니다' : 'The ending could not be drawn'); await wait(2500); }
   await veil(true);
+  // 261124: walked from a person's shelf in ARCHIVE → that person's next memory, in the order they went up (its entry screen: a press, so its sound can start)
+  { const next = DEMO ? null : chainNext(run.memory.id); if (next) { location.href = `space-blank.html?memory=${encodeURIComponent(next)}&lang=${encodeURIComponent(LANG)}`; return; } }
   // after the ending: the main screen (the menu), not the opening (author, 261121). index.html reads this once and skips the opening (js/app/bindEvents.js)
   const back = qs.get('back');
   if (!back) { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} }

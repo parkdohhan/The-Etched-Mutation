@@ -108,6 +108,9 @@ body.rs::-webkit-scrollbar { width: 6px; } body.rs::-webkit-scrollbar-thumb { ba
 .rs-sheet ul { list-style: none; margin: 0; padding: 0; }
 .rs-sheet li { font-size: 1.04rem; line-height: 2.2; color: var(--rp-text); word-break: keep-all; padding-left: 1.1rem; position: relative; }
 .rs-sheet li::before { content: '·'; position: absolute; left: 0; color: var(--rp-accent); }
+.rs-pen { display: block; margin: 1.8rem 0 0; }
+.rs-pen > span:first-child { display: block; font-size: 0.78rem; letter-spacing: 0.18em; color: var(--rp-dim); margin-bottom: 0.2rem; }
+.rs-pen-note { display: block; min-height: 1.2em; margin-top: 0.4rem; font-size: 0.86rem; color: var(--rp-accent); }
 .rs-sheet-check { display: flex; align-items: center; gap: 0.7rem; margin: 2rem 0 1.4rem; font-size: 0.92rem; color: #a39fab; cursor: pointer; }
 .rs-sheet-check input { width: 14px; height: 14px; accent-color: #c4a882; }
 .rs-sheet-btns { display: flex; gap: 1.4rem; align-items: center; }

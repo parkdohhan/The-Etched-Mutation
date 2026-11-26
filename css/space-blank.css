@@ -16,8 +16,10 @@ body.sp .rp-line.rp-ghost.rp-left .rp-src { font-style: normal; }
 .sb-s, .sb-j { display: inline; }
 /* a word a hole can be held against: nothing is shown until a hole is in hand; then, on hovering, it lifts a little */
 body.sb-held .sb-t.sb-can { cursor: pointer; transition: color 900ms ease, text-shadow 900ms ease; }
-body.sb-held .sb-t.sb-can:hover .sb-s { color: #efe9e0; text-shadow: 0 0 14px rgba(196,168,130,0.35); }
-body.sb-held .sb-t.sb-can:hover .sb-s::after { content: ''; display: block; height: 1px; margin-top: -0.1em; background: rgba(196,168,130,0.45); }
+body.sb-held .sb-t.sb-can:hover .sb-s { color: #efe9e0; text-shadow: 0 0 14px rgba(196,168,130,0.35);
+  /* 261124: the underline is the text's own (it takes no room). It was a block ::after under the word: on hover it pushed the word
+     off the pointer, so a press landed on the line, not the word, and nothing happened */
+  text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: rgba(196,168,130,0.45); text-underline-offset: 0.3em; }
 .sb-t.sb-going .sb-s { color: #efe9e0; }
 .sb-s.sb-was { color: #8f8b99; font-style: italic; }
 /* the hole itself: the same letters wherever it is */

@@ -14,8 +14,11 @@
 //   { lang: 'ko'|'en', title, description?, scenes: [ { text, b?: string[]|string, words?: string[], deep?: string[],
 //       emotion: { axis: 0..1 }, thing?: recipe|null, sound_url?: string|null, sound_volume?: 0..1,
 //       dialog?: [{role, content}], measured?: [vec] } ],
-//     consent: { public: true, walks: true, order: true, thread: true, at }, client?: { startedAt } }
+//     consent: { public: true, walks: true, order: true, thread: true, at }, pen_name: string, client?: { startedAt } }
 // Response: { ok: true, memoryId, code, sceneIds, thread: runId|null } | { ok: false, error }
+// 261124: pen_name (1–20 letters) — the name the ARCHIVE shelf of this person shows (docs/아카이브_사람칸_결정-261124.md).
+//   Stored in meta.space_record.pen_name. Refused when it equals the account's login ID (profiles.username): the ID is
+//   half of a login and the profiles table is owner-only for that reason.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -178,6 +181,14 @@ serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   if (!supabaseUrl || !serviceKey) return json(cors, 500, { ok: false, error: "Server config missing" });
+  const penName = str(body?.pen_name, 20);
+  if (!penName) return json(cors, 400, { ok: false, error: "pen name required" });
+  {
+    const { data: prof } = await createClient(supabaseUrl, serviceKey).from("profiles").select("username").eq("id", user.id).maybeSingle();
+    if (prof && typeof prof.username === "string" && prof.username.trim().toLowerCase() === penName.toLowerCase()) {
+      return json(cors, 400, { ok: false, error: "pen name is login id" });
+    }
+  }
   const soundPrefix = supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/public/scene_sounds/";
 
   const scenesIn: any[] = Array.isArray(body?.scenes) ? body.scenes.slice(0, MAX_SCENES) : [];
@@ -232,6 +243,7 @@ serve(async (req: Request) => {
           started_at: str(body?.client?.startedAt, 40) || null,
           sealed_at: now.toISOString(),
           by: user?.id ? "user" : "anon",
+          pen_name: penName,
         },
       },
     }).select("id, code").single();

@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/room-play.css?v=261121b" />
-  <link rel="stylesheet" href="css/record-space.css?v=261124b" />
+  <link rel="stylesheet" href="css/record-space.css?v=261124c" />
   <link rel="stylesheet" href="css/tem_cursor.css?v=260809" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -56,6 +56,7 @@
     <div class="rs-sheet-box">
       <h2 class="rs-sheet-title" id="rsConsentTitle"></h2>
       <ul id="rsConsentList"></ul>
+      <label class="rs-pen"><span id="rsPenLabel"></span><input class="rs-input" id="rsPen" type="text" maxlength="20" autocomplete="off" spellcheck="false" /><span class="rs-pen-note" id="rsPenNote"></span></label>
       <label class="rs-sheet-check"><input type="checkbox" id="rsConsentCheck" /><span id="rsConsentCheckLabel"></span></label>
       <div class="rs-sheet-btns">
         <button class="rp-btn rs-primary" id="rsConsentGo" type="button" disabled></button>
@@ -122,6 +123,6 @@
     </article>
   </template>
 
-  <script type="module" src="js/recordspace/main.js?v=261124d"></script>
+  <script type="module" src="js/recordspace/main.js?v=261124c"></script>
 </body>
 </html>

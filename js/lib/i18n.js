@@ -19,7 +19,7 @@ const STRINGS = {
         'menu.settings':   'SETTINGS',
 
         'menu.desc.play':      'Look for another memory.',
-        'menu.desc.archive':   'The memories you have entered.',
+        'menu.desc.archive':   'The people whose memories you have walked.',
         'menu.desc.record':    'A place to set down a memory — make one.',
         'menu.desc.profile':   'Manage personal profile and synchronization settings.',
         'menu.desc.portfolio': 'Explore the origin and architect of The Etched Mutation. (Opens in a new tab)',
@@ -195,7 +195,7 @@ const STRINGS = {
         'menu.settings':  '세팅',
 
         'menu.desc.play':      '다른 기억을 찾아서 — 새 결을 만난다.',
-        'menu.desc.archive':   '내가 들어간 기억의 결.',
+        'menu.desc.archive':   '걸어 본 기억의 주인들.',
         'menu.desc.record':    '한 기억을 놓아 두는 자리 — 기억 만들기.',
         'menu.desc.profile':   '프로필과 동기화 설정을 관리한다.',
         'menu.desc.portfolio': 'The Etched Mutation의 기원과 제작자를 탐색한다. (새 탭으로 열림)',

@@ -59,7 +59,8 @@ const L = {
     needTitle: '제목이 없어', needScene: '장면이 없어', needText: (ns) => `글이 없는 장면: ${ns.join(', ')}`, needEmotion: (ns) => `감정이 없는 장면: ${ns.join(', ')}`,
     orderLine: (n) => `장면 ${n}개 · 이 순서가 첫 실이 된다`,
     consentTitle: '올리기 전에',
-    consent: ['이 기억은 공개돼. 누구나 걸을 수 있어.', '남의 걸음이 쌓이면 장면의 글이 바뀌어. 그 사람들 말이 들어와.', '니 순서대로 플레이 안 됨 ㅋ 첫 번째 실일 뿐임. 문은 엔진이 열어.', '네가 정한 순서는 첫 걸음으로 장부에 남아.'],
+    consent: ['이 기억은 공개돼. 누구나 걸을 수 있어.', '남의 걸음이 쌓이면 장면의 글이 바뀌어. 그 사람들 말이 들어와.', '니 순서대로 플레이 안 됨 ㅋ 첫 번째 실일 뿐임. 문은 엔진이 열어.', '네가 정한 순서는 첫 걸음으로 장부에 남아.', '네 기억들은 아래 이름으로 한데 모여 보여. 누르면 올린 순서대로 이어서 걷게 돼.'],
+    penLabel: '이 이름 아래 둔다', penPh: '가명. 아이디나 진짜 이름은 쓰지 마.', penIsId: '그건 아이디야. 다른 이름으로.', penNeed: '이름이 없어',
     consentCheck: '다 읽었고, 그래도 올린다.', consentGo: '올린다', consentNo: '아직',
     sealing: '묻는 중……', sealed: '묻었어. 이제, 들어가 봐.', sealFail: '지금은 묻히지 않아. 잠시 뒤에 다시.', testNote: '연습: 서버에 저장하지 않았다. 내용은 콘솔에.',
     thread: '첫 실까지 놓였다', noThread: '첫 실은 놓이지 않았다 (기억은 올라갔다)',
@@ -87,7 +88,8 @@ const L = {
     needTitle: 'no title', needScene: 'no scene', needText: (ns) => `scenes without text: ${ns.join(', ')}`, needEmotion: (ns) => `scenes without an emotion: ${ns.join(', ')}`,
     orderLine: (n) => `${n} scenes · this order becomes the first thread`,
     consentTitle: 'before it goes up',
-    consent: ['This memory is public. Anyone can walk it.', 'As others walk it, the scenes\' texts change. Their words come in.', 'It will not play in your order lol. Your order is only the first thread. The engine opens the doors.', 'The order you set is written into the ledger as the first walk.'],
+    consent: ['This memory is public. Anyone can walk it.', 'As others walk it, the scenes\' texts change. Their words come in.', 'It will not play in your order lol. Your order is only the first thread. The engine opens the doors.', 'The order you set is written into the ledger as the first walk.', 'Your memories are shown together under the name below. Opened, they are walked one after another, in the order they went up.'],
+    penLabel: 'kept under this name', penPh: 'a pen name. not your ID, not your real name.', penIsId: 'that is your ID. another name, please.', penNeed: 'no name',
     consentCheck: 'I read it all, and I put it up anyway.', consentGo: 'put it up', consentNo: 'not yet',
     sealing: 'burying……', sealed: 'buried. now, go in.', sealFail: 'it will not bury right now. try again in a while.', testNote: 'practice: nothing was saved. the payload is in the console.',
     thread: 'the first thread is laid', noThread: 'the first thread was not laid (the memory is up)',
@@ -369,12 +371,26 @@ function payload() {
       dialog: s.dialog.slice(0, 40), measured: s.measured.slice(0, 12),
     })),
     consent: { public: true, walks: true, order: true, thread: true, at: new Date().toISOString() },
+    pen_name: penName(),
     client: { startedAt: S.startedAt, test: TEST },
   };
 }
 function openConsent() {
   const sh = $('rsConsent'); sh.hidden = false; requestAnimationFrame(() => sh.classList.add('on'));
-  $('rsConsentCheck').checked = false; $('rsConsentGo').disabled = true;
+  $('rsConsentCheck').checked = false; $('rsPenNote').textContent = ''; goable();
+  if (!$('rsPen').value.trim()) lastPenName().then((n) => { if (n && !$('rsPen').value.trim()) { $('rsPen').value = n; goable(); } });
+}
+// 261124 (docs/아카이브_사람칸_결정-261124.md): the pen name the ARCHIVE shelf shows. Last one used is offered again.
+const penName = () => $('rsPen').value.replace(/\s+/g, ' ').trim().slice(0, 20);
+function goable() { $('rsConsentGo').disabled = !($('rsConsentCheck').checked && penName()); }
+async function lastPenName() {
+  try { const n = localStorage.getItem('tem_pen_name:' + (ME || 'anon')); if (n) return n; } catch (_) {}
+  if (!ME || TEST) return '';
+  try {
+    const { data: rows } = await sb().from('memories').select('meta, created_at').eq('curator_id', ME).order('created_at', { ascending: false }).limit(10);
+    for (const r of rows || []) { const n = r && r.meta && r.meta.space_record && r.meta.space_record.pen_name; if (n) return String(n); }
+  } catch (_) {}
+  return '';
 }
 function closeConsent() { const sh = $('rsConsent'); sh.classList.remove('on'); setTimeout(() => { sh.hidden = true; }, 900); }
 async function seal() {
@@ -389,7 +405,7 @@ async function seal() {
     const resp = await sb().functions.invoke('record-space-seal', { body });
     const d = resp && resp.data;
     if (!resp || resp.error || !d || !d.ok) throw new Error((d && d.error) || (resp && resp.error && resp.error.message) || 'seal');
-    try { localStorage.setItem('tem_first_play:' + d.memoryId, String(Date.now())); localStorage.setItem('tem_space_record:' + d.memoryId, S.title.trim()); } catch (_) {}
+    try { localStorage.setItem('tem_first_play:' + d.memoryId, String(Date.now())); localStorage.setItem('tem_space_record:' + d.memoryId, S.title.trim()); localStorage.setItem('tem_pen_name:' + (ME || 'anon'), body.pen_name); } catch (_) {}
     console.info('[record-space] sealed', d);
     dropDraft();
     await typeText(line, T.sealed, { per: 60 });
@@ -398,8 +414,10 @@ async function seal() {
     location.href = `space-blank.html?memory=${encodeURIComponent(d.memoryId)}&lang=${encodeURIComponent(LANG)}&from=record`;   // 261124 작가: 만든 사람도 다른 관객과 같은 판(빈 자리) — 원래 우주 화면이 아님
   } catch (e) {
     console.error('[record-space] seal failed', e);
-    await typeText(line, /login required/.test(String(e && e.message)) ? T.needLogin : T.sealFail, { per: 40 }); await wait(2600);
+    const isId = /pen name is login id/.test(String(e && e.message));
+    await typeText(line, /login required/.test(String(e && e.message)) ? T.needLogin : isId ? T.penIsId : T.sealFail, { per: 40 }); await wait(2600);
     veil.classList.remove('on'); S.busy = false; check();
+    if (isId) { openConsent(); $('rsPenNote').textContent = T.penIsId; $('rsPen').focus(); }
   }
 }
 
@@ -521,7 +539,9 @@ async function boot() {
   $('rsMemDesc').addEventListener('input', (e) => { S.desc = e.target.value; });
   $('rsAddScene').addEventListener('click', () => { const sc = addScene(); if (sc) { sc.el.scrollIntoView({ behavior: 'smooth', block: 'start' }); sc.el.querySelector('.f-text').focus(); } });
   $('rsPublish').addEventListener('click', () => { check(); if (!$('rsPublish').disabled) openConsent(); });
-  $('rsConsentCheck').addEventListener('change', (e) => { $('rsConsentGo').disabled = !e.target.checked; });
+  $('rsConsentCheck').addEventListener('change', goable);
+  $('rsPen').addEventListener('input', () => { $('rsPenNote').textContent = ''; goable(); });
+  $('rsPenLabel').textContent = T.penLabel; $('rsPen').placeholder = T.penPh;
   $('rsConsentGo').addEventListener('click', seal);
   $('rsConsentNo').addEventListener('click', closeConsent);
   window.addEventListener('beforeunload', (e) => { if (!leaving && !S.busy && (S.title.trim() || S.scenes.some((s) => s.text.trim()))) { e.preventDefault(); e.returnValue = ''; } });
