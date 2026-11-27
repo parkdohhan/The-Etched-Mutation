@@ -309,10 +309,14 @@ const SETS = { 'UNDW-001': UNDW, 'UNDW-001-EN': UNDW };
 export function isSilent(scene) { return !!(scene.void_info && scene.void_info.sceneVoid) || /^[…\s.]*$/.test(scene.text || ''); }
 
 /** @returns { g, h, tick(time, dt), setAsked(on), asked } */
+/** Is there a hand-drawn thing in this file for the scene? (the editing tool, memory-edit.html, asks) */
+export function hasHandDrawn(memoryCode, scene) { return !!((SETS[memoryCode] || {})[scene.scene_order]); }
 export function makeThing(memoryCode, scene) {
   const set = SETS[memoryCode] || {};
   const own = sanitizeRecipe(scene.meta && scene.meta.space && scene.meta.space.thing);   // a memory made in record-space.html: its thing is a recipe
-  const make = isSilent(scene) ? COMMON.silent : (set[scene.scene_order] || (own ? () => fromRecipe(own) : COMMON.other));
+  // 261128 (the editing tool): a scene whose hand-drawn thing the author has replaced carries meta.space.thing_over — then its recipe stands instead
+  const over = !!(own && scene.meta && scene.meta.space && scene.meta.space.thing_over === true);
+  const make = isSilent(scene) ? COMMON.silent : (over ? () => fromRecipe(own) : (set[scene.scene_order] || (own ? () => fromRecipe(own) : COMMON.other)));
   const th = make();
   const lines = [];
   th.g.traverse((o) => { if (o.isLine) { o.userData.solid = o.material; lines.push(o); } });

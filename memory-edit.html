@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEM — 기억 고치기</title>
+  <!--
+    기억 고치기 (2026-11-28 밤, 작가: "기억 수정할 수 있는 edit 툴도 만들어줘, 조형물이 맘에 안 들어서").
+    로그인한 계정이 주인(memories.curator_id)인 기억만 열린다. 고칠 수 있는 것: 장면의 조형물(다시 받기 → 바꾸기) · 앞 토막(글) · 뒷 토막.
+    쓰기는 계정의 권한으로 직접 한다(주인만 자기 기억의 장면을 고칠 수 있다 — DB 정책). 저장을 누르는 즉시 사이트에 반영된다.
+    조형물은 기억 만들기 화면과 같은 서버 장치(generate-scene-thing)에서 받는다. 손으로 그린 조형물(대표 기억)을 바꾸면
+    scenes.meta.space.thing_over 가 서고, "손으로 그린 것으로 되돌린다"로 내릴 수 있다.
+    주소: memory-edit.html (메뉴에는 없다) · ?memory=<코드 또는 id> 로 바로 그 기억
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/memory-edit.css?v=261128a" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <header class="me-head">
+    <a class="me-back" href="./">← 메뉴</a>
+    <h1 id="meTitle">기억 고치기</h1>
+    <p class="me-note" id="meNote"></p>
+  </header>
+
+  <nav class="me-list" id="meList" aria-label="내 기억"></nav>
+
+  <div class="me-work" id="meWork" hidden>
+    <section class="me-scenes" id="meScenes" aria-label="장면"></section>
+    <aside class="me-side" id="meSide" aria-label="조형물">
+      <p class="k" id="meSideK">장면을 고르면 조형물이 여기 선다</p>
+      <canvas class="me-canvas" id="meCanvas"></canvas>
+      <p class="me-what" id="meWhat"></p>
+      <div class="me-row" id="meThingRow" hidden>
+        <button type="button" id="meAgain">다시 받기</button>
+        <button type="button" id="meTake" hidden>이걸로 바꾼다</button>
+        <button type="button" id="meDrop" hidden>버린다</button>
+        <button type="button" id="meHand" hidden>손으로 그린 것으로 되돌린다</button>
+      </div>
+      <p class="me-status" id="meStatus" aria-live="polite"></p>
+    </aside>
+  </div>
+
+  <script type="module" src="js/memoryedit/main.js?v=261128a"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+/* 기억 고치기 (2026-11-28) — 작가·기억의 주인이 쓰는 도구. 무대가 아니라 작업 화면: 읽기 쉽게, 꾸밈 없이. */
+:root { --bg: #000; --text: #e8e4df; --dim: #8f8b99; --faint: #55525c; --line: rgba(232,228,223,0.16); --accent: #c4a882; --lit: #f2cb57; }
+* { box-sizing: border-box; }
+html { font-size: clamp(15px, 1vw, 20px); }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Serif KR', 'Nanum Myeongjo', serif; font-weight: 300; line-height: 1.9; }
+button { font: inherit; color: var(--text); background: transparent; border: 1px solid rgba(196,168,130,0.45); padding: 0.35rem 1rem; letter-spacing: 0.08em; font-size: 0.82rem; cursor: pointer; transition: background 500ms ease, border-color 500ms ease, opacity 500ms ease; }
+button:hover { background: rgba(196,168,130,0.12); border-color: var(--accent); }
+button:disabled { opacity: 0.35; cursor: default; }
+
+.me-head { padding: 2.2rem 5vw 1.2rem; border-bottom: 1px solid var(--line); }
+.me-back { color: var(--dim); text-decoration: none; font-size: 0.8rem; letter-spacing: 0.1em; }
+.me-back:hover { color: var(--text); }
+.me-head h1 { margin: 0.8rem 0 0.2rem; font-size: 1.2rem; font-weight: 400; letter-spacing: 0.2em; }
+.me-note { margin: 0; font-size: 0.82rem; color: var(--dim); min-height: 1.6em; }
+
+.me-list { display: flex; flex-wrap: wrap; gap: 0.6rem; padding: 1.2rem 5vw; }
+.me-list button.on { border-color: var(--lit); color: var(--lit); }
+
+.me-work { display: grid; grid-template-columns: minmax(0, 1fr) min(26rem, 36vw); gap: 2.5rem; padding: 0.5rem 5vw 6rem; align-items: start; }
+.me-scene { border-top: 1px solid var(--line); padding: 1.3rem 0 1.5rem; cursor: pointer; }
+.me-scene.on { border-top-color: var(--lit); }
+.me-scene .n { font-size: 0.74rem; letter-spacing: 0.16em; color: var(--faint); margin: 0 0 0.5rem; display: flex; gap: 1rem; align-items: baseline; }
+.me-scene.on .n { color: var(--lit); }
+.me-scene .n .tag { color: var(--dim); letter-spacing: 0.06em; }
+.me-scene label { display: block; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--faint); margin: 0.7rem 0 0.25rem; }
+.me-scene textarea { width: 100%; min-height: 5.2rem; resize: vertical; background: rgba(255,255,255,0.03); border: 1px solid var(--line); color: var(--text); font: inherit; font-size: 0.95rem; line-height: 1.9; padding: 0.6rem 0.8rem; outline: none; }
+.me-scene textarea:focus { border-color: var(--accent); }
+.me-scene textarea.b { min-height: 4rem; color: #b9b4c6; }
+.me-scene .row { display: flex; gap: 0.8rem; align-items: baseline; margin-top: 0.6rem; }
+.me-scene .saved { font-size: 0.76rem; color: var(--dim); }
+.me-scene .now { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--dim); }
+.me-scene .now b { font-weight: 300; color: var(--lit); }
+
+.me-side { position: sticky; top: 1.2rem; }
+.me-side .k { margin: 0 0 0.6rem; font-size: 0.74rem; letter-spacing: 0.12em; color: var(--faint); }
+.me-canvas { width: 100%; aspect-ratio: 4 / 3; display: block; background: #000; border: 1px solid var(--line); }
+.me-what { margin: 0.6rem 0 0.8rem; font-size: 0.84rem; color: #b9b4c6; min-height: 1.7em; }
+.me-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.me-status { margin: 0.8rem 0 0; font-size: 0.8rem; color: var(--dim); min-height: 1.6em; }
+
+@media (max-width: 860px) {
+  .me-work { grid-template-columns: 1fr; }
+  .me-side { position: static; order: -1; }
+}
