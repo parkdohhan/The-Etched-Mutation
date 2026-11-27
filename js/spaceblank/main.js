@@ -37,13 +37,14 @@ import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
 import { runFinale } from './finale.js?v=261124a';
-import { runPrologue } from '../spaceplay/prologue.js?v=261128a';
+import { runPrologue } from '../spaceplay/prologue.js?v=261128b';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
 import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261124a';
 import { createBackDoors } from './backdoor.js?v=261123b3';
 import { markWalked, chainNext, clearChain, takeGateAnswer, GATE_HOLE } from '../shared/person_shelf.js?v=261128a';
+import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author: "slips of the hand like this — sift them out"): what is typed is tidied before anything is done with it
 import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';   // 261128: a walk under a no-trace ID (june) is written nowhere   // 261124: ARCHIVE = people's shelves · 261128: the gate (docs/아카이브_기억칸_질문_결정-261128.md)
 
 const $ = (id) => document.getElementById(id);
@@ -303,7 +304,7 @@ function createTalk() {
     setTimeout(() => { if (!('ontouchstart' in window)) field.focus(); }, 300);
     return new Promise((resolve) => {
       const done = (v) => { box.classList.remove('on'); setTimeout(() => { if (!box.classList.contains('on')) box.innerHTML = ''; }, 900); resolve(v); };
-      const submit = () => { const text = field.value.trim(); if (!text) { field.focus(); return; } done({ text }); };
+      const submit = () => { const text = tidyLine(field.value); if (!text) { field.value = ''; field.focus(); return; } done({ text }); };   // a line of loose letters only is no line: the field is emptied and waits
       send.addEventListener('click', submit);
       field.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) submit(); });
       if (silentBtn) silentBtn.addEventListener('click', () => done({ silent: true }));
@@ -311,6 +312,9 @@ function createTalk() {
   }
   return Object.assign({}, room, { ask });
 }
+
+/** The archive's one blank was typed on another page: tidied here, where it is taken up. Nothing left of it = it was not written. */
+function tidyGate(g) { if (!g) return g; const text = tidyLine(g.text); return text ? Object.assign({}, g, { text }) : null; }
 
 // ── boot ───────────────────────────────────────────────────────────────────
 async function boot() {
@@ -332,6 +336,7 @@ async function boot() {
   }
   run.engine = createEngine(run.scenes, { frame: qs.get('frame') });
   [run.ghosts, run.rows] = await Promise.all([data.loadGhostLines(run.memory.id), loadLedger(run.memory.id)]);
+  run.ghosts = run.ghosts.map((g) => Object.assign({}, g, { utterance: tidyLine(g.utterance) })).filter((g) => g.utterance);   // 261128: lines kept before the tidying rule are tidied when read back (js/shared/tidy_line.js)
   { const rg = rigOf(run.memory, qs), n = rg && Number(rg.ghost_min_len); if (n > 0) run.ghosts = run.ghosts.filter((g) => String(g.utterance).trim().length >= n); }
   run.acc = accumulate(run.scenes, run.rows, run.engine.axes, [data.TEST_PERSONA]);
   run.inherited = inheritSwaps(await loadBlankJournals(run.memory.id)); run.swaps = run.inherited.slice();   // what earlier walkers changed is read as changed (two in three)
@@ -364,7 +369,7 @@ async function boot() {
   if (PEEK) { takeGateAnswer(run.memory.id); return peek(); }
   // 261128: the answer written in the empty place of the memory's one sentence (ARCHIVE card), if there is one. It is read
   // while the prologue runs. Not for the demo link (its route is written) nor for a practice run that starts elsewhere.
-  const gateAnswer = takeGateAnswer(run.memory.id);
+  const gateAnswer = tidyGate(takeGateAnswer(run.memory.id));
   const entryP = pickEntry((DEMO || AT) ? null : gateAnswer).catch((e) => { console.warn('[space] gate', e); return { scene: firstScene(), gate: null }; });
   const begin = async () => {
     $('spEntry').classList.add('gone');

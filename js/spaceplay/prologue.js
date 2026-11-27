@@ -31,6 +31,7 @@ import { placeNext } from './topo.js';
 import { makeThing, glowTexture } from './things.js?v=261123c';
 import { createThread, splineThrough, unpackTrack } from './thread.js?v=261123d';
 import { drawAsciiDoor, DOOR_ASPECT } from '../roomplay/asciidoor.js';
+import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128: a line kept with a slip of the hand in it is tidied before it is shown
 
 const FALL_SOUND = 'sounds/fall_air.wav', FALL_GAIN = 0.34;   // about a footstep's loudness (0.30~0.36); grows with the speed of the fall; loops without a seam (one buffer)
 const STREAKS = 460, STREAK_X = 15, STREAK_Y = 26, STREAK_Z = [-28, 6];   // the air: fine specks around the eye that rush up as it falls (a box that follows the eye sideways, not down)
@@ -326,8 +327,8 @@ async function lastWalk(data, run) {
   const said = new Map(), reading = new Map();
   for (const r of (Array.isArray(j.scenes) ? j.scenes : [])) {
     const s = byOrder.get(Number(r.scene_order)); if (!s) continue;
-    const t = (Array.isArray(r.turns) ? r.turns : []).map((x) => x && x.text).find((x) => x && String(x).trim());
-    if (t && !said.has(s.id)) said.set(s.id, String(t).trim());
+    const t = (Array.isArray(r.turns) ? r.turns : []).map((x) => tidyLine(x && x.text)).find(Boolean);
+    if (t && !said.has(s.id)) said.set(s.id, t);
     if (r.user_emotion && !reading.has(s.id)) reading.set(s.id, r.user_emotion);
   }
   let track = j.track ? unpackTrack(j.track) : null;

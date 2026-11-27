@@ -28,13 +28,14 @@ import { createCosmos } from '../spaceplay/cosmos.js?v=261128a';
 import { isSilent } from '../spaceplay/things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
-import { runPrologue } from '../spaceplay/prologue.js?v=261128a';
+import { runPrologue } from '../spaceplay/prologue.js?v=261128b';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
 import { isLocked } from '../roomplay/engine.js';
 import { markWalked, takeGateAnswer } from '../shared/person_shelf.js?v=261128b';
 import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';
+import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author: "slips of the hand like this — sift them out"): what is typed is tidied before anything is done with it
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import * as remain from './remain.js?v=261128d';
 import { runEnding, showOutside } from './ending.js?v=261128f';
@@ -288,7 +289,7 @@ function createTalk() {
     setTimeout(() => { if (!('ontouchstart' in window)) field.focus(); }, 300);
     return new Promise((resolve) => {
       const done = (v) => { box.classList.remove('on'); setTimeout(() => { if (!box.classList.contains('on')) box.innerHTML = ''; }, 900); resolve(v); };
-      const submit = () => { const text = field.value.trim(); if (!text) { field.focus(); return; } done({ text }); };
+      const submit = () => { const text = tidyLine(field.value); if (!text) { field.value = ''; field.focus(); return; } done({ text }); };   // a line of loose letters only is no line: the field is emptied and waits
       send.addEventListener('click', submit);
       field.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) submit(); });
       if (side) side.addEventListener('click', () => done(o.more ? { on: true } : { silent: true }));
@@ -296,6 +297,9 @@ function createTalk() {
   }
   return Object.assign({}, room, { ask });
 }
+
+/** The archive's one blank was typed on another page: tidied here, where it is taken up. Nothing left of it = it was not written. */
+function tidyGate(g) { if (!g) return g; const text = tidyLine(g.text); return text ? Object.assign({}, g, { text }) : null; }
 
 // ── boot ───────────────────────────────────────────────────────────────────
 async function boot() {
@@ -327,9 +331,10 @@ async function boot() {
     baseTexts = Object.assign({}, state.texts);
   }
   walkSlot = state.walks.length;
-  const gateAnswer = TUTOR ? null : takeGateAnswer(run.memory.id);        // what was written in the archive's one blank, if the walker came that way (read once)
+  const gateAnswer = TUTOR ? null : tidyGate(takeGateAnswer(run.memory.id));        // what was written in the archive's one blank, if the walker came that way (read once)
   run.engine = createEngine(run.scenes, { frame: qs.get('frame') });
   [run.ghosts, run.rows] = await Promise.all([data.loadGhostLines(run.memory.id), loadLedger(run.memory.id)]);
+  run.ghosts = run.ghosts.map((g) => Object.assign({}, g, { utterance: tidyLine(g.utterance) })).filter((g) => g.utterance);   // 261128: lines kept before the tidying rule are tidied when read back (js/shared/tidy_line.js)
   { const rg = rigOf(run.memory, qs), n = rg && Number(rg.ghost_min_len); if (n > 0) run.ghosts = run.ghosts.filter((g) => String(g.utterance).trim().length >= n); }
   run.acc = accumulate(run.scenes, run.rows, run.engine.axes, [data.TEST_PERSONA]);
   try { await Promise.race([document.fonts.load('300 64px "Noto Serif KR"', '기억'), new Promise((r) => setTimeout(r, 2500))]); } catch (_) {}
@@ -478,7 +483,7 @@ async function entry(gateAnswer) {
     const answer = await new Promise((resolve) => {
       inp.addEventListener('keydown', async (e) => {
         if (e.key !== 'Enter' || e.isComposing) return;
-        const v = inp.value.trim(); if (!v) return;
+        const v = tidyLine(inp.value); if (!v) { inp.value = ''; return; }
         const g = guard(v);
         if (!g.ok) { inp.value = ''; note.textContent = SHARP + (g.help && helpLine() ? '  ' + helpLine() : ''); return; }
         resolve(v);
