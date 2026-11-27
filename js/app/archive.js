@@ -36,7 +36,7 @@ import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
 import { computeArchiveWaveData } from '../shared/math.js';
 import { enterPlayReplaySequence } from './opening.js';
-import { buildShelves, clearChain, AUTHOR_CODES, gateOf, putGateAnswer, clearGateAnswer } from '../shared/person_shelf.js?v=261128a';   // 261124: people's shelves · 261128: a card per memory, the gate
+import { buildShelves, clearChain, AUTHOR_CODES, gateOf, putGateAnswer, clearGateAnswer } from '../shared/person_shelf.js?v=261128b';   // 261124: people's shelves · 261128: a card per memory, the gate
 
 // V2-13 (γ-full, 5-11): 메뉴 → "다른 기억을 찾아서" 자리.
 // 옛 자리 = _initMemoryFinder (memoryFinderContainer DOM + 두 줄 멘트 + 결과 도어 6개 늘어선 자리).
@@ -776,7 +776,7 @@ async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const 
 }
 // 261124 (docs/아카이브_사람칸_결정-261124.md): the ARCHIVE menu showed people's shelves ("가명 · 기억 N").
 // 261128 (docs/아카이브_기억칸_질문_결정-261128.md): one card per MEMORY — the title large, the owner's name small —
-// and only the memories this browser has walked. A card pressed opens under its titles: a short introduction, the
+// every memory put up so far, walked or not (author, 261128). A card pressed opens under its titles: a short introduction, the
 // owner's name (→ that person's page: everything they have put up, in the order it went up), and one sentence with an
 // empty place. What is written there goes into the stage with the walker and names the first scene (person_shelf.js
 // putGateAnswer → spaceblank/main.js pickEntry). A memory without a gate opens with a plain "enter".
@@ -811,17 +811,17 @@ function _archiveHead(title, sub) {
   if (h) { h.textContent = title; h.classList.toggle('person-name', title !== 'ARCHIVE'); }
   if (p) p.textContent = sub;
 }
-/** The archive itself: the memories this browser has walked, each a card (owners in the order they last put one up). */
+/** The archive itself: every memory put up so far, each a card (owners in the order they last put one up; a person's memories side by side, first one first). */
 function drawArchiveCards() {
   const listEl = _shelf.listEl, lang = _shelf.lang, ko = lang === 'ko';
   if (!listEl) return;
   _archiveHead('ARCHIVE', t('archive.subtitle'));
   listEl.innerHTML = '';
   if (!_shelf.shelves.length) {
-    listEl.innerHTML = `<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">${ko ? '아직 걸어 본 기억이 없어.' : 'No memory walked yet.'}</div>`;
+    listEl.innerHTML = `<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">${ko ? '아직 올라온 기억이 없어.' : 'No memory has been put up yet.'}</div>`;
     return;
   }
-  for (const sh of _shelf.shelves) for (const m of sh.walked) listEl.appendChild(_memoryCard(m, sh, { person: false }));
+  for (const sh of _shelf.shelves) for (const m of sh.memories) listEl.appendChild(_memoryCard(m, sh, { person: false }));
 }
 /** One person's page: everything they have put up, first one first (walked or not). */
 function drawPersonPage(shelf) {

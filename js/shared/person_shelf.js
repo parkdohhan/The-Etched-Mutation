@@ -4,9 +4,10 @@
 //   - A shelf = one person (memories.curator_id) and every public space memory they put up (meta.space_record),
 //     named by the pen name of their latest memory (meta.space_record.pen_name). The author's shelf = the author's
 //     memories (AUTHOR_CODES). A memory with no owner is a shelf of its own ("이름 없는 사람").
-//   - 261128: ARCHIVE draws one card per MEMORY (title large, the owner's name small) — only the memories this browser
-//     has walked (tem_walked:<id>, or tem_first_play:<id> from record-space). The owner's name opens that person's
-//     page: everything they have put up, in the order it went up.
+//   - 261128: ARCHIVE draws one card per MEMORY (title large, the owner's name small) — EVERY memory put up so far
+//     (author, same day: "not only the ones I have played" — the 261124 rule "only the owners of memories this browser
+//     has walked" is dropped). The owner's name opens that person's page: everything they have put up, in order.
+//     The walked mark (tem_walked:<id>) is still written and each shelf still carries `walked` — nothing hides by it now.
 //   - 261128: a memory may carry a gate — meta.gate = { v: 1, intro, line } — a short introduction and one sentence
 //     with an empty place in it (GATE_HOLE). What the walker writes there goes with them into the stage (sessionStorage),
 //     where it is read as an emotion and names the first scene (js/spaceblank/main.js pickEntry).
@@ -33,7 +34,7 @@ export function hasWalked(memoryId) {
 /**
  * The shelves, from memory rows ({ id, code, curator_id, created_at, is_public, meta }). Latest put-up first.
  * Each shelf: { key, name, memories (the order they went up), walked: [memories this browser has walked], latest }.
- * A shelf none of whose memories has been walked is left out.
+ * Every shelf is returned (261128: the archive shows all that has been put up, walked or not).
  */
 export function buildShelves(rows, lang) {
   const L = lang === 'en' ? 'en' : 'ko';
@@ -52,7 +53,6 @@ export function buildShelves(rows, lang) {
   for (const sh of byKey.values()) {
     sh.memories.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));   // the order they went up
     sh.walked = sh.memories.filter((m) => hasWalked(m.id));
-    if (!sh.walked.length) continue;
     const latest = sh.memories[sh.memories.length - 1];
     if (sh.key === 'author') sh.name = AUTHOR_NAME[L];
     else {
