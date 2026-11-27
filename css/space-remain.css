@@ -1,0 +1,78 @@
+/* Words that remain — a preview of a changed play (2026-11-28, branch space-remain). Record: docs/우주무대_남는말_실험-261128.md
+   Loaded after css/room-play.css and css/space-play.css. Motion: slow, wide, heavy (260809) — nothing bounces. */
+:root { --sr-lit: #f2cb57; }                                   /* what the walker said, when it is lit */
+
+/* ── before entering: three blanks ── */
+#srBlanks { display: none; flex-direction: column; gap: 1.5rem; width: min(34rem, 88vw); text-align: left; }
+#srBlanks.on { display: flex; }
+.sr-blank { margin: 0; font-size: clamp(1rem, 2vw, 1.14rem); line-height: 2.1; font-weight: 300; word-break: keep-all; opacity: 0; transition: opacity 1800ms ease, color 1800ms ease; }
+.sr-blank.on { opacity: 1; }
+.sr-blank.done { color: #8f8b99; }
+.sr-hole { width: 9em; margin: 0 0.25em; background: transparent; border: 0; border-bottom: 1px solid rgba(232,228,223,0.3); padding: 0.1rem 0.2rem; font: inherit; color: var(--rp-accent); outline: none; text-align: center; transition: width 1400ms ease, border-color 900ms ease; }
+.sr-hole:focus { border-bottom-color: var(--rp-accent); }
+.sr-blank.done .sr-hole { border-bottom-color: transparent; }
+#spEntry .sp-entry-line:empty { display: none; }
+
+/* ── the ending ── */
+body.sr-ending canvas#spCosmos.on { opacity: 0.2; transition: opacity 4200ms ease; }
+#srEnd { position: fixed; inset: 0; z-index: 30; overflow-y: auto; opacity: 0; transition: opacity 3200ms ease; scrollbar-width: none; }
+#srEnd::-webkit-scrollbar { display: none; }
+#srEnd.on { opacity: 1; }
+#srEnd.aside { opacity: 0; pointer-events: none; transition: opacity 2600ms ease; }
+.sr-col { width: min(34rem, 88vw); margin: 20vh auto 46vh; }
+@media (min-width: 900px) { .sr-col { margin-left: max(7vw, calc(50vw - 30rem)); } }   /* the text to the left; what was written before, to the right */
+.sr-col p { margin: 0; font-size: clamp(1.02rem, 1.9vw, 1.16rem); line-height: 2.25; font-weight: 300; word-break: keep-all; text-shadow: 0 0 14px #000, 0 0 3px #000; }
+.sr-col p.sr-title, #srOutside p.sr-title { font-size: 1.05rem; letter-spacing: 0.22em; color: #8f8b99; margin-bottom: 3.2rem; }
+.sr-scene { margin-bottom: 2.8rem; }
+.sr-col p.t { color: var(--rp-text); transition: opacity 3400ms ease, color 2600ms ease, text-shadow 2600ms ease; }
+.sr-col p.t.b { color: #a9a5ae; }
+.sr-col p.m { color: var(--rp-accent); max-height: 9em; overflow: hidden; transition: color 3000ms ease, text-shadow 3000ms ease, opacity 1700ms ease, max-height 2200ms ease 900ms; }
+/* only what the walker said is lit */
+#srEnd.lit p.t { opacity: 0.17; }
+#srEnd.lit p.m { color: var(--sr-lit); text-shadow: 0 0 22px rgba(242,203,87,0.32), 0 0 3px #000; }
+.sr-col p.m.gone, .sr-col p.m.moved { opacity: 0; max-height: 0; }
+/* a sentence goes out; the walker's line stands in its place */
+#srEnd p.t.out { opacity: 0; transition: opacity 2200ms ease; }
+#srEnd p.t.in { opacity: 1; color: var(--sr-lit); text-shadow: 0 0 22px rgba(242,203,87,0.32), 0 0 3px #000; }
+/* read once as the next person reads it: the text comes back up; what was put in stays lit */
+#srEnd.after p.t { opacity: 1; }
+
+#srSay { position: fixed; left: 0; right: 0; bottom: 9vh; z-index: 45; text-align: center; font-size: 0.98rem; letter-spacing: 0.16em; font-weight: 300; color: #cfcbd6; opacity: 0; transition: opacity 1600ms ease; pointer-events: none; min-height: 1.6em; text-shadow: 0 0 12px #000, 0 0 3px #000; }
+#srSay.on { opacity: 1; }
+
+#srBefore { position: fixed; right: 5vw; top: 24vh; width: min(19rem, 27vw); z-index: 40; opacity: 0; transition: opacity 2600ms ease; pointer-events: none; }
+#srBefore.on { opacity: 1; }
+#srBefore p, #srPiece p { margin: 0; font-size: 0.95rem; line-height: 2.1; font-weight: 300; word-break: keep-all; color: #b9b4c6; }
+#srBefore p.k, #srPiece p.k, #srOutside p.k { font-size: 0.72rem; letter-spacing: 0.14em; color: #6f6c78; margin-bottom: 0.9rem; }
+#srBefore p.b + p.b { margin-top: 0.7rem; }
+#srBefore span.a { color: var(--sr-lit); }
+
+#srPiece { position: fixed; right: 3vw; top: 50%; transform: translateY(-50%); width: min(21rem, 24vw); z-index: 40; opacity: 0; transition: opacity 2200ms ease; pointer-events: none; }
+#srPiece.on { opacity: 1; }
+#srPiece p.mine { color: var(--sr-lit); }
+#srPiece p.other { color: #8f8b99; font-style: italic; }
+
+#srLeave { position: fixed; right: 2rem; bottom: 2rem; z-index: 60; opacity: 0; pointer-events: none; transition: opacity 2400ms ease, background 600ms ease, border-color 600ms ease; }
+#srLeave.on { opacity: 0.75; pointer-events: auto; }
+#srLeave.on:hover { opacity: 1; }
+
+@media (max-width: 899px) {
+  #srBefore { right: auto; left: 6vw; top: auto; bottom: 17vh; width: 88vw; background: rgba(0,0,0,0.82); padding: 0.8rem 0; }
+  #srPiece { right: auto; left: 6vw; top: auto; bottom: 15vh; transform: none; width: 88vw; background: rgba(0,0,0,0.85); padding: 0.8rem 0; }
+  #srLeave { right: 1rem; bottom: 1rem; }
+}
+
+/* ── the outside: the door is shut ── */
+#srOutside { position: fixed; inset: 0; z-index: 70; background: #000; overflow-y: auto; opacity: 0; transition: opacity 2600ms ease; padding: 18vh 6vw 9rem; scrollbar-width: none; }
+#srOutside::-webkit-scrollbar { display: none; }
+#srOutside.on { opacity: 1; }
+#srOutside > p { width: min(34rem, 88vw); margin: 0 auto; font-weight: 300; word-break: keep-all; }
+#srOutside p.sr-title { margin-bottom: 1.6rem; }
+#srOutside p.shut { font-size: 0.86rem; letter-spacing: 0.1em; color: #6f6c78; margin-bottom: 4rem; }
+#srOutside p.intro { font-size: clamp(1.02rem, 1.9vw, 1.16rem); line-height: 2.25; color: var(--rp-text); margin-bottom: 2.2rem; transition: opacity 1700ms ease; }
+#srOutside p.syn { font-size: 0.98rem; line-height: 2.2; color: #a9a5ae; transition: opacity 1700ms ease; }
+#srOutside p.turn { opacity: 0; }
+#srOutside p.wait { margin-top: 1.6rem; letter-spacing: 0.4em; color: #55525c; }
+#srOutside .tools { position: fixed; left: 0; right: 0; bottom: 0; padding: 2.6rem 0 1.2rem; background: linear-gradient(rgba(0,0,0,0), #000 55%); display: flex; gap: 1.2rem; justify-content: center; align-items: baseline; font: 0.68rem/1.4 system-ui, sans-serif; letter-spacing: 0.06em; color: #4d4a54; }
+#srOutside .tools button { background: transparent; border: 0; border-bottom: 1px solid #3a3840; color: #6f6c78; font: inherit; padding: 0.15rem 0; cursor: pointer; }
+#srOutside .tools button:hover { color: #b9b4c6; border-bottom-color: #6f6c78; }
