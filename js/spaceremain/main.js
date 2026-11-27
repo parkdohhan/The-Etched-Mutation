@@ -36,7 +36,7 @@ import { isLocked } from '../roomplay/engine.js';
 import { markWalked, takeGateAnswer } from '../shared/person_shelf.js?v=261128b';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import * as remain from './remain.js?v=261128d';
-import { runEnding, showOutside } from './ending.js?v=261128d';
+import { runEnding, showOutside } from './ending.js?v=261128f';
 import { createTutor } from './tutor.js?v=261128e';
 
 const $ = (id) => document.getElementById(id);
@@ -445,7 +445,7 @@ async function entry(gateAnswer) {
   const line = $('spEntryLine'), box = $('srBlanks'), btn = $('spEnter'), note = $('spEntryNote');
   await wait(900);
   await consent();
-  if (TOLD) { await typeText(line, ko ? '여기서 한 말은 남는다.\n한 번뿐이다.' : 'What you say here stays.\nThere is only this once.', { per: 80, pace: 1 / FAST }); await wait(2200); }
+  if (TOLD) { await typeText(line, ko ? '여기서 한 말은 남아.\n한 번뿐이야.' : 'What you say here stays.\nOnly once.', { per: 80, pace: 1 / FAST }); await wait(2200); }
   typeText(note, KEPT ? '' : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
   let blanks = remain.blanksFor(run.memory.code, LANG).slice(), gate = null;
   if (gateAnswer && String(gateAnswer.line || '').includes(remain.HOLE) && guard(gateAnswer.text).ok) {
@@ -497,18 +497,18 @@ function consent() {
   const h = document.createElement('p'); h.className = 'h'; h.textContent = ko ? '들어가기 전에' : 'before you go in';
   const ul = document.createElement('ul');
   const items = ko
-    ? ['여기서 장면에게 한 말 가운데 몇 줄이 이 기억의 글에 남을 수 있습니다. 남은 말은 다음 사람이 읽습니다.',
-       '어느 말이 남을지는 고를 수 없습니다. 남은 뒤에는 고치거나 지울 수 없습니다.',
-       '이 기억에는 한 번만 들어갈 수 있습니다. 도중에 나가도 그렇습니다.',
-       '들어가기 전에 적는 세 문장은 다른 사람에게 보이지 않습니다.',
-       '본명·연락처처럼 누구인지 알 수 있는 것은 적지 마세요. "엄마", "그 사람"처럼 적으면 됩니다.',
-       '하는 말은 대답을 만들고 읽기 위해 AI 모델에 보내집니다.']
-    : ['A few of the things you say to the scenes may stay in this memory\'s text. The next person reads what stays.',
-       'You cannot choose which. Once it stays, it cannot be changed or taken out.',
-       'You can go into this memory once. That holds even if you leave partway.',
-       'The three sentences you write before going in are shown to no one else.',
-       'Do not write a real name, a number, or anything that tells who someone is. "my mother", "that person" will do.',
-       'What you say is sent to an AI model, to be answered and to be read.'];
+    ? ['여기서 한 말 몇 줄은 이 기억의 글에 남을 수 있다. 다음 사람이 그걸 읽는다.',
+       '어느 말이 남을지는 못 고른다. 남으면 못 고치고 못 지운다.',
+       '한 번만 들어갈 수 있다. 중간에 나가도 한 번이다.',
+       '들어가기 전에 적는 세 문장은 아무에게도 안 보인다.',
+       '본명이나 연락처는 적지 않는다. "엄마", "그 사람"이면 된다.',
+       '한 말은 AI에게 보내진다. AI가 읽고 대답한다.']
+    : ['A few lines of what you say here may stay in this memory\'s text. The next person reads them.',
+       'You do not choose which. What stays cannot be changed or removed.',
+       'You go in once. Leaving partway still counts.',
+       'The three sentences you write first are shown to no one.',
+       'No real names, no numbers. "my mother", "that person" will do.',
+       'What you say is sent to an AI. It reads it and answers.'];
   for (const t of items) { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }
   const row = document.createElement('div'); row.className = 'row';
   const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'rp-btn'; yes.textContent = ko ? '동의하고 들어간다' : 'I agree — go in';

@@ -51,12 +51,12 @@ export async function runEnding(o) {
 
   // ── 2. only what the walker said is lit ────────────────────────────────────
   root.classList.add('lit');
-  await tell(ko ? '네가 한 말이다.' : 'These are the things you said.', 3400);
+  await tell(ko ? '네가 한 말이야.' : 'You said these.', 3400);
   const mineList = Array.from(mineEls.values());
   if (mineList.length > 1) { toward(mineList[mineList.length - 1]); await wait(Math.min(9000, 2600 + mineList.length * 420)); toward(mineList[0]); await wait(2600); }
 
   // ── 3. what was written before entering ────────────────────────────────────
-  before.appendChild(el('p', 'k', ko ? '들어오기 전에 네가 적은 것' : 'what you wrote before you came in'));
+  before.appendChild(el('p', 'k', ko ? '네가 적은 것' : 'what you wrote'));
   const blankEls = [];
   for (const b of o.blanks) {
     const [a, c] = b.line.split('___'), p = el('p', 'b'); blankEls.push(p);
@@ -65,7 +65,7 @@ export async function runEnding(o) {
   }
   before.classList.add('on');
   await wait(4200);
-  await tell(o.random ? (ko ? '남는 말은 네가 고르지 못한다.' : 'Which of them stays is not yours to choose.') : (ko ? '그때의 네가 고른다.' : 'The one you were then chooses.'), 3000);
+  await tell(ko ? '네가 고르는 게 아니야.' : 'You do not choose.', 3000);
 
   // ── 4. what does not remain goes out ───────────────────────────────────────
   const settled = await o.weave();                                          // already kept in this browser when this resolves
@@ -79,8 +79,8 @@ export async function runEnding(o) {
   await wait(1400);
 
   // ── 5. what remains takes a sentence's place ───────────────────────────────
-  if (settled.changes.length) await tell(ko ? '남은 말은 글이 된다.' : 'What stays becomes the text.', 2600);
-  else await tell(ko ? '남은 말이 없다.' : 'Nothing stayed.', 2600);
+  if (settled.changes.length) await tell(ko ? '남는 건 이거야.' : 'This is what stays.', 2600);
+  else await tell(ko ? '남은 말이 없어.' : 'Nothing stayed.', 2600);
   for (const c of settled.changes) {
     const was = textEls.get(c.order + '|' + c.index), mine = mineEls.get(c.li);
     if (!was || !mine) continue;
@@ -95,8 +95,8 @@ export async function runEnding(o) {
   await wait(1200);
   before.classList.remove('one'); blankEls.forEach((p) => p.classList.remove('hit'));
   root.classList.remove('lit'); root.classList.add('after');                // read once as the next person reads it
-  if (settled.changes.length) { await tell(ko ? '다음 사람은 이것을 읽는다.' : 'The next person reads this.', 4200); await tell(ko ? '고칠 수 없다.' : 'It cannot be changed.', 3400); }
-  else await tell(ko ? '이 기억은 네가 오기 전과 같다.' : 'The memory is as it was before you came.', 4200);
+  if (settled.changes.length) { await tell(ko ? '다음 사람이 이걸 읽어.' : 'The next person reads this.', 4200); await tell(ko ? '못 고쳐.' : 'It cannot be changed.', 3400); }
+  else await tell(ko ? '이 기억은 그대로야.' : 'The memory is as it was.', 4200);
 
   // ── 6. the pieces ──────────────────────────────────────────────────────────
   root.classList.add('aside'); before.classList.remove('on');
@@ -104,7 +104,7 @@ export async function runEnding(o) {
   const show = (t) => {
     if (!t) return;
     piece.innerHTML = '';
-    piece.appendChild(el('p', 'k', ko ? '다음 사람이 여기서 읽을 글' : 'what the next person reads here'));
+    piece.appendChild(el('p', 'k', ko ? '다음 사람이 읽을 글' : 'what the next person reads'));
     for (const l of t.lines) piece.appendChild(el('p', l.who === 'mine' ? 'mine' : l.who === 'other' ? 'other' : '', l.t));
     piece.classList.add('on');
   };
@@ -114,7 +114,7 @@ export async function runEnding(o) {
   say.classList.remove('on');
   await o.pieces.shift(9000 / FAST);
   show(o.pieces.first());
-  await tell(ko ? '조각을 누르면, 다음 사람이 거기서 읽을 글이 보인다.' : 'Press a piece to see what the next person reads there.', 9000);
+  await tell(ko ? '조각을 눌러 봐.' : 'Press a piece.', 9000);
   say.classList.remove('on');
   return new Promise(() => {});                                             // it ends when the walker leaves
 }
@@ -128,7 +128,7 @@ export async function showOutside(o) {
   document.body.classList.add('sr-outside');
   const root = el('div'); root.id = 'srOutside';
   root.appendChild(el('p', 'sr-title', o.title));
-  root.appendChild(el('p', 'shut', ko ? '한 번 다녀간 기억이다. 다시 들어갈 수 없다.' : 'You have been in this memory once. You cannot go in again.'));
+  root.appendChild(el('p', 'shut', ko ? '다녀간 기억이야. 다시는 못 들어가.' : 'You have been here. You cannot go in again.'));
   root.appendChild(el('p', 'k', ko ? '지금 이 기억은' : 'what this memory is now'));
   const intro = el('p', 'intro', (o.state.outside && o.state.outside.intro) || o.fallbackIntro || ''), syn = el('p', 'syn', (o.state.outside && o.state.outside.synopsis) || '');
   const waiting = el('p', 'wait', '···');
