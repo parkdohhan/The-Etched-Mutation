@@ -36,7 +36,7 @@ import { uiManager } from '../ui/UIManager.js';
 import { visualizer } from '../ui/Visualizer.js';
 import { computeArchiveWaveData } from '../shared/math.js';
 import { enterPlayReplaySequence } from './opening.js';
-import { buildShelves, startChain, clearChain, AUTHOR_CODES } from '../shared/person_shelf.js?v=261124a';   // 261124: ARCHIVE = people's shelves
+import { buildShelves, clearChain, AUTHOR_CODES, gateOf, putGateAnswer, clearGateAnswer } from '../shared/person_shelf.js?v=261128a';   // 261124: people's shelves · 261128: a card per memory, the gate
 
 // V2-13 (γ-full, 5-11): 메뉴 → "다른 기억을 찾아서" 자리.
 // 옛 자리 = _initMemoryFinder (memoryFinderContainer DOM + 두 줄 멘트 + 결과 도어 6개 늘어선 자리).
@@ -728,7 +728,7 @@ function _showFinderResults(matched, lang) {
 
 // 261124 작가: 대표 기억(UNDW-001·영어 사본)은 어느 길로 들어와도 빈 자리 화면(서막·뒷문·빈칸·타자 소리)으로.
 // 261124 작가(같은 날 나중): 기억 만들기 기억도 빈 자리 화면 — 만든 사람만 다른 판을 보면 "첫 실일 뿐"(이본론)·원칙 6(기록 = 첫 플레이)과 어긋난다. 오프닝·올린 직후·PROFILE 과 같은 판.
-const SPACE_BLANK_CODES = ['UNDW-001', 'UNDW-001-EN'];
+const SPACE_BLANK_CODES = AUTHOR_CODES.ko.concat(AUTHOR_CODES.en);   // 261128: every memory of the author's (was UNDW-001 and its English copy)
 function _spaceStageUrl(memory, lang) {
   if (memory && memory.code && SPACE_BLANK_CODES.includes(memory.code)) return `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}&from=opening`;
   if (memory && memory.meta && memory.meta.space_record) return `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
@@ -774,8 +774,14 @@ async function enterArchive(opts) { var fromDemo = opts && opts.fromDemo; const 
   if (footer) footer.classList.add('visible');
   setTimeout(() => { showNpcDialogue(t('archive.enterNotice'), 6000, t('anotherme.label')); }, 600);
 }
-// 261124 (docs/아카이브_사람칸_결정-261124.md): the ARCHIVE menu shows people, not memories — "가명 · 기억 N",
-// only the people whose memory this browser has walked. A shelf opened = that person's memories, first one first.
+// 261124 (docs/아카이브_사람칸_결정-261124.md): the ARCHIVE menu showed people's shelves ("가명 · 기억 N").
+// 261128 (docs/아카이브_기억칸_질문_결정-261128.md): one card per MEMORY — the title large, the owner's name small —
+// and only the memories this browser has walked. A card pressed opens under its titles: a short introduction, the
+// owner's name (→ that person's page: everything they have put up, in the order it went up), and one sentence with an
+// empty place. What is written there goes into the stage with the walker and names the first scene (person_shelf.js
+// putGateAnswer → spaceblank/main.js pickEntry). A memory without a gate opens with a plain "enter".
+const _shelf = { shelves: [], lang: 'ko', listEl: null };
+const _esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 async function renderShelves(listEl) {
   if (!listEl) return;
   const lang = getCurrentLanguage() === 'en' ? 'en' : 'ko';
@@ -784,10 +790,10 @@ async function renderShelves(listEl) {
   try {
     await waitForSupabaseClient(8000);
     const client = getSupabaseClient();
-    const cols = 'id, code, title, curator_id, created_at, is_public, meta';
+    const cols = 'id, code, title, description, curator_id, created_at, is_public, meta';
     const [own, author] = await Promise.all([
       client.from('memories').select(cols).not('meta->space_record', 'is', null).eq('is_public', true),
-      client.from('memories').select(cols).eq('code', AUTHOR_CODES[lang]),
+      client.from('memories').select(cols).in('code', AUTHOR_CODES[lang]),
     ]);
     if (own.error) throw own.error;
     rows = (own.data || []).concat(author.data || []);
@@ -796,29 +802,104 @@ async function renderShelves(listEl) {
     listEl.innerHTML = `<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">${ko ? '지금은 불러오지 못했어.' : 'It could not be loaded right now.'}</div>`;
     return;
   }
-  const shelves = buildShelves(rows, lang);
+  _shelf.shelves = buildShelves(rows, lang); _shelf.lang = lang; _shelf.listEl = listEl;
+  clearGateAnswer();                                                        // an answer written and not used does not wait for another card
+  drawArchiveCards();
+}
+function _archiveHead(title, sub) {
+  const h = document.querySelector('.archive-header .archive-title'), p = document.querySelector('.archive-header .archive-subtitle');
+  if (h) { h.textContent = title; h.classList.toggle('person-name', title !== 'ARCHIVE'); }
+  if (p) p.textContent = sub;
+}
+/** The archive itself: the memories this browser has walked, each a card (owners in the order they last put one up). */
+function drawArchiveCards() {
+  const listEl = _shelf.listEl, lang = _shelf.lang, ko = lang === 'ko';
+  if (!listEl) return;
+  _archiveHead('ARCHIVE', t('archive.subtitle'));
   listEl.innerHTML = '';
-  if (!shelves.length) {
+  if (!_shelf.shelves.length) {
     listEl.innerHTML = `<div class="mypage-info" style="color:var(--text-ghost);font-style:italic;text-align:center;padding:2rem">${ko ? '아직 걸어 본 기억이 없어.' : 'No memory walked yet.'}</div>`;
     return;
   }
-  for (const sh of shelves) {
-    const card = document.createElement('div');
-    card.className = 'memory-card person-card';
-    const name = document.createElement('div'); name.className = 'memory-card-title'; name.textContent = sh.name;
-    const count = document.createElement('div'); count.className = 'memory-card-meta'; count.textContent = ko ? `기억 ${sh.memories.length}` : (sh.memories.length === 1 ? '1 memory' : `${sh.memories.length} memories`);
-    card.appendChild(name); card.appendChild(count);
-    card.addEventListener('click', () => openShelf(sh, lang));
-    listEl.appendChild(card);
-  }
+  for (const sh of _shelf.shelves) for (const m of sh.walked) listEl.appendChild(_memoryCard(m, sh, { person: false }));
 }
-function openShelf(shelf, lang) {
-  const ids = shelf.memories.map((m) => m.id);
-  if (!ids.length) return;
-  startChain(ids);
-  try { sessionStorage.setItem('tem_archive_memory_id', String(ids[0])); sessionStorage.setItem('tem_archive_lang', lang); } catch (_) {}
-  const first = shelf.memories[0];
-  window.location.href = _spaceStageUrl(first, lang) || `space-blank.html?memory=${encodeURIComponent(first.id)}&lang=${encodeURIComponent(lang)}`;
+/** One person's page: everything they have put up, first one first (walked or not). */
+function drawPersonPage(shelf) {
+  const listEl = _shelf.listEl, ko = _shelf.lang === 'ko';
+  if (!listEl || !shelf) return;
+  const n = shelf.memories.length;
+  _archiveHead(shelf.name, ko ? `지금까지 올린 기억 ${n}` : (n === 1 ? '1 memory put up so far' : `${n} memories put up so far`));
+  listEl.innerHTML = '';
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'person-back'; back.textContent = ko ? '← 아카이브' : '← archive';
+  back.addEventListener('click', () => { drawArchiveCards(); _archiveTop(); });
+  listEl.appendChild(back);
+  for (const m of shelf.memories) listEl.appendChild(_memoryCard(m, shelf, { person: true }));
+  _archiveTop();
+}
+function _archiveTop() {
+  const ac = document.getElementById('archiveContainer');
+  try { if (ac && ac.scrollTo) ac.scrollTo({ top: 0, behavior: 'smooth' }); window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) {}
+}
+function _memoryCard(m, shelf, o) {
+  const lang = _shelf.lang, ko = lang === 'ko', gate = gateOf(m);
+  const intro = (gate && gate.intro) || ((m.meta && m.meta.space_record && m.description) ? String(m.description).trim() : '');
+  const card = document.createElement('div');
+  card.className = 'memory-card gate-card';
+  const head = document.createElement('div'); head.className = 'gate-head';
+  head.innerHTML = `<div class="memory-card-title">${_esc(m.title || (ko ? '제목 없는 기억' : 'untitled'))}</div><div class="memory-card-meta">${_esc(shelf.name)}</div>`;
+  const panel = document.createElement('div'); panel.className = 'gate-panel';
+  const inner = document.createElement('div'); inner.className = 'gate-inner'; panel.appendChild(inner);
+  if (intro) { const p = document.createElement('p'); p.className = 'gate-intro'; p.textContent = intro; inner.appendChild(p); }
+  if (!o.person) {                                                          // the owner's name → that person's page
+    const who = document.createElement('button'); who.type = 'button'; who.className = 'gate-author';
+    who.innerHTML = `<span class="gate-author-k">${ko ? '쓴 사람' : 'by'}</span><span class="gate-author-n">${_esc(shelf.name)}</span><span class="gate-author-a">→</span>`;
+    who.addEventListener('click', (e) => { e.stopPropagation(); drawPersonPage(shelf); });
+    inner.appendChild(who);
+  }
+  const note = document.createElement('div'); note.className = 'gate-note'; note.setAttribute('aria-live', 'polite');
+  let field = null;
+  const go = () => {
+    if (field) {
+      const text = field.value.trim();
+      if (!text) { note.textContent = ko ? '빈 자리에 한마디를 적어야 들어갈 수 있어.' : 'Write something in the empty place to go in.'; field.focus(); return; }
+      const S = window.LumenSafety, c = S && S.detectCrisis ? S.detectCrisis(text) : { level: 'safe' };
+      if (c && c.level === 'high') {                                         // the stage's first line (spaceblank guard): a line that carries a crisis is not taken in
+        const res = (S && S.getSafetyResources ? S.getSafetyResources(lang) : []).map((r) => r.name + ' ' + r.number).join(' · ');
+        note.textContent = (ko ? '……아냐, 이건 너무 날카로워.' : '……no. this one cuts too sharp.') + (res ? ' ' + res : '');
+        return;
+      }
+      putGateAnswer(m.id, text, gate.line);
+    } else clearGateAnswer();
+    clearChain();                                                           // 261128: a card is one memory — no walk on into the owner's next one
+    try { sessionStorage.setItem('tem_archive_memory_id', String(m.id)); sessionStorage.setItem('tem_archive_lang', lang); } catch (_) {}
+    window.location.href = _spaceStageUrl(m, lang) || `space-blank.html?memory=${encodeURIComponent(m.id)}&lang=${encodeURIComponent(lang)}`;
+  };
+  if (gate && gate.line) {
+    const line = document.createElement('div'); line.className = 'gate-line';
+    const before = document.createElement('span'); before.textContent = gate.before;
+    const hole = document.createElement('span'); hole.className = 'gate-hole';
+    field = document.createElement('input'); field.type = 'text'; field.maxLength = 90; field.autocomplete = 'off'; field.spellcheck = false;
+    field.setAttribute('aria-label', ko ? '빈 자리에 적는 말' : 'what goes in the empty place');
+    field.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); go(); } });
+    field.addEventListener('input', () => { note.textContent = ''; field.size = Math.max(6, Math.min(34, Math.round(field.value.length * (ko ? 1.9 : 1.1)) + 2)); });
+    field.size = 6;
+    hole.append('[', field, ']');
+    const after = document.createElement('span'); after.textContent = gate.after;
+    line.append(before, hole, after);
+    inner.appendChild(line);
+  }
+  const enter = document.createElement('button'); enter.type = 'button'; enter.className = 'gate-enter'; enter.textContent = ko ? '들어간다' : 'go in';
+  enter.addEventListener('click', (e) => { e.stopPropagation(); go(); });
+  inner.append(note, enter);
+  panel.addEventListener('click', (e) => e.stopPropagation());
+  card.append(head, panel);
+  card.addEventListener('click', () => {
+    const open = !card.classList.contains('open');
+    for (const c of Array.from(card.parentNode.querySelectorAll('.gate-card.open'))) c.classList.remove('open');   // one at a time
+    card.classList.toggle('open', open);
+    if (open && field && !('ontouchstart' in window)) setTimeout(() => field.focus(), 900);
+  });
+  return card;
 }
 function filterByCategory(category, btnElement) {
     if (!category) return;

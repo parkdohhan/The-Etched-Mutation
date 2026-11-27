@@ -6378,3 +6378,206 @@ body.confession-active::before {
   border-color: var(--accent-memory);
   color: var(--accent-memory);
 }
+
+/* ── 261128 ARCHIVE: a card per memory; pressed, it opens under its titles ───────────────────────
+   (docs/아카이브_기억칸_질문_결정-261128.md) title large · owner's name small · introduction · the owner's
+   name (→ that person's page) · one sentence with an empty place. Slow and wide (no bounce). */
+.memory-card.gate-card {
+  transition: border-color .9s ease, background .9s ease, transform .9s ease;
+}
+
+.gate-card .memory-card-title {
+  font-family: 'Cormorant Garamond', 'Noto Serif KR', serif;
+  font-weight: 300;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+
+.gate-card .memory-card-meta {
+  margin-bottom: 0;
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  font-size: .8rem;
+  letter-spacing: .14em;
+}
+
+.gate-card.open {
+  grid-column: 1 / -1;
+  border-color: rgba(196, 168, 130, .42);
+  transform: none;
+  cursor: default;
+}
+
+.gate-card.open::before {
+  opacity: 1;
+}
+
+.gate-card.open .gate-head {
+  cursor: pointer;
+}
+
+.gate-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 1.1s ease, opacity 1.1s ease;
+}
+
+.gate-card.open .gate-panel {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 1.1s ease, opacity 1.3s ease .25s;
+}
+
+.gate-inner {
+  overflow: hidden;
+  min-height: 0;
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  font-weight: 300;
+}
+
+.gate-intro {
+  margin: 1.8rem 0 0;
+  max-width: 44rem;
+  font-size: .95rem;
+  line-height: 2;
+  color: rgba(232, 228, 223, .72);
+  word-break: keep-all;
+}
+
+.gate-author {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .7em;
+  margin: 1.3rem 0 0;
+  padding: .2rem 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  font: inherit;
+  font-size: .8rem;
+  letter-spacing: .14em;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color .9s ease, border-color .9s ease;
+}
+
+.gate-author-n {
+  color: rgba(232, 228, 223, .8);
+}
+
+.gate-author:hover,
+.gate-author:focus-visible {
+  color: var(--accent-memory);
+  border-bottom-color: rgba(196, 168, 130, .4);
+  outline: none;
+}
+
+.gate-author:hover .gate-author-n,
+.gate-author:focus-visible .gate-author-n {
+  color: var(--accent-memory);
+}
+
+.gate-line {
+  margin: 2.4rem 0 .4rem;
+  max-width: 46rem;
+  font-size: 1.15rem;
+  line-height: 2.3;
+  color: var(--text-primary);
+  word-break: keep-all;
+}
+
+.gate-hole {
+  white-space: nowrap;
+  color: rgba(196, 168, 130, .7);
+  margin: 0 .15em;
+}
+
+.gate-hole input {
+  max-width: 62vw;
+  margin: 0 .25em;
+  padding: 0 .3em .1em;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(196, 168, 130, .3);
+  outline: none;
+  font: inherit;
+  text-align: center;
+  color: var(--accent-memory);
+  caret-color: var(--accent-memory);
+  transition: border-color .9s ease;
+}
+
+.gate-hole input:focus {
+  border-bottom-color: rgba(196, 168, 130, .75);
+}
+
+.gate-note {
+  min-height: 1.6em;
+  margin: .4rem 0 0;
+  font-size: .78rem;
+  letter-spacing: .06em;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.gate-enter {
+  margin: 1rem 0 .3rem;
+  padding: .6rem 1.9rem;
+  background: transparent;
+  border: 1px solid rgba(196, 168, 130, .28);
+  font: inherit;
+  font-size: .82rem;
+  letter-spacing: .28em;
+  color: rgba(196, 168, 130, .75);
+  cursor: pointer;
+  transition: border-color .9s ease, color .9s ease, background .9s ease;
+}
+
+.gate-enter:hover,
+.gate-enter:focus-visible {
+  border-color: var(--accent-memory);
+  color: var(--accent-memory);
+  background: rgba(196, 168, 130, .05);
+  outline: none;
+}
+
+/* one person's page: the header carries the name; a way back above the cards */
+.archive-title.person-name {
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  font-size: 2.6rem;
+  letter-spacing: .14em;
+}
+
+.person-back {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin: -1rem 0 0;
+  padding: .3rem 0;
+  background: none;
+  border: none;
+  font-family: 'Noto Serif KR', 'Cormorant Garamond', serif;
+  font-size: .8rem;
+  letter-spacing: .16em;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+  transition: color .9s ease;
+}
+
+.person-back:hover,
+.person-back:focus-visible {
+  color: var(--accent-memory);
+  outline: none;
+}
+
+@media(max-width:768px) {
+  .gate-line {
+    font-size: 1.02rem;
+  }
+
+  .archive-title.person-name {
+    font-size: 1.9rem;
+  }
+}

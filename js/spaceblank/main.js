@@ -28,14 +28,14 @@
  * behind the same crisis check. The reading (emotion → engine → where the door leads) is the room stage's, unchanged.
  */
 import * as data from '../roomplay/data.js';
-import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
+import { createEngine, parseEmotion, resonanceOf, isLocked } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
 import { createCosmos } from '../spaceplay/cosmos.js?v=261124a';
 import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
-import { createEscMenu } from '../spaceplay/escmenu.js?v=261123a';
+import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
 import { runFinale } from './finale.js?v=261124a';
 import { runPrologue } from '../spaceplay/prologue.js?v=261124c';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
@@ -43,7 +43,7 @@ import { replayFromPlays, getPresentationState } from '../core/ContaminationTrac
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261124a';
 import { createBackDoors } from './backdoor.js?v=261123b3';
-import { markWalked, chainNext, clearChain } from '../shared/person_shelf.js?v=261124a';   // 261124: ARCHIVE = people's shelves (docs/아카이브_사람칸_결정-261124.md)
+import { markWalked, chainNext, clearChain, takeGateAnswer, GATE_HOLE } from '../shared/person_shelf.js?v=261128a';   // 261124: ARCHIVE = people's shelves · 261128: the gate (docs/아카이브_기억칸_질문_결정-261128.md)
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -358,8 +358,11 @@ async function boot() {
   window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly') map.open(); });
   window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && cosmos.mode() === 'fly') map.toggle(); });
 
-  if (PEEK) return peek();
-  const first = firstScene();
+  if (PEEK) { takeGateAnswer(run.memory.id); return peek(); }
+  // 261128: the answer written in the empty place of the memory's one sentence (ARCHIVE card), if there is one. It is read
+  // while the prologue runs. Not for the demo link (its route is written) nor for a practice run that starts elsewhere.
+  const gateAnswer = takeGateAnswer(run.memory.id);
+  const entryP = pickEntry((DEMO || AT) ? null : gateAnswer).catch((e) => { console.warn('[space] gate', e); return { scene: firstScene(), gate: null }; });
   const begin = async () => {
     $('spEntry').classList.add('gone');
     if (KEPT) markWalked(run.memory.id);                                   // 261124: this browser has walked this memory → its owner's shelf shows in ARCHIVE
@@ -369,6 +372,9 @@ async function boot() {
       catch (e) { console.error('[space] prologue', e); cosmos.setCine(null); cosmos.setMode('held'); $('spCosmos').classList.remove('on'); }
     }
     map.make();                                                             // no-op if the prologue already made it in its dark pause
+    const entry = await entryP, first = entry.scene;                        // 261128: the first scene — as written, or the one nearest to what was written at the gate
+    run.gate = entry.gate;
+    if (KEPT && run.gate) logGate(first, run.gate);                         // the answer goes in the ledger (before the first stay's row)
     const has = air.focus(first);                                           // the first scene's own sound (if it has one) comes in under its text
     await wait(has ? 2600 : 900);
     if (AT === 'end') return fakeWalk().then(finish);
@@ -411,6 +417,44 @@ async function loadBlankJournals(memoryId) {
 function firstScene() {
   const rig = rigOf(run.memory, qs);
   return (rig && run.scenes.find((s) => s.scene_order === rig.spine[0])) || run.scenes[0];
+}
+/**
+ * 261128 — the gate (docs/아카이브_기억칸_질문_결정-261128.md).
+ * Definition: the first scene of a walk = the entry candidate whose own emotion is nearest (cosine, on the memory's axes —
+ * the door's own measure, with no scene of origin) to the reading of what the walker wrote in the empty place.
+ * Two answers lead to the same first scene exactly when their readings have the same nearest candidate.
+ * Entry candidates: a scene with a text, not locked to this reading, and not the scene the walk closes on. Under a fixed
+ * route (rig) only the route's first scene and the rooms of the past — the route keeps its order: from a room of the past
+ * the door leads onto the route's first scene (rig.js). No answer · an answer not taken in · a reading that failed or
+ * came back empty (void) = the first scene as written. Nothing is chosen by the walker: they write, the engine names.
+ */
+async function pickEntry(answer) {
+  const base = firstScene();
+  if (!answer) return { scene: base, gate: null };
+  const g = { form: 'gate_v1', text: answer.text, line: answer.line, default: base.scene_order, picked: base.scene_order, analysed: false, via: 'default' };
+  if (!guard(answer.text).ok || !sendable(answer.text)) { g.text = ''; g.via = 'not_sent'; return { scene: base, gate: g }; }   // the three lines of the exchange hold here too: not sent, not measured, not kept
+  const an = await measure(answer.text, { scene_text: String(answer.line || '').replace(GATE_HOLE, '[   ]').slice(0, 400), ghost_line: '' });
+  if (!an) return { scene: base, gate: g };
+  const emo = parseEmotion(an.base);
+  g.analysed = true; g.emotion = emo;
+  if (an.reason_analysis && an.reason_analysis.is_void) { g.via = 'void'; return { scene: base, gate: g }; }
+  const ranked = entryCandidates(emo, base).map((sc) => ({ sc, a: run.engine.alignmentTo(sc, emo) })).sort((x, y) => (y.a - x.a) || (x.sc.scene_order - y.sc.scene_order));
+  g.ranked = ranked.slice(0, 5).map((r) => ({ order: r.sc.scene_order, a: +r.a.toFixed(4) }));
+  if (!ranked.length || !(ranked[0].a > 0)) return { scene: base, gate: g };
+  g.picked = ranked[0].sc.scene_order; g.via = 'reading';
+  return { scene: ranked[0].sc, gate: g };
+}
+function entryCandidates(emo, base) {
+  const rig = rigOf(run.memory, qs), spine = rig ? new Set(rig.spine) : null, last = run.scenes[run.scenes.length - 1];
+  const lockState = { userEmotion: emo || {}, visitedIdx: [] };
+  const out = run.scenes.filter((sc) => !isSilent(sc) && !isLocked(sc, lockState) && (spine ? !spine.has(sc.scene_order) : (run.scenes.length < 3 || sc.id !== last.id)));
+  if (!out.some((sc) => sc.id === base.id)) out.push(base);
+  return out;
+}
+/** The gate's answer is a walk too: one ledger row with the piece stage's "move" mark — it was said to no scene, so it carries no reading column and no alignment (the models count it as a move, not a stay). */
+function logGate(scene, g) {
+  data.insertPlay({ memory_id: run.memory.id, scene_id: scene.id, user_emotion: null, alignment: null, mismatch_type: null, run_id: run.id, ghost_variant_id: null, persona_id: MOVE_PERSONA,
+    dialog_turns: [{ stage: 'piece_v1', place: PLACE_TAG, move: 'gate', from_scene_id: null, to_scene_id: scene.id, at: new Date().toISOString(), gate: g }] });
 }
 
 // ── a stay: the scene's two parts, an exchange after each ───────────────────
@@ -634,6 +678,7 @@ async function openEyes(first) {
   air.focus(null);                                                        // from here on, the distance to a thing decides what is heard
   cosmos.setMode('held'); cosmos.start();
   dress(first, run.firstLeft);
+  if (run.gate && run.gate.text && run.gate.via === 'reading') cosmos.addWords(first.id, strongWords(run.gate.text).map((w, j) => ({ key: 'gate' + j, text: w, kind: 'mine' })));   // 261128: what was written at the gate brought them here
   if (run.firstRes) afterSpeech(first, run.firstRes);
   $('spCosmos').classList.add('on');
   await veil(false);
@@ -859,7 +904,7 @@ async function finish() {
   for (const room of run.script) for (const l of room.lines || []) if (l.who !== 'mine') { const sg = segsOf(l.t); if (sg) l.segs = sg; else l.t = plain(l.t); }   // the ending shows whose each changed word is
   if (KEPT) {
     data.writeJournal(run.memory.id, run.id, { stage: data.STAGE_TAG, place: PLACE_TAG, mode: MODE, visit_order: run.path.map((id) => sceneById(id).scene_order),
-      scenes: run.rooms, legs: run.legs, contact: run.contact, blank_form: 'blank_v1', blanks: run.blanks, back_doors: run.backLog,
+      scenes: run.rooms, legs: run.legs, contact: run.contact, gate: run.gate || null, blank_form: 'blank_v1', blanks: run.blanks, back_doors: run.backLog,
       inherited: run.inherited.map((w) => ({ out: w.old, in: w.neu, run: w.run })),   // what this walker read already changed
       swaps: run.swaps.filter((w) => !w.inherited).map((w) => ({ out: w.old, in: w.neu, whose: w.owner, at: sceneById(w.at).scene_order, from: sceneById(w.from).scene_order })), model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift })),
       seconds: Math.round((Date.now() - run.startedAt) / 1000), track: packTrack(cosmos.track),
