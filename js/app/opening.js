@@ -1318,6 +1318,37 @@ function skipOpening() { if (openingSkipped) return; openingSkipped = true; if (
 
 function skipToIntro() { openingSequenceStarted = true; skipOpening() }
 
+// 261128 밤 작가: "오프닝 화면에서도 스킵 가능하게 — 아무 키나 오래 누르면 언어 선택도 스킵되고 바로 메인 화면. 나중에 세팅에서 언어 설정하면 되잖아."
+// 오프닝이 떠 있는 동안 글쇠 하나(또는 화면)를 OPENING_HOLD_MS 만큼 누르고 있으면 skipToIntro — 소리를 끄고 메인 화면(메뉴)으로.
+// 첫 누름·언어 고르기·Start·대사·대화 어느 대목에서든 같다. 언어는 건드리지 않는다(고른 적이 없으면 지금 설정 그대로).
+// 낙하 서막의 길게 누르기(js/spaceplay/prologue.js)와 같은 약속. 화면에 안내 문구는 두지 않았다.
+// 글을 적는 칸에 초점이 있을 때의 글쇠는 세지 않는다("ㅋㅋㅋㅋ"나 지우기를 길게 누르는 것이 건너뛰기가 되면 안 된다) — 그때는 칸 밖 화면을 길게 누른다.
+// 되돌리기 = 이 블록 삭제.
+const OPENING_HOLD_MS = 900;
+(function _installOpeningHoldSkip() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  let timer = 0;
+  const down = new Set();
+  const showing = () => {
+    if (openingSkipped) return false;
+    const os = document.getElementById('openingScreen');
+    if (!os || os.classList.contains('hidden')) return false;
+    try { return getComputedStyle(os).display !== 'none'; } catch (_) { return false; }
+  };
+  const typing = (t) => { const tag = t && t.tagName ? t.tagName.toLowerCase() : ''; return tag === 'input' || tag === 'textarea' || tag === 'select' || !!(t && t.isContentEditable); };
+  const arm = () => {
+    if (timer || !showing()) return;
+    timer = setTimeout(() => { timer = 0; if (showing()) { console.info('[opening] 길게 누름 — 오프닝을 건너뛰고 메인 화면으로'); skipToIntro(); } }, OPENING_HOLD_MS);
+  };
+  const disarm = () => { if (timer) { clearTimeout(timer); timer = 0; } };
+  document.addEventListener('keydown', (e) => { if (e.metaKey || e.ctrlKey || e.altKey || typing(e.target)) return; down.add(e.code); arm(); }, true);
+  document.addEventListener('keyup', (e) => { down.delete(e.code); if (!down.size) disarm(); }, true);
+  window.addEventListener('blur', () => { down.clear(); disarm(); });
+  document.addEventListener('pointerdown', (e) => { if (typing(e.target)) return; arm(); }, true);
+  document.addEventListener('pointerup', disarm, true);
+  document.addEventListener('pointercancel', disarm, true);
+})();
+
 function handleOpeningKeydown(e) { if (!openingSkipped) { const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : ''; if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) return; e.preventDefault(); skipOpening() } }
 
 function finishOpeningSequence() { const openingScreen = document.getElementById('openingScreen'); const introScreen = document.getElementById('introScreen'); if (openingScreen) { openingScreen.removeEventListener('click', skipOpening); openingScreen.style.cssText = 'display:none !important;visibility:hidden !important;opacity:0 !important;pointer-events:none !important;z-index:-1 !important'; openingScreen.classList.add('hidden') } document.removeEventListener('keydown', handleOpeningKeydown); if (introScreen) { introScreen.style.cssText = 'display:flex !important;visibility:visible !important;opacity:1 !important;pointer-events:auto !important;z-index:2000 !important'; introScreen.classList.add('visible'); introScreen.classList.remove('hidden') } playNpcIntro() }
