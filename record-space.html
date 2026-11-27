@@ -38,6 +38,20 @@
       <input id="rsMemDesc" class="rs-input" maxlength="120" autocomplete="off" />
     </section>
 
+    <!-- 261128 작가: 만드는 길 둘 — 직접 적기(지금까지의 방식) · 단편소설을 넣어 1차 초안 받기(draft-memory-from-story). 초안은 본문의 문장만으로. -->
+    <section class="rs-block rs-story" id="rsStory">
+      <div class="rs-way">
+        <button class="rs-small on" id="rsWayHand" type="button"></button>
+        <button class="rs-small" id="rsWayStory" type="button"></button>
+      </div>
+      <div id="rsStoryBox" hidden>
+        <textarea class="rs-text rs-story-text" id="rsStoryText" rows="10" spellcheck="false"></textarea>
+        <div class="rs-meter"><span id="rsStoryChars"></span></div>
+        <div class="rs-row-btns"><button class="rp-btn" id="rsStoryGo" type="button"></button><span class="rs-status" id="rsStoryStatus"></span></div>
+        <p class="rs-story-note" id="rsStoryNote"></p>
+      </div>
+    </section>
+
     <section class="rs-scenes" id="rsScenes" aria-live="polite"></section>
 
     <div class="rs-actions">
@@ -123,6 +137,6 @@
     </article>
   </template>
 
-  <script type="module" src="js/recordspace/main.js?v=261124c"></script>
+  <script type="module" src="js/recordspace/main.js?v=261128a"></script>
 </body>
 </html>

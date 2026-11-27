@@ -53,6 +53,12 @@ const L = {
     talkNeedText: '앞 토막을 먼저 써.', talkFail: '지금은 묻지 못해. 직접 정하거나, 잠시 뒤에 다시.', talkClosing: '……그래. 여기까지로 재자.',
     crisis: '……아냐, 이건 너무 날카로워. 여기까지만 하자.',
     emotionDone: (n) => `대화 ${n}번으로 잼`, emotionManual: '직접 정함', emotionNone: '아직 없음', emotionEmpty: '어느 축도 0이야. 하나는 올려.',
+    emotionAuto: '글에서 읽은 감정 — 대화하거나 직접 고칠 수 있어',
+    wayHand: '직접 적는다', wayStory: '소설을 넣는다', storyPh: '단편소설 본문을 여기에 붙여.', storyGo: '초안 받기',
+    storyNote: '본문의 문장만으로 장면을 뽑아 둔다. 받은 뒤에 고치면 돼. 본문은 너만 볼 수 있는 자리에 따로 둔다.',
+    storyShort: '너무 짧아. 400자는 넘어야 해.', storyLong: '너무 길어. 6만 자까지야.', storyWait: '읽는 중…… 1분쯤 걸려.', storyReading: '장면마다 감정을 읽는 중……',
+    storyDone: (n) => `장면 ${n}개를 뽑았어. 고쳐 봐.`, storyFail: '지금은 못 뽑겠어. 잠시 뒤에 다시.',
+    storyReplaceAsk: '적어 둔 장면이 있어. 지우고 초안으로 바꿀까?', storyReplaceYes: '바꾼다', storyReplaceNo: '그만둔다', storyChars: (n) => `${n}자`,
     thingMake: '조형물 만들기', thingWait: '그리는 중…', thingFail: '그리지 못했어. 다시 눌러.', thingNone: '없으면 기둥 하나로 선다', thingDrop: '빼기',
     soundDraft: '소리 초안', soundGen: '소리 만들기', soundClear: '빼기', soundWait: '초안 받는 중…', soundGenWait: '만드는 중… 10~20초', soundFail: '소리를 못 만들었어.', soundPh: '소리를 글로. 초안을 고쳐도 된다.', soundDone: '이 장면에서만 난다',
     addScene: '장면 더하기', sceneMax: `장면은 ${MAX_SCENES}개까지`, publish: '올리기',
@@ -82,6 +88,12 @@ const L = {
     talkNeedText: 'write the first part first.', talkFail: 'it cannot ask right now. set it by hand, or try again in a while.', talkClosing: '……right. we measure from here.',
     crisis: '……no, this is too sharp. let\'s stop here.',
     emotionDone: (n) => `measured from ${n} exchanges`, emotionManual: 'set by hand', emotionNone: 'none yet', emotionEmpty: 'every axis is 0. raise one.',
+    emotionAuto: 'read from the text — talk, or set it by hand',
+    wayHand: 'type it', wayStory: 'put a story in', storyPh: 'paste the short story here.', storyGo: 'draft it',
+    storyNote: 'scenes are taken from the story\'s own sentences. correct them after. the story is kept where only you can read it.',
+    storyShort: 'too short. 400 letters at least.', storyLong: 'too long. 60,000 letters at most.', storyWait: 'reading…… about a minute.', storyReading: 'reading each scene……',
+    storyDone: (n) => `${n} scenes taken. correct them.`, storyFail: 'it cannot be drafted right now. try again in a while.',
+    storyReplaceAsk: 'there are scenes written already. clear them and take the draft?', storyReplaceYes: 'take the draft', storyReplaceNo: 'leave it', storyChars: (n) => `${n} letters`,
     thingMake: 'make the thing', thingWait: 'drawing…', thingFail: 'it could not be drawn. press again.', thingNone: 'without one, a single post stands', thingDrop: 'drop',
     soundDraft: 'sound draft', soundGen: 'make the sound', soundClear: 'drop', soundWait: 'getting a draft…', soundGenWait: 'making… 10–20 s', soundFail: 'the sound could not be made.', soundPh: 'the sound, in words. edit the draft if you like.', soundDone: 'heard in this scene only',
     addScene: 'add a scene', sceneMax: `up to ${MAX_SCENES} scenes`, publish: 'put it up',
@@ -97,7 +109,7 @@ const L = {
 };
 const T = L[LANG];
 
-const S = { title: '', desc: '', scenes: [], startedAt: new Date().toISOString(), busy: false };
+const S = { title: '', desc: '', scenes: [], startedAt: new Date().toISOString(), busy: false, source: '' };   // source = the short story the first draft was taken from (261128), kept privately with the memory
 let uid = 0;
 const sb = () => data.client();
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -312,7 +324,7 @@ function addScene(init) {
     if (d.emotion && Object.keys(d.emotion).length) {
       sc.emotion = d.emotion; sc.emotionHow = d.emotionHow || 'manual';
       showAxes();
-      status(sEmotion, sc.emotionHow === 'manual' ? T.emotionManual : T.emotionDone(sc.talk.answers), 'ok');
+      status(sEmotion, sc.emotionHow === 'manual' ? T.emotionManual : sc.emotionHow === 'auto' ? T.emotionAuto : T.emotionDone(sc.talk.answers), 'ok');
       if (sc.talk.answers) q('.b-talk').textContent = T.again;
     }
     if (d.thing) {
@@ -361,6 +373,44 @@ function check() {
   note.textContent = missing.join(' · ');
 }
 
+// ── two ways to make it (261128, author) ─────────────────────────────────────
+// By hand, as before — or a short story put in, and a first draft taken from it (draft-memory-from-story): the scenes'
+// first and second parts, the words afloat and the lines buried, all of them the story's own sentences, and each scene's
+// emotion read from its text so that the draft can go up once it has been corrected. The author corrects everything after.
+function setWay(way) {
+  $('rsWayHand').classList.toggle('on', way !== 'story'); $('rsWayStory').classList.toggle('on', way === 'story');
+  $('rsStoryBox').hidden = way !== 'story';
+}
+function storyChars() { $('rsStoryChars').textContent = T.storyChars($('rsStoryText').value.trim().length); }
+async function storyDraft() {
+  const story = $('rsStoryText').value.trim(), st = $('rsStoryStatus'), btn = $('rsStoryGo');
+  if (story.length < 400) { status(st, T.storyShort, 'warn'); return; }
+  if (story.length > 60000) { status(st, T.storyLong, 'warn'); return; }
+  if (S.scenes.some((s) => (s.text + s.b + s.words + s.deep).trim())) {
+    const c = await askSheet(T.storyReplaceAsk, [{ id: 'yes', label: T.storyReplaceYes, primary: true }, { id: 'no', label: T.storyReplaceNo }]);
+    if (c !== 'yes') return;
+  }
+  btn.disabled = true; status(st, T.storyWait, 'wait');
+  try {
+    const resp = await sb().functions.invoke('draft-memory-from-story', { body: { story, lang: LANG, max: MAX_SCENES } });
+    const d = resp && resp.data;
+    if (!resp || resp.error || !d || !d.ok || !Array.isArray(d.scenes) || !d.scenes.length) throw new Error((d && d.error) || (resp && resp.error && resp.error.message) || 'draft');
+    status(st, T.storyReading, 'wait');
+    const emos = await Promise.all(d.scenes.map((s) => measure(String(s.text) + ' ' + (s.b || []).join(' ')).catch(() => null)));
+    for (const sc of S.scenes.slice()) sc.el.remove();
+    S.scenes.length = 0;
+    if (!S.title.trim() && d.title) { S.title = String(d.title).slice(0, 60); $('rsMemTitle').value = S.title; }
+    if (!S.desc.trim() && d.line) { S.desc = String(d.line).slice(0, 120); $('rsMemDesc').value = S.desc; }
+    d.scenes.slice(0, MAX_SCENES).forEach((s, i) => addScene({ text: String(s.text || ''), b: (s.b || []).join('\n'), words: (s.words || []).join(', '), deep: (s.deep || []).join(', '), emotion: emos[i] || null, emotionHow: 'auto' }));
+    S.source = story;
+    renumber(); check();
+    status(st, T.storyDone(S.scenes.length), 'ok');
+    console.info('[record-space] story draft', { scenes: S.scenes.length, taken_out: d.taken_out });
+    if (S.scenes[0]) S.scenes[0].el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) { console.warn('[record-space] story draft', e); status(st, T.storyFail, 'warn'); }
+  btn.disabled = false;
+}
+
 // ── the sheet before it goes up, and the sealing ─────────────────────────────
 function payload() {
   return {
@@ -407,6 +457,9 @@ async function seal() {
     if (!resp || resp.error || !d || !d.ok) throw new Error((d && d.error) || (resp && resp.error && resp.error.message) || 'seal');
     try { localStorage.setItem('tem_first_play:' + d.memoryId, String(Date.now())); localStorage.setItem('tem_space_record:' + d.memoryId, S.title.trim()); localStorage.setItem('tem_pen_name:' + (ME || 'anon'), body.pen_name); } catch (_) {}
     console.info('[record-space] sealed', d);
+    if (S.source && ME) {                                                    // the story the draft was taken from: kept in memory_sources (only the owner reads it), for the editing tool
+      try { const r = await sb().from('memory_sources').insert({ memory_id: d.memoryId, owner_id: ME, text: S.source }); if (r.error) console.warn('[record-space] source', r.error.message); } catch (e) { console.warn('[record-space] source', e); }
+    }
     dropDraft();
     await typeText(line, T.sealed, { per: 60 });
     $('rsVeilNote').textContent = d.thread ? T.thread : T.noThread;
@@ -433,7 +486,7 @@ const draftKey = () => 'tem_record_draft:' + (ME || (TEST ? 'practice' : 'anon')
 const hasWriting = () => !!(S.title.trim() || S.desc.trim() || S.scenes.some((s) => (s.text + s.b + s.words + s.deep).trim()));
 const isDraft = (d) => !!(d && d.v === 1 && Array.isArray(d.scenes));
 function draftNow() {
-  return { v: 1, savedAt: new Date().toISOString(), lang: LANG, title: S.title, desc: S.desc,
+  return { v: 1, savedAt: new Date().toISOString(), lang: LANG, title: S.title, desc: S.desc, source: S.source || '',
     scenes: S.scenes.map((s) => ({ text: s.text, b: s.b, words: s.words, deep: s.deep, emotion: s.emotion, emotionHow: s.emotionHow,
       measured: s.measured.slice(0, 12), dialog: s.dialog.slice(0, 40), talkAnswers: s.talk.answers, thing: s.thing, thingNote: s.thingNote,
       sound: { url: s.sound.url, prompt: s.sound.prompt, volume: s.sound.volume } })) };
@@ -535,6 +588,9 @@ async function boot() {
   $('rsConsentCheckLabel').textContent = T.consentCheck; $('rsConsentGo').textContent = T.consentGo; $('rsConsentNo').textContent = T.consentNo;
   if (TEST) $('rsTestTag').textContent = ko ? '연습 — 저장하지 않음' : 'practice — nothing is saved';
 
+  $('rsWayHand').textContent = T.wayHand; $('rsWayStory').textContent = T.wayStory; $('rsStoryText').placeholder = T.storyPh; $('rsStoryGo').textContent = T.storyGo; $('rsStoryNote').textContent = T.storyNote;
+  $('rsWayHand').addEventListener('click', () => setWay('hand')); $('rsWayStory').addEventListener('click', () => { setWay('story'); $('rsStoryText').focus(); });
+  $('rsStoryText').addEventListener('input', storyChars); $('rsStoryGo').addEventListener('click', storyDraft); storyChars();
   $('rsMemTitle').addEventListener('input', (e) => { S.title = e.target.value; check(); });
   $('rsMemDesc').addEventListener('input', (e) => { S.desc = e.target.value; });
   $('rsAddScene').addEventListener('click', () => { const sc = addScene(); if (sc) { sc.el.scrollIntoView({ behavior: 'smooth', block: 'start' }); sc.el.querySelector('.f-text').focus(); } });
@@ -562,12 +618,13 @@ async function boot() {
     const c = await askSheet(T.draftAsk((draft.title || '').trim(), draftDate(draft.savedAt)), [{ id: 'resume', label: T.draftResume, primary: true }, { id: 'new', label: T.draftNew }]);
     if (c === 'resume') {
       S.title = draft.title || ''; S.desc = draft.desc || ''; $('rsMemTitle').value = S.title; $('rsMemDesc').value = S.desc;
+      if (draft.source) { S.source = String(draft.source); $('rsStoryText').value = S.source; storyChars(); setWay('story'); }
       for (const d of draft.scenes.slice(0, MAX_SCENES)) addScene(d);
       resumed = S.scenes.length > 0;
     } else if (c === 'new') await dropDraft();
   }
   if (!resumed) addScene();
   check();
-  window.__recordSpace = { S, addScene, payload, saveDraft, readDraft, dropDraft };           // automation / inspection hook
+  window.__recordSpace = { S, addScene, payload, saveDraft, readDraft, dropDraft, storyDraft };           // automation / inspection hook
 }
 boot();

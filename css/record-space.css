@@ -135,3 +135,9 @@ html { background: #000; }   /* 261124: below a short page (the gate) the html b
 .rs-ask { z-index: 60; }
 .rs-ask-q { font-size: 1.04rem; line-height: 2; color: var(--rp-text); margin: 0 0 2rem; word-break: keep-all; min-height: 2em; }
 .rs-ask .rs-sheet-btns { flex-wrap: wrap; }
+
+/* 261128: two ways to make a memory — type it, or put a short story in for a first draft */
+.rs-story .rs-way { display: flex; gap: 0.8rem; }
+.rs-story .rs-way .rs-small.on { color: var(--rp-accent, #c4a882); border-color: var(--rp-accent, #c4a882); }
+.rs-story-text { margin-top: 1rem; min-height: 12rem; font-size: 0.92rem; line-height: 1.9; }
+.rs-story-note { margin: 0.8rem 0 0; font-size: 0.78rem; color: #6f6c78; letter-spacing: 0.04em; line-height: 1.8; }

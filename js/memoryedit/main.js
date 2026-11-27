@@ -26,7 +26,7 @@ const linesOf = (t) => String(t || '').split(/\n+/).map((x) => x.trim()).filter(
 const note = (t) => { $('meNote').textContent = t || ''; };
 const status = (t) => { $('meStatus').textContent = t || ''; };
 
-let ME = null, memory = null, scenes = [], changed = new Set(), picked = null, candidate = null, view = null;
+let ME = null, memory = null, scenes = [], changed = new Set(), picked = null, candidate = null, view = null, source = '';
 
 // ── the thing, turning (one frame for the whole page: a browser holds only so many of these) ──
 function createView(canvas) {
@@ -120,10 +120,13 @@ async function open(m) {
   document.querySelectorAll('#meList button').forEach((b) => b.classList.toggle('on', b.dataset.id === m.id));
   $('meTitle').textContent = '기억 고치기 — ' + (m.title || m.code || '');
   note('불러오는 중…'); status('');
-  const [sc, rt] = await Promise.all([
+  const [sc, rt, src] = await Promise.all([
     sb().from('scenes').select('id, scene_order, text, meta, void_info').eq('memory_id', m.id).order('scene_order'),
     sb().from('remain_texts').select('scene_order').eq('memory_id', m.id),
+    sb().from('memory_sources').select('text').eq('memory_id', m.id).maybeSingle(),      // the story this memory's first draft was taken from, if it was made that way (only its owner can read it)
   ]);
+  source = (src && !src.error && src.data && src.data.text) || '';
+  $('meSource').hidden = !source;
   if (sc.error) { note('장면을 불러오지 못했습니다.'); console.error(sc.error); return; }
   scenes = sc.data || []; changed = new Set((rt.data || []).map((x) => Number(x.scene_order)));
   note('장면 ' + scenes.length + '개. 카드를 누르면 오른쪽에 그 장면의 조형물이 선다.');
@@ -330,6 +333,15 @@ $('meSoundTake').addEventListener('click', soundTake);
 $('meSoundDrop').addEventListener('click', soundDrop);
 $('meSoundOff').addEventListener('click', soundOff);
 $('meVolSave').addEventListener('click', volSave);
+
+// the story, to look at beside the cards: a window of its own with the bare text in it, like a notepad (author, 261128: "not a layout of its own — a new window, to refer to")
+$('meSource').addEventListener('click', () => {
+  if (!source) return;
+  const url = URL.createObjectURL(new Blob([(memory && memory.title ? memory.title + String.fromCharCode(10, 10) : '') + source], { type: 'text/plain;charset=utf-8' }));
+  const win = window.open(url, 'tem_source_' + (memory ? memory.id : ''), 'popup,width=620,height=860');
+  if (!win) note('새 창이 막혔습니다 — 브라우저에서 이 사이트의 팝업을 허용해 주세요.');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+});
 
 $('meAgain').addEventListener('click', again);
 $('meTake').addEventListener('click', take);

@@ -52,3 +52,6 @@ button:disabled { opacity: 0.35; cursor: default; }
   .me-work { grid-template-columns: 1fr; }
   .me-side { position: static; order: -1; }
 }
+
+/* the story the memory was drafted from: a small button under the title (it opens a window with the bare text) */
+.me-src { margin-top: 0.7rem; font-size: 0.76rem; padding: 0.25rem 0.8rem; }
