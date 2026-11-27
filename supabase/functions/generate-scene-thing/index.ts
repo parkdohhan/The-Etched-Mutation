@@ -158,6 +158,8 @@ serve(async (req: Request) => {
   const strs = (x: unknown) => (Array.isArray(x) ? x : []).map((s: unknown) => String(s || "").trim()).filter(Boolean).slice(0, 12).join(", ").slice(0, 300);
   const words = strs(body?.words), deep = strs(body?.deep);
   const avoid = String(body?.avoid || "").trim().slice(0, 160);
+  // 261128 (the editing tool, memory-edit.html — author: "let me write the prompt I want when a thing is made"): what the author asks for, in their own words
+  const want = String(body?.want || "").trim().slice(0, 400);
 
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY") || Deno.env.get("CLAUDE_API_KEY");
   if (!apiKey) return json(cors, 500, { ok: false, error: "ANTHROPIC_API_KEY missing" });
@@ -169,6 +171,7 @@ serve(async (req: Request) => {
     words ? `Words set afloat round the scene: ${words}` : "",
     deep ? `Words buried in the scene: ${deep}` : "",
     avoid ? `The author rejected a recipe described as: "${avoid}". Draw a different thing of the scene, or the same thing in a clearly different way.` : "",
+    want ? `What the author asks to be drawn, above everything else: "${want}". Draw THAT, in this grammar. The scene's text only tells where it belongs.` : "",
     "Return the recipe JSON now.",
   ].filter(Boolean).join("\n\n");
 

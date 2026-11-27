@@ -6,7 +6,7 @@
   <title>TEM — 기억 고치기</title>
   <!--
     기억 고치기 (2026-11-28 밤, 작가: "기억 수정할 수 있는 edit 툴도 만들어줘, 조형물이 맘에 안 들어서").
-    로그인한 계정이 주인(memories.curator_id)인 기억만 열린다. 고칠 수 있는 것: 장면의 조형물(다시 받기 → 바꾸기) · 앞 토막(글) · 뒷 토막.
+    로그인한 계정이 주인(memories.curator_id)인 기억만 열린다. 고칠 수 있는 것: 장면의 조형물(원하는 것을 적어서 받기 → 돌려 보기 → 바꾸기) · 소리(원하는 것을 적어서 만들기 → 들어 보기 → 바꾸기) · 앞 토막(글) · 뒷 토막.
     쓰기는 계정의 권한으로 직접 한다(주인만 자기 기억의 장면을 고칠 수 있다 — DB 정책). 저장을 누르는 즉시 사이트에 반영된다.
     조형물은 기억 만들기 화면과 같은 서버 장치(generate-scene-thing)에서 받는다. 손으로 그린 조형물(대표 기억)을 바꾸면
     scenes.meta.space.thing_over 가 서고, "손으로 그린 것으로 되돌린다"로 내릴 수 있다.
@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/memory-edit.css?v=261128a" />
+  <link rel="stylesheet" href="css/memory-edit.css?v=261128b" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -33,17 +33,39 @@
     <aside class="me-side" id="meSide" aria-label="조형물">
       <p class="k" id="meSideK">장면을 고르면 조형물이 여기 선다</p>
       <canvas class="me-canvas" id="meCanvas"></canvas>
+      <p class="me-tip">끌면 돌아간다 · 휠로 가까이, 멀리 · 두 번 누르면 처음대로</p>
       <p class="me-what" id="meWhat"></p>
-      <div class="me-row" id="meThingRow" hidden>
+      <div id="meThingBox" hidden>
+      <label class="me-lab" for="meWant">어떤 조형물을 원하는지 적는다 (비워 두면 장면의 글로 그린다)</label>
+      <textarea class="me-want" id="meWant" spellcheck="false" placeholder="예: 물이 반쯤 찬 욕조. 수면에 머리카락 한 가닥."></textarea>
+      <div class="me-row" id="meThingRow">
         <button type="button" id="meAgain">다시 받기</button>
         <button type="button" id="meTake" hidden>이걸로 바꾼다</button>
         <button type="button" id="meDrop" hidden>버린다</button>
         <button type="button" id="meHand" hidden>손으로 그린 것으로 되돌린다</button>
       </div>
       <p class="me-status" id="meStatus" aria-live="polite"></p>
+      </div>
+
+      <div id="meSoundBox" hidden>
+        <p class="k me-gap">이 장면의 소리</p>
+        <p class="me-what" id="meSoundNow"></p>
+        <audio class="me-audio" id="meAudio" controls loop preload="none"></audio>
+        <div class="me-vol"><label class="me-lab" for="meVol">크기</label><input type="range" id="meVol" min="0" max="1" step="0.05" value="0.5" /><span id="meVolN">0.50</span></div>
+        <label class="me-lab" for="meSoundWant">어떤 소리를 원하는지 적는다 (영어로 적으면 가장 잘 나온다)</label>
+        <textarea class="me-want" id="meSoundWant" spellcheck="false" placeholder="예: a phone ringing in a small empty room, cut off, ringing again"></textarea>
+        <div class="me-row">
+          <button type="button" id="meSoundMake">소리 만들기</button>
+          <button type="button" id="meSoundTake" hidden>이 소리로 바꾼다</button>
+          <button type="button" id="meSoundDrop" hidden>버린다</button>
+          <button type="button" id="meVolSave" hidden>크기 저장</button>
+          <button type="button" id="meSoundOff" hidden>소리 없애기</button>
+        </div>
+        <p class="me-status" id="meSoundStatus" aria-live="polite"></p>
+      </div>
     </aside>
   </div>
 
-  <script type="module" src="js/memoryedit/main.js?v=261128a"></script>
+  <script type="module" src="js/memoryedit/main.js?v=261128b"></script>
 </body>
 </html>

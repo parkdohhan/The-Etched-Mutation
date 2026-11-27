@@ -31,9 +31,19 @@ button:disabled { opacity: 0.35; cursor: default; }
 .me-scene .now { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--dim); }
 .me-scene .now b { font-weight: 300; color: var(--lit); }
 
-.me-side { position: sticky; top: 1.2rem; }
+.me-side { position: sticky; top: 1.2rem; max-height: calc(100vh - 2.4rem); overflow-y: auto; scrollbar-width: thin; padding-right: 0.3rem; }
 .me-side .k { margin: 0 0 0.6rem; font-size: 0.74rem; letter-spacing: 0.12em; color: var(--faint); }
 .me-canvas { width: 100%; aspect-ratio: 4 / 3; display: block; background: #000; border: 1px solid var(--line); }
+.me-tip { margin: 0.4rem 0 0; font-size: 0.7rem; letter-spacing: 0.08em; color: var(--faint); }
+.me-lab { display: block; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--faint); margin: 0.9rem 0 0.3rem; }
+.me-want { width: 100%; min-height: 3.6rem; resize: vertical; background: rgba(255,255,255,0.03); border: 1px solid var(--line); color: var(--text); font: inherit; font-size: 0.88rem; line-height: 1.8; padding: 0.5rem 0.7rem; outline: none; margin-bottom: 0.7rem; }
+.me-want:focus { border-color: var(--accent); }
+.me-gap { margin-top: 2.2rem !important; padding-top: 1.2rem; border-top: 1px solid var(--line); }
+.me-audio { width: 100%; height: 2.2rem; margin: 0.2rem 0 0.4rem; filter: invert(0.9) hue-rotate(180deg); opacity: 0.8; }
+.me-vol { display: flex; align-items: center; gap: 0.8rem; }
+.me-vol .me-lab { margin: 0; }
+.me-vol input { flex: 1; accent-color: var(--accent); }
+.me-vol span { font-size: 0.76rem; color: var(--dim); min-width: 2.4em; }
 .me-what { margin: 0.6rem 0 0.8rem; font-size: 0.84rem; color: #b9b4c6; min-height: 1.7em; }
 .me-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .me-status { margin: 0.8rem 0 0; font-size: 0.8rem; color: var(--dim); min-height: 1.6em; }

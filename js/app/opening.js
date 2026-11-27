@@ -1321,7 +1321,7 @@ function skipToIntro() { openingSequenceStarted = true; skipOpening() }
 // 261128 밤 작가: "오프닝 화면에서도 스킵 가능하게 — 아무 키나 오래 누르면 언어 선택도 스킵되고 바로 메인 화면. 나중에 세팅에서 언어 설정하면 되잖아."
 // 오프닝이 떠 있는 동안 글쇠 하나(또는 화면)를 OPENING_HOLD_MS 만큼 누르고 있으면 skipToIntro — 소리를 끄고 메인 화면(메뉴)으로.
 // 첫 누름·언어 고르기·Start·대사·대화 어느 대목에서든 같다. 언어는 건드리지 않는다(고른 적이 없으면 지금 설정 그대로).
-// 낙하 서막의 길게 누르기(js/spaceplay/prologue.js)와 같은 약속. 화면에 안내 문구는 두지 않았다.
+// 낙하 서막의 길게 누르기(js/spaceplay/prologue.js)와 같은 약속. 화면 아래에 흐린 안내 한 줄이 뜬다(작가: "안내 문구도 한 줄 넣어줘").
 // 글을 적는 칸에 초점이 있을 때의 글쇠는 세지 않는다("ㅋㅋㅋㅋ"나 지우기를 길게 누르는 것이 건너뛰기가 되면 안 된다) — 그때는 칸 밖 화면을 길게 누른다.
 // 되돌리기 = 이 블록 삭제.
 const OPENING_HOLD_MS = 900;
@@ -1347,6 +1347,16 @@ const OPENING_HOLD_MS = 900;
   document.addEventListener('pointerdown', (e) => { if (typing(e.target)) return; arm(); }, true);
   document.addEventListener('pointerup', disarm, true);
   document.addEventListener('pointercancel', disarm, true);
+  // the one line: small, faint, at the foot of the opening; it comes a little after the opening does and goes with it
+  const lineFor = () => { let lang = 'en'; try { lang = localStorage.getItem('tem_language') || 'en'; } catch (_) {} const touch = (('ontouchstart' in window) || navigator.maxTouchPoints > 0) && window.matchMedia && matchMedia('(pointer: coarse)').matches; return lang === 'ko' ? (touch ? '화면을 길게 누르면 건너뜁니다' : '아무 키나 길게 누르면 건너뜁니다') : (touch ? 'press and hold to skip' : 'hold any key to skip'); };
+  const putLine = () => {
+    const os = document.getElementById('openingScreen'); if (!os || !showing() || document.getElementById('openingHoldHint')) return;
+    const h = document.createElement('div'); h.id = 'openingHoldHint'; h.textContent = lineFor();
+    h.style.cssText = 'position:fixed;left:0;right:0;bottom:1.6rem;text-align:center;font-size:0.7rem;letter-spacing:0.16em;color:rgba(232,228,223,0.32);pointer-events:none;opacity:0;transition:opacity 2400ms ease;z-index:5;';
+    os.appendChild(h); requestAnimationFrame(() => { h.style.opacity = '1'; });
+    setInterval(() => { if (h.isConnected) { const t = lineFor(); if (h.textContent !== t) h.textContent = t; } }, 1500);   // the language may be chosen while it shows
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(putLine, 2600)); else setTimeout(putLine, 2600);
 })();
 
 function handleOpeningKeydown(e) { if (!openingSkipped) { const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : ''; if (tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable)) return; e.preventDefault(); skipOpening() } }
