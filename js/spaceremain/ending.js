@@ -6,8 +6,9 @@
  *   1. the walk as one text — every scene's lines in the order they were read, the walker's own lines among them
  *   2. the text goes dim; only what the walker said is lit (yellow)
  *   3. the three blanks filled in before entering come up beside it
- *   4. the lines that do not remain go out, one after another
- *   5. each line that remains goes to the sentence it displaces: that sentence goes out, the line stands there
+ *   4. the lines that do not remain go out, one after another (most do: three remain at most, one a blank)
+ *   5. each line that remains goes to the sentence it displaces: that sentence goes out, the line stands there —
+ *      and beside it the blank it turned back on is lit, alone: what the walker said of another, next to what they wrote of themselves
  *   6. the pieces (the walker's own model, the map) open; the changed ones move to where they now stand. A piece
  *      pressed shows what the next person will read there. Nothing can be changed. One button: leave.
  * Everything was already kept before any of this is shown (main.js persist): leaving at any moment leaves it as it is.
@@ -56,8 +57,9 @@ export async function runEnding(o) {
 
   // ── 3. what was written before entering ────────────────────────────────────
   before.appendChild(el('p', 'k', ko ? '들어오기 전에 네가 적은 것' : 'what you wrote before you came in'));
+  const blankEls = [];
   for (const b of o.blanks) {
-    const [a, c] = b.line.split('___'), p = el('p', 'b');
+    const [a, c] = b.line.split('___'), p = el('p', 'b'); blankEls.push(p);
     p.append(document.createTextNode(a || ''), el('span', 'a', b.answer), document.createTextNode(c || ''));
     before.appendChild(p);
   }
@@ -82,17 +84,19 @@ export async function runEnding(o) {
   for (const c of settled.changes) {
     const was = textEls.get(c.order + '|' + c.index), mine = mineEls.get(c.li);
     if (!was || !mine) continue;
+    blankEls.forEach((p, i) => p.classList.toggle('hit', i === c.blank)); before.classList.toggle('one', c.blank >= 0 && c.blank < blankEls.length);   // the blank this line turned back on
     toward(was); await wait(1500);
     was.classList.add('out');                                               // the sentence that stood there goes out…
     await wait(2400);
     was.textContent = c.now; was.classList.remove('out'); was.classList.add('in');   // …and the walker's line stands in its place
     mine.classList.add('moved');
-    await wait(2600);
+    await wait(4200);                                                       // the two stand side by side a while
   }
   await wait(1200);
+  before.classList.remove('one'); blankEls.forEach((p) => p.classList.remove('hit'));
   root.classList.remove('lit'); root.classList.add('after');                // read once as the next person reads it
-  await tell(ko ? '다음 사람은 이것을 읽는다.' : 'The next person reads this.', 4200);
-  await tell(ko ? '고칠 수 없다.' : 'It cannot be changed.', 3400);
+  if (settled.changes.length) { await tell(ko ? '다음 사람은 이것을 읽는다.' : 'The next person reads this.', 4200); await tell(ko ? '고칠 수 없다.' : 'It cannot be changed.', 3400); }
+  else await tell(ko ? '이 기억은 네가 오기 전과 같다.' : 'The memory is as it was before you came.', 4200);
 
   // ── 6. the pieces ──────────────────────────────────────────────────────────
   root.classList.add('aside'); before.classList.remove('on');

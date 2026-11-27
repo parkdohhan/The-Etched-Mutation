@@ -2,8 +2,8 @@
  * Words that remain — orchestrator (2026-11-28, branch space-remain). A PREVIEW of a changed play, on the space stage.
  * Record: docs/우주무대_남는말_실험-261128.md.   The space stage's own files (js/spaceplay/) are imported, not edited.
  *
- *   one line of notice + three blanks → [ a scene's two parts, and after each as many exchanges as the walker wants;
- *   the scene answers short of the facts and asks back → a way and a door ]* → the ending: everything the walker said
+ *   a consent sheet + one line of notice + three blanks → [ a scene's two parts, and after each as many exchanges as the
+ *   walker wants; the scene answers short of the facts, stops halfway, and asks back once at most → a way and a door ]* → the ending: everything the walker said
  *   lights up; the walker-before-entering (the blanks) chooses which lines remain; each takes the place of one sentence
  *   of the text; the pieces can be looked at, with what the next person will read → the door is shut for good; from
  *   outside only the piece's description is seen, as it now is.
@@ -15,7 +15,8 @@
  *      ?next=1   walk as the next person (reads what the walks before left; the lock does not hold them)
  *      ?reset=1  forget everything this browser kept for this memory
  *      ?pick=random  which lines remain is left to chance (the author's first idea) instead of to the blanks
- *      ?told=0   no notice at the door (the author's first idea: the walker does not know)
+ *      ?told=0   without the stage's one line at the door (the consent sheet stays)
+ *      ?ask=0    the scene never asks back (as it is, it asks once a scene at most)
  *      ?prologue=1  the fall before the first scene (off here: it is not what this preview is about)
  *      trying it out: ?fast=4 · ?dry=1 (the server is not asked: made-up readings, a fixed answer) · ?at=end (a made-up walk, the ending only)
  */
@@ -30,8 +31,8 @@ import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
 import { runPrologue } from '../spaceplay/prologue.js?v=261124c';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
-import * as remain from './remain.js?v=261128a';
-import { runEnding, showOutside } from './ending.js?v=261128a';
+import * as remain from './remain.js?v=261128c';
+import { runEnding, showOutside } from './ending.js?v=261128c';
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -46,6 +47,7 @@ const ko = LANG !== 'en';
 const DEFAULT_MEMORY = 'UNDW-001';
 // staging values (free parameters)
 const DOOR_DIST = 26, ARRIVE_DIST = 24, FOOT_DROP = 1.15;
+const ASK_BACK = qs.get('ask') !== '0';        // ?ask=0 = the scene never asks back at all
 const MAX_TURNS = 4;                        // exchanges a walker may have after each part of a scene (the first is asked for, the rest are theirs)
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms / FAST));
@@ -70,10 +72,13 @@ const run = {
   Q: new Map(), place: new Map(), doors: new Map(),
   path: [], legs: [],
   // this preview's own
-  lines: [],                                // everything the walker said: { order, sceneId, raw, emo, blame, fear, question, silentScene }
+  lines: [],                                // everything the walker said: { order, sceneId, raw, emo, question, silentScene, whom, back } (whom · back come a little later: remain-turn "judge")
   story: [],                                // the walk as one text: [{ sceneId, order, items: [{ kind: 'text', part, si, t } | { kind: 'mine', li, t }] }]
   read: new Map(),                          // scene id → the sentences of its text as this walker read them
   placed: new Map(),                        // line index → the server's seam for it
+  known: new Map(),                         // scene id → all of the scene the walker was given (both parts), for the reading of their lines
+  judging: [],                              // readings on their way
+  consent: null,
   shift: new Map(),                         // scene id → [x,y,z] a changed piece's move
   blanks: [], beforeP: null, before: null,
   here: null, pending: null, last: null, contact: false, ghosts: [], rows: [], crossing: false, busy: false, ended: false,
@@ -196,10 +201,13 @@ async function remainCall(body) {
     return r.data;
   } catch (e) { console.warn('[remain] ' + body.mode, e); return null; }
 }
-/** The scene's answer: from inside its text, short of the facts, ending on a question back. */
-async function replyOf(sceneText, raw, history) {
-  if (DRY) return ko ? '기억이 흐릿해. 너는 그게 누구 때문이었다고 봐?' : 'It is hazy. Whose doing do you think it was?';
-  const r = await remainCall({ mode: 'turn', title: run.memory.title || '', sceneText, userInput: String(raw).slice(0, 500), history });
+/**
+ * The scene's answer: from inside its text, short of the facts, stopped halfway. It asks nothing back — except when `ask` is
+ * set, which the stage does once a scene at most (author, 261128 night: "asking the walker every single time is not it").
+ */
+async function replyOf(sceneText, raw, history, ask) {
+  if (DRY) return ko ? (ask ? '기억이 흐릿해. 너는 그게 누구 때문이었다고 봐?' : '기억이 흐릿해. 거기까지는 아직 들여다보지 못했어.') : (ask ? 'It is hazy. Whose doing do you think it was?' : 'It is hazy. I have not looked that far yet.');
+  const r = await remainCall({ mode: 'turn', title: run.memory.title || '', sceneText, userInput: String(raw).slice(0, 500), history, ask: !!ask });
   const text = r && typeof r.reply === 'string' ? r.reply.trim() : '';
   if (!text) return '';
   if (hasCrisis(text) || /https?:\/\//i.test(text)) { console.warn('[remain] a reply was held back'); return ''; }
@@ -207,11 +215,11 @@ async function replyOf(sceneText, raw, history) {
   for (const sn of sentences(text.replace(/\s+/g, ' '))) { if (out && out.length + 1 + sn.length > 150) break; out = out ? out + ' ' + sn : sn; }
   return out.slice(0, 190);
 }
-/** A text read on the memory's axes, with its blame direction and core fear (the stage's own classifier call). */
+/** A text read on the memory's axes (the stage's own classifier call). */
 async function measure(raw, context) {
   if (DRY) {
     const o = {}; run.engine.axes.forEach((k, i) => { o[k] = +(0.15 + 0.7 * hashStr(raw + k + i)).toFixed(3); });
-    return { base: o, reason_analysis: { is_void: false, attribution: remain.BLAME[Math.floor(hashStr(raw + 'b') * 3)], core_fear: remain.FEAR[Math.floor(hashStr(raw + 'f') * 4)] } };
+    return { base: o, reason_analysis: { is_void: false } };
   }
   return data.analyzeEmotion(raw, run.engine.axes, context);
 }
@@ -321,6 +329,7 @@ function firstScene() {
 async function entry() {
   const line = $('spEntryLine'), box = $('srBlanks'), btn = $('spEnter'), note = $('spEntryNote');
   await wait(900);
+  await consent();
   if (TOLD) { await typeText(line, ko ? '여기서 한 말은 남는다.\n한 번뿐이다.' : 'What you say here stays.\nThere is only this once.', { per: 80, pace: 1 / FAST }); await wait(2200); }
   typeText(note, NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
   const blanks = remain.blanksFor(run.memory.code, LANG);
@@ -352,13 +361,51 @@ async function entry() {
   btn.textContent = ko ? '들어간다' : 'go in'; btn.disabled = false; btn.focus();
   await new Promise((resolve) => btn.addEventListener('click', () => { if (btn.disabled) return; btn.disabled = true; resolve(); }, { once: true }));
 }
+/**
+ * One sheet before anything is written (author, 261128: "consent — go"). Plain, in the page's own voice, not the stage's.
+ * What it says is what the piece does to what the walker says. Agreeing is recorded with the walk; going back leaves nothing.
+ * (The sentences are drafts — the author's to rewrite. ?told=0 takes away the stage's one line after this, never this sheet.)
+ */
+function consent() {
+  const sheet = document.createElement('div'); sheet.id = 'srConsent';
+  const h = document.createElement('p'); h.className = 'h'; h.textContent = ko ? '들어가기 전에' : 'before you go in';
+  const ul = document.createElement('ul');
+  const items = ko
+    ? ['여기서 장면에게 한 말 가운데 몇 줄이 이 기억의 글에 남을 수 있습니다. 남은 말은 다음 사람이 읽습니다.',
+       '어느 말이 남을지는 고를 수 없습니다. 남은 뒤에는 고치거나 지울 수 없습니다.',
+       '이 기억에는 한 번만 들어갈 수 있습니다. 도중에 나가도 그렇습니다.',
+       '들어가기 전에 적는 세 문장은 다른 사람에게 보이지 않습니다.',
+       '본명·연락처처럼 누구인지 알 수 있는 것은 적지 마세요. "엄마", "그 사람"처럼 적으면 됩니다.',
+       '하는 말은 대답을 만들고 읽기 위해 AI 모델에 보내집니다.']
+    : ['A few of the things you say to the scenes may stay in this memory\'s text. The next person reads what stays.',
+       'You cannot choose which. Once it stays, it cannot be changed or taken out.',
+       'You can go into this memory once. That holds even if you leave partway.',
+       'The three sentences you write before going in are shown to no one else.',
+       'Do not write a real name, a number, or anything that tells who someone is. "my mother", "that person" will do.',
+       'What you say is sent to an AI model, to be answered and to be read.'];
+  for (const t of items) { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }
+  const row = document.createElement('div'); row.className = 'row';
+  const yes = document.createElement('button'); yes.type = 'button'; yes.className = 'rp-btn'; yes.textContent = ko ? '동의하고 들어간다' : 'I agree — go in';
+  const no = document.createElement('button'); no.type = 'button'; no.className = 'rp-silent'; no.textContent = ko ? '돌아간다' : 'go back';
+  row.append(yes, no); sheet.append(h, ul, row);
+  $('spEntry').insertBefore(sheet, $('spEntryLine'));
+  requestAnimationFrame(() => sheet.classList.add('on'));
+  return new Promise((resolve) => {
+    no.addEventListener('click', () => { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); });
+    yes.addEventListener('click', () => {
+      run.consent = { v: 'remain_consent_v1', at: new Date().toISOString() };
+      sheet.classList.remove('on');
+      setTimeout(() => { sheet.remove(); resolve(); }, 1500 / FAST);
+    }, { once: true });
+  });
+}
 /** The three blanks, read with the stage's own classifier (each whole sentence, with what was written in it). Not awaited at the door. */
 function readBefore() {
   run.beforeP = Promise.all(run.blanks.map((b) => {
     const whole = b.line.replace(remain.HOLE, b.answer);
     return sendable(b.answer) ? measure(whole, null).catch(() => null) : Promise.resolve(null);
   })).then((rs) => {
-    run.before = remain.beforeOf(rs.map((r) => (r ? { base: parseEmotion(r.base), reason_analysis: r.reason_analysis } : null)));
+    run.before = remain.beforeOf(rs.map((r) => (r ? { base: parseEmotion(r.base) } : null)));
     return run.before;
   }).catch(() => (run.before = remain.beforeOf([])));
 }
@@ -377,7 +424,8 @@ async function stay(scene, o) {
   const silent = isSilent(scene), text = textRead(scene);
   const A = silent ? [] : sentences(text).map(closed), pb = silent ? { lines: [], left: [] } : partB(scene);
   const parts = [A, pb.lines].filter((p) => p.length), known = A.concat(pb.lines).join(' ');
-  run.read.set(scene.id, A);
+  run.read.set(scene.id, A); run.known.set(scene.id, known);
+  const firstLine = run.lines.length;
   const entry = { sceneId: scene.id, order: scene.scene_order, items: [] }; run.story.push(entry);
   const shown = [], emos = [], history = [];
   let anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5, lastReply = '', turnsHere = 0;
@@ -400,7 +448,7 @@ async function stay(scene, o) {
     talk.waiting(true);
     const [an, rep] = await Promise.all([
       measure(raw, { scene_text: shown.join(' ').slice(-400), ghost_line: (lastReply || shown[shown.length - 1] || '').slice(0, 200) }),
-      (ok && !silent) ? replyOf(known, raw, history.slice()) : Promise.resolve(''),
+      (ok && !silent) ? replyOf(known, raw, history.slice(), !!(opts && opts.ask)) : Promise.resolve(''),
     ]);
     talk.waiting(false);
     let emo = null, ra = null;
@@ -415,7 +463,7 @@ async function stay(scene, o) {
     run.said.get(scene.id).push(raw);
     if (question) { if (!run.asked.has(scene.id)) run.asked.set(scene.id, []); run.asked.get(scene.id).push(raw); }
     // a line that was not sent (abuse, an instruction to the model) is not kept either: it cannot remain
-    if (ok) { run.lines.push({ order: scene.scene_order, sceneId: scene.id, raw, emo, blame: ra && ra.attribution, fear: ra && ra.core_fear, question, silentScene: silent }); entry.items.push({ kind: 'mine', li: run.lines.length - 1, t: raw }); }
+    if (ok) { run.lines.push({ order: scene.scene_order, sceneId: scene.id, raw, emo, question, silentScene: silent }); entry.items.push({ kind: 'mine', li: run.lines.length - 1, t: raw }); }
     turnsHere++;
     return true;
   };
@@ -429,7 +477,8 @@ async function stay(scene, o) {
       await talk.sayAll(parts[i], '', { gap: i > 0 });
       shown.push(...parts[i]);
       parts[i].forEach((l, k) => entry.items.push({ kind: 'text', part: parts[i] === A ? 'a' : 'b', si: parts[i] === A ? k : -1, t: l }));
-      for (let t = 0; t < MAX_TURNS; t++) { if (!(await exchange({ more: t > 0 }))) break; }
+      // the scene asks back once at most: at the walker's first line after the whole of it has been read
+      for (let t = 0; t < MAX_TURNS; t++) { if (!(await exchange({ more: t > 0, ask: ASK_BACK && i === parts.length - 1 && t === 0 }))) break; }
     }
   }
 
@@ -454,7 +503,8 @@ async function stay(scene, o) {
                  : run.engine.pickNext({ origin: scene, pattern, userEmotion: mean, isVoid: userVoid, visited: run.visited });
   if (next.mode === 'same') next = Object.assign(run.engine.pickNext({ origin: scene, pattern: 'bridge', userEmotion: mean, isVoid: userVoid, visited: run.visited }), { was: 'same' });
 
-  persist(false);                                                          // from the first line said, it stays — whether or not the walk is finished
+  persist(false);                                                          // from the first line said, the door is shut — whether or not the walk is finished
+  { const mine = []; for (let i = firstLine; i < run.lines.length; i++) mine.push(i); judge(mine).then(() => persist(false)); }   // this stay's lines are read while the walker goes on; what remains is kept again when they are
   await wait(900);
   talk.hide();
   run.busy = false;
@@ -466,15 +516,27 @@ function nearestGhost(userEmotion, pool) {
   return best;
 }
 
+// ── the reading of the walker's lines (remain-turn "judge") ─────────────────────
+/** Whom each line holds to account, and which blank it is about the same matter as. Never rejects; a line left unread cannot remain. */
+function judge(indices) {
+  if (!indices.length) return Promise.resolve();
+  if (DRY) { for (const li of indices) { const l = run.lines[li]; l.whom = remain.WHOM[Math.floor(hashStr(l.raw + 'w') * 4)]; l.back = Math.floor(hashStr(l.raw + 'k') * 4) - 1; } return Promise.resolve(); }
+  const blanks = run.blanks.map((b) => (sendable(b.answer) ? b.line.replace(remain.HOLE, b.answer) : ''));
+  const p = remainCall({ mode: 'judge', blanks, items: indices.map((li) => ({ id: String(li), scene: run.known.get(run.lines[li].sceneId) || '', line: run.lines[li].raw })) })
+    .then((r) => { for (const x of (r && r.items) || []) { const l = run.lines[Number(x.id)]; if (l) { l.whom = x.whom; l.back = x.back; } } });
+  run.judging.push(p);
+  return p;
+}
+
 // ── what remains (kept in this browser as the walk goes; the ending only adds the server's seam) ──
 function settle(before) {
-  const usable = run.lines.map((l) => (l.silentScene || !run.read.get(l.sceneId) || !run.read.get(l.sceneId).length ? null : l));
+  const usable = run.lines.map((l) => (l.silentScene || l.whom === undefined || !run.read.get(l.sceneId) || !run.read.get(l.sceneId).length ? null : l));   // a line not yet read cannot remain yet
   const keep = remain.remaining(usable, before, PICK_RANDOM ? { random: seeded(run.id) } : null);
   const changes = [];
   for (const li of Array.from(keep).sort((a, b) => a - b)) {
     const l = run.lines[li], sents = run.read.get(l.sceneId);
     const p = run.placed.get(li) || remain.placeLocal(sents, l.raw);
-    changes.push({ li, order: l.order, sceneId: l.sceneId, index: p.index, was: sents[p.index], now: p.text, raw: l.raw, by: p.by });
+    changes.push({ li, order: l.order, sceneId: l.sceneId, index: p.index, was: sents[p.index], now: p.text, raw: l.raw, by: p.by, blank: PICK_RANDOM ? -1 : l.back });
   }
   return { keep, changes };
 }
@@ -484,9 +546,9 @@ async function persist(done) {
   const s = settle(before);
   state.texts = Object.assign({}, baseTexts);
   for (const c of s.changes) state.texts[c.order] = remain.withChange(run.read.get(c.sceneId), c.index, c.now);
-  state.walks[walkSlot] = { id: run.id, at: new Date().toISOString(), next: NEXT, pick: PICK_RANDOM ? 'random' : 'blanks', blanks: run.blanks, before: { blame: before.blame, fear: before.fear, read: before.read },
-    lines: run.lines.map((l, i) => ({ order: l.order, raw: l.raw, kept: s.keep.has(i), blame: l.blame || null, fear: l.fear || null })),
-    changes: s.changes.map((c) => ({ order: c.order, index: c.index, was: c.was, now: c.now, raw: c.raw, by: c.by })), done: !!done };
+  state.walks[walkSlot] = { id: run.id, at: new Date().toISOString(), next: NEXT, pick: PICK_RANDOM ? 'random' : 'blanks', consent: run.consent, blanks: run.blanks, before: { read: before.read },
+    lines: run.lines.map((l, i) => ({ order: l.order, raw: l.raw, kept: s.keep.has(i), whom: l.whom || null, back: l.back == null ? null : l.back })),
+    changes: s.changes.map((c) => ({ order: c.order, index: c.index, was: c.was, now: c.now, raw: c.raw, by: c.by, blank: c.blank })), done: !!done };
   state.locked = true;
   remain.save(run.memory.code, state);
   return s;
@@ -494,6 +556,8 @@ async function persist(done) {
 /** The ending's call: the server names the sentence each remaining line displaces and fits the seam; then it is kept. */
 async function weave() {
   const before = run.before || (run.beforeP ? await run.beforeP : remain.beforeOf([]));
+  await Promise.all(run.judging);
+  { const unread = []; run.lines.forEach((l, i) => { if (l.whom === undefined) unread.push(i); }); if (unread.length) await judge(unread); }   // a reading that did not come back is asked for once more
   const first = settle(before);
   if (!DRY && first.changes.length) {
     const r = await remainCall({ mode: 'weave', items: first.changes.map((c) => ({ id: String(c.li), sentences: run.read.get(c.sceneId), line: c.raw })) });
@@ -780,10 +844,10 @@ async function fakeWalk() {
     cosmos.placeThing(sc, V3(run.Q.get(sc.id)), null); if (prev) cosmos.link(prev.id, sc.id);
     run.arrived.add(sc.id); run.visited.add(sc.id); run.path.push(sc.id);
     const silent = isSilent(sc), A = silent ? [] : sentences(textRead(sc)).map(closed), pb = silent ? { lines: [] } : partB(sc);
-    run.read.set(sc.id, A);
+    run.read.set(sc.id, A); run.known.set(sc.id, A.concat(pb.lines).join(' '));
     const entry = { sceneId: sc.id, order: sc.scene_order, items: A.map((t, si) => ({ kind: 'text', part: 'a', si, t })) }; run.story.push(entry);
-    const say = async (part) => { const raw = SAY[n++ % SAY.length], an = await measure(raw, { scene_text: A.join(' ') }); const ra = (an && an.reason_analysis) || {};
-      run.lines.push({ order: sc.scene_order, sceneId: sc.id, raw, emo: an ? parseEmotion(an.base) : null, blame: ra.attribution, fear: ra.core_fear, question: isQuestion(raw), silentScene: silent }); entry.items.push({ kind: 'mine', li: run.lines.length - 1, t: raw }); };
+    const say = async (part) => { const raw = SAY[n++ % SAY.length], an = await measure(raw, { scene_text: A.join(' ') });
+      run.lines.push({ order: sc.scene_order, sceneId: sc.id, raw, emo: an ? parseEmotion(an.base) : null, question: isQuestion(raw), silentScene: silent }); entry.items.push({ kind: 'mine', li: run.lines.length - 1, t: raw }); };
     if (!silent) { await say('a'); pb.lines.forEach((t) => entry.items.push({ kind: 'text', part: 'b', si: -1, t })); await say('b'); }
     prev = sc;
   }

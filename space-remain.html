@@ -7,13 +7,13 @@
   <!--
     남는 말 — 바꿔 본 플레이의 미리보기 (2026-11-28, 가지 space-remain). 기록: docs/우주무대_남는말_실험-261128.md
     우주 무대(space-play.html)·빈 자리 화면(space-blank.html)은 손대지 않는다. 우주 부품(js/spaceplay/)을 불러 쓴다.
-    다른 점: 들어가기 전 알림 한 줄 + 빈칸 문장 셋 / 장면마다 말을 더 주고받을 수 있고 장면이 되묻는다 /
-            끝 = 내가 한 말이 전부 빛남 → 빈칸 셋이 남길 말을 고름 → 남은 말이 글의 문장 하나를 밀어냄 → 조각마다 다음 사람이 읽을 글 /
+    다른 점: 들어가기 전 동의 한 장 + 알림 한 줄 + 빈칸 문장 셋 / 장면마다 말을 더 주고받을 수 있다(장면은 장면마다 많아야 한 번만 되묻는다) /
+            끝 = 내가 한 말이 전부 빛남 → 빈칸마다 많아야 한 줄(내가 나에 대해 적은 그 일을 두고 장면 속 사람에게 한 말)이 남음 → 남은 말이 글의 문장 하나를 밀어냄 → 조각마다 다음 사람이 읽을 글 /
             그 뒤로는 다시 못 들어감 — 밖에서 지금의 소개와 줄거리만 보임.
     서버에는 아무것도 쓰지 않는다. 걸음이 남기는 것은 이 브라우저에만 남는다(진짜 기억은 안 바뀜).
     주소: ?memory=<기억 id 또는 코드> (기본 UNDW-001) · ?lang=ko|en
           ?next=1 다음 사람으로 걷기 · ?reset=1 이 브라우저에 남은 것 지우기
-          ?pick=random 남길 말을 우연에 맡김(작가의 처음 안) · ?told=0 알림 한 줄 없이(작가의 처음 안) · ?prologue=1 낙하 서막
+          ?pick=random 남길 말을 우연에 맡김(작가의 처음 안) · ?told=0 알림 한 줄 없이(동의 장은 남음) · ?ask=0 장면이 전혀 되묻지 않음 · ?prologue=1 낙하 서막
           시험: ?fast=4 · ?dry=1 (서버에 묻지 않음) · ?at=end (지어낸 걸음으로 끝 화면만)
     되돌리기 = 이 파일 + css/space-remain.css + js/spaceremain/ + supabase/functions/remain-turn 삭제 (가지째 버리면 끝).
   -->
@@ -22,7 +22,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/room-play.css?v=261121b" />
   <link rel="stylesheet" href="css/space-play.css?v=261124a" />
-  <link rel="stylesheet" href="css/space-remain.css?v=261128a" />
+  <link rel="stylesheet" href="css/space-remain.css?v=261128c" />
   <link rel="stylesheet" href="css/tem_cursor.css?v=260809" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -56,7 +56,7 @@
   <div id="rpPass" aria-live="polite"></div>
   <div id="rpToast"></div>
 
-  <script type="module" src="js/spaceremain/main.js?v=261128a"></script>
+  <script type="module" src="js/spaceremain/main.js?v=261128c"></script>
 
 </body>
 </html>

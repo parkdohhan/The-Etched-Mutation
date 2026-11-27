@@ -1,53 +1,52 @@
 // Words that remain (branch space-remain, 2026-11-28) — the rules of js/spaceremain/remain.js, checked against their own definitions.
 import { describe, it, expect } from 'vitest';
-import { beforeOf, remaining, placeLocal, placeServer, withChange, alike, pieceShift, textOf, stamp, fresh } from '../../js/spaceremain/remain.js';
+import { beforeOf, remaining, turnsBack, speaksOfFault, placeLocal, placeServer, withChange, alike, pieceShift, textOf, stamp, fresh } from '../../js/spaceremain/remain.js';
 
-const R = (blame, fear, base) => ({ base, reason_analysis: { attribution: blame, core_fear: fear } });
-const L = (order, raw, blame, fear, emo) => ({ order, raw, blame, fear, emo });
+const L = (order, raw, whom, back, emo) => ({ order, raw, whom, back, emo });
 
 describe('before entering', () => {
-  it('takes the direction named most often; a tie keeps the earlier blank', () => {
-    expect(beforeOf([R('self_blame', 'abandonment', { guilt: 1 }), R('other_blame', 'abandonment', { anger: 1 }), R('self_blame', 'death', { guilt: 1 })]).blame).toBe('self_blame');
-    expect(beforeOf([R('other_blame', 'failure', {}), R('self_blame', 'death', {}), R('fate_blame', 'rejection', {})]).blame).toBe('other_blame');
-    expect(beforeOf([R('other_blame', 'failure', {}), R('self_blame', 'death', {}), R('fate_blame', 'rejection', {})]).fear).toBe('failure');
-  });
-  it('a reading that failed, or a name the classifier does not have, is not counted', () => {
-    const b = beforeOf([null, R('unknown', 'none', { guilt: 0.4 }), null]);
-    expect(b.blame).toBe(null); expect(b.fear).toBe(null); expect(b.read).toBe(1);
+  it('keeps the emotion reading of each blank, in order; a blank not read has none', () => {
+    const b = beforeOf([{ base: { guilt: 1 } }, null, { base: { longing: 1 } }]);
+    expect(b.blanks.length).toBe(3); expect(b.blanks[0].emo).toEqual({ guilt: 1 }); expect(b.blanks[1].emo).toBe(null); expect(b.read).toBe(2);
+    expect(beforeOf([]).blanks.length).toBe(0);
   });
 });
 
 describe('which lines remain', () => {
-  const before = { blame: 'self_blame', fear: 'abandonment', emo: { guilt: 1, anger: 0 } };
-  it('one candidate a scene, and the first half of the scenes (rounded up)', () => {
-    const lines = [L(1, 'a', 'self_blame', 'abandonment', { guilt: 1 }), L(1, 'b', 'other_blame', 'death', { anger: 1 }),
-      L(2, 'c', 'other_blame', 'death', { anger: 1 }), L(3, 'd', 'other_blame', 'abandonment', { anger: 1 })];
+  const before = { blanks: [{ emo: { guilt: 1, anger: 0 } }, { emo: { longing: 1 } }, { emo: null }] };
+  it('a line turns back on a blank when it is the same matter AND speaks of fault', () => {
+    expect(turnsBack(L(7, '받았어야지. 네가.', 'narrator', 0), 0)).toBe(true);
+    expect(turnsBack(L(7, '누가 건 전화야?', 'none', 0), 0)).toBe(false);          // the same matter, but a question of fact
+    expect(turnsBack(L(7, '받았어야지. 네가.', 'narrator', -1), 0)).toBe(false);   // about fault, but no matter of the walker's own
+    expect(turnsBack(L(7, '받았어야지. 네가.', 'narrator', 0), 1)).toBe(false);
+    expect(speaksOfFault(L(1, 'x', 'nobody', -1))).toBe(true); expect(speaksOfFault(L(1, 'x', 'none', 2))).toBe(false);
+  });
+  it('at most one line a blank — three at most — and one a scene', () => {
+    const lines = [L(3, 'a', 'narrator', 0), L(7, 'b', 'narrator', 0), L(8, 'c', 'other', 1), L(9, 'd', 'other', 1), L(2, 'e', 'nobody', 2), L(4, 'f', 'narrator', -1), L(5, 'g', 'none', 2)];
     const keep = remaining(lines, before);
-    expect(keep.size).toBe(2);                        // 3 scenes → 2
-    expect(keep.has(0)).toBe(true);                   // scene 1: the line the same in blame
-    expect(keep.has(3)).toBe(true);                   // then the scene whose candidate is the same in fear, before the one that is neither
-    expect(keep.has(1)).toBe(false);
+    expect(Array.from(keep).sort()).toEqual([0, 2, 4]);
+    expect(remaining(lines.concat([L(6, 'h', 'narrator', 2), L(1, 'i', 'narrator', 0)]), before).size).toBe(3);
   });
-  it('the same in blame comes before the same in fear, and that before the cosine', () => {
-    const lines = [L(1, 'far but same blame', 'self_blame', 'death', { anger: 1 }), L(1, 'near, other blame', 'other_blame', 'abandonment', { guilt: 1 })];
-    expect(Array.from(remaining(lines, before))).toEqual([0]);
-    const level = [L(1, 'far', 'other_blame', 'death', { anger: 1 }), L(1, 'near', 'other_blame', 'death', { guilt: 1, anger: 0.1 })];
-    expect(Array.from(remaining(level, before))).toEqual([1]);
+  it('among lines that turn back on the same blank: narrator, then other, then nobody; then the cosine with that blank; then the earlier', () => {
+    expect(Array.from(remaining([L(3, 'excuse', 'nobody', 0, { guilt: 1 }), L(7, 'other', 'other', 0, { guilt: 1 }), L(13, 'you', 'narrator', 0, { anger: 1 })], before))).toEqual([2]);
+    expect(Array.from(remaining([L(3, 'far', 'narrator', 0, { anger: 1 }), L(7, 'near', 'narrator', 0, { guilt: 1, anger: 0.1 })], before))).toEqual([1]);
+    expect(Array.from(remaining([L(3, 'first', 'narrator', 2), L(7, 'second', 'narrator', 2)], before))).toEqual([0]);   // blank 2 was not read: level, the earlier
   });
-  it('refutation: when every line is the same in blame, no line that is not the nearest of its scene remains', () => {
-    const lines = [L(1, 'x', 'self_blame', 'death', { anger: 1 }), L(1, 'y', 'self_blame', 'abandonment', { guilt: 1 }), L(2, 'z', 'self_blame', 'death', { guilt: 0.2, anger: 1 }), L(2, 'w', 'self_blame', 'death', { guilt: 1 })];
-    const keep = remaining(lines, before);
-    expect(keep.has(0)).toBe(false); expect(keep.has(2)).toBe(false);
+  it('a scene holds one remaining line: the next blank takes its next line', () => {
+    const lines = [L(7, 'call', 'narrator', 0), L(7, 'night', 'narrator', 1), L(8, 'night, elsewhere', 'nobody', 1)];
+    expect(Array.from(remaining(lines, before)).sort()).toEqual([0, 2]);
+    expect(Array.from(remaining(lines.slice(0, 2), before))).toEqual([0]);
   });
-  it('a line that cannot remain (a silent scene, held back) is left out, and one line is one scene kept', () => {
-    expect(Array.from(remaining([null, L(4, 'only', 'fate_blame', 'none', { guilt: 0.3 })], before))).toEqual([1]);
+  it('refutation: nothing remains whose back is none or whose whom is none; nothing turns back → nothing remains', () => {
+    const lines = [L(1, 'a', 'narrator', -1, { guilt: 1 }), L(2, 'b', 'none', 0, { guilt: 1 }), L(3, 'c', 'other', -1), null, L(4, '', 'narrator', 0)];
+    expect(remaining(lines, before).size).toBe(0);
     expect(remaining([], before).size).toBe(0);
   });
-  it('left to chance: still one a scene and half the scenes', () => {
+  it('left to chance: three at most, one a scene, whatever was read', () => {
     let n = 0; const random = () => [0.9, 0.1, 0.4, 0.7, 0.2, 0.6][n++ % 6];
-    const lines = [L(1, 'a'), L(1, 'b'), L(2, 'c'), L(3, 'd'), L(4, 'e')];
+    const lines = [L(1, 'a', 'none', -1), L(1, 'b', 'none', -1), L(2, 'c', 'none', -1), L(3, 'd', 'none', -1), L(4, 'e', 'none', -1)];
     const keep = remaining(lines, before, { random });
-    expect(keep.size).toBe(2);
+    expect(keep.size).toBe(3);
     expect(keep.has(0) && keep.has(1)).toBe(false);
   });
 });
@@ -59,10 +58,12 @@ describe('the seam', () => {
     expect(placeLocal(S, 'zzz').index).toBe(2);
     expect(placeLocal(S, '네 잘못').text).toBe('네 잘못.');
   });
-  it('the server names the sentence; its spelling is used only while it is still the walker\'s own words', () => {
-    expect(placeServer(S, '엄마가 먼저 버린 거잖아', { index: 2, text: '엄마가 먼저 버린 거잖아.' })).toEqual({ index: 2, text: '엄마가 먼저 버린 거잖아.', by: 'server' });
-    const rewritten = placeServer(S, '엄마가 먼저 버린 거잖아', { index: 2, text: '어머니는 나를 먼저 떠나갔다.' });
-    expect(rewritten.index).toBe(2); expect(rewritten.text).toBe('엄마가 먼저 버린 거잖아.');
+  it('the server names the sentence and rewrites the line in the manner of the text; a runaway or empty answer is not used', () => {
+    expect(placeServer(S, '엄마가 먼저 버린거자나', { index: 2, text: '엄마가 먼저 버린 것이다' })).toEqual({ index: 2, text: '엄마가 먼저 버린 것이다.', by: 'server' });
+    expect(placeServer(S, '네가 안 받은 거야. 엄마가 아니라.', { index: 2, text: '내가 받지 않은 것이다. 엄마가 아니라.' }).text).toBe('내가 받지 않은 것이다. 엄마가 아니라.');
+    const runaway = placeServer(S, '네 잘못', { index: 1, text: '그것은 결국 누구의 잘못도 아니었고 다만 오래 울리던 전화가 있었을 뿐이라고 나는 생각했다.' });
+    expect(runaway).toEqual({ index: 1, text: '네 잘못.', by: 'server-place' });
+    expect(placeServer(S, '네 잘못', { index: 1, text: '  ' }).text).toBe('네 잘못.');
     expect(placeServer(S, '네 잘못', { index: 9, text: '네 잘못.' }).by).toBe('local');
     expect(placeServer(S, '네 잘못', null).by).toBe('local');
   });

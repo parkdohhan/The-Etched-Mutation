@@ -76,3 +76,19 @@ body.sr-ending canvas#spCosmos.on { opacity: 0.2; transition: opacity 4200ms eas
 #srOutside .tools { position: fixed; left: 0; right: 0; bottom: 0; padding: 2.6rem 0 1.2rem; background: linear-gradient(rgba(0,0,0,0), #000 55%); display: flex; gap: 1.2rem; justify-content: center; align-items: baseline; font: 0.68rem/1.4 system-ui, sans-serif; letter-spacing: 0.06em; color: #4d4a54; }
 #srOutside .tools button { background: transparent; border: 0; border-bottom: 1px solid #3a3840; color: #6f6c78; font: inherit; padding: 0.15rem 0; cursor: pointer; }
 #srOutside .tools button:hover { color: #b9b4c6; border-bottom-color: #6f6c78; }
+
+/* ── one sheet before anything is written (consent) — the page's own plain voice, not the stage's ── */
+#srConsent { width: min(34rem, 88vw); text-align: left; opacity: 0; transition: opacity 1400ms ease; }
+#srConsent.on { opacity: 1; }
+#srConsent p.h { margin: 0 0 1.4rem; font-size: 0.78rem; letter-spacing: 0.16em; color: #6f6c78; }
+#srConsent ul { margin: 0 0 2.2rem; padding: 0; list-style: none; }
+#srConsent li { font-size: 0.95rem; line-height: 1.95; font-weight: 300; word-break: keep-all; color: #b9b4c6; padding-left: 1.1em; text-indent: -1.1em; }
+#srConsent li::before { content: '· '; color: #55525c; }
+#srConsent li + li { margin-top: 0.55rem; }
+#srConsent .row { display: flex; align-items: baseline; gap: 1.6rem; }
+#srConsent .row .rp-silent { margin-top: 0; }
+
+/* the blank a remaining line turned back on is lit beside it; the others step back */
+#srBefore p.b { transition: opacity 2200ms ease, color 2200ms ease; }
+#srBefore.one p.b { opacity: 0.28; }
+#srBefore.one p.b.hit { opacity: 1; color: var(--rp-text); }

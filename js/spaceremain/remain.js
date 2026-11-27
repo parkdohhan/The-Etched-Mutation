@@ -5,38 +5,43 @@
  * A PREVIEW. Nothing here touches the database: what a walk leaves is kept in this browser (localStorage), so the
  * memory that stands in the archive is not altered. "The next person" is this same browser, opened with ?next=1.
  *
- * DEFINITIONS (order: primitives → same → different → quantity → refutation; CLAUDE.md §3.10)
+ * DEFINITIONS, second version (author, 261128 evening: "only the worst ones, or only the ones that have to do with the
+ * first three questions — two or three at most"). Order: primitives → same → different → quantity → refutation (CLAUDE.md §3.10).
  *   primitives   scene · sentence (a scene's text cut by room.js sentences) · line (one thing the walker said to a scene)
- *                · reading (the classifier's answer for a text: an emotion vector on the memory's axes, a blame
- *                direction, a core fear) · blank (one of the three sentences filled in before entering)
- *   before       the walker before entering = the three blanks' readings taken together:
- *                blame = the direction named most often among the three (a tie → the earlier blank's), fear likewise,
- *                emotion = the mean of the three vectors.
- *   same         a line is the same as "before" in blame when its blame direction equals before's (both known);
- *                the same in fear likewise. These are equalities of names — reflexive, symmetric, transitive.
- *   nearer       of two lines, the one that is the same in blame is nearer; if both or neither, the one that is the
- *                same in fear; if still level, the one whose emotion vector has the larger cosine with before's.
- *                (The cosine is the ruler doors are measured with. No threshold anywhere.)
- *   remains      in each scene the walker spoke in, its nearest line is that scene's candidate. The scenes are put in
- *                order by their candidates (nearer first); the first half of them (rounded up) keep their candidate.
- *                Every other line goes out. "Half" is a count, not a threshold — and it is a free choice of this
- *                preview (stated, not derived).
- *   changed      a scene whose candidate remains: the candidate stands where one of the scene's sentences stood.
- *                Which sentence, and the seam, come from the server (remain-turn "weave"); if it does not answer, the
- *                sentence sharing the most letter pairs with the line (none shared → the scene's last sentence).
- *   refuted by   a walker all of whose lines are the same as "before" in blame and of whom a line that is NOT the
- *                nearest of its scene remains.
+ *                · blank (one of the three sentences the walker filled in about themselves before entering)
+ *                · the reading of a line (remain-turn "judge"; a model's reading, taken as given):
+ *                    whom  who in the story the line holds to account: narrator · other · nobody (it speaks of fault and
+ *                          lays it on no one) · none (it is not about fault at all)
+ *                    back  the one blank whose matter the line shares, or none (−1)
+ *                · the emotion reading of a text (the stage's classifier: a vector on the memory's axes)
+ *   same         a line and a blank are the same matter when the line's `back` names that blank.
+ *                (An equality read off one name per line: a line is the same matter as at most one blank.)
+ *   different    not the same.
+ *   speaks of fault   whom is narrator, other or nobody. (A question of plain fact does not.)
+ *   turns back   a line turns back on a blank when it is the same matter as the blank AND speaks of fault:
+ *                the walker said, of the person in the scene, something about fault in the very matter they wrote of in themselves.
+ *   before       of two lines that turn back on the same blank, the one that holds the narrator to account comes before
+ *                the one that holds another, and that before the one that lays it on nobody; if level, the one whose
+ *                emotion vector has the larger cosine with that blank's own; if still level, the one said earlier.
+ *                (The order narrator → other → nobody is a free choice of this preview: stated, not derived.)
+ *   remains      for each blank in turn, the first line (in that order) that turns back on it and whose scene does not
+ *                already hold a remaining line. So: at most one line a blank — at most three — and at most one a scene.
+ *                A walker none of whose lines turns back on a blank leaves nothing.
+ *                quantity: 0 … 3. 0 = nothing the walker said of the scenes was about fault in a matter they had written of themselves.
+ *   changed      a scene that holds a remaining line: the line stands where one of the scene's sentences stood — whoever
+ *                wrote that sentence, the author or an earlier walker (author, 261128: "walkers' sentences are displaced too").
+ *                It does not stand as it was said: the server rewrites it as a sentence of that text (the narrator's voice and
+ *                person, the text's manner — the same claim) and names the sentence it displaces (remain-turn "weave"). If the
+ *                server does not answer, the line stands as said, in the place of the sentence sharing the most letter pairs
+ *                with it (none shared → the scene's last sentence).
+ *   refuted by   a line that remains although its `back` is −1 or its `whom` is none; or two remaining lines of one blank.
  *
- * KNOWN LIMIT (the classifier's, supabase/functions/claude-scene — not built for this): its blame direction is defined
- * for the speaker ("my fault / someone else's / nobody's"), not for who in the story is held to account. Measured on one
- * real walk of UNDW-001 (33 lines, 261128): lines blaming the mother were read "someone else's" 4 of 4; lines blaming the
- * narrator were read "my fault" in some places and "someone else's" in others; and of 10 sentences said twice in the
- * same scene, 2 were read differently the second time. So "the same in blame" is a noisy sameness, and the cosine does
- * part of the work. A reading of who IN THE STORY a line blames (narrator / another / no one) does not exist yet.
+ * The first version (the stage's own classifier: blame direction and core fear, half of the scenes kept) is in the
+ * record, §이력. It kept 5 of 33 lines on a real walk; its blame direction is the speaker's, not the story's, and read
+ * the same sentence two ways 2 times in 10.
  */
 
-export const BLAME = ['self_blame', 'other_blame', 'fate_blame'];
-export const FEAR = ['abandonment', 'death', 'rejection', 'failure'];
+export const WHOM = ['narrator', 'other', 'nobody', 'none'];
 
 /** The three blanks, per memory (drafts — the author's to rewrite). `___` is the place to write in. */
 export const BLANKS = {
@@ -64,43 +69,42 @@ export function meanObj(list) {
   for (const e of list) for (const k in e) out[k] = (out[k] || 0) + num(e[k]) / n;
   return out;
 }
-const known = (name, set) => (set.includes(name) ? name : null);
 
 // ── before entering ────────────────────────────────────────────────────────────
-/** @param readings [{ base: {axis: value}, reason_analysis: { attribution, core_fear } } | null] in the blanks' order */
+/** @param readings [{ base: {axis: value} } | null] the emotion reading of each blank, in the blanks' order (null = not read) */
 export function beforeOf(readings) {
-  const got = (readings || []).filter(Boolean);
-  const most = (names) => { const c = new Map(); let best = null, bn = 0; for (const n of names) { if (!n) continue; const v = (c.get(n) || 0) + 1; c.set(n, v); if (v > bn) { bn = v; best = n; } } return best; };   // a tie keeps the earlier one (it reached the count first)
-  return {
-    blame: most(got.map((r) => known(r.reason_analysis && r.reason_analysis.attribution, BLAME))),
-    fear: most(got.map((r) => known(r.reason_analysis && r.reason_analysis.core_fear, FEAR))),
-    emo: meanObj(got.map((r) => r.base || {})),
-    read: got.length,
-  };
+  const list = (readings || []).map((r) => ({ emo: r && r.base ? r.base : null }));
+  return { blanks: list, read: list.filter((b) => b.emo).length };
 }
 
 // ── which lines remain ─────────────────────────────────────────────────────────
-function rank(line, before) {
-  return [before.blame && line.blame === before.blame ? 1 : 0, before.fear && line.fear === before.fear ? 1 : 0, line.emo ? cosObj(line.emo, before.emo) : -2];
-}
-const nearer = (a, b) => (b.r[0] - a.r[0]) || (b.r[1] - a.r[1]) || (b.r[2] - a.r[2]) || (a.i - b.i);
+const FAULT = { narrator: 3, other: 2, nobody: 1 };                    // whom → its place in the order; `none` has none
+export const speaksOfFault = (line) => !!(line && FAULT[line.whom]);
+export const turnsBack = (line, b) => !!(line && line.back === b && FAULT[line.whom]);
 
 /**
- * @param lines  [{ order, raw, emo, blame, fear }] in the order they were said
+ * @param lines  [{ order, raw, whom, back, emo } | null] in the order they were said (null = a line that cannot remain)
  * @param before beforeOf()
- * @param o      { random?: () => number }  — given, the lines are chosen by chance instead (the author's first idea, kept for comparison)
- * @returns Set of indices into `lines` that remain
+ * @param o      { random?: () => number } — given, three lines of three scenes are taken by chance instead (the author's first idea, kept for comparison)
+ * @returns Set of indices into `lines` that remain (0 … 3)
  */
 export function remaining(lines, before, o) {
-  const byScene = new Map();
-  lines.forEach((l, i) => { if (!l || !String(l.raw || '').trim()) return; if (!byScene.has(l.order)) byScene.set(l.order, []); byScene.get(l.order).push({ i, r: rank(l, before) }); });
-  const heads = [];
-  for (const list of byScene.values()) {
-    if (o && o.random) heads.push(Object.assign({}, list[Math.floor(o.random() * list.length)], { r: [0, 0, o.random()] }));
-    else heads.push(list.slice().sort(nearer)[0]);
+  const keep = new Set(), scenes = new Set(), nBlanks = (before && before.blanks ? before.blanks.length : 3);
+  if (o && o.random) {
+    const pool = lines.map((l, i) => ({ l, i, r: 0 })).filter((x) => x.l && String(x.l.raw || '').trim());
+    pool.forEach((x) => { x.r = o.random(); }); pool.sort((a, b) => a.r - b.r);
+    for (const x of pool) { if (keep.size >= nBlanks) break; if (scenes.has(x.l.order)) continue; keep.add(x.i); scenes.add(x.l.order); }
+    return keep;
   }
-  heads.sort(nearer);
-  return new Set(heads.slice(0, Math.ceil(heads.length / 2)).map((h) => h.i));
+  for (let b = 0; b < nBlanks; b++) {
+    const own = before && before.blanks && before.blanks[b] ? before.blanks[b].emo : null;
+    const cand = [];
+    lines.forEach((l, i) => { if (turnsBack(l, b) && String(l.raw || '').trim()) cand.push({ i, l, f: FAULT[l.whom], c: l.emo && own ? cosObj(l.emo, own) : 0 }); });
+    cand.sort((x, y) => (y.f - x.f) || (y.c - x.c) || (x.i - y.i));
+    const first = cand.find((x) => !scenes.has(x.l.order));
+    if (first) { keep.add(first.i); scenes.add(first.l.order); }
+  }
+  return keep;
 }
 
 // ── the seam ───────────────────────────────────────────────────────────────────
@@ -122,14 +126,16 @@ export function placeLocal(sentenceList, raw) {
   return { index: best, text: closedLine(raw), by: 'local' };
 }
 /**
- * The server's answer is taken only as a seam: if what it returns no longer shares most of its letters with what
- * the walker said, the walker's own words stand instead (closed with a mark). 0.6 is a guard, not a judgement —
- * it only decides whose spelling is shown; the sentence that is displaced is the server's either way.
+ * The server rewrites the line as a sentence of the scene's text — the narrator's voice and person, the text's manner,
+ * spelling and particles made right (author, 261128 night: "it borrows the walker's words too literally"). What it returns
+ * stands, unless it is empty or has run to more than twice the length of what the walker said plus a few letters — then
+ * the walker's own words stand (closed with a mark). The bound is a guard against a runaway answer, not a judgement.
+ * (First version: only a seam was allowed — the answer was dropped unless it shared six tenths of its letter pairs with the line.)
  */
 export function placeServer(sentenceList, raw, answer) {
   if (!answer || !(answer.index >= 0 && answer.index < sentenceList.length)) return placeLocal(sentenceList, raw);
-  const fitted = String(answer.text || '').trim();
-  return { index: answer.index, text: fitted && alike(fitted, raw) >= 0.6 ? closedLine(fitted) : closedLine(raw), by: 'server' };
+  const fitted = String(answer.text || '').trim(), ok = fitted && fitted.length <= String(raw).trim().length * 2 + 12;
+  return { index: answer.index, text: ok ? closedLine(fitted) : closedLine(raw), by: ok ? 'server' : 'server-place' };
 }
 export function withChange(sentenceList, index, text) { const s = sentenceList.slice(); s[index] = text; return s.join(' '); }
 
