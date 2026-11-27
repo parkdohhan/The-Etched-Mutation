@@ -43,7 +43,8 @@ import { replayFromPlays, getPresentationState } from '../core/ContaminationTrac
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, withHoles, segsOf, tokenise, lineText, plain, normLine, inheritSwaps } from './blank.js?v=261124a';
 import { createBackDoors } from './backdoor.js?v=261123b3';
-import { markWalked, chainNext, clearChain, takeGateAnswer, GATE_HOLE } from '../shared/person_shelf.js?v=261128a';   // 261124: ARCHIVE = people's shelves · 261128: the gate (docs/아카이브_기억칸_질문_결정-261128.md)
+import { markWalked, chainNext, clearChain, takeGateAnswer, GATE_HOLE } from '../shared/person_shelf.js?v=261128a';
+import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';   // 261128: a walk under a no-trace ID (june) is written nowhere   // 261124: ARCHIVE = people's shelves · 261128: the gate (docs/아카이브_기억칸_질문_결정-261128.md)
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -58,7 +59,8 @@ const PEEK = MODE === 'test' && qs.get('peek') === '1';
 // Staging, openly: not a walk anyone took by themselves, which is why it is not kept. Undo = delete DEMO / KEPT and the block in boot().
 const DEMO = qs.get('demo') === '1';
 const DEMO_ROUTE = [1, 2, 3, 6, 7];
-const KEPT = MODE !== 'test' && !DEMO;                       // is this walk written down (ledger rows, lines left for others, contact, journal)?
+let FREE = false;                                            // 261128: signed in with a no-trace ID (asked once, at boot) — the walk is the real one, and nothing of it is written
+let KEPT = MODE !== 'test' && !DEMO;                       // is this walk written down (ledger rows, lines left for others, contact, journal)?
 const LANG = (qs.get('lang') || sessionStorage.getItem('tem_archive_lang') || 'ko').slice(0, 2) === 'en' ? 'en' : 'ko';
 const ko = LANG !== 'en';
 const DEFAULT_MEMORY = 'UNDW-001';
@@ -313,6 +315,7 @@ function createTalk() {
 // ── boot ───────────────────────────────────────────────────────────────────
 async function boot() {
   document.documentElement.lang = LANG;
+  if (KEPT && await leavesNoTrace(data.client())) { KEPT = false; FREE = true; }
   if (!ko) { document.title = 'TEM — scenes afloat'; const mc = $('spMap'); if (mc) mc.setAttribute('aria-label', 'the scenes passed'); }
   const ref = qs.get('memory') || DEFAULT_MEMORY;
   const line = $('spEntryLine'), btn = $('spEnter'), note = $('spEntryNote');
@@ -391,7 +394,7 @@ async function boot() {
   veil(false);
   await wait(900);
   await typeText(line, ko ? '지금부터 너는 한 기억을 떠올리게될거야' : 'you are about to remember something', { per: 70, pace: 1 / FAST });
-  typeText(note, DEMO ? '' : MODE === 'author' ? (ko ? '작가의 걸음으로 기록됩니다' : 'recorded as the author\'s walk') : MODE === 'test' ? (ko ? '연습 걸음 — 남지 않습니다' : 'practice — nothing is kept') : '', { per: 30 });
+  typeText(note, DEMO ? '' : FREE ? (ko ? '기록 없는 걸음 — 아무것도 남지 않습니다' : 'a walk off the record — nothing is kept') : MODE === 'author' ? (ko ? '작가의 걸음으로 기록됩니다' : 'recorded as the author\'s walk') : MODE === 'test' ? (ko ? '연습 걸음 — 남지 않습니다' : 'practice — nothing is kept') : '', { per: 30 });
   btn.textContent = ko ? '떠올린다' : 'remember'; btn.disabled = false;
   btn.addEventListener('click', () => { if (btn.disabled) return; btn.disabled = true; begin(); });
 }

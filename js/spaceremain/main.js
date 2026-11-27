@@ -34,6 +34,7 @@ import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
 import { isLocked } from '../roomplay/engine.js';
 import { markWalked, takeGateAnswer } from '../shared/person_shelf.js?v=261128b';
+import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import * as remain from './remain.js?v=261128d';
 import { runEnding, showOutside } from './ending.js?v=261128f';
@@ -51,8 +52,12 @@ const AT = qs.get('at') || '';
 //   test      (?as=test) the preview as it was: nothing goes to the server; what a walk leaves is kept in this browser only
 const MODE = qs.get('as') === 'test' ? 'test' : qs.get('as') === 'tutorial' ? 'tutorial' : 'audience';
 const TUTOR = MODE === 'tutorial';
-const KEPT = MODE === 'audience' && !AT && !DRY;
+let KEPT = MODE === 'audience' && !AT && !DRY;
 const STORE = KEPT ? remain.STORE.kept : remain.STORE.test;
+// 261128 (author: "I'll make the ID june — let nothing be recorded for it"): the real walk taken under a no-trace ID.
+// Walked as the real one is — the door, the blanks, the text as the server holds it, the ending — and written nowhere,
+// not in this browser either, so the door never shuts. Asked once, at boot (js/shared/no_trace.js).
+let FREE = false;
 const NEXT = MODE === 'test' && qs.get('next') === '1';
 const PLACE_TAG = 'space_v1', MOVE_PERSONA = 'piece-move', KIND = 'remain_v1';   // the ledger's marks: the space stage's place (the prologue and the models read these walks as its own), and this stage's own kind
 const PICK_RANDOM = qs.get('pick') === 'random';
@@ -295,6 +300,7 @@ function createTalk() {
 // ── boot ───────────────────────────────────────────────────────────────────
 async function boot() {
   document.documentElement.lang = LANG;
+  if (KEPT && await leavesNoTrace(data.client())) { FREE = true; KEPT = false; }
   const ref = qs.get('memory') || DEFAULT_MEMORY;
   const line = $('spEntryLine');
   let loaded;
@@ -304,18 +310,18 @@ async function boot() {
   document.title = 'TEM — ' + (run.memory.title || '') + (TUTOR ? (ko ? ' (연습)' : ' (practice)') : MODE === 'test' ? (ko ? ' (남는 말 · 미리보기)' : ' (words that remain · preview)') : '');
 
   if (MODE === 'test' && qs.get('reset') === '1') { remain.clear(run.memory.code, STORE); qs.delete('reset'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '')); }
-  state = TUTOR ? remain.fresh(run.memory.code) : (remain.load(run.memory.code, STORE) || remain.fresh(run.memory.code));
-  if (KEPT) {
+  state = (TUTOR || FREE) ? remain.fresh(run.memory.code) : (remain.load(run.memory.code, STORE) || remain.fresh(run.memory.code));
+  if (KEPT || FREE) {
     // the real walk: the text is read as it stands on the server (what everyone before left), and the door is shut for a
     // browser — or an account — that has been in once
     const [tx, st] = await Promise.all([
       data.client().from('remain_texts').select('scene_order, text, walker_sentences').eq('memory_id', run.memory.id),
-      remainCall({ mode: 'status', memoryId: run.memory.id, walker: data.walkerKey() }),
+      KEPT ? remainCall({ mode: 'status', memoryId: run.memory.id, walker: data.walkerKey() }) : null,
     ]);
     if (tx.error) console.warn('[remain] texts', tx.error);
     for (const row of (tx.data || [])) { baseTexts[row.scene_order] = row.text; run.earlier.set(Number(row.scene_order), new Set(Array.isArray(row.walker_sentences) ? row.walker_sentences.map(String) : [])); }
     state.texts = Object.assign({}, baseTexts);
-    if (state.locked || (st && st.walked)) return outside();
+    if (KEPT && (state.locked || (st && st.walked))) return outside();
   } else if (!TUTOR) {
     if (state.locked && !NEXT && !AT) return outside();                   // the door is shut: only what the piece now is, from outside
     baseTexts = Object.assign({}, state.texts);
@@ -446,7 +452,7 @@ async function entry(gateAnswer) {
   await wait(900);
   await consent();
   if (TOLD) { await typeText(line, ko ? '여기서 한 말은 남아.\n한 번뿐이야.' : 'What you say here stays.\nOnly once.', { per: 80, pace: 1 / FAST }); await wait(2200); }
-  typeText(note, KEPT ? '' : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
+  typeText(note, KEPT ? '' : FREE ? (ko ? '기록 없는 걸음 — 아무것도 남지 않습니다' : 'a walk off the record — nothing is kept') : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
   let blanks = remain.blanksFor(run.memory.code, LANG).slice(), gate = null;
   if (gateAnswer && String(gateAnswer.line || '').includes(remain.HOLE) && guard(gateAnswer.text).ok) {
     gate = gateAnswer;
@@ -702,7 +708,7 @@ async function persist(done) {
     changes: s.changes.map((c) => ({ order: c.order, index: c.index, was: c.was, now: c.now, raw: c.raw, by: c.by, blank: c.blank })), done: !!done };
   state.locked = true;
   if (run.committed) { state.walks[walkSlot].committed = true; if (run.committed.texts) state.texts = Object.assign({}, baseTexts, run.committed.texts); }
-  remain.save(run.memory.code, state, STORE);
+  if (!FREE) remain.save(run.memory.code, state, STORE);
   return s;
 }
 /** The ending's call: the server names the sentence each remaining line displaces and fits the seam; then it is kept. */
@@ -720,7 +726,7 @@ async function weave() {
   const s = await persist(true);
   run.shift = new Map();
   for (const c of (s ? s.changes : [])) run.shift.set(c.sceneId, remain.pieceShift(run.acc, c.sceneId, run.lines[c.li].emo, run.read.get(c.sceneId).length, TOPO));
-  if (!KEPT) writeOutside();                                               // the preview: what the piece now is, from outside (not waited for). The real walk's is written by the server
+  if (!KEPT && !FREE) writeOutside();                                               // the preview: what the piece now is, from outside (not waited for). The real walk's is written by the server
   return s || { keep: new Set(), changes: [] };
 }
 /**
@@ -761,7 +767,7 @@ async function writeOutside() {
   if (r && r.intro) { state.outside = { intro: r.intro, synopsis: r.synopsis, of, at: new Date().toISOString() }; remain.save(run.memory.code, state, STORE); }
 }
 function leave() {
-  if (TUTOR) { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); return; }
+  if (TUTOR || FREE) { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); return; }   // nothing was kept: out to the menu
   // the walk is already kept. Out = this same page, which now shows only the outside of the piece.
   if (run.lines.length || (state && state.locked)) { const q = new URLSearchParams(); if (qs.get('memory')) q.set('memory', qs.get('memory')); if (qs.get('lang')) q.set('lang', qs.get('lang')); if (MODE === 'test') q.set('as', 'test'); location.href = location.pathname + (q.toString() ? '?' + q : ''); return; }
   try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {}
