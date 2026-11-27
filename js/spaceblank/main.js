@@ -995,4 +995,12 @@ async function peek() {
   hint(ko ? 'W A S D · 화면을 누르면 마우스로 둘러봅니다 · M = 지도' : 'W A S D · click, then look with the mouse · M = map', 9000);
 }
 
+// 261128 night (author: "put scrolling in, during play"): while the text column is up, it can be scrolled back with the keys too
+// (the wheel and a finger already do, now that the column is laid out so it can be — css). The walker is held while it is up, so the arrows move nothing else.
+window.addEventListener('keydown', (e) => {
+  const b = document.querySelector('#rpRoom.on .rp-body'); if (!b || b.scrollHeight <= b.clientHeight + 2) return;
+  const d = e.key === 'PageUp' ? -0.8 * b.clientHeight : e.key === 'PageDown' ? 0.8 * b.clientHeight : e.key === 'ArrowUp' ? -80 : e.key === 'ArrowDown' ? 80 : 0;
+  if (d) { b.scrollBy({ top: d, behavior: 'smooth' }); e.preventDefault(); }
+});
+
 boot();

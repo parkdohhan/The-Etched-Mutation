@@ -108,3 +108,18 @@ body.sr-ending canvas#spCosmos.on { opacity: 0.2; transition: opacity 4200ms eas
 
 /* ── the practice walk's door: what the piece is about, read before the three blanks (261128 night) ── */
 #spEntry .sp-entry-line.intro { max-width: 34rem; letter-spacing: 0.04em; line-height: 2.1; font-size: clamp(0.98rem, 2vw, 1.1rem); word-break: keep-all; color: #cfcbd6; }
+
+/* ── the text column can be scrolled back (261128 night, author: "put scrolling in, during play") ──
+   It was laid out from the bottom (justify-content: flex-end), and what a column laid out that way pushes off its top cannot
+   be scrolled to. Laid out from the top instead, with the first line pushed down while the text is short: it looks the same,
+   and it scrolls — the wheel, a finger, PageUp / PageDown / the arrows (main.js). A thin bar shows there is more above. */
+#rpRoom .rp-body { justify-content: flex-start; scrollbar-width: thin; scrollbar-color: rgba(232,228,223,0.18) transparent; overscroll-behavior: contain; }
+#rpRoom .rp-body > :first-child { margin-top: auto; }
+#rpRoom .rp-body::-webkit-scrollbar { display: block; width: 4px; }
+#rpRoom .rp-body::-webkit-scrollbar-thumb { background: rgba(232,228,223,0.18); border-radius: 2px; }
+#rpRoom .rp-body::-webkit-scrollbar-track { background: transparent; }
+
+/* the ending's text too: a thin bar */
+#srEnd { scrollbar-width: thin; scrollbar-color: rgba(232,228,223,0.14) transparent; }
+#srEnd::-webkit-scrollbar { display: block; width: 4px; }
+#srEnd::-webkit-scrollbar-thumb { background: rgba(232,228,223,0.14); border-radius: 2px; }

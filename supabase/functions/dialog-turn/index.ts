@@ -113,6 +113,7 @@ Rules:
 3. Answer what is asked. Do not pour out what was not asked. But do not stop at "I don't know": even when you do not know what a thing is, say what has come to light about it (what was said of it, the marks it left, what happened because of it).
 4. You may weave in the motifs naturally.
 5. If the visitor's input is sad or in crisis, do not take it heavily. Stay *within the memory*.
+6. Do not ask the visitor anything. Do not end on a question.
 
 Your reply must not quote the text verbatim. It is the self-recollection of someone who lived inside that scene.`;
   }
@@ -156,6 +157,7 @@ ${later}
 3. 묻는 것에 답한다. 묻지 않은 것까지 한꺼번에 늘어놓지 않는다. 다만 "몰라"로 끝내지 않는다 — 그것이 무엇인지는 몰라도, 그것에 대해 이미 드러난 사정(들은 말, 본 자국, 그 때문에 생긴 일)이 있으면 그걸 말한다.
 4. 모티프 자리 자연 자리 박을 수 있음.
 5. 사용자 자리 슬프거나 위기 자리 입력 자리 = 무겁게 받지 X. *기억 자리 안 자리 머무름*.
+6. 찾아온 사람에게 아무것도 되묻지 않는다. 답을 물음으로 끝내지 않는다.
 
 응답 자리 = 본문 자리 그대로 인용 X. *그 씬 자리 안 자리 살았던 자리 사람* 의 자기 회상 자리 톤 자리.`;
 }
@@ -338,7 +340,15 @@ serve(async (req: Request) => {
     }
 
     const data = await resp.json();
-    const reply = (data?.content?.[0]?.text || '').trim();
+    // 261128 night (author, watching people walk it: "let the AI not ask"): a reply that still ends on a question loses it
+    // (= supabase/functions/remain-turn noQuestion). A reply that is nothing but questions is no reply.
+    const reply = (() => {
+      const raw = (data?.content?.[0]?.text || '').trim();
+      const parts = raw.match(/[^.!?…？]+[.!?…？]+["”’']?\s*|[^.!?…？]+$/g) || [raw];
+      let n = parts.length;
+      while (n > 0 && /[?？]["”’']?\s*$/.test(parts[n - 1])) n--;
+      return parts.slice(0, n).join('').trim();
+    })();
 
     if (!reply || reply.length < 2 || reply.length > 400) {
       console.warn("[dialog-turn] invalid reply length:", reply.length);

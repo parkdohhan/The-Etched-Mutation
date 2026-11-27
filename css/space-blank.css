@@ -55,3 +55,13 @@ body.sb-held .sb-t.sb-can:hover .sb-s { color: #efe9e0; text-shadow: 0 0 14px rg
 .sp-scroll-inner p.key span.sb-hole { color: var(--rp-accent); }
 
 @media (pointer: coarse) { #sbHand { font-size: 1rem; } }
+
+/* ── the text column can be scrolled back (261128 night, author: "put scrolling in, during play") ──
+   It was laid out from the bottom (justify-content: flex-end), and what a column laid out that way pushes off its top cannot
+   be scrolled to. Laid out from the top instead, with the first line pushed down while the text is short: it looks the same,
+   and it scrolls — the wheel, a finger, PageUp / PageDown / the arrows (main.js). A thin bar shows there is more above. */
+#rpRoom .rp-body { justify-content: flex-start; scrollbar-width: thin; scrollbar-color: rgba(232,228,223,0.18) transparent; overscroll-behavior: contain; }
+#rpRoom .rp-body > :first-child { margin-top: auto; }
+#rpRoom .rp-body::-webkit-scrollbar { display: block; width: 4px; }
+#rpRoom .rp-body::-webkit-scrollbar-thumb { background: rgba(232,228,223,0.18); border-radius: 2px; }
+#rpRoom .rp-body::-webkit-scrollbar-track { background: transparent; }

@@ -47,6 +47,16 @@ const str = (x: unknown, max: number) => String(x == null ? "" : x).trim().slice
 // By default the scene does NOT ask. It answers short of the facts and stops halfway — neither excusing itself to the end nor
 // blaming itself to the end — so that what is left open is the walker's to close, unasked. Once a scene at most (the stage
 // says when: ask = true) it may end on one question back.
+// What the rule does not hold, this does: a reply that still ends on a question loses that question (and one before it,
+// if that is a question too). A reply that is nothing but questions is no reply. A question in the middle — the person
+// asking themselves, then going on — stays.
+function noQuestion(reply: string): string {
+  const parts = reply.match(/[^.!?…？]+[.!?…？]+["”’']?\s*|[^.!?…？]+$/g) || [reply];
+  let n = parts.length;
+  while (n > 0 && /[?？]["”’']?\s*$/.test(parts[n - 1])) n--;
+  return parts.slice(0, n).join("").trim();
+}
+
 function closing(lang: "ko" | "en", ask: boolean): string {
   if (lang === "en") {
     return ask
@@ -255,6 +265,35 @@ const OUTSIDE_SCHEMA = {
 };
 
 // ── the call ───────────────────────────────────────────────────────────────────────────────────
+// 261128 night (author: "let's change the answering model to Gemini Neon"). The scene's answer (mode "turn") is asked of
+// Google's Gemini 4 Neon. If it does not answer — no key, an error, a block, nothing in the reply — the answer is asked of
+// Claude as before, and the log says why. The other jobs here (judge, weave, outside) stay where they were.
+// The model id was taken from third-party pages (no page of Google's own was found that day); ANSWER_MODEL (a secret) overrides it.
+// What the walker says therefore goes to Google for the answer (the consent sheet says "an AI"; it names no company).
+const ANSWER_MODEL = Deno.env.get("ANSWER_MODEL") || "gemini-4-neon";
+async function askGemini(system: string, messages: Array<{ role: "user" | "assistant"; content: string }>): Promise<{ text: string; why?: string }> {
+  const key = Deno.env.get("GEMINI_API_KEY");
+  if (!key) return { text: "", why: "GEMINI_API_KEY missing" };
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 25_000);
+  try {
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${ANSWER_MODEL}:generateContent`, {
+      method: "POST", signal: ctl.signal,
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: system }] },
+        contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+        generationConfig: { maxOutputTokens: 4000 },                      // room for the model's own thinking before the one line it answers with
+      }),
+    });
+    if (!resp.ok) return { text: "", why: resp.status + " " + (await resp.text()).replace(/\s+/g, " ").slice(0, 300) };
+    const data = await resp.json(), c = data?.candidates?.[0];
+    const text = (Array.isArray(c?.content?.parts) ? c.content.parts : []).filter((p: any) => !p?.thought && typeof p?.text === "string").map((p: any) => p.text).join("").trim();
+    if (!text) return { text: "", why: "empty (" + (c?.finishReason || data?.promptFeedback?.blockReason || "no candidate") + ")" };
+    return { text };
+  } catch (e) { return { text: "", why: String((e as any)?.message || e).slice(0, 200) }; }
+  finally { clearTimeout(to); }
+}
+
 // Thinking is always on for this model (it cannot be disabled); depth is set by effort. These are short, bounded jobs: low.
 // A request the safety classifiers decline is re-run by the API on its default fallback model inside the same call.
 async function ask(client: Anthropic, system: string, messages: Array<{ role: "user" | "assistant"; content: string }>, schema?: unknown) {
@@ -426,12 +465,23 @@ serve(async (req: Request) => {
         .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && str(m.content, 600))
         .map((m: any) => ({ role: m.role as "user" | "assistant", content: str(m.content, 600) }));
       while (history.length && history[0].role !== "user") history.shift();
-      const r = await ask(client, turnSystem(title, sceneText, lang, body?.ask === true, str(body?.memoryText, 9000), str(body?.laterText, 9000), body?.back === true), [...history, { role: "user", content: userInput }]);
-      if (r.refused) return json(cors, 200, { ok: false, reason: "refusal" });
-      const reply = r.text.replace(/^["“”'‘’\s]+|["“”'‘’\s]+$/g, "");
+      // 261128 night (author, watching people walk it: "let the AI not ask"). The scene never asks the visitor anything now —
+      // not even the once a scene it used to (the stage still sends `ask`; it is not acted on). A tester had been asked whose
+      // fault a thing was, off the point of what they had said, and the question read as steering.
+      const sys = turnSystem(title, sceneText, lang, false, str(body?.memoryText, 9000), str(body?.laterText, 9000), body?.back === true);
+      const msgs = [...history, { role: "user" as const, content: userInput }];
+      const trim = (t: string) => noQuestion(t.replace(/^["“”'‘’\s]+|["“”'‘’\s]+$/g, ""));
+      const g = await askGemini(sys, msgs);
+      let reply = trim(g.text), model = ANSWER_MODEL, fell = g.text ? (reply ? "" : "only a question") : (g.why || "");
+      if (!reply) {                                                        // Gemini did not answer: Claude does, as before
+        console.warn("[remain-turn] turn: " + ANSWER_MODEL + " did not answer (" + fell + ") — asking " + MODEL);
+        const r = await ask(client, sys, msgs);
+        if (r.refused) return json(cors, 200, { ok: false, reason: "refusal" });
+        reply = trim(r.text); model = MODEL;
+      }
       if (!reply) return json(cors, 200, { ok: false, reason: "empty" });
-      console.log("[remain-turn] turn len=" + reply.length);
-      return json(cors, 200, { ok: true, reply, version: VERSION });
+      console.log("[remain-turn] turn len=" + reply.length + " by " + model);
+      return json(cors, 200, { ok: true, reply, model, fell_back: model === MODEL ? fell : undefined, version: VERSION });
     }
 
     if (mode === "weave") {
