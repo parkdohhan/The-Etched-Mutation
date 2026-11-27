@@ -9,20 +9,22 @@
  */
 const SAY = {
   ko: {
-    begin: ['연습이야.', '여기서 한 말은 어디에도 남지 않아.'],
-    ask: ['장면한테 말을 걸어 봐.', '이 기억에 있는 건 전부 알고 있어. 누가, 왜, 무슨 일이었는지 — 물으면 아는 대로 답해.'],
-    more: ['묻기만 하지 않아도 돼. 네 생각을 말해도 돼.', '다 했으면 「넘어간다」를 눌러.'],
-    eyes: ['방금 읽은 장면이 저기 떠 있어.', '날아서 둘러봐.'],
-    door: ['문이 섰어.', '길에 닿으면 발이 붙어. 앞으로 걸어서 문을 지나.'],
-    doorTouch: ['문이 섰어.', '길에 닿으면 발이 붙어. 동그라미를 누르고 있으면 걸어.'],
-    next: ['저게 다음 장면이야.', '가까이 가면 글이 떠.'],
-    map: ['지도를 열어 봐. M 이나 마우스 오른쪽이야.', '지나온 장면을 누르면 거기로 돌아가. 문은 그대로 서 있어.'],
-    mapTouch: ['왼쪽 위 지도를 눌러 봐.', '지나온 장면을 누르면 거기로 돌아가. 문은 그대로 서 있어.'],
-    end: ['연습은 여기까지야.', '여기서 한 말은 아무것도 남지 않았어.', '진짜는 아카이브에 있어.', '거기서 한 말은 글에 남아. 그리고 한 번뿐이야.'],
+    // 261128 (author: "isn't this too much like an AI?" — the first draft explained: a dash, a list of three, "ask and it answers what it knows").
+    // The opening's voice is short and thrown out ("…저기로 가봐."): one thing at a time, nothing explained.
+    begin: ['연습이야.', '여기서 한 말은 안 남아.'],
+    ask: ['말을 걸어 봐.', '물어봐. 아는 건 말해 줄 거야.'],
+    more: ['네 생각을 말해도 돼.', '다 했으면 넘어가.'],
+    eyes: ['방금 그 장면이야.', '날아서 둘러봐.'],
+    door: ['문이 생겼어.', '길을 밟고 걸어가.'],
+    doorTouch: ['문이 생겼어.', '길을 밟고, 동그라미를 누르고 있어.'],
+    next: ['저게 다음 장면이야.', '가까이 가 봐.'],
+    map: ['M 을 눌러 봐.', '지나온 장면을 누르면 거기로 돌아가.'],
+    mapTouch: ['왼쪽 위 지도를 눌러 봐.', '지나온 장면을 누르면 거기로 돌아가.'],
+    end: ['연습은 여기까지야.', '아무것도 안 남았어.', '진짜는 아카이브에 있어.', '거기서는 네 말이 남아.', '한 번뿐이야.'],
   },
   en: {
     begin: ['This is practice.', 'Nothing you say here is kept anywhere.'],
-    ask: ['Speak to the scene.', 'It knows everything that is in this memory. Who, why, what happened — ask, and it answers what it knows.'],
+    ask: ['Speak to it.', 'Ask. It will tell you what it knows.'],
     more: ['You need not only ask. You can say what you think.', 'When you are done, press "move on".'],
     eyes: ['The scene you just read is afloat over there.', 'Fly round it.'],
     door: ['A door has stood up.', 'Touch the way and your feet hold. Walk forward, through the door.'],

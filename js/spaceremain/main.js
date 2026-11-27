@@ -37,7 +37,7 @@ import { markWalked, takeGateAnswer } from '../shared/person_shelf.js?v=261128b'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import * as remain from './remain.js?v=261128d';
 import { runEnding, showOutside } from './ending.js?v=261128d';
-import { createTutor } from './tutor.js?v=261128d';
+import { createTutor } from './tutor.js?v=261128e';
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
