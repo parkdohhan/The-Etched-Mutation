@@ -105,3 +105,6 @@ body.sr-ending canvas#spCosmos.on { opacity: 0.2; transition: opacity 4200ms eas
 #sbDoorLine .k { display: block; margin-top: 0.3rem; font-size: 0.72rem; letter-spacing: 0.14em; color: #6f6c78; min-height: 1em; }
 #sbDoorGo { position: fixed; left: 50%; bottom: 10.5rem; transform: translateX(-50%); z-index: 23; display: none; }
 #sbDoorGo.on { display: inline-block; }
+
+/* ── the practice walk's door: what the piece is about, read before the three blanks (261128 night) ── */
+#spEntry .sp-entry-line.intro { max-width: 34rem; letter-spacing: 0.04em; line-height: 2.1; font-size: clamp(0.98rem, 2vw, 1.1rem); word-break: keep-all; color: #cfcbd6; }

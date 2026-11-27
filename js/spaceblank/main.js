@@ -37,7 +37,7 @@ import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
 import { runFinale } from './finale.js?v=261124a';
-import { runPrologue } from '../spaceplay/prologue.js?v=261128b';
+import { runPrologue } from '../spaceplay/prologue.js?v=261128c';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
 import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';

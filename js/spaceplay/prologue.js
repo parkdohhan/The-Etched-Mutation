@@ -198,11 +198,11 @@ export async function runPrologue(o) {
 
   // ── the step is the walker's ──────────────────────────────────────────────
   await wait(1400);
-  if (phase === 'stand') hint(cosmos.isTouch() ? (ko ? '화면을 누르면 문으로 한 발 내딛습니다' : 'tap to step toward the door') : (ko ? 'W 를 누르면 문으로 한 발 내딛습니다' : 'press W to step toward the door'), 14000);
+  if (phase === 'stand') hint(cosmos.isTouch() ? (ko ? '화면을 누르면 문으로 한 발 내딛습니다' : 'tap to step toward the door') : (ko ? '아무 키나 누르면 문으로 한 발 내딛습니다' : 'press any key to step toward the door'), 14000);   // 261128 night (author: "make this any key")
   await new Promise((res) => {
     let to = 0;
     const go = (e) => {
-      if (e && e.type === 'keydown' && !['KeyW', 'ArrowUp', 'Space', 'Enter'].includes(e.code)) return;
+      if (e && e.type === 'keydown' && (e.repeat || e.code === 'Escape' || e.metaKey || e.ctrlKey || e.altKey || /^(Shift|Control|Alt|Meta|OS|CapsLock|Tab|F\d+)/.test(e.code))) return;   // any key takes the step — but not ESC, a shortcut, or a key that only modifies
       window.removeEventListener('keydown', go); canvas.removeEventListener('pointerdown', go); clearTimeout(to);
       sound.prime(); res();
     };

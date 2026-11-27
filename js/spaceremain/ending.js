@@ -19,7 +19,7 @@
 const el = (tag, cls, text) => { const d = document.createElement(tag); if (cls) d.className = cls; if (text != null) d.textContent = text; return d; };
 
 export async function runEnding(o) {
-  const ko = o.lang !== 'en', FAST = o.fast || 1;
+  const ko = o.lang !== 'en', FAST = o.fast || 1, practice = !!o.practice;   // the practice walk: the same ending, said as what WOULD be — nothing was kept
   const wait = (ms) => new Promise((r) => setTimeout(r, ms / FAST));
   document.body.classList.add('sr-ending');
 
@@ -79,7 +79,7 @@ export async function runEnding(o) {
   await wait(1400);
 
   // ── 5. what remains takes a sentence's place ───────────────────────────────
-  if (settled.changes.length) await tell(ko ? '남는 건 이거야.' : 'This is what stays.', 2600);
+  if (settled.changes.length) await tell(practice ? (ko ? '진짜였으면 이게 남아.' : 'Had this been real, this would stay.') : (ko ? '남는 건 이거야.' : 'This is what stays.'), 2600);
   else await tell(ko ? '남은 말이 없어.' : 'Nothing stayed.', 2600);
   for (const c of settled.changes) {
     const was = textEls.get(c.order + '|' + c.index), mine = mineEls.get(c.li);
@@ -95,7 +95,7 @@ export async function runEnding(o) {
   await wait(1200);
   before.classList.remove('one'); blankEls.forEach((p) => p.classList.remove('hit'));
   root.classList.remove('lit'); root.classList.add('after');                // read once as the next person reads it
-  if (settled.changes.length) { await tell(ko ? '다음 사람이 이걸 읽어.' : 'The next person reads this.', 4200); await tell(ko ? '못 고쳐.' : 'It cannot be changed.', 3400); }
+  if (settled.changes.length) { await tell(practice ? (ko ? '진짜였으면 다음 사람이 이걸 읽어.' : 'Had this been real, the next person would read this.') : (ko ? '다음 사람이 이걸 읽어.' : 'The next person reads this.'), 4200); await tell(ko ? '못 고쳐.' : 'It cannot be changed.', 3400); }
   else await tell(ko ? '이 기억은 그대로야.' : 'The memory is as it was.', 4200);
 
   // ── 6. the pieces ──────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ export async function runEnding(o) {
   const show = (t) => {
     if (!t) return;
     piece.innerHTML = '';
-    piece.appendChild(el('p', 'k', ko ? '다음 사람이 읽을 글' : 'what the next person reads'));
+    piece.appendChild(el('p', 'k', practice ? (ko ? '다음 사람이 읽었을 글' : 'what the next person would have read') : (ko ? '다음 사람이 읽을 글' : 'what the next person reads')));
     for (const l of t.lines) piece.appendChild(el('p', l.who === 'mine' ? 'mine' : l.who === 'other' ? 'other' : '', l.t));
     piece.classList.add('on');
   };
