@@ -165,10 +165,12 @@ export function pieceShift(acc, sceneId, lineEmo, nSentences, TOPO) {
 }
 
 // ── what this browser keeps ────────────────────────────────────────────────────
-const keyOf = (code) => 'tem_remain:' + code;
-export function load(code) { try { const s = JSON.parse(localStorage.getItem(keyOf(code)) || 'null'); return s && s.v === 1 ? s : null; } catch (_) { return null; } }
-export function save(code, state) { try { localStorage.setItem(keyOf(code), JSON.stringify(state)); return true; } catch (_) { return false; } }
-export function clear(code) { try { localStorage.removeItem(keyOf(code)); } catch (_) {} }
+// Two shelves in this browser: the real walk's own record (and its lock), and the practice walks' (preview: ?as=test). They never touch.
+export const STORE = { kept: 'tem_remained:', test: 'tem_remain_test:' };   // (the kept shelf is not 'tem_remain:' — the first preview used that name)
+const keyOf = (code, prefix) => (prefix || STORE.kept) + code;
+export function load(code, prefix) { try { const s = JSON.parse(localStorage.getItem(keyOf(code, prefix)) || 'null'); return s && s.v === 1 ? s : null; } catch (_) { return null; } }
+export function save(code, state, prefix) { try { localStorage.setItem(keyOf(code, prefix), JSON.stringify(state)); return true; } catch (_) { return false; } }
+export function clear(code, prefix) { try { localStorage.removeItem(keyOf(code, prefix)); } catch (_) {} }
 export const fresh = (code) => ({ v: 1, code, texts: {}, walks: [], locked: false, outside: null });
 /** The scene's text as the next person reads it: what the walks before left, or the text as written. */
 export const textOf = (state, scene) => { const t = state && state.texts && state.texts[scene.scene_order]; return typeof t === 'string' && t.trim() ? t : scene.text; };

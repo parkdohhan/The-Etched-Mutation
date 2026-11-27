@@ -168,10 +168,12 @@
                         </div>
                     </div>
                     <div class="menu-list" id="mainMenuList">
+                        <!-- 261128 밤 작가: PLAY 를 메뉴에서 뺀다("지금 플레이 기능 없잖아") — 그 자리에 ARCHIVE. PLAY 가 하던 일 = 오프닝의 "또다른 나" 대화를 다시 열어 대표 기억으로 보내기(지금은 그 길이 연습). 되살리려면 아래 주석을 풀고 js/index.js initMainMenu 의 activeId 를 play 로.
                         <div class="menu-item active" data-menu-id="play" data-action="enterPlayInterview">
                             <span class="menu-label" data-i18n="menu.play">PLAY</span>
                         </div>
-                        <div class="menu-item inactive" data-menu-id="archive" data-action="enterMyArchive">
+                        -->
+                        <div class="menu-item active" data-menu-id="archive" data-action="enterMyArchive">
                             <span class="menu-label" data-i18n="menu.archive">ARCHIVE</span>
                         </div>
                         <!-- 261123 작가 결정: RECORD·PROFILE 은 지금 할 것이 없어 메뉴에서 숨긴다. 261124: PROFILE 은 다시 보임 — '건네진 걸음'(내 걸음이 다음 사람의 서막에 나온 횟수). 261124 밤 작가: RECORD 도 다시 보임 — 누르면 기억 만들기(record-space.html, 로그인 관문 있음). 옛 고백 화면(showConfessionHub)은 메뉴에서 안 감 -->
@@ -189,8 +191,8 @@
                         </div>
                     </div>
                     <div class="main-description" id="mainMenuDescription">
-                        <div class="description-text active" data-for="play" data-i18n="menu.desc.play">Look for another memory.</div>
-                        <div class="description-text" data-for="archive" data-i18n="menu.desc.archive">The people whose memories you have walked.</div>
+                        <div class="description-text" data-for="play" data-i18n="menu.desc.play">Look for another memory.</div>
+                        <div class="description-text active" data-for="archive" data-i18n="menu.desc.archive">The people whose memories you have walked.</div>
                         <div class="description-text" data-for="record" data-i18n="menu.desc.record">Document new memories and leave traces of mutation.</div>
                         <div class="description-text" data-for="profile" data-i18n="menu.desc.profile">Manage personal profile and synchronization settings.</div>
                         <div class="description-text" data-for="portfolio" data-i18n="menu.desc.portfolio">Explore the origin and architect of The Etched Mutation.</div>
@@ -614,6 +616,6 @@
          Scene play lives in play-test.html. -->
     <!-- confessionV3.js removed — replaced by js/app/recordChat.js (ES module, loaded from index.js) -->
     <script src="js/ui/lumen_dialog_phase1.js?v=261118f"></script><!-- 260909 RECORD v4: 플레이 대화 껍데기(자막 상자·타이핑·입력칸)를 recordPlay.js 가 shell 로 빌려 쓴다. 전역 정의만 하고 스스로 아무것도 띄우지 않는다 -->
-    <script type="module" src="js/index.js?v=261128b"></script><!-- 261128b 아카이브에 올라온 기억 전부(걸어 본 것만 → 전부) / 261128a ARCHIVE = 기억 칸(제목 · 쓴 사람) + 세부창(소개 · 빈칸 문장) + 작가 화면 --><!-- 261124f ARCHIVE = 사람 칸(가명 · 기억 N), 누르면 첫 기억부터 이어 걷기 --><!-- 261124e 메뉴: RECORD → 기억 만들기, 한국어 메뉴 이름 = 영어 이름 한글 표기 --><!-- 261124d 아이디로 가입·들어가기 + 로그인 뒤 돌아갈 곳(next) --><!-- 261123c PROFILE 재단장 + 기억 만들기(record-space) 기억은 아카이브·오프닝에서 우주 무대로 / 261123a 메뉴에서 RECORD·PROFILE 숨김 + 오프닝 소리 조절 막대 / 261121a 대표 기억은 오프닝 문 뒤 우주 무대(space-play.html)로 / 260909c 오염 기준선 record-seal 이관(confession.js autoCreateFirstPlay skip) / 260909b RECORD v4 새 회로(recordPlay.js) + 씨앗 공개 규칙 / 260909a Ctrl+Shift+B RECORD 직행 뒷문 + ?action=record -->
+    <script type="module" src="js/index.js?v=261128d"></script><!-- 261128d 대표 기억: 아카이브 = 남는 말 무대 · 오프닝 = 연습(튜토리얼) · 메뉴에서 PLAY 뺌 / 261128b 아카이브에 올라온 기억 전부(걸어 본 것만 → 전부) / 261128a ARCHIVE = 기억 칸(제목 · 쓴 사람) + 세부창(소개 · 빈칸 문장) + 작가 화면 --><!-- 261124f ARCHIVE = 사람 칸(가명 · 기억 N), 누르면 첫 기억부터 이어 걷기 --><!-- 261124e 메뉴: RECORD → 기억 만들기, 한국어 메뉴 이름 = 영어 이름 한글 표기 --><!-- 261124d 아이디로 가입·들어가기 + 로그인 뒤 돌아갈 곳(next) --><!-- 261123c PROFILE 재단장 + 기억 만들기(record-space) 기억은 아카이브·오프닝에서 우주 무대로 / 261123a 메뉴에서 RECORD·PROFILE 숨김 + 오프닝 소리 조절 막대 / 261121a 대표 기억은 오프닝 문 뒤 우주 무대(space-play.html)로 / 260909c 오염 기준선 record-seal 이관(confession.js autoCreateFirstPlay skip) / 260909b RECORD v4 새 회로(recordPlay.js) + 씨앗 공개 규칙 / 260909a Ctrl+Shift+B RECORD 직행 뒷문 + ?action=record -->
 </body>
 </html>

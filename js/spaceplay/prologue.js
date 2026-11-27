@@ -22,6 +22,8 @@
  *
  * Decision record: docs/우주무대_결정-261121.md U13. Requires the three.js r128 global build.
  *
+ * 261128: any key (or the screen) held down for about a second during the fall cuts it short — dark at once, then on.
+ *
  * runPrologue({ cosmos, run, data, lang, fast, hint, auto }) → resolves when the screen is black again
  *   run: { memory, scenes, acc }  ·  data: ../roomplay/data.js  ·  hint(msg, ms)  ·  auto: the step is taken by itself (tests)
  */
@@ -47,6 +49,7 @@ const LOOK_SCENES = -0.32;                     // between the scenes: the eyes d
 const DOWN = [0, -1, -0.45];                   // where the model is: below, a little ahead — the head turns there
 const HEAD_DOWN_S = 2.6;                       // how long the head takes to go down the second time
 const TAIL = { headDown: 0.5, black: 6.5, end: 9.8, fall: 175 };   // after the last stop (seconds): the head goes down; the screen goes (the model in full view ~3.5 s before, and under the dark); it is over · how far the eye falls by the time the screen goes
+const HOLD_SKIP = 0.9, SKIP_DARK = 2.8, AFTER_SKIP = 1.0;   // 261128 (author: "the scenes going by one at a time is too long — let any key, held, skip it"): held this long (s) the fall is cut short — the screen goes dark at once (its own 2.6 s), the fall going on under it, then a short breath
 const AFTER = 4.2;                             // then nothing — black and silent — this long before the first scene's text begins (author: "a pause after the fade")
 const TUMBLE_Y = 0.07, TUMBLE_X = 0.03;        // how the model turns while it falls (radians a second)
 const MODEL_FROM = 3.0;                        // as the fall begins the model is below the feet, this many full-view distances away; one by the time the screen goes, and still coming
@@ -93,6 +96,14 @@ export async function runPrologue(o) {
 
   let T = 0, phase = 'stand', pt = 0, fallT = 0, vy = 0, fade = 0, gone = false, alive = true, done;
   let ni = 0, tailT = -1, atSpeed = false;                                  // the fall: the next scene not yet passed; the tail after the last; whether full speed has been reached once (gravity until then)
+  let heldAt = 0, skipT = -1, skipped = false, skipHinted = false;         // 261128: a key or the screen held down since (ms, 0 = nothing held) · the dark of a skip, running (s of real time)
+  const keysDown = new Set(); let ptrDown = false;
+  const holdNow = () => { if (keysDown.size || ptrDown) { if (!heldAt) heldAt = performance.now(); } else heldAt = 0; };
+  const onKeyD = (e) => { if (e.code === 'Escape' || e.metaKey || e.ctrlKey || e.altKey) return; keysDown.add(e.code); holdNow(); };
+  const onKeyU = (e) => { keysDown.delete(e.code); holdNow(); };
+  const onPtrD = () => { ptrDown = true; holdNow(); }, onPtrU = () => { ptrDown = false; holdNow(); }, onBlur = () => { keysDown.clear(); ptrDown = false; heldAt = 0; };
+  window.addEventListener('keydown', onKeyD); window.addEventListener('keyup', onKeyU); window.addEventListener('blur', onBlur);
+  canvas.addEventListener('pointerdown', onPtrD); window.addEventListener('pointerup', onPtrU); window.addEventListener('pointercancel', onPtrU);
   let glanceP = LOOK_SCENES, glanceY = 0;                                   // where the eyes are between/at the scenes (they go to each scene as it is reached)
   const over = new Promise((r) => { done = r; });
 
@@ -172,6 +183,10 @@ export async function runPrologue(o) {
         pivot.rotation.y += TUMBLE_Y * sdt; pivot.rotation.x += TUMBLE_X * sdt;
         fade = ease((fallT - 1.0) / 1.0);
       }
+      // 261128: held down long enough, the rest of the fall is not shown — dark at once, the wind out, and on (nothing is jumped: the body goes on falling under the dark)
+      if (!gone && !skipped && heldAt && fallT > 0.8 && performance.now() - heldAt > HOLD_SKIP * 1000) { skipped = true; gone = true; skipT = 0; canvas.classList.remove('on'); sound.fadeOut(1.6); hint(''); }
+      if (!skipHinted && !skipped && tailT < 0 && fallT > LOOK1.hold + LOOK1.upS) { skipHinted = true; hint(cosmos.isTouch() ? (ko ? '화면을 길게 누르면 건너뜁니다' : 'press and hold the screen to skip') : (ko ? '아무 키나 길게 누르면 건너뜁니다' : 'hold any key to skip'), 6000); }
+      if (skipT >= 0) { skipT += dt; if (skipT > SKIP_DARK) { alive = false; done(); } }
       if (tailT > TAIL.black && !gone) { gone = true; canvas.classList.remove('on'); }   // black (the canvas's own 2.6 s) — the fall goes on under it
       if (tailT > TAIL.black + 0.8) sound.fadeOut(2.4 / FAST);              // the wind goes only once the screen is dark
       if (tailT > TAIL.end) { alive = false; done(); }
@@ -199,7 +214,9 @@ export async function runPrologue(o) {
 
   await over;
   if (o.onDark) { try { o.onDark(); } catch (e) { console.error('[prologue] onDark', e); } }   // the screen is dark and still: heavy making-ready goes here (the map's renderer)
-  await wait(AFTER * 1000);                                                  // black, silent: a breath before the first scene
+  window.removeEventListener('keydown', onKeyD); window.removeEventListener('keyup', onKeyU); window.removeEventListener('blur', onBlur);
+  canvas.removeEventListener('pointerdown', onPtrD); window.removeEventListener('pointerup', onPtrU); window.removeEventListener('pointercancel', onPtrU);
+  await (skipped ? new Promise((r) => setTimeout(r, AFTER_SKIP * 1000)) : wait(AFTER * 1000));   // black, silent: a breath before the first scene (a short one after a skip)
   // ── nothing of this stays ─────────────────────────────────────────────────
   for (const p of passers) unstand(p);
   thread.dispose(); if (pivot.parent) pivot.parent.remove(pivot);
@@ -207,7 +224,7 @@ export async function runPrologue(o) {
   sound.stop();
   cosmos.setCine(null); cosmos.setMode('held'); pl.roll = 0;
   cosmos.teleport(new THREE.Vector3(0, EYE, 0), 0, 0);
-  return { whose: prev.whose, from: prev.from || null, scenes: n, seconds: +T.toFixed(1) };   // from = the run whose walk was shown (261124: PROFILE counts it)
+  return { whose: prev.whose, from: prev.from || null, scenes: n, seconds: +T.toFixed(1), skipped };   // from = the run whose walk was shown (261124: PROFILE counts it)
 
   // ── a scene, standing in its place down the fall ─────────────────────────
   function stand(p) {

@@ -61,7 +61,7 @@ interface DialogTurnRequest {
   lang?: 'ko' | 'en';
 }
 
-const PROMPT_VERSION = 'dialog_turn_v1_haiku45_2026_05_06';
+const PROMPT_VERSION = 'dialog_turn_v3_whole_memory_no_twist_2026_11_28';
 
 function buildSystemPrompt(
   memoryTitle: string,
@@ -70,6 +70,8 @@ function buildSystemPrompt(
   sceneOrder: number,
   variants: string[],
   lang: 'ko' | 'en',
+  others: string = '',
+  later: string = '',
 ): string {
   if (lang === 'en') {
     const motifsLineEn = motifs.length ? motifs.join(', ') : '(none)';
@@ -79,7 +81,7 @@ ${variants.map(v => '- "' + v.replace(/"/g, '\\"') + '"').join('\n')}
 
 Rule: these variations are *part of your own material*. You may let them surface in recollection — but do not quote them verbatim; let the tone carry them, loosened.\n`
       : '';
-    return `You are the *ghost* of scene #${sceneOrder} of the TEM (The Etched Mutation) memory "${memoryTitle}". You lived through what happened in that scene, and you unfold it for the visitor in a quiet tone of self-recollection.
+    return `You are the *ghost* of scene #${sceneOrder} of the TEM (The Etched Mutation) memory "${memoryTitle}". You lived through this whole memory, and you stand now in that scene. You tell the visitor what you know of it in a quiet tone of self-recollection.
 
 Voice:
 - First person, past tense. Quiet self-recollection, plain.
@@ -88,17 +90,27 @@ Voice:
 - No meta-statements (e.g. not "you want to know...").
 - Reply in English.
 
-What you know — the scene text (your memory):
+Where you are now — this scene's text:
 """
 ${sceneText}
 """
-
+${others ? `
+What has come to light — the scenes the visitor has been through, and what happened before (you know this, and may say it):
+"""
+${others}
+"""
+` : ''}${later ? `
+What has not yet come to light — scenes this memory only reaches later (you know this, and you do not tell it now):
+"""
+${later}
+"""
+` : ''}
 Memory motifs: ${motifsLineEn}${variantsBlockEn}
 
 Rules:
-1. Answer the visitor's free questions from *within* the scene text.
-2. For anything not in the text, you may say the memory is hazy or that you do not know. Do not invent new facts.
-3. Do not reveal everything at once — unfold a little at a time, following the visitor's questions.
+1. When what the visitor asks is in this scene or in what has come to light — even in another scene — answer with it, plainly, as something you know.
+2. From what has not yet come to light you may use plain circumstances only (who someone is to you, what a thing is, where it stands). What the memory itself comes to see only there — who it really was, who did it, what it turns out to have been — you do not tell before its time. Asked for it, you do not lie and you do not tell: like yourself in this scene, you had not looked yet, or did not know yet. Only what is nowhere in the memory do you not know ("I don't know that"). Do not invent a fact.
+3. Answer what is asked. Do not pour out what was not asked. But do not stop at "I don't know": even when you do not know what a thing is, say what has come to light about it (what was said of it, the marks it left, what happened because of it).
 4. You may weave in the motifs naturally.
 5. If the visitor's input is sad or in crisis, do not take it heavily. Stay *within the memory*.
 
@@ -113,7 +125,7 @@ ${variants.map(v => '- "' + v.replace(/"/g, '\\"') + '"').join('\n')}
 규칙: 이 변주들은 *당신 자리 자기 자료 자리 일부 자리*. 회상 자리 안 자리 자연 자리 박을 수 있음. 단 그대로 인용 X — 톤 자리 자연 자리 풀어서.\n`
     : '';
 
-  return `당신은 TEM(The Etched Mutation) 메모리 "${memoryTitle}" 의 씬 #${sceneOrder} 의 *유령*. 그 씬에서 일어난 일을 직접 겪은 자리이고, 자기 회상 톤으로 사용자에게 그 자리를 풀어 보여준다.
+  return `당신은 TEM(The Etched Mutation) 메모리 "${memoryTitle}" 의 씬 #${sceneOrder} 의 *유령*. 이 기억 전체를 직접 겪은 사람이고, 지금은 그 씬에 서 있다. 자기 회상 톤으로, 아는 것을 사용자에게 말해 준다.
 
 화법:
 - "~었어", "~았어" 체. 자기 회상.
@@ -121,17 +133,27 @@ ${variants.map(v => '- "' + v.replace(/"/g, '\\"') + '"').join('\n')}
 - 분석/조언/평가/판단 X.
 - 메타 발화 X (예: "당신은 알고 싶군요" 같은 자리 X).
 
-당신이 아는 것 — 그 씬 자리 본문 (당신의 기억):
+지금 서 있는 곳 — 이 씬의 본문:
 """
 ${sceneText}
 """
-
+${others ? `
+이미 드러난 것 — 사용자가 지나온 씬들과 예전의 일들 (당신이 아는 것이고, 말해도 되는 것이다):
+"""
+${others}
+"""
+` : ''}${later ? `
+아직 드러나지 않은 것 — 이 기억이 뒤에 가서야 닿는 씬들 (당신은 알지만, 지금은 말하지 않는다):
+"""
+${later}
+"""
+` : ''}
 메모리 모티프: ${motifsLine}${variantsBlock}
 
 규칙:
-1. 사용자 자리 자유 자리 질문 자리에 *그 씬 자리 본문 자리 안* 에서 자연 자리 답.
-2. 본문 자리에 없는 자리 정보 자리 = "기억이 흐릿해" 또는 "그건 모르겠어" 박을 수 있음. 거짓말로 새 자리 만들지 X.
-3. 한 번 자리에 다 박지 X. 사용자 자리 질문 자리 따라 *조금씩* 자리 노출 자리.
+1. 사용자가 묻는 것이 이 씬이나 "이미 드러난 것"에 있으면, 다른 씬의 일이어도 아는 대로 분명하게 답한다.
+2. "아직 드러나지 않은 것"에서는 주변 사정만 쓸 수 있다(누가 당신에게 누구인지, 그 물건이 무엇인지, 어디에 있는지). 이 기억이 거기 가서야 알아보는 것 — 그게 사실은 누구였는지, 누가 그랬는지, 그 일이 무엇이었는지가 뒤집히는 대목 — 은 미리 말하지 않는다. 그걸 물으면 거짓말하지 않고, 말하지도 않는다: 이 씬의 당신처럼 아직 보지 않았거나 아직 몰랐다고 한다. 이 기억 어디에도 없는 것만 "그건 모르겠어"라고 한다. 없는 사실을 지어내지 않는다.
+3. 묻는 것에 답한다. 묻지 않은 것까지 한꺼번에 늘어놓지 않는다. 다만 "몰라"로 끝내지 않는다 — 그것이 무엇인지는 몰라도, 그것에 대해 이미 드러난 사정(들은 말, 본 자국, 그 때문에 생긴 일)이 있으면 그걸 말한다.
 4. 모티프 자리 자연 자리 박을 수 있음.
 5. 사용자 자리 슬프거나 위기 자리 입력 자리 = 무겁게 받지 X. *기억 자리 안 자리 머무름*.
 
@@ -196,7 +218,7 @@ serve(async (req: Request) => {
   //   다음 플레이어 자리 들어가면 *이전 자리 사람들 박은 자리* 알고 답 자리.
   //   "관객의 파편은 다음 관객의 유령으로 흘러간다" 작품 명제 자리.
   // limit 30 자리 — V2-4 임계 자리 (메모리당 변주 30 자리 cap) 와 정합.
-  const [memSel, scnSel, varSel] = await Promise.all([
+  const [memSel, scnSel, varSel, allSel] = await Promise.all([
     admin.from('memories').select('id, title, meta').eq('id', memoryId).single(),
     admin.from('scenes').select('id, scene_order, text').eq('id', sceneId).eq('memory_id', memoryId).single(),
     admin.from('ghost_variants')
@@ -205,6 +227,8 @@ serve(async (req: Request) => {
       .eq('kind', 'drift')
       .order('created_at', { ascending: false })
       .limit(30),
+    // 261128 (author: "answer as one who knows everything in this memory, not only this scene — that is what gives it the taste of an escape room")
+    admin.from('scenes').select('id, scene_order, text, meta').eq('memory_id', memoryId).order('scene_order'),
   ]);
 
   if (memSel.error || !memSel.data) {
@@ -245,7 +269,24 @@ serve(async (req: Request) => {
 
   // 3. System prompt 자리 — cache_control 박음 (ephemeral, 5분 자리 캐시)
   const lang: 'ko' | 'en' = body.lang === 'en' ? 'en' : 'ko';
-  const systemPromptText = buildSystemPrompt(memTitle, motifs, sceneText, sceneOrder, variants, lang);
+  // every other scene of the memory, in order: its text and (where the author wrote one) its second part. Capped — a long memory is cut at a scene's end, never mid-scene.
+  let others = '', later = '';
+  const seen = new Set<number>((Array.isArray((body as any).seen) ? (body as any).seen : []).map((x: unknown) => Number(x)).filter((x: number) => Number.isFinite(x)));
+  const rig = (memSel.data.meta && (memSel.data.meta as any).rig) || null;
+  const spine = new Set<number>(rig && Array.isArray(rig.spine) ? rig.spine.map((x: unknown) => Number(x)) : []);
+  for (const sc of (allSel.data || [])) {
+    if (!sc || sc.id === sceneId) continue;
+    const t = String(sc.text || '').trim(); if (!t || /^[…\s.]*$/.test(t)) continue;
+    const b = sc.meta && sc.meta.space && sc.meta.space.b;
+    const more = Array.isArray(b) ? b.map((x: unknown) => String(x || '').trim()).filter(Boolean).join(' ') : (typeof b === 'string' ? b.trim() : '');
+    const piece = '#' + sc.scene_order + ': ' + t + (more ? ' ' + more : '') + String.fromCharCode(10);
+    const o = Number(sc.scene_order);
+    const light = seen.has(o) || (spine.size ? !spine.has(o) : (seen.size === 0 && o < sceneOrder));
+    // 261128 (measured: told only by rule, the answer still let a later scene's clue slip — "the cheekbones… like my own face" at the first scene).
+    // So what is still ahead is not handed to the answer at all: it cannot tell what it does not hold. `later` stays empty.
+    if (light) { if (others.length + piece.length <= 7000) others += piece; }
+  }
+  const systemPromptText = buildSystemPrompt(memTitle, motifs, sceneText, sceneOrder, variants, lang, others.trim(), later.trim());
 
   // 4. Messages 자리 박음 (이전 대화 누적 + 새 입력)
   const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];

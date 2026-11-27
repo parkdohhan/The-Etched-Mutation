@@ -20,6 +20,7 @@ const WALK = 1.9, STRIDE = 1.0;            // = the room stage's way (W12)
 const DOOR_H = 2.3, END_HALF = 0.62, START_HALF = 1.05, EDGE_W = 0.15, FLOOR_TILE = 0.21, SEG = 64;
 const DRAW_S = 3.0, REPEAT_DRAW_S = 1.5;
 const PULL_R = 8, PULL_G = 15;            // the way's pull: from how far, and how strong at the way itself
+const LET_GO = 4;                         // 261128: seconds a way stepped back off leaves the walker alone
 const NEAR_R = 7.5;                        // how close to a thing before its text comes up
 const FOG_D = 0.0052;
 const TRAIL_LIFE = 7.0, TRAIL_N = 240, TRAIL_GLOW = 0.62;   // how long the line under the feet lasts · most samples kept in view · its brightest
@@ -484,6 +485,7 @@ export function createCosmos(opts) {
       const ft = feet(T1); let cw = null, cn = null;
       for (const w of ways) {
         if (!w.live || !w.ready || w.kind === 'stub') continue;
+        if (w.letGo && time - w.letGo < LET_GO) continue;                  // 261128: a way just stepped back off does not take the walker again at once
         const n = nearestOnRail(w, ft);
         if (n && n.d < PULL_R && (!cn || n.d < cn.d)) { cn = n; cw = w; }
       }
@@ -499,10 +501,23 @@ export function createCosmos(opts) {
     if (pl.mode === 'walk') {
       const w = pl.way, stub = w.kind === 'stub';
       const go = keys.has('KeyW') || keys.has('ArrowUp') || pl.forward || time < pl.walkUntil;
-      let moved = 0;
+      // 261128 (author: "once on the way to a door it only ever goes forward — let's fix that"): S / ↓ walks back along the way.
+      // Back at its beginning, a further step back leaves it — no weight again, and the way does not take the walker back for
+      // a few seconds. (Was: a way could not be walked back at all — 글방 결정 §8 W5·W9.) The short floor behind a door is not left backward.
+      const back = !go && (keys.has('KeyS') || keys.has('ArrowDown'));
+      let moved = 0, left = false;
       if (go) {
         const limit = stub ? w.total + 0.2 : (w.door.userData.open >= 0.6 ? w.total + 0.9 : w.total - 0.6);
         const ns = Math.min(limit, pl.s + WALK * sdt); moved = Math.max(0, ns - pl.s); pl.s = Math.max(pl.s, ns);
+      } else if (back) {
+        const ns = Math.max(0, pl.s - WALK * sdt); moved = pl.s - ns; pl.s = ns;
+        if (!stub && ns <= 0 && moved < 1e-5) left = true;                  // already at the beginning, and still stepping back
+      }
+      if (left) {
+        const q0 = railAt(w, 0);
+        w.letGo = time; if (!stub) w.door.userData.target = 0;
+        pl.mode = 'fly'; pl.way = null; pl.vel.set(-q0.tx * 1.4, 0.3, -q0.tz * 1.4);   // off the back of it, a little up: afloat again
+        if (cb.onRelease) cb.onRelease(w);
       }
       if (moved > 1e-5) { pl.bob += moved * (2 * Math.PI / STRIDE); pl.stepAcc += moved; if (pl.stepAcc >= STRIDE) { pl.stepAcc -= STRIDE; steps.play(0.30); } }
       const q = railAt(w, pl.s), hd = Math.atan2(-q.tx, -q.tz);

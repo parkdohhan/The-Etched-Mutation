@@ -729,7 +729,7 @@ function initMainMenu() {
   const menuItems = wrap.querySelectorAll('.menu-item');
   const descriptionArea = document.getElementById('mainMenuDescription');
   const bokehFlare = document.getElementById('mainBokehFlare');
-  let activeId = 'play';
+  let activeId = 'archive';   // 261128: PLAY is out of the menu — ARCHIVE stands first
   let hoveredId = null;
 
   function setActive(id) {

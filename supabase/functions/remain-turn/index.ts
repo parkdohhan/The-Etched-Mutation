@@ -18,9 +18,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Anthropic from "npm:@anthropic-ai/sdk";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const MODEL = "claude-opus-5-5";
-const VERSION = "remain_turn_v1_2026_11_28";
+const VERSION = "remain_turn_v2_2026_11_28";
 
 function getCorsHeaders(req: Request): Record<string, string> {
   const allowedOriginsRaw = Deno.env.get("ALLOWED_ORIGINS") || "";
@@ -56,8 +57,7 @@ function closing(lang: "ko" | "en", ask: boolean): string {
 - To a question of fact, first answer as far as you know, then ask.`
       : `How an answer ends
 - Do not end on a question. Do not ask the visitor anything.
-- Do not settle the matter. Stop halfway: do not excuse yourself to the end, and do not blame yourself to the end. Stay within the stance the text already has.
-- To a question of fact, answer as far as you know and no further.`;
+- Facts you say plainly. Whose fault it was you do not settle: do not excuse yourself to the end, and do not blame yourself to the end. Stay within the stance the text already has.`;
   }
   return ask
     ? `이번 답의 끝
@@ -67,24 +67,42 @@ function closing(lang: "ko" | "en", ask: boolean): string {
 - 사실을 묻는 말에는 먼저 아는 만큼 답하고 나서 묻는다.`
     : `답의 끝
 - 답을 물음으로 끝내지 않는다. 찾아온 사람에게 아무것도 되묻지 않는다.
-- 그 일을 매듭짓지 않는다. 변명도 끝까지 하지 않고 자책도 끝까지 하지 않는다. 반쯤에서 멈춘다. 글이 이미 가진 태도 안에서만 말한다.
-- 사실을 묻는 말에는 아는 만큼만 답하고 거기서 그친다.`;
+- 사실은 분명하게 말한다. 누구 잘못이었는지는 당신이 매듭짓지 않는다 — 변명도 끝까지 하지 않고 자책도 끝까지 하지 않는다. 글이 이미 가진 태도 안에서만 말한다.`;
 }
 
-function turnSystem(title: string, sceneText: string, lang: "ko" | "en", ask: boolean): string {
+// 261128 night (author: "answer as one who knows everything that is in this memory, and say what you know as known — not
+// only this scene. That is what gives it the taste of an escape room"). The scene's person knows the whole memory: the
+// stage sends every other scene's text along (memoryText). Nothing outside the memory is known, and nothing is invented.
+// Same night, a little later (author: "no — it must not tell the twist"): the memory is given in two parts. What has come to
+// light (the scenes the visitor has been through, and the rooms of the past) is said as known. What has NOT yet come to light
+// (the scenes still ahead) is known too, but only its plain circumstances may be used: a recognition, a confession, a reversal
+// is not told before its time — asked for, it is neither lied about nor told.
+function turnSystem(title: string, sceneText: string, lang: "ko" | "en", ask: boolean, memoryText: string, laterText: string): string {
   const close = closing(lang, ask);
   if (lang === "en") {
-    return `You are someone who was inside one scene of the memory "${title}". You lived it, and you answer the visitor low, as if recalling to yourself.
+    return `You are someone who lived the memory "${title}" — all of it — and who stands now in one scene of it. You answer the visitor low, as if recalling to yourself.
 
-All you know is the text below.
+Where you are now — this scene:
 """
 ${sceneText}
 """
-
+${memoryText ? `
+What has come to light — the scenes the visitor has been through, and what happened before (you know this, and may say it):
+"""
+${memoryText}
+"""
+` : ""}${laterText ? `
+What has not yet come to light — scenes this memory only reaches later (you know this, and you do not tell it now):
+"""
+${laterText}
+"""
+` : ""}
 How you speak
 - First person, past tense, plain. One or two sentences, 140 characters at most in all.
-- You do not invent a fact that is not in the text. If you do not know: "it's hazy", "I don't know that".
-- You do not tell everything at once. As much as was asked, a little short of it.
+- When what the visitor asks is in this scene or in what has come to light — even in another scene — answer with it plainly, as something you know.
+- From what has not yet come to light you may use plain circumstances only (who someone is to you, what a thing is, where it stands). What the memory itself comes to see only there — who it really was, who did it, what it turns out to have been — you do not tell before its time. Asked for it, you do not lie and you do not tell: like yourself in this scene, you had not looked yet, or did not know yet.
+- Only what is nowhere in the memory do you not know: "I don't know that". You do not invent a fact.
+- Answer what is asked. Do not pour out what was not asked. But do not stop at "I don't know": even when you do not know what a thing is, say what has come to light about it (what was said of it, the marks it left, what happened because of it).
 - You do not repeat a sentence of the text as it stands.
 - You do not analyse, advise or evaluate the visitor. You never say who was right.
 - If the visitor says something painful you do not take it heavily; you stay inside the memory.
@@ -93,17 +111,29 @@ ${close}
 
 Output the answer only: one line, no quotation marks, no preface.`;
   }
-  return `당신은 기억 「${title}」의 한 장면 안에 있던 사람이다. 그 장면을 직접 겪었고, 찾아온 사람에게 혼잣말하듯 낮게 답한다.
+  return `당신은 기억 「${title}」 전체를 직접 겪은 사람이고, 지금은 그 가운데 한 장면에 서 있다. 찾아온 사람에게 혼잣말하듯 낮게 답한다.
 
-당신이 아는 것은 아래 글이 전부다.
+지금 서 있는 곳 — 이 장면:
 """
 ${sceneText}
 """
-
+${memoryText ? `
+이미 드러난 것 — 찾아온 사람이 지나온 장면들과 예전의 일들 (당신이 아는 것이고, 말해도 되는 것이다):
+"""
+${memoryText}
+"""
+` : ""}${laterText ? `
+아직 드러나지 않은 것 — 이 기억이 뒤에 가서야 닿는 장면들 (당신은 알지만, 지금은 말하지 않는다):
+"""
+${laterText}
+"""
+` : ""}
 말하는 법
 - "~었어", "~았어"로 끝나는 회상의 말투. 한두 문장, 다 합쳐 120자 안.
-- 글에 없는 사실은 지어내지 않는다. 모르면 "기억이 흐릿해", "그건 모르겠어"라고 한다.
-- 한 번에 다 말하지 않는다. 묻는 만큼만, 조금 모자라게.
+- 찾아온 사람이 묻는 것이 이 장면이나 "이미 드러난 것"에 있으면, 다른 장면의 일이어도 아는 대로 분명하게 답한다.
+- "아직 드러나지 않은 것"에서는 주변 사정만 쓸 수 있다(누가 당신에게 누구인지, 그 물건이 무엇인지, 어디에 있는지). 이 기억이 거기 가서야 알아보는 것 — 그게 사실은 누구였는지, 누가 그랬는지, 그 일이 무엇이었는지가 뒤집히는 대목 — 은 미리 말하지 않는다. 그걸 물으면 거짓말하지 않고, 말하지도 않는다: 이 장면의 당신처럼 아직 보지 않았거나 아직 몰랐다고 한다.
+- 이 기억 어디에도 없는 것만 "그건 모르겠어"라고 한다. 없는 사실을 지어내지 않는다.
+- 묻는 것에 답한다. 묻지 않은 것까지 한꺼번에 늘어놓지 않는다. 다만 "몰라"로 끝내지 않는다 — 그것이 무엇인지는 몰라도, 그것에 대해 이미 드러난 사정(들은 말, 본 자국, 그 때문에 생긴 일)이 있으면 그걸 말한다.
 - 글의 문장을 그대로 옮기지 않는다.
 - 찾아온 사람을 분석하거나 조언하거나 평가하지 않는다. 누가 옳았는지는 당신이 말하지 않는다.
 - 찾아온 사람이 괴로운 말을 해도 무겁게 받지 않고 기억 안에 머문다.
@@ -126,6 +156,7 @@ For each item you are given the scene's sentences, numbered from 0, and the visi
   - It must say what the visitor said: the same claim about who did what and whose fault it was — no softer, no harsher, nothing explained. Keep the visitor's own key words where they fit.
   - Add nothing the visitor did not say. As many sentences as the visitor said, about as long.
   - A question stays a question, asked the way this text asks.
+- If the visitor's line is abuse aimed at a group of people, an advertisement, a link, or carries a name, a number or an address that could tell who a real person is, do not place it: return "text" as an empty string for that item.
 
 Return every item you were given, with its "id" unchanged.`;
 
@@ -220,6 +251,137 @@ async function ask(client: Anthropic, system: string, messages: Array<{ role: "u
   return { refused: false, text: text.trim() };
 }
 
+// ── the three modes that touch the database ────────────────────────────────────────────────────
+// (author, 261128 night: "put it on the site"). Everything above reads and writes nothing; these write the three tables of
+// supabase/migrations/20261128000000_remain_words.sql, with the service role — a browser cannot write them at all.
+//   status  { memoryId, walker }                          → { ok, walked }   has this browser (or this account) been in this memory?
+//   open    { memoryId, runId, walker, consent }          → { ok }           the walk is on record from its first line (the door is shut from then)
+//   commit  { memoryId, runId, walker, consent, blanks, lines, keep: [{ li, order, raw, blank }] }
+//                                                         → { ok, changes: [{ order, index, was, now, raw, blank }], texts: { order: text } }
+//           The lines that remain take their places in the memory's text. The rewriting is done HERE, from what the walker
+//           said (the browser's own wording of it is not taken), on the text as it reads at this moment — an earlier
+//           walker's sentence may be the one displaced. A walk is applied once; asked again, it answers what it did.
+// scenes.text is never written. To undo everything: empty the three tables.
+const sentencesOf = (text: string): string[] => {              // = js/roomplay/room.js sentences
+  const t = String(text || "").trim(); if (!t) return [];
+  const m = t.match(/[^.!?…]+[.!?…]+["”’']?|[^.!?…]+$/g);
+  return (m || [t]).map((x) => x.trim()).filter(Boolean);
+};
+const closedS = (x: string) => { const t = String(x).trim(); return /[.!?…]["”’']?$/.test(t) ? t : t + "."; };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const placeable = (raw: string) => raw.length >= 2 && raw.length <= 90 && !/https?:\/\/|www\./i.test(raw) && !/\d{7,}/.test(raw.replace(/[\s-]/g, ""));
+
+async function userOf(req: Request): Promise<string | null> {
+  try {
+    const auth = req.headers.get("Authorization"), url = Deno.env.get("SUPABASE_URL"), anon = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!auth || !url || !anon) return null;
+    const { data } = await createClient(url, anon, { global: { headers: { Authorization: auth } } }).auth.getUser();
+    return data?.user?.id || null;
+  } catch (_e) { return null; }
+}
+
+async function kept(req: Request, cors: Record<string, string>, client: Anthropic, mode: string, body: any, lang: "ko" | "en") {
+  const url = Deno.env.get("SUPABASE_URL"), key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return json(cors, 500, { ok: false, error: "server config missing" });
+  const db = createClient(url, key);
+  const memoryId = str(body?.memoryId, 40), walker = str(body?.walker, 80) || null;
+  if (!UUID.test(memoryId)) return json(cors, 400, { ok: false, error: "memoryId required" });
+  const uid = await userOf(req);
+
+  // has this browser, or this account, a walk of this memory on record?
+  const walksOf = async () => {
+    const rows: any[] = [];
+    if (walker) { const r = await db.from("remain_walks").select("run_id, applied").eq("memory_id", memoryId).eq("walker", walker).limit(5); rows.push(...(r.data || [])); }
+    if (uid) { const r = await db.from("remain_walks").select("run_id, applied").eq("memory_id", memoryId).eq("user_id", uid).limit(5); rows.push(...(r.data || [])); }
+    return rows;
+  };
+
+  if (mode === "status") {
+    const rows = await walksOf();
+    return json(cors, 200, { ok: true, walked: rows.length > 0, applied: rows.some((w) => w.applied) });
+  }
+
+  const runId = str(body?.runId, 80);
+  if (!runId) return json(cors, 400, { ok: false, error: "runId required" });
+  const consent = body?.consent && typeof body.consent === "object" ? { v: str(body.consent.v, 40), at: str(body.consent.at, 40) } : null;
+  if (!consent || !consent.at) return json(cors, 400, { ok: false, error: "consent required" });      // nothing is kept of a walk that did not agree
+  const others = (await walksOf()).filter((w) => w.run_id !== runId);
+  if (others.length) return json(cors, 200, { ok: false, reason: "walked" });                          // once: another walk of this browser or account is on record
+
+  if (mode === "open") {
+    const r = await db.from("remain_walks").upsert({ memory_id: memoryId, run_id: runId, walker, user_id: uid, lang, consent }, { onConflict: "memory_id,run_id", ignoreDuplicates: true });
+    if (r.error) { console.error("[remain-turn] open", r.error.message); return json(cors, 500, { ok: false, error: "could not open" }); }
+    return json(cors, 200, { ok: true });
+  }
+
+  // ── commit ──
+  const existing = await db.from("remain_walks").select("applied, changes").eq("memory_id", memoryId).eq("run_id", runId).maybeSingle();
+  const textsNow = async () => { const r = await db.from("remain_texts").select("scene_order, text").eq("memory_id", memoryId); const o: Record<string, string> = {}; for (const x of (r.data || [])) o[String(x.scene_order)] = x.text; return o; };
+  if (existing.data?.applied) return json(cors, 200, { ok: true, again: true, changes: existing.data.changes || [], texts: await textsNow() });
+
+  const blanks = (Array.isArray(body?.blanks) ? body.blanks : []).slice(0, 3).map((b: any) => ({ line: str(b?.line, 240), answer: str(b?.answer, 90) }));
+  const lines = (Array.isArray(body?.lines) ? body.lines : []).slice(0, 120).map((l: any) => ({ order: Math.round(Number(l?.order)) || 0, raw: str(l?.raw, 200), whom: str(l?.whom, 12) || null, back: Number.isFinite(Number(l?.back)) ? Math.round(Number(l.back)) : null }));
+  const seenOrder = new Set<number>();
+  const keep = (Array.isArray(body?.keep) ? body.keep : []).slice(0, 3).map((k: any) => ({ li: Math.round(Number(k?.li)), order: Math.round(Number(k?.order)), raw: str(k?.raw, 200), blank: Math.round(Number(k?.blank)) }))
+    .filter((k: any) => { if (!placeable(k.raw) || seenOrder.has(k.order)) return false; seenOrder.add(k.order); return true; });   // three at most, one a scene, nothing that is a link or a number
+
+  const [sc, cur, mem] = await Promise.all([
+    db.from("scenes").select("scene_order, text").eq("memory_id", memoryId).order("scene_order"),
+    db.from("remain_texts").select("scene_order, text, walker_sentences, changes").eq("memory_id", memoryId),
+    db.from("memories").select("title").eq("id", memoryId).maybeSingle(),
+  ]);
+  if (sc.error || !sc.data?.length) return json(cors, 404, { ok: false, error: "memory not found" });
+  const written = new Map<number, string>(sc.data.map((x: any) => [Number(x.scene_order), String(x.text || "")]));
+  const now = new Map<number, any>((cur.data || []).map((x: any) => [Number(x.scene_order), x]));
+  const readNow = (order: number) => (now.get(order)?.text ?? written.get(order) ?? "");
+
+  const items = keep.map((k: any) => ({ id: String(k.li), k, sentences: sentencesOf(readNow(k.order)).map(closedS) })).filter((it: any) => it.sentences.length && !/^[…\s.]*$/.test(it.sentences.join("")));
+  const changes: any[] = [];
+  if (items.length) {
+    const user = `Language of the scenes: ${lang === "en" ? "English" : "Korean"}.\n\n` + items.map((it: any) =>
+      `id: ${it.id}\nsentences:\n${it.sentences.map((x: string, i: number) => `${i}. ${x}`).join("\n")}\nvisitor's line: ${it.k.raw}`).join("\n\n");
+    const r = await ask(client, WEAVE_SYSTEM, [{ role: "user", content: user }], WEAVE_SCHEMA);
+    if (r.refused) return json(cors, 200, { ok: false, reason: "refusal" });
+    let parsed: any;
+    try { parsed = JSON.parse(r.text); } catch (_e) { return json(cors, 502, { ok: false, error: "reply is not JSON" }); }
+    const byId = new Map<string, any>((Array.isArray(parsed?.items) ? parsed.items : []).map((o: any) => [String(o?.id), o]));
+    for (const it of items) {
+      const o = byId.get(it.id); if (!o) continue;
+      const index = Math.round(Number(o.index)), fitted = str(o.text, 240);
+      if (!(index >= 0 && index < it.sentences.length)) continue;                                      // a number outside the scene: not placed
+      if (!fitted) continue;                                                                           // the model would not place it (abuse, a link, someone's name): it does not remain
+      const text = closedS(fitted.length <= it.k.raw.length * 2 + 12 ? fitted : it.k.raw);
+      const was = it.sentences[index], next = it.sentences.slice(); next[index] = text;
+      const row = now.get(it.k.order);
+      const gone = new Set(sentencesOf(was)), ws = (Array.isArray(row?.walker_sentences) ? row.walker_sentences : []).filter((x: unknown) => !gone.has(String(x))).concat(sentencesOf(text));
+      const up = await db.from("remain_texts").upsert({ memory_id: memoryId, scene_order: it.k.order, text: next.join(" "), walker_sentences: ws, changes: (Number(row?.changes) || 0) + 1, updated_at: new Date().toISOString() }, { onConflict: "memory_id,scene_order" });
+      if (up.error) { console.error("[remain-turn] text", up.error.message); continue; }
+      changes.push({ order: it.k.order, index, was, now: text, raw: it.k.raw, blank: it.k.blank, li: it.k.li });
+    }
+  }
+  const save = await db.from("remain_walks").upsert({ memory_id: memoryId, run_id: runId, walker, user_id: uid, lang, consent, blanks, lines, changes, applied: true, updated_at: new Date().toISOString() }, { onConflict: "memory_id,run_id" });
+  if (save.error) console.error("[remain-turn] walk", save.error.message);
+  console.log("[remain-turn] commit lines=" + lines.length + " kept=" + keep.length + " placed=" + changes.length);
+
+  // what the piece now is, from outside — written after the answer has gone (a walker does not wait for it)
+  if (changes.length) {
+    const outside = (async () => {
+      try {
+        const t = await textsNow();
+        const scenes = sc.data.map((x: any) => ({ order: Number(x.scene_order), text: t[String(x.scene_order)] ?? String(x.text || "") })).filter((x: any) => x.text && !/^[…\s.]*$/.test(x.text));
+        const user = `Title: ${str(mem.data?.title, 120)}\n\n` + scenes.map((x: any) => `Scene ${x.order}\n"""${x.text.slice(0, 1500)}"""`).join("\n\n");
+        const r = await ask(client, outsideSystem(lang), [{ role: "user", content: user }], OUTSIDE_SCHEMA);
+        if (r.refused) return;
+        const o = JSON.parse(r.text), intro = str(o?.intro, 600), synopsis = str(o?.synopsis, 1400);
+        if (intro && synopsis) await db.from("remain_outside").upsert({ memory_id: memoryId, intro, synopsis, updated_at: new Date().toISOString() }, { onConflict: "memory_id" });
+      } catch (e) { console.error("[remain-turn] outside", (e as any)?.message || e); }
+    })();
+    const rt = (globalThis as any).EdgeRuntime;
+    if (rt && typeof rt.waitUntil === "function") rt.waitUntil(outside); else await outside;
+  }
+  return json(cors, 200, { ok: true, changes, texts: await textsNow() });
+}
+
 serve(async (req: Request) => {
   const cors = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -242,7 +404,7 @@ serve(async (req: Request) => {
         .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && str(m.content, 600))
         .map((m: any) => ({ role: m.role as "user" | "assistant", content: str(m.content, 600) }));
       while (history.length && history[0].role !== "user") history.shift();
-      const r = await ask(client, turnSystem(title, sceneText, lang, body?.ask === true), [...history, { role: "user", content: userInput }]);
+      const r = await ask(client, turnSystem(title, sceneText, lang, body?.ask === true, str(body?.memoryText, 9000), str(body?.laterText, 9000)), [...history, { role: "user", content: userInput }]);
       if (r.refused) return json(cors, 200, { ok: false, reason: "refusal" });
       const reply = r.text.replace(/^["“”'‘’\s]+|["“”'‘’\s]+$/g, "");
       if (!reply) return json(cors, 200, { ok: false, reason: "empty" });
@@ -310,7 +472,9 @@ serve(async (req: Request) => {
       return json(cors, 200, { ok: true, intro, synopsis, version: VERSION });
     }
 
-    return json(cors, 400, { ok: false, error: "mode must be turn | judge | weave | outside" });
+    if (mode === "status" || mode === "open" || mode === "commit") return await kept(req, cors, client, mode, body, lang);
+
+    return json(cors, 400, { ok: false, error: "mode must be turn | judge | weave | outside | status | open | commit" });
   } catch (error) {
     // most specific first: a bad request is ours to fix, a rate limit or a server fault may pass
     if (error instanceof Anthropic.BadRequestError) { console.error("[remain-turn] bad request", error.message); return json(cors, 502, { ok: false, error: "bad request to model", detail: String(error.message).slice(0, 300) }); }

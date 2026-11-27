@@ -67,6 +67,13 @@ let _finderSessionSeq = 0;
 const SPACE_STAGE_CODES = ['UNDW-001', 'UNDW-001-EN'];   // 261123: 영어 사본도 같은 무대로 (영어 설정에서 한국어가 보이지 않게 — 둘째 토막·글 겹은 scenes.meta.space / room_text 에 영어로)
 // 261124 데모 주소: 첫 화면을 ?demo=1 (&route=1,2,3,6,7) 로 열면 그 표시를 우주 화면까지 그대로 넘긴다 (js/spaceblank/main.js DEMO — 정해 둔 순서·저장 안 함).
 // 모듈을 읽는 순간에 잡아 둔다(나중에 주소가 정리돼도 남도록). 되돌리기 = 이 상수와 아래 두 곳의 `${_DEMO_TAIL}` 삭제.
+// 261128 밤 작가: 오프닝에서 닿는 대표 기억(한국어)은 연습(튜토리얼) — 세 장면, 아무것도 남지 않고, "또다른 나"가 하는 법을 알려 준다(space-remain.html?as=tutorial).
+//   진짜(말이 글에 남는 걸음)는 아카이브에 있다(js/app/archive.js REMAIN_CODES). 촬영용 데모 주소(demo=1)는 그대로 빈 자리 화면. 되돌리기 = TUTORIAL_CODES 를 비운다.
+const TUTORIAL_CODES = ['UNDW-001'];
+function _spaceUrlFromOpening(mem, lang) {
+  const tutorial = !_DEMO_TAIL && mem && mem.code && TUTORIAL_CODES.includes(mem.code);
+  return (tutorial ? 'space-remain.html' : 'space-blank.html') + '?memory=' + encodeURIComponent(mem.id) + '&lang=' + encodeURIComponent(lang) + '&from=opening' + (tutorial ? '&as=tutorial' : '') + _DEMO_TAIL;
+}
 const _DEMO_TAIL = (() => { try { const q = new URLSearchParams(location.search); if (q.get('demo') !== '1' || q.get('memory')) return ''; const r = q.get('route'); return '&demo=1' + (r ? '&route=' + encodeURIComponent(r) : ''); } catch (_) { return ''; } })();
 
 // ─────────────────────────────────────
@@ -737,7 +744,7 @@ async function _handleOpeningSubmit(emotion, text) {
       openingSkipped = true;
       if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
       if (_finderSessionSeq !== mySession) return;
-      window.location.href = `space-blank.html?memory=${encodeURIComponent(want.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening${_DEMO_TAIL}`;
+      window.location.href = _spaceUrlFromOpening(want, _openingLang);
       return;
     }
   }
@@ -964,7 +971,7 @@ async function _handleOpeningSubmit(emotion, text) {
   // 261123: 기억 만들기(record-space.html)로 만든 기억(meta.space_record)도 같은 무대로
   if (!_terrainOnly && ((memory.code && SPACE_STAGE_CODES.includes(memory.code)) || (memory.meta && memory.meta.space_record))) {
     // 261124 작가: 오프닝에서 빈 자리 화면(space-blank.html — 서막·뒷문·빈칸·타자 소리)으로. 옛 우주 화면만 보려면 주소로 space-play.html
-    window.location.href = `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}&from=opening${_DEMO_TAIL}`;
+    window.location.href = _spaceUrlFromOpening(memory, _openingLang);
     return;
   }
   window.location.href = `${base}?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(_openingLang)}`;

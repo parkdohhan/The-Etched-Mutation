@@ -24,22 +24,37 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261123d';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128a';
 import { isSilent } from '../spaceplay/things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
-import { runPrologue } from '../spaceplay/prologue.js?v=261124c';
+import { runPrologue } from '../spaceplay/prologue.js?v=261128a';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
-import * as remain from './remain.js?v=261128c';
-import { runEnding, showOutside } from './ending.js?v=261128c';
+import { packTrack } from '../spaceplay/thread.js?v=261123d';
+import { isLocked } from '../roomplay/engine.js';
+import { markWalked, takeGateAnswer } from '../shared/person_shelf.js?v=261128b';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
+import * as remain from './remain.js?v=261128d';
+import { runEnding, showOutside } from './ending.js?v=261128d';
+import { createTutor } from './tutor.js?v=261128d';
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
 const FAST = Math.max(1, Math.min(8, Number(qs.get('fast')) || 1));
 const DRY = qs.get('dry') === '1';
 const AT = qs.get('at') || '';
-const NEXT = qs.get('next') === '1';
+// Three ways of walking (261128 night, author: "put it on the site" · "a practice link that leaves no footprints" · "the one from the opening is a tutorial"):
+//   audience  the real walk: the ledger is written as the space stage writes it, and what remains is kept on the server —
+//             the next person, on another machine, reads it. Once.
+//   tutorial  (?as=tutorial) three scenes, nothing kept anywhere, "another me" tells how it is done (tutor.js)
+//   test      (?as=test) the preview as it was: nothing goes to the server; what a walk leaves is kept in this browser only
+const MODE = qs.get('as') === 'test' ? 'test' : qs.get('as') === 'tutorial' ? 'tutorial' : 'audience';
+const TUTOR = MODE === 'tutorial';
+const KEPT = MODE === 'audience' && !AT && !DRY;
+const STORE = KEPT ? remain.STORE.kept : remain.STORE.test;
+const NEXT = MODE === 'test' && qs.get('next') === '1';
+const PLACE_TAG = 'space_v1', MOVE_PERSONA = 'piece-move', KIND = 'remain_v1';   // the ledger's marks: the space stage's place (the prologue and the models read these walks as its own), and this stage's own kind
 const PICK_RANDOM = qs.get('pick') === 'random';
 const TOLD = qs.get('told') !== '0';
 const LANG = (qs.get('lang') || sessionStorage.getItem('tem_archive_lang') || 'ko').slice(0, 2) === 'en' ? 'en' : 'ko';
@@ -80,6 +95,8 @@ const run = {
   judging: [],                              // readings on their way
   consent: null,
   shift: new Map(),                         // scene id → [x,y,z] a changed piece's move
+  rooms: [], gate: null, opened: false, committed: null,   // the journal's stays · the archive's blank and the first scene it named · on record at the server · what the server placed
+  earlier: new Map(),                       // scene order → Set(sentences of that scene's text that were walkers' words before this walk)
   blanks: [], beforeP: null, before: null,
   here: null, pending: null, last: null, contact: false, ghosts: [], rows: [], crossing: false, busy: false, ended: false,
   startedAt: Date.now(),
@@ -87,7 +104,7 @@ const run = {
 let state = null, baseTexts = {}, walkSlot = 0;
 window.__remain = { run, get state() { return state; } };       // automation / inspection hook
 
-let cosmos, talk, map, air, pause, typeVoice, letGo = false, endPick = null;
+let cosmos, talk, map, air, pause, typeVoice, tutor = null, letGo = false, endPick = null;
 const letGoMark = () => { letGo = true; };
 const V3 = (a) => new window.THREE.Vector3(a[0], a[1], a[2]);
 const sceneById = (id) => run.scenes.find((s) => s.id === id);
@@ -205,15 +222,39 @@ async function remainCall(body) {
  * The scene's answer: from inside its text, short of the facts, stopped halfway. It asks nothing back — except when `ask` is
  * set, which the stage does once a scene at most (author, 261128 night: "asking the walker every single time is not it").
  */
-async function replyOf(sceneText, raw, history, ask) {
+async function replyOf(sceneText, raw, history, ask, memoryText) {
   if (DRY) return ko ? (ask ? '기억이 흐릿해. 너는 그게 누구 때문이었다고 봐?' : '기억이 흐릿해. 거기까지는 아직 들여다보지 못했어.') : (ask ? 'It is hazy. Whose doing do you think it was?' : 'It is hazy. I have not looked that far yet.');
-  const r = await remainCall({ mode: 'turn', title: run.memory.title || '', sceneText, userInput: String(raw).slice(0, 500), history, ask: !!ask });
+  const r = await remainCall({ mode: 'turn', title: run.memory.title || '', sceneText, userInput: String(raw).slice(0, 500), history, ask: !!ask, memoryText: (memoryText && memoryText.light) || '' });   // what is still ahead is not sent at all: told only by rule, the answer let a later scene's clue slip (measured 261128) — it cannot tell what it does not hold
   const text = r && typeof r.reply === 'string' ? r.reply.trim() : '';
   if (!text) return '';
   if (hasCrisis(text) || /https?:\/\//i.test(text)) { console.warn('[remain] a reply was held back'); return ''; }
   let out = '';                                                           // whole sentences while they fit; what runs past is not shown
   for (const sn of sentences(text.replace(/\s+/g, ' '))) { if (out && out.length + 1 + sn.length > 150) break; out = out ? out + ' ' + sn : sn; }
   return out.slice(0, 190);
+}
+/**
+ * Every other scene of the memory as this walker's world has it (the text the walks before left, and each scene's second
+ * part) — the scene's person knows all of it (author, 261128 night: "as one who knows everything in this memory").
+ */
+function restOf(scene) {
+  // come to light = a scene the walker has been through, or a room of the past (off the fixed route; without a route: a scene before this one).
+  // Still ahead = the rest: its plain circumstances may be used, its turn is not told before its time (the server's rule).
+  const rig = rigOf(run.memory, qs), spine = rig ? new Set(rig.spine) : null;
+  let light = '', later = '';
+  for (const sc of run.scenes) {
+    if (sc.id === scene.id || isSilent(sc)) continue;
+    const piece = '#' + sc.scene_order + ': ' + sentences(textRead(sc)).join(' ') + ' ' + partB(sc).lines.join(' ') + String.fromCharCode(10);
+    const seen = run.visited.has(sc.id) || (spine ? !spine.has(sc.scene_order) : sc.scene_order < scene.scene_order);
+    if (seen) { if (light.length + piece.length <= 8500) light += piece; }
+    else if (later.length + piece.length <= 8500) later += piece;
+  }
+  return { light: light.trim(), later: later.trim() };
+}
+/** The practice walk's three scenes: the first three of the memory's fixed route, or its first three scenes. */
+function practiceRoute() {
+  const rig = rigOf(run.memory, qs);
+  const orders = rig ? rig.spine.slice(0, 3) : run.scenes.filter((x) => !isSilent(x)).slice(0, 3).map((x) => x.scene_order);
+  return orders.map(sceneByOrder).filter(Boolean);
 }
 /** A text read on the memory's axes (the stage's own classifier call). */
 async function measure(raw, context) {
@@ -260,13 +301,27 @@ async function boot() {
   try { loaded = await data.loadMemory(ref); } catch (e) { line.textContent = ko ? '기억을 불러오지 못했습니다.' : 'The memory could not be loaded.'; veil(false); console.error(e); return; }
   run.memory = loaded.memory; run.scenes = loaded.scenes;
   if (!run.scenes.length) { line.textContent = ko ? '이 기억에는 장면이 없습니다.' : 'This memory has no scenes.'; veil(false); return; }
-  document.title = 'TEM — ' + (run.memory.title || '') + (ko ? ' (남는 말 · 미리보기)' : ' (words that remain · preview)');
+  document.title = 'TEM — ' + (run.memory.title || '') + (TUTOR ? (ko ? ' (연습)' : ' (practice)') : MODE === 'test' ? (ko ? ' (남는 말 · 미리보기)' : ' (words that remain · preview)') : '');
 
-  if (qs.get('reset') === '1') { remain.clear(run.memory.code); qs.delete('reset'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '')); }
-  state = remain.load(run.memory.code) || remain.fresh(run.memory.code);
-  if (state.locked && !NEXT && !AT) return outside();                     // the door is shut: only what the piece now is, from outside
-
-  baseTexts = Object.assign({}, state.texts); walkSlot = state.walks.length;
+  if (MODE === 'test' && qs.get('reset') === '1') { remain.clear(run.memory.code, STORE); qs.delete('reset'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '')); }
+  state = TUTOR ? remain.fresh(run.memory.code) : (remain.load(run.memory.code, STORE) || remain.fresh(run.memory.code));
+  if (KEPT) {
+    // the real walk: the text is read as it stands on the server (what everyone before left), and the door is shut for a
+    // browser — or an account — that has been in once
+    const [tx, st] = await Promise.all([
+      data.client().from('remain_texts').select('scene_order, text, walker_sentences').eq('memory_id', run.memory.id),
+      remainCall({ mode: 'status', memoryId: run.memory.id, walker: data.walkerKey() }),
+    ]);
+    if (tx.error) console.warn('[remain] texts', tx.error);
+    for (const row of (tx.data || [])) { baseTexts[row.scene_order] = row.text; run.earlier.set(Number(row.scene_order), new Set(Array.isArray(row.walker_sentences) ? row.walker_sentences.map(String) : [])); }
+    state.texts = Object.assign({}, baseTexts);
+    if (state.locked || (st && st.walked)) return outside();
+  } else if (!TUTOR) {
+    if (state.locked && !NEXT && !AT) return outside();                   // the door is shut: only what the piece now is, from outside
+    baseTexts = Object.assign({}, state.texts);
+  }
+  walkSlot = state.walks.length;
+  const gateAnswer = TUTOR ? null : takeGateAnswer(run.memory.id);        // what was written in the archive's one blank, if the walker came that way (read once)
   run.engine = createEngine(run.scenes, { frame: qs.get('frame') });
   [run.ghosts, run.rows] = await Promise.all([data.loadGhostLines(run.memory.id), loadLedger(run.memory.id)]);
   { const rg = rigOf(run.memory, qs), n = rg && Number(rg.ghost_min_len); if (n > 0) run.ghosts = run.ghosts.filter((g) => String(g.utterance).trim().length >= n); }
@@ -288,27 +343,81 @@ async function boot() {
   window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly') map.open(); });
   window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && cosmos.mode() === 'fly') map.toggle(); });
 
-  const first = firstScene();
+  if (TUTOR) tutor = createTutor({ lang: LANG, fast: FAST, typeText, touch: cosmos.isTouch() });
+  // the fall before the first scene: the real walk and the practice have it (it can be skipped by holding a key); the preview does not, unless asked
+  const withPrologue = !AT && (MODE === 'test' ? qs.get('prologue') === '1' : qs.get('prologue') !== '0');
+  let entryP = Promise.resolve({ scene: firstScene(), gate: null });
   const begin = async () => {
     $('spEntry').classList.add('gone');
     cosmos.ensureAudio();
-    if (!AT && qs.get('prologue') === '1') {
+    if (withPrologue) {
       try { run.prologue = await runPrologue({ cosmos, run, data, lang: LANG, fast: FAST, hint, auto: false, onDark: () => map.make() }); }
       catch (e) { console.error('[remain] prologue', e); cosmos.setCine(null); cosmos.setMode('held'); $('spCosmos').classList.remove('on'); }
     }
     map.make();
+    const picked = await entryP.catch((e) => { console.warn('[remain] gate', e); return { scene: firstScene(), gate: null }; });
+    const first = picked.scene; run.gate = picked.gate;
+    if (KEPT) { markWalked(run.memory.id); if (run.gate) logGate(first, run.gate); }
     const has = air.focus(first);
     await wait(has ? 2600 : 900);
     if (AT === 'end') return fakeWalk().then(finish);
-    try { const res = await stay(first, { dark: true }); run.firstRes = res; run.firstLeft = res.left; }
+    if (tutor) tutor.say('begin');
+    try { const res = await stay(first, { dark: true, via: 'start' }); run.firstRes = res; run.firstLeft = res.left; }
     catch (e) { console.error('[remain] first stay', e); run.busy = false; talk.hide(); toast(ko ? '첫 장면을 읽지 못했습니다' : 'The first scene could not be read'); return; }
     await openEyes(first);
   };
 
   veil(false);
   if (AT) { run.blanks = remain.blanksFor(run.memory.code, LANG).map((l, i) => ({ line: l, answer: ko ? ['내가 겁이 나서', '불을 켜 두고 잤다', '엄마'][i] : ['I was afraid', 'slept with the light on', 'my mother'][i] })); readBefore(); return begin(); }
-  await entry();
+  if (TUTOR) { await practiceDoor(); return begin(); }
+  const gate = await entry(gateAnswer);
+  entryP = pickEntry(gate);                                                // the first blank also names the first scene (read while the walker falls)
   begin();
+}
+/** The practice walk's door: from the opening it is gone through at once; opened on its own, one line and a touch (a browser gives no sound before one). */
+async function practiceDoor() {
+  if (qs.get('from') === 'opening') return;
+  const line = $('spEntryLine'), btn = $('spEnter'), note = $('spEntryNote');
+  await wait(900);
+  await typeText(line, ko ? '지금부터 너는 한 기억을 떠올리게될거야' : 'you are about to remember something', { per: 70, pace: 1 / FAST });
+  typeText(note, ko ? '연습 — 남지 않습니다' : 'practice — nothing is kept', { per: 30 });
+  btn.textContent = ko ? '떠올린다' : 'remember'; btn.disabled = false;
+  await new Promise((resolve) => btn.addEventListener('click', () => { if (btn.disabled) return; btn.disabled = true; resolve(); }, { once: true }));
+}
+/**
+ * The first scene, named by what was written in the first blank (the archive's one sentence) — the gate's own rule
+ * (js/spaceblank/main.js pickEntry · docs/아카이브_기억칸_질문_결정-261128.md §2), unchanged: the reading's nearest entry
+ * candidate on the memory's axes. No answer · not taken in · a reading that failed or came back empty = the first scene as written.
+ */
+async function pickEntry(answer) {
+  const base = firstScene();
+  if (!answer) return { scene: base, gate: null };
+  const g = { form: 'gate_v1', text: answer.text, line: answer.line, default: base.scene_order, picked: base.scene_order, analysed: false, via: 'default' };
+  if (!guard(answer.text).ok || !sendable(answer.text)) { g.text = ''; g.via = 'not_sent'; return { scene: base, gate: g }; }
+  const an = await measure(answer.text, { scene_text: String(answer.line || '').replace(remain.HOLE, '[   ]').slice(0, 400), ghost_line: '' });
+  if (!an) return { scene: base, gate: g };
+  const emo = parseEmotion(an.base);
+  g.analysed = true; g.emotion = emo;
+  if (an.reason_analysis && an.reason_analysis.is_void) { g.via = 'void'; return { scene: base, gate: g }; }
+  const rig = rigOf(run.memory, qs), spine = rig ? new Set(rig.spine) : null, last = run.scenes[run.scenes.length - 1];
+  const cand = run.scenes.filter((sc) => !isSilent(sc) && !isLocked(sc, { userEmotion: emo || {}, visitedIdx: [] }) && (spine ? !spine.has(sc.scene_order) : (run.scenes.length < 3 || sc.id !== last.id)));
+  if (!cand.some((sc) => sc.id === base.id)) cand.push(base);
+  const ranked = cand.map((sc) => ({ sc, a: run.engine.alignmentTo(sc, emo) })).sort((x, y) => (y.a - x.a) || (x.sc.scene_order - y.sc.scene_order));
+  g.ranked = ranked.slice(0, 5).map((r) => ({ order: r.sc.scene_order, a: +r.a.toFixed(4) }));
+  if (!ranked.length || !(ranked[0].a > 0)) return { scene: base, gate: g };
+  g.picked = ranked[0].sc.scene_order; g.via = 'reading';
+  return { scene: ranked[0].sc, gate: g };
+}
+/** The gate's answer is a walk too: one ledger row with the "move" mark (it was said to no scene — no reading column, no alignment). */
+function logGate(scene, g) {
+  data.insertPlay({ memory_id: run.memory.id, scene_id: scene.id, user_emotion: null, alignment: null, mismatch_type: null, run_id: run.id, ghost_variant_id: null, persona_id: MOVE_PERSONA,
+    dialog_turns: [{ stage: 'piece_v1', place: PLACE_TAG, kind: KIND, move: 'gate', from_scene_id: null, to_scene_id: scene.id, at: new Date().toISOString(), gate: g }] });
+}
+/** A move that is not a stay is a walk all the same: it goes in the ledger (no emotion, no alignment). */
+function logMove(from, to, how) {
+  if (!KEPT) return;
+  data.insertPlay({ memory_id: run.memory.id, scene_id: to.id, user_emotion: null, alignment: null, mismatch_type: null, run_id: run.id, ghost_variant_id: null, persona_id: MOVE_PERSONA,
+    dialog_turns: [{ stage: 'piece_v1', place: PLACE_TAG, kind: KIND, move: how, from_scene_id: from.id, to_scene_id: to.id, at: new Date().toISOString() }] });
 }
 async function loadLedger(memoryId) {
   const out = [];
@@ -326,13 +435,23 @@ function firstScene() {
 }
 
 // ── before entering: one notice, three blanks ──────────────────────────────
-async function entry() {
+/**
+ * @param gateAnswer { text, line } | null — what the walker wrote in the archive's one blank. It is the first of the three
+ *   (author, 261128 night): it stands already filled, two more are asked at the door. It names the first scene (pickEntry)
+ *   and, with the other two, which lines remain. Without it (the page opened on its own) all three are asked here.
+ * @returns the gate answer that was taken as the first blank, or null
+ */
+async function entry(gateAnswer) {
   const line = $('spEntryLine'), box = $('srBlanks'), btn = $('spEnter'), note = $('spEntryNote');
   await wait(900);
   await consent();
   if (TOLD) { await typeText(line, ko ? '여기서 한 말은 남는다.\n한 번뿐이다.' : 'What you say here stays.\nThere is only this once.', { per: 80, pace: 1 / FAST }); await wait(2200); }
-  typeText(note, NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
-  const blanks = remain.blanksFor(run.memory.code, LANG);
+  typeText(note, KEPT ? '' : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
+  let blanks = remain.blanksFor(run.memory.code, LANG).slice(), gate = null;
+  if (gateAnswer && String(gateAnswer.line || '').includes(remain.HOLE) && guard(gateAnswer.text).ok) {
+    gate = gateAnswer;
+    blanks = [gate.line].concat(blanks.filter((l) => l !== gate.line)).slice(0, 3);      // the archive's sentence first; the other two of this memory after it
+  }
   box.classList.add('on');
   for (let i = 0; i < blanks.length; i++) {
     const [a, b] = blanks[i].split(remain.HOLE);
@@ -341,6 +460,12 @@ async function entry() {
     inp.type = 'text'; inp.maxLength = 40; inp.autocomplete = 'off'; inp.spellcheck = false; inp.className = 'sr-hole'; inp.setAttribute('aria-label', ko ? '빈 자리' : 'the blank');
     row.append(sa, inp, sb); box.appendChild(row);
     requestAnimationFrame(() => row.classList.add('on'));
+    if (i === 0 && gate) {                                                   // already written, at the archive: it stands as it was written
+      sa.textContent = a || ''; sb.textContent = b || ''; inp.value = gate.text; inp.readOnly = true; row.classList.add('done'); inp.style.width = Math.max(3, gate.text.length * 1.05 + 1) + 'em';
+      run.blanks.push({ line: blanks[i], answer: gate.text });
+      await wait(1600);
+      continue;
+    }
     await typeText(sa, a || '', { per: 55, pace: 1 / FAST });
     sb.textContent = b || '';
     if (!('ontouchstart' in window)) inp.focus();
@@ -360,6 +485,7 @@ async function entry() {
   readBefore();
   btn.textContent = ko ? '들어간다' : 'go in'; btn.disabled = false; btn.focus();
   await new Promise((resolve) => btn.addEventListener('click', () => { if (btn.disabled) return; btn.disabled = true; resolve(); }, { once: true }));
+  return gate;
 }
 /**
  * One sheet before anything is written (author, 261128: "consent — go"). Plain, in the page's own voice, not the stage's.
@@ -427,7 +553,7 @@ async function stay(scene, o) {
   run.read.set(scene.id, A); run.known.set(scene.id, known);
   const firstLine = run.lines.length;
   const entry = { sceneId: scene.id, order: scene.scene_order, items: [] }; run.story.push(entry);
-  const shown = [], emos = [], history = [];
+  const shown = [], emos = [], history = [], turns = [], rest = restOf(scene);
   let anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5, lastReply = '', turnsHere = 0;
   talk.clear(); talk.show();
   if (!dark) await wait(1500);
@@ -435,6 +561,7 @@ async function stay(scene, o) {
   /** One exchange. Returns false when the walker moved on (or stayed silent). */
   const exchange = async (opts) => {
     let answer;
+    if (tutor) tutor.say(turnsHere ? 'more' : 'ask');
     for (;;) {
       answer = await talk.ask(opts);
       if (answer.silent || answer.on) return false;
@@ -448,16 +575,18 @@ async function stay(scene, o) {
     talk.waiting(true);
     const [an, rep] = await Promise.all([
       measure(raw, { scene_text: shown.join(' ').slice(-400), ghost_line: (lastReply || shown[shown.length - 1] || '').slice(0, 200) }),
-      (ok && !silent) ? replyOf(known, raw, history.slice(), !!(opts && opts.ask)) : Promise.resolve(''),
+      (ok && !silent) ? replyOf(known, raw, history.slice(), !!(opts && opts.ask), rest) : Promise.resolve(''),
     ]);
     talk.waiting(false);
-    let emo = null, ra = null;
+    let emo = null, ra = null, align = lastAlign;
     if (an) {
       emo = parseEmotion(an.base); ra = an.reason_analysis || null;
       const a = run.engine.alignmentTo(scene, emo);
-      if (a > 0) lastAlign = a;
+      if (a > 0) { lastAlign = a; align = a; }
       emos.push(emo); if (ra && ra.is_void) anyVoid++;
     }
+    turns.push({ turn: turns.length + 1, raw_text: raw, alignment: align, resonance: resonanceOf(align), ghost_reply: rep || '', via: rep ? 'remain_turn' : (ok ? 'no_reply' : 'not_sent'), ts: Date.now(),
+      input_form: 'talk_v1', stage: data.STAGE_TAG, place: PLACE_TAG, kind: KIND, form: 'talkn_v1', visit: 1, text_stage: 0, arrived: (o && o.via) || 'door', analysed: !!an, odd: !!(ra && ra.is_void), question });
     if (rep) { await talk.say(rep, 'rp-ghost', { gap: true, hold: 900 }); history.push({ role: 'user', content: raw }, { role: 'assistant', content: rep }); lastReply = rep; }
     if (!run.said.has(scene.id)) run.said.set(scene.id, []);
     run.said.get(scene.id).push(raw);
@@ -496,15 +625,35 @@ async function stay(scene, o) {
     run.contact = true;
     const g = nearestGhost(mean, run.ghosts), name = scene.meta && scene.meta.ghost_name;
     if (g) await talk.say(g.utterance, 'rp-ghost', { gap: true, src: name ? '— ' + name : (ko ? '— 누군가 여기 두고 간 말' : '— something someone left here'), hold: 1800 });
+    if (KEPT && turns.length) data.recordContact({ memoryId: run.memory.id, sceneId: scene.id, utterance: turns[turns.length - 1].raw_text.slice(0, 300), turn: turns.length, runId: run.id });
   }
 
   const rig = rigOf(run.memory, qs);
-  let next = rig ? riggedDoor({ rig, engine: run.engine, scenes: run.scenes, origin: scene, pattern, userEmotion: mean, isVoid: userVoid, visited: run.visited })
-                 : run.engine.pickNext({ origin: scene, pattern, userEmotion: mean, isVoid: userVoid, visited: run.visited });
-  if (next.mode === 'same') next = Object.assign(run.engine.pickNext({ origin: scene, pattern: 'bridge', userEmotion: mean, isVoid: userVoid, visited: run.visited }), { was: 'same' });
+  let next;
+  if (TUTOR) {                                                             // the practice: three scenes in the memory's own order, then it ends — the engine names no door here
+    const route = practiceRoute(), at = route.findIndex((s) => s.id === scene.id), to = at >= 0 ? route[at + 1] : null;
+    next = to ? { scene: to, mode: 'new', pattern, ranked: [], shadow: null, rig: true } : { scene: null, mode: 'end', pattern, ranked: [], shadow: null, rig: true };
+  } else {
+    next = rig ? riggedDoor({ rig, engine: run.engine, scenes: run.scenes, origin: scene, pattern, userEmotion: mean, isVoid: userVoid, visited: run.visited })
+               : run.engine.pickNext({ origin: scene, pattern, userEmotion: mean, isVoid: userVoid, visited: run.visited });
+    if (next.mode === 'same') next = Object.assign(run.engine.pickNext({ origin: scene, pattern: 'bridge', userEmotion: mean, isVoid: userVoid, visited: run.visited }), { was: 'same' });
+  }
 
-  persist(false);                                                          // from the first line said, the door is shut — whether or not the walk is finished
-  { const mine = []; for (let i = firstLine; i < run.lines.length; i++) mine.push(i); judge(mine).then(() => persist(false)); }   // this stay's lines are read while the walker goes on; what remains is kept again when they are
+  // the ledger: one row a stay, as the space stage writes it (the real walk only)
+  if (KEPT && turns.length) {
+    await data.insertPlay({ memory_id: run.memory.id, scene_id: scene.id, user_emotion: mean, alignment, mismatch_type: resonance, run_id: run.id, ghost_variant_id: null, dialog_turns: turns, persona_id: null });
+  }
+  run.rooms.push({ order: run.rooms.length + 1, scene_id: scene.id, scene_order: scene.scene_order, visit: 1, text_stage: 0, kind: KIND, seen_text: shown.join(' '),
+    silent: !turns.length, user_emotion: mean, turn_alignment: +alignment.toFixed(4), resonance,
+    turns: turns.map((t) => ({ text: t.raw_text, alignment: +t.alignment.toFixed(4), resonance: t.resonance, reply: t.ghost_reply, via: t.via, question: t.question })),
+    engine: eng ? { alignment: eng.alignment_score, bucket: eng.alignment_bucket, pattern: eng.transition_pattern, mismatch: eng.mismatch_type } : null,
+    door: next.scene ? { to: next.scene.scene_order, mode: next.mode, pattern, rig: !!next.rig } : (next.mode === 'end' ? { to: null, mode: 'end', rig: true } : null) });
+
+  if (!TUTOR) {
+    persist(false);                                                        // from the first line said, the door is shut — whether or not the walk is finished
+    const mine = []; for (let i = firstLine; i < run.lines.length; i++) mine.push(i);
+    judge(mine).then(() => persist(false));                                // this stay's lines are read while the walker goes on; what remains is kept again when they are
+  }
   await wait(900);
   talk.hide();
   run.busy = false;
@@ -531,7 +680,8 @@ function judge(indices) {
 // ── what remains (kept in this browser as the walk goes; the ending only adds the server's seam) ──
 function settle(before) {
   const usable = run.lines.map((l) => (l.silentScene || l.whom === undefined || !run.read.get(l.sceneId) || !run.read.get(l.sceneId).length ? null : l));   // a line not yet read cannot remain yet
-  const keep = remain.remaining(usable, before, PICK_RANDOM ? { random: seeded(run.id) } : null);
+  let keep = remain.remaining(usable, before, PICK_RANDOM ? { random: seeded(run.id) } : null);
+  if (run.committed) keep = new Set(Array.from(keep).filter((li) => run.placed.has(li)));   // the real walk: only what the server placed remains (it may refuse a line, or the scene may have gone)
   const changes = [];
   for (const li of Array.from(keep).sort((a, b) => a - b)) {
     const l = run.lines[li], sents = run.read.get(l.sceneId);
@@ -541,7 +691,8 @@ function settle(before) {
   return { keep, changes };
 }
 async function persist(done) {
-  if (!run.lines.length || !state) return null;
+  if (TUTOR || !run.lines.length || !state) return null;
+  if (KEPT && !run.opened) { run.opened = true; remainCall({ mode: 'open', memoryId: run.memory.id, runId: run.id, walker: data.walkerKey(), consent: run.consent }); }   // on record from the first line: the door is shut on the server too
   const before = run.before || (run.beforeP ? await run.beforeP : remain.beforeOf([]));
   const s = settle(before);
   state.texts = Object.assign({}, baseTexts);
@@ -550,7 +701,8 @@ async function persist(done) {
     lines: run.lines.map((l, i) => ({ order: l.order, raw: l.raw, kept: s.keep.has(i), whom: l.whom || null, back: l.back == null ? null : l.back })),
     changes: s.changes.map((c) => ({ order: c.order, index: c.index, was: c.was, now: c.now, raw: c.raw, by: c.by, blank: c.blank })), done: !!done };
   state.locked = true;
-  remain.save(run.memory.code, state);
+  if (run.committed) { state.walks[walkSlot].committed = true; if (run.committed.texts) state.texts = Object.assign({}, baseTexts, run.committed.texts); }
+  remain.save(run.memory.code, state, STORE);
   return s;
 }
 /** The ending's call: the server names the sentence each remaining line displaces and fits the seam; then it is kept. */
@@ -559,7 +711,8 @@ async function weave() {
   await Promise.all(run.judging);
   { const unread = []; run.lines.forEach((l, i) => { if (l.whom === undefined) unread.push(i); }); if (unread.length) await judge(unread); }   // a reading that did not come back is asked for once more
   const first = settle(before);
-  if (!DRY && first.changes.length) {
+  if (KEPT) await commit(first);
+  else if (!DRY && first.changes.length) {
     const r = await remainCall({ mode: 'weave', items: first.changes.map((c) => ({ id: String(c.li), sentences: run.read.get(c.sceneId), line: c.raw })) });
     const byId = new Map(((r && r.items) || []).map((x) => [String(x.id), x]));
     for (const c of first.changes) run.placed.set(c.li, remain.placeServer(run.read.get(c.sceneId), c.raw, byId.get(String(c.li))));
@@ -567,33 +720,94 @@ async function weave() {
   const s = await persist(true);
   run.shift = new Map();
   for (const c of (s ? s.changes : [])) run.shift.set(c.sceneId, remain.pieceShift(run.acc, c.sceneId, run.lines[c.li].emo, run.read.get(c.sceneId).length, TOPO));
-  writeOutside();                                                          // what the piece now is, from outside (not waited for)
+  if (!KEPT) writeOutside();                                               // the preview: what the piece now is, from outside (not waited for). The real walk's is written by the server
   return s || { keep: new Set(), changes: [] };
 }
+/**
+ * The real walk: what remains is handed to the server, which rewrites each line as a sentence of the text as it stands at
+ * that moment and puts it there (remain-turn "commit"). What it answers is what happened; nothing else is shown as remaining.
+ * If it does not answer, the walk stays unfinished in this browser and is handed over again the next time the page is opened.
+ */
+function commitBody(s) {
+  return { mode: 'commit', lang: LANG, memoryId: run.memory.id, runId: run.id, walker: data.walkerKey(), consent: run.consent, blanks: run.blanks,
+    lines: run.lines.map((l) => ({ order: l.order, raw: l.raw, whom: l.whom || null, back: l.back == null ? null : l.back })),
+    keep: s.changes.map((c) => ({ li: c.li, order: c.order, raw: c.raw, blank: c.blank })) };
+}
+async function commit(first) {
+  const r = await remainCall(commitBody(first));
+  if (!r) return false;
+  run.committed = { texts: r.texts || {} };
+  run.placed = new Map();
+  for (const c of (r.changes || [])) {
+    const li = Number(c.li), l = run.lines[li]; if (!l) continue;
+    run.placed.set(li, { index: Math.max(0, Math.min((run.read.get(l.sceneId) || [1]).length - 1, Number(c.index) || 0)), text: c.now, by: 'server' });
+  }
+  return true;
+}
+/** Leaving partway: the request is sent as the page goes (the browser lets such a request finish). Best effort — if it does not arrive, it is sent again on the next visit. */
+function commitOnLeave() {
+  if (!KEPT || run.ended || run.committed || !run.lines.length || !run.consent) return;
+  try {
+    const s = settle(run.before || remain.beforeOf([]));
+    fetch(SUPABASE_URL + '/functions/v1/remain-turn', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }, body: JSON.stringify(commitBody(s)) });
+  } catch (_) {}
+}
+window.addEventListener('pagehide', commitOnLeave);
+
 async function writeOutside() {
   if (DRY || !state) return;
   const of = remain.stamp(state);
   const r = await remainCall({ mode: 'outside', title: run.memory.title || '', scenes: run.scenes.filter((s) => !isSilent(s)).map((s) => ({ order: s.scene_order, text: remain.textOf(state, s) })) });
-  if (r && r.intro) { state.outside = { intro: r.intro, synopsis: r.synopsis, of, at: new Date().toISOString() }; remain.save(run.memory.code, state); }
+  if (r && r.intro) { state.outside = { intro: r.intro, synopsis: r.synopsis, of, at: new Date().toISOString() }; remain.save(run.memory.code, state, STORE); }
 }
 function leave() {
+  if (TUTOR) { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); return; }
   // the walk is already kept. Out = this same page, which now shows only the outside of the piece.
-  if (run.lines.length || (state && state.locked)) { const q = new URLSearchParams(); if (qs.get('memory')) q.set('memory', qs.get('memory')); if (qs.get('lang')) q.set('lang', qs.get('lang')); location.href = location.pathname + (q.toString() ? '?' + q : ''); return; }
+  if (run.lines.length || (state && state.locked)) { const q = new URLSearchParams(); if (qs.get('memory')) q.set('memory', qs.get('memory')); if (qs.get('lang')) q.set('lang', qs.get('lang')); if (MODE === 'test') q.set('as', 'test'); location.href = location.pathname + (q.toString() ? '?' + q : ''); return; }
   try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {}
   location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './');
 }
 function outside() {
   $('spEntry').classList.add('gone'); veil(false);
+  if (KEPT) return outsideKept();
   showOutside({ lang: LANG, title: run.memory.title || '', state, fallbackIntro: (run.memory.meta && run.memory.meta.gate && run.memory.meta.gate.intro) || '',
     refresh: async () => {
       if (state.outside && state.outside.of === remain.stamp(state)) return state.outside;
       const of = remain.stamp(state);
       const r = await remainCall({ mode: 'outside', title: run.memory.title || '', scenes: run.scenes.filter((s) => !isSilent(s)).map((s) => ({ order: s.scene_order, text: remain.textOf(state, s) })) });
-      if (r && r.intro) { state.outside = { intro: r.intro, synopsis: r.synopsis, of, at: new Date().toISOString() }; remain.save(run.memory.code, state); }
+      if (r && r.intro) { state.outside = { intro: r.intro, synopsis: r.synopsis, of, at: new Date().toISOString() }; remain.save(run.memory.code, state, STORE); }
       return state.outside;
     },
     asNext: () => { const q = new URLSearchParams(location.search); q.set('next', '1'); location.href = location.pathname + '?' + q; },
     reset: () => { const q = new URLSearchParams(location.search); q.set('reset', '1'); q.delete('next'); location.href = location.pathname + '?' + q; } });
+}
+
+/**
+ * The real walk's outside: what the piece now is, as the server last wrote it (remain_outside — rewritten after every walk
+ * that changed the text, whoever's). A walk this browser left unfinished is handed over first. If the piece's outside has
+ * not been written since this browser's own walk, it is looked for again a few times (the server writes it after it answers).
+ */
+function outsideKept() {
+  const mine = state.walks[state.walks.length - 1] || null;
+  const read = async () => { const r = await data.client().from('remain_outside').select('intro, synopsis, updated_at').eq('memory_id', run.memory.id).maybeSingle(); return r.error ? null : r.data; };
+  showOutside({ lang: LANG, title: run.memory.title || '', state: { outside: null }, real: true, fallbackIntro: (run.memory.meta && run.memory.meta.gate && run.memory.meta.gate.intro) || '',
+    refresh: async () => {
+      if (mine && !mine.committed && mine.consent && Array.isArray(mine.lines) && mine.lines.length) {      // left partway
+        // the request sent on leaving may still be at work (it rewrites the lines, a few seconds): it is given time, and asked after, before the walk is handed over again
+        await new Promise((r) => setTimeout(r, 12000));
+        const st = await remainCall({ mode: 'status', memoryId: run.memory.id, walker: data.walkerKey() });
+        if (st && st.applied) { mine.committed = true; remain.save(run.memory.code, state, STORE); }
+      }
+      if (mine && !mine.committed && mine.consent && Array.isArray(mine.lines) && mine.lines.length) {      // …and the leaving request did not arrive
+        const keep = (mine.changes || []).map((c, i) => ({ li: i, order: c.order, raw: c.raw, blank: c.blank }));
+        const r = await remainCall({ mode: 'commit', memoryId: run.memory.id, runId: mine.id, walker: data.walkerKey(), consent: mine.consent, blanks: mine.blanks || [], lines: mine.lines.map((l) => ({ order: l.order, raw: l.raw, whom: l.whom, back: l.back })), keep });
+        if (r) { mine.committed = true; remain.save(run.memory.code, state, STORE); }
+      }
+      let row = await read();
+      const since = mine && mine.at ? new Date(mine.at).getTime() : 0, changed = mine && (mine.changes || []).length > 0;
+      for (let i = 0; i < 4 && changed && (!row || new Date(row.updated_at).getTime() < since); i++) { await new Promise((r) => setTimeout(r, 5000)); row = await read(); }
+      return row;
+    } });
 }
 
 // ── what floats round a thing (the space stage's, unchanged) ────────────────────
@@ -643,6 +857,7 @@ async function openEyes(first) {
     : (ko ? [['W A S D', '나아갑니다'], ['화면을 누르면', '마우스로 둘러봅니다'], ['M · 마우스 오른쪽', '지도 — 지나온 장면으로 갑니다'], ['ESC', '멈춤 · 밝기 · 소리']]
           : [['W A S D', 'move'], ['click', 'then look with the mouse'], ['M · right mouse button', 'the map — go back to a scene'], ['ESC', 'pause · brightness · volume']]), 13000);
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
+  if (tutor) tutor.say('eyes');
   if (run.firstRes) await afterStay(run.firstRes);
 }
 
@@ -654,6 +869,7 @@ async function afterStay(res) {
   if (next.mode === 'fallback') hint(ko ? '기억의 빈틈이 다른 장면을 끌어당긴다.' : 'A gap in the memory pulls another scene toward you.', 7000);
   await wait(1500);
   raiseDoor(scene, next.scene);
+  if (tutor) tutor.say(run.visited.size >= 2 ? 'map' : 'door');             // the first door: how a door is gone through · after the second scene: how to go back
 }
 function horiz(v, key) {
   const T = window.THREE, d = new T.Vector3(v.x, 0, v.z);
@@ -717,8 +933,11 @@ async function cross(from, to, way, kind) {
   cosmos.teleport(start, Math.atan2(-dir.x, -dir.z), 0);
   if (run.stub) cosmos.land(run.stub, 0.5);
   run.here = to.id; run.arrived.add(to.id); run.path.push(to.id); run.legs.push({ from: from.scene_order, to: to.scene_order, kind });
-  if (first) { run.pending = to.id; dress(to, partB(to).left); }
-  else if (run.visited.has(to.id)) { run.returns.set(to.id, (run.returns.get(to.id) || 0) + 1); run.returnDue = to.id; }
+  if (first) { run.pending = to.id; dress(to, partB(to).left); if (tutor) tutor.say('next'); }
+  else {
+    if (run.visited.has(to.id)) { run.returns.set(to.id, (run.returns.get(to.id) || 0) + 1); run.returnDue = to.id; }
+    if (kind !== 'new') logMove(from, to, kind === 'map' ? 'map_return' : 'door_return');
+  }
   syncMap();
   await veil(false);
   air.hush(false);
@@ -734,7 +953,7 @@ function onNear(id) {
   if (id !== run.here) {
     const from = sceneById(run.here);
     run.legs.push({ from: from ? from.scene_order : null, to: scene.scene_order, kind: 'flight' });
-    run.path.push(id);
+    run.path.push(id); if (from) logMove(from, scene, 'flight');
     run.here = id; if (run.visited.has(id)) { run.returns.set(id, (run.returns.get(id) || 0) + 1); run.returnDue = id; } syncMap();
   }
   if (run.pending === id) { run.pending = null; if (run.returnDue === id) run.returnDue = null; stay(scene).then((res) => { cosmos.setMode('fly'); cosmos.relock(); if (cosmos.isTouch()) $('rpWalk').classList.add('on'); return afterStay(res); })
@@ -807,12 +1026,20 @@ function nextTextOf(sceneId) {
   // (a line of two sentences is read back as two sentences: each is marked)
   const mineNow = new Set(); (state.walks[walkSlot] ? state.walks[walkSlot].changes : []).forEach((c) => { if (c.order === scene.scene_order) sentences(c.now).forEach((t) => mineNow.add(t)); });
   const earlier = new Set(); state.walks.forEach((w, i) => { if (i !== walkSlot) (w.changes || []).forEach((c) => { if (c.order === scene.scene_order) sentences(c.now).forEach((t) => earlier.add(t)); }); });
+  (run.earlier.get(Number(scene.scene_order)) || new Set()).forEach((t) => earlier.add(t));
   return { order: scene.scene_order, lines: sentences(remain.textOf(state, scene)).map((t) => ({ t, who: mineNow.has(t) ? 'mine' : earlier.has(t) ? 'other' : 'text' })) };
 }
 async function finish() {
-  if (run.ended) return; run.ended = true;
+  if (run.ended) return;
+  if (TUTOR) return practiceEnd();
+  run.ended = true;
   hint(''); nearLine(null); map.close(); $('spMapWrap').classList.remove('on'); $('rpWalk').classList.remove('on'); talk.hide();
   cosmos.setMode('held'); if (cosmos.unlock) cosmos.unlock();
+  if (KEPT) {                                                               // the journal, as the space stage writes it (the next walker's prologue reads it)
+    data.writeJournal(run.memory.id, run.id, { stage: data.STAGE_TAG, place: PLACE_TAG, kind: KIND, mode: MODE, visit_order: run.path.map((id) => sceneById(id).scene_order),
+      scenes: run.rooms, legs: run.legs, contact: run.contact, model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift, pos: run.Q.get(id) || null })),
+      seconds: Math.round((Date.now() - run.startedAt) / 1000), track: packTrack(cosmos.track), prologue_of: run.prologue ? (run.prologue.from || 'ledger') : 'none', gate: run.gate, said: run.lines.length });
+  }
   const weaving = weave().catch((e) => { console.error('[remain] weave', e); return persist(true).then((s) => s || { keep: new Set(), changes: [] }); });
   try {
     await runEnding({ lang: LANG, fast: FAST, title: run.memory.title || '', story: run.story, lines: run.lines, blanks: run.blanks, random: PICK_RANDOM, typeText,
@@ -826,6 +1053,20 @@ async function finish() {
       },
       leave });
   } catch (e) { console.error('[remain] ending', e); toast(ko ? '끝 화면을 그리지 못했습니다' : 'The ending could not be drawn'); await weaving; await wait(2500); leave(); }
+}
+
+/** The practice ends: dark, a few lines from "another me", and out to the menu. Nothing was kept. */
+async function practiceEnd() {
+  run.ended = true;
+  hint(''); nearLine(null); map.close(); $('spMapWrap').classList.remove('on'); $('rpWalk').classList.remove('on'); talk.hide();
+  if (tutor) tutor.hush();
+  cosmos.setMode('held'); if (cosmos.unlock) cosmos.unlock();
+  air.hush(true);
+  await veil(true);
+  const pass = $('rpPass');
+  for (const line of (tutor ? tutor.end : [])) { await wait(500); await typeText(pass, line, { per: 90, pace: 1 / FAST, voice: true }); await wait(2600); pass.textContent = ''; }
+  await wait(900);
+  leave();
 }
 
 // ── trying it out ───────────────────────────────────────────────────────────

@@ -133,12 +133,17 @@ export async function showOutside(o) {
   const intro = el('p', 'intro', (o.state.outside && o.state.outside.intro) || o.fallbackIntro || ''), syn = el('p', 'syn', (o.state.outside && o.state.outside.synopsis) || '');
   const waiting = el('p', 'wait', '···');
   root.append(intro, syn, waiting);
-  // preview tools — not part of the piece
-  const tools = el('div', 'tools');
-  tools.appendChild(el('span', '', ko ? '미리보기 도구' : 'preview tools'));
-  const a = el('button', '', ko ? '다음 사람으로 걷기' : 'walk as the next person'), b = el('button', '', ko ? '처음으로 되돌리기' : 'forget everything');
-  a.type = b.type = 'button'; a.addEventListener('click', o.asNext); b.addEventListener('click', o.reset);
-  tools.append(a, b); root.appendChild(tools);
+  if (o.real) {                                                             // the real walk: nothing to do here but go back
+    const tools = el('div', 'tools'), back = el('button', '', ko ? '메뉴로' : 'to the menu');
+    back.type = 'button'; back.addEventListener('click', () => { try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = location.protocol === 'file:' ? 'index.html' : './'; });
+    tools.append(back); root.appendChild(tools);
+  } else {                                                                  // preview tools — not part of the piece
+    const tools = el('div', 'tools');
+    tools.appendChild(el('span', '', ko ? '미리보기 도구' : 'preview tools'));
+    const a = el('button', '', ko ? '다음 사람으로 걷기' : 'walk as the next person'), b = el('button', '', ko ? '처음으로 되돌리기' : 'forget everything');
+    a.type = b.type = 'button'; a.addEventListener('click', o.asNext); b.addEventListener('click', o.reset);
+    tools.append(a, b); root.appendChild(tools);
+  }
   document.body.appendChild(root);
   requestAnimationFrame(() => root.classList.add('on'));
   try {

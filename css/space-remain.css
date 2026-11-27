@@ -92,3 +92,7 @@ body.sr-ending canvas#spCosmos.on { opacity: 0.2; transition: opacity 4200ms eas
 #srBefore p.b { transition: opacity 2200ms ease, color 2200ms ease; }
 #srBefore.one p.b { opacity: 0.28; }
 #srBefore.one p.b.hit { opacity: 1; color: var(--rp-text); }
+
+/* ── the practice walk: what "another me" says (top, plain, typed) ── */
+#srOther { position: fixed; left: 0; right: 0; top: 8vh; z-index: 46; text-align: center; padding: 0 8vw; font-size: 0.98rem; letter-spacing: 0.12em; line-height: 1.9; font-weight: 300; color: #cfcbd6; opacity: 0; transition: opacity 1500ms ease; pointer-events: none; min-height: 1.9em; text-shadow: 0 0 12px #000, 0 0 3px #000; word-break: keep-all; }
+#srOther.on { opacity: 1; }

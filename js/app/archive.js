@@ -729,7 +729,12 @@ function _showFinderResults(matched, lang) {
 // 261124 작가: 대표 기억(UNDW-001·영어 사본)은 어느 길로 들어와도 빈 자리 화면(서막·뒷문·빈칸·타자 소리)으로.
 // 261124 작가(같은 날 나중): 기억 만들기 기억도 빈 자리 화면 — 만든 사람만 다른 판을 보면 "첫 실일 뿐"(이본론)·원칙 6(기록 = 첫 플레이)과 어긋난다. 오프닝·올린 직후·PROFILE 과 같은 판.
 const SPACE_BLANK_CODES = AUTHOR_CODES.ko.concat(AUTHOR_CODES.en);   // 261128: every memory of the author's (was UNDW-001 and its English copy)
+// 261128 밤 작가("사이트에 반영해" · "진짜는 아카이브에 두고 걔는 변형될 수 있게"): 대표 기억(한국어)은 아카이브에서 "남는 말" 무대(space-remain.html)로.
+//   여기서 채운 빈칸 하나가 문 앞 빈칸 셋의 첫째가 된다(첫 장면도 정하고, 남는 말도 정한다). 기록: docs/우주무대_남는말_실험-261128.md
+//   오프닝에서 닿는 같은 기억은 연습(튜토리얼, js/app/opening.js). 되돌리기 = REMAIN_CODES 를 비운다.
+const REMAIN_CODES = ['UNDW-001'];
 function _spaceStageUrl(memory, lang) {
+  if (memory && memory.code && REMAIN_CODES.includes(memory.code)) return `space-remain.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
   if (memory && memory.code && SPACE_BLANK_CODES.includes(memory.code)) return `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}&from=opening`;
   if (memory && memory.meta && memory.meta.space_record) return `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
   return null;

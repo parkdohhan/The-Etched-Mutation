@@ -31,13 +31,13 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf, isLocked } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261124a';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128a';
 import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
 import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
 import { runFinale } from './finale.js?v=261124a';
-import { runPrologue } from '../spaceplay/prologue.js?v=261124c';
+import { runPrologue } from '../spaceplay/prologue.js?v=261128a';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
 import { replayFromPlays, getPresentationState } from '../core/ContaminationTracker.js';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
@@ -266,7 +266,7 @@ function sendable(raw) {
 async function replyOf(scene, raw, history) {
   if (DRY) return '';
   try {
-    const r = await data.client().functions.invoke('dialog-turn', { body: { memoryId: run.memory.id, sceneId: scene.id, userInput: String(raw).slice(0, 500), history, lang: LANG } });
+    const r = await data.client().functions.invoke('dialog-turn', { body: { memoryId: run.memory.id, sceneId: scene.id, userInput: String(raw).slice(0, 500), history, lang: LANG, seen: Array.from(run.visited).map((id) => { const s = sceneById(id); return s ? s.scene_order : null; }).filter((x) => x != null) } });   // 261128: the scenes the walker has been through — the answer does not tell what is still ahead (the turn)
     const text = (!r.error && r.data && r.data.ok && typeof r.data.reply === 'string') ? r.data.reply.trim() : '';
     if (!text) { console.warn('[space] no reply', (r.data && r.data.reason) || (r.error && r.error.message)); return ''; }
     if (hasCrisis(text) || /https?:\/\//i.test(text)) { console.warn('[space] a reply was held back'); return ''; }
