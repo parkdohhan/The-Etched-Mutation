@@ -31,7 +31,7 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf, isLocked } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261128a';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128b';
 import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
@@ -349,7 +349,8 @@ async function boot() {
   typing = createTyping(1 / FAST, typeVoice.tap);
   hand = createHand({ locked: () => !!(cosmos && cosmos.locked()) });
   talk.body.addEventListener('click', (e) => { const tok = e.target.closest && e.target.closest('.sb-t.sb-can'); if (tok && hand.held()) useBlank(tok); });   // any word of the text: the walker chooses where the hole goes
-  cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
+  cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, ground: qs.get('fly') !== '1', footDrop: FOOT_DROP,   // 261128 night: a floor that is not seen — walked, not flown (?fly=1 = as it was)
+    on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
   map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
   // the back doors (a door onto a scene already read) live in the place, so they come after it

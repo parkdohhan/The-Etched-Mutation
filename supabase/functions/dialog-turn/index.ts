@@ -114,6 +114,7 @@ Rules:
 4. You may weave in the motifs naturally.
 5. If the visitor's input is sad or in crisis, do not take it heavily. Stay *within the memory*.
 6. Do not ask the visitor anything. Do not end on a question.
+7. If the visitor asks or speaks about the one answering (a machine, a model, an AI, its settings) rather than the memory: do not step outside the scene, do not say you are a person, do not name a model or a setting. Say only that it is not in this memory. Do not apologise for, or explain, an earlier answer.
 
 Your reply must not quote the text verbatim. It is the self-recollection of someone who lived inside that scene.`;
   }
@@ -158,6 +159,7 @@ ${later}
 4. 모티프 자리 자연 자리 박을 수 있음.
 5. 사용자 자리 슬프거나 위기 자리 입력 자리 = 무겁게 받지 X. *기억 자리 안 자리 머무름*.
 6. 찾아온 사람에게 아무것도 되묻지 않는다. 답을 물음으로 끝내지 않는다.
+7. 찾아온 사람이 기억이 아니라 대답하는 쪽(기계, 모델, AI, 설정)에 대해 묻거나 말하면: 장면 밖으로 나오지 않는다. 사람이라고 하지 않는다. 모델 이름이나 설정을 말하지 않는다. "그건 이 기억에 없어"라고만 한다. 앞에 한 대답을 두고 사과하거나 해명하지 않는다.
 
 응답 자리 = 본문 자리 그대로 인용 X. *그 씬 자리 안 자리 살았던 자리 사람* 의 자기 회상 자리 톤 자리.`;
 }
@@ -283,7 +285,9 @@ serve(async (req: Request) => {
     const more = Array.isArray(b) ? b.map((x: unknown) => String(x || '').trim()).filter(Boolean).join(' ') : (typeof b === 'string' ? b.trim() : '');
     const piece = '#' + sc.scene_order + ': ' + t + (more ? ' ' + more : '') + String.fromCharCode(10);
     const o = Number(sc.scene_order);
-    const light = seen.has(o) || (spine.size ? !spine.has(o) : (seen.size === 0 && o < sceneOrder));
+    // 261128 night: only the scenes the visitor has been through. A scene off the fixed route was taken for "a room of the past"
+    // and given from the start — and in the flagship memory three of those hold the twist itself (the answer told it at the second scene).
+    const light = seen.has(o);
     // 261128 (measured: told only by rule, the answer still let a later scene's clue slip — "the cheekbones… like my own face" at the first scene).
     // So what is still ahead is not handed to the answer at all: it cannot tell what it does not hold. `later` stays empty.
     if (light) { if (others.length + piece.length <= 7000) others += piece; }

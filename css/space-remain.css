@@ -123,3 +123,22 @@ body.sr-ending canvas#spCosmos.on { opacity: 0.2; transition: opacity 4200ms eas
 #srEnd { scrollbar-width: thin; scrollbar-color: rgba(232,228,223,0.14) transparent; }
 #srEnd::-webkit-scrollbar { display: block; width: 4px; }
 #srEnd::-webkit-scrollbar-thumb { background: rgba(232,228,223,0.14); border-radius: 2px; }
+
+/* ── fix list 261128 (docs/고칠것_목록-261128.md) ── */
+/* who is speaking: what the scene's person answers stands in from the edge, with a thin rule (it was only slanted) */
+#rpRoom .rp-line.rp-ghost { padding-left: 0.9rem; border-left: 1px solid rgba(156,152,164,0.38); }
+/* the text has ended, the field begins: a thin rule between (a scene's last line can be a question — it was taken for the walker's own) */
+#rpRoom .rp-input.on { border-top: 1px solid rgba(232,228,223,0.10); padding-top: 1.1rem; }
+/* a scene come back to: its text, as it stood, dim */
+#rpRoom .rp-line.sr-was { color: #6f6c78; }
+/* the scene's own words, by the field: pressed, one goes into it */
+.sr-chips { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; margin: 0 0 0.7rem; }
+.sr-chips button { background: none; border: 0; border-bottom: 1px dotted rgba(196,168,130,0.4); padding: 0 0 0.1rem; color: #8f8b99; font: inherit; font-size: 0.86rem; letter-spacing: 0.06em; cursor: pointer; transition: color 500ms ease; }
+.sr-chips button:hover { color: var(--rp-accent); }
+/* a blank's own button (it went on by Enter alone) */
+.sr-blank .sr-go { margin-left: 0.6rem; vertical-align: baseline; }
+/* the stage's small lines, where the eye is and large enough to read (they stood at three places in three sizes; the one at the foot was the smallest and dimmest) */
+#rpHint { bottom: 8vh; font-size: 0.98rem; letter-spacing: 0.14em; color: #cfcbd6; text-shadow: 0 0 14px #000, 0 0 4px #000; }
+#srOther { top: auto; bottom: 29vh; font-size: 1.14rem; color: #e8e4df; }
+#srLook { position: fixed; left: 0; right: 0; top: 56%; z-index: 21; text-align: center; pointer-events: none; font-size: 0.82rem; letter-spacing: 0.16em; color: #8f8b99; text-shadow: 0 0 12px #000, 0 0 3px #000; opacity: 0; transition: opacity 1600ms ease; }
+#srLook.on { opacity: 1; }

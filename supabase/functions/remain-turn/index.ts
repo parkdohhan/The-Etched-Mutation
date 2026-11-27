@@ -3,7 +3,8 @@
 // Record: docs/우주무대_남는말_실험-261128.md. Stage: space-remain.html · js/spaceremain/.
 // This function reads nothing from the database and writes nothing anywhere. Everything it works on comes in the request.
 //
-//   mode "turn"     the scene answers the visitor — { title, sceneText, userInput, history?, ask?, back?, lang? } → { ok, reply }   (back = the visitor has come back to this scene: what they said before is the history, and it was heard)
+//   mode "turn"     the scene answers the visitor — { title, sceneText, userInput, history?, back?, memoryId?, visited?: [scene numbers], lang? } → { ok, reply, model }
+//                   (memoryId + visited: the memory's story is read as background, and what its author holds back is held until one of its scenes has been visited — the one thing this mode reads from the database)   (back = the visitor has come back to this scene: what they said before is the history, and it was heard)
 //                   The regulated lines of dialog-turn are kept (inside the scene's text only, nothing invented, one or two
 //                   sentences, no advice or judgement). The answer stops halfway and asks nothing; only with ask: true does it
 //                   end on one short question that has the visitor say whose doing it was. The scene never says who was right.
@@ -96,7 +97,7 @@ function cameBack(lang: "ko" | "en"): string {
 - The visitor was at this scene before, said what is in the conversation above, went on, and has now come back. You heard those lines. They were said; that does not change, and you do not act as if it could.
 - You do not bring those lines up to press them. You do not forgive on cue and you do not take offence on cue.
 - If the visitor now takes a line back, softens it, or says the opposite, you answer as one who heard both: the earlier line was said, and so is this one. You do not say it is all right now, and you do not say it is too late.
-- You do not greet them and you do not remark that they came back.
+- You do not greet them and you do not remark that they came back. You do not say that you heard ("I heard what you said before, and this") — you simply answer as one who did.
 
 `;
   }
@@ -104,12 +105,12 @@ function cameBack(lang: "ko" | "en"): string {
 - 찾아온 사람은 전에 이 장면에 있었고, 위의 대화에 있는 말을 했고, 다른 데로 갔다가 지금 다시 왔다. 당신은 그 말을 들었다. 그 말은 한 말이다. 그건 달라지지 않고, 당신은 달라질 수 있는 것처럼 굴지 않는다.
 - 그 말을 다시 꺼내 따지지 않는다. 때맞춰 용서하지도 않고 때맞춰 상해하지도 않는다.
 - 찾아온 사람이 앞의 말을 물리거나, 누그러뜨리거나, 반대로 말하면, 둘 다 들은 사람으로 답한다. 앞의 말도 한 말이고 지금 말도 한 말이다. 이제 괜찮다고 하지 않고, 이미 늦었다고도 하지 않는다.
-- 인사하지 않는다. 다시 왔다는 것을 입에 올리지 않는다.
+- 인사하지 않는다. 다시 왔다는 것을 입에 올리지 않는다. 들었다는 것을 말로 설명하지도 않는다("아까 말도 들었고 지금 말도 들었어" 같은 말을 하지 않는다) — 그 말을 들은 사람으로 그냥 답한다.
 
 `;
 }
 
-function turnSystem(title: string, sceneText: string, lang: "ko" | "en", ask: boolean, memoryText: string, laterText: string, back = false): string {
+function turnSystem(title: string, sceneText: string, lang: "ko" | "en", ask: boolean, memoryText: string, laterText: string, back = false, story = "", held: string[] = []): string {
   const close = (back ? cameBack(lang) : "") + closing(lang, ask && !back);
   if (lang === "en") {
     return `You are someone who lived the memory "${title}" — all of it — and who stands now in one scene of it. You answer the visitor low, as if recalling to yourself.
@@ -128,9 +129,19 @@ What has not yet come to light — scenes this memory only reaches later (you kn
 """
 ${laterText}
 """
+` : ""}${story ? `
+The whole text this memory comes from — background only. From it you know who is who and what happened. You do not carry its sentences over. Where it differs from the scene texts above, the scene texts stand:
+"""
+${story}
+"""
+` : ""}${held.length ? `
+Not told yet — the visitor has not come that far. What follows you do not say even when asked, do not hint at, and do not say anything that could only be said by one who knew it. You do not lie either: you say only that you had not looked yet, or did not know yet.
+${held.map((h) => "- " + h).join("\n")}
 ` : ""}
 How you speak
 - First person, past tense, plain. One or two sentences, 140 characters at most in all.
+- If the visitor asks or speaks about the one answering (a machine, a model, an AI, its settings) rather than the memory: you do not step outside the scene. You do not say you are a person. You do not name a model or a setting. You say only that it is not in this memory.
+- You do not apologise for, or explain, an answer you gave before.
 - When what the visitor asks is in this scene or in what has come to light — even in another scene — answer with it plainly, as something you know.
 - From what has not yet come to light you may use plain circumstances only (who someone is to you, what a thing is, where it stands). What the memory itself comes to see only there — who it really was, who did it, what it turns out to have been — you do not tell before its time. Asked for it, you do not lie and you do not tell: like yourself in this scene, you had not looked yet, or did not know yet.
 - Only what is nowhere in the memory do you not know: "I don't know that". You do not invent a fact.
@@ -159,9 +170,19 @@ ${memoryText}
 """
 ${laterText}
 """
+` : ""}${story ? `
+이 기억이 나온 글 전체 — 배경으로만 안다. 누가 누구인지, 무슨 일이 있었는지를 여기서 안다. 여기의 문장을 옮기지 않는다. 위의 장면 글과 다른 데가 있으면 장면 글이 맞다:
+"""
+${story}
+"""
+` : ""}${held.length ? `
+아직 말하지 않는 것 — 찾아온 사람이 아직 거기까지 가지 않았다. 아래의 것은 물어도 말하지 않고, 넌지시 비추지도 않고, 그것을 알아야만 할 수 있는 말도 하지 않는다. 거짓말도 하지 않는다: 그때의 당신은 아직 보지 않았거나 아직 몰랐다고만 한다.
+${held.map((h) => "- " + h).join("\n")}
 ` : ""}
 말하는 법
 - "~었어", "~았어"로 끝나는 회상의 말투. 한두 문장, 다 합쳐 120자 안.
+- 찾아온 사람이 기억이 아니라 대답하는 쪽(기계, 모델, AI, 설정)에 대해 묻거나 말하면: 장면 밖으로 나오지 않는다. 사람이라고 하지 않는다. 모델 이름이나 설정을 말하지 않는다. "그건 이 기억에 없어"라고만 한다.
+- 앞에 한 대답을 두고 사과하거나 해명하지 않는다.
 - 찾아온 사람이 묻는 것이 이 장면이나 "이미 드러난 것"에 있으면, 다른 장면의 일이어도 아는 대로 분명하게 답한다.
 - "아직 드러나지 않은 것"에서는 주변 사정만 쓸 수 있다(누가 당신에게 누구인지, 그 물건이 무엇인지, 어디에 있는지). 이 기억이 거기 가서야 알아보는 것 — 그게 사실은 누구였는지, 누가 그랬는지, 그 일이 무엇이었는지가 뒤집히는 대목 — 은 미리 말하지 않는다. 그걸 물으면 거짓말하지 않고, 말하지도 않는다: 이 장면의 당신처럼 아직 보지 않았거나 아직 몰랐다고 한다.
 - 이 기억 어디에도 없는 것만 "그건 모르겠어"라고 한다. 없는 사실을 지어내지 않는다.
@@ -292,6 +313,47 @@ async function askGemini(system: string, messages: Array<{ role: "user" | "assis
     return { text };
   } catch (e) { return { text: "", why: String((e as any)?.message || e).slice(0, 200) }; }
   finally { clearTimeout(to); }
+}
+
+// 261128 night, later (author, watching people walk it: "there is too little of what comes before and after — that is why this happens").
+// The answering model was given the stage's excerpts only (30–100 letters a scene), so asked who someone was it pieced an
+// answer together ("I was the son" — the narrator is a daughter). Now, when the memory has its story kept (memory_sources —
+// the text a memory was drafted from, or laid in by hand), the whole of it goes along as BACKGROUND: to know who is who.
+// And what must not be told before its time is no longer left to "do not tell the twist" (measured the same day: that leaks):
+// the author's list (memories.meta.remain.hold = [{ what, until: [scene numbers] }]) names each thing, and it is held until
+// the visitor has been through one of its scenes. Before a reply goes out it is read once more against that list (heldBack).
+const bgCache = new Map<string, { at: number; story: string; hold: Array<{ what: string; until: number[] }> }>();
+async function background(memoryId: string): Promise<{ story: string; hold: Array<{ what: string; until: number[] }> }> {
+  const none = { story: "", hold: [] as Array<{ what: string; until: number[] }> };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(memoryId)) return none;
+  const hit = bgCache.get(memoryId); if (hit && Date.now() - hit.at < 300_000) return hit;
+  const url = Deno.env.get("SUPABASE_URL"), key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return none;
+  try {
+    const db = createClient(url, key);
+    const [src, mem] = await Promise.all([
+      db.from("memory_sources").select("text").eq("memory_id", memoryId).maybeSingle(),
+      db.from("memories").select("meta").eq("id", memoryId).maybeSingle(),
+    ]);
+    const raw = (mem.data as any)?.meta?.remain?.hold;
+    const hold = (Array.isArray(raw) ? raw : []).map((h: any) => ({ what: String(h?.what || "").trim().slice(0, 300), until: (Array.isArray(h?.until) ? h.until : []).map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n)) })).filter((h: any) => h.what);
+    const out = { at: Date.now(), story: String((src.data as any)?.text || "").slice(0, 40000), hold };
+    bgCache.set(memoryId, out);
+    return out;
+  } catch (e) { console.warn("[remain-turn] background", (e as any)?.message || e); return none; }
+}
+/** Does the reply tell, or plainly give away, one of the things still held? Asked of a small model; if it cannot be asked, the reply goes (and the log says so). */
+async function heldBack(client: Anthropic, reply: string, held: string[]): Promise<boolean> {
+  if (!held.length || !reply) return false;
+  try {
+    const r = await client.messages.create({
+      model: "claude-haiku-4-5-20251001", max_tokens: 4, temperature: 0,
+      system: "You are a checker. You are given a list of facts that must not be revealed yet, and one line someone said. Answer YES if the line states any of those facts or makes one plainly inferable (for example by saying who someone really was). Answer NO otherwise. A line that only says it does not know, or has not looked, is NO. Answer with the single word YES or NO.",
+      messages: [{ role: "user", content: "Must not be revealed yet:\n" + held.map((h) => "- " + h).join("\n") + "\n\nThe line:\n" + reply }],
+    } as any);
+    const t = (r.content || []).map((b: any) => (b.type === "text" ? b.text : "")).join("").trim().toUpperCase();
+    return t.startsWith("Y");
+  } catch (e) { console.warn("[remain-turn] check not made", (e as any)?.message || e); return false; }
 }
 
 // Thinking is always on for this model (it cannot be disabled); depth is set by effort. These are short, bounded jobs: low.
@@ -468,7 +530,10 @@ serve(async (req: Request) => {
       // 261128 night (author, watching people walk it: "let the AI not ask"). The scene never asks the visitor anything now —
       // not even the once a scene it used to (the stage still sends `ask`; it is not acted on). A tester had been asked whose
       // fault a thing was, off the point of what they had said, and the question read as steering.
-      const sys = turnSystem(title, sceneText, lang, false, str(body?.memoryText, 9000), str(body?.laterText, 9000), body?.back === true);
+      const bg = await background(str(body?.memoryId, 60));
+      const been = new Set<number>((Array.isArray(body?.visited) ? body.visited : []).map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n)));
+      const held = bg.hold.filter((h) => !h.until.some((n) => been.has(n))).map((h) => h.what);
+      const sys = turnSystem(title, sceneText, lang, false, str(body?.memoryText, 9000), str(body?.laterText, 9000), body?.back === true, bg.story, held);
       const msgs = [...history, { role: "user" as const, content: userInput }];
       const trim = (t: string) => noQuestion(t.replace(/^["“”'‘’\s]+|["“”'‘’\s]+$/g, ""));
       const g = await askGemini(sys, msgs);
@@ -480,8 +545,17 @@ serve(async (req: Request) => {
         reply = trim(r.text); model = MODEL;
       }
       if (!reply) return json(cors, 200, { ok: false, reason: "empty" });
-      console.log("[remain-turn] turn len=" + reply.length + " by " + model);
-      return json(cors, 200, { ok: true, reply, model, fell_back: model === MODEL ? fell : undefined, version: VERSION });
+      // read once more against what is still held: told, it is asked for again (of Claude, told what slipped); told again, the scene has not looked yet
+      let checked = "";
+      if (held.length && await heldBack(client, reply, held)) {
+        console.warn("[remain-turn] turn: a held thing was told — asked again");
+        const r2 = await ask(client, sys + (lang === "en" ? "\n\nYour last draft gave away something from the 'Not told yet' list. Answer again without it." : "\n\n방금 쓴 답은 '아직 말하지 않는 것'을 드러냈다. 그것 없이 다시 답한다."), msgs);
+        const again = r2.refused ? "" : trim(r2.text);
+        if (again && !(await heldBack(client, again, held))) { reply = again; model = MODEL; checked = "again"; }
+        else { reply = lang === "en" ? "I had not looked that far yet." : "거기까지는 아직 들여다보지 않았어."; model = "held"; checked = "held"; }
+      }
+      console.log("[remain-turn] turn len=" + reply.length + " by " + model + (checked ? " (" + checked + ")" : "") + " story=" + bg.story.length + " held=" + held.length);
+      return json(cors, 200, { ok: true, reply, model, fell_back: model === MODEL ? fell : undefined, background: bg.story.length, held: held.length, checked: checked || undefined, version: VERSION });
     }
 
     if (mode === "weave") {

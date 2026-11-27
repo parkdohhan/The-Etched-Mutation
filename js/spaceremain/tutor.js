@@ -14,9 +14,9 @@ const SAY = {
     begin: ['연습이야.', '여기서 한 말은 안 남아.'],
     ask: ['말을 걸어 봐.', '물어봐. 아는 건 말해 줄 거야.'],
     more: ['네 생각을 말해도 돼.', '다 했으면 넘어가.'],
-    eyes: ['방금 그 장면이야.', '날아서 둘러봐.'],
-    door: ['문이 생겼어.', '길을 밟고 걸어가.'],
-    doorTouch: ['문이 생겼어.', '길을 밟고, 동그라미를 누르고 있어.'],
+    eyes: ['방금 그 장면이야.', '걸어서 둘러봐.'],
+    door: ['문이 생겼어.', '길을 따라 걸어가.'],
+    doorTouch: ['문이 생겼어.', '동그라미를 누르고 있어.'],
     next: ['저게 다음 장면이야.', '가까이 가 봐.'],
     map: ['M 을 눌러 봐.', '지나온 장면을 누르면 거기로 돌아가.'],
     back: ['옆에 문이 하나 더 있어.', '지나온 장면으로 나 있어.'],
@@ -28,9 +28,9 @@ const SAY = {
     begin: ['This is practice.', 'Nothing you say here is kept anywhere.'],
     ask: ['Speak to it.', 'Ask. It will tell you what it knows.'],
     more: ['You need not only ask. You can say what you think.', 'When you are done, press "move on".'],
-    eyes: ['The scene you just read is afloat over there.', 'Fly round it.'],
-    door: ['A door has stood up.', 'Touch the way and your feet hold. Walk forward, through the door.'],
-    doorTouch: ['A door has stood up.', 'Touch the way and your feet hold. Hold the circle to walk.'],
+    eyes: ['That is the scene you just read.', 'Walk round it.'],
+    door: ['A door has stood up.', 'Walk along the way, through the door.'],
+    doorTouch: ['A door has stood up.', 'Hold the circle to walk.'],
     next: ['That is the next scene.', 'Come near and its text comes up.'],
     map: ['Open the map. M, or the right mouse button.', 'Press a scene you have passed and you are back at it. The door stays where it stood.'],
     back: ['There is one more door beside it.', 'It gives onto a scene you have passed.'],
@@ -44,20 +44,27 @@ export function createTutor(o) {
   const L = SAY[o.lang === 'en' ? 'en' : 'ko'], fast = o.fast || 1, touch = !!o.touch;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms / fast));
   const el = document.createElement('div'); el.id = 'srOther'; el.setAttribute('aria-live', 'polite'); document.body.appendChild(el);
-  const said = new Set(); let token = 0;
-  /** Say a thing once. A later thing takes the place of one still being said. */
-  async function say(key) {
+  const said = new Set(); let token = 0, chain = Promise.resolve();
+  /**
+   * Say a thing once. 261128 night (testers: "the line about the door is hard to see"): a later thing no longer takes the place of
+   * one still being said (it cut the first off after a second and a half) — it waits its turn. hush() ends everything said or waiting.
+   */
+  function say(key) {
     const k = touch && L[key + 'Touch'] ? key + 'Touch' : key;
-    if (said.has(key) || !L[k]) return; said.add(key);
-    const t = ++token;
-    el.classList.add('on');
-    for (const line of L[k]) {
+    if (said.has(key) || !L[k]) return chain; said.add(key);
+    const t = token;
+    chain = chain.then(async () => {
       if (t !== token) return;
-      await o.typeText(el, line, { per: 55, pace: 1 / fast });
-      await wait(2600 + line.length * 55);
-    }
-    if (t === token) el.classList.remove('on');
+      el.classList.add('on');
+      for (const line of L[k]) {
+        if (t !== token) return;
+        await o.typeText(el, line, { per: 55, pace: 1 / fast });
+        await wait(2600 + line.length * 55);
+      }
+      if (t === token) { el.classList.remove('on'); await wait(500); }
+    });
+    return chain;
   }
-  function hush() { token++; el.classList.remove('on'); }
+  function hush() { token++; chain = Promise.resolve(); el.classList.remove('on'); }
   return { say, hush, end: L.end, has: (key) => said.has(key) };
 }

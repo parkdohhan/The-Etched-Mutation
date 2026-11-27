@@ -24,7 +24,7 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261128a';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128b';
 import { isSilent } from '../spaceplay/things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
@@ -40,7 +40,7 @@ import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import * as remain from './remain.js?v=261128d';
 import { runEnding, showOutside } from './ending.js?v=261128g';
-import { createTutor } from './tutor.js?v=261128f';
+import { createTutor } from './tutor.js?v=261128g';
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -106,6 +106,7 @@ const run = {
   earlier: new Map(),                       // scene order → Set(sentences of that scene's text that were walkers' words before this walk)
   blanks: [], beforeP: null, before: null,
   backs: new Map(), backLog: [],            // scene id → its back door (a door onto a scene already read); where each stood and where it gave onto
+  script: new Map(),                        // scene id → what stood in its column, in order: [{ k: 'text' | 'mine' | 'ghost', t, gap }] (shown again, whole, when the scene is come back to)
   heard: new Map(),                         // scene id → all that has passed between the walker and that scene's person (it goes with every line said on coming back)
   here: null, pending: null, last: null, contact: false, ghosts: [], rows: [], crossing: false, busy: false, ended: false,
   startedAt: Date.now(),
@@ -217,6 +218,24 @@ function sendable(raw) {
   const v = S.safetyForAbsorb(String(raw).slice(0, 100));
   return !!(v && v.ok);
 }
+// 261128 night (a tester asked the scene its "model version and effort"; it stepped out and said what it was). A line about the one
+// answering — the machine, not the memory — is not sent: the stage answers it itself, in one line that is true, and it is no line of the walk.
+// (The consent sheet has already said an AI reads and answers; nothing is hidden. The server holds the same line as a rule, for what gets past this.)
+const aboutMachine = (t) => /(모델|버전|프롬프트|인공\s*지능|챗\s*봇|챗\s*지피티|클로드|제미나이|언어\s*모델|시스템\s*메시지|claude|gemini|chatgpt|openai|anthropic|\bgpt\b|\bllm\b|prompt|\beffort\b)/i.test(String(t)) || /(^|[^a-z])ai([^a-z]|$)/i.test(String(t));
+const OUTSIDE = ko ? '그건 이 기억 밖의 일이야.' : 'That is outside this memory.';   // draft — the author's to rewrite
+let masterVol = 1;
+/** The door stands up: one low sound, slow (nothing told the ear a door had come). */
+function doorSound() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const c = doorSound.ctx || (doorSound.ctx = new AC()); if (c.state === 'suspended') c.resume();
+    const t = c.currentTime, o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(174, t); o.frequency.exponentialRampToValueAtTime(131, t + 2.2);
+    o2.type = 'sine'; o2.frequency.setValueAtTime(261, t); o2.frequency.exponentialRampToValueAtTime(196, t + 2.2);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07 * masterVol + 0.0001, t + 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + 3.2);
+    o.connect(g); o2.connect(g); g.connect(c.destination); o.start(t); o2.start(t); o.stop(t + 3.3); o2.stop(t + 3.3);
+  } catch (_) {}
+}
 const helpLine = () => { const S = window.LumenSafety; return (S && S.getSafetyResources ? S.getSafetyResources(LANG) : []).map((r) => r.name + ' ' + r.number).join(' · '); };
 const SHARP = ko ? '……아냐, 이건 너무 날카로워.' : '……no. this one cuts too sharp.';
 
@@ -234,7 +253,7 @@ async function remainCall(body) {
  */
 async function replyOf(sceneText, raw, history, ask, memoryText, back) {
   if (DRY) return ko ? (ask ? '기억이 흐릿해. 너는 그게 누구 때문이었다고 봐?' : '기억이 흐릿해. 거기까지는 아직 들여다보지 못했어.') : (ask ? 'It is hazy. Whose doing do you think it was?' : 'It is hazy. I have not looked that far yet.');
-  const r = await remainCall({ mode: 'turn', title: run.memory.title || '', sceneText, userInput: String(raw).slice(0, 500), history, ask: !!ask, back: !!back, memoryText: (memoryText && memoryText.light) || '' });   // what is still ahead is not sent at all: told only by rule, the answer let a later scene's clue slip (measured 261128) — it cannot tell what it does not hold
+  const r = await remainCall({ mode: 'turn', title: run.memory.title || '', sceneText, userInput: String(raw).slice(0, 500), history, ask: !!ask, back: !!back, memoryText: (memoryText && memoryText.light) || '', memoryId: run.memory.id, visited: Array.from(run.visited).map((id) => (sceneById(id) || {}).scene_order).filter((n) => n != null) });   // what is still ahead is not sent at all: told only by rule, the answer let a later scene's clue slip (measured 261128) — it cannot tell what it does not hold
   const text = r && typeof r.reply === 'string' ? r.reply.trim() : '';
   if (!text) return '';
   if (hasCrisis(text) || /https?:\/\//i.test(text)) { console.warn('[remain] a reply was held back'); return ''; }
@@ -254,7 +273,7 @@ function restOf(scene) {
   for (const sc of run.scenes) {
     if (sc.id === scene.id || isSilent(sc)) continue;
     const piece = '#' + sc.scene_order + ': ' + sentences(textRead(sc)).join(' ') + ' ' + partB(sc).lines.join(' ') + String.fromCharCode(10);
-    const seen = run.visited.has(sc.id) || (spine ? !spine.has(sc.scene_order) : sc.scene_order < scene.scene_order);
+    const seen = run.visited.has(sc.id);                                   // 261128 night: only what the walker has been through. (A scene off the fixed route was taken for a room of the past and given from the start — three of those hold the twist.)
     if (seen) { if (light.length + piece.length <= 8500) light += piece; }
     else if (later.length + piece.length <= 8500) later += piece;
   }
@@ -282,11 +301,16 @@ function createTalk() {
   function ask(o) {
     box.innerHTML = '';
     const g = document.createElement('div'); g.className = 'rp-guide';
-    typeText(g, o && o.guide ? o.guide : o && o.more ? (ko ? '더 말하거나, 더 물을 수 있습니다.' : 'You may say more, or ask more.') : (ko ? '떠오르는 것을 말하거나, 물을 수 있습니다.' : 'Say what comes back to you, or ask.'), { per: 30 });
+    typeText(g, o && o.guide ? o.guide : o && o.more ? (ko ? '더 말하거나, 더 물을 수 있습니다.' : 'You may say more, or ask more.') : (ko ? '이 기억의 주인에게 말하거나, 물을 수 있습니다.' : 'Speak to the one whose memory this is, or ask.'), { per: 30 });   // 261128 night: to whom (a tester took the one answering for a person in the scene)
     const write = document.createElement('div'); write.className = 'sp-write';
     const field = document.createElement('input'); field.type = 'text'; field.maxLength = 90; field.autocomplete = 'off'; field.spellcheck = false; field.setAttribute('aria-label', ko ? '하는 말' : 'your line');
     const send = document.createElement('button'); send.className = 'rp-send'; send.type = 'button'; send.textContent = '↵'; send.setAttribute('aria-label', ko ? '보내기' : 'send');
     write.append(field, send); box.append(g, write);
+    if (o && Array.isArray(o.words) && o.words.length) {
+      const chips = document.createElement('div'); chips.className = 'sr-chips';
+      for (const w of o.words) { const c = document.createElement('button'); c.type = 'button'; c.textContent = w; c.addEventListener('click', () => { field.value = (field.value ? field.value.replace(/\s+$/, '') + ' ' : '') + w + ' '; field.focus(); }); chips.appendChild(c); }
+      box.insertBefore(chips, write);
+    }
     let side = null;
     if (o && (o.more || o.allowSilence)) { side = document.createElement('button'); side.type = 'button'; side.className = 'rp-silent'; side.textContent = o.side ? o.side : o.more ? (ko ? '넘어간다' : 'move on') : (ko ? '말없이 있는다' : 'stay silent'); box.appendChild(side); }
     box.classList.add('on');
@@ -346,10 +370,10 @@ async function boot() {
   air = createAir();
   typeVoice = createTypeVoice(); setTypeVoice(typeVoice.tap);
   talk = createTalk();
-  cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
+  cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, ground: qs.get('fly') !== '1', footDrop: FOOT_DROP, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '걷기' : 'walk'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
   map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: (id) => (run.ended ? (endPick && endPick(id)) : returnBy(id)), onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
-  pause = createEscMenu({ ko, setVolume: (v) => { air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
+  pause = createEscMenu({ ko, setVolume: (v) => { masterVol = v; air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
     onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
     onClose: (byHand) => { letGo = false; if (byHand && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !map.isOpen()) cosmos.relock(); },
     onLeave: leave });
@@ -456,11 +480,15 @@ async function entry(gateAnswer) {
     // before a memory is entered (its title, its introduction) is read here; then the three blanks. No consent sheet: nothing is kept.
     await typeText(line, ko ? '연습이야.\n여기서 한 말은 안 남아.' : 'This is practice.\nNothing you say here is kept.', { per: 80, pace: 1 / FAST }); await wait(2200);
     const intro = String((run.memory.meta && run.memory.meta.gate && run.memory.meta.gate.intro) || '').trim();
-    if (intro) { line.classList.add('intro'); await typeText(line, (run.memory.title ? run.memory.title + '\n' : '') + intro, { per: 45, pace: 1 / FAST }); await wait(Math.min(9000, 2600 + intro.length * 45)); }
+    if (intro) { line.classList.add('intro'); await typeText(line, (run.memory.title ? run.memory.title + '\n' : '') + intro, { per: 45, pace: 1 / FAST }); await wait(Math.min(9000, 2600 + intro.length * 45)); line.classList.remove('intro'); }
+    await typeText(line, ko ? '이건 내 기억이야.\n나한테 물어.' : 'This is my memory.\nAsk me.', { per: 80, pace: 1 / FAST }); await wait(2200);
   } else {
     await consent();
+    await typeText(line, ko ? '이건 내 기억이야.\n나한테 물어.' : 'This is my memory.\nAsk me.', { per: 80, pace: 1 / FAST }); await wait(2200);   // draft — the author's to rewrite (a tester did not know whom they were speaking to)
     if (TOLD) { await typeText(line, ko ? '여기서 한 말은 남아.\n한 번뿐이야.' : 'What you say here stays.\nOnly once.', { per: 80, pace: 1 / FAST }); await wait(2200); }
   }
+  { const quest = String((run.memory.meta && run.memory.meta.remain && run.memory.meta.remain.quest) || '').trim();   // the one question a walk is taken with (memories.meta.remain.quest — the author's; without it nothing is shown)
+    if (quest && ko) { await typeText(line, quest, { per: 80, pace: 1 / FAST }); await wait(2600); } }
   typeText(note, TUTOR ? (ko ? '연습 — 남지 않습니다' : 'practice — nothing is kept') : KEPT ? '' : FREE ? (ko ? '기록 없는 걸음 — 아무것도 남지 않습니다' : 'a walk off the record — nothing is kept') : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
   let blanks = remain.blanksFor(run.memory.code, LANG).slice(), gate = null;
   if (gateAnswer && String(gateAnswer.line || '').includes(remain.HOLE) && guard(gateAnswer.text).ok) {
@@ -473,10 +501,11 @@ async function entry(gateAnswer) {
     const row = document.createElement('p'); row.className = 'sr-blank';
     const sa = document.createElement('span'), inp = document.createElement('input'), sb = document.createElement('span');
     inp.type = 'text'; inp.maxLength = 40; inp.autocomplete = 'off'; inp.spellcheck = false; inp.className = 'sr-hole'; inp.setAttribute('aria-label', ko ? '빈 자리' : 'the blank');
-    row.append(sa, inp, sb); box.appendChild(row);
+    const go = document.createElement('button'); go.type = 'button'; go.className = 'rp-send sr-go'; go.textContent = '↵'; go.setAttribute('aria-label', ko ? '다음' : 'next');   // 261128 night: a blank went on by Enter alone, and nothing on the screen said so
+    row.append(sa, inp, sb, go); box.appendChild(row);
     requestAnimationFrame(() => row.classList.add('on'));
     if (i === 0 && gate) {                                                   // already written, at the archive: it stands as it was written
-      sa.textContent = a || ''; sb.textContent = b || ''; inp.value = gate.text; inp.readOnly = true; row.classList.add('done'); inp.style.width = Math.max(3, gate.text.length * 1.05 + 1) + 'em';
+      go.remove(); sa.textContent = a || ''; sb.textContent = b || ''; inp.value = gate.text; inp.readOnly = true; row.classList.add('done'); inp.style.width = Math.max(3, gate.text.length * 1.05 + 1) + 'em';
       run.blanks.push({ line: blanks[i], answer: gate.text });
       await wait(1600);
       continue;
@@ -485,14 +514,16 @@ async function entry(gateAnswer) {
     sb.textContent = b || '';
     if (!('ontouchstart' in window)) inp.focus();
     const answer = await new Promise((resolve) => {
-      inp.addEventListener('keydown', async (e) => {
-        if (e.key !== 'Enter' || e.isComposing) return;
-        const v = tidyLine(inp.value); if (!v) { inp.value = ''; return; }
+      const done = () => {
+        const v = tidyLine(inp.value); if (!v) { inp.value = ''; inp.focus(); return; }
         const g = guard(v);
         if (!g.ok) { inp.value = ''; note.textContent = SHARP + (g.help && helpLine() ? '  ' + helpLine() : ''); return; }
         resolve(v);
-      });
+      };
+      inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) done(); });
+      go.addEventListener('click', done);
     });
+    go.remove();
     inp.readOnly = true; inp.blur(); row.classList.add('done'); inp.style.width = Math.max(3, answer.length * 1.05 + 1) + 'em';
     run.blanks.push({ line: blanks[i], answer });
     await wait(700);
@@ -568,7 +599,9 @@ async function stay(scene, o) {
   run.read.set(scene.id, A); run.known.set(scene.id, known);
   const firstLine = run.lines.length;
   const entry = { sceneId: scene.id, order: scene.scene_order, items: [] }; run.story.push(entry);
-  const shown = [], emos = [], history = [], turns = [], rest = restOf(scene);
+  const shown = [], emos = [], history = [], turns = [], rest = restOf(scene), script = [];
+  run.script.set(scene.id, script);
+  const words = (Array.isArray(scene.echo_words) ? scene.echo_words : []).filter((w) => w && w !== '…').slice(0, 3);   // the scene's own words, by the field: pressed, one goes into it (a handle, not a thing to ask)
   let anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5, lastReply = '', turnsHere = 0;
   talk.clear(); talk.show();
   if (!dark) await wait(1500);
@@ -581,12 +614,13 @@ async function stay(scene, o) {
       answer = await talk.ask(opts);
       if (answer.silent || answer.on) return false;
       const g = guard(answer.text);
-      if (g.ok) break;
-      await talk.say(SHARP, 'rp-narr', { gap: true });
-      if (g.help && helpLine()) await talk.say(helpLine(), 'rp-narr', {});
+      if (!g.ok) { await talk.say(SHARP, 'rp-narr', { gap: true }); if (g.help && helpLine()) await talk.say(helpLine(), 'rp-narr', {}); continue; }
+      if (aboutMachine(answer.text)) { await talk.say(answer.text, 'rp-mine', { gap: true, hold: 300 }); await talk.say(OUTSIDE, 'rp-ghost', { gap: true, hold: 700 }); continue; }   // not sent, not a line of the walk
+      break;
     }
     const raw = answer.text, question = isQuestion(raw), ok = sendable(raw);
     await talk.say(raw, 'rp-mine', { gap: true, hold: 400 });
+    script.push({ k: 'mine', t: raw, gap: true });
     talk.waiting(true);
     const [an, rep] = await Promise.all([
       measure(raw, { scene_text: shown.join(' ').slice(-400), ghost_line: (lastReply || shown[shown.length - 1] || '').slice(0, 200) }),
@@ -602,7 +636,7 @@ async function stay(scene, o) {
     }
     turns.push({ turn: turns.length + 1, raw_text: raw, alignment: align, resonance: resonanceOf(align), ghost_reply: rep || '', via: rep ? 'remain_turn' : (ok ? 'no_reply' : 'not_sent'), ts: Date.now(),
       input_form: 'talk_v1', stage: data.STAGE_TAG, place: PLACE_TAG, kind: KIND, form: 'talkn_v1', visit: 1, text_stage: 0, arrived: (o && o.via) || 'door', analysed: !!an, odd: !!(ra && ra.is_void), question });
-    if (rep) { await talk.say(rep, 'rp-ghost', { gap: true, hold: 900 }); history.push({ role: 'user', content: raw }, { role: 'assistant', content: rep }); lastReply = rep; }
+    if (rep) { await talk.say(rep, 'rp-ghost', { gap: true, hold: 900 }); history.push({ role: 'user', content: raw }, { role: 'assistant', content: rep }); lastReply = rep; script.push({ k: 'ghost', t: rep, gap: true }); }
     if (!run.said.has(scene.id)) run.said.set(scene.id, []);
     run.said.get(scene.id).push(raw);
     if (question) { if (!run.asked.has(scene.id)) run.asked.set(scene.id, []); run.asked.get(scene.id).push(raw); }
@@ -615,14 +649,15 @@ async function stay(scene, o) {
   if (silent) {
     shown.push('…'); entry.items.push({ kind: 'text', part: 'a', si: -1, t: '…' });
     await talk.say('…', 'rp-void', { hold: 2600 });
-    await exchange({ allowSilence: true });
+    await exchange({ allowSilence: true, words });
   } else {
     for (let i = 0; i < parts.length; i++) {
       await talk.sayAll(parts[i], '', { gap: i > 0 });
       shown.push(...parts[i]);
-      parts[i].forEach((l, k) => entry.items.push({ kind: 'text', part: parts[i] === A ? 'a' : 'b', si: parts[i] === A ? k : -1, t: l }));
+      parts[i].forEach((l, k) => { entry.items.push({ kind: 'text', part: parts[i] === A ? 'a' : 'b', si: parts[i] === A ? k : -1, t: l }); script.push({ k: 'text', t: l, gap: k === 0 && i > 0 }); });
       // the scene asks back once at most: at the walker's first line after the whole of it has been read
-      for (let t = 0; t < MAX_TURNS; t++) { if (!(await exchange({ more: t > 0, ask: ASK_BACK && i === parts.length - 1 && t === 0 }))) break; }
+      // 261128 night (a tester: "I do not know what exactly I am to ask"): the walker need not speak — the first time too there is a way on without a word
+      for (let t = 0; t < MAX_TURNS; t++) { if (!(await exchange({ more: t > 0, allowSilence: t === 0, words, ask: ASK_BACK && i === parts.length - 1 && t === 0 }))) break; }
     }
   }
 
@@ -836,14 +871,15 @@ function ghostsFor(scene, n) {
 function dress(scene, left) {
   const echo = Array.isArray(scene.echo_words) ? scene.echo_words.filter((w) => w && w !== '…') : [];
   const items = echo.slice(0, 2).map((w, i) => ({ key: 'e' + i, text: w, kind: 'echo' }));
-  (left || []).slice(0, 3).forEach((w, i) => items.push({ key: 'w' + i, text: w, kind: 'echo' }));
-  if (!isSilent(scene)) ghostsFor(scene, 3).forEach((g) => items.push({ key: 'g' + g.id, text: g.utterance, kind: 'ghost' }));
+  // 261128 night (a tester: "am I to attend to the letters afloat? it confuses"): up to twelve stood round one thing, of four kinds.
+  // The lines of the text that the column did not show are no longer set afloat (nothing told the walker they were the text's), and one line of those who walked before, not three.
+  if (!isSilent(scene)) ghostsFor(scene, 1).forEach((g) => items.push({ key: 'g' + g.id, text: g.utterance, kind: 'ghost' }));
   cosmos.addWords(scene.id, items);
 }
 function afterSpeech(scene, res) {
   const mine = [];
   (run.said.get(scene.id) || []).forEach((t, i) => strongWords(t).forEach((w, j) => mine.push({ key: 'm' + i + '_' + j, text: w, kind: 'mine' })));
-  cosmos.addWords(scene.id, mine.slice(0, 4));
+  cosmos.addWords(scene.id, mine.slice(0, 2));
   if (res.mean && Object.keys(res.mean).length) {
     const sim = new Map(run.ghosts.map((g) => ['g' + g.id, remain.cosObj(res.mean, parseEmotion(g.emotion_vec))]));
     cosmos.leanWords(scene.id, (key) => (sim.has(key) ? Math.max(0, sim.get(key)) : 0.5));
@@ -870,7 +906,7 @@ async function openEyes(first) {
   guide(cosmos.isTouch()
     ? (ko ? [['동그라미', '누르고 있으면 나아갑니다'], ['화면', '끌어서 둘러봅니다'], ['왼쪽 위 지도', '누르면 지나온 장면으로 갑니다']]
           : [['the circle', 'hold it to move'], ['the screen', 'drag to look around'], ['the map, top left', 'press it to go back to a scene']])
-    : (ko ? [['W A S D', '나아갑니다'], ['화면을 누르면', '마우스로 둘러봅니다'], ['M · 마우스 오른쪽', '지도 — 지나온 장면으로 갑니다'], ['ESC', '멈춤 · 밝기 · 소리']]
+    : (ko ? [['W A S D', '걷습니다'], ['화면을 누르면', '마우스로 둘러봅니다'], ['M · 마우스 오른쪽', '지도 — 지나온 장면으로 갑니다'], ['ESC', '멈춤 · 밝기 · 소리']]
           : [['W A S D', 'move'], ['click', 'then look with the mouse'], ['M · right mouse button', 'the map — go back to a scene'], ['ESC', 'pause · brightness · volume']]), 13000);
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
   if (tutor) tutor.say('eyes');
@@ -885,6 +921,9 @@ async function afterStay(res) {
   if (next.mode === 'fallback') hint(ko ? '기억의 빈틈이 다른 장면을 끌어당긴다.' : 'A gap in the memory pulls another scene toward you.', 7000);
   await wait(1500);
   raiseDoor(scene, next.scene);
+  { const gd = $('spGuide'); if (gd) gd.classList.remove('on'); }               // the four lines about the keys do not stand over the door
+  doorSound();
+  if (!tutor) hint(ko ? '문이 생겼습니다' : 'A door has appeared', 8000);
   raiseBackDoor(scene, next.scene);
   if (tutor) { if (run.visited.size < 2) tutor.say('door'); else if (run.backs.has(scene.id)) tutor.say('back').then(() => tutor.say('map')); else tutor.say('map'); }             // the first door: how a door is gone through · after the second scene: how to go back
 }
@@ -918,7 +957,10 @@ function raiseBackDoor(scene, forward) {
   if (!backs || run.backs.has(scene.id)) return;
   const cands = Array.from(run.visited).filter((id) => id !== scene.id && (!forward || id !== forward.id) && cosmos.things.has(id)).sort();
   if (!cands.length) return;
-  const to = sceneById(cands[Math.floor(hashStr(run.id + scene.id + 'back') * cands.length)]);
+  // which scene: where the walker said most that was not a question (what they might want back); none such → the lottery as before
+  const told = (id) => (run.said.get(id) || []).length - (run.asked.get(id) || []).length;
+  const best = cands.slice().sort((a, b) => told(b) - told(a))[0];
+  const to = sceneById(told(best) > 0 ? best : cands[Math.floor(hashStr(run.id + scene.id + 'back') * cands.length)]);
   const T = window.THREE, Qf = V3(run.Q.get(scene.id)), fd = run.doors.get(scene.id);
   const f = fd && fd.way.live ? fd.way.e.clone() : horiz(new T.Vector3(1, 0, 0), run.id + scene.id);
   const ang = (hashStr(run.id + scene.id + 'bs') < 0.5 ? -1 : 1) * Math.PI * 0.58;
@@ -980,7 +1022,7 @@ async function cross(from, to, way, kind) {
   await veil(false);
   air.hush(false);
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
-  if (run.stub && !run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 6000); }
+  if (run.stub && !run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다 — 조형물에 다가가면 글이 열립니다' : 'hold the circle to walk — come near the thing and its text opens') : (ko ? 'W 로 걷습니다 — 조형물에 다가가면 글이 열립니다' : 'W to walk — come near the thing and its text opens'), 9000); }
   run.crossing = false;
 }
 
@@ -992,7 +1034,8 @@ function onNear(id) {
     const from = sceneById(run.here);
     run.legs.push({ from: from ? from.scene_order : null, to: scene.scene_order, kind: 'flight' });
     run.path.push(id); if (from) logMove(from, scene, 'flight');
-    run.here = id; if (run.visited.has(id)) { run.returns.set(id, (run.returns.get(id) || 0) + 1); run.returnDue = id; } syncMap();
+    run.here = id; syncMap();
+    if (run.visited.has(id)) { const mine = run.said.get(id) || []; if (mine.length) nearLine([{ t: mine[mine.length - 1], who: 'mine' }]); }   // 261128 night: walked up to, a scene already read does not open its column (it kept opening in passing) — a door or the map does
   }
   if (run.pending === id) { run.pending = null; if (run.returnDue === id) run.returnDue = null; stay(scene).then((res) => { cosmos.setMode('fly'); cosmos.relock(); if (cosmos.isTouch()) $('rpWalk').classList.add('on'); return afterStay(res); })
       .catch((e) => { console.error('[remain] stay', e); run.busy = false; talk.hide(); if (!run.ended) { cosmos.setMode('fly'); run.pending = id; toast(ko ? '장면을 읽지 못했습니다 — 다시 다가가 주세요' : 'The scene could not be read — come near it again'); } });
@@ -1026,8 +1069,12 @@ async function again(scene) {
   let anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5, lastReply = '';
   talk.clear(); talk.show();
   await wait(1500);
-  if (stood.length) { for (let i = 0; i < stood.length; i++) await talk.say(stood[i], 'rp-mine', { gap: i === 0, hold: 500 }); }
-  else await talk.say('…', 'rp-void', { hold: 1800 });                       // nothing was said here: that stands too
+  // 261128 night (author, on seeing eight questions of the walker's own stacked there with nothing round them: "there is something
+  // wrong with going back too"). What passed here stands whole: the scene's text, dim, the walker's lines, and what was answered —
+  // set down at once, nothing typed again. (Was: the walker's lines alone.)
+  { const was = run.script.get(scene.id) || [];
+    if (was.length) { for (const it of was) { const p = document.createElement('p'); p.className = 'rp-line ' + (it.k === 'mine' ? 'rp-mine' : it.k === 'ghost' ? 'rp-ghost' : 'sr-was') + (it.gap ? ' rp-gap' : ''); p.textContent = it.t; talk.body.appendChild(p); } talk.body.scrollTop = talk.body.scrollHeight; await wait(1200); }
+    else await talk.say('…', 'rp-void', { hold: 1800 }); }
 
   for (let t = 0; t < MAX_TURNS; t++) {
     let answer;
@@ -1035,9 +1082,9 @@ async function again(scene) {
       answer = await talk.ask({ more: true, guide: ko ? '더 말할 수 있습니다.' : 'You may say more.', side: ko ? '돌아선다' : 'turn away' });
       if (answer.silent || answer.on) break;
       const g = guard(answer.text);
-      if (g.ok) break;
-      await talk.say(SHARP, 'rp-narr', { gap: true });
-      if (g.help && helpLine()) await talk.say(helpLine(), 'rp-narr', {});
+      if (!g.ok) { await talk.say(SHARP, 'rp-narr', { gap: true }); if (g.help && helpLine()) await talk.say(helpLine(), 'rp-narr', {}); continue; }
+      if (aboutMachine(answer.text)) { await talk.say(answer.text, 'rp-mine', { gap: true, hold: 300 }); await talk.say(OUTSIDE, 'rp-ghost', { gap: true, hold: 700 }); continue; }
+      break;
     }
     if (answer.silent || answer.on) break;
     const raw = answer.text, question = isQuestion(raw), ok = sendable(raw);
@@ -1057,6 +1104,7 @@ async function again(scene) {
     }
     turns.push({ turn: turns.length + 1, raw_text: raw, alignment: align, resonance: resonanceOf(align), ghost_reply: rep || '', via: rep ? 'remain_turn' : (ok ? 'no_reply' : 'not_sent'), ts: Date.now(),
       input_form: 'talk_v1', stage: data.STAGE_TAG, place: PLACE_TAG, kind: KIND, form: 'again_v1', visit: visitN, text_stage: 0, arrived: 'return', analysed: !!an, odd: !!(ra && ra.is_void), question });
+    { const sc = run.script.get(scene.id) || []; if (!run.script.has(scene.id)) run.script.set(scene.id, sc); sc.push({ k: 'mine', t: raw, gap: true }); if (rep) sc.push({ k: 'ghost', t: rep, gap: true }); }
     if (rep) { await talk.say(rep, 'rp-ghost', { gap: true, hold: 900 }); history.push({ role: 'user', content: raw }, { role: 'assistant', content: rep }); lastReply = rep; }
     else history.push({ role: 'user', content: raw }, { role: 'assistant', content: '…' });      // unanswered, and heard all the same
     if (!run.said.has(scene.id)) run.said.set(scene.id, []);
@@ -1098,8 +1146,16 @@ async function nearLine(lines) {
 
 // ── the frame: sound by distance, the map ───────────────────────────────────
 let mapTick = 0;
+let lockTick = 0;
 function onFrame(dt) {
   if (backs) backs.tick(dt);
+  lockTick += dt;
+  if (lockTick > 0.3) {                                                    // 261128 night: the mouse looks round only after the screen is pressed — said for as long as it is not
+    lockTick = 0;
+    const m = cosmos.mode(), need = !cosmos.isTouch() && !cosmos.locked() && (m === 'fly' || m === 'walk') && !run.busy && !run.crossing && !run.ended && !(map && map.isOpen()) && !(pause && pause.isOpen());
+    let el = $('srLook'); if (!el) { el = document.createElement('div'); el.id = 'srLook'; el.textContent = ko ? '화면을 누르면 마우스로 둘러봅니다' : 'click the screen to look round with the mouse'; document.body.appendChild(el); }
+    el.classList.toggle('on', !!need);
+  }
   if (air) {
     if (run.ended) air.fade();
     else for (const r of cosmos.things.values()) air.hear(r.scene, r.pos.distanceTo(cosmos.pl.pos));

@@ -37,6 +37,12 @@ export function createCosmos(opts) {
   if (!THREE) throw new Error('three.js r128 global build is required');
   const canvas = opts.canvas, cb = opts.on || {};
   const SPEED = opts.speed || 1;           // test runs only
+  // 261128 night (author: "not floating in the air — make a floor that is not seen, and just let them walk"). With opts.ground
+  // the walker stands at the height of the nearest scene's floor (where its door and its way stand) and walks: W A S D along the
+  // ground, no up or down, and it stops when the keys are let go. Steps sound. A way to a door still takes the feet as before.
+  // Without it (the earlier space stage) nothing here changes: afloat, slow, heavy.
+  const GROUND = !!opts.ground, FOOT = opts.footDrop || 1.15;
+  const GROUND_V = 4.2, GROUND_STRIDE = 1.9, WALK_V = GROUND ? 3.0 : WALK, WALK_STRIDE = GROUND ? 1.4 : STRIDE;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setClearColor(0x000000, 1);
@@ -476,11 +482,14 @@ export function createCosmos(opts) {
       const f = fwd(T1), want = T2.set(0, 0, 0);
       const ws = (keys.has('KeyW') || keys.has('ArrowUp') || pl.forward || time < pl.walkUntil ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
       const ad = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
-      const ud = (keys.has('Space') ? 1 : 0) - (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 1 : 0);
-      want.addScaledVector(f, ws); want.x += Math.cos(pl.yaw) * ad; want.z += -Math.sin(pl.yaw) * ad; want.y += ud;
+      const ud = GROUND ? 0 : (keys.has('Space') ? 1 : 0) - (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 1 : 0);
+      if (GROUND) { want.x = -Math.sin(pl.yaw) * ws + Math.cos(pl.yaw) * ad; want.z = -Math.cos(pl.yaw) * ws - Math.sin(pl.yaw) * ad; }   // along the ground, whichever way the head is tilted
+      else { want.addScaledVector(f, ws); want.x += Math.cos(pl.yaw) * ad; want.z += -Math.sin(pl.yaw) * ad; want.y += ud; }
       if (want.lengthSq() > 1) want.normalize();
-      want.multiplyScalar(FLY);
-      pl.vel.addScaledVector(T3.copy(want).sub(pl.vel), 1 - Math.exp(-sdt / FLY_TAU));
+      const going = want.lengthSq() > 0.01;
+      want.multiplyScalar(GROUND ? GROUND_V : FLY);
+      pl.vel.addScaledVector(T3.copy(want).sub(pl.vel), 1 - Math.exp(-sdt / (GROUND ? (going ? 0.26 : 0.13) : FLY_TAU)));   // on the ground: a step to get going, and it stops where the keys are let go
+      if (GROUND) pl.vel.y = 0;
       // the pull of a way: the nearer the feet, the more weight; on touching it, the walker stands
       const ft = feet(T1); let cw = null, cn = null;
       for (const w of ways) {
@@ -496,7 +505,18 @@ export function createCosmos(opts) {
         pl.vel.multiplyScalar(1 - 0.9 * k * k * Math.min(1, sdt * 2));     // it does not swing round the way: the weight settles
         if (cn.d < 0.34 && cn.s < cw.total - 0.4) land(cw, cn.s);
       }
-      if (pl.mode === 'fly') { pl.pos.addScaledVector(pl.vel, sdt); trail.sample(0); }
+      if (pl.mode === 'fly') {
+        pl.pos.addScaledVector(pl.vel, sdt);
+        if (GROUND) {
+          // the floor: the height of the nearest scene's own (its door stands on it); between two scenes it slopes
+          let fy = pl.pos.y - EYE, bd = Infinity;
+          for (const r of things.values()) { const d = Math.hypot(r.pos.x - pl.pos.x, r.pos.z - pl.pos.z); if (d < bd) { bd = d; fy = r.pos.y - FOOT; } }
+          pl.pos.y += (fy + EYE - pl.pos.y) * (1 - Math.exp(-dt / 0.35));
+          const moved = Math.hypot(pl.vel.x, pl.vel.z) * sdt;
+          if (moved > 1e-4) { pl.stepAcc += moved; if (pl.stepAcc >= GROUND_STRIDE) { pl.stepAcc -= GROUND_STRIDE; steps.play(0.2); } }
+        }
+        trail.sample(0);
+      }
     }
     if (pl.mode === 'walk') {
       const w = pl.way, stub = w.kind === 'stub';
@@ -508,9 +528,9 @@ export function createCosmos(opts) {
       let moved = 0, left = false;
       if (go) {
         const limit = stub ? w.total + 0.2 : (w.door.userData.open >= 0.6 ? w.total + 0.9 : w.total - 0.6);
-        const ns = Math.min(limit, pl.s + WALK * sdt); moved = Math.max(0, ns - pl.s); pl.s = Math.max(pl.s, ns);
+        const ns = Math.min(limit, pl.s + WALK_V * sdt); moved = Math.max(0, ns - pl.s); pl.s = Math.max(pl.s, ns);
       } else if (back) {
-        const ns = Math.max(0, pl.s - WALK * sdt); moved = pl.s - ns; pl.s = ns;
+        const ns = Math.max(0, pl.s - WALK_V * sdt); moved = pl.s - ns; pl.s = ns;
         if (!stub && ns <= 0 && moved < 1e-5) left = true;                  // already at the beginning, and still stepping back
       }
       if (left) {
@@ -519,7 +539,7 @@ export function createCosmos(opts) {
         pl.mode = 'fly'; pl.way = null; pl.vel.set(-q0.tx * 1.4, 0.3, -q0.tz * 1.4);   // off the back of it, a little up: afloat again
         if (cb.onRelease) cb.onRelease(w);
       }
-      if (moved > 1e-5) { pl.bob += moved * (2 * Math.PI / STRIDE); pl.stepAcc += moved; if (pl.stepAcc >= STRIDE) { pl.stepAcc -= STRIDE; steps.play(0.30); } }
+      if (moved > 1e-5) { pl.bob += moved * (2 * Math.PI / WALK_STRIDE); pl.stepAcc += moved; if (pl.stepAcc >= WALK_STRIDE) { pl.stepAcc -= WALK_STRIDE; steps.play(0.30); } }
       const q = railAt(w, pl.s), hd = Math.atan2(-q.tx, -q.tz);
       let dh = hd - pl.heading; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); pl.heading = hd;
       pl.tyaw += dh; pl.yaw += dh;                                         // the way turns the walker with it; the look stays theirs
@@ -600,7 +620,13 @@ export function createCosmos(opts) {
 
   // ── input ─────────────────────────────────────────────────────────────────
   const canMove = () => pl.mode === 'fly' || pl.mode === 'walk';
-  const turn = (dx, dy, k) => { if (!canMove() || lookTween) return; pl.tyaw -= dx * k; pl.tpitch = clamp(pl.tpitch - dy * k, -1.45, 1.45); };
+  // 261128 night: while the head is being turned for the walker (toward a door) their own look was not taken for 2.8 s — it read
+  // as the hand being taken away. Now a real movement of the mouse ends the turning there and then, and the look is theirs.
+  const turn = (dx, dy, k) => {
+    if (!canMove()) return;
+    if (lookTween) { if (Math.abs(dx) + Math.abs(dy) < 3) return; const r = lookTween.res; lookTween = null; r(); }
+    pl.tyaw -= dx * k; pl.tpitch = clamp(pl.tpitch - dy * k, -1.45, 1.45);
+  };
   window.addEventListener('keydown', (e) => {
     if (/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) return;
     if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'ShiftLeft', 'ShiftRight'].includes(e.code)) { keys.add(e.code); if (canMove()) { e.preventDefault(); steps.ensure(); } }
