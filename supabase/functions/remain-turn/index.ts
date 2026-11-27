@@ -3,7 +3,7 @@
 // Record: docs/우주무대_남는말_실험-261128.md. Stage: space-remain.html · js/spaceremain/.
 // This function reads nothing from the database and writes nothing anywhere. Everything it works on comes in the request.
 //
-//   mode "turn"     the scene answers the visitor — { title, sceneText, userInput, history?, ask?, lang? } → { ok, reply }
+//   mode "turn"     the scene answers the visitor — { title, sceneText, userInput, history?, ask?, back?, lang? } → { ok, reply }   (back = the visitor has come back to this scene: what they said before is the history, and it was heard)
 //                   The regulated lines of dialog-turn are kept (inside the scene's text only, nothing invented, one or two
 //                   sentences, no advice or judgement). The answer stops halfway and asks nothing; only with ask: true does it
 //                   end on one short question that has the visitor say whose doing it was. The scene never says who was right.
@@ -77,8 +77,30 @@ function closing(lang: "ko" | "en", ask: boolean): string {
 // light (the scenes the visitor has been through, and the rooms of the past) is said as known. What has NOT yet come to light
 // (the scenes still ahead) is known too, but only its plain circumstances may be used: a recognition, a confession, a reversal
 // is not told before its time — asked for, it is neither lied about nor told.
-function turnSystem(title: string, sceneText: string, lang: "ko" | "en", ask: boolean, memoryText: string, laterText: string): string {
-  const close = closing(lang, ask);
+// 261128 night, later (author, on what a scene come back to should be: "2, 3, 4"): the visitor may come back to a scene they
+// have been through. What they said there stands — it is the conversation that goes with the request — and the scene's person
+// answers as one who heard it. Nothing is forgiven or held against them on cue, and nothing said becomes unsaid.
+function cameBack(lang: "ko" | "en"): string {
+  if (lang === "en") {
+    return `The visitor has come back
+- The visitor was at this scene before, said what is in the conversation above, went on, and has now come back. You heard those lines. They were said; that does not change, and you do not act as if it could.
+- You do not bring those lines up to press them. You do not forgive on cue and you do not take offence on cue.
+- If the visitor now takes a line back, softens it, or says the opposite, you answer as one who heard both: the earlier line was said, and so is this one. You do not say it is all right now, and you do not say it is too late.
+- You do not greet them and you do not remark that they came back.
+
+`;
+  }
+  return `찾아온 사람이 돌아왔다
+- 찾아온 사람은 전에 이 장면에 있었고, 위의 대화에 있는 말을 했고, 다른 데로 갔다가 지금 다시 왔다. 당신은 그 말을 들었다. 그 말은 한 말이다. 그건 달라지지 않고, 당신은 달라질 수 있는 것처럼 굴지 않는다.
+- 그 말을 다시 꺼내 따지지 않는다. 때맞춰 용서하지도 않고 때맞춰 상해하지도 않는다.
+- 찾아온 사람이 앞의 말을 물리거나, 누그러뜨리거나, 반대로 말하면, 둘 다 들은 사람으로 답한다. 앞의 말도 한 말이고 지금 말도 한 말이다. 이제 괜찮다고 하지 않고, 이미 늦었다고도 하지 않는다.
+- 인사하지 않는다. 다시 왔다는 것을 입에 올리지 않는다.
+
+`;
+}
+
+function turnSystem(title: string, sceneText: string, lang: "ko" | "en", ask: boolean, memoryText: string, laterText: string, back = false): string {
+  const close = (back ? cameBack(lang) : "") + closing(lang, ask && !back);
   if (lang === "en") {
     return `You are someone who lived the memory "${title}" — all of it — and who stands now in one scene of it. You answer the visitor low, as if recalling to yourself.
 
@@ -404,7 +426,7 @@ serve(async (req: Request) => {
         .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && str(m.content, 600))
         .map((m: any) => ({ role: m.role as "user" | "assistant", content: str(m.content, 600) }));
       while (history.length && history[0].role !== "user") history.shift();
-      const r = await ask(client, turnSystem(title, sceneText, lang, body?.ask === true, str(body?.memoryText, 9000), str(body?.laterText, 9000)), [...history, { role: "user", content: userInput }]);
+      const r = await ask(client, turnSystem(title, sceneText, lang, body?.ask === true, str(body?.memoryText, 9000), str(body?.laterText, 9000), body?.back === true), [...history, { role: "user", content: userInput }]);
       if (r.refused) return json(cors, 200, { ok: false, reason: "refusal" });
       const reply = r.text.replace(/^["“”'‘’\s]+|["“”'‘’\s]+$/g, "");
       if (!reply) return json(cors, 200, { ok: false, reason: "empty" });
