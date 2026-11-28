@@ -60,7 +60,7 @@ const L = {
     storyDone: (n) => `장면 ${n}개를 뽑았어. 고쳐 봐.`, storyFail: '지금은 못 뽑겠어. 잠시 뒤에 다시.',
     storyReplaceAsk: '적어 둔 장면이 있어. 지우고 초안으로 바꿀까?', storyReplaceYes: '바꾼다', storyReplaceNo: '그만둔다', storyChars: (n) => `${n}자`,
     thingMake: '조형물 만들기', thingWait: '그리는 중…', thingFail: '그리지 못했어. 다시 눌러.', thingNone: '없으면 기둥 하나로 선다', thingDrop: '빼기', thingWantPh: '어떤 조형물인지 직접 적어도 된다. 비워 두면 글에서 받는다.', thingWantWait: '적은 대로 그리는 중…',
-    soundDraft: '소리 초안', soundGen: '소리 만들기', soundClear: '빼기', soundWait: '초안 받는 중…', soundGenWait: '만드는 중… 10~20초', soundFail: '소리를 못 만들었어.', soundPh: '어떤 소리인지 직접 적어도 된다. "소리 초안"을 누르면 글에서 받아 적어 준다.', soundDone: '이 장면에서만 난다',
+    soundDraft: '소리 초안', soundAgain: '다시 뽑기', soundGen: '이대로 소리 뽑기', soundClear: '빼기', soundWait: '초안 받는 중…', soundGenWait: '만드는 중… 10~20초', soundFail: '소리를 못 만들었어.', soundPh: '어떤 소리인지 직접 적어도 된다. "소리 초안"을 누르면 글에서 받아 적어 준다.', soundDone: '이 장면에서만 난다',
     addScene: '장면 더하기', sceneMax: `장면은 ${MAX_SCENES}개까지`, publish: '올리기',
     needTitle: '제목이 없어', needScene: '장면이 없어', needText: (ns) => `글이 없는 장면: ${ns.join(', ')}`, needEmotion: (ns) => `감정이 없는 장면: ${ns.join(', ')}`,
     orderLine: (n) => `장면 ${n}개 · 이 순서가 첫 실이 된다`,
@@ -95,7 +95,7 @@ const L = {
     storyDone: (n) => `${n} scenes taken. correct them.`, storyFail: 'it cannot be drafted right now. try again in a while.',
     storyReplaceAsk: 'there are scenes written already. clear them and take the draft?', storyReplaceYes: 'take the draft', storyReplaceNo: 'leave it', storyChars: (n) => `${n} letters`,
     thingMake: 'make the thing', thingWait: 'drawing…', thingFail: 'it could not be drawn. press again.', thingNone: 'without one, a single post stands', thingDrop: 'drop', thingWantPh: 'you may write what the thing is. left empty, it is drawn from the text.', thingWantWait: 'drawing what you wrote…',
-    soundDraft: 'sound draft', soundGen: 'make the sound', soundClear: 'drop', soundWait: 'getting a draft…', soundGenWait: 'making… 10–20 s', soundFail: 'the sound could not be made.', soundPh: 'you may write what the sound is. "sound draft" writes one from the text.', soundDone: 'heard in this scene only',
+    soundDraft: 'sound draft', soundAgain: 'draw again', soundGen: 'make the sound from this', soundClear: 'drop', soundWait: 'getting a draft…', soundGenWait: 'making… 10–20 s', soundFail: 'the sound could not be made.', soundPh: 'you may write what the sound is. "sound draft" writes one from the text.', soundDone: 'heard in this scene only',
     addScene: 'add a scene', sceneMax: `up to ${MAX_SCENES} scenes`, publish: 'put it up',
     needTitle: 'no title', needScene: 'no scene', needText: (ns) => `scenes without text: ${ns.join(', ')}`, needEmotion: (ns) => `scenes without an emotion: ${ns.join(', ')}`,
     orderLine: (n) => `${n} scenes · this order becomes the first thread`,
@@ -285,16 +285,19 @@ function addScene(init) {
 
   // the sound (the admin's two steps: a draft sentence from the text, then the sound from the sentence)
   const prompt = q('.f-sound-prompt'), audio = q('.rs-audio'), sSound = q('.s-sound'), bDraft = q('.b-sound-draft'), bGen = q('.b-sound-gen'), bClear = q('.b-sound-clear');
-  prompt.addEventListener('input', () => { sc.sound.prompt = prompt.value; });
+  // 261129 (author: "two buttons side by side confuse — one 'sound draft' button; once there is a sentence, it is replaced by 'draw again' / 'make the sound from this'")
+  const syncSound = () => { const has = !!prompt.value.trim(); bDraft.textContent = has ? T.soundAgain : T.soundDraft; bDraft.classList.toggle('rp-btn', !has); bDraft.classList.toggle('rs-small', has); bGen.hidden = !has; bGen.classList.toggle('rp-btn', has); bGen.classList.toggle('rs-small', !has); };
+  sc.syncSound = syncSound; syncSound();
+  prompt.addEventListener('input', () => { sc.sound.prompt = prompt.value; syncSound(); });
   bDraft.addEventListener('click', async () => {
     if (sc.text.trim().length < 8) { status(sSound, T.talkNeedText, 'warn'); return; }
     bDraft.disabled = true; status(sSound, T.soundWait, 'wait');
     try {
       const resp = await sb().functions.invoke('generate-scene-sound', { body: { mode: 'draft', sceneText: sc.text.trim(), motifs: splitList(sc.words).slice(0, 6) } });
       if (!resp || resp.error || !resp.data || resp.data.error || !resp.data.prompt) throw new Error((resp && resp.data && resp.data.error) || 'draft');
-      sc.sound.prompt = resp.data.prompt; prompt.value = sc.sound.prompt; prompt.hidden = false; bGen.hidden = false; status(sSound, '', null);
-    } catch (e) { console.warn('[record-space] sound draft', e); status(sSound, T.soundFail, 'warn'); prompt.hidden = false; bGen.hidden = false; }
-    bDraft.disabled = false;
+      sc.sound.prompt = resp.data.prompt; prompt.value = sc.sound.prompt; prompt.hidden = false; status(sSound, '', null);
+    } catch (e) { console.warn('[record-space] sound draft', e); status(sSound, T.soundFail, 'warn'); prompt.hidden = false; }
+    bDraft.disabled = false; syncSound();
   });
   bGen.addEventListener('click', async () => {
     const p = prompt.value.trim(); if (!p) { prompt.focus(); return; }
@@ -340,7 +343,7 @@ function addScene(init) {
     }
     if (d.sound) {
       sc.sound.volume = d.sound.volume != null ? d.sound.volume : 0.5;
-      if (d.sound.prompt) { sc.sound.prompt = d.sound.prompt; prompt.value = d.sound.prompt; }
+      if (d.sound.prompt) { sc.sound.prompt = d.sound.prompt; prompt.value = d.sound.prompt; syncSound(); }
       if (d.sound.url) { sc.sound.url = d.sound.url; audio.src = d.sound.url; audio.hidden = false; bClear.hidden = false; status(sSound, T.soundDone, 'ok'); }
     }
   }
