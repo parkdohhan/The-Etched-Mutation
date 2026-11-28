@@ -22,7 +22,7 @@ import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const MODEL = "claude-opus-5-5";
-const VERSION = "remain_turn_v4_2026_11_29";
+const VERSION = "remain_turn_v5_2026_11_29";
 
 function getCorsHeaders(req: Request): Record<string, string> {
   const allowedOriginsRaw = Deno.env.get("ALLOWED_ORIGINS") || "";
@@ -237,7 +237,7 @@ const JUDGE_SYSTEM = `You read what a visitor said to scenes of a short memory p
 
 You are given the three sentences the visitor wrote about THEMSELVES before going in, numbered 0 to 2, and then items: a scene's text and one line the visitor said to that scene.
 
-For each item answer three things.
+For each item answer four things.
 
 "whom" — whom the line holds to account for what happens in the scene.
 - "narrator": the "I" of the scene (the visitor usually calls them "you"). To hold to account is to say or imply they should have done otherwise, or to demand that they answer for what they did. "You should have picked up." "Why did you look away?" "You did that."
@@ -249,6 +249,8 @@ For each item answer three things.
 
 "voice" — true when the line is itself written as a sentence OF the scene: narration that continues, rewords or adds to the text, in the telling voice — a statement of what is done, seen, felt or decided there ("I shut out the water with one eye only.", "Sound, tremor, dread and hope.", "I knock once more. My hand hurts."), or the visitor telling how they take what is told, as a statement ("I thought it was something like desperation."). false when the line is a question, a request, an order, a greeting, or talk about something outside the scene.
 
+"reading" — true when the line states, as a statement, how the visitor reads what is told in the scene: what a thing in it was, meant or amounted to ("But they were all offerings to the same one.", "What gets covered is only what the eye can see.", "Perhaps your offering was never a thing with a number."). The thing read must be in the scene. false when the line is a question (also one that ends in "…였을까", "…였지?"), a general remark that names nothing in the scene, a request, or talk about the conversation itself. A line cannot be both "voice" and "reading": narration is "voice".
+
 Return every item you were given, with its "id" unchanged.`;
 
 const JUDGE_SCHEMA = {
@@ -258,8 +260,8 @@ const JUDGE_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { id: { type: "string" }, whom: { type: "string", enum: ["narrator", "other", "nobody", "none"] }, back: { type: "integer" }, voice: { type: "boolean" } },
-        required: ["id", "whom", "back", "voice"],
+        properties: { id: { type: "string" }, whom: { type: "string", enum: ["narrator", "other", "nobody", "none"] }, back: { type: "integer" }, voice: { type: "boolean" }, reading: { type: "boolean" } },
+        required: ["id", "whom", "back", "voice", "reading"],
         additionalProperties: false,
       },
     },
@@ -462,6 +464,7 @@ async function kept(req: Request, cors: Record<string, string>, client: Anthropi
 
   const items = keep.map((k: any) => ({ id: String(k.li), k, sentences: sentencesOf(readNow(k.order)).map(closedS) })).filter((it: any) => it.sentences.length && !/^[…\s.]*$/.test(it.sentences.join("")));
   const changes: any[] = [];
+  const hold = items.length ? (await background(memoryId)).hold : [];
   if (items.length) {
     const user = `Language of the scenes: ${lang === "en" ? "English" : "Korean"}.\n\n` + items.map((it: any) =>
       `id: ${it.id}\nsentences:\n${it.sentences.map((x: string, i: number) => `${i}. ${x}`).join("\n")}\nvisitor's line: ${it.k.raw}`).join("\n\n");
@@ -476,6 +479,10 @@ async function kept(req: Request, cors: Record<string, string>, client: Anthropi
       if (!(index >= 0 && index < it.sentences.length)) continue;                                      // a number outside the scene: not placed
       if (!fitted) continue;                                                                           // the model would not place it (abuse, a link, someone's name): it does not remain
       const text = closedS(fitted.length <= it.k.raw.length * 2 + 12 ? fitted : it.k.raw);
+      // 261129: a line that tells what the author still holds back does not remain — the next walker may read this scene before the one that tells it.
+      // (Held here = every thing on the author's list except those this very scene is the place for.)
+      { const heldHere = hold.filter((h) => !h.until.includes(it.k.order)).map((h) => h.what);
+        if (heldHere.length && await heldBack(client, text + "\n(said as: " + it.k.raw + ")", heldHere)) { console.warn("[remain-turn] commit: a line told a held thing — not placed (scene " + it.k.order + ")"); continue; } }
       const was = it.sentences[index], next = it.sentences.slice(); next[index] = text;
       const row = now.get(it.k.order);
       const gone = new Set(sentencesOf(was)), ws = (Array.isArray(row?.walker_sentences) ? row.walker_sentences : []).filter((x: unknown) => !gone.has(String(x))).concat(sentencesOf(text));
@@ -598,12 +605,12 @@ serve(async (req: Request) => {
       const ids = new Set(items.map((it: any) => it.id));
       const out = (Array.isArray(parsed?.items) ? parsed.items : []).filter((o: any) => ids.has(String(o?.id))).map((o: any) => {
         const back = Math.round(Number(o?.back));
-        return { id: String(o.id), whom: ["narrator", "other", "nobody", "none"].includes(o?.whom) ? o.whom : "none", back: back >= 0 && back < blanks.length && blanks[back] ? back : -1, voice: o?.voice === true };
+        return { id: String(o.id), whom: ["narrator", "other", "nobody", "none"].includes(o?.whom) ? o.whom : "none", back: back >= 0 && back < blanks.length && blanks[back] ? back : -1, voice: o?.voice === true, reading: o?.reading === true && o?.voice !== true };
       });
       // 261129, a little later (author, of a walker who wrote on in the telling voice and of whom nothing would have remained: "something other than fault should change the text too"):
       // a line written as a sentence of the scene (voice) may remain as well. The pages pick by `whom`, so such a line is handed the lowest place among those that remain
       // ("nobody": lines about fault still come first); what was really read is in whom_read. To be made a rule of its own in remain.js.
-      for (const o of out as any[]) { o.whom_read = o.whom; if (o.whom === "none" && o.voice) o.whom = "nobody"; }
+      for (const o of out as any[]) { o.whom_read = o.whom; if (o.whom === "none" && (o.voice || o.reading)) o.whom = "nobody"; }   // + reading (author, 261129 "ㄱㄱ"): a line that says how the visitor reads a thing in the scene. What tells a thing the author still holds back is stopped at "commit".
       // 261129 (author: "take the second condition out" — and a walker was mid-walk on a page that still asks for it): a line that
       // speaks of fault and shares no blank's matter is handed a blank anyway (spread by its number), so a page loaded before the rule
       // changed lets it remain. What was really read is in back_read. The page of 261129 does not pick by `back`. TEMPORARY — take out once no old page is walking.
