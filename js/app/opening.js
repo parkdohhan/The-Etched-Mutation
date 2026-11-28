@@ -416,7 +416,7 @@ function _askVisited(dialogue, D) {
 }
 
 // 261124 작가: "와 본 적 있어" — 한 줄 뒤 오프닝을 팍 밀어내고 곧바로 메인 메뉴. (skipOpening 과 같은 정리, 기다림 없이)
-async function _shoveToMenu() {
+async function _shoveToMenu(soft) {   // soft (261128) = 밀어내지 않고 천천히 어두워진 뒤 메뉴
   openingSkipped = true;
   if (openingWaveAnimationId) { cancelAnimationFrame(openingWaveAnimationId); openingWaveAnimationId = null; }
   const sound = openingSound || document.getElementById('openingSound');
@@ -426,8 +426,9 @@ async function _shoveToMenu() {
     fadeOutSound(sound, 500);
   }
   const screen = document.getElementById('openingScreen');
-  if (screen) { screen.style.transition = 'transform 360ms cubic-bezier(0.7, 0, 0.84, 0)'; screen.style.transform = 'translateX(-110%)'; }
-  await new Promise(r => setTimeout(r, 380));
+  if (screen && soft) { screen.style.transition = 'opacity 1200ms ease'; screen.style.opacity = '0'; }
+  else if (screen) { screen.style.transition = 'transform 360ms cubic-bezier(0.7, 0, 0.84, 0)'; screen.style.transform = 'translateX(-110%)'; }
+  await new Promise(r => setTimeout(r, soft ? 1250 : 380));
   finishOpeningSequence();
 }
 
@@ -451,6 +452,10 @@ async function _runV2Sequence(opts) {
   await new Promise(r => setTimeout(r, 900)); // 정적 여백
 
   // 261124: 첫 진입(언어 고르고 시작)에서만 — 처음 온 사람인가
+  // 261128 작가: "튜토리얼 판을 따로 만들지 말고(처음이야? 이런 거 다 빼고) 그냥 메인 화면으로" — 언어를 고르면 누구든 곧바로 메뉴.
+  //   처음 온 브라우저에게는 첫 걸음 안에서 안내 문구만 뜬다(js/shared/first_guide.js). 아래 질문·연습판 길은 지우지 않고 남겨 둠.
+  //   되돌리기 = 이 세 줄 삭제.
+  if (opts && opts.askVisited) { await _shoveToMenu(true); return; }
   if (opts && opts.askVisited) {
     const visit = await _askVisited(dialogue, D);
     if (openingSkipped) return;

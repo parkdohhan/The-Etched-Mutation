@@ -45,6 +45,8 @@ import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, 
 import { createBackDoors } from './backdoor.js?v=261123b3';
 import { markWalked, chainNext, clearChain, takeGateAnswer, GATE_HOLE } from '../shared/person_shelf.js?v=261128a';
 import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author: "slips of the hand like this — sift them out"): what is typed is tidied before anything is done with it
+import { createTutor } from '../spaceremain/tutor.js?v=261128g';
+import { firstTime, guideSeen } from '../shared/first_guide.js?v=261128a';   // 261128: a browser new to TEM is shown the guiding lines on its first walk (no separate tutorial piece)
 import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';   // 261128: a walk under a no-trace ID (june) is written nowhere   // 261124: ARCHIVE = people's shelves · 261128: the gate (docs/아카이브_기억칸_질문_결정-261128.md)
 
 const $ = (id) => document.getElementById(id);
@@ -109,7 +111,8 @@ const run = {
 };
 window.__space = { run, mode: MODE, demo: DEMO };       // automation / inspection hook
 
-let cosmos, talk, map, air, pause, typeVoice, letGo = false;
+let cosmos, talk, map, air, pause, typeVoice, letGo = false, tutor = null;
+const GUIDE = !DEMO && firstTime(qs);                        // 261128: this browser has no mark of a walk → the guiding lines, once (?guide=1 / ?guide=0)
 let lex, typing, hand, backs, pressing = false, stayCtx = null;   // the blank: which words can go, how letters go and come, the holes in hand, the back doors, the stay now up
 const BACK_DIST = 17;                                       // the back door stands this far from the scene (staging)
 const letGoMark = () => { letGo = true; };
@@ -351,6 +354,7 @@ async function boot() {
   talk.body.addEventListener('click', (e) => { const tok = e.target.closest && e.target.closest('.sb-t.sb-can'); if (tok && hand.held()) useBlank(tok); });   // any word of the text: the walker chooses where the hole goes
   cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, ground: qs.get('fly') !== '1', footDrop: FOOT_DROP,   // 261128 night: a floor that is not seen — walked, not flown (?fly=1 = as it was)
     on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
+  if (GUIDE) tutor = createTutor({ lang: LANG, fast: FAST, typeText, touch: cosmos.isTouch() });
   map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
   // the back doors (a door onto a scene already read) live in the place, so they come after it
@@ -499,6 +503,7 @@ async function stay(scene, via, o) {
   const exchange = async (i, allowSilence) => {
     let answer;
     for (;;) {
+      if (tutor) tutor.say(i ? 'more' : 'ask');
       answer = await talk.ask({ allowSilence, guide: hand.held() ? (ko ? '말하거나 물을 수 있습니다 — 들고 온 빈 자리를 글의 아무 낱말에나 대면, 그 낱말이 빠집니다.' : 'Say something, or ask — or hold the empty place you carry against any word of the text: the word goes out.') : null });
       if (answer.silent) return null;
       const g = guard(answer.text);
@@ -700,6 +705,7 @@ async function openEyes(first) {
     : (ko ? [['W A S D', '나아갑니다'], ['화면을 누르면', '마우스로 둘러봅니다'], ['M · 마우스 오른쪽', '지도 — 지나온 장면으로 갑니다'], ['ESC', '멈춤 · 밝기 · 소리']]
           : [['W A S D', 'move'], ['click', 'then look with the mouse'], ['M · right mouse button', 'the map — go back to a scene'], ['ESC', 'pause · brightness · volume']]), 13000);
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
+  if (tutor) tutor.say('eyes');
   if (run.firstRes) await afterStay(run.firstRes);
 }
 
@@ -712,6 +718,7 @@ async function afterStay(res) {
   await wait(1500);
   raiseDoor(scene, next.scene);
   raiseBackDoor(scene, next.scene);
+  if (tutor) { if (run.visited.size < 2) tutor.say('door'); else if (run.backs.has(scene.id)) tutor.say('back').then(() => tutor.say('map')); else tutor.say('map'); }   // the first door: how a door is gone through · later: how to go back
   if (run.visited.size === 2 && !run.backHinted) {                         // said once: there is a reason to go back
     run.backHinted = true;
     setTimeout(() => { if (!run.ended && !run.busy && !run.crossing) hint(cosmos.isTouch() ? (ko ? '지나온 장면은 읽은 그대로 있지 않습니다 — 왼쪽 위 지도로 돌아가 볼 수 있습니다.' : 'A scene you passed does not stay as you read it — the map, top left, takes you back.') : (ko ? '지나온 장면은 읽은 그대로 있지 않습니다 — 지도(M)로 돌아가 볼 수 있습니다.' : 'A scene you passed does not stay as you read it — the map (M) takes you back.'), 11000); }, 9000 / FAST);
@@ -799,7 +806,7 @@ async function cross(from, to, way, kind) {
   cosmos.teleport(start, Math.atan2(-dir.x, -dir.z), 0);
   if (run.stub) cosmos.land(run.stub, 0.5);
   run.here = to.id; run.arrived.add(to.id); run.path.push(to.id); run.legs.push(leg);
-  if (first) { run.pending = to.id; dress(to, partB(to).left); }
+  if (first) { run.pending = to.id; dress(to, partB(to).left); if (tutor) tutor.say('next'); }
   else {
     if (run.visited.has(to.id)) { run.returns.set(to.id, (run.returns.get(to.id) || 0) + 1); run.returnDue = to.id; }   // only a scene that was read can be found changed
     if (kind !== 'new') logMove(from, to, kind === 'map' ? 'map_return' : 'door_return');
@@ -907,6 +914,8 @@ async function bakeLayers() {
 async function finish() {
   if (run.ended) return; run.ended = true;
   hint(''); nearLine(null); map.close(); $('spMapWrap').classList.remove('on'); $('rpWalk').classList.remove('on'); talk.hide();
+  if (tutor) tutor.hush();
+  if (GUIDE) guideSeen();                                                   // a walk ended with the guiding lines shown: this browser is not new any more
   if (hand.count()) run.blanks.push({ unused: hand.count() });
   hand.drop();                                                              // a hole never held against anything goes out with the walk
   if (backs) backs.hideAll();

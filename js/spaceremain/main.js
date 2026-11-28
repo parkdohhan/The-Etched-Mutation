@@ -41,6 +41,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import * as remain from './remain.js?v=261128d';
 import { runEnding, showOutside } from './ending.js?v=261128g';
 import { createTutor } from './tutor.js?v=261128g';
+import { firstTime, guideSeen } from '../shared/first_guide.js?v=261128a';   // 261128: no separate tutorial piece — a browser new to TEM is shown the guiding lines on its first walk
 
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
@@ -54,6 +55,7 @@ const AT = qs.get('at') || '';
 //   test      (?as=test) the preview as it was: nothing goes to the server; what a walk leaves is kept in this browser only
 const MODE = qs.get('as') === 'test' ? 'test' : qs.get('as') === 'tutorial' ? 'tutorial' : 'audience';
 const TUTOR = MODE === 'tutorial';
+const GUIDE = !TUTOR && firstTime(qs);                       // 261128: this browser has no mark of a walk → "another me" says how it is done, once, inside the real walk (?guide=1 / ?guide=0)
 let KEPT = MODE === 'audience' && !AT && !DRY;
 const STORE = KEPT ? remain.STORE.kept : remain.STORE.test;
 // 261128 (author: "I'll make the ID june — let nothing be recorded for it"): the real walk taken under a no-trace ID.
@@ -384,7 +386,7 @@ async function boot() {
   window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly') map.open(); });
   window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && cosmos.mode() === 'fly') map.toggle(); });
 
-  if (TUTOR) tutor = createTutor({ lang: LANG, fast: FAST, typeText, touch: cosmos.isTouch() });
+  if (TUTOR || GUIDE) tutor = createTutor({ lang: LANG, fast: FAST, typeText, touch: cosmos.isTouch() });
   // the fall before the first scene: the real walk and the practice have it (it can be skipped by holding a key); the preview does not, unless asked
   const withPrologue = !AT && (MODE === 'test' ? qs.get('prologue') === '1' : qs.get('prologue') !== '0');
   let entryP = Promise.resolve({ scene: firstScene(), gate: null });
@@ -1207,6 +1209,7 @@ async function finish() {
   cosmos.setMode('held'); if (cosmos.unlock) cosmos.unlock();
   if (backs) backs.hideAll();
   if (tutor) tutor.hush();
+  if (GUIDE) guideSeen();                                                   // a walk ended with the guiding lines shown: this browser is not new any more
   if (KEPT) {                                                               // the journal, as the space stage writes it (the next walker's prologue reads it)
     data.writeJournal(run.memory.id, run.id, { stage: data.STAGE_TAG, place: PLACE_TAG, kind: KIND, mode: MODE, visit_order: run.path.map((id) => sceneById(id).scene_order),
       scenes: run.rooms, legs: run.legs, contact: run.contact, model: Array.from(run.place).map(([id, p]) => ({ scene: sceneById(id).scene_order, from: sceneById(p.from).scene_order, compared: p.compared, d: p.d, shift: p.shift, pos: run.Q.get(id) || null })),
