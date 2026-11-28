@@ -550,7 +550,7 @@ async function entry(gateAnswer) {
   }
   { const quest = String((run.memory.meta && run.memory.meta.remain && run.memory.meta.remain.quest) || '').trim();   // the one question a walk is taken with (memories.meta.remain.quest — the author's; without it nothing is shown)
     if (quest) { await typeText(line, quest, { per: 80, pace: 1 / FAST }); await wait(2600); } }
-  typeText(note, DEMO ? (NEXT ? (ko ? '데모 — 다음 사람으로 걷습니다' : 'demo — walking as the next person') : (ko ? '데모 — 아무것도 남지 않습니다' : 'demo — nothing is kept')) : TUTOR ? (ko ? '연습 — 남지 않습니다' : 'practice — nothing is kept') : KEPT ? '' : FREE ? (ko ? '기록 없는 걸음 — 아무것도 남지 않습니다' : 'a walk off the record — nothing is kept') : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
+  typeText(note, DEMO ? '' : TUTOR ? (ko ? '연습 — 남지 않습니다' : 'practice — nothing is kept') : KEPT ? '' : FREE ? (ko ? '기록 없는 걸음 — 아무것도 남지 않습니다' : 'a walk off the record — nothing is kept') : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
   let blanks = remain.blanksFor(run.memory.code, LANG).slice(), gate = null;
   if (gateAnswer && String(gateAnswer.line || '').includes(remain.HOLE) && guard(gateAnswer.text).ok) {
     gate = gateAnswer;
