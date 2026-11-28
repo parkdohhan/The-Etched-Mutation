@@ -22,7 +22,7 @@ import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const MODEL = "claude-opus-5-5";
-const VERSION = "remain_turn_v3_2026_11_29";
+const VERSION = "remain_turn_v4_2026_11_29";
 
 function getCorsHeaders(req: Request): Record<string, string> {
   const allowedOriginsRaw = Deno.env.get("ALLOWED_ORIGINS") || "";
@@ -237,7 +237,7 @@ const JUDGE_SYSTEM = `You read what a visitor said to scenes of a short memory p
 
 You are given the three sentences the visitor wrote about THEMSELVES before going in, numbered 0 to 2, and then items: a scene's text and one line the visitor said to that scene.
 
-For each item answer two things.
+For each item answer three things.
 
 "whom" — whom the line holds to account for what happens in the scene.
 - "narrator": the "I" of the scene (the visitor usually calls them "you"). To hold to account is to say or imply they should have done otherwise, or to demand that they answer for what they did. "You should have picked up." "Why did you look away?" "You did that."
@@ -246,6 +246,8 @@ For each item answer two things.
 - "none": the line is not about fault at all. A question of plain fact ("Who was calling?", "How old were you?"), a remark, a description.
 
 "back" — the number of the ONE sentence among the three whose matter the line shares: the visitor is speaking, about the person in the scene, of the very kind of act or failing they wrote of in themselves — both about a call not answered, both about what one does on the nights one is left alone, both about a thing never said to someone, and the like. It does not matter whether the line condemns or excuses; what matters is that it is the same matter. If no sentence shares its matter, -1. Do not stretch: a shared mood, a shared word, or a shared person alone is not a shared matter.
+
+"voice" — true when the line is itself written as a sentence OF the scene: narration that continues, rewords or adds to the text, in the telling voice — a statement of what is done, seen, felt or decided there ("I shut out the water with one eye only.", "Sound, tremor, dread and hope.", "I knock once more. My hand hurts."), or the visitor telling how they take what is told, as a statement ("I thought it was something like desperation."). false when the line is a question, a request, an order, a greeting, or talk about something outside the scene.
 
 Return every item you were given, with its "id" unchanged.`;
 
@@ -256,8 +258,8 @@ const JUDGE_SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { id: { type: "string" }, whom: { type: "string", enum: ["narrator", "other", "nobody", "none"] }, back: { type: "integer" } },
-        required: ["id", "whom", "back"],
+        properties: { id: { type: "string" }, whom: { type: "string", enum: ["narrator", "other", "nobody", "none"] }, back: { type: "integer" }, voice: { type: "boolean" } },
+        required: ["id", "whom", "back", "voice"],
         additionalProperties: false,
       },
     },
@@ -596,8 +598,12 @@ serve(async (req: Request) => {
       const ids = new Set(items.map((it: any) => it.id));
       const out = (Array.isArray(parsed?.items) ? parsed.items : []).filter((o: any) => ids.has(String(o?.id))).map((o: any) => {
         const back = Math.round(Number(o?.back));
-        return { id: String(o.id), whom: ["narrator", "other", "nobody", "none"].includes(o?.whom) ? o.whom : "none", back: back >= 0 && back < blanks.length && blanks[back] ? back : -1 };
+        return { id: String(o.id), whom: ["narrator", "other", "nobody", "none"].includes(o?.whom) ? o.whom : "none", back: back >= 0 && back < blanks.length && blanks[back] ? back : -1, voice: o?.voice === true };
       });
+      // 261129, a little later (author, of a walker who wrote on in the telling voice and of whom nothing would have remained: "something other than fault should change the text too"):
+      // a line written as a sentence of the scene (voice) may remain as well. The pages pick by `whom`, so such a line is handed the lowest place among those that remain
+      // ("nobody": lines about fault still come first); what was really read is in whom_read. To be made a rule of its own in remain.js.
+      for (const o of out as any[]) { o.whom_read = o.whom; if (o.whom === "none" && o.voice) o.whom = "nobody"; }
       // 261129 (author: "take the second condition out" — and a walker was mid-walk on a page that still asks for it): a line that
       // speaks of fault and shares no blank's matter is handed a blank anyway (spread by its number), so a page loaded before the rule
       // changed lets it remain. What was really read is in back_read. The page of 261129 does not pick by `back`. TEMPORARY — take out once no old page is walking.
