@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@300;400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/room-play.css?v=261121b" />
-  <link rel="stylesheet" href="css/record-space.css?v=261124c" />
+  <link rel="stylesheet" href="css/record-space.css?v=261128a" />
   <link rel="stylesheet" href="css/tem_cursor.css?v=260809" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -125,18 +125,19 @@
         <div class="rs-sub-head"><span class="rs-sub-title t-thing"></span><span class="rs-status s-thing"></span></div>
         <canvas class="rs-preview" hidden></canvas>
         <div class="rs-thing-note"></div>
+        <textarea class="rs-text rs-want f-thing-want" rows="2" maxlength="400"></textarea>
         <div class="rs-row-btns"><button class="rp-btn b-thing" type="button"></button><button class="rs-small b-thing-again" type="button" hidden></button><button class="rs-small b-thing-drop" type="button" hidden></button></div>
       </div>
 
       <div class="rs-sub">
         <div class="rs-sub-head"><span class="rs-sub-title t-sound"></span><span class="rs-status s-sound"></span></div>
-        <textarea class="rs-text f-sound-prompt" rows="2" maxlength="400" hidden></textarea>
+        <textarea class="rs-text rs-want f-sound-prompt" rows="2" maxlength="400"></textarea>
         <audio class="rs-audio" controls hidden></audio>
-        <div class="rs-row-btns"><button class="rp-btn b-sound-draft" type="button"></button><button class="rs-small b-sound-gen" type="button" hidden></button><button class="rs-small b-sound-clear" type="button" hidden></button></div>
+        <div class="rs-row-btns"><button class="rp-btn b-sound-draft" type="button"></button><button class="rs-small b-sound-gen" type="button"></button><button class="rs-small b-sound-clear" type="button" hidden></button></div>
       </div>
     </article>
   </template>
 
-  <script type="module" src="js/recordspace/main.js?v=261128b"></script>
+  <script type="module" src="js/recordspace/main.js?v=261128c"></script>
 </body>
 </html>

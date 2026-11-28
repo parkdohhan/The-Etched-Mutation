@@ -141,3 +141,6 @@ html { background: #000; }   /* 261124: below a short page (the gate) the html b
 .rs-story .rs-way .rs-small.on { color: var(--rp-accent, #c4a882); border-color: var(--rp-accent, #c4a882); }
 .rs-story-text { margin-top: 1rem; min-height: 12rem; font-size: 0.92rem; line-height: 1.9; }
 .rs-story-note { margin: 0.8rem 0 0; font-size: 0.78rem; color: #6f6c78; letter-spacing: 0.04em; line-height: 1.8; }
+
+/* 261128: what the thing / the sound is, in the author's own words (optional) — a smaller field than a scene's text */
+.rs-want { min-height: 3.2rem; font-size: 0.92rem; line-height: 1.8; margin: 0.4rem 0 0.6rem; }
