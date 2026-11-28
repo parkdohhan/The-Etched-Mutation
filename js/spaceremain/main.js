@@ -1251,7 +1251,8 @@ function onFrame(dt) {
   lockTick += dt;
   if (lockTick > 0.3) {                                                    // 261128 night: the mouse looks round only after the screen is pressed — said for as long as it is not
     lockTick = 0;
-    const m = cosmos.mode(), need = !cosmos.isTouch() && !cosmos.locked() && (m === 'fly' || m === 'walk') && !run.busy && !run.crossing && !run.ended && !(map && map.isOpen()) && !(pause && pause.isOpen());
+    const m = cosmos.mode(), need = !cosmos.isTouch() && !cosmos.locked() && (m === 'fly' || m === 'walk') && !run.busy && !run.crossing && !run.ended && !(map && map.isOpen()) && !(pause && pause.isOpen())
+      && !($('spGuide') && $('spGuide').classList.contains('on'));           // 261128 late: not over the four lines about the keys (they say the same thing, and the two lay on each other)
     let el = $('srLook'); if (!el) { el = document.createElement('div'); el.id = 'srLook'; el.textContent = ko ? '화면을 누르면 마우스로 둘러봅니다' : 'click the screen to look round with the mouse'; document.body.appendChild(el); }
     el.classList.toggle('on', !!need);
   }
