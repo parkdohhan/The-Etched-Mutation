@@ -490,6 +490,8 @@ export function createCosmos(opts) {
       pl.tyaw = lookTween.y0 + lookTween.dy * e; pl.tpitch = lookTween.p0 + (lookTween.p1 - lookTween.p0) * e;
       if (k >= 1) { const r = lookTween.res; lookTween = null; r(); }
     }
+    // 261129: a stage may hold the head's tilt for a while (the door drawn beside a text is seen where the place's door stands, tilt and all — it must not slide off it while it fades); after that the head levels slowly.
+    if (pl.tiltHold && performance.now() > pl.tiltHold) { pl.tpitch += (0 - pl.tpitch) * (1 - Math.exp(-dt / 0.9)); if (Math.abs(pl.tpitch) < 0.004) { pl.tpitch = 0; pl.tiltHold = 0; } }
     pl.yaw += (pl.tyaw - pl.yaw) * er; pl.pitch += (pl.tpitch - pl.pitch) * er;
     if (pl.mode === 'cine' && cineFn) cineFn(dt, time);                    // the ending moves the eye itself (sets pl.pos / pl.yaw / pl.pitch)
 
@@ -573,7 +575,7 @@ export function createCosmos(opts) {
       pl.tyaw += dh; pl.yaw += dh;                                         // the way turns the walker with it; the look stays theirs
       if (pl.blend > 0) {                                                  // on landing the eyes come round to the way, once
         let d = hd - pl.tyaw; d = Math.atan2(Math.sin(d), Math.cos(d));
-        const k = 1 - Math.exp(-dt / 0.55); pl.tyaw += d * k; pl.tpitch += (0 - pl.tpitch) * k; pl.blend -= dt / 1.6;
+        const k = 1 - Math.exp(-dt / 0.55); pl.tyaw += d * k; if (!pl.tiltHold) pl.tpitch += (0 - pl.tpitch) * k; pl.blend -= dt / 1.6;
       }
       const tp = T1.set(q.x, q.y + EYE + Math.sin(pl.bob) * 0.012, q.z);
       pl.pos.lerp(tp, 1 - Math.exp(-dt / 0.12));
@@ -657,7 +659,7 @@ export function createCosmos(opts) {
   const turn = (dx, dy, k) => {
     if (!canMove()) return;
     if (lookTween) { if (Math.abs(dx) + Math.abs(dy) < 3) return; const r = lookTween.res; lookTween = null; r(); }
-    pl.tyaw -= dx * k; pl.tpitch = clamp(pl.tpitch - dy * k, -1.45, 1.45);
+    pl.tyaw -= dx * k; pl.tpitch = clamp(pl.tpitch - dy * k, -1.45, 1.45); pl.tiltHold = 0;   // the look is theirs
   };
   window.addEventListener('keydown', (e) => {
     if (/^(INPUT|SELECT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) return;

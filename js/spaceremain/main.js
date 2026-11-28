@@ -24,7 +24,7 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261128g';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261129a';
 import { isSilent } from '../spaceplay/things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
@@ -946,7 +946,7 @@ async function openEyes(first) {
   cosmos.placeThing(first, V3(run.Q.get(first.id)), at);
   cosmos.teleport(at, 0, 0); cosmos.face(V3(run.Q.get(first.id)));
   if (LAID && lays.has(first.id)) cosmos.holdThing(first.id, true);         // 261128 late: the thing and its words wait until the way has been drawn
-  if (LAID) { const l = lays.get(first.id); if (l) cosmos.teleport(l.N.clone().add(new T.Vector3(0, cosmos.EYE, 0)), Math.atan2(-l.f.x, -l.f.z), 0); else layOut(first, (run.firstRes && run.firstRes.next && run.firstRes.next.scene) || null); }   // 261128 late: where the door beside the text was drawn from
+  if (LAID) { const l = lays.get(first.id); if (l) cosmos.teleport(l.N.clone().add(new T.Vector3(0, cosmos.EYE, 0)), Math.atan2(-l.f.x, -l.f.z), l.tilt || 0); else layOut(first, (run.firstRes && run.firstRes.next && run.firstRes.next.scene) || null); }   // 261128 late: where the door beside the text was drawn from
   air.focus(null);
   cosmos.setMode('held'); cosmos.start();
   dress(first, run.firstLeft);
@@ -977,7 +977,7 @@ async function afterStay(res) {
   if (!laid) cosmos.holdThing(scene.id, false);                               // (no way is being drawn from a text: nothing to wait for)
   if (!laid) await wait(1500);
   raiseDoor(scene, next.scene);
-  { const sd = $('srSideDoor'); if (sd) { setTimeout(() => sd.classList.remove('on'), 900); setTimeout(() => sd.remove(), 3400); } }   // the drawn door gives way to the place's door, standing in the same spot
+  { const sd = $('srSideDoor'); if (sd) { cosmos.pl.tiltHold = performance.now() + 3300; setTimeout(() => sd.classList.remove('on'), 900); setTimeout(() => sd.remove(), 3400); } }   // the drawn door gives way to the place's door, standing in the same spot
   { const gd = $('spGuide'); if (gd) gd.classList.remove('on'); }               // the four lines about the keys do not stand over the door
   if (!laid) doorSound();
   if (!tutor && !laid) hint(ko ? '문이 생겼습니다' : 'A door has appeared', 8000);
@@ -1008,22 +1008,34 @@ function layOut(scene, next) {
   const T = window.THREE, Qf = V3(run.Q.get(scene.id));
   if (next) placeFor(scene, next);
   const e = next ? horiz(V3(run.Q.get(next.id)).sub(Qf), run.id + scene.id + next.id) : horiz(new T.Vector3(0, 0, 0), run.id + scene.id + 'lay');
-  const sg = hashStr(run.id + scene.id + 'layside') < 0.5 ? -1 : 1, s = new T.Vector3(-e.z, 0, e.x).multiplyScalar(sg), y = Qf.y - FOOT_DROP;
+  const lot = seeded(run.id + scene.id + 'lay');   // 261129: drawn with the mixing generator — hashStr alone hardly moves when only the front of the string differs (the walk's id), so the door always came up on the same side
+  const sg = lot() < 0.5 ? -1 : 1, s = new T.Vector3(-e.z, 0, e.x).multiplyScalar(sg), y = Qf.y - FOOT_DROP;
   const D = Qf.clone().addScaledVector(e, LAY.door).setY(y), N = Qf.clone().addScaledVector(e, -LAY.back).addScaledVector(s, LAY.off).setY(y);
-  const VIEW = Math.tan((58 / 2) * Math.PI / 180), turn = Math.min(36 * Math.PI / 180, Math.atan(0.62 * VIEW * (innerWidth / Math.max(1, innerHeight))));   // 58 = the place's field of view (js/spaceplay/cosmos.js FOV)
+  // 261129 (author: "the door seems to come up at a set spot — make it random; anywhere in the empty room at either side will do"):
+  // where the door is seen is drawn by lot for each scene of each walk — how far out to the side (clear of the text column, inside the window) and how high.
+  // The door of the place does not move for it: the head is turned and tilted so that the door is seen there (the tilt levels off as one walks).
+  const VIEW = Math.tan((58 / 2) * Math.PI / 180), K0 = (innerHeight / 2) / VIEW;   // 58 = the place's field of view (js/spaceplay/cosmos.js FOV)
+  const colEl = document.querySelector('#rpRoom .rp-column'), colR = colEl ? colEl.getBoundingClientRect() : null, colHalf = colR && colR.width ? Math.min(innerWidth * 0.36, colR.width / 2) : innerWidth * 0.17;
+  const offMax = Math.min(Math.tan(36 * Math.PI / 180) * K0, innerWidth / 2 - 70), offMin = Math.min(offMax, colHalf + 80);
+  const turn = Math.atan((offMin + (offMax - offMin) * lot()) / K0);
+  const tiltTo = innerHeight * (0.26 + 0.44 * lot());   // where the middle of the door is to be seen, from the top of the window
   const dd = D.clone().sub(N).setY(0).normalize(), c = Math.cos(turn), sn = Math.sin(turn);
   const r1 = new T.Vector3(dd.x * c + dd.z * sn, 0, -dd.x * sn + dd.z * c), r2 = new T.Vector3(dd.x * c - dd.z * sn, 0, dd.x * sn + dd.z * c);
   const f = r1.dot(s) > r2.dot(s) ? r1 : r2;                               // turned a little off the door, away from the thing: the door stands at one side of what is seen; the thing is further round on that side, out of sight until the head is turned
   // where the door of the place is seen from here, in the window: the door beside the text is drawn exactly there, at exactly that size —
   // pressed, it does not move; the way to it is what comes up (author, 261128 late: "as in the old text room — the door stays where it is, only my way to it turns 3D; the door just floats there, small")
-  const v = D.clone().sub(N), zc = v.x * f.x + v.z * f.z, xc = v.x * -f.z + v.z * f.x, K = (innerHeight / 2) / VIEW, dh = cosmos.DOOR_H;
-  const h = (dh / zc) * K, w = h * DOOR_ASPECT, px = { left: innerWidth / 2 + (xc / zc) * K - w / 2, top: innerHeight / 2 - ((dh - cosmos.EYE) / zc) * K, w, h };
+  const v = D.clone().sub(N), zc0 = v.x * f.x + v.z * f.z, xc = v.x * -f.z + v.z * f.x, K = K0, dh = cosmos.DOOR_H;
+  const mid0 = innerHeight / 2 - ((dh / 2 - cosmos.EYE) / zc0) * K, tilt = Math.max(-0.3, Math.min(0.3, Math.atan((tiltTo - mid0) / K)));   // head up → the door is seen lower
+  const cp = Math.cos(tilt), sp = Math.sin(tilt);
+  const seen = (yUp) => { const z = zc0 * cp + yUp * sp, yv = -zc0 * sp + yUp * cp; return { z, y: innerHeight / 2 - (yv / z) * K }; };   // a point of the door's middle line, yUp above the eye
+  const top = seen(dh - cosmos.EYE), bot = seen(-cosmos.EYE), zc = (top.z + bot.z) / 2;
+  const h = bot.y - top.y, w = h * DOOR_ASPECT, px = { left: innerWidth / 2 + (xc / zc) * K - w / 2, top: top.y, w, h };
   const sd = xc > 0 ? 1 : -1, cv = Math.cos(LAY.veer), sv = Math.sin(LAY.veer);
   const u = new T.Vector3(f.x * cv - (-f.z) * sd * sv, 0, f.z * cv - f.x * sd * sv).normalize();   // where the way sets out: turned off the door's side
   const S = N.clone().addScaledVector(f, LAY.ahead);                           // where the way begins: a little ahead of the feet (under them it filled the foot of the view)
-  const lay = { D, e, N, f, u, S, px, side: xc > 0 ? 'right' : 'left' };
+  const lay = { D, e, N, f, u, S, px, tilt, side: xc > 0 ? 'right' : 'left' };
   lays.set(scene.id, lay);
-  cosmos.teleport(N.clone().add(new T.Vector3(0, cosmos.EYE, 0)), Math.atan2(-f.x, -f.z), 0);
+  cosmos.teleport(N.clone().add(new T.Vector3(0, cosmos.EYE, 0)), Math.atan2(-f.x, -f.z), tilt);
   return lay;
 }
 /**
@@ -1045,7 +1057,7 @@ function sideDoor(scene, res) {
     requestAnimationFrame(() => requestAnimationFrame(() => b.classList.add('on')));
     if (typeof doorSound === 'function') doorSound();
     hint(ko ? '문이 생겼습니다 — 문을 누르면 그리로 갑니다' : 'A door has appeared — press it to go to it', 14000);
-    b.addEventListener('click', () => { if (b.disabled) return; b.disabled = true; b.classList.add('gone'); hint(''); talk.hide(); resolve(); });   // the door itself stays: it is let go only when the place's own door stands in it (afterStay)
+    b.addEventListener('click', () => { if (b.disabled) return; b.disabled = true; b.classList.add('gone'); cosmos.pl.tiltHold = performance.now() + 60000; hint(''); talk.hide(); resolve(); });   // the door itself stays: it is let go only when the place's own door stands in it (afterStay)
   });
 }
 /** A new scene, come to by a door: its text on the dark, then the place. */
@@ -1069,7 +1081,7 @@ async function readThere(scene) {
   air.focus(null);
   if (run.ended) return;
   if (!lays.has(scene.id)) layOut(scene, (res.next && res.next.scene) || null);   // (laid out when the door was drawn: the window may have been resized since — the door must not move)
-  else { const l = lays.get(scene.id); cosmos.teleport(l.N.clone().add(new window.THREE.Vector3(0, cosmos.EYE, 0)), Math.atan2(-l.f.x, -l.f.z), 0); }
+  else { const l = lays.get(scene.id); cosmos.teleport(l.N.clone().add(new window.THREE.Vector3(0, cosmos.EYE, 0)), Math.atan2(-l.f.x, -l.f.z), l.tilt || 0); }
   $('spCosmos').classList.add('on'); $('spMapWrap').classList.add('on');
   await wait(300);
   if (run.ended) return;
