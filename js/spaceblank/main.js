@@ -46,6 +46,7 @@ import { createBackDoors } from './backdoor.js?v=261123b3';
 import { markWalked, chainNext, clearChain, takeGateAnswer, GATE_HOLE } from '../shared/person_shelf.js?v=261128a';
 import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author: "slips of the hand like this — sift them out"): what is typed is tidied before anything is done with it
 import { createTutor } from '../spaceremain/tutor.js?v=261128h';
+import { drawAsciiDoor, DOOR_ASPECT } from '../roomplay/asciidoor.js';                 // 261128 late: the door beside the text
 import { firstTime, guideSeen } from '../shared/first_guide.js?v=261128a';   // 261128: a browser new to TEM is shown the guiding lines on its first walk (no separate tutorial piece)
 import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';   // 261128: a walk under a no-trace ID (june) is written nowhere   // 261124: ARCHIVE = people's shelves · 261128: the gate (docs/아카이브_기억칸_질문_결정-261128.md)
 
@@ -371,7 +372,7 @@ async function boot() {
     onEnd: () => {                                                         // 261128 (author): "end the story here" — the walk is closed where it stands and its ending is shown, as for a walk gone to its end (only with fewer scenes)
       if (run.ended) return;
       if (!cosmos.things.size) { toast(ko ? '첫 장면을 지난 뒤에 끝낼 수 있습니다' : 'It can be ended once the first scene is passed'); return; }
-      (function go() { if (run.crossing) return setTimeout(go, 300); finish(); })();
+      (function go() { if (run.crossing) return setTimeout(go, 300); const sd = $('srSideDoor'); if (sd) sd.remove(); $('spCosmos').classList.add('on'); finish(); })();   // (the place may be dark under a text)
     },
     onLeave: () => { clearChain(); try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); } });
   Object.assign(window.__space, { cosmos, talk, map, air, finish, pause, hand, lex, useBlank, HOLE, backs });
@@ -405,6 +406,7 @@ async function boot() {
       try { const res = await stay(first, 'start', { dark: true }); run.firstRes = res; run.firstLeft = res.left; }
       catch (e) { console.error('[space] first stay', e); run.busy = false; talk.hide(); toast(ko ? '첫 장면을 읽지 못했습니다' : 'The first scene could not be read'); fakeStay(first); }   // the place still opens
     }
+    await sideDoor(first, run.firstRes);                                    // 261128 late: the text stays up until the door at its side is pressed
     await openEyes(first);
     if (MODE === 'test' && qs.get('blank')) hand.give({ from: first.id, order: first.scene_order, word: '', was: null, said: [qs.get('blank')], others: [] }, null);   // practice: a hole already in hand
   };
@@ -621,7 +623,7 @@ async function stay(scene, via, o) {
     door: next.scene ? { to: next.scene.scene_order, mode: next.mode, pattern, rig: !!next.rig } : (next.mode === 'end' ? { to: null, mode: 'end', rig: true } : null), ranked: (next.ranked || []).slice(0, 5), shadow: next.shadow || null });
 
   await wait(900);
-  talk.hide();
+  if (!(dark && LAID)) talk.hide();                                        // 261128 late: read on the dark, the text stays up until the door beside it is pressed (sideDoor)
   stayCtx = null;
   run.busy = false;
   if (holeTok && !run.blankHinted) { run.blankHinted = true; setTimeout(() => { if (!run.ended) hint(ko ? '어긋난 자리에서 빈 자리 하나가 떨어져 나와, 따라옵니다.' : 'Where it did not fit, an empty place came loose. It follows you.', 10000); }, 1600 / FAST); }
@@ -697,6 +699,7 @@ async function openEyes(first) {
   const at = new T.Vector3(0, 2.6, 9.5);                                  // a little above it: a thing is read from its top as much as its side
   cosmos.placeThing(first, V3(run.Q.get(first.id)), at);
   cosmos.teleport(at, 0, 0); cosmos.face(V3(run.Q.get(first.id)));
+  if (LAID) { const l = lays.get(first.id); if (l) cosmos.teleport(l.N.clone().add(new T.Vector3(0, cosmos.EYE, 0)), Math.atan2(-l.f.x, -l.f.z), 0); else layOut(first, (run.firstRes && run.firstRes.next && run.firstRes.next.scene) || null); }   // 261128 late: where the door beside the text was drawn from
   air.focus(null);                                                        // from here on, the distance to a thing decides what is heard
   cosmos.setMode('held'); cosmos.start();
   dress(first, run.firstLeft);
@@ -723,10 +726,12 @@ async function afterStay(res) {
   if (run.here === scene.id && cosmos.things.has(scene.id)) afterSpeech(scene, res);
   if (next.mode === 'end' || !next.scene) { run.busy = true; await wait(next.mode === 'end' ? 3200 : 1800); return finish(); }   // busy: nothing else is begun while the walk closes
   if (next.mode === 'fallback') hint(ko ? '기억의 빈틈이 다른 장면을 끌어당긴다.' : 'A gap in the memory pulls another scene toward you.', 7000);
-  await wait(1500);
+  const laid = LAID && lays.has(scene.id);                                   // the door was already pressed, beside the text: it is simply there
+  if (!laid) await wait(1500);
   raiseDoor(scene, next.scene);
+  { const sd = $('srSideDoor'); if (sd) { setTimeout(() => sd.classList.remove('on'), 900); setTimeout(() => sd.remove(), 3400); } }   // the drawn door gives way to the place's door, standing in the same spot
   raiseBackDoor(scene, next.scene);
-  if (tutor) { if (run.visited.size < 2) tutor.say('door'); else if (run.backs.has(scene.id)) tutor.say('back').then(() => tutor.say('map')); else tutor.say('map'); }   // the first door: how a door is gone through · later: how to go back
+  if (tutor) { if (run.visited.size < 2) { if (!laid) tutor.say('door'); } else if (run.backs.has(scene.id)) tutor.say('back').then(() => tutor.say('map')); else tutor.say('map'); }   // the first door: how a door is gone through · later: how to go back
   if (run.visited.size === 2 && !run.backHinted) {                         // said once: there is a reason to go back
     run.backHinted = true;
     setTimeout(() => { if (!run.ended && !run.busy && !run.crossing) hint(cosmos.isTouch() ? (ko ? '지나온 장면은 읽은 그대로 있지 않습니다 — 왼쪽 위 지도로 돌아가 볼 수 있습니다.' : 'A scene you passed does not stay as you read it — the map, top left, takes you back.') : (ko ? '지나온 장면은 읽은 그대로 있지 않습니다 — 지도(M)로 돌아가 볼 수 있습니다.' : 'A scene you passed does not stay as you read it — the map (M) takes you back.'), 11000); }, 9000 / FAST);
@@ -737,18 +742,98 @@ function horiz(v, key) {
   if (d.lengthSq() < 1e-4) { const a = hashStr(key) * Math.PI * 2; d.set(Math.cos(a), 0, Math.sin(a)); }
   return d.normalize();
 }
-function raiseDoor(from, to) {
-  if (!run.Q.has(to.id)) {
-    const p = placeNext(run.acc, run.Q, from.id, to.id, run.readings.get(from.id) || null);
-    run.Q.set(to.id, p.pos); run.place.set(to.id, Object.assign({ from: from.id }, p));
+// ── the text in the middle, a door at one side, the thing on the way to it (261128 late) ──────────────
+// Author: "not the 3D thing in the middle — as it was: the text in the middle, a door coming up at random on one side,
+// 2D turning to 3D as one walks to the door, and the thing on the way." A scene is read on the dark (as the first always
+// was); when the walker has spoken the place comes up with them standing beside the scene's thing, the door written to one
+// side of what they see, and the way to it passing the thing. Nothing is walked up to for a new scene's text.
+// A scene gone back to (by the map) is as before. ?lay=0 = the thing in the middle, as it was until now.
+const LAID = qs.get('lay') !== '0';
+const LAY = { door: 14, back: 4, off: 6, turn: 22 * Math.PI / 180 };   // (261128 late, second build: the thing stands at the walker's side — seen by looking aside — and not between them and the door)     // staging (free values): the door this far past the thing · the walker this far before it and this far aside · the door this far off the middle of the view
+const lays = new Map();                                                    // scene id → { D door, e its direction, N where the walker stands, f where they look }
+function placeFor(from, to) {
+  if (run.Q.has(to.id)) return;
+  const p = placeNext(run.acc, run.Q, from.id, to.id, run.readings.get(from.id) || null);
+  run.Q.set(to.id, p.pos); run.place.set(to.id, Object.assign({ from: from.id }, p));
+}
+function layOut(scene, next) {
+  const T = window.THREE, Qf = V3(run.Q.get(scene.id));
+  if (next) placeFor(scene, next);
+  const e = next ? horiz(V3(run.Q.get(next.id)).sub(Qf), run.id + scene.id + next.id) : horiz(new T.Vector3(0, 0, 0), run.id + scene.id + 'lay');
+  const sg = hashStr(run.id + scene.id + 'layside') < 0.5 ? -1 : 1, s = new T.Vector3(-e.z, 0, e.x).multiplyScalar(sg), y = Qf.y - FOOT_DROP;
+  const D = Qf.clone().addScaledVector(e, LAY.door).setY(y), N = Qf.clone().addScaledVector(e, -LAY.back).addScaledVector(s, LAY.off).setY(y);
+  const VIEW = Math.tan((58 / 2) * Math.PI / 180), turn = Math.min(36 * Math.PI / 180, Math.atan(0.62 * VIEW * (innerWidth / Math.max(1, innerHeight))));   // 58 = the place's field of view (js/spaceplay/cosmos.js FOV)
+  const dd = D.clone().sub(N).setY(0).normalize(), c = Math.cos(turn), sn = Math.sin(turn);
+  const r1 = new T.Vector3(dd.x * c + dd.z * sn, 0, -dd.x * sn + dd.z * c), r2 = new T.Vector3(dd.x * c - dd.z * sn, 0, dd.x * sn + dd.z * c);
+  const f = r1.dot(s) > r2.dot(s) ? r1 : r2;                               // turned a little off the door, away from the thing: the door stands at one side of what is seen; the thing is further round on that side, out of sight until the head is turned
+  // where the door of the place is seen from here, in the window: the door beside the text is drawn exactly there, at exactly that size —
+  // pressed, it does not move; the way to it is what comes up (author, 261128 late: "as in the old text room — the door stays where it is, only my way to it turns 3D; the door just floats there, small")
+  const v = D.clone().sub(N), zc = v.x * f.x + v.z * f.z, xc = v.x * -f.z + v.z * f.x, K = (innerHeight / 2) / VIEW, dh = cosmos.DOOR_H;
+  const h = (dh / zc) * K, w = h * DOOR_ASPECT, px = { left: innerWidth / 2 + (xc / zc) * K - w / 2, top: innerHeight / 2 - ((dh - cosmos.EYE) / zc) * K, w, h };
+  const lay = { D, e, N, f, px, side: xc > 0 ? 'right' : 'left' };
+  lays.set(scene.id, lay);
+  cosmos.teleport(N.clone().add(new T.Vector3(0, cosmos.EYE, 0)), Math.atan2(-f.x, -f.z), 0);
+  return lay;
+}
+/**
+ * The door, in the room left beside the text (261128 late — the author, putting right what was first built: "not like that.
+ * The letters stay up as they are; in what is left at the side there is a door; only when that door is pressed does the
+ * text go and the way to the door turn 3D — and looking to the side, there is the thing. As it used to be.")
+ * Stands on the side the door will stand on in the place. Resolves when it is pressed.
+ */
+function sideDoor(scene, res) {
+  const next = res && res.next && res.next.scene;
+  if (!LAID || !next || run.ended) { talk.hide(); return Promise.resolve(); }
+  if (!run.Q.has(scene.id)) run.Q.set(scene.id, [0, 0, 0]);
+  const lay = layOut(scene, next);
+  return new Promise((resolve) => {
+    const b = document.createElement('button'); b.type = 'button'; b.id = 'srSideDoor'; b.className = lay.side; b.setAttribute('aria-label', ko ? '문' : 'the door');
+    b.style.left = lay.px.left + 'px'; b.style.top = lay.px.top + 'px'; b.style.width = lay.px.w + 'px'; b.style.height = lay.px.h + 'px';
+    b.appendChild(drawAsciiDoor(document.createElement('canvas'), 0, { px: 30, tone: true }));
+    document.body.appendChild(b);
+    requestAnimationFrame(() => requestAnimationFrame(() => b.classList.add('on')));
+    if (typeof doorSound === 'function') doorSound();
+    hint(ko ? '문이 생겼습니다 — 문을 누르면 그리로 갑니다' : 'A door has appeared — press it to go to it', 14000);
+    b.addEventListener('click', () => { if (b.disabled) return; b.disabled = true; b.classList.add('gone'); hint(''); talk.hide(); resolve(); });   // the door itself stays: it is let go only when the place's own door stands in it (afterStay)
+  });
+}
+/** A new scene, come to by a door: its text on the dark, then the place. */
+async function readThere(scene) {
+  run.pending = null;
+  $('spCosmos').classList.remove('on'); $('spMapWrap').classList.remove('on'); cosmos.setMode('held');
+  await veil(false);
+  run.crossing = false;
+  air.hush(false); air.focus(scene);
+  let res;
+  try { res = await stay(scene, 'door', { dark: true }); }
+  catch (e) {
+    console.error('[space] stay', e); run.busy = false; talk.hide(); air.focus(null);
+    $('spCosmos').classList.add('on'); $('spMapWrap').classList.add('on');
+    if (!run.ended) { cosmos.setMode('fly'); run.pending = scene.id; toast(ko ? '장면을 읽지 못했습니다 — 조형물에 다가가 주세요' : 'The scene could not be read — come near its thing'); }
+    return;
   }
+  await sideDoor(scene, res);                                               // the text stays up until the door at its side is pressed
+  air.focus(null);
+  if (run.ended) return;
+  if (!lays.has(scene.id)) layOut(scene, (res.next && res.next.scene) || null);   // (laid out when the door was drawn: the window may have been resized since — the door must not move)
+  else { const l = lays.get(scene.id); cosmos.teleport(l.N.clone().add(new window.THREE.Vector3(0, cosmos.EYE, 0)), Math.atan2(-l.f.x, -l.f.z), 0); }
+  $('spCosmos').classList.add('on'); $('spMapWrap').classList.add('on');
+  await wait(300);
+  if (run.ended) return;
+  cosmos.setMode('fly'); cosmos.relock(); if (cosmos.isTouch()) $('rpWalk').classList.add('on');
+  return afterStay(res);
+}
+function raiseDoor(from, to) {
+  placeFor(from, to);
+  const lay = LAID ? lays.get(from.id) : null;
   const Qf = V3(run.Q.get(from.id)), Qt = V3(run.Q.get(to.id)), dir = horiz(Qt.clone().sub(Qf), run.id + from.id + to.id);
   const door = Qf.clone().addScaledVector(dir, DOOR_DIST); door.y = Qf.y - FOOT_DROP;
+  if (lay) door.copy(lay.D);
   const old = run.doors.get(from.id); if (old && old.way.live) cosmos.removeWay(old.way);
-  const way = cosmos.openWay({ door, dir, key: run.id + from.id + '>' + to.id, from: from.id, to: to.id, onPass: (w) => cross(from, to, w, null) });
+  const way = cosmos.openWay({ door, dir, start: lay ? lay.N.clone() : undefined, startDir: lay ? lay.f.clone() : undefined, key: run.id + from.id + '>' + to.id, from: from.id, to: to.id, onPass: (w) => cross(from, to, w, null) });
   run.doors.set(from.id, { way, to: to.id });
   syncMap();
-  cosmos.lookToward(way.N.clone().lerp(door, 0.5).setY(door.y + 1.2), 2800);   // the eyes are turned to where it is being written
+  if (!lay) cosmos.lookToward(way.N.clone().lerp(door, 0.5).setY(door.y + 1.2), 2800);   // the eyes are turned to where it is being written
   return way;
 }
 
@@ -815,12 +900,13 @@ async function cross(from, to, way, kind) {
   cosmos.teleport(start, Math.atan2(-dir.x, -dir.z), 0);
   if (run.stub) cosmos.land(run.stub, 0.5);
   run.here = to.id; run.arrived.add(to.id); run.path.push(to.id); run.legs.push(leg);
-  if (first) { run.pending = to.id; dress(to, partB(to).left); if (tutor) tutor.say('next'); }
+  if (first) { run.pending = to.id; dress(to, partB(to).left); if (tutor && !(LAID && kind === 'new')) tutor.say('next'); }
   else {
     if (run.visited.has(to.id)) { run.returns.set(to.id, (run.returns.get(to.id) || 0) + 1); run.returnDue = to.id; }   // only a scene that was read can be found changed
     if (kind !== 'new') logMove(from, to, kind === 'map' ? 'map_return' : 'door_return');
   }
   syncMap();
+  if (first && kind === 'new' && LAID) return readThere(to);                // 261128 late: a new scene's text comes on the dark, at once
   await veil(false);
   air.hush(false);                                                        // the new place sounds for itself, by distance
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');

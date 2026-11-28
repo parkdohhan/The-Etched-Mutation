@@ -107,8 +107,8 @@
         <input class="rs-input f-words" maxlength="300" autocomplete="off" />
       </div>
       <div class="rs-field rs-field-row">
-        <label class="rs-label l-deep"></label>
-        <input class="rs-input f-deep" maxlength="300" autocomplete="off" />
+        <label class="rs-label l-deep" hidden></label><!-- 261128 작가: "묻힌 말 삭제" — 칸을 감춤(보내는 값도 빈 목록). 되돌리기 = hidden 둘 삭제 + js/recordspace/main.js 의 deep: [] 두 곳 -->
+        <input class="rs-input f-deep" maxlength="300" autocomplete="off" hidden />
       </div>
 
       <div class="rs-sub">
@@ -138,6 +138,6 @@
     </article>
   </template>
 
-  <script type="module" src="js/recordspace/main.js?v=261128d"></script>
+  <script type="module" src="js/recordspace/main.js?v=261128e"></script>
 </body>
 </html>

@@ -267,7 +267,7 @@ function addScene(init) {
     const asked = want.value.trim().slice(0, 400);
     bThing.disabled = true; bAgain.disabled = true; status(sThing, asked ? T.thingWantWait : T.thingWait, 'wait');
     try {
-      const resp = await sb().functions.invoke('generate-scene-thing', { body: { sceneText: sc.text.trim(), b: lines(sc.b), words: splitList(sc.words), deep: splitList(sc.deep), lang: LANG, avoid: asked ? '' : (avoid || ''), want: asked } });
+      const resp = await sb().functions.invoke('generate-scene-thing', { body: { sceneText: sc.text.trim(), b: lines(sc.b), words: splitList(sc.words), deep: [], lang: LANG, avoid: asked ? '' : (avoid || ''), want: asked } });
       const recipe = resp && !resp.error && resp.data && resp.data.ok && resp.data.recipe;
       if (!recipe) throw new Error((resp && resp.data && resp.data.error) || (resp && resp.error && resp.error.message) || 'no recipe');
       sc.preview = sc.preview || createPreview(canvas);
@@ -418,7 +418,7 @@ function payload() {
   return {
     lang: LANG, title: S.title.trim(), description: S.desc.trim(),
     scenes: S.scenes.filter((s) => s.text.trim()).map((s) => ({
-      text: s.text.trim(), b: lines(s.b), words: splitList(s.words), deep: splitList(s.deep),
+      text: s.text.trim(), b: lines(s.b), words: splitList(s.words), deep: [],   /* 261128: the buried words are taken out of the making screen */
       emotion: s.emotion || {}, thing: s.thing || null, sound_url: s.sound.url || null, sound_volume: s.sound.volume,
       dialog: s.dialog.slice(0, 40), measured: s.measured.slice(0, 12),
     })),
