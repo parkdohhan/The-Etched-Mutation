@@ -38,7 +38,7 @@ import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';
 import { createBackDoors } from '../spaceblank/backdoor.js?v=261123b3';   // 261128 night: the back door, as the blank stage has it
 import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author: "slips of the hand like this — sift them out"): what is typed is tidied before anything is done with it
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
-import * as remain from './remain.js?v=261128d';
+import * as remain from './remain.js?v=261129a';
 import { runEnding, showOutside } from './ending.js?v=261128g';
 import { createTutor } from './tutor.js?v=261128h';
 import { drawAsciiDoor, DOOR_ASPECT } from '../roomplay/asciidoor.js';                 // 261128 late: the door beside the text
@@ -66,6 +66,7 @@ let FREE = false;
 const NEXT = MODE === 'test' && qs.get('next') === '1';
 const PLACE_TAG = 'space_v1', MOVE_PERSONA = 'piece-move', KIND = 'remain_v1';   // the ledger's marks: the space stage's place (the prologue and the models read these walks as its own), and this stage's own kind
 const PICK_RANDOM = qs.get('pick') === 'random';
+const PICK_BLANKS = qs.get('pick') === 'blanks';             // 261129: the second rule (a line must also share a blank's matter), kept for comparison
 const TOLD = qs.get('told') !== '0';
 const LANG = (qs.get('lang') || sessionStorage.getItem('tem_archive_lang') || 'ko').slice(0, 2) === 'en' ? 'en' : 'ko';
 const ko = LANG !== 'en';
@@ -781,7 +782,7 @@ function judge(indices) {
 // ── what remains (kept in this browser as the walk goes; the ending only adds the server's seam) ──
 function settle(before) {
   const usable = run.lines.map((l) => (l.silentScene || l.whom === undefined || !run.read.get(l.sceneId) || !run.read.get(l.sceneId).length ? null : l));   // a line not yet read cannot remain yet
-  let keep = remain.remaining(usable, before, PICK_RANDOM ? { random: seeded(run.id) } : null);
+  let keep = remain.remaining(usable, before, PICK_RANDOM ? { random: seeded(run.id) } : PICK_BLANKS ? { byBlank: true } : null);
   if (run.committed) keep = new Set(Array.from(keep).filter((li) => run.placed.has(li)));   // the real walk: only what the server placed remains (it may refuse a line, or the scene may have gone)
   const changes = [];
   for (const li of Array.from(keep).sort((a, b) => a - b)) {
@@ -798,7 +799,7 @@ async function persist(done) {
   const s = settle(before);
   state.texts = Object.assign({}, baseTexts);
   for (const c of s.changes) state.texts[c.order] = remain.withChange(run.read.get(c.sceneId), c.index, c.now);
-  state.walks[walkSlot] = { id: run.id, at: new Date().toISOString(), next: NEXT, pick: PICK_RANDOM ? 'random' : 'blanks', consent: run.consent, blanks: run.blanks, before: { read: before.read },
+  state.walks[walkSlot] = { id: run.id, at: new Date().toISOString(), next: NEXT, pick: PICK_RANDOM ? 'random' : PICK_BLANKS ? 'blanks' : 'fault', consent: run.consent, blanks: run.blanks, before: { read: before.read },
     lines: run.lines.map((l, i) => ({ order: l.order, raw: l.raw, kept: s.keep.has(i), whom: l.whom || null, back: l.back == null ? null : l.back })),
     changes: s.changes.map((c) => ({ order: c.order, index: c.index, was: c.was, now: c.now, raw: c.raw, by: c.by, blank: c.blank })), done: !!done };
   state.locked = true;

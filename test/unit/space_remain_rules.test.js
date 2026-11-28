@@ -14,6 +14,14 @@ describe('before entering', () => {
 
 describe('which lines remain', () => {
   const before = { blanks: [{ emo: { guilt: 1, anger: 0 } }, { emo: { longing: 1 } }, { emo: null }] };
+  const B = { byBlank: true };                                              // the second rule, kept for comparison (?pick=blanks)
+  it('third rule (261129): whatever speaks of fault — narrator, other, nobody, then the earlier; one a scene; three at most', () => {
+    const lines = [L(1, 'fact', 'none', 0), L(2, 'excuse', 'nobody', -1), L(3, 'her', 'other', -1), L(4, 'you', 'narrator', -1), L(4, 'you again', 'narrator', 0), L(5, 'you too', 'narrator', -1), null, L(6, '', 'narrator', 0)];
+    expect(Array.from(remaining(lines, before)).sort()).toEqual([2, 3, 5]);         // both narrator lines of other scenes, then the other; scene 4 holds one
+    expect(Array.from(remaining(lines.slice(0, 3), before)).sort()).toEqual([1, 2]);
+    expect(remaining([L(1, 'a', 'none', 0), L(2, 'b', 'none', 1)], before).size).toBe(0);   // refutation: nothing remains whose whom is none
+    expect(remaining(lines.concat([L(7, 'x', 'narrator', -1), L(8, 'y', 'narrator', -1)]), before).size).toBe(3);
+  });
   it('a line turns back on a blank when it is the same matter AND speaks of fault', () => {
     expect(turnsBack(L(7, '받았어야지. 네가.', 'narrator', 0), 0)).toBe(true);
     expect(turnsBack(L(7, '누가 건 전화야?', 'none', 0), 0)).toBe(false);          // the same matter, but a question of fact
@@ -23,23 +31,23 @@ describe('which lines remain', () => {
   });
   it('at most one line a blank — three at most — and one a scene', () => {
     const lines = [L(3, 'a', 'narrator', 0), L(7, 'b', 'narrator', 0), L(8, 'c', 'other', 1), L(9, 'd', 'other', 1), L(2, 'e', 'nobody', 2), L(4, 'f', 'narrator', -1), L(5, 'g', 'none', 2)];
-    const keep = remaining(lines, before);
+    const keep = remaining(lines, before, B);
     expect(Array.from(keep).sort()).toEqual([0, 2, 4]);
-    expect(remaining(lines.concat([L(6, 'h', 'narrator', 2), L(1, 'i', 'narrator', 0)]), before).size).toBe(3);
+    expect(remaining(lines.concat([L(6, 'h', 'narrator', 2), L(1, 'i', 'narrator', 0)]), before, B).size).toBe(3);
   });
   it('among lines that turn back on the same blank: narrator, then other, then nobody; then the cosine with that blank; then the earlier', () => {
-    expect(Array.from(remaining([L(3, 'excuse', 'nobody', 0, { guilt: 1 }), L(7, 'other', 'other', 0, { guilt: 1 }), L(13, 'you', 'narrator', 0, { anger: 1 })], before))).toEqual([2]);
-    expect(Array.from(remaining([L(3, 'far', 'narrator', 0, { anger: 1 }), L(7, 'near', 'narrator', 0, { guilt: 1, anger: 0.1 })], before))).toEqual([1]);
-    expect(Array.from(remaining([L(3, 'first', 'narrator', 2), L(7, 'second', 'narrator', 2)], before))).toEqual([0]);   // blank 2 was not read: level, the earlier
+    expect(Array.from(remaining([L(3, 'excuse', 'nobody', 0, { guilt: 1 }), L(7, 'other', 'other', 0, { guilt: 1 }), L(13, 'you', 'narrator', 0, { anger: 1 })], before, B))).toEqual([2]);
+    expect(Array.from(remaining([L(3, 'far', 'narrator', 0, { anger: 1 }), L(7, 'near', 'narrator', 0, { guilt: 1, anger: 0.1 })], before, B))).toEqual([1]);
+    expect(Array.from(remaining([L(3, 'first', 'narrator', 2), L(7, 'second', 'narrator', 2)], before, B))).toEqual([0]);   // blank 2 was not read: level, the earlier
   });
   it('a scene holds one remaining line: the next blank takes its next line', () => {
     const lines = [L(7, 'call', 'narrator', 0), L(7, 'night', 'narrator', 1), L(8, 'night, elsewhere', 'nobody', 1)];
-    expect(Array.from(remaining(lines, before)).sort()).toEqual([0, 2]);
-    expect(Array.from(remaining(lines.slice(0, 2), before))).toEqual([0]);
+    expect(Array.from(remaining(lines, before, B)).sort()).toEqual([0, 2]);
+    expect(Array.from(remaining(lines.slice(0, 2), before, B))).toEqual([0]);
   });
   it('refutation: nothing remains whose back is none or whose whom is none; nothing turns back → nothing remains', () => {
     const lines = [L(1, 'a', 'narrator', -1, { guilt: 1 }), L(2, 'b', 'none', 0, { guilt: 1 }), L(3, 'c', 'other', -1), null, L(4, '', 'narrator', 0)];
-    expect(remaining(lines, before).size).toBe(0);
+    expect(remaining(lines, before, B).size).toBe(0);
     expect(remaining([], before).size).toBe(0);
   });
   it('left to chance: three at most, one a scene, whatever was read', () => {

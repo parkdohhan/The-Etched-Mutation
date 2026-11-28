@@ -36,6 +36,16 @@
  *                with it (none shared → the scene's last sentence).
  *   refuted by   a line that remains although its `back` is −1 or its `whom` is none; or two remaining lines of one blank.
  *
+ * THIRD VERSION (author, 261129: "take the second condition out"). On five real walks the second condition (the same matter
+ * as a blank) threw out 7 of 8 lines that held the narrator to account. Now:
+ *   remains      a line that speaks of fault. Of those: the one that holds the narrator to account before the one that holds
+ *                another, that before the one that lays it on nobody; if level, the one said earlier. Taken in that order,
+ *                at most one a scene, three at most (MOST: a free choice — it was the number of blanks).
+ *                quantity: 0 … 3. 0 = nothing the walker said was about fault.
+ *   refuted by   a line that remains although its `whom` is none; two remaining lines of one scene; a fourth.
+ * `back` is still read and kept (the ending lights the blank a remaining line shares its matter with, when it has one) — it
+ * no longer decides what remains. The second version is still here: remaining(lines, before, { byBlank: true }) — the stage's ?pick=blanks.
+ *
  * The first version (the stage's own classifier: blame direction and core fear, half of the scenes kept) is in the
  * record, §이력. It kept 5 of 33 lines on a real walk; its blame direction is the speaker's, not the story's, and read
  * the same sentence two ways 2 times in 10.
@@ -88,12 +98,20 @@ export const turnsBack = (line, b) => !!(line && line.back === b && FAULT[line.w
  * @param o      { random?: () => number } — given, three lines of three scenes are taken by chance instead (the author's first idea, kept for comparison)
  * @returns Set of indices into `lines` that remain (0 … 3)
  */
+export const MOST = 3;
 export function remaining(lines, before, o) {
   const keep = new Set(), scenes = new Set(), nBlanks = (before && before.blanks ? before.blanks.length : 3);
   if (o && o.random) {
     const pool = lines.map((l, i) => ({ l, i, r: 0 })).filter((x) => x.l && String(x.l.raw || '').trim());
     pool.forEach((x) => { x.r = o.random(); }); pool.sort((a, b) => a.r - b.r);
     for (const x of pool) { if (keep.size >= nBlanks) break; if (scenes.has(x.l.order)) continue; keep.add(x.i); scenes.add(x.l.order); }
+    return keep;
+  }
+  if (!(o && o.byBlank)) {                                             // third version: whatever speaks of fault
+    const cand = [];
+    lines.forEach((l, i) => { if (speaksOfFault(l) && String(l.raw || '').trim()) cand.push({ i, l, f: FAULT[l.whom] }); });
+    cand.sort((x, y) => (y.f - x.f) || (x.i - y.i));
+    for (const x of cand) { if (keep.size >= MOST) break; if (scenes.has(x.l.order)) continue; keep.add(x.i); scenes.add(x.l.order); }
     return keep;
   }
   for (let b = 0; b < nBlanks; b++) {
