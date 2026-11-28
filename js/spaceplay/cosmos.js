@@ -165,8 +165,16 @@ export function createCosmos(opts) {
   // the other goes out slowly and comes back when they part. (Looked at on the screen, not in the place.)
   const _pv = new THREE.Vector3(), RANK = { mine: 3, echo: 2, ghost: 1 };
   function unheap(words) {
-    if (words.length < 2) { for (const w of words) w.showTo = 1; return; }
     const th = Math.tan((FOV * Math.PI) / 360), boxes = [];
+    // 261128 late (author, of a word afloat lying over the small door: "fix it"): a door that stands open to the walker is a spot taken, like a word of the highest rank —
+    // a word that would fall on it (with room to spare round it) goes out, and comes back when they part.
+    for (const wy of ways) {
+      if (!wy.live || wy.shut || wy.kind === 'stub' || !wy.door || !wy.door.visible) continue;
+      _pv.copy(wy.door.position).project(cam); const dd = wy.door.position.distanceTo(cam.position);
+      if (_pv.z > 1 || dd < 0.5) continue;
+      boxes.push({ x: _pv.x, y: _pv.y, hw: (DOOR_H * DOOR_ASPECT * 1.1) / (dd * th * cam.aspect), hh: (DOOR_H * 0.7) / (dd * th) });
+    }
+    if (words.length < 2 && !boxes.length) { for (const w of words) w.showTo = 1; return; }
     words.sort((p, q) => ((RANK[q.kind] || 0) - (RANK[p.kind] || 0)) || (p.dist - q.dist));
     for (const w of words) {
       _pv.copy(w.m.position).project(cam);
