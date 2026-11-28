@@ -39,7 +39,7 @@ const L = {
   ko: {
     kicker: '한 기억을 놓아 두는 자리', title: '기억 만들기',
     lead: '장면을 쓰고, 그 장면의 감정을 뽑고, 조형물과 소리를 붙인다. 올리면 곧 그 기억의 우주로 들어간다.',
-    gate: '기억을 만들려면 먼저 들어와야 해. 아이디 하나면 돼.', gateGo: '들어가기 · 가입하기', needLogin: '들어온 상태가 풀렸어. 다시 들어와 줘.',
+    gate: '기억을 만들려면 먼저 들어와야 해. 아이디 하나면 돼.', gateGo: '들어가기', gateUp: '가입하기', needLogin: '들어온 상태가 풀렸어. 다시 들어와 줘.',
     leave: '나가기', draftSave: '임시저장', draftSaved: '임시저장했어.', draftSaveFail: '임시저장이 안 됐어. 잠시 뒤에 다시 해 줘.', draftLocalOnly: '이 브라우저에만 임시저장했어. 서버에 닿지 않았어.',
     leaveAsk: '쓰던 걸 임시저장할까?', leaveSave: '임시저장하고 나가기', leaveNoSave: '그냥 나가기', leaveStay: '계속 쓰기',
     draftAsk: (t, d) => '임시저장한 기억이 있어' + (t ? ' — 「' + t + '」' : '') + '. ' + d + '에 저장했어. 이어서 쓸까?', draftResume: '이어서 쓰기', draftNew: '새로 쓰기',
@@ -74,7 +74,7 @@ const L = {
   en: {
     kicker: 'a place to set one memory down', title: 'make a memory',
     lead: 'Write the scenes, draw out each one\'s emotion, give it a thing and a sound. When it goes up you step into its space.',
-    gate: 'To make a memory, sign in first. An ID is enough.', gateGo: 'sign in · sign up', needLogin: 'You were signed out. Please sign in again.',
+    gate: 'To make a memory, sign in first. An ID is enough.', gateGo: 'sign in', gateUp: 'sign up', needLogin: 'You were signed out. Please sign in again.',
     leave: 'leave', draftSave: 'save draft', draftSaved: 'draft saved.', draftSaveFail: 'could not save the draft. try again in a moment.', draftLocalOnly: 'saved in this browser only — the server could not be reached.',
     leaveAsk: 'save what you wrote as a draft?', leaveSave: 'save and leave', leaveNoSave: 'leave without saving', leaveStay: 'keep writing',
     draftAsk: (t, d) => 'there is a saved draft' + (t ? ' — "' + t + '"' : '') + ', saved ' + d + '. continue it?', draftResume: 'continue', draftNew: 'start new',
@@ -566,7 +566,11 @@ async function showGate() {
   // the main page reads its language from tem_language (js/lib/i18n.js) and falls back to English: carry this page's
   // language over only when none was ever chosen, so the sign-in form speaks the same language as this gate
   go.addEventListener('click', () => { try { if (!localStorage.getItem('tem_language')) localStorage.setItem('tem_language', LANG); sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) { /* none */ } });   // 261124: the sign-in form over the menu, not over the opening (the opening's threads flashed behind it)
-  const row = document.createElement('div'); row.className = 'rs-actions rs-gate'; row.appendChild(go);
+  // 261128 (author: "I pressed sign up — why the sign-in screen"): one button said both and opened the sign-in form. Two buttons, each to its own form.
+  const up = document.createElement('a');
+  up.className = 'rp-btn rs-gate-go'; up.href = './?action=signup&next=' + encodeURIComponent(back); up.textContent = T.gateUp;
+  up.addEventListener('click', () => { try { if (!localStorage.getItem('tem_language')) localStorage.setItem('tem_language', LANG); sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) { /* none */ } });
+  const row = document.createElement('div'); row.className = 'rs-actions rs-gate'; row.appendChild(go); row.appendChild(up);
   $('rs').appendChild(row);
   $('rsVeil').classList.remove('on');
   await wait(600);

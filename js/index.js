@@ -800,7 +800,8 @@ window.handleOpeningKeydown = handleOpeningKeydown;
 (function checkActionParam() {
   try {
     var params = new URLSearchParams(window.location.search);
-    if (params.get('action') === 'login') {
+    var wantSignup = params.get('action') === 'signup';                       // 261128 (author: "I pressed sign up — why does the sign-in screen come up"): the making screen's gate now has two buttons
+    if (params.get('action') === 'login' || wantSignup) {
       // 261124: &next=record-space.html… — 들어간 뒤 돌아갈 곳 (기억 만들기는 로그인이 필요). js/app/auth.js takeAuthNext 가 같은 모양만 받는다.
       var next = params.get('next');
       if (next && /^record-space\.html(\?[A-Za-z0-9=&_.%-]*)?$/.test(next)) { try { sessionStorage.setItem('tem_auth_next', next); sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} }   // 261124: coming from 기억 만들기 → the sign-in form over the menu, not over the opening
@@ -817,6 +818,7 @@ window.handleOpeningKeydown = handleOpeningKeydown;
           loginModal.style.cssText = 'display:flex !important;z-index:3000 !important;position:fixed !important;top:0 !important;left:0 !important;width:100% !important;height:100% !important';
           var usernameInput = document.getElementById('loginUsername');
           if (usernameInput) usernameInput.focus();
+          if (wantSignup && typeof window.switchToSignup === 'function') window.switchToSignup();
         }
       }, 500);
     } else if (params.get('action') === 'record') {
