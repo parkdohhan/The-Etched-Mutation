@@ -135,7 +135,13 @@ export function createCosmos(opts) {
   function holdThing(id, on) {
     const r = things.get(id); if (!r) return;
     if (on) { r.held = true; r.grow = null; r.wrap.visible = false; r.glint.visible = false; for (const w of r.words) { w.show = 0; w.showTo = 0; w.m.material.opacity = 0; } }
-    else if (r.held) { r.held = false; r.wrap.visible = true; r.glint.visible = true; r.grow = 0; r.wrap.scale.setScalar(0.001); }
+    else if (r.held) {
+      // 261129 (author: "not growing — let it come up crackling, from blurred to sharp"): the thing stands at its full size from the first moment and comes in like a bad signal —
+      // faint, dropping out, shaken sideways — and settles. Its lines are given their own copies of the materials for the while (the palette is shared by every thing), and get them back when it is done.
+      r.held = false; r.wrap.visible = true; r.glint.visible = true; r.grow = 0; r.wrap.scale.setScalar(1);
+      r.fx = []; r.fxT = 0; r.fxN = [0, 0, 0, 0];
+      r.thing.g.traverse((o) => { if (o.material && !Array.isArray(o.material) && o.material.clone) { const tmp = o.material.clone(); tmp.transparent = true; r.fx.push({ o, orig: o.material, tmp, op: o.material.opacity == null ? 1 : o.material.opacity }); o.material = tmp; tmp.opacity = 0; } });
+    }
   }
   function setAsked(id, on) { const r = things.get(id); if (r) r.thing.setAsked(on); }
 
@@ -640,7 +646,19 @@ export function createCosmos(opts) {
     unheap(seen);
     for (const r of things.values()) {
       if (r.held) for (const w of r.words) w.showTo = 0;
-      else if (r.grow != null) { r.grow = Math.min(1, r.grow + dt / 1.8); const k = r.grow * r.grow * (3 - 2 * r.grow); r.wrap.scale.setScalar(Math.max(0.001, k)); if (r.grow >= 1) r.grow = null; }
+      else if (r.grow != null) {
+        r.grow = Math.min(1, r.grow + dt / 1.9); const k = r.grow * r.grow * (3 - 2 * r.grow), rough = 1 - k;
+        r.fxT = (r.fxT || 0) + dt; if (r.fxT > 0.05 || !r.fxN) { r.fxT = 0; r.fxN = [Math.random(), Math.random(), Math.random(), Math.random()]; }   // the signal changes some twenty times a second, not every frame
+        const n = r.fxN, out = n[0] < 0.3 * rough;                              // dropped out altogether, now and then
+        const seen = out ? 0 : Math.max(0, Math.min(1, k * 1.15 + (n[1] - 0.5) * 0.9 * rough));
+        if (r.fx) for (const f of r.fx) { if (f.o.material === f.tmp) f.tmp.opacity = f.op * seen; }
+        r.wrap.position.x = r.pos.x + (n[2] - 0.5) * 0.22 * rough; r.wrap.position.z = r.pos.z + (n[3] - 0.5) * 0.22 * rough;
+        r.wrap.scale.set(1 + (n[2] - 0.5) * 0.16 * rough, 1, 1 + (n[3] - 0.5) * 0.16 * rough);
+        if (r.grow >= 1) {
+          r.grow = null; r.wrap.position.x = r.pos.x; r.wrap.position.z = r.pos.z; r.wrap.scale.setScalar(1);
+          if (r.fx) { for (const f of r.fx) { if (f.o.material === f.tmp) f.o.material = f.orig; f.tmp.dispose(); } r.fx = null; }
+        }
+      }
     }
     if (nearest && nd < NEAR_R && nearest.armed && pl.mode === 'fly') { nearest.armed = false; if (cb.onNear) cb.onNear(nearest.id, nd); }
     clouds.tick(dt);

@@ -24,7 +24,7 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261129b';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261129c';
 import { isSilent } from '../spaceplay/things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
@@ -54,9 +54,18 @@ const AT = qs.get('at') || '';
 //             the next person, on another machine, reads it. Once.
 //   tutorial  (?as=tutorial) three scenes, nothing kept anywhere, "another me" tells how it is done (tutor.js)
 //   test      (?as=test) the preview as it was: nothing goes to the server; what a walk leaves is kept in this browser only
-const MODE = qs.get('as') === 'test' ? 'test' : qs.get('as') === 'tutorial' ? 'tutorial' : 'audience';
+// 261129 — the address for filming (author: "a practice piece with the route fixed — crossings of several kinds — the shortest way to the twist; the lines that remain must be seen"):
+//   ?demo=1   walked as the preview is (nothing goes to the server's tables; the answers and the rewriting are asked of the server as ever), started clean every time, with
+//     route=1,2,3,6,7                               the scenes, in this order; the last closes the walk                (default: these)
+//     pass=avoidance,bridge,contradiction,echo_follow  the line said at each crossing, by its kind                        (default: these)
+//     keep=1,3,7                                    the scenes whose FIRST line said remains (three at most)            (default: these)
+//   Staging, not a measurement: which lines remain is laid down here, not read. &next=1 = the same walk as the next person (reads what the take before left in this browser).
+const DEMO = qs.get('demo') === '1';
+const demoList = (k, d) => String(qs.get(k) || d).split(',').map((x) => x.trim()).filter(Boolean);
+const DEMO_ROUTE = demoList('route', '1,2,3,6,7').map(Number), DEMO_PASS = demoList('pass', 'avoidance,bridge,contradiction,echo_follow'), DEMO_KEEP = new Set(demoList('keep', '1,3,7').map(Number));
+const MODE = DEMO || qs.get('as') === 'test' ? 'test' : qs.get('as') === 'tutorial' ? 'tutorial' : 'audience';
 const TUTOR = MODE === 'tutorial';
-const GUIDE = !TUTOR && firstTime(qs);                       // 261128: this browser has no mark of a walk → "another me" says how it is done, once, inside the real walk (?guide=1 / ?guide=0)
+const GUIDE = !TUTOR && (DEMO ? qs.get('guide') === '1' : firstTime(qs));                       // 261128: this browser has no mark of a walk → "another me" says how it is done, once, inside the real walk (?guide=1 / ?guide=0)
 let KEPT = MODE === 'audience' && !AT && !DRY;
 const STORE = KEPT ? remain.STORE.kept : remain.STORE.test;
 // 261128 (author: "I'll make the ID june — let nothing be recorded for it"): the real walk taken under a no-trace ID.
@@ -383,6 +392,7 @@ async function boot() {
   if (!run.scenes.length) { line.textContent = ko ? '이 기억에는 장면이 없습니다.' : 'This memory has no scenes.'; veil(false); return; }
   document.title = 'TEM — ' + (run.memory.title || '') + (TUTOR ? (ko ? ' (연습)' : ' (practice)') : MODE === 'test' ? (ko ? ' (남는 말 · 미리보기)' : ' (words that remain · preview)') : '');
 
+  if (DEMO && qs.get('next') !== '1') remain.clear(run.memory.code, STORE);
   if (MODE === 'test' && qs.get('reset') === '1') { remain.clear(run.memory.code, STORE); qs.delete('reset'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '')); }
   state = (TUTOR || FREE) ? remain.fresh(run.memory.code) : (remain.load(run.memory.code, STORE) || remain.fresh(run.memory.code));
   if (KEPT || FREE || TUTOR) {
@@ -461,7 +471,7 @@ async function boot() {
   if (AT) { run.blanks = remain.blanksFor(run.memory.code, LANG).map((l, i) => ({ line: l, answer: ko ? ['내가 겁이 나서', '불을 켜 두고 잤다', '엄마'][i] : ['I was afraid', 'slept with the light on', 'my mother'][i] })); readBefore(); return begin(); }
   if (TUTOR) { await entry(null); return begin(); }                        // the practice: the same door as the real walk (the introduction, the three blanks) — only the consent sheet is not there, for nothing is kept
   const gate = await entry(gateAnswer);
-  entryP = pickEntry(gate);                                                // the first blank also names the first scene (read while the walker falls)
+  entryP = DEMO ? Promise.resolve({ scene: firstScene(), gate: null }) : pickEntry(gate);                                                // the first blank also names the first scene (read while the walker falls)
   begin();
 }
 /**
@@ -510,6 +520,7 @@ async function loadLedger(memoryId) {
   return out;
 }
 function firstScene() {
+  if (DEMO) { const f = sceneByOrder(DEMO_ROUTE[0]); if (f) return f; }
   const rig = rigOf(run.memory, qs);
   return (rig && run.scenes.find((s) => s.scene_order === rig.spine[0])) || run.scenes[0];
 }
@@ -539,7 +550,7 @@ async function entry(gateAnswer) {
   }
   { const quest = String((run.memory.meta && run.memory.meta.remain && run.memory.meta.remain.quest) || '').trim();   // the one question a walk is taken with (memories.meta.remain.quest — the author's; without it nothing is shown)
     if (quest) { await typeText(line, quest, { per: 80, pace: 1 / FAST }); await wait(2600); } }
-  typeText(note, TUTOR ? (ko ? '연습 — 남지 않습니다' : 'practice — nothing is kept') : KEPT ? '' : FREE ? (ko ? '기록 없는 걸음 — 아무것도 남지 않습니다' : 'a walk off the record — nothing is kept') : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
+  typeText(note, DEMO ? (NEXT ? (ko ? '데모 — 다음 사람으로 걷습니다' : 'demo — walking as the next person') : (ko ? '데모 — 아무것도 남지 않습니다' : 'demo — nothing is kept')) : TUTOR ? (ko ? '연습 — 남지 않습니다' : 'practice — nothing is kept') : KEPT ? '' : FREE ? (ko ? '기록 없는 걸음 — 아무것도 남지 않습니다' : 'a walk off the record — nothing is kept') : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
   let blanks = remain.blanksFor(run.memory.code, LANG).slice(), gate = null;
   if (gateAnswer && String(gateAnswer.line || '').includes(remain.HOLE) && guard(gateAnswer.text).ok) {
     gate = gateAnswer;
@@ -731,7 +742,11 @@ async function stay(scene, o) {
 
   const rig = rigOf(run.memory, qs);
   let next;
-  if (TUTOR) {                                                             // the practice: three scenes in the memory's own order, then it ends — the engine names no door here
+  if (DEMO) {                                                              // the filming address: the scenes in the order given, each crossing of the kind given
+    const at = DEMO_ROUTE.indexOf(Number(scene.scene_order)), to = at >= 0 ? sceneByOrder(DEMO_ROUTE[at + 1]) : null, kindOf = DEMO_PASS[at] || 'bridge';
+    if (run.last) run.last.pattern = kindOf;
+    next = to ? { scene: to, mode: 'new', pattern: kindOf, ranked: [], shadow: null, rig: true } : { scene: null, mode: 'end', pattern, ranked: [], shadow: null, rig: true };
+  } else if (TUTOR) {                                                      // the practice: three scenes in the memory's own order, then it ends — the engine names no door here
     const route = practiceRoute(), at = route.findIndex((s) => s.id === scene.id), to = at >= 0 ? route[at + 1] : null;
     next = to ? { scene: to, mode: 'new', pattern, ranked: [], shadow: null, rig: true } : { scene: null, mode: 'end', pattern, ranked: [], shadow: null, rig: true };
   } else {
@@ -771,6 +786,10 @@ function nearestGhost(userEmotion, pool) {
 /** Whom each line holds to account, and which blank it is about the same matter as. Never rejects; a line left unread cannot remain. */
 function judge(indices) {
   if (!indices.length) return Promise.resolve();
+  if (DEMO) {                                                              // laid down, not read: the first line said in each scene named by keep= remains
+    for (const li of indices) { const l = run.lines[li]; if (l.silentScene) { l.whom = 'none'; l.back = -1; continue; } const firstOf = run.lines.findIndex((x) => !x.silentScene && x.order === l.order); l.whom = DEMO_KEEP.has(Number(l.order)) && firstOf === li ? 'narrator' : 'none'; l.back = -1; }
+    return Promise.resolve();
+  }
   if (DRY) { for (const li of indices) { const l = run.lines[li]; l.whom = remain.WHOM[Math.floor(hashStr(l.raw + 'w') * 4)]; l.back = Math.floor(hashStr(l.raw + 'k') * 4) - 1; } return Promise.resolve(); }
   const blanks = run.blanks.map((b) => (sendable(b.answer) ? b.line.replace(remain.HOLE, b.answer) : ''));
   const p = remainCall({ mode: 'judge', blanks, items: indices.map((li) => ({ id: String(li), scene: run.known.get(run.lines[li].sceneId) || '', line: run.lines[li].raw })) })
