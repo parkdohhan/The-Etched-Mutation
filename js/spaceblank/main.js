@@ -359,7 +359,7 @@ async function boot() {
   cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, ground: qs.get('fly') !== '1', footDrop: FOOT_DROP,   // 261128 night: a floor that is not seen — walked, not flown (?fly=1 = as it was)
     on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '날기' : 'fly'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
   if (GUIDE) tutor = createTutor({ lang: LANG, fast: FAST, typeText, touch: cosmos.isTouch() });
-  map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
+  map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: returnBy, onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
   // the back doors (a door onto a scene already read) live in the place, so they come after it
   backs = createBackDoors({ cosmos, ko, canEnter: () => !run.busy && !run.crossing && !run.ended && !map.isOpen() && !(pause && pause.isOpen()),
@@ -377,8 +377,8 @@ async function boot() {
   Object.assign(window.__space, { cosmos, talk, map, air, finish, pause, hand, lex, useBlank, HOLE, backs });
   setupFlyButton();
   // the map without first letting the cursor go: the right mouse button (author, 261123 — Esc, then a press, was one step too many)
-  window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly') map.open(); });
-  window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && cosmos.mode() === 'fly') map.toggle(); });
+  window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') map.open(); });
+  window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !run.ended && !run.busy && !run.crossing) map.toggle(); });   // 261128: on the way to a door too (it did nothing there)
 
   if (PEEK) { takeGateAnswer(run.memory.id); return peek(); }
   // 261128: the answer written in the empty place of the memory's one sentence (ARCHIVE card), if there is one. It is read
@@ -810,6 +810,7 @@ async function cross(from, to, way, kind) {
   if (way && way.kind === 'back' && way.live) cosmos.removeWay(way);
   run.stub = (kind === 'map' || GROUND_ON) ? null : cosmos.openStub({ at: X, dir, key: run.id + 'stub' + run.legs.length });   // 261128: on the walked ground nothing is left standing behind the walker   // a door's far side: a short floor. From the map there is no door, so none
   const start = X.clone().addScaledVector(dir, 0.5).add(new T.Vector3(0, cosmos.EYE, 0));
+  if (kind === 'map') cosmos.setMode('fly');                               // picked on the map from a way: the walker is off that way
   cosmos.carry(fromPos, start);
   cosmos.teleport(start, Math.atan2(-dir.x, -dir.z), 0);
   if (run.stub) cosmos.land(run.stub, 0.5);

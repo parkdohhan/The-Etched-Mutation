@@ -377,7 +377,7 @@ async function boot() {
   typeVoice = createTypeVoice(); setTypeVoice(typeVoice.tap);
   talk = createTalk();
   cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, ground: qs.get('fly') !== '1', footDrop: FOOT_DROP, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '걷기' : 'walk'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
-  map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: (id) => (run.ended ? (endPick && endPick(id)) : returnBy(id)), onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly') cosmos.relock(); } });
+  map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: (id) => (run.ended ? (endPick && endPick(id)) : returnBy(id)), onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
   pause = createEscMenu({ ko, setVolume: (v) => { masterVol = v; air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
     onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
@@ -392,8 +392,8 @@ async function boot() {
     onEnter: (d) => { const from = sceneById(d.from), to = sceneById(d.to); if (from && to && !run.crossing && !run.busy) { run.backLog.push({ entered: from.scene_order, to: to.scene_order }); cross(from, to, null, 'old'); } } });
   Object.assign(window.__remain, { cosmos, talk, map, air, finish, pause, skip, backs });
   setupFlyButton();
-  window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly') map.open(); });
-  window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && cosmos.mode() === 'fly') map.toggle(); });
+  window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') map.open(); });
+  window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !run.ended && !run.busy && !run.crossing) map.toggle(); });   // 261128: on the way to a door too (it did nothing there)
 
   if (TUTOR || GUIDE) tutor = createTutor({ lang: LANG, fast: FAST, typeText, touch: cosmos.isTouch() });
   // the fall before the first scene: the real walk and the practice have it (it can be skipped by holding a key); the preview does not, unless asked
@@ -1020,6 +1020,7 @@ async function cross(from, to, way, kind) {
   if (way && way.kind === 'back' && way.live) cosmos.removeWay(way);
   run.stub = (kind === 'map' || GROUND_ON) ? null : cosmos.openStub({ at: X, dir, key: run.id + 'stub' + run.legs.length });   // 261128: on the walked ground nothing is left standing behind the walker (the far side of the door read as a shut door)
   const start = X.clone().addScaledVector(dir, 0.5).add(new T.Vector3(0, cosmos.EYE, 0));
+  if (kind === 'map') cosmos.setMode('fly');                               // picked on the map from a way: the walker is off that way
   cosmos.carry(fromPos, start);
   cosmos.teleport(start, Math.atan2(-dir.x, -dir.z), 0);
   if (run.stub) cosmos.land(run.stub, 0.5);
