@@ -30,9 +30,9 @@ const MAX_SCENES = 12, MIN_CHARS = 30, MAX_CHARS = 100, MIN_SENT = 2, MAX_SENT =
 const TALK_MIN = 2, TALK_MAX = 5;                                                       // answers before "됐어" is offered · before the talk closes by itself
 const AXES = DEFAULT_EMOTION_ANCHORS;
 const AXIS_KO = { fear: '두려움', sadness: '슬픔', anger: '분노', guilt: '죄책감', shame: '수치', isolation: '고립', numbness: '무감각', moral_pain: '도덕적 고통', helplessness: '무력감', despair: '절망',
-  joy: '기쁨', hope: '희망', relief: '안도', gratitude: '감사', love: '사랑', peace: '평온', comfort: '편안함' };
+  joy: '기쁨', hope: '희망', relief: '안도', gratitude: '감사', love: '사랑', peace: '평온', comfort: '편안함', flutter: '설렘', excitement: '흥분' };
 const AXIS_EN = { fear: 'fear', sadness: 'sadness', anger: 'anger', guilt: 'guilt', shame: 'shame', isolation: 'isolation', numbness: 'numbness', moral_pain: 'moral pain', helplessness: 'helplessness', despair: 'despair',
-  joy: 'joy', hope: 'hope', relief: 'relief', gratitude: 'gratitude', love: 'love', peace: 'peace', comfort: 'comfort' };
+  joy: 'joy', hope: 'hope', relief: 'relief', gratitude: 'gratitude', love: 'love', peace: 'peace', comfort: 'comfort', flutter: 'flutter', excitement: 'excitement' };
 const AXIS = ko ? AXIS_KO : AXIS_EN;
 
 const L = {

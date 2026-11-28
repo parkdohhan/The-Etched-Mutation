@@ -195,6 +195,7 @@ export function resonanceOf(alignment) { return alignment >= 0.55 ? 'resonance' 
 // Staging only (not judgement): the corridor builder drops keys outside its 17 axes, so keys the
 // authoring vocabulary adds are folded onto the nearest named axis. Free table — adjust freely.
 const FOLD = {
+  flutter: 'hope', excitement: 'joy',   // 261128: 설렘 · 흥분 (corridor shape only)
   longing: 'sadness', loneliness: 'isolation', obsession: 'fear', awe: 'peace', tenderness: 'love',
   envy: 'anger', disgust: 'anger', surprise: 'fear', emptiness: 'numbness', resentment: 'anger', nostalgia: 'sadness',
 };

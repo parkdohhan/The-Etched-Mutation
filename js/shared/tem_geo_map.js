@@ -30,6 +30,9 @@ export const TEM_ANCHOR_VAD_EXTENDED = {
   nostalgia:    { v:  0.1, a: -0.3, d: -0.1 },
   acceptance:   { v:  0.4, a: -0.4, d:  0.5 },
   confusion:    { v: -0.4, a:  0.3, d: -0.5 },
+  // 261128: 설렘 · 흥분 (added to the judgement anchors, js/shared/math.js). Drawing only — free values.
+  flutter:      { v:  0.6, a:  0.6, d:  0.1 },
+  excitement:   { v:  0.5, a:  0.9, d:  0.4 },
 };
 
 // 안전장치: VAD 시각화 only

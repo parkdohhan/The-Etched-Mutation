@@ -293,14 +293,14 @@
       fear:'공포', sadness:'슬픔', anger:'분노', guilt:'죄책감', shame:'수치심',
       isolation:'고립', numbness:'무감각', moral_pain:'도덕적 고통', helplessness:'무력감',
       despair:'절망', joy:'기쁨', hope:'희망', relief:'안도', gratitude:'감사',
-      love:'사랑', peace:'평화', comfort:'위로', longing:'그리움', nostalgia:'향수',
+      love:'사랑', peace:'평화', comfort:'위로', flutter:'설렘', excitement:'흥분', longing:'그리움', nostalgia:'향수',
       confusion:'혼란', emptiness:'공허'
     },
     en: {
       fear:'Fear', sadness:'Sadness', anger:'Anger', guilt:'Guilt', shame:'Shame',
       isolation:'Isolation', numbness:'Numbness', moral_pain:'Moral pain', helplessness:'Helplessness',
       despair:'Despair', joy:'Joy', hope:'Hope', relief:'Relief', gratitude:'Gratitude',
-      love:'Love', peace:'Peace', comfort:'Comfort', longing:'Longing', nostalgia:'Nostalgia',
+      love:'Love', peace:'Peace', comfort:'Comfort', flutter:'Flutter', excitement:'Excitement', longing:'Longing', nostalgia:'Nostalgia',
       confusion:'Confusion', emptiness:'Emptiness'
     }
   };
@@ -318,7 +318,7 @@
 
     // Categorize emotions
     var neg = ['fear','sadness','anger','guilt','shame','isolation','numbness','moral_pain','helplessness','despair','emptiness'];
-    var pos = ['joy','hope','relief','gratitude','love','peace','comfort'];
+    var pos = ['joy','hope','relief','gratitude','love','peace','comfort','flutter','excitement'];
     var origNeg = neg.indexOf(origDom) >= 0;
     var playNeg = neg.indexOf(playDom) >= 0;
 

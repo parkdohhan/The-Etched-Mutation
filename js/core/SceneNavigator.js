@@ -6,6 +6,9 @@
 //   Each transition_pattern biases the search center differently.
 
 import { cosineSimilarity, DEFAULT_EMOTION_ANCHORS } from '../shared/math.js';
+// 261128: the judgement anchors grew 17 -> 19 (flutter, excitement). This navigator is a dormant lever whose inversion (1 - v) reads every anchor,
+// so it keeps the 17 it was built on - its behaviour stays as it was.
+const NAV_ANCHORS = DEFAULT_EMOTION_ANCHORS.filter((k) => k !== 'flutter' && k !== 'excitement');
 
 // Per-pattern blend weights: how much of originalEmotion vs userEmotion
 // defines the center of the accessible-scene search space.
@@ -138,7 +141,7 @@ export class SceneNavigator {
         const keys = new Set([
             ...Object.keys(original || {}),
             ...Object.keys(user || {}),
-            ...DEFAULT_EMOTION_ANCHORS,
+            ...NAV_ANCHORS,
         ]);
         const result = {};
         for (const k of keys) {
@@ -153,7 +156,7 @@ export class SceneNavigator {
      */
     _negateEmotion(emotion) {
         const result = {};
-        for (const k of DEFAULT_EMOTION_ANCHORS) {
+        for (const k of NAV_ANCHORS) {
             result[k] = 1 - (emotion?.[k] || 0);
         }
         return result;

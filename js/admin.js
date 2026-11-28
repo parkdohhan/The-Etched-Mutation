@@ -1128,7 +1128,7 @@ const EMOTION_LABELS = {
     shame: '수치심', isolation: '고립', numbness: '무감각',
     moral_pain: '도덕적 고통', helplessness: '무력감', despair: '절망',
     joy: '기쁨', hope: '희망', relief: '안도', gratitude: '감사',
-    love: '사랑', peace: '평화', comfort: '위로'
+    love: '사랑', peace: '평화', comfort: '위로', flutter: '설렘', excitement: '흥분'
 };
 
 function renderOriginalEmotions(originalEmotion, sceneIndex) {

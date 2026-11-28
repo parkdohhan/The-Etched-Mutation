@@ -216,7 +216,7 @@ describe('flattenDeltas', () => {
   it('defaults to the 17-axis DEFAULT_EMOTION_ANCHORS keyset', () => {
     const flat = flattenDeltas([{}]);
     expect(flat.length).toBe(DEFAULT_EMOTION_ANCHORS.length);
-    expect(DEFAULT_EMOTION_ANCHORS.length).toBe(17);
+    expect(DEFAULT_EMOTION_ANCHORS.length).toBe(19);   // 261128: 17 + 설렘(flutter) · 흥분(excitement)
   });
 
   it('does not include phantom keys grief/tenderness in the default keyset', () => {

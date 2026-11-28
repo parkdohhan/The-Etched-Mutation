@@ -21,7 +21,9 @@ export const DEFAULT_EMOTION_ANCHORS = [
   'fear', 'sadness', 'anger', 'guilt', 'shame',
   'isolation', 'numbness', 'moral_pain', 'helplessness', 'despair',
  // positive/recovery
-  'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort'
+  'joy', 'hope', 'relief', 'gratitude', 'love', 'peace', 'comfort',
+ // 261128 author: "add 설렘 and 흥분 to the kinds of emotion" — 17 → 19. Old vectors have 0 on both, so nothing already measured changes.
+  'flutter', 'excitement'
 ];
 
 // 글-영문 mapping
@@ -64,6 +66,10 @@ export const EMOTION_ANCHOR_MAP = {
   '평화': 'peace',
   '평온': 'peace',
   '고요': 'peace',
+  '설렘': 'flutter',
+  '두근거림': 'flutter',
+  '흥분': 'excitement',
+  '들뜸': 'excitement',
   '위로': 'comfort',
   '편안': 'comfort',
   '위안': 'comfort',
