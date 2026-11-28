@@ -24,7 +24,7 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261128e';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128f';
 import { isSilent } from '../spaceplay/things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
@@ -77,10 +77,13 @@ const MAX_TURNS = 4;                        // exchanges a walker may have after
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms / FAST));
 const veilEl = $('rpVeil');
+/** 261128 late (author: "the moment the door is gone through it should be the next scene — now there is a pause"): dark and back in under half a second. */
+function veilQuick(on) { veilEl.style.transitionDuration = '420ms'; veilEl.classList.toggle('clear', !on); return new Promise((r) => setTimeout(() => { veilEl.style.transitionDuration = ''; r(); }, 450)); }
 function veil(on) { veilEl.classList.toggle('clear', !on); return new Promise((r) => setTimeout(r, 2300 / Math.min(FAST, 3))); }
 function toast(msg) { const t = $('rpToast'); typeText(t, msg, { per: 30 }); t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 6000); }
 function hint(msg, ms) { const h = $('rpHint'); clearTimeout(hint._t); if (!msg) { h.classList.remove('on'); return; } typeText(h, msg, { per: 30 }); h.classList.add('on'); hint._t = setTimeout(() => h.classList.remove('on'), ms || 9000); }
 function guide(rows, ms) {
+  if (!MAP_ON) rows = rows.filter((r) => !/지도|map/i.test(String(r[0]) + String(r[1])));   // no line about a map that is not there
   let g = $('spGuide'); if (!g) { g = document.createElement('div'); g.id = 'spGuide'; g.setAttribute('aria-live', 'polite'); document.body.appendChild(g); }
   g.innerHTML = ''; for (const [k, t] of rows) { const r = document.createElement('div'); r.className = 'row'; const a = document.createElement('span'); a.className = 'k'; a.textContent = k; const b = document.createElement('span'); b.className = 't'; b.textContent = t; r.appendChild(a); r.appendChild(b); g.appendChild(r); }
   requestAnimationFrame(() => g.classList.add('on'));
@@ -119,6 +122,9 @@ window.__remain = { run, get state() { return state; } };       // automation / 
 
 let cosmos, talk, map, air, pause, typeVoice, tutor = null, letGo = false, endPick = null, backs = null;
 const GROUND_ON = qs.get('fly') !== '1';                     // the walked ground (261128) — ?fly=1 = flown, as it was
+const MAP_ON = qs.get('map') === '1';                        // 261128 late (author: "take the small map out"): the map is not shown and M / the right button do nothing during the walk (the remain stage's ending still lays its pieces on it). With the back doors off too, nothing leads back to a scene passed. ?map=1 = as it was.
+if (!MAP_ON) document.body.classList.add('sp-nomap');
+const ASKED_DASH = qs.get('dash') === '1';                    // a scene that was asked a question stood in broken lines — taken out (261128 late)
 const BACK_ON = qs.get('backdoor') === '1';                  // 261128 (author: "for now the door back is not opened — it only confuses"): the back doors are not raised. The device stays; ?backdoor=1 raises them. The map still goes back.
 const BACK_DIST = 17;                                       // the back door stands this far from the scene (staging, the blank stage's value)
 const letGoMark = () => { letGo = true; };
@@ -377,7 +383,7 @@ async function boot() {
   air = createAir();
   typeVoice = createTypeVoice(); setTypeVoice(typeVoice.tap);
   talk = createTalk();
-  cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, ground: qs.get('fly') !== '1', footDrop: FOOT_DROP, on: { onNear, onFrame, onLand, onRelease: () => { $('rpWalk').textContent = ko ? '걷기' : 'walk'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
+  cosmos = createCosmos({ canvas: $('spCosmos'), memoryCode: run.memory.code, speed: FAST, ground: qs.get('fly') !== '1', footDrop: FOOT_DROP, on: { onNear, onFrame, onLand, onWayReady: (w) => { if (w && w.from) cosmos.holdThing(w.from, false); }, onRelease: () => { $('rpWalk').textContent = ko ? '걷기' : 'walk'; }, onLock: (l) => $('spAim').classList.toggle('on', l), onEscape: () => { if (pause && !run.ended) { letGoMark(); pause.open(); } } } });
   map = lazyStarMap({ wrap: $('spMapWrap'), canvas: $('spMap'), memoryCode: run.memory.code, onPick: (id) => (run.ended ? (endPick && endPick(id)) : returnBy(id)), onOpen: () => cosmos.unlock(), onClose: () => { if (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') cosmos.relock(); } });
   $('rpWalk').textContent = ko ? '날기' : 'fly';
   pause = createEscMenu({ ko, setVolume: (v) => { masterVol = v; air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
@@ -393,10 +399,11 @@ async function boot() {
     onEnter: (d) => { const from = sceneById(d.from), to = sceneById(d.to); if (from && to && !run.crossing && !run.busy) { run.backLog.push({ entered: from.scene_order, to: to.scene_order }); cross(from, to, null, 'old'); } } });
   Object.assign(window.__remain, { cosmos, talk, map, air, finish, pause, skip, backs });
   setupFlyButton();
-  window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') map.open(); });
-  window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !run.ended && !run.busy && !run.crossing) map.toggle(); });   // 261128: on the way to a door too (it did nothing there)
+  window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (!MAP_ON || run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') map.open(); });
+  window.addEventListener('keydown', (e) => { if (MAP_ON && e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !run.ended && !run.busy && !run.crossing) map.toggle(); });   // 261128: on the way to a door too (it did nothing there)
 
   if (TUTOR || GUIDE) tutor = createTutor({ lang: LANG, fast: FAST, typeText, touch: cosmos.isTouch() });
+  if (tutor && !MAP_ON) tutor.take('map');                                    // nothing is said of the map
   // the fall before the first scene: the real walk and the practice have it (it can be skipped by holding a key); the preview does not, unless asked
   const withPrologue = !AT && (MODE === 'test' ? qs.get('prologue') === '1' : qs.get('prologue') !== '0');
   let entryP = Promise.resolve({ scene: firstScene(), gate: null });
@@ -897,7 +904,7 @@ function afterSpeech(scene, res) {
     const sim = new Map(run.ghosts.map((g) => ['g' + g.id, remain.cosObj(res.mean, parseEmotion(g.emotion_vec))]));
     cosmos.leanWords(scene.id, (key) => (sim.has(key) ? Math.max(0, sim.get(key)) : 0.5));
   }
-  cosmos.setAsked(scene.id, (run.asked.get(scene.id) || []).length > 0);
+  cosmos.setAsked(scene.id, ASKED_DASH && (run.asked.get(scene.id) || []).length > 0);   // 261128 late (author: "take out the turning to broken lines when a question is asked") — ?dash=1 = as it was
 }
 
 // ── eyes open ───────────────────────────────────────────────────────────────
@@ -907,6 +914,7 @@ async function openEyes(first) {
   const at = new T.Vector3(0, 2.6, 9.5);
   cosmos.placeThing(first, V3(run.Q.get(first.id)), at);
   cosmos.teleport(at, 0, 0); cosmos.face(V3(run.Q.get(first.id)));
+  if (LAID && lays.has(first.id)) cosmos.holdThing(first.id, true);         // 261128 late: the thing and its words wait until the way has been drawn
   if (LAID) { const l = lays.get(first.id); if (l) cosmos.teleport(l.N.clone().add(new T.Vector3(0, cosmos.EYE, 0)), Math.atan2(-l.f.x, -l.f.z), 0); else layOut(first, (run.firstRes && run.firstRes.next && run.firstRes.next.scene) || null); }   // 261128 late: where the door beside the text was drawn from
   air.focus(null);
   cosmos.setMode('held'); cosmos.start();
@@ -931,9 +939,11 @@ async function openEyes(first) {
 async function afterStay(res) {
   const scene = res.scene, next = res.next;
   if (run.here === scene.id && cosmos.things.has(scene.id)) afterSpeech(scene, res);
+  if (next.mode === 'end' || !next.scene) cosmos.holdThing(scene.id, false);   // no door will be drawn: the thing is not kept back
   if (next.mode === 'end' || !next.scene) { run.busy = true; await wait(next.mode === 'end' ? 3200 : 1800); return finish(); }
   if (next.mode === 'fallback') hint(ko ? '기억의 빈틈이 다른 장면을 끌어당긴다.' : 'A gap in the memory pulls another scene toward you.', 7000);
   const laid = LAID && lays.has(scene.id);                                   // the door was already pressed, beside the text: it is simply there
+  if (!laid) cosmos.holdThing(scene.id, false);                               // (no way is being drawn from a text: nothing to wait for)
   if (!laid) await wait(1500);
   raiseDoor(scene, next.scene);
   { const sd = $('srSideDoor'); if (sd) { setTimeout(() => sd.classList.remove('on'), 900); setTimeout(() => sd.remove(), 3400); } }   // the drawn door gives way to the place's door, standing in the same spot
@@ -1010,8 +1020,10 @@ function sideDoor(scene, res) {
 /** A new scene, come to by a door: its text on the dark, then the place. */
 async function readThere(scene) {
   run.pending = null;
-  $('spCosmos').classList.remove('on'); $('spMapWrap').classList.remove('on'); cosmos.setMode('held');
-  await veil(false);
+  { const cv = $('spCosmos'); cv.style.transition = 'none'; cv.classList.remove('on'); void cv.offsetWidth; cv.style.transition = ''; }   // gone at once (its own fade is slow, and the dark over it lifts quickly now)
+  $('spMapWrap').classList.remove('on'); cosmos.setMode('held');
+  if (lays.size || true) cosmos.holdThing(scene.id, true);                  // the thing and its words wait until the way has been drawn (onWayReady)
+  await veilQuick(false);
   run.crossing = false;
   air.hush(false); air.focus(scene);
   let res;
@@ -1089,8 +1101,10 @@ async function cross(from, to, way, kind) {
   hint(''); nearLine(null); map.close(); $('rpWalk').classList.remove('on');
   air.hush(true);
   const fromPos = cosmos.pl.pos.clone();
-  await veil(true);
+  const quick = LAID && first && kind === 'new';                             // a door to a scene not yet read: no slow dark and no long waits — the line of the crossing, then the next text
+  await (quick ? veilQuick(true) : veil(true));
   if (kind === 'map') await wait(350);
+  else if (quick) { const pass = $('rpPass'); await typeText(pass, said, { per: 70, pace: 1 / FAST, voice: true }); await wait(650); pass.textContent = ''; }   // the line of the crossing is still said (author: "keep those") — only the long waits round it are gone
   else {
     const pass = $('rpPass');
     await wait(400);
@@ -1272,7 +1286,7 @@ function mapEdges() { const edges = []; for (let i = 1; i < run.path.length; i++
 function syncMap() {
   for (const [id, d] of run.doors) if (d.way && d.way.live) cosmos.shutWay(d.way, id !== run.here);   // 261128: only the door of the scene the walker is at stands open — another scene's door is not seen and takes no one
   if (!map) return;
-  const nodes = Array.from(run.arrived).map((id) => ({ id, scene: sceneById(id), pos: run.Q.get(id), here: id === run.here, asked: (run.asked.get(id) || []).length > 0, stayed: run.visited.has(id) }));
+  const nodes = Array.from(run.arrived).map((id) => ({ id, scene: sceneById(id), pos: run.Q.get(id), here: id === run.here, asked: ASKED_DASH && (run.asked.get(id) || []).length > 0, stayed: run.visited.has(id) }));
   const d = run.here && run.doors.get(run.here);
   map.set(nodes, mapEdges(), d && d.way.live ? { pos: [d.way.D.x, d.way.D.y, d.way.D.z] } : null);
 }

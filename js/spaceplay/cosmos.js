@@ -128,6 +128,12 @@ export function createCosmos(opts) {
     things.set(sceneRec.id, rec);
     return rec;
   }
+  /** 261128 late (author: "let the afterimages and the thing come only after the way to the door has been drawn"): held, a thing and the words round it are not seen; let go, the thing grows up and the words come in. */
+  function holdThing(id, on) {
+    const r = things.get(id); if (!r) return;
+    if (on) { r.held = true; r.grow = null; r.wrap.visible = false; r.glint.visible = false; for (const w of r.words) { w.show = 0; w.showTo = 0; w.m.material.opacity = 0; } }
+    else if (r.held) { r.held = false; r.wrap.visible = true; r.glint.visible = true; r.grow = 0; r.wrap.scale.setScalar(0.001); }
+  }
   function setAsked(id, on) { const r = things.get(id); if (r) r.thing.setAsked(on); }
 
   // faint threads between scenes the walker crossed (the model, not the walker's line)
@@ -155,8 +161,8 @@ export function createCosmos(opts) {
       const a = h01(id + 'wa') * Math.PI * 2 + slot * 2.399963, el = Math.asin(fr(h01(id + 'wy') + slot * 0.618034) * 2 - 1) * 0.62, rad = 6.4 + fr(h01(id + 'wr') + slot * 0.381966) * 6.2;
       const w = { key, kind, m, base: V().set(Math.cos(a) * Math.cos(el) * rad, Math.sin(el) * rad * 0.8, Math.sin(a) * Math.cos(el) * rad),
         px: h01(key + 'px') * 6.28, py: h01(key + 'py') * 6.28, tx: 58 + h01(key + 'tx') * 46, ty: 74 + h01(key + 'ty') * 52, amp: 1.1 + h01(key + 'am') * 1.5,
-        o: kind === 'mine' ? 0.72 : kind === 'ghost' ? 0.42 : 0.5, lean: 1, born: time, show: 1, showTo: 1, dist: 0 };
-      m.material.opacity = w.o; m.renderOrder = 6;
+        o: kind === 'mine' ? 0.72 : kind === 'ghost' ? 0.42 : 0.5, lean: 1, born: time, show: r.held ? 0 : 1, showTo: 1, dist: 0 };
+      m.material.opacity = r.held ? 0 : w.o; m.renderOrder = 6;
       world.add(m); r.words.push(w);
     }
   }
@@ -615,6 +621,10 @@ export function createCosmos(opts) {
       }
     }
     unheap(seen);
+    for (const r of things.values()) {
+      if (r.held) for (const w of r.words) w.showTo = 0;
+      else if (r.grow != null) { r.grow = Math.min(1, r.grow + dt / 1.8); const k = r.grow * r.grow * (3 - 2 * r.grow); r.wrap.scale.setScalar(Math.max(0.001, k)); if (r.grow >= 1) r.grow = null; }
+    }
     if (nearest && nd < NEAR_R && nearest.armed && pl.mode === 'fly') { nearest.armed = false; if (cb.onNear) cb.onNear(nearest.id, nd); }
     clouds.tick(dt);
     trail.tick();
@@ -697,7 +707,7 @@ export function createCosmos(opts) {
     },
     /** Turn the eyes to a point at once. */
     face(p) { const dx = p.x - pl.pos.x, dy = p.y - pl.pos.y, dz = p.z - pl.pos.z; pl.yaw = pl.tyaw = Math.atan2(-dx, -dz); pl.pitch = pl.tpitch = clamp(Math.atan2(dy, Math.hypot(dx, dz)), -1.3, 1.3); },
-    placeThing, setAsked, link, addWords, leanWords, openWay, openStub, removeWay, shutWay, land,
+    placeThing, holdThing, setAsked, link, addWords, leanWords, openWay, openStub, removeWay, shutWay, land,
     /** A point `dist` away along the ray through a screen point (pixels). */
     screenRay(px, py, dist) {
       const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight;

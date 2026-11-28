@@ -81,3 +81,6 @@ body.sb-held .sb-t.sb-can:hover .sb-s { color: #efe9e0; text-shadow: 0 0 14px rg
 #srSideDoor canvas { display: block; width: 100%; height: 100%; }
 #srSideDoor::after { content: ''; position: absolute; inset: -40%; }   /* a larger place to press than the small door */
 @keyframes srDoorFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+/* 261128 late: the small map is taken out of the walk (the remain stage's ending still uses it) */
+body.sp-nomap:not(.sr-ending) #spMapWrap { display: none !important; }
