@@ -22,7 +22,7 @@ import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const MODEL = "claude-opus-5-5";
-const VERSION = "remain_turn_v2_2026_11_28";
+const VERSION = "remain_turn_v3_2026_11_29";
 
 function getCorsHeaders(req: Request): Record<string, string> {
   const allowedOriginsRaw = Deno.env.get("ALLOWED_ORIGINS") || "";
@@ -598,6 +598,11 @@ serve(async (req: Request) => {
         const back = Math.round(Number(o?.back));
         return { id: String(o.id), whom: ["narrator", "other", "nobody", "none"].includes(o?.whom) ? o.whom : "none", back: back >= 0 && back < blanks.length && blanks[back] ? back : -1 };
       });
+      // 261129 (author: "take the second condition out" — and a walker was mid-walk on a page that still asks for it): a line that
+      // speaks of fault and shares no blank's matter is handed a blank anyway (spread by its number), so a page loaded before the rule
+      // changed lets it remain. What was really read is in back_read. The page of 261129 does not pick by `back`. TEMPORARY — take out once no old page is walking.
+      const filled = blanks.map((b: string, i: number) => (b ? i : -1)).filter((i: number) => i >= 0);
+      for (const o of out as any[]) { o.back_read = o.back; if (o.back < 0 && o.whom !== "none" && filled.length) o.back = filled[(Math.abs(parseInt(o.id, 10)) || 0) % filled.length]; }
       console.log("[remain-turn] judge items=" + items.length + " read=" + out.length + " back=" + out.filter((o: any) => o.back >= 0).length);
       return json(cors, 200, { ok: true, items: out, version: VERSION });
     }
