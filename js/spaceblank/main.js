@@ -31,7 +31,7 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf, isLocked } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261128f';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128g';
 import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
@@ -984,7 +984,7 @@ function onFrame(dt, time) {
   if (map && mapTick > 0.08) { mapTick = 0; map.walker(cosmos.pl.pos, cosmos.pl.yaw); }
   if (backs) backs.tick(dt);
 }
-function onLand() { $('rpWalk').textContent = ko ? '걷기' : 'walk'; if (run.landHinted) return; run.landHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 5000); }
+function onLand() { $('rpWalk').textContent = ko ? '걷기' : 'walk'; if (run.landHinted) return; run.landHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다 · A D 로 길에서 내려설 수 있습니다' : 'W to walk · A or D steps off the way'), 9000); }
 function syncMap() {
   for (const [id, d] of run.doors) if (d.way && d.way.live) cosmos.shutWay(d.way, id !== run.here);   // 261128: only the door of the scene the walker is at stands open — another scene's door is not seen and takes no one
   if (!map) return;

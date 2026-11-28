@@ -472,7 +472,7 @@ export function createCosmos(opts) {
     return best;
   }
   function land(w, s) {
-    pl.mode = 'walk'; pl.way = w; pl.s = s; pl.vel.set(0, 0, 0); pl.stepAcc = 0; pl.bob = 0; pl.landed = time; pl.blend = 1;
+    pl.mode = 'walk'; pl.way = w; pl.s = s; pl.sideWait = true; pl.vel.set(0, 0, 0); pl.stepAcc = 0; pl.bob = 0; pl.landed = time; pl.blend = 1;
     const q = railAt(w, s); pl.heading = Math.atan2(-q.tx, -q.tz);
     steps.ensure(); steps.play(0.36);                                    // the first weight: one step
     if (cb.onLand) cb.onLand(w);
@@ -517,9 +517,11 @@ export function createCosmos(opts) {
       if (cw) {
         const k = 1 - cn.d / PULL_R; pullNow = k;
         T2.set(cn.x - ft.x, cn.y - ft.y, cn.z - ft.z); const l = T2.length() || 1e-6;
-        pl.vel.addScaledVector(T2, (PULL_G * k * k * sdt) / l);
-        pl.vel.multiplyScalar(1 - 0.9 * k * k * Math.min(1, sdt * 2));     // it does not swing round the way: the weight settles
-        if (cn.d < 0.34 && cn.s < cw.total - 0.4) land(cw, cn.s);
+        if (!GROUND) {                                                     // 261128 late: on the walked ground a way does not pull — it is stepped onto (it dragged back a walker who had stepped off it to look at the thing)
+          pl.vel.addScaledVector(T2, (PULL_G * k * k * sdt) / l);
+          pl.vel.multiplyScalar(1 - 0.9 * k * k * Math.min(1, sdt * 2));   // it does not swing round the way: the weight settles
+        } else pullNow = 0;
+        if (cn.d < (GROUND ? 0.5 : 0.34) && cn.s < cw.total - 0.4) land(cw, cn.s);
       }
       if (pl.mode === 'fly') {
         pl.pos.addScaledVector(pl.vel, sdt);
@@ -542,6 +544,16 @@ export function createCosmos(opts) {
       // a few seconds. (Was: a way could not be walked back at all — 글방 결정 §8 W5·W9.) The short floor behind a door is not left backward.
       const back = !go && (keys.has('KeyS') || keys.has('ArrowDown'));
       let moved = 0, left = false;
+      // 261128 late (author: "one has to leave the way to see the thing, and one cannot leave it"): on the walked ground A / D step off the way, to that side.
+      // The way leaves the walker alone for a few seconds (LET_GO); it is stepped back onto by walking across it.
+      const sideKey = GROUND && !stub ? ((keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0)) : 0;
+      if (!sideKey) pl.sideWait = false;                                   // a side key still held from before the way was stepped onto does not step off it again: it must be let go first
+      if (sideKey && !pl.sideWait) {
+        w.letGo = time; w.door.userData.target = 0;
+        pl.mode = 'fly'; pl.way = null; pl.vel.set(Math.cos(pl.yaw) * sideKey * 1.6, 0, -Math.sin(pl.yaw) * sideKey * 1.6);
+        if (cb.onRelease) cb.onRelease(w);
+        return;                                                           // (this frame is not drawn: the next one is, from off the way)
+      }
       if (go) {
         const limit = stub ? w.total + 0.2 : (w.door.userData.open >= 0.6 ? w.total + 0.9 : w.total - 0.6);
         const ns = Math.min(limit, pl.s + WALK_V * sdt); moved = Math.max(0, ns - pl.s); pl.s = Math.max(pl.s, ns);
