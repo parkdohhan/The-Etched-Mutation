@@ -31,7 +31,7 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf, isLocked } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261128c';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128d';
 import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
@@ -749,7 +749,7 @@ function horiz(v, key) {
 // side of what they see, and the way to it passing the thing. Nothing is walked up to for a new scene's text.
 // A scene gone back to (by the map) is as before. ?lay=0 = the thing in the middle, as it was until now.
 const LAID = qs.get('lay') !== '0';
-const LAY = { door: 14, back: 4, off: 6, turn: 22 * Math.PI / 180 };   // (261128 late, second build: the thing stands at the walker's side — seen by looking aside — and not between them and the door)     // staging (free values): the door this far past the thing · the walker this far before it and this far aside · the door this far off the middle of the view
+const LAY = { door: 21, back: 4, off: 6, ahead: 0, veer: 0, half: [0.56, 0.4], swing: [0.62, 0.2] };   /* veer 0: the way sets out the way the walker looks — set off to one side it turned their head as they stepped on it, and the door left the view */   // 261128 late, third build (author: "the way is too wide, has no depth, and is straight — it does not feel like turning 3D"): the door further off (smaller), the way narrow, begun a little ahead of the feet, and going out away from the door before it bends in — the old text room's way (js/roomplay/way.js)   // (261128 late, second build: the thing stands at the walker's side — seen by looking aside — and not between them and the door)     // staging (free values): the door this far past the thing · the walker this far before it and this far aside · the door this far off the middle of the view
 const lays = new Map();                                                    // scene id → { D door, e its direction, N where the walker stands, f where they look }
 function placeFor(from, to) {
   if (run.Q.has(to.id)) return;
@@ -770,7 +770,10 @@ function layOut(scene, next) {
   // pressed, it does not move; the way to it is what comes up (author, 261128 late: "as in the old text room — the door stays where it is, only my way to it turns 3D; the door just floats there, small")
   const v = D.clone().sub(N), zc = v.x * f.x + v.z * f.z, xc = v.x * -f.z + v.z * f.x, K = (innerHeight / 2) / VIEW, dh = cosmos.DOOR_H;
   const h = (dh / zc) * K, w = h * DOOR_ASPECT, px = { left: innerWidth / 2 + (xc / zc) * K - w / 2, top: innerHeight / 2 - ((dh - cosmos.EYE) / zc) * K, w, h };
-  const lay = { D, e, N, f, px, side: xc > 0 ? 'right' : 'left' };
+  const sd = xc > 0 ? 1 : -1, cv = Math.cos(LAY.veer), sv = Math.sin(LAY.veer);
+  const u = new T.Vector3(f.x * cv - (-f.z) * sd * sv, 0, f.z * cv - f.x * sd * sv).normalize();   // where the way sets out: turned off the door's side
+  const S = N.clone().addScaledVector(f, LAY.ahead);                           // where the way begins: a little ahead of the feet (under them it filled the foot of the view)
+  const lay = { D, e, N, f, u, S, px, side: xc > 0 ? 'right' : 'left' };
   lays.set(scene.id, lay);
   cosmos.teleport(N.clone().add(new T.Vector3(0, cosmos.EYE, 0)), Math.atan2(-f.x, -f.z), 0);
   return lay;
@@ -830,7 +833,7 @@ function raiseDoor(from, to) {
   const door = Qf.clone().addScaledVector(dir, DOOR_DIST); door.y = Qf.y - FOOT_DROP;
   if (lay) door.copy(lay.D);
   const old = run.doors.get(from.id); if (old && old.way.live) cosmos.removeWay(old.way);
-  const way = cosmos.openWay({ door, dir, start: lay ? lay.N.clone() : undefined, startDir: lay ? lay.f.clone() : undefined, key: run.id + from.id + '>' + to.id, from: from.id, to: to.id, onPass: (w) => cross(from, to, w, null) });
+  const way = cosmos.openWay({ door, dir, start: lay ? lay.S.clone() : undefined, startDir: lay ? lay.u.clone() : undefined, startHalf: lay ? LAY.half[0] : undefined, endHalf: lay ? LAY.half[1] : undefined, swing: lay ? LAY.swing : undefined, key: run.id + from.id + '>' + to.id, from: from.id, to: to.id, onPass: (w) => cross(from, to, w, null) });
   run.doors.set(from.id, { way, to: to.id });
   syncMap();
   if (!lay) cosmos.lookToward(way.N.clone().lerp(door, 0.5).setY(door.y + 1.2), 2800);   // the eyes are turned to where it is being written

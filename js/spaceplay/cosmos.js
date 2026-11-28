@@ -386,14 +386,14 @@ export function createCosmos(opts) {
     const side = V().set(-e.z, 0, e.x), sgn = h01(o.key + 's') < 0.5 ? -1 : 1, D = o.door.clone();
     const N = o.start ? o.start.clone() : D.clone().addScaledVector(e, -9.5).addScaledVector(side, sgn * 3.4).setY(D.y + (h01(o.key + 'y') - 0.5) * 1.6);
     const u0 = o.startDir ? V().set(o.startDir.x, 0, o.startDir.z).normalize() : e.clone().addScaledVector(side, sgn * 0.55).normalize();
-    const L = D.distanceTo(N);
-    const curve = new THREE.CubicBezierCurve3(N, N.clone().addScaledVector(u0, L * 0.45), D.clone().addScaledVector(e, -L * 0.3), D);
+    const L = D.distanceTo(N), SH = o.startHalf || START_HALF, EH = o.endHalf || END_HALF, sw = o.swing || [0.45, 0.3];   // 261128 late: a way may be given its own widths and swing (the way from a text: narrow, curved as the old text room's — js/roomplay/way.js)
+    const curve = new THREE.CubicBezierCurve3(N, N.clone().addScaledVector(u0, L * sw[0]), D.clone().addScaledVector(e, -L * sw[1]), D);
     const pts = curve.getSpacedPoints(SEG), tan = [], along = [0], left = [], right = [], eL = [], eR = [], hws = [], rail = [];
     for (let i = 0; i <= SEG; i++) {
       const t3 = curve.getTangentAt(i / SEG), t = V().set(t3.x, 0, t3.z).normalize();
       tan.push(t);
       if (i > 0) along.push(along[i - 1] + pts[i].distanceTo(pts[i - 1]));
-      const r = V().set(-t.z, 0, t.x), hw = START_HALF + (END_HALF - START_HALF) * smooth(0, 1, i / SEG); hws.push(hw);
+      const r = V().set(-t.z, 0, t.x), hw = SH + (EH - SH) * smooth(0, 1, i / SEG); hws.push(hw);
       left.push(pts[i].clone().addScaledVector(r, -hw)); right.push(pts[i].clone().addScaledVector(r, hw));
       eL.push(pts[i].clone().addScaledVector(r, -hw - EDGE_W)); eR.push(pts[i].clone().addScaledVector(r, hw + EDGE_W));
       rail.push({ p: pts[i], t, s: along[i], hw });
