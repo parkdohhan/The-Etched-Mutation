@@ -142,3 +142,6 @@ body.sr-ending canvas#spCosmos.on { opacity: 0.2; transition: opacity 4200ms eas
 #srOther { top: auto; bottom: 29vh; font-size: 1.14rem; color: #e8e4df; }
 #srLook { position: fixed; left: 0; right: 0; top: 56%; z-index: 21; text-align: center; pointer-events: none; font-size: 0.82rem; letter-spacing: 0.16em; color: #8f8b99; text-shadow: 0 0 12px #000, 0 0 3px #000; opacity: 0; transition: opacity 1600ms ease; }
 #srLook.on { opacity: 1; }
+
+/* 261128: a guiding line of a first walk, shown above the line to write on (it lay over the text when it stood on its own) */
+.rp-guide.sr-told { font-size: 1.02rem; letter-spacing: 0.1em; color: #e8e4df; }

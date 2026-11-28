@@ -69,3 +69,6 @@ body.sb-held .sb-t.sb-can:hover .sb-s { color: #efe9e0; text-shadow: 0 0 14px rg
 /* 261128: the guiding lines of a first walk ("another me" — js/spaceremain/tutor.js), as on the remain stage */
 #srOther { position: fixed; left: 0; right: 0; bottom: 29vh; z-index: 46; text-align: center; padding: 0 8vw; font-size: 1.14rem; letter-spacing: 0.12em; line-height: 1.9; font-weight: 300; color: #e8e4df; opacity: 0; transition: opacity 1500ms ease; pointer-events: none; min-height: 1.9em; text-shadow: 0 0 12px #000, 0 0 3px #000; word-break: keep-all; }
 #srOther.on { opacity: 1; }
+
+/* 261128: a guiding line of a first walk, shown above the line to write on (it lay over the text when it stood on its own) */
+.rp-guide.sr-told { font-size: 1.02rem; letter-spacing: 0.1em; color: #e8e4df; }

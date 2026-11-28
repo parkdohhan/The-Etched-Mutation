@@ -24,12 +24,12 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261128b';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128c';
 import { isSilent } from '../spaceplay/things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
 import { runPrologue } from '../spaceplay/prologue.js?v=261128c';
-import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
+import { createEscMenu } from '../spaceplay/escmenu.js?v=261128a';
 import { createTypeVoice } from '../spaceplay/typevoice.js?v=261124a';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
 import { isLocked } from '../roomplay/engine.js';
@@ -40,7 +40,7 @@ import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
 import * as remain from './remain.js?v=261128d';
 import { runEnding, showOutside } from './ending.js?v=261128g';
-import { createTutor } from './tutor.js?v=261128g';
+import { createTutor } from './tutor.js?v=261128h';
 import { firstTime, guideSeen } from '../shared/first_guide.js?v=261128a';   // 261128: no separate tutorial piece — a browser new to TEM is shown the guiding lines on its first walk
 
 const $ = (id) => document.getElementById(id);
@@ -117,6 +117,8 @@ let state = null, baseTexts = {}, walkSlot = 0;
 window.__remain = { run, get state() { return state; } };       // automation / inspection hook
 
 let cosmos, talk, map, air, pause, typeVoice, tutor = null, letGo = false, endPick = null, backs = null;
+const GROUND_ON = qs.get('fly') !== '1';                     // the walked ground (261128) — ?fly=1 = flown, as it was
+const BACK_ON = qs.get('backdoor') === '1';                  // 261128 (author: "for now the door back is not opened — it only confuses"): the back doors are not raised. The device stays; ?backdoor=1 raises them. The map still goes back.
 const BACK_DIST = 17;                                       // the back door stands this far from the scene (staging, the blank stage's value)
 const letGoMark = () => { letGo = true; };
 const V3 = (a) => new window.THREE.Vector3(a[0], a[1], a[2]);
@@ -134,7 +136,7 @@ function createAir() {
   function make(scene) {
     const s = soundOf(scene); if (!s.url) return null;
     const el = new Audio(); el.loop = true; el.preload = 'auto'; el.volume = 0; el.src = s.url;
-    const c = { o: scene.scene_order, el, url: s.url, base: s.vol, level: 0, target: 0, retry: 0 };
+    const c = { o: scene.scene_order, el, url: s.url, base: s.vol, level: 0, target: 0, retry: 0, cut: Math.max(0, Number(scene.meta && scene.meta.sound_cut) || 0), rung: 0 };   // cut (261128): seconds it rings before it is cut off (0 = it goes on)
     chans.set(scene.id, c);
     return c;
   }
@@ -144,8 +146,10 @@ function createAir() {
     const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
     for (const c of chans.values()) {
       if (hushed) c.target = 0;
-      c.level += (c.target - c.level) * (1 - Math.exp(-dt / (c.target > c.level ? 1.4 : hushed ? 0.22 : 0.6)));
-      if (c.target < 0.002 && c.level < 0.004) c.level = 0;
+      if (c.cut) { if (c.target < 0.002 && c.level === 0) { if (c.rung) { c.rung = 0; try { c.el.currentTime = 0; } catch (_) {} } } else if (c.level > 0.05 && !c.el.paused) c.rung += dt; }   // 261128 (author: "loud things like a phone ringing — about seven seconds, then cut"): out of hearing, it is ready to ring again
+      const aim = c.cut && c.rung >= c.cut ? 0 : c.target;
+      c.level += (aim - c.level) * (1 - Math.exp(-dt / (aim > c.level ? 1.4 : hushed ? 0.22 : 0.6)));
+      if (aim < 0.002 && c.level < 0.004) c.level = 0;
       const v = Math.max(0, Math.min(1, c.level * c.base * master)); if (Math.abs(c.el.volume - v) > 0.002) c.el.volume = v;
       if (c.level > 0 && c.el.paused) play(c, now);
       else if (c.level === 0 && !c.el.paused) c.el.pause();
@@ -302,8 +306,8 @@ function createTalk() {
   /** @param o { more?: the walker has already spoken here — they may go on, or move on · allowSilence? } → { text } | { silent } | { on } */
   function ask(o) {
     box.innerHTML = '';
-    const g = document.createElement('div'); g.className = 'rp-guide';
-    typeText(g, o && o.guide ? o.guide : o && o.more ? (ko ? '더 말하거나, 더 물을 수 있습니다.' : 'You may say more, or ask more.') : (ko ? '이 기억의 주인에게 말하거나, 물을 수 있습니다.' : 'Speak to the one whose memory this is, or ask.'), { per: 30 });   // 261128 night: to whom (a tester took the one answering for a person in the scene)
+    const g = document.createElement('div'); g.className = 'rp-guide' + (o && o.told ? ' sr-told' : '');   // told (261128): a guiding line of a first walk, shown here and not over the text
+    typeText(g, o && o.told ? o.told : o && o.guide ? o.guide : o && o.more ? (ko ? '더 말하거나, 더 물을 수 있습니다.' : 'You may say more, or ask more.') : (ko ? '이 기억의 주인에게 말하거나, 물을 수 있습니다.' : 'Speak to the one whose memory this is, or ask.'), { per: 30 });   // 261128 night: to whom (a tester took the one answering for a person in the scene)
     const write = document.createElement('div'); write.className = 'sp-write';
     const field = document.createElement('input'); field.type = 'text'; field.maxLength = 90; field.autocomplete = 'off'; field.spellcheck = false; field.setAttribute('aria-label', ko ? '하는 말' : 'your line');
     const send = document.createElement('button'); send.className = 'rp-send'; send.type = 'button'; send.textContent = '↵'; send.setAttribute('aria-label', ko ? '보내기' : 'send');
@@ -378,6 +382,11 @@ async function boot() {
   pause = createEscMenu({ ko, setVolume: (v) => { masterVol = v; air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
     onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
     onClose: (byHand) => { letGo = false; if (byHand && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !map.isOpen()) cosmos.relock(); },
+    onEnd: () => {                                                         // 261128 (author): "end the story here" — the walk is closed where it stands and its ending is shown, as for a walk gone to its end (only with fewer scenes)
+      if (run.ended) return;
+      if (!cosmos.things.size) { toast(ko ? '첫 장면을 지난 뒤에 끝낼 수 있습니다' : 'It can be ended once the first scene is passed'); return; }
+      (function go() { if (run.crossing) return setTimeout(go, 300); finish(); })();
+    },
     onLeave: leave });
   backs = createBackDoors({ cosmos, ko, canEnter: () => !run.busy && !run.crossing && !run.ended && !map.isOpen() && !(pause && pause.isOpen()),
     onEnter: (d) => { const from = sceneById(d.from), to = sceneById(d.to); if (from && to && !run.crossing && !run.busy) { run.backLog.push({ entered: from.scene_order, to: to.scene_order }); cross(from, to, null, 'old'); } } });
@@ -611,9 +620,9 @@ async function stay(scene, o) {
   /** One exchange. Returns false when the walker moved on (or stayed silent). */
   const exchange = async (opts) => {
     let answer;
-    if (tutor) tutor.say(turnsHere ? 'more' : 'ask');
+    let told = tutor ? tutor.take(turnsHere ? 'more' : 'ask') : null;
     for (;;) {
-      answer = await talk.ask(opts);
+      answer = await talk.ask(told ? Object.assign({}, opts, { told }) : opts); told = null;
       if (answer.silent || answer.on) return false;
       const g = guard(answer.text);
       if (!g.ok) { await talk.say(SHARP, 'rp-narr', { gap: true }); if (g.help && helpLine()) await talk.say(helpLine(), 'rp-narr', {}); continue; }
@@ -956,7 +965,7 @@ function raiseDoor(from, to) {
  * not yet read). Through it that scene's figure is seen, and nothing else. One per scene; none at the first.
  */
 function raiseBackDoor(scene, forward) {
-  if (!backs || run.backs.has(scene.id)) return;
+  if (!BACK_ON || !backs || run.backs.has(scene.id)) return;
   const cands = Array.from(run.visited).filter((id) => id !== scene.id && (!forward || id !== forward.id) && cosmos.things.has(id)).sort();
   if (!cands.length) return;
   // which scene: where the walker said most that was not a question (what they might want back); none such → the lottery as before
@@ -1009,7 +1018,7 @@ async function cross(from, to, way, kind) {
   cosmos.link(from.id, to.id);
   if (run.stub && run.stub.live) cosmos.removeWay(run.stub);
   if (way && way.kind === 'back' && way.live) cosmos.removeWay(way);
-  run.stub = kind === 'map' ? null : cosmos.openStub({ at: X, dir, key: run.id + 'stub' + run.legs.length });
+  run.stub = (kind === 'map' || GROUND_ON) ? null : cosmos.openStub({ at: X, dir, key: run.id + 'stub' + run.legs.length });   // 261128: on the walked ground nothing is left standing behind the walker (the far side of the door read as a shut door)
   const start = X.clone().addScaledVector(dir, 0.5).add(new T.Vector3(0, cosmos.EYE, 0));
   cosmos.carry(fromPos, start);
   cosmos.teleport(start, Math.atan2(-dir.x, -dir.z), 0);
@@ -1024,7 +1033,8 @@ async function cross(from, to, way, kind) {
   await veil(false);
   air.hush(false);
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
-  if (run.stub && !run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다 — 조형물에 다가가면 글이 열립니다' : 'hold the circle to walk — come near the thing and its text opens') : (ko ? 'W 로 걷습니다 — 조형물에 다가가면 글이 열립니다' : 'W to walk — come near the thing and its text opens'), 9000); }
+  if (!run.stub && kind !== 'map') cosmos.setMode('fly');
+  if (kind !== 'map' && !run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다 — 조형물에 다가가면 글이 열립니다' : 'hold the circle to walk — come near the thing and its text opens') : (ko ? 'W 로 걷습니다 — 조형물에 다가가면 글이 열립니다' : 'W to walk — come near the thing and its text opens'), 9000); }
   run.crossing = false;
 }
 
@@ -1058,7 +1068,7 @@ function onNear(id) {
  */
 async function again(scene) {
   run.busy = true;
-  if (tutor) tutor.say('again');
+  let toldAgain = tutor ? tutor.take('again') : null;
   cosmos.setMode('held'); map.close(); hint(''); nearLine(null); $('rpWalk').classList.remove('on');
   const r = cosmos.things.get(scene.id);
   if (r) cosmos.settle(r.pos, { dist: 10.5, side: innerWidth < 760 ? 0 : (hashStr(scene.id + 'side') < 0.5 ? -1 : 1), ms: 2200 });
@@ -1081,7 +1091,7 @@ async function again(scene) {
   for (let t = 0; t < MAX_TURNS; t++) {
     let answer;
     for (;;) {
-      answer = await talk.ask({ more: true, guide: ko ? '더 말할 수 있습니다.' : 'You may say more.', side: ko ? '돌아선다' : 'turn away' });
+      answer = await talk.ask({ more: true, guide: ko ? '더 말할 수 있습니다.' : 'You may say more.', side: ko ? '돌아선다' : 'turn away', told: toldAgain }); toldAgain = null;
       if (answer.silent || answer.on) break;
       const g = guard(answer.text);
       if (!g.ok) { await talk.say(SHARP, 'rp-narr', { gap: true }); if (g.help && helpLine()) await talk.say(helpLine(), 'rp-narr', {}); continue; }
@@ -1168,6 +1178,7 @@ function onFrame(dt) {
 function onLand() { $('rpWalk').textContent = ko ? '걷기' : 'walk'; if (run.landHinted) return; run.landHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 5000); }
 function mapEdges() { const edges = []; for (let i = 1; i < run.path.length; i++) if (run.path[i] !== run.path[i - 1]) edges.push([run.path[i - 1], run.path[i]]); return edges; }
 function syncMap() {
+  for (const [id, d] of run.doors) if (d.way && d.way.live) cosmos.shutWay(d.way, id !== run.here);   // 261128: only the door of the scene the walker is at stands open — another scene's door is not seen and takes no one
   if (!map) return;
   const nodes = Array.from(run.arrived).map((id) => ({ id, scene: sceneById(id), pos: run.Q.get(id), here: id === run.here, asked: (run.asked.get(id) || []).length > 0, stayed: run.visited.has(id) }));
   const d = run.here && run.doors.get(run.here);

@@ -65,6 +65,9 @@ export function createTutor(o) {
     });
     return chain;
   }
+  /** 261128 (author: "the guiding line lies over the scene's text"): the lines said while the text column is up are not typed over it —
+   *  the stage takes them as text and shows them above the line to write on. Once, like say(). */
+  function take(key) { if (said.has(key) || !L[key]) return null; said.add(key); return L[key].join(' '); }
   function hush() { token++; chain = Promise.resolve(); el.classList.remove('on'); }
-  return { say, hush, end: L.end, has: (key) => said.has(key) };
+  return { say, take, hush, end: L.end, has: (key) => said.has(key) };
 }

@@ -27,6 +27,9 @@ const CSS = `
 #spEsc button{background:none;font-family:inherit;cursor:pointer;transition:all .3s}
 #spEsc .x{margin-top:2rem;border:1px solid rgba(180,80,80,.3);color:rgba(180,80,80,.7);font-size:0.813rem;letter-spacing:0.188rem;padding:0.625rem 2rem;border-radius:0.188rem}
 #spEsc .x:hover,#spEsc .x.sure{border-color:rgba(180,80,80,.6);color:rgba(180,80,80,1)}
+#spEsc .e{display:block;margin:2rem auto 0;border:1px solid rgba(196,168,130,.35);color:rgba(196,168,130,.8);font-size:0.813rem;letter-spacing:0.188rem;padding:0.625rem 2rem;border-radius:0.188rem}
+#spEsc .e:hover,#spEsc .e.sure{border-color:rgba(240,216,170,.8);color:rgba(240,216,170,1)}
+#spEsc .e+.x{margin-top:0.9rem}
 #spEsc .b{display:block;margin:1rem auto 0;border:none;color:rgba(196,168,130,.35);font-size:0.688rem;letter-spacing:0.188rem;padding:0.5rem 1.25rem}
 #spEsc .b:hover{color:rgba(196,168,130,.6)}
 `;
@@ -39,6 +42,7 @@ const CSS = `
  * @param {()=>void} [o.onOpen]
  * @param {(byHand:boolean)=>void} [o.onClose]
  * @param {()=>void} o.onLeave
+ * @param {()=>void} [o.onEnd]             261128 (author: "split leaving in two — back to the menu, or end the story here"): given, a second button stands above the first: the walk is ended here and its ending is shown
  */
 export function createEscMenu(o) {
   const ko = o.ko !== false;
@@ -47,14 +51,16 @@ export function createEscMenu(o) {
   el.innerHTML = '<div class="p"><div class="t"></div>'
     + '<div class="r"><span class="l" data-k="b"></span><input type="range" data-k="bs" min="0.5" max="1.5" step="0.05"><span class="v" data-k="bv"></span></div>'
     + '<div class="r"><span class="l" data-k="s"></span><input type="range" data-k="ss" min="0" max="1" step="0.05"><span class="v" data-k="sv"></span></div>'
-    + '<button type="button" class="x"></button><button type="button" class="b"></button></div>';
+    + (o.onEnd ? '<button type="button" class="e"></button>' : '') + '<button type="button" class="x"></button><button type="button" class="b"></button></div>';
   document.body.appendChild(el);
   const q = (k) => el.querySelector('[data-k="' + k + '"]');
   const title = el.querySelector('.t'), exit = el.querySelector('.x'), back = el.querySelector('.b');
   title.textContent = ko ? '멈춤' : 'paused';
   q('b').textContent = ko ? '밝기' : 'Brightness'; q('s').textContent = ko ? '소리' : 'Volume';
   back.textContent = ko ? 'ESC 로 돌아가기' : 'press ESC to resume';
-  const exitText = () => { exit.textContent = exit.classList.contains('sure') ? (ko ? '한 번 더 누르면 나갑니다' : 'press again to leave') : (ko ? '나가기' : 'Exit'); };
+  const exitText = () => { exit.textContent = exit.classList.contains('sure') ? (ko ? '한 번 더 누르면 나갑니다' : 'press again to leave') : (o.onEnd ? (ko ? '메뉴 화면으로 돌아가기' : 'Back to the menu') : (ko ? '나가기' : 'Exit')); };
+  const end = el.querySelector('.e');
+  const endText = () => { if (end) end.textContent = end.classList.contains('sure') ? (ko ? '한 번 더 누르면 여기서 끝납니다' : 'press again to end here') : (ko ? '이야기를 여기서 끝마치기' : 'End the story here'); };
 
   let open = false, openedAt = 0, focusWas = null;
   const pct = (v) => Math.round(v * 100) + '%';
@@ -68,7 +74,7 @@ export function createEscMenu(o) {
   function show() {
     if (open) return; open = true; openedAt = performance.now();
     focusWas = document.activeElement && document.activeElement !== document.body ? document.activeElement : null; if (focusWas && focusWas.blur) focusWas.blur();   // a field under the sheet takes no typing
-    exit.classList.remove('sure'); exitText(); el.classList.add('on');
+    exit.classList.remove('sure'); exitText(); if (end) { end.classList.remove('sure'); endText(); } el.classList.add('on');
     if (o.onOpen) o.onOpen();
   }
   function hide(byHand) {
@@ -79,6 +85,7 @@ export function createEscMenu(o) {
   back.addEventListener('click', () => hide(true));
   el.addEventListener('click', (e) => { if (e.target === el) hide(true); });
   exit.addEventListener('click', () => { if (!exit.classList.contains('sure')) { exit.classList.add('sure'); exitText(); return; } if (o.onLeave) o.onLeave(); });
+  if (end) end.addEventListener('click', () => { if (!end.classList.contains('sure')) { end.classList.add('sure'); endText(); exit.classList.remove('sure'); exitText(); return; } hide(false); o.onEnd(); });
 
   // capture: before the place's own key handlers
   window.addEventListener('keydown', (e) => {

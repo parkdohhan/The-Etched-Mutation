@@ -31,11 +31,11 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf, isLocked } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor, riggedStage } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261128b';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261128c';
 import { isSilent } from '../spaceplay/things.js';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
-import { createEscMenu } from '../spaceplay/escmenu.js?v=261126a';
+import { createEscMenu } from '../spaceplay/escmenu.js?v=261128a';
 import { runFinale } from './finale.js?v=261124a';
 import { runPrologue } from '../spaceplay/prologue.js?v=261128c';
 import { packTrack } from '../spaceplay/thread.js?v=261123d';
@@ -45,7 +45,7 @@ import { HOLE, createLexicon, createTyping, createHand, findHole, fillOf, vary, 
 import { createBackDoors } from './backdoor.js?v=261123b3';
 import { markWalked, chainNext, clearChain, takeGateAnswer, GATE_HOLE } from '../shared/person_shelf.js?v=261128a';
 import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author: "slips of the hand like this — sift them out"): what is typed is tidied before anything is done with it
-import { createTutor } from '../spaceremain/tutor.js?v=261128g';
+import { createTutor } from '../spaceremain/tutor.js?v=261128h';
 import { firstTime, guideSeen } from '../shared/first_guide.js?v=261128a';   // 261128: a browser new to TEM is shown the guiding lines on its first walk (no separate tutorial piece)
 import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';   // 261128: a walk under a no-trace ID (june) is written nowhere   // 261124: ARCHIVE = people's shelves · 261128: the gate (docs/아카이브_기억칸_질문_결정-261128.md)
 
@@ -112,6 +112,8 @@ const run = {
 window.__space = { run, mode: MODE, demo: DEMO };       // automation / inspection hook
 
 let cosmos, talk, map, air, pause, typeVoice, letGo = false, tutor = null;
+const BACK_ON = qs.get('backdoor') === '1';                  // 261128 (author: "for now the door back is not opened — it only confuses"): the back doors are not raised. The device stays; ?backdoor=1 raises them. The map still goes back.
+const GROUND_ON = qs.get('fly') !== '1';                     // the walked ground (261128) — ?fly=1 = flown, as it was
 const GUIDE = !DEMO && firstTime(qs);                        // 261128: this browser has no mark of a walk → the guiding lines, once (?guide=1 / ?guide=0)
 let lex, typing, hand, backs, pressing = false, stayCtx = null;   // the blank: which words can go, how letters go and come, the holes in hand, the back doors, the stay now up
 const BACK_DIST = 17;                                       // the back door stands this far from the scene (staging)
@@ -133,7 +135,7 @@ function createAir() {
   function make(scene) {
     const s = soundOf(scene); if (!s.url) return null;
     const el = new Audio(); el.loop = true; el.preload = 'auto'; el.volume = 0; el.src = s.url;
-    const c = { o: scene.scene_order, el, url: s.url, base: s.vol, level: 0, target: 0, retry: 0 };
+    const c = { o: scene.scene_order, el, url: s.url, base: s.vol, level: 0, target: 0, retry: 0, cut: Math.max(0, Number(scene.meta && scene.meta.sound_cut) || 0), rung: 0 };   // cut (261128): seconds it rings before it is cut off (0 = it goes on)
     chans.set(scene.id, c);
     return c;
   }
@@ -143,8 +145,10 @@ function createAir() {
     const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now;
     for (const c of chans.values()) {
       if (hushed) c.target = 0;
-      c.level += (c.target - c.level) * (1 - Math.exp(-dt / (c.target > c.level ? 1.4 : hushed ? 0.22 : 0.6)));   // it comes in slowly, goes out quicker, and is cut short when a passage begins
-      if (c.target < 0.002 && c.level < 0.004) c.level = 0;
+      if (c.cut) { if (c.target < 0.002 && c.level === 0) { if (c.rung) { c.rung = 0; try { c.el.currentTime = 0; } catch (_) {} } } else if (c.level > 0.05 && !c.el.paused) c.rung += dt; }   // 261128 (author: "loud things like a phone ringing — about seven seconds, then cut"): out of hearing, it is ready to ring again
+      const aim = c.cut && c.rung >= c.cut ? 0 : c.target;
+      c.level += (aim - c.level) * (1 - Math.exp(-dt / (aim > c.level ? 1.4 : hushed ? 0.22 : 0.6)));   // it comes in slowly, goes out quicker, and is cut short when a passage begins
+      if (aim < 0.002 && c.level < 0.004) c.level = 0;
       const v = Math.max(0, Math.min(1, c.level * c.base * master)); if (Math.abs(c.el.volume - v) > 0.002) c.el.volume = v;
       if (c.level > 0 && c.el.paused) play(c, now);
       else if (c.level === 0 && !c.el.paused) c.el.pause();                                  // out of hearing it does not run at all
@@ -295,8 +299,8 @@ function createTalk() {
   const root = $('rpRoom'), room = createRoom(root, LANG, 1 / FAST), box = root.querySelector('.rp-input');
   function ask(o) {
     box.innerHTML = '';
-    const guide = document.createElement('div'); guide.className = 'rp-guide';
-    typeText(guide, (o && o.guide) || (ko ? '떠오르는 것을 말하거나, 물을 수 있습니다.' : 'Say what comes back to you, or ask.'), { per: 30 });
+    const guide = document.createElement('div'); guide.className = 'rp-guide' + (o && o.told ? ' sr-told' : '');   // told (261128): a guiding line of a first walk, shown here and not over the text
+    typeText(guide, (o && o.told) || (o && o.guide) || (ko ? '떠오르는 것을 말하거나, 물을 수 있습니다.' : 'Say what comes back to you, or ask.'), { per: 30 });
     const write = document.createElement('div'); write.className = 'sp-write';
     const field = document.createElement('input'); field.type = 'text'; field.maxLength = 90; field.autocomplete = 'off'; field.spellcheck = false; field.setAttribute('aria-label', ko ? '하는 말' : 'your line');
     const send = document.createElement('button'); send.className = 'rp-send'; send.type = 'button'; send.textContent = '↵'; send.setAttribute('aria-label', ko ? '보내기' : 'send');
@@ -364,6 +368,11 @@ async function boot() {
   pause = createEscMenu({ ko, setVolume: (v) => { air.setMaster(v); cosmos.setVolume(v); typeVoice.setVolume(v); }, busy: () => map.isOpen(),
     onOpen: () => { if (cosmos.locked()) cosmos.unlock(); else cosmos.hold(letGo); },
     onClose: (byHand) => { letGo = false; if (byHand && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !map.isOpen()) cosmos.relock(); },
+    onEnd: () => {                                                         // 261128 (author): "end the story here" — the walk is closed where it stands and its ending is shown, as for a walk gone to its end (only with fewer scenes)
+      if (run.ended) return;
+      if (!cosmos.things.size) { toast(ko ? '첫 장면을 지난 뒤에 끝낼 수 있습니다' : 'It can be ended once the first scene is passed'); return; }
+      (function go() { if (run.crossing) return setTimeout(go, 300); finish(); })();
+    },
     onLeave: () => { clearChain(); try { sessionStorage.setItem('tem_menu_after_ending', '1'); } catch (_) {} location.href = qs.get('back') || (location.protocol === 'file:' ? 'index.html' : './'); } });
   Object.assign(window.__space, { cosmos, talk, map, air, finish, pause, hand, lex, useBlank, HOLE, backs });
   setupFlyButton();
@@ -503,8 +512,7 @@ async function stay(scene, via, o) {
   const exchange = async (i, allowSilence) => {
     let answer;
     for (;;) {
-      if (tutor) tutor.say(i ? 'more' : 'ask');
-      answer = await talk.ask({ allowSilence, guide: hand.held() ? (ko ? '말하거나 물을 수 있습니다 — 들고 온 빈 자리를 글의 아무 낱말에나 대면, 그 낱말이 빠집니다.' : 'Say something, or ask — or hold the empty place you carry against any word of the text: the word goes out.') : null });
+      answer = await talk.ask({ allowSilence, told: tutor ? tutor.take(i ? 'more' : 'ask') : null, guide: hand.held() ? (ko ? '말하거나 물을 수 있습니다 — 들고 온 빈 자리를 글의 아무 낱말에나 대면, 그 낱말이 빠집니다.' : 'Say something, or ask — or hold the empty place you carry against any word of the text: the word goes out.') : null });
       if (answer.silent) return null;
       const g = guard(answer.text);
       if (g.ok) break;
@@ -750,7 +758,7 @@ function raiseDoor(from, to) {
  * One per scene, for the whole walk. None at the first scene (nothing to go back to).
  */
 function raiseBackDoor(scene, forward) {
-  if (!backs || run.backs.has(scene.id)) return;
+  if (!BACK_ON || !backs || run.backs.has(scene.id)) return;
   const cands = Array.from(run.visited).filter((id) => id !== scene.id && (!forward || id !== forward.id) && cosmos.things.has(id)).sort();
   if (!cands.length) return;
   const to = sceneById(cands[Math.floor(hashStr(run.id + scene.id + 'back') * cands.length)]);
@@ -800,7 +808,7 @@ async function cross(from, to, way, kind) {
   cosmos.link(from.id, to.id);
   if (run.stub && run.stub.live) cosmos.removeWay(run.stub);
   if (way && way.kind === 'back' && way.live) cosmos.removeWay(way);
-  run.stub = kind === 'map' ? null : cosmos.openStub({ at: X, dir, key: run.id + 'stub' + run.legs.length });   // a door's far side: a short floor. From the map there is no door, so none
+  run.stub = (kind === 'map' || GROUND_ON) ? null : cosmos.openStub({ at: X, dir, key: run.id + 'stub' + run.legs.length });   // 261128: on the walked ground nothing is left standing behind the walker   // a door's far side: a short floor. From the map there is no door, so none
   const start = X.clone().addScaledVector(dir, 0.5).add(new T.Vector3(0, cosmos.EYE, 0));
   cosmos.carry(fromPos, start);
   cosmos.teleport(start, Math.atan2(-dir.x, -dir.z), 0);
@@ -815,7 +823,8 @@ async function cross(from, to, way, kind) {
   await veil(false);
   air.hush(false);                                                        // the new place sounds for itself, by distance
   if (cosmos.isTouch()) $('rpWalk').classList.add('on');
-  if (run.stub && !run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 6000); }
+  if (!run.stub && kind !== 'map') cosmos.setMode('fly');
+  if (kind !== 'map' && !run.walkHinted) { run.walkHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 6000); }
   run.crossing = false;
 }
 /** A move that is not a stay is a walk all the same: it goes in the ledger (the piece stage's mark; no emotion, no alignment). */
@@ -872,6 +881,7 @@ function onFrame(dt, time) {
 }
 function onLand() { $('rpWalk').textContent = ko ? '걷기' : 'walk'; if (run.landHinted) return; run.landHinted = true; hint(cosmos.isTouch() ? (ko ? '동그라미를 누르고 있으면 걷습니다' : 'hold the circle to walk') : (ko ? 'W 로 걷습니다' : 'W to walk'), 5000); }
 function syncMap() {
+  for (const [id, d] of run.doors) if (d.way && d.way.live) cosmos.shutWay(d.way, id !== run.here);   // 261128: only the door of the scene the walker is at stands open — another scene's door is not seen and takes no one
   if (!map) return;
   const nodes = Array.from(run.arrived).map((id) => ({ id, scene: sceneById(id), pos: run.Q.get(id), here: id === run.here, asked: (run.asked.get(id) || []).length > 0, stayed: run.visited.has(id) }));
   const edges = []; for (let i = 1; i < run.path.length; i++) if (run.path[i] !== run.path[i - 1]) edges.push([run.path[i - 1], run.path[i]]);

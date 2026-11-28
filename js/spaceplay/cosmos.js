@@ -440,6 +440,8 @@ export function createCosmos(opts) {
     w.floorMat.dispose(); w.edgeMat.dispose(); w.door.material.map.dispose(); w.door.material.dispose();
     w.live = false;
   }
+  /** 261128 (author: "the scenes are not kept apart — one can go in by the wrong door"): a way is shut while the walker is at another scene — not seen, and it takes no one. Opened again when they are back. */
+  function shutWay(w, on) { if (!w || !w.live) return; w.shut = !!on; for (const m of [w.floor, w.edges[0], w.edges[1], w.door]) m.visible = !on; }
   function railAt(w, s) {
     const r = w.rail; let i = 1; while (i < r.length - 1 && r[i].s < s) i++;
     const a = r[i - 1], b = r[i], k = b.s > a.s ? (s - a.s) / (b.s - a.s) : 0, kc = clamp(k, 0, 1);
@@ -493,7 +495,7 @@ export function createCosmos(opts) {
       // the pull of a way: the nearer the feet, the more weight; on touching it, the walker stands
       const ft = feet(T1); let cw = null, cn = null;
       for (const w of ways) {
-        if (!w.live || !w.ready || w.kind === 'stub') continue;
+        if (!w.live || !w.ready || w.kind === 'stub' || w.shut) continue;   // 261128: a shut way (another scene's door) takes no one
         if (w.letGo && time - w.letGo < LET_GO) continue;                  // 261128: a way just stepped back off does not take the walker again at once
         const n = nearestOnRail(w, ft);
         if (n && n.d < PULL_R && (!cn || n.d < cn.d)) { cn = n; cw = w; }
@@ -687,7 +689,7 @@ export function createCosmos(opts) {
     },
     /** Turn the eyes to a point at once. */
     face(p) { const dx = p.x - pl.pos.x, dy = p.y - pl.pos.y, dz = p.z - pl.pos.z; pl.yaw = pl.tyaw = Math.atan2(-dx, -dz); pl.pitch = pl.tpitch = clamp(Math.atan2(dy, Math.hypot(dx, dz)), -1.3, 1.3); },
-    placeThing, setAsked, link, addWords, leanWords, openWay, openStub, removeWay, land,
+    placeThing, setAsked, link, addWords, leanWords, openWay, openStub, removeWay, shutWay, land,
     /** A point `dist` away along the ray through a screen point (pixels). */
     screenRay(px, py, dist) {
       const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight;
