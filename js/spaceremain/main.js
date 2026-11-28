@@ -58,7 +58,7 @@ const AT = qs.get('at') || '';
 //   ?demo=1   walked as the preview is (nothing goes to the server's tables; the answers and the rewriting are asked of the server as ever), started clean every time, with
 //     route=1,2,3,6,7                               the scenes, in this order; the last closes the walk                (default: these)
 //     pass=avoidance,bridge,contradiction,echo_follow  the line said at each crossing, by its kind                        (default: these)
-//     keep=1,3,7                                    the scenes whose FIRST line said remains (three at most)            (default: these)
+//     keep=1,3,7                                    the scenes whose LAST line said remains (three at most)             (default: these)
 //   Staging, not a measurement: which lines remain is laid down here, not read. &next=1 = the same walk as the next person (reads what the take before left in this browser).
 const DEMO = qs.get('demo') === '1';
 const demoList = (k, d) => String(qs.get(k) || d).split(',').map((x) => x.trim()).filter(Boolean);
@@ -786,8 +786,8 @@ function nearestGhost(userEmotion, pool) {
 /** Whom each line holds to account, and which blank it is about the same matter as. Never rejects; a line left unread cannot remain. */
 function judge(indices) {
   if (!indices.length) return Promise.resolve();
-  if (DEMO) {                                                              // laid down, not read: the first line said in each scene named by keep= remains
-    for (const li of indices) { const l = run.lines[li]; if (l.silentScene) { l.whom = 'none'; l.back = -1; continue; } const firstOf = run.lines.findIndex((x) => !x.silentScene && x.order === l.order); l.whom = DEMO_KEEP.has(Number(l.order)) && firstOf === li ? 'narrator' : 'none'; l.back = -1; }
+  if (DEMO) {                                                              // laid down, not read: the LAST line said in each scene named by keep= remains (the first is a question asked so that whoever watches can follow the story; the second is the line that stays)
+    for (const li of indices) { const l = run.lines[li]; if (l.silentScene) { l.whom = 'none'; l.back = -1; continue; } let lastOf = -1; run.lines.forEach((x, i) => { if (!x.silentScene && x.order === l.order) lastOf = i; }); l.whom = DEMO_KEEP.has(Number(l.order)) && lastOf === li ? 'narrator' : 'none'; l.back = -1; }
     return Promise.resolve();
   }
   if (DRY) { for (const li of indices) { const l = run.lines[li]; l.whom = remain.WHOM[Math.floor(hashStr(l.raw + 'w') * 4)]; l.back = Math.floor(hashStr(l.raw + 'k') * 4) - 1; } return Promise.resolve(); }
