@@ -157,3 +157,15 @@ body.sr-ending canvas#spCosmos.on { opacity: 0.2; transition: opacity 4200ms eas
 
 /* 261128 late: the small map is taken out of the walk (the remain stage's ending still uses it) */
 body.sp-nomap:not(.sr-ending) #spMapWrap { display: none !important; }
+
+/* 261128 late: the pause sheet's "what it is about, again" · the small word over a scene's text saying when it is from */
+#spEsc .sr-story-btn { display: block; margin: 1.6rem auto 0; border: 1px solid rgba(196,168,130,.22); color: rgba(196,168,130,.75); font-size: 0.813rem; letter-spacing: 0.188rem; padding: 0.55rem 1.6rem; border-radius: 0.188rem; }
+#spEsc .sr-story-btn:hover { border-color: rgba(240,216,170,.7); color: rgba(240,216,170,1); }
+#spEsc .sr-story { margin: 1rem auto 0; max-width: 21.25rem; max-height: 38vh; overflow-y: auto; text-align: left; font-family: 'Noto Serif KR', serif; font-size: 0.86rem; line-height: 1.95; font-weight: 300; color: #cfcbd6; word-break: keep-all; }
+#spEsc .sr-story-title { color: rgba(196,168,130,.85); letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+#spEsc .sr-story-btn + .sr-story:not([hidden]) + .e, #spEsc .sr-story-btn + .sr-story[hidden] + .e { margin-top: 1.2rem; }
+#rpRoom .rp-line.sr-when { font-size: 0.72rem; letter-spacing: 0.34em; color: #7d7a86; margin-bottom: 0.9rem; }
+#spEsc .sr-story { scrollbar-width: thin; scrollbar-color: rgba(196,168,130,0.25) transparent; padding-right: 0.5rem; }
+#spEsc .sr-story::-webkit-scrollbar { width: 4px; }
+#spEsc .sr-story::-webkit-scrollbar-thumb { background: rgba(196,168,130,0.25); border-radius: 2px; }
+#spEsc .sr-story::-webkit-scrollbar-track { background: transparent; }

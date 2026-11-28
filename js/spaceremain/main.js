@@ -342,6 +342,34 @@ function createTalk() {
 /** The archive's one blank was typed on another page: tidied here, where it is taken up. Nothing left of it = it was not written. */
 function tidyGate(g) { if (!g) return g; const text = tidyLine(g.text); return text ? Object.assign({}, g, { text }) : null; }
 
+// ── what the piece is about, read again · when a scene is from (261128 late) ─────────────────────────
+// Testers: "the story does not come back to me as I go." The introduction read at the door could not be read again, the scenes
+// are a few sentences each with minutes of talk between, they do not come in the story's order, and the map and the way back
+// were taken out today. Two small things (author: "가 나"), neither touching the manuscript:
+//  · the pause sheet (Esc) has "read what it is about again": the memory's title and its introduction (memories.meta.gate.intro)
+//  · over a scene's text, one small word saying when it is from — only for a memory that names the two (memories.meta.rig.when = { spine, rib })
+function storyAgain() {
+  const p = document.querySelector('#spEsc .p'), first = p && p.querySelector('button');
+  const g = (run.memory.meta && run.memory.meta.gate) || {}, sr = run.memory.meta && run.memory.meta.space_record;
+  const intro = String(g.intro || (sr && run.memory.description) || '').trim();
+  if (!p || !first || !intro || p.querySelector('.sr-story-btn')) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'sr-story-btn'; b.textContent = ko ? '줄거리 다시 보기' : 'what it is about, again';
+  const t = document.createElement('div'); t.className = 'sr-story'; t.hidden = true;
+  const h = document.createElement('div'); h.className = 'sr-story-title'; h.textContent = run.memory.title || '';
+  const body = document.createElement('div'); body.textContent = intro; t.append(h, body);
+  b.addEventListener('click', () => { t.hidden = !t.hidden; b.textContent = t.hidden ? (ko ? '줄거리 다시 보기' : 'what it is about, again') : (ko ? '줄거리 접기' : 'fold it away'); });
+  p.insertBefore(b, first); p.insertBefore(t, first);
+}
+function whenOf(scene) {
+  const rig = run.memory.meta && run.memory.meta.rig, w = rig && rig.when;
+  if (!w || !Array.isArray(rig.spine)) return '';
+  return String((rig.spine.includes(Number(scene.scene_order)) ? w.spine : w.rib) || '').trim();
+}
+function whenLine(scene) {
+  const t = whenOf(scene); if (!t) return;
+  const p = document.createElement('p'); p.className = 'rp-line sr-when'; p.textContent = t; talk.body.appendChild(p);
+}
+
 // ── boot ───────────────────────────────────────────────────────────────────
 async function boot() {
   document.documentElement.lang = LANG;
@@ -398,6 +426,7 @@ async function boot() {
   backs = createBackDoors({ cosmos, ko, canEnter: () => !run.busy && !run.crossing && !run.ended && !map.isOpen() && !(pause && pause.isOpen()),
     onEnter: (d) => { const from = sceneById(d.from), to = sceneById(d.to); if (from && to && !run.crossing && !run.busy) { run.backLog.push({ entered: from.scene_order, to: to.scene_order }); cross(from, to, null, 'old'); } } });
   Object.assign(window.__remain, { cosmos, talk, map, air, finish, pause, skip, backs });
+  storyAgain();
   setupFlyButton();
   window.addEventListener('contextmenu', (e) => { if (pause && pause.isOpen()) return; e.preventDefault(); if (!MAP_ON || run.ended || run.busy || run.crossing) return; if (map.isOpen()) map.close(); else if (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') map.open(); });
   window.addEventListener('keydown', (e) => { if (MAP_ON && e.code === 'KeyM' && !/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '') && (cosmos.mode() === 'fly' || cosmos.mode() === 'walk') && !run.ended && !run.busy && !run.crossing) map.toggle(); });   // 261128: on the way to a door too (it did nothing there)
@@ -624,6 +653,7 @@ async function stay(scene, o) {
   const words = (Array.isArray(scene.echo_words) ? scene.echo_words : []).filter((w) => w && w !== '…').slice(0, 3);   // the scene's own words, by the field: pressed, one goes into it (a handle, not a thing to ask)
   let anyVoid = 0, lastAlign = run.last ? run.last.turnAlignment : 0.5, lastReply = '', turnsHere = 0;
   talk.clear(); talk.show();
+  whenLine(scene);
   if (!dark) await wait(1500);
 
   /** One exchange. Returns false when the walker moved on (or stayed silent). */
