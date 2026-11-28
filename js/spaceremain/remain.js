@@ -57,13 +57,14 @@ export const WHOM = ['narrator', 'other', 'nobody', 'none'];
 export const BLANKS = {
   'UNDW-001': {
     ko: ['받지 않은 전화가 있다. 그건 ___ 때문이었다.', '엄마가 집에 안 오는 날이면 나는 ___.', '___한테는 끝내 말하지 못했다.'],
-    en: ['There is a call I did not answer. It was because of ___.', 'On the nights my mother did not come home, I ___.', 'I never did tell ___.'],
+    en: ['There is a call I did not answer. It was because of ___.', "On days Mom didn't come home, I ___.", 'I never did tell ___.'],   // the second = the archive's sentence for the English copy, word for word (the two are told apart by being the same string)
   },
   default: {
     ko: ['아직도 누구 탓인지 모르겠는 일이 있다. 아마 ___ 탓이다.', '혼자 남는 밤이면 나는 ___.', '___한테는 끝내 말하지 못했다.'],
     en: ['There is something I still cannot lay at anyone\'s door. Probably ___.', 'On the nights I am left alone, I ___.', 'I never did tell ___.'],
   },
 };
+BLANKS['UNDW-001-EN'] = BLANKS['UNDW-001'];   // 261129 (author: "make the English one the same as the Korean"): the English copy is walked on this stage too
 export const HOLE = '___';
 export const blanksFor = (code, lang) => (BLANKS[code] || BLANKS.default)[lang === 'en' ? 'en' : 'ko'];
 

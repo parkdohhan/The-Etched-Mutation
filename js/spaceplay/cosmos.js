@@ -124,7 +124,10 @@ export function createCosmos(opts) {
     // far away a scene is a small light with its figure inside it
     const glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xcfd8e6, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false, sizeAttenuation: false }));
     glint.scale.set(0.02, 0.02, 1); glint.position.copy(pos); world.add(glint);
-    const rec = { id: sceneRec.id, scene: sceneRec, pos: pos.clone(), wrap, thing: th, glint, words: [], facing, armed: true, ph: h01(sceneRec.id + 'p') * 6.28 };
+    const rec = { id: sceneRec.id, scene: sceneRec, pos: pos.clone(), wrap, thing: th, glint, words: [], facing, armed: true, ph: h01(sceneRec.id + 'p') * 6.28,
+      // 261129 (author: "lower the thing — it is hard to see"): on the walked ground a thing floated with its middle just under the eye (the floor is FOOT below its place, the eye 1.6 above the floor), so it was seen edge-on.
+      // It is set down until its foot is a little above the floor — looked down on, as a thing on the ground is. A tall thing already reaches the floor and is left where it is. (The ending's own view does not use this.)
+      drop: GROUND ? Math.max(0, FOOT - th.h / 2 - 0.25) : 0 };
     things.set(sceneRec.id, rec);
     return rec;
   }
@@ -618,7 +621,7 @@ export function createCosmos(opts) {
     for (const r of things.values()) {
       r.thing.tick(time, dt);
       r.wrap.rotation.y = r.facing + 0.22 * Math.sin(time * 0.045 + r.ph);
-      r.wrap.position.y = r.pos.y + 0.16 * Math.sin(time * 0.21 + r.ph);
+      r.wrap.position.y = r.pos.y - (pl.mode === 'cine' ? 0 : r.drop || 0) + 0.16 * Math.sin(time * 0.21 + r.ph);
       const d = r.pos.distanceTo(pl.pos);
       r.glint.material.opacity = 0.5 * smooth(30, 90, d);
       if (d < nd) { nd = d; nearest = r; }

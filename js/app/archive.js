@@ -732,7 +732,7 @@ const SPACE_BLANK_CODES = AUTHOR_CODES.ko.concat(AUTHOR_CODES.en);   // 261128: 
 // 261128 밤 작가("사이트에 반영해" · "진짜는 아카이브에 두고 걔는 변형될 수 있게"): 대표 기억(한국어)은 아카이브에서 "남는 말" 무대(space-remain.html)로.
 //   여기서 채운 빈칸 하나가 문 앞 빈칸 셋의 첫째가 된다(첫 장면도 정하고, 남는 말도 정한다). 기록: docs/우주무대_남는말_실험-261128.md
 //   오프닝에서 닿는 같은 기억은 연습(튜토리얼, js/app/opening.js). 되돌리기 = REMAIN_CODES 를 비운다.
-const REMAIN_CODES = ['UNDW-001'];
+const REMAIN_CODES = ['UNDW-001', 'UNDW-001-EN'];   // 261129 작가("한글판이랑 영어판 똑같도록"): 영어 사본도 같은 무대로
 function _spaceStageUrl(memory, lang) {
   if (memory && memory.code && REMAIN_CODES.includes(memory.code)) return `space-remain.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}`;
   if (memory && memory.code && SPACE_BLANK_CODES.includes(memory.code)) return `space-blank.html?memory=${encodeURIComponent(memory.id)}&lang=${encodeURIComponent(lang)}&from=opening`;

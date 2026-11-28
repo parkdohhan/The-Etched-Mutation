@@ -24,7 +24,7 @@ import * as data from '../roomplay/data.js';
 import { createEngine, parseEmotion, resonanceOf } from '../roomplay/engine.js';
 import { createRoom, typeText, sentences, closed, setTypeVoice } from '../roomplay/room.js?v=261124a';
 import { rigOf, riggedDoor } from '../roomplay/rig.js';
-import { createCosmos } from '../spaceplay/cosmos.js?v=261129a';
+import { createCosmos } from '../spaceplay/cosmos.js?v=261129b';
 import { isSilent } from '../spaceplay/things.js?v=261123c';
 import { accumulate, placeNext, TOPO } from '../spaceplay/topo.js';
 import { lazyStarMap } from '../spaceplay/starmap.js?v=261124b';
@@ -38,7 +38,7 @@ import { leavesNoTrace } from '../shared/no_trace.js?v=261128a';
 import { createBackDoors } from '../spaceblank/backdoor.js?v=261123b3';   // 261128 night: the back door, as the blank stage has it
 import { tidyLine } from '../shared/tidy_line.js?v=261128a';   // 261128 (author: "slips of the hand like this — sift them out"): what is typed is tidied before anything is done with it
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/config.js';
-import * as remain from './remain.js?v=261129a';
+import * as remain from './remain.js?v=261129c';
 import { runEnding, showOutside } from './ending.js?v=261128g';
 import { createTutor } from './tutor.js?v=261128h';
 import { drawAsciiDoor, DOOR_ASPECT } from '../roomplay/asciidoor.js';                 // 261128 late: the door beside the text
@@ -70,7 +70,7 @@ const PICK_BLANKS = qs.get('pick') === 'blanks';             // 261129: the seco
 const TOLD = qs.get('told') !== '0';
 const LANG = (qs.get('lang') || sessionStorage.getItem('tem_archive_lang') || 'ko').slice(0, 2) === 'en' ? 'en' : 'ko';
 const ko = LANG !== 'en';
-const DEFAULT_MEMORY = 'UNDW-001';
+const DEFAULT_MEMORY = ko ? 'UNDW-001' : 'UNDW-001-EN';   // 261129: the English copy is walked here too
 // staging values (free parameters)
 const DOOR_DIST = 26, ARRIVE_DIST = 24, FOOT_DROP = 1.15;
 const ASK_BACK = qs.get('ask') !== '0';        // ?ask=0 = the scene never asks back at all
@@ -538,7 +538,7 @@ async function entry(gateAnswer) {
     if (TOLD) { await typeText(line, ko ? '여기서 한 말은 남아.\n한 번뿐이야.' : 'What you say here stays.\nOnly once.', { per: 80, pace: 1 / FAST }); await wait(2200); }
   }
   { const quest = String((run.memory.meta && run.memory.meta.remain && run.memory.meta.remain.quest) || '').trim();   // the one question a walk is taken with (memories.meta.remain.quest — the author's; without it nothing is shown)
-    if (quest && ko) { await typeText(line, quest, { per: 80, pace: 1 / FAST }); await wait(2600); } }
+    if (quest) { await typeText(line, quest, { per: 80, pace: 1 / FAST }); await wait(2600); } }
   typeText(note, TUTOR ? (ko ? '연습 — 남지 않습니다' : 'practice — nothing is kept') : KEPT ? '' : FREE ? (ko ? '기록 없는 걸음 — 아무것도 남지 않습니다' : 'a walk off the record — nothing is kept') : NEXT ? (ko ? '미리보기 — 다음 사람으로 걷습니다' : 'preview — walking as the next person') : (ko ? '미리보기 — 이 브라우저에만 남습니다' : 'preview — kept in this browser only'), { per: 30 });
   let blanks = remain.blanksFor(run.memory.code, LANG).slice(), gate = null;
   if (gateAnswer && String(gateAnswer.line || '').includes(remain.HOLE) && guard(gateAnswer.text).ok) {

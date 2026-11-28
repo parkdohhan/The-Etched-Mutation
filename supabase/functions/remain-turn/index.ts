@@ -22,7 +22,7 @@ import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const MODEL = "claude-opus-5-5";
-const VERSION = "remain_turn_v5_2026_11_29";
+const VERSION = "remain_turn_v6_2026_11_29";
 
 function getCorsHeaders(req: Request): Record<string, string> {
   const allowedOriginsRaw = Deno.env.get("ALLOWED_ORIGINS") || "";
@@ -341,7 +341,11 @@ async function background(memoryId: string): Promise<{ story: string; hold: Arra
     ]);
     const raw = (mem.data as any)?.meta?.remain?.hold;
     const hold = (Array.isArray(raw) ? raw : []).map((h: any) => ({ what: String(h?.what || "").trim().slice(0, 300), until: (Array.isArray(h?.until) ? h.until : []).map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n)) })).filter((h: any) => h.what);
-    const out = { at: Date.now(), story: String((src.data as any)?.text || "").slice(0, 40000), hold };
+    // 261129: a translated copy (memories.meta.translation_of = the memory it was made from) has no story kept of its own — it reads the one it was made from, as background (the answer is still given in the copy's language).
+    let story = String((src.data as any)?.text || "");
+    const of = String((mem.data as any)?.meta?.translation_of || "");
+    if (!story && /^[0-9a-f-]{36}$/i.test(of)) { const s2 = await db.from("memory_sources").select("text").eq("memory_id", of).maybeSingle(); story = String((s2.data as any)?.text || ""); }
+    const out = { at: Date.now(), story: story.slice(0, 40000), hold };
     bgCache.set(memoryId, out);
     return out;
   } catch (e) { console.warn("[remain-turn] background", (e as any)?.message || e); return none; }
